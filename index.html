@@ -845,7 +845,7 @@ let CHAN=null, CHAN_ERR=null, CHAN_T=null;
 /* ================= BOOT / SYNC ================= */
 function setSync(state,txt){
   const d=document.getElementById('sync-dot');d.className='sync-dot '+state;
-  document.getElementById('sync-txt').innerHTML=txt;
+  document.getElementById('sync-txt').innerHTML=(typeof LANG!=='undefined'&&LANG==='fr'&&typeof frz==='function')?frz(txt):txt;
 }
 async function fetchData(){
   const res=await fetch(XLSX_URL,{redirect:'follow'});
@@ -879,10 +879,11 @@ async function refresh(){
 }
 function showError(e){
   document.getElementById('loader').classList.add('hide');
-  document.getElementById('view').innerHTML=
-    '<div class="err-box"><h3>No data available</h3><p>'+esc(e.message)+
+  let h='<div class="err-box"><h3>No data available</h3><p>'+esc(e.message)+
     '<br><br>Keep <b>Lofi_Radar_data.js</b> next to this file (daily snapshot), or open the page from a web server for live sync.</p>'+
     '<button class="load-more" onclick="boot()">Retry</button></div>';
+  if(typeof LANG!=='undefined'&&LANG==='fr'&&typeof frz==='function')h=frz(h);
+  document.getElementById('view').innerHTML=h;
 }
 function parseChanWb(wb){
   const ws=sheetByName(wb,'Audit');
@@ -963,6 +964,7 @@ async function loadChan(){
   render(); // re-render la vue courante : les badges AI dépendent des données Channels
 }
 async function boot(){
+  if(typeof LANG!=='undefined'&&LANG==='fr'){const lm=document.getElementById('loader-msg');if(lm&&/Opportunity Map/.test(lm.textContent))lm.textContent='Synchro avec la carte des opportunités…';}
   const hs=(location.hash||'').slice(1);
   if(hs&&VIEWS.some(v=>v.id===hs))route=hs;
   loadChan();
@@ -979,7 +981,7 @@ async function boot(){
     try{const d=await fetchData();DATA=d;SYNCED=Date.now();saveCache(d);setSync('','Live · synced just now');renderNav();render();}
     catch(e){setSync('','Daily snapshot · '+fmtDateFull(best.t)+'<br>(live sync unavailable from a local file)');}
   }else{
-    document.getElementById('loader-msg').textContent='Downloading live data from Google Sheets…';
+    document.getElementById('loader-msg').textContent=(typeof LANG!=='undefined'&&LANG==='fr')?'Téléchargement des données en direct depuis Google Sheets…':'Downloading live data from Google Sheets…';
     try{
       const d=await fetchData();DATA=d;SYNCED=Date.now();saveCache(d);
       document.getElementById('loader').classList.add('hide');
@@ -1363,7 +1365,10 @@ async function writeValid(n,val,btn){
     if(!j.ok)throw new Error(j.err||'write failed');
   }catch(e){
     console.error('Sheet write failed for reco '+n,e);
-    alert('L\'affichage est à jour, mais la sauvegarde dans le Google Sheet a échoué pour ce changement : '+e.message+'. Réessaie dans un instant.');
+    const fr=typeof LANG!=='undefined'&&LANG==='fr';
+    alert(fr
+      ?('L\'affichage est à jour, mais la sauvegarde dans le Google Sheet a échoué pour ce changement : '+e.message+'. Réessaie dans un instant.')
+      :('The display is up to date, but saving this change to the Google Sheet failed: '+e.message+'. Try again in a moment.'));
   }
 }
 function toggleValidate(n,btn){
@@ -1398,9 +1403,11 @@ function autoSaveComment(n){
       .then(r=>r.json()).then(j=>{
         if(!j.ok)throw new Error(j.err||'write failed');
         rec.valid=val;saveCache(DATA);rerenderRecos();
+        const fr=typeof LANG!=='undefined'&&LANG==='fr';
         const s=document.getElementById('cstat-dw');
-        if(s){s.textContent='✓ Enregistré';s.style.color='var(--green)';setTimeout(()=>{if(s&&s.textContent==='✓ Enregistré')s.textContent='';},1600);}
-      }).catch(e=>{const s=document.getElementById('cstat-dw');if(s){s.textContent='⚠ Non enregistré';s.style.color='var(--red)';}console.error(e);});
+        const okTxt=fr?'✓ Enregistré':'✓ Saved';
+        if(s){s.textContent=okTxt;s.style.color='var(--green)';setTimeout(()=>{if(s&&s.textContent===okTxt)s.textContent='';},1600);}
+      }).catch(e=>{const fr=typeof LANG!=='undefined'&&LANG==='fr';const s=document.getElementById('cstat-dw');if(s){s.textContent=fr?'⚠ Non enregistré':'⚠ Not saved';s.style.color='var(--red)';}console.error(e);});
   },700);
 }
 function filterRecos(){
@@ -1424,7 +1431,7 @@ function recosHTML(){
   let h='<div class="toolbar">'+
     '<div class="search">'+ICONS.search+'<input placeholder="Search concepts, titles, niches…" value="'+esc(RS.q)+'" oninput="RS.q=this.value;RS.limit=80;rerenderRecos()"><kbd>/</kbd></div>'+
     '<select class="ctl" onchange="RS.pot=this.value;rerenderRecos()">'+
-      '<option value="">All potential</option>'+['S','A','B','C'].map(p=>'<option '+(RS.pot===p?'selected':'')+' value="'+p+'">'+({S:'S — Rente potentielle',A:'A — Fort',B:'B — Solide',C:'C — Niche / à tester'})[p]+'</option>').join('')+'</select>'+
+      '<option value="">All potential</option>'+['S','A','B','C'].map(p=>'<option '+(RS.pot===p?'selected':'')+' value="'+p+'">'+((typeof LANG!=='undefined'&&LANG==='fr')?{S:'S — Rente potentielle',A:'A — Fort',B:'B — Solide',C:'C — Niche / à tester'}:{S:'S — Steady income',A:'A — Strong',B:'B — Solid',C:'C — Niche / to test'})[p]+'</option>').join('')+'</select>'+
     '<select class="ctl" onchange="RS.perso=this.value;rerenderRecos()">'+
       '<option value="">All characters</option>'+persos.map(p=>'<option '+(RS.perso===p?'selected':'')+' value="'+esc(p)+'">'+esc(p)+'</option>').join('')+'</select>'+
     '<select class="ctl" onchange="RS.val=this.value;rerenderRecos()">'+
@@ -1462,13 +1469,14 @@ function recoCardHTML(r,i){
 function recoInfoRows(r){
   return recoRow('Concept',r.concept)+recoRow('Thumbnail scene',r.scene)+recoRow('Music style',r.style)+
     recoRow('Launch format',r.launch)+recoRow('Data note',r.noteData)+recoRow('Reco Claude',r.recoClaude)+
-    recoRow('Recalibrage',r.recal)+
+    recoRow('Recalibration',r.recal)+
     (r.conf!=null?recoRow('Confidence',Math.round(r.conf)+' / 100'):'')+(r.status?recoRow('Status',r.status):'');
 }
 function recoDescKw(r){
   return (r.desc?'<div class="rrow"><div class="k">Description</div><div class="v">'+esc(r.desc)+'<br><button class="copybtn" onclick="copyTxtN(this,'+r.n+',\'desc\')">⧉ Copy description</button></div></div>':'')+
     (r.kw?'<div class="rrow"><div class="k">SEO keywords</div><div class="v" style="color:var(--muted)">'+esc(r.kw)+'<br><button class="copybtn" onclick="copyTxtN(this,'+r.n+',\'kw\')">⧉ Copy keywords</button> <button class="copybtn" onclick="copyTxtN(this,'+r.n+',\'title\')">⧉ Copy title</button></div></div>':'');
 }
+
 function recoDetailBody(r,i){
   return recoInfoRows(r)+recoDescKw(r);
 }
@@ -1482,16 +1490,16 @@ function copyTxtN(btn,n,field){
 function recoActions(r){
   const isVal=isValidated(r.valid), isRef=isRefused(r.valid);
   const actions=isVal
-    ?'<span class="rst-done rst-ok" style="flex:1;text-align:center">✅ Validé</span><button class="rst-x" title="Remettre à valider" onclick="setValid('+r.n+',\'\',this,event)">✕</button>'
+    ?'<span class="rst-done rst-ok" style="flex:1;text-align:center">✅ Validated</span><button class="rst-x" title="Reset to pending" onclick="setValid('+r.n+',\'\',this,event)">✕</button>'
     :isRef
-    ?'<span class="rst-done rst-ko" style="flex:1;text-align:center">❌ Refusé</span><button class="rst-x" title="Remettre à valider" onclick="setValid('+r.n+',\'\',this,event)">✕</button>'
-    :'<button class="rbtn rbtn-ok" style="flex:1" onclick="setValid('+r.n+',\'X\',this,event)">✓ Valider</button><button class="rbtn rbtn-ko" style="flex:1" onclick="setValid('+r.n+',\'-\',this,event)">✕ Refuser</button>';
+    ?'<span class="rst-done rst-ko" style="flex:1;text-align:center">❌ Refused</span><button class="rst-x" title="Reset to pending" onclick="setValid('+r.n+',\'\',this,event)">✕</button>'
+    :'<button class="rbtn rbtn-ok" style="flex:1" onclick="setValid('+r.n+',\'X\',this,event)">✓ Validate</button><button class="rbtn rbtn-ko" style="flex:1" onclick="setValid('+r.n+',\'-\',this,event)">✕ Refuse</button>';
   return '<div class="rt-actions" style="margin:16px 0 12px;gap:12px" onclick="event.stopPropagation()">'+actions+'</div>';
 }
 function recoCommentBox(r){
   return '<div class="cmt-box" onclick="event.stopPropagation()">'+
     '<div class="k" style="font-size:10.5px;text-transform:uppercase;letter-spacing:1.3px;color:var(--acc2);font-weight:700;margin-bottom:7px">💬 Commentaire</div>'+
-    '<textarea id="cta-dw" oninput="autoSaveComment('+r.n+')" placeholder="Ta note — ChatGPT la lit au prochain scan pour recalibrer…">'+esc(noteOf(r.valid))+'</textarea>'+
+    '<textarea id="cta-dw" oninput="autoSaveComment('+r.n+')" placeholder="Your note — ChatGPT reads it at the next scan to recalibrate…">'+esc(noteOf(r.valid))+'</textarea>'+
     '<span id="cstat-dw" style="font-size:11px;color:var(--dim);margin-top:5px;display:inline-block;min-height:14px"></span>'+
   '</div>';
 }
@@ -1526,9 +1534,9 @@ function recoListHTML(rows){
     '<div class="reco-group-h" style="border-bottom-color:'+color+'55"><span style="font-size:16px">'+emoji+'</span><span style="color:'+color+'">'+label+'</span><span class="cnt">'+arr.length+'</span></div>'+
     (arr.length?'<div class="rgrid2">'+arr.map(r=>recoCardHTML(r,page.indexOf(r))).join('')+'</div>':'<div class="empty" style="padding:24px 0">'+empty+'</div>');
   let h='';
-  h+=grp('🟡','À valider','#fbbf24',pendRows,'Rien en attente de validation.');
-  h+=grp('✅','Validé','#4ade80',valRows,'Aucune recommandation validée pour l’instant.');
-  h+=grp('❌','Refusé','#fb7185',refRows,'Aucune recommandation refusée.');
+  h+=grp('🟡','Pending review','#fbbf24',pendRows,'Nothing waiting for review.');
+  h+=grp('✅','Validated','#4ade80',valRows,'No recommendation validated yet.');
+  h+=grp('❌','Refused','#fb7185',refRows,'No recommendation refused.');
   if(rows.length>RS.limit)h+='<button class="load-more" onclick="RS.limit+=120;rerenderRecos()">Loading more · '+fmtInt(rows.length-RS.limit)+' remaining</button>';
   return h;
 }
@@ -1554,7 +1562,7 @@ function roadmapHTML(){
     '<select class="ctl" onchange="RM.genre=this.value;render()">'+
       '<option value="">All genres</option>'+genres.map(g=>'<option '+(RM.genre===g?'selected':'')+' value="'+esc(g)+'">'+esc(g)+'</option>').join('')+'</select>'+
     '<div class="result-count"><b>'+rows.length+'</b> releases · '+
-      '<span style="color:var(--muted)">gris Monday</span> · <span style="color:var(--green)">vert à produire</span> · <span style="color:var(--amber)">jaune à valider</span></div>'+
+      '<span style="color:var(--muted)">grey Monday</span> · <span style="color:var(--green)">green to produce</span> · <span style="color:var(--amber)">yellow to validate</span></div>'+
   '</div>';
   window._rm_rows=rows;
   h+=calHTML(rows);
@@ -1598,7 +1606,7 @@ function openRoad(i){
         (reco?'<div class="dw-stat"><b>'+(reco.scoreAdj!=null?Math.round(reco.scoreAdj):Math.round(reco.score||0))+'</b><span>reco score</span></div>':'')+
         (reco&&reco.pot?'<div class="dw-stat"><b>'+esc(reco.pot[0])+'</b><span>potential</span></div>':'')+
       '</div>'+
-      '<button class="rm-del-btn" onclick="deleteRoadmapEntry('+i+',event)">🗑️ Retirer du planning</button>'+
+      '<button class="rm-del-btn" onclick="deleteRoadmapEntry('+i+',event)">🗑️ Remove from schedule</button>'+
       (reco
         ?recoDetailBody(reco,-1)
         :recoRow('Concept',r.concept)+recoRow('Thumbnail scene',r.scene)+recoRow('Music style',r.style)+
@@ -1607,18 +1615,23 @@ function openRoad(i){
   document.getElementById('drawer').classList.add('show');
   document.getElementById('backdrop').classList.add('show');
   document.getElementById('drawer').scrollTop=0;
+  i18nDrawer();
 }
 function deleteRoadmapEntry(i,ev){
   if(ev)ev.stopPropagation();
   const r=(window._rm_rows||[])[i];if(!r)return;
-  if(!confirm('Retirer « '+r.title+' » du planning ?'))return;
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
+  if(!confirm(fr?('Retirer « '+r.title+' » du planning ?'):('Remove « '+r.title+' » from the schedule?')))return;
   const li=SCHED_LOCAL.findIndex(x=>x.date===r.date&&x.title===r.title);
   const wasLocal=li>=0;
   if(wasLocal){SCHED_LOCAL.splice(li,1);schedSaveLocal();}
   DATA.roadmap=(DATA.roadmap||[]).filter(x=>!(x.date===r.date&&x.title===r.title));
   saveCache(DATA);
   render();
-  if(!wasLocal)setTimeout(()=>alert('Retiré localement. Pense aussi à supprimer « '+r.title+' » dans le Google Sheet / Monday pour que ce soit définitif pour toute l’équipe.'),200);
+  if(!wasLocal)setTimeout(()=>alert(fr
+    ?('Retiré localement. Pense aussi à supprimer « '+r.title+' » dans le Google Sheet / Monday pour que ce soit définitif pour toute l’équipe.')
+    :('Removed locally. Also remember to delete « '+r.title+' » in the Google Sheet / Monday so it\'s final for the whole team.')
+  ),200);
 }
 function calShift(d){
   const b=RM.cal?new Date(RM.cal):new Date();
@@ -1632,8 +1645,8 @@ function calHTML(rows){
   const y=base.getFullYear(),m=base.getMonth();
   rows.forEach((r,ri)=>{r._ri=ri;});
   const toggle='<div class="cal-viewtoggle">'+
-      '<button class="'+(RM.view!=='year'?'on':'')+'" onclick="calSetView(\'month\')">Mois</button>'+
-      '<button class="'+(RM.view==='year'?'on':'')+'" onclick="calSetView(\'year\')">Année</button>'+
+      '<button class="'+(RM.view!=='year'?'on':'')+'" onclick="calSetView(\'month\')">Month</button>'+
+      '<button class="'+(RM.view==='year'?'on':'')+'" onclick="calSetView(\'year\')">Year</button>'+
     '</div>';
   if(RM.view==='year')return yearCalHTML(rows,y,toggle);
   const MFULL=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -1792,27 +1805,38 @@ function openSchedulePopup(reco){
 function renderSchedPopup(){
   const {reco,sug}=SCHED_CUR||{};
   const el=document.getElementById('sched-modal');
-  if(!reco||!sug){el.innerHTML='<div class="sched-h">Pas de date disponible</div><div class="sched-sub">Aucun créneau trouvé dans les 400 prochains jours pour ce genre.</div><div class="sched-actions"><button class="sched-btn-cancel" onclick="closeSchedPopup()">Fermer</button></div>';return;}
+  if(!reco||!sug){
+    el.innerHTML='<div class="sched-h">No date available</div><div class="sched-sub">No open slot found in the next 400 days for this genre.</div><div class="sched-actions"><button class="sched-btn-cancel" onclick="closeSchedPopup()">Close</button></div>';
+    if(typeof LANG!=='undefined'&&LANG==='fr')el.innerHTML=frz(el.innerHTML);
+    return;
+  }
   const d=sug.date;
-  const jour=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'][d.getDay()];
-  const MFULL=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  const dowEN=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const dowFR=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+  const mEN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const mFR=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
+  const jour=(fr?dowFR:dowEN)[d.getDay()];
+  const MFULL=fr?mFR:mEN;
   const rows=(DATA.roadmap||[]).filter(r=>r.date).concat(SCHED_LOCAL);
-  const ruleLabel=sug.rule.label||'Cadence générale (~1 sortie/semaine, semaine libre)';
-  el.innerHTML=
-    '<div class="sched-h">✓ « '+esc(reco.title)+' » validé</div>'+
-    '<div class="sched-sub">Proposition de placement dans le planning — dis-moi si ça te va.</div>'+
+  const ruleLabel=sug.rule.label||'General cadence (~1 release/week, free week)';
+  let h=
+    '<div class="sched-h">✓ « '+esc(reco.title)+' » validated</div>'+
+    '<div class="sched-sub">Placement proposal for the schedule — let me know if it works for you.</div>'+
     '<div class="sched-rationale">📅 <b>'+jour+' '+d.getDate()+' '+MFULL[d.getMonth()]+' '+d.getFullYear()+'</b><br>'+
-      '↳ '+esc(ruleLabel)+(sug.relaxed?' <span style="color:var(--amber)">· contrainte assouplie (peu de créneaux libres)</span>':'')+
-      (schedIsRain(reco)?'<br>↳ Espacé du dernier concept pluie/orage (≥3 semaines)':'')+
+      '↳ '+esc(ruleLabel)+(sug.relaxed?' <span style="color:var(--amber)">· relaxed constraint (few open slots)</span>':'')+
+      (schedIsRain(reco)?'<br>↳ Spaced out from the last rain/storm concept (≥3 weeks)':'')+
     '</div>'+
     '<div class="sched-cal">'+schedMiniCal(d,rows)+'</div>'+
     '<div class="sched-actions">'+
-      '<button class="sched-btn-ok" onclick="confirmSchedDate()">✓ Ça me va, on place ici</button>'+
-      '<button class="sched-btn-alt" onclick="skipSchedDate()">🔁 Proposer une autre date</button>'+
+      '<button class="sched-btn-ok" onclick="confirmSchedDate()">✓ Works for me, place it here</button>'+
+      '<button class="sched-btn-alt" onclick="skipSchedDate()">🔁 Suggest another date</button>'+
     '</div>'+
     '<div style="display:flex;gap:8px;margin-top:8px">'+
-      '<button class="sched-btn-cancel" style="flex:1" onclick="closeSchedPopup()">Plus tard</button>'+
+      '<button class="sched-btn-cancel" style="flex:1" onclick="closeSchedPopup()">Not now</button>'+
     '</div>';
+  if(fr)h=frz(h);
+  el.innerHTML=h;
 }
 function skipSchedDate(){
   if(!SCHED_CUR)return;
@@ -1837,14 +1861,18 @@ function confirmSchedDate(){
   schedSaveLocal();
   DATA.roadmap=(DATA.roadmap||[]).concat([entry]);
   const el=document.getElementById('sched-modal');
-  const MFULL=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
+  const MFULL=fr?['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre']
+    :['January','February','March','April','May','June','July','August','September','October','November','December'];
   const d=sug.date;
-  el.innerHTML='<div class="sched-h">✓ Placé au planning</div>'+
-    '<div class="sched-confirmed">« '+esc(reco.title)+' » est ajouté au '+d.getDate()+' '+MFULL[d.getMonth()]+' '+d.getFullYear()+' (visible dans Roadmap, tag « à valider »).<br><br>Pense à reporter cette date dans le Google Sheet Roadmap pour que ça persiste pour toute l’équipe.</div>'+
+  let h='<div class="sched-h">✓ Placed in the schedule</div>'+
+    '<div class="sched-confirmed">« '+esc(reco.title)+' » is added on '+d.getDate()+' '+MFULL[d.getMonth()]+' '+d.getFullYear()+' (visible in Roadmap, tagged “to validate”).<br><br>Remember to also report this date in the Google Sheet Roadmap so it persists for the whole team.</div>'+
     '<div class="sched-actions" style="margin-top:14px">'+
-      '<button class="sched-btn-ok" onclick="closeSchedPopup();go(\'roadmap\')">Voir dans le planning</button>'+
-      '<button class="sched-btn-cancel" onclick="closeSchedPopup()">Fermer</button>'+
+      '<button class="sched-btn-ok" onclick="closeSchedPopup();go(\'roadmap\')">See in the schedule</button>'+
+      '<button class="sched-btn-cancel" onclick="closeSchedPopup()">Close</button>'+
     '</div>';
+  if(fr)h=frz(h);
+  el.innerHTML=h;
 }
 function closeSchedPopup(){
   document.getElementById('sched-backdrop').classList.remove('show');
@@ -2132,27 +2160,35 @@ function buildOptimProposal(o){
 function copyOptim(vid,what,btn){
   const p=OPTIM_REG[vid];if(!p)return;
   const txt=what==='tags'?p.tagsStr:what==='title'?p.titleSug:p.hookSug;
-  navigator.clipboard.writeText(txt||'').then(()=>{const o=btn.textContent;btn.textContent='✓ Copié';setTimeout(()=>btn.textContent=o,1400);});
+  navigator.clipboard.writeText(txt||'').then(()=>{const o=btn.textContent;btn.textContent='✓ Copied';setTimeout(()=>btn.textContent=o,1400);});
 }
 function optimHTML(o,p){
   if(!p)return '';
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
   let h='<div class="dw-sec" style="border:1px solid rgba(139,124,246,.35);border-radius:12px;padding:14px;background:rgba(139,124,246,.06)">';
-  h+='<div class="k">🛠️ Proposition d’optimisation (prête à coller dans Studio)</div><div class="v">';
-  h+='<b style="color:var(--acc2)">Tags proposés ('+p.tags.length+', '+p.tagsStr.length+'/500 caractères)</b> — marque + nos tags qui performent + tags des tops du genre :<br><span style="font-size:12px;color:var(--muted)">'+esc(p.tagsStr)+'</span><br><button class="copybtn" onclick="copyOptim(\''+o.vid+'\',\'tags\',this)">⧉ Copier les tags</button>';
-  if(p.titleSug)h+='<br><br><b style="color:var(--acc2)">Titre suggéré</b> (ajoute le bénéfice recherché) :<br>'+esc(p.titleSug)+'<br><button class="copybtn" onclick="copyOptim(\''+o.vid+'\',\'title\',this)">⧉ Copier le titre</button>';
-  if(p.hookSug)h+='<br><br><b style="color:var(--acc2)">Début de description suggéré</b> (les 125 premiers caractères comptent le plus) :<br>'+esc(p.hookSug)+'<br><button class="copybtn" onclick="copyOptim(\''+o.vid+'\',\'hook\',this)">⧉ Copier le hook</button>';
-  if(p.needTs)h+='<br><br><b style="color:var(--amber)">⏱ Ajouter la tracklist avec timestamps</b> — génère des «key moments» dans la recherche Google/YouTube.';
+  h+='<div class="k">🛠️ Optimization proposal (ready to paste into Studio)</div><div class="v">';
+  h+='<b style="color:var(--acc2)">Suggested tags ('+p.tags.length+', '+p.tagsStr.length+'/500 characters)</b> — brand + our tags that perform + top-genre tags:<br><span style="font-size:12px;color:var(--muted)">'+esc(p.tagsStr)+'</span><br><button class="copybtn" onclick="copyOptim(\''+o.vid+'\',\'tags\',this)">⧉ Copy tags</button>';
+  if(p.titleSug)h+='<br><br><b style="color:var(--acc2)">Suggested title</b> (adds the sought-after benefit):<br>'+esc(p.titleSug)+'<br><button class="copybtn" onclick="copyOptim(\''+o.vid+'\',\'title\',this)">⧉ Copy title</button>';
+  if(p.hookSug)h+='<br><br><b style="color:var(--acc2)">Suggested description hook</b> (the first 125 characters matter most):<br>'+esc(p.hookSug)+'<br><button class="copybtn" onclick="copyOptim(\''+o.vid+'\',\'hook\',this)">⧉ Copy hook</button>';
+  if(p.needTs)h+='<br><br><b style="color:var(--amber)">⏱ Add the tracklist with timestamps</b> — generates “key moments” in Google/YouTube search.';
   h+='</div></div>';
+  if(fr)h=frz(h);
   return h;
 }
 function deepAuditHTML(a,o){
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
   const sec=(icon,title,items)=>!items.length?'':'<div class="dw-sec"><div class="k">'+icon+' '+title+'</div><div class="v">'+items.map(x=>'• '+x).join('<br><br>')+'</div></div>';
-  if(!a.coh)return '<div class="dw-sec"><div class="k">🔬 Deep packaging audit</div><div class="v">Pas assez de vidéos comparables dans ce genre pour un audit fiable.</div></div>';
+  if(!a.coh){
+    let h0='<div class="dw-sec"><div class="k">🔬 Deep packaging audit</div><div class="v">Not enough comparable videos in this genre for a reliable audit.</div></div>';
+    return fr?frz(h0):h0;
+  }
   const p=o?buildOptimProposal(o):null;
-  return sec('🎨','Thumbnail — composition & couleur',a.thumb)+
-    sec('✍️','Titre',a.title)+
-    sec('🔎','Description & mots-clés',a.kw)+
+  let h=sec('🎨','Thumbnail — composition & color',a.thumb)+
+    sec('✍️','Title',a.title)+
+    sec('🔎','Description & keywords',a.kw)+
     (p?optimHTML(o,p):'');
+  if(fr)h=frz(h);
+  return h;
 }
 function vBadge(v){
   return v==='over'?'<span class="verdict v-over">Overperforming</span>':
@@ -2228,7 +2264,7 @@ function openAnaIdx(i){
       sec('Diagnosis',(o.diags||[]).map(d=>'• '+esc(d)).join('<br>'),'🔬')+
       (o.reco?sec('Linked recommendation','#'+Math.round(o.reco.n)+' · '+esc(o.reco.title)+(o.reco.pot?' · predicted '+esc(o.reco.pot):'')+(o.reco.scoreAdj!=null?' · score '+Math.round(o.reco.scoreAdj):''),'💡'):'')+
       sec('Cohort','Compared against '+fmtInt(o.cohN)+' '+esc(o.gk)+' videos on the radar'+(o.cohMed!=null?' · median '+fmtN(o.cohMed)+' views/mo':''),'⚖️')+
-      '<div id="deepaudit" class="dw-sec"><div class="k">🔬 Audit approfondi (miniature, titre, SEO)</div><div class="v">Analyse en cours <span class="spin-inline"></span></div></div>'+
+      '<div id="deepaudit" class="dw-sec"><div class="k">🔬 Deep audit (thumbnail, title, SEO)</div><div class="v">Analysis in progress <span class="spin-inline"></span></div></div>'+
     '</div>';
   document.getElementById('drawer').classList.add('show');
   document.getElementById('backdrop').classList.add('show');
@@ -2580,6 +2616,9 @@ function mountLangBtn(){
   b.innerHTML='<span class="lg-slide"></span>'+
     '<span class="lg-opt'+(LANG==='en'?' on':'')+'"><img src="https://flagcdn.com/40x30/gb.png" alt="EN"></span>'+
     '<span class="lg-opt'+(LANG==='fr'?' on':'')+'"><img src="https://flagcdn.com/40x30/fr.png" alt="FR"></span>';
+  // éléments statiques jamais reconstruits par render() : synchro idempotente sur LANG (pas de replace destructif)
+  const tag=document.querySelector('.logo h1 small');
+  if(tag)tag.textContent=LANG==='fr'?'Carte des opportunités':'Opportunity Map';
 }
 function toggleLang(){
   LANG=LANG==='en'?'fr':'en';
@@ -2633,7 +2672,41 @@ const FR_LIT=[
 ['Workspace','Espace de travail'],['Sync now','Synchroniser'],['Open Google Sheet','Ouvrir le Google Sheet'],
 ['Live · synced just now','Live · synchro à l’instant'],['Live · synced ','Live · synchro il y a '],[' min ago',' min'],['h ago','h'],['d ago','j'],['just now','à l’instant'],
 ['Daily snapshot · ','Snapshot quotidien · '],['trying live sync…','tentative de synchro live…'],
-['DAILY SCAN','SCAN QUOTIDIEN'],['OUR VIDEOS','NOS VIDÉOS'],['>LIVE<','>LIVE<']
+['DAILY SCAN','SCAN QUOTIDIEN'],['OUR VIDEOS','NOS VIDÉOS'],['>LIVE<','>LIVE<'],
+['Connecting…','Connexion…'],['Syncing…','Synchro…'],['Sync failed','Échec de synchro'],['No data','Aucune donnée'],
+['Cached · ','Cache · '],['(live sync unavailable from a local file)','(synchro live indisponible depuis un fichier local)'],
+['Downloading live data from Google Sheets…','Téléchargement des données en direct depuis Google Sheets…'],
+['No data available','Aucune donnée disponible'],
+['Keep <b>Lofi_Radar_data.js</b> next to this file (daily snapshot), or open the page from a web server for live sync.','Garde <b>Lofi_Radar_data.js</b> à côté de ce fichier (snapshot quotidien), ou ouvre la page depuis un serveur web pour la synchro live.'],
+['>Retry<','>Réessayer<'],
+['No date available','Pas de date disponible'],['No open slot found in the next 400 days for this genre.','Aucun créneau trouvé dans les 400 prochains jours pour ce genre.'],['>Close<','>Fermer<'],
+['» validated','» validé'],['Placement proposal for the schedule — let me know if it works for you.','Proposition de placement dans le planning — dis-moi si ça te va.'],
+['General cadence (~1 release/week, free week)','Cadence générale (~1 sortie/semaine, semaine libre)'],['relaxed constraint (few open slots)','contrainte assouplie (peu de créneaux libres)'],
+['Spaced out from the last rain/storm concept (≥3 weeks)','Espacé du dernier concept pluie/orage (≥3 semaines)'],
+['✓ Works for me, place it here','✓ Ça me va, on place ici'],['🔁 Suggest another date','🔁 Proposer une autre date'],['>Not now<','>Plus tard<'],
+['✓ Placed in the schedule','✓ Placé au planning'],['» is added on ','» est ajouté au '],[' (visible in Roadmap, tagged “to validate”).',' (visible dans Roadmap, tag « à valider »).'],
+['Remember to also report this date in the Google Sheet Roadmap so it persists for the whole team.','Pense à reporter cette date dans le Google Sheet Roadmap pour que ça persiste pour toute l’équipe.'],
+['See in the schedule','Voir dans le planning'],
+['>Thumbnail scene<','>Scène de miniature<'],['>Music style<','>Style musical<'],['>Launch format<','>Format de lancement<'],
+['>Data note<','>Note data<'],['>Recalibration<','>Recalibrage<'],['>Confidence<','>Confiance<'],['>Status<','>Statut<'],
+['>SEO keywords<','>Mots-clés SEO<'],['⧉ Copy description','⧉ Copier la description'],['⧉ Copy keywords','⧉ Copier les mots-clés'],['⧉ Copy title','⧉ Copier le titre'],
+['🗑️ Remove from schedule','🗑️ Retirer du planning'],
+['✅ Validated','✅ Validé'],['❌ Refused','❌ Refusé'],['title="Reset to pending"','title="Remettre à valider"'],['✓ Validate<','✓ Valider<'],['✕ Refuse<','✕ Refuser<'],
+['style="color:#fbbf24">Pending review<','style="color:#fbbf24">À valider<'],['style="color:#4ade80">Validated<','style="color:#4ade80">Validé<'],['style="color:#fb7185">Refused<','style="color:#fb7185">Refusé<'],
+['Nothing waiting for review.','Rien en attente de validation.'],['No recommendation validated yet.','Aucune recommandation validée pour l’instant.'],['No recommendation refused.','Aucune recommandation refusée.'],
+['>Month<','>Mois<'],['>Year<','>Année<'],
+['grey Monday','gris Monday'],['green to produce','vert à produire'],['yellow to validate','jaune à valider'],
+['S — Steady income','S — Rente potentielle'],['A — Strong','A — Fort'],['B — Solid','B — Solide'],['C — Niche / to test','C — Niche / à tester'],
+['✓ Copied<','✓ Copié<'],
+['🛠️ Optimization proposal (ready to paste into Studio)','🛠️ Proposition d’optimisation (prête à coller dans Studio)'],
+['Suggested tags (','Tags proposés ('],['/500 characters)</b> — brand + our tags that perform + top-genre tags:','/500 caractères)</b> — marque + nos tags qui performent + tags des tops du genre :'],
+['⧉ Copy tags','⧉ Copier les tags'],
+['>Suggested title<','>Titre suggéré<'],[' (adds the sought-after benefit):',' (ajoute le bénéfice recherché) :'],
+['>Suggested description hook<','>Début de description suggéré<'],[' (the first 125 characters matter most):',' (les 125 premiers caractères comptent le plus) :'],['⧉ Copy hook','⧉ Copier le hook'],
+['⏱ Add the tracklist with timestamps','⏱ Ajouter la tracklist avec timestamps'],['</b> — generates “key moments” in Google/YouTube search.','</b> — génère des «key moments» dans la recherche Google/YouTube.'],
+['🔬 Deep packaging audit','🔬 Audit approfondi du packaging'],['Not enough comparable videos in this genre for a reliable audit.','Pas assez de vidéos comparables dans ce genre pour un audit fiable.'],
+['Thumbnail — composition & color','Thumbnail — composition & couleur'],['>✍️ Title<','>✍️ Titre<'],['Description & keywords','Description & mots-clés'],
+['🔬 Deep audit (thumbnail, title, SEO)','🔬 Audit approfondi (miniature, titre, SEO)'],['Analysis in progress','Analyse en cours']
 ];
 const FR_RX=[
 [/Weak packaging: ([\d.,]+)% CTR vs ([\d.,]+)% channel median on ([\w.,]+) impressions — YouTube showed it, viewers didn’t click\. Thumbnail\/title are the first suspects\./g,'Packaging faible : $1 % de CTR vs $2 % de médiane chaîne sur $3 impressions. YouTube l’a montrée, les gens n’ont pas cliqué : miniature/titre premiers suspects.'],
