@@ -1238,7 +1238,7 @@ function vcardHTML(kind,v,i){
     '<div class="vbody">'+
       '<div class="vtitle">'+esc(v.title)+'</div>'+
       '<div class="vmeta"><a href="'+esc(v.chUrl||'#')+'" target="_blank" onclick="event.stopPropagation()">'+esc(v.channel)+'</a><span class="subs">· '+fmtN(v.subs)+' subs</span></div>'+
-      '<div class="vtags">'+gtag(v.genre)+ghosttag(v.cluster)+aiBadge(chanByUrl(v.chUrl))+'</div>'+extra+
+      '<div class="vtags">'+gtag(v.genre)+ghosttag(v.cluster)+aiBadge(chanFor(v))+'</div>'+extra+
       '<div class="vstats">'+
         '<div class="vstat hl"><b>'+fmtN(v.vpm)+'</b><span>views/mo</span></div>'+
         '<div class="vstat"><b>'+fmtN(v.views)+'</b><span>views</span></div>'+
@@ -1278,7 +1278,7 @@ function openDrawer(kind,v){
       '<div class="dw-title"><a href="'+esc(v.url)+'" target="_blank">'+esc(v.title)+'</a></div>'+
       '<div class="dw-sub">'+gtag(v.genre)+ghosttag(v.cluster)+
         (v.chUrl?'<a class="tag ghost" href="'+esc(v.chUrl)+'" target="_blank">'+esc(v.channel)+' ↗</a>':ghosttag(v.channel))+
-        '<span class="tag ghost">'+fmtN(v.subs)+' subs</span>'+likeTag(v.vid)+aiBadge(chanByUrl(v.chUrl))+'</div>'+
+        '<span class="tag ghost">'+fmtN(v.subs)+' subs</span>'+likeTag(v.vid)+aiBadge(chanFor(v))+'</div>'+
       '<div class="dw-stats">'+
         '<div class="dw-stat hl"><b>'+fmtN(v.vpm)+'</b><span>views/mo</span></div>'+
         '<div class="dw-stat"><b>'+fmtN(v.views)+'</b><span>views</span></div>'+
@@ -2122,7 +2122,7 @@ function liveCardHTML(v,i){
     '<div class="vbody">'+
       '<div class="vtitle">'+esc(v.title)+'</div>'+
       '<div class="vmeta"><a href="'+esc(v.url)+'" target="_blank" onclick="event.stopPropagation()">'+esc(v.channel)+'</a></div>'+
-      '<div class="vtags">'+aiBadge(chanByUrl(v.url))+kws.map(ghosttag).join('')+'</div>'+
+      '<div class="vtags">'+aiBadge(chanFor(v))+kws.map(ghosttag).join('')+'</div>'+
       '<div class="vstats">'+
         '<div class="vstat hl"><b>'+fmtN(peak24)+'</b><span>peak 24h</span></div>'+
         '<div class="vstat"><b>'+fmtN(peakAll)+'</b><span>peak all-time</span></div>'+
@@ -2354,6 +2354,16 @@ function chanByUrl(u){
   if(!CHAN||!u)return null;
   const k=normUrl(u);return CHAN.channels.find(c=>normUrl(c.url)===k)||null;
 }
+let CHAN_NAMEIX=null,CHAN_NAMEIX_T=null;
+function chanByName(n){
+  if(!CHAN||!n)return null;
+  if(!CHAN_NAMEIX||CHAN_NAMEIX_T!==CHAN_T){
+    CHAN_NAMEIX={};CHAN_NAMEIX_T=CHAN_T;
+    CHAN.channels.forEach(c=>{CHAN_NAMEIX[String(c.name||'').toLowerCase().replace(/\s+/g,' ').trim()]=c;});
+  }
+  return CHAN_NAMEIX[String(n).toLowerCase().replace(/\s+/g,' ').trim()]||null;
+}
+function chanFor(v){return chanByUrl(v.chUrl||'')||chanByName(v.channel)||null;}
 function watchHTML(){
   const w=wlGet();
   const tabs=[['v','🎬 Videos',w.v.length],['l','📺 Livestreams',w.l.length],['c','📡 Channels',w.c.length]];
