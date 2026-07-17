@@ -840,6 +840,24 @@ function timeAgo(ms){
   if(s<60)return 'just now';if(s<3600)return Math.floor(s/60)+' min ago';
   if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';
 }
+function maxHistTime(hist){
+  let m=null;
+  if(!hist)return null;
+  for(const k in hist){
+    const a=hist[k];
+    if(a&&a.length){const t=a[a.length-1][0];if(m==null||t>m)m=t;}
+  }
+  return m;
+}
+function lastScanText(){
+  if(!DATA)return '';
+  const vT=maxHistTime(DATA.hist);
+  const lT=maxHistTime(DATA.liveHourly)||maxHistTime(DATA.liveHist);
+  const parts=[];
+  if(vT!=null)parts.push('🎬 videos scan '+timeAgo(vT));
+  if(lT!=null)parts.push('📡 streams scan '+timeAgo(lT));
+  return parts.join(' · ');
+}
 
 /* ================= STATE ================= */
 let DATA=null, SYNCED=null, route='dashboard';
@@ -849,7 +867,7 @@ const VS={
   news:{q:'',genre:'',cluster:'',sort:'added',mode:'grid',limit:60},
   mix:{q:'',genre:'',cluster:'',sort:'vpm',mode:'grid',limit:60,age:'all'}
 };
-const RS={q:'',genre:'',pot:'',perso:'',val:'',sort:'scoreAdj',limit:80};
+const RS={q:'',genre:'',pot:'',perso:'',val:'',sort:'scoreAdj',mode:'grid',limit:80};
 const RM={src:'',genre:'',year:'',mode:'cal',cal:null,view:'month'};
 const LS={q:'',sort:'now',mode:'grid',limit:60};
 const CS={q:'',niche:'',sort:'subs',mode:'table',limit:150};
@@ -884,7 +902,7 @@ async function refresh(){
   try{
     const d=await fetchData();
     DATA=d;SYNCED=Date.now();saveCache(d);
-    setSync('','Live · synced '+timeAgo(SYNCED));
+    setSync('','Connected · '+(lastScanText()||'synced '+timeAgo(SYNCED)));
     renderNav();render();
   }catch(e){
     setSync('err','Sync failed<br>'+esc(e.message));
@@ -993,14 +1011,14 @@ async function boot(){
     document.getElementById('loader').classList.add('hide');
     setSync('load',(src==='snap'?'Daily snapshot · ':'Cached · ')+'trying live sync…');
     renderNav();render();
-    try{const d=await fetchData();DATA=d;SYNCED=Date.now();saveCache(d);setSync('','Live · synced just now');renderNav();render();}
+    try{const d=await fetchData();DATA=d;SYNCED=Date.now();saveCache(d);setSync('','Connected · '+(lastScanText()||'synced just now'));renderNav();render();}
     catch(e){setSync('','Daily snapshot · '+fmtDateFull(best.t)+'<br>(live sync unavailable from a local file)');}
   }else{
     document.getElementById('loader-msg').textContent=(typeof LANG!=='undefined'&&LANG==='fr')?'Téléchargement des données en direct depuis Google Sheets…':'Downloading live data from Google Sheets…';
     try{
       const d=await fetchData();DATA=d;SYNCED=Date.now();saveCache(d);
       document.getElementById('loader').classList.add('hide');
-      setSync('','Live · synced just now');
+      setSync('','Connected · '+(lastScanText()||'synced just now'));
       renderNav();render();
     }catch(e){showError(e);setSync('err','No data');}
   }
@@ -1452,7 +1470,10 @@ function recosHTML(){
       '<option value="">🔘 Any status</option><option '+(RS.val==='x'?'selected':'')+' value="x">✅ Validated</option><option '+(RS.val==='note'?'selected':'')+' value="note">📝 With Dim note</option><option '+(RS.val==='any'?'selected':'')+' value="any">✅ Validated or noted</option><option '+(RS.val==='pending'?'selected':'')+' value="pending">⏳ Pending review</option></select>'+
     '<select class="ctl c-sort" onchange="RS.sort=this.value;rerenderRecos()">'+
       '<option value="scoreAdj">⚡ Sort · Adjusted score</option><option '+(RS.sort==='score'?'selected':'')+' value="score">⚡ Sort · Score</option><option '+(RS.sort==='conf'?'selected':'')+' value="conf">⚡ Sort · Confidence</option><option '+(RS.sort==='n'?'selected':'')+' value="n">⚡ Sort · N°</option></select>'+
-    '<div class="tb-right"><div class="result-count"><b>'+fmtInt(rows.length)+'</b> concepts</div></div>'+
+    '<div class="tb-right"><div class="viewtoggle">'+
+      '<button class="'+(RS.mode!=='table'?'on':'')+'" onclick="RS.mode=\'grid\';render()" title="Grid">'+ICONS.grid+'</button>'+
+      '<button class="'+(RS.mode==='table'?'on':'')+'" onclick="RS.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button></div>'+
+    '<div class="result-count"><b>'+fmtInt(rows.length)+'</b> concepts</div></div>'+
   '</div>';
   h+='<div id="reco-list">'+recoListHTML(rows)+'</div>';
   return h;
@@ -1532,10 +1553,30 @@ function openRecoIdx(i){
   document.getElementById('drawer').scrollTop=0;
   i18nDrawer();
 }
+function recoTableHTML(page){
+  return '<table class="vtable"><thead><tr><th>#</th><th>Title</th><th>Genre</th><th>Tier</th><th>Character</th><th>Status</th><th>Score</th></tr></thead><tbody>'+
+    page.map((r,i)=>{
+      const tierL=r.pot?r.pot[0].toUpperCase():null;
+      const statusTxt=isValidated(r.valid)?'✅ Validated':isRefused(r.valid)?'❌ Refused':'🟡 Pending';
+      return '<tr class="row" onclick="openRecoIdx('+i+')">'+
+        '<td class="num">'+r.n+'</td>'+
+        '<td class="ttitle">'+esc(r.title)+'</td>'+
+        '<td>'+gtag(r.genre)+'</td>'+
+        '<td>'+(tierL?'<span class="rtier tier-'+tierL+'">'+tierL+'</span>':'—')+'</td>'+
+        '<td>'+esc(r.perso||'—')+'</td>'+
+        '<td>'+statusTxt+'</td>'+
+        '<td class="num">'+(r.scoreAdj!=null?r.scoreAdj:(r.score!=null?r.score:'—'))+'</td></tr>';
+    }).join('')+'</tbody></table>';
+}
 function recoListHTML(rows){
   if(!rows.length)return '<div class="empty">Nothing matches — try clearing filters.</div>';
   const page=rows.slice(0,RS.limit);
   window._pageRecos=page;
+  if(RS.mode==='table'){
+    let h=recoTableHTML(page);
+    if(rows.length>RS.limit)h+='<button class="load-more" onclick="RS.limit+=120;rerenderRecos()">Loading more · '+fmtInt(rows.length-RS.limit)+' remaining</button>';
+    return h;
+  }
   const pendRows=page.filter(r=>!isValidated(r.valid)&&!isRefused(r.valid));
   const valRows=page.filter(r=>isValidated(r.valid));
   const refRows=page.filter(r=>isRefused(r.valid));
@@ -2559,7 +2600,7 @@ function openChanDrawer(c){
 
 
 /* ================= WATCHLIST + AI POTENTIAL ================= */
-const WLS={tab:'v'};
+const WLS={tab:'v',mode:'grid'};
 function wlGet(){try{return Object.assign({v:[],l:[],c:[]},JSON.parse(localStorage.getItem('radar_wl')||'{}'));}catch(e){return {v:[],l:[],c:[]};}}
 function wlSet(w){try{localStorage.setItem('radar_wl',JSON.stringify(w));}catch(e){}}
 function wlHas(t,k){return wlGet()[t].includes(k);}
@@ -2616,21 +2657,55 @@ function chanByName(n){
   return CHAN_NAMEIX[String(n).toLowerCase().replace(/\s+/g,' ').trim()]||null;
 }
 function chanFor(v){return chanByUrl(v.chUrl||'')||chanByName(v.channel)||null;}
+function wlVideoTableHTML(rows){
+  return '<table class="vtable"><thead><tr><th></th><th>Title</th><th>Views/mo</th><th>Views</th><th>Duration</th><th>Published</th><th>Genre</th><th>Channel</th><th>Subs</th></tr></thead><tbody>'+
+    rows.map((v,i)=>'<tr class="row" onclick="openIdx(\'mix\','+i+')">'+
+      '<td><img class="tthumb" loading="lazy" src="'+thumb(v.vid)+'" onerror="this.style.visibility=\'hidden\'"></td>'+
+      '<td class="ttitle">'+esc(v.title)+'</td>'+
+      '<td class="num vpmcell">'+fmtN(v.vpm)+'</td><td class="num">'+fmtN(v.views)+'</td>'+
+      '<td class="num">'+fmtDur(v.durH)+'</td><td class="num">'+fmtDate(v.pub)+'</td>'+
+      '<td>'+gtag(v.genre)+'</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(v.channel)+'</td>'+
+      '<td class="num">'+fmtN(v.subs)+'</td></tr>').join('')+'</tbody></table>';
+}
+function wlLiveTableHTML(rows){
+  return '<table class="vtable"><thead><tr><th></th><th>Stream</th><th>Channel</th><th>👀 Now</th><th>Peak</th><th>Started</th><th>Discovery keywords</th></tr></thead><tbody>'+
+    rows.map((v,i)=>{
+      const now=liveNow(v.vid),peak=livePeak(v.vid);
+      return '<tr class="row" onclick="openLiveIdx('+i+')">'+
+      '<td><img class="tthumb" loading="lazy" src="'+thumb(v.vid)+'" onerror="if(!this._f){this._f=1;this.src=\'https://i.ytimg.com/vi/'+v.vid+'/hqdefault.jpg\'}else this.style.visibility=\'hidden\'"></td>'+
+      '<td class="ttitle">'+esc(v.title)+'</td>'+
+      '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(v.channel)+'</td>'+
+      '<td class="num vpmcell">'+fmtN(now)+'</td><td class="num">'+fmtN(peak)+'</td>'+
+      '<td class="num">'+fmtDate(v.started)+'</td>'+
+      '<td style="max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:11.5px">'+esc(v.disc)+'</td></tr>';
+    }).join('')+'</tbody></table>';
+}
 function watchHTML(){
   const w=wlGet();
   const tabs=[['v','🎬 Videos',w.v.length],['l','📺 Livestreams',w.l.length],['c','📡 Channels',w.c.length]];
-  let hh='<div class="seg">'+tabs.map(t=>'<button class="'+(WLS.tab===t[0]?'on':'')+'" onclick="WLS.tab=\''+t[0]+'\';render()">'+t[1]+'<span class="cnt">'+t[2]+'</span></button>').join('')+'</div>';
+  let hh='<div class="toolbar"><div class="seg">'+tabs.map(t=>'<button class="'+(WLS.tab===t[0]?'on':'')+'" onclick="WLS.tab=\''+t[0]+'\';render()">'+t[1]+'<span class="cnt">'+t[2]+'</span></button>').join('')+'</div>'+
+    '<div class="tb-right"><div class="viewtoggle">'+
+      '<button class="'+(WLS.mode!=='table'?'on':'')+'" onclick="WLS.mode=\'grid\';render()" title="Grid">'+ICONS.grid+'</button>'+
+      '<button class="'+(WLS.mode==='table'?'on':'')+'" onclick="WLS.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button></div></div>'+
+  '</div>';
   if(WLS.tab==='v'){
     const rows=mixRows().filter(x=>x.vid&&w.v.includes(x.vid));
     window._page_mix=rows;
-    hh+=rows.length?'<div class="vgrid">'+rows.map((v,i)=>vcardHTML('mix',v,i)).join('')+'</div>':'<div class="empty">No pinned videos yet — hit the ☆ on any video card to track it here.</div>';
+    hh+=!rows.length?'<div class="empty">No pinned videos yet — hit the ☆ on any video card to track it here.</div>':
+      (WLS.mode==='table'?wlVideoTableHTML(rows):'<div class="vgrid">'+rows.map((v,i)=>vcardHTML('mix',v,i)).join('')+'</div>');
   }else if(WLS.tab==='l'){
     const rows=(DATA.lives||[]).filter(x=>w.l.includes(x.vid));
     window._page_live=rows;
-    hh+=rows.length?'<div class="vgrid">'+rows.map((v,i)=>liveCardHTML(v,i)).join('')+'</div>':'<div class="empty">No pinned livestreams yet — hit the ☆ on any stream card.</div>';
+    hh+=!rows.length?'<div class="empty">No pinned livestreams yet — hit the ☆ on any stream card.</div>':
+      (WLS.mode==='table'?wlLiveTableHTML(rows):'<div class="vgrid">'+rows.map((v,i)=>liveCardHTML(v,i)).join('')+'</div>');
   }else{
     const rows=CHAN?CHAN.channels.filter(c=>w.c.includes(normUrl(c.url))):[];
-    hh+=rows.length?chanListHTML(rows):'<div class="empty">No pinned channels yet — hit the ☆ on any channel row.</div>';
+    if(!rows.length)hh+='<div class="empty">No pinned channels yet — hit the ☆ on any channel row.</div>';
+    else{
+      const prevMode=CS.mode;CS.mode=WLS.mode;
+      hh+=chanListHTML(rows);
+      CS.mode=prevMode;
+    }
   }
   return hh;
 }
@@ -2698,7 +2773,7 @@ const FR_LIT=[
 ['Compared against ','Comparée à '],[' videos on the radar',' vidéos du radar'],[' · median ',' · médiane '],
 ['uploads / month','uploads / mois'],[' avg views / video',' vues moy. / vidéo'],[' videos · ',' vidéos · '],['cadence unknown','cadence inconnue'],['last upload ','dernier upload '],[' yrs old',' ans'],
 ['Workspace','Espace de travail'],['Sync now','Synchroniser'],['Open Google Sheet','Ouvrir le Google Sheet'],
-['Live · synced just now','Live · synchro à l’instant'],['Live · synced ','Live · synchro il y a '],[' min ago',' min'],['h ago','h'],['d ago','j'],['just now','à l’instant'],
+['Connected · ','Connecté · '],['videos scan ','scan vidéos '],['streams scan ','scan streams '],['synced just now','synchro à l’instant'],['Live · synced just now','Live · synchro à l’instant'],['Live · synced ','Live · synchro il y a '],[' min ago',' min'],['h ago','h'],['d ago','j'],['just now','à l’instant'],
 ['Daily snapshot · ','Snapshot quotidien · '],['trying live sync…','tentative de synchro live…'],
 ['DAILY SCAN','SCAN QUOTIDIEN'],['OUR VIDEOS','NOS VIDÉOS'],['>LIVE<','>LIVE<'],
 ['Connecting…','Connexion…'],['Syncing…','Synchro…'],['Sync failed','Échec de synchro'],['No data','Aucune donnée'],
