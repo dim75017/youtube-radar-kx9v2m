@@ -175,6 +175,9 @@ select.ctl option{background:#141828;color:var(--text)}
 .vtable td{padding:9px 12px;border-bottom:1px solid var(--border);font-size:12.5px;vertical-align:middle}
 .vtable tr.row{cursor:pointer;transition:background .12s}
 .vtable tr.row:hover{background:rgba(139,124,246,.05)}
+.ch-ava{border-radius:50%;position:relative;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none;overflow:hidden}
+.ch-ava img{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;object-fit:cover}
+.dash-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px;margin-top:14px}
 .vtable .tthumb{width:86px;aspect-ratio:16/9;border-radius:7px;object-fit:cover;display:block;background:#0a0c14}
 .vtable .ttitle{font-weight:600;max-width:420px;line-height:1.4}
 .vtable .num{font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -573,6 +576,13 @@ function fmtAge(m){if(m==null)return '—';return m<1?'<1 mo':(m<12?m.toFixed(1)
 function thumb(vid,q){return vid?('https://i.ytimg.com/vi/'+vid+'/'+(q||'mqdefault')+'.jpg'):'';}
 
 const GENRE_COLORS=[
+  [/m[eé]ditation|fr[eé]quence/i,'#5eead4'],
+  [/d[eé]tente|\bspa\b/i,'#34d399'],
+  [/ambiance|cin[eé]mat/i,'#67e8f9'],
+  [/b[eé]b[eé]|berceuse|lullab/i,'#fca5a5'],
+  [/bgm|caf[eé]/i,'#fcd34d'],
+  [/sommeil/i,'#7dd3fc'],
+  [/[eé]tude/i,'#86efac'],
   [/house/i,'#6ee7b7'],
   [/dark/i,'#818cf8'],
   [/christmas|noël|noel/i,'#fb7185'],
@@ -642,7 +652,7 @@ const VS={
 };
 const RS={q:'',genres:new Set(),pot:'',perso:'',val:'',sort:'scoreAdj',limit:80};
 const RM={src:'',genre:'',year:'',mode:'cal',cal:null};
-const LS={q:'',sort:'now',limit:60};
+const LS={q:'',sort:'now',mode:'grid',limit:60};
 const CS={q:'',niches:new Set(),sort:'subs',limit:150};
 const CHAN_URL='https://docs.google.com/spreadsheets/d/1jDbcryjTDbRsW4Uw6OP_SYwgvbPoLQu_KcSWqC3Dfoc/export?format=xlsx';
 const CHAN_CACHE='lofiradar_chan_v1';
@@ -735,7 +745,7 @@ async function loadChan(){
     }catch(e2){CHAN_ERR=e.message;}
   }
   renderNav();
-  if(route==='chan')render();
+  if(route==='chan'||route==='dashboard')render();
 }
 async function boot(){
   loadChan();
@@ -800,17 +810,15 @@ function render(){
 function dashHTML(){
   const A=DATA.all,T=DATA.trends,N=DATA.news,R=DATA.recos,RD=DATA.roadmap;
   const channels=new Set(A.map(v=>v.channel)).size;
-  const medVpm=median(T.map(v=>v.vpm));
-  const validated=R.filter(r=>/^x/i.test(r.valid)).length;
-  const lastAdded=N.length?Math.max(...N.map(n=>n.added||0)):null;
+  const L=DATA.lives||[];
+  const liveTotal=L.length?L.map(v=>liveNow(v.vid)).filter(x=>x!=null).reduce((s,x)=>s+x,0):null;
   const kpi=(lbl,val,sub,c)=>'<div class="kpi" style="--kc:'+c+'"><div class="k-lbl">'+lbl+'</div><div class="k-val">'+val+'</div><div class="k-sub">'+sub+'</div></div>';
   let h='<div class="kpis">'+
     kpi('Videos audited',fmtInt(A.length),'≥1M views · all time','#8b7cf6')+
     kpi('Trending now',fmtInt(T.length),'<12 months · ≥500k views','#fbbf24')+
-    kpi('News watchlist',fmtInt(N.length),lastAdded?('last added '+fmtDateFull(lastAdded)):'daily scan','#67e8f9')+
     kpi('Unique channels',fmtInt(channels),'competitive landscape','#f9a8d4')+
-    kpi('Median velocity',fmtN(medVpm),'views/month on Trends','#4ade80')+
-    kpi('Concepts validated',validated+' / '+fmtInt(R.length),'recommendations pipeline','#fb7185')+
+    kpi('Livestreams',fmtInt(L.length),liveTotal!=null?fmtN(liveTotal)+' watching right now':'live scan pending','#f87171')+
+    kpi('Channels audited',CHAN?fmtInt(CHAN.channels.length):'…',CHAN?fmtN(CHAN.channels.reduce((s,c)=>s+(c.subs||0),0))+' combined subscribers':'loading audit Sheet…','#38bdf8')+
   '</div>';
 
   const gcount={};A.forEach(v=>{if(v.genre)gcount[v.genre]=(gcount[v.genre]||0)+1;});
@@ -849,6 +857,16 @@ function dashHTML(){
       (latest.length?latest.map(v=>mini(v,'<b>'+fmtN(v.views)+' views</b><span>'+fmtAge(v.ageM)+' old</span>','news')).join(''):'<div class="empty">No discoveries yet</div>')+'</div></div>'+
     '<div class="panel"><h3>🗓️ Coming up<span class="link" onclick="go(\'roadmap\')">Full roadmap →</span></h3><div class="psub">Next planned releases · synced with Monday & rotation proposals</div>'+
       coming.map(r=>{const d=new Date(r.date);return '<div class="rm-mini" style="--gc:'+gcolor(r.genre)+'"><div class="d">'+d.getDate()+' '+MONTHS[d.getMonth()]+'</div><div class="t">'+esc(r.title)+'</div>'+gtag(r.genre,1)+'</div>';}).join('')+'</div>'+
+  '</div>';
+  const topLives=[...L].sort((a,b)=>(liveNow(b.vid)||0)-(liveNow(a.vid)||0)).slice(0,5);
+  window._dash_lives=topLives;
+  const topCh=CHAN?[...CHAN.channels].sort((a,b)=>(b.subs||0)-(a.subs||0)).slice(0,5):[];
+  window._dash_chans=topCh;
+  h+='<div class="dash-2">'+
+    '<div class="panel"><h3>📡 Top livestreams<span class="link" onclick="go(\'live\')">View all →</span></h3><div class="psub">Most-watched 24/7 streams on the scan keywords · viewers at last scan</div><div class="mini-list">'+
+      (topLives.length?topLives.map((v,i)=>'<div class="mini-item" onclick="openDashLive('+i+')"><img loading="lazy" src="'+thumb(v.vid)+'" onerror="this.style.visibility=\'hidden\'"><div style="min-width:0"><div class="mi-t">'+esc(v.title)+'</div><div class="mi-s"><b>🔴 '+fmtN(liveNow(v.vid))+' watching</b><span>'+esc(v.channel)+'</span></div></div></div>').join(''):'<div class="empty">Live scan pending</div>')+'</div></div>'+
+    '<div class="panel"><h3>📺 Top channels<span class="link" onclick="go(\'chan\')">View all →</span></h3><div class="psub">Biggest channels in the competitive audit'+(CHAN?' · '+fmtInt(CHAN.channels.length)+' tracked':'')+'</div><div class="mini-list">'+
+      (topCh.length?topCh.map((c,i)=>'<div class="mini-item" onclick="openDashChan('+i+')">'+chAva(c,36)+'<div style="min-width:0"><div class="mi-t">'+esc(c.name)+'</div><div class="mi-s"><b>'+fmtN(c.subs)+' subs</b><span>'+esc(c.niche)+'</span></div></div></div>').join(''):'<div class="empty">Loading the channel audit…</div>')+'</div></div>'+
   '</div>';
   return h;
 }
@@ -1241,15 +1259,40 @@ function livesHTML(){
     '<div class="search">'+ICONS.search+'<input placeholder="Search streams, channels, keywords…" value="'+esc(LS.q)+'" oninput="LS.q=this.value;LS.limit=60;rerenderLives()"><kbd>/</kbd></div>'+
     '<select class="ctl" onchange="LS.sort=this.value;rerenderLives()">'+
       '<option value="now">Sort · Viewers now</option><option '+(LS.sort==='peak'?'selected':'')+' value="peak">Sort · Peak viewers</option><option '+(LS.sort==='started'?'selected':'')+' value="started">Sort · Recently started</option><option '+(LS.sort==='channel'?'selected':'')+' value="channel">Sort · Channel</option></select>'+
+    '<div class="viewtoggle">'+
+      '<button class="'+(LS.mode==='grid'?'on':'')+'" onclick="LS.mode=\'grid\';render()" title="Grid">'+ICONS.grid+'</button>'+
+      '<button class="'+(LS.mode==='table'?'on':'')+'" onclick="LS.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button></div>'+
     '<div class="result-count"><b>'+fmtInt(rows.length)+'</b> streams</div>'+
   '</div>';
   h+='<div id="live-list">'+liveListHTML(rows)+'</div>';
   return h;
 }
+function liveCardHTML(v,i){
+  const now=liveNow(v.vid),peak=livePeak(v.vid);
+  const kws=(v.disc||'').split(',').map(s=>s.trim()).filter(Boolean).slice(0,2);
+  return '<div class="vcard" onclick="openLiveIdx('+i+')">'+
+    '<div class="thumbwrap"><img loading="lazy" src="'+thumb(v.vid)+'" onerror="if(!this._f){this._f=1;this.src=\'https://i.ytimg.com/vi/'+v.vid+'/hqdefault.jpg\'}else this.style.visibility=\'hidden\'">'+
+      '<span class="vpm-flag" style="background:rgba(220,38,38,.92)">🔴 '+fmtN(now)+' watching</span>'+
+      (peak!=null?'<span class="dur">peak '+fmtN(peak)+'</span>':'')+'</div>'+
+    '<div class="vbody">'+
+      '<div class="vtitle">'+esc(v.title)+'</div>'+
+      '<div class="vmeta"><a href="'+esc(v.url)+'" target="_blank" onclick="event.stopPropagation()">'+esc(v.channel)+'</a></div>'+
+      '<div class="vtags">'+(isOurs(v.channel)?'<span class="tag" style="background:#a78bfa22;color:#a78bfa;border:1px solid #a78bfa55">OURS</span>':'')+kws.map(ghosttag).join('')+'</div>'+
+      '<div class="vstats">'+
+        '<div class="vstat hl"><b>'+fmtN(now)+'</b><span>watching now</span></div>'+
+        '<div class="vstat"><b>'+fmtN(peak)+'</b><span>peak</span></div>'+
+        '<div class="vstat"><b>'+fmtDate(v.started)+'</b><span>started</span></div>'+
+      '</div></div></div>';
+}
 function liveListHTML(rows){
   if(!rows.length)return '<div class="empty">Nothing matches — try clearing the search.</div>';
   const page=rows.slice(0,LS.limit);
   window._page_live=page;
+  if(LS.mode==='grid'){
+    let g='<div class="vgrid">'+page.map((v,i)=>liveCardHTML(v,i)).join('')+'</div>';
+    if(rows.length>LS.limit)g+='<button class="load-more" onclick="LS.limit+=120;rerenderLives()">Loading more · '+fmtInt(rows.length-LS.limit)+' remaining</button>';
+    return g;
+  }
   let h='<table class="vtable"><thead><tr><th></th><th>Stream</th><th>Channel</th><th>👀 Now</th><th>Peak</th><th>Started</th><th>Discovery keywords</th></tr></thead><tbody>'+
     page.map((v,i)=>{
       const now=liveNow(v.vid),peak=livePeak(v.vid);
@@ -1295,6 +1338,14 @@ function openLiveDrawer(v){
 }
 
 /* ================= CHANNELS ================= */
+function handleOf(u){const m=String(u||'').match(/@([^\/?]+)/);if(m)return '@'+m[1];const m2=String(u||'').match(/channel\/(UC[\w-]+)/);return m2?m2[1]:'';}
+function chAva(c,size){
+  const col=gcolor(c.niche);
+  const hd=handleOf(c.url);
+  return '<span class="ch-ava" style="width:'+size+'px;height:'+size+'px;background:'+col+'22;color:'+col+'">'+esc((c.name||'?').charAt(0).toUpperCase())+(hd?'<img loading="lazy" src="https://unavatar.io/youtube/'+encodeURIComponent(hd)+'?fallback=false" onerror="this.remove()">':'')+'</span>';
+}
+const FLAGS={'Japon':'🇯🇵','Norvège':'🇳🇴','États-Unis':'🇺🇸','Australie':'🇦🇺','Italie':'🇮🇹','Portugal':'🇵🇹','Ukraine':'🇺🇦','Royaume-Uni':'🇬🇧','Danemark':'🇩🇰','France':'🇫🇷','Corée du Sud':'🇰🇷','Suisse':'🇨🇭','Lituanie':'🇱🇹','Pays-Bas':'🇳🇱','Espagne':'🇪🇸','Slovaquie':'🇸🇰','Canada':'🇨🇦','Kazakhstan':'🇰🇿','Irlande':'🇮🇪','Allemagne':'🇩🇪','Estonie':'🇪🇪','Slovénie':'🇸🇮','Inde':'🇮🇳','Afrique du Sud':'🇿🇦','Bulgarie':'🇧🇬','Islande':'🇮🇸','Belgique':'🇧🇪','Autriche':'🇦🇹','Suède':'🇸🇪','Finlande':'🇫🇮','Pologne':'🇵🇱','Grèce':'🇬🇷','Brésil':'🇧🇷','Mexique':'🇲🇽','Indonésie':'🇮🇩','Vietnam':'🇻🇳','Thaïlande':'🇹🇭','Philippines':'🇵🇭','Turquie':'🇹🇷','Russie':'🇷🇺','Roumanie':'🇷🇴','Tchéquie':'🇨🇿','République tchèque':'🇨🇿','Hongrie':'🇭🇺','Nouvelle-Zélande':'🇳🇿','Argentine':'🇦🇷','Colombie':'🇨🇴','Chili':'🇨🇱','Israël':'🇮🇱','Taïwan':'🇹🇼','Chine':'🇨🇳','Hong Kong':'🇭🇰','Singapour':'🇸🇬','Malaisie':'🇲🇾','Maroc':'🇲🇦','Égypte':'🇪🇬','Nigéria':'🇳🇬','Pakistan':'🇵🇰','Bangladesh':'🇧🇩','Sri Lanka':'🇱🇰','Népal':'🇳🇵','Lettonie':'🇱🇻','Croatie':'🇭🇷','Serbie':'🇷🇸','Biélorussie':'🇧🇾','Géorgie':'🇬🇪','Arménie':'🇦🇲','Azerbaïdjan':'🇦🇿','Luxembourg':'🇱🇺','Norway':'🇳🇴'};
+function flagOf(c){return FLAGS[c]||(c?'🌍':'');}
 function chanSeries(url,idx){
   if(!CHAN||!CHAN.hist)return null;
   const a=CHAN.hist[normUrl(url)];if(!a)return null;
@@ -1343,10 +1394,11 @@ function chanListHTML(rows){
   if(!rows.length)return '<div class="empty">Nothing matches — try clearing filters.</div>';
   const page=rows.slice(0,CS.limit);
   window._page_chan=page;
-  let h='<table class="vtable"><thead><tr><th>Channel</th><th>Niche</th><th>Subs</th><th>Total views</th><th>Views / yr</th><th>Avg last 10</th><th>Up / mo</th><th>Last upload</th><th>Status</th></tr></thead><tbody>'+
+  let h='<table class="vtable"><thead><tr><th>Channel</th><th>Niche</th><th>Country</th><th>Subs</th><th>Total views</th><th>Views / yr</th><th>Avg last 10</th><th>Up / mo</th><th>Last upload</th><th>Status</th></tr></thead><tbody>'+
     page.map((c,i)=>'<tr class="row" onclick="openChanIdx('+i+')">'+
-      '<td class="ttitle">'+esc(c.name)+'<div style="font-size:10.5px;color:var(--dim);font-weight:400">'+esc(c.country)+'</div></td>'+
+      '<td><div style="display:flex;align-items:center;gap:10px">'+chAva(c,34)+'<span class="ttitle">'+esc(c.name)+'</span></div></td>'+
       '<td>'+gtag(c.niche)+'</td>'+
+      '<td style="white-space:nowrap">'+flagOf(c.country)+' '+esc(c.country||'—')+'</td>'+
       '<td class="num vpmcell">'+fmtN(c.subs)+'</td><td class="num">'+fmtN(c.views)+'</td>'+
       '<td class="num">'+fmtN(c.viewsYr)+'</td><td class="num">'+fmtN(c.avg10)+'</td>'+
       '<td class="num">'+(c.upMo!=null?c.upMo:'—')+'</td><td class="num">'+fmtDateFull(c.lastUp)+'</td>'+
@@ -1362,12 +1414,14 @@ function rerenderChans(){
   armAutoLoad();
 }
 function openChanIdx(i){const c=(window._page_chan||[])[i];if(c)openChanDrawer(c);}
+function openDashLive(i){const v=(window._dash_lives||[])[i];if(v)openLiveDrawer(v);}
+function openDashChan(i){const c=(window._dash_chans||[])[i];if(c)openChanDrawer(c);}
 function openChanDrawer(c){
   const subsPts=chanSeries(c.url,1),viewsPts=chanSeries(c.url,2);
   document.getElementById('drawer').innerHTML=
     '<button class="dw-close" onclick="closeDrawer()">✕</button>'+
     '<div class="dw-body" style="padding-top:26px">'+
-      '<div class="dw-title"><a href="'+esc(c.url)+'" target="_blank">'+esc(c.name)+' ↗</a></div>'+
+      '<div class="dw-title" style="display:flex;align-items:center;gap:12px">'+chAva(c,44)+'<a href="'+esc(c.url)+'" target="_blank">'+esc(c.name)+' ↗</a></div>'+
       '<div class="dw-sub">'+gtag(c.niche)+ghosttag(c.country)+ghosttag(c.status)+(c.ageY!=null?'<span class="tag ghost">'+c.ageY+' yrs old</span>':'')+'</div>'+
       '<div class="dw-stats">'+
         '<div class="dw-stat hl"><b>'+fmtN(c.subs)+'</b><span>subscribers</span></div>'+
