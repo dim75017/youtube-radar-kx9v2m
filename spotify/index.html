@@ -342,14 +342,14 @@ td.selc,th.selc{width:44px;padding-left:14px}
     <div class="mark"></div>
     <div>
       <h1>Spotify <span>Radar</span></h1>
-      <small>Veille artistes</small>
+      <small data-fr="Veille artistes">Veille artistes</small>
     </div>
   </div>
   <nav class="nav" id="nav">
     <div class="nav-label" data-fr="Analyse">Analyse</div>
     <button data-v="overview" class="active" data-fr="Vue d'ensemble"><span class="emo">📊</span>Vue d'ensemble</button>
-    <button data-v="opps" data-fr="All tracks"><span class="emo">🎶</span>All tracks<span class="count" id="c-opps"></span></button>
-    <button data-v="artists" data-fr="All artists"><span class="emo">🎸</span>All artists<span class="count" id="c-art"></span></button>
+    <button data-v="opps" data-fr="Toutes les pistes"><span class="emo">🎶</span>Toutes les pistes<span class="count" id="c-opps"></span></button>
+    <button data-v="artists" data-fr="Tous les artistes"><span class="emo">🎸</span>Tous les artistes<span class="count" id="c-art"></span></button>
     <button data-v="watch" data-fr="Watchlist"><span class="emo">⭐</span>Watchlist<span class="count" id="c-watch"></span></button>
     <div class="nav-label" data-fr="Expansion">Expansion</div>
     <button data-v="playlists" data-fr="Playlists"><span class="emo">📻</span>Playlists<span class="count">soon</span></button>
@@ -445,7 +445,8 @@ const EN_MAP = {
   "Watchlist":"Watchlist","Date de sortie":"Release date","Ajouter / retirer de la watchlist":"Add / remove from watchlist",
   "Tes tracks et artistes épinglés, à suivre pour un rachat. Stocké dans ce navigateur.":"Your pinned tracks and artists to track for a buyout. Stored in this browser.",
   "Aucune track épinglée. Clique sur l'étoile ☆ d'une track pour la suivre ici.":"No pinned tracks yet. Hit the ☆ on any track to track it here.",
-  "All tracks":"All tracks","All artists":"All artists","Tout sélectionner":"Select all","email dispo":"email available","Opportunités":"Opportunities","Score":"Score",
+  "Toutes les pistes":"All tracks","Tous les artistes":"All artists","Tout sélectionner":"Select all","email dispo":"email available","Opportunités":"Opportunities","Score":"Score",
+  "Veille artistes":"Artist watch","Aucune track.":"No track.",
   "Le top des tracks récentes qui sortent du lot (fort volume de streams par mois, pondéré par la fraîcheur). Les meilleures cibles de rachat. Clique une track pour sa fiche.":"The top recent standout tracks (high monthly streams, weighted by freshness). The best buyout targets. Click a track for its detail sheet.",
   "opportunités":"opportunities","Opportunité":"Opportunity","Très chaud":"Very hot","Chaud":"Hot","Prometteur":"Rising","À suivre":"Watch","Aucune opportunité sur la période.":"No opportunity in this range.",
   "Revenu /mois":"Revenue /mo","Évolution des streams":"Streams trend","en hausse":"rising","en baisse":"declining",
@@ -936,7 +937,7 @@ function renderOpps(){
   V.innerHTML = `
   <div class="page-head">
     <div>
-      <h2>${T('All tracks')}</h2>
+      <h2>${T('Toutes les pistes')}</h2>
       <p>${T("Toutes les tracks hors Lofi Records. Les lignes vertes dépassent 500 000 streams (priorités). Streams / mois = vélocité depuis la sortie.")}</p>
     </div>
   </div>
@@ -1054,7 +1055,7 @@ function renderArtists(){
   V.innerHTML = `
   <div class="page-head">
     <div>
-      <h2>${T('All artists')}</h2>
+      <h2>${T('Tous les artistes')}</h2>
       <p>${T("Un profil par artiste : volume hors Lofi, part d'indé, priorités ≥ 500k. Clic sur une carte pour ouvrir ses tracks.")}</p>
     </div>
   </div>
@@ -1299,8 +1300,8 @@ function updateFooter(){
     T('Dernier scan le')+' '+esc(fmtTs(D.ts||D.t))+'<br>'+fmtFull(R.length)+' tracks · '+AG.filter(g=>g.done).length+' '+T('artistes scannés');
 }
 function applyLang(){
-  document.querySelectorAll('#nav [data-fr]').forEach(el=>{
-    if (el.classList.contains('nav-label')){ el.textContent = T(el.dataset.fr); return; }
+  document.querySelectorAll('[data-fr]').forEach(el=>{
+    if (el.tagName==='SMALL' || el.classList.contains('nav-label')){ el.textContent = T(el.dataset.fr); return; }
     for (const n of el.childNodes){
       if (n.nodeType===3 && n.nodeValue.trim()){ n.nodeValue = T(el.dataset.fr); break; }
     }
