@@ -83,7 +83,8 @@ input,select{font-family:inherit;color:var(--text)}
 .sync-dot.err{background:var(--red);box-shadow:0 0 8px var(--red)}
 .sync-dot.load{background:var(--amber);box-shadow:0 0 8px var(--amber);animation:pulse 1s infinite}
 @keyframes pulse{50%{opacity:.35}}
-.sync-txt{font-size:11px;color:var(--dim);line-height:1.35}
+.sync-txt{font-size:11px;color:var(--dim);line-height:1.5;min-width:0}
+.sync-line{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .side-foot .btn-refresh{
   display:flex;align-items:center;justify-content:center;gap:7px;padding:8px;border-radius:10px;
   background:rgba(150,163,214,.07);border:1px solid var(--border);font-size:12px;font-weight:600;color:var(--muted);
@@ -112,15 +113,16 @@ input,select{font-family:inherit;color:var(--text)}
 .tb-right{margin-left:auto;display:flex;align-items:center;gap:10px;flex:none}
 .search{
   display:flex;align-items:center;gap:9px;background:var(--panel);border:1.5px solid var(--border2);
-  border-radius:12px;padding:10px 15px;min-width:270px;flex:1;max-width:380px;transition:border .15s,box-shadow .15s;
+  border-radius:20px;padding:10px 16px;min-width:270px;flex:1;max-width:380px;transition:border .15s,box-shadow .15s;
 }
 .search:focus-within{border-color:rgba(139,124,246,.6);box-shadow:0 0 0 3px rgba(139,124,246,.14)}
 .search svg{width:15px;height:15px;color:var(--muted);flex:none}
+.search .emoji-ico{font-size:15px;line-height:1;flex:none}
 .search input{background:none;border:none;outline:none;font-size:13.5px;width:100%;color:var(--text)}
 .search input::placeholder{color:var(--muted)}
 .search kbd{font-family:'Inter';font-size:10px;color:var(--dim);border:1px solid var(--border);border-radius:5px;padding:1px 6px}
 select.ctl, .ctl-btn{
-  background:var(--panel);border:1.5px solid var(--border2);border-radius:12px;padding:10px 15px;
+  background:var(--panel);border:1.5px solid var(--border2);border-radius:20px;padding:10px 16px;
   font-size:13px;color:var(--text);outline:none;transition:all .15s;font-weight:600;
 }
 select.ctl:hover,.ctl-btn:hover{border-color:rgba(139,124,246,.5);color:var(--text)}
@@ -130,8 +132,6 @@ select.ctl.c-period{border-color:rgba(74,222,128,.4);background:rgba(74,222,128,
 select.ctl.c-period:hover{border-color:rgba(74,222,128,.7)}
 select.ctl.c-genre{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.07)}
 select.ctl.c-genre:hover{border-color:rgba(244,114,182,.7)}
-select.ctl.c-cluster{border-color:rgba(96,165,250,.4);background:rgba(96,165,250,.07)}
-select.ctl.c-cluster:hover{border-color:rgba(96,165,250,.7)}
 select.ctl.c-sort{border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.07)}
 select.ctl.c-sort:hover{border-color:rgba(251,191,36,.7)}
 select.ctl.c-tier{border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.07)}
@@ -150,10 +150,10 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 .chip.on{color:var(--text);background:var(--chipbg,var(--accSoft));border-color:var(--chipbd,rgba(139,124,246,.45))}
 .result-count{font-size:12px;color:var(--dim);white-space:nowrap}
 .result-count b{color:var(--muted)}
-.viewtoggle{display:flex;background:var(--panel);border:1px solid var(--border);border-radius:11px;overflow:hidden}
-.viewtoggle button{padding:8px 11px;color:var(--dim);display:grid;place-items:center}
+.viewtoggle{display:flex;background:var(--panel);border:1.5px solid var(--border2);border-radius:16px;overflow:hidden}
+.viewtoggle button{padding:11px 15px;color:var(--dim);display:grid;place-items:center}
 .viewtoggle button.on{color:var(--acc2);background:var(--accSoft)}
-.viewtoggle svg{width:15px;height:15px}
+.viewtoggle svg{width:16px;height:16px}
 
 /* ---------- Badges / tags ---------- */
 .tag{display:inline-flex;align-items:center;gap:5.5px;font-size:10.8px;font-weight:600;padding:3px 9px;border-radius:20px;white-space:nowrap;letter-spacing:.2px}
@@ -242,7 +242,7 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 .kpi .k-lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:1.3px;color:var(--dim);font-weight:600;margin-bottom:8px}
 .kpi .k-val{font-family:'Sora';font-size:25px;font-weight:700;letter-spacing:-.5px}
 .kpi .k-sub{font-size:11px;color:var(--muted);margin-top:4px}
-.dash-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px}
+.dash-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:16px}
 @media(max-width:1250px){.dash-grid{grid-template-columns:1fr}}
 .psub{font-size:10.5px;color:var(--dim);margin:-10px 0 13px;line-height:1.4}
 .panel{background:linear-gradient(180deg, rgba(21,25,42,.7), rgba(15,18,30,.7));border:1px solid var(--border);border-radius:var(--r);padding:18px 19px}
@@ -585,7 +585,7 @@ const ICONS={
  news:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>',
  recos:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 0-4 12.7c.8.6 1 1.6 1 2.3h6c0-.7.2-1.7 1-2.3A7 7 0 0 0 12 2z"/><path d="M9.5 20h5M10.5 22h3"/></svg>',
  roadmap:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="3"/><path d="M8 2v4M16 2v4M3 9.5h18"/></svg>',
- search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+ search:'<span class="emoji-ico">🔍</span>',
  grid:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>',
  rows:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>',
  flame:'<svg width="10" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2s5 4.5 5 9.5c0 1.5-.4 2.7-1 3.7.6-4-2-6.2-2-6.2.2 2.5-1 3.4-2.2 5-1 1.4-1 3-.2 4.5C9 17.6 7 15.5 7 12.5 7 7 12 2 12 2z"/></svg>'
@@ -778,6 +778,54 @@ function gcolor(g){
   for(const [re,c] of GENRE_COLORS){if(re.test(g))return c;}
   return '#9ca3af';
 }
+const GENRE_EMOJI=[
+  [/m[eé]ditation|fr[eé]quence/i,'🧘'],
+  [/d[eé]tente|\bspa\b/i,'🧖'],
+  [/ambiance|cin[eé]mat/i,'🎬'],
+  [/b[eé]b[eé]|berceuse|lullab/i,'👶'],
+  [/bgm|caf[eé]/i,'☕'],
+  [/sommeil/i,'😴'],
+  [/[eé]tude/i,'📚'],
+  [/house/i,'🏠'],
+  [/dark/i,'🌑'],
+  [/christmas|noël|noel/i,'🎄'],
+  [/halloween/i,'🎃'],
+  [/guitar|guitare/i,'🎸'],
+  [/jazz|bossa/i,'🎷'],
+  [/piano/i,'🎹'],
+  [/classi/i,'🎻'],
+  [/synth|retro/i,'🌆'],
+  [/electro/i,'🎛️'],
+  [/nature/i,'🌿'],
+  [/ambient/i,'🌫️'],
+  [/lofi|chillhop/i,'🎧'],
+];
+function genreEmoji(g){
+  if(!g)return '🎵';
+  for(const [re,e] of GENRE_EMOJI){if(re.test(g))return e;}
+  return '🎵';
+}
+const TIER_EMOJI={S:'🔴',A:'🟠',B:'🟡',C:'🟢'};
+function tierEmoji(p){return p?(TIER_EMOJI[p[0].toUpperCase()]||'⚪'):'⚪';}
+const PERSO_EMOJI=[
+  [/lofi girl/i,'👧'],
+  [/synthwave boy/i,'🕺'],
+  [/m[eè]re/i,'👩'],
+  [/p[eè]re|papa/i,'👨'],
+  [/prof/i,'👩‍🏫'],
+  [/chat/i,'🐱'],
+  [/chien/i,'🐶'],
+  [/emma/i,'🙋‍♀️'],
+  [/tiago/i,'🙋‍♂️'],
+  [/boy/i,'👦'],
+  [/sans personnage|d[eé]terminer/i,'❓'],
+];
+function personaEmoji(p){
+  if(!p)return '🎭';
+  for(const [re,e] of PERSO_EMOJI){if(re.test(p))return e;}
+  return '🎭';
+}
+const PERIOD_EMOJI={'3m':'🟢','6m':'🟡','12m':'🟠','all':'🔴'};
 function gtag(g,extra){
   if(!g)return '';
   const c=gcolor(g);
@@ -854,21 +902,21 @@ function lastScanText(){
   const vT=maxHistTime(DATA.hist);
   const lT=maxHistTime(DATA.liveHourly)||maxHistTime(DATA.liveHist);
   const parts=[];
-  if(vT!=null)parts.push('🎬 videos scan '+timeAgo(vT));
-  if(lT!=null)parts.push('📡 streams scan '+timeAgo(lT));
-  return parts.join(' · ');
+  if(vT!=null)parts.push('<div class="sync-line">🎬 videos '+timeAgo(vT)+'</div>');
+  if(lT!=null)parts.push('<div class="sync-line">📡 streams '+timeAgo(lT)+'</div>');
+  return parts.join('');
 }
 
 /* ================= STATE ================= */
 let DATA=null, SYNCED=null, route='dashboard';
 const VS={
-  all:{q:'',genre:'',cluster:'',sort:'vpm',mode:'grid',limit:60},
-  trends:{q:'',genre:'',cluster:'',sort:'vpm',mode:'grid',limit:60},
-  news:{q:'',genre:'',cluster:'',sort:'added',mode:'grid',limit:60},
-  mix:{q:'',genre:'',cluster:'',sort:'vpm',mode:'grid',limit:60,age:'all'}
+  all:{q:'',genre:'',sort:'vpm',mode:'grid',limit:60},
+  trends:{q:'',genre:'',sort:'vpm',mode:'grid',limit:60},
+  news:{q:'',genre:'',sort:'added',mode:'grid',limit:60},
+  mix:{q:'',genre:'',sort:'vpm',mode:'grid',limit:60,age:'3m'}
 };
 const RS={q:'',genre:'',pot:'',perso:'',val:'',sort:'scoreAdj',mode:'grid',limit:80};
-const RM={src:'',genre:'',year:'',mode:'cal',cal:null,view:'month'};
+const RM={src:'',genre:'',year:'',mode:'table',cal:null,view:'month'};
 const LS={q:'',sort:'now',mode:'grid',limit:60};
 const CS={q:'',niche:'',sort:'subs',mode:'table',limit:150};
 const CHAN_URL='https://docs.google.com/spreadsheets/d/1jDbcryjTDbRsW4Uw6OP_SYwgvbPoLQu_KcSWqC3Dfoc/export?format=xlsx';
@@ -902,7 +950,7 @@ async function refresh(){
   try{
     const d=await fetchData();
     DATA=d;SYNCED=Date.now();saveCache(d);
-    setSync('','Connected · '+(lastScanText()||'synced '+timeAgo(SYNCED)));
+    setSync('',lastScanText()||'Live · synced '+timeAgo(SYNCED));
     renderNav();render();
   }catch(e){
     setSync('err','Sync failed<br>'+esc(e.message));
@@ -1011,14 +1059,14 @@ async function boot(){
     document.getElementById('loader').classList.add('hide');
     setSync('load',(src==='snap'?'Daily snapshot · ':'Cached · ')+'trying live sync…');
     renderNav();render();
-    try{const d=await fetchData();DATA=d;SYNCED=Date.now();saveCache(d);setSync('','Connected · '+(lastScanText()||'synced just now'));renderNav();render();}
+    try{const d=await fetchData();DATA=d;SYNCED=Date.now();saveCache(d);setSync('',lastScanText()||'Live · synced just now');renderNav();render();}
     catch(e){setSync('','Daily snapshot · '+fmtDateFull(best.t)+'<br>(live sync unavailable from a local file)');}
   }else{
     document.getElementById('loader-msg').textContent=(typeof LANG!=='undefined'&&LANG==='fr')?'Téléchargement des données en direct depuis Google Sheets…':'Downloading live data from Google Sheets…';
     try{
       const d=await fetchData();DATA=d;SYNCED=Date.now();saveCache(d);
       document.getElementById('loader').classList.add('hide');
-      setSync('','Connected · '+(lastScanText()||'synced just now'));
+      setSync('',lastScanText()||'Live · synced just now');
       renderNav();render();
     }catch(e){showError(e);setSync('err','No data');}
   }
@@ -1081,9 +1129,6 @@ function dashHTML(){
   const gcount={};A.forEach(v=>{if(v.genre)gcount[v.genre]=(gcount[v.genre]||0)+1;});
   const gsorted=Object.entries(gcount).sort((a,b)=>b[1]-a[1]);
   const gmax=gsorted.length?gsorted[0][1]:1;
-  const ccount={};A.forEach(v=>{if(v.cluster)ccount[v.cluster]=(ccount[v.cluster]||0)+1;});
-  const csorted=Object.entries(ccount).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  const cmax=csorted.length?csorted[0][1]:1;
   const vel={};T.forEach(v=>{if(v.genre)(vel[v.genre]=vel[v.genre]||[]).push(v.vpm||0);});
   const vsorted=Object.entries(vel).map(([k,a])=>[k,median(a)||0]).sort((a,b)=>b[1]-a[1]);
   const vmax=vsorted.length?vsorted[0][1]:1;
@@ -1096,7 +1141,6 @@ function dashHTML(){
   const chartp=(t,sub,body)=>'<div class="panel chartp"><h3>'+t+'</h3><div class="psub">'+sub+'</div>'+body+'</div>';
   h+='<div class="dash-grid">'+
     chartp('Genre distribution','Number of audited videos per genre · full history, ≥1M views',vbars(gsorted,gmax,gcolor))+
-    chartp('Top use-case clusters','What the audited videos are made for (sleep, study, reading…)',vbars(csorted,cmax,()=>'#67e8f9'))+
     chartp('Velocity by genre','Median views/month per genre · videos from the last 12 months',vbars(vsorted,vmax,gcolor,true))+
   '</div>';
 
@@ -1165,13 +1209,13 @@ function kwGo(k){VS.mix.q=k;VS.mix.limit=60;VS.mix.age='all';go('mix');}
 
 /* ================= VIDEO VIEWS ================= */
 const SORTS={
-  vpm:{lbl:'Velocity (views/mo)',fn:(a,b)=>(b.vpm||0)-(a.vpm||0)},
-  views:{lbl:'Total views',fn:(a,b)=>(b.views||0)-(a.views||0)},
-  newest:{lbl:'Newest first',fn:(a,b)=>(b.pub||0)-(a.pub||0)},
-  oldest:{lbl:'Oldest first',fn:(a,b)=>(a.pub||0)-(b.pub||0)},
-  dur:{lbl:'Duration',fn:(a,b)=>(b.durH||0)-(a.durH||0)},
-  subs:{lbl:'Channel size',fn:(a,b)=>(b.subs||0)-(a.subs||0)},
-  added:{lbl:'Recently added',fn:(a,b)=>(b.added||0)-(a.added||0)}
+  vpm:{lbl:'Velocity (views/mo)',emoji:'🚀',fn:(a,b)=>(b.vpm||0)-(a.vpm||0)},
+  views:{lbl:'Total views',emoji:'👀',fn:(a,b)=>(b.views||0)-(a.views||0)},
+  newest:{lbl:'Newest first',emoji:'🆕',fn:(a,b)=>(b.pub||0)-(a.pub||0)},
+  oldest:{lbl:'Oldest first',emoji:'📜',fn:(a,b)=>(a.pub||0)-(b.pub||0)},
+  dur:{lbl:'Duration',emoji:'⏱️',fn:(a,b)=>(b.durH||0)-(a.durH||0)},
+  subs:{lbl:'Channel size',emoji:'👥',fn:(a,b)=>(b.subs||0)-(a.subs||0)},
+  added:{lbl:'Recently added',emoji:'➕',fn:(a,b)=>(b.added||0)-(a.added||0)}
 };
 let _mixCache=null,_mixT=0;
 function mixRows(){
@@ -1204,7 +1248,6 @@ function filterVids(kind){
   const st=VS[kind];let rows=(kind==='mix')?mixRows():DATA[kind];
   if(kind==='mix'&&st.age!=='all')rows=rows.filter(v=>inAge(v,st.age));
   if(st.genre)rows=rows.filter(v=>v.genre===st.genre);
-  if(st.cluster)rows=rows.filter(v=>v.cluster===st.cluster);
   if(st.q){const q=st.q.toLowerCase();rows=rows.filter(v=>(v.title+' '+v.channel+' '+(v.kw||'')+' '+(v.disc||'')).toLowerCase().includes(q));}
   return [...rows].sort(SORTS[st.sort].fn);
 }
@@ -1218,22 +1261,19 @@ function videosHTML(kind){
     ageSel='<select class="ctl c-period" onchange="setAge(this.value)">'+AGES.map(a=>{
       const n=a[2]==null?all.length:all.filter(v=>inAge(v,a[0])).length;
       const label=a[1].replace(/<[^>]*>/g,'');
-      return '<option '+(st.age===a[0]?'selected':'')+' value="'+a[0]+'">🕐 '+label+' · '+fmtInt(n)+'</option>';
+      return '<option '+(st.age===a[0]?'selected':'')+' value="'+a[0]+'">'+(PERIOD_EMOJI[a[0]]||'⚪')+' '+label+' · '+fmtInt(n)+'</option>';
     }).join('')+'</select>';
   }
   const genres=[...new Set(all.map(v=>v.genre).filter(Boolean))].sort((a,b)=>all.filter(v=>v.genre===b).length-all.filter(v=>v.genre===a).length);
-  const clusters=[...new Set(all.map(v=>v.cluster).filter(Boolean))].sort();
   const sortKeys=kind==='news'?['added','vpm','views','newest','dur']:(kind==='mix'?['vpm','views','newest','oldest','dur','subs','added']:['vpm','views','newest','oldest','dur','subs']);
   let h='<div class="toolbar">'+
     '<div class="search">'+ICONS.search+'<input id="q-'+kind+'" placeholder="Search titles, channels, keywords…" value="'+esc(st.q)+'" oninput="VS.'+kind+'.q=this.value;VS.'+kind+'.limit=60;rerenderList(\''+kind+'\')"><kbd>/</kbd></div>'+
     ageSel+
     '<select class="ctl c-genre" onchange="VS.'+kind+'.genre=this.value;VS.'+kind+'.limit=60;rerenderList(\''+kind+'\')">'+
-      '<option value="">🎵 All genres</option>'+genres.map(g=>'<option '+(st.genre===g?'selected':'')+' value="'+esc(g)+'">🎵 '+esc(g)+' · '+all.filter(v=>v.genre===g).length+'</option>').join('')+'</select>'+
-    '<select class="ctl c-cluster" onchange="VS.'+kind+'.cluster=this.value;rerenderList(\''+kind+'\')">'+
-      '<option value="">🗂️ All clusters</option>'+clusters.map(c=>'<option '+(st.cluster===c?'selected':'')+' value="'+esc(c)+'">🗂️ '+esc(c)+'</option>').join('')+'</select>'+
-    '<select class="ctl c-sort" onchange="VS.'+kind+'.sort=this.value;rerenderList(\''+kind+'\')">'+
-      sortKeys.map(k=>'<option '+(st.sort===k?'selected':'')+' value="'+k+'">⚡ Sort · '+SORTS[k].lbl+'</option>').join('')+'</select>'+
-    '<div class="tb-right"><div class="viewtoggle">'+
+      '<option value="">🎵 All genres</option>'+genres.map(g=>'<option '+(st.genre===g?'selected':'')+' value="'+esc(g)+'">'+genreEmoji(g)+' '+esc(g)+' · '+all.filter(v=>v.genre===g).length+'</option>').join('')+'</select>'+
+    '<div class="tb-right"><select class="ctl c-sort" onchange="VS.'+kind+'.sort=this.value;rerenderList(\''+kind+'\')">'+
+      sortKeys.map(k=>'<option '+(st.sort===k?'selected':'')+' value="'+k+'">'+(SORTS[k].emoji||'⚡')+' Sort · '+SORTS[k].lbl+'</option>').join('')+'</select>'+
+    '<div class="viewtoggle">'+
       '<button class="'+(st.mode==='grid'?'on':'')+'" onclick="VS.'+kind+'.mode=\'grid\';render()" title="Grid">'+ICONS.grid+'</button>'+
       '<button class="'+(st.mode==='table'?'on':'')+'" onclick="VS.'+kind+'.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button></div>'+
     '<div class="result-count"><b>'+fmtInt(rows.length)+'</b> videos</div></div>'+
@@ -1280,7 +1320,7 @@ function vcardHTML(kind,v,i){
     '<div class="vbody">'+
       '<div class="vtitle">'+esc(v.title)+'</div>'+
       '<div class="vmeta"><a href="'+esc(v.chUrl||'#')+'" target="_blank" onclick="event.stopPropagation()">'+esc(v.channel)+'</a><span class="subs">· '+fmtN(v.subs)+' subs</span></div>'+
-      '<div class="vtags">'+gtag(v.genre)+ghosttag(v.cluster)+'</div>'+extra+
+      '<div class="vtags">'+gtag(v.genre)+'</div>'+extra+
       '<div class="vstats">'+
         '<div class="vstat hl"><b>'+fmtN(v.vpm)+'</b><span>views/mo</span></div>'+
         '<div class="vstat"><b>'+fmtN(v.views)+'</b><span>views</span></div>'+
@@ -1318,7 +1358,7 @@ function openDrawer(kind,v){
     (v.vid?'<div class="dw-embed"><iframe src="https://www.youtube.com/embed/'+v.vid+'?rel=0" title="YouTube player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>':'')+
     '<div class="dw-body">'+
       '<div class="dw-title"><a href="'+esc(v.url)+'" target="_blank">'+esc(v.title)+'</a></div>'+
-      '<div class="dw-sub">'+gtag(v.genre)+ghosttag(v.cluster)+
+      '<div class="dw-sub">'+gtag(v.genre)+
         (v.chUrl?'<a class="tag ghost" href="'+esc(v.chUrl)+'" target="_blank">'+esc(v.channel)+' ↗</a>':ghosttag(v.channel))+
         '<span class="tag ghost">'+fmtN(v.subs)+' subs</span>'+likeTag(v.vid)+'</div>'+
       '<div class="dw-stats">'+
@@ -1445,10 +1485,9 @@ function filterRecos(){
   if(RS.genre)rows=rows.filter(r=>(r.genre||'(unset)')===RS.genre);
   if(RS.pot)rows=rows.filter(r=>r.pot&&r.pot.startsWith(RS.pot));
   if(RS.perso)rows=rows.filter(r=>r.perso===RS.perso);
-  if(RS.val==='x')rows=rows.filter(r=>['x','xnote'].includes(validState(r.valid)));
-  else if(RS.val==='note')rows=rows.filter(r=>['note','xnote'].includes(validState(r.valid)));
-  else if(RS.val==='any')rows=rows.filter(r=>['x','note','xnote'].includes(validState(r.valid)));
-  else if(RS.val==='pending')rows=rows.filter(r=>!validState(r.valid));
+  if(RS.val==='x')rows=rows.filter(r=>isValidated(r.valid));
+  else if(RS.val==='refused')rows=rows.filter(r=>isRefused(r.valid));
+  else if(RS.val==='pending')rows=rows.filter(r=>!isValidated(r.valid)&&!isRefused(r.valid));
   if(RS.q){const q=RS.q.toLowerCase();rows=rows.filter(r=>(r.title+' '+r.niche+' '+r.concept+' '+r.perso+' '+r.kw).toLowerCase().includes(q));}
   const sf=RS.sort;
   return [...rows].sort((a,b)=>sf==='n'?(a.n-b.n):(((b[sf]!=null?b[sf]:b.score)||0)-((a[sf]!=null?a[sf]:a.score)||0)));
@@ -1461,16 +1500,16 @@ function recosHTML(){
   let h='<div class="toolbar">'+
     '<div class="search">'+ICONS.search+'<input placeholder="Search concepts, titles, niches…" value="'+esc(RS.q)+'" oninput="RS.q=this.value;RS.limit=80;rerenderRecos()"><kbd>/</kbd></div>'+
     '<select class="ctl c-genre" onchange="RS.genre=this.value;RS.limit=80;rerenderRecos()">'+
-      '<option value="">🎵 All genres</option>'+genres.map(g=>'<option '+(RS.genre===g?'selected':'')+' value="'+esc(g)+'">🎵 '+esc(g)+' · '+all.filter(r=>(r.genre||'(unset)')===g).length+'</option>').join('')+'</select>'+
+      '<option value="">🎵 All genres</option>'+genres.map(g=>'<option '+(RS.genre===g?'selected':'')+' value="'+esc(g)+'">'+genreEmoji(g)+' '+esc(g)+' · '+all.filter(r=>(r.genre||'(unset)')===g).length+'</option>').join('')+'</select>'+
     '<select class="ctl c-tier" onchange="RS.pot=this.value;rerenderRecos()">'+
-      '<option value="">⭐ All potential</option>'+['S','A','B','C'].map(p=>'<option '+(RS.pot===p?'selected':'')+' value="'+p+'">⭐ '+((typeof LANG!=='undefined'&&LANG==='fr')?{S:'S — Rente potentielle',A:'A — Fort',B:'B — Solide',C:'C — Niche / à tester'}:{S:'S — Steady income',A:'A — Strong',B:'B — Solid',C:'C — Niche / to test'})[p]+'</option>').join('')+'</select>'+
+      '<option value="">⚪ All potential</option>'+['S','A','B','C'].map(p=>'<option '+(RS.pot===p?'selected':'')+' value="'+p+'">'+tierEmoji(p)+' '+((typeof LANG!=='undefined'&&LANG==='fr')?{S:'S — Rente potentielle',A:'A — Fort',B:'B — Solide',C:'C — Niche / à tester'}:{S:'S — Steady income',A:'A — Strong',B:'B — Solid',C:'C — Niche / to test'})[p]+'</option>').join('')+'</select>'+
     '<select class="ctl c-char" onchange="RS.perso=this.value;rerenderRecos()">'+
-      '<option value="">🎭 All characters</option>'+persos.map(p=>'<option '+(RS.perso===p?'selected':'')+' value="'+esc(p)+'">🎭 '+esc(p)+'</option>').join('')+'</select>'+
-    '<select class="ctl c-status" onchange="RS.val=this.value;rerenderRecos()">'+
-      '<option value="">🔘 Any status</option><option '+(RS.val==='x'?'selected':'')+' value="x">✅ Validated</option><option '+(RS.val==='note'?'selected':'')+' value="note">📝 With Dim note</option><option '+(RS.val==='any'?'selected':'')+' value="any">✅ Validated or noted</option><option '+(RS.val==='pending'?'selected':'')+' value="pending">⏳ Pending review</option></select>'+
+      '<option value="">🎭 All characters</option>'+persos.map(p=>'<option '+(RS.perso===p?'selected':'')+' value="'+esc(p)+'">'+personaEmoji(p)+' '+esc(p)+'</option>').join('')+'</select>'+
+    '<div class="tb-right"><select class="ctl c-status" onchange="RS.val=this.value;rerenderRecos()">'+
+      '<option '+(RS.val==='x'?'selected':'')+' value="x">✅ Validated</option><option '+(RS.val==='pending'?'selected':'')+' value="pending">⏳ Pending review</option><option '+(RS.val==='refused'?'selected':'')+' value="refused">❌ Refused</option></select>'+
     '<select class="ctl c-sort" onchange="RS.sort=this.value;rerenderRecos()">'+
-      '<option value="scoreAdj">⚡ Sort · Adjusted score</option><option '+(RS.sort==='score'?'selected':'')+' value="score">⚡ Sort · Score</option><option '+(RS.sort==='conf'?'selected':'')+' value="conf">⚡ Sort · Confidence</option><option '+(RS.sort==='n'?'selected':'')+' value="n">⚡ Sort · N°</option></select>'+
-    '<div class="tb-right"><div class="viewtoggle">'+
+      '<option value="scoreAdj">⚡ Sort · Adjusted score</option><option '+(RS.sort==='score'?'selected':'')+' value="score">🎯 Sort · Score</option><option '+(RS.sort==='conf'?'selected':'')+' value="conf">🔍 Sort · Confidence</option><option '+(RS.sort==='n'?'selected':'')+' value="n">🔢 Sort · N°</option></select>'+
+    '<div class="viewtoggle">'+
       '<button class="'+(RS.mode!=='table'?'on':'')+'" onclick="RS.mode=\'grid\';render()" title="Grid">'+ICONS.grid+'</button>'+
       '<button class="'+(RS.mode==='table'?'on':'')+'" onclick="RS.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button></div>'+
     '<div class="result-count"><b>'+fmtInt(rows.length)+'</b> concepts</div></div>'+
@@ -1490,7 +1529,7 @@ function recoCardHTML(r,i){
     const tier=tierL?('<span class="rtier tier-'+tierL+'" title="Tier '+tierL+'">'+tierL+'</span>'):'<span class="rtier" style="opacity:.35">—</span>';
     return '<div class="rtile" style="--gc:'+gcolor(r.genre)+'" onclick="openRecoIdx('+i+')">'+
       '<div class="rt-head">'+tier+'<div class="rt-title">'+esc(r.title)+'</div></div>'+
-      '<div class="rt-tags">'+gtag(r.genre)+ghosttag(r.perso)+ghosttag(r.niche)+(r.dur?ghosttag(r.dur):'')+'</div>'+
+      '<div class="rt-tags">'+gtag(r.genre)+(r.dur?ghosttag(r.dur):'')+'</div>'+
       (r.concept?'<div class="rt-desc">'+esc(String(r.concept).slice(0,130))+(String(r.concept).length>130?'…':'')+'</div>':'')+
       (r.scene?'<div class="rt-scene">🖼️ '+esc(String(r.scene).slice(0,100))+(String(r.scene).length>100?'…':'')+'</div>':'')+
       (note?'<div class="rt-note">💬 '+esc(note.slice(0,60))+(note.length>60?'…':'')+'</div>':'')+
@@ -1542,7 +1581,7 @@ function openRecoIdx(i){
     '<button class="dw-close" onclick="closeDrawer()">✕</button>'+
     '<div class="dw-body" style="padding-top:26px">'+
       '<div class="dw-title" style="display:flex;gap:12px;align-items:flex-start">'+(tierL?'<span class="rtier tier-'+tierL+'" style="flex:none;margin-top:2px">'+tierL+'</span>':'')+'<span>'+esc(r.title)+'</span></div>'+
-      '<div class="dw-sub">'+gtag(r.genre)+ghosttag(r.perso)+ghosttag(r.niche)+(r.dur?ghosttag(r.dur):'')+(r.scoreAdj!=null?'<span class="tag ghost">score '+Math.round(r.scoreAdj)+'</span>':'')+'</div>'+
+      '<div class="dw-sub">'+gtag(r.genre)+(r.dur?ghosttag(r.dur):'')+(r.scoreAdj!=null?'<span class="tag ghost">score '+Math.round(r.scoreAdj)+'</span>':'')+'</div>'+
       recoActions(r)+
       recoCommentBox(r)+
       recoInfoRows(r)+
@@ -1609,35 +1648,34 @@ function roadmapHTML(){
   let h='<div class="toolbar">'+
     '<select class="ctl" onchange="RM.src=this.value;render()">'+
       '<option value="">All sources</option>'+['Existant (Monday)','Nouveau mix (à produire)','Proposition rotation (à valider)'].map(s=>'<option '+(RM.src===s?'selected':'')+' value="'+esc(s)+'">'+esc(s)+'</option>').join('')+'</select>'+
-    '<select class="ctl" onchange="RM.genre=this.value;render()">'+
-      '<option value="">All genres</option>'+genres.map(g=>'<option '+(RM.genre===g?'selected':'')+' value="'+esc(g)+'">'+esc(g)+'</option>').join('')+'</select>'+
+    '<select class="ctl c-genre" onchange="RM.genre=this.value;render()">'+
+      '<option value="">🎵 All genres</option>'+genres.map(g=>'<option '+(RM.genre===g?'selected':'')+' value="'+esc(g)+'">'+genreEmoji(g)+' '+esc(g)+'</option>').join('')+'</select>'+
+    '<div class="tb-right"><div class="viewtoggle">'+
+      '<button class="'+(RM.mode!=='cal'?'on':'')+'" onclick="RM.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button>'+
+      '<button class="'+(RM.mode==='cal'?'on':'')+'" onclick="RM.mode=\'cal\';render()" title="Calendar">'+ICONS.roadmap+'</button></div>'+
     '<div class="result-count"><b>'+rows.length+'</b> releases · '+
-      '<span style="color:var(--muted)">grey Monday</span> · <span style="color:var(--green)">green to produce</span> · <span style="color:var(--amber)">yellow to validate</span></div>'+
+      '<span style="color:var(--muted)">grey Monday</span> · <span style="color:var(--green)">green to produce</span> · <span style="color:var(--amber)">yellow to validate</span></div></div>'+
   '</div>';
   window._rm_rows=rows;
-  h+=calHTML(rows);
-  h+='<div class="month-h" style="position:static;margin-top:34px">📋 All releases<span class="cnt">'+rows.length+'</span><span class="line"></span></div>';
-  const now=Date.now()-86400000*3;
-  let curMonth='';
-  rows.forEach((r,i)=>{
-    const d=new Date(r.date);
-    const mk=MONTHS[d.getMonth()]+' '+d.getFullYear();
-    if(mk!==curMonth){
-      curMonth=mk;
-      const cnt=rows.filter(x=>{const xd=new Date(x.date);return MONTHS[xd.getMonth()]+' '+xd.getFullYear()===mk;}).length;
-      h+='<div class="month-h">'+mk+'<span class="cnt">'+cnt+' release'+(cnt>1?'s':'')+'</span><span class="line"></span></div>';
-    }
-    const srcClass=/Monday/.test(r.src)?'src-monday':/Nouveau/.test(r.src)?'src-new':'src-rot';
-    const past=r.date<now?'opacity:.5':'';
-    h+='<div class="rm-wrap" id="rm'+i+'" style="'+past+'">'+
-      '<div class="rm-item" style="--gc:'+gcolor(r.genre)+'" onclick="openRoad('+i+')">'+
-        '<div class="rm-date"><div class="dd">'+d.getDate()+'</div><div class="wd">'+esc((r.jour||'').slice(0,3))+'</div></div>'+
-        '<div class="rm-main"><div class="rm-t">'+esc(r.title)+'</div>'+
-          '<div class="rm-tags">'+gtag(r.genre)+ghosttag(r.perso)+(r.dur?ghosttag(r.dur):'')+(r.niche?ghosttag(r.niche):'')+'</div></div>'+
-        '<span class="tag '+srcClass+'">'+esc((r.src||'').replace(/\s*\(.*\)/,''))+'</span>'+
-      '</div></div>';
-  });
+  h+=(RM.mode==='cal')?calHTML(rows):roadmapTableHTML(rows);
   return h;
+}
+function roadmapTableHTML(rows){
+  if(!rows.length)return '<div class="empty">No releases scheduled.</div>';
+  const now=Date.now()-86400000*3;
+  return '<table class="vtable"><thead><tr><th>Date</th><th>Title</th><th>Genre</th><th>Duration</th><th>Source</th><th></th></tr></thead><tbody>'+
+    rows.map((r,i)=>{
+      const d=new Date(r.date);
+      const srcClass=/Monday/.test(r.src)?'src-monday':/Nouveau/.test(r.src)?'src-new':'src-rot';
+      const past=r.date<now?'opacity:.5':'';
+      return '<tr class="row" style="'+past+'" onclick="openRoad('+i+')">'+
+        '<td style="white-space:nowrap">'+d.getDate()+' '+MONTHS[d.getMonth()]+' '+d.getFullYear()+'</td>'+
+        '<td class="ttitle">'+esc(r.title)+'</td>'+
+        '<td>'+gtag(r.genre)+'</td>'+
+        '<td class="num">'+esc(r.dur||'—')+'</td>'+
+        '<td><span class="tag '+srcClass+'">'+esc((r.src||'').replace(/\s*\(.*\)/,''))+'</span></td>'+
+        '<td onclick="event.stopPropagation()"><button class="rm-del-btn" style="margin:0;padding:6px 10px" onclick="deleteRoadmapEntry('+i+',event)">🗑️</button></td></tr>';
+    }).join('')+'</tbody></table>';
 }
 function openRoad(i){
   const r=(window._rm_rows||[])[i];if(!r)return;
@@ -1933,7 +1971,7 @@ function closeSchedPopup(){
 /* ================= ANALYSIS (our videos) ================= */
 const GKEYS=[[/lofi|chillhop|hip ?hop/i,'lofi'],[/synth|retro|outrun/i,'synthwave'],[/piano/i,'piano'],[/jazz|bossa/i,'jazz'],[/classi/i,'classical'],[/guitar|acousti/i,'guitar'],[/sleep|sommeil|night/i,'sleep'],[/nature|rain|pluie|forest|ocean/i,'nature'],[/ambient|ambiance/i,'ambient'],[/focus|study|étude/i,'focus'],[/house|electro/i,'electronic'],[/m[eé]ditation|wellness/i,'meditation']];
 function genreKey(g){if(!g)return null;for(const p of GKEYS){if(p[0].test(g))return p[1];}return 'other';}
-const AS={sort:'date'};
+const AS={sort:'date',mode:'grid'};
 let _anaCache=null,_anaT=0;
 function anaRows(){
   if(_anaCache&&_anaT===SYNCED)return _anaCache;
@@ -2251,6 +2289,18 @@ function vsMed(v,med){
   if(v==null||med==null||!med)return 'var(--text)';
   return v>=med*1.15?'#34d399':(v<=med*0.85?'#f87171':'#fbbf24');
 }
+function anaCardHTML(o,i){
+  return '<div class="vcard" onclick="openAnaIdx('+i+')">'+
+    '<div class="thumbwrap"><img loading="lazy" src="'+thumb(o.vid)+'" onerror="this.style.visibility=\'hidden\'"></div>'+
+    '<div class="vbody">'+
+      '<div class="vtitle">'+esc(o.title)+'</div>'+
+      '<div class="vtags">'+gtag(o.genre)+(o.durH!=null?ghosttag(fmtDur(o.durH)):'')+vBadge(o.verdict)+'</div>'+
+      '<div class="vstats">'+
+        '<div class="vstat hl"><b>'+fmtN(o.views)+'</b><span>views</span></div>'+
+        '<div class="vstat"><b style="color:'+vsMed(o.vpm,o.chMed)+'">'+fmtN(o.vpm)+'</b><span>views/mo</span></div>'+
+        '<div class="vstat"><b style="color:'+pcol(o.pctCh)+'">'+(o.pctCh==null?'—':o.pctCh+'th')+'</b><span>percentile</span></div>'+
+      '</div></div></div>';
+}
 function anaHTML(){
   const rows=[...anaRows()];
   if(!rows.length)return '<div class="empty">No long-form releases found in the 🎯 Our Videos tab for the last 12 months.</div>';
@@ -2268,25 +2318,32 @@ function anaHTML(){
     kpi('Channel velocity',fmtN(rows[0]?rows[0].chMed:null),'median views/mo across our releases','#38bdf8')+
     (rows[0]&&rows[0].ctrMed!=null?kpi('Median CTR',rows[0].ctrMed.toFixed(1)+'%','impressions click-through · YouTube Studio, 365 days','#e879f9'):'')+
   '</div>';
-  h+='<div class="toolbar"><select class="ctl" onchange="AS.sort=this.value;render()">'+
-    '<option value="date">Sort · Newest first</option><option '+(sf==='pctAsc'?'selected':'')+' value="pctAsc">Sort · Worst percentile first</option><option '+(sf==='pctDesc'?'selected':'')+' value="pctDesc">Sort · Best percentile first</option><option '+(sf==='views'?'selected':'')+' value="views">Sort · Most views</option></select>'+
-    '<div class="result-count">Market benchmark (radar) × YouTube Studio private data (impressions, CTR, retention · 365 days, refreshed on demand)</div></div>';
+  h+='<div class="toolbar"><select class="ctl c-sort" onchange="AS.sort=this.value;render()">'+
+    '<option value="date">🆕 Sort · Newest first</option><option '+(sf==='pctAsc'?'selected':'')+' value="pctAsc">📉 Sort · Worst percentile first</option><option '+(sf==='pctDesc'?'selected':'')+' value="pctDesc">📈 Sort · Best percentile first</option><option '+(sf==='views'?'selected':'')+' value="views">👀 Sort · Most views</option></select>'+
+    '<div class="tb-right"><div class="viewtoggle">'+
+      '<button class="'+(AS.mode!=='table'?'on':'')+'" onclick="AS.mode=\'grid\';render()" title="Grid">'+ICONS.grid+'</button>'+
+      '<button class="'+(AS.mode==='table'?'on':'')+'" onclick="AS.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button></div>'+
+    '<div class="result-count">Market benchmark (radar) × YouTube Studio private data (impressions, CTR, retention · 365 days, refreshed on demand)</div></div></div>';
   window._page_ana=rows;
-  h+=rows.map((o,i)=>{
-    return '<div class="ana-card" onclick="openAnaIdx('+i+')">'+
-      '<img loading="lazy" src="'+thumb(o.vid)+'" onerror="this.style.visibility=\'hidden\'">'+
-      '<div style="flex:1;min-width:0">'+
-        '<div style="font-weight:600;font-size:13.5px;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(o.title)+'</div>'+
-        '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px">'+gtag(o.genre)+ghosttag(o.perso)+(o.durH!=null?ghosttag(fmtDur(o.durH)):'')+'<span class="tag ghost">'+fmtDateFull(o.pub)+'</span>'+(o.st?'<span class="tag ghost" style="color:'+(o.ctrMed&&o.st.ctr<o.ctrMed*0.75?'#f87171':o.ctrMed&&o.st.ctr>o.ctrMed*1.25?'#34d399':'var(--muted)')+'">CTR '+o.st.ctr.toFixed(1)+'%</span><span class="tag ghost" style="color:'+vsMed(o.st.awtMs,o.awtMed)+'">avg view '+fmtWatch(o.st.awtMs)+'</span>':'')+(o.reco?'<span class="tag ghost">reco #'+Math.round(o.reco.n)+(o.reco.pot?' · '+o.reco.pot[0]:'')+'</span>':'')+'</div>'+
-        '<div style="display:flex;align-items:center;gap:10px"><div class="pbar"><i style="width:'+(o.pctCh==null?0:o.pctCh)+'%;background:'+pcol(o.pctCh)+'"></i></div>'+
-        '<span style="font-size:11.5px;color:'+pcol(o.pctCh)+';font-weight:700;white-space:nowrap">'+(o.pctCh==null?'no data yet':o.pctCh+'th · channel')+'</span></div>'+
-      '</div>'+
-      '<div style="text-align:right;flex:none">'+
-        '<div style="font-family:Sora;font-size:17px;font-weight:700">'+fmtN(o.views)+'</div>'+
-        '<div style="font-size:10.5px;color:'+vsMed(o.vpm,o.chMed)+';margin-bottom:8px;font-weight:600">'+fmtN(o.vpm)+' views/mo</div>'+
-        vBadge(o.verdict)+
-      '</div></div>';
-  }).join('');
+  if(AS.mode==='table'){
+    h+=rows.map((o,i)=>{
+      return '<div class="ana-card" onclick="openAnaIdx('+i+')">'+
+        '<img loading="lazy" src="'+thumb(o.vid)+'" onerror="this.style.visibility=\'hidden\'">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-weight:600;font-size:13.5px;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(o.title)+'</div>'+
+          '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px">'+gtag(o.genre)+ghosttag(o.perso)+(o.durH!=null?ghosttag(fmtDur(o.durH)):'')+'<span class="tag ghost">'+fmtDateFull(o.pub)+'</span>'+(o.st?'<span class="tag ghost" style="color:'+(o.ctrMed&&o.st.ctr<o.ctrMed*0.75?'#f87171':o.ctrMed&&o.st.ctr>o.ctrMed*1.25?'#34d399':'var(--muted)')+'">CTR '+o.st.ctr.toFixed(1)+'%</span><span class="tag ghost" style="color:'+vsMed(o.st.awtMs,o.awtMed)+'">avg view '+fmtWatch(o.st.awtMs)+'</span>':'')+(o.reco?'<span class="tag ghost">reco #'+Math.round(o.reco.n)+(o.reco.pot?' · '+o.reco.pot[0]:'')+'</span>':'')+'</div>'+
+          '<div style="display:flex;align-items:center;gap:10px"><div class="pbar"><i style="width:'+(o.pctCh==null?0:o.pctCh)+'%;background:'+pcol(o.pctCh)+'"></i></div>'+
+          '<span style="font-size:11.5px;color:'+pcol(o.pctCh)+';font-weight:700;white-space:nowrap">'+(o.pctCh==null?'no data yet':o.pctCh+'th · channel')+'</span></div>'+
+        '</div>'+
+        '<div style="text-align:right;flex:none">'+
+          '<div style="font-family:Sora;font-size:17px;font-weight:700">'+fmtN(o.views)+'</div>'+
+          '<div style="font-size:10.5px;color:'+vsMed(o.vpm,o.chMed)+';margin-bottom:8px;font-weight:600">'+fmtN(o.vpm)+' views/mo</div>'+
+          vBadge(o.verdict)+
+        '</div></div>';
+    }).join('');
+  }else{
+    h+='<div class="vgrid">'+rows.map((o,i)=>anaCardHTML(o,i)).join('')+'</div>';
+  }
   return h;
 }
 function openAnaIdx(i){
@@ -2376,9 +2433,9 @@ function livesHTML(){
   if(!all.length)return '<div class="empty">No livestream data yet — the 📡 Live Streams tab of the Sheet is empty or missing. It fills up on the next ChatGPT scan.</div>';
   let h='<div class="toolbar">'+
     '<div class="search">'+ICONS.search+'<input placeholder="Search streams, channels, keywords…" value="'+esc(LS.q)+'" oninput="LS.q=this.value;LS.limit=60;rerenderLives()"><kbd>/</kbd></div>'+
-    '<select class="ctl c-sort" onchange="LS.sort=this.value;rerenderLives()">'+
-      '<option value="now">⚡ Sort · Viewers now</option><option '+(LS.sort==='peak'?'selected':'')+' value="peak">⚡ Sort · Peak viewers</option><option '+(LS.sort==='started'?'selected':'')+' value="started">⚡ Sort · Recently started</option><option '+(LS.sort==='channel'?'selected':'')+' value="channel">⚡ Sort · Channel</option></select>'+
-    '<div class="tb-right"><div class="viewtoggle">'+
+    '<div class="tb-right"><select class="ctl c-sort" onchange="LS.sort=this.value;rerenderLives()">'+
+      '<option value="now">🔴 Sort · Viewers now</option><option '+(LS.sort==='peak'?'selected':'')+' value="peak">🚀 Sort · Peak viewers</option><option '+(LS.sort==='started'?'selected':'')+' value="started">🆕 Sort · Recently started</option><option '+(LS.sort==='channel'?'selected':'')+' value="channel">👥 Sort · Channel</option></select>'+
+    '<div class="viewtoggle">'+
       '<button class="'+(LS.mode==='grid'?'on':'')+'" onclick="LS.mode=\'grid\';render()" title="Grid">'+ICONS.grid+'</button>'+
       '<button class="'+(LS.mode==='table'?'on':'')+'" onclick="LS.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button></div>'+
     '<div class="result-count"><b>'+fmtInt(rows.length)+'</b> streams</div></div>'+
@@ -2518,10 +2575,10 @@ function chanHTML(){
   h+='<div class="toolbar">'+
     '<div class="search">'+ICONS.search+'<input placeholder="Search channels, niches, countries…" value="'+esc(CS.q)+'" oninput="CS.q=this.value;CS.limit=150;rerenderChans()"><kbd>/</kbd></div>'+
     '<select class="ctl c-genre" onchange="CS.niche=this.value;CS.limit=150;rerenderChans()">'+
-      '<option value="">🎯 All niches</option>'+niches.map(n=>'<option '+(CS.niche===n?'selected':'')+' value="'+esc(n)+'">🎯 '+esc(n)+' · '+all.filter(x=>(x.niche||'(unset)')===n).length+'</option>').join('')+'</select>'+
-    '<select class="ctl c-sort" onchange="CS.sort=this.value;rerenderChans()">'+
-      '<option value="subs">⚡ Sort · Subscribers</option><option '+(CS.sort==='viewsYr'?'selected':'')+' value="viewsYr">⚡ Sort · Views / year</option><option '+(CS.sort==='avg10'?'selected':'')+' value="avg10">⚡ Sort · Avg last 10</option><option '+(CS.sort==='upMo'?'selected':'')+' value="upMo">⚡ Sort · Uploads / month</option><option '+(CS.sort==='lastUp'?'selected':'')+' value="lastUp">⚡ Sort · Last upload</option><option '+(CS.sort==='name'?'selected':'')+' value="name">⚡ Sort · Name</option></select>'+
-    '<div class="tb-right"><div class="viewtoggle">'+
+      '<option value="">🎯 All niches</option>'+niches.map(n=>'<option '+(CS.niche===n?'selected':'')+' value="'+esc(n)+'">'+genreEmoji(n)+' '+esc(n)+' · '+all.filter(x=>(x.niche||'(unset)')===n).length+'</option>').join('')+'</select>'+
+    '<div class="tb-right"><select class="ctl c-sort" onchange="CS.sort=this.value;rerenderChans()">'+
+      '<option value="subs">👥 Sort · Subscribers</option><option '+(CS.sort==='viewsYr'?'selected':'')+' value="viewsYr">👀 Sort · Views / year</option><option '+(CS.sort==='avg10'?'selected':'')+' value="avg10">📊 Sort · Avg last 10</option><option '+(CS.sort==='upMo'?'selected':'')+' value="upMo">⬆️ Sort · Uploads / month</option><option '+(CS.sort==='lastUp'?'selected':'')+' value="lastUp">🆕 Sort · Last upload</option><option '+(CS.sort==='name'?'selected':'')+' value="name">🔤 Sort · Name</option></select>'+
+    '<div class="viewtoggle">'+
       '<button class="'+(CS.mode==='grid'?'on':'')+'" onclick="CS.mode=\'grid\';render()" title="Grid">'+ICONS.grid+'</button>'+
       '<button class="'+(CS.mode!=='grid'?'on':'')+'" onclick="CS.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button></div>'+
     '<div class="result-count"><b>'+fmtInt(rows.length)+'</b> channels</div></div>'+
@@ -2741,7 +2798,6 @@ const FR_LIT=[
 ['>Videos audited<','>Vidéos auditées<'],['Your pinned videos, livestreams and channels · stored in this browser','Tes vidéos, livestreams et chaînes épinglés · stockés dans ce navigateur'],['No pinned videos yet — hit the ☆ on any video card to track it here.','Aucune vidéo épinglée, clique sur ☆ sur une carte vidéo pour la suivre ici.'],['No pinned livestreams yet — hit the ☆ on any stream card.','Aucun livestream épinglé, clique sur ☆ sur une carte de stream.'],['No pinned channels yet — hit the ☆ on any channel row.','Aucune chaîne épinglée, clique sur ☆ sur une ligne de chaîne.'],['🤖 AI likely','🤖 IA probable'],['🤖 AI possible','🤖 IA possible'],['>Trending now<','>En tendance<'],['>Unique channels<','>Chaînes uniques<'],['>Livestreams<','>Livestreams<'],['>Channels audited<','>Chaînes auditées<'],
 ['≥1M views · all time','≥1M vues · tout l’historique'],['<12 months · ≥500k views','<12 mois · ≥500k vues'],['competitive landscape','paysage concurrentiel'],[' watching right now',' spectateurs en ce moment'],[' combined subscribers',' abonnés cumulés'],['live scan pending','scan lives en attente'],['loading audit Sheet…','chargement du Sheet d’audit…'],
 ['>Genre distribution<','>Répartition par genre<'],['Number of audited videos per genre · full history, ≥1M views','Nombre de vidéos auditées par genre · historique complet, ≥1M vues'],
-['>Top use-case clusters<','>Principaux usages<'],['What the audited videos are made for (sleep, study, reading…)','À quoi servent les vidéos auditées (sommeil, étude, lecture…)'],
 ['>Velocity by genre<','>Vélocité par genre<'],['Median views/month per genre · videos from the last 12 months','Vues/mois médianes par genre · vidéos des 12 derniers mois'],
 ['🔥 Hot right now','🔥 Ça monte'],['Fastest-growing videos published in the last 12 months','Vidéos à la plus forte croissance publiées ces 12 derniers mois'],
 ['📰 Latest discoveries','📰 Dernières découvertes'],['New videos the YouTube algorithm just started pushing · daily scan','Nouvelles vidéos que l’algorithme YouTube commence à pousser · scan quotidien'],
@@ -2751,7 +2807,7 @@ const FR_LIT=[
 ['View all →','Tout voir →'],['Full roadmap →','Roadmap complète →'],
 ['🆕 <1 month','🆕 <1 mois'],['Last 3 months','3 derniers mois'],['Last 6 months','6 derniers mois'],['Last 12 months','12 derniers mois'],['All time','Tout l’historique'],
 ['Search titles, channels, keywords…','Chercher titres, chaînes, mots-clés…'],['Search streams, channels, keywords…','Chercher streams, chaînes, mots-clés…'],['Search channels, niches, countries…','Chercher chaînes, niches, pays…'],['Search concepts, titles, niches…','Chercher concepts, titres, niches…'],
-['All clusters','Tous les clusters'],['All potential','Tout potentiel'],['All characters','Tous les personnages'],['Any status','Tout statut'],['All sources','Toutes les sources'],['All genres','Tous les genres'],
+['All potential','Tout potentiel'],['All characters','Tous les personnages'],['All sources','Toutes les sources'],['All genres','Tous les genres'],
 ['>Sort · Velocity (views/mo)<','>Tri · Vélocité (vues/mois)<'],['>Sort · Total views<','>Tri · Vues totales<'],['>Sort · Newest first<','>Tri · Plus récentes<'],['>Sort · Oldest first<','>Tri · Plus anciennes<'],['>Sort · Duration<','>Tri · Durée<'],['>Sort · Channel size<','>Tri · Taille de chaîne<'],['>Sort · Recently added<','>Tri · Ajout récent<'],['>Sort · Viewers now<','>Tri · Spectateurs actuels<'],['>Sort · Peak viewers<','>Tri · Pic de spectateurs<'],['>Sort · Recently started<','>Tri · Lancement récent<'],['>Sort · Channel<','>Tri · Chaîne<'],['>Sort · Subscribers<','>Tri · Abonnés<'],['>Sort · Views / year<','>Tri · Vues / an<'],['>Sort · Avg last 10<','>Tri · Moy. 10 dernières<'],['>Sort · Uploads / month<','>Tri · Uploads / mois<'],['>Sort · Last upload<','>Tri · Dernier upload<'],['>Sort · Name<','>Tri · Nom<'],['>Sort · Adjusted score<','>Tri · Score ajusté<'],['>Sort · Score<','>Tri · Score<'],['>Sort · Confidence<','>Tri · Confiance<'],['>Sort · N°<','>Tri · N°<'],['>Sort · Worst percentile first<','>Tri · Pire percentile d’abord<'],['>Sort · Best percentile first<','>Tri · Meilleur percentile d’abord<'],['>Sort · Most views<','>Tri · Plus de vues<'],
 ['</b> videos<','</b> vidéos<'],['</b> streams<','</b> streams<'],['</b> channels<','</b> chaînes<'],['</b> concepts<','</b> concepts<'],
 [' remaining<',' restantes<'],['Loading more · ','Chargement · '],
@@ -2773,7 +2829,7 @@ const FR_LIT=[
 ['Compared against ','Comparée à '],[' videos on the radar',' vidéos du radar'],[' · median ',' · médiane '],
 ['uploads / month','uploads / mois'],[' avg views / video',' vues moy. / vidéo'],[' videos · ',' vidéos · '],['cadence unknown','cadence inconnue'],['last upload ','dernier upload '],[' yrs old',' ans'],
 ['Workspace','Espace de travail'],['Sync now','Synchroniser'],['Open Google Sheet','Ouvrir le Google Sheet'],
-['Connected · ','Connecté · '],['videos scan ','scan vidéos '],['streams scan ','scan streams '],['synced just now','synchro à l’instant'],['Live · synced just now','Live · synchro à l’instant'],['Live · synced ','Live · synchro il y a '],[' min ago',' min'],['h ago','h'],['d ago','j'],['just now','à l’instant'],
+['🎬 videos ','🎬 vidéos '],['📡 streams ','📡 streams '],['synced just now','synchro à l’instant'],['Live · synced just now','Live · synchro à l’instant'],['Live · synced ','Live · synchro il y a '],[' min ago',' min'],['h ago','h'],['d ago','j'],['just now','à l’instant'],
 ['Daily snapshot · ','Snapshot quotidien · '],['trying live sync…','tentative de synchro live…'],
 ['DAILY SCAN','SCAN QUOTIDIEN'],['OUR VIDEOS','NOS VIDÉOS'],['>LIVE<','>LIVE<'],
 ['Connecting…','Connexion…'],['Syncing…','Synchro…'],['Sync failed','Échec de synchro'],['No data','Aucune donnée'],
