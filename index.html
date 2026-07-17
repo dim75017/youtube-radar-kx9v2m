@@ -1312,18 +1312,7 @@ function filterLives(){
 function livesHTML(){
   const rows=filterLives();const all=DATA.lives||[];
   if(!all.length)return '<div class="empty">No livestream data yet — the 📡 Live Streams tab of the Sheet is empty or missing. It fills up on the next ChatGPT scan.</div>';
-  const nows=all.map(v=>liveNow(v.vid)).filter(x=>x!=null);
-  const total=nows.reduce((s,x)=>s+x,0);
-  const top=[...all].sort((a,b)=>(liveNow(b.vid)||0)-(liveNow(a.vid)||0))[0];
-  const oursN=all.filter(v=>isOurs(v.channel)).length;
-  const kpi=(lbl,val,sub,c)=>'<div class="kpi" style="--kc:'+c+'"><div class="k-lbl">'+lbl+'</div><div class="k-val">'+val+'</div><div class="k-sub">'+sub+'</div></div>';
-  let h='<div class="kpis">'+
-    kpi('Streams tracked',fmtInt(all.length),'found on the scan keywords','#8b7cf6')+
-    kpi('Watching now',fmtN(total),'combined concurrent viewers at last scan','#f472b6')+
-    kpi('Top stream',fmtN(top?liveNow(top.vid):null),esc(top?top.channel:'—'),'#fbbf24')+
-    kpi('Lofi Girl live',String(oursN),'of our streams surfacing in results','#a78bfa')+
-  '</div>';
-  h+='<div class="toolbar">'+
+  let h='<div class="toolbar">'+
     '<div class="search">'+ICONS.search+'<input placeholder="Search streams, channels, keywords…" value="'+esc(LS.q)+'" oninput="LS.q=this.value;LS.limit=60;rerenderLives()"><kbd>/</kbd></div>'+
     '<select class="ctl" onchange="LS.sort=this.value;rerenderLives()">'+
       '<option value="now">Sort · Viewers now</option><option '+(LS.sort==='peak'?'selected':'')+' value="peak">Sort · Peak viewers</option><option '+(LS.sort==='started'?'selected':'')+' value="started">Sort · Recently started</option><option '+(LS.sort==='channel'?'selected':'')+' value="channel">Sort · Channel</option></select>'+
