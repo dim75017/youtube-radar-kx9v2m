@@ -441,7 +441,7 @@ function renderOpps(){
       <tbody>
       ${slice.map(r=>`
         <tr class="${r[3]>=HOT?'hot':''}">
-          <td class="covtd"><img class="cov" loading="lazy" data-tid="${r[6]}" alt=""></td>
+          <td class="covtd"><img class="cov" data-tid="${r[6]}" alt=""></td>
           <td><a class="tk" href="${trackUrl(r[6])}" target="_blank" rel="noopener">${esc(r[1])}</a>${r[7]?' <span class="badge new">détectée '+r[7].slice(5)+'</span>':''}</td>
           <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
           <td class="num" title="${fmtFull(r[3])}">${r[3]>=HOT?'<span class="badge hot">'+fmt(r[3])+'</span>':fmt(r[3])}</td>
@@ -558,7 +558,7 @@ function renderNew(){
       <tbody>
       ${slice.map(r=>`
         <tr class="${r[3]>=HOT?'hot':''}">
-          <td class="covtd"><img class="cov" loading="lazy" data-tid="${r[6]}" alt=""></td>
+          <td class="covtd"><img class="cov" data-tid="${r[6]}" alt=""></td>
           <td>${r[2]}</td>
           <td><a class="tk" href="${trackUrl(r[6])}" target="_blank" rel="noopener">${esc(r[1])}</a>${r[7]?' <span class="badge new">détectée</span>':''}</td>
           <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
