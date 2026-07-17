@@ -624,6 +624,7 @@ function renderOverview(){
   const done = AG.filter(g=>g.done).length;
   const disco = AG.filter(g=>g.disco).length;
   const recent = R.filter(r=>daysAgo(r[2])<=90).length;
+  const nTop = withTracks.filter(g=>seg(g)==='top').length;
   const nReg = withTracks.filter(g=>seg(g)==='reg').length;
   const nOcc = withTracks.filter(g=>seg(g)==='occ').length;
   const nExt = withTracks.filter(g=>seg(g)==='ext').length;
@@ -642,7 +643,7 @@ function renderOverview(){
     </div>
   </div>
   <div class="kpis">
-    ${kpi(T('Artistes scannés'), done, nReg+' '+T('réguliers')+' · '+nOcc+' '+T('occasionnels')+' · '+nExt+' '+T('hors label'))}
+    ${kpi(T('Artistes scannés'), done, nTop+' top · '+nReg+' '+T('réguliers')+' · '+nOcc+' '+T('occasionnels'))}
     ${kpi(T('Tracks hors Lofi'), fmtFull(R.length), T('catalogue analysé'))}
     ${kpi(T('Streams cumulés'), fmt(totStreams), T('hors catalogue Lofi'), true)}
     ${kpi(T('Revenu mensuel est.'), money(totMonthlyRev), T('catalogue hors Lofi')+' · '+money(totStreams*RATE)+' '+T('cumulé'), true)}
