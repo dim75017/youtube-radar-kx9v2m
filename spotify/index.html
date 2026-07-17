@@ -196,9 +196,9 @@ td.covtd{width:82px;padding:6px 2px 6px 10px}
 .badge.hot{color:#052e12;background:linear-gradient(90deg,#1ed760,#4ade80)}
 .badge.lofi{color:#a78bfa;background:rgba(167,139,250,.12);box-shadow:inset 0 0 0 1px rgba(167,139,250,.25)}
 .badge.disco{color:#f9a8d4;background:rgba(249,168,212,.10);box-shadow:inset 0 0 0 1px rgba(249,168,212,.25)}
-.badge.seg-top{color:#4ade80;background:rgba(74,222,128,.14);box-shadow:inset 0 0 0 1px rgba(74,222,128,.4)}
-.badge.seg-reg{color:#fbbf24;background:rgba(251,191,36,.13);box-shadow:inset 0 0 0 1px rgba(251,191,36,.34)}
-.badge.seg-occ{color:#fb923c;background:rgba(251,146,60,.13);box-shadow:inset 0 0 0 1px rgba(251,146,60,.34)}
+.badge.seg-top{color:#fb923c;background:rgba(251,146,60,.14);box-shadow:inset 0 0 0 1px rgba(251,146,60,.4)}
+.badge.seg-reg{color:#a78bfa;background:rgba(167,139,250,.14);box-shadow:inset 0 0 0 1px rgba(167,139,250,.4)}
+.badge.seg-occ{color:#60a5fa;background:rgba(37,99,235,.18);box-shadow:inset 0 0 0 1px rgba(59,130,246,.45)}
 .badge.seg-ext{color:#fb7185;background:rgba(251,113,133,.12);box-shadow:inset 0 0 0 1px rgba(251,113,133,.32)}
 td.selc{width:34px;padding-left:12px}
 td.selc input,th.selc input{width:16px;height:16px;accent-color:#1db954;cursor:pointer}
@@ -689,7 +689,7 @@ function renderWatch(){
       <div class="acard" onclick="goArtist(${g.i})">
         ${wlStar('a',g.name)}
         <div class="top"><div class="av">${esc(g.name[0]||'?').toUpperCase()}${avatarHtml(g)}</div>
-          <div style="min-width:0"><div class="nm">${esc(g.name)}</div><div style="font-size:11px;color:var(--dim);margin-top:4px">${segBadge(g)}</div></div></div>
+          <div style="min-width:0"><div class="nm">${esc(g.name)}</div><div style="font-size:11px;color:var(--dim);margin-top:7px">${segBadge(g)}</div></div></div>
         <div class="stats"><div class="st"><div class="v">${fmt(g.streams)}</div><div class="l">${T('streams')}</div></div>
           <div class="st"><div class="v">${g.n}</div><div class="l">tracks</div></div>
           <div class="st"><div class="v" style="color:${g.hot?'var(--acc2)':'inherit'}">${g.hot}</div><div class="l">≥ 500k</div></div></div>
@@ -847,7 +847,7 @@ function renderArtists(){
           <div class="av">${esc(g.name[0]||'?').toUpperCase()}${avatarHtml(g)}</div>
           <div style="min-width:0">
             <div class="nm">${esc(g.name)}</div>
-            <div style="font-size:11px;color:var(--dim)">${segBadge(g)} ${g.lofi?g.lofi+' '+T('tracks chez Lofi'):''} ${g.disco?'· '+T('découverte')+' ('+esc(g.origin||'related')+')':''}</div>
+            <div style="font-size:11px;color:var(--dim);margin-top:7px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">${segBadge(g)} <span>${g.lofi?g.lofi+' '+T('tracks chez Lofi'):''}${g.disco?' · '+T('découverte')+' ('+esc(g.origin||'related')+')':''}</span></div>
           </div>
         </div>
         <div class="stats">
