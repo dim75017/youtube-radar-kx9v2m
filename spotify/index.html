@@ -246,7 +246,7 @@ const TODAY = new Date(D.t + 'T00:00:00');
 // rows:    [ai, track, date, streams, statut(0 self/1 autre), label, id, firstSeen]
 const A = D.artists, R = D.rows;
 const AG = A.map((a,i)=>({i, name:a[0], lofi:a[1], flag:a[2], done:a[3], disco:a[4],
-  origin:a[5], seedSrc:a[6], id:a[7]||'', n:0, self:0, streams:0, hot:0, last:'', top:null}));
+  origin:a[5], seedSrc:a[6], id:a[7]||'', img:a[8]||'', n:0, self:0, streams:0, hot:0, last:'', top:null}));
 for (const r of R){
   const g = AG[r[0]];
   g.n++; if (r[4]===0) g.self++;
@@ -507,7 +507,7 @@ function renderArtists(){
       return `
       <div class="acard" onclick="goArtist(${g.i})">
         <div class="top">
-          <div class="av">${esc(g.name[0]||'?').toUpperCase()}${g.id?`<img class="avp" data-aid="${g.id}" alt="">`:''}</div>
+          <div class="av">${esc(g.name[0]||'?').toUpperCase()}${g.img?`<img class="avp" data-img="${esc(g.img)}" alt="">`:(g.top?`<img class="avp" data-tid="${g.top[6]}" alt="">`:'')}</div>
           <div style="min-width:0">
             <div class="nm">${esc(g.name)}</div>
             <div style="font-size:11px;color:var(--dim)">${g.lofi} tracks chez Lofi ${g.disco?'· <span class="badge disco">découverte</span>':''}</div>
@@ -671,13 +671,14 @@ function attachCovers(){
     for (const e of es){
       if (!e.isIntersecting) continue;
       const img = e.target; covObserver.unobserve(img);
+      if (img.dataset.img){ covShow(img, img.dataset.img); continue; }
       const {key, url} = covKeyUrl(img);
       const hit = covCache.get(key);
       if (hit) covShow(img, hit);
       else { covQueue.push({key, url, img}); covPump(); }
     }
   }, {rootMargin:'300px'});
-  document.querySelectorAll('img.cov[data-tid], img.avp[data-aid]').forEach(i=>covObserver.observe(i));
+  document.querySelectorAll('img.cov[data-tid], img.avp[data-tid], img.avp[data-img]').forEach(i=>covObserver.observe(i));
 }
 /* ---------- scroll infini ---------- */
 let endObserver = null;
