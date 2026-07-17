@@ -953,7 +953,7 @@ async function loadChan(){
     }catch(e2){CHAN_ERR=e.message;}
   }
   renderNav();
-  if(route==='chan'||route==='dashboard')render();
+  render(); // re-render la vue courante : les badges AI dépendent des données Channels
 }
 async function boot(){
   const hs=(location.hash||'').slice(1);
