@@ -512,7 +512,8 @@ function parseLives(ws){
   for(let r=1;r<=end;r++){
     const id=str(cv(ws,r,0));if(!/^[\w-]{11}$/.test(id))continue;
     out.push({
-      vid:id, channel:str(cv(ws,r,1)), title:str(cv(ws,r,2)),
+      vid:id, channel:str(cv(ws,r,1)),
+      title:str(cv(ws,r,2)).replace(/\s*\d{4}-\d{2}-\d{2}[ T]?\d{2}:\d{2}(:\d{2})?\s*$/,''),
       url:str(cv(ws,r,3))||('https://www.youtube.com/watch?v='+id),
       started:toMs(cv(ws,r,4)), disc:str(cv(ws,r,5))
     });
@@ -1253,7 +1254,7 @@ function liveListHTML(rows){
     page.map((v,i)=>{
       const now=liveNow(v.vid),peak=livePeak(v.vid);
       return '<tr class="row" onclick="openLiveIdx('+i+')">'+
-      '<td><img class="tthumb" loading="lazy" src="'+thumb(v.vid)+'" onerror="this.style.visibility=\'hidden\'"></td>'+
+      '<td><img class="tthumb" loading="lazy" src="'+thumb(v.vid)+'" onerror="if(!this._f){this._f=1;this.src=\'https://i.ytimg.com/vi/'+v.vid+'/hqdefault.jpg\'}else this.style.visibility=\'hidden\'"></td>'+
       '<td class="ttitle">'+(isOurs(v.channel)?'<span class="tag" style="background:#a78bfa22;color:#a78bfa;border:1px solid #a78bfa55;margin-right:7px">OURS</span>':'')+esc(v.title)+'</td>'+
       '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(v.channel)+'</td>'+
       '<td class="num vpmcell">'+fmtN(now)+'</td><td class="num">'+fmtN(peak)+'</td>'+
