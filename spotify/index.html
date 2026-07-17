@@ -158,7 +158,7 @@ input,select{font-family:inherit;color:var(--text)}
   font-size:13px;min-width:230px;outline:none;
 }
 .toolbar input[type=text]:focus{border-color:var(--border2)}
-.search-wrap{position:relative;display:flex;align-items:center;margin-left:auto}
+.search-wrap{position:relative;display:flex;align-items:center}
 .search-wrap .sico{position:absolute;left:14px;font-size:14px;color:var(--dim);pointer-events:none}
 .search-wrap input[type=text]{
   padding:11px 16px 11px 38px;min-width:270px;font-size:13.5px;border-radius:13px;
@@ -724,7 +724,6 @@ function renderOverview(){
   <div class="page-head">
     <div>
       <h2>${T("Vue d'ensemble")}</h2>
-      <p>${T("Catalogue hors Lofi Records des artistes du label : tout ce qu'ils ont sorti en indépendant ou chez d'autres labels, candidats à distribution, rachat ou avance. Données rafraîchies par le crawl automatique (veille hebdomadaire).")}</p>
     </div>
   </div>
   <div class="kpis">
@@ -969,7 +968,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeTrack(); });
 function renderWatch(){
   const w=wlGet();
   const tabs=[['tracks','🎶 Tracks',w.t.length],['artists','🎸 '+T('Artistes'),w.a.length]];
-  let h=`<div class="page-head"><div><h2>Watchlist</h2><p>${T("Tes tracks et artistes épinglés, à suivre pour un rachat. Stocké dans ce navigateur.")}</p></div></div>`;
+  let h=`<div class="page-head"><div><h2>Watchlist</h2></div></div>`;
   h+='<div class="toolbar">'+tabs.map(t=>`<button class="chip ${S.wltab===t[0]?'on':''}" onclick="S.wltab='${t[0]}';render()">${t[1]} (${t[2]})</button>`).join('')+'</div>';
   if(S.wltab==='tracks'){
     const rows=R.filter(r=>w.t.includes(r[6])).sort((a,b)=>b[3]-a[3]);
@@ -1075,10 +1074,10 @@ function renderOpps(){
   <div class="page-head">
     <div>
       <h2>${T('Toutes les pistes')}</h2>
-      <p>${T("Toutes les tracks hors Lofi Records. Les lignes vertes dépassent 500 000 streams (priorités). Streams / mois = vélocité depuis la sortie.")}</p>
     </div>
   </div>
   <div class="toolbar">
+    <div class="search-wrap"><span class="sico">🔍</span><input type="text" id="f-q" placeholder="${T('Rechercher track, artiste, label…')}" value="${esc(S.q)}"></div>
     <select id="f-period">
       <option value="30" ${S.period==='30'?'selected':''}>🕐 ${T('1 dernier mois')} (${fmtFull(pcnt['30'])})</option>
       <option value="90" ${S.period==='90'?'selected':''}>📆 ${T('3 derniers mois')} (${fmtFull(pcnt['90'])})</option>
@@ -1107,7 +1106,6 @@ function renderOpps(){
     </select>
     <span class="spacer"></span>
     <span class="result-count">${fmtFull(rows.length)} ${T('tracks')}</span>
-    <div class="search-wrap"><span class="sico">🔍</span><input type="text" id="f-q" placeholder="${T('Rechercher track, artiste, label…')}" value="${esc(S.q)}"></div>
     <div class="viewtoggle">
       <button class="${S.omode==='table'?'on':''}" data-omode="table" title="${T('Vue liste')}">☰</button>
       <button class="${S.omode==='grid'?'on':''}" data-omode="grid" title="${T('Vue grille')}">▦</button>
@@ -1216,10 +1214,10 @@ function renderArtists(){
   <div class="page-head">
     <div>
       <h2>${T('Tous les artistes')}</h2>
-      <p>${T("Un profil par artiste : volume hors Lofi, part d'indé, priorités ≥ 500k. Clic sur une carte pour ouvrir ses tracks.")}</p>
     </div>
   </div>
   <div class="toolbar">
+    <div class="search-wrap"><span class="sico">🔍</span><input type="text" id="a-q" placeholder="${T('Rechercher un artiste…')}" value="${esc(S.aq)}"></div>
     <select id="a-seg">
       <option value="all" ${S.aseg==='all'?'selected':''}>🌍 ${T('Tous')}</option>
       <option value="top" ${S.aseg==='top'?'selected':''}>🏆 Top artists</option>
@@ -1235,7 +1233,6 @@ function renderArtists(){
     </select>
     <span class="spacer"></span>
     <span class="result-count">${list.length} ${T('artistes')}</span>
-    <div class="search-wrap"><span class="sico">🔍</span><input type="text" id="a-q" placeholder="${T('Rechercher un artiste…')}" value="${esc(S.aq)}"></div>
     <div class="viewtoggle">
       <button class="${S.amode==='table'?'on':''}" data-amode="table" title="${T('Vue liste')}">☰</button>
       <button class="${S.amode==='grid'?'on':''}" data-amode="grid" title="${T('Vue grille')}">▦</button>
@@ -1497,14 +1494,15 @@ function renderPlaylists(){
   <div class="page-head">
     <div>
       <h2>${T('Toutes les playlists')} <span class="badge new" style="vertical-align:middle">${T('Scan incomplet, pause sécurité Spotify')}</span></h2>
-      <p>${T("Recensement des playlists éditoriales Spotify et indépendantes sur nos genres, alimenté par le scanner de mots-clés. Suivi des followers et du fit pour repérer ce qui marche.")}</p>
     </div>
   </div>
   <div class="toolbar">
-    <button class="chip ${S.plcur==='all'?'on':''}" data-plcur="all">${T('Tous')}</button>
-    <button class="chip ${S.plcur==='editorial'?'on':''}" data-plcur="editorial">${T('Éditoriales')}</button>
-    <button class="chip ${S.plcur==='independent'?'on':''}" data-plcur="independent">${T('Indépendantes')}</button>
-    <label class="selall" style="margin-left:4px"><input type="checkbox" class="ck" id="pl-only" ${S.plonly?'checked':''}> ${T('Fiche détaillée uniquement')}</label>
+    <div class="search-wrap"><span class="sico">🔍</span><input type="text" id="pl-q" placeholder="${T('Rechercher playlist, curateur, genre…')}" value="${esc(S.plq)}"></div>
+    <select id="pl-cur">
+      <option value="all" ${S.plcur==='all'?'selected':''}>🌍 ${T('Tous')}</option>
+      <option value="editorial" ${S.plcur==='editorial'?'selected':''}>🏛️ ${T('Éditoriales')}</option>
+      <option value="independent" ${S.plcur==='independent'?'selected':''}>🌱 ${T('Indépendantes')}</option>
+    </select>
     <select id="pl-sort">
       <option value="followers" ${S.plsort==='followers'?'selected':''}>${T('Tri : followers')}</option>
       <option value="tracks" ${S.plsort==='tracks'?'selected':''}>${T('Tri : nb tracks')}</option>
@@ -1514,7 +1512,6 @@ function renderPlaylists(){
     </select>
     <span class="spacer"></span>
     <span class="result-count">${fmtFull(rows.length)} playlists</span>
-    <div class="search-wrap"><span class="sico">🔍</span><input type="text" id="pl-q" placeholder="${T('Rechercher playlist, curateur, genre…')}" value="${esc(S.plq)}"></div>
     <div class="viewtoggle">
       <button class="${S.plmode==='table'?'on':''}" data-plmode="table" title="${T('Vue liste')}">☰</button>
       <button class="${S.plmode==='grid'?'on':''}" data-plmode="grid" title="${T('Vue grille')}">▦</button>
@@ -1524,8 +1521,7 @@ function renderPlaylists(){
 
   document.querySelectorAll('.viewtoggle button[data-plmode]').forEach(b=>b.addEventListener('click', ()=>{ S.plmode=b.dataset.plmode; keepScroll(renderPlaylists); }));
   document.getElementById('pl-q').addEventListener('input', e=>{ S.plq=e.target.value; S.shownPL=80; keepScroll(renderPlaylists); keepFocus('pl-q'); });
-  document.querySelectorAll('.chip[data-plcur]').forEach(c=>c.addEventListener('click', ()=>{ S.plcur=c.dataset.plcur; S.shownPL=80; keepScroll(renderPlaylists); }));
-  document.getElementById('pl-only').addEventListener('change', e=>{ S.plonly=e.target.checked; S.shownPL=80; keepScroll(renderPlaylists); });
+  document.getElementById('pl-cur').addEventListener('change', e=>{ S.plcur=e.target.value; S.shownPL=80; keepScroll(renderPlaylists); });
   document.getElementById('pl-sort').addEventListener('change', e=>{ S.plsort=e.target.value; keepScroll(renderPlaylists); });
   attachInfinite(()=>{ const y=window.scrollY; S.shownPL+=80; renderPlaylists(); window.scrollTo(0,y); });
   if (typeof attachCovers==='function') attachCovers();
