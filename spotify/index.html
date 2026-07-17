@@ -72,6 +72,15 @@ input,select{font-family:inherit;color:var(--text)}
 .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);flex:none}
 .sync-txt{font-size:11px;color:var(--dim);line-height:1.4}
 
+/* ---------- Sélecteur de langue ---------- */
+.lang-btn{
+  position:fixed;top:16px;right:22px;z-index:60;
+  display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:20px;
+  background:linear-gradient(160deg,var(--panel),var(--bg2));border:1px solid var(--border);
+  font-size:12.5px;font-weight:700;color:var(--muted);transition:all .15s;
+}
+.lang-btn:hover{border-color:var(--border2);color:var(--text)}
+
 /* ---------- Main ---------- */
 #main{margin-left:var(--sidebar);padding:26px 30px 60px}
 .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap}
@@ -219,14 +228,14 @@ td.covtd{width:82px;padding:6px 2px 6px 10px}
     </div>
   </div>
   <nav class="nav" id="nav">
-    <div class="nav-label">Analyse</div>
-    <button data-v="overview" class="active"><span class="emo">📡</span>Vue d'ensemble</button>
-    <button data-v="opps"><span class="emo">💎</span>Tracks<span class="count" id="c-opps"></span></button>
-    <button data-v="artists"><span class="emo">🎧</span>Artistes<span class="count" id="c-art"></span></button>
-    <button data-v="new"><span class="emo">🆕</span>Sorties récentes<span class="count" id="c-new"></span></button>
-    <div class="nav-label">Expansion</div>
-    <button data-v="disco"><span class="emo">🔭</span>Découverte<span class="count" id="c-disco"></span></button>
-    <button data-v="playlists"><span class="emo">📻</span>Playlists<span class="count">soon</span></button>
+    <div class="nav-label" data-fr="Analyse">Analyse</div>
+    <button data-v="overview" class="active" data-fr="Vue d'ensemble"><span class="emo">📡</span>Vue d'ensemble</button>
+    <button data-v="opps" data-fr="Tracks"><span class="emo">💎</span>Tracks<span class="count" id="c-opps"></span></button>
+    <button data-v="artists" data-fr="Artistes"><span class="emo">🎧</span>Artistes<span class="count" id="c-art"></span></button>
+    <button data-v="new" data-fr="Sorties récentes"><span class="emo">🆕</span>Sorties récentes<span class="count" id="c-new"></span></button>
+    <div class="nav-label" data-fr="Expansion">Expansion</div>
+    <button data-v="disco" data-fr="Découverte"><span class="emo">🔭</span>Découverte<span class="count" id="c-disco"></span></button>
+    <button data-v="playlists" data-fr="Playlists"><span class="emo">📻</span>Playlists<span class="count">soon</span></button>
   </nav>
   <div class="side-foot">
     <div class="sync-row">
@@ -236,6 +245,8 @@ td.covtd{width:82px;padding:6px 2px 6px 10px}
   </div>
 </aside>
 
+<button class="lang-btn" id="lang-btn" title="Switch language">🇬🇧 EN</button>
+
 <main id="main">
   <div id="view"></div>
 </main>
@@ -243,6 +254,56 @@ td.covtd{width:82px;padding:6px 2px 6px 10px}
 <script>
 'use strict';
 const D = window.SPOTIFY_RADAR || {t:'?', seed:'?', artists:[], rows:[]};
+
+/* ---------- i18n FR / EN ---------- */
+let LANG = 'fr';
+try{ LANG = localStorage.getItem('sr_lang') || 'fr'; }catch(e){}
+const EN_MAP = {
+  "Analyse":"Analysis","Vue d'ensemble":"Overview","Artistes":"Artists","Sorties récentes":"Recent releases","Découverte":"Discovery",
+  "Catalogue hors Lofi Records des artistes du label : tout ce qu'ils ont sorti en indépendant ou chez d'autres labels, candidats à distribution, rachat ou avance. Données rafraîchies par le crawl automatique (veille hebdomadaire).":"Everything the label's artists have released outside Lofi Records, independently or on other labels: candidates for distribution, catalog acquisition or advances. Data refreshed automatically by the crawler (weekly watch).",
+  "Artistes scannés":"Artists scanned","réguliers":"regulars","occasionnels":"occasional","hors label":"unsigned",
+  "Tracks hors Lofi":"Tracks outside Lofi","catalogue analysé":"catalog analyzed",
+  "Streams cumulés":"Total streams","hors catalogue Lofi":"outside the Lofi catalog",
+  "priorités rachat":"buyout priorities","tracks en indé":"self-released tracks",
+  "Sorties 90 j":"Releases (90d)","veille nouveautés":"new-release watch","artistes découverte":"discovery artists",
+  "Top artistes par streams hors Lofi":"Top artists by non-Lofi streams","clic = détail des tracks":"click = track details",
+  "tracks hors Lofi":"tracks outside Lofi","indé":"indie","label":"label","dernière sortie":"last release","streams":"streams",
+  "Voir tous les artistes":"View all artists","Indé vs autres labels":"Indie vs other labels","Autre label":"Other label","Sorties par année":"Releases per year",
+  "régulier":"regular","occasionnel":"occasional",
+  "Toutes les tracks hors Lofi Records. Les lignes vertes dépassent 500 000 streams (priorités). Streams / mois = vélocité depuis la sortie.":"Every track outside Lofi Records. Green rows are above 500,000 streams (priorities). Streams / month = velocity since release.",
+  "Rechercher track, artiste, label…":"Search track, artist, label…","Tous":"All","Streams : tous":"Streams: all",
+  "Toutes périodes":"All periods","90 derniers jours":"Last 90 days","12 derniers mois":"Last 12 months","3 dernières années":"Last 3 years",
+  "Relation label : tous":"Label relation: all","Réguliers chez Lofi (≥10)":"Lofi regulars (≥10)","Occasionnels (1-9)":"Occasional (1-9)","Jamais chez Lofi":"Never on Lofi",
+  "← Retour":"← Back","tracks":"tracks","Artiste":"Artist","Streams/mois":"Streams/mo","Sortie":"Release","Statut":"Status",
+  "Indé":"Indie","détectée":"found","Aucune track ne correspond à ces filtres.":"No track matches these filters.",
+  "Chargement…":"Loading…","restantes":"left",
+  "Un profil par artiste : volume hors Lofi, part d'indé, priorités ≥ 500k. Clic sur une carte pour ouvrir ses tracks.":"One profile per artist: non-Lofi volume, indie share, ≥500k priorities. Click a card to open its tracks.",
+  "Rechercher un artiste…":"Search an artist…","Réguliers chez Lofi":"Lofi regulars","Occasionnels":"Occasional",
+  "Tri : streams hors Lofi":"Sort: non-Lofi streams","Tri : tracks ≥ 500k":"Sort: tracks ≥ 500k","Tri : nb de tracks":"Sort: track count","Tri : sortie la plus récente":"Sort: latest release",
+  "artistes":"artists","tracks chez Lofi":"tracks on Lofi","découverte":"discovery",
+  "Nouvelles sorties hors Lofi des artistes suivis. Le badge « détectée » signale les tracks apparues lors d'un rafraîchissement de veille (après le":"New non-Lofi releases from tracked artists. The “found” badge flags tracks that appeared during a watch refresh (after",
+  "j":"d","sorties":"releases","détectées par la veille":"found by the watch",
+  "Aucune sortie sur la période. La veille hebdomadaire alimentera cette vue automatiquement.":"No release in this period. The weekly watch will feed this view automatically.",
+  "Découverte — expansion hors catalogue":"Discovery — beyond the catalog",
+  "Élargissement progressif au-delà des artistes Lofi : artistes similaires (« fans also like ») d'abord, playlists éditoriales par genre ensuite. Chaque artiste découvert entre dans la même file de crawl que le catalogue, puis dans la veille hebdomadaire.":"Progressive expansion beyond Lofi artists: similar artists (“fans also like”) first, editorial playlists by genre next. Each discovered artist joins the same crawl queue as the catalog, then the weekly watch.",
+  "Artistes découverts":"Artists discovered","plafond initial : 200":"initial cap: 200","Déjà scannés":"Already scanned","en attente du 1er lot":"waiting for the first batch","% du lot":"% of the batch","Source active":"Active source","playlists éditoriales ensuite":"editorial playlists next",
+  "Comment ça va se remplir":"How this will fill up",
+  "Récolte":"Harvest","Sur les runs creux de la veille, le crawler récupère les « fans also like » de nos 500+ artistes et les ajoute à la file (plafonné, dédupliqué, hors artistes déjà suivis).":"On idle watch runs, the crawler collects the “fans also like” of our 500+ artists and adds them to the queue (capped, deduplicated, excluding artists already tracked).",
+  "Scan":"Scan","Chaque artiste découvert passe dans le pipeline existant : discographie complète, streams, labels. Coût élevé une seule fois.":"Each discovered artist goes through the existing pipeline: full discography, streams, labels. Expensive only once.",
+  "Veille":"Watch","Il rejoint ensuite le rafraîchissement hebdomadaire, quasi gratuit. Ses tracks apparaissent dans l'onglet Tracks avec le badge « découverte ».":"It then joins the weekly refresh, nearly free. Its tracks appear in the Tracks tab with the “discovery” badge.",
+  "Élargissement":"Expansion","Quand le lot de 200 est digéré, on monte le plafond et on ajoute les playlists éditoriales par genre (lofi, ambient, piano, jazz…) comme seconde source.":"Once the batch of 200 is digested, we raise the cap and add editorial playlists by genre (lofi, ambient, piano, jazz…) as a second source.",
+  "Origine":"Origin","scanné":"scanned","en file":"queued",
+  "bientôt disponible":"coming soon",
+  "Prochain module, en préparation : scan des playlists de nos genres, éditoriales Spotify et indépendantes, avec suivi dans le temps du nombre de followers de chacune. Objectif : repérer ce qui marche (formats, genres, positionnements) pour s'en inspirer, et alimenter la découverte d'artistes.":"Next module, in preparation: scanning playlists in our genres, both Spotify editorial and independent, tracking each playlist's follower count over time. Goal: spot what works (formats, genres, positioning) to draw inspiration from, and feed artist discovery.",
+  "Playlists suivies":"Playlists tracked","scan à venir":"scan coming","Éditoriales vs indés":"Editorial vs indie","répartition à venir":"split coming","Followers trackés":"Followers tracked","évolution hebdomadaire":"weekly evolution",
+  "Ce que le module fera":"What this module will do",
+  "Recensement":"Inventory","Playlists éditoriales Spotify et grosses playlists indépendantes sur nos genres (lofi, ambient, piano, jazz, synthwave…), avec leur curateur et leur taille.":"Spotify editorial playlists and large independent playlists in our genres (lofi, ambient, piano, jazz, synthwave…), with their curator and size.",
+  "Suivi des followers":"Follower tracking","Relevé régulier du nombre de followers de chaque playlist : courbes d'évolution, croissance hebdo, détection de celles qui explosent.":"Regular readings of each playlist's follower count: evolution curves, weekly growth, detection of the ones taking off.",
+  "Comparaison édito vs indé, genres qui montent, formats qui marchent. De quoi s'inspirer pour nos propres playlists et le positionnement du label.":"Editorial vs indie comparison, rising genres, formats that work. Inspiration for our own playlists and the label's positioning.",
+  "Synergie découverte":"Discovery synergy","Les artistes présents dans les playlists qui performent alimenteront la file de découverte, en plus des \"fans also like\".":"Artists appearing in high-performing playlists will feed the discovery queue, on top of “fans also like”.",
+  "Dernier scan le":"Last scan:","artistes scannés":"artists scanned"
+};
+const T = s => LANG === 'fr' ? s : (EN_MAP[s] !== undefined ? EN_MAP[s] : s);
 const HOT = 500000;                       // seuil de mise en évidence
 const TODAY = new Date(D.t + 'T00:00:00');
 
@@ -363,9 +424,9 @@ function avatarHtml(g){
 function seg(g){ return g.lofi>=10 ? 'reg' : (g.lofi>0 ? 'occ' : 'ext'); }
 function segBadge(g){
   const s = seg(g);
-  if (s==='reg') return '<span class="badge lofi">régulier</span>';
-  if (s==='occ') return '<span class="badge other">occasionnel</span>';
-  return '<span class="badge disco">hors label</span>';
+  if (s==='reg') return '<span class="badge lofi">'+T('régulier')+'</span>';
+  if (s==='occ') return '<span class="badge other">'+T('occasionnel')+'</span>';
+  return '<span class="badge disco">'+T('hors label')+'</span>';
 }
 
 function renderOverview(){
@@ -385,50 +446,50 @@ function renderOverview(){
   V.innerHTML = `
   <div class="page-head">
     <div>
-      <h2>Vue d'ensemble</h2>
-      <p>Catalogue hors Lofi Records des artistes du label : tout ce qu'ils ont sorti en indépendant ou chez d'autres labels, candidats à distribution, rachat ou avance. Données rafraîchies par le crawl automatique (veille hebdomadaire).</p>
+      <h2>${T("Vue d'ensemble")}</h2>
+      <p>${T("Catalogue hors Lofi Records des artistes du label : tout ce qu'ils ont sorti en indépendant ou chez d'autres labels, candidats à distribution, rachat ou avance. Données rafraîchies par le crawl automatique (veille hebdomadaire).")}</p>
     </div>
   </div>
   <div class="kpis">
-    ${kpi('Artistes scannés', done, nReg+' réguliers · '+nOcc+' occasionnels · '+nExt+' hors label')}
-    ${kpi('Tracks hors Lofi', fmtFull(R.length), 'catalogue analysé')}
-    ${kpi('Streams cumulés', fmt(totStreams), 'hors catalogue Lofi', true)}
-    ${kpi('Tracks ≥ 500k', fmtFull(nHot), 'priorités rachat', true)}
-    ${kpi('Self-released', pSelf+' %', fmtFull(nSelf)+' tracks en indé')}
-    ${kpi('Sorties 90 j', fmtFull(recent), disco?'+ '+disco+' artistes découverte':'veille nouveautés')}
+    ${kpi(T('Artistes scannés'), done, nReg+' '+T('réguliers')+' · '+nOcc+' '+T('occasionnels')+' · '+nExt+' '+T('hors label'))}
+    ${kpi(T('Tracks hors Lofi'), fmtFull(R.length), T('catalogue analysé'))}
+    ${kpi(T('Streams cumulés'), fmt(totStreams), T('hors catalogue Lofi'), true)}
+    ${kpi('Tracks ≥ 500k', fmtFull(nHot), T('priorités rachat'), true)}
+    ${kpi('Self-released', pSelf+' %', fmtFull(nSelf)+' '+T('tracks en indé'))}
+    ${kpi(T('Sorties 90 j'), fmtFull(recent), disco?'+ '+disco+' '+T('artistes découverte'):T('veille nouveautés'))}
   </div>
   <div class="grid2">
     <div class="panel">
-      <h3>Top artistes par streams hors Lofi <span class="hint">clic = détail des tracks</span></h3>
+      <h3>${T('Top artistes par streams hors Lofi')} <span class="hint">${T('clic = détail des tracks')}</span></h3>
       ${top.map((g,ix)=>{const p=g.n?Math.round(g.self/g.n*100):0; return `
         <div class="top-row" onclick="goArtist(${g.i})">
           <span class="rank">${ix+1}</span>
           <div class="av-sm">${esc(g.name[0]||'?').toUpperCase()}${avatarHtml(g)}</div>
           <div class="ti">
             <div class="nm">${esc(g.name)} ${segBadge(g)}</div>
-            <div class="sub">${g.n} tracks hors Lofi · <span style="color:var(--green)">${g.self} indé</span> · <span style="color:var(--amber)">${g.n-g.self} label</span>${g.hot?` · <span style="color:var(--acc2)">${g.hot} ≥ 500k</span>`:''} · dernière sortie ${g.last||'?'}</div>
+            <div class="sub">${g.n} ${T('tracks hors Lofi')} · <span style="color:var(--green)">${g.self} ${T('indé')}</span> · <span style="color:var(--amber)">${g.n-g.self} ${T('label')}</span>${g.hot?` · <span style="color:var(--acc2)">${g.hot} ≥ 500k</span>`:''} · ${T('dernière sortie')} ${g.last||'?'}</div>
             <div class="mini-split" style="max-width:250px;margin:0"><div style="width:${p}%;background:#4ade80"></div><div style="width:${100-p}%;background:#b45309"></div></div>
           </div>
-          <div class="vals"><div class="v1">${fmt(g.streams)}</div><div class="v2">streams</div></div>
+          <div class="vals"><div class="v1">${fmt(g.streams)}</div><div class="v2">${T('streams')}</div></div>
         </div>`;}).join('')}
       <div style="text-align:center;padding-top:12px">
-        <button class="chip" onclick="goTab('artists')">Voir tous les artistes (${withTracks.length}) →</button>
+        <button class="chip" onclick="goTab('artists')">${T('Voir tous les artistes')} (${withTracks.length}) →</button>
       </div>
     </div>
     <div>
       <div class="panel">
-        <h3>Indé vs autres labels</h3>
+        <h3>${T('Indé vs autres labels')}</h3>
         <div class="split">
           <div class="s1" style="width:${pSelf}%"></div>
           <div class="s2" style="width:${100-pSelf}%"></div>
         </div>
         <div class="legend">
           <span><span class="dot" style="background:#4ade80"></span>Self-released ${fmtFull(nSelf)}</span>
-          <span><span class="dot" style="background:#fbbf24"></span>Autre label ${fmtFull(R.length-nSelf)}</span>
+          <span><span class="dot" style="background:#fbbf24"></span>${T('Autre label')} ${fmtFull(R.length-nSelf)}</span>
         </div>
       </div>
       <div class="panel">
-        <h3>Sorties par année</h3>
+        <h3>${T('Sorties par année')}</h3>
         <div class="year-wrap">
           ${yk.map(y=>`<div class="ybar"><div class="b" style="height:${Math.max(years[y]/maxY*100,3)}px" title="${y} : ${years[y]}"></div><span class="y">${y.slice(2)}</span></div>`).join('')}
         </div>
@@ -446,66 +507,66 @@ function renderOpps(){
   V.innerHTML = `
   <div class="page-head">
     <div>
-      ${aName?'<button class="chip" onclick="goBack()" style="margin-bottom:10px">← Retour</button>':''}
+      ${aName?'<button class="chip" onclick="goBack()" style="margin-bottom:10px">'+T('← Retour')+'</button>':''}
       <h2>Tracks${aName?' — '+esc(aName):''}</h2>
-      <p>Toutes les tracks hors Lofi Records. Les lignes vertes dépassent 500 000 streams (priorités). Streams / mois = vélocité depuis la sortie.</p>
+      <p>${T("Toutes les tracks hors Lofi Records. Les lignes vertes dépassent 500 000 streams (priorités). Streams / mois = vélocité depuis la sortie.")}</p>
     </div>
   </div>
   <div class="toolbar">
-    <input type="text" id="f-q" placeholder="Rechercher track, artiste, label…" value="${esc(S.q)}">
-    <button class="chip ${S.statut==='all'?'on':''}" data-st="all">Tous</button>
+    <input type="text" id="f-q" placeholder="${T('Rechercher track, artiste, label…')}" value="${esc(S.q)}">
+    <button class="chip ${S.statut==='all'?'on':''}" data-st="all">${T('Tous')}</button>
     <button class="chip ${S.statut==='self'?'on':''}" data-st="self">Self-released</button>
-    <button class="chip ${S.statut==='other'?'on':''}" data-st="other">Autre label</button>
+    <button class="chip ${S.statut==='other'?'on':''}" data-st="other">${T('Autre label')}</button>
     <select id="f-min">
-      <option value="0" ${S.min===0?'selected':''}>Streams : tous</option>
+      <option value="0" ${S.min===0?'selected':''}>${T('Streams : tous')}</option>
       <option value="100000" ${S.min===100000?'selected':''}>≥ 100k</option>
       <option value="500000" ${S.min===500000?'selected':''}>≥ 500k</option>
       <option value="1000000" ${S.min===1000000?'selected':''}>≥ 1M</option>
       <option value="5000000" ${S.min===5000000?'selected':''}>≥ 5M</option>
     </select>
     <select id="f-period">
-      <option value="all" ${S.period==='all'?'selected':''}>Toutes périodes</option>
-      <option value="90" ${S.period==='90'?'selected':''}>90 derniers jours</option>
-      <option value="365" ${S.period==='365'?'selected':''}>12 derniers mois</option>
-      <option value="1095" ${S.period==='1095'?'selected':''}>3 dernières années</option>
+      <option value="all" ${S.period==='all'?'selected':''}>${T('Toutes périodes')}</option>
+      <option value="90" ${S.period==='90'?'selected':''}>${T('90 derniers jours')}</option>
+      <option value="365" ${S.period==='365'?'selected':''}>${T('12 derniers mois')}</option>
+      <option value="1095" ${S.period==='1095'?'selected':''}>${T('3 dernières années')}</option>
     </select>
     <select id="f-rel">
-      <option value="all" ${S.rel==='all'?'selected':''}>Relation label : tous</option>
-      <option value="reg" ${S.rel==='reg'?'selected':''}>Réguliers chez Lofi (≥10)</option>
-      <option value="occ" ${S.rel==='occ'?'selected':''}>Occasionnels (1-9)</option>
-      <option value="ext" ${S.rel==='ext'?'selected':''}>Jamais chez Lofi</option>
+      <option value="all" ${S.rel==='all'?'selected':''}>${T('Relation label : tous')}</option>
+      <option value="reg" ${S.rel==='reg'?'selected':''}>${T('Réguliers chez Lofi (≥10)')}</option>
+      <option value="occ" ${S.rel==='occ'?'selected':''}>${T('Occasionnels (1-9)')}</option>
+      <option value="ext" ${S.rel==='ext'?'selected':''}>${T('Jamais chez Lofi')}</option>
     </select>
     ${aName?`<button class="chip on" id="f-clear-artist">${esc(aName)} ✕</button>`:''}
     <span class="spacer"></span>
-    <span class="result-count">${fmtFull(rows.length)} tracks</span>
+    <span class="result-count">${fmtFull(rows.length)} ${T('tracks')}</span>
   </div>
   <div class="panel" style="padding:6px 14px 14px">
     <table>
       <thead><tr>
         <th></th>
         <th data-k="1">Track</th>
-        <th data-k="0">Artiste ${sortArrow(0)}</th>
+        <th data-k="0">${T('Artiste')} ${sortArrow(0)}</th>
         <th data-k="3" class="num">Streams ${sortArrow(3)}</th>
-        <th data-k="7" class="num">Streams/mois ${sortArrow(7)}</th>
-        <th data-k="2">Sortie ${sortArrow(2)}</th>
-        <th>Statut</th>
+        <th data-k="7" class="num">${T('Streams/mois')} ${sortArrow(7)}</th>
+        <th data-k="2">${T('Sortie')} ${sortArrow(2)}</th>
+        <th>${T('Statut')}</th>
         <th>Copyright</th>
       </tr></thead>
       <tbody>
       ${slice.map(r=>`
         <tr class="${r[3]>=HOT?'hot':''}">
           <td class="covtd">${r[8]?`<img class="cov on" src="${esc(r[8])}" alt="">`:`<img class="cov" data-tid="${r[6]}" alt="">`}</td>
-          <td><a class="tk" href="${trackUrl(r[6])}" target="_blank" rel="noopener">${esc(r[1])}</a>${r[7]?' <span class="badge new">détectée '+r[7].slice(5)+'</span>':''}</td>
+          <td><a class="tk" href="${trackUrl(r[6])}" target="_blank" rel="noopener">${esc(r[1])}</a>${r[7]?' <span class="badge new">'+T('détectée')+' '+r[7].slice(5)+'</span>':''}</td>
           <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
           <td class="num" title="${fmtFull(r[3])}">${r[3]>=HOT?'<span class="badge hot">'+fmt(r[3])+'</span>':fmt(r[3])}</td>
           <td class="num">${fmt(perMonth(r))}</td>
           <td>${r[2]||'?'}</td>
-          <td><span class="badge ${r[4]===0?'self':'other'}">${r[4]===0?'Indé':'Label'}</span></td>
+          <td><span class="badge ${r[4]===0?'self':'other'}">${r[4]===0?T('Indé'):'Label'}</span></td>
           <td><span class="lb" title="${esc(r[5])}">${esc(r[5])}</span></td>
         </tr>`).join('')}
       </tbody>
     </table>
-    ${rows.length===0?'<div class="empty">Aucune track ne correspond à ces filtres.</div>':''}
+    ${rows.length===0?'<div class="empty">'+T('Aucune track ne correspond à ces filtres.')+'</div>':''}
     ${sentinel(rows.length-S.shown)}
   </div>`;
 
@@ -537,24 +598,24 @@ function renderArtists(){
   V.innerHTML = `
   <div class="page-head">
     <div>
-      <h2>Artistes</h2>
-      <p>Un profil par artiste : volume hors Lofi, part d'indé, priorités ≥ 500k. Clic sur une carte pour ouvrir ses tracks.</p>
+      <h2>${T('Artistes')}</h2>
+      <p>${T("Un profil par artiste : volume hors Lofi, part d'indé, priorités ≥ 500k. Clic sur une carte pour ouvrir ses tracks.")}</p>
     </div>
   </div>
   <div class="toolbar">
-    <input type="text" id="a-q" placeholder="Rechercher un artiste…" value="${esc(S.aq)}">
-    <button class="chip ${S.aseg==='all'?'on':''}" data-seg="all">Tous</button>
-    <button class="chip ${S.aseg==='reg'?'on':''}" data-seg="reg">Réguliers chez Lofi</button>
-    <button class="chip ${S.aseg==='occ'?'on':''}" data-seg="occ">Occasionnels</button>
-    <button class="chip ${S.aseg==='ext'?'on':''}" data-seg="ext">Jamais chez Lofi</button>
+    <input type="text" id="a-q" placeholder="${T('Rechercher un artiste…')}" value="${esc(S.aq)}">
+    <button class="chip ${S.aseg==='all'?'on':''}" data-seg="all">${T('Tous')}</button>
+    <button class="chip ${S.aseg==='reg'?'on':''}" data-seg="reg">${T('Réguliers chez Lofi')}</button>
+    <button class="chip ${S.aseg==='occ'?'on':''}" data-seg="occ">${T('Occasionnels')}</button>
+    <button class="chip ${S.aseg==='ext'?'on':''}" data-seg="ext">${T('Jamais chez Lofi')}</button>
     <select id="a-sort">
-      <option value="streams" ${S.asort==='streams'?'selected':''}>Tri : streams hors Lofi</option>
-      <option value="hot" ${S.asort==='hot'?'selected':''}>Tri : tracks ≥ 500k</option>
-      <option value="n" ${S.asort==='n'?'selected':''}>Tri : nb de tracks</option>
-      <option value="last" ${S.asort==='last'?'selected':''}>Tri : sortie la plus récente</option>
+      <option value="streams" ${S.asort==='streams'?'selected':''}>${T('Tri : streams hors Lofi')}</option>
+      <option value="hot" ${S.asort==='hot'?'selected':''}>${T('Tri : tracks ≥ 500k')}</option>
+      <option value="n" ${S.asort==='n'?'selected':''}>${T('Tri : nb de tracks')}</option>
+      <option value="last" ${S.asort==='last'?'selected':''}>${T('Tri : sortie la plus récente')}</option>
     </select>
     <span class="spacer"></span>
-    <span class="result-count">${list.length} artistes</span>
+    <span class="result-count">${list.length} ${T('artistes')}</span>
   </div>
   <div class="acards">
     ${slice.map(g=>{
@@ -565,11 +626,11 @@ function renderArtists(){
           <div class="av">${esc(g.name[0]||'?').toUpperCase()}${avatarHtml(g)}</div>
           <div style="min-width:0">
             <div class="nm">${esc(g.name)}</div>
-            <div style="font-size:11px;color:var(--dim)">${segBadge(g)} ${g.lofi?g.lofi+' tracks chez Lofi':''} ${g.disco?'· découverte ('+esc(g.origin||'related')+')':''}</div>
+            <div style="font-size:11px;color:var(--dim)">${segBadge(g)} ${g.lofi?g.lofi+' '+T('tracks chez Lofi'):''} ${g.disco?'· '+T('découverte')+' ('+esc(g.origin||'related')+')':''}</div>
           </div>
         </div>
         <div class="stats">
-          <div class="st"><div class="v">${fmt(g.streams)}</div><div class="l">streams</div></div>
+          <div class="st"><div class="v">${fmt(g.streams)}</div><div class="l">${T('streams')}</div></div>
           <div class="st"><div class="v">${g.n}</div><div class="l">tracks</div></div>
           <div class="st"><div class="v" style="color:${g.hot?'var(--acc2)':'inherit'}">${g.hot}</div><div class="l">≥ 500k</div></div>
         </div>
@@ -578,8 +639,8 @@ function renderArtists(){
           <div style="width:${100-p}%;background:#b45309"></div>
         </div>
         <div class="foot">
-          <span>${p}% indé</span>
-          <span>· dernière sortie ${g.last||'?'}</span>
+          <span>${p}% ${T('indé')}</span>
+          <span>· ${T('dernière sortie')} ${g.last||'?'}</span>
           ${g.top?`<span>· top « ${esc(g.top[1].slice(0,26))} » ${fmt(g.top[3])}</span>`:''}
         </div>
       </div>`;}).join('')}
@@ -601,33 +662,33 @@ function renderNew(){
   V.innerHTML = `
   <div class="page-head">
     <div>
-      <h2>Sorties récentes</h2>
-      <p>Nouvelles sorties hors Lofi des artistes suivis. Le badge « détectée » signale les tracks apparues lors d'un rafraîchissement de veille (après le ${D.seed}).</p>
+      <h2>${T('Sorties récentes')}</h2>
+      <p>${T("Nouvelles sorties hors Lofi des artistes suivis. Le badge « détectée » signale les tracks apparues lors d'un rafraîchissement de veille (après le")} ${D.seed}).</p>
     </div>
   </div>
   <div class="toolbar">
-    ${[30,90,180,365].map(d=>`<button class="chip ${S.newDays===d?'on':''}" data-d="${d}">${d} j</button>`).join('')}
+    ${[30,90,180,365].map(d=>`<button class="chip ${S.newDays===d?'on':''}" data-d="${d}">${d} ${T('j')}</button>`).join('')}
     <span class="spacer"></span>
-    <span class="result-count">${fmtFull(rows.length)} sorties · ${detected} détectées par la veille</span>
+    <span class="result-count">${fmtFull(rows.length)} ${T('sorties')} · ${detected} ${T('détectées par la veille')}</span>
   </div>
   <div class="panel" style="padding:6px 14px 14px">
     <table>
-      <thead><tr><th></th><th>Sortie</th><th>Track</th><th>Artiste</th><th class="num">Streams</th><th class="num">Streams/mois</th><th>Statut</th><th>Copyright</th></tr></thead>
+      <thead><tr><th></th><th>${T('Sortie')}</th><th>Track</th><th>${T('Artiste')}</th><th class="num">Streams</th><th class="num">${T('Streams/mois')}</th><th>${T('Statut')}</th><th>Copyright</th></tr></thead>
       <tbody>
       ${slice.map(r=>`
         <tr class="${r[3]>=HOT?'hot':''}">
           <td class="covtd">${r[8]?`<img class="cov on" src="${esc(r[8])}" alt="">`:`<img class="cov" data-tid="${r[6]}" alt="">`}</td>
           <td>${r[2]}</td>
-          <td><a class="tk" href="${trackUrl(r[6])}" target="_blank" rel="noopener">${esc(r[1])}</a>${r[7]?' <span class="badge new">détectée</span>':''}</td>
+          <td><a class="tk" href="${trackUrl(r[6])}" target="_blank" rel="noopener">${esc(r[1])}</a>${r[7]?' <span class="badge new">'+T('détectée')+'</span>':''}</td>
           <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
           <td class="num">${fmt(r[3])}</td>
           <td class="num">${fmt(perMonth(r))}</td>
-          <td><span class="badge ${r[4]===0?'self':'other'}">${r[4]===0?'Indé':'Label'}</span></td>
+          <td><span class="badge ${r[4]===0?'self':'other'}">${r[4]===0?T('Indé'):'Label'}</span></td>
           <td><span class="lb" title="${esc(r[5])}">${esc(r[5])}</span></td>
         </tr>`).join('')}
       </tbody>
     </table>
-    ${rows.length===0?'<div class="empty">Aucune sortie sur la période. La veille hebdomadaire alimentera cette vue automatiquement.</div>':''}
+    ${rows.length===0?'<div class="empty">'+T('Aucune sortie sur la période. La veille hebdomadaire alimentera cette vue automatiquement.')+'</div>':''}
     ${sentinel(rows.length-S.shownN)}
   </div>`;
   document.querySelectorAll('.chip[data-d]').forEach(c=>c.addEventListener('click', ()=>{ S.newDays=+c.dataset.d; S.shownN=100; renderNew(); }));
@@ -641,35 +702,35 @@ function renderDisco(){
   V.innerHTML = `
   <div class="page-head">
     <div>
-      <h2>Découverte — expansion hors catalogue</h2>
-      <p>Élargissement progressif au-delà des artistes Lofi : artistes similaires (« fans also like ») d'abord, playlists éditoriales par genre ensuite. Chaque artiste découvert entre dans la même file de crawl que le catalogue, puis dans la veille hebdomadaire.</p>
+      <h2>${T('Découverte — expansion hors catalogue')}</h2>
+      <p>${T("Élargissement progressif au-delà des artistes Lofi : artistes similaires (« fans also like ») d'abord, playlists éditoriales par genre ensuite. Chaque artiste découvert entre dans la même file de crawl que le catalogue, puis dans la veille hebdomadaire.")}</p>
     </div>
   </div>
   <div class="kpis">
-    ${kpi('Artistes découverts', disc.length, 'plafond initial : 200', true)}
-    ${kpi('Déjà scannés', doneD, disc.length? Math.round(doneD/disc.length*100)+' % du lot' : 'en attente du 1er lot')}
-    ${kpi('Source active', 'Fans also like', 'playlists éditoriales ensuite')}
+    ${kpi(T('Artistes découverts'), disc.length, T('plafond initial : 200'), true)}
+    ${kpi(T('Déjà scannés'), doneD, disc.length? Math.round(doneD/disc.length*100)+' '+T('% du lot') : T('en attente du 1er lot'))}
+    ${kpi(T('Source active'), 'Fans also like', T('playlists éditoriales ensuite'))}
   </div>
   ${disc.length===0?`
   <div class="panel">
-    <h3>Comment ça va se remplir</h3>
+    <h3>${T('Comment ça va se remplir')}</h3>
     <div class="steps">
-      <div class="step"><div class="n">1</div><b>Récolte</b><p>Sur les runs creux de la veille, le crawler récupère les « fans also like » de nos 500+ artistes et les ajoute à la file (plafonné, dédupliqué, hors artistes déjà suivis).</p></div>
-      <div class="step"><div class="n">2</div><b>Scan</b><p>Chaque artiste découvert passe dans le pipeline existant : discographie complète, streams, labels. Coût élevé une seule fois.</p></div>
-      <div class="step"><div class="n">3</div><b>Veille</b><p>Il rejoint ensuite le rafraîchissement hebdomadaire, quasi gratuit. Ses tracks apparaissent dans l'onglet Tracks avec le badge « découverte ».</p></div>
-      <div class="step"><div class="n">4</div><b>Élargissement</b><p>Quand le lot de 200 est digéré, on monte le plafond et on ajoute les playlists éditoriales par genre (lofi, ambient, piano, jazz…) comme seconde source.</p></div>
+      <div class="step"><div class="n">1</div><b>${T('Récolte')}</b><p>${T('Sur les runs creux de la veille, le crawler récupère les « fans also like » de nos 500+ artistes et les ajoute à la file (plafonné, dédupliqué, hors artistes déjà suivis).')}</p></div>
+      <div class="step"><div class="n">2</div><b>${T('Scan')}</b><p>${T('Chaque artiste découvert passe dans le pipeline existant : discographie complète, streams, labels. Coût élevé une seule fois.')}</p></div>
+      <div class="step"><div class="n">3</div><b>${T('Veille')}</b><p>${T("Il rejoint ensuite le rafraîchissement hebdomadaire, quasi gratuit. Ses tracks apparaissent dans l'onglet Tracks avec le badge « découverte ».")}</p></div>
+      <div class="step"><div class="n">4</div><b>${T('Élargissement')}</b><p>${T('Quand le lot de 200 est digéré, on monte le plafond et on ajoute les playlists éditoriales par genre (lofi, ambient, piano, jazz…) comme seconde source.')}</p></div>
     </div>
   </div>`:`
   <div class="panel" style="padding:6px 14px 14px">
     <table>
-      <thead><tr><th>Artiste</th><th>Origine</th><th>Source</th><th>Statut</th><th class="num">Tracks</th><th class="num">Streams</th><th class="num">≥ 500k</th></tr></thead>
+      <thead><tr><th>${T('Artiste')}</th><th>${T('Origine')}</th><th>Source</th><th>${T('Statut')}</th><th class="num">Tracks</th><th class="num">Streams</th><th class="num">≥ 500k</th></tr></thead>
       <tbody>
       ${disc.map(g=>`
         <tr>
           <td><span class="ar" onclick="goArtist(${g.i})" style="font-weight:600;color:var(--text)">${esc(g.name)}</span></td>
           <td><span class="badge disco">${esc(g.origin||'related')}</span></td>
           <td style="color:var(--muted)">${esc(g.seedSrc||'')}</td>
-          <td>${g.done?'<span class="badge self">scanné</span>':'<span class="badge other">en file</span>'}</td>
+          <td>${g.done?'<span class="badge self">'+T('scanné')+'</span>':'<span class="badge other">'+T('en file')+'</span>'}</td>
           <td class="num">${g.n||''}</td>
           <td class="num">${g.n?fmt(g.streams):''}</td>
           <td class="num">${g.n?g.hot:''}</td>
@@ -758,29 +819,29 @@ function attachInfinite(fn){
   endObserver.observe(s);
 }
 function sentinel(remaining){
-  return remaining>0 ? `<div id="scroll-sentinel" class="empty" style="padding:18px">Chargement… (${fmtFull(remaining)} restantes)</div>` : '';
+  return remaining>0 ? `<div id="scroll-sentinel" class="empty" style="padding:18px">${T('Chargement…')} (${fmtFull(remaining)} ${T('restantes')})</div>` : '';
 }
 
 function renderPlaylists(){
   V.innerHTML = `
   <div class="page-head">
     <div>
-      <h2>Playlists <span class="badge new" style="vertical-align:middle">bientôt disponible</span></h2>
-      <p>Prochain module, en préparation : scan des playlists de nos genres, éditoriales Spotify et indépendantes, avec suivi dans le temps du nombre de followers de chacune. Objectif : repérer ce qui marche (formats, genres, positionnements) pour s'en inspirer, et alimenter la découverte d'artistes.</p>
+      <h2>Playlists <span class="badge new" style="vertical-align:middle">${T('bientôt disponible')}</span></h2>
+      <p>${T("Prochain module, en préparation : scan des playlists de nos genres, éditoriales Spotify et indépendantes, avec suivi dans le temps du nombre de followers de chacune. Objectif : repérer ce qui marche (formats, genres, positionnements) pour s'en inspirer, et alimenter la découverte d'artistes.")}</p>
     </div>
   </div>
   <div class="kpis">
-    ${kpi('Playlists suivies', '—', 'scan à venir')}
-    ${kpi('Éditoriales vs indés', '—', 'répartition à venir')}
-    ${kpi('Followers trackés', '—', 'évolution hebdomadaire')}
+    ${kpi(T('Playlists suivies'), '—', T('scan à venir'))}
+    ${kpi(T('Éditoriales vs indés'), '—', T('répartition à venir'))}
+    ${kpi(T('Followers trackés'), '—', T('évolution hebdomadaire'))}
   </div>
   <div class="panel">
-    <h3>Ce que le module fera</h3>
+    <h3>${T('Ce que le module fera')}</h3>
     <div class="steps">
-      <div class="step"><div class="n">1</div><b>Recensement</b><p>Playlists éditoriales Spotify et grosses playlists indépendantes sur nos genres (lofi, ambient, piano, jazz, synthwave…), avec leur curateur et leur taille.</p></div>
-      <div class="step"><div class="n">2</div><b>Suivi des followers</b><p>Relevé régulier du nombre de followers de chaque playlist : courbes d'évolution, croissance hebdo, détection de celles qui explosent.</p></div>
-      <div class="step"><div class="n">3</div><b>Analyse</b><p>Comparaison édito vs indé, genres qui montent, formats qui marchent. De quoi s'inspirer pour nos propres playlists et le positionnement du label.</p></div>
-      <div class="step"><div class="n">4</div><b>Synergie découverte</b><p>Les artistes présents dans les playlists qui performent alimenteront la file de découverte, en plus des "fans also like".</p></div>
+      <div class="step"><div class="n">1</div><b>${T('Recensement')}</b><p>${T('Playlists éditoriales Spotify et grosses playlists indépendantes sur nos genres (lofi, ambient, piano, jazz, synthwave…), avec leur curateur et leur taille.')}</p></div>
+      <div class="step"><div class="n">2</div><b>${T('Suivi des followers')}</b><p>${T("Relevé régulier du nombre de followers de chaque playlist : courbes d'évolution, croissance hebdo, détection de celles qui explosent.")}</p></div>
+      <div class="step"><div class="n">3</div><b>${T('Analyse')}</b><p>${T('Comparaison édito vs indé, genres qui montent, formats qui marchent. De quoi s\'inspirer pour nos propres playlists et le positionnement du label.')}</p></div>
+      <div class="step"><div class="n">4</div><b>${T('Synergie découverte')}</b><p>${T('Les artistes présents dans les playlists qui performent alimenteront la file de découverte, en plus des "fans also like".')}</p></div>
     </div>
   </div>`;
 }
@@ -803,11 +864,30 @@ document.getElementById('c-disco').textContent = AG.filter(g=>g.disco).length;
 function fmtTs(ts){
   const m = (''+ts).match(/^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}:\d{2}))?/);
   if (!m) return ts;
-  return m[3]+'/'+m[2]+'/'+m[1] + (m[4] ? ' à '+m[4] : '');
+  if (LANG==='fr') return m[3]+'/'+m[2]+'/'+m[1] + (m[4] ? ' à '+m[4] : '');
+  return m[2]+'/'+m[3]+'/'+m[1] + (m[4] ? ', '+m[4] : '');
 }
-document.getElementById('sync-txt').innerHTML =
-  'Dernier scan le '+esc(fmtTs(D.ts||D.t))+'<br>'+fmtFull(R.length)+' tracks · '+AG.filter(g=>g.done).length+' artistes scannés';
-render();
+function updateFooter(){
+  document.getElementById('sync-txt').innerHTML =
+    T('Dernier scan le')+' '+esc(fmtTs(D.ts||D.t))+'<br>'+fmtFull(R.length)+' tracks · '+AG.filter(g=>g.done).length+' '+T('artistes scannés');
+}
+function applyLang(){
+  document.querySelectorAll('#nav [data-fr]').forEach(el=>{
+    if (el.classList.contains('nav-label')){ el.textContent = T(el.dataset.fr); return; }
+    for (const n of el.childNodes){
+      if (n.nodeType===3 && n.nodeValue.trim()){ n.nodeValue = T(el.dataset.fr); break; }
+    }
+  });
+  document.getElementById('lang-btn').textContent = LANG==='fr' ? '🇬🇧 EN' : '🇫🇷 FR';
+  document.documentElement.lang = LANG;
+  updateFooter(); render();
+}
+document.getElementById('lang-btn').addEventListener('click', ()=>{
+  LANG = LANG==='fr' ? 'en' : 'fr';
+  try{ localStorage.setItem('sr_lang', LANG); }catch(e){}
+  applyLang();
+});
+applyLang();
 </script>
 </body>
 </html>
