@@ -167,10 +167,13 @@ input,select{font-family:inherit;color:var(--text)}
 .offer .pal button{padding:7px 13px;border-radius:10px;border:1px solid var(--border);font-size:12px;font-weight:700;color:var(--muted);transition:all .14s}
 .offer .pal button.on{color:#052e12;background:linear-gradient(90deg,#1ed760,#4ade80);border-color:transparent}
 .offer .pal button:hover:not(.on){color:var(--text);border-color:var(--border2)}
-.periodbar{display:flex;gap:8px;margin:2px 0 14px;flex-wrap:wrap}
-.periodbar button{padding:8px 16px;border-radius:11px;border:1.5px solid var(--border2);font-size:12.5px;font-weight:800;letter-spacing:.2px;color:var(--muted);background:var(--card);transition:all .14s}
-.periodbar button:hover:not(.on){color:var(--text);border-color:#4ade80}
-.periodbar button.on{color:#052e12;background:linear-gradient(90deg,#1ed760,#4ade80);border-color:transparent;box-shadow:0 6px 18px rgba(30,215,96,.35)}
+.periodbar{display:flex;gap:11px;margin:2px 0 16px;flex-wrap:wrap}
+.periodbar button{display:flex;align-items:center;gap:10px;padding:14px 22px;border-radius:16px;border:1.5px solid var(--border2);font-size:14.5px;font-weight:700;letter-spacing:.1px;color:var(--text);background:var(--card);transition:all .14s}
+.periodbar button .dot{width:9px;height:9px;border-radius:50%;flex:none;box-shadow:0 0 8px currentColor}
+.periodbar button .cnt{color:var(--dim);font-weight:700;font-size:13.5px}
+.periodbar button:hover:not(.on){border-color:#4ade80}
+.periodbar button.on{color:#fff;background:linear-gradient(90deg,#7c3aed,#8b5cf6);border-color:transparent;box-shadow:0 8px 20px rgba(124,58,237,.4)}
+.periodbar button.on .cnt{color:rgba(255,255,255,.8)}
 .toolbar .spacer{flex:1}
 .result-count{font-size:12px;color:var(--dim);font-weight:600}
 
@@ -309,8 +312,9 @@ td.selc,th.selc{width:44px;padding-left:14px}
   .av-sm{width:40px;height:40px}
   .toolbar input[type=text]{min-width:0;flex:1 1 140px}
   .toolbar select{flex:1 1 auto}
-  .periodbar{gap:6px}
-  .periodbar button{padding:7px 12px;font-size:11.5px;flex:1 1 auto}
+  .periodbar{gap:8px}
+  .periodbar button{padding:11px 16px;font-size:13px;flex:1 1 auto;gap:7px}
+  .periodbar button .cnt{font-size:12px}
   .tmodal{padding:10px}
   .tmbox{padding:18px 15px;max-height:92vh}
   .ambox{max-width:100%}
@@ -389,6 +393,7 @@ const EN_MAP = {
   "Rechercher track, artiste, label…":"Search track, artist, label…","Tous":"All","Streams : tous":"Streams: all",
   "Toutes périodes":"All periods","90 derniers jours":"Last 90 days","12 derniers mois":"Last 12 months","3 dernières années":"Last 3 years",
   "< 1 mois":"< 1 month","< 3 mois":"< 3 months","< 6 mois":"< 6 months","< 12 mois":"< 12 months","< 3 ans":"< 3 years",
+  "1 dernier mois":"Last month","3 derniers mois":"Last 3 months","6 derniers mois":"Last 6 months","12 derniers mois":"Last 12 months","Tout l'historique":"All time",
   "Relation label : tous":"Label relation: all","Réguliers chez Lofi (≥10)":"Lofi regulars (≥10)","Occasionnels (1-9)":"Occasional (1-9)","Jamais chez Lofi":"Never on Lofi",
   "← Retour":"← Back","tracks":"tracks","Artiste":"Artist","Streams/mois":"Streams/mo","Sortie":"Release","Statut":"Status",
   "Indé":"Indie","détectée":"found","Aucune track ne correspond à ces filtres.":"No track matches these filters.",
@@ -586,18 +591,21 @@ function closeArtistModal(){
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeArtistModal(); });
 
 /* ---------- filtres opportunités ---------- */
-function filteredRows(){
+function rowsBeforePeriod(){
   const q = S.q.trim().toLowerCase();
-  let rows = R.filter(r=>{
+  return R.filter(r=>{
     if (S.artist>=0 && r[0]!==S.artist) return false;
     if (S.rel!=='all' && seg(AG[r[0]])!==S.rel) return false;
     if (S.statut==='self' && r[4]!==0) return false;
     if (S.statut==='other' && r[4]!==1) return false;
     if (S.min>0 && r[3]<S.min) return false;
-    if (S.period!=='all' && daysAgo(r[2]) > +S.period) return false;
     if (q && !(r[1].toLowerCase().includes(q) || A[r[0]][0].toLowerCase().includes(q) || r[5].toLowerCase().includes(q))) return false;
     return true;
   });
+}
+function filteredRows(){
+  const base = rowsBeforePeriod();
+  let rows = S.period==='all' ? base : base.filter(r=>daysAgo(r[2]) <= +S.period);
   const {k,dir} = S.sort;
   rows.sort((a,b)=>{
     let x,y;
@@ -907,6 +915,15 @@ function renderOpps(){
   const rows = filteredRows();
   const slice = rows.slice(0, S.shown);
   const ag = null;
+  const pbase = rowsBeforePeriod();
+  const pcnt = {
+    '30': pbase.filter(r=>daysAgo(r[2])<=30).length,
+    '90': pbase.filter(r=>daysAgo(r[2])<=90).length,
+    '180': pbase.filter(r=>daysAgo(r[2])<=180).length,
+    '365': pbase.filter(r=>daysAgo(r[2])<=365).length,
+    'all': pbase.length,
+  };
+  const pbtn = (val,color,label) => `<button class="${S.period===val?'on':''}" data-period="${val}"><span class="dot" style="color:${color};background:${color}"></span>${T(label)} <span class="cnt">${fmtFull(pcnt[val])}</span></button>`;
   V.innerHTML = `
   <div class="page-head">
     <div>
@@ -915,11 +932,11 @@ function renderOpps(){
     </div>
   </div>
   <div class="periodbar">
-    <button class="${S.period==='30'?'on':''}" data-period="30">${T('< 1 mois')}</button>
-    <button class="${S.period==='90'?'on':''}" data-period="90">${T('< 3 mois')}</button>
-    <button class="${S.period==='180'?'on':''}" data-period="180">${T('< 6 mois')}</button>
-    <button class="${S.period==='365'?'on':''}" data-period="365">${T('< 12 mois')}</button>
-    <button class="${S.period==='all'?'on':''}" data-period="all">ALL TIME</button>
+    ${pbtn('30','#4ade80','1 dernier mois')}
+    ${pbtn('90','#fbbf24','3 derniers mois')}
+    ${pbtn('180','#fb923c','6 derniers mois')}
+    ${pbtn('365','#f472b6','12 derniers mois')}
+    ${pbtn('all','#f87171',"Tout l'historique")}
   </div>
   <div class="toolbar">
     <input type="text" id="f-q" placeholder="${T('Rechercher track, artiste, label…')}" value="${esc(S.q)}">
