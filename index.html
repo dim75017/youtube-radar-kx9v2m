@@ -852,7 +852,7 @@ const VS={
 const RS={q:'',genre:'',pot:'',perso:'',val:'',sort:'scoreAdj',limit:80};
 const RM={src:'',genre:'',year:'',mode:'cal',cal:null,view:'month'};
 const LS={q:'',sort:'now',mode:'grid',limit:60};
-const CS={q:'',niche:'',sort:'subs',limit:150};
+const CS={q:'',niche:'',sort:'subs',mode:'table',limit:150};
 const CHAN_URL='https://docs.google.com/spreadsheets/d/1jDbcryjTDbRsW4Uw6OP_SYwgvbPoLQu_KcSWqC3Dfoc/export?format=xlsx';
 const CHAN_CACHE='lofiradar_chan_v1';
 let CHAN=null, CHAN_ERR=null, CHAN_T=null;
@@ -2480,25 +2480,47 @@ function chanHTML(){
       '<option value="">🎯 All niches</option>'+niches.map(n=>'<option '+(CS.niche===n?'selected':'')+' value="'+esc(n)+'">🎯 '+esc(n)+' · '+all.filter(x=>(x.niche||'(unset)')===n).length+'</option>').join('')+'</select>'+
     '<select class="ctl c-sort" onchange="CS.sort=this.value;rerenderChans()">'+
       '<option value="subs">⚡ Sort · Subscribers</option><option '+(CS.sort==='viewsYr'?'selected':'')+' value="viewsYr">⚡ Sort · Views / year</option><option '+(CS.sort==='avg10'?'selected':'')+' value="avg10">⚡ Sort · Avg last 10</option><option '+(CS.sort==='upMo'?'selected':'')+' value="upMo">⚡ Sort · Uploads / month</option><option '+(CS.sort==='lastUp'?'selected':'')+' value="lastUp">⚡ Sort · Last upload</option><option '+(CS.sort==='name'?'selected':'')+' value="name">⚡ Sort · Name</option></select>'+
-    '<div class="tb-right"><div class="result-count"><b>'+fmtInt(rows.length)+'</b> channels</div></div>'+
+    '<div class="tb-right"><div class="viewtoggle">'+
+      '<button class="'+(CS.mode==='grid'?'on':'')+'" onclick="CS.mode=\'grid\';render()" title="Grid">'+ICONS.grid+'</button>'+
+      '<button class="'+(CS.mode!=='grid'?'on':'')+'" onclick="CS.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button></div>'+
+    '<div class="result-count"><b>'+fmtInt(rows.length)+'</b> channels</div></div>'+
   '</div>';
   h+='<div id="chan-list">'+chanListHTML(rows)+'</div>';
   return h;
+}
+function chanCardHTML(c,i){
+  return '<div class="vcard" onclick="openChanIdx('+i+')">'+
+    '<div class="thumbwrap" style="height:auto;aspect-ratio:auto;padding:24px 16px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;background:linear-gradient(160deg,rgba(139,124,246,.12),rgba(139,124,246,.02))">'+
+      wlStar('c',normUrl(c.url))+chAva(c,68)+
+      '<div style="text-align:center;max-width:100%"><div class="ttitle" style="white-space:normal">'+esc(c.name)+(c.ours?' <span class="tag" style="background:#a78bfa22;color:#a78bfa;border:1px solid #a78bfa55">OURS</span>':'')+'</div></div>'+
+    '</div>'+
+    '<div class="vbody">'+
+      '<div class="vtags">'+gtag(c.niche)+(c.country?'<span class="tag ghost">'+flagOf(c.country)+' '+esc(c.country)+'</span>':'')+'</div>'+
+      '<div class="vstats">'+
+        '<div class="vstat hl"><b>'+fmtN(c.subs)+'</b><span>subs</span></div>'+
+        '<div class="vstat"><b>'+(chanSubsMo(c)!=null?'+'+fmtN(chanSubsMo(c)):'—')+'</b><span>subs/mo</span></div>'+
+        '<div class="vstat"><b>'+fmtN(c.viewsYr)+'</b><span>views/yr</span></div>'+
+      '</div></div></div>';
 }
 function chanListHTML(rows){
   if(!rows.length)return '<div class="empty">Nothing matches — try clearing filters.</div>';
   const page=rows.slice(0,CS.limit);
   window._page_chan=page;
-  let h='<table class="vtable"><thead><tr><th>Channel</th><th>Niche</th><th>Country</th><th>Subs</th><th>Subs per month</th><th>Total views</th><th>Views per year</th><th>Avg last 10</th><th>Uploads per month</th><th>Last upload</th></tr></thead><tbody>'+
-    page.map((c,i)=>'<tr class="row" onclick="openChanIdx('+i+')">'+
-      '<td><div style="display:flex;align-items:center;gap:12px">'+chAva(c,64)+'<span class="ttitle">'+esc(c.name)+(c.ours?' <span class="tag" style="background:#a78bfa22;color:#a78bfa;border:1px solid #a78bfa55;margin-left:6px">OURS</span>':'')+' '+'</span>'+wlStar('c',normUrl(c.url)).replace('class="wl-star','style="margin-left:8px" class="wl-star inline')+'</div></td>'+
-      '<td>'+gtag(c.niche)+'</td>'+
-      '<td style="white-space:nowrap">'+flagOf(c.country)+' '+esc(c.country||'—')+'</td>'+
-      '<td class="num vpmcell">'+fmtN(c.subs)+'</td>'+
-      '<td class="num">'+(chanSubsMo(c)!=null?'+'+fmtN(chanSubsMo(c)):'—')+'</td>'+
-      '<td class="num">'+fmtN(c.views)+'</td>'+
-      '<td class="num">'+fmtN(c.viewsYr)+'</td><td class="num">'+fmtN(c.avg10)+'</td>'+
-      '<td class="num">'+(c.upMo!=null?c.upMo:'—')+'</td><td class="num">'+fmtDateFull(c.lastUp)+'</td></tr>').join('')+'</tbody></table>';
+  let h;
+  if(CS.mode==='grid'){
+    h='<div class="vgrid">'+page.map((c,i)=>chanCardHTML(c,i)).join('')+'</div>';
+  }else{
+    h='<table class="vtable"><thead><tr><th>Channel</th><th>Niche</th><th>Country</th><th>Subs</th><th>Subs per month</th><th>Total views</th><th>Views per year</th><th>Avg last 10</th><th>Uploads per month</th><th>Last upload</th></tr></thead><tbody>'+
+      page.map((c,i)=>'<tr class="row" onclick="openChanIdx('+i+')">'+
+        '<td><div style="display:flex;align-items:center;gap:12px">'+chAva(c,64)+'<span class="ttitle">'+esc(c.name)+(c.ours?' <span class="tag" style="background:#a78bfa22;color:#a78bfa;border:1px solid #a78bfa55;margin-left:6px">OURS</span>':'')+' '+'</span>'+wlStar('c',normUrl(c.url)).replace('class="wl-star','style="margin-left:8px" class="wl-star inline')+'</div></td>'+
+        '<td>'+gtag(c.niche)+'</td>'+
+        '<td style="white-space:nowrap">'+flagOf(c.country)+' '+esc(c.country||'—')+'</td>'+
+        '<td class="num vpmcell">'+fmtN(c.subs)+'</td>'+
+        '<td class="num">'+(chanSubsMo(c)!=null?'+'+fmtN(chanSubsMo(c)):'—')+'</td>'+
+        '<td class="num">'+fmtN(c.views)+'</td>'+
+        '<td class="num">'+fmtN(c.viewsYr)+'</td><td class="num">'+fmtN(c.avg10)+'</td>'+
+        '<td class="num">'+(c.upMo!=null?c.upMo:'—')+'</td><td class="num">'+fmtDateFull(c.lastUp)+'</td></tr>').join('')+'</tbody></table>';
+  }
   if(rows.length>CS.limit)h+='<button class="load-more" onclick="CS.limit+=150;rerenderChans()">Loading more · '+fmtInt(rows.length-CS.limit)+' remaining</button>';
   return h;
 }
