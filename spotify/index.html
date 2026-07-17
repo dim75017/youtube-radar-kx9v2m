@@ -84,12 +84,12 @@ input,select{font-family:inherit;color:var(--text)}
   box-shadow:0 4px 16px rgba(0,0,0,.28);
 }
 .lang-switch button{
-  display:flex;align-items:center;gap:6px;padding:6px 13px;border-radius:18px;
-  font-size:12.5px;font-weight:700;color:var(--dim);transition:all .18s;line-height:1;
+  display:flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border-radius:50%;
+  font-size:12.5px;font-weight:700;color:var(--dim);transition:all .18s;line-height:1;opacity:.55;
 }
-.lang-switch button .fl{font-size:15px}
-.lang-switch button.on{color:#052e12;background:linear-gradient(90deg,#1ed760,#4ade80);box-shadow:0 2px 8px rgba(30,215,96,.35)}
-.lang-switch button:not(.on):hover{color:var(--text)}
+.lang-switch button .fl{font-size:18px}
+.lang-switch button.on{opacity:1;background:rgba(74,222,128,.14);box-shadow:inset 0 0 0 1.5px #4ade80}
+.lang-switch button:not(.on):hover{opacity:.85}
 
 /* ---------- Main ---------- */
 #main{margin-left:var(--sidebar);padding:26px 30px 60px}
@@ -142,6 +142,13 @@ input,select{font-family:inherit;color:var(--text)}
   font-size:13px;min-width:230px;outline:none;
 }
 .toolbar input[type=text]:focus{border-color:var(--border2)}
+.search-wrap{position:relative;display:flex;align-items:center;margin-left:auto}
+.search-wrap .sico{position:absolute;left:14px;font-size:14px;color:var(--dim);pointer-events:none}
+.search-wrap input[type=text]{
+  padding:11px 16px 11px 38px;min-width:270px;font-size:13.5px;border-radius:13px;
+  background:var(--card);border:1.5px solid var(--border2);
+}
+.search-wrap input[type=text]:focus{border-color:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.14)}
 .toolbar select{
   background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:8.5px 11px;
   font-size:12.5px;outline:none;appearance:auto;
@@ -311,6 +318,8 @@ td.selc,th.selc{width:44px;padding-left:14px}
   .top-row .nm .badge{margin-left:0}
   .av-sm{width:40px;height:40px}
   .toolbar input[type=text]{min-width:0;flex:1 1 140px}
+  .search-wrap{margin-left:0;width:100%;order:99}
+  .search-wrap input[type=text]{min-width:0;width:100%}
   .toolbar select{flex:1 1 auto}
   .periodbar{gap:6px}
   .periodbar button{padding:8px 12px;font-size:10.5px;flex:1 1 auto;gap:5px}
@@ -354,8 +363,8 @@ td.selc,th.selc{width:44px;padding-left:14px}
 </aside>
 
 <div class="lang-switch" id="lang-switch">
-  <button data-lang="fr"><span class="fl">🇫🇷</span> FR</button>
-  <button data-lang="en"><span class="fl">🇬🇧</span> EN</button>
+  <button data-lang="fr" title="Français"><span class="fl">🇫🇷</span></button>
+  <button data-lang="en" title="English"><span class="fl">🇬🇧</span></button>
 </div>
 
 <main id="main">
@@ -939,7 +948,6 @@ function renderOpps(){
     ${pbtn('all','#f87171',"Tout l'historique")}
   </div>
   <div class="toolbar">
-    <input type="text" id="f-q" placeholder="${T('Rechercher track, artiste, label…')}" value="${esc(S.q)}">
     <button class="chip ${S.statut==='all'?'on':''}" data-st="all">${T('Tous')}</button>
     <button class="chip ${S.statut==='self'?'on':''}" data-st="self">Self-released</button>
     <button class="chip ${S.statut==='other'?'on':''}" data-st="other">${T('Autre label')}</button>
@@ -959,6 +967,7 @@ function renderOpps(){
     </select>
     <span class="spacer"></span>
     <span class="result-count">${fmtFull(rows.length)} ${T('tracks')}</span>
+    <div class="search-wrap"><span class="sico">🔍</span><input type="text" id="f-q" placeholder="${T('Rechercher track, artiste, label…')}" value="${esc(S.q)}"></div>
   </div>
   <div class="panel" style="padding:6px 14px 14px">
     <table>
@@ -996,18 +1005,18 @@ function renderOpps(){
     ${sentinel(rows.length-S.shown)}
   </div>`;
 
-  document.getElementById('f-q').addEventListener('input', e=>{ S.q=e.target.value; S.shown=100; renderOpps(); keepFocus('f-q'); });
-  document.querySelectorAll('.chip[data-st]').forEach(c=>c.addEventListener('click', ()=>{ S.statut=c.dataset.st; S.shown=100; renderOpps(); }));
-  document.getElementById('f-min').addEventListener('change', e=>{ S.min=+e.target.value; S.shown=100; renderOpps(); });
-  document.querySelectorAll('.periodbar button[data-period]').forEach(b=>b.addEventListener('click', ()=>{ S.period=b.dataset.period; S.shown=100; renderOpps(); }));
-  document.getElementById('f-rel').addEventListener('change', e=>{ S.rel=e.target.value; S.shown=100; renderOpps(); });
+  document.getElementById('f-q').addEventListener('input', e=>{ S.q=e.target.value; S.shown=100; keepScroll(renderOpps); keepFocus('f-q'); });
+  document.querySelectorAll('.chip[data-st]').forEach(c=>c.addEventListener('click', ()=>{ S.statut=c.dataset.st; S.shown=100; keepScroll(renderOpps); }));
+  document.getElementById('f-min').addEventListener('change', e=>{ S.min=+e.target.value; S.shown=100; keepScroll(renderOpps); });
+  document.querySelectorAll('.periodbar button[data-period]').forEach(b=>b.addEventListener('click', ()=>{ S.period=b.dataset.period; S.shown=100; keepScroll(renderOpps); }));
+  document.getElementById('f-rel').addEventListener('change', e=>{ S.rel=e.target.value; S.shown=100; keepScroll(renderOpps); });
   const ca = document.getElementById('f-clear-artist');
-  if (ca) ca.addEventListener('click', ()=>{ S.artist=-1; S.shown=100; renderOpps(); });
+  if (ca) ca.addEventListener('click', ()=>{ S.artist=-1; S.shown=100; keepScroll(renderOpps); });
   attachInfinite(()=>{ const y=window.scrollY; S.shown+=200; renderOpps(); window.scrollTo(0,y); });
   document.querySelectorAll('th[data-k]').forEach(h=>h.addEventListener('click', ()=>{
     const k=+h.dataset.k;
     if (S.sort.k===k) S.sort.dir*=-1; else S.sort={k, dir:-1};
-    renderOpps();
+    keepScroll(renderOpps);
   }));
   function updateSel(){
     // mise à jour SANS re-render (pas de saut de page) : offre + surlignage + compteurs
@@ -1032,6 +1041,7 @@ function renderOpps(){
   if (typeof attachCovers==='function') attachCovers();
 }
 function keepFocus(id){ const el=document.getElementById(id); if(el){ el.focus(); el.setSelectionRange(el.value.length,el.value.length);} }
+function keepScroll(fn){ const y=window.scrollY; fn(); window.scrollTo(0,y); }
 
 function renderArtists(){
   const q = S.aq.trim().toLowerCase();
@@ -1049,7 +1059,6 @@ function renderArtists(){
     </div>
   </div>
   <div class="toolbar">
-    <input type="text" id="a-q" placeholder="${T('Rechercher un artiste…')}" value="${esc(S.aq)}">
     <button class="chip ${S.aseg==='all'?'on':''}" data-seg="all">${T('Tous')}</button>
     <button class="chip ${S.aseg==='top'?'on':''}" data-seg="top"><span class="fdot" style="background:#fb923c"></span>Top artists</button>
     <button class="chip ${S.aseg==='reg'?'on':''}" data-seg="reg"><span class="fdot" style="background:#a78bfa"></span>Regulars</button>
@@ -1063,6 +1072,7 @@ function renderArtists(){
     </select>
     <span class="spacer"></span>
     <span class="result-count">${list.length} ${T('artistes')}</span>
+    <div class="search-wrap"><span class="sico">🔍</span><input type="text" id="a-q" placeholder="${T('Rechercher un artiste…')}" value="${esc(S.aq)}"></div>
   </div>
   <div class="acards">
     ${slice.map(g=>{
@@ -1098,9 +1108,9 @@ function renderArtists(){
   </div>
   ${sentinel(list.length-S.shownA)}`;
 
-  document.getElementById('a-q').addEventListener('input', e=>{ S.aq=e.target.value; S.shownA=60; renderArtists(); keepFocus('a-q'); });
-  document.querySelectorAll('.chip[data-seg]').forEach(c=>c.addEventListener('click', ()=>{ S.aseg=c.dataset.seg; S.shownA=60; renderArtists(); }));
-  document.getElementById('a-sort').addEventListener('change', e=>{ S.asort=e.target.value; renderArtists(); });
+  document.getElementById('a-q').addEventListener('input', e=>{ S.aq=e.target.value; S.shownA=60; keepScroll(renderArtists); keepFocus('a-q'); });
+  document.querySelectorAll('.chip[data-seg]').forEach(c=>c.addEventListener('click', ()=>{ S.aseg=c.dataset.seg; S.shownA=60; keepScroll(renderArtists); }));
+  document.getElementById('a-sort').addEventListener('change', e=>{ S.asort=e.target.value; keepScroll(renderArtists); });
   attachInfinite(()=>{ const y=window.scrollY; S.shownA+=60; renderArtists(); window.scrollTo(0,y); });
   if (typeof attachCovers==='function') attachCovers();
 }
