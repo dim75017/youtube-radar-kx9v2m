@@ -337,9 +337,9 @@ td.selc,th.selc{width:44px;padding-left:14px}
   </div>
   <nav class="nav" id="nav">
     <div class="nav-label" data-fr="Analyse">Analyse</div>
-    <button data-v="overview" class="active" data-fr="Vue d'ensemble"><span class="emo">📡</span>Vue d'ensemble</button>
-    <button data-v="opps" data-fr="All tracks"><span class="emo">💎</span>All tracks<span class="count" id="c-opps"></span></button>
-    <button data-v="artists" data-fr="All artists"><span class="emo">🎧</span>All artists<span class="count" id="c-art"></span></button>
+    <button data-v="overview" class="active" data-fr="Vue d'ensemble"><span class="emo">📊</span>Vue d'ensemble</button>
+    <button data-v="opps" data-fr="All tracks"><span class="emo">🎶</span>All tracks<span class="count" id="c-opps"></span></button>
+    <button data-v="artists" data-fr="All artists"><span class="emo">🎤</span>All artists<span class="count" id="c-art"></span></button>
     <button data-v="watch" data-fr="Watchlist"><span class="emo">⭐</span>Watchlist<span class="count" id="c-watch"></span></button>
     <div class="nav-label" data-fr="Expansion">Expansion</div>
     <button data-v="disco" data-fr="Découverte"><span class="emo">🔭</span>Découverte<span class="count" id="c-disco"></span></button>
@@ -876,7 +876,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeTrack(); });
 
 function renderWatch(){
   const w=wlGet();
-  const tabs=[['tracks','🎵 Tracks',w.t.length],['artists','🎧 '+T('Artistes'),w.a.length]];
+  const tabs=[['tracks','🎶 Tracks',w.t.length],['artists','🎤 '+T('Artistes'),w.a.length]];
   let h=`<div class="page-head"><div><h2>Watchlist</h2><p>${T("Tes tracks et artistes épinglés, à suivre pour un rachat. Stocké dans ce navigateur.")}</p></div></div>`;
   h+='<div class="toolbar">'+tabs.map(t=>`<button class="chip ${S.wltab===t[0]?'on':''}" onclick="S.wltab='${t[0]}';render()">${t[1]} (${t[2]})</button>`).join('')+'</div>';
   if(S.wltab==='tracks'){
