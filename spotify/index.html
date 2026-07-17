@@ -33,8 +33,8 @@ body{
 }
 a{color:inherit;text-decoration:none}
 button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
-.chip,.pal button,.nav button,.btn-back,.lang-switch button,.acard,.top-row,.btn-more,.offer .ob{transition:transform .13s cubic-bezier(.34,1.56,.64,1),background .15s,border-color .15s,box-shadow .15s,color .15s}
-.chip:active,.pal button:active,.nav button:active,.btn-back:active,.lang-switch button:active,.btn-more:active{transform:scale(.94)}
+.chip,.pal button,.nav button,.btn-back,.lang-switch button,.acard,.top-row,.btn-more,.offer .ob,.periodbar button{transition:transform .13s cubic-bezier(.34,1.56,.64,1),background .15s,border-color .15s,box-shadow .15s,color .15s}
+.chip:active,.pal button:active,.nav button:active,.btn-back:active,.lang-switch button:active,.btn-more:active,.periodbar button:active{transform:scale(.94)}
 .top-row:active{transform:scale(.995)}
 .tk,.ar{transition:color .12s}
 input,select{font-family:inherit;color:var(--text)}
@@ -167,6 +167,10 @@ input,select{font-family:inherit;color:var(--text)}
 .offer .pal button{padding:7px 13px;border-radius:10px;border:1px solid var(--border);font-size:12px;font-weight:700;color:var(--muted);transition:all .14s}
 .offer .pal button.on{color:#052e12;background:linear-gradient(90deg,#1ed760,#4ade80);border-color:transparent}
 .offer .pal button:hover:not(.on){color:var(--text);border-color:var(--border2)}
+.periodbar{display:flex;gap:9px;margin:2px 0 14px;flex-wrap:wrap}
+.periodbar button{padding:11px 22px;border-radius:13px;border:1.5px solid var(--border2);font-size:14px;font-weight:800;letter-spacing:.2px;color:var(--muted);background:var(--card);transition:all .14s}
+.periodbar button:hover:not(.on){color:var(--text);border-color:#4ade80}
+.periodbar button.on{color:#052e12;background:linear-gradient(90deg,#1ed760,#4ade80);border-color:transparent;box-shadow:0 6px 18px rgba(30,215,96,.35)}
 .toolbar .spacer{flex:1}
 .result-count{font-size:12px;color:var(--dim);font-weight:600}
 
@@ -305,6 +309,8 @@ td.selc,th.selc{width:44px;padding-left:14px}
   .av-sm{width:40px;height:40px}
   .toolbar input[type=text]{min-width:0;flex:1 1 140px}
   .toolbar select{flex:1 1 auto}
+  .periodbar{gap:7px}
+  .periodbar button{padding:9px 14px;font-size:12.5px;flex:1 1 auto}
   .tmodal{padding:10px}
   .tmbox{padding:18px 15px;max-height:92vh}
   .ambox{max-width:100%}
@@ -330,7 +336,6 @@ td.selc,th.selc{width:44px;padding-left:14px}
     <button data-v="overview" class="active" data-fr="Vue d'ensemble"><span class="emo">📡</span>Vue d'ensemble</button>
     <button data-v="opps" data-fr="All tracks"><span class="emo">💎</span>All tracks<span class="count" id="c-opps"></span></button>
     <button data-v="artists" data-fr="All artists"><span class="emo">🎧</span>All artists<span class="count" id="c-art"></span></button>
-    <button data-v="hot" data-fr="Opportunités"><span class="emo">🔥</span>Opportunités<span class="count" id="c-hot"></span></button>
     <button data-v="watch" data-fr="Watchlist"><span class="emo">⭐</span>Watchlist<span class="count" id="c-watch"></span></button>
     <div class="nav-label" data-fr="Expansion">Expansion</div>
     <button data-v="disco" data-fr="Découverte"><span class="emo">🔭</span>Découverte<span class="count" id="c-disco"></span></button>
@@ -383,6 +388,7 @@ const EN_MAP = {
   "Toutes les tracks hors Lofi Records. Les lignes vertes dépassent 500 000 streams (priorités). Streams / mois = vélocité depuis la sortie.":"Every track outside Lofi Records. Green rows are above 500,000 streams (priorities). Streams / month = velocity since release.",
   "Rechercher track, artiste, label…":"Search track, artist, label…","Tous":"All","Streams : tous":"Streams: all",
   "Toutes périodes":"All periods","90 derniers jours":"Last 90 days","12 derniers mois":"Last 12 months","3 dernières années":"Last 3 years",
+  "< 3 mois":"< 3 months","< 12 mois":"< 12 months","< 3 ans":"< 3 years",
   "Relation label : tous":"Label relation: all","Réguliers chez Lofi (≥10)":"Lofi regulars (≥10)","Occasionnels (1-9)":"Occasional (1-9)","Jamais chez Lofi":"Never on Lofi",
   "← Retour":"← Back","tracks":"tracks","Artiste":"Artist","Streams/mois":"Streams/mo","Sortie":"Release","Statut":"Status",
   "Indé":"Indie","détectée":"found","Aucune track ne correspond à ces filtres.":"No track matches these filters.",
@@ -552,7 +558,7 @@ const S = {
   q:'', statut:'all', min:0, period:'all', artist:-1, rel:'all',
   sort:{k:3, dir:-1}, shown:100,
   aq:'', asort:'streams', shownA:60, aseg:'all',
-  newDays:90, shownN:100, hotAge:24, shownH:60,
+  newDays:90, shownN:100,
 };
 
 /* ---------- navigation ---------- */
@@ -560,7 +566,7 @@ function syncHash(){ try{ history.replaceState(null,'','#'+S.view); }catch(e){} 
 document.getElementById('nav').addEventListener('click', e=>{
   const b = e.target.closest('button'); if(!b) return;
   document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active', x===b));
-  S.view = b.dataset.v; S.shown = 100; S.shownA = 60; S.shownN = 100; S.shownH = 60; S.artist = -1;
+  S.view = b.dataset.v; S.shown = 100; S.shownA = 60; S.shownN = 100; S.artist = -1;
   syncHash(); render(); window.scrollTo(0,0);
 });
 function goArtist(i){
@@ -908,6 +914,12 @@ function renderOpps(){
       <p>${T("Toutes les tracks hors Lofi Records. Les lignes vertes dépassent 500 000 streams (priorités). Streams / mois = vélocité depuis la sortie.")}</p>
     </div>
   </div>
+  <div class="periodbar">
+    <button class="${S.period==='90'?'on':''}" data-period="90">${T('< 3 mois')}</button>
+    <button class="${S.period==='365'?'on':''}" data-period="365">${T('< 12 mois')}</button>
+    <button class="${S.period==='1095'?'on':''}" data-period="1095">${T('< 3 ans')}</button>
+    <button class="${S.period==='all'?'on':''}" data-period="all">ALL TIME</button>
+  </div>
   <div class="toolbar">
     <input type="text" id="f-q" placeholder="${T('Rechercher track, artiste, label…')}" value="${esc(S.q)}">
     <button class="chip ${S.statut==='all'?'on':''}" data-st="all">${T('Tous')}</button>
@@ -919,12 +931,6 @@ function renderOpps(){
       <option value="500000" ${S.min===500000?'selected':''}>≥ 500k</option>
       <option value="1000000" ${S.min===1000000?'selected':''}>≥ 1M</option>
       <option value="5000000" ${S.min===5000000?'selected':''}>≥ 5M</option>
-    </select>
-    <select id="f-period">
-      <option value="all" ${S.period==='all'?'selected':''}>${T('Toutes périodes')}</option>
-      <option value="90" ${S.period==='90'?'selected':''}>${T('90 derniers jours')}</option>
-      <option value="365" ${S.period==='365'?'selected':''}>${T('12 derniers mois')}</option>
-      <option value="1095" ${S.period==='1095'?'selected':''}>${T('3 dernières années')}</option>
     </select>
     <select id="f-rel">
       <option value="all" ${S.rel==='all'?'selected':''}>${T('Relation label : tous')}</option>
@@ -975,7 +981,7 @@ function renderOpps(){
   document.getElementById('f-q').addEventListener('input', e=>{ S.q=e.target.value; S.shown=100; renderOpps(); keepFocus('f-q'); });
   document.querySelectorAll('.chip[data-st]').forEach(c=>c.addEventListener('click', ()=>{ S.statut=c.dataset.st; S.shown=100; renderOpps(); }));
   document.getElementById('f-min').addEventListener('change', e=>{ S.min=+e.target.value; S.shown=100; renderOpps(); });
-  document.getElementById('f-period').addEventListener('change', e=>{ S.period=e.target.value; S.shown=100; renderOpps(); });
+  document.querySelectorAll('.periodbar button[data-period]').forEach(b=>b.addEventListener('click', ()=>{ S.period=b.dataset.period; S.shown=100; renderOpps(); }));
   document.getElementById('f-rel').addEventListener('change', e=>{ S.rel=e.target.value; S.shown=100; renderOpps(); });
   const ca = document.getElementById('f-clear-artist');
   if (ca) ca.addEventListener('click', ()=>{ S.artist=-1; S.shown=100; renderOpps(); });
@@ -1078,63 +1084,6 @@ function renderArtists(){
   document.querySelectorAll('.chip[data-seg]').forEach(c=>c.addEventListener('click', ()=>{ S.aseg=c.dataset.seg; S.shownA=60; renderArtists(); }));
   document.getElementById('a-sort').addEventListener('change', e=>{ S.asort=e.target.value; renderArtists(); });
   attachInfinite(()=>{ const y=window.scrollY; S.shownA+=60; renderArtists(); window.scrollTo(0,y); });
-  if (typeof attachCovers==='function') attachCovers();
-}
-
-/* ---------- Opportunités : tracks récentes qui performent, classées par score ---------- */
-function oppScore(r){
-  const m = monthsSince(r[2]); if (m===null) return 0;
-  const vel = perMonth(r); if (vel<=0) return 0;
-  const recency = Math.max(0.2, 1 - m/30);       // favorise le récent
-  return vel * recency;
-}
-function oppLevel(vel){
-  if (vel>=300000) return ['🔥 '+T('Très chaud'),'pb-good'];
-  if (vel>=100000) return ['🔥 '+T('Chaud'),'pb-good'];
-  if (vel>=30000)  return ['↗ '+T('Prometteur'),'pb-mid'];
-  return ['· '+T('À suivre'),''];
-}
-function renderHot(){
-  const maxAge = S.hotAge||24;
-  const TOPN = 100;
-  let rows = R.filter(r=>{ const m=monthsSince(r[2]); return r[3]>=1000 && m!==null && m<=maxAge && perMonth(r)>0; });
-  rows.forEach(r=>r._sc=oppScore(r));
-  rows.sort((a,b)=>b._sc-a._sc);
-  const total = rows.length;
-  rows = rows.slice(0, TOPN);   // uniquement les meilleures
-  V.innerHTML = `
-  <div class="page-head"><div>
-    <h2>${T('Opportunités')}</h2>
-    <p>${T("Le top des tracks récentes qui sortent du lot (fort volume de streams par mois, pondéré par la fraîcheur). Les meilleures cibles de rachat. Clique une track pour sa fiche.")}</p>
-  </div></div>
-  <div class="toolbar">
-    ${[12,24,36].map(d=>`<button class="chip ${maxAge===d?'on':''}" data-age="${d}">≤ ${d} ${T('mois')}</button>`).join('')}
-    <span class="spacer"></span>
-    <span class="result-count">Top ${rows.length} / ${fmtFull(total)} ${T('opportunités')}</span>
-  </div>
-  <div class="panel" style="padding:6px 14px 14px">
-    <table>
-      <thead><tr><th>#</th><th></th><th></th><th>Track</th><th>${T('Artiste')}</th><th class="num">Streams</th><th class="num">${T('Streams/mois')}</th><th class="num">${T('Rachat')} ${S.palier}</th><th>${T('Statut')}</th><th>${T('Date de sortie')}</th><th>${T('Opportunité')}</th></tr></thead>
-      <tbody>
-      ${rows.map((r,ix)=>{const lvl=oppLevel(perMonth(r)); return `
-        <tr data-basehot="${r[3]>=HOT?1:0}" class="${r[3]>=HOT?'hot':''}">
-          <td style="color:var(--dim);font-weight:700">${ix+1}</td>
-          <td>${wlStar('t',r[6])}</td>
-          <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
-          <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span></td>
-          <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
-          <td class="num">${fmt(r[3])}</td>
-          <td class="num" style="color:var(--cyan);font-weight:600">${fmt(perMonth(r))}</td>
-          <td class="num"><span style="color:var(--acc2);font-weight:600">${eur(advance(Math.max(perMonth(r),0)))}</span></td>
-          <td><span class="badge ${r[4]===0?'self':'other'}">${r[4]===0?T('Indé'):'Label'}</span></td>
-          <td style="white-space:nowrap;font-variant-numeric:tabular-nums">${fmtDate(r[2])}</td>
-          <td><span class="badge ${lvl[1]==='pb-good'?'hot':(lvl[1]==='pb-mid'?'seg-occ':'other')}">${lvl[0]}</span></td>
-        </tr>`;}).join('')}
-      </tbody>
-    </table>
-    ${rows.length===0?'<div class="empty">'+T('Aucune opportunité sur la période.')+'</div>':''}
-  </div>`;
-  document.querySelectorAll('.chip[data-age]').forEach(c=>c.addEventListener('click',()=>{ S.hotAge=+c.dataset.age; renderHot(); }));
   if (typeof attachCovers==='function') attachCovers();
 }
 
@@ -1345,7 +1294,6 @@ function render(){
   if (S.view==='overview') renderOverview();
   else if (S.view==='opps') renderOpps();
   else if (S.view==='artists') renderArtists();
-  else if (S.view==='hot') renderHot();
   else if (S.view==='disco') renderDisco();
   else if (S.view==='playlists') renderPlaylists();
   else if (S.view==='watch') renderWatch();
@@ -1356,7 +1304,6 @@ function render(){
 /* ---------- init ---------- */
 document.getElementById('c-opps').textContent = fmt(R.length);
 document.getElementById('c-art').textContent = withTracks.length;
-{ const ch=document.getElementById('c-hot'); if(ch) ch.textContent = R.filter(r=>{const m=monthsSince(r[2]);return r[3]>=1000&&m!==null&&m<=24&&perMonth(r)>0;}).length; }
 document.getElementById('c-disco').textContent = AG.filter(g=>g.disco).length;
 (function(){ const w=wlGet(); const c=document.getElementById('c-watch'); if(c) c.textContent = (w.t.length+w.a.length)||''; })();
 function fmtTs(ts){
@@ -1388,7 +1335,7 @@ document.querySelectorAll('#lang-switch button').forEach(b=>b.addEventListener('
 }));
 /* restauration de la vue après F5 (hash d'URL) */
 const initV = location.hash.slice(1);
-if (['overview','opps','artists','hot','watch','disco','playlists'].includes(initV)){
+if (['overview','opps','artists','watch','disco','playlists'].includes(initV)){
   S.view = initV;
   document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active', x.dataset.v===initV));
 }
