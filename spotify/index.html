@@ -163,7 +163,7 @@ input,select{font-family:inherit;color:var(--text)}
 .offer .ob{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px}
 .offer .ob .l{font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);font-weight:600}
 .offer .ob .v{font-family:'Sora';font-size:20px;font-weight:800;margin-top:5px}
-.offer .pal{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.offer .pal{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
 .offer .pal button{padding:7px 13px;border-radius:10px;border:1px solid var(--border);font-size:12px;font-weight:700;color:var(--muted);transition:all .14s}
 .offer .pal button.on{color:#052e12;background:linear-gradient(90deg,#1ed760,#4ade80);border-color:transparent}
 .offer .pal button:hover:not(.on){color:var(--text);border-color:var(--border2)}
@@ -214,6 +214,9 @@ td.selc,th.selc{width:44px;padding-left:14px}
 .selall{display:flex;align-items:center;gap:9px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;user-select:none}
 .tmodal{position:fixed;inset:0;z-index:80;background:rgba(5,6,10,.72);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:24px}
 .tmbox{background:linear-gradient(160deg,var(--panel),var(--bg2));border:1px solid var(--border2);border-radius:18px;max-width:640px;width:100%;max-height:88vh;overflow:auto;padding:22px 24px;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+.amodal{z-index:79}
+.ambox{max-width:1040px}
+.ambox table{min-width:0}
 .tmbox .thd{display:flex;gap:15px;align-items:center;margin-bottom:16px}
 .tmbox .tcov{width:76px;height:76px;border-radius:10px;background-size:cover;background-position:center;background-color:#1f2e26;flex:none}
 .tmbox h3{font-family:'Sora';font-size:18px;font-weight:800;line-height:1.2}
@@ -304,6 +307,8 @@ td.selc,th.selc{width:44px;padding-left:14px}
   .toolbar select{flex:1 1 auto}
   .tmodal{padding:10px}
   .tmbox{padding:18px 15px;max-height:92vh}
+  .ambox{max-width:100%}
+  .ambox table{min-width:600px}
   .offer{padding:15px 15px}
   .offer .ogrid{grid-template-columns:repeat(2,1fr)}
   .ck{width:24px;height:24px}
@@ -350,6 +355,10 @@ td.selc,th.selc{width:44px;padding-left:14px}
 
 <div id="track-modal" class="tmodal" style="display:none" onclick="if(event.target===this)closeTrack()">
   <div class="tmbox" id="tmbox"></div>
+</div>
+
+<div id="artist-modal" class="tmodal amodal" style="display:none" onclick="if(event.target===this)closeArtistModal()">
+  <div class="tmbox ambox" id="am-body"></div>
 </div>
 
 <script>
@@ -555,22 +564,20 @@ document.getElementById('nav').addEventListener('click', e=>{
   syncHash(); render(); window.scrollTo(0,0);
 });
 function goArtist(i){
-  S.back = {view:S.view, y:window.scrollY};
-  S.view='opps'; S.artist=i; S.q=''; S.statut='all'; S.min=0; S.period='all'; S.shown=100; S.sel=new Set();
-  document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active', x.dataset.v==='opps'));
-  syncHash(); render(); window.scrollTo(0,0);
+  S.artist = i; S.sel = new Set();
+  renderArtistModal();
+  document.getElementById('artist-modal').style.display='flex';
 }
 function goTab(v){
   S.view = v;
   document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active', x.dataset.v===v));
   syncHash(); render(); window.scrollTo(0,0);
 }
-function goBack(){
-  const b = S.back; S.back = null; S.artist = -1; S.shown = 100;
-  S.view = b ? b.view : 'opps';
-  document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active', x.dataset.v===S.view));
-  syncHash(); render(); window.scrollTo(0, b ? b.y : 0);
+function closeArtistModal(){
+  document.getElementById('artist-modal').style.display='none';
+  S.artist = -1;
 }
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeArtistModal(); });
 
 /* ---------- filtres opportunités ---------- */
 function filteredRows(){
@@ -704,7 +711,7 @@ function offerHtml(g, selMonthly, selCount, totCount){
     <div class="osub">${T("Coche les tracks à racheter ci-dessous, choisis le split artiste / label : l'avance et le payback se recalculent. Objectif payback 2-3 ans.")}</div>
     <div class="pal">
       ${BUY.paliers.map(pp=>`<button class="${pp.k===S.palier?'on':''}" onclick="setPalier('${pp.k}')">${pp.k}${pp.k==='100/0'?' · '+T('rachat total'):''}</button>`).join('')}
-      <button class="${S.publishing?'on':''}" style="margin-left:12px" onclick="S.publishing=!S.publishing;render()">${S.publishing?'☑':'☐'} Publishing +10%</button>
+      <label class="selall" style="margin-left:12px"><input type="checkbox" class="ck" ${S.publishing?'checked':''} onchange="S.publishing=this.checked;render()"> Publishing +10%</label>
     </div>
     <div class="ogrid">
       <div class="ob"><div class="l">${T('Tracks sélectionnées')}</div><div class="v">${selCount}<span style="font-size:12px;color:var(--dim);font-weight:600"> / ${totCount}</span></div></div>
@@ -717,6 +724,67 @@ function offerHtml(g, selMonthly, selCount, totCount){
   </div>`;
 }
 function setPalier(k){ S.palier = k; render(); }
+
+/* ---------- Fiche artiste en pop-up (simulateur + tracks) ---------- */
+function artistRows(i){ return R.filter(r=>r[0]===i).sort((a,b)=>b[3]-a[3]); }
+function artistTableRows(rows){
+  return rows.map(r=>`
+    <tr data-basehot="${r[3]>=HOT?1:0}" class="${r[3]>=HOT||S.sel.has(r[6])?'hot':''}">
+      <td class="selc"><input type="checkbox" class="ck sel-track" data-tid="${r[6]}" ${S.sel.has(r[6])?'checked':''}></td>
+      <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
+      <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span> ${wlStar('t',r[6])}${r[7]?' <span class="badge new">'+T('détectée')+' '+r[7].slice(5)+'</span>':''}</td>
+      <td class="num" title="${fmtFull(r[3])}">${r[3]>=HOT?'<span class="badge hot">'+fmt(r[3])+'</span>':fmt(r[3])}</td>
+      <td class="num">${fmt(perMonth(r))}</td>
+      <td class="num" style="color:var(--cyan)">${perMonth(r)>0?money(perMonth(r)*RATE)+'/'+T('mo'):money(r[3]*RATE)}</td>
+      <td class="num"><span style="color:var(--acc2);font-weight:600">${eur(advance(Math.max(perMonth(r),0)))}</span></td>
+      <td>${fmtDate(r[2])}</td>
+      <td><span class="badge ${r[4]===0?'self':'other'}">${r[4]===0?T('Indé'):'Label'}</span></td>
+    </tr>`).join('');
+}
+function renderArtistModal(){
+  const i = S.artist; const g = AG[i]; if(!g) return;
+  const rows = artistRows(i);
+  const selM = rows.filter(r=>S.sel.has(r[6])).reduce((s,r)=>s+Math.max(perMonth(r),0),0);
+  const selN = rows.filter(r=>S.sel.has(r[6])).length;
+  const box = document.getElementById('am-body');
+  box.innerHTML = `
+    <div class="thd">
+      <div class="av-sm">${esc(g.name[0]||'?').toUpperCase()}${avatarHtml(g)}</div>
+      <div style="min-width:0;flex:1">
+        <h3>${esc(g.name)}</h3>
+        <div class="tar" style="cursor:default">${segBadge(g)} · ${g.n} ${T('tracks hors Lofi')} · ${fmt(g.streams)} streams</div>
+      </div>
+      <button class="tclose" onclick="closeArtistModal()">✕</button>
+    </div>
+    ${offerHtml(g, selM, selN, rows.length)}
+    <label class="selall" style="margin:2px 0 8px"><input type="checkbox" class="ck" id="am-sel-all" ${rows.length&&rows.every(r=>S.sel.has(r[6]))?'checked':''}> ${T('Tout sélectionner')}</label>
+    <table><thead><tr>
+      <th class="selc"></th><th></th><th>Track</th>
+      <th class="num">Streams</th><th class="num">${T('Streams/mois')}</th>
+      <th class="num">${T('Revenu est.')}</th><th class="num">${T('Rachat')} ${S.palier}</th>
+      <th>${T('Sortie')}</th><th>${T('Statut')}</th>
+    </tr></thead><tbody>${artistTableRows(rows)}</tbody></table>
+    ${rows.length===0?'<div class="empty">'+T('Aucune track.')+'</div>':''}
+  `;
+  attachCovers();
+  function updateSel(){
+    const selM2 = rows.filter(r=>S.sel.has(r[6])).reduce((s,r)=>s+Math.max(perMonth(r),0),0);
+    const selN2 = rows.filter(r=>S.sel.has(r[6])).length;
+    const off = box.querySelector('.offer');
+    if (off) off.outerHTML = offerHtml(g, selM2, selN2, rows.length);
+    box.querySelectorAll('.sel-track').forEach(cb=>{
+      const tr=cb.closest('tr'); const on=S.sel.has(cb.dataset.tid);
+      cb.checked=on; if(tr) tr.classList.toggle('hot', on || tr.dataset.basehot==='1');
+    });
+    const allOn = rows.length && rows.every(r=>S.sel.has(r[6]));
+    const sa=document.getElementById('am-sel-all'); if(sa) sa.checked=allOn;
+  }
+  box.querySelectorAll('.sel-track').forEach(cb=>{
+    cb.addEventListener('change', ()=>{ if(cb.checked)S.sel.add(cb.dataset.tid); else S.sel.delete(cb.dataset.tid); updateSel(); });
+  });
+  const sa = document.getElementById('am-sel-all');
+  if (sa) sa.addEventListener('change', ()=>{ if(sa.checked) rows.forEach(r=>S.sel.add(r[6])); else rows.forEach(r=>S.sel.delete(r[6])); updateSel(); });
+}
 
 /* ---------- Watchlist (épinglage tracks + artistes, localStorage) ---------- */
 function wlGet(){ try{ return Object.assign({t:[],a:[]}, JSON.parse(localStorage.getItem('sr_wl')||'{}')); }catch(e){ return {t:[],a:[]}; } }
@@ -832,17 +900,14 @@ function sortArrow(k){ return S.sort.k===k ? `<span class="arr">${S.sort.dir===-
 function renderOpps(){
   const rows = filteredRows();
   const slice = rows.slice(0, S.shown);
-  const aName = S.artist>=0 ? A[S.artist][0] : null;
-  const ag = S.artist>=0 ? AG[S.artist] : null;
+  const ag = null;
   V.innerHTML = `
   <div class="page-head">
     <div>
-      ${aName?'<button class="btn-back" onclick="goBack()">'+T('← Retour')+'</button>':''}
-      <h2>${aName?esc(aName):T('All tracks')}</h2>
+      <h2>${T('All tracks')}</h2>
       <p>${T("Toutes les tracks hors Lofi Records. Les lignes vertes dépassent 500 000 streams (priorités). Streams / mois = vélocité depuis la sortie.")}</p>
     </div>
   </div>
-  ${ag?offerHtml(ag, rows.filter(r=>S.sel.has(r[6])).reduce((s,r)=>s+Math.max(perMonth(r),0),0), rows.filter(r=>S.sel.has(r[6])).length, rows.length):''}
   <div class="toolbar">
     <input type="text" id="f-q" placeholder="${T('Rechercher track, artiste, label…')}" value="${esc(S.q)}">
     <button class="chip ${S.statut==='all'?'on':''}" data-st="all">${T('Tous')}</button>
@@ -868,8 +933,6 @@ function renderOpps(){
       <option value="occ" ${S.rel==='occ'?'selected':''}>Occasional (1-24)</option>
       <option value="ext" ${S.rel==='ext'?'selected':''}>${T('Jamais chez Lofi')}</option>
     </select>
-    ${aName?`<button class="chip on" id="f-clear-artist">${esc(aName)} ✕</button>`:''}
-    ${ag?`<label class="selall"><input type="checkbox" class="ck" id="sel-all-bar" ${rows.length&&rows.every(r=>S.sel.has(r[6]))?'checked':''}> ${T('Tout sélectionner')}</label>`:''}
     <span class="spacer"></span>
     <span class="result-count">${fmtFull(rows.length)} ${T('tracks')}</span>
   </div>
@@ -1287,6 +1350,7 @@ function render(){
   else if (S.view==='playlists') renderPlaylists();
   else if (S.view==='watch') renderWatch();
   attachCovers();
+  if (S.artist>=0 && document.getElementById('artist-modal').style.display==='flex') renderArtistModal();
 }
 
 /* ---------- init ---------- */
