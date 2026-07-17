@@ -805,14 +805,6 @@ document.addEventListener('pointerdown',e=>{
      {transform:'scale(1)',filter:'brightness(1)'}],
     {duration:280,easing:'cubic-bezier(.3,.9,.4,1)'});
 },{passive:true});
-/* fermer la sidebar mobile après navigation */
-document.addEventListener('click',e=>{
-  if(window.innerWidth>640)return;
-  if(e.target.closest&&e.target.closest('#sidebar .nav button')){
-    document.getElementById('sidebar').classList.remove('open');
-    document.getElementById('side-veil').classList.remove('show');
-  }
-});
 function timeAgo(ms){
   const s=(Date.now()-ms)/1000;
   if(s<60)return 'just now';if(s<3600)return Math.floor(s/60)+' min ago';
@@ -1000,7 +992,10 @@ function renderNav(){
     '<div class="nav-label">Workspace</div>'+
     VIEWS.map(v=>'<button class="'+(route===v.id?'active':'')+(v.small?' nsmall':'')+'" onclick="go(\''+v.id+'\')"><span class="emo">'+v.emo+'</span><span class="lbl">'+_frnav(v.label)+'</span><span class="count">'+v.cnt()+'</span></button>').join('');
 }
-function go(r){route=r;try{history.replaceState(null,'','#'+r);}catch(e){}renderNav();render();window.scrollTo({top:0});}
+function go(r){route=r;try{history.replaceState(null,'','#'+r);}catch(e){}renderNav();render();window.scrollTo({top:0});
+  const sb=document.getElementById('sidebar'),vl=document.getElementById('side-veil');
+  if(sb)sb.classList.remove('open');if(vl)vl.classList.remove('show');
+}
 function render(){
   if(!DATA)return;
   const t=document.getElementById('view-title'),s=document.getElementById('view-sub'),el=document.getElementById('view');
