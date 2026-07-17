@@ -75,7 +75,7 @@ input,select{font-family:inherit;color:var(--text)}
 .side-foot{border-top:1px solid var(--border);padding-top:13px}
 .sync-row{display:flex;align-items:center;gap:8px;padding:0 8px}
 .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);flex:none}
-.sync-txt{font-size:11px;color:var(--dim);line-height:1.4}
+.sync-txt{font-size:10.5px;color:var(--dim);line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ---------- Sélecteur de langue (switch à drapeaux) ---------- */
 .lang-switch{
@@ -166,9 +166,11 @@ input,select{font-family:inherit;color:var(--text)}
 }
 .search-wrap input[type=text]:focus{border-color:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.14)}
 .toolbar select{
-  background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:8.5px 11px;
-  font-size:12.5px;outline:none;appearance:auto;
+  background:var(--bg2);border:1.5px solid var(--border2);border-radius:13px;padding:9.5px 14px;
+  font-size:12.5px;font-weight:600;outline:none;appearance:auto;height:38px;box-sizing:border-box;transition:all .14s;
 }
+.toolbar select:hover{border-color:#4ade80}
+.toolbar select:focus{border-color:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.14)}
 .chip{padding:7.5px 13px;border-radius:20px;border:1px solid var(--border);font-size:12px;font-weight:600;color:var(--muted);transition:all .14s}
 .chip:hover{color:var(--text);border-color:var(--border2)}
 .chip.on{color:#052e12;background:linear-gradient(90deg,#1ed760,#4ade80);border-color:transparent}
@@ -274,8 +276,8 @@ td.selc,th.selc{width:44px;padding-left:14px}
 
 /* Artistes cards */
 .acards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:13px}
-.viewtoggle{display:flex;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:3px;flex:none;height:fit-content}
-.viewtoggle button{width:32px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:7px;font-size:14px;color:var(--dim)}
+.viewtoggle{display:flex;gap:4px;background:var(--bg2);border:1.5px solid var(--border2);border-radius:13px;padding:4px;flex:none;height:38px;box-sizing:border-box;margin-left:8px}
+.viewtoggle button{width:34px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:9px;font-size:14px;color:var(--dim)}
 .viewtoggle button.on{background:linear-gradient(90deg,#1ed760,#4ade80);color:#052e12}
 .viewtoggle button:hover:not(.on){color:var(--text)}
 .plcard .cov{width:100%;height:150px;border-radius:12px;margin:0 0 12px}
@@ -375,8 +377,12 @@ td.selc,th.selc{width:44px;padding-left:14px}
   </nav>
   <div class="side-foot">
     <div class="sync-row">
-      <div class="sync-dot"></div>
-      <div class="sync-txt" id="sync-txt">—</div>
+      <div class="sync-dot" id="sync-dot-tr"></div>
+      <div class="sync-txt" id="sync-txt-tr">—</div>
+    </div>
+    <div class="sync-row" id="sync-row-pl" style="margin-top:5px">
+      <div class="sync-dot" id="sync-dot-pl"></div>
+      <div class="sync-txt" id="sync-txt-pl">—</div>
     </div>
   </div>
 </aside>
@@ -420,7 +426,7 @@ const EN_MAP = {
   "Voir tous les artistes":"View all artists","Indé vs autres labels":"Indie vs other labels","Autre label":"Other label","Sorties par année":"Releases per year",
   "régulier":"regular","occasionnel":"occasional",
   "Toutes les tracks hors Lofi Records. Les lignes vertes dépassent 500 000 streams (priorités). Streams / mois = vélocité depuis la sortie.":"Every track outside Lofi Records. Green rows are above 500,000 streams (priorities). Streams / month = velocity since release.",
-  "Rechercher track, artiste, label…":"Search track, artist, label…","Tous":"All","Streams : tous":"Streams: all",
+  "Rechercher track, artiste, label…":"Search track, artist, label…","Tous":"All","Streams : tous":"Streams: all","Type : tous":"Type: all",
   "Toutes périodes":"All periods","90 derniers jours":"Last 90 days","12 derniers mois":"Last 12 months","3 dernières années":"Last 3 years",
   "< 1 mois":"< 1 month","< 3 mois":"< 3 months","< 6 mois":"< 6 months","< 12 mois":"< 12 months","< 3 ans":"< 3 years",
   "1 dernier mois":"Last month","3 derniers mois":"Last 3 months","6 derniers mois":"Last 6 months","12 derniers mois":"Last 12 months","Tout l'historique":"All time",
@@ -614,7 +620,7 @@ const S = {
   aq:'', asort:'streams', shownA:60, aseg:'all',
   newDays:90, shownN:100,
   plq:'', plcur:'all', plsort:'followers', plonly:false, shownPL:80, plview:'qualified', plmode:'table',
-  amode:'grid',
+  amode:'table', omode:'table',
 };
 
 /* ---------- navigation ---------- */
@@ -1002,43 +1008,7 @@ function renderOpps(){
     '365': pbase.filter(r=>daysAgo(r[2])<=365).length,
     'all': pbase.length,
   };
-  const pbtn = (val,color,label) => `<button class="${S.period===val?'on':''}" data-period="${val}"><span class="dot" style="color:${color};background:${color}"></span>${T(label)} <span class="cnt">${fmtFull(pcnt[val])}</span></button>`;
-  V.innerHTML = `
-  <div class="page-head">
-    <div>
-      <h2>${T('Toutes les pistes')}</h2>
-      <p>${T("Toutes les tracks hors Lofi Records. Les lignes vertes dépassent 500 000 streams (priorités). Streams / mois = vélocité depuis la sortie.")}</p>
-    </div>
-  </div>
-  <div class="periodbar">
-    ${pbtn('30','#4ade80','1 dernier mois')}
-    ${pbtn('90','#fbbf24','3 derniers mois')}
-    ${pbtn('180','#fb923c','6 derniers mois')}
-    ${pbtn('365','#f472b6','12 derniers mois')}
-    ${pbtn('all','#f87171',"Tout l'historique")}
-  </div>
-  <div class="toolbar">
-    <button class="chip ${S.statut==='all'?'on':''}" data-st="all">${T('Tous')}</button>
-    <button class="chip ${S.statut==='self'?'on':''}" data-st="self">Self-released</button>
-    <button class="chip ${S.statut==='other'?'on':''}" data-st="other">${T('Autre label')}</button>
-    <select id="f-min">
-      <option value="0" ${S.min===0?'selected':''}>${T('Streams : tous')}</option>
-      <option value="100000" ${S.min===100000?'selected':''}>≥ 100k</option>
-      <option value="500000" ${S.min===500000?'selected':''}>≥ 500k</option>
-      <option value="1000000" ${S.min===1000000?'selected':''}>≥ 1M</option>
-      <option value="5000000" ${S.min===5000000?'selected':''}>≥ 5M</option>
-    </select>
-    <select id="f-rel">
-      <option value="all" ${S.rel==='all'?'selected':''}>${T('Relation label : tous')}</option>
-      <option value="top" ${S.rel==='top'?'selected':''}>Top artists (>50)</option>
-      <option value="reg" ${S.rel==='reg'?'selected':''}>Regulars (25-50)</option>
-      <option value="occ" ${S.rel==='occ'?'selected':''}>Occasional (1-24)</option>
-      <option value="ext" ${S.rel==='ext'?'selected':''}>${T('Jamais')}</option>
-    </select>
-    <span class="spacer"></span>
-    <span class="result-count">${fmtFull(rows.length)} ${T('tracks')}</span>
-    <div class="search-wrap"><span class="sico">🔍</span><input type="text" id="f-q" placeholder="${T('Rechercher track, artiste, label…')}" value="${esc(S.q)}"></div>
-  </div>
+  const tableView = `
   <div class="panel" style="padding:6px 14px 14px">
     <table>
       <thead><tr>
@@ -1074,12 +1044,76 @@ function renderOpps(){
     ${rows.length===0?'<div class="empty">'+T('Aucune track ne correspond à ces filtres.')+'</div>':''}
     ${sentinel(rows.length-S.shown)}
   </div>`;
+  const gridView = `
+  <div class="acards">
+    ${slice.map(r=>`
+    <div class="acard plcard" onclick="openTrack('${r[6]}')">
+      ${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}
+      <div class="nm">${esc(r[1])} ${wlStar('t',r[6])}${r[7]?' <span class="badge new">'+T('détectée')+'</span>':''}</div>
+      <div style="font-size:11px;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="ar" onclick="event.stopPropagation();goArtist(${r[0]})">${esc(A[r[0]][0])}</span>
+        <span class="badge ${r[4]===0?'self':'other'}">${r[4]===0?T('Indé'):'Label'}</span>
+      </div>
+      <div class="stats">
+        <div class="st"><div class="v">${fmt(r[3])}</div><div class="l">Streams</div></div>
+        <div class="st"><div class="v">${fmt(perMonth(r))}</div><div class="l">${T('mois')}</div></div>
+        <div class="st"><div class="v" style="color:var(--acc2)">${eur(advance(Math.max(perMonth(r),0)))}</div><div class="l">${T('Rachat')}</div></div>
+      </div>
+      <div class="foot">${fmtDate(r[2])} · <span class="lb" title="${esc(r[5])}">${esc(r[5])}</span></div>
+    </div>`).join('')}
+  </div>
+  ${rows.length===0?'<div class="empty">'+T('Aucune track ne correspond à ces filtres.')+'</div>':''}
+  ${sentinel(rows.length-S.shown)}`;
+  V.innerHTML = `
+  <div class="page-head">
+    <div>
+      <h2>${T('Toutes les pistes')}</h2>
+      <p>${T("Toutes les tracks hors Lofi Records. Les lignes vertes dépassent 500 000 streams (priorités). Streams / mois = vélocité depuis la sortie.")}</p>
+    </div>
+  </div>
+  <div class="toolbar">
+    <select id="f-period">
+      <option value="30" ${S.period==='30'?'selected':''}>🕐 ${T('1 dernier mois')} (${fmtFull(pcnt['30'])})</option>
+      <option value="90" ${S.period==='90'?'selected':''}>📆 ${T('3 derniers mois')} (${fmtFull(pcnt['90'])})</option>
+      <option value="180" ${S.period==='180'?'selected':''}>🗓️ ${T('6 derniers mois')} (${fmtFull(pcnt['180'])})</option>
+      <option value="365" ${S.period==='365'?'selected':''}>📈 ${T('12 derniers mois')} (${fmtFull(pcnt['365'])})</option>
+      <option value="all" ${S.period==='all'?'selected':''}>⏳ ${T("Tout l'historique")} (${fmtFull(pcnt['all'])})</option>
+    </select>
+    <select id="f-st">
+      <option value="all" ${S.statut==='all'?'selected':''}>🌍 ${T('Type : tous')}</option>
+      <option value="self" ${S.statut==='self'?'selected':''}>🧑‍🎤 Self-released</option>
+      <option value="other" ${S.statut==='other'?'selected':''}>🏷️ ${T('Autre label')}</option>
+    </select>
+    <select id="f-min">
+      <option value="0" ${S.min===0?'selected':''}>📊 ${T('Streams : tous')}</option>
+      <option value="100000" ${S.min===100000?'selected':''}>🔥 ≥ 100k</option>
+      <option value="500000" ${S.min===500000?'selected':''}>🔥 ≥ 500k</option>
+      <option value="1000000" ${S.min===1000000?'selected':''}>🚀 ≥ 1M</option>
+      <option value="5000000" ${S.min===5000000?'selected':''}>💎 ≥ 5M</option>
+    </select>
+    <select id="f-rel">
+      <option value="all" ${S.rel==='all'?'selected':''}>🏷️ ${T('Relation label : tous')}</option>
+      <option value="top" ${S.rel==='top'?'selected':''}>⭐ Top artists (>50)</option>
+      <option value="reg" ${S.rel==='reg'?'selected':''}>🔁 Regulars (25-50)</option>
+      <option value="occ" ${S.rel==='occ'?'selected':''}>🎲 Occasional (1-24)</option>
+      <option value="ext" ${S.rel==='ext'?'selected':''}>🚫 ${T('Jamais')}</option>
+    </select>
+    <span class="spacer"></span>
+    <span class="result-count">${fmtFull(rows.length)} ${T('tracks')}</span>
+    <div class="search-wrap"><span class="sico">🔍</span><input type="text" id="f-q" placeholder="${T('Rechercher track, artiste, label…')}" value="${esc(S.q)}"></div>
+    <div class="viewtoggle">
+      <button class="${S.omode==='table'?'on':''}" data-omode="table" title="${T('Vue liste')}">☰</button>
+      <button class="${S.omode==='grid'?'on':''}" data-omode="grid" title="${T('Vue grille')}">▦</button>
+    </div>
+  </div>
+  ${S.omode==='grid' ? gridView : tableView}`;
 
   document.getElementById('f-q').addEventListener('input', e=>{ S.q=e.target.value; S.shown=100; keepScroll(renderOpps); keepFocus('f-q'); });
-  document.querySelectorAll('.chip[data-st]').forEach(c=>c.addEventListener('click', ()=>{ S.statut=c.dataset.st; S.shown=100; keepScroll(renderOpps); }));
+  document.getElementById('f-st').addEventListener('change', e=>{ S.statut=e.target.value; S.shown=100; keepScroll(renderOpps); });
   document.getElementById('f-min').addEventListener('change', e=>{ S.min=+e.target.value; S.shown=100; keepScroll(renderOpps); });
-  document.querySelectorAll('.periodbar button[data-period]').forEach(b=>b.addEventListener('click', ()=>{ S.period=b.dataset.period; S.shown=100; keepScroll(renderOpps); }));
+  document.getElementById('f-period').addEventListener('change', e=>{ S.period=e.target.value; S.shown=100; keepScroll(renderOpps); });
   document.getElementById('f-rel').addEventListener('change', e=>{ S.rel=e.target.value; S.shown=100; keepScroll(renderOpps); });
+  document.querySelectorAll('.viewtoggle button[data-omode]').forEach(b=>b.addEventListener('click', ()=>{ S.omode=b.dataset.omode; keepScroll(renderOpps); }));
   const ca = document.getElementById('f-clear-artist');
   if (ca) ca.addEventListener('click', ()=>{ S.artist=-1; S.shown=100; keepScroll(renderOpps); });
   attachInfinite(()=>{ const y=window.scrollY; S.shown+=200; renderOpps(); window.scrollTo(0,y); });
@@ -1192,10 +1226,6 @@ function renderArtists(){
       <h2>${T('Tous les artistes')}</h2>
       <p>${T("Un profil par artiste : volume hors Lofi, part d'indé, priorités ≥ 500k. Clic sur une carte pour ouvrir ses tracks.")}</p>
     </div>
-    <div class="viewtoggle">
-      <button class="${S.amode==='table'?'on':''}" data-amode="table" title="${T('Vue liste')}">☰</button>
-      <button class="${S.amode==='grid'?'on':''}" data-amode="grid" title="${T('Vue grille')}">▦</button>
-    </div>
   </div>
   <div class="toolbar">
     <button class="chip ${S.aseg==='all'?'on':''}" data-seg="all">${T('Tous')}</button>
@@ -1212,6 +1242,10 @@ function renderArtists(){
     <span class="spacer"></span>
     <span class="result-count">${list.length} ${T('artistes')}</span>
     <div class="search-wrap"><span class="sico">🔍</span><input type="text" id="a-q" placeholder="${T('Rechercher un artiste…')}" value="${esc(S.aq)}"></div>
+    <div class="viewtoggle">
+      <button class="${S.amode==='table'?'on':''}" data-amode="table" title="${T('Vue liste')}">☰</button>
+      <button class="${S.amode==='grid'?'on':''}" data-amode="grid" title="${T('Vue grille')}">▦</button>
+    </div>
   </div>
   ${S.amode==='table' ? tableView : gridView}`;
 
@@ -1411,8 +1445,6 @@ function renderPlaylists(){
   }
   const rows = plFiltered();
   const slice = rows.slice(0, S.shownPL);
-  const kwPct = PLmeta.kw_total ? Math.round(100*PLmeta.kw_scanned/PLmeta.kw_total) : 0;
-  const enrPct = PLmeta.playlists_discovered ? Math.round(100*PLmeta.playlists_enriched/PLmeta.playlists_discovered) : 0;
   const tableView = `
   <div class="panel" style="padding:6px 14px 14px">
     <table>
@@ -1473,24 +1505,6 @@ function renderPlaylists(){
       <h2>${T('Toutes les playlists')} <span class="badge new" style="vertical-align:middle">${T('Scan incomplet, pause sécurité Spotify')}</span></h2>
       <p>${T("Recensement des playlists éditoriales Spotify et indépendantes sur nos genres, alimenté par le scanner de mots-clés. Suivi des followers et du fit pour repérer ce qui marche.")}</p>
     </div>
-    <div class="viewtoggle">
-      <button class="${S.plmode==='table'?'on':''}" data-plmode="table" title="${T('Vue liste')}">☰</button>
-      <button class="${S.plmode==='grid'?'on':''}" data-plmode="grid" title="${T('Vue grille')}">▦</button>
-    </div>
-  </div>
-  <div class="freshbar">
-    <div class="fitem"><span class="fdot2"></span>${T('Snapshot')} <b>${esc(PLmeta.snapshot_ts)}</b></div>
-    <div class="fitem">${T('Mots-clés scannés')} <b>${PLmeta.kw_scanned}/${PLmeta.kw_total}</b> (${kwPct}%)${PLmeta.kw_declared?' <span class="kwtag" title="'+T('Compteur déclaré, pas encore exporté automatiquement par le scanner')+'">'+T('déclaré')+'</span>':''}</div>
-    <div class="fitem">${T('Playlists découvertes')} <b>${fmtFull(PLmeta.playlists_discovered)}</b></div>
-    <div class="fitem">${T('Fiches détaillées')} <b>${fmtFull(PLmeta.playlists_enriched)}</b></div>
-    <div class="fitem">${T('Followers visibles')} <b>${fmtFull(PLmeta.followers_visible)}</b></div>
-    <div class="fitem">${T('Non affichés par Spotify')} <b>${fmtFull(PLmeta.followers_non_displayed)}</b></div>
-  </div>
-  <div class="kpis">
-    ${kpi(T('Playlists découvertes'), fmtFull(PLmeta.playlists_discovered), T('toutes tailles confondues'))}
-    ${kpi(T('Fiches détaillées'), fmtFull(PLmeta.playlists_enriched), enrPct+'% '+T('du total'))}
-    ${kpi('≥ 10k followers', fmtFull(PLmeta.playlists_10k_plus), T('playlists à fort potentiel'))}
-    ${kpi(T('Followers cumulés'), fmt(PLmeta.followers_sum), fmtFull(PLmeta.followers_visible)+' '+T('playlists avec followers visibles'))}
   </div>
   <div class="toolbar">
     <button class="chip ${S.plview==='qualified'?'on':''}" data-plview="qualified">${T('Qualifiées (≥10k)')} (${fmtFull(PLmeta.playlists_10k_plus)})</button>
@@ -1511,6 +1525,10 @@ function renderPlaylists(){
     <span class="spacer"></span>
     <span class="result-count">${fmtFull(rows.length)} playlists</span>
     <div class="search-wrap"><span class="sico">🔍</span><input type="text" id="pl-q" placeholder="${T('Rechercher playlist, curateur, genre…')}" value="${esc(S.plq)}"></div>
+    <div class="viewtoggle">
+      <button class="${S.plmode==='table'?'on':''}" data-plmode="table" title="${T('Vue liste')}">☰</button>
+      <button class="${S.plmode==='grid'?'on':''}" data-plmode="grid" title="${T('Vue grille')}">▦</button>
+    </div>
   </div>
   ${S.plmode==='grid' ? gridView : tableView}`;
 
@@ -1547,8 +1565,26 @@ function fmtTs(ts){
   return m[3]+'/'+m[2]+'/'+m[1] + (m[4] ? ', '+m[4] : '');
 }
 function updateFooter(){
-  document.getElementById('sync-txt').innerHTML =
-    T('Dernier scan le')+' '+esc(fmtTs(D.ts||D.t))+'<br>'+fmtFull(R.length)+' tracks · '+AG.filter(g=>g.done).length+' '+T('artistes scannés');
+  // volontairement compact (peu de texte) : icône + date, détail complet en tooltip au survol
+  const trTxt = document.getElementById('sync-txt-tr');
+  const trRow = trTxt.closest('.sync-row');
+  trTxt.innerHTML = '🎶 '+esc(fmtTs(D.ts||D.t));
+  trRow.title = fmtFull(R.length)+' tracks · '+AG.filter(g=>g.done).length+' '+T('artistes scannés');
+  const plRow = document.getElementById('sync-row-pl');
+  const plTxt = document.getElementById('sync-txt-pl');
+  const plDot = document.getElementById('sync-dot-pl');
+  if (plRow){
+    if (PLmeta){
+      const paused = PLmeta.scan_status && PLmeta.scan_status !== 'ok';
+      plTxt.innerHTML = '📻 '+esc(fmtTs(PLmeta.snapshot_ts))+(paused?' ⏸':'');
+      const c = paused ? '#fbbf24' : 'var(--green)';
+      plDot.style.background = c; plDot.style.boxShadow = '0 0 8px '+c;
+      plRow.title = fmtFull(PLmeta.playlists_discovered)+' playlists'+(paused?' · '+T('Scan incomplet, pause sécurité Spotify'):'');
+      plRow.style.display = '';
+    } else {
+      plRow.style.display = 'none';
+    }
+  }
 }
 function applyLang(){
   document.querySelectorAll('[data-fr]').forEach(el=>{
