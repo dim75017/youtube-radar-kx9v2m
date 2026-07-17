@@ -15,7 +15,7 @@
   --border:rgba(150,214,170,.10); --border2:rgba(150,214,170,.22);
   --text:#eceef8; --muted:#9aa1c0; --dim:#5d6485;
   --acc:#1ed760; --acc2:#4ade80; --accSoft:rgba(30,215,96,.12);
-  --green:#4ade80; --amber:#fbbf24; --red:#fb7185; --cyan:#1db954; --blue:#7dd3fc; --violet:#a78bfa;
+  --green:#4ade80; --amber:#fbbf24; --red:#fb7185; --cyan:#86efac; --blue:#7dd3fc; --violet:#a78bfa;
   --r:16px; --sidebar:238px;
 }
 *{margin:0;padding:0;box-sizing:border-box}
@@ -202,6 +202,10 @@ td.covtd{width:82px;padding:6px 2px 6px 10px}
 .badge.seg-ext{color:#fb7185;background:rgba(251,113,133,.12);box-shadow:inset 0 0 0 1px rgba(251,113,133,.32)}
 td.selc{width:34px;padding-left:12px}
 td.selc input,th.selc input{width:16px;height:16px;accent-color:#1db954;cursor:pointer}
+.wl-star{background:none;border:none;color:#fbbf24;font-size:15px;cursor:pointer;padding:0 4px;line-height:1;vertical-align:middle;opacity:.55;transition:opacity .12s}
+.wl-star:hover{opacity:1}
+.wl-star.on{opacity:1}
+.acard .wl-star{position:absolute;top:12px;right:12px;font-size:17px}
 .more-wrap{text-align:center;padding:16px 0 4px}
 .btn-more{
   padding:9px 22px;border-radius:11px;border:1px solid var(--border2);font-size:12.5px;font-weight:600;
@@ -214,7 +218,7 @@ td.selc input,th.selc input{width:16px;height:16px;accent-color:#1db954;cursor:p
 .acards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:13px}
 .acard{
   background:linear-gradient(160deg,var(--panel),var(--bg2));border:1px solid var(--border);
-  border-radius:var(--r);padding:15px 17px;cursor:pointer;transition:all .15s;
+  border-radius:var(--r);padding:15px 17px;cursor:pointer;transition:all .15s;position:relative;
 }
 .acard:hover{border-color:var(--border2);transform:translateY(-1px)}
 .acard .top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
@@ -265,6 +269,7 @@ td.selc input,th.selc input{width:16px;height:16px;accent-color:#1db954;cursor:p
     <button data-v="opps" data-fr="Tracks"><span class="emo">💎</span>Tracks<span class="count" id="c-opps"></span></button>
     <button data-v="artists" data-fr="Artistes"><span class="emo">🎧</span>Artistes<span class="count" id="c-art"></span></button>
     <button data-v="new" data-fr="Sorties récentes"><span class="emo">🆕</span>Sorties récentes<span class="count" id="c-new"></span></button>
+    <button data-v="watch" data-fr="Watchlist"><span class="emo">⭐</span>Watchlist<span class="count" id="c-watch"></span></button>
     <div class="nav-label" data-fr="Expansion">Expansion</div>
     <button data-v="disco" data-fr="Découverte"><span class="emo">🔭</span>Découverte<span class="count" id="c-disco"></span></button>
     <button data-v="playlists" data-fr="Playlists"><span class="emo">📻</span>Playlists<span class="count">soon</span></button>
@@ -347,6 +352,10 @@ const EN_MAP = {
   "top artiste":"top artist","Tracks sélectionnées":"Selected tracks","Tout sélectionner":"Select all",
   "Coche les tracks à racheter ci-dessous, choisis le split artiste / label : l'avance et le payback se recalculent. Objectif payback 2-3 ans.":"Tick the tracks to buy below, pick the artist / label split: advance and payback recompute. Target payback 2-3 years.",
   "Aucune track sélectionnée — coche des lignes pour simuler une offre.":"No track selected — tick rows to simulate an offer.",
+  "Watchlist":"Watchlist","Date de sortie":"Release date","Ajouter / retirer de la watchlist":"Add / remove from watchlist",
+  "Tes tracks et artistes épinglés, à suivre pour un rachat. Stocké dans ce navigateur.":"Your pinned tracks and artists to track for a buyout. Stored in this browser.",
+  "Aucune track épinglée. Clique sur l'étoile ☆ d'une track pour la suivre ici.":"No pinned tracks yet. Hit the ☆ on any track to track it here.",
+  "Aucun artiste épinglé. Clique sur l'étoile ☆ d'une carte artiste.":"No pinned artists yet. Hit the ☆ on any artist card.",
   "Base : revenu 24 mois projeté (vélocité × 0,0035$/stream) → EUR ×0,875, −8% Orchard, −12% coûts, −15% décote. Grille et paramètres repris du modèle LOFI RECORDS. Estimation indicative, hors CIPP (rachat catalogue non éligible).":"Base: projected 24-month revenue (velocity × $0.0035/stream) → EUR ×0.875, −8% Orchard, −12% costs, −15% haircut. Grid and parameters from the LOFI RECORDS model. Indicative estimate, excl. CIPP (catalog buyouts not eligible)."
 };
 const T = s => LANG === 'fr' ? s : (EN_MAP[s] !== undefined ? EN_MAP[s] : s);
@@ -459,7 +468,7 @@ const artistSearch = n => 'https://open.spotify.com/search/'+encodeURIComponent(
 
 /* ---------- état ---------- */
 const S = {
-  view:'overview', back:null, palier:'100/0', sel:new Set(),
+  view:'overview', back:null, palier:'100/0', sel:new Set(), wltab:'tracks',
   q:'', statut:'all', min:0, period:'all', artist:-1, rel:'all',
   sort:{k:3, dir:-1}, shown:100,
   aq:'', asort:'streams', shownA:60, aseg:'all',
@@ -471,7 +480,7 @@ function syncHash(){ try{ history.replaceState(null,'','#'+S.view); }catch(e){} 
 document.getElementById('nav').addEventListener('click', e=>{
   const b = e.target.closest('button'); if(!b) return;
   document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active', x===b));
-  S.view = b.dataset.v; S.shown = 100; S.shownA = 60; S.shownN = 100;
+  S.view = b.dataset.v; S.shown = 100; S.shownA = 60; S.shownN = 100; S.artist = -1;
   syncHash(); render(); window.scrollTo(0,0);
 });
 function goArtist(i){
@@ -636,6 +645,60 @@ function offerHtml(g, selMonthly, selCount, totCount){
 }
 function setPalier(k){ S.palier = k; render(); }
 
+/* ---------- Watchlist (épinglage tracks + artistes, localStorage) ---------- */
+function wlGet(){ try{ return Object.assign({t:[],a:[]}, JSON.parse(localStorage.getItem('sr_wl')||'{}')); }catch(e){ return {t:[],a:[]}; } }
+function wlSet(w){ try{ localStorage.setItem('sr_wl', JSON.stringify(w)); }catch(e){} }
+function wlHas(type,k){ return wlGet()[type].includes(k); }
+function toggleWL(type,k,ev){
+  if(ev) ev.stopPropagation();
+  const w=wlGet(); const i=w[type].indexOf(k);
+  if(i>=0) w[type].splice(i,1); else w[type].push(k);
+  wlSet(w);
+  const el=document.getElementById('c-watch'); if(el) el.textContent=w.t.length+w.a.length||'';
+  if(ev&&ev.currentTarget){ const on=w[type].includes(k); ev.currentTarget.classList.toggle('on',on); ev.currentTarget.textContent=on?'⭐':'☆'; }
+  if(S.view==='watch') render();
+}
+function wlStar(type,k){
+  const on=wlHas(type,k);
+  return `<button class="wl-star ${on?'on':''}" title="${T('Ajouter / retirer de la watchlist')}" onclick="toggleWL('${type}','${String(k).replace(/'/g,"\\'")}',event)">${on?'⭐':'☆'}</button>`;
+}
+function fmtDate(iso){ const m=(''+iso).match(/^(\d{4})-(\d{2})-(\d{2})/); return m?m[3]+'/'+m[2]+'/'+m[1]:(iso||'?'); }
+
+function renderWatch(){
+  const w=wlGet();
+  const tabs=[['tracks','🎵 Tracks',w.t.length],['artists','🎧 '+T('Artistes'),w.a.length]];
+  let h=`<div class="page-head"><div><h2>Watchlist</h2><p>${T("Tes tracks et artistes épinglés, à suivre pour un rachat. Stocké dans ce navigateur.")}</p></div></div>`;
+  h+='<div class="toolbar">'+tabs.map(t=>`<button class="chip ${S.wltab===t[0]?'on':''}" onclick="S.wltab='${t[0]}';render()">${t[1]} (${t[2]})</button>`).join('')+'</div>';
+  if(S.wltab==='tracks'){
+    const rows=R.filter(r=>w.t.includes(r[6])).sort((a,b)=>b[3]-a[3]);
+    if(!rows.length){ h+=`<div class="empty">${T("Aucune track épinglée. Clique sur l'étoile ☆ d'une track pour la suivre ici.")}</div>`; V.innerHTML=h; return; }
+    h+=`<div class="panel" style="padding:6px 14px 14px"><table><thead><tr><th></th><th></th><th>Track</th><th>${T('Artiste')}</th><th class="num">Streams</th><th class="num">${T('Rachat')} ${S.palier}</th><th>${T('Sortie')}</th></tr></thead><tbody>`;
+    h+=rows.map(r=>`<tr class="${r[3]>=HOT?'hot':''}">
+      <td>${wlStar('t',r[6])}</td>
+      <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
+      <td><a class="tk" href="${trackUrl(r[6])}" target="_blank" rel="noopener">${esc(r[1])}</a></td>
+      <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
+      <td class="num">${fmt(r[3])}</td>
+      <td class="num"><span style="color:var(--acc2);font-weight:600">${eur(advance(Math.max(perMonth(r),0)))}</span></td>
+      <td>${fmtDate(r[2])}</td></tr>`).join('');
+    h+='</tbody></table></div>';
+  } else {
+    const gs=AG.filter(g=>w.a.includes(g.name)).sort((a,b)=>b.streams-a.streams);
+    if(!gs.length){ h+=`<div class="empty">${T("Aucun artiste épinglé. Clique sur l'étoile ☆ d'une carte artiste.")}</div>`; V.innerHTML=h; return; }
+    h+='<div class="acards">'+gs.map(g=>{const p=g.n?Math.round(g.self/g.n*100):0; return `
+      <div class="acard" onclick="goArtist(${g.i})">
+        ${wlStar('a',g.name)}
+        <div class="top"><div class="av">${esc(g.name[0]||'?').toUpperCase()}${avatarHtml(g)}</div>
+          <div style="min-width:0"><div class="nm">${esc(g.name)}</div><div style="font-size:11px;color:var(--dim);margin-top:4px">${segBadge(g)}</div></div></div>
+        <div class="stats"><div class="st"><div class="v">${fmt(g.streams)}</div><div class="l">${T('streams')}</div></div>
+          <div class="st"><div class="v">${g.n}</div><div class="l">tracks</div></div>
+          <div class="st"><div class="v" style="color:${g.hot?'var(--acc2)':'inherit'}">${g.hot}</div><div class="l">≥ 500k</div></div></div>
+        <div class="foot"><span style="color:var(--cyan);font-weight:600">≈ ${money(g.mstreams*RATE)}/${T('mois')}</span></div>
+      </div>`;}).join('')+'</div>';
+  }
+  V.innerHTML=h; attachCovers();
+}
+
 function sortArrow(k){ return S.sort.k===k ? `<span class="arr">${S.sort.dir===-1?'▼':'▲'}</span>` : ''; }
 
 function renderOpps(){
@@ -700,7 +763,7 @@ function renderOpps(){
         <tr class="${r[3]>=HOT?'hot':''} ${ag&&S.sel.has(r[6])?'hot':''}">
           ${ag?`<td class="selc"><input type="checkbox" class="sel-track" data-tid="${r[6]}" ${S.sel.has(r[6])?'checked':''}></td>`:''}
           <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
-          <td><a class="tk" href="${trackUrl(r[6])}" target="_blank" rel="noopener">${esc(r[1])}</a>${r[7]?' <span class="badge new">'+T('détectée')+' '+r[7].slice(5)+'</span>':''}</td>
+          <td><a class="tk" href="${trackUrl(r[6])}" target="_blank" rel="noopener">${esc(r[1])}</a> ${wlStar('t',r[6])}${r[7]?' <span class="badge new">'+T('détectée')+' '+r[7].slice(5)+'</span>':''}</td>
           <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
           <td class="num" title="${fmtFull(r[3])}">${r[3]>=HOT?'<span class="badge hot">'+fmt(r[3])+'</span>':fmt(r[3])}</td>
           <td class="num">${fmt(perMonth(r))}</td>
@@ -779,6 +842,7 @@ function renderArtists(){
       const p = g.n ? Math.round(g.self/g.n*100) : 0;
       return `
       <div class="acard" onclick="goArtist(${g.i})">
+        ${wlStar('a',g.name)}
         <div class="top">
           <div class="av">${esc(g.name[0]||'?').toUpperCase()}${avatarHtml(g)}</div>
           <div style="min-width:0">
@@ -816,7 +880,7 @@ function renderArtists(){
 }
 
 function renderNew(){
-  let rows = R.filter(r=>daysAgo(r[2])<=S.newDays);
+  let rows = R.filter(r=>daysAgo(r[2])<=S.newDays && r[3]>=1000);
   rows.sort((a,b)=>(b[2]||'').localeCompare(a[2]||'') || b[3]-a[3]);
   const detected = R.filter(r=>r[7]).length;
   const slice = rows.slice(0,S.shownN);
@@ -834,12 +898,13 @@ function renderNew(){
   </div>
   <div class="panel" style="padding:6px 14px 14px">
     <table>
-      <thead><tr><th></th><th>${T('Sortie')}</th><th>Track</th><th>${T('Artiste')}</th><th class="num">Streams</th><th class="num">${T('Streams/mois')}</th><th>${T('Statut')}</th><th>Copyright</th></tr></thead>
+      <thead><tr><th></th><th></th><th>${T('Date de sortie')}</th><th>Track</th><th>${T('Artiste')}</th><th class="num">Streams</th><th class="num">${T('Streams/mois')}</th><th>${T('Statut')}</th><th>Copyright</th></tr></thead>
       <tbody>
       ${slice.map(r=>`
         <tr class="${r[3]>=HOT?'hot':''}">
+          <td>${wlStar('t',r[6])}</td>
           <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
-          <td>${r[2]}</td>
+          <td style="white-space:nowrap;font-variant-numeric:tabular-nums">${fmtDate(r[2])}</td>
           <td><a class="tk" href="${trackUrl(r[6])}" target="_blank" rel="noopener">${esc(r[1])}</a>${r[7]?' <span class="badge new">'+T('détectée')+'</span>':''}</td>
           <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
           <td class="num">${fmt(r[3])}</td>
@@ -1024,6 +1089,7 @@ function render(){
   else if (S.view==='new') renderNew();
   else if (S.view==='disco') renderDisco();
   else if (S.view==='playlists') renderPlaylists();
+  else if (S.view==='watch') renderWatch();
   attachCovers();
 }
 
@@ -1032,6 +1098,7 @@ document.getElementById('c-opps').textContent = fmt(R.length);
 document.getElementById('c-art').textContent = withTracks.length;
 document.getElementById('c-new').textContent = R.filter(r=>daysAgo(r[2])<=90).length;
 document.getElementById('c-disco').textContent = AG.filter(g=>g.disco).length;
+(function(){ const w=wlGet(); const c=document.getElementById('c-watch'); if(c) c.textContent = (w.t.length+w.a.length)||''; })();
 function fmtTs(ts){
   const m = (''+ts).match(/^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}:\d{2}))?/);
   if (!m) return ts;
