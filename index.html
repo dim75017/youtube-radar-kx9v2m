@@ -940,13 +940,18 @@ function ageMonths(v){
   if(v.pub)return (Date.now()-v.pub)/2629800000;
   return null;
 }
-const AGES=[['1m','🆕 New · <1 month',1],['6m','🔥 Last 6 months',6],['12m','📈 Last 12 months',12],['all','🌍 All time',null]];
+const AGES=[['1m','🆕 New · fresh this month',1],['6m','🔥 Last 6 months',6],['12m','📈 Last 12 months',12],['all','🌍 All time',null]];
+function inAge(v,code){
+  if(code==='all')return true;
+  const lim=AGES.find(a=>a[0]===code)[2];
+  const m=ageMonths(v);
+  if(m!=null&&m<=lim)return true;
+  if(code==='1m'&&v.added&&(Date.now()-v.added)<=2629800000)return true;
+  return false;
+}
 function filterVids(kind){
   const st=VS[kind];let rows=(kind==='mix')?mixRows():DATA[kind];
-  if(kind==='mix'&&st.age!=='all'){
-    const lim=AGES.find(a=>a[0]===st.age)[2];
-    rows=rows.filter(v=>{const m=ageMonths(v);return m!=null&&m<=lim;});
-  }
+  if(kind==='mix'&&st.age!=='all')rows=rows.filter(v=>inAge(v,st.age));
   if(st.genres.size)rows=rows.filter(v=>st.genres.has(v.genre));
   if(st.cluster)rows=rows.filter(v=>v.cluster===st.cluster);
   if(st.q){const q=st.q.toLowerCase();rows=rows.filter(v=>(v.title+' '+v.channel+' '+(v.kw||'')+' '+(v.disc||'')).toLowerCase().includes(q));}
@@ -960,7 +965,7 @@ function videosHTML(kind){
   let seg='';
   if(kind==='mix'){
     seg='<div class="seg">'+AGES.map(a=>{
-      const n=a[2]==null?all.length:all.filter(v=>{const m=ageMonths(v);return m!=null&&m<=a[2];}).length;
+      const n=a[2]==null?all.length:all.filter(v=>inAge(v,a[0])).length;
       return '<button class="'+(st.age===a[0]?'on':'')+'" onclick="setAge(\''+a[0]+'\')">'+a[1]+'<span class="cnt">'+fmtInt(n)+'</span></button>';
     }).join('')+'</div>';
   }
