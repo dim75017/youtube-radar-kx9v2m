@@ -12,6 +12,7 @@
 <script src="Lofi_Radar_data.js"></script>
 <script src="Lofi_Radar_studio.js"></script>
 <script src="Lofi_Radar_chx.js"></script>
+<script src="Lofi_Radar_seo.js"></script>
 <style>
 :root{
   --bg:#07080d; --bg2:#0b0d15; --panel:#10131e; --panel2:#141828; --card:#12152233;
@@ -290,11 +291,15 @@ select.ctl option{background:#141828;color:var(--text)}
 .val-no{background:rgba(251,113,133,.08);color:var(--red);border:1px solid rgba(251,113,133,.25)}
 .rbody{display:none;padding:2px 16px 16px 63px;border-top:1px solid var(--border)}
 .rcard.open .rbody{display:block}
-.rstatus{flex:none;font-family:inherit;font-size:11px;font-weight:700;padding:6px 11px;border-radius:20px;cursor:pointer;white-space:nowrap;transition:filter .12s}
-.rstatus:hover{filter:brightness(1.15)}
-.rstatus.st-pending{background:rgba(251,191,36,.12);color:var(--amber);border:1px solid rgba(251,191,36,.35)}
-.rstatus.st-val{background:rgba(74,222,128,.14);color:var(--green);border:1px solid rgba(74,222,128,.4)}
-.rstatus.st-no{background:rgba(251,113,133,.12);color:var(--red);border:1px solid rgba(251,113,133,.4)}
+.rbtn{flex:none;font-family:inherit;font-size:13px;font-weight:700;padding:10px 18px;border-radius:11px;cursor:pointer;white-space:nowrap;transition:filter .12s,transform .12s;letter-spacing:.2px}
+.rbtn:hover{filter:brightness(1.18);transform:translateY(-1px)}
+.rbtn-ok{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;box-shadow:0 4px 14px rgba(34,197,94,.35)}
+.rbtn-ko{background:rgba(251,113,133,.1);color:var(--red);border:1.5px solid rgba(251,113,133,.5)}
+.rst-done{flex:none;font-size:13px;font-weight:700;padding:10px 16px;border-radius:11px;white-space:nowrap}
+.rst-ok{background:rgba(74,222,128,.15);color:var(--green);border:1.5px solid rgba(74,222,128,.45)}
+.rst-ko{background:rgba(251,113,133,.12);color:var(--red);border:1.5px solid rgba(251,113,133,.45)}
+.rst-x{flex:none;width:36px;height:38px;border-radius:11px;background:rgba(150,163,214,.07);border:1px solid var(--border);color:var(--muted);font-size:15px;cursor:pointer;transition:color .12s,border-color .12s}
+.rst-x:hover{color:var(--red);border-color:rgba(251,113,133,.5)}
 .rcomment-btn{flex:none;width:30px;height:30px;border-radius:9px;background:rgba(150,163,214,.06);border:1px solid var(--border);color:var(--dim);cursor:pointer;font-size:13px}
 .rcomment-btn:hover{border-color:var(--border2);color:var(--text)}
 .rcomment-btn.has{color:var(--amber);border-color:rgba(251,191,36,.35)}
@@ -1233,7 +1238,7 @@ function vcardHTML(kind,v,i){
     '<div class="vbody">'+
       '<div class="vtitle">'+esc(v.title)+'</div>'+
       '<div class="vmeta"><a href="'+esc(v.chUrl||'#')+'" target="_blank" onclick="event.stopPropagation()">'+esc(v.channel)+'</a><span class="subs">· '+fmtN(v.subs)+' subs</span></div>'+
-      '<div class="vtags">'+gtag(v.genre)+ghosttag(v.cluster)+aiBadge(chanFor(v))+'</div>'+extra+
+      '<div class="vtags">'+gtag(v.genre)+ghosttag(v.cluster)+'</div>'+extra+
       '<div class="vstats">'+
         '<div class="vstat hl"><b>'+fmtN(v.vpm)+'</b><span>views/mo</span></div>'+
         '<div class="vstat"><b>'+fmtN(v.views)+'</b><span>views</span></div>'+
@@ -1273,7 +1278,7 @@ function openDrawer(kind,v){
       '<div class="dw-title"><a href="'+esc(v.url)+'" target="_blank">'+esc(v.title)+'</a></div>'+
       '<div class="dw-sub">'+gtag(v.genre)+ghosttag(v.cluster)+
         (v.chUrl?'<a class="tag ghost" href="'+esc(v.chUrl)+'" target="_blank">'+esc(v.channel)+' ↗</a>':ghosttag(v.channel))+
-        '<span class="tag ghost">'+fmtN(v.subs)+' subs</span>'+likeTag(v.vid)+aiBadge(chanFor(v))+'</div>'+
+        '<span class="tag ghost">'+fmtN(v.subs)+' subs</span>'+likeTag(v.vid)+'</div>'+
       '<div class="dw-stats">'+
         '<div class="dw-stat hl"><b>'+fmtN(v.vpm)+'</b><span>views/mo</span></div>'+
         '<div class="dw-stat"><b>'+fmtN(v.views)+'</b><span>views</span></div>'+
@@ -1316,15 +1321,14 @@ function validState(v){
 function noteOf(v){const m=String(v||'').match(/^[x-]\s*·\s*([\s\S]*)$/i);if(m)return m[1];const s=validState(v);return (s==='note')?String(v):'';}
 function isValidated(v){return ['x','xnote'].includes(validState(v));}
 function isRefused(v){return ['no','nonote'].includes(validState(v));}
-function cycleValid(n,btn,ev){
+function setValid(n,mode,btn,ev){
   if(ev)ev.stopPropagation();
   const rec=DATA.recos.find(x=>x.n===n);if(!rec)return;
   const note=noteOf(rec.valid);
-  const cur=validState(rec.valid);
   let val;
-  if(cur==='x'||cur==='xnote') val=note?('- · '+note):'-';
-  else if(cur==='no'||cur==='nonote') val=note||'';
-  else val=note?('X · '+note):'X';
+  if(mode==='X') val=note?('X · '+note):'X';
+  else if(mode==='-') val=note?('- · '+note):'-';
+  else val=note||'';
   writeValid(n,val,btn);
 }
 const WRITE_URL='https://script.google.com/macros/s/AKfycbynEewHZzfecwty-E5TV4Otgsxi3ieGy_N5PPYiM7GpPeMVz_5ka1rxY-Y67H3eknto4w/exec';
@@ -1416,8 +1420,6 @@ function rerenderRecos(){
 function recoCardHTML(r,i){
     const cur=validState(r.valid);
     const isVal=isValidated(r.valid), isRef=isRefused(r.valid);
-    const statusCls=isVal?'st-val':isRef?'st-no':'st-pending';
-    const statusLbl=isVal?'✓ Validé':isRef?'✕ Refusé':'À valider';
     const note=noteOf(r.valid);
     const tierL=r.pot?r.pot[0].toUpperCase():null;
     const tier=tierL?('<span class="rtier tier-'+tierL+'" title="Tier '+tierL+'">'+tierL+'</span>'):'<span class="rtier" style="opacity:.35">—</span>';
@@ -1425,7 +1427,11 @@ function recoCardHTML(r,i){
       '<div class="rhead" onclick="document.getElementById(\'rc'+i+'\').classList.toggle(\'open\')">'+
         tier+
         '<div class="rtitle">'+esc(r.title)+'<div style="margin-top:5px;display:flex;gap:5px;flex-wrap:wrap">'+gtag(r.genre)+ghosttag(r.perso)+ghosttag(r.niche)+(r.dur?ghosttag(r.dur):'')+'</div></div>'+
-        '<button class="rstatus '+statusCls+'" title="Cliquer pour changer le statut" onclick="cycleValid('+r.n+',this,event)">'+statusLbl+'</button>'+
+        (isVal
+          ?'<span class="rst-done rst-ok">✓ Validé</span><button class="rst-x" title="Dévalider" onclick="setValid('+r.n+',\'\',this,event)">✕</button>'
+          :isRef
+          ?'<span class="rst-done rst-ko">✕ Refusé</span><button class="rst-x" title="Annuler le refus" onclick="setValid('+r.n+',\'\',this,event)">✕</button>'
+          :'<button class="rbtn rbtn-ok" onclick="setValid('+r.n+',\'X\',this,event)">✓ Valider</button><button class="rbtn rbtn-ko" onclick="setValid('+r.n+',\'-\',this,event)">✕ Refuser</button>')+
         '<button class="rcomment-btn'+(note?' has':'')+'" title="'+(note?'Modifier le commentaire':'Ajouter un commentaire')+'" onclick="toggleCommentPop('+i+',event)">💬</button>'+
       '</div>'+
       '<div class="rcpop" id="cpop'+i+'">'+
@@ -1943,14 +1949,48 @@ async function buildDeepAudit(o){
   }else if(!ourThumb.ok){
     out.thumb.push('Analyse colorimétrique impossible pour cette miniature (image indisponible) — vérification visuelle manuelle recommandée vs les miniatures les plus vues du genre.');
   }
-  if(o.reco){
+  /* ---- SEO réel : tags + description scrapés de YouTube ---- */
+  const S=window.SEO||{};
+  const mine=S[o.vid];
+  const cohSeo=Object.values(S).filter(x=>x.who==='coh'&&x.gk===o.gk&&x.kw&&x.kw.length);
+  if(mine&&mine.kw&&cohSeo.length>=3){
+    const norm=t=>String(t).toLowerCase().trim();
+    const mySet=new Set(mine.kw.map(norm));
+    // fréquence des tags chez les tops du genre
+    const freq={};
+    cohSeo.forEach(c=>{ new Set(c.kw.map(norm)).forEach(t=>{freq[t]=(freq[t]||0)+1;}); });
+    const half=Math.ceil(cohSeo.length/2);
+    const missing=Object.entries(freq)
+      .filter(([t,n])=>n>=half&&!mySet.has(t)&&!/lofi girl|chilledcow|lofigirl|chilled cow/.test(t))
+      .sort((a,b)=>b[1]-a[1]).slice(0,10);
+    if(missing.length)
+      out.kw.push('Tags utilisés par les tops '+o.gk+' mais absents de cette vidéo : '+missing.map(([t,n])=>'«'+t+'» ('+n+'/'+cohSeo.length+')').join(', ')+'. Ce sont les ajouts les plus rentables — YouTube s’en sert pour les suggestions «à côté de».');
+    // nos tags que personne d'autre n'utilise (hors branding)
+    const brandRx=/lofi girl|lofigirl|chilledcow|chilled cow|lofi boy|synthwave boy/;
+    const unused=mine.kw.filter(t=>!freq[norm(t)]&&!brandRx.test(norm(t)));
+    if(unused.length>=Math.max(4,mine.kw.length*0.5))
+      out.kw.push(unused.length+' de nos '+mine.kw.length+' tags ne sont utilisés par aucun top du genre (ex. '+unused.slice(0,5).map(t=>'«'+t+'»').join(', ')+') — pas forcément faux, mais si le CTR/les impressions déçoivent, remplace les moins pertinents par les tags fréquents ci-dessus.');
+    const medKw=median(cohSeo.map(c=>c.kw.length));
+    if(mine.kw.length<medKw*0.6)
+      out.kw.push('Seulement '+mine.kw.length+' tags contre '+Math.round(medKw)+' en médiane chez les tops du genre — il reste de la marge de couverture (variantes «for sleep», «for study», «mix», langue).');
+    // description
+    const medDl=median(cohSeo.map(c=>c.dl||0));
+    if(mine.dl!=null&&medDl&&mine.dl<medDl*0.5)
+      out.kw.push('Description courte ('+mine.dl+' caractères vs '+Math.round(medDl)+' en médiane chez les tops) — les descriptions longues avec mots-clés répétés naturellement aident la recherche et les suggestions.');
+    const hookLower=(mine.hook||'').toLowerCase();
+    const hookHasKw=mine.kw.slice(0,10).some(t=>hookLower.includes(norm(t).split(' ')[0]));
+    if(mine.hook&&!hookHasKw)
+      out.kw.push('Les 125 premiers caractères de la description (visibles avant «plus») ne contiennent aucun de nos tags principaux — c’est la zone la plus lue par l’algo et par l’utilisateur : reformule le hook avec le mot-clé cible.');
+    const tsPct=Math.round(cohSeo.filter(c=>c.ts).length/cohSeo.length*100);
+    if(!mine.ts&&tsPct>=60)
+      out.kw.push('Pas de tracklist/timestamps dans la description alors que '+tsPct+'% des tops du genre en ont — les chapitres génèrent des «key moments» dans la recherche Google/YouTube.');
+    if(!out.kw.length)out.kw.push('Tags et description bien alignés avec les pratiques des tops du genre ('+mine.kw.length+' tags, description '+mine.dl+' caractères) — le SEO n’est probablement pas le frein.');
+  }else if(o.reco){
     const kwCount=(o.reco.kw||'').split(',').map(s=>s.trim()).filter(Boolean).length;
     if(!o.reco.kw)out.kw.push('Aucun mot-clé SEO renseigné pour cette sortie — impossible de vérifier le ciblage de recherche au lancement.');
-    else if(kwCount<5)out.kw.push('Seulement '+kwCount+' mot(s)-clé(s) SEO renseigné(s), en dessous des 8–12 recommandés pour couvrir les variantes de recherche ("for sleep", "for study", "mix"…).');
-    else out.kw.push(kwCount+' mots-clés SEO renseignés — couverture correcte, vérifie qu’ils apparaissent bien dans le titre et les 2 premières lignes de description.');
-    if(!o.reco.desc)out.kw.push('Pas de description longue trackée pour cette vidéo — une description détaillée (150+ mots, mots-clés répétés naturellement) aide le référencement et l’affichage en «vidéos similaires».');
+    else out.kw.push(kwCount+' mots-clés SEO renseignés (données de reco, pas de scrape YouTube pour cette vidéo).');
   }else{
-    out.kw.push('Pas de recommandation liée à cette sortie — impossible de vérifier les mots-clés/description utilisés au lancement.');
+    out.kw.push('Pas de données SEO scrapées pour cette vidéo — relance un scan SEO pour l’inclure.');
   }
   return out;
 }
@@ -2117,7 +2157,7 @@ function liveCardHTML(v,i){
     '<div class="vbody">'+
       '<div class="vtitle">'+esc(v.title)+'</div>'+
       '<div class="vmeta"><a href="'+esc(v.url)+'" target="_blank" onclick="event.stopPropagation()">'+esc(v.channel)+'</a></div>'+
-      '<div class="vtags">'+aiBadge(chanFor(v))+kws.map(ghosttag).join('')+'</div>'+
+      '<div class="vtags">'+kws.map(ghosttag).join('')+'</div>'+
       '<div class="vstats">'+
         '<div class="vstat hl"><b>'+fmtN(peak24)+'</b><span>peak 24h</span></div>'+
         '<div class="vstat"><b>'+fmtN(peakAll)+'</b><span>peak all-time</span></div>'+
@@ -2256,7 +2296,7 @@ function chanListHTML(rows){
   window._page_chan=page;
   let h='<table class="vtable"><thead><tr><th>Channel</th><th>Niche</th><th>Country</th><th>Subs</th><th>Subs per month</th><th>Total views</th><th>Views per year</th><th>Avg last 10</th><th>Uploads per month</th><th>Last upload</th></tr></thead><tbody>'+
     page.map((c,i)=>'<tr class="row" onclick="openChanIdx('+i+')">'+
-      '<td><div style="display:flex;align-items:center;gap:12px">'+chAva(c,64)+'<span class="ttitle">'+esc(c.name)+(c.ours?' <span class="tag" style="background:#a78bfa22;color:#a78bfa;border:1px solid #a78bfa55;margin-left:6px">OURS</span>':'')+' '+aiBadge(c)+'</span>'+wlStar('c',normUrl(c.url)).replace('class="wl-star','style="margin-left:8px" class="wl-star inline')+'</div></td>'+
+      '<td><div style="display:flex;align-items:center;gap:12px">'+chAva(c,64)+'<span class="ttitle">'+esc(c.name)+(c.ours?' <span class="tag" style="background:#a78bfa22;color:#a78bfa;border:1px solid #a78bfa55;margin-left:6px">OURS</span>':'')+' '+'</span>'+wlStar('c',normUrl(c.url)).replace('class="wl-star','style="margin-left:8px" class="wl-star inline')+'</div></td>'+
       '<td>'+gtag(c.niche)+'</td>'+
       '<td style="white-space:nowrap">'+flagOf(c.country)+' '+esc(c.country||'—')+'</td>'+
       '<td class="num vpmcell">'+fmtN(c.subs)+'</td>'+
@@ -2283,7 +2323,7 @@ function openChanDrawer(c){
     '<button class="dw-close" onclick="closeDrawer()">✕</button>'+
     '<div class="dw-body" style="padding-top:26px">'+
       '<div class="dw-title" style="display:flex;align-items:center;gap:12px">'+chAva(c,72)+'<a href="'+esc(c.url)+'" target="_blank">'+esc(c.name)+' ↗</a></div>'+
-      '<div class="dw-sub">'+gtag(c.niche)+ghosttag(c.country)+ghosttag(c.status)+(c.ageY!=null?'<span class="tag ghost">'+c.ageY+' yrs old</span>':'')+aiBadge(c)+'</div>'+
+      '<div class="dw-sub">'+gtag(c.niche)+ghosttag(c.country)+ghosttag(c.status)+(c.ageY!=null?'<span class="tag ghost">'+c.ageY+' yrs old</span>':'')+'</div>'+
       '<div class="dw-stats">'+
         '<div class="dw-stat hl"><b>'+fmtN(c.subs)+'</b><span>subscribers</span></div>'+
         '<div class="dw-stat"><b>'+fmtN(c.views)+'</b><span>total views</span></div>'+
