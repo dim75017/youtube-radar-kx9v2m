@@ -202,6 +202,9 @@ select.ctl option{background:#141828;color:var(--text)}
 #lang-btn{position:fixed;top:14px;right:18px;z-index:60;display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:10px;border:1px solid var(--border);background:rgba(15,18,30,.85);backdrop-filter:blur(8px);color:var(--muted);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
 #lang-btn:hover{border-color:rgba(139,124,246,.5);color:var(--text)}
 #lang-btn img{width:18px;height:13px;border-radius:2px}
+.wl-star{position:absolute;right:8px;top:8px;z-index:5;background:rgba(5,6,10,.75);border:1px solid var(--border);border-radius:8px;color:#fbbf24;font-size:13px;width:28px;height:26px;cursor:pointer;backdrop-filter:blur(4px)}
+.wl-star:hover{border-color:#fbbf2466}
+.wl-star.inline{position:static;width:26px;height:24px;margin-left:4px}
 .dash-2{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px;margin-top:14px}
 .vtable .tthumb{width:86px;aspect-ratio:16/9;border-radius:7px;object-fit:cover;display:block;background:#0a0c14}
 .vtable .ttitle{font-weight:600;max-width:420px;line-height:1.4}
@@ -836,6 +839,7 @@ async function boot(){
 const VIEWS=[
   {id:'dashboard',label:'Dashboard',emo:'📊',cnt:()=>''},
   {id:'mix',label:'Videos',emo:'🎬',cnt:()=>DATA?fmtN(mixRows().length):''},
+  {id:'watch',label:'Watchlist',emo:'⭐',cnt:()=>{const w=wlGet();return String(w.v.length+w.l.length+w.c.length);}},
   {id:'live',label:'Livestreams',emo:'📺',cnt:()=>DATA&&DATA.lives?String(DATA.lives.length):''},
   {id:'chan',label:'Channels',emo:'📡',cnt:()=>CHAN?String(CHAN.channels.length):''},
   {id:'recos',label:'Recommendations',emo:'💡',cnt:()=>DATA?fmtN(DATA.recos.length):''},
@@ -860,6 +864,7 @@ function render(){
   else if(route==='recos'){t.textContent='Recommendations';s.textContent=fmtInt(DATA.recos.length)+' original concepts ranked by potential · descriptions & SEO keywords ready to copy';el.innerHTML=recosHTML();}
   else if(route==='roadmap'){t.textContent='Roadmap';s.textContent='Release plan balanced by genre, character and season · synced with Monday';el.innerHTML=roadmapHTML();}
   else if(route==='ana'){t.innerHTML='Analysis <span class="pill">OUR VIDEOS</span>';s.textContent='How each of our long-form releases performed vs the market · last 12 months · Shorts excluded';el.innerHTML=anaHTML();}
+  else if(route==='watch'){t.innerHTML='Watchlist <span class="pill">⭐</span>';s.textContent='Your pinned videos, livestreams and channels · stored in this browser';el.innerHTML=watchHTML();}
   else if(route==='live'){t.innerHTML='Livestreams <span class="pill">LIVE</span>';s.textContent='24/7 streams surfacing on the scan keywords · concurrent viewers tracked hourly';el.innerHTML=livesHTML();}
   else if(route==='chan'){t.textContent='Channels';s.textContent='Competitive channel audit · subscribers & total views tracked by the weekly scan';el.innerHTML=chanHTML();}
   else if(route==='kw'){t.textContent='Keywords';s.textContent='The search corpus scanned on every sync · what feeds All Videos, Trends & News';el.innerHTML=kwHTML();}
@@ -1080,7 +1085,7 @@ function vcardHTML(kind,v,i){
     ? '<div class="vtags">'+(v.rank?'<span class="tag ghost">#'+v.rank+' search rank</span>':'')+(v.added?'<span class="tag ghost">added '+fmtDateFull(v.added)+'</span>':'')+'</div>'
     : '';
   return '<div class="vcard" onclick="openIdx(\''+kind+'\','+i+')">'+
-    '<div class="thumbwrap"><img loading="lazy" src="'+thumb(v.vid)+'" onerror="this.src=\'https://i.ytimg.com/vi/'+(v.vid||'')+'/hqdefault.jpg\';this.onerror=null;">'+
+    '<div class="thumbwrap">'+(v.vid?wlStar('v',v.vid):'')+'<img loading="lazy" src="'+thumb(v.vid)+'" onerror="this.src=\'https://i.ytimg.com/vi/'+(v.vid||'')+'/hqdefault.jpg\';this.onerror=null;">'+
       (v.vid?'<span class="like-flag" style="display:none" data-likes="'+v.vid+'"></span>':'')+
       (v.durH!=null?'<span class="dur">'+fmtDur(v.durH)+'</span>':'')+'</div>'+
     '<div class="vbody">'+
@@ -1126,7 +1131,7 @@ function openDrawer(kind,v){
       '<div class="dw-title"><a href="'+esc(v.url)+'" target="_blank">'+esc(v.title)+'</a></div>'+
       '<div class="dw-sub">'+gtag(v.genre)+ghosttag(v.cluster)+
         (v.chUrl?'<a class="tag ghost" href="'+esc(v.chUrl)+'" target="_blank">'+esc(v.channel)+' ↗</a>':ghosttag(v.channel))+
-        '<span class="tag ghost">'+fmtN(v.subs)+' subs</span>'+likeTag(v.vid)+'</div>'+
+        '<span class="tag ghost">'+fmtN(v.subs)+' subs</span>'+likeTag(v.vid)+aiBadge(chanByUrl(v.chUrl))+'</div>'+
       '<div class="dw-stats">'+
         '<div class="dw-stat hl"><b>'+fmtN(v.vpm)+'</b><span>views/mo</span></div>'+
         '<div class="dw-stat"><b>'+fmtN(v.views)+'</b><span>views</span></div>'+
@@ -1626,7 +1631,7 @@ function liveCardHTML(v,i){
   const now=liveNow(v.vid),peak=livePeak(v.vid);
   const kws=(v.disc||'').split(',').map(s=>s.trim()).filter(Boolean).slice(0,2);
   return '<div class="vcard" onclick="openLiveIdx('+i+')">'+
-    '<div class="thumbwrap"><img loading="lazy" src="'+thumb(v.vid)+'" onerror="if(!this._f){this._f=1;this.src=\'https://i.ytimg.com/vi/'+v.vid+'/hqdefault.jpg\'}else this.style.visibility=\'hidden\'">'+
+    '<div class="thumbwrap">'+wlStar('l',v.vid)+'<img loading="lazy" src="'+thumb(v.vid)+'" onerror="if(!this._f){this._f=1;this.src=\'https://i.ytimg.com/vi/'+v.vid+'/hqdefault.jpg\'}else this.style.visibility=\'hidden\'">'+
       '<span class="vpm-flag" style="background:rgba(220,38,38,.94);color:#fff"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ff1a1a;box-shadow:0 0 0 0.8px rgba(255,255,255,.9);margin-right:2px"></span> '+fmtN(now)+' watching</span>'+
       '<span class="like-flag" style="display:none" data-likes="'+v.vid+'"></span>'+
       (peak!=null?'<span class="dur">peak '+fmtN(peak)+'</span>':'')+'</div>'+
@@ -1756,7 +1761,7 @@ function chanListHTML(rows){
   window._page_chan=page;
   let h='<table class="vtable"><thead><tr><th>Channel</th><th>Niche</th><th>Country</th><th>Subs</th><th>Subs / mo</th><th>Total views</th><th>Views / yr</th><th>Avg last 10</th><th>Up / mo</th><th>Last upload</th></tr></thead><tbody>'+
     page.map((c,i)=>'<tr class="row" onclick="openChanIdx('+i+')">'+
-      '<td><div style="display:flex;align-items:center;gap:12px">'+chAva(c,64)+'<span class="ttitle">'+esc(c.name)+(c.ours?' <span class="tag" style="background:#a78bfa22;color:#a78bfa;border:1px solid #a78bfa55;margin-left:6px">OURS</span>':'')+'</span></div></td>'+
+      '<td><div style="display:flex;align-items:center;gap:12px">'+chAva(c,64)+'<span class="ttitle">'+esc(c.name)+(c.ours?' <span class="tag" style="background:#a78bfa22;color:#a78bfa;border:1px solid #a78bfa55;margin-left:6px">OURS</span>':'')+' '+aiBadge(c)+'</span><span style="margin-left:auto"></span>'+wlStar('c',normUrl(c.url)).replace('wl-star','wl-star inline')+'</div></td>'+
       '<td>'+gtag(c.niche)+'</td>'+
       '<td style="white-space:nowrap">'+flagOf(c.country)+' '+esc(c.country||'—')+'</td>'+
       '<td class="num vpmcell">'+fmtN(c.subs)+'</td>'+
@@ -1783,7 +1788,7 @@ function openChanDrawer(c){
     '<button class="dw-close" onclick="closeDrawer()">✕</button>'+
     '<div class="dw-body" style="padding-top:26px">'+
       '<div class="dw-title" style="display:flex;align-items:center;gap:12px">'+chAva(c,72)+'<a href="'+esc(c.url)+'" target="_blank">'+esc(c.name)+' ↗</a></div>'+
-      '<div class="dw-sub">'+gtag(c.niche)+ghosttag(c.country)+ghosttag(c.status)+(c.ageY!=null?'<span class="tag ghost">'+c.ageY+' yrs old</span>':'')+'</div>'+
+      '<div class="dw-sub">'+gtag(c.niche)+ghosttag(c.country)+ghosttag(c.status)+(c.ageY!=null?'<span class="tag ghost">'+c.ageY+' yrs old</span>':'')+aiBadge(c)+'</div>'+
       '<div class="dw-stats">'+
         '<div class="dw-stat hl"><b>'+fmtN(c.subs)+'</b><span>subscribers</span></div>'+
         '<div class="dw-stat"><b>'+fmtN(c.views)+'</b><span>total views</span></div>'+
@@ -1800,6 +1805,61 @@ function openChanDrawer(c){
   fillLikes();i18nDrawer();
 }
 
+
+/* ================= WATCHLIST + AI POTENTIAL ================= */
+const WLS={tab:'v'};
+function wlGet(){try{return Object.assign({v:[],l:[],c:[]},JSON.parse(localStorage.getItem('radar_wl')||'{}'));}catch(e){return {v:[],l:[],c:[]};}}
+function wlSet(w){try{localStorage.setItem('radar_wl',JSON.stringify(w));}catch(e){}}
+function wlHas(t,k){return wlGet()[t].includes(k);}
+function toggleWatch(t,k,ev){
+  if(ev)ev.stopPropagation();
+  const w=wlGet();const i=w[t].indexOf(k);
+  if(i>=0)w[t].splice(i,1);else w[t].push(k);
+  wlSet(w);renderNav();
+  if(ev&&ev.target){ev.target.textContent=w[t].includes(k)?'⭐':'☆';ev.target.title=w[t].includes(k)?'Remove from watchlist':'Add to watchlist';}
+  if(route==='watch')render();
+}
+function wlStar(t,k){
+  const on=wlHas(t,k);
+  return '<button class="wl-star'+(on?' on':'')+'" title="'+(on?'Remove from watchlist':'Add to watchlist')+'" onclick="toggleWatch(\''+t+'\',\''+String(k).replace(/'/g,"\\'")+'\',event)">'+(on?'⭐':'☆')+'</button>';
+}
+function aiRisk(c){
+  if(!c)return 0;
+  let s=0;
+  if(c.ageY!=null&&c.ageY<2)s+=2;else if(c.ageY!=null&&c.ageY<3.5)s+=1;
+  if(c.upMo!=null&&c.upMo>=15)s+=2;else if(c.upMo!=null&&c.upMo>=8)s+=1;
+  if(c.nvid!=null&&c.ageY>0.2&&c.nvid/c.ageY>250)s+=1;
+  if(c.viewsYr!=null&&c.ageY!=null&&c.ageY<2&&c.viewsYr>20000000)s+=1;
+  return s;
+}
+function aiBadge(c){
+  const s=aiRisk(c);
+  if(s>=4)return '<span class="tag" style="background:#f8717122;color:#f87171;border:1px solid #f8717155" title="Very young channel with industrial output cadence — AI music/visual pipeline likely">🤖 AI likely</span>';
+  if(s>=2)return '<span class="tag" style="background:#fbbf2422;color:#fbbf24;border:1px solid #fbbf2455" title="Output pace and channel age suggest possible AI-assisted music/visuals">🤖 AI possible</span>';
+  return '';
+}
+function chanByUrl(u){
+  if(!CHAN||!u)return null;
+  const k=normUrl(u);return CHAN.channels.find(c=>normUrl(c.url)===k)||null;
+}
+function watchHTML(){
+  const w=wlGet();
+  const tabs=[['v','🎬 Videos',w.v.length],['l','📺 Livestreams',w.l.length],['c','📡 Channels',w.c.length]];
+  let hh='<div class="seg">'+tabs.map(t=>'<button class="'+(WLS.tab===t[0]?'on':'')+'" onclick="WLS.tab=\''+t[0]+'\';render()">'+t[1]+'<span class="cnt">'+t[2]+'</span></button>').join('')+'</div>';
+  if(WLS.tab==='v'){
+    const rows=mixRows().filter(x=>x.vid&&w.v.includes(x.vid));
+    window._page_mix=rows;
+    hh+=rows.length?'<div class="vgrid">'+rows.map((v,i)=>vcardHTML('mix',v,i)).join('')+'</div>':'<div class="empty">No pinned videos yet — hit the ☆ on any video card to track it here.</div>';
+  }else if(WLS.tab==='l'){
+    const rows=(DATA.lives||[]).filter(x=>w.l.includes(x.vid));
+    window._page_live=rows;
+    hh+=rows.length?'<div class="vgrid">'+rows.map((v,i)=>liveCardHTML(v,i)).join('')+'</div>':'<div class="empty">No pinned livestreams yet — hit the ☆ on any stream card.</div>';
+  }else{
+    const rows=CHAN?CHAN.channels.filter(c=>w.c.includes(normUrl(c.url))):[];
+    hh+=rows.length?chanListHTML(rows):'<div class="empty">No pinned channels yet — hit the ☆ on any channel row.</div>';
+  }
+  return hh;
+}
 
 /* ================= I18N (FR) ================= */
 let LANG=localStorage.getItem('radar_lang')||'en';
@@ -1828,7 +1888,7 @@ const FR_LIT=[
 [' original concepts ranked by potential · descriptions & SEO keywords ready to copy',' concepts originaux classés par potentiel · descriptions et mots-clés SEO prêts à copier'],
 ['Release plan balanced by genre, character and season · synced with Monday','Plan de sorties équilibré par genre, personnage et saison · synchronisé avec Monday'],
 ['The search corpus scanned on every sync · what feeds All Videos, Trends & News','Le corpus de recherche scanné à chaque synchro · ce qui alimente les vidéos, tendances et découvertes'],
-['>Videos audited<','>Vidéos auditées<'],['>Trending now<','>En tendance<'],['>Unique channels<','>Chaînes uniques<'],['>Livestreams<','>Livestreams<'],['>Channels audited<','>Chaînes auditées<'],
+['>Videos audited<','>Vidéos auditées<'],['Your pinned videos, livestreams and channels · stored in this browser','Tes vidéos, livestreams et chaînes épinglés · stockés dans ce navigateur'],['No pinned videos yet — hit the ☆ on any video card to track it here.','Aucune vidéo épinglée, clique sur ☆ sur une carte vidéo pour la suivre ici.'],['No pinned livestreams yet — hit the ☆ on any stream card.','Aucun livestream épinglé, clique sur ☆ sur une carte de stream.'],['No pinned channels yet — hit the ☆ on any channel row.','Aucune chaîne épinglée, clique sur ☆ sur une ligne de chaîne.'],['🤖 AI likely','🤖 IA probable'],['🤖 AI possible','🤖 IA possible'],['>Trending now<','>En tendance<'],['>Unique channels<','>Chaînes uniques<'],['>Livestreams<','>Livestreams<'],['>Channels audited<','>Chaînes auditées<'],
 ['≥1M views · all time','≥1M vues · tout l’historique'],['<12 months · ≥500k views','<12 mois · ≥500k vues'],['competitive landscape','paysage concurrentiel'],[' watching right now',' spectateurs en ce moment'],[' combined subscribers',' abonnés cumulés'],['live scan pending','scan lives en attente'],['loading audit Sheet…','chargement du Sheet d’audit…'],
 ['>Genre distribution<','>Répartition par genre<'],['Number of audited videos per genre · full history, ≥1M views','Nombre de vidéos auditées par genre · historique complet, ≥1M vues'],
 ['>Top use-case clusters<','>Principaux usages<'],['What the audited videos are made for (sleep, study, reading…)','À quoi servent les vidéos auditées (sommeil, étude, lecture…)'],
