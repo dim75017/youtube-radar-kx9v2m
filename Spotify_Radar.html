@@ -73,7 +73,7 @@ input,select{font-family:inherit;color:var(--text)}
 .sync-txt{font-size:11px;color:var(--dim);line-height:1.4}
 
 /* ---------- Main ---------- */
-#main{margin-left:var(--sidebar);padding:26px 30px 60px;max-width:1460px}
+#main{margin-left:var(--sidebar);padding:26px 30px 60px}
 .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap}
 .page-head h2{font-family:'Sora';font-size:22px;font-weight:700}
 .page-head p{color:var(--muted);font-size:13px;margin-top:4px;max-width:760px;line-height:1.5}
@@ -144,7 +144,10 @@ td .tk{font-weight:600;color:var(--text)}
 td .tk:hover{color:var(--acc2)}
 td .ar{color:var(--muted);cursor:pointer}
 td .ar:hover{color:var(--acc2)}
-td .lb{color:var(--dim);font-size:11.5px;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+td .lb{color:var(--dim);font-size:11.5px;max-width:360px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+td.covtd{width:44px;padding:5px 2px 5px 10px}
+.cov{width:34px;height:34px;border-radius:7px;background:rgba(150,214,170,.07);object-fit:cover;display:block;box-shadow:0 1px 6px rgba(0,0,0,.35)}
+.cov[src]{background:none}
 .badge{display:inline-block;padding:2.5px 9px;border-radius:20px;font-size:10.5px;font-weight:700;letter-spacing:.3px;white-space:nowrap}
 .badge.self{color:#4ade80;background:rgba(74,222,128,.12);box-shadow:inset 0 0 0 1px rgba(74,222,128,.25)}
 .badge.other{color:#fbbf24;background:rgba(251,191,36,.10);box-shadow:inset 0 0 0 1px rgba(251,191,36,.22)}
@@ -426,6 +429,7 @@ function renderOpps(){
   <div class="panel" style="padding:6px 14px 14px">
     <table>
       <thead><tr>
+        <th></th>
         <th data-k="1">Track</th>
         <th data-k="0">Artiste ${sortArrow(0)}</th>
         <th data-k="3" class="num">Streams ${sortArrow(3)}</th>
@@ -437,6 +441,7 @@ function renderOpps(){
       <tbody>
       ${slice.map(r=>`
         <tr class="${r[3]>=HOT?'hot':''}">
+          <td class="covtd"><img class="cov" loading="lazy" data-tid="${r[6]}" alt=""></td>
           <td><a class="tk" href="${trackUrl(r[6])}" target="_blank" rel="noopener">${esc(r[1])}</a>${r[7]?' <span class="badge new">détectée '+r[7].slice(5)+'</span>':''}</td>
           <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
           <td class="num" title="${fmtFull(r[3])}">${r[3]>=HOT?'<span class="badge hot">'+fmt(r[3])+'</span>':fmt(r[3])}</td>
@@ -464,6 +469,7 @@ function renderOpps(){
     if (S.sort.k===k) S.sort.dir*=-1; else S.sort={k, dir:-1};
     renderOpps();
   }));
+  if (typeof attachCovers==='function') attachCovers();
 }
 function keepFocus(id){ const el=document.getElementById(id); if(el){ el.focus(); el.setSelectionRange(el.value.length,el.value.length);} }
 
@@ -548,10 +554,11 @@ function renderNew(){
   </div>
   <div class="panel" style="padding:6px 14px 14px">
     <table>
-      <thead><tr><th>Sortie</th><th>Track</th><th>Artiste</th><th class="num">Streams</th><th class="num">Streams/mois</th><th>Statut</th><th>Copyright</th></tr></thead>
+      <thead><tr><th></th><th>Sortie</th><th>Track</th><th>Artiste</th><th class="num">Streams</th><th class="num">Streams/mois</th><th>Statut</th><th>Copyright</th></tr></thead>
       <tbody>
       ${slice.map(r=>`
         <tr class="${r[3]>=HOT?'hot':''}">
+          <td class="covtd"><img class="cov" loading="lazy" data-tid="${r[6]}" alt=""></td>
           <td>${r[2]}</td>
           <td><a class="tk" href="${trackUrl(r[6])}" target="_blank" rel="noopener">${esc(r[1])}</a>${r[7]?' <span class="badge new">détectée</span>':''}</td>
           <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
@@ -568,6 +575,7 @@ function renderNew(){
   document.querySelectorAll('.chip[data-d]').forEach(c=>c.addEventListener('click', ()=>{ S.newDays=+c.dataset.d; S.shownN=100; renderNew(); }));
   const nm = document.getElementById('n-more');
   if (nm) nm.addEventListener('click', ()=>{ S.shownN+=200; renderNew(); });
+  if (typeof attachCovers==='function') attachCovers();
 }
 
 function renderDisco(){
@@ -614,12 +622,61 @@ function renderDisco(){
   </div>`}`;
 }
 
+/* ---------- covers (lazy, via oEmbed Spotify, sans clé API) ---------- */
+const covCache = new Map();
+try{
+  const saved = JSON.parse(localStorage.getItem('sr_covs')||'[]');
+  for (const [k,v] of saved) covCache.set(k,v);
+}catch(e){}
+let covSaveTimer = null;
+function covPersist(){
+  clearTimeout(covSaveTimer);
+  covSaveTimer = setTimeout(()=>{
+    try{
+      const entries = [...covCache.entries()].slice(-4000);
+      localStorage.setItem('sr_covs', JSON.stringify(entries));
+    }catch(e){}
+  }, 1200);
+}
+const covQueue = []; let covActive = 0;
+function covPump(){
+  while (covActive < 4 && covQueue.length){
+    const {tid, img} = covQueue.shift();
+    if (!img.isConnected) continue;
+    covActive++;
+    fetch('https://open.spotify.com/oembed?url=https://open.spotify.com/track/'+tid)
+      .then(r=>r.ok?r.json():null)
+      .then(j=>{
+        const u = j && j.thumbnail_url;
+        if (u){ covCache.set(tid,u); covPersist(); if (img.isConnected) img.src = u; }
+      })
+      .catch(()=>{})
+      .finally(()=>{ covActive--; setTimeout(covPump, 120); });
+  }
+}
+let covObserver = null;
+function attachCovers(){
+  if (covObserver) covObserver.disconnect();
+  covObserver = new IntersectionObserver(es=>{
+    for (const e of es){
+      if (!e.isIntersecting) continue;
+      const img = e.target; covObserver.unobserve(img);
+      const tid = img.dataset.tid;
+      const hit = covCache.get(tid);
+      if (hit) img.src = hit;
+      else { covQueue.push({tid, img}); covPump(); }
+    }
+  }, {rootMargin:'300px'});
+  document.querySelectorAll('img.cov[data-tid]').forEach(i=>covObserver.observe(i));
+}
+
 function render(){
   if (S.view==='overview') renderOverview();
   else if (S.view==='opps') renderOpps();
   else if (S.view==='artists') renderArtists();
   else if (S.view==='new') renderNew();
   else if (S.view==='disco') renderDisco();
+  attachCovers();
 }
 
 /* ---------- init ---------- */
