@@ -93,13 +93,17 @@ input,select{font-family:inherit;color:var(--text)}
 .grid2{display:grid;grid-template-columns:1.25fr .75fr;gap:18px}
 @media(max-width:1100px){.grid2{grid-template-columns:1fr}}
 
-/* Bars (top artistes) */
-.bar-row{display:grid;grid-template-columns:170px 1fr 86px;align-items:center;gap:10px;padding:5.5px 0;font-size:12.5px}
-.bar-row .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);cursor:pointer}
-.bar-row .nm:hover{color:var(--acc2)}
-.bar-track{height:9px;border-radius:6px;background:rgba(150,214,170,.07);overflow:hidden}
-.bar-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,#166534,#1ed760)}
-.bar-row .v{text-align:right;color:var(--muted);font-weight:600;font-variant-numeric:tabular-nums}
+/* Top artistes (vue d'ensemble, liste verticale) */
+.top-row{display:flex;align-items:center;gap:14px;padding:10px 8px;border-bottom:1px solid rgba(150,214,170,.05);cursor:pointer;border-radius:12px;transition:background .13s}
+.top-row:hover{background:rgba(150,214,170,.05)}
+.top-row .rank{width:26px;text-align:center;font-family:'Sora';font-weight:700;font-size:14px;color:var(--dim);flex:none}
+.av-sm{width:46px;height:46px;border-radius:50%;position:relative;overflow:hidden;display:grid;place-items:center;font-family:'Sora';font-weight:700;font-size:16px;color:#052e12;background:linear-gradient(135deg,#4ade80,#67e8f9);flex:none}
+.top-row .ti{flex:1;min-width:0}
+.top-row .nm{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top-row .sub{font-size:11.5px;color:var(--muted);margin:2.5px 0 6px}
+.top-row .vals{text-align:right;flex:none}
+.top-row .v1{font-family:'Sora';font-weight:800;font-size:16.5px}
+.top-row .v2{font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.9px;margin-top:1px}
 .year-wrap{display:flex;align-items:flex-end;gap:6px;height:120px;padding-top:8px}
 .ybar{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0}
 .ybar .b{width:100%;border-radius:5px 5px 2px 2px;background:linear-gradient(180deg,#1ed760,#14532d)}
@@ -284,10 +288,10 @@ const artistSearch = n => 'https://open.spotify.com/search/'+encodeURIComponent(
 
 /* ---------- état ---------- */
 const S = {
-  view:'overview',
-  q:'', statut:'all', min:0, period:'all', artist:-1,
+  view:'overview', back:null,
+  q:'', statut:'all', min:0, period:'all', artist:-1, rel:'all',
   sort:{k:3, dir:-1}, shown:100,
-  aq:'', asort:'streams', shownA:60,
+  aq:'', asort:'streams', shownA:60, aseg:'all',
   newDays:90, shownN:100,
 };
 
@@ -299,9 +303,16 @@ document.getElementById('nav').addEventListener('click', e=>{
   render(); window.scrollTo(0,0);
 });
 function goArtist(i){
+  S.back = {view:S.view, y:window.scrollY};
   S.view='opps'; S.artist=i; S.q=''; S.statut='all'; S.min=0; S.period='all'; S.shown=100;
   document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active', x.dataset.v==='opps'));
   render(); window.scrollTo(0,0);
+}
+function goBack(){
+  const b = S.back; S.back = null; S.artist = -1; S.shown = 100;
+  S.view = b ? b.view : 'opps';
+  document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active', x.dataset.v===S.view));
+  render(); window.scrollTo(0, b ? b.y : 0);
 }
 
 /* ---------- filtres opportunités ---------- */
@@ -309,6 +320,7 @@ function filteredRows(){
   const q = S.q.trim().toLowerCase();
   let rows = R.filter(r=>{
     if (S.artist>=0 && r[0]!==S.artist) return false;
+    if (S.rel!=='all' && seg(AG[r[0]])!==S.rel) return false;
     if (S.statut==='self' && r[4]!==0) return false;
     if (S.statut==='other' && r[4]!==1) return false;
     if (S.min>0 && r[3]<S.min) return false;
@@ -334,13 +346,30 @@ const V = document.getElementById('view');
 function kpi(lbl,val,sub,hl){
   return `<div class="kpi ${hl?'hl':''}"><div class="lbl">${lbl}</div><div class="val">${val}</div><div class="sub">${sub||''}</div></div>`;
 }
+function avatarHtml(g){
+  if (g.img) return `<img class="avp on" src="${esc(g.img)}" alt="">`;
+  if (g.top && g.top[8]) return `<img class="avp on" src="${esc(g.top[8])}" alt="">`;
+  if (g.top) return `<img class="avp" data-tid="${g.top[6]}" alt="">`;
+  return '';
+}
+
+/* relation au label : régulier (≥10 tracks Lofi), occasionnel (1-9), hors label (0) */
+function seg(g){ return g.lofi>=10 ? 'reg' : (g.lofi>0 ? 'occ' : 'ext'); }
+function segBadge(g){
+  const s = seg(g);
+  if (s==='reg') return '<span class="badge lofi">régulier</span>';
+  if (s==='occ') return '<span class="badge other">occasionnel</span>';
+  return '<span class="badge disco">hors label</span>';
+}
 
 function renderOverview(){
   const done = AG.filter(g=>g.done).length;
   const disco = AG.filter(g=>g.disco).length;
   const recent = R.filter(r=>daysAgo(r[2])<=90).length;
-  const top = [...withTracks].sort((a,b)=>b.streams-a.streams).slice(0,12);
-  const maxS = top[0] ? top[0].streams : 1;
+  const nReg = withTracks.filter(g=>seg(g)==='reg').length;
+  const nOcc = withTracks.filter(g=>seg(g)==='occ').length;
+  const nExt = withTracks.filter(g=>seg(g)==='ext').length;
+  const top = [...withTracks].sort((a,b)=>b.streams-a.streams).slice(0,15);
   const years = {};
   for (const r of R){ const y = r[2].slice(0,4); if(y>='2015') years[y]=(years[y]||0)+1; }
   const yk = Object.keys(years).sort();
@@ -355,7 +384,7 @@ function renderOverview(){
     </div>
   </div>
   <div class="kpis">
-    ${kpi('Artistes scannés', done, AG.length+' suivis au total')}
+    ${kpi('Artistes scannés', done, nReg+' réguliers · '+nOcc+' occasionnels · '+nExt+' hors label')}
     ${kpi('Tracks hors Lofi', fmtFull(R.length), 'catalogue analysé')}
     ${kpi('Streams cumulés', fmt(totStreams), 'hors catalogue Lofi', true)}
     ${kpi('Tracks ≥ 500k', fmtFull(nHot), 'priorités rachat', true)}
@@ -365,12 +394,17 @@ function renderOverview(){
   <div class="grid2">
     <div class="panel">
       <h3>Top artistes par streams hors Lofi <span class="hint">clic = détail des tracks</span></h3>
-      ${top.map(g=>`
-        <div class="bar-row">
-          <span class="nm" onclick="goArtist(${g.i})">${esc(g.name)}</span>
-          <div class="bar-track"><div class="bar-fill" style="width:${Math.max(g.streams/maxS*100,2)}%"></div></div>
-          <span class="v">${fmt(g.streams)}</span>
-        </div>`).join('')}
+      ${top.map((g,ix)=>{const p=g.n?Math.round(g.self/g.n*100):0; return `
+        <div class="top-row" onclick="goArtist(${g.i})">
+          <span class="rank">${ix+1}</span>
+          <div class="av-sm">${esc(g.name[0]||'?').toUpperCase()}${avatarHtml(g)}</div>
+          <div class="ti">
+            <div class="nm">${esc(g.name)} ${segBadge(g)}</div>
+            <div class="sub">${g.n} tracks hors Lofi · <span style="color:var(--green)">${g.self} indé</span> · <span style="color:var(--amber)">${g.n-g.self} label</span>${g.hot?` · <span style="color:var(--acc2)">${g.hot} ≥ 500k</span>`:''} · dernière sortie ${g.last||'?'}</div>
+            <div class="mini-split" style="max-width:250px;margin:0"><div style="width:${p}%;background:#4ade80"></div><div style="width:${100-p}%;background:#b45309"></div></div>
+          </div>
+          <div class="vals"><div class="v1">${fmt(g.streams)}</div><div class="v2">streams</div></div>
+        </div>`;}).join('')}
     </div>
     <div>
       <div class="panel">
@@ -403,6 +437,7 @@ function renderOpps(){
   V.innerHTML = `
   <div class="page-head">
     <div>
+      ${aName?'<button class="chip" onclick="goBack()" style="margin-bottom:10px">← Retour</button>':''}
       <h2>Opportunités${aName?' — '+esc(aName):''}</h2>
       <p>Toutes les tracks hors Lofi Records. Les lignes vertes dépassent 500 000 streams (priorités). Streams / mois = vélocité depuis la sortie.</p>
     </div>
@@ -425,6 +460,12 @@ function renderOpps(){
       <option value="365" ${S.period==='365'?'selected':''}>12 derniers mois</option>
       <option value="1095" ${S.period==='1095'?'selected':''}>3 dernières années</option>
     </select>
+    <select id="f-rel">
+      <option value="all" ${S.rel==='all'?'selected':''}>Relation label : tous</option>
+      <option value="reg" ${S.rel==='reg'?'selected':''}>Réguliers chez Lofi (≥10)</option>
+      <option value="occ" ${S.rel==='occ'?'selected':''}>Occasionnels (1-9)</option>
+      <option value="ext" ${S.rel==='ext'?'selected':''}>Jamais chez Lofi</option>
+    </select>
     ${aName?`<button class="chip on" id="f-clear-artist">${esc(aName)} ✕</button>`:''}
     <span class="spacer"></span>
     <span class="result-count">${fmtFull(rows.length)} tracks</span>
@@ -444,7 +485,7 @@ function renderOpps(){
       <tbody>
       ${slice.map(r=>`
         <tr class="${r[3]>=HOT?'hot':''}">
-          <td class="covtd"><img class="cov" data-tid="${r[6]}" alt=""></td>
+          <td class="covtd">${r[8]?`<img class="cov on" src="${esc(r[8])}" alt="">`:`<img class="cov" data-tid="${r[6]}" alt="">`}</td>
           <td><a class="tk" href="${trackUrl(r[6])}" target="_blank" rel="noopener">${esc(r[1])}</a>${r[7]?' <span class="badge new">détectée '+r[7].slice(5)+'</span>':''}</td>
           <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
           <td class="num" title="${fmtFull(r[3])}">${r[3]>=HOT?'<span class="badge hot">'+fmt(r[3])+'</span>':fmt(r[3])}</td>
@@ -463,6 +504,7 @@ function renderOpps(){
   document.querySelectorAll('.chip[data-st]').forEach(c=>c.addEventListener('click', ()=>{ S.statut=c.dataset.st; S.shown=100; renderOpps(); }));
   document.getElementById('f-min').addEventListener('change', e=>{ S.min=+e.target.value; S.shown=100; renderOpps(); });
   document.getElementById('f-period').addEventListener('change', e=>{ S.period=e.target.value; S.shown=100; renderOpps(); });
+  document.getElementById('f-rel').addEventListener('change', e=>{ S.rel=e.target.value; S.shown=100; renderOpps(); });
   const ca = document.getElementById('f-clear-artist');
   if (ca) ca.addEventListener('click', ()=>{ S.artist=-1; S.shown=100; renderOpps(); });
   attachInfinite(()=>{ const y=window.scrollY; S.shown+=200; renderOpps(); window.scrollTo(0,y); });
@@ -477,7 +519,7 @@ function keepFocus(id){ const el=document.getElementById(id); if(el){ el.focus()
 
 function renderArtists(){
   const q = S.aq.trim().toLowerCase();
-  let list = withTracks.filter(g=>!q || g.name.toLowerCase().includes(q));
+  let list = withTracks.filter(g=>(!q || g.name.toLowerCase().includes(q)) && (S.aseg==='all' || seg(g)===S.aseg));
   if (S.asort==='streams') list.sort((a,b)=>b.streams-a.streams);
   else if (S.asort==='hot') list.sort((a,b)=>b.hot-a.hot);
   else if (S.asort==='n') list.sort((a,b)=>b.n-a.n);
@@ -492,6 +534,10 @@ function renderArtists(){
   </div>
   <div class="toolbar">
     <input type="text" id="a-q" placeholder="Rechercher un artiste…" value="${esc(S.aq)}">
+    <button class="chip ${S.aseg==='all'?'on':''}" data-seg="all">Tous</button>
+    <button class="chip ${S.aseg==='reg'?'on':''}" data-seg="reg">Réguliers chez Lofi</button>
+    <button class="chip ${S.aseg==='occ'?'on':''}" data-seg="occ">Occasionnels</button>
+    <button class="chip ${S.aseg==='ext'?'on':''}" data-seg="ext">Jamais chez Lofi</button>
     <select id="a-sort">
       <option value="streams" ${S.asort==='streams'?'selected':''}>Tri : streams hors Lofi</option>
       <option value="hot" ${S.asort==='hot'?'selected':''}>Tri : tracks ≥ 500k</option>
@@ -507,10 +553,10 @@ function renderArtists(){
       return `
       <div class="acard" onclick="goArtist(${g.i})">
         <div class="top">
-          <div class="av">${esc(g.name[0]||'?').toUpperCase()}${g.img?`<img class="avp" data-img="${esc(g.img)}" alt="">`:(g.top?`<img class="avp" data-tid="${g.top[6]}" alt="">`:'')}</div>
+          <div class="av">${esc(g.name[0]||'?').toUpperCase()}${avatarHtml(g)}</div>
           <div style="min-width:0">
             <div class="nm">${esc(g.name)}</div>
-            <div style="font-size:11px;color:var(--dim)">${g.lofi} tracks chez Lofi ${g.disco?'· <span class="badge disco">découverte</span>':''}</div>
+            <div style="font-size:11px;color:var(--dim)">${segBadge(g)} ${g.lofi?g.lofi+' tracks chez Lofi':''} ${g.disco?'· découverte ('+esc(g.origin||'related')+')':''}</div>
           </div>
         </div>
         <div class="stats">
@@ -532,6 +578,7 @@ function renderArtists(){
   ${sentinel(list.length-S.shownA)}`;
 
   document.getElementById('a-q').addEventListener('input', e=>{ S.aq=e.target.value; S.shownA=60; renderArtists(); keepFocus('a-q'); });
+  document.querySelectorAll('.chip[data-seg]').forEach(c=>c.addEventListener('click', ()=>{ S.aseg=c.dataset.seg; S.shownA=60; renderArtists(); }));
   document.getElementById('a-sort').addEventListener('change', e=>{ S.asort=e.target.value; renderArtists(); });
   attachInfinite(()=>{ const y=window.scrollY; S.shownA+=60; renderArtists(); window.scrollTo(0,y); });
   if (typeof attachCovers==='function') attachCovers();
@@ -560,7 +607,7 @@ function renderNew(){
       <tbody>
       ${slice.map(r=>`
         <tr class="${r[3]>=HOT?'hot':''}">
-          <td class="covtd"><img class="cov" data-tid="${r[6]}" alt=""></td>
+          <td class="covtd">${r[8]?`<img class="cov on" src="${esc(r[8])}" alt="">`:`<img class="cov" data-tid="${r[6]}" alt="">`}</td>
           <td>${r[2]}</td>
           <td><a class="tk" href="${trackUrl(r[6])}" target="_blank" rel="noopener">${esc(r[1])}</a>${r[7]?' <span class="badge new">détectée</span>':''}</td>
           <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
@@ -650,7 +697,7 @@ function covShow(img, u){
 }
 const covQueue = []; let covActive = 0;
 function covPump(){
-  while (covActive < 4 && covQueue.length){
+  while (covActive < 8 && covQueue.length){
     const {key, url, img} = covQueue.shift();
     if (!img.isConnected) continue;
     covActive++;
@@ -661,24 +708,34 @@ function covPump(){
         if (u){ covCache.set(key,u); covPersist(); covShow(img,u); }
       })
       .catch(()=>{})
-      .finally(()=>{ covActive--; setTimeout(covPump, 120); });
+      .finally(()=>{ covActive--; setTimeout(covPump, 30); });
   }
 }
 let covObserver = null;
 function attachCovers(){
+  // préchargement immédiat de TOUTE la liste rendue (cache d'abord, réseau ensuite),
+  // l'observer ne sert plus qu'à faire passer en tête de file ce qui approche de l'écran.
   if (covObserver) covObserver.disconnect();
+  covQueue.length = 0;
+  const imgs = [...document.querySelectorAll('img.cov[data-tid], img.avp[data-tid]')];
+  const pending = [];
+  for (const img of imgs){
+    const {key, url} = covKeyUrl(img);
+    const hit = covCache.get(key);
+    if (hit) covShow(img, hit);
+    else pending.push({key, url, img});
+  }
   covObserver = new IntersectionObserver(es=>{
     for (const e of es){
       if (!e.isIntersecting) continue;
-      const img = e.target; covObserver.unobserve(img);
-      if (img.dataset.img){ covShow(img, img.dataset.img); continue; }
-      const {key, url} = covKeyUrl(img);
-      const hit = covCache.get(key);
-      if (hit) covShow(img, hit);
-      else { covQueue.push({key, url, img}); covPump(); }
+      covObserver.unobserve(e.target);
+      const idx = covQueue.findIndex(q=>q.img===e.target);
+      if (idx>0) covQueue.unshift(covQueue.splice(idx,1)[0]);
     }
-  }, {rootMargin:'300px'});
-  document.querySelectorAll('img.cov[data-tid], img.avp[data-tid], img.avp[data-img]').forEach(i=>covObserver.observe(i));
+    covPump();
+  }, {rootMargin:'900px'});
+  for (const p of pending){ covQueue.push(p); covObserver.observe(p.img); }
+  covPump();
 }
 /* ---------- scroll infini ---------- */
 let endObserver = null;
