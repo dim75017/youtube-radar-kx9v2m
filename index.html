@@ -14,6 +14,7 @@
 <script src="Lofi_Radar_chx.js"></script>
 <script src="Lofi_Radar_subs2.js"></script>
 <script src="Lofi_Radar_cmt.js"></script>
+<script src="Lofi_Radar_sbm.js"></script>
 <script src="Lofi_Radar_seo.js"></script>
 <style>
 :root{
@@ -1089,7 +1090,26 @@ function parseChanWb(wb){
   });
   return {channels:chans,hist:hist};
 }
+function sbmFor(c){
+  if(!window.SBM)return null;
+  if(c.name&&window.SBM[c.name]!=null)return window.SBM[c.name];
+  return null;
+}
+function fmtSubsMo(v){
+  if(v==null)return '—';
+  if(v<0)return '-'+fmtN(-v);
+  return '+'+fmtN(v);
+}
+function sbmColor(v){
+  if(v==null)return 'var(--text)';
+  if(v<0)return '#f87171';
+  if(v<10000)return '#fb923c';
+  if(v<50000)return '#fbbf24';
+  return '#34d399';
+}
 function chanSubsMo(c){
+  const sb=sbmFor(c);
+  if(sb!=null)return sb;
   if(c.subsMo!=null)return c.subsMo;
   if(!CHAN||!CHAN.hist)return null;
   const a=CHAN.hist[normUrl(c.url)];if(!a||a.length<2)return null;
@@ -2700,7 +2720,7 @@ function chanCardHTML(c,i){
       '<div class="vtags">'+gtag(c.niche)+(c.country?'<span class="tag ghost">'+flagOf(c.country)+' '+esc(c.country)+'</span>':'')+'</div>'+
       '<div class="vstats">'+
         '<div class="vstat hl"><b>'+fmtN(c.subs)+'</b><span>subs</span></div>'+
-        '<div class="vstat"><b>'+(chanSubsMo(c)!=null?'+'+fmtN(chanSubsMo(c)):'—')+'</b><span>subs/mo</span></div>'+
+        '<div class="vstat"><b style="color:'+sbmColor(chanSubsMo(c))+'">'+fmtSubsMo(chanSubsMo(c))+'</b><span>subs/mo</span></div>'+
         '<div class="vstat"><b>'+fmtN(c.viewsYr)+'</b><span>views/yr</span></div>'+
       '</div></div></div>';
 }
@@ -2718,7 +2738,7 @@ function chanListHTML(rows){
         '<td>'+gtag(c.niche)+'</td>'+
         '<td style="white-space:nowrap">'+flagOf(c.country)+' '+esc(c.country||'—')+'</td>'+
         '<td class="num vpmcell">'+fmtN(c.subs)+'</td>'+
-        '<td class="num">'+(chanSubsMo(c)!=null?'+'+fmtN(chanSubsMo(c)):'—')+'</td>'+
+        '<td class="num" style="color:'+sbmColor(chanSubsMo(c))+';font-weight:700">'+fmtSubsMo(chanSubsMo(c))+'</td>'+
         '<td class="num">'+fmtN(c.views)+'</td>'+
         '<td class="num">'+fmtN(c.viewsYr)+'</td><td class="num">'+fmtN(c.avg10)+'</td>'+
         '<td class="num">'+(c.upMo!=null?c.upMo:'—')+'</td><td class="num">'+fmtDateFull(c.lastUp)+'</td></tr>').join('')+'</tbody></table>';
@@ -2745,9 +2765,9 @@ function openChanDrawer(c){
       '<div class="dw-sub">'+gtag(c.niche)+ghosttag(c.country)+ghosttag(c.status)+(c.ageY!=null?'<span class="tag ghost">'+c.ageY+' yrs old</span>':'')+'</div>'+
       '<div class="dw-stats">'+
         '<div class="dw-stat hl"><b>'+fmtN(c.subs)+'</b><span>subscribers</span></div>'+
+        '<div class="dw-stat"><b style="color:'+sbmColor(chanSubsMo(c))+'">'+fmtSubsMo(chanSubsMo(c))+'</b><span>subs / month</span></div>'+
         '<div class="dw-stat"><b>'+fmtN(c.views)+'</b><span>total views</span></div>'+
         '<div class="dw-stat"><b>'+fmtN(c.viewsYr)+'</b><span>views / year</span></div>'+
-        '<div class="dw-stat"><b>'+fmtN(c.avg10)+'</b><span>avg last 10</span></div>'+
       '</div>'+
       '<div class="dw-sec"><div class="k">📚 Catalog</div><div class="v">'+fmtInt(c.nvid)+' videos · '+fmtN(c.avgVid)+' avg views / video · '+(c.upMo!=null?c.upMo+' uploads / month':'cadence unknown')+' · last upload '+fmtDateFull(c.lastUp)+'</div></div>'+
       '<div class="dw-sec"><div class="k">📈 Subscribers</div>'+histChart(subsPts,'subs')+'</div>'+
