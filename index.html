@@ -152,7 +152,7 @@ select.ctl.c-char:hover{border-color:rgba(45,212,191,.7)}
 select.ctl.c-status{border-color:rgba(248,113,113,.4);background:rgba(248,113,113,.07)}
 select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 .xdd{position:relative;display:inline-flex;max-width:100%}
-.xdd-btn{display:inline-flex;align-items:center;gap:8px;cursor:pointer;background:var(--panel);border:1.5px solid var(--border2);border-radius:16px;padding:10px 15px;font-size:13px;font-weight:600;color:var(--text);transition:all .15s;max-width:100%}
+.xdd-btn{display:inline-flex;align-items:center;gap:8px;cursor:pointer;background:var(--panel);border:1.5px solid var(--border2);border-radius:16px;padding:10px 15px;font-size:13px;font-weight:600;color:var(--text);transition:all .15s;max-width:100%;min-width:0;white-space:nowrap}
 .xdd-btn:hover{border-color:rgba(139,124,246,.5)}
 .xdd-btn.c-genre{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.07)}
 .xdd-btn.c-genre:hover{border-color:rgba(244,114,182,.7)}
@@ -166,7 +166,8 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 .xdd-btn.c-status:hover{border-color:rgba(248,113,113,.7)}
 .xdd-btn.c-period{border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.07)}
 .xdd-btn.c-period:hover{border-color:rgba(74,222,128,.7)}
-.xdd-car{font-size:9px;opacity:.65;transition:transform .15s}
+.xdd-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xdd-car{font-size:9px;opacity:.65;transition:transform .15s;flex:none}
 .tipw{position:relative}
 .metric-tip{display:none;position:absolute;bottom:calc(100% + 9px);left:50%;transform:translateX(calc(-50% + var(--tip-shift,0px)));background:#141828;border:1.5px solid var(--tipc,var(--border2));border-radius:11px;padding:8px 11px;font-size:11px;font-weight:600;color:var(--text);white-space:normal;width:max-content;max-width:210px;line-height:1.5;box-shadow:0 14px 34px rgba(0,0,0,.55);z-index:95;pointer-events:none;text-align:center;letter-spacing:0}
 .metric-tip::after{content:'';position:absolute;top:100%;left:calc(50% - var(--tip-shift,0px));transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--tipc,var(--border2))}
@@ -181,8 +182,7 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
   background:#141828;border:1.5px solid var(--border2);border-radius:16px;padding:6px;z-index:80;
   box-shadow:0 16px 40px rgba(0,0,0,.5);display:none}
 .xdd.open .xdd-list{display:block}
-.xdd-opt{padding:8px 13px;border-radius:10px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;white-space:normal;overflow-wrap:anywhere}
-.xdd-btn.c-period + .xdd-list .xdd-opt{white-space:nowrap;overflow-wrap:normal}
+.xdd-opt{padding:8px 13px;border-radius:10px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap;overflow-wrap:normal;overflow:hidden;text-overflow:ellipsis}
 .xdd-opt:hover{background:rgba(139,124,246,.15)}
 .xdd-opt.sel{color:var(--acc2);background:var(--accSoft)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
@@ -634,7 +634,7 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
   .toolbar .search,.toolbar .search input{min-width:0;max-width:100%}
   .tb-right{width:100%;margin-left:0;justify-content:flex-start}
   .toolbar>.xdd,.tb-right>.xdd{display:flex;flex:1 1 100%;width:100%;max-width:100%}
-  .xdd-btn{width:100%;max-width:100%;justify-content:space-between;white-space:normal;text-align:left}
+  .xdd-btn{width:100%;max-width:100%;justify-content:space-between;white-space:nowrap;text-align:left}
   .xdd-list{left:0;right:0;width:100%;min-width:0;max-width:100%}
   #drawer{width:100vw;max-height:94vh;top:auto;bottom:0;left:0;transform:translateY(8%);border-radius:18px 18px 0 0}
   #drawer.show{transform:translateY(0)}
@@ -1072,7 +1072,7 @@ document.addEventListener('click',function(){document.querySelectorAll('.xdd.ope
 function xdd(btnCls,btnHtml,opts){
   const id='xdd'+(++XDD_ID);
   return '<div class="xdd" id="'+id+'">'+
-    '<button type="button" class="ctl '+btnCls+' xdd-btn" onclick="xddToggle(\''+id+'\',event)">'+btnHtml+'<span class="xdd-car">▾</span></button>'+
+    '<button type="button" class="ctl '+btnCls+' xdd-btn" onclick="xddToggle(\''+id+'\',event)"><span class="xdd-label">'+btnHtml+'</span><span class="xdd-car">▾</span></button>'+
     '<div class="xdd-list">'+opts.map(o=>'<div class="xdd-opt'+(o.sel?' sel':'')+'" onclick="'+o.onclick.replace(/"/g,'&quot;')+';xddToggle(\''+id+'\')">'+o.label+'</div>').join('')+'</div></div>';
 }
 function median(arr){const a=arr.filter(x=>x!=null).sort((x,y)=>x-y);if(!a.length)return null;const m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2;}
