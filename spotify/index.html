@@ -322,11 +322,23 @@ td.selc,th.selc{width:44px;padding-left:14px}
 .tmbox .tg .l{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);font-weight:600}
 .tmbox .tg .v{font-family:'Sora';font-weight:700;font-size:16px;margin-top:4px}
 .spark{margin-top:6px}
-.perf-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:12px 0 16px}
+.perf-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:12px 0 16px}
 .perf-grid.compact{margin:0 0 14px}
 .perf-card{min-width:0;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 13px}
 .perf-card .plabel{font-size:10px;line-height:1.35;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);font-weight:700}
 .perf-card .pvalue{font-family:'Sora';font-size:18px;font-weight:800;margin-top:6px;overflow-wrap:anywhere}
+.stream-stack{display:inline-flex;min-width:0;flex-direction:column;align-items:flex-end;gap:2px;line-height:1.2}
+.stream-number{font-family:'Sora';font-weight:700;color:var(--text)}
+.stream-income{font-family:Inter;font-size:9.5px;font-weight:600;color:var(--cyan);opacity:.72;white-space:nowrap}
+.delta-stack{display:inline-flex;min-width:0;flex-direction:column;align-items:flex-end;gap:2px;line-height:1.2}
+.delta-main{font-family:'Sora';font-weight:700}
+.delta-compare{font-family:Inter;font-size:9px;font-weight:600;color:var(--dim);white-space:nowrap}
+.perf-card .stream-stack{align-items:flex-start}
+.perf-card .stream-number{font-size:18px;font-weight:800}
+.perf-card .stream-income{font-size:10px;margin-top:1px}
+.acard .st .stream-stack{align-items:center;width:100%}
+.acard .st .delta-stack{align-items:center;width:100%}
+.top-row .stream-stack{align-items:flex-end}
 .perf-card .pcompare{font-size:10.5px;color:var(--muted);line-height:1.45;margin-top:5px;min-height:30px}
 .perf-card .pcompare.good{color:var(--acc2)}
 .perf-card .pcompare.bad{color:var(--red)}
@@ -487,7 +499,7 @@ td.selc,th.selc{width:44px;padding-left:14px}
   .ambox table{min-width:0}
   .offer{padding:15px}
   .offer .ogrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
-  .perf-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .perf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .ck{width:24px;height:24px}
 }
 
@@ -676,13 +688,13 @@ const EN_MAP = {
   "Revenus estimés à":"Revenue estimated at","all-in Spotify, fourchette":"all-in Spotify, range","source Duetti / Loud & Clear 2025-26":"source Duetti / Loud & Clear 2025-26",
   "Revenu est.":"Est. revenue","mois":"mo","mo":"mo","lifetime":"lifetime",
   "Streams total":"Total streams","Streams 30j":"Streams 30d","Revenu total":"Total revenue","Revenu 30j":"Revenue 30d",
-  "Streams 24 h":"Streams 24h","Streams 7 j":"Streams 7d","Flux de streams":"Stream flow","Flux réel sur la période":"Actual flow over the period",
+  "Streams 24 h":"Streams 24h","Streams 7 j":"Streams 7d","Streams 24 heures":"Streams 24 hours","Streams 7 jours":"Streams 7 days","Streams 30 jours":"Streams 30 days","Flux de streams":"Stream flow","Flux réel sur la période":"Actual flow over the period",
   "24 h précédentes":"previous 24h","7 j précédents":"previous 7d","30 j précédents":"previous 30d","vs période précédente":"vs previous period",
   "Données partielles":"Partial data","Historique insuffisant":"Not enough history","Aucune extrapolation":"No extrapolation","tracks couvertes":"tracks covered",
   "Fiche Analytics":"Analytics profile","Performance comparée":"Compared performance","Courbe quotidienne":"Daily chart","Streams quotidiens":"Daily streams",
   "Monthly listeners":"Monthly listeners","Évolution des monthly listeners":"Monthly listener trend","Principales contributions":"Top contributors",
   "Signal":"Signal","Rising":"Rising","Hot":"Hot","Non disponible":"Unavailable","Vélocité 7 j":"7-day velocity","Cadence de collecte":"Collection cadence",
-  "Followers 24 h":"Followers 24h","Followers 7 j":"Followers 7d","Followers 30 j":"Followers 30d","Évolution followers":"Follower change",
+  "Followers total":"Total followers","Compteur lifetime":"Lifetime counter","Compteur actuel":"Current counter","Followers 24 h":"Followers 24h","Followers 7 j":"Followers 7d","Followers 30 j":"Followers 30d","Followers 24 heures":"Followers 24 hours","Followers 7 jours":"Followers 7 days","Followers 30 jours":"Followers 30 days","Évolution followers":"Follower change",
   "Placements / rangs connus":"Known placements / ranks","Dernières variations":"Latest changes","Classification":"Classification","Label":"Label",
   "Historique quotidien requis pour cette fenêtre.":"Daily history is required for this window.","Comparaison indisponible tant que la période précédente n'est pas complète.":"Comparison is unavailable until the previous equal period is complete.",
   "est.":"est.","mesuré sur historique réel":"measured from real history","estimation, moyenne depuis la sortie":"estimate, average since release",
@@ -933,11 +945,21 @@ function streams30(r){
 function fmtMetric(v){ return v==null?'—':fmt(v); }
 function fmtFullMetric(v){ return v==null?'—':fmtFull(v); }
 function moneyMetric(v){ return v==null?'—':money(v); }
+function revenueEstimate(v){
+  if(v==null || !Number.isFinite(Number(v))) return '—';
+  const n=Number(v), out=money(Math.abs(n)*RATE);
+  return n<0?'-'+out:out;
+}
+function streamStackHtml(v,full,signed){
+  const valid=v==null||v===-1?null:Number(v);
+  const main=valid==null?'—':(signed?signedFull(valid):(full?fmtFull(valid):fmt(valid)));
+  return `<span class="stream-stack"><span class="stream-number">${main}</span><span class="stream-income">${valid==null?'—':revenueEstimate(valid)} · ${T('revenu est.')}</span></span>`;
+}
 function signedFull(v){ return v==null?'—':(v>0?'+':'')+fmtFull(v); }
 function signedPct(v){ return v==null?'':` (${v>0?'+':''}${v.toFixed(1)}%)`; }
 function previousPeriodName(days){ return days===1?T('24 h précédentes'):days===7?T('7 j précédents'):T('30 j précédents'); }
-function perfCardHtml(label,w){
-  const value=w.currentReady?signedFull(w.current):'—';
+function perfCardHtml(label,w,withRevenue){
+  const value=withRevenue?streamStackHtml(w.currentReady?w.current:null,true,true):(w.currentReady?signedFull(w.current):'—');
   let compare=T("Comparaison indisponible tant que la période précédente n'est pas complète.");
   let cls='';
   if(w.comparisonReady){
@@ -950,8 +972,18 @@ function perfCardHtml(label,w){
   else if(w.comparisonPartial) partial=T('Données partielles');
   return `<div class="perf-card"><div class="plabel">${label} · ${T('Flux réel sur la période')}</div><div class="pvalue">${value}</div><div class="pcompare ${cls}">${compare}</div>${partial?`<span class="ppartial">${partial} · ${T('Aucune extrapolation')}</span>`:''}</div>`;
 }
-function perfGridHtml(perf,prefix){
-  return `<div class="perf-grid">${perfCardHtml(prefix+' 24 h',perf[1])}${perfCardHtml(prefix+' 7 j',perf[7])}${perfCardHtml(prefix+' 30 j',perf[30])}</div>`;
+function totalMetricCardHtml(prefix,total,withRevenue){
+  const label=prefix==='Streams'?T('Streams total'):T('Followers total');
+  const value=withRevenue?streamStackHtml(total,false,false):fmtMetric(total);
+  const sub=prefix==='Streams'?T('Compteur lifetime'):T('Compteur actuel');
+  return `<div class="perf-card"><div class="plabel">${label}</div><div class="pvalue">${value}</div><div class="pcompare">${sub}</div></div>`;
+}
+function periodMetricLabel(prefix,days){
+  if(prefix==='Streams') return days===30?T('Streams 30 jours'):(days===7?T('Streams 7 jours'):T('Streams 24 heures'));
+  return days===30?T('Followers 30 jours'):(days===7?T('Followers 7 jours'):T('Followers 24 heures'));
+}
+function perfGridHtml(perf,prefix,total,withRevenue){
+  return `<div class="perf-grid">${totalMetricCardHtml(prefix,total,withRevenue)}${perfCardHtml(periodMetricLabel(prefix,30),perf[30],withRevenue)}${perfCardHtml(periodMetricLabel(prefix,7),perf[7],withRevenue)}${perfCardHtml(periodMetricLabel(prefix,1),perf[1],withRevenue)}</div>`;
 }
 function trackPerfEntry(r){ return PERF_TRACKS[r[6]] || {}; }
 function artistPerfEntry(g){ return PERF_ARTISTS[g.id] || PERF_ARTISTS[g.name] || {}; }
@@ -1012,7 +1044,7 @@ const S = {
   newDays:90, shownN:100,
   plq:'', plcur:'all', plsort:'followers', pldir:-1, plonly:false, shownPL:80, plview:'qualified', plmode:'table',
   amode:'table', omode:'table',
-  lbq:'', lbsort:'revenue', lbdir:-1, shownLB:80, lbmode:'table', labelKey:null, lbModalArtist:null,
+  lbq:'', lbsort:'streams', lbdir:-1, shownLB:80, lbmode:'table', labelKey:null, lbModalArtist:null,
 };
 
 /* ---------- navigation ---------- */
@@ -1191,6 +1223,10 @@ function renderOverview(){
   const top5 = top.slice(0,OVN);
   const catalogPerf = performanceForRows(R);
   const playlistsPerf = playlistPerformance(PLrows);
+  const labelCatalogRows = R.filter(r=>r[4]===1);
+  const labelsPerf = performanceForRows(labelCatalogRows);
+  const labelsTotalStreams = labelCatalogRows.reduce((s,r)=>s+(r[3]>0?r[3]:0),0);
+  const labelsArtists = new Set(labelCatalogRows.map(r=>r[0])).size;
 
   V.innerHTML = `
   <div class="page-head">
@@ -1207,19 +1243,16 @@ function renderOverview(){
         <div class="ov-st"><div class="v" style="color:var(--acc2)">${fmt(nHot)}</div><div class="l">≥ 500k (${T('priorités')})</div></div>
         <div class="ov-st"><div class="v" style="color:var(--cyan)">${money(totMonthlyRev)}</div><div class="l">${T('revenu mensuel est.')}</div></div>
       </div>
-      ${perfGridHtml(catalogPerf,T('Streams'))}
+      ${perfGridHtml(catalogPerf,'Streams',totStreams,true)}
       ${topTracks.map((r,ix)=>`
       <div class="top-row" onclick="openTrack('${r[6]}')">
         <span class="rank">${ix+1}</span>
         ${r[8]?`<div class="cov has" style="width:40px;height:40px;border-radius:9px;margin:0;background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}" style="width:40px;height:40px;border-radius:9px;margin:0"></div>`}
         <div class="ti">
           <div class="nm"><span class="nmtxt">${esc(r[1])}</span></div>
-          <div class="sub">${esc(A[r[0]][0])} · ${fmtDate(r[2])} · <span style="color:var(--cyan)">≈ ${perMonth(r)>0?money(perMonth(r)*RATE):money(revTotal(r))}/${T('mois')}</span></div>
+          <div class="sub">${esc(A[r[0]][0])} · ${fmtDate(r[2])}</div>
         </div>
-        <div class="vals vals2">
-          <div class="valblock"><div class="v1" style="color:var(--cyan)">${money(revTotal(r))}</div><div class="v2">${T('revenu')}</div></div>
-          <div class="valblock"><div class="v1">${fmt(r[3])}</div><div class="v2">streams</div></div>
-        </div>
+        <div class="vals"><div class="v1">${streamStackHtml(r[3],false,false)}</div><div class="v2">${T('Streams total')}</div></div>
       </div>`).join('')}
     </div>
 
@@ -1230,19 +1263,16 @@ function renderOverview(){
         <div class="ov-st"><div class="v">${nTop+nReg}</div><div class="l">top + ${T('réguliers')}</div></div>
         <div class="ov-st"><div class="v">${fmtFull(recent)}</div><div class="l">${T('sorties 90 j')}</div></div>
       </div>
-      ${perfGridHtml(catalogPerf,T('Streams'))}
+      ${perfGridHtml(catalogPerf,'Streams',totStreams,true)}
       ${top5.map((g,ix)=>`
       <div class="top-row" onclick="goArtist(${g.i})">
         <span class="rank">${ix+1}</span>
         <div class="ov-cov">${esc(g.name[0]||'?').toUpperCase()}${avatarHtml(g)}</div>
         <div class="ti">
           <div class="nm"><span class="nmtxt">${esc(g.name)}</span></div>
-          <div class="sub">${g.n} tracks · <span style="color:var(--green)">${g.self} ${T('indé')}</span> · <span style="color:var(--cyan)">≈ ${money(g.mstreams*RATE)}/${T('mois')}</span></div>
+          <div class="sub">${g.n} tracks · <span style="color:var(--green)">${g.self} ${T('indé')}</span></div>
         </div>
-        <div class="vals vals2">
-          <div class="valblock"><div class="v1" style="color:var(--cyan)">${money(g.streams*RATE)}</div><div class="v2">${T('revenu')}</div></div>
-          <div class="valblock"><div class="v1">${fmt(g.streams)}</div><div class="v2">streams</div></div>
-        </div>
+        <div class="vals"><div class="v1">${streamStackHtml(g.streams,false,false)}</div><div class="v2">${T('Streams total')}</div></div>
       </div>`).join('')}
     </div>
 
@@ -1252,9 +1282,8 @@ function renderOverview(){
       <div class="ov-stats">
         <div class="ov-st"><div class="v">${fmt(PLmeta.playlists_discovered)}</div><div class="l">${T('découvertes')}</div></div>
         <div class="ov-st"><div class="v" style="color:var(--acc2)">${fmtFull(PLmeta.playlists_10k_plus)}</div><div class="l">≥ 10k followers</div></div>
-        <div class="ov-st"><div class="v" style="color:var(--cyan)">${fmt(PLmeta.followers_sum)}</div><div class="l">${T('followers cumulés')}</div></div>
       </div>
-      ${perfGridHtml(playlistsPerf,T('Followers'))}
+      ${perfGridHtml(playlistsPerf,'Followers',PLmeta.followers_sum,false)}
       ${topPl.map((r,ix)=>`
       <div class="top-row" onclick="openPlaylist('${r[0]}')">
         <span class="rank">${ix+1}</span>
@@ -1263,7 +1292,7 @@ function renderOverview(){
           <div class="nm"><span class="nmtxt">${esc(r[1])}</span> ${plCuratorBadge(r[3])}</div>
           <div class="sub">${esc(r[2])} · ${r[6]||'?'} tracks</div>
         </div>
-        <div class="vals"><div class="v1">${fmt(r[4])}</div><div class="v2">followers</div></div>
+        <div class="vals"><div class="v1">${plFollowersCell(r)}</div><div class="v2">${T('Followers total')}</div></div>
       </div>`).join('')}` : `<div class="empty">${T('Aucune donnée playlists chargée.')}</div>`}
     </div>
 
@@ -1273,20 +1302,18 @@ function renderOverview(){
       <div class="ov-stats">
         <div class="ov-st"><div class="v">${fmt(LBrows.length)}</div><div class="l">labels ${T('identifiés')}</div></div>
         <div class="ov-st"><div class="v">${fmt(LBmeta.tracks_covered)}</div><div class="l">tracks ${T('couvertes')}</div></div>
-        <div class="ov-st"><div class="v" style="color:var(--cyan)">${money(LBmeta.revenue_covered)}</div><div class="l">${T('revenu est. cumulé')}</div></div>
+        <div class="ov-st"><div class="v">${fmt(labelsArtists)}</div><div class="l">${T('artistes')}</div></div>
       </div>
+      ${perfGridHtml(labelsPerf,'Streams',labelsTotalStreams,true)}
       ${topLb.map((r,ix)=>`
       <div class="top-row lbl-row" data-lbkey="${esc(r[0])}">
         <span class="rank">${ix+1}</span>
         <div style="width:40px;flex:none">${labelCover(r[1], false, r[7]).replace('class="cov lblcov"','class="cov lblcov" style="width:40px;height:40px;border-radius:9px;margin:0;font-size:15px"')}</div>
         <div class="ti">
           <div class="nm"><span class="nmtxt">${esc(r[1])}</span></div>
-          <div class="sub">${fmtFull(r[2])} tracks · ${r[6]} ${T('artistes')} · <span style="color:var(--cyan)">${moneyMetric(labelStreams30(r[0])==null?null:labelStreams30(r[0])*RATE)}/30 j</span></div>
+          <div class="sub">${fmtFull(r[2])} tracks · ${r[6]} ${T('artistes')}</div>
         </div>
-        <div class="vals vals2">
-          <div class="valblock"><div class="v1" style="color:var(--cyan)">${money(r[4])}</div><div class="v2">${T('revenu')}</div></div>
-          <div class="valblock"><div class="v1">${fmt(r[3])}</div><div class="v2">streams</div></div>
-        </div>
+        <div class="vals"><div class="v1">${streamStackHtml(r[3],false,false)}</div><div class="v2">${T('Streams total')}</div></div>
       </div>`).join('')}` : `<div class="empty">${T('Aucune donnée labels chargée.')}</div>`}
     </div>
 
@@ -1327,18 +1354,19 @@ function setPalier(k){ S.palier = k; render(); }
    se rachètent via la fiche label correspondante */
 function artistRows(i){ return R.filter(r=>r[0]===i && r[4]===0).sort((a,b)=>b[3]-a[3]); }
 function artistTableRows(rows){
-  return rows.map(r=>`
+  return rows.map(r=>{ const w30=trackWindow(r,30), w7=trackWindow(r,7), w1=trackWindow(r,1); return `
     <tr data-basehot="${r[3]>=HOT?1:0}" class="${r[3]>=HOT||S.sel.has(r[6])?'hot':''}">
       <td class="selc"><input type="checkbox" class="ck sel-track" data-tid="${r[6]}" ${S.sel.has(r[6])?'checked':''}></td>
       <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
       <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span> ${wlStar('t',r[6])}${r[7]?' <span class="badge new">'+T('détectée')+' '+r[7].slice(5)+'</span>':''}</td>
-      <td class="num" title="${fmtFull(r[3])}">${r[3]>=HOT?'<span class="badge hot">'+fmt(r[3])+'</span>':fmt(r[3])}</td>
-      <td class="num">${fmt(perMonth(r))}</td>
-      <td class="num" style="color:var(--cyan)">${perMonth(r)>0?money(perMonth(r)*RATE)+'/'+T('mo'):money(r[3]*RATE)}</td>
+      <td class="num" title="${fmtFull(r[3])}">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</td>
+      <td class="num">${streamStackHtml(w30.current,false,false)}</td>
+      <td class="num">${streamStackHtml(w7.current,false,false)}</td>
+      <td class="num">${streamStackHtml(w1.current,false,false)}</td>
       <td class="num"><span style="color:var(--acc2);font-weight:600">${eur(advance(Math.max(perMonth(r),0)))}</span></td>
       <td>${fmtDate(r[2])}</td>
       <td><span class="badge ${r[4]===0?'self':'other'}">${r[4]===0?T('Indé'):'Label'}</span></td>
-    </tr>`).join('');
+    </tr>`;}).join('');
 }
 function renderArtistModal(){
   const i = S.artist; const g = AG[i]; if(!g) return;
@@ -1366,10 +1394,9 @@ function renderArtistModal(){
       <div class="tg"><div class="l">${T('Indé')}</div><div class="v">${fmtFull(g.self)} · ${selfPct}%</div></div>
       <div class="tg"><div class="l">≥ 500k</div><div class="v">${fmtFull(g.hot)}</div></div>
       <div class="tg"><div class="l">${T('Dernière sortie')}</div><div class="v" style="font-size:13px">${fmtDate(g.last)}</div></div>
-      <div class="tg"><div class="l">${T('Streams total')}</div><div class="v">${fmt(g.streams)}</div></div>
       <div class="tg"><div class="l">${T('Signal performance')}</div><div class="v" style="font-size:13px">${performanceSignal(perf,entry)}</div></div>
     </div>
-    ${perfGridHtml(perf,T('Streams'))}
+    ${perfGridHtml(perf,'Streams',g.streams,true)}
     <div class="analytics-section">
       <h4>${T('Courbe quotidienne des streams')} <span class="analytics-note">${T('Flux quotidien, pas compteur lifetime')}</span></h4>
       ${dailyChartHtml(flows.points,T('Historique quotidien insuffisant pour tracer la courbe.'))}
@@ -1392,8 +1419,8 @@ function renderArtistModal(){
     <label class="selall" style="margin:2px 0 8px"><input type="checkbox" class="ck" id="am-sel-all" ${rows.length&&rows.every(r=>S.sel.has(r[6]))?'checked':''}> ${T('Tout sélectionner')}</label>
     <table><thead><tr>
       <th class="selc"></th><th></th><th>Track</th>
-      <th class="num">Streams</th><th class="num">${T('Streams/mois')}</th>
-      <th class="num">${T('Revenu est.')}</th><th class="num">${T('Rachat')} ${S.palier}</th>
+      <th class="num">${T('Streams total')}</th><th class="num">${T('Streams 30 jours')}</th>
+      <th class="num">${T('Streams 7 jours')}</th><th class="num">${T('Streams 24 heures')}</th><th class="num">${T('Rachat')} ${S.palier}</th>
       <th>${T('Sortie')}</th><th>${T('Statut')}</th>
     </tr></thead><tbody>${artistTableRows(rows)}</tbody></table>
     ${rows.length===0?'<div class="empty">'+T('Aucune track indé. Les tracks de cet artiste sont toutes sous label : passe par la fiche du label (onglet All labels).')+'</div>':''}
@@ -1490,7 +1517,6 @@ function openTrack(tid){
       <button class="tclose" onclick="closeTrack()">✕</button>
     </div>
     <div class="tgrid">
-      <div class="tg"><div class="l">${T('Streams total lifetime')}</div><div class="v">${fmt(r[3])}</div></div>
       <div class="tg"><div class="l">${T('Vélocité réelle')}</div><div class="v" style="color:var(--cyan)">${velocity==null?'—':fmt(Math.round(velocity))+'/'+T('jour')}</div></div>
       <div class="tg"><div class="l">${T('Cadence')}</div><div class="v">${cadence}</div></div>
       <div class="tg"><div class="l">${T('Signal performance')}</div><div class="v" style="font-size:13px">${performanceSignal(perf,entry)}</div></div>
@@ -1499,7 +1525,7 @@ function openTrack(tid){
       <div class="tg"><div class="l">${T('Label')}</div><div class="v" style="font-size:12px;line-height:1.4">${label?esc(label):'—'}</div></div>
       <div class="tg"><div class="l">© / ℗</div><div class="v" style="font-size:12px;line-height:1.4">${r[5]?esc(r[5]):'—'}</div></div>
     </div>
-    ${perfGridHtml(perf,T('Streams'))}
+    ${perfGridHtml(perf,'Streams',r[3]>=0?r[3]:null,true)}
     <div class="analytics-section">
       <h4>${T('Courbe quotidienne des streams')} <span class="analytics-note">${T('Flux quotidien, pas compteur lifetime')}</span></h4>
       ${dailyChartHtml(daily,T('Historique quotidien insuffisant pour tracer la courbe.'))}
@@ -1523,15 +1549,18 @@ function renderWatch(){
   if(S.wltab==='tracks'){
     const rows=R.filter(r=>w.t.includes(r[6])).sort((a,b)=>b[3]-a[3]);
     if(!rows.length){ h+=`<div class="empty">${T("Aucune track épinglée. Clique sur l'étoile ☆ d'une track pour la suivre ici.")}</div>`; V.innerHTML=h; return; }
-    h+=`<div class="panel" style="padding:6px 14px 14px"><table><thead><tr><th></th><th></th><th>Track</th><th>${T('Artiste')}</th><th class="num">Streams</th><th class="num">${T('Rachat')} ${S.palier}</th><th>${T('Sortie')}</th></tr></thead><tbody>`;
-    h+=rows.map(r=>`<tr class="${r[3]>=HOT?'hot':''}">
+    h+=`<div class="panel" style="padding:6px 14px 14px"><table><thead><tr><th></th><th></th><th>Track</th><th>${T('Artiste')}</th><th class="num">${T('Streams total')}</th><th class="num">${T('Streams 30 jours')}</th><th class="num">${T('Streams 7 jours')}</th><th class="num">${T('Streams 24 heures')}</th><th class="num">${T('Rachat')} ${S.palier}</th><th>${T('Sortie')}</th></tr></thead><tbody>`;
+    h+=rows.map(r=>{const w30=trackWindow(r,30),w7=trackWindow(r,7),w1=trackWindow(r,1);return `<tr class="${r[3]>=HOT?'hot':''}">
       <td>${wlStar('t',r[6])}</td>
       <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
       <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span></td>
       <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
-      <td class="num">${fmt(r[3])}</td>
+      <td class="num">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</td>
+      <td class="num">${streamStackHtml(w30.current,false,false)}</td>
+      <td class="num">${streamStackHtml(w7.current,false,false)}</td>
+      <td class="num">${streamStackHtml(w1.current,false,false)}</td>
       <td class="num"><span style="color:var(--acc2);font-weight:600">${eur(advance(Math.max(perMonth(r),0)))}</span></td>
-      <td>${fmtDate(r[2])}</td></tr>`).join('');
+      <td>${fmtDate(r[2])}</td></tr>`;}).join('');
     h+='</tbody></table></div>';
   } else {
     const gs=AG.filter(g=>w.a.includes(g.name)).sort((a,b)=>b.streams-a.streams);
@@ -1541,10 +1570,11 @@ function renderWatch(){
         ${wlStar('a',g.name)}
         <div class="top"><div class="av">${esc(g.name[0]||'?').toUpperCase()}${avatarHtml(g)}</div>
           <div style="min-width:0"><div class="nm">${esc(g.name)}</div><div style="font-size:11px;color:var(--dim);margin-top:7px">${segBadge(g)}</div></div></div>
-        <div class="stats"><div class="st"><div class="v">${fmt(g.streams)}</div><div class="l">${T('streams')}</div></div>
-          <div class="st"><div class="v">${g.n}</div><div class="l">tracks</div></div>
-          <div class="st"><div class="v" style="color:${g.hot?'var(--acc2)':'inherit'}">${g.hot}</div><div class="l">≥ 500k</div></div></div>
-        <div class="foot"><span style="color:var(--cyan);font-weight:600">≈ ${money(g.mstreams*RATE)}/${T('mois')}</span></div>
+        <div class="stats stats2"><div class="st"><div class="v">${streamStackHtml(g.streams,false,false)}</div><div class="l">${T('Streams total')}</div></div>
+          <div class="st"><div class="v">${streamStackHtml(g.streams30,false,false)}</div><div class="l">${T('Streams 30 jours')}</div></div>
+          <div class="st"><div class="v">${streamStackHtml(g.streams7,false,false)}</div><div class="l">${T('Streams 7 jours')}</div></div>
+          <div class="st"><div class="v">${streamStackHtml(g.streams24,false,false)}</div><div class="l">${T('Streams 24 heures')}</div></div></div>
+        <div class="foot"><span>${g.n} tracks · ${g.hot} ≥ 500k</span></div>
       </div>`;}).join('')+'</div>';
   }
   V.innerHTML=h; attachCovers();
@@ -1572,11 +1602,10 @@ function renderOpps(){
         <th></th>
         <th data-k="1">Track ${sortArrow(1)}</th>
         <th data-k="0">${T('Artiste')} ${sortArrow(0)}</th>
-        <th data-k="3" class="num">${T('Streams total')}</th>
-        <th data-k="11" class="num">${T('Revenu total')} ${sortArrow(11)}</th>
-        <th data-k="20" class="num" title="${T('Flux réel sur la période')}">${T('Streams 24 h')} ${sortArrow(20)}</th>
-        <th data-k="21" class="num" title="${T('Flux réel sur la période')}">${T('Streams 7 j')} ${sortArrow(21)}</th>
-        <th data-k="10" class="num" title="${T('Flux réel sur la période')}">${T('Streams 30 j')} ${sortArrow(10)}</th>
+        <th data-k="3" class="num">${T('Streams total')} ${sortArrow(3)}</th>
+        <th data-k="10" class="num" title="${T('Flux réel sur la période')}">${T('Streams 30 jours')} ${sortArrow(10)}</th>
+        <th data-k="21" class="num" title="${T('Flux réel sur la période')}">${T('Streams 7 jours')} ${sortArrow(21)}</th>
+        <th data-k="20" class="num" title="${T('Flux réel sur la période')}">${T('Streams 24 heures')} ${sortArrow(20)}</th>
         <th data-k="13" class="num">${T('Rachat')} ${S.palier} ${sortArrow(13)}</th>
         <th data-k="2">${T('Sortie')} ${sortArrow(2)}</th>
         <th data-k="4">${T('Statut')} ${sortArrow(4)}</th>
@@ -1589,11 +1618,10 @@ function renderOpps(){
           <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
           <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span> ${wlStar('t',r[6])}${r[7]?' <span class="badge new">'+T('détectée')+' '+r[7].slice(5)+'</span>':''}</td>
           <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
-          <td class="num" title="${fmtFull(r[3])}">${fmt(r[3])}</td>
-          <td class="num" style="color:var(--cyan)">${money(revTotal(r))}</td>
-          <td class="num" title="${T('Streams des dernières 24 h')} · ${T('Aucune extrapolation')}">${fmtMetric(w1.current)}${w1.currentReady?'':' <span class="metric-partial">'+T('Données partielles')+'</span>'}</td>
-          <td class="num" title="${T('Streams des 7 derniers jours')} · ${T('Aucune extrapolation')}">${fmtMetric(w7.current)}${w7.currentReady?'':' <span class="metric-partial">'+T('Données partielles')+'</span>'}</td>
-          <td class="num" title="${T('Streams des 30 derniers jours')} · ${T('Aucune extrapolation')}">${fmtMetric(w30.current)}${w30.currentReady?'':' <span class="metric-partial">'+T('Données partielles')+'</span>'}</td>
+          <td class="num" title="${fmtFull(r[3])}">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</td>
+          <td class="num" title="${T('Streams des 30 derniers jours')} · ${T('Aucune extrapolation')}">${streamStackHtml(w30.current,false,false)}</td>
+          <td class="num" title="${T('Streams des 7 derniers jours')} · ${T('Aucune extrapolation')}">${streamStackHtml(w7.current,false,false)}</td>
+          <td class="num" title="${T('Streams des dernières 24 h')} · ${T('Aucune extrapolation')}">${streamStackHtml(w1.current,false,false)}</td>
           <td class="num" title="${T('Payback')} ${paybackTxt(payback(Math.max(perMonth(r),0)))}"><span style="color:var(--acc2);font-weight:600">${eur(advance(Math.max(perMonth(r),0)))}</span></td>
           <td style="white-space:nowrap;font-variant-numeric:tabular-nums">${fmtDate(r[2])}</td>
           <td><span class="badge ${r[4]===0?'self':'other'}">${r[4]===0?T('Indé'):'Label'}</span></td>
@@ -1614,15 +1642,14 @@ function renderOpps(){
         <span class="ar" onclick="event.stopPropagation();goArtist(${r[0]})">${esc(A[r[0]][0])}</span>
         <span class="badge ${r[4]===0?'self':'other'}">${r[4]===0?T('Indé'):'Label'}</span>
       </div>
-      <div class="stats">
-        <div class="st"><div class="v">${fmt(r[3])}</div><div class="l">${T('Streams total')}</div></div>
-        <div class="st"><div class="v" style="color:var(--cyan)">${money(revTotal(r))}</div><div class="l">${T('Revenu total')}</div></div>
-        <div class="st"><div class="v" style="color:var(--acc2)">${eur(advance(Math.max(perMonth(r),0)))}</div><div class="l">${T('Rachat')}</div></div>
+      <div class="stats stats2">
+        <div class="st"><div class="v">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</div><div class="l">${T('Streams total')}</div></div>
+        <div class="st"><div class="v">${streamStackHtml(w30.current,false,false)}</div><div class="l">${T('Streams 30 jours')}</div></div>
+        <div class="st"><div class="v">${streamStackHtml(w7.current,false,false)}</div><div class="l">${T('Streams 7 jours')}</div></div>
+        <div class="st"><div class="v">${streamStackHtml(w1.current,false,false)}</div><div class="l">${T('Streams 24 heures')}</div></div>
       </div>
-      <div class="stats">
-        <div class="st"><div class="v">${fmtMetric(w1.current)}</div><div class="l">${T('Streams 24 h')}</div></div>
-        <div class="st"><div class="v">${fmtMetric(w7.current)}</div><div class="l">${T('Streams 7 j')}</div></div>
-        <div class="st"><div class="v">${fmtMetric(w30.current)}</div><div class="l">${T('Streams 30 j')}</div></div>
+      <div class="stats stats2">
+        <div class="st" style="grid-column:1/-1"><div class="v" style="color:var(--acc2)">${eur(advance(Math.max(perMonth(r),0)))}</div><div class="l">${T('Rachat')}</div></div>
       </div>
     </div>`;}).join('')}
   </div>
@@ -1739,13 +1766,10 @@ function renderArtists(){
         <div class="nm">${esc(g.name)}</div>
         <div style="font-size:11px;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">${segBadge(g)} <span>${g.lofi?g.lofi+' '+T('tracks chez Lofi'):''}${g.disco?' · '+T('découverte')+' ('+esc(g.origin||'related')+')':''}</span></div>
         <div class="stats stats2">
-          <div class="st"><div class="v">${fmt(g.streams)}</div><div class="l">${T('Streams total')}</div></div>
-          <div class="st"><div class="v" style="color:var(--cyan)">${money(g.streams*RATE)}</div><div class="l">${T('Revenu total')}</div></div>
-        </div>
-        <div class="stats">
-          <div class="st"><div class="v">${fmtMetric(g.streams24)}</div><div class="l">${T('Streams 24 h')}</div></div>
-          <div class="st"><div class="v">${fmtMetric(g.streams7)}</div><div class="l">${T('Streams 7 j')}</div></div>
-          <div class="st"><div class="v">${fmtMetric(g.streams30)}</div><div class="l">${T('Streams 30 j')}</div></div>
+          <div class="st"><div class="v">${streamStackHtml(g.streams,false,false)}</div><div class="l">${T('Streams total')}</div></div>
+          <div class="st"><div class="v">${streamStackHtml(g.streams30,false,false)}</div><div class="l">${T('Streams 30 jours')}</div></div>
+          <div class="st"><div class="v">${streamStackHtml(g.streams7,false,false)}</div><div class="l">${T('Streams 7 jours')}</div></div>
+          <div class="st"><div class="v">${streamStackHtml(g.streams24,false,false)}</div><div class="l">${T('Streams 24 heures')}</div></div>
         </div>
       </div>`).join('')}
   </div>
@@ -1758,10 +1782,9 @@ function renderArtists(){
         <th data-asort="name">${T('Artiste')} ${artistSortArrow('name')}</th>
         <th data-asort="status">${T('Statut')} ${artistSortArrow('status')}</th>
         <th data-asort="streams" class="num">${T('Streams total')} ${artistSortArrow('streams')}</th>
-        <th data-asort="revenue" class="num">${T('Revenu total')} ${artistSortArrow('revenue')}</th>
-        <th data-asort="streams24" class="num" title="${T('Flux réel sur la période')}">${T('Streams 24 h')} ${artistSortArrow('streams24')}</th>
-        <th data-asort="streams7" class="num" title="${T('Flux réel sur la période')}">${T('Streams 7 j')} ${artistSortArrow('streams7')}</th>
-        <th data-asort="streams30" class="num" title="${T('Flux réel sur la période')}">${T('Streams 30 j')} ${artistSortArrow('streams30')}</th>
+        <th data-asort="streams30" class="num" title="${T('Flux réel sur la période')}">${T('Streams 30 jours')} ${artistSortArrow('streams30')}</th>
+        <th data-asort="streams7" class="num" title="${T('Flux réel sur la période')}">${T('Streams 7 jours')} ${artistSortArrow('streams7')}</th>
+        <th data-asort="streams24" class="num" title="${T('Flux réel sur la période')}">${T('Streams 24 heures')} ${artistSortArrow('streams24')}</th>
         <th data-asort="n" class="num">tracks ${artistSortArrow('n')}</th>
         <th data-asort="hot" class="num">≥ 500k ${artistSortArrow('hot')}</th>
         <th data-asort="self" class="num">${T('indé')} ${artistSortArrow('self')}</th>
@@ -1775,11 +1798,10 @@ function renderArtists(){
           <td class="covtd">${artistCoverHtml(g)}</td>
           <td>${esc(g.name)} ${wlStar('a',g.name)}</td>
           <td style="white-space:nowrap"><div>${segBadge(g)}</div><div style="font-size:11px;color:var(--dim);margin-top:3px">${g.lofi||0} ${T('tracks chez Lofi')}</div></td>
-          <td class="num">${fmt(g.streams)}</td>
-          <td class="num" style="color:var(--cyan)">${money(g.streams*RATE)}</td>
-          <td class="num">${fmtMetric(g.streams24)}</td>
-          <td class="num">${fmtMetric(g.streams7)}</td>
-          <td class="num">${fmtMetric(g.streams30)}</td>
+          <td class="num">${streamStackHtml(g.streams,false,false)}</td>
+          <td class="num">${streamStackHtml(g.streams30,false,false)}</td>
+          <td class="num">${streamStackHtml(g.streams7,false,false)}</td>
+          <td class="num">${streamStackHtml(g.streams24,false,false)}</td>
           <td class="num">${g.n}</td>
           <td class="num" style="color:${g.hot?'var(--acc2)':'inherit'}">${g.hot}</td>
           <td class="num">${p}%</td>
@@ -1847,20 +1869,22 @@ function renderNew(){
   </div>
   <div class="panel" style="padding:6px 14px 14px">
     <table>
-      <thead><tr><th></th><th></th><th>${T('Date de sortie')}</th><th>Track</th><th>${T('Artiste')}</th><th class="num">Streams</th><th class="num">${T('Streams/mois')}</th><th>${T('Statut')}</th><th>Copyright</th></tr></thead>
+      <thead><tr><th></th><th></th><th>${T('Date de sortie')}</th><th>Track</th><th>${T('Artiste')}</th><th class="num">${T('Streams total')}</th><th class="num">${T('Streams 30 jours')}</th><th class="num">${T('Streams 7 jours')}</th><th class="num">${T('Streams 24 heures')}</th><th>${T('Statut')}</th><th>Copyright</th></tr></thead>
       <tbody>
-      ${slice.map(r=>`
+      ${slice.map(r=>{const w30=trackWindow(r,30),w7=trackWindow(r,7),w1=trackWindow(r,1);return `
         <tr class="${r[3]>=HOT?'hot':''}">
           <td>${wlStar('t',r[6])}</td>
           <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
           <td style="white-space:nowrap;font-variant-numeric:tabular-nums">${fmtDate(r[2])}</td>
           <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span>${r[7]?' <span class="badge new">'+T('détectée')+'</span>':''}</td>
           <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
-          <td class="num">${fmt(r[3])}</td>
-          <td class="num">${fmt(perMonth(r))}</td>
+          <td class="num">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</td>
+          <td class="num">${streamStackHtml(w30.current,false,false)}</td>
+          <td class="num">${streamStackHtml(w7.current,false,false)}</td>
+          <td class="num">${streamStackHtml(w1.current,false,false)}</td>
           <td><span class="badge ${r[4]===0?'self':'other'}">${r[4]===0?T('Indé'):'Label'}</span></td>
           <td><span class="lb" title="${esc(r[5])}">${esc(r[5])}</span></td>
-        </tr>`).join('')}
+        </tr>`;}).join('')}
       </tbody>
     </table>
     ${rows.length===0?'<div class="empty">'+T('Aucune sortie sur la période. La veille hebdomadaire alimentera cette vue automatiquement.')+'</div>':''}
@@ -2047,7 +2071,10 @@ function playlistPerformance(rows){
 }
 function playlistWindowCell(r,days){
   const w=playlistWindow(r,days);
-  return w.currentReady?`<span style="color:${w.current>0?'var(--acc2)':(w.current<0?'var(--red)':'var(--muted)')};font-weight:650">${signedFull(w.current)}</span>`:`<span class="metric-partial" title="${T('Historique quotidien requis pour cette fenêtre.')}">—</span>`;
+  const main=w.currentReady?signedFull(w.current):'—';
+  const color=w.currentReady?(w.current>0?'var(--acc2)':(w.current<0?'var(--red)':'var(--muted)')):'var(--dim)';
+  const compare=w.comparisonReady?`${T('vs période précédente')} ${signedFull(w.change)}${signedPct(w.pct)}`:T('Données partielles');
+  return `<span class="delta-stack" title="${w.currentReady?'':T('Historique quotidien requis pour cette fenêtre.')}"><span class="delta-main" style="color:${color}">${main}</span><span class="delta-compare">${compare}</span></span>`;
 }
 function playlistRecentVariations(r){
   const pts=normalizeCounterHistory(plHistory(r)), out=[];
@@ -2073,7 +2100,6 @@ function openPlaylist(pid){
       <button class="tclose" onclick="closeTrack()">✕</button>
     </div>
     <div class="tgrid">
-      <div class="tg"><div class="l">${T('Followers actuels')}</div><div class="v">${r[5]==='ok'?fmtFull(r[4]):plFollowersCell(r)}</div></div>
       <div class="tg"><div class="l">Tracks</div><div class="v">${r[16]?(r[6]||'?'):'—'}</div></div>
       <div class="tg"><div class="l">Fit score</div><div class="v">${r[16]?(r[12]||0):'—'}</div></div>
       <div class="tg"><div class="l">Genre</div><div class="v" style="font-size:13px">${esc(r[10]||'?')}</div></div>
@@ -2082,7 +2108,7 @@ function openPlaylist(pid){
       <div class="tg"><div class="l">${T('Dernière observation')}</div><div class="v" style="font-size:13px">${fmtDate(r[8])}</div></div>
       <div class="tg"><div class="l">${T('Création estimée')}</div><div class="v" style="font-size:13px">${plEstDateCell(r)}</div></div>
     </div>
-    ${perfGridHtml(perf,T('Followers'))}
+    ${perfGridHtml(perf,'Followers',r[5]==='ok'?r[4]:null,false)}
     <div class="analytics-section">
       <h4>${T('Courbe historique des followers')} <span class="analytics-note">${T('Compteur followers')}</span></h4>
       ${dailyChartHtml(hist,T('Historique quotidien insuffisant pour tracer la courbe.'))}
@@ -2117,10 +2143,10 @@ function renderPlaylists(){
         <th></th>
         <th data-plsort="name">Playlist ${plSortArrow('name')}</th>
         <th data-plsort="curator">${T('Curateur')} ${plSortArrow('curator')}</th>
-        <th data-plsort="followers" class="num">Followers ${plSortArrow('followers')}</th>
-        <th data-plsort="growth24" class="num" title="${T('Évolution followers sur les dernières 24 h')}">${T('Followers 24 h')} ${plSortArrow('growth24')}</th>
-        <th data-plsort="growth7" class="num" title="${T('Évolution followers sur les 7 derniers jours')}">${T('Followers 7 j')} ${plSortArrow('growth7')}</th>
-        <th data-plsort="growth30" class="num" title="${T('Évolution followers sur les 30 derniers jours')}">${T('Followers 30 j')} ${plSortArrow('growth30')}</th>
+        <th data-plsort="followers" class="num">${T('Followers total')} ${plSortArrow('followers')}</th>
+        <th data-plsort="growth30" class="num" title="${T('Évolution followers sur les 30 derniers jours')}">${T('Followers 30 jours')} ${plSortArrow('growth30')}</th>
+        <th data-plsort="growth7" class="num" title="${T('Évolution followers sur les 7 derniers jours')}">${T('Followers 7 jours')} ${plSortArrow('growth7')}</th>
+        <th data-plsort="growth24" class="num" title="${T('Évolution followers sur les dernières 24 h')}">${T('Followers 24 heures')} ${plSortArrow('growth24')}</th>
         <th data-plsort="tracks" class="num">Tracks ${plSortArrow('tracks')}</th>
         <th data-plsort="fit" class="num">Fit score ${plSortArrow('fit')}</th>
         <th data-plsort="genre">Genre ${plSortArrow('genre')}</th>
@@ -2136,9 +2162,9 @@ function renderPlaylists(){
           <td><span class="tk">${esc(r[1])}</span>${r[16]?'':' <span class="badge new" title="'+T('Détail pas encore récupéré')+'">'+T('en attente')+'</span>'}</td>
           <td>${esc(r[2])} ${plCuratorBadge(r[3])}</td>
           <td class="num" title="${fmtFull(r[4])}">${plFollowersCell(r)}</td>
-          <td class="num">${playlistWindowCell(r,1)}</td>
-          <td class="num">${playlistWindowCell(r,7)}</td>
           <td class="num">${playlistWindowCell(r,30)}</td>
+          <td class="num">${playlistWindowCell(r,7)}</td>
+          <td class="num">${playlistWindowCell(r,1)}</td>
           <td class="num">${r[16]?(r[6]||'?'):'—'}</td>
           <td class="num">${r[16]?(r[12]||0):'—'}</td>
           <td>${esc(r[10]||'?')}</td>
@@ -2160,13 +2186,13 @@ function renderPlaylists(){
       <div class="nm">${esc(r[1])}${r[16]?'':' <span class="badge new" title="'+T('Détail pas encore récupéré')+'">'+T('en attente')+'</span>'}</div>
       <div style="font-size:11px;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">${esc(r[2])} ${plCuratorBadge(r[3])}</div>
       <div class="stats stats2">
-        <div class="st"><div class="v">${plFollowersCell(r)}</div><div class="l">Followers</div></div>
-        <div class="st"><div class="v">${r[16]?(r[6]||'?'):'—'}</div><div class="l">Tracks</div></div>
+        <div class="st"><div class="v">${plFollowersCell(r)}</div><div class="l">${T('Followers total')}</div></div>
+        <div class="st"><div class="v">${playlistWindowCell(r,30)}</div><div class="l">${T('Followers 30 jours')}</div></div>
+        <div class="st"><div class="v">${playlistWindowCell(r,7)}</div><div class="l">${T('Followers 7 jours')}</div></div>
+        <div class="st"><div class="v">${playlistWindowCell(r,1)}</div><div class="l">${T('Followers 24 heures')}</div></div>
       </div>
-      <div class="stats">
-        <div class="st"><div class="v">${playlistWindowCell(r,1)}</div><div class="l">${T('Followers 24 h')}</div></div>
-        <div class="st"><div class="v">${playlistWindowCell(r,7)}</div><div class="l">${T('Followers 7 j')}</div></div>
-        <div class="st"><div class="v">${playlistWindowCell(r,30)}</div><div class="l">${T('Followers 30 j')}</div></div>
+      <div class="stats stats2">
+        <div class="st" style="grid-column:1/-1"><div class="v">${r[16]?(r[6]||'?'):'—'}</div><div class="l">Tracks</div></div>
       </div>
     </div>`).join('')}
   </div>
@@ -2228,11 +2254,12 @@ function lbFiltered(){
     streams: (a,b)=>a[3]-b[3],
     tracks: (a,b)=>a[2]-b[2],
     since: (a,b)=>(a[5]||'').localeCompare(b[5]||''),
-    streams30: (a,b)=>labelStreams30(a[0])-labelStreams30(b[0]),
-    revenue30: (a,b)=>labelStreams30(a[0])-labelStreams30(b[0]),
+    streams30: (a,b)=>(labelStreams(a[0],30)==null?(S.lbdir===-1?-Infinity:Infinity):labelStreams(a[0],30))-(labelStreams(b[0],30)==null?(S.lbdir===-1?-Infinity:Infinity):labelStreams(b[0],30)),
+    streams7: (a,b)=>(labelStreams(a[0],7)==null?(S.lbdir===-1?-Infinity:Infinity):labelStreams(a[0],7))-(labelStreams(b[0],7)==null?(S.lbdir===-1?-Infinity:Infinity):labelStreams(b[0],7)),
+    streams24: (a,b)=>(labelStreams(a[0],1)==null?(S.lbdir===-1?-Infinity:Infinity):labelStreams(a[0],1))-(labelStreams(b[0],1)==null?(S.lbdir===-1?-Infinity:Infinity):labelStreams(b[0],1)),
     artists: (a,b)=>(a[6]||0)-(b[6]||0),
   };
-  const sorter = sorters[S.lbsort] || sorters.revenue;
+  const sorter = sorters[S.lbsort] || sorters.streams;
   return rows.slice().sort((a,b)=>S.lbdir*sorter(a,b));
 }
 function labelSortArrow(k){ return S.lbsort===k ? `<span class="arr">${S.lbdir===-1?'▼':'▲'}</span>` : ''; }
@@ -2266,16 +2293,14 @@ function labelRowsOf(key){
   }
   return LBTRACKS.get(key) || [];
 }
-let LB_S30 = null; // key -> streams30 cumulés, construit à la demande
-function labelStreams30(key){
-  if (!LB_S30) LB_S30 = new Map();
-  let v = LB_S30.get(key);
-  if (v === undefined){
-    v = aggregateWindowForRows(labelRowsOf(key),30).current;
-    LB_S30.set(key, v);
-  }
-  return v;
+let LB_PERF = null; // key -> fenêtres streams agrégées, construit à la demande
+function labelPerformance(key){
+  if(!LB_PERF) LB_PERF=new Map();
+  if(!LB_PERF.has(key)) LB_PERF.set(key,performanceForRows(labelRowsOf(key)));
+  return LB_PERF.get(key);
 }
+function labelStreams(key,days){ return labelPerformance(key)[days].current; }
+function labelStreams30(key){ return labelStreams(key,30); }
 function openLabel(key){
   S.labelKey = key; S.sel = new Set(); S.lbModalArtist = null;
   renderLabelModal();
@@ -2290,18 +2315,19 @@ function labelModalArtistOptions(rows){
 function labelModalRows(rows){
   // liste plate, triée par streams desc (plus de sous-en-têtes par artiste, cf. filtre artiste dédié)
   const sorted = rows.slice().sort((a,b)=>b[3]-a[3]);
-  return sorted.map(r=>`
+  return sorted.map(r=>{const w30=trackWindow(r,30),w7=trackWindow(r,7),w1=trackWindow(r,1);return `
     <tr data-basehot="${r[3]>=HOT?1:0}" class="${r[3]>=HOT||S.sel.has(r[6])?'hot':''}">
       <td class="selc"><input type="checkbox" class="ck sel-track" data-tid="${r[6]}" ${S.sel.has(r[6])?'checked':''}></td>
       <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
       <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span> ${wlStar('t',r[6])}</td>
       <td><span class="ar" onclick="closeArtistModal();goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
-      <td class="num" title="${fmtFull(r[3])}">${r[3]>=HOT?'<span class="badge hot">'+fmt(r[3])+'</span>':fmt(r[3])}</td>
-      <td class="num">${fmt(perMonth(r))}</td>
-      <td class="num" style="color:var(--cyan)">${perMonth(r)>0?money(perMonth(r)*RATE)+'/'+T('mo'):money(r[3]*RATE)}</td>
+      <td class="num" title="${fmtFull(r[3])}">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</td>
+      <td class="num">${streamStackHtml(w30.current,false,false)}</td>
+      <td class="num">${streamStackHtml(w7.current,false,false)}</td>
+      <td class="num">${streamStackHtml(w1.current,false,false)}</td>
       <td class="num"><span style="color:var(--acc2);font-weight:600">${eur(advance(Math.max(perMonth(r),0)))}</span></td>
       <td>${fmtDate(r[2])}</td>
-    </tr>`).join('');
+    </tr>`;}).join('');
 }
 function renderLabelModal(){
   const key = S.labelKey; if(!key) return;
@@ -2320,11 +2346,12 @@ function renderLabelModal(){
       <div class="cov lblcov" style="width:52px;height:52px;font-size:19px;margin:0">${esc((name[0]||'?').toUpperCase())}${logo?`<img class="lblogo" src="${esc(logo)}" alt="" onerror="this.remove()">`:''}</div>
       <div style="min-width:0;flex:1">
         <h3>${esc(name)}</h3>
-        <div class="tar" style="cursor:default">🏷️ Label · ${rows.length} tracks · ${nArt} ${T('artistes')} · ${lb?fmt(lb[3])+' streams':''}${lb&&lb[5]?' · '+T('Connu depuis')+' '+fmtDate(lb[5]):''}</div>
+        <div class="tar" style="cursor:default">🏷️ Label · ${rows.length} tracks · ${nArt} ${T('artistes')}${lb&&lb[5]?' · '+T('Connu depuis')+' '+fmtDate(lb[5]):''}</div>
         ${lb && lb[8] ? `<div style="margin-top:4px"><a href="mailto:${esc(lb[8])}" style="color:var(--cyan);font-size:12.5px">✉ ${esc(lb[8])}</a></div>` : ''}
       </div>
       <button class="tclose" onclick="closeArtistModal()">✕</button>
     </div>
+    ${perfGridHtml(labelPerformance(key),'Streams',lb?lb[3]:rows.reduce((s,r)=>s+(r[3]>0?r[3]:0),0),true)}
     ${offerHtml({}, selM, selN, rows.length)}
     <div class="toolbar" style="padding:0 0 8px;margin:0">
       <select id="lbm-artist">
@@ -2335,8 +2362,8 @@ function renderLabelModal(){
     <label class="selall" style="margin:2px 0 8px"><input type="checkbox" class="ck" id="am-sel-all" ${filtRows.length&&filtRows.every(r=>S.sel.has(r[6]))?'checked':''}> ${T('Tout sélectionner')}</label>
     <table><thead><tr>
       <th class="selc"></th><th></th><th>Track</th><th>${T('Artiste')}</th>
-      <th class="num">Streams</th><th class="num">${T('Streams/mois')}</th>
-      <th class="num">${T('Revenu est.')}</th><th class="num">${T('Rachat')} ${S.palier}</th>
+      <th class="num">${T('Streams total')}</th><th class="num">${T('Streams 30 jours')}</th>
+      <th class="num">${T('Streams 7 jours')}</th><th class="num">${T('Streams 24 heures')}</th><th class="num">${T('Rachat')} ${S.palier}</th>
       <th>${T('Sortie')}</th>
     </tr></thead><tbody>${labelModalRows(filtRows)}</tbody></table>
     ${filtRows.length===0?'<div class="empty">'+T('Aucune track retrouvée pour ce label dans la base actuelle.')+'</div>':''}
@@ -2377,9 +2404,9 @@ function renderLabels(){
         <th data-lbsort="name">${T('Label')} ${labelSortArrow('name')}</th>
         <th data-lbsort="tracks" class="num">Tracks ${labelSortArrow('tracks')}</th>
         <th data-lbsort="streams" class="num">${T('Streams total')} ${labelSortArrow('streams')}</th>
-        <th data-lbsort="revenue" class="num">${T('Revenu total')} ${labelSortArrow('revenue')}</th>
-        <th data-lbsort="streams30" class="num">${T('Streams 30j')} ${labelSortArrow('streams30')}</th>
-        <th data-lbsort="revenue30" class="num">${T('Revenu 30j')} ${labelSortArrow('revenue30')}</th>
+        <th data-lbsort="streams30" class="num">${T('Streams 30 jours')} ${labelSortArrow('streams30')}</th>
+        <th data-lbsort="streams7" class="num">${T('Streams 7 jours')} ${labelSortArrow('streams7')}</th>
+        <th data-lbsort="streams24" class="num">${T('Streams 24 heures')} ${labelSortArrow('streams24')}</th>
         <th data-lbsort="since">${T('Connu depuis')} ${labelSortArrow('since')}</th>
         <th data-lbsort="artists" class="num">${T('Artistes')} ${labelSortArrow('artists')}</th>
       </tr></thead>
@@ -2389,10 +2416,10 @@ function renderLabels(){
           <td class="covtd">${labelCover(r[1], false, r[7])}</td>
           <td>${esc(r[1])}</td>
           <td class="num">${fmtFull(r[2])}</td>
-          <td class="num">${fmt(r[3])}</td>
-          <td class="num" style="color:var(--cyan)">${money(r[4])}</td>
-          <td class="num">${fmtMetric(labelStreams30(r[0]))}</td>
-          <td class="num" style="color:var(--cyan)">${moneyMetric(labelStreams30(r[0])==null?null:labelStreams30(r[0])*RATE)}</td>
+          <td class="num">${streamStackHtml(r[3],false,false)}</td>
+          <td class="num">${streamStackHtml(labelStreams(r[0],30),false,false)}</td>
+          <td class="num">${streamStackHtml(labelStreams(r[0],7),false,false)}</td>
+          <td class="num">${streamStackHtml(labelStreams(r[0],1),false,false)}</td>
           <td style="white-space:nowrap">${r[5]?T('Connu depuis')+' '+fmtDate(r[5]):T('Non estimé')}</td>
           <td class="num">${r[6]}</td>
         </tr>`).join('')}
@@ -2407,16 +2434,13 @@ function renderLabels(){
     <div class="acard plcard lbl-row" data-lbkey="${esc(r[0])}">
       ${labelCover(r[1], true, r[7])}
       <div class="nm">${esc(r[1])}</div>
-      <div class="stats">
-        <div class="st"><div class="v">${fmt(r[3])}</div><div class="l">${T('Streams total')}</div></div>
-        <div class="st"><div class="v" style="color:var(--cyan)">${money(r[4])}</div><div class="l">${T('Revenu total')}</div></div>
-        <div class="st"><div class="v">${fmtFull(r[2])}</div><div class="l">Tracks</div></div>
-      </div>
       <div class="stats stats2">
-        <div class="st"><div class="v">${fmtMetric(labelStreams30(r[0]))}</div><div class="l">${T('Streams 30j')}</div></div>
-        <div class="st"><div class="v" style="color:var(--cyan)">${moneyMetric(labelStreams30(r[0])==null?null:labelStreams30(r[0])*RATE)}</div><div class="l">${T('Revenu 30j')}</div></div>
+        <div class="st"><div class="v">${streamStackHtml(r[3],false,false)}</div><div class="l">${T('Streams total')}</div></div>
+        <div class="st"><div class="v">${streamStackHtml(labelStreams(r[0],30),false,false)}</div><div class="l">${T('Streams 30 jours')}</div></div>
+        <div class="st"><div class="v">${streamStackHtml(labelStreams(r[0],7),false,false)}</div><div class="l">${T('Streams 7 jours')}</div></div>
+        <div class="st"><div class="v">${streamStackHtml(labelStreams(r[0],1),false,false)}</div><div class="l">${T('Streams 24 heures')}</div></div>
       </div>
-      <div class="foot">${r[5]?T('Connu depuis')+' '+fmtDate(r[5]):T('Non estimé')} · ${r[6]} ${T('artistes')}</div>
+      <div class="foot">${fmtFull(r[2])} tracks · ${r[5]?T('Connu depuis')+' '+fmtDate(r[5]):T('Non estimé')} · ${r[6]} ${T('artistes')}</div>
     </div>`).join('')}
   </div>
   ${rows.length===0?'<div class="empty">'+T('Aucun label ne correspond à cette recherche.')+'</div>':''}
