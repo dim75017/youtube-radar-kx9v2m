@@ -123,6 +123,7 @@ button,input,select{max-width:100%}
 .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap}
 .page-head h2{font-family:'Sora';font-size:22px;font-weight:700}
 .page-head p{color:var(--muted);font-size:13px;margin-top:4px;max-width:760px;line-height:1.5}
+@media(min-width:861px){.page-head>.metric-toggle{margin-right:90px}}
 
 /* Bandeau fraîcheur (module Playlists) */
 .freshbar{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;background:linear-gradient(160deg,var(--panel),var(--bg2));border:1px solid var(--border2);border-radius:var(--r);padding:13px 18px;margin-bottom:18px;font-size:12.5px}
@@ -641,6 +642,10 @@ td.selc,th.selc{width:44px;padding-left:14px}
 
 <div id="artist-modal" class="tmodal amodal" style="display:none" onclick="if(event.target===this)closeArtistModal()">
   <div class="tmbox ambox" id="am-body"></div>
+</div>
+
+<div id="ar-modal" class="tmodal amodal" style="display:none" onclick="if(event.target===this)closeArModal()">
+  <div class="tmbox ambox" id="ar-body"></div>
 </div>
 
 <script>
@@ -1186,6 +1191,80 @@ function esc(s){ return (''+s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replac
 const trackUrl = id => 'https://open.spotify.com/track/'+id;
 const artistSearch = n => 'https://open.spotify.com/search/'+encodeURIComponent(n)+'/artists';
 
+/* ---------- Radar A&R : lecture seule du flux Soundcharts exporté ---------- */
+function scValue(row, schema, name){
+  const index=(schema||[]).indexOf(name);
+  return index>=0 ? row[index] : null;
+}
+function arEditorialArtist(uuid){
+  if(!SC || !SC.editorial || !Array.isArray(SC.editorial.artists)) return null;
+  const schema=SC.editorial.artist_schema||[];
+  return SC.editorial.artists.find(row=>scValue(row,schema,'soundcharts_uuid')===uuid)||null;
+}
+function arTrackRights(name){
+  if(!SC || !Array.isArray(SC.tracks)) return 'À vérifier';
+  const schema=SC.schemas&&SC.schemas.tracks||[];
+  const match=SC.tracks.find(row=>String(scValue(row,schema,'artist')||'').trim().toLowerCase()===String(name||'').trim().toLowerCase()
+    && ['self_released','independent_label'].includes(String(scValue(row,schema,'rights_status')||'')));
+  return match ? 'À confirmer' : 'À vérifier';
+}
+function arClassification(uuid, name){
+  const row=arEditorialArtist(uuid);
+  if(!row) return {genre:'À classifier', instrumental:'À vérifier', ai:'À vérifier', rights:arTrackRights(name)};
+  const schema=SC.editorial.artist_schema||[];
+  const genre=scValue(row,schema,'primary_genre')||'À classifier';
+  const rawInstrumental=String(scValue(row,schema,'instrumental_status')||'').toLowerCase();
+  const rawAi=String(scValue(row,schema,'ai_risk')||'').toLowerCase();
+  return {
+    genre,
+    instrumental:rawInstrumental==='instrumental'?'Instrumental':(rawInstrumental==='vocal'?'Vocal':'À vérifier'),
+    ai:['low','faible'].includes(rawAi)?'Faible':(['high','élevé','eleve'].includes(rawAi)?'Élevé':'À vérifier'),
+    rights:arTrackRights(name),
+  };
+}
+function arCandidates(){
+  if(!SC || !Array.isArray(SC.fal)) return [];
+  const schema=SC.schemas&&SC.schemas.fal||[];
+  return SC.fal.map(row=>{
+    const uuid=scValue(row,schema,'soundcharts_uuid');
+    const name=scValue(row,schema,'name')||'Artiste sans nom';
+    const spotifyId=scValue(row,schema,'spotify_id');
+    const listeners=Number(scValue(row,schema,'monthly_listeners'))||0;
+    const sources=Number(scValue(row,schema,'source_count'))||0;
+    const rank=Number(scValue(row,schema,'best_rank'))||null;
+    const qualifies=Number(scValue(row,schema,'qualifies'))===1;
+    const classification=arClassification(uuid,name);
+    const scale=Math.max(0,Math.min(25,Math.round(Math.log10(Math.max(listeners,1)/10000)*12.5)));
+    const network=Math.min(20,sources*4);
+    const proximity=rank==null?0:Math.max(0,15-(rank-1)*2);
+    const score=Math.min(100,(qualifies?30:0)+scale+network+proximity+(spotifyId?10:0));
+    const review=classification.instrumental==='Instrumental' && classification.ai==='Faible' && classification.rights!=='À vérifier';
+    return {uuid,name,spotifyId,listeners,sources,rank,qualifies,classification,score,review};
+  }).sort((a,b)=>b.score-a.score||b.listeners-a.listeners||b.sources-a.sources||a.name.localeCompare(b.name));
+}
+function arClusters(){
+  if(!SC || !SC.editorial || !Array.isArray(SC.editorial.tracks)) return [];
+  const schema=SC.editorial.track_schema||[];
+  const groups=new Map();
+  for(const row of SC.editorial.tracks){
+    const genre=scValue(row,schema,'primary_genre');
+    const instrumental=String(scValue(row,schema,'instrumental_status')||'').toLowerCase();
+    const ai=String(scValue(row,schema,'ai_risk')||'').toLowerCase();
+    const artist=scValue(row,schema,'artist');
+    if(!genre || instrumental!=='instrumental' || ['high','élevé','eleve'].includes(ai)) continue;
+    if(!groups.has(genre)) groups.set(genre,{genre,artists:new Set(),tracks:0});
+    const group=groups.get(genre); group.tracks++; if(artist) group.artists.add(artist);
+  }
+  return [...groups.values()]
+    .map(group=>({genre:group.genre,artists:group.artists.size,tracks:group.tracks}))
+    .filter(group=>group.artists>=5 && group.tracks>=10)
+    .sort((a,b)=>b.artists-a.artists||b.tracks-a.tracks);
+}
+function arGateBadge(label,value){
+  const bad=['Élevé','Vocal'].includes(value), good=['Faible','Instrumental'].includes(value);
+  return `<span class="badge ${bad?'other':(good?'self':'new')}">${esc(label)} · ${esc(value)}</span>`;
+}
+
 /* ---------- état ---------- */
 const S = {
   view:'overview', back:null, palier:'100/0', sel:new Set(), wltab:'tracks', publishing:false, metricMode:'streams',
@@ -1196,6 +1275,7 @@ const S = {
   plq:'', plcur:'all', plsort:'followers', pldir:-1, plonly:false, shownPL:80, plview:'qualified', plmode:'table',
   amode:'table', omode:'table',
   lbq:'', lbsort:'streams', lbdir:-1, shownLB:80, lbmode:'table', labelKey:null, lbModalArtist:null,
+  radarFilter:'all',
 };
 
 /* ---------- navigation ---------- */
@@ -1220,7 +1300,7 @@ function closeArtistModal(){
   document.getElementById('artist-modal').style.display='none';
   S.artist = -1; S.labelKey = null;
 }
-document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeArtistModal(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeArtistModal(); closeArModal(); } });
 
 /* ---------- filtres opportunités ---------- */
 function rowsBeforePeriod(){
@@ -1734,6 +1814,96 @@ function openTrack(tid){
 }
 function closeTrack(){ document.getElementById('track-modal').style.display='none'; }
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeTrack(); });
+
+function arNoteKey(uuid){ return 'sr_ar_note_'+uuid; }
+function arGetNote(uuid){ try{return localStorage.getItem(arNoteKey(uuid))||'';}catch(e){return '';} }
+function arSetNote(uuid,value){ try{localStorage.setItem(arNoteKey(uuid),value);}catch(e){} }
+function arDraft(candidate,note){
+  const detail=(note||'un détail précis que tu as aimé après écoute').trim();
+  const variants=[
+    `Hi ${candidate.name},\n\nI came across your project while we were mapping independent instrumental artists, and I spent some time with your music. ${detail}.\n\nAt Lofi Girl, we are building long-term artist partnerships around releases, distribution, publishing and, when it makes sense, advances or master partnerships. Your project felt like one we should get to know properly.\n\nWould you be open to a short call next week?\n\nBest,\n[Name]`,
+    `Hi ${candidate.name},\n\nI wanted to reach out personally after listening to your work. ${detail}. It has a very clear identity, and that is exactly what we look for when we discover artists outside our existing network.\n\nWe are exploring a few ways we could be useful, from release strategy and distribution to publishing or a deeper partnership when the timing is right. No pressure at all, but I would love to compare notes on where you want to take the project.\n\nWould a 20-minute conversation be useful?\n\nBest,\n[Name]`,
+    `Hi ${candidate.name},\n\nYour music came up while our A&R team was digging into independent projects, and I wanted to write rather than send a generic message. ${detail}.\n\nLofi Girl can support artists across releases, label services, publishing and selected master deals. We also have our own editorial ecosystem, although any playlist or Station support always remains editorial and never guaranteed.\n\nIf you are open to it, I would be glad to set up a quick introduction.\n\nBest,\n[Name]`,
+  ];
+  let hash=0; for(const ch of String(candidate.uuid||candidate.name)) hash=(hash*31+ch.charCodeAt(0))>>>0;
+  return variants[hash%variants.length];
+}
+function closeArModal(){ const modal=document.getElementById('ar-modal'); if(modal) modal.style.display='none'; }
+function openArMessage(uuid){
+  const candidate=arCandidates().find(item=>item.uuid===uuid); if(!candidate) return;
+  const box=document.getElementById('ar-body');
+  const note=arGetNote(uuid);
+  const renderDraft=()=>{
+    const currentNote=document.getElementById('ar-note')?.value||'';
+    const draft=arDraft(candidate,currentNote);
+    const output=document.getElementById('ar-draft'); if(output) output.value=draft;
+  };
+  box.innerHTML=`
+    <div class="thd">
+      <div class="av-sm">${esc((candidate.name[0]||'?').toUpperCase())}</div>
+      <div style="min-width:0;flex:1"><h3>${esc(candidate.name)}</h3><div class="tar" style="cursor:default">Brouillon A&R personnel · non envoyé</div></div>
+      <button class="tclose" onclick="closeArModal()">✕</button>
+    </div>
+    <div class="analytics-section">
+      <h4>Le détail qui rend le message personnel</h4>
+      <div class="analytics-note" style="margin-bottom:10px">Ajoute après écoute un élément précis : un titre, une texture, une progression, une intention artistique. Le brouillon ne doit jamais partir sans cette note.</div>
+      <textarea id="ar-note" style="width:100%;min-height:76px" placeholder="Ex. J'ai aimé la façon dont [track] garde une mélodie très simple tout en laissant beaucoup d'espace…">${esc(note)}</textarea>
+      <div class="toolbar" style="margin:10px 0 0"><button class="chip on" id="ar-refresh">Mettre à jour le brouillon</button><span class="spacer"></span><button class="chip" id="ar-copy">Copier</button></div>
+    </div>
+    <div class="analytics-section"><h4>Message proposé</h4><textarea id="ar-draft" readonly style="width:100%;min-height:300px"></textarea></div>`;
+  const noteInput=document.getElementById('ar-note');
+  noteInput.addEventListener('input',()=>arSetNote(uuid,noteInput.value));
+  document.getElementById('ar-refresh').addEventListener('click',renderDraft);
+  document.getElementById('ar-copy').addEventListener('click',async()=>{
+    const text=document.getElementById('ar-draft').value;
+    try{await navigator.clipboard.writeText(text); document.getElementById('ar-copy').textContent='Copié';}
+    catch(e){document.getElementById('ar-draft').select(); document.execCommand('copy'); document.getElementById('ar-copy').textContent='Copié';}
+  });
+  renderDraft();
+  document.getElementById('ar-modal').style.display='flex';
+}
+function renderRadar(){
+  if(!SC){
+    V.innerHTML=`<div class="page-head"><div><h2>${T('Radar A&R')}</h2><p>${T('Données Soundcharts non encore exportées.')}</p></div></div>`;
+    return;
+  }
+  const all=arCandidates();
+  const candidates=all.filter(candidate=>S.radarFilter==='all'
+    || (S.radarFilter==='qualified' && candidate.qualifies)
+    || (S.radarFilter==='review' && candidate.review));
+  const qualified=all.filter(candidate=>candidate.qualifies);
+  const ready=all.filter(candidate=>candidate.review);
+  const clusters=arClusters();
+  const freshness=SC.freshness&&SC.freshness.run;
+  const rows=candidates.slice(0,150);
+  const state=all.length?`Source Soundcharts · ${freshness&&freshness.finished_at?`dernier lot ${fmtDate(freshness.finished_at)}`:'mise à jour en cours'}`:'Aucun candidat exporté';
+  V.innerHTML=`
+    <div class="page-head"><div><h2>${T('Pépites & filons')}</h2><p>Classement A&R automatique : réseau Fans Also Like, audience, proximité du signal et garde-fous de qualification. Il ne déclenche jamais une offre cash seul.</p></div></div>
+    <div class="ovgrid" style="margin-bottom:16px">
+      <div class="panel ovp"><div class="ovh"><h3>💎 ${T('Pépites à écouter')}</h3></div><div class="ov-stats"><div class="ov-st"><div class="v">${fmtFull(qualified.length)}</div><div class="l">≥ 50k ${T('Auditeurs mensuels').toLowerCase()}</div></div><div class="ov-st"><div class="v">${fmtFull(all.length)}</div><div class="l">candidats dédupliqués</div></div></div></div>
+      <div class="panel ovp"><div class="ovh"><h3>✅ ${T('Prêt à contacter')}</h3></div><div class="ov-stats"><div class="ov-st"><div class="v">${fmtFull(ready.length)}</div><div class="l">genre + instrumental + IA + droits assez renseignés</div></div></div></div>
+      <div class="panel ovp"><div class="ovh"><h3>🌊 ${T('Filons confirmés')}</h3></div><div class="ov-stats"><div class="ov-st"><div class="v">${fmtFull(clusters.length)}</div><div class="l">clusters instrumentaux validés</div></div></div></div>
+    </div>
+    <div class="toolbar">
+      <button class="chip ${S.radarFilter==='all'?'on':''}" data-radar-filter="all">Tous (${fmtFull(all.length)})</button>
+      <button class="chip ${S.radarFilter==='qualified'?'on':''}" data-radar-filter="qualified">${T('Pépites à écouter')} (${fmtFull(qualified.length)})</button>
+      <button class="chip ${S.radarFilter==='review'?'on':''}" data-radar-filter="review">${T('Prêt à contacter')} (${fmtFull(ready.length)})</button>
+      <span class="spacer"></span><span class="result-count">${esc(state)}</span>
+    </div>
+    <div class="panel" style="padding:6px 14px 14px"><table><thead><tr><th>#</th><th>${T('Artiste')}</th><th>${T('Signal de découverte')}</th><th class="num">${T('Auditeurs mensuels')}</th><th>${T('Réseau Fans Also Like')}</th><th>Gates</th><th>${T('Étape suivante')}</th></tr></thead><tbody>
+      ${rows.map((candidate,index)=>`<tr>
+        <td class="num">${index+1}</td>
+        <td><a class="ar" href="${artistSearch(candidate.name)}" target="_blank" rel="noopener">${esc(candidate.name)}</a></td>
+        <td><span class="badge ${candidate.score>=70?'self':'new'}">${candidate.score}/100</span><div class="genre-sub">${candidate.qualifies?'pré-sélection ≥50k':'audience à confirmer'}</div></td>
+        <td class="num">${fmtFull(candidate.listeners)}</td>
+        <td>${candidate.sources} source${candidate.sources>1?'s':''}${candidate.rank?` · rang ${candidate.rank}`:''}</td>
+        <td><div style="display:flex;gap:4px;flex-wrap:wrap">${arGateBadge('Genre',candidate.classification.genre)}${arGateBadge('Inst.',candidate.classification.instrumental)}${arGateBadge('IA',candidate.classification.ai)}${arGateBadge('Droits',candidate.classification.rights)}</div></td>
+        <td>${candidate.review?`<button class="chip on" onclick="openArMessage('${esc(candidate.uuid)}')">Préparer message</button>`:`<span class="genre-sub">${T('Écoute + genre / IA / droits')}</span>`}</td>
+      </tr>`).join('')}
+    </tbody></table>${rows.length===0?`<div class="empty">${T('Données insuffisantes')}</div>`:''}</div>
+    <div class="analytics-section" style="margin-top:16px"><h4>${T('Filons confirmés')}</h4>${clusters.length?`<div class="contributors">${clusters.map(cluster=>`<div class="contributor"><span class="cn">${esc(cluster.genre)}</span><span class="cv">${cluster.artists} artistes · ${cluster.tracks} tracks</span></div>`).join('')}</div>`:`<div class="analytics-note">${T('Aucun filon confirmé')} · ${T('Historique en cours : un filon nécessite des genres fiables, plusieurs artistes et des mesures successives.')}</div>`}</div>`;
+  document.querySelectorAll('[data-radar-filter]').forEach(button=>button.addEventListener('click',()=>{S.radarFilter=button.dataset.radarFilter;renderRadar();}));
+}
 
 function renderWatch(){
   const w=wlGet();
@@ -2712,6 +2882,7 @@ function renderLabels(){
 
 function render(){
   if (S.view==='overview') renderOverview();
+  else if (S.view==='radar') renderRadar();
   else if (S.view==='opps') renderOpps();
   else if (S.view==='artists') renderArtists();
   else if (S.view==='playlists') renderPlaylists();
@@ -2726,6 +2897,7 @@ function render(){
 
 /* ---------- init ---------- */
 document.getElementById('c-opps').textContent = fmt(R.length);
+(() => { const c=document.getElementById('c-radar'); if(c) c.textContent=SC&&Array.isArray(SC.fal)?fmt(arCandidates().filter(item=>item.qualifies).length):''; })();
 document.getElementById('c-art').textContent = withTracks.length;
 (function(){ const c=document.getElementById('c-pl'); if(c && PLmeta) c.textContent = fmt(PLmeta.playlists_10k_plus); })();
 (function(){ const c=document.getElementById('c-lb'); if(c && LBmeta) c.textContent = fmt(LBrows.length); })();
@@ -2791,7 +2963,7 @@ document.getElementById('lang-switch').addEventListener('click', ()=>{
 });
 /* restauration de la vue après F5 (hash d'URL) */
 const initV = location.hash.slice(1);
-if (['overview','opps','artists','watch','playlists','labels'].includes(initV)){
+if (['overview','radar','opps','artists','watch','playlists','labels'].includes(initV)){
   S.view = initV;
   document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active', x.dataset.v===initV));
 }
