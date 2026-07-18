@@ -1170,15 +1170,15 @@ function render(){
   const t=document.getElementById('view-title'),s=document.getElementById('view-sub'),el=document.getElementById('view');
   closeDrawer();
   s.textContent='';
-  if(route==='dashboard'){t.innerHTML='Dashboard <span class="pill">LIVE</span>';el.innerHTML=dashHTML();}
+  if(route==='dashboard'){t.textContent='Dashboard';el.innerHTML=dashHTML();}
   else if(route==='mix'){t.innerHTML='Videos <span class="pill">DAILY SCAN</span>';el.innerHTML=videosHTML('mix');}
   else if(route==='all'||route==='trends'||route==='news'){route='mix';renderNav();render();return;}
   else if(route==='recos'){t.textContent='Recommendations';el.innerHTML=recosHTML();}
   else if(route==='roadmap'){t.textContent='Roadmap';el.innerHTML=roadmapHTML();}
   else if(route==='ana'){t.innerHTML='Analysis <span class="pill">OUR VIDEOS</span>';el.innerHTML=anaHTML();}
   else if(route==='watch'){t.innerHTML='Watchlist <span class="pill">⭐</span>';el.innerHTML=watchHTML();}
-  else if(route==='live'){t.innerHTML='Livestreams <span class="pill">LIVE</span>';el.innerHTML=livesHTML();}
-  else if(route==='chan'){t.textContent='Channels';el.innerHTML=chanHTML();}
+  else if(route==='live'){t.innerHTML='Livestreams <span class="pill">HOURLY SCAN</span>';el.innerHTML=livesHTML();}
+  else if(route==='chan'){t.innerHTML='Channels <span class="pill">WEEKLY SCAN</span>';el.innerHTML=chanHTML();}
   else if(route==='kw'){t.textContent='Keywords';el.innerHTML=kwHTML();}
   i18nView();armAutoLoad();fillLikes();
 }
@@ -2897,7 +2897,7 @@ const FR_LIT=[
 ['Workspace','Espace de travail'],['Sync now','Synchroniser'],['Open Google Sheet','Ouvrir le Google Sheet'],
 ['🎬 videos ','🎬 vidéos '],['📡 streams ','📡 streams '],['synced just now','synchro à l’instant'],['Live · synced just now','Live · synchro à l’instant'],['Live · synced ','Live · synchro il y a '],[' min ago',' min'],['h ago','h'],['d ago','j'],['just now','à l’instant'],
 ['Daily snapshot · ','Snapshot quotidien · '],['trying live sync…','tentative de synchro live…'],
-['DAILY SCAN','SCAN QUOTIDIEN'],['OUR VIDEOS','NOS VIDÉOS'],['>LIVE<','>LIVE<'],
+['DAILY SCAN','SCAN QUOTIDIEN'],['OUR VIDEOS','NOS VIDÉOS'],['>LIVE<','>LIVE<'],['HOURLY SCAN','SCAN HORAIRE'],['WEEKLY SCAN','SCAN HEBDOMADAIRE'],
 ['Connecting…','Connexion…'],['Syncing…','Synchro…'],['Sync failed','Échec de synchro'],['No data','Aucune donnée'],
 ['Cached · ','Cache · '],['(live sync unavailable from a local file)','(synchro live indisponible depuis un fichier local)'],
 ['Downloading live data from Google Sheets…','Téléchargement des données en direct depuis Google Sheets…'],
