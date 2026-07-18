@@ -139,6 +139,14 @@ input,select{font-family:inherit;color:var(--text)}
 .panel h3 .hint{font-family:'Inter';font-weight:500;font-size:11.5px;color:var(--dim);margin-left:auto}
 .grid2{display:grid;grid-template-columns:1.25fr .75fr;gap:18px}
 @media(max-width:1100px){.grid2{grid-template-columns:1fr}}
+.ovgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+@media(max-width:1100px){.ovgrid{grid-template-columns:1fr}}
+.ovp .ovh{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.ovp .ovh h3{margin:0}
+.ov-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px}
+.ov-st{background:var(--bg2);border:1px solid var(--border);border-radius:11px;padding:10px 12px}
+.ov-st .v{font-family:'Sora';font-weight:700;font-size:16.5px;white-space:nowrap}
+.ov-st .l{font-size:10px;color:var(--dim);margin-top:3px;line-height:1.3}
 
 /* Top artistes (vue d'ensemble, liste verticale) */
 .top-row{display:flex;align-items:center;gap:14px;padding:10px 8px;border-bottom:1px solid rgba(150,214,170,.05);cursor:pointer;border-radius:12px;transition:background .13s}
@@ -243,9 +251,10 @@ td.covtd{width:82px;padding:6px 2px 6px 10px}
 .badge.hot{color:#052e12;background:linear-gradient(90deg,#1ed760,#4ade80)}
 .badge.lofi{color:#a78bfa;background:rgba(167,139,250,.12);box-shadow:inset 0 0 0 1px rgba(167,139,250,.25)}
 .badge.disco{color:#f9a8d4;background:rgba(249,168,212,.10);box-shadow:inset 0 0 0 1px rgba(249,168,212,.25)}
-.lblcov{background:linear-gradient(135deg,#2e1f3d,#181228);font-family:'Sora';font-weight:700;color:#c4b5fd;font-size:24px}
+.lblcov{background:linear-gradient(135deg,#2e1f3d,#181228);font-family:'Sora';font-weight:700;color:#c4b5fd;font-size:24px;position:relative;overflow:hidden}
 .lblcov::after{content:none}
 .plcard .lblcov.big{height:150px;font-size:44px}
+.lblogo{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:8%;box-sizing:border-box;background:#fff;border-radius:inherit}
 .badge.seg-top{color:#fb923c;background:rgba(251,146,60,.14);box-shadow:inset 0 0 0 1px rgba(251,146,60,.4)}
 .badge.seg-reg{color:#a78bfa;background:rgba(167,139,250,.14);box-shadow:inset 0 0 0 1px rgba(167,139,250,.4)}
 .badge.seg-occ{color:#60a5fa;background:rgba(37,99,235,.18);box-shadow:inset 0 0 0 1px rgba(59,130,246,.45)}
@@ -446,6 +455,15 @@ const EN_MAP = {
   "régulier":"regular","occasionnel":"occasional",
   "Toutes les tracks hors Lofi Records. Les lignes vertes dépassent 500 000 streams (priorités). Streams / mois = vélocité depuis la sortie.":"Every track outside Lofi Records. Green rows are above 500,000 streams (priorities). Streams / month = velocity since release.",
   "Rechercher track, artiste, label…":"Search track, artist, label…","Tous":"All","Streams : tous":"Streams: all","Type : tous":"Type: all",
+  "Type de sortie : tous":"Release type: all","Type d'artiste : tous":"Artist type: all",
+  "tracks indé":"self-released tracks","sur":"of","hors Lofi":"outside Lofi",
+  "Aucune track indé. Les tracks de cet artiste sont toutes sous label : passe par la fiche du label (onglet All labels).":"No self-released track. All this artist's tracks are on labels: use the label's page (All labels tab).",
+  "Offre suggérée pour cette track":"Suggested offer for this track","Avance à proposer":"Advance to offer",
+  "Aucune track retrouvée pour ce label dans la base actuelle.":"No track found for this label in the current database.",
+  "Tout voir":"View all","priorités":"priorities","revenu mensuel est.":"est. monthly revenue","sorties 90 j":"releases (90d)",
+  "découvertes":"discovered","followers cumulés":"total followers","identifiés":"identified","couvertes":"covered",
+  "revenu est. cumulé":"est. lifetime revenue","revenu est.":"est. revenue",
+  "Aucune donnée playlists chargée.":"No playlist data loaded.","Aucune donnée labels chargée.":"No label data loaded.",
   "Toutes périodes":"All periods","90 derniers jours":"Last 90 days","12 derniers mois":"Last 12 months","3 dernières années":"Last 3 years",
   "< 1 mois":"< 1 month","< 3 mois":"< 3 months","< 6 mois":"< 6 months","< 12 mois":"< 12 months","< 3 ans":"< 3 years",
   "1 dernier mois":"Last month","3 derniers mois":"Last 3 months","6 derniers mois":"Last 6 months","12 derniers mois":"Last 12 months","Tout l'historique":"All time",
@@ -674,7 +692,7 @@ const S = {
   newDays:90, shownN:100,
   plq:'', plcur:'all', plsort:'followers', plonly:false, shownPL:80, plview:'qualified', plmode:'table',
   amode:'table', omode:'table',
-  lbq:'', lbsort:'revenue', shownLB:80, lbmode:'table',
+  lbq:'', lbsort:'revenue', shownLB:80, lbmode:'table', labelKey:null,
 };
 
 /* ---------- navigation ---------- */
@@ -686,7 +704,7 @@ document.getElementById('nav').addEventListener('click', e=>{
   syncHash(); render(); window.scrollTo(0,0);
 });
 function goArtist(i){
-  S.artist = i; S.sel = new Set();
+  S.artist = i; S.labelKey = null; S.sel = new Set();
   renderArtistModal();
   document.getElementById('artist-modal').style.display='flex';
 }
@@ -697,7 +715,7 @@ function goTab(v){
 }
 function closeArtistModal(){
   document.getElementById('artist-modal').style.display='none';
-  S.artist = -1;
+  S.artist = -1; S.labelKey = null;
 }
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeArtistModal(); });
 
@@ -777,87 +795,101 @@ function renderOverview(){
   const maxY = Math.max(...Object.values(years),1);
   const pSelf = R.length ? Math.round(nSelf/R.length*100) : 0;
 
+  const topTracks = [...R].sort((a,b)=>b[3]-a[3]).slice(0,5);
+  const topLb = LBrows.slice().sort((a,b)=>b[4]-a[4]).slice(0,5);
+  const topPl = PLmeta ? PLrows.filter(r=>r[17]).slice().sort((a,b)=>b[4]-a[4]).slice(0,5) : [];
+  const top5 = top.slice(0,5);
+
   V.innerHTML = `
   <div class="page-head">
     <div>
       <h2>${T("Vue d'ensemble")}</h2>
     </div>
   </div>
-  <div class="kpis">
-    ${kpi(T('Artistes scannés'), done, nTop+' top · '+nReg+' '+T('réguliers')+' · '+nOcc+' '+T('occasionnels'))}
-    ${kpi(T('Tracks hors Lofi'), fmtFull(R.length), pSelf+' % self-released ('+fmtFull(nSelf)+')')}
-    ${kpi(T('Streams cumulés'), fmt(totStreams), T('hors catalogue Lofi'), true)}
-    ${kpi(T('Revenu mensuel est.'), money(totMonthlyRev), money(totStreams*RATE)+' '+T('cumulé'), true)}
-    ${kpi('Tracks ≥ 500k', fmtFull(nHot), T('priorités rachat'), true)}
-    ${kpi(T('Sorties 90 j'), fmtFull(recent), disco?'+ '+disco+' '+T('artistes découverte'):T('veille nouveautés'))}
-  </div>
-  <div style="font-size:11px;color:var(--dim);margin:0 0 20px 2px">${T('Revenus estimés à')} ${RATE}$/stream (${T('all-in Spotify, fourchette')} 0,003-0,005$ ; ${T('source Duetti / Loud & Clear 2025-26')}).</div>
-  <div class="grid2">
-    <div class="panel">
-      <h3>${T('Top artistes par streams hors Lofi')} <span class="hint">${T('clic = détail des tracks')}</span></h3>
-      ${top.map((g,ix)=>{const p=g.n?Math.round(g.self/g.n*100):0; return `
-        <div class="top-row" onclick="goArtist(${g.i})">
-          <span class="rank">${ix+1}</span>
-          <div class="av-sm">${esc(g.name[0]||'?').toUpperCase()}${avatarHtml(g)}</div>
-          <div class="ti">
-            <div class="nm"><span class="nmtxt">${esc(g.name)}</span> ${segBadge(g)}</div>
-            <div class="sub">${g.n} ${T('tracks hors Lofi')} · <span style="color:var(--green)">${g.self} ${T('indé')}</span> · <span style="color:var(--amber)">${g.n-g.self} ${T('label')}</span>${g.hot?` · <span style="color:var(--acc2)">${g.hot} ≥ 500k</span>`:''} · <span style="color:var(--cyan)">≈ ${money(g.mstreams*RATE)}/${T('mois')}</span> · ${T('dernière sortie')} ${g.last||'?'}</div>
-            <div class="mini-split" style="max-width:250px;margin:0"><div style="width:${p}%;background:#4ade80"></div><div style="width:${100-p}%;background:#b45309"></div></div>
-          </div>
-          <div class="vals"><div class="v1">${fmt(g.streams)}</div><div class="v2">${T('streams')}</div></div>
-        </div>`;}).join('')}
-      <div style="text-align:center;padding-top:12px">
-        <button class="chip" onclick="goTab('artists')">${T('Voir tous les artistes')} (${withTracks.length}) →</button>
+  <div class="ovgrid">
+
+    <div class="panel ovp">
+      <div class="ovh"><h3>🎶 Tracks</h3><button class="chip" onclick="goTab('opps')">${T('Tout voir')} →</button></div>
+      <div class="ov-stats">
+        <div class="ov-st"><div class="v">${fmt(R.length)}</div><div class="l">${T('tracks hors Lofi')}</div></div>
+        <div class="ov-st"><div class="v" style="color:var(--acc2)">${fmt(nHot)}</div><div class="l">≥ 500k (${T('priorités')})</div></div>
+        <div class="ov-st"><div class="v" style="color:var(--cyan)">${money(totMonthlyRev)}</div><div class="l">${T('revenu mensuel est.')}</div></div>
       </div>
+      ${topTracks.map((r,ix)=>`
+      <div class="top-row" onclick="openTrack('${r[6]}')">
+        <span class="rank">${ix+1}</span>
+        ${r[8]?`<div class="cov has" style="width:40px;height:40px;border-radius:9px;margin:0;background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}" style="width:40px;height:40px;border-radius:9px;margin:0"></div>`}
+        <div class="ti">
+          <div class="nm"><span class="nmtxt">${esc(r[1])}</span></div>
+          <div class="sub">${esc(A[r[0]][0])} · ${fmtDate(r[2])}</div>
+        </div>
+        <div class="vals"><div class="v1">${fmt(r[3])}</div><div class="v2">streams</div></div>
+      </div>`).join('')}
     </div>
-    <div>
-      <div class="panel">
-        <h3>${T('Indé vs autres labels')}</h3>
-        <div class="split">
-          <div class="s1" style="width:${pSelf}%"></div>
-          <div class="s2" style="width:${100-pSelf}%"></div>
-        </div>
-        <div class="legend">
-          <span><span class="dot" style="background:#4ade80"></span>Self-released ${fmtFull(nSelf)}</span>
-          <span><span class="dot" style="background:#fbbf24"></span>${T('Autre label')} ${fmtFull(R.length-nSelf)}</span>
-        </div>
+
+    <div class="panel ovp">
+      <div class="ovh"><h3>🎸 ${T('Artistes')}</h3><button class="chip" onclick="goTab('artists')">${T('Tout voir')} →</button></div>
+      <div class="ov-stats">
+        <div class="ov-st"><div class="v">${done}</div><div class="l">${T('artistes scannés')}</div></div>
+        <div class="ov-st"><div class="v">${nTop+nReg}</div><div class="l">top + ${T('réguliers')}</div></div>
+        <div class="ov-st"><div class="v">${fmtFull(recent)}</div><div class="l">${T('sorties 90 j')}</div></div>
       </div>
-      <div class="panel">
-        <h3>${T('Sorties par année')}</h3>
-        <div class="year-wrap">
-          ${yk.map(y=>`<div class="ybar"><div class="b" style="height:${Math.max(years[y]/maxY*100,3)}px" title="${y} : ${years[y]}"></div><span class="y">${y.slice(2)}</span></div>`).join('')}
+      ${top5.map((g,ix)=>`
+      <div class="top-row" onclick="goArtist(${g.i})">
+        <span class="rank">${ix+1}</span>
+        <div class="av-sm">${esc(g.name[0]||'?').toUpperCase()}${avatarHtml(g)}</div>
+        <div class="ti">
+          <div class="nm"><span class="nmtxt">${esc(g.name)}</span> ${segBadge(g)}</div>
+          <div class="sub">${g.n} tracks · <span style="color:var(--green)">${g.self} ${T('indé')}</span> · <span style="color:var(--cyan)">≈ ${money(g.mstreams*RATE)}/${T('mois')}</span></div>
         </div>
-      </div>
+        <div class="vals"><div class="v1">${fmt(g.streams)}</div><div class="v2">streams</div></div>
+      </div>`).join('')}
     </div>
-  </div>
-  ${PLmeta ? overviewPlaylistsSection() : ''}`;
-}
-function overviewPlaylistsSection(){
-  const topPl = PLrows.filter(r=>r[17]).slice().sort((a,b)=>b[4]-a[4]).slice(0,8);
-  return `
-  <div class="freshbar" style="margin-top:18px">
-    <div class="fitem">📻 ${T('Playlists découvertes')} <b>${fmtFull(PLmeta.playlists_discovered)}</b></div>
-    <div class="fitem">${T('Fiches détaillées')} <b>${fmtFull(PLmeta.playlists_enriched)}</b></div>
-    <div class="fitem">≥ 10k followers <b>${fmtFull(PLmeta.playlists_10k_plus)}</b></div>
-    <div class="fitem">${T('Followers cumulés')} <b>${fmt(PLmeta.followers_sum)}</b></div>
-    <div class="fitem"><span class="fdot2"></span>${T('Snapshot')} <b>${esc(PLmeta.snapshot_ts)}</b></div>
-  </div>
-  <div class="panel">
-    <h3>${T('Top playlists')} (≥10k followers) <span class="hint">${T('clic = ouvrir sur Spotify')}</span></h3>
-    ${topPl.map((r,ix)=>`
+
+    <div class="panel ovp">
+      <div class="ovh"><h3>📻 Playlists</h3><button class="chip" onclick="goTab('playlists')">${T('Tout voir')} →</button></div>
+      ${PLmeta ? `
+      <div class="ov-stats">
+        <div class="ov-st"><div class="v">${fmt(PLmeta.playlists_discovered)}</div><div class="l">${T('découvertes')}</div></div>
+        <div class="ov-st"><div class="v" style="color:var(--acc2)">${fmtFull(PLmeta.playlists_10k_plus)}</div><div class="l">≥ 10k followers</div></div>
+        <div class="ov-st"><div class="v" style="color:var(--cyan)">${fmt(PLmeta.followers_sum)}</div><div class="l">${T('followers cumulés')}</div></div>
+      </div>
+      ${topPl.map((r,ix)=>`
       <div class="top-row" onclick="window.open('https://open.spotify.com/playlist/${r[0]}','_blank')">
         <span class="rank">${ix+1}</span>
-        <div class="cov" data-plid="${r[0]}" style="width:46px;height:46px;border-radius:10px;margin:0"></div>
+        <div class="cov" data-plid="${r[0]}" style="width:40px;height:40px;border-radius:9px;margin:0"></div>
         <div class="ti">
           <div class="nm"><span class="nmtxt">${esc(r[1])}</span> ${plCuratorBadge(r[3])}</div>
-          <div class="sub">${esc(r[2])} · ${r[6]||'?'} tracks · ${esc(r[10]||'?')}${r[11]?' · '+esc(r[11]):''}</div>
+          <div class="sub">${esc(r[2])} · ${r[6]||'?'} tracks</div>
         </div>
-        <div class="vals"><div class="v1">${fmt(r[4])}</div><div class="v2">${plGrowthCell(r)}</div></div>
-      </div>`).join('')}
-    <div style="text-align:center;padding-top:12px">
-      <button class="chip" onclick="goTab('playlists')">${T('Voir les playlists qualifiées')} (${fmtFull(PLmeta.playlists_10k_plus)}) →</button>
+        <div class="vals"><div class="v1">${fmt(r[4])}</div><div class="v2">followers</div></div>
+      </div>`).join('')}` : `<div class="empty">${T('Aucune donnée playlists chargée.')}</div>`}
     </div>
-  </div>`;
+
+    <div class="panel ovp">
+      <div class="ovh"><h3>🏷️ Labels</h3><button class="chip" onclick="goTab('labels')">${T('Tout voir')} →</button></div>
+      ${LBmeta ? `
+      <div class="ov-stats">
+        <div class="ov-st"><div class="v">${fmt(LBrows.length)}</div><div class="l">labels ${T('identifiés')}</div></div>
+        <div class="ov-st"><div class="v">${fmt(LBmeta.tracks_covered)}</div><div class="l">tracks ${T('couvertes')}</div></div>
+        <div class="ov-st"><div class="v" style="color:var(--cyan)">${money(LBmeta.revenue_covered)}</div><div class="l">${T('revenu est. cumulé')}</div></div>
+      </div>
+      ${topLb.map((r,ix)=>`
+      <div class="top-row lbl-row" data-lbkey="${esc(r[0])}">
+        <span class="rank">${ix+1}</span>
+        <div style="width:40px;flex:none">${labelCover(r[1], false, r[7]).replace('class="cov lblcov"','class="cov lblcov" style="width:40px;height:40px;border-radius:9px;margin:0;font-size:15px"')}</div>
+        <div class="ti">
+          <div class="nm"><span class="nmtxt">${esc(r[1])}</span></div>
+          <div class="sub">${fmtFull(r[2])} tracks · ${r[6]} ${T('artistes')}</div>
+        </div>
+        <div class="vals"><div class="v1" style="color:var(--cyan)">${money(r[4])}</div><div class="v2">${T('revenu est.')}</div></div>
+      </div>`).join('')}` : `<div class="empty">${T('Aucune donnée labels chargée.')}</div>`}
+    </div>
+
+  </div>
+  <div style="font-size:11px;color:var(--dim);margin:14px 0 0 2px">${T('Revenus estimés à')} ${RATE}$/stream (${T('all-in Spotify, fourchette')} 0,003-0,005$ ; ${T('source Duetti / Loud & Clear 2025-26')}).</div>`;
+
+  document.querySelectorAll('#view .lbl-row[data-lbkey]').forEach(el=>el.addEventListener('click', ()=>openLabel(el.dataset.lbkey)));
 }
 
 function offerHtml(g, selMonthly, selCount, totCount){
@@ -887,7 +919,9 @@ function offerHtml(g, selMonthly, selCount, totCount){
 function setPalier(k){ S.palier = k; render(); }
 
 /* ---------- Fiche artiste en pop-up (simulateur + tracks) ---------- */
-function artistRows(i){ return R.filter(r=>r[0]===i).sort((a,b)=>b[3]-a[3]); }
+/* fiche artiste = uniquement les tracks indé (self-released), les tracks sous label
+   se rachètent via la fiche label correspondante */
+function artistRows(i){ return R.filter(r=>r[0]===i && r[4]===0).sort((a,b)=>b[3]-a[3]); }
 function artistTableRows(rows){
   return rows.map(r=>`
     <tr data-basehot="${r[3]>=HOT?1:0}" class="${r[3]>=HOT||S.sel.has(r[6])?'hot':''}">
@@ -913,7 +947,7 @@ function renderArtistModal(){
       <div class="av-sm">${esc(g.name[0]||'?').toUpperCase()}${avatarHtml(g)}</div>
       <div style="min-width:0;flex:1">
         <h3>${esc(g.name)}</h3>
-        <div class="tar" style="cursor:default">${segBadge(g)} · ${g.n} ${T('tracks hors Lofi')} · ${fmt(g.streams)} streams</div>
+        <div class="tar" style="cursor:default">${segBadge(g)} · ${rows.length} ${T('tracks indé')} (${T('sur')} ${g.n} ${T('hors Lofi')}) · ${fmt(g.streams)} streams</div>
       </div>
       <button class="tclose" onclick="closeArtistModal()">✕</button>
     </div>
@@ -925,7 +959,7 @@ function renderArtistModal(){
       <th class="num">${T('Revenu est.')}</th><th class="num">${T('Rachat')} ${S.palier}</th>
       <th>${T('Sortie')}</th><th>${T('Statut')}</th>
     </tr></thead><tbody>${artistTableRows(rows)}</tbody></table>
-    ${rows.length===0?'<div class="empty">'+T('Aucune track.')+'</div>':''}
+    ${rows.length===0?'<div class="empty">'+T('Aucune track indé. Les tracks de cet artiste sont toutes sous label : passe par la fiche du label (onglet All labels).')+'</div>':''}
   `;
   attachCovers();
   function updateSel(){
@@ -982,6 +1016,23 @@ function sparkline(pts){
     <path d="${d} L ${sx(x1)} ${h-pad} L ${sx(x0)} ${h-pad} Z" fill="${col}" opacity="0.12"/>
   </svg>`;
 }
+/* mini simulateur d'offre pour une track seule (pop-up track) */
+function trackOfferHtml(r){
+  const m = Math.max(perMonth(r), 0);
+  const adv = advance(m), lm = labelMonthly(m), pb = payback(m);
+  return `<div class="offer" style="margin:14px 0 0;padding:14px 16px">
+    <h3 style="margin:0 0 8px">💰 ${T('Offre suggérée pour cette track')}</h3>
+    <div class="pal" style="margin-bottom:10px">
+      ${BUY.paliers.map(pp=>`<button class="${pp.k===S.palier?'on':''}" onclick="S.palier='${pp.k}';openTrack('${r[6]}')">${pp.k}</button>`).join('')}
+      <label class="selall" style="margin-left:12px"><input type="checkbox" class="ck" ${S.publishing?'checked':''} onchange="S.publishing=this.checked;openTrack('${r[6]}')"> Publishing +10%</label>
+    </div>
+    <div class="ogrid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="ob"><div class="l">${T('Avance à proposer')}</div><div class="v" style="color:var(--acc2)">${m>0?eur(adv):'—'}</div></div>
+      <div class="ob"><div class="l">${T('Revenu capté /mois')}</div><div class="v" style="color:var(--cyan)">${m>0?eur(lm):'—'}</div></div>
+      <div class="ob"><div class="l">${T('Payback')}</div><div class="v ${m>0?paybackClass(pb):''}">${m>0?paybackTxt(pb):'—'}</div></div>
+    </div>
+  </div>`;
+}
 function openTrack(tid){
   const r = R.find(x=>x[6]===tid); if(!r) return;
   const g = AG[r[0]];
@@ -1006,6 +1057,7 @@ function openTrack(tid){
       <div class="tg"><div class="l">${T('Sortie')}</div><div class="v">${fmtDate(r[2])}</div></div>
       <div class="tg"><div class="l">${T('Statut')}</div><div class="v" style="font-size:13px">${r[4]===0?T('Indé'):'Label'}</div></div>
     </div>
+    ${trackOfferHtml(r)}
     <div class="tg" style="background:none;border-color:var(--border)">
       <div class="l" style="display:flex;justify-content:space-between">${T('Évolution des streams')} ${trend?`<span style="color:${trend[0]==='↗'?'var(--green)':'var(--red)'}">${trend}</span>`:''}</div>
       ${hist.length>=2 ? sparkline(hist) : `<div style="padding:22px 4px;color:var(--dim);font-size:12px">${T("Courbe en cours de constitution : la veille hebdomadaire enregistre un point par semaine. Reviens dans quelques semaines pour voir la tendance.")}</div>`}
@@ -1147,7 +1199,7 @@ function renderOpps(){
       <option value="all" ${S.period==='all'?'selected':''}>⏳ ${T("Tout l'historique")} (${fmtFull(pcnt['all'])})</option>
     </select>
     <select id="f-st">
-      <option value="all" ${S.statut==='all'?'selected':''}>🌍 ${T('Type : tous')}</option>
+      <option value="all" ${S.statut==='all'?'selected':''}>🌍 ${T('Type de sortie : tous')}</option>
       <option value="self" ${S.statut==='self'?'selected':''}>🧑‍🎤 Self-released</option>
       <option value="other" ${S.statut==='other'?'selected':''}>🏷️ ${T('Autre label')}</option>
     </select>
@@ -1159,7 +1211,7 @@ function renderOpps(){
       <option value="5000000" ${S.min===5000000?'selected':''}>💎 ≥ 5M</option>
     </select>
     <select id="f-rel">
-      <option value="all" ${S.rel==='all'?'selected':''}>🏷️ ${T('Relation label : tous')}</option>
+      <option value="all" ${S.rel==='all'?'selected':''}>🧑‍🎤 ${T("Type d'artiste : tous")}</option>
       <option value="top" ${S.rel==='top'?'selected':''}>⭐ Top artists (>50)</option>
       <option value="reg" ${S.rel==='reg'?'selected':''}>🔁 Regulars (25-50)</option>
       <option value="occ" ${S.rel==='occ'?'selected':''}>🎲 Occasional (1-24)</option>
@@ -1597,10 +1649,13 @@ function renderPlaylists(){
   if (typeof attachCovers==='function') attachCovers();
 }
 
-/* colonnes LBrows : key,name,tracks,streams,revenue,since,nArtists */
-function labelCover(name, big){
+/* colonnes LBrows : key,name,tracks,streams,revenue,since,nArtists,logo */
+/* logo en <img> avec onerror : si l'URL curée est fausse/morte, l'image disparaît
+   et l'avatar lettre reste visible (jamais d'image cassée à l'écran) */
+function labelCover(name, big, logo){
   const letter = esc((name[0]||'?').toUpperCase());
-  return `<div class="cov lblcov${big?' big':''}">${letter}</div>`;
+  const img = logo ? `<img class="lblogo" src="${esc(logo)}" alt="" loading="lazy" onerror="this.remove()">` : '';
+  return `<div class="cov lblcov${big?' big':''}">${letter}${img}</div>`;
 }
 function lbFiltered(){
   const q = S.lbq.trim().toLowerCase();
@@ -1613,10 +1668,112 @@ function lbFiltered(){
   };
   return rows.slice().sort(sorters[S.lbsort] || sorters.revenue);
 }
-function goLabel(name){
-  S.view = 'opps'; S.q = name; S.shown = 100;
-  document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active', x.dataset.v==='opps'));
-  syncHash(); render();
+/* ---------- Fiche label en pop-up (tracks groupées par artiste + simulateur) ---------- */
+/* extraction du label côté client : même logique que gen_labels_data.py */
+const LB_LICENSE_RE = /(?:under\s+(?:an?\s+)?|on\s+)?exclusive\s+licen[cs]e\s+(?:to|with|from)\s+(.+?)(?:\s*[;.]|$)/i;
+const LB_LICENSED_TO_RE = /licen[cs]ed\s+to\s+(.+?)(?:\s*[;.]|$)/i;
+const LB_YEAR_STRIP_RE = /^[©℗()pcPC\s]*\d{4}\s*/;
+function labelKeyOf(cop){
+  if (!cop) return null;
+  const m = LB_LICENSE_RE.exec(cop) || LB_LICENSED_TO_RE.exec(cop);
+  let name;
+  if (m) name = m[1].trim().replace(/\.$/,'');
+  else name = cop.split(';')[0].trim().replace(LB_YEAR_STRIP_RE,'').trim();
+  if (!name) return null;
+  // même ordre que gen_labels_data.py : lower PUIS NFKD PUIS retrait des marques combinantes
+  // (sauf sélecteurs de variation U+FE00-FE0F : classe combinante 0, Python les conserve)
+  return name.trim().toLowerCase().normalize('NFKD').replace(/(?![\uFE00-\uFE0F])\p{M}/gu,'').replace(/\s+/g,' ');
+}
+let LBTRACKS = null; // key -> rows, construit à la demande (une seule passe sur R)
+function labelRowsOf(key){
+  if (!LBTRACKS){
+    LBTRACKS = new Map();
+    for (const r of R){
+      if (r[4] !== 1) continue;
+      const k = labelKeyOf(r[5]);
+      if (!k) continue;
+      let a = LBTRACKS.get(k); if(!a){ a=[]; LBTRACKS.set(k,a); }
+      a.push(r);
+    }
+  }
+  return LBTRACKS.get(key) || [];
+}
+function openLabel(key){
+  S.labelKey = key; S.sel = new Set();
+  renderLabelModal();
+  document.getElementById('artist-modal').style.display='flex';
+}
+function labelModalRows(rows){
+  // groupé par artiste (groupes triés par streams cumulés desc, tracks par streams desc)
+  const byArtist = new Map();
+  for (const r of rows){ let a=byArtist.get(r[0]); if(!a){a=[];byArtist.set(r[0],a);} a.push(r); }
+  const groups = [...byArtist.entries()].map(([ai,rs])=>({ai, rs: rs.sort((a,b)=>b[3]-a[3]), tot: rs.reduce((s,r)=>s+Math.max(r[3],0),0)}));
+  groups.sort((a,b)=>b.tot-a.tot);
+  let h = '';
+  for (const g of groups){
+    h += `<tr class="lbl-artist-row"><td colspan="9" style="padding:10px 8px 5px;color:var(--acc2);font-weight:700;font-size:12.5px;cursor:pointer" onclick="goArtist(${g.ai})">🎸 ${esc(A[g.ai][0])} <span style="color:var(--dim);font-weight:600">· ${g.rs.length} tracks · ${fmt(g.tot)} streams</span></td></tr>`;
+    h += g.rs.map(r=>`
+    <tr data-basehot="${r[3]>=HOT?1:0}" class="${r[3]>=HOT||S.sel.has(r[6])?'hot':''}">
+      <td class="selc"><input type="checkbox" class="ck sel-track" data-tid="${r[6]}" ${S.sel.has(r[6])?'checked':''}></td>
+      <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
+      <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span> ${wlStar('t',r[6])}</td>
+      <td class="num" title="${fmtFull(r[3])}">${r[3]>=HOT?'<span class="badge hot">'+fmt(r[3])+'</span>':fmt(r[3])}</td>
+      <td class="num">${fmt(perMonth(r))}</td>
+      <td class="num" style="color:var(--cyan)">${perMonth(r)>0?money(perMonth(r)*RATE)+'/'+T('mo'):money(r[3]*RATE)}</td>
+      <td class="num"><span style="color:var(--acc2);font-weight:600">${eur(advance(Math.max(perMonth(r),0)))}</span></td>
+      <td>${fmtDate(r[2])}</td>
+      <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--dim);font-size:11px" title="${esc(r[5]||'')}">${esc(r[5]||'')}</td>
+    </tr>`).join('');
+  }
+  return h;
+}
+function renderLabelModal(){
+  const key = S.labelKey; if(!key) return;
+  const lb = LBrows.find(x=>x[0]===key);
+  const rows = labelRowsOf(key);
+  const name = lb ? lb[1] : (rows.length ? rows[0][5] : key);
+  const logo = lb && lb[7];
+  const nArt = new Set(rows.map(r=>r[0])).size;
+  const selM = rows.filter(r=>S.sel.has(r[6])).reduce((s,r)=>s+Math.max(perMonth(r),0),0);
+  const selN = rows.filter(r=>S.sel.has(r[6])).length;
+  const box = document.getElementById('am-body');
+  box.innerHTML = `
+    <div class="thd">
+      <div class="cov lblcov" style="width:52px;height:52px;font-size:19px;margin:0">${esc((name[0]||'?').toUpperCase())}${logo?`<img class="lblogo" src="${esc(logo)}" alt="" onerror="this.remove()">`:''}</div>
+      <div style="min-width:0;flex:1">
+        <h3>${esc(name)}</h3>
+        <div class="tar" style="cursor:default">🏷️ Label · ${rows.length} tracks · ${nArt} ${T('artistes')} · ${lb?fmt(lb[3])+' streams':''}${lb&&lb[5]?' · '+T('Connu depuis')+' '+fmtDate(lb[5]):''}</div>
+      </div>
+      <button class="tclose" onclick="closeArtistModal()">✕</button>
+    </div>
+    ${offerHtml({}, selM, selN, rows.length)}
+    <label class="selall" style="margin:2px 0 8px"><input type="checkbox" class="ck" id="am-sel-all" ${rows.length&&rows.every(r=>S.sel.has(r[6]))?'checked':''}> ${T('Tout sélectionner')}</label>
+    <table><thead><tr>
+      <th class="selc"></th><th></th><th>Track</th>
+      <th class="num">Streams</th><th class="num">${T('Streams/mois')}</th>
+      <th class="num">${T('Revenu est.')}</th><th class="num">${T('Rachat')} ${S.palier}</th>
+      <th>${T('Sortie')}</th><th>Copyright</th>
+    </tr></thead><tbody>${labelModalRows(rows)}</tbody></table>
+    ${rows.length===0?'<div class="empty">'+T('Aucune track retrouvée pour ce label dans la base actuelle.')+'</div>':''}
+  `;
+  attachCovers();
+  function updateSel(){
+    const selM2 = rows.filter(r=>S.sel.has(r[6])).reduce((s,r)=>s+Math.max(perMonth(r),0),0);
+    const selN2 = rows.filter(r=>S.sel.has(r[6])).length;
+    const off = box.querySelector('.offer');
+    if (off) off.outerHTML = offerHtml({}, selM2, selN2, rows.length);
+    box.querySelectorAll('.sel-track').forEach(cb=>{
+      const tr=cb.closest('tr'); const on=S.sel.has(cb.dataset.tid);
+      cb.checked=on; if(tr) tr.classList.toggle('hot', on || tr.dataset.basehot==='1');
+    });
+    const allOn = rows.length && rows.every(r=>S.sel.has(r[6]));
+    const sa=document.getElementById('am-sel-all'); if(sa) sa.checked=allOn;
+  }
+  box.querySelectorAll('.sel-track').forEach(cb=>{
+    cb.addEventListener('change', ()=>{ if(cb.checked)S.sel.add(cb.dataset.tid); else S.sel.delete(cb.dataset.tid); updateSel(); });
+  });
+  const sa = document.getElementById('am-sel-all');
+  if (sa) sa.addEventListener('change', ()=>{ if(sa.checked) rows.forEach(r=>S.sel.add(r[6])); else rows.forEach(r=>S.sel.delete(r[6])); updateSel(); });
 }
 function renderLabels(){
   if (!LBmeta){
@@ -1639,8 +1796,8 @@ function renderLabels(){
       </tr></thead>
       <tbody>
       ${slice.map(r=>`
-        <tr onclick="goLabel('${esc(r[1]).replace(/'/g,"\\'")}')" style="cursor:pointer">
-          <td class="covtd">${labelCover(r[1])}</td>
+        <tr class="lbl-row" data-lbkey="${esc(r[0])}" style="cursor:pointer">
+          <td class="covtd">${labelCover(r[1], false, r[7])}</td>
           <td>${esc(r[1])}</td>
           <td class="num">${fmtFull(r[2])}</td>
           <td class="num">${fmt(r[3])}</td>
@@ -1656,8 +1813,8 @@ function renderLabels(){
   const gridView = `
   <div class="acards">
     ${slice.map(r=>`
-    <div class="acard plcard" onclick="goLabel('${esc(r[1]).replace(/'/g,"\\'")}')">
-      ${labelCover(r[1], true)}
+    <div class="acard plcard lbl-row" data-lbkey="${esc(r[0])}">
+      ${labelCover(r[1], true, r[7])}
       <div class="nm">${esc(r[1])}</div>
       <div class="stats">
         <div class="st"><div class="v">${fmtFull(r[2])}</div><div class="l">Tracks</div></div>
@@ -1693,6 +1850,7 @@ function renderLabels(){
   </div>
   ${S.lbmode==='grid' ? gridView : tableView}`;
 
+  document.querySelectorAll('.lbl-row[data-lbkey]').forEach(el=>el.addEventListener('click', ()=>openLabel(el.dataset.lbkey)));
   document.querySelectorAll('.viewtoggle button[data-lbmode]').forEach(b=>b.addEventListener('click', ()=>{ S.lbmode=b.dataset.lbmode; keepScroll(renderLabels); }));
   document.getElementById('lb-q').addEventListener('input', e=>{ S.lbq=e.target.value; S.shownLB=80; keepScroll(renderLabels); keepFocus('lb-q'); });
   document.getElementById('lb-sort').addEventListener('change', e=>{ S.lbsort=e.target.value; keepScroll(renderLabels); });
@@ -1707,7 +1865,10 @@ function render(){
   else if (S.view==='labels') renderLabels();
   else if (S.view==='watch') renderWatch();
   attachCovers();
-  if (S.artist>=0 && document.getElementById('artist-modal').style.display==='flex') renderArtistModal();
+  if (document.getElementById('artist-modal').style.display==='flex'){
+    if (S.labelKey) renderLabelModal();
+    else if (S.artist>=0) renderArtistModal();
+  }
 }
 
 /* ---------- init ---------- */
