@@ -737,7 +737,7 @@ const S = {
   sort:{k:3, dir:-1}, shown:100,
   aq:'', asort:'streams', shownA:60, aseg:'all',
   newDays:90, shownN:100,
-  plq:'', plcur:'all', plsort:'followers', plonly:false, shownPL:80, plview:'qualified', plmode:'table',
+  plq:'', plcur:'all', plsort:'followers', pldir:-1, plonly:false, shownPL:80, plview:'qualified', plmode:'table',
   amode:'table', omode:'table',
   lbq:'', lbsort:'revenue', shownLB:80, lbmode:'table', labelKey:null, lbModalArtist:null,
 };
@@ -1627,15 +1627,22 @@ function plFiltered(){
     return true;
   });
   const sorters = {
-    followers: (a,b)=>b[4]-a[4],
-    tracks: (a,b)=>b[6]-a[6],
-    fit: (a,b)=>b[12]-a[12],
-    recent: (a,b)=> (a[8]<b[8]?1:(a[8]>b[8]?-1:0)),
-    growth: (a,b)=> (b[18]==null?-1e15:b[18]) - (a[18]==null?-1e15:a[18]),
+    name: (a,b)=>(a[1]||'').localeCompare(b[1]||''),
+    curator: (a,b)=>(a[2]||'').localeCompare(b[2]||''),
+    followers: (a,b)=>(a[4]||0)-(b[4]||0),
+    tracks: (a,b)=>(a[6]||0)-(b[6]||0),
+    fit: (a,b)=>(a[12]||0)-(b[12]||0),
+    genre: (a,b)=>(a[10]||'').localeCompare(b[10]||''),
+    usage: (a,b)=>(a[11]||'').localeCompare(b[11]||''),
+    created: (a,b)=>(a[14]||'').localeCompare(b[14]||''),
+    recent: (a,b)=>(a[8]||'').localeCompare(b[8]||''),
+    growth: (a,b)=>(a[18]==null?-1e15:a[18])-(b[18]==null?-1e15:b[18]),
   };
-  rows = rows.slice().sort(sorters[S.plsort] || sorters.followers);
+  const sorter = sorters[S.plsort] || sorters.followers;
+  rows = rows.slice().sort((a,b)=>S.pldir*sorter(a,b));
   return rows;
 }
+function plSortArrow(k){ return S.plsort===k ? `<span class="arr">${S.pldir===-1?'▼':'▲'}</span>` : ''; }
 function plCuratorBadge(cat){
   if (cat==='editorial') return `<span class="badge lofi" style="margin-left:6px">${T('Éditoriale')}</span>`;
   if (cat==='independent') return `<span class="badge self" style="margin-left:6px">${T('Indépendante')}</span>`;
@@ -1726,15 +1733,16 @@ function renderPlaylists(){
     <table>
       <thead><tr>
         <th></th>
-        <th>Playlist</th>
-        <th>${T('Curateur')}</th>
-        <th class="num">Followers</th>
-        <th class="num">${T('Évolution 30j')}</th>
-        <th class="num">Tracks</th>
-        <th>Genre</th>
-        <th>Usage</th>
-        <th>${T('Création estimée')}</th>
-        <th>${T('Dernière observation')}</th>
+        <th data-plsort="name">Playlist ${plSortArrow('name')}</th>
+        <th data-plsort="curator">${T('Curateur')} ${plSortArrow('curator')}</th>
+        <th data-plsort="followers" class="num">Followers ${plSortArrow('followers')}</th>
+        <th data-plsort="growth" class="num">${T('Évolution 30j')} ${plSortArrow('growth')}</th>
+        <th data-plsort="tracks" class="num">Tracks ${plSortArrow('tracks')}</th>
+        <th data-plsort="fit" class="num">Fit score ${plSortArrow('fit')}</th>
+        <th data-plsort="genre">Genre ${plSortArrow('genre')}</th>
+        <th data-plsort="usage">Usage ${plSortArrow('usage')}</th>
+        <th data-plsort="created">${T('Création estimée')} ${plSortArrow('created')}</th>
+        <th data-plsort="recent">${T('Dernière observation')} ${plSortArrow('recent')}</th>
         <th>${T('Lien')}</th>
       </tr></thead>
       <tbody>
@@ -1746,6 +1754,7 @@ function renderPlaylists(){
           <td class="num" title="${fmtFull(r[4])}">${plFollowersCell(r)}</td>
           <td class="num">${plGrowthCell(r)}</td>
           <td class="num">${r[16]?(r[6]||'?'):'—'}</td>
+          <td class="num">${r[16]?(r[12]||0):'—'}</td>
           <td>${esc(r[10]||'?')}</td>
           <td>${esc(r[11]||'?')}</td>
           <td style="white-space:nowrap">${plEstDateCell(r)}</td>
@@ -1786,13 +1795,6 @@ function renderPlaylists(){
       <option value="editorial" ${S.plcur==='editorial'?'selected':''}>🏛️ ${T('Éditoriales')}</option>
       <option value="independent" ${S.plcur==='independent'?'selected':''}>🌱 ${T('Indépendantes')}</option>
     </select>
-    <select id="pl-sort">
-      <option value="followers" ${S.plsort==='followers'?'selected':''}>${T('Tri : followers')}</option>
-      <option value="tracks" ${S.plsort==='tracks'?'selected':''}>${T('Tri : nb tracks')}</option>
-      <option value="fit" ${S.plsort==='fit'?'selected':''}>${T('Tri : fit score')}</option>
-      <option value="recent" ${S.plsort==='recent'?'selected':''}>${T('Tri : vue récemment')}</option>
-      <option value="growth" ${S.plsort==='growth'?'selected':''}>${T('Tri : évolution 30j')}</option>
-    </select>
     <span class="spacer"></span>
     <span class="result-count">${fmtFull(rows.length)} playlists</span>
     <div class="viewtoggle">
@@ -1805,7 +1807,15 @@ function renderPlaylists(){
   document.querySelectorAll('.viewtoggle button[data-plmode]').forEach(b=>b.addEventListener('click', ()=>{ S.plmode=b.dataset.plmode; keepScroll(renderPlaylists); }));
   document.getElementById('pl-q').addEventListener('input', e=>{ S.plq=e.target.value; S.shownPL=80; keepScroll(renderPlaylists); keepFocus('pl-q'); });
   document.getElementById('pl-cur').addEventListener('change', e=>{ S.plcur=e.target.value; S.shownPL=80; keepScroll(renderPlaylists); });
-  document.getElementById('pl-sort').addEventListener('change', e=>{ S.plsort=e.target.value; keepScroll(renderPlaylists); });
+  document.querySelectorAll('th[data-plsort]').forEach(h=>h.addEventListener('click', ()=>{
+    const key=h.dataset.plsort;
+    if (S.plsort===key) S.pldir*=-1;
+    else {
+      S.plsort=key;
+      S.pldir=['name','curator','genre','usage'].includes(key)?1:-1;
+    }
+    keepScroll(renderPlaylists);
+  }));
   attachInfinite(()=>{ const y=window.scrollY; S.shownPL+=80; renderPlaylists(); window.scrollTo(0,y); });
   if (typeof attachCovers==='function') attachCovers();
 }
