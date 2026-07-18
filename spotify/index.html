@@ -11,6 +11,7 @@
 <script src="../Spotify_Radar_data.js"></script>
 <script src="../Spotify_Playlists_data.js"></script>
 <script src="../Spotify_Labels_data.js"></script>
+<script src="../Spotify_Soundcharts_data.js"></script>
 <style>
 :root{
   --bg:#07080d; --bg2:#0b0d15; --panel:#10131e; --panel2:#141828; --card:#12152233;
@@ -357,15 +358,13 @@ td.selc,th.selc{width:44px;padding-left:14px}
 .perf-card{min-width:0;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 13px}
 .perf-card .plabel{font-size:10px;line-height:1.35;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);font-weight:700}
 .perf-card .pvalue{font-family:'Sora';font-size:18px;font-weight:800;margin-top:6px;overflow-wrap:anywhere}
-.stream-stack{display:inline-flex;min-width:0;flex-direction:column;align-items:flex-end;gap:2px;line-height:1.2}
+.stream-stack{display:inline-flex;min-width:0;align-items:center;line-height:1.2}
 .stream-number{font-family:'Sora';font-weight:700;color:var(--text)}
-.stream-income{font-family:Inter;font-size:9.5px;font-weight:600;color:var(--cyan);opacity:.72;white-space:nowrap}
 .delta-stack{display:inline-flex;min-width:0;flex-direction:column;align-items:flex-end;gap:2px;line-height:1.2}
 .delta-main{font-family:'Sora';font-weight:700}
 .delta-compare{font-family:Inter;font-size:9px;font-weight:600;color:var(--dim);white-space:nowrap}
 .perf-card .stream-stack{align-items:flex-start}
 .perf-card .stream-number{font-size:18px;font-weight:800}
-.perf-card .stream-income{font-size:10px;margin-top:1px}
 .acard .st .stream-stack{align-items:center;width:100%}
 .acard .st .delta-stack{align-items:center;width:100%}
 .top-row .stream-stack{align-items:flex-end}
@@ -409,6 +408,10 @@ td.selc,th.selc{width:44px;padding-left:14px}
 .viewtoggle .view-ico{font-size:19px;line-height:1}
 .viewtoggle button.on{background:linear-gradient(90deg,#1ed760,#4ade80);color:#052e12}
 .viewtoggle button:hover:not(.on){color:var(--text)}
+.metric-toggle{display:flex;gap:3px;background:var(--bg2);border:1.5px solid var(--border2);border-radius:13px;padding:3px;flex:none;height:40px;box-sizing:border-box}
+.metric-toggle button{min-width:82px;height:32px;padding:0 11px;border-radius:9px;font-size:11.5px;font-weight:750;color:var(--dim);display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+.metric-toggle button.on{background:linear-gradient(90deg,#1ed760,#4ade80);color:#052e12}
+.metric-toggle button:hover:not(.on){color:var(--text)}
 .plcard .cov{width:100%;height:150px;border-radius:12px;margin:0 0 12px}
 .plcard .nm{font-family:'Sora';font-weight:700;font-size:14px;margin-bottom:4px}
 .acard{
@@ -548,7 +551,7 @@ td.selc,th.selc{width:44px;padding-left:14px}
   .freshbar{padding:12px;gap:8px}
   .freshbar .fitem{min-width:0;align-items:flex-start;overflow-wrap:anywhere}
   .toolbar{gap:8px}
-  .toolbar .search-wrap,.toolbar .csel-wrap,.toolbar .msel,.viewtoggle{width:100%;margin-left:0}
+  .toolbar .search-wrap,.toolbar .csel-wrap,.toolbar .msel,.toolbar .metric-toggle,.viewtoggle{width:100%;margin-left:0}
   .csel-wrap{display:flex;min-width:0}
   .csel-btn{height:auto;min-height:40px;white-space:normal;text-align:left}
   .csel-list{width:100%;min-width:0;max-width:100%}
@@ -557,6 +560,9 @@ td.selc,th.selc{width:44px;padding-left:14px}
   .msel-btn{height:auto;min-height:40px;white-space:normal;text-align:left}
   .msel-list{width:100%;min-width:0;max-width:100%}
   .viewtoggle button{flex:1 1 0;min-width:0;padding:0 7px}
+  .metric-toggle button{flex:1 1 0;min-width:0}
+  .page-head .metric-toggle{width:100%}
+  .page-head .metric-toggle button{flex:1 1 0;min-width:0}
   .result-count{width:100%;text-align:center}
   .offer .ogrid{grid-template-columns:1fr!important}
   .offer .ob .v{overflow-wrap:anywhere}
@@ -598,6 +604,7 @@ td.selc,th.selc{width:44px;padding-left:14px}
   <nav class="nav" id="nav">
     <div class="nav-label" data-fr="Analyse">Analyse</div>
     <button data-v="overview" class="active" data-fr="Vue d'ensemble"><span class="emo">📊</span>Vue d'ensemble</button>
+    <button data-v="radar" data-fr="Pépites & filons"><span class="emo">💎</span>Pépites & filons<span class="count" id="c-radar"></span></button>
     <button data-v="opps" data-fr="Toutes les pistes"><span class="emo">🎶</span>Toutes les pistes<span class="count" id="c-opps"></span></button>
     <button data-v="artists" data-fr="Tous les artistes"><span class="emo">🎸</span>Tous les artistes<span class="count" id="c-art"></span></button>
     <button data-v="playlists" data-fr="Toutes les playlists"><span class="emo">📻</span>Toutes les playlists<span class="count" id="c-pl"></span></button>
@@ -645,6 +652,7 @@ let LANG = 'fr';
 try{ LANG = localStorage.getItem('sr_lang') || 'fr'; }catch(e){}
 const EN_MAP = {
   "Analyse":"Analysis","Vue d'ensemble":"Overview","Artistes":"Artists","Sorties récentes":"Recent releases","Découverte":"Discovery",
+  "Pépites & filons":"Gems & trends","Radar A&R":"A&R radar","Pépites à écouter":"Gems to review","Filons confirmés":"Confirmed trends","À enrichir":"Needs enrichment","Pré-sélection":"Pre-selection","Signal de découverte":"Discovery signal","Auditeurs mensuels":"Monthly listeners","Réseau Fans Also Like":"Fans Also Like network","Étape suivante":"Next step","Écoute + genre / IA / droits":"Listen + genre / AI / rights","Aucun filon confirmé":"No confirmed trend","Historique en cours : un filon nécessite des genres fiables, plusieurs artistes et des mesures successives.":"History building: a trend requires reliable genres, multiple artists and successive measurements.","Données Soundcharts non encore exportées.":"Soundcharts data has not been exported yet.","Prêt à contacter":"Ready to contact","À revoir":"Review","Données insuffisantes":"Insufficient data","Genre":"Genre","Instrumental":"Instrumental","Droits":"Rights","Contact":"Contact",
   "Catalogue hors Lofi Records des artistes du label : tout ce qu'ils ont sorti en indépendant ou chez d'autres labels, candidats à distribution, rachat ou avance. Données rafraîchies par le crawl automatique (veille hebdomadaire).":"Everything the label's artists have released outside Lofi Records, independently or on other labels: candidates for distribution, catalog acquisition or advances. Data refreshed automatically by the crawler (weekly watch).",
   "Artistes scannés":"Artists scanned","réguliers":"regulars","occasionnels":"occasional","hors label":"unsigned",
   "Tracks hors Lofi":"Tracks outside Lofi","catalogue analysé":"catalog analyzed",
@@ -721,6 +729,7 @@ const EN_MAP = {
   "Revenus estimés à":"Revenue estimated at","all-in Spotify, fourchette":"all-in Spotify, range","source Duetti / Loud & Clear 2025-26":"source Duetti / Loud & Clear 2025-26",
   "Revenu est.":"Est. revenue","mois":"mo","mo":"mo","lifetime":"lifetime",
   "Streams total":"Total streams","Streams 30j":"Streams 30d","Revenu total":"Total revenue","Revenu 30j":"Revenue 30d",
+  "Revenus":"Revenue","Vue streams":"Streams view","Vue revenus":"Revenue view","Revenus total":"Total revenue","Revenus 30 jours":"Revenue 30 days","Revenus 7 jours":"Revenue 7 days","Revenus 24 heures":"Revenue 24 hours","Revenu lifetime estimé":"Estimated lifetime revenue","streams mensuels est.":"est. monthly streams","Revenu estimé / jour":"Estimated revenue / day","Courbe quotidienne des revenus estimés":"Daily estimated revenue chart","Revenu quotidien estimé d’après les streams":"Daily revenue estimated from streams",
   "Streams 24 h":"Streams 24h","Streams 7 j":"Streams 7d","Streams 24 heures":"Streams 24 hours","Streams 7 jours":"Streams 7 days","Streams 30 jours":"Streams 30 days","Flux de streams":"Stream flow","Flux réel sur la période":"Actual flow over the period",
   "24 h précédentes":"previous 24h","7 j précédents":"previous 7d","30 j précédents":"previous 30d","vs période précédente":"vs previous period",
   "Données partielles":"Partial data","Historique insuffisant":"Not enough history","Aucune extrapolation":"No extrapolation","tracks couvertes":"tracks covered",
@@ -884,7 +893,8 @@ for (const g of AG){
 }
 const withTracks = AG.filter(g=>g.n>0);
 const totStreams = withTracks.reduce((s,g)=>s+g.streams,0);
-const totMonthlyRev = withTracks.reduce((s,g)=>s+g.mstreams,0)*RATE;
+const totMonthlyStreams = withTracks.reduce((s,g)=>s+g.mstreams,0);
+const totMonthlyRev = totMonthlyStreams*RATE;
 const nHot = R.reduce((s,r)=>s+(r[3]>=HOT?1:0),0);
 const nSelf = R.reduce((s,r)=>s+(r[4]===0?1:0),0);
 
@@ -997,10 +1007,40 @@ function revenueEstimate(v){
   const n=Number(v), out=money(Math.abs(n)*RATE);
   return n<0?'-'+out:out;
 }
+function streamMetricLabel(days){
+  const revenue=S.metricMode==='revenue';
+  if(days===0) return T(revenue?'Revenus total':'Streams total');
+  if(days===30) return T(revenue?'Revenus 30 jours':'Streams 30 jours');
+  if(days===7) return T(revenue?'Revenus 7 jours':'Streams 7 jours');
+  return T(revenue?'Revenus 24 heures':'Streams 24 heures');
+}
 function streamStackHtml(v,full,signed){
   const valid=v==null||v===-1?null:Number(v);
-  const main=valid==null?'—':(signed?signedFull(valid):(full?fmtFull(valid):fmt(valid)));
-  return `<span class="stream-stack"><span class="stream-number">${main}</span><span class="stream-income">${valid==null?'—':revenueEstimate(valid)} · ${T('revenu est.')}</span></span>`;
+  let main='—';
+  if(valid!=null){
+    if(S.metricMode==='revenue') main=(signed&&valid>0?'+':'')+revenueEstimate(valid);
+    else main=signed?signedFull(valid):(full?fmtFull(valid):fmt(valid));
+  }
+  return `<span class="stream-stack"><span class="stream-number">${main}</span></span>`;
+}
+function metricModeToggleHtml(){
+  return `<div class="metric-toggle" role="group" aria-label="Streams ou revenus">
+    <button type="button" class="${S.metricMode==='streams'?'on':''}" data-metric-mode="streams" title="${T('Vue streams')}">▶ ${T('Streams')}</button>
+    <button type="button" class="${S.metricMode==='revenue'?'on':''}" data-metric-mode="revenue" title="${T('Vue revenus')}">$ ${T('Revenus')}</button>
+  </div>`;
+}
+function metricSeries(points){
+  return S.metricMode==='revenue'?(points||[]).map(p=>[p[0],p[1]*RATE]):points;
+}
+function bindMetricModeToggle(renderFn,root){
+  (root||document).querySelectorAll('[data-metric-mode]').forEach(button=>button.addEventListener('click',()=>{
+    const mode=button.dataset.metricMode;
+    if(mode===S.metricMode) return;
+    S.metricMode=mode;
+    const y=window.scrollY;
+    renderFn();
+    window.scrollTo(0,y);
+  }));
 }
 function signedFull(v){ return v==null?'—':(v>0?'+':'')+fmtFull(v); }
 function signedPct(v){ return v==null?'':` (${v>0?'+':''}${v.toFixed(1)}%)`; }
@@ -1010,7 +1050,8 @@ function perfCardHtml(label,w,withRevenue){
   let compare=T("Comparaison indisponible tant que la période précédente n'est pas complète.");
   let cls='';
   if(w.comparisonReady){
-    compare=`${T('vs période précédente')} ${signedFull(w.change)}${signedPct(w.pct)}`;
+    const change=withRevenue?streamStackHtml(w.change,true,true):signedFull(w.change);
+    compare=`${T('vs période précédente')} ${change}${signedPct(w.pct)}`;
     cls=w.change>0?'good':(w.change<0?'bad':'');
   }
   let partial='';
@@ -1020,13 +1061,13 @@ function perfCardHtml(label,w,withRevenue){
   return `<div class="perf-card"><div class="plabel" title="${T('Flux réel sur la période')}">${label}</div><div class="pvalue">${value}</div><div class="pcompare ${cls}">${compare}</div>${partial?`<span class="ppartial">${partial} · ${T('Aucune extrapolation')}</span>`:''}</div>`;
 }
 function totalMetricCardHtml(prefix,total,withRevenue){
-  const label=prefix==='Streams'?T('Streams total'):T('Followers total');
+  const label=prefix==='Streams'?streamMetricLabel(0):T('Followers total');
   const value=withRevenue?streamStackHtml(total,false,false):fmtMetric(total);
-  const sub=prefix==='Streams'?T('Compteur lifetime'):T('Compteur actuel');
+  const sub=prefix==='Streams'?(S.metricMode==='revenue'?T('Revenu lifetime estimé'):T('Compteur lifetime')):T('Compteur actuel');
   return `<div class="perf-card"><div class="plabel">${label}</div><div class="pvalue">${value}</div><div class="pcompare">${sub}</div></div>`;
 }
 function periodMetricLabel(prefix,days){
-  if(prefix==='Streams') return days===30?T('Streams 30 jours'):(days===7?T('Streams 7 jours'):T('Streams 24 heures'));
+  if(prefix==='Streams') return streamMetricLabel(days);
   return days===30?T('Followers 30 jours'):(days===7?T('Followers 7 jours'):T('Followers 24 heures'));
 }
 function perfGridHtml(perf,prefix,total,withRevenue){
@@ -1133,7 +1174,7 @@ function contributorRows(rows,days){
 function contributorsHtml(rows,days){
   const top=contributorRows(rows,days);
   if(!top.length) return `<div class="analytics-note">${T('Historique insuffisant')} · ${T('Aucune extrapolation')}</div>`;
-  return `<div class="contributors">${top.map(x=>`<div class="contributor"><span class="cn">${esc(x.r[1])}</span><span class="cv">${signedFull(x.w.current)}</span></div>`).join('')}</div>`;
+  return `<div class="contributors">${top.map(x=>`<div class="contributor"><span class="cn">${esc(x.r[1])}</span><span class="cv">${streamStackHtml(x.w.current,false,true)}</span></div>`).join('')}</div>`;
 }
 function dailyChartHtml(points,emptyText){
   return points&&points.length>=2?sparkline(points):`<div class="analytics-note" style="padding:18px 2px">${emptyText||T('Historique insuffisant')} · ${T('Aucune extrapolation')}</div>`;
@@ -1147,7 +1188,7 @@ const artistSearch = n => 'https://open.spotify.com/search/'+encodeURIComponent(
 
 /* ---------- état ---------- */
 const S = {
-  view:'overview', back:null, palier:'100/0', sel:new Set(), wltab:'tracks', publishing:false,
+  view:'overview', back:null, palier:'100/0', sel:new Set(), wltab:'tracks', publishing:false, metricMode:'streams',
   q:'', statut:'all', min:0, period:'30', artist:-1, rel:'all', genres:new Set(), airisk:'hide_high',
   sort:{k:3, dir:-1}, shown:100,
   aq:'', asort:'streams', adir:-1, shownA:60, aseg:'all', agenres:new Set(), aairisk:'hide_high',
@@ -1376,6 +1417,7 @@ function renderOverview(){
     <div>
       <h2>${T("Vue d'ensemble")}</h2>
     </div>
+    ${metricModeToggleHtml()}
   </div>
   <div class="ovgrid">
 
@@ -1384,7 +1426,7 @@ function renderOverview(){
       <div class="ov-stats">
         <div class="ov-st"><div class="v">${fmt(R.length)}</div><div class="l">${T('tracks hors Lofi')}</div></div>
         <div class="ov-st"><div class="v" style="color:var(--acc2)">${fmt(nHot)}</div><div class="l">≥ 500k (${T('priorités')})</div></div>
-        <div class="ov-st"><div class="v" style="color:var(--cyan)">${money(totMonthlyRev)}</div><div class="l">${T('revenu mensuel est.')}</div></div>
+        <div class="ov-st"><div class="v" style="color:var(--cyan)">${S.metricMode==='revenue'?money(totMonthlyRev):fmt(totMonthlyStreams)}</div><div class="l">${T(S.metricMode==='revenue'?'revenu mensuel est.':'streams mensuels est.')}</div></div>
       </div>
       ${perfGridHtml(catalogPerf,'Streams',totStreams,true)}
       ${topTracks.map((r,ix)=>`
@@ -1395,7 +1437,7 @@ function renderOverview(){
           <div class="nm"><span class="nmtxt">${esc(r[1])}</span></div>
           <div class="sub">${esc(A[r[0]][0])} · ${fmtDate(r[2])}</div>
         </div>
-        <div class="vals"><div class="v1">${streamStackHtml(r[3],false,false)}</div><div class="v2">${T('Streams total')}</div></div>
+        <div class="vals"><div class="v1">${streamStackHtml(r[3],false,false)}</div><div class="v2">${streamMetricLabel(0)}</div></div>
       </div>`).join('')}
     </div>
 
@@ -1415,7 +1457,7 @@ function renderOverview(){
           <div class="nm"><span class="nmtxt">${esc(g.name)}</span></div>
           <div class="sub">${g.n} tracks · <span style="color:var(--green)">${g.self} ${T('indé')}</span></div>
         </div>
-        <div class="vals"><div class="v1">${streamStackHtml(g.streams,false,false)}</div><div class="v2">${T('Streams total')}</div></div>
+        <div class="vals"><div class="v1">${streamStackHtml(g.streams,false,false)}</div><div class="v2">${streamMetricLabel(0)}</div></div>
       </div>`).join('')}
     </div>
 
@@ -1456,13 +1498,14 @@ function renderOverview(){
           <div class="nm"><span class="nmtxt">${esc(r[1])}</span></div>
           <div class="sub">${fmtFull(r[2])} tracks · ${r[6]} ${T('artistes')}</div>
         </div>
-        <div class="vals"><div class="v1">${streamStackHtml(r[3],false,false)}</div><div class="v2">${T('Streams total')}</div></div>
+        <div class="vals"><div class="v1">${streamStackHtml(r[3],false,false)}</div><div class="v2">${streamMetricLabel(0)}</div></div>
       </div>`).join('')}` : `<div class="empty">${T('Aucune donnée labels chargée.')}</div>`}
     </div>
 
   </div>
-  <div style="font-size:11px;color:var(--dim);margin:14px 0 0 2px">${T('Revenus estimés à')} ${RATE}$/stream (${T('all-in Spotify, fourchette')} 0,003-0,005$ ; ${T('source Duetti / Loud & Clear 2025-26')}).</div>`;
+  ${S.metricMode==='revenue'?`<div style="font-size:11px;color:var(--dim);margin:14px 0 0 2px">${T('Revenus estimés à')} ${RATE}$/stream (${T('all-in Spotify, fourchette')} 0,003-0,005$ ; ${T('source Duetti / Loud & Clear 2025-26')}).</div>`:''}`;
 
+  bindMetricModeToggle(renderOverview,V);
   document.querySelectorAll('#view .lbl-row[data-lbkey]').forEach(el=>el.addEventListener('click', ()=>openLabel(el.dataset.lbkey)));
 }
 
@@ -1540,11 +1583,12 @@ function renderArtistModal(){
       <div class="tg"><div class="l">${T('Dernière sortie')}</div><div class="v" style="font-size:13px">${fmtDate(g.last)}</div></div>
       <div class="tg"><div class="l">${T('Signal performance')}</div><div class="v" style="font-size:13px">${performanceSignal(perf,entry)}</div></div>
     </div>
+    <div class="toolbar" style="justify-content:flex-end;margin:0 0 10px">${metricModeToggleHtml()}</div>
     ${perfGridHtml(perf,'Streams',g.streams,true)}
     ${classificationAnalyticsHtml(classification)}
     <div class="analytics-section">
-      <h4>${T('Courbe quotidienne des streams')} <span class="analytics-note">${T('Flux quotidien, pas compteur lifetime')}</span></h4>
-      ${dailyChartHtml(flows.points,T('Historique quotidien insuffisant pour tracer la courbe.'))}
+      <h4>${T(S.metricMode==='revenue'?'Courbe quotidienne des revenus estimés':'Courbe quotidienne des streams')} <span class="analytics-note">${T(S.metricMode==='revenue'?'Revenu quotidien estimé d’après les streams':'Flux quotidien, pas compteur lifetime')}</span></h4>
+      ${dailyChartHtml(metricSeries(flows.points),T('Historique quotidien insuffisant pour tracer la courbe.'))}
       ${flows.points.length?`<div class="analytics-note">${T('Données partielles')} · ${T('couverture variable selon les tracks')}</div>`:''}
     </div>
     <div class="analytics-section">
@@ -1564,12 +1608,13 @@ function renderArtistModal(){
     <label class="selall" style="margin:2px 0 8px"><input type="checkbox" class="ck" id="am-sel-all" ${rows.length&&rows.every(r=>S.sel.has(r[6]))?'checked':''}> ${T('Tout sélectionner')}</label>
     <table><thead><tr>
       <th class="selc"></th><th></th><th>Track</th>
-      <th class="num">${T('Streams total')}</th><th class="num">${T('Streams 30 jours')}</th>
-      <th class="num">${T('Streams 7 jours')}</th><th class="num">${T('Streams 24 heures')}</th><th class="num">${T('Rachat')} ${S.palier}</th>
+      <th class="num">${streamMetricLabel(0)}</th><th class="num">${streamMetricLabel(30)}</th>
+      <th class="num">${streamMetricLabel(7)}</th><th class="num">${streamMetricLabel(1)}</th><th class="num">${T('Rachat')} ${S.palier}</th>
       <th>${T('Sortie')}</th><th>${T('Statut')}</th>
     </tr></thead><tbody>${artistTableRows(rows)}</tbody></table>
     ${rows.length===0?'<div class="empty">'+T('Aucune track indé. Les tracks de cet artiste sont toutes sous label : passe par la fiche du label (onglet All labels).')+'</div>':''}
   `;
+  bindMetricModeToggle(renderArtistModal,box);
   attachCovers();
   function updateSel(){
     const selM2 = rows.filter(r=>S.sel.has(r[6])).reduce((s,r)=>s+Math.max(perMonth(r),0),0);
@@ -1663,7 +1708,7 @@ function openTrack(tid){
       <button class="tclose" onclick="closeTrack()">✕</button>
     </div>
     <div class="tgrid">
-      <div class="tg"><div class="l">${T('Vélocité réelle')}</div><div class="v" style="color:var(--cyan)">${velocity==null?'—':fmt(Math.round(velocity))+'/'+T('jour')}</div></div>
+      <div class="tg"><div class="l">${T(S.metricMode==='revenue'?'Revenu estimé / jour':'Vélocité réelle')}</div><div class="v" style="color:var(--cyan)">${velocity==null?'—':(S.metricMode==='revenue'?revenueEstimate(velocity):fmt(Math.round(velocity))+'/'+T('jour'))}</div></div>
       <div class="tg"><div class="l">${T('Cadence')}</div><div class="v">${cadence}</div></div>
       <div class="tg"><div class="l">${T('Signal performance')}</div><div class="v" style="font-size:13px">${performanceSignal(perf,entry)}</div></div>
       <div class="tg"><div class="l">${T('Sortie')}</div><div class="v">${fmtDate(r[2])}</div></div>
@@ -1671,11 +1716,12 @@ function openTrack(tid){
       <div class="tg"><div class="l">${T('Label')}</div><div class="v" style="font-size:12px;line-height:1.4">${label?esc(label):'—'}</div></div>
       <div class="tg"><div class="l">© / ℗</div><div class="v" style="font-size:12px;line-height:1.4">${r[5]?esc(r[5]):'—'}</div></div>
     </div>
+    <div class="toolbar" style="justify-content:flex-end;margin:0 0 10px">${metricModeToggleHtml()}</div>
     ${perfGridHtml(perf,'Streams',r[3]>=0?r[3]:null,true)}
     ${classificationAnalyticsHtml(classification)}
     <div class="analytics-section">
-      <h4>${T('Courbe quotidienne des streams')} <span class="analytics-note">${T('Flux quotidien, pas compteur lifetime')}</span></h4>
-      ${dailyChartHtml(daily,T('Historique quotidien insuffisant pour tracer la courbe.'))}
+      <h4>${T(S.metricMode==='revenue'?'Courbe quotidienne des revenus estimés':'Courbe quotidienne des streams')} <span class="analytics-note">${T(S.metricMode==='revenue'?'Revenu quotidien estimé d’après les streams':'Flux quotidien, pas compteur lifetime')}</span></h4>
+      ${dailyChartHtml(metricSeries(daily),T('Historique quotidien insuffisant pour tracer la courbe.'))}
     </div>
     ${trackOfferHtml(r)}
     <div style="display:flex;gap:10px;margin-top:14px">
@@ -1683,6 +1729,7 @@ function openTrack(tid){
       <button class="chip" onclick="toggleWL('t','${r[6]}',event);openTrack('${r[6]}')">${wlHas('t',r[6])?'⭐ '+T('Épinglé'):'☆ '+T('Épingler')}</button>
     </div>
     <div class="tnote">${T("Les fenêtres Analytics utilisent uniquement l'historique quotidien et comparent des périodes de même durée. Le simulateur de rachat reste une estimation séparée.")}</div>`;
+  bindMetricModeToggle(()=>openTrack(tid),box);
   document.getElementById('track-modal').style.display='flex';
 }
 function closeTrack(){ document.getElementById('track-modal').style.display='none'; }
@@ -1691,12 +1738,12 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeTrack(); });
 function renderWatch(){
   const w=wlGet();
   const tabs=[['tracks','🎶 Tracks',w.t.length],['artists','🎸 '+T('Artistes'),w.a.length]];
-  let h=`<div class="page-head"><div><h2>Watchlist</h2></div></div>`;
+  let h=`<div class="page-head"><div><h2>Watchlist</h2></div>${metricModeToggleHtml()}</div>`;
   h+='<div class="toolbar">'+tabs.map(t=>`<button class="chip ${S.wltab===t[0]?'on':''}" onclick="S.wltab='${t[0]}';render()">${t[1]} (${t[2]})</button>`).join('')+'</div>';
   if(S.wltab==='tracks'){
     const rows=R.filter(r=>w.t.includes(r[6])).sort((a,b)=>b[3]-a[3]);
     if(!rows.length){ h+=`<div class="empty">${T("Aucune track épinglée. Clique sur l'étoile ☆ d'une track pour la suivre ici.")}</div>`; V.innerHTML=h; return; }
-    h+=`<div class="panel" style="padding:6px 14px 14px"><table><thead><tr><th></th><th></th><th>Track</th><th>${T('Artiste')}</th><th class="num">${T('Streams total')}</th><th class="num">${T('Streams 30 jours')}</th><th class="num">${T('Streams 7 jours')}</th><th class="num">${T('Streams 24 heures')}</th><th class="num">${T('Rachat')} ${S.palier}</th><th>${T('Sortie')}</th></tr></thead><tbody>`;
+    h+=`<div class="panel" style="padding:6px 14px 14px"><table><thead><tr><th></th><th></th><th>Track</th><th>${T('Artiste')}</th><th class="num">${streamMetricLabel(0)}</th><th class="num">${streamMetricLabel(30)}</th><th class="num">${streamMetricLabel(7)}</th><th class="num">${streamMetricLabel(1)}</th><th class="num">${T('Rachat')} ${S.palier}</th><th>${T('Sortie')}</th></tr></thead><tbody>`;
     h+=rows.map(r=>{const w30=trackWindow(r,30),w7=trackWindow(r,7),w1=trackWindow(r,1);return `<tr class="${r[3]>=HOT?'hot':''}">
       <td>${wlStar('t',r[6])}</td>
       <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
@@ -1717,14 +1764,14 @@ function renderWatch(){
         ${wlStar('a',g.name)}
         <div class="top"><div class="av">${esc(g.name[0]||'?').toUpperCase()}${avatarHtml(g)}</div>
           <div style="min-width:0"><div class="nm">${esc(g.name)}</div><div style="font-size:11px;color:var(--dim);margin-top:7px">${segBadge(g)}</div></div></div>
-        <div class="stats stats2"><div class="st"><div class="v">${streamStackHtml(g.streams,false,false)}</div><div class="l">${T('Streams total')}</div></div>
-          <div class="st"><div class="v">${streamStackHtml(g.streams30,false,false)}</div><div class="l">${T('Streams 30 jours')}</div></div>
-          <div class="st"><div class="v">${streamStackHtml(g.streams7,false,false)}</div><div class="l">${T('Streams 7 jours')}</div></div>
-          <div class="st"><div class="v">${streamStackHtml(g.streams24,false,false)}</div><div class="l">${T('Streams 24 heures')}</div></div></div>
+        <div class="stats stats2"><div class="st"><div class="v">${streamStackHtml(g.streams,false,false)}</div><div class="l">${streamMetricLabel(0)}</div></div>
+          <div class="st"><div class="v">${streamStackHtml(g.streams30,false,false)}</div><div class="l">${streamMetricLabel(30)}</div></div>
+          <div class="st"><div class="v">${streamStackHtml(g.streams7,false,false)}</div><div class="l">${streamMetricLabel(7)}</div></div>
+          <div class="st"><div class="v">${streamStackHtml(g.streams24,false,false)}</div><div class="l">${streamMetricLabel(1)}</div></div></div>
         <div class="foot"><span>${g.n} tracks · ${g.hot} ≥ 500k</span></div>
       </div>`;}).join('')+'</div>';
   }
-  V.innerHTML=h; attachCovers();
+  V.innerHTML=h; bindMetricModeToggle(renderWatch,V); attachCovers();
 }
 
 function sortArrow(k){ return S.sort.k===k ? `<span class="arr">${S.sort.dir===-1?'▼':'▲'}</span>` : ''; }
@@ -1750,10 +1797,10 @@ function renderOpps(){
         <th data-k="1">Track ${sortArrow(1)}</th>
         <th data-k="0">${T('Artiste')} ${sortArrow(0)}</th>
         <th data-k="30">Genre principal ${sortArrow(30)}</th>
-        <th data-k="3" class="num">${T('Streams total')} ${sortArrow(3)}</th>
-        <th data-k="10" class="num" title="${T('Flux réel sur la période')}">${T('Streams 30 jours')} ${sortArrow(10)}</th>
-        <th data-k="21" class="num" title="${T('Flux réel sur la période')}">${T('Streams 7 jours')} ${sortArrow(21)}</th>
-        <th data-k="20" class="num" title="${T('Flux réel sur la période')}">${T('Streams 24 heures')} ${sortArrow(20)}</th>
+        <th data-k="3" class="num">${streamMetricLabel(0)}</th>
+        <th data-k="10" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(30)} ${sortArrow(10)}</th>
+        <th data-k="21" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(7)} ${sortArrow(21)}</th>
+        <th data-k="20" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(1)} ${sortArrow(20)}</th>
         <th data-k="13" class="num">${T('Rachat')} ${S.palier} ${sortArrow(13)}</th>
         <th data-k="2">${T('Sortie')} ${sortArrow(2)}</th>
         <th data-k="4">${T('Statut')} ${sortArrow(4)}</th>
@@ -1794,10 +1841,10 @@ function renderOpps(){
         <span class="badge ${r[4]===0?'self':'other'}">${r[4]===0?T('Indé'):'Label'}</span>
       </div>
       <div class="stats stats2">
-        <div class="st"><div class="v">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</div><div class="l">${T('Streams total')}</div></div>
-        <div class="st"><div class="v">${streamStackHtml(w30.current,false,false)}</div><div class="l">${T('Streams 30 jours')}</div></div>
-        <div class="st"><div class="v">${streamStackHtml(w7.current,false,false)}</div><div class="l">${T('Streams 7 jours')}</div></div>
-        <div class="st"><div class="v">${streamStackHtml(w1.current,false,false)}</div><div class="l">${T('Streams 24 heures')}</div></div>
+        <div class="st"><div class="v">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</div><div class="l">${streamMetricLabel(0)}</div></div>
+        <div class="st"><div class="v">${streamStackHtml(w30.current,false,false)}</div><div class="l">${streamMetricLabel(30)}</div></div>
+        <div class="st"><div class="v">${streamStackHtml(w7.current,false,false)}</div><div class="l">${streamMetricLabel(7)}</div></div>
+        <div class="st"><div class="v">${streamStackHtml(w1.current,false,false)}</div><div class="l">${streamMetricLabel(1)}</div></div>
       </div>
       <div class="stats stats2">
         <div class="st" style="grid-column:1/-1"><div class="v" style="color:var(--acc2)">${eur(advance(Math.max(perMonth(r),0)))}</div><div class="l">${T('Rachat')}</div></div>
@@ -1846,6 +1893,7 @@ function renderOpps(){
       <option value="occ" ${S.rel==='occ'?'selected':''}>🎲 Occasional (1-24)</option>
       <option value="ext" ${S.rel==='ext'?'selected':''}>🚫 ${T('Jamais')}</option>
     </select>
+    ${metricModeToggleHtml()}
     <span class="spacer"></span>
     <span class="result-count">${fmtFull(rows.length)} ${T('tracks')}</span>
     <div class="viewtoggle">
@@ -1856,6 +1904,7 @@ function renderOpps(){
   ${S.omode==='grid' ? gridView : tableView}`;
 
   document.getElementById('f-q').addEventListener('input', e=>{ S.q=e.target.value; S.shown=100; keepScroll(renderOpps); keepFocus('f-q'); });
+  bindMetricModeToggle(renderOpps,V);
   bindGenreFilter('f-genres',S.genres,()=>{ S.shown=100; keepScroll(renderOpps); });
   document.getElementById('f-ai').addEventListener('change', e=>{ S.airisk=e.target.value; S.shown=100; keepScroll(renderOpps); });
   document.getElementById('f-st').addEventListener('change', e=>{ S.statut=e.target.value; S.shown=100; keepScroll(renderOpps); });
@@ -1933,10 +1982,10 @@ function renderArtists(){
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:3px 0 9px"><span class="genre-main">${esc(classification.genre)}</span><span class="genre-sub">${esc(classification.instrumental)}</span></div>
         <div style="font-size:11px;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">${segBadge(g)} <span>${g.lofi?g.lofi+' '+T('tracks chez Lofi'):''}${g.disco?' · '+T('découverte')+' ('+esc(g.origin||'related')+')':''}</span></div>
         <div class="stats stats2">
-          <div class="st"><div class="v">${streamStackHtml(g.streams,false,false)}</div><div class="l">${T('Streams total')}</div></div>
-          <div class="st"><div class="v">${streamStackHtml(g.streams30,false,false)}</div><div class="l">${T('Streams 30 jours')}</div></div>
-          <div class="st"><div class="v">${streamStackHtml(g.streams7,false,false)}</div><div class="l">${T('Streams 7 jours')}</div></div>
-          <div class="st"><div class="v">${streamStackHtml(g.streams24,false,false)}</div><div class="l">${T('Streams 24 heures')}</div></div>
+          <div class="st"><div class="v">${streamStackHtml(g.streams,false,false)}</div><div class="l">${streamMetricLabel(0)}</div></div>
+          <div class="st"><div class="v">${streamStackHtml(g.streams30,false,false)}</div><div class="l">${streamMetricLabel(30)}</div></div>
+          <div class="st"><div class="v">${streamStackHtml(g.streams7,false,false)}</div><div class="l">${streamMetricLabel(7)}</div></div>
+          <div class="st"><div class="v">${streamStackHtml(g.streams24,false,false)}</div><div class="l">${streamMetricLabel(1)}</div></div>
         </div>
       </div>`;}).join('')}
   </div>
@@ -1949,10 +1998,10 @@ function renderArtists(){
         <th data-asort="name">${T('Artiste')} ${artistSortArrow('name')}</th>
         <th data-asort="genre">Genre principal ${artistSortArrow('genre')}</th>
         <th data-asort="status">${T('Statut')} ${artistSortArrow('status')}</th>
-        <th data-asort="streams" class="num">${T('Streams total')} ${artistSortArrow('streams')}</th>
-        <th data-asort="streams30" class="num" title="${T('Flux réel sur la période')}">${T('Streams 30 jours')} ${artistSortArrow('streams30')}</th>
-        <th data-asort="streams7" class="num" title="${T('Flux réel sur la période')}">${T('Streams 7 jours')} ${artistSortArrow('streams7')}</th>
-        <th data-asort="streams24" class="num" title="${T('Flux réel sur la période')}">${T('Streams 24 heures')} ${artistSortArrow('streams24')}</th>
+        <th data-asort="streams" class="num">${streamMetricLabel(0)}</th>
+        <th data-asort="streams30" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(30)} ${artistSortArrow('streams30')}</th>
+        <th data-asort="streams7" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(7)} ${artistSortArrow('streams7')}</th>
+        <th data-asort="streams24" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(1)} ${artistSortArrow('streams24')}</th>
         <th data-asort="n" class="num">tracks ${artistSortArrow('n')}</th>
         <th data-asort="hot" class="num">≥ 500k ${artistSortArrow('hot')}</th>
         <th data-asort="self" class="num">${T('indé')} ${artistSortArrow('self')}</th>
@@ -2004,6 +2053,7 @@ function renderArtists(){
       <option value="occ" ${S.aseg==='occ'?'selected':''}>🎲 ${T('Occasionnels')}</option>
       <option value="ext" ${S.aseg==='ext'?'selected':''}>🚫 ${T('Jamais')}</option>
     </select>
+    ${metricModeToggleHtml()}
     <span class="spacer"></span>
     <span class="result-count">${list.length} ${T('artistes')}</span>
     <div class="viewtoggle">
@@ -2014,6 +2064,7 @@ function renderArtists(){
   ${S.amode==='table' ? tableView : gridView}`;
 
   document.querySelectorAll('.viewtoggle button[data-amode]').forEach(b=>b.addEventListener('click', ()=>{ S.amode=b.dataset.amode; keepScroll(renderArtists); }));
+  bindMetricModeToggle(renderArtists,V);
   document.getElementById('a-q').addEventListener('input', e=>{ S.aq=e.target.value; S.shownA=60; keepScroll(renderArtists); keepFocus('a-q'); });
   bindGenreFilter('a-genres',S.agenres,()=>{ S.shownA=60; keepScroll(renderArtists); });
   document.getElementById('a-ai').addEventListener('change', e=>{ S.aairisk=e.target.value; S.shownA=60; keepScroll(renderArtists); });
@@ -2039,6 +2090,7 @@ function renderNew(){
       <h2>${T('Sorties récentes')}</h2>
       <p>${T("Nouvelles sorties hors Lofi des artistes suivis. Le badge « détectée » signale les tracks apparues lors d'un rafraîchissement de veille (après le")} ${D.seed}).</p>
     </div>
+    ${metricModeToggleHtml()}
   </div>
   <div class="toolbar">
     ${[30,90,180,365].map(d=>`<button class="chip ${S.newDays===d?'on':''}" data-d="${d}">${d} ${T('j')}</button>`).join('')}
@@ -2047,7 +2099,7 @@ function renderNew(){
   </div>
   <div class="panel" style="padding:6px 14px 14px">
     <table>
-      <thead><tr><th></th><th></th><th>${T('Date de sortie')}</th><th>Track</th><th>${T('Artiste')}</th><th class="num">${T('Streams total')}</th><th class="num">${T('Streams 30 jours')}</th><th class="num">${T('Streams 7 jours')}</th><th class="num">${T('Streams 24 heures')}</th><th>${T('Statut')}</th><th>Copyright</th></tr></thead>
+      <thead><tr><th></th><th></th><th>${T('Date de sortie')}</th><th>Track</th><th>${T('Artiste')}</th><th class="num">${streamMetricLabel(0)}</th><th class="num">${streamMetricLabel(30)}</th><th class="num">${streamMetricLabel(7)}</th><th class="num">${streamMetricLabel(1)}</th><th>${T('Statut')}</th><th>Copyright</th></tr></thead>
       <tbody>
       ${slice.map(r=>{const w30=trackWindow(r,30),w7=trackWindow(r,7),w1=trackWindow(r,1);return `
         <tr class="${r[3]>=HOT?'hot':''}">
@@ -2068,6 +2120,7 @@ function renderNew(){
     ${rows.length===0?'<div class="empty">'+T('Aucune sortie sur la période. La veille hebdomadaire alimentera cette vue automatiquement.')+'</div>':''}
     ${sentinel(rows.length-S.shownN)}
   </div>`;
+  bindMetricModeToggle(renderNew,V);
   document.querySelectorAll('.chip[data-d]').forEach(c=>c.addEventListener('click', ()=>{ S.newDays=+c.dataset.d; S.shownN=100; renderNew(); }));
   attachInfinite(()=>{ const y=window.scrollY; S.shownN+=200; renderNew(); window.scrollTo(0,y); });
   if (typeof attachCovers==='function') attachCovers();
@@ -2321,7 +2374,7 @@ function renderPlaylists(){
         <th></th>
         <th data-plsort="name">Playlist ${plSortArrow('name')}</th>
         <th data-plsort="curator">${T('Curateur')} ${plSortArrow('curator')}</th>
-        <th data-plsort="followers" class="num">${T('Followers total')} ${plSortArrow('followers')}</th>
+        <th data-plsort="followers" class="num">${T('Followers total')}</th>
         <th data-plsort="growth30" class="num" title="${T('Évolution followers sur les 30 derniers jours')}">${T('Followers 30 jours')} ${plSortArrow('growth30')}</th>
         <th data-plsort="growth7" class="num" title="${T('Évolution followers sur les 7 derniers jours')}">${T('Followers 7 jours')} ${plSortArrow('growth7')}</th>
         <th data-plsort="growth24" class="num" title="${T('Évolution followers sur les dernières 24 h')}">${T('Followers 24 heures')} ${plSortArrow('growth24')}</th>
@@ -2529,23 +2582,25 @@ function renderLabelModal(){
       </div>
       <button class="tclose" onclick="closeArtistModal()">✕</button>
     </div>
+    <div class="toolbar" style="justify-content:flex-end;margin:0 0 10px">${metricModeToggleHtml()}</div>
     ${perfGridHtml(labelPerformance(key),'Streams',lb?lb[3]:rows.reduce((s,r)=>s+(r[3]>0?r[3]:0),0),true)}
     ${offerHtml({}, selM, selN, rows.length)}
     <div class="toolbar" style="padding:0 0 8px;margin:0">
       <select id="lbm-artist">
         <option value="" ${S.lbModalArtist==null?'selected':''}>${T('Tous les artistes')} (${rows.length} tracks)</option>
-        ${artistOpts.map(o=>`<option value="${o.ai}" ${S.lbModalArtist===o.ai?'selected':''}>${esc(A[o.ai][0])} · ${o.n} tracks · ${fmt(o.tot)} streams</option>`).join('')}
+        ${artistOpts.map(o=>`<option value="${o.ai}" ${S.lbModalArtist===o.ai?'selected':''}>${esc(A[o.ai][0])} · ${o.n} tracks · ${S.metricMode==='revenue'?revenueEstimate(o.tot):fmt(o.tot)+' streams'}</option>`).join('')}
       </select>
     </div>
     <label class="selall" style="margin:2px 0 8px"><input type="checkbox" class="ck" id="am-sel-all" ${filtRows.length&&filtRows.every(r=>S.sel.has(r[6]))?'checked':''}> ${T('Tout sélectionner')}</label>
     <table><thead><tr>
       <th class="selc"></th><th></th><th>Track</th><th>${T('Artiste')}</th>
-      <th class="num">${T('Streams total')}</th><th class="num">${T('Streams 30 jours')}</th>
-      <th class="num">${T('Streams 7 jours')}</th><th class="num">${T('Streams 24 heures')}</th><th class="num">${T('Rachat')} ${S.palier}</th>
+      <th class="num">${streamMetricLabel(0)}</th><th class="num">${streamMetricLabel(30)}</th>
+      <th class="num">${streamMetricLabel(7)}</th><th class="num">${streamMetricLabel(1)}</th><th class="num">${T('Rachat')} ${S.palier}</th>
       <th>${T('Sortie')}</th>
     </tr></thead><tbody>${labelModalRows(filtRows)}</tbody></table>
     ${filtRows.length===0?'<div class="empty">'+T('Aucune track retrouvée pour ce label dans la base actuelle.')+'</div>':''}
   `;
+  bindMetricModeToggle(renderLabelModal,box);
   attachCovers();
   function updateSel(){
     const selM2 = rows.filter(r=>S.sel.has(r[6])).reduce((s,r)=>s+Math.max(perMonth(r),0),0);
@@ -2581,10 +2636,10 @@ function renderLabels(){
         <th></th>
         <th data-lbsort="name">${T('Label')} ${labelSortArrow('name')}</th>
         <th data-lbsort="tracks" class="num">Tracks ${labelSortArrow('tracks')}</th>
-        <th data-lbsort="streams" class="num">${T('Streams total')} ${labelSortArrow('streams')}</th>
-        <th data-lbsort="streams30" class="num">${T('Streams 30 jours')} ${labelSortArrow('streams30')}</th>
-        <th data-lbsort="streams7" class="num">${T('Streams 7 jours')} ${labelSortArrow('streams7')}</th>
-        <th data-lbsort="streams24" class="num">${T('Streams 24 heures')} ${labelSortArrow('streams24')}</th>
+        <th data-lbsort="streams" class="num">${streamMetricLabel(0)}</th>
+        <th data-lbsort="streams30" class="num">${streamMetricLabel(30)} ${labelSortArrow('streams30')}</th>
+        <th data-lbsort="streams7" class="num">${streamMetricLabel(7)} ${labelSortArrow('streams7')}</th>
+        <th data-lbsort="streams24" class="num">${streamMetricLabel(1)} ${labelSortArrow('streams24')}</th>
         <th data-lbsort="since">${T('Connu depuis')} ${labelSortArrow('since')}</th>
         <th data-lbsort="artists" class="num">${T('Artistes')} ${labelSortArrow('artists')}</th>
       </tr></thead>
@@ -2613,10 +2668,10 @@ function renderLabels(){
       ${labelCover(r[1], true, r[7])}
       <div class="nm">${esc(r[1])}</div>
       <div class="stats stats2">
-        <div class="st"><div class="v">${streamStackHtml(r[3],false,false)}</div><div class="l">${T('Streams total')}</div></div>
-        <div class="st"><div class="v">${streamStackHtml(labelStreams(r[0],30),false,false)}</div><div class="l">${T('Streams 30 jours')}</div></div>
-        <div class="st"><div class="v">${streamStackHtml(labelStreams(r[0],7),false,false)}</div><div class="l">${T('Streams 7 jours')}</div></div>
-        <div class="st"><div class="v">${streamStackHtml(labelStreams(r[0],1),false,false)}</div><div class="l">${T('Streams 24 heures')}</div></div>
+        <div class="st"><div class="v">${streamStackHtml(r[3],false,false)}</div><div class="l">${streamMetricLabel(0)}</div></div>
+        <div class="st"><div class="v">${streamStackHtml(labelStreams(r[0],30),false,false)}</div><div class="l">${streamMetricLabel(30)}</div></div>
+        <div class="st"><div class="v">${streamStackHtml(labelStreams(r[0],7),false,false)}</div><div class="l">${streamMetricLabel(7)}</div></div>
+        <div class="st"><div class="v">${streamStackHtml(labelStreams(r[0],1),false,false)}</div><div class="l">${streamMetricLabel(1)}</div></div>
       </div>
       <div class="foot">${fmtFull(r[2])} tracks · ${r[5]?T('Connu depuis')+' '+fmtDate(r[5]):T('Non estimé')} · ${r[6]} ${T('artistes')}</div>
     </div>`).join('')}
@@ -2632,6 +2687,7 @@ function renderLabels(){
   </div>
   <div class="toolbar">
     <div class="search-wrap"><span class="sico">🔍</span><input type="text" id="lb-q" placeholder="${T('Rechercher un label…')}" value="${esc(S.lbq)}"></div>
+    ${metricModeToggleHtml()}
     <span class="spacer"></span>
     <span class="result-count">${fmtFull(rows.length)} labels</span>
     <div class="viewtoggle">
@@ -2642,6 +2698,7 @@ function renderLabels(){
   ${S.lbmode==='grid' ? gridView : tableView}`;
 
   document.querySelectorAll('.lbl-row[data-lbkey]').forEach(el=>el.addEventListener('click', ()=>openLabel(el.dataset.lbkey)));
+  bindMetricModeToggle(renderLabels,V);
   document.querySelectorAll('.viewtoggle button[data-lbmode]').forEach(b=>b.addEventListener('click', ()=>{ S.lbmode=b.dataset.lbmode; keepScroll(renderLabels); }));
   document.getElementById('lb-q').addEventListener('input', e=>{ S.lbq=e.target.value; S.shownLB=80; keepScroll(renderLabels); keepFocus('lb-q'); });
   document.querySelectorAll('th[data-lbsort]').forEach(h=>h.addEventListener('click', ()=>{
