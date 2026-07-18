@@ -1159,12 +1159,9 @@ function videoHistMetricCard(key,pts){
 function videoHistoryAnalytics(pts){
   const c=videoHistCopy(),all=cleanVideoHist(pts),key=VIDEO_HIST_WINDOWS.hasOwnProperty(VIDEO_HIST_PERIOD)?VIDEO_HIST_PERIOD:'d7';
   const active=videoHistSlice(all,key);
-  const span=active.length>1?active[active.length-1][0]-active[0][0]:0;
-  const spanText=span>=86400000?Math.round(span/86400000)+c.days:Math.round(span/3600000)+c.hours;
-  return '<div class="vha-head"><div class="k">'+esc(c.title)+'</div><div class="vha-note">'+esc(c.note)+(all.length?'<br>'+all.length+' scans · '+esc(c.measured)+spanText:'')+'</div></div>'+
-    '<div class="vha-grid">'+videoHistMetricCard('h24',all)+videoHistMetricCard('d7',all)+videoHistMetricCard('d30',all)+'</div>'+
+  return '<div class="vha-grid">'+videoHistMetricCard('h24',all)+videoHistMetricCard('d7',all)+videoHistMetricCard('d30',all)+'</div>'+
     '<div class="vha-controls">'+['h24','d7','d30','all'].map(k=>'<button class="'+(key===k?'on':'')+'" onclick="setVideoHistoryPeriod(\''+k+'\')">'+esc(c[k])+'</button>').join('')+'</div>'+
-    histChart(active,'views');
+    histChart(active,'views',false);
 }
 function setVideoHistoryPeriod(key){
   if(!VIDEO_HIST_WINDOWS.hasOwnProperty(key))return;
@@ -1172,7 +1169,7 @@ function setVideoHistoryPeriod(key){
   const current=window._openVideoDrawer;
   if(current)openDrawer(current.kind,current.v,true);
 }
-function histChart(pts,unit){
+function histChart(pts,unit,showMeta){
   const u=unit||'views';
   if(!pts||pts.length===0)return '<div class="hist-empty">Tracking just started — the curve appears from the 2nd scan. 📡</div>';
   if(pts.length===1)return '<div class="hist-empty">1 scan recorded ('+fmtDateFull(pts[0][0])+' · '+fmtInt(pts[0][1])+' '+u+') — the curve appears from the 2nd scan. 📡</div>';
@@ -1191,7 +1188,7 @@ function histChart(pts,unit){
     : '<b>+'+fmtN(perDay)+'</b> '+u+'/day measured · '+pts.length+' scans · '+fmtDateFull(x0)+' → '+fmtDateFull(x1);
   const hid='h'+(++HIST_SEQ);
   HIST_REG[hid]={pts,unit:u,W,H,P,x0,x1,y1};
-  return '<div class="hist-meta">'+meta+'</div>'+
+  return (showMeta===false?'':'<div class="hist-meta">'+meta+'</div>')+
     '<div class="hist-wrap" data-hid="'+hid+'">'+
     '<svg class="hist-svg" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+
     '<path d="'+area+'" fill="rgba(139,124,246,.14)"/>'+
