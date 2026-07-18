@@ -333,9 +333,10 @@ td.selc,th.selc{width:44px;padding-left:14px}
 .empty{padding:40px 10px;text-align:center;color:var(--dim);font-size:13px;line-height:1.7}
 
 /* Artistes cards */
-.acards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:13px}
-.viewtoggle{display:flex;gap:4px;background:var(--bg2);border:1.5px solid var(--border2);border-radius:13px;padding:2.5px;flex:none;height:38px;box-sizing:border-box;margin-left:8px}
-.viewtoggle button{width:34px;height:30px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:9px;font-size:14px;color:var(--dim)}
+.acards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:13px;align-items:stretch}
+.viewtoggle{display:flex;gap:4px;background:var(--bg2);border:1.5px solid var(--border2);border-radius:14px;padding:3px;flex:none;height:46px;box-sizing:border-box;margin-left:8px}
+.viewtoggle button{width:auto;min-width:96px;height:38px;padding:0 13px;gap:8px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:10px;font-size:12px;font-weight:700;color:var(--dim)}
+.viewtoggle .view-ico{font-size:19px;line-height:1}
 .viewtoggle button.on{background:linear-gradient(90deg,#1ed760,#4ade80);color:#052e12}
 .viewtoggle button:hover:not(.on){color:var(--text)}
 .plcard .cov{width:100%;height:150px;border-radius:12px;margin:0 0 12px}
@@ -358,6 +359,12 @@ td.selc,th.selc{width:44px;padding-left:14px}
 .acard .st .v{font-family:'Sora';font-weight:700;font-size:15.5px}
 .acard .st .l{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.8px;margin-top:2px}
 .acard .foot{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--dim)}
+.acard.grid-clean{display:flex;flex-direction:column;height:100%}
+.acard.grid-clean .stats{margin-bottom:8px;align-items:stretch}
+.acard.grid-clean .stats:last-child{margin-bottom:0}
+.acard.grid-clean .st{min-width:0;min-height:62px;padding:9px 6px;border:1px solid rgba(150,214,170,.07);border-radius:10px;background:rgba(150,214,170,.025);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.acard.grid-clean .st .v{width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acard.grid-clean .st.date .v{font-size:12.5px;letter-spacing:-.2px}
 .mini-split{height:6px;border-radius:4px;overflow:hidden;display:flex;margin:4px 0 9px}
 
 /* Découverte */
@@ -533,6 +540,9 @@ const EN_MAP = {
   "Aucun artiste ne correspond à ces filtres.":"No artist matches these filters.",
   "Évolution 30j":"30-day change","Tri : évolution 30j":"Sort: 30-day change","Historique en cours":"History building up",
   "Pas encore assez d'historique pour calculer une évolution, repasser dans quelques jours":"Not enough history yet to compute a trend, check back in a few days",
+  "Évolution des followers":"Follower growth","Première observation":"First seen","Curateur non renseigné":"Curator not provided",
+  "Courbe en cours de constitution : le scan quotidien enregistrera un point par jour. Reviens après le prochain snapshot pour voir la tendance.":"Chart building up: the daily scan will record one point per day. Check back after the next snapshot to see the trend.",
+  "L'historique des followers est alimenté par les snapshots quotidiens du scanner.":"Follower history is fed by the scanner's daily snapshots.",
   "Éditoriales":"Editorial","Indépendantes":"Independent","Éditoriale":"Editorial","Indépendante":"Independent","Non déterminé":"Undetermined",
   "Fiche détaillée uniquement":"Detailed profile only",
   "Tri : followers":"Sort: followers","Tri : nb tracks":"Sort: track count","Tri : fit score":"Sort: fit score","Tri : vue récemment":"Sort: recently viewed",
@@ -666,6 +676,7 @@ const nSelf = R.reduce((s,r)=>s+(r[4]===0?1:0),0);
 const PL = window.SPOTIFY_PLAYLISTS || null;
 const PLmeta = (PL && PL.meta) || null;
 const PLrows = (PL && PL.rows) || [];
+const PLhist = (PL && PL.hist) || {};
 /* colonnes PLrows : id,name,owner,curator,followers,tracks,first_seen,last_seen,lang,genre,use_case,fit,kw,enriched,big10k */
 
 /* ---------- module Labels (récap par label, dérivé des tracks "Autre label") ---------- */
@@ -1027,6 +1038,7 @@ function artistTableRows(rows){
 function renderArtistModal(){
   const i = S.artist; const g = AG[i]; if(!g) return;
   const rows = artistRows(i);
+  const selfPct = g.n ? Math.round(g.self/g.n*100) : 0;
   const selM = rows.filter(r=>S.sel.has(r[6])).reduce((s,r)=>s+Math.max(perMonth(r),0),0);
   const selN = rows.filter(r=>S.sel.has(r[6])).length;
   const box = document.getElementById('am-body');
@@ -1038,6 +1050,14 @@ function renderArtistModal(){
         <div class="tar" style="cursor:default">${segBadge(g)} · ${rows.length} ${T('tracks indé')} (${T('sur')} ${g.n} ${T('hors Lofi')}) · ${fmt(g.streams)} streams</div>
       </div>
       <button class="tclose" onclick="closeArtistModal()">✕</button>
+    </div>
+    <div class="tgrid">
+      <div class="tg"><div class="l">Tracks</div><div class="v">${fmtFull(g.n)}</div></div>
+      <div class="tg"><div class="l">${T('Indé')}</div><div class="v">${fmtFull(g.self)} · ${selfPct}%</div></div>
+      <div class="tg"><div class="l">≥ 500k</div><div class="v">${fmtFull(g.hot)}</div></div>
+      <div class="tg"><div class="l">${T('Dernière sortie')}</div><div class="v" style="font-size:13px">${fmtDate(g.last)}</div></div>
+      <div class="tg"><div class="l">${T('Streams total')}</div><div class="v">${fmt(g.streams)}</div></div>
+      <div class="tg"><div class="l">${T('Streams 30j')}</div><div class="v">${fmt(g.streams30)}</div></div>
     </div>
     ${offerHtml(g, selM, selN, rows.length)}
     <label class="selall" style="margin:2px 0 8px"><input type="checkbox" class="ck" id="am-sel-all" ${rows.length&&rows.every(r=>S.sel.has(r[6]))?'checked':''}> ${T('Tout sélectionner')}</label>
@@ -1144,6 +1164,7 @@ function openTrack(tid){
       <div class="tg"><div class="l">${T('Rachat')} ${S.palier}</div><div class="v" style="color:var(--acc2)">${eur(advance(Math.max(vel,0)))}</div></div>
       <div class="tg"><div class="l">${T('Sortie')}</div><div class="v">${fmtDate(r[2])}</div></div>
       <div class="tg"><div class="l">${T('Statut')}</div><div class="v" style="font-size:13px">${r[4]===0?T('Indé'):'Label'}</div></div>
+      <div class="tg"><div class="l">Copyright</div><div class="v" style="font-size:12px;line-height:1.4">${esc(r[5]||'—')}</div></div>
     </div>
     ${trackOfferHtml(r)}
     <div class="tg" style="background:none;border-color:var(--border)">
@@ -1250,7 +1271,7 @@ function renderOpps(){
   const gridView = `
   <div class="acards">
     ${slice.map(r=>{ const s30=streams30(r); return `
-    <div class="acard plcard" onclick="openTrack('${r[6]}')">
+    <div class="acard plcard grid-clean" onclick="openTrack('${r[6]}')">
       ${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}
       <div class="nm">${esc(r[1])} ${wlStar('t',r[6])}${r[7]?' <span class="badge new">'+T('détectée')+'</span>':''}</div>
       <div style="font-size:11px;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -1262,11 +1283,11 @@ function renderOpps(){
         <div class="st"><div class="v" style="color:var(--cyan)">${money(revTotal(r))}</div><div class="l">${T('Revenu total')}</div></div>
         <div class="st"><div class="v" style="color:var(--acc2)">${eur(advance(Math.max(perMonth(r),0)))}</div><div class="l">${T('Rachat')}</div></div>
       </div>
-      <div class="stats stats2">
+      <div class="stats">
         <div class="st"><div class="v">${fmt(s30.val)}</div><div class="l">${T('Streams 30j')}</div></div>
         <div class="st"><div class="v" style="color:var(--cyan)">${money(rev30(r))}</div><div class="l">${T('Revenu 30j')}</div></div>
+        <div class="st date"><div class="v">${fmtDate(r[2])}</div><div class="l">${T('Sortie')}</div></div>
       </div>
-      <div class="foot">${fmtDate(r[2])} · <span class="lb" title="${esc(r[5])}">${esc(r[5])}</span></div>
     </div>`;}).join('')}
   </div>
   ${rows.length===0?'<div class="empty">'+T('Aucune track ne correspond à ces filtres.')+'</div>':''}
@@ -1308,8 +1329,8 @@ function renderOpps(){
     <span class="spacer"></span>
     <span class="result-count">${fmtFull(rows.length)} ${T('tracks')}</span>
     <div class="viewtoggle">
-      <button class="${S.omode==='table'?'on':''}" data-omode="table" title="${T('Vue liste')}">☰</button>
-      <button class="${S.omode==='grid'?'on':''}" data-omode="grid" title="${T('Vue grille')}">▦</button>
+      <button class="${S.omode==='table'?'on':''}" data-omode="table" title="${T('Vue liste')}"><span class="view-ico">☰</span><span class="view-label">${T('Vue liste')}</span></button>
+      <button class="${S.omode==='grid'?'on':''}" data-omode="grid" title="${T('Vue grille')}"><span class="view-ico">▦</span><span class="view-label">${T('Vue grille')}</span></button>
     </div>
   </div>
   ${S.omode==='grid' ? gridView : tableView}`;
@@ -1363,25 +1384,21 @@ function renderArtists(){
   const slice = list.slice(0,S.shownA);
   const gridView = `
   <div class="acards">
-    ${slice.map(g=>{
-      const p = g.n ? Math.round(g.self/g.n*100) : 0;
-      return `
-      <div class="acard plcard" onclick="goArtist(${g.i})">
+    ${slice.map(g=>`
+      <div class="acard plcard grid-clean" onclick="goArtist(${g.i})">
         ${wlStar('a',g.name)}
         ${artistCoverHtml(g)}
         <div class="nm">${esc(g.name)}</div>
         <div style="font-size:11px;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">${segBadge(g)} <span>${g.lofi?g.lofi+' '+T('tracks chez Lofi'):''}${g.disco?' · '+T('découverte')+' ('+esc(g.origin||'related')+')':''}</span></div>
-        <div class="stats">
+        <div class="stats stats2">
           <div class="st"><div class="v">${fmt(g.streams)}</div><div class="l">${T('Streams total')}</div></div>
           <div class="st"><div class="v" style="color:var(--cyan)">${money(g.streams*RATE)}</div><div class="l">${T('Revenu total')}</div></div>
-          <div class="st"><div class="v" style="color:${g.hot?'var(--acc2)':'inherit'}">${g.hot}</div><div class="l">≥ 500k</div></div>
         </div>
         <div class="stats stats2">
           <div class="st"><div class="v">${fmt(g.streams30)}</div><div class="l">${T('Streams 30j')}</div></div>
           <div class="st"><div class="v" style="color:var(--cyan)">${money(g.streams30*RATE)}</div><div class="l">${T('Revenu 30j')}</div></div>
         </div>
-        <div class="foot">${g.n} tracks · ${p}% ${T('indé')} · ${T('dernière sortie')} ${g.last||'?'}${g.link?` · <a href="${esc(g.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--violet)">${g.link.includes('instagram')?'📷':'🔗'}</a>`:''}</div>
-      </div>`;}).join('')}
+      </div>`).join('')}
   </div>
   ${sentinel(list.length-S.shownA)}`;
   const tableView = `
@@ -1447,8 +1464,8 @@ function renderArtists(){
     <span class="spacer"></span>
     <span class="result-count">${list.length} ${T('artistes')}</span>
     <div class="viewtoggle">
-      <button class="${S.amode==='table'?'on':''}" data-amode="table" title="${T('Vue liste')}">☰</button>
-      <button class="${S.amode==='grid'?'on':''}" data-amode="grid" title="${T('Vue grille')}">▦</button>
+      <button class="${S.amode==='table'?'on':''}" data-amode="table" title="${T('Vue liste')}"><span class="view-ico">☰</span><span class="view-label">${T('Vue liste')}</span></button>
+      <button class="${S.amode==='grid'?'on':''}" data-amode="grid" title="${T('Vue grille')}"><span class="view-ico">▦</span><span class="view-label">${T('Vue grille')}</span></button>
     </div>
   </div>
   ${S.amode==='table' ? tableView : gridView}`;
@@ -1642,6 +1659,59 @@ function plGrowthCell(r){
   return `<span style="color:${color};font-weight:600">${sign}${fmtFull(g)}</span>${daysTxt}`;
 }
 
+function plHistory(r){
+  const pts = (PLhist[r[0]] || []).map(p=>[p[0],+p[1]]).filter(p=>p[0] && Number.isFinite(p[1]));
+  const currentDate = ((r[8] || (PLmeta&&PLmeta.snapshot_ts) || '')+'').slice(0,10);
+  if (r[5]==='ok' && currentDate && !pts.some(p=>p[0]===currentDate)) pts.push([currentDate,+r[4]]);
+  pts.sort((a,b)=>a[0].localeCompare(b[0]));
+  return pts;
+}
+
+function openPlaylist(pid){
+  const r = PLrows.find(x=>x[0]===pid); if(!r) return;
+  const hist = plHistory(r);
+  const first = hist[0], last = hist[hist.length-1];
+  const delta = hist.length>=2 ? last[1]-first[1] : null;
+  const days = hist.length>=2 ? Math.max(1,Math.round((new Date(last[0]+'T00:00:00')-new Date(first[0]+'T00:00:00'))/864e5)) : null;
+  const trendColor = delta==null?'var(--dim)':(delta>0?'var(--acc2)':(delta<0?'var(--red)':'var(--dim)'));
+  const box = document.getElementById('tmbox');
+  box.innerHTML = `
+    <div class="thd">
+      <div class="tcov cov" data-plid="${r[0]}"></div>
+      <div style="min-width:0">
+        <h3>${esc(r[1])}</h3>
+        <div class="tar" style="cursor:default">${esc(r[2]||T('Curateur non renseigné'))} ${plCuratorBadge(r[3])}</div>
+      </div>
+      <button class="tclose" onclick="closeTrack()">✕</button>
+    </div>
+    <div class="tgrid">
+      <div class="tg"><div class="l">Followers</div><div class="v">${r[5]==='ok'?fmtFull(r[4]):plFollowersCell(r)}</div></div>
+      <div class="tg"><div class="l">${T('Évolution 30j')}</div><div class="v" style="font-size:13px">${plGrowthCell(r)}</div></div>
+      <div class="tg"><div class="l">Tracks</div><div class="v">${r[16]?(r[6]||'?'):'—'}</div></div>
+      <div class="tg"><div class="l">Genre</div><div class="v" style="font-size:13px">${esc(r[10]||'?')}</div></div>
+      <div class="tg"><div class="l">Usage</div><div class="v" style="font-size:13px">${esc(r[11]||'?')}</div></div>
+      <div class="tg"><div class="l">${T('Première observation')}</div><div class="v" style="font-size:13px">${fmtDate(r[7])}</div></div>
+      <div class="tg"><div class="l">${T('Dernière observation')}</div><div class="v" style="font-size:13px">${fmtDate(r[8])}</div></div>
+      <div class="tg"><div class="l">${T('Création estimée')}</div><div class="v" style="font-size:13px">${plEstDateCell(r)}</div></div>
+    </div>
+    <div class="tg" style="background:none;border-color:var(--border)">
+      <div class="l" style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+        <span>${T('Évolution des followers')}</span>
+        ${delta==null?'':`<span style="color:${trendColor};font-size:12px">${delta>0?'+':''}${fmtFull(delta)} · ${days}${T('j')}</span>`}
+      </div>
+      ${hist.length>=2 ? `
+        <div style="display:flex;justify-content:space-between;gap:12px;margin-top:12px;color:var(--dim);font-size:11px">
+          <span>${fmtDate(first[0])} · ${fmtFull(first[1])}</span><span>${fmtDate(last[0])} · ${fmtFull(last[1])}</span>
+        </div>${sparkline(hist)}` : `<div style="padding:22px 4px;color:var(--dim);font-size:12px;line-height:1.6">${T("Courbe en cours de constitution : le scan quotidien enregistrera un point par jour. Reviens après le prochain snapshot pour voir la tendance.")}</div>`}
+    </div>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <a class="btn-back" style="margin:0;text-decoration:none" href="https://open.spotify.com/playlist/${r[0]}" target="_blank" rel="noopener">▶ ${T('Ouvrir sur Spotify')}</a>
+    </div>
+    <div class="tnote">${T("L'historique des followers est alimenté par les snapshots quotidiens du scanner.")}</div>`;
+  document.getElementById('track-modal').style.display='flex';
+  if (typeof attachCovers==='function') attachCovers();
+}
+
 function renderPlaylists(){
   if (!PLmeta){
     V.innerHTML = `<div class="page-head"><div><h2>${T('Toutes les playlists')}</h2><p>${T('Aucune donnée playlists chargée pour le moment.')}</p></div></div>`;
@@ -1667,7 +1737,7 @@ function renderPlaylists(){
       </tr></thead>
       <tbody>
       ${slice.map(r=>`
-        <tr>
+        <tr onclick="openPlaylist('${r[0]}')" style="cursor:pointer">
           <td class="covtd"><div class="cov" data-plid="${r[0]}"></div></td>
           <td><span class="tk">${esc(r[1])}</span>${r[16]?'':' <span class="badge new" title="'+T('Détail pas encore récupéré')+'">'+T('en attente')+'</span>'}</td>
           <td>${esc(r[2])} ${plCuratorBadge(r[3])}</td>
@@ -1678,7 +1748,7 @@ function renderPlaylists(){
           <td>${esc(r[11]||'?')}</td>
           <td style="white-space:nowrap">${plEstDateCell(r)}</td>
           <td style="white-space:nowrap;font-variant-numeric:tabular-nums">${fmtDate(r[8])}</td>
-          <td><a href="https://open.spotify.com/playlist/${r[0]}" target="_blank" rel="noopener">${T('Ouvrir')} ↗</a></td>
+          <td><a href="https://open.spotify.com/playlist/${r[0]}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${T('Ouvrir')} ↗</a></td>
         </tr>`).join('')}
       </tbody>
     </table>
@@ -1688,7 +1758,7 @@ function renderPlaylists(){
   const gridView = `
   <div class="acards">
     ${slice.map(r=>`
-    <div class="acard plcard" onclick="window.open('https://open.spotify.com/playlist/${r[0]}','_blank')">
+    <div class="acard plcard grid-clean" onclick="openPlaylist('${r[0]}')">
       <div class="cov" data-plid="${r[0]}"></div>
       <div class="nm">${esc(r[1])}${r[16]?'':' <span class="badge new" title="'+T('Détail pas encore récupéré')+'">'+T('en attente')+'</span>'}</div>
       <div style="font-size:11px;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">${esc(r[2])} ${plCuratorBadge(r[3])}</div>
@@ -1696,7 +1766,6 @@ function renderPlaylists(){
         <div class="st"><div class="v">${plFollowersCell(r)}</div><div class="l">Followers</div></div>
         <div class="st"><div class="v">${r[16]?(r[6]||'?'):'—'}</div><div class="l">Tracks</div></div>
       </div>
-      <div class="foot">${esc(r[10]||'?')} · ${esc(r[11]||'?')}</div>
     </div>`).join('')}
   </div>
   ${rows.length===0?'<div class="empty">'+T('Aucune playlist ne correspond à ces filtres.')+'</div>':''}
@@ -1725,8 +1794,8 @@ function renderPlaylists(){
     <span class="spacer"></span>
     <span class="result-count">${fmtFull(rows.length)} playlists</span>
     <div class="viewtoggle">
-      <button class="${S.plmode==='table'?'on':''}" data-plmode="table" title="${T('Vue liste')}">☰</button>
-      <button class="${S.plmode==='grid'?'on':''}" data-plmode="grid" title="${T('Vue grille')}">▦</button>
+      <button class="${S.plmode==='table'?'on':''}" data-plmode="table" title="${T('Vue liste')}"><span class="view-ico">☰</span><span class="view-label">${T('Vue liste')}</span></button>
+      <button class="${S.plmode==='grid'?'on':''}" data-plmode="grid" title="${T('Vue grille')}"><span class="view-ico">▦</span><span class="view-label">${T('Vue grille')}</span></button>
     </div>
   </div>
   ${S.plmode==='grid' ? gridView : tableView}`;
@@ -1964,8 +2033,8 @@ function renderLabels(){
     <span class="spacer"></span>
     <span class="result-count">${fmtFull(rows.length)} labels</span>
     <div class="viewtoggle">
-      <button class="${S.lbmode==='table'?'on':''}" data-lbmode="table" title="${T('Vue liste')}">☰</button>
-      <button class="${S.lbmode==='grid'?'on':''}" data-lbmode="grid" title="${T('Vue grille')}">▦</button>
+      <button class="${S.lbmode==='table'?'on':''}" data-lbmode="table" title="${T('Vue liste')}"><span class="view-ico">☰</span><span class="view-label">${T('Vue liste')}</span></button>
+      <button class="${S.lbmode==='grid'?'on':''}" data-lbmode="grid" title="${T('Vue grille')}"><span class="view-ico">▦</span><span class="view-label">${T('Vue grille')}</span></button>
     </div>
   </div>
   ${S.lbmode==='grid' ? gridView : tableView}`;
