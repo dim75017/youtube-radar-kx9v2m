@@ -394,10 +394,10 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 .kw-n.zero{color:var(--dim);background:rgba(150,163,214,.07)}
 
 /* ---------- Calendar ---------- */
-.cal-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin:8px 0 16px;position:relative}
+.cal-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin:2px 0 16px;position:relative}
 .cal-month{font-family:'Sora';font-size:22px;font-weight:700;min-width:230px;text-align:center;letter-spacing:-.3px}
 .cal-nav .arrow{font-size:19px;padding:7px 17px;line-height:1}
-.cal-nav .today{position:absolute;right:0}
+.cal-left{position:absolute;left:0;display:flex;align-items:center;gap:8px}
 .cal{border:1px solid var(--border);border-radius:var(--r);overflow:hidden;background:rgba(15,18,30,.6)}
 .cal-head{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border);background:rgba(21,25,42,.6)}
 .cal-head div{padding:9px 6px;font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--dim);font-weight:600;text-align:center}
@@ -405,7 +405,7 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 .cal-cell{height:clamp(88px, calc((100vh - 320px)/6), 175px);border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:6px;position:relative;overflow:hidden}
 .cal-grid .cal-cell:nth-child(7n){border-right:none}
 .cal-grid .cal-cell:nth-last-child(-n+7){border-bottom:none}
-.cal-cell .d{position:absolute;top:5px;right:7px;font-size:10.5px;color:var(--dim);font-weight:600}
+.cal-cell .d{position:absolute;top:5px;right:7px;font-size:12px;color:var(--dim);font-weight:600}
 .cal-cell.out{background:rgba(5,6,10,.35)}
 .cal-cell.out .d{opacity:.4}
 .cal-cell.today{box-shadow:inset 0 0 0 1.5px rgba(139,124,246,.55)}
@@ -413,22 +413,22 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 .cal-pill{font-size:10.5px;font-weight:700;color:#0d0f17;border-radius:5px;padding:3px 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cal-legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:11px;color:var(--muted)}
 .cal-legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
-.cal-viewtoggle{position:absolute;left:0;display:flex;gap:4px;background:rgba(150,163,214,.06);border:1px solid var(--border);border-radius:13px;padding:4px}
-.cal-viewtoggle button{font-family:inherit;font-size:14.5px;font-weight:700;padding:12px 28px;border-radius:10px;color:var(--dim);cursor:pointer;letter-spacing:.3px}
+.cal-viewtoggle{display:flex;gap:4px;background:rgba(150,163,214,.06);border:1px solid var(--border);border-radius:14px;padding:3px}
+.cal-viewtoggle button{font-family:inherit;font-size:13px;font-weight:700;padding:9.5px 17px;border-radius:11px;color:var(--dim);cursor:pointer;letter-spacing:.3px}
 .cal-viewtoggle button.on{background:var(--acc);color:#fff;box-shadow:0 4px 14px rgba(139,124,246,.4)}
-.year-cal{display:grid;grid-template-columns:repeat(6,1fr);gap:9px}
+.year-cal{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
 @media(max-width:1550px){.year-cal{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:1300px){.year-cal{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:900px){.year-cal{grid-template-columns:repeat(2,1fr)}}
-.year-month{border:1px solid var(--border);border-radius:10px;background:rgba(15,18,30,.55);padding:8px;min-width:0}
-.year-month-h{font-family:'Sora';font-size:10.5px;font-weight:700;margin-bottom:5px;text-align:center}
-.year-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1.5px;min-width:0}
-.year-dow{font-size:6.5px;color:var(--dim);text-align:center;font-weight:700;opacity:.7}
-.year-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:8.5px;color:var(--muted);border-radius:4px;position:relative;min-width:0}
+.year-month{border:1px solid var(--border);border-radius:10px;background:rgba(15,18,30,.55);padding:10px;min-width:0}
+.year-month-h{font-family:'Sora';font-size:12px;font-weight:700;margin-bottom:11px;text-align:center}
+.year-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;min-width:0}
+.year-dow{font-size:8px;color:var(--dim);text-align:center;font-weight:700;opacity:.7;margin-bottom:2px}
+.year-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);border-radius:50%;position:relative;min-width:0}
 .year-cell.out{opacity:.2}
-.year-cell.has-event{cursor:pointer;color:#fff;font-weight:800;font-size:9.5px;text-shadow:0 1px 3px rgba(0,0,0,.6);transition:transform .12s}
+.year-cell.has-event{cursor:pointer;color:#fff;font-weight:800;font-size:11px;text-shadow:0 1px 3px rgba(0,0,0,.6);transition:transform .12s}
 .year-cell.has-event:hover{transform:scale(1.25);z-index:3}
-.year-cell.today{box-shadow:inset 0 0 0 1px rgba(139,124,246,.6);border-radius:6px}
+.year-cell.today{box-shadow:inset 0 0 0 1.5px rgba(139,124,246,.6);border-radius:50%}
 
 /* ---------- Drawer ---------- */
 #backdrop{position:fixed;inset:0;background:rgba(4,5,9,.62);backdrop-filter:blur(3px);z-index:60;opacity:0;pointer-events:none;transition:opacity .2s}
@@ -845,6 +845,20 @@ function personaEmoji(p){
   for(const [re,e] of PERSO_EMOJI){if(re.test(p))return e;}
   return '🎭';
 }
+const PERSO_CATEGORIES=[
+  [/synthwave boy/i,'Synthwave Boy'],
+  [/lofi girl/i,'Lofi Girl'],
+  [/p[eè]re|papa/i,'Père'],
+  [/m[eè]re/i,'Mère'],
+  [/tiago/i,'Tiago'],
+  [/chat|chien/i,'Chat / Chien'],
+];
+function persoCategory(p){
+  if(!p)return 'Sans personnage';
+  for(const [re,c] of PERSO_CATEGORIES){if(re.test(p))return c;}
+  return 'Sans personnage';
+}
+const PERSO_ORDER=['Lofi Girl','Synthwave Boy','Mère','Père','Sans personnage','Tiago','Chat / Chien'];
 const PERIOD_EMOJI={'3m':'🟢','6m':'🟡','12m':'🟠','all':'🔴'};
 function gtag(g,extra,emo){
   if(!g)return '';
@@ -1527,7 +1541,7 @@ function filterRecos(){
   let rows=DATA.recos;
   if(RS.genre)rows=rows.filter(r=>(r.genre||'(unset)')===RS.genre);
   if(RS.pot)rows=rows.filter(r=>r.pot&&r.pot.startsWith(RS.pot));
-  if(RS.perso)rows=rows.filter(r=>r.perso===RS.perso);
+  if(RS.perso)rows=rows.filter(r=>persoCategory(r.perso)===RS.perso);
   if(RS.val==='x')rows=rows.filter(r=>isValidated(r.valid));
   else if(RS.val==='refused')rows=rows.filter(r=>isRefused(r.valid));
   else if(RS.val==='pending')rows=rows.filter(r=>!isValidated(r.valid)&&!isRefused(r.valid));
@@ -1539,7 +1553,7 @@ function recosHTML(){
   const all=DATA.recos;
   const rows=filterRecos();
   const genres=[...new Set(all.map(r=>r.genre||'(unset)'))].sort();
-  const persos=[...new Set(all.map(r=>r.perso).filter(Boolean))].sort();
+  const persos=PERSO_ORDER.filter(c=>all.some(r=>persoCategory(r.perso)===c));
   const genreOpts=[{label:'🎵 All genres',sel:!RS.genre,onclick:"RS.genre='';RS.limit=80;rerenderRecos()"}].concat(
     genres.map(g=>({label:esc(g)+' · '+all.filter(r=>(r.genre||'(unset)')===g).length,sel:RS.genre===g,onclick:'RS.genre='+jsq(g)+';RS.limit=80;rerenderRecos()'})));
   const genreLabel=RS.genre?esc(RS.genre):'🎵 All genres';
@@ -1660,7 +1674,7 @@ function recoTableHTML(page){
         '<td class="ttitle">'+esc(r.title)+'</td>'+
         '<td>'+gtag(r.genre)+'</td>'+
         '<td>'+(tierL?'<span class="rtier tier-'+tierL+'">'+tierL+'</span>':'—')+'</td>'+
-        '<td>'+esc(r.perso||'—')+'</td>'+
+        '<td>'+esc(persoCategory(r.perso))+'</td>'+
         '<td>'+statusTxt+'</td>'+
         '<td class="num">'+(r.scoreAdj!=null?r.scoreAdj:(r.score!=null?r.score:'—'))+'</td></tr>';
     }).join('')+'</tbody></table>';
@@ -1699,17 +1713,11 @@ function copyTxt(btn,i,field){
 /* ================= ROADMAP ================= */
 function roadmapHTML(){
   let rows=DATA.roadmap.filter(r=>r.date);
-  const genres=[...new Set(DATA.roadmap.map(r=>r.genre).filter(Boolean))].sort();
-  if(RM.genre)rows=rows.filter(r=>r.genre===RM.genre);
   rows.sort((a,b)=>a.date-b.date);
-  const rmGenreOpts=[{label:'🎵 All genres',sel:!RM.genre,onclick:"RM.genre='';render()"}].concat(
-    genres.map(g=>({label:esc(g),sel:RM.genre===g,onclick:'RM.genre='+jsq(g)+';render()'})));
-  const rmGenreLabel=RM.genre?esc(RM.genre):'🎵 All genres';
-  let h='<div class="toolbar">'+
-    xdd('c-genre',rmGenreLabel,rmGenreOpts)+
-    '<div class="tb-right"><div class="viewtoggle">'+
+  let h='<div class="toolbar" style="justify-content:flex-end">'+
+    '<div class="viewtoggle">'+
       '<button class="'+(RM.mode!=='cal'?'on':'')+'" onclick="RM.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button>'+
-      '<button class="'+(RM.mode==='cal'?'on':'')+'" onclick="RM.mode=\'cal\';render()" title="Calendar">'+ICONS.roadmap+'</button></div></div>'+
+      '<button class="'+(RM.mode==='cal'?'on':'')+'" onclick="RM.mode=\'cal\';render()" title="Calendar">'+ICONS.roadmap+'</button></div>'+
   '</div>';
   window._rm_rows=rows;
   h+=(RM.mode==='cal')?calHTML(rows):roadmapTableHTML(rows);
@@ -1787,10 +1795,10 @@ function calHTML(rows){
   const base=RM.cal?new Date(RM.cal):new Date();
   const y=base.getFullYear(),m=base.getMonth();
   rows.forEach((r,ri)=>{r._ri=ri;});
-  const toggle='<div class="cal-viewtoggle">'+
+  const toggle='<div class="cal-left"><button class="ctl-btn today" onclick="calToday()">Today</button><div class="cal-viewtoggle">'+
       '<button class="'+(RM.view!=='year'?'on':'')+'" onclick="calSetView(\'month\')">Month</button>'+
       '<button class="'+(RM.view==='year'?'on':'')+'" onclick="calSetView(\'year\')">Year</button>'+
-    '</div>';
+    '</div></div>';
   if(RM.view==='year')return yearCalHTML(rows,y,toggle);
   const MFULL=['January','February','March','April','May','June','July','August','September','October','November','December'];
   const first=new Date(y,m,1);
@@ -1801,8 +1809,7 @@ function calHTML(rows){
   let h='<div class="cal-nav">'+toggle+
     '<button class="ctl-btn arrow" onclick="calShift(-1)" title="Previous month">‹</button>'+
     '<div class="cal-month">'+MFULL[m]+' '+y+'</div>'+
-    '<button class="ctl-btn arrow" onclick="calShift(1)" title="Next month">›</button>'+
-    '<button class="ctl-btn today" onclick="calToday()">Today</button></div>';
+    '<button class="ctl-btn arrow" onclick="calShift(1)" title="Next month">›</button></div>';
   h+='<div class="cal"><div class="cal-head">'+['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(x=>'<div>'+x+'</div>').join('')+'</div><div class="cal-grid">';
   for(let i=0;i<42;i++){
     const d=new Date(start);d.setDate(start.getDate()+i);
@@ -1826,8 +1833,7 @@ function yearCalHTML(rows,y,toggle){
   let h='<div class="cal-nav">'+toggle+
     '<button class="ctl-btn arrow" onclick="calShift(-1)" title="Previous year">‹</button>'+
     '<div class="cal-month">'+y+'</div>'+
-    '<button class="ctl-btn arrow" onclick="calShift(1)" title="Next year">›</button>'+
-    '<button class="ctl-btn today" onclick="calToday()">Today</button></div>';
+    '<button class="ctl-btn arrow" onclick="calShift(1)" title="Next year">›</button></div>';
   h+='<div class="year-cal">';
   for(let m=0;m<12;m++){
     const first=new Date(y,m,1);
@@ -2349,9 +2355,11 @@ function anaCardHTML(o,i){
     '<div class="thumbwrap"><img loading="lazy" src="'+thumb(o.vid)+'" onerror="this.style.visibility=\'hidden\'"></div>'+
     '<div class="vbody">'+
       '<div class="vtitle">'+esc(o.title)+'</div>'+
-      '<div class="vtags">'+gtag(o.genre)+(o.durH!=null?ghosttag(fmtDur(o.durH)):'')+vBadge(o.verdict)+'</div>'+
+      '<div class="vtags">'+gtag(o.genre)+(o.durH!=null?ghosttag(fmtDur(o.durH)):'')+'</div>'+
+      '<div style="display:flex;align-items:center;gap:8px;margin:2px 0 10px"><div class="pbar"><i style="width:'+(o.pctCh==null?0:o.pctCh)+'%;background:'+pcol(o.pctCh)+'"></i></div>'+
+      '<span style="font-size:10.5px;color:'+pcol(o.pctCh)+';font-weight:700;white-space:nowrap">'+(o.pctCh==null?'no data':o.pctCh+'th')+'</span></div>'+
       '<div class="vstats">'+
-        '<div class="vstat hl"><b>'+fmtN(o.views)+'</b><span>views</span></div>'+
+        '<div class="vstat hl"><b style="color:'+pcol(o.pctCh)+'">'+fmtN(o.views)+'</b><span>views</span></div>'+
         '<div class="vstat"><b style="color:'+vsMed(o.vpm,o.chMed)+'">'+fmtN(o.vpm)+'</b><span>views/mo</span></div>'+
         '<div class="vstat"><b style="color:'+pcol(o.pctCh)+'">'+(o.pctCh==null?'—':o.pctCh+'th')+'</b><span>percentile</span></div>'+
       '</div></div></div>';
@@ -2393,9 +2401,8 @@ function anaHTML(){
           '<span style="font-size:11.5px;color:'+pcol(o.pctCh)+';font-weight:700;white-space:nowrap">'+(o.pctCh==null?'no data yet':o.pctCh+'th · channel')+'</span></div>'+
         '</div>'+
         '<div style="text-align:right;flex:none">'+
-          '<div style="font-family:Sora;font-size:17px;font-weight:700">'+fmtN(o.views)+'</div>'+
+          '<div style="font-family:Sora;font-size:17px;font-weight:700;color:'+pcol(o.pctCh)+'">'+fmtN(o.views)+'</div>'+
           '<div style="font-size:10.5px;color:'+vsMed(o.vpm,o.chMed)+';margin-bottom:8px;font-weight:600">'+fmtN(o.vpm)+' views/mo</div>'+
-          vBadge(o.verdict)+
         '</div></div>';
     }).join('');
   }else{
