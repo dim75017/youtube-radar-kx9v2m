@@ -2388,18 +2388,7 @@ function anaHTML(){
   if(!rows.length)return '<div class="empty">No long-form releases found in the 🎯 Our Videos tab for the last 12 months.</div>';
   const sf=AS.sort;
   rows.sort((a,b)=>sf==='date'?(b.pub-a.pub):sf==='pctAsc'?((a.pct==null?101:a.pct)-(b.pct==null?101:b.pct)):sf==='pctDesc'?((b.pct==null?-1:b.pct)-(a.pct==null?-1:a.pct)):(b.views||0)-(a.views||0));
-  const scored=rows.filter(r=>r.pct!=null);
-  const over=rows.filter(r=>r.verdict==='over').length,under=rows.filter(r=>r.verdict==='under').length;
-  const medP=median(scored.map(r=>r.pct));
-  const kpi=(lbl,val,sub,c)=>'<div class="kpi" style="--kc:'+c+'"><div class="k-lbl">'+lbl+'</div><div class="k-val">'+val+'</div><div class="k-sub">'+sub+'</div></div>';
-  let h='<div class="kpis">'+
-    kpi('Videos analysed',fmtInt(rows.length),'long-form releases · last 12 months','#8b7cf6')+
-    kpi('Overperforming',fmtInt(over),'beating 70% of their genre cohort','#34d399')+
-    kpi('Underperforming',fmtInt(under),'below 40% of their genre cohort','#f87171')+
-    kpi('Median percentile',medP!=null?medP+'th':'—','vs competing videos of the same genre','#fbbf24')+
-    kpi('Channel velocity',fmtN(rows[0]?rows[0].chMed:null),'median views/mo across our releases','#38bdf8')+
-    (rows[0]&&rows[0].ctrMed!=null?kpi('Median CTR',rows[0].ctrMed.toFixed(1)+'%','impressions click-through · YouTube Studio, 365 days','#e879f9'):'')+
-  '</div>';
+  let h='';
   const asSortKeys=[['date','🆕','Newest first'],['pctAsc','📉','Worst percentile first'],['pctDesc','📈','Best percentile first'],['views','👀','Most views']];
   const asSortOpts=asSortKeys.map(s=>({label:s[1]+' Sort · '+s[2],sel:sf===s[0],onclick:'AS.sort='+jsq(s[0])+';render()'}));
   const asSortRow=asSortKeys.find(s=>s[0]===sf)||asSortKeys[0];
