@@ -2398,7 +2398,7 @@ function anaHTML(){
   h+='<div class="toolbar">'+xdd('c-sort',asSortRow[1]+' Sort · '+asSortRow[2],asSortOpts)+
     '<div class="tb-right"><div class="viewtoggle">'+
       '<button class="'+(AS.mode!=='table'?'on':'')+'" onclick="AS.mode=\'grid\';render()" title="Grid">'+ICONS.grid+'</button>'+
-      '<button class="'+(AS.mode==='table'?'on':'')+'" onclick="AS.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button></div></div>';
+      '<button class="'+(AS.mode==='table'?'on':'')+'" onclick="AS.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button></div></div></div>';
   window._page_ana=rows;
   if(AS.mode==='table'){
     h+=rows.map((o,i)=>{
