@@ -508,7 +508,7 @@ const EN_MAP = {
   "Fiche détaillée uniquement":"Detailed profile only",
   "Tri : followers":"Sort: followers","Tri : nb tracks":"Sort: track count","Tri : fit score":"Sort: fit score","Tri : vue récemment":"Sort: recently viewed",
   "Connu depuis":"Known since","Non estimé":"Not estimated","Non exhaustif":"Not exhaustive","Rechercher un label…":"Search a label…",
-  "Tri : revenu estimé":"Sort: est. revenue","Tri : streams":"Sort: streams","Tri : connu depuis":"Sort: known since",
+  "Tri : revenu estimé":"Sort: est. revenue","Tri : streams":"Sort: streams","Tri : connu depuis":"Sort: known since","Tri : streams 30j":"Sort: streams (30d)",
   "Aucun label ne correspond à cette recherche.":"No label matches this search.",
   "Rechercher playlist, curateur, genre…":"Search playlist, curator, genre…","Curateur":"Curator","Mots-clés":"Keywords",
   "Création estimée":"Estimated creation","Dernière observation":"Last observation","Lien":"Link","Ouvrir":"Open",
@@ -697,7 +697,7 @@ const S = {
   newDays:90, shownN:100,
   plq:'', plcur:'all', plsort:'followers', plonly:false, shownPL:80, plview:'qualified', plmode:'table',
   amode:'table', omode:'table',
-  lbq:'', lbsort:'revenue', shownLB:80, lbmode:'table', labelKey:null,
+  lbq:'', lbsort:'revenue', shownLB:80, lbmode:'table', labelKey:null, lbModalArtist:null,
 };
 
 /* ---------- navigation ---------- */
@@ -1136,8 +1136,8 @@ function renderOpps(){
         <th data-k="1">Track</th>
         <th data-k="0">${T('Artiste')} ${sortArrow(0)}</th>
         <th data-k="3" class="num">${T('Streams total')} ${sortArrow(3)}</th>
-        <th data-k="10" class="num">${T('Streams 30j')} ${sortArrow(10)}</th>
         <th data-k="11" class="num">${T('Revenu total')} ${sortArrow(11)}</th>
+        <th data-k="10" class="num">${T('Streams 30j')} ${sortArrow(10)}</th>
         <th data-k="12" class="num">${T('Revenu 30j')} ${sortArrow(12)}</th>
         <th class="num">${T('Rachat')} ${S.palier}</th>
         <th data-k="2">${T('Sortie')} ${sortArrow(2)}</th>
@@ -1152,8 +1152,8 @@ function renderOpps(){
           <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span> ${wlStar('t',r[6])}${r[7]?' <span class="badge new">'+T('détectée')+' '+r[7].slice(5)+'</span>':''}</td>
           <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
           <td class="num" title="${fmtFull(r[3])}">${r[3]>=HOT?'<span class="badge hot">'+fmt(r[3])+'</span>':fmt(r[3])}</td>
-          <td class="num" title="${s30.real?T('mesuré sur historique réel'):T('estimation, moyenne depuis la sortie')}">${fmt(s30.val)}${s30.real?'':' <span class="kwtag">'+T('est.')+'</span>'}</td>
           <td class="num" style="color:var(--cyan)">${money(revTotal(r))}</td>
+          <td class="num" title="${s30.real?T('mesuré sur historique réel'):T('estimation, moyenne depuis la sortie')}">${fmt(s30.val)}${s30.real?'':' <span class="kwtag">'+T('est.')+'</span>'}</td>
           <td class="num" style="color:var(--cyan)" title="${s30.real?T('mesuré sur historique réel'):T('estimation, moyenne depuis la sortie')}">${money(rev30(r))}${s30.real?'':' <span class="kwtag">'+T('est.')+'</span>'}</td>
           <td class="num" title="${T('Payback')} ${paybackTxt(payback(Math.max(perMonth(r),0)))}"><span style="color:var(--acc2);font-weight:600">${eur(advance(Math.max(perMonth(r),0)))}</span></td>
           <td style="white-space:nowrap;font-variant-numeric:tabular-nums">${fmtDate(r[2])}</td>
@@ -1177,11 +1177,11 @@ function renderOpps(){
       </div>
       <div class="stats">
         <div class="st"><div class="v">${fmt(r[3])}</div><div class="l">${T('Streams total')}</div></div>
-        <div class="st"><div class="v">${fmt(s30.val)}</div><div class="l">${T('Streams 30j')}</div></div>
+        <div class="st"><div class="v" style="color:var(--cyan)">${money(revTotal(r))}</div><div class="l">${T('Revenu total')}</div></div>
         <div class="st"><div class="v" style="color:var(--acc2)">${eur(advance(Math.max(perMonth(r),0)))}</div><div class="l">${T('Rachat')}</div></div>
       </div>
       <div class="stats stats2">
-        <div class="st"><div class="v" style="color:var(--cyan)">${money(revTotal(r))}</div><div class="l">${T('Revenu total')}</div></div>
+        <div class="st"><div class="v">${fmt(s30.val)}</div><div class="l">${T('Streams 30j')}</div></div>
         <div class="st"><div class="v" style="color:var(--cyan)">${money(rev30(r))}</div><div class="l">${T('Revenu 30j')}</div></div>
       </div>
       <div class="foot">${fmtDate(r[2])} · <span class="lb" title="${esc(r[5])}">${esc(r[5])}</span></div>
@@ -1291,11 +1291,11 @@ function renderArtists(){
         <div style="font-size:11px;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">${segBadge(g)} <span>${g.lofi?g.lofi+' '+T('tracks chez Lofi'):''}${g.disco?' · '+T('découverte')+' ('+esc(g.origin||'related')+')':''}</span></div>
         <div class="stats">
           <div class="st"><div class="v">${fmt(g.streams)}</div><div class="l">${T('Streams total')}</div></div>
-          <div class="st"><div class="v">${fmt(g.streams30)}</div><div class="l">${T('Streams 30j')}</div></div>
+          <div class="st"><div class="v" style="color:var(--cyan)">${money(g.streams*RATE)}</div><div class="l">${T('Revenu total')}</div></div>
           <div class="st"><div class="v" style="color:${g.hot?'var(--acc2)':'inherit'}">${g.hot}</div><div class="l">≥ 500k</div></div>
         </div>
         <div class="stats stats2">
-          <div class="st"><div class="v" style="color:var(--cyan)">${money(g.streams*RATE)}</div><div class="l">${T('Revenu total')}</div></div>
+          <div class="st"><div class="v">${fmt(g.streams30)}</div><div class="l">${T('Streams 30j')}</div></div>
           <div class="st"><div class="v" style="color:var(--cyan)">${money(g.streams30*RATE)}</div><div class="l">${T('Revenu 30j')}</div></div>
         </div>
         <div class="foot">${g.n} tracks · ${p}% ${T('indé')} · ${T('dernière sortie')} ${g.last||'?'}${g.link?` · <a href="${esc(g.link)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:var(--violet)">${g.link.includes('instagram')?'📷':'🔗'}</a>`:''}</div>
@@ -1309,8 +1309,8 @@ function renderArtists(){
         <th></th>
         <th>${T('Artiste')}</th>
         <th class="num">${T('Streams total')}</th>
-        <th class="num">${T('Streams 30j')}</th>
         <th class="num">${T('Revenu total')}</th>
+        <th class="num">${T('Streams 30j')}</th>
         <th class="num">${T('Revenu 30j')}</th>
         <th class="num">tracks</th>
         <th class="num">≥ 500k</th>
@@ -1325,8 +1325,8 @@ function renderArtists(){
           <td class="covtd">${artistCoverHtml(g)}</td>
           <td>${esc(g.name)} ${wlStar('a',g.name)} ${segBadge(g)}</td>
           <td class="num">${fmt(g.streams)}</td>
-          <td class="num">${fmt(g.streams30)}</td>
           <td class="num" style="color:var(--cyan)">${money(g.streams*RATE)}</td>
+          <td class="num">${fmt(g.streams30)}</td>
           <td class="num" style="color:var(--cyan)">${money(g.streams30*RATE)}</td>
           <td class="num">${g.n}</td>
           <td class="num" style="color:${g.hot?'var(--acc2)':'inherit'}">${g.hot}</td>
@@ -1671,6 +1671,7 @@ function lbFiltered(){
     streams: (a,b)=>b[3]-a[3],
     tracks: (a,b)=>b[2]-a[2],
     since: (a,b)=>(a[5]||'9999').localeCompare(b[5]||'9999'),
+    streams30: (a,b)=>labelStreams30(b[0])-labelStreams30(a[0]),
   };
   return rows.slice().sort(sorters[S.lbsort] || sorters.revenue);
 }
@@ -1704,21 +1705,32 @@ function labelRowsOf(key){
   }
   return LBTRACKS.get(key) || [];
 }
+let LB_S30 = null; // key -> streams30 cumulés, construit à la demande
+function labelStreams30(key){
+  if (!LB_S30) LB_S30 = new Map();
+  let v = LB_S30.get(key);
+  if (v === undefined){
+    v = 0;
+    for (const r of labelRowsOf(key)) v += streams30(r).val;
+    LB_S30.set(key, v);
+  }
+  return v;
+}
 function openLabel(key){
-  S.labelKey = key; S.sel = new Set();
+  S.labelKey = key; S.sel = new Set(); S.lbModalArtist = null;
   renderLabelModal();
   document.getElementById('artist-modal').style.display='flex';
 }
-function labelModalRows(rows){
-  // groupé par artiste (groupes triés par streams cumulés desc, tracks par streams desc)
+function labelModalArtistOptions(rows){
+  // liste des artistes uniques du label, triés par streams cumulés desc
   const byArtist = new Map();
-  for (const r of rows){ let a=byArtist.get(r[0]); if(!a){a=[];byArtist.set(r[0],a);} a.push(r); }
-  const groups = [...byArtist.entries()].map(([ai,rs])=>({ai, rs: rs.sort((a,b)=>b[3]-a[3]), tot: rs.reduce((s,r)=>s+Math.max(r[3],0),0)}));
-  groups.sort((a,b)=>b.tot-a.tot);
-  let h = '';
-  for (const g of groups){
-    h += `<tr class="lbl-artist-row"><td colspan="9" style="padding:10px 8px 5px;color:var(--acc2);font-weight:700;font-size:12.5px;cursor:pointer" onclick="goArtist(${g.ai})">🎸 ${esc(A[g.ai][0])} <span style="color:var(--dim);font-weight:600">· ${g.rs.length} tracks · ${fmt(g.tot)} streams</span></td></tr>`;
-    h += g.rs.map(r=>`
+  for (const r of rows){ let a=byArtist.get(r[0]); if(!a){a={n:0,tot:0};byArtist.set(r[0],a);} a.n++; a.tot+=Math.max(r[3],0); }
+  return [...byArtist.entries()].map(([ai,a])=>({ai, n:a.n, tot:a.tot})).sort((a,b)=>b.tot-a.tot);
+}
+function labelModalRows(rows){
+  // liste plate, triée par streams desc (plus de sous-en-têtes par artiste, cf. filtre artiste dédié)
+  const sorted = rows.slice().sort((a,b)=>b[3]-a[3]);
+  return sorted.map(r=>`
     <tr data-basehot="${r[3]>=HOT?1:0}" class="${r[3]>=HOT||S.sel.has(r[6])?'hot':''}">
       <td class="selc"><input type="checkbox" class="ck sel-track" data-tid="${r[6]}" ${S.sel.has(r[6])?'checked':''}></td>
       <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
@@ -1730,13 +1742,13 @@ function labelModalRows(rows){
       <td class="num"><span style="color:var(--acc2);font-weight:600">${eur(advance(Math.max(perMonth(r),0)))}</span></td>
       <td>${fmtDate(r[2])}</td>
     </tr>`).join('');
-  }
-  return h;
 }
 function renderLabelModal(){
   const key = S.labelKey; if(!key) return;
   const lb = LBrows.find(x=>x[0]===key);
   const rows = labelRowsOf(key);
+  const artistOpts = labelModalArtistOptions(rows);
+  const filtRows = (S.lbModalArtist!=null) ? rows.filter(r=>r[0]===S.lbModalArtist) : rows;
   const name = lb ? lb[1] : (rows.length ? rows[0][5] : key);
   const logo = lb && lb[7];
   const nArt = new Set(rows.map(r=>r[0])).size;
@@ -1754,14 +1766,20 @@ function renderLabelModal(){
       <button class="tclose" onclick="closeArtistModal()">✕</button>
     </div>
     ${offerHtml({}, selM, selN, rows.length)}
-    <label class="selall" style="margin:2px 0 8px"><input type="checkbox" class="ck" id="am-sel-all" ${rows.length&&rows.every(r=>S.sel.has(r[6]))?'checked':''}> ${T('Tout sélectionner')}</label>
+    <div class="toolbar" style="padding:0 0 8px;margin:0">
+      <select id="lbm-artist">
+        <option value="" ${S.lbModalArtist==null?'selected':''}>${T('Tous les artistes')} (${rows.length} tracks)</option>
+        ${artistOpts.map(o=>`<option value="${o.ai}" ${S.lbModalArtist===o.ai?'selected':''}>${esc(A[o.ai][0])} · ${o.n} tracks · ${fmt(o.tot)} streams</option>`).join('')}
+      </select>
+    </div>
+    <label class="selall" style="margin:2px 0 8px"><input type="checkbox" class="ck" id="am-sel-all" ${filtRows.length&&filtRows.every(r=>S.sel.has(r[6]))?'checked':''}> ${T('Tout sélectionner')}</label>
     <table><thead><tr>
       <th class="selc"></th><th></th><th>Track</th><th>${T('Artiste')}</th>
       <th class="num">Streams</th><th class="num">${T('Streams/mois')}</th>
       <th class="num">${T('Revenu est.')}</th><th class="num">${T('Rachat')} ${S.palier}</th>
       <th>${T('Sortie')}</th>
-    </tr></thead><tbody>${labelModalRows(rows)}</tbody></table>
-    ${rows.length===0?'<div class="empty">'+T('Aucune track retrouvée pour ce label dans la base actuelle.')+'</div>':''}
+    </tr></thead><tbody>${labelModalRows(filtRows)}</tbody></table>
+    ${filtRows.length===0?'<div class="empty">'+T('Aucune track retrouvée pour ce label dans la base actuelle.')+'</div>':''}
   `;
   attachCovers();
   function updateSel(){
@@ -1773,14 +1791,16 @@ function renderLabelModal(){
       const tr=cb.closest('tr'); const on=S.sel.has(cb.dataset.tid);
       cb.checked=on; if(tr) tr.classList.toggle('hot', on || tr.dataset.basehot==='1');
     });
-    const allOn = rows.length && rows.every(r=>S.sel.has(r[6]));
+    const allOn = filtRows.length && filtRows.every(r=>S.sel.has(r[6]));
     const sa=document.getElementById('am-sel-all'); if(sa) sa.checked=allOn;
   }
   box.querySelectorAll('.sel-track').forEach(cb=>{
     cb.addEventListener('change', ()=>{ if(cb.checked)S.sel.add(cb.dataset.tid); else S.sel.delete(cb.dataset.tid); updateSel(); });
   });
   const sa = document.getElementById('am-sel-all');
-  if (sa) sa.addEventListener('change', ()=>{ if(sa.checked) rows.forEach(r=>S.sel.add(r[6])); else rows.forEach(r=>S.sel.delete(r[6])); updateSel(); });
+  if (sa) sa.addEventListener('change', ()=>{ if(sa.checked) filtRows.forEach(r=>S.sel.add(r[6])); else filtRows.forEach(r=>S.sel.delete(r[6])); updateSel(); });
+  const artSel = document.getElementById('lbm-artist');
+  if (artSel) artSel.addEventListener('change', e=>{ S.lbModalArtist = e.target.value===''? null : Number(e.target.value); renderLabelModal(); });
 }
 function renderLabels(){
   if (!LBmeta){
@@ -1798,6 +1818,8 @@ function renderLabels(){
         <th class="num">Tracks</th>
         <th class="num">${T('Streams total')}</th>
         <th class="num">${T('Revenu total')}</th>
+        <th class="num">${T('Streams 30j')}</th>
+        <th class="num">${T('Revenu 30j')}</th>
         <th>${T('Connu depuis')}</th>
         <th class="num">${T('Artistes')}</th>
       </tr></thead>
@@ -1809,6 +1831,8 @@ function renderLabels(){
           <td class="num">${fmtFull(r[2])}</td>
           <td class="num">${fmt(r[3])}</td>
           <td class="num" style="color:var(--cyan)">${money(r[4])}</td>
+          <td class="num">${fmt(labelStreams30(r[0]))}</td>
+          <td class="num" style="color:var(--cyan)">${money(labelStreams30(r[0])*RATE)}</td>
           <td style="white-space:nowrap">${r[5]?T('Connu depuis')+' '+fmtDate(r[5]):T('Non estimé')}</td>
           <td class="num">${r[6]}</td>
         </tr>`).join('')}
@@ -1824,9 +1848,13 @@ function renderLabels(){
       ${labelCover(r[1], true, r[7])}
       <div class="nm">${esc(r[1])}</div>
       <div class="stats">
-        <div class="st"><div class="v">${fmtFull(r[2])}</div><div class="l">Tracks</div></div>
         <div class="st"><div class="v">${fmt(r[3])}</div><div class="l">${T('Streams total')}</div></div>
         <div class="st"><div class="v" style="color:var(--cyan)">${money(r[4])}</div><div class="l">${T('Revenu total')}</div></div>
+        <div class="st"><div class="v">${fmtFull(r[2])}</div><div class="l">Tracks</div></div>
+      </div>
+      <div class="stats stats2">
+        <div class="st"><div class="v">${fmt(labelStreams30(r[0]))}</div><div class="l">${T('Streams 30j')}</div></div>
+        <div class="st"><div class="v" style="color:var(--cyan)">${money(labelStreams30(r[0])*RATE)}</div><div class="l">${T('Revenu 30j')}</div></div>
       </div>
       <div class="foot">${r[5]?T('Connu depuis')+' '+fmtDate(r[5]):T('Non estimé')} · ${r[6]} ${T('artistes')}</div>
     </div>`).join('')}
@@ -1845,6 +1873,7 @@ function renderLabels(){
     <select id="lb-sort">
       <option value="revenue" ${S.lbsort==='revenue'?'selected':''}>${T('Tri : revenu estimé')}</option>
       <option value="streams" ${S.lbsort==='streams'?'selected':''}>${T('Tri : streams')}</option>
+      <option value="streams30" ${S.lbsort==='streams30'?'selected':''}>${T('Tri : streams 30j')}</option>
       <option value="tracks" ${S.lbsort==='tracks'?'selected':''}>${T('Tri : nb tracks')}</option>
       <option value="since" ${S.lbsort==='since'?'selected':''}>${T('Tri : connu depuis')}</option>
     </select>
