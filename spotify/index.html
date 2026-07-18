@@ -308,7 +308,7 @@ td.selc,th.selc{width:44px;padding-left:14px}
 .ck:checked::after{content:'';position:absolute;left:9px;top:4px;width:5px;height:12px;border:solid #052e12;border-width:0 2.6px 2.6px 0;transform:rotate(45deg)}
 .selall{display:flex;align-items:center;gap:9px;font-size:12.5px;font-weight:600;color:var(--muted);cursor:pointer;user-select:none}
 .tmodal{position:fixed;inset:0;z-index:80;background:rgba(5,6,10,.72);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:24px}
-.tmbox{background:linear-gradient(160deg,var(--panel),var(--bg2));border:1px solid var(--border2);border-radius:18px;max-width:640px;width:100%;max-height:88vh;overflow:auto;padding:22px 24px;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+.tmbox{background:linear-gradient(160deg,var(--panel),var(--bg2));border:1px solid var(--border2);border-radius:18px;max-width:820px;width:100%;max-height:88vh;overflow:auto;padding:22px 24px;box-shadow:0 24px 60px rgba(0,0,0,.6)}
 .amodal{z-index:79}
 .ambox{max-width:min(1400px,94vw)}
 .ambox table{min-width:0}
@@ -970,7 +970,7 @@ function perfCardHtml(label,w,withRevenue){
   if(!w.currentReady) partial=T('Historique quotidien requis pour cette fenêtre.');
   else if(w.total>1 && w.partial) partial=`${T('Données partielles')} · ${w.currentCount}/${w.total} ${T('tracks couvertes')}`;
   else if(w.comparisonPartial) partial=T('Données partielles');
-  return `<div class="perf-card"><div class="plabel">${label} · ${T('Flux réel sur la période')}</div><div class="pvalue">${value}</div><div class="pcompare ${cls}">${compare}</div>${partial?`<span class="ppartial">${partial} · ${T('Aucune extrapolation')}</span>`:''}</div>`;
+  return `<div class="perf-card"><div class="plabel" title="${T('Flux réel sur la période')}">${label}</div><div class="pvalue">${value}</div><div class="pcompare ${cls}">${compare}</div>${partial?`<span class="ppartial">${partial} · ${T('Aucune extrapolation')}</span>`:''}</div>`;
 }
 function totalMetricCardHtml(prefix,total,withRevenue){
   const label=prefix==='Streams'?T('Streams total'):T('Followers total');
