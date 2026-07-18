@@ -435,19 +435,21 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 /* ---------- Calendar ---------- */
 .cal-nav{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 14px}
 .cal-controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:center;gap:13px;margin:0 0 12px}
-.cal-controls .cal-viewtoggle{grid-column:1;justify-self:start}
+.cal-controls .cal-viewtoggle{grid-column:1;justify-self:center}
 .cal-controls .cal-center{grid-column:2 / 4;justify-self:center}
-.cal-controls .cal-navright{grid-column:4;justify-self:end}
+.cal-controls .cal-navright{grid-column:4;justify-self:center}
 .cal-center{display:flex;align-items:center;gap:14px}
 .cal-navright{display:flex;align-items:center;flex:none}
-.cal-shell{display:flex;gap:18px;align-items:stretch}
-.cal-body{flex:1;min-width:0}
-.cal-legend-v{flex:none;align-self:center;display:flex;flex-direction:column;gap:8px;padding-top:0;font-size:13px;font-weight:600;color:var(--muted);min-width:150px}
+.cal-shell{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr);column-gap:18px;align-items:stretch}
+.cal-body{display:contents}
+.cal-shell .cal-controls{grid-column:1;grid-row:1}
+.cal-shell .cal,.cal-shell .year-cal{grid-column:1;grid-row:2}
+.cal-legend-v{grid-column:2;grid-row:2;align-self:center;display:flex;flex-direction:column;gap:8px;padding-top:0;font-size:13px;font-weight:600;color:var(--muted);min-width:150px}
 .cal-legend-v button{display:flex;align-items:center;gap:10px;white-space:nowrap;color:var(--muted);padding:6px 8px;border-radius:9px;text-align:left;transition:background .14s,color .14s,opacity .14s}
 .cal-legend-v button:hover,.cal-legend-v button.on{background:rgba(150,163,214,.08);color:var(--text)}
 .cal-legend-v button.off{opacity:.38}
 .cal-legend-v i{display:inline-block;width:15px;height:15px;border-radius:5px;flex:none;box-shadow:0 0 10px var(--lgc,transparent)}
-@media(max-width:1000px){.cal-shell{flex-direction:column}.cal-legend-v{align-self:stretch;flex-direction:row;flex-wrap:wrap;gap:6px 10px;padding-top:0;min-width:0}}
+@media(max-width:1000px){.cal-shell{grid-template-columns:1fr;grid-template-rows:auto auto auto}.cal-shell .cal-controls{grid-column:1;grid-row:1}.cal-shell .cal,.cal-shell .year-cal{grid-column:1;grid-row:2}.cal-legend-v{grid-column:1;grid-row:3;align-self:stretch;flex-direction:row;flex-wrap:wrap;gap:6px 10px;padding-top:0;min-width:0;margin-top:10px}}
 .cal-month{font-family:'Sora';font-size:22px;font-weight:700;min-width:230px;text-align:center;letter-spacing:-.3px}
 .cal-nav .arrow{font-size:19px;padding:7px 17px;line-height:1}
 .cal{border:1px solid var(--border);border-radius:var(--r);overflow:hidden;background:rgba(15,18,30,.6)}
