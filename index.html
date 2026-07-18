@@ -146,8 +146,24 @@ select.ctl.c-char:hover{border-color:rgba(45,212,191,.7)}
 select.ctl.c-status{border-color:rgba(248,113,113,.4);background:rgba(248,113,113,.07)}
 select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 .xdd{position:relative;display:inline-flex}
-.xdd-btn{display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.xdd-btn{display:inline-flex;align-items:center;gap:8px;cursor:pointer;background:var(--panel);border:1.5px solid var(--border2);border-radius:16px;padding:10px 15px;font-size:13px;font-weight:600;color:var(--text);transition:all .15s}
+.xdd-btn:hover{border-color:rgba(139,124,246,.5)}
+.xdd-btn.c-genre{border-color:rgba(244,114,182,.4);background:rgba(244,114,182,.07)}
+.xdd-btn.c-genre:hover{border-color:rgba(244,114,182,.7)}
+.xdd-btn.c-sort{border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.07)}
+.xdd-btn.c-sort:hover{border-color:rgba(251,191,36,.7)}
+.xdd-btn.c-tier{border-color:rgba(167,139,250,.4);background:rgba(167,139,250,.07)}
+.xdd-btn.c-tier:hover{border-color:rgba(167,139,250,.7)}
+.xdd-btn.c-char{border-color:rgba(45,212,191,.4);background:rgba(45,212,191,.07)}
+.xdd-btn.c-char:hover{border-color:rgba(45,212,191,.7)}
+.xdd-btn.c-status{border-color:rgba(248,113,113,.4);background:rgba(248,113,113,.07)}
+.xdd-btn.c-status:hover{border-color:rgba(248,113,113,.7)}
+.xdd-btn.c-period{border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.07)}
+.xdd-btn.c-period:hover{border-color:rgba(74,222,128,.7)}
 .xdd-car{font-size:9px;opacity:.65;transition:transform .15s}
+.tipw{position:relative}
+.tipw:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 9px);left:50%;transform:translateX(-50%);background:#141828;border:1.5px solid var(--border2);border-radius:11px;padding:8px 11px;font-size:11px;font-weight:600;color:var(--text);white-space:normal;width:max-content;max-width:190px;line-height:1.5;box-shadow:0 14px 34px rgba(0,0,0,.55);z-index:95;pointer-events:none;text-align:center;letter-spacing:0}
+.tipw:hover::before{content:'';position:absolute;bottom:calc(100% + 3px);left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--border2);z-index:95;pointer-events:none}
 .xdd.open .xdd-car{transform:rotate(180deg)}
 .xdd-list{position:absolute;top:calc(100% + 7px);left:0;min-width:100%;max-height:320px;overflow-y:auto;
   background:#141828;border:1.5px solid var(--border2);border-radius:16px;padding:6px;z-index:80;
@@ -233,11 +249,11 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 #nav button.nsmall.active{opacity:1}
 #lang-btn{position:fixed;top:14px;right:18px;z-index:60;display:flex;align-items:center;gap:5px;padding:5px;border-radius:999px;border:1px solid var(--border);background:rgba(15,18,30,.88);backdrop-filter:blur(8px);cursor:pointer;user-select:none}
 #lang-btn:hover{border-color:rgba(139,124,246,.5)}
-#lang-btn .lg-slide{position:absolute;top:5px;left:5px;width:34px;height:25px;border-radius:999px;background:rgba(139,124,246,.28);border:1px solid rgba(139,124,246,.6);transition:transform .28s cubic-bezier(.4,0,.2,1);z-index:1}
-#lang-btn.fr .lg-slide{transform:translateX(37px)}
-#lang-btn .lg-opt{position:relative;z-index:2;width:34px;height:25px;display:grid;place-items:center;border-radius:999px;opacity:.4;filter:saturate(.5);transition:opacity .2s,filter .2s}
+#lang-btn .lg-slide{position:absolute;top:5px;left:5px;width:44px;height:31px;border-radius:999px;background:rgba(139,124,246,.28);border:1px solid rgba(139,124,246,.6);transition:transform .28s cubic-bezier(.4,0,.2,1);z-index:1}
+#lang-btn.fr .lg-slide{transform:translateX(47px)}
+#lang-btn .lg-opt{position:relative;z-index:2;width:44px;height:31px;display:grid;place-items:center;border-radius:999px;opacity:.4;filter:saturate(.5);transition:opacity .2s,filter .2s}
 #lang-btn .lg-opt.on{opacity:1;filter:none}
-#lang-btn img{width:20px;height:15px;border-radius:3px;box-shadow:0 0 0 1px rgba(255,255,255,.12)}
+#lang-btn img{width:28px;height:21px;border-radius:4px;box-shadow:0 0 0 1px rgba(255,255,255,.12)}
 .wl-star{position:absolute;right:9px;top:9px;z-index:5;background:rgba(5,6,10,.75);border:1px solid var(--border);border-radius:8px;color:#fbbf24;font-size:19px;width:27px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px)}
 .wl-star:hover{border-color:#fbbf2466}
 .wl-star.inline{position:static;width:26px;height:24px;font-size:13px;margin-left:4px}
@@ -399,11 +415,17 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 .kw-n.zero{color:var(--dim);background:rgba(150,163,214,.07)}
 
 /* ---------- Calendar ---------- */
-.cal-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin:2px 0 16px;position:relative}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 14px}
+.cal-center{display:flex;align-items:center;gap:14px}
+.cal-navright{display:flex;align-items:center;flex:none}
+.cal-shell{display:flex;gap:18px;align-items:flex-start}
+.cal-body{flex:1;min-width:0}
+.cal-legend-v{flex:none;display:flex;flex-direction:column;gap:10px;padding-top:56px;font-size:12px;color:var(--muted)}
+.cal-legend-v span{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.cal-legend-v i{display:inline-block;width:11px;height:11px;border-radius:4px;flex:none}
+@media(max-width:900px){.cal-shell{flex-direction:column}.cal-legend-v{flex-direction:row;flex-wrap:wrap;padding-top:0}}
 .cal-month{font-family:'Sora';font-size:22px;font-weight:700;min-width:230px;text-align:center;letter-spacing:-.3px}
 .cal-nav .arrow{font-size:19px;padding:7px 17px;line-height:1}
-.cal-left{position:absolute;left:0;display:flex;align-items:center;gap:8px}
-.cal-right{position:absolute;right:0;display:flex;align-items:center}
 .cal{border:1px solid var(--border);border-radius:var(--r);overflow:hidden;background:rgba(15,18,30,.6)}
 .cal-head{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border);background:rgba(21,25,42,.6)}
 .cal-head div{padding:9px 6px;font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--dim);font-weight:600;text-align:center}
@@ -1376,7 +1398,7 @@ function videosHTML(kind){
     '<div class="tb-right">'+xdd('c-sort',sortLabel,sortOpts)+
     '<div class="viewtoggle">'+
       '<button class="'+(st.mode==='grid'?'on':'')+'" onclick="VS.'+kind+'.mode=\'grid\';render()" title="Grid">'+ICONS.grid+'</button>'+
-      '<button class="'+(st.mode==='table'?'on':'')+'" onclick="VS.'+kind+'.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button></div>'+
+      '<button class="'+(st.mode==='table'?'on':'')+'" onclick="VS.'+kind+'.mode=\'table\';render()" title="List">'+ICONS.rows+'</button></div>'+
     '<div class="result-count"><b>'+fmtInt(rows.length)+'</b> videos</div></div>'+
   '</div>';
   h+='<div id="list-'+kind+'">'+listHTML(kind,rows)+'</div>';
@@ -1417,7 +1439,7 @@ function vcardHTML(kind,v,i){
       (v.durH!=null?'<span class="dur">'+fmtDur(v.durH)+'</span>':'')+'</div>'+
     '<div class="vbody">'+
       '<div class="vtitle">'+esc(v.title)+'</div>'+
-      '<div class="vmeta"><a href="'+esc(v.chUrl||'#')+'" target="_blank" onclick="event.stopPropagation()">'+esc(v.channel)+'</a><span class="subs">· '+fmtN(subsFor(v))+' subs</span></div>'+
+      '<div class="vmeta">'+vChanAva(v,17)+'<a href="'+esc(v.chUrl||'#')+'" target="_blank" onclick="event.stopPropagation()">'+esc(v.channel)+'</a><span class="subs">· '+fmtN(subsFor(v))+' subs</span></div>'+
       '<div class="vtags">'+gtag(v.genre,0,true)+'</div>'+
       '<div class="vstats">'+
         '<div class="vstat hl"><b>'+fmtN(v.vpm)+'</b><span>views/mo</span></div>'+
@@ -1457,7 +1479,7 @@ function openDrawer(kind,v){
     '<div class="dw-body">'+
       '<div class="dw-title"><a href="'+esc(v.url)+'" target="_blank">'+esc(v.title)+'</a></div>'+
       '<div class="dw-sub">'+gtag(v.genre,0,true)+
-        (v.chUrl?'<a class="tag ghost" href="'+esc(v.chUrl)+'" target="_blank">'+esc(v.channel)+' ↗</a>':ghosttag(v.channel))+
+        '<span class="tag ghost" style="gap:6px">'+vChanAva(v,18)+(v.chUrl?'<a href="'+esc(v.chUrl)+'" target="_blank" style="color:inherit">'+esc(v.channel)+' ↗</a>':esc(v.channel))+'</span>'+
         '<span class="tag ghost">'+fmtN(subsFor(v))+' subs</span>'+likeTag(v.vid)+'</div>'+
       '<div class="dw-stats">'+
         '<div class="dw-stat hl"><b>'+fmtN(v.vpm)+'</b><span>views/mo</span></div>'+
@@ -1612,20 +1634,21 @@ function recosHTML(){
   ];
   const statusLabel=RS.val==='x'?'✅ Validated':RS.val==='pending'?'⏳ Pending review':RS.val==='refused'?'❌ Refused':'🗂️ All status';
   const rsSortKeys=[['scoreAdj','⚡','Adjusted score'],['score','🎯','Score'],['conf','🔍','Confidence'],['n','🔢','N°']];
-  const sortOpts=rsSortKeys.map(s=>({label:s[1]+' Sort · '+s[2],sel:RS.sort===s[0],onclick:'RS.sort='+jsq(s[0])+';rerenderRecos()'}));
+  const sortOpts=rsSortKeys.map(s=>({label:s[1]+' '+s[2],sel:RS.sort===s[0],onclick:'RS.sort='+jsq(s[0])+';rerenderRecos()'}));
   const sortRow=rsSortKeys.find(s=>s[0]===RS.sort)||rsSortKeys[0];
-  const sortLabel=sortRow[1]+' Sort · '+sortRow[2];
+  const sortLabel=sortRow[1]+' '+sortRow[2];
   let h='<div class="toolbar">'+
     '<div class="search">'+ICONS.search+'<input placeholder="Search concepts, titles, niches…" value="'+esc(RS.q)+'" oninput="RS.q=this.value;RS.limit=80;rerenderRecos()"><kbd>/</kbd></div>'+
+    '<div class="tb-right">'+
     xdd('c-genre',genreLabel,genreOpts)+
     xdd('c-tier',potLabel,potOpts)+
     xdd('c-char',charLabel,charOpts)+
-    '<div class="tb-right">'+xdd('c-status',statusLabel,statusOpts)+
+    xdd('c-status',statusLabel,statusOpts)+
     xdd('c-sort',sortLabel,sortOpts)+
     '<div class="viewtoggle">'+
       '<button class="'+(RS.mode!=='table'?'on':'')+'" onclick="RS.mode=\'grid\';render()" title="Grid">'+ICONS.grid+'</button>'+
-      '<button class="'+(RS.mode==='table'?'on':'')+'" onclick="RS.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button></div>'+
-    '<div class="result-count"><b>'+fmtInt(rows.length)+'</b> concepts</div></div>'+
+      '<button class="'+(RS.mode==='table'?'on':'')+'" onclick="RS.mode=\'table\';render()" title="List">'+ICONS.rows+'</button></div>'+
+    '</div>'+
   '</div>';
   h+='<div id="reco-list">'+recoListHTML(rows)+'</div>';
   return h;
@@ -1756,7 +1779,7 @@ function roadmapHTML(){
   let rows=DATA.roadmap.filter(r=>r.date);
   rows.sort((a,b)=>a.date-b.date);
   const vt='<div class="viewtoggle">'+
-      '<button class="'+(RM.mode!=='cal'?'on':'')+'" onclick="RM.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button>'+
+      '<button class="'+(RM.mode!=='cal'?'on':'')+'" onclick="RM.mode=\'table\';render()" title="List">'+ICONS.rows+'</button>'+
       '<button class="'+(RM.mode==='cal'?'on':'')+'" onclick="RM.mode=\'cal\';render()" title="Calendar">'+ICONS.roadmap+'</button></div>';
   window._rm_rows=rows;
   if(RM.mode==='cal')return calHTML(rows,vt);
@@ -1833,10 +1856,10 @@ function calHTML(rows,vt){
   const base=RM.cal?new Date(RM.cal):new Date();
   const y=base.getFullYear(),m=base.getMonth();
   rows.forEach((r,ri)=>{r._ri=ri;});
-  const toggle='<div class="cal-left"><div class="cal-viewtoggle">'+
+  const toggle='<div class="cal-viewtoggle">'+
       '<button class="'+(RM.view!=='year'?'on':'')+'" onclick="calSetView(\'month\')">Month</button>'+
       '<button class="'+(RM.view==='year'?'on':'')+'" onclick="calSetView(\'year\')">Year</button>'+
-    '</div></div>';
+    '</div>';
   if(RM.view==='year')return yearCalHTML(rows,y,toggle,vt);
   const MFULL=['January','February','March','April','May','June','July','August','September','October','November','December'];
   const first=new Date(y,m,1);
@@ -1844,11 +1867,14 @@ function calHTML(rows,vt){
   const today=new Date();today.setHours(0,0,0,0);
   const key=d=>d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();
   const byDay={};rows.forEach(r=>{const k=key(new Date(r.date));(byDay[k]=byDay[k]||[]).push(r);});
-  let h='<div class="cal-nav">'+toggle+
-    '<button class="ctl-btn arrow" onclick="calShift(-1)" title="Previous month">‹</button>'+
+  const lg=[...new Set(rows.map(r=>r.genre).filter(Boolean))];
+  const legendV='<div class="cal-legend-v">'+lg.map(g=>'<span><i style="background:'+gcolor(g)+'"></i>'+esc(g)+'</span>').join('')+'</div>';
+  let h='<div class="cal-shell">'+legendV+'<div class="cal-body">'+
+    '<div class="cal-nav">'+toggle+
+    '<div class="cal-center"><button class="ctl-btn arrow" onclick="calShift(-1)" title="Previous month">‹</button>'+
     '<div class="cal-month">'+MFULL[m]+' '+y+'</div>'+
-    '<button class="ctl-btn arrow" onclick="calShift(1)" title="Next month">›</button>'+
-    '<div class="cal-right">'+(vt||'')+'</div></div>';
+    '<button class="ctl-btn arrow" onclick="calShift(1)" title="Next month">›</button></div>'+
+    '<div class="cal-navright">'+(vt||'')+'</div></div>';
   h+='<div class="cal"><div class="cal-head">'+['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(x=>'<div>'+x+'</div>').join('')+'</div><div class="cal-grid">';
   for(let i=0;i<42;i++){
     const d=new Date(start);d.setDate(start.getDate()+i);
@@ -1860,8 +1886,7 @@ function calHTML(rows,vt){
       '</div></div>';
   }
   h+='</div></div>';
-  const lg=[...new Set(rows.map(r=>r.genre).filter(Boolean))];
-  h+='<div class="cal-legend">'+lg.map(g=>'<span><i style="background:'+gcolor(g)+'"></i>'+esc(g)+'</span>').join('')+'</div>';
+  h+='</div></div>';
   return h;
 }
 function yearCalHTML(rows,y,toggle,vt){
@@ -1869,11 +1894,14 @@ function yearCalHTML(rows,y,toggle,vt){
   const today=new Date();today.setHours(0,0,0,0);
   const key=d=>d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();
   const byDay={};rows.forEach(r=>{const k=key(new Date(r.date));(byDay[k]=byDay[k]||[]).push(r);});
-  let h='<div class="cal-nav">'+toggle+
-    '<button class="ctl-btn arrow" onclick="calShift(-1)" title="Previous year">‹</button>'+
+  const lg=[...new Set(rows.map(r=>r.genre).filter(Boolean))];
+  const legendV='<div class="cal-legend-v">'+lg.map(g=>'<span><i style="background:'+gcolor(g)+'"></i>'+esc(g)+'</span>').join('')+'</div>';
+  let h='<div class="cal-shell">'+legendV+'<div class="cal-body">'+
+    '<div class="cal-nav">'+toggle+
+    '<div class="cal-center"><button class="ctl-btn arrow" onclick="calShift(-1)" title="Previous year">‹</button>'+
     '<div class="cal-month">'+y+'</div>'+
-    '<button class="ctl-btn arrow" onclick="calShift(1)" title="Next year">›</button>'+
-    '<div class="cal-right">'+(vt||'')+'</div></div>';
+    '<button class="ctl-btn arrow" onclick="calShift(1)" title="Next year">›</button></div>'+
+    '<div class="cal-navright">'+(vt||'')+'</div></div>';
   h+='<div class="year-cal">';
   for(let m=0;m<12;m++){
     const first=new Date(y,m,1);
@@ -1894,8 +1922,7 @@ function yearCalHTML(rows,y,toggle,vt){
     h+='</div></div>';
   }
   h+='</div>';
-  const lg=[...new Set(rows.map(r=>r.genre).filter(Boolean))];
-  h+='<div class="cal-legend">'+lg.map(g=>'<span><i style="background:'+gcolor(g)+'"></i>'+esc(g)+'</span>').join('')+'</div>';
+  h+='</div></div>';
   return h;
 }
 
@@ -2396,16 +2423,19 @@ function vsMed(v,med){
   if(v==null||med==null||!med)return 'var(--text)';
   return v>=med*1.15?'#34d399':(v<=med*0.85?'#f87171':'#fbbf24');
 }
-function statTip(val,med){
+function fmtPct(v){return v==null?'—':(v>=10?Math.round(v):v.toFixed(1))+'%';}
+function tipText(val,med,fmt){
   if(val==null||med==null||!med)return '';
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
+  const f=fmt||fmtN;
   const diff=Math.round((val/med-1)*100);
-  const lbl=fr?'Médiane chaîne : ':'Channel median: ';
-  const rel=diff>0?(fr?'+'+diff+'% au-dessus de la médiane':'+'+diff+'% above median'):diff<0?(fr?diff+'% sous la médiane':diff+'% below median'):(fr?'dans la médiane':'at median');
-  return ' title="'+lbl+fmtN(med)+' · '+rel+'"';
+  const rel=diff>0?('+'+diff+'% '+(fr?'au-dessus de la médiane chaîne':'above channel median')):diff<0?(diff+'% '+(fr?'sous la médiane chaîne':'below channel median')):(fr?'dans la médiane chaîne':'at channel median');
+  return (fr?'Médiane chaîne : ':'Channel median: ')+f(med)+'  ·  '+rel;
 }
-function anaStat(val,med,lbl,hl,extraAttr){
-  return '<div class="vstat'+(hl?' hl':'')+'"><b style="color:'+vsMed(val,med)+'"'+statTip(val,med)+(extraAttr||'')+'>'+fmtN(val)+'</b><span>'+lbl+'</span></div>';
+function anaStat(val,med,lbl,hl,fmt){
+  const f=fmt||fmtN;
+  const tip=tipText(val,med,f);
+  return '<div class="vstat'+(hl?' hl':'')+(tip?' tipw':'')+'"'+(tip?' data-tip="'+esc(tip)+'"':'')+'><b style="color:'+vsMed(val,med)+'">'+f(val)+'</b><span>'+lbl+'</span></div>';
 }
 function anaCardHTML(o,i){
   const cmt=(window.CMT&&window.CMT[o.vid]!=null)?window.CMT[o.vid]:null;
@@ -2418,9 +2448,9 @@ function anaCardHTML(o,i){
       '<div class="vstats">'+
         anaStat(o.views,o.medViews,'views',true)+
         anaStat(o.vpm,o.chMed,'views/mo')+
-        '<div class="vstat"><b data-alikes="'+o.vid+'">…</b><span>likes</span></div>'+
+        '<div class="vstat" data-alikesw="'+o.vid+'"><b data-alikes="'+o.vid+'">…</b><span>likes</span></div>'+
         anaStat(cmt,o.medCmt,'comments')+
-        (o.st&&o.st.awtMs!=null?'<div class="vstat"><b style="color:'+vsMed(o.st.awtMs,o.awtMed)+'"'+statTip(o.st.awtMs,o.awtMed).replace(fmtN(o.awtMed),fmtWatch(o.awtMed))+'>'+fmtWatch(o.st.awtMs)+'</b><span>avg view</span></div>':'')+
+        (o.st&&o.st.awp!=null?anaStat(o.st.awp,o.awpMed,'avg view',false,fmtPct):'')+
       '</div></div></div>';
 }
 function fillAnaLikes(){
@@ -2437,8 +2467,9 @@ function fillAnaLikes(){
       if(n==null){el.textContent='—';continue;}
       el.textContent=fmtN(n);
       el.style.color=vsMed(n,med);
-      const tip=statTip(n,med);
-      if(tip)el.setAttribute('title',tip.slice(8,-1).replace(/&quot;/g,'"'));
+      const tip=tipText(n,med,fmtN);
+      const wrap=el.closest('[data-alikesw]');
+      if(tip&&wrap){wrap.setAttribute('data-tip',tip);wrap.classList.add('tipw');}
     }
   }
 }
@@ -2448,13 +2479,13 @@ function anaHTML(){
   const sf=AS.sort;
   rows.sort((a,b)=>sf==='date'?(b.pub-a.pub):sf==='pctAsc'?((a.pct==null?101:a.pct)-(b.pct==null?101:b.pct)):sf==='pctDesc'?((b.pct==null?-1:b.pct)-(a.pct==null?-1:a.pct)):(b.views||0)-(a.views||0));
   let h='';
-  const asSortKeys=[['date','🆕','Newest first'],['pctAsc','📉','Worst percentile first'],['pctDesc','📈','Best percentile first'],['views','👀','Most views']];
-  const asSortOpts=asSortKeys.map(s=>({label:s[1]+' Sort · '+s[2],sel:sf===s[0],onclick:'AS.sort='+jsq(s[0])+';render()'}));
+  const asSortKeys=[['date','🆕','Newest first'],['pctAsc','📉','Worst performing'],['pctDesc','📈','Best performing'],['views','👀','Most views']];
+  const asSortOpts=asSortKeys.map(s=>({label:s[1]+' '+s[2],sel:sf===s[0],onclick:'AS.sort='+jsq(s[0])+';render()'}));
   const asSortRow=asSortKeys.find(s=>s[0]===sf)||asSortKeys[0];
-  h+='<div class="toolbar">'+xdd('c-sort',asSortRow[1]+' Sort · '+asSortRow[2],asSortOpts)+
+  h+='<div class="toolbar">'+xdd('c-sort',asSortRow[1]+' '+asSortRow[2],asSortOpts)+
     '<div class="tb-right"><div class="viewtoggle">'+
       '<button class="'+(AS.mode!=='table'?'on':'')+'" onclick="AS.mode=\'grid\';render()" title="Grid">'+ICONS.grid+'</button>'+
-      '<button class="'+(AS.mode==='table'?'on':'')+'" onclick="AS.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button></div></div></div>';
+      '<button class="'+(AS.mode==='table'?'on':'')+'" onclick="AS.mode=\'table\';render()" title="List">'+ICONS.rows+'</button></div></div></div>';
   window._page_ana=rows;
   if(AS.mode==='table'){
     h+=rows.map((o,i)=>{
@@ -2568,7 +2599,7 @@ function livesHTML(){
     '<div class="tb-right">'+xdd('c-sort',lsSortRow[1]+' Sort · '+lsSortRow[2],lsSortOpts)+
     '<div class="viewtoggle">'+
       '<button class="'+(LS.mode==='grid'?'on':'')+'" onclick="LS.mode=\'grid\';render()" title="Grid">'+ICONS.grid+'</button>'+
-      '<button class="'+(LS.mode==='table'?'on':'')+'" onclick="LS.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button></div>'+
+      '<button class="'+(LS.mode==='table'?'on':'')+'" onclick="LS.mode=\'table\';render()" title="List">'+ICONS.rows+'</button></div>'+
     '<div class="result-count"><b>'+fmtInt(rows.length)+'</b> streams</div></div>'+
   '</div>';
   h+='<div id="live-list">'+liveListHTML(rows)+'</div>';
@@ -2583,7 +2614,7 @@ function liveCardHTML(v,i){
       '<span class="like-flag" style="display:none" data-likes="'+v.vid+'"></span>'+'</div>'+
     '<div class="vbody">'+
       '<div class="vtitle">'+esc(v.title)+'</div>'+
-      '<div class="vmeta"><a href="'+esc(v.url)+'" target="_blank" onclick="event.stopPropagation()">'+esc(v.channel)+'</a>'+(chSubs!=null?'<span class="subs">· '+fmtN(chSubs)+' subs</span>':'')+'</div>'+
+      '<div class="vmeta">'+vChanAva(v,17)+'<a href="'+esc(v.url)+'" target="_blank" onclick="event.stopPropagation()">'+esc(v.channel)+'</a>'+(chSubs!=null?'<span class="subs">· '+fmtN(chSubs)+' subs</span>':'')+'</div>'+
       '<div class="vstats">'+
         '<div class="vstat hl"><b>'+fmtN(peak24)+'</b><span>peak 24h</span></div>'+
         '<div class="vstat"><b>'+fmtN(peakAll)+'</b><span>peak all-time</span></div>'+
@@ -2630,7 +2661,7 @@ function openLiveDrawer(v){
     '<div class="dw-embed"><iframe src="https://www.youtube.com/embed/'+v.vid+'?rel=0" title="YouTube player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>'+
     '<div class="dw-body">'+
       '<div class="dw-title"><a href="'+esc(v.url)+'" target="_blank">'+esc(v.title)+'</a></div>'+
-      '<div class="dw-sub">'+(isOurs(v.channel)?gtag('Lofi Girl'):ghosttag(v.channel))+'<span class="tag ghost">🔴 live</span>'+likeTag(v.vid)+'</div>'+
+      '<div class="dw-sub"><span class="tag ghost" style="gap:6px">'+vChanAva(v,18)+esc(v.channel)+'</span><span class="tag ghost">🔴 live</span>'+likeTag(v.vid)+'</div>'+
       '<div class="dw-stats">'+
         '<div class="dw-stat hl"><b>'+fmtN(liveNow(v.vid))+'</b><span>watching now</span></div>'+
         '<div class="dw-stat"><b>'+fmtN(livePeak(v.vid))+'</b><span>peak measured</span></div>'+
@@ -2662,6 +2693,10 @@ function avaFallback(img,handle,step){
     return;
   }
   img.remove();
+}
+function vChanAva(v,size){
+  const c=(typeof chanFor==='function'?chanFor(v):null)||{name:v.channel,url:v.chUrl||v.url||'',niche:''};
+  return chAva(c,size);
 }
 function chAva(c,size){
   const col=gcolor(c.niche);
@@ -2704,7 +2739,7 @@ function chanHTML(){
     '<div class="tb-right">'+xdd('c-sort',csSortRow[1]+' Sort · '+csSortRow[2],csSortOpts)+
     '<div class="viewtoggle">'+
       '<button class="'+(CS.mode==='grid'?'on':'')+'" onclick="CS.mode=\'grid\';render()" title="Grid">'+ICONS.grid+'</button>'+
-      '<button class="'+(CS.mode!=='grid'?'on':'')+'" onclick="CS.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button></div>'+
+      '<button class="'+(CS.mode!=='grid'?'on':'')+'" onclick="CS.mode=\'table\';render()" title="List">'+ICONS.rows+'</button></div>'+
     '<div class="result-count"><b>'+fmtInt(rows.length)+'</b> channels</div></div>'+
   '</div>';
   h+='<div id="chan-list">'+chanListHTML(rows)+'</div>';
@@ -2883,7 +2918,7 @@ function watchHTML(){
   let hh='<div class="toolbar"><div class="seg">'+tabs.map(t=>'<button class="'+(WLS.tab===t[0]?'on':'')+'" onclick="WLS.tab=\''+t[0]+'\';render()">'+t[1]+'<span class="cnt">'+t[2]+'</span></button>').join('')+'</div>'+
     '<div class="tb-right"><div class="viewtoggle">'+
       '<button class="'+(WLS.mode!=='table'?'on':'')+'" onclick="WLS.mode=\'grid\';render()" title="Grid">'+ICONS.grid+'</button>'+
-      '<button class="'+(WLS.mode==='table'?'on':'')+'" onclick="WLS.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button></div></div>'+
+      '<button class="'+(WLS.mode==='table'?'on':'')+'" onclick="WLS.mode=\'table\';render()" title="List">'+ICONS.rows+'</button></div></div>'+
   '</div>';
   if(WLS.tab==='v'){
     const rows=mixRows().filter(x=>x.vid&&w.v.includes(x.vid));
