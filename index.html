@@ -167,11 +167,12 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 .xdd-btn.c-period:hover{border-color:rgba(74,222,128,.7)}
 .xdd-car{font-size:9px;opacity:.65;transition:transform .15s}
 .tipw{position:relative}
-.metric-tip{display:none;position:absolute;bottom:calc(100% + 9px);left:50%;transform:translateX(-50%);background:#141828;border:1.5px solid var(--tipc,var(--border2));border-radius:11px;padding:8px 11px;font-size:11px;font-weight:600;color:var(--text);white-space:normal;width:max-content;max-width:210px;line-height:1.5;box-shadow:0 14px 34px rgba(0,0,0,.55);z-index:95;pointer-events:none;text-align:center;letter-spacing:0}
-.metric-tip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--tipc,var(--border2))}
+.metric-tip{display:none;position:absolute;bottom:calc(100% + 9px);left:50%;transform:translateX(calc(-50% + var(--tip-shift,0px)));background:#141828;border:1.5px solid var(--tipc,var(--border2));border-radius:11px;padding:8px 11px;font-size:11px;font-weight:600;color:var(--text);white-space:normal;width:max-content;max-width:210px;line-height:1.5;box-shadow:0 14px 34px rgba(0,0,0,.55);z-index:95;pointer-events:none;text-align:center;letter-spacing:0}
+.metric-tip::after{content:'';position:absolute;top:100%;left:calc(50% - var(--tip-shift,0px));transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--tipc,var(--border2))}
 .metric-tip b{font:inherit;font-weight:800;color:var(--tipc,var(--text))}
 .tipw:hover .metric-tip{display:block}
 .vcard.ana-c{overflow:visible}
+.vcard.ana-c:hover{position:relative;z-index:10}
 .vcard.ana-c .thumbwrap{border-radius:var(--r) var(--r) 0 0}
 .xdd.open .xdd-car{transform:rotate(180deg)}
 .xdd-list{position:absolute;top:calc(100% + 7px);left:0;min-width:100%;max-height:320px;overflow-y:auto;
@@ -398,7 +399,7 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 .optim-legend .keep i{background:#fbbf24}.optim-legend .add i{background:#34d399}.optim-legend .remove i{background:#f87171}
 .optim-diff{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0 2px}
 .optim-chip{display:inline-flex;border-radius:7px;padding:3px 7px;font-size:11px;line-height:1.35;border:1px solid transparent}
-.optim-keep{background:rgba(251,191,36,.12);color:#fbbf24;border-color:rgba(251,191,36,.35)}
+.optim-keep{background:rgba(150,163,214,.08);color:var(--text);border-color:rgba(150,163,214,.2)}
 .optim-add{background:rgba(52,211,153,.13);color:#34d399;border-color:rgba(52,211,153,.38)}
 .optim-remove{background:rgba(248,113,113,.12);color:#f87171;border-color:rgba(248,113,113,.36);text-decoration:line-through;text-decoration-thickness:1px}
 .optim-text{white-space:pre-wrap;line-height:1.65;margin:6px 0 2px;font-size:12px;color:var(--text)}
@@ -440,9 +441,9 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 /* ---------- Calendar ---------- */
 .cal-nav{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 14px}
 .cal-controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:center;gap:13px;margin:0 0 12px}
-.cal-controls .cal-viewtoggle{grid-column:1;justify-self:center}
+.cal-controls .cal-viewtoggle{grid-column:1;justify-self:start}
 .cal-controls .cal-center{grid-column:2 / 4;justify-self:center}
-.cal-controls .cal-navright{grid-column:4;justify-self:center}
+.cal-controls .cal-navright{grid-column:4;justify-self:end}
 .cal-center{display:flex;align-items:center;gap:14px}
 .cal-navright{display:flex;align-items:center;flex:none}
 .cal-shell{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr);column-gap:18px;align-items:stretch}
@@ -482,7 +483,7 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 .year-month-h{font-family:'Sora';font-size:clamp(10px,1.35vh,14px);font-weight:700;margin-bottom:5px;text-align:center}
 .year-grid{display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:auto repeat(6,minmax(0,1fr));gap:3px;min-width:0;min-height:0;flex:1}
 .year-dow{font-size:clamp(7px,1vh,10px);color:var(--dim);text-align:center;font-weight:700;opacity:.7;margin-bottom:1px}
-.year-cell{display:flex;align-items:center;justify-content:center;font-size:clamp(8px,1.2vh,12px);color:var(--muted);border-radius:50%;position:relative;min-width:0;min-height:0}
+.year-cell{display:flex;align-items:center;justify-content:center;font-size:clamp(8px,1.2vh,12px);color:var(--muted);border-radius:50%;position:relative;min-width:0;min-height:0;height:100%;width:auto;max-width:100%;aspect-ratio:1;justify-self:center;align-self:center}
 .year-cell.out{opacity:.2}
 .year-cell.has-event{cursor:pointer;color:#fff;font-weight:800;font-size:clamp(9px,1.3vh,13px);text-shadow:0 1px 3px rgba(0,0,0,.6);transition:transform .12s}
 .year-cell.has-event:hover{transform:scale(1.25);z-index:3}
@@ -1496,8 +1497,8 @@ function videosHTML(kind){
   }
   const genres=[...new Set(all.map(v=>v.genre).filter(Boolean))].sort((a,b)=>all.filter(v=>v.genre===b).length-all.filter(v=>v.genre===a).length);
   const sortKeys=kind==='news'?['added','vpm','views','newest','dur']:(kind==='mix'?['vpm','views','newest','oldest','dur','subs','added']:['vpm','views','newest','oldest','dur','subs']);
-  const genreOpts=[{label:'🎵 All genres',sel:!st.genre,onclick:'VS.'+kind+'.genre=\'\';VS.'+kind+'.limit=60;rerenderList('+jsq(kind)+')'}].concat(
-    genres.map(g=>({label:genreEmoji(g)+' '+esc(g)+' · '+all.filter(v=>v.genre===g).length,sel:st.genre===g,onclick:'VS.'+kind+'.genre='+jsq(g)+';VS.'+kind+'.limit=60;rerenderList('+jsq(kind)+')'}))
+  const genreOpts=[{label:'🎵 All genres',sel:!st.genre,onclick:'VS.'+kind+'.genre=\'\';VS.'+kind+'.limit=60;render()'}].concat(
+    genres.map(g=>({label:genreEmoji(g)+' '+esc(g)+' · '+all.filter(v=>v.genre===g).length,sel:st.genre===g,onclick:'VS.'+kind+'.genre='+jsq(g)+';VS.'+kind+'.limit=60;render()'}))
   );
   const genreLabel=st.genre?(genreEmoji(st.genre)+' '+esc(st.genre)):'🎵 All genres';
   const sortOpts=sortKeys.map(k=>({label:(SORTS[k].emoji||'⚡')+' Sort · '+SORTS[k].lbl,sel:st.sort===k,onclick:'VS.'+kind+'.sort='+jsq(k)+';rerenderList('+jsq(kind)+')'}));
@@ -2544,12 +2545,11 @@ function optimHTML(o,p){
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
   let h='<div class="dw-sec" style="border:1px solid rgba(139,124,246,.35);border-radius:12px;padding:14px;background:rgba(139,124,246,.06)">';
   h+='<div class="k">🛠️ Optimization proposal (ready to paste into Studio)</div><div class="v">';
-  h+='<div class="optim-legend"><span class="keep"><i></i>Current & kept</span><span class="add"><i></i>Added</span><span class="remove"><i></i>Removed · excluded from copy</span></div>';
   h+='<b style="color:var(--acc2)">Suggested keywords ('+p.tags.length+' tags, '+p.tagsStr.length+'/500 characters)</b>:'+
     '<div class="optim-diff">'+p.kept.map(t=>optimChipHTML(t,'keep')).join('')+p.added.map(t=>optimChipHTML(t,'add')).join('')+p.removed.map(t=>optimChipHTML(t,'remove')).join('')+'</div>'+
     '<button class="copybtn" onclick="copyOptim(\''+o.vid+'\',\'tags\',this)">⧉ Copy keywords</button>';
-  if(p.titleSug)h+='<br><br><b style="color:var(--acc2)">Suggested title</b>:'+optimTextDiffHTML(o.title,p.titleSug)+'<button class="copybtn" onclick="copyOptim(\''+o.vid+'\',\'title\',this)">⧉ Copy title</button>';
-  if(p.descSug)h+='<br><br><b style="color:var(--acc2)">Suggested description</b>:'+optimTextDiffHTML(p.currentHook,p.descSug)+'<button class="copybtn" onclick="copyOptim(\''+o.vid+'\',\'desc\',this)">⧉ Copy description</button>';
+  if(p.titleSug)h+='<br><br><b style="color:var(--acc2)">Suggested title</b>:<div class="optim-text">'+esc(p.titleSug)+'</div><button class="copybtn" onclick="copyOptim(\''+o.vid+'\',\'title\',this)">⧉ Copy title</button>';
+  if(p.descSug)h+='<br><br><b style="color:var(--acc2)">Suggested description</b>:<div class="optim-text">'+esc(p.descSug)+'</div><button class="copybtn" onclick="copyOptim(\''+o.vid+'\',\'desc\',this)">⧉ Copy description</button>';
   if(p.needTs)h+='<br><br><b style="color:var(--amber)">⏱ Add the tracklist with timestamps</b> — generates “key moments” in Google/YouTube search.';
   h+='</div></div>';
   if(fr)h=frz(h);
@@ -2599,6 +2599,19 @@ function tipHTML(val,med,fmt){
     diff<0?(fr?' sous la médiane chaîne':' below channel median'):(fr?' dans la médiane chaîne':' at channel median');
   return '<span class="metric-tip" style="--tipc:'+col+'">'+(fr?'Médiane chaîne : ':'Channel median: ')+esc(f(med))+' · <b>'+pct+'</b>'+rel+'</span>';
 }
+document.addEventListener('pointerover',e=>{
+  const wrap=e.target.closest&&e.target.closest('.vcard.ana-c .tipw');
+  if(!wrap||wrap.contains(e.relatedTarget))return;
+  const tip=wrap.querySelector('.metric-tip');if(!tip)return;
+  tip.style.setProperty('--tip-shift','0px');
+  requestAnimationFrame(()=>{
+    if(!tip.isConnected)return;
+    const r=tip.getBoundingClientRect(),main=document.getElementById('main');
+    const left=(main?main.getBoundingClientRect().left:0)+8,right=(document.documentElement.clientWidth||window.innerWidth)-8;
+    const shift=r.left<left?left-r.left:r.right>right?right-r.right:0;
+    tip.style.setProperty('--tip-shift',shift+'px');
+  });
+});
 function anaStat(val,med,lbl,hl,fmt){
   const f=fmt||fmtN;
   const tip=tipText(val,med,f);
