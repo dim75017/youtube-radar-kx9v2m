@@ -231,6 +231,30 @@ button,input,select{max-width:100%}
 .csel-opt{padding:8.5px 12px;border-radius:9px;font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap}
 .csel-opt:hover{background:rgba(74,222,128,.12)}
 .csel-opt.on{color:#052e12;background:linear-gradient(90deg,#1ed760,#4ade80)}
+.msel{position:relative;display:inline-flex;min-width:170px}
+.msel-btn{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;
+  background:var(--bg2);border:1.5px solid var(--border2);border-radius:13px;padding:9.5px 14px;
+  font-family:inherit;font-size:12.5px;font-weight:600;color:var(--text);outline:none;
+  height:38px;box-sizing:border-box;transition:all .14s;cursor:pointer;white-space:nowrap;
+}
+.msel-btn:hover{border-color:#4ade80}
+.msel.open .msel-btn{border-color:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.14)}
+.msel-btn .msel-label{overflow:hidden;text-overflow:ellipsis}
+.msel-btn .msel-chevron{font-size:10px;color:var(--dim);flex:none;transition:transform .15s}
+.msel.open .msel-chevron{transform:rotate(180deg)}
+.msel-list{
+  position:absolute;top:calc(100% + 6px);left:0;min-width:260px;max-width:min(360px,calc(100vw - 32px));
+  max-height:360px;overflow-y:auto;background:var(--panel);border:1.5px solid var(--border2);
+  border-radius:13px;box-shadow:0 16px 40px rgba(0,0,0,.5);padding:7px;z-index:220;display:none;
+}
+.msel.open .msel-list{display:block}
+.msel-opt{display:flex;align-items:flex-start;gap:9px;padding:8px 9px;border-radius:9px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;line-height:1.35}
+.msel-opt:hover{background:rgba(74,222,128,.10)}
+.msel-opt input{appearance:none;-webkit-appearance:none;width:17px;height:17px;flex:none;margin:0;border:1.5px solid var(--border2);border-radius:5px;background:var(--bg2);position:relative}
+.msel-opt input:checked{border-color:#4ade80;background:linear-gradient(135deg,#1ed760,#4ade80)}
+.msel-opt input:checked::after{content:'✓';position:absolute;inset:-2px 0 0;text-align:center;color:#052e12;font-size:13px;font-weight:900}
+.msel-foot{border-top:1px solid var(--border);margin-top:4px;padding:8px 9px 3px;color:var(--dim);font-size:9.5px;font-weight:600}
 .chip{padding:7.5px 13px;border-radius:20px;border:1px solid var(--border);font-size:12px;font-weight:600;color:var(--muted);transition:all .14s}
 .chip:hover{color:var(--text);border-color:var(--border2)}
 .chip.on{color:#052e12;background:linear-gradient(90deg,#1ed760,#4ade80);border-color:transparent}
@@ -300,6 +324,12 @@ td.covtd{width:82px;padding:6px 2px 6px 10px}
 .badge.seg-occ{color:#60a5fa;background:rgba(37,99,235,.18);box-shadow:inset 0 0 0 1px rgba(59,130,246,.45)}
 .badge.seg-ext{color:#fb7185;background:rgba(251,113,133,.12);box-shadow:inset 0 0 0 1px rgba(251,113,133,.32)}
 .badge.undet{color:var(--dim);background:rgba(93,100,133,.16);box-shadow:inset 0 0 0 1px rgba(93,100,133,.35)}
+.badge.ai-low{color:#4ade80;background:rgba(74,222,128,.10);box-shadow:inset 0 0 0 1px rgba(74,222,128,.25)}
+.badge.ai-check{color:#fbbf24;background:rgba(251,191,36,.10);box-shadow:inset 0 0 0 1px rgba(251,191,36,.24)}
+.badge.ai-high{color:#fb7185;background:rgba(251,113,133,.11);box-shadow:inset 0 0 0 1px rgba(251,113,133,.3)}
+.genre-main{font-weight:700;color:var(--text);line-height:1.3}
+.genre-sub{font-size:9.5px;color:var(--dim);line-height:1.35;margin-top:3px}
+.genre-cell{min-width:125px;max-width:190px}
 td.selc,th.selc{width:44px;padding-left:14px}
 .ck{appearance:none;-webkit-appearance:none;width:26px;height:26px;border-radius:7px;border:1.5px solid var(--border2);background:rgba(150,214,170,.05);cursor:pointer;position:relative;transition:transform .12s ease,border-color .13s,background .13s;vertical-align:middle;flex:none}
 .ck:hover{border-color:#4ade80}
@@ -518,11 +548,14 @@ td.selc,th.selc{width:44px;padding-left:14px}
   .freshbar{padding:12px;gap:8px}
   .freshbar .fitem{min-width:0;align-items:flex-start;overflow-wrap:anywhere}
   .toolbar{gap:8px}
-  .toolbar .search-wrap,.toolbar .csel-wrap,.viewtoggle{width:100%;margin-left:0}
+  .toolbar .search-wrap,.toolbar .csel-wrap,.toolbar .msel,.viewtoggle{width:100%;margin-left:0}
   .csel-wrap{display:flex;min-width:0}
   .csel-btn{height:auto;min-height:40px;white-space:normal;text-align:left}
   .csel-list{width:100%;min-width:0;max-width:100%}
   .csel-opt{white-space:normal;overflow-wrap:anywhere}
+  .msel{display:flex;min-width:0}
+  .msel-btn{height:auto;min-height:40px;white-space:normal;text-align:left}
+  .msel-list{width:100%;min-width:0;max-width:100%}
   .viewtoggle button{flex:1 1 0;min-width:0;padding:0 7px}
   .result-count{width:100%;text-align:center}
   .offer .ogrid{grid-template-columns:1fr!important}
@@ -801,11 +834,25 @@ const A = D.artists, R = D.rows;
      playlists:{spotifyId:{history:[[date,followers]],placements:[],last_variations:[]}}
    }
    D.hist et PL.hist restent compatibles. Sans points quotidiens suffisants, l'UI affiche —. */
+/* Le même export peut progressivement fournir `classification` sur les entrées tracks
+   et artists : genre, subgenres, genre_confidence, genre_source, instrumental,
+   instrumental_confidence, ai_risk, ai_risk_confidence et ai_risk_source.
+   Le dashboard ne déduit jamais ces champs du catalogue et ne touche pas au staging. */
 const PERF = window.SPOTIFY_PERFORMANCE || {};
 const PERF_TRACKS = PERF.tracks || {};
 const PERF_ARTISTS = PERF.artists || {};
 const PERF_PLAYLISTS = PERF.playlists || {};
 const SC = window.SPOTIFY_SOUNDCHARTS || null;
+const GENRE_TAXONOMY = Object.freeze({
+  version:'2026-07-v1',
+  genres:Object.freeze([
+    'Lofi hip-hop','Guitare / acoustic / fingerstyle','Halloween Lofi',
+    'Nature / soundscapes','Christmas Lofi','Jazz / jazzhop','Classique',
+    'Ambient','Piano','Dark ambient','Phonk instrumental','DnB instrumental',
+    'Autre / à définir'
+  ])
+});
+const UNCLASSIFIED_GENRE = 'À classifier';
 function perfHistory(entry){
   if (Array.isArray(entry)) return entry;
   return entry && Array.isArray(entry.history) ? entry.history : [];
@@ -988,6 +1035,69 @@ function perfGridHtml(perf,prefix,total,withRevenue){
 function trackPerfEntry(r){ return PERF_TRACKS[r[6]] || {}; }
 function artistPerfEntry(g){ return PERF_ARTISTS[g.id] || PERF_ARTISTS[g.name] || {}; }
 function playlistPerfEntry(r){ return PERF_PLAYLISTS[r[0]] || {}; }
+function confidenceText(value){
+  if(value==null || value==='') return '—';
+  if(typeof value==='string' && !/^\s*\d+(?:[.,]\d+)?\s*%?\s*$/.test(value)) return esc(value);
+  const n=Number(String(value).replace(',','.').replace('%','').trim());
+  if(!Number.isFinite(n)) return '—';
+  const pct=n<=1?n*100:n;
+  return Math.round(pct)+'%';
+}
+function classificationFromEntry(entry){
+  const root=entry&&typeof entry==='object'?entry:{};
+  const c=root.classification&&typeof root.classification==='object'?root.classification:root;
+  const rawGenre=typeof c.genre==='string'?c.genre.trim():'';
+  const subgenres=Array.isArray(c.subgenres)?c.subgenres.filter(x=>typeof x==='string'&&x.trim()).map(x=>x.trim()):[];
+  let instrumental='À vérifier';
+  if(c.instrumental===true || String(c.instrumental).toLowerCase()==='instrumental') instrumental='Instrumental';
+  else if(c.instrumental===false || ['non instrumental','vocal','vocals'].includes(String(c.instrumental).toLowerCase())) instrumental='Non instrumental';
+  const riskRaw=String(c.ai_risk==null?'':c.ai_risk).trim().toLowerCase();
+  const aiRisk=['faible','low'].includes(riskRaw)?'faible':(['élevé','eleve','high'].includes(riskRaw)?'élevé':'à vérifier');
+  return {
+    genre:rawGenre||UNCLASSIFIED_GENRE,
+    subgenres,
+    genreConfidence:c.genre_confidence,
+    genreSource:c.genre_source||c.source||null,
+    instrumental,
+    instrumentalConfidence:c.instrumental_confidence,
+    aiRisk,
+    aiRiskConfidence:c.ai_risk_confidence,
+    aiRiskSource:c.ai_risk_source||null
+  };
+}
+function trackClassification(r){ return classificationFromEntry(trackPerfEntry(r)); }
+function artistClassification(g){ return classificationFromEntry(artistPerfEntry(g)); }
+function riskPass(c,mode){
+  if(mode==='high_only') return c.aiRisk==='élevé';
+  if(mode==='hide_high') return c.aiRisk!=='élevé';
+  return true;
+}
+function aiRiskBadgeHtml(c){
+  const cls=c.aiRisk==='faible'?'ai-low':(c.aiRisk==='élevé'?'ai-high':'ai-check');
+  const label=c.aiRisk==='à vérifier'?'À vérifier':c.aiRisk.charAt(0).toUpperCase()+c.aiRisk.slice(1);
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+function classificationCellHtml(c){
+  const conf=confidenceText(c.instrumentalConfidence);
+  return `<div class="genre-cell"><div class="genre-main">${esc(c.genre)}</div><div class="genre-sub">${esc(c.instrumental)}${conf==='—'?'':' · '+conf}</div></div>`;
+}
+function classificationAnalyticsHtml(c){
+  const sub=c.subgenres.length?c.subgenres.map(esc).join(' · '):'—';
+  const instConf=confidenceText(c.instrumentalConfidence);
+  const riskConf=confidenceText(c.aiRiskConfidence);
+  return `<div class="analytics-section classification-analytics">
+    <h4>Classification <span class="analytics-note">Taxonomie ${esc(GENRE_TAXONOMY.version)} · raccord export progressif</span></h4>
+    <div class="analytics-kpis">
+      <div class="analytics-kpi"><div class="l">Genre principal</div><div class="v">${esc(c.genre)}</div></div>
+      <div class="analytics-kpi"><div class="l">Sous-genres</div><div class="v">${sub}</div></div>
+      <div class="analytics-kpi"><div class="l">Confiance genre</div><div class="v">${confidenceText(c.genreConfidence)}</div></div>
+      <div class="analytics-kpi"><div class="l">Source genre</div><div class="v">${c.genreSource?esc(c.genreSource):'—'}</div></div>
+      <div class="analytics-kpi"><div class="l">Statut instrumental</div><div class="v">${esc(c.instrumental)}</div><div class="genre-sub">Confiance ${instConf}</div></div>
+      <div class="analytics-kpi"><div class="l">Risque IA</div><div class="v">${aiRiskBadgeHtml(c)}</div><div class="genre-sub">Confiance ${riskConf}</div></div>
+      <div class="analytics-kpi"><div class="l">Source risque IA</div><div class="v">${c.aiRiskSource?esc(c.aiRiskSource):'—'}</div></div>
+    </div>
+  </div>`;
+}
 function scArtistRow(g){
   if(!SC || !Array.isArray(SC.artists)) return null;
   const schema=(SC.schemas&&SC.schemas.artists)||[];
@@ -1038,9 +1148,9 @@ const artistSearch = n => 'https://open.spotify.com/search/'+encodeURIComponent(
 /* ---------- état ---------- */
 const S = {
   view:'overview', back:null, palier:'100/0', sel:new Set(), wltab:'tracks', publishing:false,
-  q:'', statut:'all', min:0, period:'30', artist:-1, rel:'all',
+  q:'', statut:'all', min:0, period:'30', artist:-1, rel:'all', genres:new Set(), airisk:'hide_high',
   sort:{k:3, dir:-1}, shown:100,
-  aq:'', asort:'streams', adir:-1, shownA:60, aseg:'all',
+  aq:'', asort:'streams', adir:-1, shownA:60, aseg:'all', agenres:new Set(), aairisk:'hide_high',
   newDays:90, shownN:100,
   plq:'', plcur:'all', plsort:'followers', pldir:-1, plonly:false, shownPL:80, plview:'qualified', plmode:'table',
   amode:'table', omode:'table',
@@ -1075,11 +1185,14 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeArtistModal(
 function rowsBeforePeriod(){
   const q = S.q.trim().toLowerCase();
   return R.filter(r=>{
+    const classification=trackClassification(r);
     if (S.artist>=0 && r[0]!==S.artist) return false;
     if (S.rel!=='all' && seg(AG[r[0]])!==S.rel) return false;
     if (S.statut==='self' && r[4]!==0) return false;
     if (S.statut==='other' && r[4]!==1) return false;
     if (S.min>0 && r[3]<S.min) return false;
+    if (S.genres.size && !S.genres.has(classification.genre)) return false;
+    if (!riskPass(classification,S.airisk)) return false;
     if (q && !(r[1].toLowerCase().includes(q) || A[r[0]][0].toLowerCase().includes(q) || r[5].toLowerCase().includes(q))) return false;
     return true;
   });
@@ -1092,6 +1205,7 @@ function filteredRows(){
     let x,y;
     if (k===0){ x=A[a[0]][0].toLowerCase(); y=A[b[0]][0].toLowerCase(); }
     else if (k===7){ x=perMonth(a); y=perMonth(b); }
+    else if (k===30){ x=trackClassification(a).genre.toLowerCase(); y=trackClassification(b).genre.toLowerCase(); }
     else if (k===20){ x=trackWindow(a,1).current; y=trackWindow(b,1).current; }
     else if (k===21){ x=trackWindow(a,7).current; y=trackWindow(b,7).current; }
     else if (k===10){ x=trackWindow(a,30).current; y=trackWindow(b,30).current; }
@@ -1138,7 +1252,7 @@ function enhanceSelects(root){
     btn.addEventListener('click', e=>{
       e.stopPropagation();
       const willOpen = !wrap.classList.contains('open');
-      document.querySelectorAll('.csel-wrap.open').forEach(w=>{ if(w!==wrap) w.classList.remove('open'); });
+      document.querySelectorAll('.csel-wrap.open,.msel.open').forEach(w=>{ if(w!==wrap) w.classList.remove('open'); });
       wrap.classList.toggle('open', willOpen);
     });
     list.addEventListener('click', e=>{
@@ -1149,6 +1263,35 @@ function enhanceSelects(root){
       sel.dispatchEvent(new Event('change', {bubbles:true}));
     });
   });
+}
+function genreFilterHtml(id,selected){
+  const values=[...GENRE_TAXONOMY.genres,UNCLASSIFIED_GENRE];
+  const count=selected.size;
+  const label=count===0?'🎼 Genre : tous':(count===1?'🎼 '+[...selected][0]:'🎼 Genres · '+count);
+  return `<div class="msel" id="${id}">
+    <button type="button" class="msel-btn" aria-haspopup="true" aria-expanded="false"><span class="msel-label">${esc(label)}</span><span class="msel-chevron">▾</span></button>
+    <div class="msel-list">
+      <label class="msel-opt"><input type="checkbox" value="" ${count===0?'checked':''}><span>Tous les genres</span></label>
+      ${values.map(v=>`<label class="msel-opt"><input type="checkbox" value="${esc(v)}" ${selected.has(v)?'checked':''}><span>${esc(v)}</span></label>`).join('')}
+      <div class="msel-foot">Taxonomie ${esc(GENRE_TAXONOMY.version)} · extensible</div>
+    </div>
+  </div>`;
+}
+function bindGenreFilter(id,selected,onChange){
+  const root=document.getElementById(id); if(!root) return;
+  const btn=root.querySelector('.msel-btn'), list=root.querySelector('.msel-list');
+  btn.addEventListener('click',e=>{
+    e.stopPropagation();
+    const open=!root.classList.contains('open');
+    document.querySelectorAll('.csel-wrap.open,.msel.open').forEach(w=>{if(w!==root)w.classList.remove('open');});
+    root.classList.toggle('open',open); btn.setAttribute('aria-expanded',open?'true':'false');
+  });
+  list.addEventListener('click',e=>e.stopPropagation());
+  list.querySelectorAll('input[type=checkbox]').forEach(input=>input.addEventListener('change',()=>{
+    if(input.value===''){ if(input.checked) selected.clear(); }
+    else { if(input.checked) selected.add(input.value); else selected.delete(input.value); }
+    onChange();
+  }));
 }
 function enhanceResponsiveTables(root){
   (root||document).querySelectorAll('table').forEach(table=>{
@@ -1167,7 +1310,7 @@ function enhanceResponsiveTables(root){
     });
   });
 }
-document.addEventListener('click', ()=>{ document.querySelectorAll('.csel-wrap.open').forEach(w=>w.classList.remove('open')); });
+document.addEventListener('click', ()=>{ document.querySelectorAll('.csel-wrap.open,.msel.open').forEach(w=>w.classList.remove('open')); });
 new MutationObserver(()=>enhanceSelects()).observe(V, {childList:true, subtree:true});
 new MutationObserver(()=>enhanceSelects()).observe(document.getElementById('am-body'), {childList:true, subtree:true});
 new MutationObserver(()=>enhanceResponsiveTables()).observe(V, {childList:true, subtree:true});
@@ -1376,6 +1519,7 @@ function renderArtistModal(){
   const flows = aggregateDailyFlow(allRows);
   const audience = artistAudience(g);
   const entry = artistPerfEntry(g);
+  const classification = artistClassification(g);
   const selfPct = g.n ? Math.round(g.self/g.n*100) : 0;
   const selM = rows.filter(r=>S.sel.has(r[6])).reduce((s,r)=>s+Math.max(perMonth(r),0),0);
   const selN = rows.filter(r=>S.sel.has(r[6])).length;
@@ -1397,6 +1541,7 @@ function renderArtistModal(){
       <div class="tg"><div class="l">${T('Signal performance')}</div><div class="v" style="font-size:13px">${performanceSignal(perf,entry)}</div></div>
     </div>
     ${perfGridHtml(perf,'Streams',g.streams,true)}
+    ${classificationAnalyticsHtml(classification)}
     <div class="analytics-section">
       <h4>${T('Courbe quotidienne des streams')} <span class="analytics-note">${T('Flux quotidien, pas compteur lifetime')}</span></h4>
       ${dailyChartHtml(flows.points,T('Historique quotidien insuffisant pour tracer la courbe.'))}
@@ -1503,6 +1648,7 @@ function openTrack(tid){
   const perf = {1:trackWindow(r,1),7:trackWindow(r,7),30:trackWindow(r,30)};
   const daily = dailyFlowSeries(HIST[tid] || []);
   const entry = trackPerfEntry(r);
+  const classification = trackClassification(r);
   const velocity = perf[7].currentReady ? perf[7].current/7 : null;
   const cadence = Number.isFinite(Number(entry.cadence_days)) ? Number(entry.cadence_days)+' j' : '—';
   const label = entry.label || (r[4]===1 ? r[5] : null);
@@ -1526,6 +1672,7 @@ function openTrack(tid){
       <div class="tg"><div class="l">© / ℗</div><div class="v" style="font-size:12px;line-height:1.4">${r[5]?esc(r[5]):'—'}</div></div>
     </div>
     ${perfGridHtml(perf,'Streams',r[3]>=0?r[3]:null,true)}
+    ${classificationAnalyticsHtml(classification)}
     <div class="analytics-section">
       <h4>${T('Courbe quotidienne des streams')} <span class="analytics-note">${T('Flux quotidien, pas compteur lifetime')}</span></h4>
       ${dailyChartHtml(daily,T('Historique quotidien insuffisant pour tracer la courbe.'))}
@@ -1602,6 +1749,7 @@ function renderOpps(){
         <th></th>
         <th data-k="1">Track ${sortArrow(1)}</th>
         <th data-k="0">${T('Artiste')} ${sortArrow(0)}</th>
+        <th data-k="30">Genre principal ${sortArrow(30)}</th>
         <th data-k="3" class="num">${T('Streams total')} ${sortArrow(3)}</th>
         <th data-k="10" class="num" title="${T('Flux réel sur la période')}">${T('Streams 30 jours')} ${sortArrow(10)}</th>
         <th data-k="21" class="num" title="${T('Flux réel sur la période')}">${T('Streams 7 jours')} ${sortArrow(21)}</th>
@@ -1612,12 +1760,13 @@ function renderOpps(){
         <th data-k="5">Copyright ${sortArrow(5)}</th>
       </tr></thead>
       <tbody>
-      ${slice.map(r=>{ const w1=trackWindow(r,1), w7=trackWindow(r,7), w30=trackWindow(r,30); return `
+      ${slice.map(r=>{ const w1=trackWindow(r,1), w7=trackWindow(r,7), w30=trackWindow(r,30), classification=trackClassification(r); return `
         <tr data-basehot="${r[3]>=HOT?1:0}" class="${r[3]>=HOT||(ag&&S.sel.has(r[6]))?'hot':''}">
           ${ag?`<td class="selc"><input type="checkbox" class="ck sel-track" data-tid="${r[6]}" ${S.sel.has(r[6])?'checked':''}></td>`:''}
           <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
           <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span> ${wlStar('t',r[6])}${r[7]?' <span class="badge new">'+T('détectée')+' '+r[7].slice(5)+'</span>':''}</td>
           <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
+          <td>${classificationCellHtml(classification)}</td>
           <td class="num" title="${fmtFull(r[3])}">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</td>
           <td class="num" title="${T('Streams des 30 derniers jours')} · ${T('Aucune extrapolation')}">${streamStackHtml(w30.current,false,false)}</td>
           <td class="num" title="${T('Streams des 7 derniers jours')} · ${T('Aucune extrapolation')}">${streamStackHtml(w7.current,false,false)}</td>
@@ -1634,12 +1783,14 @@ function renderOpps(){
   </div>`;
   const gridView = `
   <div class="acards">
-    ${slice.map(r=>{ const w1=trackWindow(r,1), w7=trackWindow(r,7), w30=trackWindow(r,30); return `
+    ${slice.map(r=>{ const w1=trackWindow(r,1), w7=trackWindow(r,7), w30=trackWindow(r,30), classification=trackClassification(r); return `
     <div class="acard plcard grid-clean" onclick="openTrack('${r[6]}')">
       ${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}
       <div class="nm">${esc(r[1])} ${wlStar('t',r[6])}${r[7]?' <span class="badge new">'+T('détectée')+'</span>':''}</div>
       <div style="font-size:11px;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span class="ar" onclick="event.stopPropagation();goArtist(${r[0]})">${esc(A[r[0]][0])}</span>
+        <span class="genre-main">${esc(classification.genre)}</span>
+        <span class="genre-sub">${esc(classification.instrumental)}</span>
         <span class="badge ${r[4]===0?'self':'other'}">${r[4]===0?T('Indé'):'Label'}</span>
       </div>
       <div class="stats stats2">
@@ -1663,6 +1814,12 @@ function renderOpps(){
   </div>
   <div class="toolbar">
     <div class="search-wrap"><span class="sico">🔍</span><input type="text" id="f-q" placeholder="${T('Rechercher track, artiste, label…')}" value="${esc(S.q)}"></div>
+    ${genreFilterHtml('f-genres',S.genres)}
+    <select id="f-ai">
+      <option value="hide_high" ${S.airisk==='hide_high'?'selected':''}>Risque IA : masquer élevé</option>
+      <option value="all" ${S.airisk==='all'?'selected':''}>Risque IA : tous</option>
+      <option value="high_only" ${S.airisk==='high_only'?'selected':''}>Risque IA : élevé uniquement</option>
+    </select>
     <select id="f-period">
       <option value="30" ${S.period==='30'?'selected':''}>🟢 ${T('1 dernier mois')} (${fmtFull(pcnt['30'])})</option>
       <option value="90" ${S.period==='90'?'selected':''}>🟡 ${T('3 derniers mois')} (${fmtFull(pcnt['90'])})</option>
@@ -1699,6 +1856,8 @@ function renderOpps(){
   ${S.omode==='grid' ? gridView : tableView}`;
 
   document.getElementById('f-q').addEventListener('input', e=>{ S.q=e.target.value; S.shown=100; keepScroll(renderOpps); keepFocus('f-q'); });
+  bindGenreFilter('f-genres',S.genres,()=>{ S.shown=100; keepScroll(renderOpps); });
+  document.getElementById('f-ai').addEventListener('change', e=>{ S.airisk=e.target.value; S.shown=100; keepScroll(renderOpps); });
   document.getElementById('f-st').addEventListener('change', e=>{ S.statut=e.target.value; S.shown=100; keepScroll(renderOpps); });
   document.getElementById('f-min').addEventListener('change', e=>{ S.min=+e.target.value; S.shown=100; keepScroll(renderOpps); });
   document.getElementById('f-period').addEventListener('change', e=>{ S.period=e.target.value; S.shown=100; keepScroll(renderOpps); });
@@ -1709,7 +1868,7 @@ function renderOpps(){
   attachInfinite(()=>{ const y=window.scrollY; S.shown+=200; renderOpps(); window.scrollTo(0,y); });
   document.querySelectorAll('th[data-k]').forEach(h=>h.addEventListener('click', ()=>{
     const k=+h.dataset.k;
-    if (S.sort.k===k) S.sort.dir*=-1; else S.sort={k, dir:[0,1,5].includes(k)?1:-1};
+    if (S.sort.k===k) S.sort.dir*=-1; else S.sort={k, dir:[0,1,5,30].includes(k)?1:-1};
     keepScroll(renderOpps);
   }));
   function updateSel(){
@@ -1740,9 +1899,16 @@ function artistSortArrow(k){ return S.asort===k ? `<span class="arr">${S.adir===
 
 function renderArtists(){
   const q = S.aq.trim().toLowerCase();
-  let list = withTracks.filter(g=>(!q || g.name.toLowerCase().includes(q)) && (S.aseg==='all' || seg(g)===S.aseg));
+  let list = withTracks.filter(g=>{
+    const classification=artistClassification(g);
+    return (!q || g.name.toLowerCase().includes(q)) &&
+      (S.aseg==='all' || seg(g)===S.aseg) &&
+      (!S.agenres.size || S.agenres.has(classification.genre)) &&
+      riskPass(classification,S.aairisk);
+  });
   const aSorters = {
     name:(a,b)=>a.name.localeCompare(b.name),
+    genre:(a,b)=>artistClassification(a).genre.localeCompare(artistClassification(b).genre),
     status:(a,b)=>({ext:0,occ:1,reg:2,top:3}[seg(a)]-({ext:0,occ:1,reg:2,top:3}[seg(b)])),
     streams:(a,b)=>a.streams-b.streams,
     revenue:(a,b)=>a.streams-b.streams,
@@ -1759,11 +1925,12 @@ function renderArtists(){
   const slice = list.slice(0,S.shownA);
   const gridView = `
   <div class="acards">
-    ${slice.map(g=>`
+    ${slice.map(g=>{ const classification=artistClassification(g); return `
       <div class="acard plcard grid-clean" onclick="goArtist(${g.i})">
         ${wlStar('a',g.name)}
         ${artistCoverHtml(g)}
         <div class="nm">${esc(g.name)}</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:3px 0 9px"><span class="genre-main">${esc(classification.genre)}</span><span class="genre-sub">${esc(classification.instrumental)}</span></div>
         <div style="font-size:11px;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">${segBadge(g)} <span>${g.lofi?g.lofi+' '+T('tracks chez Lofi'):''}${g.disco?' · '+T('découverte')+' ('+esc(g.origin||'related')+')':''}</span></div>
         <div class="stats stats2">
           <div class="st"><div class="v">${streamStackHtml(g.streams,false,false)}</div><div class="l">${T('Streams total')}</div></div>
@@ -1771,7 +1938,7 @@ function renderArtists(){
           <div class="st"><div class="v">${streamStackHtml(g.streams7,false,false)}</div><div class="l">${T('Streams 7 jours')}</div></div>
           <div class="st"><div class="v">${streamStackHtml(g.streams24,false,false)}</div><div class="l">${T('Streams 24 heures')}</div></div>
         </div>
-      </div>`).join('')}
+      </div>`;}).join('')}
   </div>
   ${sentinel(list.length-S.shownA)}`;
   const tableView = `
@@ -1780,6 +1947,7 @@ function renderArtists(){
       <thead><tr>
         <th></th>
         <th data-asort="name">${T('Artiste')} ${artistSortArrow('name')}</th>
+        <th data-asort="genre">Genre principal ${artistSortArrow('genre')}</th>
         <th data-asort="status">${T('Statut')} ${artistSortArrow('status')}</th>
         <th data-asort="streams" class="num">${T('Streams total')} ${artistSortArrow('streams')}</th>
         <th data-asort="streams30" class="num" title="${T('Flux réel sur la période')}">${T('Streams 30 jours')} ${artistSortArrow('streams30')}</th>
@@ -1793,10 +1961,12 @@ function renderArtists(){
       <tbody>
       ${slice.map(g=>{
         const p = g.n ? Math.round(g.self/g.n*100) : 0;
+        const classification = artistClassification(g);
         return `
         <tr onclick="goArtist(${g.i})" style="cursor:pointer">
           <td class="covtd">${artistCoverHtml(g)}</td>
           <td>${esc(g.name)} ${wlStar('a',g.name)}</td>
+          <td>${classificationCellHtml(classification)}</td>
           <td style="white-space:nowrap"><div>${segBadge(g)}</div><div style="font-size:11px;color:var(--dim);margin-top:3px">${g.lofi||0} ${T('tracks chez Lofi')}</div></td>
           <td class="num">${streamStackHtml(g.streams,false,false)}</td>
           <td class="num">${streamStackHtml(g.streams30,false,false)}</td>
@@ -1821,6 +1991,12 @@ function renderArtists(){
   </div>
   <div class="toolbar">
     <div class="search-wrap"><span class="sico">🔍</span><input type="text" id="a-q" placeholder="${T('Rechercher un artiste…')}" value="${esc(S.aq)}"></div>
+    ${genreFilterHtml('a-genres',S.agenres)}
+    <select id="a-ai">
+      <option value="hide_high" ${S.aairisk==='hide_high'?'selected':''}>Risque IA : masquer élevé</option>
+      <option value="all" ${S.aairisk==='all'?'selected':''}>Risque IA : tous</option>
+      <option value="high_only" ${S.aairisk==='high_only'?'selected':''}>Risque IA : élevé uniquement</option>
+    </select>
     <select id="a-seg">
       <option value="all" ${S.aseg==='all'?'selected':''}>🌍 ${T('Tous')}</option>
       <option value="top" ${S.aseg==='top'?'selected':''}>🏆 Top artists</option>
@@ -1839,11 +2015,13 @@ function renderArtists(){
 
   document.querySelectorAll('.viewtoggle button[data-amode]').forEach(b=>b.addEventListener('click', ()=>{ S.amode=b.dataset.amode; keepScroll(renderArtists); }));
   document.getElementById('a-q').addEventListener('input', e=>{ S.aq=e.target.value; S.shownA=60; keepScroll(renderArtists); keepFocus('a-q'); });
+  bindGenreFilter('a-genres',S.agenres,()=>{ S.shownA=60; keepScroll(renderArtists); });
+  document.getElementById('a-ai').addEventListener('change', e=>{ S.aairisk=e.target.value; S.shownA=60; keepScroll(renderArtists); });
   document.getElementById('a-seg').addEventListener('change', e=>{ S.aseg=e.target.value; S.shownA=60; keepScroll(renderArtists); });
   document.querySelectorAll('th[data-asort]').forEach(h=>h.addEventListener('click', ()=>{
     const key=h.dataset.asort;
     if (S.asort===key) S.adir*=-1;
-    else { S.asort=key; S.adir=key==='name'?1:-1; }
+    else { S.asort=key; S.adir=['name','genre'].includes(key)?1:-1; }
     keepScroll(renderArtists);
   }));
   attachInfinite(()=>{ const y=window.scrollY; S.shownA+=60; renderArtists(); window.scrollTo(0,y); });
