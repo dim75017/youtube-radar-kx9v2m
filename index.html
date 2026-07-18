@@ -1808,13 +1808,12 @@ function calShift(d){
   if(RM.view==='year'){b.setFullYear(b.getFullYear()+d);}else{b.setDate(1);b.setMonth(b.getMonth()+d);}
   RM.cal=b.getTime();render();
 }
-function calToday(){RM.cal=Date.now();render();}
 function calSetView(v){RM.view=v;render();}
 function calHTML(rows){
   const base=RM.cal?new Date(RM.cal):new Date();
   const y=base.getFullYear(),m=base.getMonth();
   rows.forEach((r,ri)=>{r._ri=ri;});
-  const toggle='<div class="cal-left"><button class="ctl-btn today" onclick="calToday()">Today</button><div class="cal-viewtoggle">'+
+  const toggle='<div class="cal-left"><div class="cal-viewtoggle">'+
       '<button class="'+(RM.view!=='year'?'on':'')+'" onclick="calSetView(\'month\')">Month</button>'+
       '<button class="'+(RM.view==='year'?'on':'')+'" onclick="calSetView(\'year\')">Year</button>'+
     '</div></div>';
