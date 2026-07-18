@@ -401,6 +401,7 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 .cal-month{font-family:'Sora';font-size:22px;font-weight:700;min-width:230px;text-align:center;letter-spacing:-.3px}
 .cal-nav .arrow{font-size:19px;padding:7px 17px;line-height:1}
 .cal-left{position:absolute;left:0;display:flex;align-items:center;gap:8px}
+.cal-right{position:absolute;right:0;display:flex;align-items:center}
 .cal{border:1px solid var(--border);border-radius:var(--r);overflow:hidden;background:rgba(15,18,30,.6)}
 .cal-head{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border);background:rgba(21,25,42,.6)}
 .cal-head div{padding:9px 6px;font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--dim);font-weight:600;text-align:center}
@@ -419,17 +420,16 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 .cal-viewtoggle{display:flex;gap:4px;background:rgba(150,163,214,.06);border:1px solid var(--border);border-radius:14px;padding:3px}
 .cal-viewtoggle button{font-family:inherit;font-size:13px;font-weight:700;padding:9.5px 17px;border-radius:11px;color:var(--dim);cursor:pointer;letter-spacing:.3px}
 .cal-viewtoggle button.on{background:var(--acc);color:#fff;box-shadow:0 4px 14px rgba(139,124,246,.4)}
-.year-cal{display:grid;grid-template-columns:repeat(6,1fr);gap:14px}
-@media(max-width:1550px){.year-cal{grid-template-columns:repeat(4,1fr)}}
+.year-cal{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 @media(max-width:1300px){.year-cal{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:900px){.year-cal{grid-template-columns:repeat(2,1fr)}}
-.year-month{border:1px solid var(--border);border-radius:10px;background:rgba(15,18,30,.55);padding:10px;min-width:0}
-.year-month-h{font-family:'Sora';font-size:12px;font-weight:700;margin-bottom:11px;text-align:center}
-.year-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;min-width:0}
-.year-dow{font-size:8px;color:var(--dim);text-align:center;font-weight:700;opacity:.7;margin-bottom:2px}
-.year-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);border-radius:50%;position:relative;min-width:0}
+.year-month{border:1px solid var(--border);border-radius:12px;background:rgba(15,18,30,.55);padding:14px 16px;min-width:0}
+.year-month-h{font-family:'Sora';font-size:14px;font-weight:700;margin-bottom:12px;text-align:center}
+.year-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;min-width:0}
+.year-dow{font-size:10px;color:var(--dim);text-align:center;font-weight:700;opacity:.7;margin-bottom:3px}
+.year-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);border-radius:50%;position:relative;min-width:0}
 .year-cell.out{opacity:.2}
-.year-cell.has-event{cursor:pointer;color:#fff;font-weight:800;font-size:11px;text-shadow:0 1px 3px rgba(0,0,0,.6);transition:transform .12s}
+.year-cell.has-event{cursor:pointer;color:#fff;font-weight:800;font-size:13px;text-shadow:0 1px 3px rgba(0,0,0,.6);transition:transform .12s}
 .year-cell.has-event:hover{transform:scale(1.25);z-index:3}
 .year-cell.today{box-shadow:inset 0 0 0 1.5px rgba(139,124,246,.6);border-radius:50%}
 
@@ -985,7 +985,7 @@ const VS={
   mix:{q:'',genre:'',sort:'vpm',mode:'grid',limit:60,age:'3m'}
 };
 const RS={q:'',genre:'',pot:'',perso:'',val:'',sort:'scoreAdj',mode:'grid',limit:80};
-const RM={src:'',genre:'',year:'',mode:'table',cal:null,view:'month'};
+const RM={src:'',genre:'',year:'',mode:'cal',cal:null,view:'year'};
 const LS={q:'',sort:'now',mode:'grid',limit:60};
 const CS={q:'',niche:'',sort:'subs',mode:'table',limit:150};
 const CHAN_URL='https://docs.google.com/spreadsheets/d/1jDbcryjTDbRsW4Uw6OP_SYwgvbPoLQu_KcSWqC3Dfoc/export?format=xlsx';
@@ -1734,14 +1734,12 @@ function copyTxt(btn,i,field){
 function roadmapHTML(){
   let rows=DATA.roadmap.filter(r=>r.date);
   rows.sort((a,b)=>a.date-b.date);
-  let h='<div class="toolbar" style="justify-content:flex-end">'+
-    '<div class="viewtoggle">'+
+  const vt='<div class="viewtoggle">'+
       '<button class="'+(RM.mode!=='cal'?'on':'')+'" onclick="RM.mode=\'table\';render()" title="Table">'+ICONS.rows+'</button>'+
-      '<button class="'+(RM.mode==='cal'?'on':'')+'" onclick="RM.mode=\'cal\';render()" title="Calendar">'+ICONS.roadmap+'</button></div>'+
-  '</div>';
+      '<button class="'+(RM.mode==='cal'?'on':'')+'" onclick="RM.mode=\'cal\';render()" title="Calendar">'+ICONS.roadmap+'</button></div>';
   window._rm_rows=rows;
-  h+=(RM.mode==='cal')?calHTML(rows):roadmapTableHTML(rows);
-  return h;
+  if(RM.mode==='cal')return calHTML(rows,vt);
+  return '<div class="toolbar" style="justify-content:flex-end">'+vt+'</div>'+roadmapTableHTML(rows);
 }
 function roadmapTableHTML(rows){
   if(!rows.length)return '<div class="empty">No releases scheduled.</div>';
@@ -1810,7 +1808,7 @@ function calShift(d){
   RM.cal=b.getTime();render();
 }
 function calSetView(v){RM.view=v;render();}
-function calHTML(rows){
+function calHTML(rows,vt){
   const base=RM.cal?new Date(RM.cal):new Date();
   const y=base.getFullYear(),m=base.getMonth();
   rows.forEach((r,ri)=>{r._ri=ri;});
@@ -1818,7 +1816,7 @@ function calHTML(rows){
       '<button class="'+(RM.view!=='year'?'on':'')+'" onclick="calSetView(\'month\')">Month</button>'+
       '<button class="'+(RM.view==='year'?'on':'')+'" onclick="calSetView(\'year\')">Year</button>'+
     '</div></div>';
-  if(RM.view==='year')return yearCalHTML(rows,y,toggle);
+  if(RM.view==='year')return yearCalHTML(rows,y,toggle,vt);
   const MFULL=['January','February','March','April','May','June','July','August','September','October','November','December'];
   const first=new Date(y,m,1);
   const start=new Date(y,m,1-((first.getDay()+6)%7));
@@ -1828,7 +1826,8 @@ function calHTML(rows){
   let h='<div class="cal-nav">'+toggle+
     '<button class="ctl-btn arrow" onclick="calShift(-1)" title="Previous month">‹</button>'+
     '<div class="cal-month">'+MFULL[m]+' '+y+'</div>'+
-    '<button class="ctl-btn arrow" onclick="calShift(1)" title="Next month">›</button></div>';
+    '<button class="ctl-btn arrow" onclick="calShift(1)" title="Next month">›</button>'+
+    '<div class="cal-right">'+(vt||'')+'</div></div>';
   h+='<div class="cal"><div class="cal-head">'+['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(x=>'<div>'+x+'</div>').join('')+'</div><div class="cal-grid">';
   for(let i=0;i<42;i++){
     const d=new Date(start);d.setDate(start.getDate()+i);
@@ -1844,7 +1843,7 @@ function calHTML(rows){
   h+='<div class="cal-legend">'+lg.map(g=>'<span><i style="background:'+gcolor(g)+'"></i>'+esc(g)+'</span>').join('')+'</div>';
   return h;
 }
-function yearCalHTML(rows,y,toggle){
+function yearCalHTML(rows,y,toggle,vt){
   const MFULL=['January','February','March','April','May','June','July','August','September','October','November','December'];
   const today=new Date();today.setHours(0,0,0,0);
   const key=d=>d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();
@@ -1852,7 +1851,8 @@ function yearCalHTML(rows,y,toggle){
   let h='<div class="cal-nav">'+toggle+
     '<button class="ctl-btn arrow" onclick="calShift(-1)" title="Previous year">‹</button>'+
     '<div class="cal-month">'+y+'</div>'+
-    '<button class="ctl-btn arrow" onclick="calShift(1)" title="Next year">›</button></div>';
+    '<button class="ctl-btn arrow" onclick="calShift(1)" title="Next year">›</button>'+
+    '<div class="cal-right">'+(vt||'')+'</div></div>';
   h+='<div class="year-cal">';
   for(let m=0;m<12;m++){
     const first=new Date(y,m,1);
@@ -1918,8 +1918,7 @@ function suggestRoadmapDate(reco,avoidKeys){
   const passes=[
     {allowFriday:false,respectWeeks:true,respectGap:true},
     {allowFriday:true,respectWeeks:true,respectGap:true},
-    {allowFriday:true,respectWeeks:false,respectGap:true},
-    {allowFriday:true,respectWeeks:false,respectGap:false}
+    {allowFriday:true,respectWeeks:true,respectGap:false}
   ];
   for(const pass of passes){
     let d=new Date(today);d.setDate(d.getDate()+3);
@@ -2379,8 +2378,7 @@ function anaCardHTML(o,i){
     '<div class="vbody">'+
       '<div class="vtitle">'+esc(o.title)+'</div>'+
       '<div class="vtags">'+gtag(o.genre)+(o.durH!=null?ghosttag(fmtDur(o.durH)):'')+'</div>'+
-      '<div style="display:flex;align-items:center;gap:8px;margin:2px 0 10px"><div class="pbar"><i style="width:'+(o.pctCh==null?0:o.pctCh)+'%;background:'+pcol(o.pctCh)+'"></i></div>'+
-      '<span style="font-size:10.5px;color:'+pcol(o.pctCh)+';font-weight:700;white-space:nowrap">'+(o.pctCh==null?'no data':o.pctCh+'th')+'</span></div>'+
+      '<div style="display:flex;align-items:center;gap:8px;margin:2px 0 10px"><div class="pbar"><i style="width:'+(o.pctCh==null?0:o.pctCh)+'%;background:'+pcol(o.pctCh)+'"></i></div></div>'+
       '<div class="vstats">'+
         '<div class="vstat hl"><b style="color:'+pcol(o.pctCh)+'">'+fmtN(o.views)+'</b><span>views</span></div>'+
         '<div class="vstat"><b style="color:'+vsMed(o.vpm,o.chMed)+'">'+fmtN(o.vpm)+'</b><span>views/mo</span></div>'+
@@ -2407,8 +2405,7 @@ function anaHTML(){
         '<div style="flex:1;min-width:0">'+
           '<div style="font-weight:600;font-size:13.5px;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(o.title)+'</div>'+
           '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px">'+gtag(o.genre)+ghosttag(o.perso)+(o.durH!=null?ghosttag(fmtDur(o.durH)):'')+'<span class="tag ghost">'+fmtDateFull(o.pub)+'</span>'+(o.st?'<span class="tag ghost" style="color:'+(o.ctrMed&&o.st.ctr<o.ctrMed*0.75?'#f87171':o.ctrMed&&o.st.ctr>o.ctrMed*1.25?'#34d399':'var(--muted)')+'">CTR '+o.st.ctr.toFixed(1)+'%</span><span class="tag ghost" style="color:'+vsMed(o.st.awtMs,o.awtMed)+'">avg view '+fmtWatch(o.st.awtMs)+'</span>':'')+(o.reco?'<span class="tag ghost">reco #'+Math.round(o.reco.n)+(o.reco.pot?' · '+o.reco.pot[0]:'')+'</span>':'')+'</div>'+
-          '<div style="display:flex;align-items:center;gap:10px"><div class="pbar"><i style="width:'+(o.pctCh==null?0:o.pctCh)+'%;background:'+pcol(o.pctCh)+'"></i></div>'+
-          '<span style="font-size:11.5px;color:'+pcol(o.pctCh)+';font-weight:700;white-space:nowrap">'+(o.pctCh==null?'no data yet':o.pctCh+'th · channel')+'</span></div>'+
+          '<div style="display:flex;align-items:center;gap:10px"><div class="pbar"><i style="width:'+(o.pctCh==null?0:o.pctCh)+'%;background:'+pcol(o.pctCh)+'"></i></div></div>'+
         '</div>'+
         '<div style="text-align:right;flex:none">'+
           '<div style="font-family:Sora;font-size:17px;font-weight:700;color:'+pcol(o.pctCh)+'">'+fmtN(o.views)+'</div>'+
