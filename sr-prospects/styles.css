@@ -565,11 +565,18 @@ a {
   color: inherit;
   text-align: left;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
+  grid-template-columns: 34px 40px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   cursor: pointer;
   transition: 140ms ease;
+}
+
+.priority-avatar {
+  width: 40px;
+  height: 40px;
+  flex-basis: 40px;
+  border-radius: 11px;
 }
 
 .priority-item:hover {
@@ -812,6 +819,28 @@ a {
   justify-self: start;
 }
 
+.plan-profile {
+  background: linear-gradient(135deg, rgba(191, 144, 63, .08), transparent 70%);
+}
+
+.plan-profession {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.plan-profile-copy,
+.plan-contact-line {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.plan-contact-line {
+  padding-top: 2px;
+}
+
 .plan-tracking {
   display: grid;
   align-content: center;
@@ -880,6 +909,64 @@ a {
 .plan-step.current { color: var(--gold-2); }
 .plan-step.current span { border-color: var(--gold); background: var(--gold-soft); }
 .plan-event { color: var(--muted); font-size: 12px; }
+
+.plan-learning-note {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.contact-modal {
+  width: min(760px, calc(100vw - 32px));
+}
+
+.contact-modal-body {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+}
+
+.contact-preview {
+  display: grid;
+  gap: 9px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: rgba(255,255,255,.018);
+}
+
+.contact-preview-label {
+  color: var(--gold-2);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.contact-preview strong { color: var(--text); font-size: 14px; }
+
+.contact-preview pre {
+  max-height: 250px;
+  margin: 0;
+  overflow: auto;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.contact-modal-body > .primary-btn { justify-self: start; }
+
+.contact-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
 
 .result-count {
   margin-left: auto;
@@ -1950,6 +2037,9 @@ textarea:focus-visible,
   .plan-tracking {
     padding: 14px;
   }
+
+  .contact-modal-body { padding: 16px; }
+  .contact-modal-actions { align-items: flex-start; flex-direction: column; }
 
   .plan-card-title span {
     white-space: normal;
