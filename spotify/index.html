@@ -408,6 +408,17 @@ td.selc,th.selc{width:44px;padding-left:14px}
 .ar-composer .ar-actions{display:flex;align-items:center;gap:8px;margin-top:12px}
 .ar-composer .ar-actions .chip{padding:9px 12px;font-size:11px}
 .ar-composer .ar-actions .hint{font-size:11px;color:var(--dim);margin-left:auto;text-align:right}
+.ar-track-panel{margin:0 0 16px;padding:0;overflow:hidden}
+.ar-track-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 16px 11px}
+.ar-track-head h3{font-family:'Sora';font-size:14px}.ar-track-head p{font-size:11px;color:var(--dim);margin-top:3px}
+.ar-track-list{border-top:1px solid var(--border)}
+.ar-track-row{display:grid;grid-template-columns:38px minmax(170px,1.2fr) minmax(130px,.9fr) 90px 96px;gap:10px;align-items:center;padding:10px 15px;border-bottom:1px solid rgba(150,214,170,.08)}
+.ar-track-row:last-child{border-bottom:0}.ar-track-row:hover{background:rgba(30,215,96,.035)}
+.ar-track-play{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:rgba(30,215,96,.14);border:1px solid rgba(30,215,96,.32);color:var(--acc);font-size:12px}
+.ar-track-play:hover{background:var(--acc);color:#06210f}.ar-track-title{font-weight:700;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ar-track-artist{font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ar-track-num{text-align:right;font-family:'Sora';font-size:12px;font-weight:700}.ar-track-score{text-align:right}
+.ar-player{display:grid;grid-template-columns:1fr 300px;gap:14px;align-items:center;padding:14px 15px;border-top:1px solid rgba(30,215,96,.25);background:linear-gradient(90deg,rgba(30,215,96,.08),rgba(30,215,96,.02))}
+.ar-player-label{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--acc);font-weight:800}.ar-player-name{font-family:'Sora';font-size:14px;font-weight:700;margin-top:5px}.ar-player iframe{width:100%;height:80px;border:0;border-radius:10px;background:#000}
+@media(max-width:760px){.ar-track-row{grid-template-columns:34px minmax(0,1fr) 70px;gap:8px;padding:10px}.ar-track-row .ar-track-num{display:none}.ar-track-score{font-size:10px}.ar-player{grid-template-columns:1fr;padding:12px}.ar-player iframe{height:80px}}
 @media(max-width:760px){.ar-composer .ar-head{padding:20px 18px 16px}.ar-composer .ar-body{grid-template-columns:1fr;padding:14px 18px 20px}.ar-composer #ar-draft{min-height:300px!important}.ar-composer .ar-actions{flex-wrap:wrap}.ar-composer .ar-actions .hint{width:100%;margin-left:0;text-align:left}}
 @media(max-width:760px){.ar-composer{display:block;padding:14px 18px 20px!important}.ar-composer>.thd{margin:-14px -18px 14px!important;padding:20px 18px 16px}.ar-composer>.analytics-section{margin:12px 0!important}}
 .wl-star{background:none;border:none;color:#fbbf24;font-size:20px;cursor:pointer;padding:0 4px;line-height:1;vertical-align:middle;opacity:.55;transition:opacity .12s,transform .12s ease}
@@ -1307,6 +1318,22 @@ function arCandidates(){
     return {uuid,name,spotifyId,listeners,sources,rank,qualifies,classification,score,review};
   }).sort((a,b)=>b.score-a.score||b.listeners-a.listeners||b.sources-a.sources||a.name.localeCompare(b.name));
 }
+function arTrackCandidates(){
+  if(!SC || !Array.isArray(SC.tracks)) return [];
+  const byArtist=new Map(arCandidates().map(candidate=>[scKey(candidate.name),candidate]));
+  const schema=(SC.schemas&&SC.schemas.tracks)||[];
+  return SC.tracks.map(row=>{
+    const spotifyId=scValue(row,schema,'spotify_id');
+    const artist=scValue(row,schema,'artist')||'';
+    const candidate=byArtist.get(scKey(artist));
+    if(!spotifyId || !candidate || !candidate.qualifies) return null;
+    const streams=Number(scValue(row,schema,'streams'))||0;
+    const title=scValue(row,schema,'title')||'Titre non renseigné';
+    const lift=Math.min(18,Math.max(0,Math.round(Math.log10(Math.max(streams,1))*2)));
+    return {spotifyId,artist,title,streams,candidate,score:Math.min(100,candidate.score+lift)};
+  }).filter(Boolean).sort((a,b)=>b.score-a.score||b.streams-a.streams||a.title.localeCompare(b.title));
+}
+function playArTrack(spotifyId){ S.radarTrackId=spotifyId; renderRadar(); }
 function arClusters(){
   if(!SC || !SC.editorial || !Array.isArray(SC.editorial.tracks)) return [];
   const schema=SC.editorial.track_schema||[];
@@ -1344,7 +1371,7 @@ const S = {
   plq:'', plcur:'all', plsort:'followers', pldir:-1, plonly:false, shownPL:80, plview:'qualified', plmode:'table',
   amode:'table', omode:'table',
   lbq:'', lbsort:'streams', lbdir:-1, shownLB:80, lbmode:'table', labelKey:null, lbModalArtist:null,
-  radarFilter:'priority', radarAiRisk:'hide_high', radarLimit:100,
+  radarFilter:'priority', radarAiRisk:'hide_high', radarLimit:100, radarTrackId:'',
 };
 
 /* ---------- navigation ---------- */
@@ -1966,6 +1993,8 @@ function renderRadar(){
     || (S.radarFilter==='review' && candidate.review));
   const qualified=aiFiltered.filter(candidate=>candidate.qualifies);
   const ready=aiFiltered.filter(candidate=>candidate.review);
+  const trackPool=arTrackCandidates().filter(track=>aiFiltered.includes(track.candidate)).slice(0,25);
+  const selectedTrack=trackPool.find(track=>track.spotifyId===S.radarTrackId)||trackPool[0]||null;
   const clusters=arClusters();
   const freshness=SC.freshness&&SC.freshness.run;
   const rows=candidates.slice(0,S.radarFilter==='priority'?S.radarLimit:500);
@@ -1999,6 +2028,19 @@ function renderRadar(){
       </tr>`;}).join('')}
     </tbody></table>${rows.length===0?`<div class="empty">${T('Données insuffisantes')}</div>`:''}</div>
     <div class="analytics-section" style="margin-top:16px"><h4>${T('Filons confirmés')}</h4>${clusters.length?`<div class="contributors">${clusters.map(cluster=>`<div class="contributor"><span class="cn">${esc(cluster.genre)}</span><span class="cv">${cluster.artists} artistes · ${cluster.tracks} tracks</span></div>`).join('')}</div>`:`<div class="analytics-note">${T('Aucun filon confirmé')} · ${T('Historique en cours : un filon nécessite des genres fiables, plusieurs artistes et des mesures successives.')}</div>`}</div>`;
+  if(trackPool.length){
+    const trackPanel=`<div class="panel ar-track-panel">
+      <div class="ar-track-head"><div><h3>🎧 Tracks prioritaires à écouter</h3><p>Les titres passent avant les profils : score A&R, réseau Fans Also Like et volume Soundcharts.</p></div><span class="badge new">${trackPool.length} titres</span></div>
+      <div class="ar-track-list">${trackPool.map((track,index)=>`<div class="ar-track-row">
+        <button class="ar-track-play" title="Écouter ${esc(track.title)}" onclick="playArTrack('${esc(track.spotifyId)}')">${track.spotifyId===S.radarTrackId?'❚❚':'▶'}</button>
+        <div><div class="ar-track-title">${index+1}. ${esc(track.title)}</div><div class="ar-track-artist">${esc(track.artist)} · ${fmtFull(track.candidate.listeners)} auditeurs mensuels</div></div>
+        <div class="ar-track-num">${fmt(track.streams)}<div class="genre-sub">streams total</div></div>
+        <div class="ar-track-score"><span class="badge ${track.score>=80?'self':'new'}">${track.score}/100</span></div>
+      </div>`).join('')}</div>
+      ${selectedTrack?`<div class="ar-player"><div><div class="ar-player-label">Lecture intégrée Spotify</div><div class="ar-player-name">${esc(selectedTrack.title)} <span style="color:var(--muted);font-weight:500">· ${esc(selectedTrack.artist)}</span></div></div><iframe title="Spotify player · ${esc(selectedTrack.title)}" src="https://open.spotify.com/embed/track/${esc(selectedTrack.spotifyId)}?utm_source=generator" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>`:''}
+    </div>`;
+    V.querySelector('.toolbar').insertAdjacentHTML('afterend',trackPanel);
+  }
   document.querySelectorAll('[data-radar-filter]').forEach(button=>button.addEventListener('click',()=>{S.radarFilter=button.dataset.radarFilter;renderRadar();}));
   document.getElementById('radar-limit').addEventListener('change',event=>{S.radarLimit=+event.target.value;S.radarFilter='priority';renderRadar();});
   bindRadarAiFilter();
