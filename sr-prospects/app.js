@@ -1266,7 +1266,7 @@
       state.sortDir = "desc";
     }
     if (location.hash !== "#" + route) location.hash = route;
-    else render();
+    render();
   }
 
   function exportJson() {
