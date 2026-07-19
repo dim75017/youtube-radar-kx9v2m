@@ -18,6 +18,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 SNAPSHOT = Path(os.environ.get("RADAR_SNAPSHOT", ROOT / "publish_repo" / "Lofi_Radar_data.js"))
+AVATAR_SNAPSHOT = Path(os.environ.get("RADAR_AVATARS", ROOT / "Lofi_Radar_new_channel_avatars.js"))
 # Keep the dependency in this project.  The old exploratory copy lives in a
 # protected worktree and is not a reliable runtime dependency.
 YTDLP_ROOT = ROOT / "ytdeps"
@@ -177,6 +178,28 @@ def merge(rows: list[dict], candidates: list[dict]) -> int:
     return inserted
 
 
+def write_avatar_overlay(payload: dict, active: list[str]) -> int:
+    """Keep actual channel images in sync with the public extension snapshot."""
+    channels: dict[str, str] = {}
+    for bucket in ("all", "trends"):
+        for row in payload["d"].get(bucket, []):
+            if row.get("genre") not in active:
+                continue
+            match = re.search(r"/channel/(UC[\\w-]+)", str(row.get("chUrl") or ""))
+            if match:
+                channel_id = match.group(1)
+                channels[channel_id] = f"https://unavatar.io/youtube/{channel_id}?fallback=false"
+    rendered = (
+        "/* Channel logos refreshed automatically alongside the instrumental radar. */\\n"
+        "window.YT_CHANNEL_AVATARS=window.YT_CHANNEL_AVATARS||{channels:{},videos:{}};\\n"
+        "window.YT_CHANNEL_AVATARS.channels=window.YT_CHANNEL_AVATARS.channels||{};\\n"
+        "Object.assign(window.YT_CHANNEL_AVATARS.channels," +
+        json.dumps(channels, ensure_ascii=False, separators=(",", ":")) + ");\\n"
+    )
+    AVATAR_SNAPSHOT.write_text(rendered, encoding="utf-8")
+    return len(channels)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--genre", choices=list(QUERIES), action="append", help="Refresh only one genre")
@@ -203,9 +226,10 @@ def main() -> None:
     trend_rows = [r for r in candidates if r["views"] >= MIN_TREND_VIEWS and r["ageM"] <= 12]
     inserted_all = merge(d.setdefault("all", []), all_rows)
     inserted_trends = merge(d.setdefault("trends", []), trend_rows)
+    avatar_count = write_avatar_overlay(payload, active)
     payload["t"] = int(datetime.now(timezone.utc).timestamp() * 1000)
     SNAPSHOT.write_text("window.LOFI_DATA=" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + ";", encoding="utf-8")
-    print(json.dumps({"genres": active, "candidates": len(candidates), "all_added": inserted_all, "trends_added": inserted_trends, "snapshot": str(SNAPSHOT)}, ensure_ascii=False))
+    print(json.dumps({"genres": active, "candidates": len(candidates), "all_added": inserted_all, "trends_added": inserted_trends, "avatars": avatar_count, "snapshot": str(SNAPSHOT)}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
