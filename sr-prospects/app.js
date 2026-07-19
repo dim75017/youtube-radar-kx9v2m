@@ -355,6 +355,14 @@
 
   function contactLinksMarkup(prospect) {
     var links = [];
+    var decisionMakers = Array.isArray(prospect.decisionMakers) ? prospect.decisionMakers : [];
+    decisionMakers.forEach(function (person) {
+      var fullName = [cleanText(person.firstName), cleanText(person.lastName)].filter(Boolean).join(" ");
+      var source = safeImageUrl(person.sourceUrl);
+      if (fullName && source) {
+        links.push({ label: cleanText(person.role) || "Associé", value: fullName, href: source });
+      }
+    });
     var email = cleanText(prospect.email);
     if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       links.push({ label: "Email", value: email, href: "mailto:" + encodeURIComponent(email) });
@@ -1136,8 +1144,8 @@
                 formField("evidenceUrl", "Preuve / URL source", "url", patch.evidenceUrl || prospect.evidenceUrl || "", "https://…") +
                 formField("logoUrl", "URL du logo", "url", patch.logoUrl || prospect.logoUrl || "", "https://…/logo.svg") +
                 formField("logoSourceUrl", "Source du logo", "url", patch.logoSourceUrl || prospect.logoSourceUrl || "", "https://site-du-cabinet.fr") +
-                formField("contactName", "Interlocuteur", "text", patch.contactName || "", "Prénom Nom") +
-                formField("contactRole", "Fonction", "text", patch.contactRole || "", "Office manager, associé…") +
+                formField("contactName", "Associé / fondateur", "text", patch.contactName || firstDecisionMakerName(prospect), "Prénom Nom") +
+                formField("contactRole", "Qualité", "text", patch.contactRole || firstDecisionMakerRole(prospect), "Associé, associé-fondateur…") +
                 formField("specialties", "Spécialités", "text", patch.specialties || "", "Fiscal, affaires, social…", true) +
                 selectField("status", "Statut", STATUS_OPTIONS, prospect.status) +
                 selectField("decision", "Décision", DECISION_OPTIONS, prospect.decision) +
@@ -1202,6 +1210,17 @@
       contactName ? "Bonjour Maître " + contactName + "," : "Bonjour,"
     );
     return { subject: subject, body: body };
+  }
+
+  function firstDecisionMakerName(prospect) {
+    var people = Array.isArray(prospect && prospect.decisionMakers) ? prospect.decisionMakers : [];
+    var person = people[0] || {};
+    return [cleanText(person.firstName), cleanText(person.lastName)].filter(Boolean).join(" ");
+  }
+
+  function firstDecisionMakerRole(prospect) {
+    var people = Array.isArray(prospect && prospect.decisionMakers) ? prospect.decisionMakers : [];
+    return cleanText((people[0] || {}).role);
   }
 
   function saveProspect(decisionOverride) {
@@ -1462,7 +1481,7 @@
       state.mobileOpen = false;
       render();
     } else if (actionName === "close-modal") {
-      if (event.target.closest("[data-modal-panel]") && event.target === event.currentTarget) return;
+      if (action.classList.contains("modal-backdrop") && event.target !== action) return;
       state.modalId = null;
       render();
     } else if (actionName === "clear-filters") {
