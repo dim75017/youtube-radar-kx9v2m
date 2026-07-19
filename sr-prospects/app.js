@@ -100,8 +100,7 @@
   var ROUTES = [
     { id: "overview", label: "Vue d’ensemble", icon: "📊" },
     { id: "prospects", label: "Tous les prospects", icon: "👥" },
-    { id: "followups", label: "Plan d’envoi", icon: "📤" },
-    { id: "messages", label: "Messages", icon: "💬" },
+    { id: "followups", label: "Plan d’envoi", icon: "📤" }
   ];
 
   var STATUS_OPTIONS = [
@@ -743,7 +742,7 @@
 
   function renderView() {
     if (state.route === "overview") return renderOverview();
-    if (state.route === "messages") return renderMessages();
+    if (state.route === "followups") return renderSendPlan();
     return renderProspectView(state.route);
   }
 
@@ -1076,6 +1075,68 @@
           infoBox("DMARC", "Ajouter suivi et politique progressive") +
           infoBox("Liste d’exclusion", "Obligatoire avant toute relance") +
         "</div><div class='notice'>Cette page est un plan de travail. Aucun bouton ne déclenche d’envoi.</div></div></div>" +
+    "</section>";
+  }
+
+  function planDemoRows() {
+    var selected = allProspects().filter(function (item) {
+      return ["a contacter", "envoye", "ouvert", "contacte", "a relancer", "sans reponse", "repondu", "interesse"].includes(normalize(item.status));
+    });
+    var seeded = allProspects().filter(isPriority).slice(0, 3);
+    var rows = selected.slice(0, 8).map(function (item) { return { prospect: item, demo: false }; });
+    seeded.forEach(function (item) {
+      if (rows.length < 3 && !rows.some(function (row) { return row.prospect.id === item.id; })) rows.push({ prospect: item, demo: true });
+    });
+    return rows;
+  }
+
+  function planStepMarkup(index, activeIndex, label) {
+    var stateClass = index < activeIndex ? "done" : (index === activeIndex ? "current" : "");
+    return "<div class='plan-step " + stateClass + "'><span>" + (index + 1) + "</span><small>" + escapeHtml(label) + "</small></div>";
+  }
+
+  function renderPlanCard(row, index) {
+    var item = row.prospect;
+    var statuses = ["À contacter", "Envoyé", "Ouvert", "Répondu", "Intéressé"];
+    var normalStatus = normalize(item.status);
+    var active = normalStatus === "interesse" ? 4 : normalStatus === "repondu" ? 3 : normalStatus === "ouvert" ? 2 : normalStatus === "envoye" || normalStatus === "contacte" ? 1 : 0;
+    var chosen = MESSAGES[index % MESSAGES.length];
+    var contact = firstDecisionMakerName(item) || cleanText(item.email) || "Contact à confirmer";
+    return "<article class='plan-card'>" +
+      "<div class='plan-card-head'>" + avatarMarkup(item) +
+        "<div class='plan-card-title'><strong>" + escapeHtml(item.name) + "</strong><span>" + escapeHtml(contact) + " · " + escapeHtml(item.address) + "</span></div>" +
+        badge(row.demo ? "Démo" : (item.status || "À contacter"), row.demo ? "violet" : statusColor(item.status)) +
+      "</div>" +
+      "<div class='plan-layout'>" +
+        "<div class='plan-message-choice'><label>💬 Message sélectionné</label>" +
+          "<select class='plan-message-select' aria-label='Message pour " + escapeHtml(item.name) + "'>" +
+            MESSAGES.slice(0, 6).map(function (message) { return "<option" + (message.id === chosen.id ? " selected" : "") + ">" + escapeHtml(message.emoji + " " + message.name) + "</option>"; }).join("") +
+          "</select><div class='plan-subject'>Objet : " + escapeHtml(chosen.subject) + "</div>" +
+          "<button class='primary-btn' data-action='demo-send'>📤 Envoyer le message</button>" +
+          "<small>Aucun email n’est envoyé dans cette démo.</small>" +
+        "</div>" +
+        "<div class='plan-tracking'><div class='plan-tracking-head'><strong>📈 Suivi du prospect</strong><span>" + escapeHtml(statuses[active]) + "</span></div>" +
+          "<div class='plan-timeline'>" + statuses.map(function (label, stepIndex) { return planStepMarkup(stepIndex, active, label); }).join("") + "</div>" +
+          "<div class='plan-event'>" + (active === 0 ? "Prêt à être contacté" : active === 1 ? "Message envoyé · suivi d’ouverture" : active === 2 ? "Ouverture détectée · relance à préparer" : active === 3 ? "Réponse reçue · qualifier l’intérêt" : "Intérêt confirmé · organiser un échange") + "</div>" +
+        "</div>" +
+      "</div>" +
+    "</article>";
+  }
+
+  function renderSendPlan() {
+    var rows = planDemoRows();
+    var actualCount = rows.filter(function (row) { return !row.demo; }).length;
+    return "<section class='view'>" +
+      viewHead("Pilotage commercial", "Plan d’envoi", "Les prospects choisis, leur message et leur suivi commercial au même endroit.") +
+      "<div class='notice plan-demo-notice'>🧪 Démo visuelle : les boutons et le suivi permettent de se projeter, mais aucun email n’est envoyé ni aucun tracking réel n’est activé.</div>" +
+      "<div class='plan-summary'>" +
+        infoBox("👥 Prospects sélectionnés", number(actualCount)) +
+        infoBox("📤 À contacter", number(rows.filter(function (row) { return normalize(row.prospect.status) === "a contacter" || row.demo; }).length)) +
+        infoBox("💬 Messages prêts", number(Math.min(6, MESSAGES.length))) +
+        infoBox("📈 Suivi", "Du premier envoi à l’intérêt") +
+      "</div>" +
+      "<div class='plan-list'>" + rows.map(renderPlanCard).join("") + "</div>" +
+      "<div class='notice' style='margin-top:16px'>Quand la version opérationnelle sera branchée à la boîte mail autorisée, cette page pourra remplacer la démo par les vrais envois, ouvertures, réponses et relances.</div>" +
     "</section>";
   }
 
@@ -1521,6 +1582,8 @@
       saveProspect();
     } else if (actionName === "prospect-client") {
       saveProspect(true);
+    } else if (actionName === "demo-send") {
+      showToast("Démo : aucun email n’a été envoyé");
     }
   });
 

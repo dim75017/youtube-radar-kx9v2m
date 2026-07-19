@@ -696,6 +696,7 @@ a {
 .filter-select {
   min-width: 165px;
   padding: 0 32px 0 11px;
+  border-radius: 14px;
   appearance: none;
   background-image: linear-gradient(45deg, transparent 50%, #718095 50%), linear-gradient(135deg, #718095 50%, transparent 50%);
   background-position: calc(100% - 15px) 16px, calc(100% - 10px) 16px;
@@ -709,6 +710,176 @@ a {
   padding: 0 11px;
   font-size: 12px;
 }
+
+.field select,
+.plan-message-select {
+  border-radius: 12px;
+}
+
+.plan-demo-notice {
+  margin-bottom: 16px;
+}
+
+.plan-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.plan-list {
+  display: grid;
+  gap: 14px;
+}
+
+.plan-card {
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+.plan-card-head {
+  min-width: 0;
+  padding: 15px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.plan-card-title {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 4px;
+}
+
+.plan-card-title strong,
+.plan-card-title span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-card-title strong { color: var(--text); font-size: 14px; }
+.plan-card-title span { color: var(--muted); font-size: 11px; }
+
+.plan-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr);
+}
+
+.plan-message-choice,
+.plan-tracking {
+  min-width: 0;
+  padding: 18px;
+}
+
+.plan-message-choice {
+  border-right: 1px solid var(--line);
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.plan-message-choice > label,
+.plan-tracking-head strong {
+  color: var(--gold-2);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.plan-message-select {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  background: #090d13;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.plan-subject,
+.plan-message-choice > small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.plan-message-choice .primary-btn {
+  justify-self: start;
+}
+
+.plan-tracking {
+  display: grid;
+  align-content: center;
+  gap: 16px;
+}
+
+.plan-tracking-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.plan-tracking-head span {
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.plan-timeline {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.plan-step {
+  position: relative;
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  color: var(--dim);
+  text-align: center;
+}
+
+.plan-step::before {
+  position: absolute;
+  z-index: 0;
+  top: 11px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--line-strong);
+  content: "";
+}
+
+.plan-step:last-child::before { display: none; }
+
+.plan-step span {
+  position: relative;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--panel);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.plan-step small { overflow: hidden; max-width: 100%; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.plan-step.done { color: var(--green); }
+.plan-step.done span { border-color: var(--green); background: var(--green-soft); }
+.plan-step.done::before { background: var(--green); }
+.plan-step.current { color: var(--gold-2); }
+.plan-step.current span { border-color: var(--gold); background: var(--gold-soft); }
+.plan-event { color: var(--muted); font-size: 12px; }
 
 .result-count {
   margin-left: auto;
@@ -1667,6 +1838,19 @@ textarea:focus-visible,
     grid-template-columns: 1fr;
     gap: 7px;
   }
+
+  .plan-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .plan-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-message-choice {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
 }
 
 @media (max-width: 560px) {
@@ -1755,5 +1939,23 @@ textarea:focus-visible,
 
   .contact-summary {
     grid-template-columns: 1fr;
+  }
+
+  .plan-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-card-head,
+  .plan-message-choice,
+  .plan-tracking {
+    padding: 14px;
+  }
+
+  .plan-card-title span {
+    white-space: normal;
+  }
+
+  .plan-step small {
+    font-size: 8px;
   }
 }
