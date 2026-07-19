@@ -11,7 +11,7 @@
 <script src="../Spotify_Radar_data.js"></script>
 <script src="../Spotify_Playlists_data.js"></script>
 <script src="../Spotify_Labels_data.js"></script>
-<script src="../Spotify_Soundcharts_data_20260719T1027.js"></script>
+<script src="../Spotify_Soundcharts_data.js"></script>
 <style>
 :root{
   --bg:#07080d; --bg2:#0b0d15; --panel:#10131e; --panel2:#141828; --card:#12152233;
@@ -1297,22 +1297,45 @@ function arEditorialArtist(uuid){
 function arTrackRights(name){
   if(!SC || !Array.isArray(SC.tracks)) return 'À vérifier';
   const schema=SC.schemas&&SC.schemas.tracks||[];
-  const match=SC.tracks.find(row=>String(scValue(row,schema,'artist')||'').trim().toLowerCase()===String(name||'').trim().toLowerCase()
-    && ['self_released','independent_label'].includes(String(scValue(row,schema,'rights_status')||'')));
-  return match ? 'À confirmer' : 'À vérifier';
+  const rows=SC.tracks.filter(row=>String(scValue(row,schema,'artist')||'').trim().toLowerCase()===String(name||'').trim().toLowerCase());
+  if(rows.some(row=>['major','major_label','mixed'].includes(String(scValue(row,schema,'rights_status')||'')))) return 'Major détecté';
+  if(rows.some(row=>['self_released','independent_label'].includes(String(scValue(row,schema,'rights_status')||'')))) return 'À confirmer';
+  return 'À vérifier';
 }
-function arClassification(uuid, name){
+const AR_ALLOWED_GENRES = new Set([
+  'lofi_hip_hop','guitar','nature','jazz_jazzhop','classical','ambient','piano',
+  'halloween_lofi','christmas_lofi','dark_ambient','phonk_instrumental','dnb_instrumental'
+]);
+const AR_MIN_MONTHLY_LISTENERS = 10000;
+const AR_MAX_MONTHLY_LISTENERS = 750000;
+function arClassification(uuid, name, candidateRights){
+  const normalizedRights=String(candidateRights||'').toLowerCase();
+  const rights=['major','major_label','mixed'].includes(normalizedRights)
+    ? 'Major détecté'
+    : (['self_released','independent_label','indie'].includes(normalizedRights) ? 'À confirmer' : arTrackRights(name));
   const row=arEditorialArtist(uuid);
-  if(!row) return {genre:'À classifier', instrumental:'À vérifier', ai:'À vérifier', rights:arTrackRights(name)};
+  if(!row) return {genre:'À classifier', genreConfidence:null, instrumental:'À vérifier', instrumentalConfidence:null, ai:'À vérifier', rights, expansionStatus:'review', backgroundEligible:false};
   const schema=SC.editorial.artist_schema||[];
   const genre=scValue(row,schema,'primary_genre')||'À classifier';
+  const genreConfidence=Number(scValue(row,schema,'genre_confidence'));
   const rawInstrumental=String(scValue(row,schema,'instrumental_status')||'').toLowerCase();
+  const instrumentalConfidence=Number(scValue(row,schema,'instrumental_confidence'));
   const rawAi=String(scValue(row,schema,'ai_risk')||'').toLowerCase();
+  const expansionStatus=String(scValue(row,schema,'expansion_status')||'review').toLowerCase();
+  const instrumental=rawInstrumental==='instrumental'?'Instrumental':(rawInstrumental==='vocal'?'Vocal':'À vérifier');
+  const ai=['low','faible'].includes(rawAi)?'Faible':(['high','élevé','eleve'].includes(rawAi)?'Élevé':'À vérifier');
+  const backgroundEligible=expansionStatus==='eligible' && instrumental==='Instrumental' && ai==='Faible'
+    && AR_ALLOWED_GENRES.has(genre) && Number.isFinite(genreConfidence) && genreConfidence>=0.5
+    && Number.isFinite(instrumentalConfidence) && instrumentalConfidence>=0.5;
   return {
     genre,
-    instrumental:rawInstrumental==='instrumental'?'Instrumental':(rawInstrumental==='vocal'?'Vocal':'À vérifier'),
-    ai:['low','faible'].includes(rawAi)?'Faible':(['high','élevé','eleve'].includes(rawAi)?'Élevé':'À vérifier'),
-    rights:arTrackRights(name),
+    genreConfidence:Number.isFinite(genreConfidence)?genreConfidence:null,
+    instrumental,
+    instrumentalConfidence:Number.isFinite(instrumentalConfidence)?instrumentalConfidence:null,
+    ai,
+    rights,
+    expansionStatus,
+    backgroundEligible,
   };
 }
 function arCandidates(){
@@ -1326,14 +1349,18 @@ function arCandidates(){
     const sources=Number(scValue(row,schema,'source_count'))||0;
     const rank=Number(scValue(row,schema,'best_rank'))||null;
     const qualifies=Number(scValue(row,schema,'qualifies'))===1;
-    const classification=arClassification(uuid,name);
-    const scale=Math.max(0,Math.min(25,Math.round(Math.log10(Math.max(listeners,1)/10000)*12.5)));
+    const classification=arClassification(uuid,name,scValue(row,schema,'rights_status'));
+    const scale=listeners<50000?8:listeners<250000?18:listeners<1000000?22:15;
     const network=Math.min(20,sources*4);
     const proximity=rank==null?0:Math.max(0,15-(rank-1)*2);
-    const score=Math.min(100,(qualifies?32:0)+scale+network+proximity+(spotifyId?8:0)+(classification.instrumental==='Instrumental'&&classification.ai!=='Élevé'?22:0)+(classification.ai==='Élevé'?-60:0)+(classification.instrumental==='Vocal'?-45:0));
+    const score=Math.min(100,(qualifies?15:0)+scale+network+proximity+(spotifyId?8:0)+20);
     const review=classification.instrumental==='Instrumental' && classification.ai==='Faible' && classification.rights!=='À vérifier';
     return {uuid,name,spotifyId,listeners,sources,rank,qualifies,classification,score,review};
-  }).sort((a,b)=>b.score-a.score||b.listeners-a.listeners||b.sources-a.sources||a.name.localeCompare(b.name));
+  }).filter(candidate=>candidate.classification.backgroundEligible
+    && candidate.listeners>=AR_MIN_MONTHLY_LISTENERS
+    && candidate.listeners<=AR_MAX_MONTHLY_LISTENERS
+    && candidate.classification.rights==='À confirmer')
+    .sort((a,b)=>b.score-a.score||b.sources-a.sources||a.listeners-b.listeners||a.name.localeCompare(b.name));
 }
 function arTrackCandidates(){
   if(!SC || !Array.isArray(SC.tracks)) return [];
@@ -1357,10 +1384,16 @@ function arClusters(){
   const groups=new Map();
   for(const row of SC.editorial.tracks){
     const genre=scValue(row,schema,'primary_genre');
+    const genreConfidence=Number(scValue(row,schema,'genre_confidence'));
     const instrumental=String(scValue(row,schema,'instrumental_status')||'').toLowerCase();
+    const instrumentalConfidence=Number(scValue(row,schema,'instrumental_confidence'));
     const ai=String(scValue(row,schema,'ai_risk')||'').toLowerCase();
     const artist=scValue(row,schema,'artist');
-    if(!genre || instrumental!=='instrumental' || ['high','élevé','eleve'].includes(ai)) continue;
+    if(!AR_ALLOWED_GENRES.has(genre)
+      || !Number.isFinite(genreConfidence) || genreConfidence<0.5
+      || instrumental!=='instrumental'
+      || !Number.isFinite(instrumentalConfidence) || instrumentalConfidence<0.5
+      || !['low','faible'].includes(ai)) continue;
     if(!groups.has(genre)) groups.set(genre,{genre,artists:new Set(),tracks:0});
     const group=groups.get(genre); group.tracks++; if(artist) group.artists.add(artist);
   }
@@ -2002,7 +2035,7 @@ function renderRadar(){
   const aiFiltered=all.filter(candidate=>S.radarAiRisk==='all'
     || (S.radarAiRisk==='hide_high' && candidate.classification.ai!=='Élevé')
     || (S.radarAiRisk==='high_only' && candidate.classification.ai==='Élevé'));
-  const priorityPool=aiFiltered.filter(candidate=>candidate.qualifies && candidate.listeners>=50000 && candidate.sources>=2 && candidate.classification.instrumental!=='Vocal');
+  const priorityPool=aiFiltered.filter(candidate=>candidate.qualifies && candidate.listeners>=50000 && candidate.sources>=2 && candidate.classification.rights!=='À vérifier');
   const candidates=aiFiltered.filter(candidate=>S.radarFilter==='all'
     || (S.radarFilter==='priority' && priorityPool.includes(candidate))
     || (S.radarFilter==='qualified' && candidate.qualifies)
@@ -2014,9 +2047,9 @@ function renderRadar(){
   const clusters=arClusters();
   const rows=candidates.slice(0,S.radarFilter==='priority'?S.radarLimit:500);
   V.innerHTML=`
-    <div class="page-head"><div><h2>${T('Opportunités A&R')}</h2><p>Classement A&R automatique : réseau Fans Also Like, audience, proximité du signal et garde-fous de qualification. Il ne déclenche jamais une offre cash seul.</p></div></div>
+    <div class="page-head"><div><h2>${T('Opportunités A&R')}</h2><p>Radar strictement instrumental/background : genre éditorial vérifié, preuve instrumentale, risque IA faible, droits indé/self-released repérés et audience de 10k à 750k. Les profils inconnus, majors, trop installés ou grand public sont exclus.</p></div></div>
     <div class="ovgrid" style="margin-bottom:16px">
-      <div class="panel ovp"><div class="ovh"><h3>💎 ${T('Pépites à écouter')}</h3></div><div class="ov-stats"><div class="ov-st"><div class="v">${fmtFull(qualified.length)}</div><div class="l">≥ 50k ${T('Auditeurs mensuels').toLowerCase()}</div></div><div class="ov-st"><div class="v">${fmtFull(all.length)}</div><div class="l">candidats dédupliqués</div></div></div></div>
+      <div class="panel ovp"><div class="ovh"><h3>💎 ${T('Pépites à écouter')}</h3></div><div class="ov-stats"><div class="ov-st"><div class="v">${fmtFull(qualified.length)}</div><div class="l">≥ 50k ${T('Auditeurs mensuels').toLowerCase()}</div></div><div class="ov-st"><div class="v">${fmtFull(all.length)}</div><div class="l">profils instrumentaux vérifiés</div></div></div></div>
       <div class="panel ovp"><div class="ovh"><h3>✅ ${T('Prêt à contacter')}</h3></div><div class="ov-stats"><div class="ov-st"><div class="v">${fmtFull(ready.length)}</div><div class="l">genre + instrumental + IA + droits assez renseignés</div></div></div></div>
       <div class="panel ovp"><div class="ovh"><h3>🌊 ${T('Filons confirmés')}</h3></div><div class="ov-stats"><div class="ov-st"><div class="v">${fmtFull(clusters.length)}</div><div class="l">clusters instrumentaux validés</div></div></div></div>
     </div>
@@ -2024,7 +2057,7 @@ function renderRadar(){
       <button class="chip ${S.radarFilter==='priority'?'on':''}" data-radar-filter="priority">Top priorités (${fmtFull(Math.min(S.radarLimit,priorityPool.length))})</button>
       <button class="chip ${S.radarFilter==='qualified'?'on':''}" data-radar-filter="qualified">${T('Pépites à écouter')} (${fmtFull(qualified.length)})</button>
       <button class="chip ${S.radarFilter==='review'?'on':''}" data-radar-filter="review">${T('Prêt à contacter')} (${fmtFull(ready.length)})</button>
-      <button class="chip ${S.radarFilter==='all'?'on':''}" data-radar-filter="all">Pool complet (${fmtFull(aiFiltered.length)})</button>
+      <button class="chip ${S.radarFilter==='all'?'on':''}" data-radar-filter="all">Pool instrumental vérifié (${fmtFull(aiFiltered.length)})</button>
       <select id="radar-limit"><option value="100" ${S.radarLimit===100?'selected':''}>Top 100 / jour</option><option value="500" ${S.radarLimit===500?'selected':''}>Top 500 / jour</option></select>
       ${radarAiFilterHtml()}
     </div>
