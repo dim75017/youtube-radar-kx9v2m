@@ -130,6 +130,30 @@
     "Commissaire de justice",
     "Juridique à qualifier"
   ];
+  var PROFESSION_EMOJIS = {
+    "Avocat": "⚖️",
+    "Notaire": "📜",
+    "Dentiste": "🦷",
+    "Architecte": "📐",
+    "Expert-comptable": "🧮",
+    "Médecin": "🩺",
+    "Conseil en gestion de patrimoine": "📈",
+    "Commissaire de justice": "🏛️",
+    "Juridique à qualifier": "🧭"
+  };
+  var STATUS_EMOJIS = {
+    "À qualifier": "🔎",
+    "À contacter": "✉️",
+    "Envoyé": "📤",
+    "Ouvert": "👀",
+    "Contacté": "🤝",
+    "Répondu": "💬",
+    "Intéressé": "✨",
+    "À relancer": "🔁",
+    "Sans réponse": "⏳",
+    "Spam / refus": "🚫",
+    "Non pertinent": "🗑️"
+  };
   var PAGE_SIZE = 60;
   var patches = readJson(STORAGE.patches, {});
   var messageStats = readJson(STORAGE.messageStats, {});
@@ -474,6 +498,14 @@
     if (segment.indexOf("commissaire de justice") !== -1 || name.indexOf("huissier") !== -1) return "Commissaire de justice";
     if (segment.indexOf("avocat") !== -1 || name.indexOf("avocat") !== -1) return "Avocat";
     return "Juridique à qualifier";
+  }
+
+  function professionLabel(profession) {
+    return (PROFESSION_EMOJIS[profession] ? PROFESSION_EMOJIS[profession] + " " : "") + profession;
+  }
+
+  function statusLabel(status) {
+    return (STATUS_EMOJIS[status] ? STATUS_EMOJIS[status] + " " : "") + status;
   }
 
   function isPriority(prospect) {
@@ -888,8 +920,8 @@
     var prospects = allProspects();
     var headcounts = unique(prospects.map(function (item) { return item.headcountCode; }));
     return "<div class='toolbar'>" +
-      selectFilter("profession", "Tous les métiers", PROFESSION_OPTIONS, state.profession) +
-      selectFilter("status", "Tous les statuts", STATUS_OPTIONS.filter(Boolean), state.status) +
+      selectFilter("profession", "Tous les métiers", PROFESSION_OPTIONS, state.profession, professionLabel) +
+      selectFilter("status", "Tous les statuts", STATUS_OPTIONS.filter(Boolean), state.status, statusLabel) +
       selectFilter("headcount", "Tous les effectifs", headcounts, state.headcount, function (code) {
         var match = prospects.find(function (item) { return item.headcountCode === code; });
         return code === "NN" ? "Effectif inconnu" : code + " · " + (match ? match.headcountLabel : "");
@@ -1290,7 +1322,7 @@
                 formField("contactForm", "📝 Formulaire de contact", "url", patch.contactForm || prospect.contactForm || "", "https://…") +
                 formField("contactName", "👤 Associé / fondateur", "text", patch.contactName || firstDecisionMakerName(prospect), "Prénom Nom") +
                 formField("contactRole", "⚖️ Qualité", "text", patch.contactRole || firstDecisionMakerRole(prospect), "Associé, associé-fondateur…") +
-                selectField("profession", "🧭 Métier", PROFESSION_OPTIONS, patch.profession || professionOf(prospect)) +
+                selectField("profession", "🧭 Métier", PROFESSION_OPTIONS, patch.profession || professionOf(prospect), professionLabel) +
                 formField("specialties", "🎯 Spécialités", "text", patch.specialties || "", "Fiscal, affaires, social…", true) +
                 textareaField("notes", "🗒️ Notes internes", patch.notes || "", true) +
               "</div>" +
