@@ -216,6 +216,7 @@ a {
 
 .main {
   min-height: 100vh;
+  min-width: 0;
   margin-left: var(--sidebar);
 }
 
@@ -344,12 +345,14 @@ a {
 
 .content {
   width: 100%;
+  min-width: 0;
   max-width: none;
   margin: 0;
   padding: 30px 24px 50px;
 }
 
 .view {
+  min-width: 0;
   animation: enter 220ms ease;
 }
 
@@ -730,10 +733,14 @@ a {
 }
 
 .table-wrap {
+  width: 100%;
+  max-width: 100%;
   border: 1px solid var(--line);
   border-radius: 15px;
   background: var(--panel);
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .data-table {
@@ -1476,6 +1483,10 @@ textarea:focus-visible,
   .message-grid {
     grid-template-columns: 1fr;
   }
+
+  .data-table {
+    min-width: 980px;
+  }
 }
 
 @media (min-width: 1800px) {
@@ -1533,6 +1544,15 @@ textarea:focus-visible,
     padding: 20px 14px 42px;
   }
 
+  .data-table {
+    min-width: 780px;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 13px 12px;
+  }
+
   .view-head {
     align-items: flex-start;
     flex-direction: column;
@@ -1578,6 +1598,14 @@ textarea:focus-visible,
 
   .grid-results {
     grid-template-columns: 1fr;
+  }
+
+  .data-table {
+    min-width: 680px;
+  }
+
+  .table-wrap {
+    border-radius: 12px;
   }
 
   .segment-row {
