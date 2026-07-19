@@ -3,6 +3,7 @@
 
   var DATA_DIRECTORY = "secure-data-v3";
   var MANIFEST_URL = DATA_DIRECTORY + "/manifest.json";
+  var DEVICE_PASSWORD_KEY = "sr-prospects:v1:device-password";
   var FORMAT = "sr-gallery-encrypted-dashboard-data";
   var running = false;
 
@@ -164,6 +165,9 @@
     running = true;
     try {
       await unlock(event.detail && event.detail.password ? event.detail.password : "");
+      if (event.detail && event.detail.remember) {
+        try { window.localStorage.setItem(DEVICE_PASSWORD_KEY, event.detail.password); } catch (storageError) {}
+      }
       if (event.detail && typeof event.detail.start === "function") {
         event.detail.start();
       } else if (window.SRDashboard && typeof window.SRDashboard.start === "function") {

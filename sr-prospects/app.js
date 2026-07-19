@@ -2,6 +2,7 @@
   "use strict";
 
   var root = document.getElementById("app");
+  var DEVICE_PASSWORD_KEY = "sr-prospects:v1:device-password";
 
   if (!window.SR_META || !Array.isArray(window.SR_PROSPECTS)) {
     renderLockedScreen();
@@ -32,7 +33,8 @@
               "</label>" +
               "<button class='primary-btn' type='submit' style='width:100%;margin-top:12px'>Déverrouiller</button>" +
             "</form>" +
-            "<div id='unlockStatus' class='notice' style='margin-top:14px'>La base chiffrée sera déverrouillée uniquement dans ce navigateur. Le mot de passe n’est ni stocké ni transmis.</div>" +
+            "<label class='check-row' style='margin-top:14px'><input id='rememberDevice' type='checkbox' checked /> <span>Autoriser ce PC et ne plus redemander le mot de passe</span></label>" +
+            "<div id='unlockStatus' class='notice' style='margin-top:14px'>L’autorisation reste uniquement sur ce navigateur. Elle peut être retirée à tout moment en effaçant les données du site.</div>" +
           "</div>" +
         "</main>" +
       "</div>";
@@ -65,6 +67,7 @@
         var unlockEvent = new CustomEvent("sr-dashboard-unlock-request", {
           detail: {
             password: passwordInput ? passwordInput.value : "",
+            remember: Boolean(document.getElementById("rememberDevice") && document.getElementById("rememberDevice").checked),
             start: window.SRDashboard.start
           }
         });
@@ -75,6 +78,17 @@
         if (passwordInput) passwordInput.value = "";
       });
     }
+
+    try {
+      var savedPassword = window.localStorage.getItem(DEVICE_PASSWORD_KEY);
+      if (savedPassword) {
+        window.setTimeout(function () {
+          window.dispatchEvent(new CustomEvent("sr-dashboard-unlock-request", {
+            detail: { password: savedPassword, remember: true, start: window.SRDashboard.start }
+          }));
+        }, 0);
+      }
+    } catch (error) {}
   }
 
   var STORAGE = {
