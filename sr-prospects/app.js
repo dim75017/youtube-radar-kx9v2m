@@ -755,16 +755,15 @@
     var emailCount = visible.filter(function (item) { return cleanText(item.email); }).length;
     var linkedinCount = visible.filter(function (item) { return safeImageUrl(item.linkedin); }).length;
     var formCount = visible.filter(function (item) { return safeImageUrl(item.contactForm); }).length;
-    var segmentEntries = Object.keys(meta.segments || {}).map(function (name) {
-      return [name, Number(meta.segments[name]) || 0];
-    }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 8);
-    if (!segmentEntries.length) {
-      var counts = {};
-      visible.forEach(function (item) { counts[item.segment] = (counts[item.segment] || 0) + 1; });
-      segmentEntries = Object.keys(counts).map(function (name) { return [name, counts[name]]; })
-        .sort(function (a, b) { return b[1] - a[1]; }).slice(0, 8);
-    }
-    var maxSegment = segmentEntries.length ? segmentEntries[0][1] : 1;
+    var professionCounts = {};
+    visible.forEach(function (item) {
+      var profession = professionOf(item);
+      professionCounts[profession] = (professionCounts[profession] || 0) + 1;
+    });
+    var professionEntries = PROFESSION_OPTIONS.map(function (profession) {
+      return [profession, Number(professionCounts[profession]) || 0];
+    });
+    var maxProfession = Math.max.apply(null, professionEntries.map(function (entry) { return entry[1]; }).concat([1]));
     var top = priority.slice().sort(function (a, b) {
       return Number(b.fitScore || 0) - Number(a.fitScore || 0);
     }).slice(0, 8);
@@ -788,14 +787,14 @@
       "</div>" +
       "<div class='dashboard-grid'>" +
         "<div class='panel'>" +
-          "<div class='panel-head'><div><div class='panel-title'>Répartition des profils</div><div class='panel-note'>Catégorisation automatique, à confirmer sur le site du cabinet</div></div></div>" +
+          "<div class='panel-head'><div><div class='panel-title'>Métiers ciblés</div><div class='panel-note'>La base actuelle couvre le juridique ; les autres métiers sont prêts pour l’extension.</div></div></div>" +
           "<div class='panel-body'><div class='segment-list'>" +
-            segmentEntries.map(function (entry) {
-              var width = Math.max(2, (entry[1] / maxSegment) * 100);
+            professionEntries.map(function (entry) {
+              var width = entry[1] ? Math.max(2, (entry[1] / maxProfession) * 100) : 0;
               return "<div class='segment-row'>" +
                 "<div class='segment-name' title='" + escapeHtml(entry[0]) + "'>" + escapeHtml(entry[0]) + "</div>" +
                 "<div class='bar-track'><div class='bar-fill' style='width:" + width.toFixed(1) + "%'></div></div>" +
-                "<div class='segment-value'>" + number(entry[1]) + "</div>" +
+                "<div class='segment-value'>" + (entry[1] ? number(entry[1]) : "À enrichir") + "</div>" +
               "</div>";
             }).join("") +
           "</div></div>" +
@@ -807,6 +806,7 @@
             top.map(function (item) {
               return "<button class='priority-item' data-open='" + escapeHtml(item.id) + "'>" +
                 "<span class='score-bubble'>" + number(item.fitScore) + "</span>" +
+                avatarMarkup(item, "priority-avatar") +
                 "<span><span class='priority-name'>" + escapeHtml(item.name) + "</span>" +
                 "<span class='priority-meta'>" + escapeHtml(item.address) + "</span></span>" +
               "</button>";
@@ -1128,7 +1128,6 @@
     var actualCount = rows.filter(function (row) { return !row.demo; }).length;
     return "<section class='view'>" +
       viewHead("Pilotage commercial", "Plan d’envoi", "Les prospects choisis, leur message et leur suivi commercial au même endroit.") +
-      "<div class='notice plan-demo-notice'>🧪 Démo visuelle : les boutons et le suivi permettent de se projeter, mais aucun email n’est envoyé ni aucun tracking réel n’est activé.</div>" +
       "<div class='plan-summary'>" +
         infoBox("👥 Prospects sélectionnés", number(actualCount)) +
         infoBox("📤 À contacter", number(rows.filter(function (row) { return normalize(row.prospect.status) === "a contacter" || row.demo; }).length)) +
