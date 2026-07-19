@@ -564,7 +564,7 @@
     if (routeId === "prospects") return compactNumber(baseProspects.length);
     if (routeId === "followups") {
       return compactNumber(allProspects().filter(function (item) {
-        return ["envoye", "ouvert", "contacte", "a relancer", "sans reponse"].includes(normalize(item.status));
+        return ["a contacter", "envoye", "ouvert", "contacte", "a relancer", "sans reponse"].includes(normalize(item.status));
       }).length);
     }
     return "";
@@ -580,7 +580,7 @@
     var list = allProspects();
     if (routeId === "followups") {
       list = list.filter(function (prospect) {
-        return ["envoye", "ouvert", "contacte", "a relancer", "sans reponse"].includes(normalize(prospect.status));
+        return ["a contacter", "envoye", "ouvert", "contacte", "a relancer", "sans reponse"].includes(normalize(prospect.status));
       });
     }
 
@@ -863,7 +863,7 @@
   function renderProspectView(routeId) {
     var config = {
       prospects: ["Base opérationnelle", "Tous les prospects", "Cherchez, filtrez et enrichissez chaque fiche. Les données ajoutées restent dans ce navigateur."],
-      followups: ["Suivi commercial", "Plan d’envoi", "Toutes les fiches déjà envoyées, ouvertes ou sans réponse, à traiter avec une cadence humaine."]
+      followups: ["Suivi commercial", "Plan d’envoi", "Les fiches ajoutées depuis la base apparaissent ici, prêtes à recevoir leur séquence de prospection."]
     }[routeId] || ["Base opérationnelle", "Tous les prospects", "Cherchez, filtrez et enrichissez chaque fiche. Les données ajoutées restent dans ce navigateur."];
     var list = filteredProspects(routeId);
     var pageCount = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
@@ -1144,19 +1144,12 @@
       return "";
     }
     var patch = patches[prospect.id] || {};
-    var selectedMessage = cleanText(patch.messageVariant) || MESSAGES[0].id;
-    if (!MESSAGES.some(function (item) { return item.id === selectedMessage; })) {
-      selectedMessage = MESSAGES[0].id;
-    }
-    var preview = personalizeMessage(selectedMessage, prospect);
-    var selectedMessageConfig = MESSAGES.find(function (item) { return item.id === selectedMessage; }) || MESSAGES[0];
     return "<div class='modal-backdrop' data-action='close-modal'>" +
       "<section class='modal' role='dialog' aria-modal='true' aria-label='Fiche prospect' data-modal-panel>" +
         "<div class='modal-head'>" +
           avatarMarkup(prospect, "avatar-large") +
           "<div class='modal-title'><h2>" + escapeHtml(prospect.name) + "</h2><p>SIREN " + escapeHtml(prospect.id) +
             " · " + escapeHtml(professionOf(prospect)) + "</p></div>" +
-          "<div class='modal-score' title='Score de pertinence indicatif'>" + number(prospect.fitScore) + "</div>" +
           "<button class='icon-btn' data-action='close-modal' aria-label='Fermer'><span aria-hidden='true'>✖️</span></button>" +
         "</div>" +
         "<div class='modal-scroll'><div class='modal-grid'>" +
@@ -1173,18 +1166,6 @@
               ? "<div class='notice red' style='margin-bottom:18px'>" + number(prospect.sameAddressCount) +
                 " entités partagent cette adresse. Vérifier qu’il s’agit bien d’une implantation réelle avant approbation.</div>"
               : "") +
-            "<h3 class='section-title'>Pourquoi ce score ?</h3>" +
-            "<div class='fit-reasons'>" +
-              (Array.isArray(prospect.fitReasons) && prospect.fitReasons.length
-                ? prospect.fitReasons.map(function (reason) { return "<span class='mini-tag'>" + escapeHtml(reason) + "</span>"; }).join("")
-                : "<span class='mini-tag'>Score indicatif issu des données disponibles</span>") +
-            "</div>" +
-            "<h3 class='section-title'>Source</h3>" +
-            "<div class='info-grid'>" +
-              infoBox("🏷️ Catégorisation", prospect.segmentReason || "Non renseignée") +
-              infoBox("🔄 Mise à jour SIRENE", dateFr(prospect.updated)) +
-              infoBox("🏢 Entités à cette adresse", number(prospect.sameAddressCount)) +
-            "</div>" +
           "</div>" +
           "<div class='modal-column'>" +
             "<form id='prospectForm' data-prospect-id='" + escapeHtml(prospect.id) + "'>" +
@@ -1199,30 +1180,13 @@
                 formField("contactRole", "⚖️ Qualité", "text", patch.contactRole || firstDecisionMakerRole(prospect), "Associé, associé-fondateur…") +
                 selectField("profession", "🧭 Métier", PROFESSION_OPTIONS, patch.profession || professionOf(prospect)) +
                 formField("specialties", "🎯 Spécialités", "text", patch.specialties || "", "Fiscal, affaires, social…", true) +
-                selectField("status", "📊 Statut", STATUS_OPTIONS, prospect.status) +
-                selectField("decision", "✅ Décision", DECISION_OPTIONS, prospect.decision) +
-                formField("sourceCheckedAt", "📆 Vérifié le", "date", patch.sourceCheckedAt || prospect.sourceCheckedAt || "", "") +
-                selectField("messageVariant", "💬 Approche conseillée", MESSAGES.map(function (item) { return item.id; }), selectedMessage, function (id) {
-                  var message = MESSAGES.find(function (item) { return item.id === id; });
-                  return message ? message.name : "Approche";
-                }) +
-                formField("lastContact", "📨 Dernier contact", "date", patch.lastContact || "", "") +
-                formField("lastOpen", "👀 Dernière ouverture", "date", patch.lastOpen || "", "") +
-                formField("followUpDate", "🔔 Prochaine relance", "date", patch.followUpDate || "", "") +
                 textareaField("notes", "🗒️ Notes internes", patch.notes || "", true) +
               "</div>" +
               "<div class='modal-actions'>" +
                 "<button type='button' class='primary-btn' data-action='save-prospect'>Enregistrer la fiche</button>" +
-                "<button type='button' class='ghost-btn' data-action='approve-prospect'>Approuver</button>" +
-                "<button type='button' class='danger-btn' data-action='exclude-prospect'>Exclure</button>" +
+                "<button type='button' class='ghost-btn' data-action='prospect-client'>📤 Prospecter ce client</button>" +
               "</div>" +
             "</form>" +
-            "<div class='modal-message'>" +
-              "<h3 class='section-title'>Aperçu · " + escapeHtml(selectedMessageConfig.name) + "</h3>" +
-              "<div class='message-preview'>" + escapeHtml(preview.subject + "\n\n" + preview.body) + "</div>" +
-              "<div class='modal-actions'><button class='ghost-btn' data-copy-modal-message='" + escapeHtml(selectedMessage) + "'>Copier cet aperçu</button></div>" +
-              "<div class='notice' style='margin-top:12px'>Copier ne déclenche aucun envoi. Vérifiez toujours l’interlocuteur, l’adresse et la pertinence avant utilisation.</div>" +
-            "</div>" +
           "</div>" +
         "</div></div>" +
       "</section>" +
@@ -1292,7 +1256,7 @@
     }).join("") + "</div>";
   }
 
-  function saveProspect(decisionOverride) {
+  function saveProspect(sendToPlan) {
     var form = document.getElementById("prospectForm");
     if (!form) return;
     var id = form.getAttribute("data-prospect-id");
@@ -1307,28 +1271,30 @@
       "contactRole",
       "profession",
       "specialties",
-      "status",
-      "decision",
-      "sourceCheckedAt",
-      "messageVariant",
-      "lastContact",
-      "lastOpen",
-      "followUpDate",
       "notes"
     ].forEach(function (field) {
       patch[field] = cleanText(data.get(field));
     });
-    if (decisionOverride) patch.decision = decisionOverride;
+    if (sendToPlan) {
+      patch.status = "À contacter";
+      patch.prospectingAddedAt = new Date().toISOString();
+    }
     patch.localUpdatedAt = new Date().toISOString();
 
     Object.keys(patch).forEach(function (key) {
-      if (patch[key] === "" && !["status", "decision"].includes(key)) delete patch[key];
+      if (patch[key] === "") delete patch[key];
     });
     patches[id] = patch;
     safeStorageSet(STORAGE.patches, JSON.stringify(patches));
     state.modalId = null;
+    if (sendToPlan) {
+      state.status = "";
+      setRoute("followups");
+      showToast("Client ajouté au Plan d’envoi");
+      return;
+    }
     render();
-    showToast(decisionOverride ? "Décision enregistrée : " + decisionOverride : "Fiche enregistrée localement");
+    showToast("Fiche enregistrée localement");
   }
 
   function clearFilters() {
@@ -1531,14 +1497,6 @@
       return;
     }
 
-    var copyModal = event.target.closest("[data-copy-modal-message]");
-    if (copyModal) {
-      var prospect = getProspect(state.modalId);
-      var personalized = personalizeMessage(copyModal.getAttribute("data-copy-modal-message"), prospect);
-      copyText("Objet : " + personalized.subject + "\n\n" + personalized.body, "Aperçu personnalisé copié");
-      return;
-    }
-
     var action = event.target.closest("[data-action]");
     if (!action) return;
     var actionName = action.getAttribute("data-action");
@@ -1561,10 +1519,8 @@
       exportCsv();
     } else if (actionName === "save-prospect") {
       saveProspect();
-    } else if (actionName === "approve-prospect") {
-      saveProspect("Approuvé");
-    } else if (actionName === "exclude-prospect") {
-      saveProspect("Exclu");
+    } else if (actionName === "prospect-client") {
+      saveProspect(true);
     }
   });
 
@@ -1606,20 +1562,6 @@
       safeStorageSet(STORAGE.messageStats, JSON.stringify(messageStats));
       showToast("Résultat du test enregistré");
       return;
-    }
-    if (event.target.name === "messageVariant" && state.modalId) {
-      var previewProspect = getProspect(state.modalId);
-      var previewMessage = personalizeMessage(event.target.value, previewProspect);
-      var previewMessageConfig = MESSAGES.find(function (item) { return item.id === event.target.value; }) || MESSAGES[0];
-      var messageContainer = event.target.closest(".modal-column").querySelector(".modal-message");
-      if (messageContainer) {
-        var title = messageContainer.querySelector(".section-title");
-        var previewBox = messageContainer.querySelector(".message-preview");
-        var copyButton = messageContainer.querySelector("[data-copy-modal-message]");
-        if (title) title.textContent = "Aperçu · " + previewMessageConfig.name;
-        if (previewBox) previewBox.textContent = previewMessage.subject + "\n\n" + previewMessage.body;
-        if (copyButton) copyButton.setAttribute("data-copy-modal-message", event.target.value);
-      }
     }
   });
 
