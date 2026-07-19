@@ -887,7 +887,6 @@
     return "<div class='toolbar'>" +
       selectFilter("profession", "Tous les métiers", PROFESSION_OPTIONS, state.profession) +
       selectFilter("status", "Tous les statuts", STATUS_OPTIONS.filter(Boolean), state.status) +
-      selectFilter("decision", "Toutes les décisions", DECISION_OPTIONS.filter(Boolean), state.decision) +
       selectFilter("headcount", "Tous les effectifs", headcounts, state.headcount, function (code) {
         var match = prospects.find(function (item) { return item.headcountCode === code; });
         return code === "NN" ? "Effectif inconnu" : code + " · " + (match ? match.headcountLabel : "");
