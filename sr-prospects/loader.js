@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var DATA_DIRECTORY = "secure-data-v3";
+  var DATA_DIRECTORY = "secure-data-v2";
   var MANIFEST_URL = DATA_DIRECTORY + "/manifest.json";
   var DEVICE_PASSWORD_KEY = "sr-prospects:v1:device-password";
   var FORMAT = "sr-gallery-encrypted-dashboard-data";
