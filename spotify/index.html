@@ -886,7 +886,8 @@ function mergeSoundchartsStaging(){
   const trackIds=new Set(R.map(r=>r[6]).filter(Boolean));
   const trackSchema=(SC.schemas&&SC.schemas.tracks)||[];
   for(const row of (SC.tracks||[])){
-    const id=scField(row,trackSchema,'spotify_id'); if(!id||trackIds.has(id)) continue;
+    const id=scField(row,trackSchema,'spotify_id')||('soundcharts:'+String(scField(row,trackSchema,'soundcharts_uuid')||''));
+    if(id==='soundcharts:'||trackIds.has(id)) continue;
     const ai=addArtist(scField(row,trackSchema,'artist'),'',{}); if(ai<0) continue;
     const rights=String(scField(row,trackSchema,'rights_status')||'').toLowerCase();
     const label=scField(row,trackSchema,'label')||scField(row,trackSchema,'copyright')||'Soundcharts staging';
