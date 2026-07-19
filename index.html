@@ -9,7 +9,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="Lofi_Radar_data.js"></script>
+<script>
+window.__radarDataReady=fetch('Lofi_Radar_data.js?payload=1')
+  .then(r=>{if(!r.ok)throw new Error('Snapshot HTTP '+r.status);return r.text();})
+  .then(src=>{Function(src)();return window.LOFI_DATA;});
+</script>
 <script src="Lofi_Radar_channel_avatars.js"></script>
 <script src="Lofi_Radar_studio.js"></script>
 <script src="Lofi_Radar_chx.js"></script>
@@ -1429,6 +1433,7 @@ async function boot(){
   const hs=(location.hash||'').slice(1);
   if(hs&&VIEWS.some(v=>v.id===hs))route=hs;
   loadChan();
+  if(window.__radarDataReady){try{await window.__radarDataReady;}catch(e){}}
   const cache=loadCache();
   const snap=(window.LOFI_DATA&&window.LOFI_DATA.d)?window.LOFI_DATA:null;
   let best=null,src='';
