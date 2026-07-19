@@ -7,6 +7,7 @@ intermediate scan artifact.  It can therefore be scheduled safely.
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import json
 import os
 import re
@@ -26,10 +27,11 @@ import yt_dlp  # noqa: E402
 MIN_SECONDS = 20 * 60
 MIN_ALL_VIEWS = 1_000_000
 MIN_TREND_VIEWS = 500_000
-# The first publish must stay quick and resilient to YouTube throttling.  The
-# scheduled job can deepen the catalogue over successive passes.
-MAX_RESULTS = 5
+# Explore beyond the first handful of results. The job remains bounded and
+# runs hourly, while a wider query corpus builds a genuinely useful niche map.
+MAX_RESULTS = 10
 THREAD = threading.local()
+MAX_WORKERS = 4
 
 # Intentional strictness: do not let lyrics, rap or vocal performances leak
 # into a catalogue whose promise is long-form instrumental listening.
@@ -43,16 +45,39 @@ VOCAL = re.compile(
 QUERIES = {
     "Chill house": [
         "lofi house instrumental mix", "chill house instrumental mix",
+        "chill house mix no vocals", "deep house instrumental mix",
+        "deep house for work instrumental", "deep house for study instrumental",
         "lofi deep house instrumental", "ambient house instrumental mix",
+        "ambient house mix no vocals", "organic house instrumental mix",
+        "organic house mix instrumental", "downtempo house instrumental mix",
+        "melodic house instrumental mix", "balearic house instrumental mix",
+        "house music for focus instrumental", "house music for coding instrumental",
     ],
     "Phonk": [
-        "phonk instrumental mix", "chill phonk instrumental mix",
+        "phonk instrumental mix", "phonk mix no vocals",
+        "chill phonk instrumental mix", "chill phonk no vocals mix",
         "lofi phonk instrumental", "ambient phonk instrumental mix",
+        "atmospheric phonk instrumental", "wave phonk instrumental mix",
+        "drift phonk instrumental mix", "phonk for driving instrumental",
+        "phonk for gaming instrumental", "phonk for gym instrumental",
+        "dark phonk instrumental mix", "phonk background music instrumental",
     ],
     "Drum & Bass": [
+        "drum and bass instrumental mix", "dnb instrumental mix",
         "liquid drum and bass instrumental mix", "liquid dnb instrumental mix",
-        "atmospheric drum and bass instrumental", "lofi drum and bass instrumental mix",
+        "liquid drum and bass mix no vocals", "atmospheric drum and bass instrumental",
+        "atmospheric dnb instrumental mix", "ambient drum and bass instrumental",
+        "ambient dnb instrumental mix", "intelligent drum and bass mix",
+        "intelligent dnb instrumental", "jazzy liquid dnb instrumental",
+        "liquid jungle instrumental mix", "lofi drum and bass instrumental mix",
+        "drum and bass for work instrumental", "dnb for study instrumental",
     ],
+}
+
+GENRE_TITLE_MARKERS = {
+    "Chill house": re.compile(r"\b(?:lo[- ]?fi|chill|deep|ambient|organic|downtempo|melodic|balearic)\s+house\b", re.I),
+    "Phonk": re.compile(r"\bphonk\b", re.I),
+    "Drum & Bass": re.compile(r"\b(?:drum\s*(?:and|&|n)\s*bass|dnb|d&b|liquid\s+(?:dnb|drum\s*(?:and|&|n)\s*bass)|intelligent\s+(?:dnb|drum\s*(?:and|&|n)\s*bass)|jungle\s+(?:dnb|drum\s*(?:and|&|n)\s*bass))\b", re.I),
 }
 
 
@@ -90,6 +115,15 @@ def is_instrumental(item: dict) -> bool:
     return not VOCAL.search(text)
 
 
+def is_genre_match(item: dict, genre: str) -> bool:
+    """Require an explicit genre signal in the video's own title.
+
+    Search terms alone are not evidence: that was the source of ambient
+    videos being shown as Drum & Bass in the dashboard.
+    """
+    return bool(GENRE_TITLE_MARKERS[genre].search(str(item.get("title") or "")))
+
+
 def cluster_for(title: str) -> str:
     text = title.lower()
     if any(x in text for x in ("work", "focus", "study", "coding", "office")):
@@ -103,7 +137,7 @@ def scan(genre: str, query: str) -> list[dict]:
     info = ydl().extract_info(f"ytsearch{MAX_RESULTS}:{query}", download=False) or {}
     out = []
     for item in info.get("entries") or []:
-        if not item or not item.get("id") or not is_instrumental(item):
+        if not item or not item.get("id") or not is_instrumental(item) or not is_genre_match(item, genre):
             continue
         pub = ms_from_item(item)
         views = int(item.get("view_count") or 0)
@@ -151,11 +185,18 @@ def main() -> None:
     payload = read_snapshot()
     d = payload["d"]
     candidates: list[dict] = []
-    for genre in active:
-        for query in QUERIES[genre]:
+    jobs = [(genre, query) for genre in active for query in QUERIES[genre]]
+    # Independent search pages are safe to enrich concurrently. Four workers
+    # keeps the hourly job practical without hammering YouTube.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
+        future_to_job = {}
+        for genre, query in jobs:
             print(f"Scanning {genre}: {query}", flush=True)
+            future_to_job[pool.submit(scan, genre, query)] = (genre, query)
+        for future in concurrent.futures.as_completed(future_to_job):
+            _genre, query = future_to_job[future]
             try:
-                candidates.extend(scan(genre, query))
+                candidates.extend(future.result())
             except Exception as exc:
                 print(f"WARN {query}: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
     all_rows = [r for r in candidates if r["views"] >= MIN_ALL_VIEWS]
