@@ -883,17 +883,18 @@ function mergeSoundchartsStaging(){
       uuid:scField(row,falSchema,'soundcharts_uuid')||''
     }
   );
-  const trackIds=new Set(R.map(r=>r[6]).filter(Boolean));
+  const trackById=new Map(R.map(r=>[r[6],r]).filter(([id])=>Boolean(id)));
   const trackSchema=(SC.schemas&&SC.schemas.tracks)||[];
   for(const row of (SC.tracks||[])){
     const id=scField(row,trackSchema,'spotify_id')||('soundcharts:'+String(scField(row,trackSchema,'soundcharts_uuid')||''));
-    if(id==='soundcharts:'||trackIds.has(id)) continue;
+    if(id==='soundcharts:') continue;
+    if(trackById.has(id)){ const existing=trackById.get(id); if(!existing.sc){existing.sc=true; SC_STAGING.tracks++;} continue; }
     const ai=addArtist(scField(row,trackSchema,'artist'),'',{}); if(ai<0) continue;
     const rights=String(scField(row,trackSchema,'rights_status')||'').toLowerCase();
     const label=scField(row,trackSchema,'label')||scField(row,trackSchema,'copyright')||'Soundcharts staging';
     const track=[ai,scField(row,trackSchema,'title')||'Titre non renseigné',scField(row,trackSchema,'release_date')||'',Number(scField(row,trackSchema,'streams'))||0,
       rights==='self_released'?0:1,label,id,scField(row,trackSchema,'observed_at')||''];
-    track.sc=true; R.push(track); trackIds.add(id); SC_STAGING.tracks++;
+    track.sc=true; R.push(track); trackById.set(id,track); SC_STAGING.tracks++;
   }
 }
 mergeSoundchartsStaging();
