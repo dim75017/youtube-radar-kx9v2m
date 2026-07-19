@@ -856,6 +856,46 @@ const PERF_TRACKS = PERF.tracks || {};
 const PERF_ARTISTS = PERF.artists || {};
 const PERF_PLAYLISTS = PERF.playlists || {};
 const SC = window.SPOTIFY_SOUNDCHARTS || null;
+/* Le staging Soundcharts est volontairement injecté dans les vues globales sans
+   modifier le catalogue historique : chaque ligne garde son marqueur `sc`. */
+const SC_STAGING = {artists:0, tracks:0};
+function scField(row,schema,name){ const i=(schema||[]).indexOf(name); return i<0?null:row[i]; }
+function scKey(v){ return String(v||'').trim().toLowerCase(); }
+function mergeSoundchartsStaging(){
+  if(!SC) return;
+  const artistById=new Map(), artistByName=new Map();
+  A.forEach((a,i)=>{ if(a[7]) artistById.set(a[7],i); if(a[0]) artistByName.set(scKey(a[0]),i); });
+  const addArtist=(name,id,meta={})=>{
+    if(id&&artistById.has(id)) return artistById.get(id);
+    const key=scKey(name); if(key&&artistByName.has(key)) return artistByName.get(key);
+    if(!name) return -1;
+    const row=[name,0,'sc',false,true,'soundcharts_staging','fans_also_like',id||'','','',''];
+    row.sc=Object.assign({listeners:0,sources:0,rank:null,qualifies:false},meta);
+    const i=A.push(row)-1; if(id)artistById.set(id,i); artistByName.set(key,i); SC_STAGING.artists++; return i;
+  };
+  const falSchema=(SC.schemas&&SC.schemas.fal)||[];
+  for(const row of (SC.fal||[])) addArtist(
+    scField(row,falSchema,'name'), scField(row,falSchema,'spotify_id'), {
+      listeners:Number(scField(row,falSchema,'monthly_listeners'))||0,
+      sources:Number(scField(row,falSchema,'source_count'))||0,
+      rank:Number(scField(row,falSchema,'best_rank'))||null,
+      qualifies:Number(scField(row,falSchema,'qualifies'))===1,
+      uuid:scField(row,falSchema,'soundcharts_uuid')||''
+    }
+  );
+  const trackIds=new Set(R.map(r=>r[6]).filter(Boolean));
+  const trackSchema=(SC.schemas&&SC.schemas.tracks)||[];
+  for(const row of (SC.tracks||[])){
+    const id=scField(row,trackSchema,'spotify_id'); if(!id||trackIds.has(id)) continue;
+    const ai=addArtist(scField(row,trackSchema,'artist'),'',{}); if(ai<0) continue;
+    const rights=String(scField(row,trackSchema,'rights_status')||'').toLowerCase();
+    const label=scField(row,trackSchema,'label')||scField(row,trackSchema,'copyright')||'Soundcharts staging';
+    const track=[ai,scField(row,trackSchema,'title')||'Titre non renseigné',scField(row,trackSchema,'release_date')||'',Number(scField(row,trackSchema,'streams'))||0,
+      rights==='self_released'?0:1,label,id,scField(row,trackSchema,'observed_at')||''];
+    track.sc=true; R.push(track); trackIds.add(id); SC_STAGING.tracks++;
+  }
+}
+mergeSoundchartsStaging();
 const GENRE_TAXONOMY = Object.freeze({
   version:'2026-07-v1',
   genres:Object.freeze([
@@ -875,7 +915,8 @@ for (const [tid,entry] of Object.entries(PERF_TRACKS)){
   const pts = perfHistory(entry); if (pts.length) HIST[tid] = pts;
 }
 const AG = A.map((a,i)=>({i, name:a[0], lofi:a[1], flag:a[2], done:a[3], disco:a[4],
-  origin:a[5], seedSrc:a[6], id:a[7]||'', img:a[8]||'', email:a[9]||'', link:a[10]||'', n:0, self:0, streams:0, streams24:null, streams7:null, streams30:null, mstreams:0, hot:0, last:'', top:null, perf:null}));
+  origin:a[5], seedSrc:a[6], id:a[7]||'', img:a[8]||'', email:a[9]||'', link:a[10]||'', sc:a.sc||null,
+  source:a.sc?'soundcharts_staging':'catalogue', listeners:a.sc&&a.sc.listeners||null, n:0, self:0, streams:0, streams24:null, streams7:null, streams30:null, mstreams:0, hot:0, last:'', top:null, perf:null}));
 const TRACKS_BY_ARTIST = new Map();
 for (const r of R){
   const g = AG[r[0]];
@@ -895,7 +936,7 @@ for (const g of AG){
   g.streams7 = g.perf[7].current;
   g.streams30 = g.perf[30].current;
 }
-const withTracks = AG.filter(g=>g.n>0);
+const withTracks = AG.filter(g=>g.n>0 || g.source==='soundcharts_staging');
 const totStreams = withTracks.reduce((s,g)=>s+g.streams,0);
 const totMonthlyStreams = withTracks.reduce((s,g)=>s+g.mstreams,0);
 const totMonthlyRev = totMonthlyStreams*RATE;
@@ -1236,7 +1277,7 @@ function arCandidates(){
     const scale=Math.max(0,Math.min(25,Math.round(Math.log10(Math.max(listeners,1)/10000)*12.5)));
     const network=Math.min(20,sources*4);
     const proximity=rank==null?0:Math.max(0,15-(rank-1)*2);
-    const score=Math.min(100,(qualifies?30:0)+scale+network+proximity+(spotifyId?10:0));
+    const score=Math.min(100,(qualifies?32:0)+scale+network+proximity+(spotifyId?8:0)+(classification.instrumental==='Instrumental'&&classification.ai!=='Élevé'?22:0)+(classification.ai==='Élevé'?-60:0)+(classification.instrumental==='Vocal'?-45:0));
     const review=classification.instrumental==='Instrumental' && classification.ai==='Faible' && classification.rights!=='À vérifier';
     return {uuid,name,spotifyId,listeners,sources,rank,qualifies,classification,score,review};
   }).sort((a,b)=>b.score-a.score||b.listeners-a.listeners||b.sources-a.sources||a.name.localeCompare(b.name));
@@ -1273,12 +1314,12 @@ const S = {
   view:'opps', back:null, palier:'100/0', sel:new Set(), wltab:'tracks', publishing:false, metricMode:'streams',
   q:'', statut:'all', min:0, period:'30', artist:-1, rel:'all', genres:new Set(),
   sort:{k:3, dir:-1}, shown:100,
-  aq:'', asort:'streams', adir:-1, shownA:60, aseg:'all', agenres:new Set(),
+  aq:'', asort:'streams', adir:-1, shownA:60, aseg:'all', agenres:new Set(), sourceTracks:'all', sourceArtists:'all',
   newDays:90, shownN:100,
   plq:'', plcur:'all', plsort:'followers', pldir:-1, plonly:false, shownPL:80, plview:'qualified', plmode:'table',
   amode:'table', omode:'table',
   lbq:'', lbsort:'streams', lbdir:-1, shownLB:80, lbmode:'table', labelKey:null, lbModalArtist:null,
-  radarFilter:'all', radarAiRisk:'hide_high',
+  radarFilter:'priority', radarAiRisk:'hide_high', radarLimit:100,
 };
 
 /* ---------- navigation ---------- */
@@ -1316,6 +1357,8 @@ function rowsBeforePeriod(){
   return R.filter(r=>{
     const classification=trackClassification(r);
     if (S.artist>=0 && r[0]!==S.artist) return false;
+    if (S.sourceTracks==='soundcharts' && !r.sc) return false;
+    if (S.sourceTracks==='catalogue' && r.sc) return false;
     if (S.rel!=='all' && seg(AG[r[0]])!==S.rel) return false;
     if (S.statut==='self' && r[4]!==0) return false;
     if (S.statut==='other' && r[4]!==1) return false;
@@ -1890,14 +1933,16 @@ function renderRadar(){
   const aiFiltered=all.filter(candidate=>S.radarAiRisk==='all'
     || (S.radarAiRisk==='hide_high' && candidate.classification.ai!=='Élevé')
     || (S.radarAiRisk==='high_only' && candidate.classification.ai==='Élevé'));
+  const priorityPool=aiFiltered.filter(candidate=>candidate.qualifies && candidate.listeners>=50000 && candidate.sources>=2 && candidate.classification.instrumental!=='Vocal');
   const candidates=aiFiltered.filter(candidate=>S.radarFilter==='all'
+    || (S.radarFilter==='priority' && priorityPool.includes(candidate))
     || (S.radarFilter==='qualified' && candidate.qualifies)
     || (S.radarFilter==='review' && candidate.review));
   const qualified=aiFiltered.filter(candidate=>candidate.qualifies);
   const ready=aiFiltered.filter(candidate=>candidate.review);
   const clusters=arClusters();
   const freshness=SC.freshness&&SC.freshness.run;
-  const rows=candidates.slice(0,150);
+  const rows=candidates.slice(0,S.radarFilter==='priority'?S.radarLimit:500);
   const state=all.length?`Source Soundcharts · ${freshness&&freshness.finished_at?`dernier lot ${fmtDate(freshness.finished_at)}`:'mise à jour en cours'}`:'Aucun candidat exporté';
   V.innerHTML=`
     <div class="page-head"><div><h2>${T('Opportunités A&R')}</h2><p>Classement A&R automatique : réseau Fans Also Like, audience, proximité du signal et garde-fous de qualification. Il ne déclenche jamais une offre cash seul.</p></div></div>
@@ -1907,9 +1952,11 @@ function renderRadar(){
       <div class="panel ovp"><div class="ovh"><h3>🌊 ${T('Filons confirmés')}</h3></div><div class="ov-stats"><div class="ov-st"><div class="v">${fmtFull(clusters.length)}</div><div class="l">clusters instrumentaux validés</div></div></div></div>
     </div>
     <div class="toolbar">
-      <button class="chip ${S.radarFilter==='all'?'on':''}" data-radar-filter="all">Tous (${fmtFull(aiFiltered.length)})</button>
+      <button class="chip ${S.radarFilter==='priority'?'on':''}" data-radar-filter="priority">Top priorités (${fmtFull(Math.min(S.radarLimit,priorityPool.length))})</button>
       <button class="chip ${S.radarFilter==='qualified'?'on':''}" data-radar-filter="qualified">${T('Pépites à écouter')} (${fmtFull(qualified.length)})</button>
       <button class="chip ${S.radarFilter==='review'?'on':''}" data-radar-filter="review">${T('Prêt à contacter')} (${fmtFull(ready.length)})</button>
+      <button class="chip ${S.radarFilter==='all'?'on':''}" data-radar-filter="all">Pool complet (${fmtFull(aiFiltered.length)})</button>
+      <select id="radar-limit"><option value="100" ${S.radarLimit===100?'selected':''}>Top 100 / jour</option><option value="500" ${S.radarLimit===500?'selected':''}>Top 500 / jour</option></select>
       ${radarAiFilterHtml()}
       <span class="spacer"></span><span class="result-count">${esc(state)}</span>
     </div>
@@ -1927,6 +1974,7 @@ function renderRadar(){
     </tbody></table>${rows.length===0?`<div class="empty">${T('Données insuffisantes')}</div>`:''}</div>
     <div class="analytics-section" style="margin-top:16px"><h4>${T('Filons confirmés')}</h4>${clusters.length?`<div class="contributors">${clusters.map(cluster=>`<div class="contributor"><span class="cn">${esc(cluster.genre)}</span><span class="cv">${cluster.artists} artistes · ${cluster.tracks} tracks</span></div>`).join('')}</div>`:`<div class="analytics-note">${T('Aucun filon confirmé')} · ${T('Historique en cours : un filon nécessite des genres fiables, plusieurs artistes et des mesures successives.')}</div>`}</div>`;
   document.querySelectorAll('[data-radar-filter]').forEach(button=>button.addEventListener('click',()=>{S.radarFilter=button.dataset.radarFilter;renderRadar();}));
+  document.getElementById('radar-limit').addEventListener('change',event=>{S.radarLimit=+event.target.value;S.radarFilter='priority';renderRadar();});
   bindRadarAiFilter();
 }
 
@@ -2007,7 +2055,7 @@ function renderOpps(){
           ${ag?`<td class="selc"><input type="checkbox" class="ck sel-track" data-tid="${r[6]}" ${S.sel.has(r[6])?'checked':''}></td>`:''}
           <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
           <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span> ${wlStar('t',r[6])}${r[7]?' <span class="badge new">'+T('détectée')+' '+r[7].slice(5)+'</span>':''}</td>
-          <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
+          <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span>${r.sc?' <span class="badge new">Soundcharts · staging</span>':''}</td>
           <td>${classificationCellHtml(classification)}</td>
           <td class="num" title="${fmtFull(r[3])}">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</td>
           <td class="num" title="${T('Streams des 30 derniers jours')} · ${T('Aucune extrapolation')}">${streamStackHtml(w30.current,false,false)}</td>
@@ -2069,6 +2117,11 @@ function renderOpps(){
       <option value="self" ${S.statut==='self'?'selected':''}>🎛️ Self-released</option>
       <option value="other" ${S.statut==='other'?'selected':''}>🏷️ ${T('Autre label')}</option>
     </select>
+    <select id="f-source">
+      <option value="all" ${S.sourceTracks==='all'?'selected':''}>Source : catalogue + Soundcharts</option>
+      <option value="soundcharts" ${S.sourceTracks==='soundcharts'?'selected':''}>Soundcharts · staging (${fmtFull(SC_STAGING.tracks)})</option>
+      <option value="catalogue" ${S.sourceTracks==='catalogue'?'selected':''}>Catalogue historique</option>
+    </select>
     <select id="f-min">
       <option value="0" ${S.min===0?'selected':''}>📊 ${T('Streams : tous')}</option>
       <option value="100000" ${S.min===100000?'selected':''}>🔥 ≥ 100k</option>
@@ -2097,6 +2150,7 @@ function renderOpps(){
   bindMetricModeToggle(renderOpps,V);
   bindGenreFilter('f-genres',S.genres,()=>{ S.shown=100; keepScroll(renderOpps); });
   document.getElementById('f-st').addEventListener('change', e=>{ S.statut=e.target.value; S.shown=100; keepScroll(renderOpps); });
+  document.getElementById('f-source').addEventListener('change', e=>{ S.sourceTracks=e.target.value; S.shown=100; keepScroll(renderOpps); });
   document.getElementById('f-min').addEventListener('change', e=>{ S.min=+e.target.value; S.shown=100; keepScroll(renderOpps); });
   document.getElementById('f-period').addEventListener('change', e=>{ S.period=e.target.value; S.shown=100; keepScroll(renderOpps); });
   document.getElementById('f-rel').addEventListener('change', e=>{ S.rel=e.target.value; S.shown=100; keepScroll(renderOpps); });
@@ -2140,6 +2194,7 @@ function renderArtists(){
   let list = withTracks.filter(g=>{
     const classification=artistClassification(g);
     return (!q || g.name.toLowerCase().includes(q)) &&
+      (S.sourceArtists==='all' || (S.sourceArtists==='soundcharts' && g.source==='soundcharts_staging') || (S.sourceArtists==='catalogue' && g.source!=='soundcharts_staging')) &&
       (S.aseg==='all' || seg(g)===S.aseg) &&
       (!S.agenres.size || S.agenres.has(classification.genre));
   });
@@ -2202,7 +2257,7 @@ function renderArtists(){
         return `
         <tr onclick="goArtist(${g.i})" style="cursor:pointer">
           <td class="covtd">${artistCoverHtml(g)}</td>
-          <td>${esc(g.name)} ${wlStar('a',g.name)}</td>
+          <td>${esc(g.name)} ${wlStar('a',g.name)}${g.source==='soundcharts_staging'?' <span class="badge new">Soundcharts · staging</span>':''}</td>
           <td>${classificationCellHtml(classification)}</td>
           <td style="white-space:nowrap"><div>${segBadge(g)}</div><div style="font-size:11px;color:var(--dim);margin-top:3px">${g.lofi||0} ${T('tracks chez Lofi')}</div></td>
           <td class="num">${streamStackHtml(g.streams,false,false)}</td>
@@ -2236,6 +2291,11 @@ function renderArtists(){
       <option value="occ" ${S.aseg==='occ'?'selected':''}>🎲 ${T('Occasionnels')}</option>
       <option value="ext" ${S.aseg==='ext'?'selected':''}>🚫 ${T('Jamais')}</option>
     </select>
+    <select id="a-source">
+      <option value="all" ${S.sourceArtists==='all'?'selected':''}>Source : catalogue + Soundcharts</option>
+      <option value="soundcharts" ${S.sourceArtists==='soundcharts'?'selected':''}>Soundcharts · staging (${fmtFull(SC_STAGING.artists)})</option>
+      <option value="catalogue" ${S.sourceArtists==='catalogue'?'selected':''}>Catalogue historique</option>
+    </select>
     ${metricModeToggleHtml()}
     <span class="spacer"></span>
     <span class="result-count">${list.length} ${T('artistes')}</span>
@@ -2251,6 +2311,7 @@ function renderArtists(){
   document.getElementById('a-q').addEventListener('input', e=>{ S.aq=e.target.value; S.shownA=60; keepScroll(renderArtists); keepFocus('a-q'); });
   bindGenreFilter('a-genres',S.agenres,()=>{ S.shownA=60; keepScroll(renderArtists); });
   document.getElementById('a-seg').addEventListener('change', e=>{ S.aseg=e.target.value; S.shownA=60; keepScroll(renderArtists); });
+  document.getElementById('a-source').addEventListener('change', e=>{ S.sourceArtists=e.target.value; S.shownA=60; keepScroll(renderArtists); });
   document.querySelectorAll('th[data-asort]').forEach(h=>h.addEventListener('click', ()=>{
     const key=h.dataset.asort;
     if (S.asort===key) S.adir*=-1;
