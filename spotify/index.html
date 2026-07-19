@@ -1282,7 +1282,12 @@ const S = {
 };
 
 /* ---------- navigation ---------- */
-function syncHash(){ try{ history.replaceState(null,'','#'+S.view); }catch(e){} }
+function syncHash(){
+  try{
+    const route = S.view==='radar' ? 'opps' : S.view==='opps' ? 'tracks' : S.view;
+    history.replaceState(null,'','#'+route);
+  }catch(e){}
+}
 document.getElementById('nav').addEventListener('click', e=>{
   const b = e.target.closest('button'); if(!b) return;
   document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active', x===b));
@@ -2970,11 +2975,12 @@ document.getElementById('lang-switch').addEventListener('click', ()=>{
 });
 /* restauration de la vue après F5 (hash d'URL) */
 const initV = location.hash.slice(1);
-if (['radar','opps','artists','watch','playlists','labels'].includes(initV)){
-  S.view = initV;
-  document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active', x.dataset.v===initV));
+const initialView = initV==='opps' ? 'radar' : initV==='tracks' ? 'opps' : initV;
+if (['radar','opps','artists','watch','playlists','labels','tracks'].includes(initV)){
+  S.view = initialView;
+  document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active', x.dataset.v===initialView));
 }else if(initV==='overview'){
-  history.replaceState(null,'',location.pathname+location.search+'#opps');
+  history.replaceState(null,'',location.pathname+location.search+'#tracks');
 }
 applyLang();
 </script>
