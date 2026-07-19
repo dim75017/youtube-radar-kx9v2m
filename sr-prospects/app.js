@@ -891,7 +891,6 @@
         var match = prospects.find(function (item) { return item.headcountCode === code; });
         return code === "NN" ? "Effectif inconnu" : code + " · " + (match ? match.headcountLabel : "");
       }) +
-      "<button class='ghost-btn' data-action='clear-filters'>Réinitialiser</button>" +
       "<span class='result-count'>" + number(total) + " résultat" + (total > 1 ? "s" : "") + " · 60 max/page</span>" +
       "<div class='view-toggle' aria-label='Mode d’affichage'>" +
         "<button class='" + (state.viewMode === "list" ? "active" : "") + "' data-view='list' title='Vue liste' aria-label='Afficher en liste'>📋</button>" +
