@@ -1297,8 +1297,21 @@ async function fetchData(){
   const buf=await res.arrayBuffer();
   const wb=XLSX.read(buf,{type:'array',cellDates:false});
   const d=parseWorkbook(wb);
+  mergeExtensionSnapshot(d);
   if(!d.all.length&&!d.trends.length)throw new Error('Parsed 0 rows — sheet structure may have changed');
   return d;
+}
+/* The Google Sheet is the historical source. New niche scans are published
+   in the static snapshot immediately, then merged here so an older Sheet
+   export cannot erase Phonk / D&B / Chill house on live refresh. */
+function mergeExtensionSnapshot(d){
+  const snap=window.LOFI_DATA&&window.LOFI_DATA.d;if(!snap)return;
+  const extension=new Set(['Chill house','Phonk','Drum & Bass']);
+  ['all','trends','news'].forEach(key=>{
+    const into=d[key]||(d[key]=[]),seen=new Set(into.map(r=>r.vid));
+    (snap[key]||[]).forEach(row=>{if(extension.has(row.genre)&&!seen.has(row.vid)){into.push(row);seen.add(row.vid);}});
+    into.sort((a,b)=>(b.vpm||0)-(a.vpm||0));
+  });
 }
 function saveCache(d){
   try{localStorage.setItem(CACHE_KEY,JSON.stringify({t:Date.now(),d:d}));}catch(e){}
