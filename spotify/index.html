@@ -1994,9 +1994,7 @@ function renderRadar(){
   const trackPool=arTrackCandidates().filter(track=>aiFiltered.includes(track.candidate)).slice(0,25);
   const selectedTrack=trackPool.find(track=>track.spotifyId===S.radarTrackId)||trackPool[0]||null;
   const clusters=arClusters();
-  const freshness=SC.freshness&&SC.freshness.run;
   const rows=candidates.slice(0,S.radarFilter==='priority'?S.radarLimit:500);
-  const state=all.length?`Source Soundcharts · ${freshness&&freshness.finished_at?`dernier lot ${fmtDate(freshness.finished_at)}`:'mise à jour en cours'}`:'Aucun candidat exporté';
   V.innerHTML=`
     <div class="page-head"><div><h2>${T('Opportunités A&R')}</h2><p>Classement A&R automatique : réseau Fans Also Like, audience, proximité du signal et garde-fous de qualification. Il ne déclenche jamais une offre cash seul.</p></div></div>
     <div class="ovgrid" style="margin-bottom:16px">
@@ -2011,7 +2009,6 @@ function renderRadar(){
       <button class="chip ${S.radarFilter==='all'?'on':''}" data-radar-filter="all">Pool complet (${fmtFull(aiFiltered.length)})</button>
       <select id="radar-limit"><option value="100" ${S.radarLimit===100?'selected':''}>Top 100 / jour</option><option value="500" ${S.radarLimit===500?'selected':''}>Top 500 / jour</option></select>
       ${radarAiFilterHtml()}
-      <span class="spacer"></span><span class="result-count">${esc(state)}</span>
     </div>
     <div class="panel" style="padding:6px 14px 14px"><table><thead><tr><th>#</th><th>${T('Artiste')}</th><th>${T('Signal de découverte')}</th><th class="num">${T('Auditeurs mensuels')}</th><th>${T('Réseau Fans Also Like')}</th><th>Gates</th><th>${T('Contact')}</th><th>${T('Étape suivante')}</th></tr></thead><tbody>
       ${rows.map((candidate,index)=>{const contact=arKnownContact(candidate.name);return `<tr>
