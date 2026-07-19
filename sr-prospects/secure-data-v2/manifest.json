@@ -1,0 +1,218 @@
+{
+  "format": "sr-gallery-encrypted-dashboard-data",
+  "version": 1,
+  "createdAt": "2026-07-19T18:36:22.863Z",
+  "algorithm": {
+    "name": "AES-GCM",
+    "keyLength": 256,
+    "tagLength": 128
+  },
+  "kdf": {
+    "name": "PBKDF2",
+    "hash": "SHA-256",
+    "iterations": 600000,
+    "salt": "tQozjeTSJBsuBlB5fcHdFg"
+  },
+  "source": {
+    "name": "data.js",
+    "bytes": 9644029,
+    "sha256": "5c490b715d7f881928eead3f7eda790655dff1dc8f26ce1d6dde5eb3d83ca47e",
+    "encoding": "utf-8"
+  },
+  "chunks": [
+    {
+      "index": 0,
+      "file": "chunks/chunk-00000.b64",
+      "plaintextBytes": 524288,
+      "ciphertextBytes": 524304,
+      "iv": "c-UrO34M3eSQBImW",
+      "aad": "c3ItZ2FsbGVyeS1lbmNyeXB0ZWQtZGFzaGJvYXJkLWRhdGF8MXw1YzQ5MGI3MTVkN2Y4ODE5MjhlZWFkM2Y3ZWRhNzkwNjU1ZGZmMWRjOGYyNmNlMWQ2ZGRlNWViM2Q4M2NhNDdlfDB8NTI0Mjg4",
+      "sha256": "599e9133f3c1485ff6efc9677cdb0768c95409281448a2c9f2e86ae61e755ea7",
+      "transportEncoding": "base64url"
+    },
+    {
+      "index": 1,
+      "file": "chunks/chunk-00001.b64",
+      "plaintextBytes": 524288,
+      "ciphertextBytes": 524304,
+      "iv": "uIuGv4BjUg-AC2BR",
+      "aad": "c3ItZ2FsbGVyeS1lbmNyeXB0ZWQtZGFzaGJvYXJkLWRhdGF8MXw1YzQ5MGI3MTVkN2Y4ODE5MjhlZWFkM2Y3ZWRhNzkwNjU1ZGZmMWRjOGYyNmNlMWQ2ZGRlNWViM2Q4M2NhNDdlfDF8NTI0Mjg4",
+      "sha256": "2e4ecbf57a419f98fdc6f0312c53724a0237c56e71a80cae453c70133889200c",
+      "transportEncoding": "base64url"
+    },
+    {
+      "index": 2,
+      "file": "chunks/chunk-00002.b64",
+      "plaintextBytes": 524288,
+      "ciphertextBytes": 524304,
+      "iv": "Br3DW3ufaZrC5tu2",
+      "aad": "c3ItZ2FsbGVyeS1lbmNyeXB0ZWQtZGFzaGJvYXJkLWRhdGF8MXw1YzQ5MGI3MTVkN2Y4ODE5MjhlZWFkM2Y3ZWRhNzkwNjU1ZGZmMWRjOGYyNmNlMWQ2ZGRlNWViM2Q4M2NhNDdlfDJ8NTI0Mjg4",
+      "sha256": "a505acbcb5594a38882b997cd07002080f6b4cc0ff07664b7828085388ea295a",
+      "transportEncoding": "base64url"
+    },
+    {
+      "index": 3,
+      "file": "chunks/chunk-00003.b64",
+      "plaintextBytes": 524288,
+      "ciphertextBytes": 524304,
+      "iv": "egIFjKN_4y-EEVNk",
+      "aad": "c3ItZ2FsbGVyeS1lbmNyeXB0ZWQtZGFzaGJvYXJkLWRhdGF8MXw1YzQ5MGI3MTVkN2Y4ODE5MjhlZWFkM2Y3ZWRhNzkwNjU1ZGZmMWRjOGYyNmNlMWQ2ZGRlNWViM2Q4M2NhNDdlfDN8NTI0Mjg4",
+      "sha256": "2edec300c1aadcb04a274bd8af524223a5528bddd13602cbe18ea94ccdcde363",
+      "transportEncoding": "base64url"
+    },
+    {
+      "index": 4,
+      "file": "chunks/chunk-00004.b64",
+      "plaintextBytes": 524288,
+      "ciphertextBytes": 524304,
+      "iv": "bqPMr4gEOCJJtklO",
+      "aad": "c3ItZ2FsbGVyeS1lbmNyeXB0ZWQtZGFzaGJvYXJkLWRhdGF8MXw1YzQ5MGI3MTVkN2Y4ODE5MjhlZWFkM2Y3ZWRhNzkwNjU1ZGZmMWRjOGYyNmNlMWQ2ZGRlNWViM2Q4M2NhNDdlfDR8NTI0Mjg4",
+      "sha256": "24d20307934a4100a04778c1f6754f4df9c5a73c08a748ea311d1624210d34f5",
+      "transportEncoding": "base64url"
+    },
+    {
+      "index": 5,
+      "file": "chunks/chunk-00005.b64",
+      "plaintextBytes": 524288,
+      "ciphertextBytes": 524304,
+      "iv": "niRfr9quKprapELh",
+      "aad": "c3ItZ2FsbGVyeS1lbmNyeXB0ZWQtZGFzaGJvYXJkLWRhdGF8MXw1YzQ5MGI3MTVkN2Y4ODE5MjhlZWFkM2Y3ZWRhNzkwNjU1ZGZmMWRjOGYyNmNlMWQ2ZGRlNWViM2Q4M2NhNDdlfDV8NTI0Mjg4",
+      "sha256": "dd85ddeda3225120b8985e41facc101beb3b438aba14d27882a7ebf502aa1c70",
+      "transportEncoding": "base64url"
+    },
+    {
+      "index": 6,
+      "file": "chunks/chunk-00006.b64",
+      "plaintextBytes": 524288,
+      "ciphertextBytes": 524304,
+      "iv": "1hoNlPou6Uo3TTC5",
+      "aad": "c3ItZ2FsbGVyeS1lbmNyeXB0ZWQtZGFzaGJvYXJkLWRhdGF8MXw1YzQ5MGI3MTVkN2Y4ODE5MjhlZWFkM2Y3ZWRhNzkwNjU1ZGZmMWRjOGYyNmNlMWQ2ZGRlNWViM2Q4M2NhNDdlfDZ8NTI0Mjg4",
+      "sha256": "eee2d83d9d6f09b626f6e720cc38c2211c1a6821600303e8506f3eeae9a0b8ca",
+      "transportEncoding": "base64url"
+    },
+    {
+      "index": 7,
+      "file": "chunks/chunk-00007.b64",
+      "plaintextBytes": 524288,
+      "ciphertextBytes": 524304,
+      "iv": "zALr7VXzB3QpXlmI",
+      "aad": "c3ItZ2FsbGVyeS1lbmNyeXB0ZWQtZGFzaGJvYXJkLWRhdGF8MXw1YzQ5MGI3MTVkN2Y4ODE5MjhlZWFkM2Y3ZWRhNzkwNjU1ZGZmMWRjOGYyNmNlMWQ2ZGRlNWViM2Q4M2NhNDdlfDd8NTI0Mjg4",
+      "sha256": "8ab57c02325841624d1ca93e141d189bf25832136487e208749dd317c68910f0",
+      "transportEncoding": "base64url"
+    },
+    {
+      "index": 8,
+      "file": "chunks/chunk-00008.b64",
+      "plaintextBytes": 524288,
+      "ciphertextBytes": 524304,
+      "iv": "dMiIjGEiwVEYPdX4",
+      "aad": "c3ItZ2FsbGVyeS1lbmNyeXB0ZWQtZGFzaGJvYXJkLWRhdGF8MXw1YzQ5MGI3MTVkN2Y4ODE5MjhlZWFkM2Y3ZWRhNzkwNjU1ZGZmMWRjOGYyNmNlMWQ2ZGRlNWViM2Q4M2NhNDdlfDh8NTI0Mjg4",
+      "sha256": "7ee9f95ce1722f00b1c508ef239ad014ec85b550c2b5a5ff64e385b1908b6b03",
+      "transportEncoding": "base64url"
+    },
+    {
+      "index": 9,
+      "file": "chunks/chunk-00009.b64",
+      "plaintextBytes": 524288,
+      "ciphertextBytes": 524304,
+      "iv": "6TUKETr7f_krqMCT",
+      "aad": "c3ItZ2FsbGVyeS1lbmNyeXB0ZWQtZGFzaGJvYXJkLWRhdGF8MXw1YzQ5MGI3MTVkN2Y4ODE5MjhlZWFkM2Y3ZWRhNzkwNjU1ZGZmMWRjOGYyNmNlMWQ2ZGRlNWViM2Q4M2NhNDdlfDl8NTI0Mjg4",
+      "sha256": "1dc945e0e96b777e66b8065e46db229da5d5056171d33d38ef7b55f1b7b9f13f",
+      "transportEncoding": "base64url"
+    },
+    {
+      "index": 10,
+      "file": "chunks/chunk-00010.b64",
+      "plaintextBytes": 524288,
+      "ciphertextBytes": 524304,
+      "iv": "yHjngGufyAIG7svI",
+      "aad": "c3ItZ2FsbGVyeS1lbmNyeXB0ZWQtZGFzaGJvYXJkLWRhdGF8MXw1YzQ5MGI3MTVkN2Y4ODE5MjhlZWFkM2Y3ZWRhNzkwNjU1ZGZmMWRjOGYyNmNlMWQ2ZGRlNWViM2Q4M2NhNDdlfDEwfDUyNDI4OA",
+      "sha256": "03dda8102ebd32ff9c72a5310e6471f42e1dfeb2502ea3d2bb9fa26853b30a77",
+      "transportEncoding": "base64url"
+    },
+    {
+      "index": 11,
+      "file": "chunks/chunk-00011.b64",
+      "plaintextBytes": 524288,
+      "ciphertextBytes": 524304,
+      "iv": "Kn4puQIxDNNNk4Wg",
+      "aad": "c3ItZ2FsbGVyeS1lbmNyeXB0ZWQtZGFzaGJvYXJkLWRhdGF8MXw1YzQ5MGI3MTVkN2Y4ODE5MjhlZWFkM2Y3ZWRhNzkwNjU1ZGZmMWRjOGYyNmNlMWQ2ZGRlNWViM2Q4M2NhNDdlfDExfDUyNDI4OA",
+      "sha256": "ddd06d622656a11f9e7a79175194ef64d00649d259224866b847fad4022a6db3",
+      "transportEncoding": "base64url"
+    },
+    {
+      "index": 12,
+      "file": "chunks/chunk-00012.b64",
+      "plaintextBytes": 524288,
+      "ciphertextBytes": 524304,
+      "iv": "AfsPoGpLFPX2cRTJ",
+      "aad": "c3ItZ2FsbGVyeS1lbmNyeXB0ZWQtZGFzaGJvYXJkLWRhdGF8MXw1YzQ5MGI3MTVkN2Y4ODE5MjhlZWFkM2Y3ZWRhNzkwNjU1ZGZmMWRjOGYyNmNlMWQ2ZGRlNWViM2Q4M2NhNDdlfDEyfDUyNDI4OA",
+      "sha256": "28276bf3863feaba24081f5d4d71477f698cd0adeec31fbc9676e666e3b05db5",
+      "transportEncoding": "base64url"
+    },
+    {
+      "index": 13,
+      "file": "chunks/chunk-00013.b64",
+      "plaintextBytes": 524288,
+      "ciphertextBytes": 524304,
+      "iv": "wEQ3xYp6MtvnnIvB",
+      "aad": "c3ItZ2FsbGVyeS1lbmNyeXB0ZWQtZGFzaGJvYXJkLWRhdGF8MXw1YzQ5MGI3MTVkN2Y4ODE5MjhlZWFkM2Y3ZWRhNzkwNjU1ZGZmMWRjOGYyNmNlMWQ2ZGRlNWViM2Q4M2NhNDdlfDEzfDUyNDI4OA",
+      "sha256": "24ea6c3190c7f9d807789acb913a992dc02b58248b435376ea2fff937c5b59a1",
+      "transportEncoding": "base64url"
+    },
+    {
+      "index": 14,
+      "file": "chunks/chunk-00014.b64",
+      "plaintextBytes": 524288,
+      "ciphertextBytes": 524304,
+      "iv": "7NO7V39rREw1TCBD",
+      "aad": "c3ItZ2FsbGVyeS1lbmNyeXB0ZWQtZGFzaGJvYXJkLWRhdGF8MXw1YzQ5MGI3MTVkN2Y4ODE5MjhlZWFkM2Y3ZWRhNzkwNjU1ZGZmMWRjOGYyNmNlMWQ2ZGRlNWViM2Q4M2NhNDdlfDE0fDUyNDI4OA",
+      "sha256": "0fb9bd133be5300b1174efbc1f1b420fc002ce601a49566c65f5935d3a986fe5",
+      "transportEncoding": "base64url"
+    },
+    {
+      "index": 15,
+      "file": "chunks/chunk-00015.b64",
+      "plaintextBytes": 524288,
+      "ciphertextBytes": 524304,
+      "iv": "H5OMEJ6Vu1bErudm",
+      "aad": "c3ItZ2FsbGVyeS1lbmNyeXB0ZWQtZGFzaGJvYXJkLWRhdGF8MXw1YzQ5MGI3MTVkN2Y4ODE5MjhlZWFkM2Y3ZWRhNzkwNjU1ZGZmMWRjOGYyNmNlMWQ2ZGRlNWViM2Q4M2NhNDdlfDE1fDUyNDI4OA",
+      "sha256": "5d7450b07e3d2fc9e32b160dbc535b287e08554bb51c7f2832fe31d8376d940f",
+      "transportEncoding": "base64url"
+    },
+    {
+      "index": 16,
+      "file": "chunks/chunk-00016.b64",
+      "plaintextBytes": 524288,
+      "ciphertextBytes": 524304,
+      "iv": "qqDeIyspeq6-5hok",
+      "aad": "c3ItZ2FsbGVyeS1lbmNyeXB0ZWQtZGFzaGJvYXJkLWRhdGF8MXw1YzQ5MGI3MTVkN2Y4ODE5MjhlZWFkM2Y3ZWRhNzkwNjU1ZGZmMWRjOGYyNmNlMWQ2ZGRlNWViM2Q4M2NhNDdlfDE2fDUyNDI4OA",
+      "sha256": "1fba8144cc7b11ead7b69dd56d666f73e9549ac6a51d76925dd149f17e664934",
+      "transportEncoding": "base64url"
+    },
+    {
+      "index": 17,
+      "file": "chunks/chunk-00017.b64",
+      "plaintextBytes": 524288,
+      "ciphertextBytes": 524304,
+      "iv": "7wOARMEJuCvZwzcp",
+      "aad": "c3ItZ2FsbGVyeS1lbmNyeXB0ZWQtZGFzaGJvYXJkLWRhdGF8MXw1YzQ5MGI3MTVkN2Y4ODE5MjhlZWFkM2Y3ZWRhNzkwNjU1ZGZmMWRjOGYyNmNlMWQ2ZGRlNWViM2Q4M2NhNDdlfDE3fDUyNDI4OA",
+      "sha256": "9a2064d4454f550bd42bed282eed60ca5ea0d6c806cc12bb702cf37e8f6d5d17",
+      "transportEncoding": "base64url"
+    },
+    {
+      "index": 18,
+      "file": "chunks/chunk-00018.b64",
+      "plaintextBytes": 206845,
+      "ciphertextBytes": 206861,
+      "iv": "QlXu048ug1B1z8O4",
+      "aad": "c3ItZ2FsbGVyeS1lbmNyeXB0ZWQtZGFzaGJvYXJkLWRhdGF8MXw1YzQ5MGI3MTVkN2Y4ODE5MjhlZWFkM2Y3ZWRhNzkwNjU1ZGZmMWRjOGYyNmNlMWQ2ZGRlNWViM2Q4M2NhNDdlfDE4fDIwNjg0NQ",
+      "sha256": "da4eaa6b4ff2f64ee111fb71da463319c961413f9c48c4e8e4e1e2ac62a81c01",
+      "transportEncoding": "base64url"
+    }
+  ],
+  "transport": {
+    "encoding": "base64url",
+    "purpose": "GitHub Pages text transport"
+  }
+}
