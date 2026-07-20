@@ -2,7 +2,7 @@ name: Refresh instrumental radar
 
 on:
   schedule:
-    - cron: '17 7 * * 1'
+    - cron: '17 7 * * *'
   push:
     paths:
       - '.github/radar-heartbeat.txt'
