@@ -70,6 +70,11 @@ input,select{font-family:inherit;color:var(--text)}
 .logo h1{font-family:'Sora';font-size:15.5px;font-weight:800;letter-spacing:.3px;white-space:nowrap}
 .logo h1 span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
 .logo small{display:block;font-family:'Inter';font-size:10px;font-weight:500;color:var(--dim);letter-spacing:1.6px;text-transform:uppercase;margin-top:2px}
+.radar-switch{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:0 4px 12px;padding:4px;border:1px solid var(--border);border-radius:11px;background:rgba(5,6,10,.38)}
+.radar-switch a{padding:7px 5px;border-radius:8px;text-align:center;color:var(--dim);font-size:10.5px;font-weight:750;letter-spacing:.15px}
+.radar-switch a:hover{color:var(--text);background:rgba(255,255,255,.05)}
+.radar-switch a.yt.on{color:#fff;background:rgba(255,0,51,.18);box-shadow:inset 0 0 0 1px rgba(255,0,51,.35)}
+.radar-switch a.sp.on{color:#fff;background:rgba(30,215,96,.16);box-shadow:inset 0 0 0 1px rgba(30,215,96,.32)}
 .nav{display:flex;flex-direction:column;gap:3px;flex:1}
 .nav-label{font-size:10px;letter-spacing:1.8px;text-transform:uppercase;color:var(--dim);padding:14px 10px 7px;font-weight:600}
 .nav button{
@@ -226,6 +231,9 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 .thumbwrap .dur{position:absolute;right:8px;bottom:8px;background:rgba(5,6,10,.82);backdrop-filter:blur(4px);color:#fff;font-size:10.5px;font-weight:600;padding:3px 7px;border-radius:6px}
 .thumbwrap .like-flag{position:absolute;left:8px;bottom:8px;background:rgba(5,6,10,.82);backdrop-filter:blur(4px);color:#fff;font-size:10.5px;font-weight:600;padding:3px 7px;border-radius:6px}
 .thumbwrap .vpm-flag{position:absolute;left:8px;top:8px;background:rgba(5,6,10,.8);backdrop-filter:blur(4px);color:var(--acc2);font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:6px;display:flex;gap:4px;align-items:center}
+.scan-new{position:absolute;left:9px;top:9px;z-index:4;display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:7px;background:#ff0033;color:#fff;border:1px solid rgba(255,255,255,.28);box-shadow:0 6px 18px rgba(255,0,51,.32);font-size:10px;font-weight:800;letter-spacing:.8px;line-height:1;text-transform:uppercase}
+.scan-new::before{content:'';width:5px;height:5px;border-radius:50%;background:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.2)}
+.scan-new.inline{position:static;margin-left:7px;vertical-align:2px;padding:3px 6px;font-size:9px}
 .vbody{padding:13px 14px 14px;display:flex;flex-direction:column;gap:9px;flex:1}
 .vtitle{font-size:13px;font-weight:600;line-height:1.42;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:37px}
 .vtitle a:hover{color:var(--acc2)}
@@ -632,6 +640,13 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
   #main{margin-left:64px;padding:0 16px 40px}
   :root{--sidebar:64px}
 }
+@media(min-width:641px) and (max-width:900px){
+  .radar-switch{grid-template-columns:1fr;margin:0 0 10px;padding:3px}
+  .radar-switch a{font-size:0;padding:6px 0}
+  .radar-switch a::before{font-size:14px;line-height:1}
+  .radar-switch a.yt::before{content:'▶'}
+  .radar-switch a.sp::before{content:'●'}
+}
 
 /* ---------- Mobile ---------- */
 #burger{display:none;position:fixed;top:12px;left:12px;z-index:60;width:42px;height:42px;border-radius:12px;background:rgba(14,17,32,.92);border:1px solid var(--border2);backdrop-filter:blur(10px);color:var(--text);font-size:19px;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,.45)}
@@ -699,6 +714,9 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
     <div class="mark"></div>
     <div><h1>Youtube <span>Radar</span><small>Opportunity Map</small></h1></div>
   </div>
+  <div class="radar-switch" aria-label="Switch radar">
+    <a class="yt on" href="./" aria-label="YouTube Radar" title="YouTube Radar">YouTube</a><a class="sp" href="spotify/" aria-label="Spotify Radar" title="Spotify Radar">Spotify</a>
+  </div>
   <nav class="nav" id="nav"></nav>
   <div class="side-foot">
     <div class="sync-row"><div class="sync-dot load" id="sync-dot"></div><div class="sync-txt" id="sync-txt">Connecting…</div></div>
@@ -726,7 +744,7 @@ const SHEET_ID='1XE_M9pQWn8w2Qu83vV_tv9sEFDFQ13fTePseG6mh1vI';
 const XLSX_URL='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/export?format=xlsx';
 // Bump when classification rules change: stale browser caches must not keep
 // showing videos previously assigned to a genre by a broad keyword match.
-const CACHE_KEY='lofiradar_v3';
+const CACHE_KEY='lofiradar_v4';
 
 const ICONS={
  dash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
@@ -1261,9 +1279,10 @@ function scanDotColor(ms){
 function lastScanText(){
   if(!DATA)return '';
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
-  // The Sheet history can lag behind the GitHub snapshot.  The snapshot is
-  // what the hourly video collector actually refreshes and publishes.
-  const vT=Math.max(maxHistTime(DATA.hist)||0,Number(window.LOFI_DATA&&window.LOFI_DATA.t)||0)||null;
+  // Only a validated metrics timestamp or a real history point proves that
+  // video counters were refreshed.  A discovery-only snapshot must not make
+  // stale analytics look fresh.
+  const vT=Math.max(maxHistTime(DATA.hist)||0,Number(window.LOFI_DATA&&window.LOFI_DATA.videoMetricsT)||0)||null;
   const lT=maxHistTime(DATA.liveHourly)||maxHistTime(DATA.liveHist);
   const parts=[];
   const line=(ms,emo,labelEn,labelFr,descEn,descFr)=>{
@@ -1280,6 +1299,10 @@ function lastScanText(){
 
 /* ================= STATE ================= */
 let DATA=null, SYNCED=null, route='dashboard';
+function setRadarData(d){
+  DATA=d;mergeLoadedVideoHistoryIntoData(DATA);
+  if(typeof _anaCache!=='undefined'){_anaCache=null;_anaT=0;}
+}
 const VS={
   all:{q:'',genre:'',sort:'vpm',mode:'grid',limit:60},
   trends:{q:'',genre:'',sort:'vpm',mode:'grid',limit:60},
@@ -1309,34 +1332,112 @@ async function fetchData(){
   if(!d.all.length&&!d.trends.length)throw new Error('Parsed 0 rows — sheet structure may have changed');
   return d;
 }
-/* The Google Sheet is the historical source. New niche scans are published
-   in the static snapshot immediately, then merged here so an older Sheet
-   export cannot erase Phonk / D&B / Chill house on live refresh. */
+/* The Sheet keeps the curated catalogue and older history. The validated
+   daily snapshot supplies current counters, new discoveries and new history
+   points. Merge both sources by video ID without touching livestream data. */
 function mergeExtensionSnapshot(d){
   const snap=window.LOFI_DATA&&window.LOFI_DATA.d;if(!snap)return;
-  const extension=new Set(['Chill house','Phonk','Drum & Bass']);
   ['all','trends','news'].forEach(key=>{
-    const into=d[key]||(d[key]=[]),seen=new Set(into.map(r=>r.vid));
-    (snap[key]||[]).forEach(row=>{if(extension.has(row.genre)&&!seen.has(row.vid)){into.push(row);seen.add(row.vid);}});
+    const into=d[key]||(d[key]=[]),byId=new Map(into.map(r=>[r.vid,r]));
+    (snap[key]||[]).forEach(row=>{
+      const current=byId.get(row.vid);
+      if(current)Object.assign(current,row);
+      else{const added=Object.assign({},row);into.push(added);byId.set(row.vid,added);}
+    });
     into.sort((a,b)=>(b.vpm||0)-(a.vpm||0));
   });
+  const hist=d.hist||(d.hist={});
+  Object.entries(snap.hist||{}).forEach(([vid,points])=>{
+    hist[vid]=mergeDailyVideoHistory(hist[vid],points);
+  });
 }
-function saveCache(d){
-  try{localStorage.setItem(CACHE_KEY,JSON.stringify({t:Date.now(),d:d}));}catch(e){}
+function mergeDailyVideoHistory(left,right){
+  const byDay=new Map();
+  (left||[]).concat(right||[]).forEach(p=>{
+    if(!Array.isArray(p)||!isFinite(p[0])||!isFinite(p[1]))return;
+    const point=[+p[0],+p[1]],day=Math.floor(point[0]/86400000),old=byDay.get(day);
+    if(!old||point[0]>=old[0])byDay.set(day,point);
+  });
+  return [...byDay.values()].sort((a,b)=>a[0]-b[0]);
+}
+const VIDEO_HISTORY_SHARDS=new Map(),VIDEO_HISTORY_PENDING=new Map(),VIDEO_HISTORY_ERRORS=new Map();
+function videoHistoryKey(vid){return vid&&vid.charCodeAt(0).toString(16).padStart(2,'0');}
+function mergeHistoryShardIntoData(shard,d){
+  if(!d||!shard||!shard.d)return;
+  d.hist=d.hist||{};
+  Object.entries(shard.d).forEach(([vid,points])=>{d.hist[vid]=mergeDailyVideoHistory(d.hist[vid],points);});
+}
+function mergeLoadedVideoHistoryIntoData(d){
+  VIDEO_HISTORY_SHARDS.forEach(shard=>mergeHistoryShardIntoData(shard,d));
+}
+function videoHistoryReady(vid){return VIDEO_HISTORY_SHARDS.has(videoHistoryKey(vid));}
+function videoHistoryBusy(vid){return VIDEO_HISTORY_PENDING.has(videoHistoryKey(vid));}
+function videoHistoryError(vid){return VIDEO_HISTORY_ERRORS.get(videoHistoryKey(vid))||'';}
+async function loadVideoHistoryShard(key){
+  if(VIDEO_HISTORY_SHARDS.has(key))return VIDEO_HISTORY_SHARDS.get(key);
+  if(VIDEO_HISTORY_PENDING.has(key))return VIDEO_HISTORY_PENDING.get(key);
+  const pending=fetch('video_history/'+key+'.json?payload='+Date.now(),{cache:'no-store'})
+    .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(shard=>{
+      if(!shard||typeof shard.d!=='object')throw new Error('Invalid history shard');
+      VIDEO_HISTORY_SHARDS.set(key,shard);VIDEO_HISTORY_ERRORS.delete(key);return shard;
+    })
+    .catch(e=>{VIDEO_HISTORY_ERRORS.set(key,e.message||'History unavailable');throw e;})
+    .finally(()=>VIDEO_HISTORY_PENDING.delete(key));
+  VIDEO_HISTORY_PENDING.set(key,pending);return pending;
+}
+async function ensureVideoHistory(vid){
+  if(!vid)return false;
+  const key=videoHistoryKey(vid);
+  try{
+    const shard=await loadVideoHistoryShard(key);
+    mergeHistoryShardIntoData(shard,DATA);
+    if(typeof _anaCache!=='undefined'){_anaCache=null;_anaT=0;}
+    const current=window._openVideoDrawer;
+    if(current&&current.v&&current.v.vid===vid)openDrawer(current.kind,current.v,true,true);
+    if(window._openAnaVid===vid&&route==='ana'){
+      render();const i=(window._page_ana||[]).findIndex(v=>v.vid===vid);if(i>=0)openAnaIdx(i,true);
+    }
+    return true;
+  }catch(e){
+    const current=window._openVideoDrawer;
+    if(current&&current.v&&current.v.vid===vid)openDrawer(current.kind,current.v,true,true);
+    if(window._openAnaVid===vid&&route==='ana'){
+      const i=(window._page_ana||[]).findIndex(v=>v.vid===vid);if(i>=0)openAnaIdx(i,true);
+    }
+    return false;
+  }
+}
+function retryVideoHistory(vid){
+  const key=videoHistoryKey(vid);VIDEO_HISTORY_ERRORS.delete(key);VIDEO_HISTORY_SHARDS.delete(key);
+  const current=window._openVideoDrawer;
+  if(current&&current.v&&current.v.vid===vid)openDrawer(current.kind,current.v,true,true);
+  if(window._openAnaVid===vid){const i=(window._page_ana||[]).findIndex(v=>v.vid===vid);if(i>=0)openAnaIdx(i,true);}
+  ensureVideoHistory(vid);
+}
+function videoHistoryPanel(vid,points,label){
+  if(!vid)return label?'<div class="k">📈 View history</div>'+histChart(points||null):videoHistoryAnalytics(points||null);
+  if(videoHistoryError(vid))return '<div class="hist-empty">Daily history unavailable. <button class="load-more" onclick="retryVideoHistory('+jsq(vid)+')">Retry</button></div>';
+  if(!videoHistoryReady(vid))return '<div class="hist-empty">Loading daily history…</div>';
+  return label?'<div class="k">📈 View history</div>'+histChart(points||null):videoHistoryAnalytics(points||null);
+}
+function clearLegacyVideoCaches(){
+  try{localStorage.removeItem('lofiradar_v3');localStorage.removeItem(CACHE_KEY);}catch(e){}
+}
+function saveCache(){
+  // The static snapshot is already the fallback; do not duplicate its growing
+  // catalogue/history in the small localStorage quota.
+  clearLegacyVideoCaches();
 }
 function loadCache(){
-  try{const raw=localStorage.getItem(CACHE_KEY);if(!raw)return null;const o=JSON.parse(raw);
-    o.d.recos.forEach(r=>{if(r.valid==null)r.valid='';});
-    enrichRecos(o.d.recos);
-    normalizeExpandedGenre(o.d.all);normalizeExpandedGenre(o.d.trends);normalizeExpandedGenre(o.d.news);normalizeExpandedGenre(o.d.ours);
-    return o;}catch(e){return null;}
+  clearLegacyVideoCaches();return null;
 }
 async function refresh(){
   const btn=document.getElementById('btn-refresh');btn.classList.add('spinning');
   setSync('load','Syncing…');
   try{
     const d=await fetchData();
-    DATA=d;SYNCED=Date.now();saveCache(d);
+    setRadarData(d);SYNCED=Date.now();saveCache(d);
     setSync('',lastScanText()||'Live · synced '+timeAgo(SYNCED));
     renderNav();render();
   }catch(e){
@@ -1381,25 +1482,44 @@ function parseChanWb(wb){
     Object.values(hist).forEach(a=>a.sort((x,y)=>x[0]-y[0]));
   }
   const X=(window.CHX&&window.CHX.d)||{};
+  const XH=(window.CHX&&window.CHX.hist)||{};
   chans.forEach(c=>{
     const key=((c.url.match(/(@[\w.-]+)/)||c.url.match(/channel\/(UC[\w-]{22})/)||[])[1]||'').toLowerCase();
     const x=X[key]||X[key.replace(/^@/,'')]||X['@'+key];
     if(x){
       if(x.av)c.av=x.av;
-      if(c.views==null&&x.v!=null)c.views=x.v;
-      if(c.nvid==null&&x.n!=null)c.nvid=x.n;
-      if(!c.created&&x.cr)c.created=toMs(x.cr);
-      if(!c.lastUp&&x.lu)c.lastUp=toMs(x.lu);
-      if(c.ageY==null&&c.created)c.ageY=+(((Date.now()-c.created)/31557600000).toFixed(1));
-      if(c.viewsYr==null&&c.views!=null&&c.ageY>0.2)c.viewsYr=Math.round(c.views/c.ageY);
-      if(c.avgVid==null&&c.views!=null&&c.nvid)c.avgVid=Math.round(c.views/c.nvid);
+      if(x.s!=null)c.subs=x.s;
+      if(x.v!=null)c.views=x.v;
+      if(x.n!=null)c.nvid=x.n;
+      if(x.cr)c.created=toMs(x.cr);
+      if(x.lu)c.lastUp=toMs(x.lu);
+      if(c.created)c.ageY=+(((Date.now()-c.created)/31557600000).toFixed(1));
+      if(c.views!=null&&c.ageY>0.2)c.viewsYr=Math.round(c.views/c.ageY);
+      if(c.views!=null&&c.nvid)c.avgVid=Math.round(c.views/c.nvid);
+    }
+    const extraHist=XH[key]||XH[key.replace(/^@/,'')]||XH['@'+key];
+    if(extraHist&&extraHist.length){
+      const u=normUrl(c.url),byTime=new Map();
+      (hist[u]||[]).concat(extraHist).forEach(p=>{if(Array.isArray(p)&&isFinite(p[0]))byTime.set(+p[0],[+p[0],num(p[1]),num(p[2])]);});
+      hist[u]=[...byTime.values()].sort((a,b)=>a[0]-b[0]);
     }
   });
   const lg=(window.CHX&&window.CHX.lg)||{};
+  const lgUrl=normUrl('https://www.youtube.com/@LofiGirl');
+  const lgExtra=XH.lofigirl||XH['@lofigirl']||[];
+  if(lgExtra.length){
+    const byTime=new Map();
+    (hist[lgUrl]||[]).concat(lgExtra).forEach(p=>{
+      if(Array.isArray(p)&&isFinite(p[0]))byTime.set(+p[0],[+p[0],num(p[1]),num(p[2])]);
+    });
+    hist[lgUrl]=[...byTime.values()].sort((a,b)=>a[0]-b[0]);
+  }
+  const lgCreated=Date.UTC(2015,2,18),lgViews=lg.v||2639469149;
+  const lgAge=+(((Date.now()-lgCreated)/31557600000).toFixed(1));
   chans.unshift({
     name:'Lofi Girl',niche:'Lofi / Chillhop',url:'https://www.youtube.com/@LofiGirl',country:'France',
-    subs:15813038,views:2639469149,nvid:427,avgVid:Math.round(2639469149/427),
-    created:Date.UTC(2015,2,18),ageY:11.3,viewsYr:334000000,lastUp:lg.lu?toMs(lg.lu):null,
+    subs:lg.s||15813038,views:lgViews,nvid:lg.n||427,avgVid:Math.round(lgViews/(lg.n||427)),
+    created:lgCreated,ageY:lgAge,viewsYr:Math.round(lgViews/lgAge),lastUp:lg.lu?toMs(lg.lu):null,
     avg10:null,upMo:null,status:'Actif',ours:true,av:lg.av||null
   });
   return {channels:chans,hist:hist};
@@ -1422,15 +1542,18 @@ function sbmColor(v){
   return '#34d399';
 }
 function chanSubsMo(c){
-  const sb=sbmFor(c);
-  if(sb!=null)return sb;
   if(c.subsMo!=null)return c.subsMo;
-  if(!CHAN||!CHAN.hist)return null;
-  const a=CHAN.hist[normUrl(c.url)];if(!a||a.length<2)return null;
-  const s=a.filter(p=>p[1]!=null);if(s.length<2)return null;
-  const days=(s[s.length-1][0]-s[0][0])/86400000;if(days<6)return null;
-  const d=(s[s.length-1][1]-s[0][1])/days*30.44;
-  return d>0?Math.round(d):(d===0?0:null);
+  if(CHAN&&CHAN.hist){
+    const a=CHAN.hist[normUrl(c.url)]||[];
+    const s=a.filter(p=>p[1]!=null);
+    if(s.length>=2){
+      const end=s[s.length-1];
+      const prior=s.slice(0,-1).map(p=>({p,days:(end[0]-p[0])/86400000})).filter(x=>x.days>=6).sort((a,b)=>Math.abs(a.days-30.44)-Math.abs(b.days-30.44))[0];
+      if(prior){const d=(end[1]-prior.p[1])/prior.days*30.44;return d>0?Math.round(d):(d===0?0:null);}
+    }
+  }
+  const sb=sbmFor(c);
+  return sb!=null?sb:null;
 }
 function normUrl(u){return String(u||'').toLowerCase().replace(/\/+$/,'');}
 async function loadChan(){
@@ -1463,16 +1586,16 @@ async function boot(){
   else if(snap){best=snap;src='snap';}
   if(best){
     normalizeExpandedGenre(best.d.all);normalizeExpandedGenre(best.d.trends);normalizeExpandedGenre(best.d.news);normalizeExpandedGenre(best.d.ours);enrichRecos(best.d.recos);
-    DATA=best.d;SYNCED=best.t;
+    setRadarData(best.d);SYNCED=best.t;
     document.getElementById('loader').classList.add('hide');
     setSync('load',(src==='snap'?'Daily snapshot · ':'Cached · ')+'trying live sync…');
     renderNav();render();
-    try{const d=await fetchData();DATA=d;SYNCED=Date.now();saveCache(d);setSync('',lastScanText()||'Live · synced just now');renderNav();render();}
+    try{const d=await fetchData();setRadarData(d);SYNCED=Date.now();saveCache(d);setSync('',lastScanText()||'Live · synced just now');renderNav();render();}
     catch(e){setSync('','Daily snapshot · '+fmtDateFull(best.t)+'<br>(live sync unavailable from a local file)');}
   }else{
     document.getElementById('loader-msg').textContent=(typeof LANG!=='undefined'&&LANG==='fr')?'Téléchargement des données en direct depuis Google Sheets…':'Downloading live data from Google Sheets…';
     try{
-      const d=await fetchData();DATA=d;SYNCED=Date.now();saveCache(d);
+      const d=await fetchData();setRadarData(d);SYNCED=Date.now();saveCache(d);
       document.getElementById('loader').classList.add('hide');
       setSync('',lastScanText()||'Live · synced just now');
       renderNav();render();
@@ -1488,7 +1611,7 @@ const VIEWS=[
   {id:'chan',label:'Channels',emo:'📡',cnt:()=>CHAN?String(CHAN.channels.length):''},
   {id:'recos',label:'Recommendations',emo:'💡',cnt:()=>DATA?fmtN(DATA.recos.length):''},
   {id:'roadmap',label:'Roadmap',emo:'🗓️',cnt:()=>DATA?String(DATA.roadmap.length):''},
-  {id:'ana',label:'Analysis',emo:'🔬',cnt:()=>DATA&&DATA.ours?String(anaRows().length):''},
+  {id:'ana',label:'Analysis',emo:'🔬',cnt:()=>DATA&&DATA.ours?String(DATA.ours.filter(v=>v.pub&&(v.durH==null||v.durH>=0.15)).length):''},
   {id:'watch',label:'Watchlist',emo:'⭐',cnt:()=>{const w=wlGet();return String(w.v.length+w.l.length+w.c.length);}},
   {id:'kw',label:'Keywords',emo:'🔎',small:1,cnt:()=>''}
 ];
@@ -1515,7 +1638,7 @@ function render(){
   else if(route==='ana'){t.innerHTML='Analysis <span class="pill">OUR VIDEOS</span>';el.innerHTML=anaHTML();}
   else if(route==='watch'){t.innerHTML='Watchlist <span class="pill">⭐</span>';el.innerHTML=watchHTML();}
   else if(route==='live'){t.innerHTML='Livestreams <span class="pill">HOURLY SCAN</span>';el.innerHTML=livesHTML();}
-  else if(route==='chan'){t.innerHTML='Channels <span class="pill">WEEKLY SCAN</span>';el.innerHTML=chanHTML();}
+  else if(route==='chan'){t.innerHTML='Channels <span class="pill">MONTHLY SCAN</span>';el.innerHTML=chanHTML();}
   else if(route==='kw'){t.textContent='Keywords';el.innerHTML=kwHTML();}
   i18nView();armAutoLoad();fillLikes();if(route==='ana')fillAnaLikes();
 }
@@ -1563,7 +1686,7 @@ function dashHTML(){
   h+='<div class="dash-3">'+
     '<div class="panel"><h3>🔥 Hot right now<span class="link" onclick="VS.mix.age=\'12m\';VS.mix.sort=\'vpm\';go(\'mix\')">View all →</span></h3><div class="psub">Fastest-growing videos published in the last 12 months</div><div class="mini-list">'+
       hot.map(v=>mini(v,'<b>'+fmtN(v.vpm)+'/mo</b><span>'+esc(v.channel)+'</span>','trends')).join('')+'</div></div>'+
-    '<div class="panel"><h3>📰 Latest discoveries<span class="link" onclick="VS.mix.age=\'1m\';VS.mix.sort=\'added\';go(\'mix\')">View all →</span></h3><div class="psub">New videos the YouTube algorithm just started pushing · daily scan</div><div class="mini-list">'+
+    '<div class="panel"><h3>📰 Latest discoveries<span class="link" onclick="VS.mix.age=\'3m\';VS.mix.sort=\'added\';go(\'mix\')">View all →</span></h3><div class="psub">New videos the YouTube algorithm just started pushing · daily scan</div><div class="mini-list">'+
       (latest.length?latest.map(v=>mini(v,'<b>'+fmtN(v.views)+' views</b><span>'+fmtAge(v.ageM)+' old</span>','news')).join(''):'<div class="empty">No discoveries yet</div>')+'</div></div>'+
     '<div class="panel"><h3>🗓️ Coming up<span class="link" onclick="go(\'roadmap\')">Full roadmap →</span></h3><div class="psub">Next planned releases · synced with Monday & rotation proposals</div>'+
       coming.map(r=>{const d=new Date(r.date);return '<div class="rm-mini" style="--gc:'+gcolor(r.genre)+'"><div class="d">'+d.getDate()+' '+MONTHS[d.getMonth()]+'</div><div class="t">'+esc(r.title)+'</div>'+gtag(r.genre,1)+'</div>';}).join('')+'</div>'+
@@ -1728,7 +1851,7 @@ function listHTML(kind,rows){
     h='<table class="vtable"><thead><tr><th></th><th>Title</th><th>Views/mo</th><th>Views</th><th>Duration</th><th>Published</th><th>Genre</th><th>Channel</th><th>Subs</th></tr></thead><tbody>'+
       page.map((v,i)=>'<tr class="row" onclick="openIdx(\''+kind+'\','+i+')">'+
         '<td><img class="tthumb" loading="lazy" src="'+thumb(v.vid)+'" onerror="this.style.visibility=\'hidden\'"></td>'+
-        '<td class="ttitle">'+esc(v.title)+'</td>'+
+        '<td class="ttitle">'+esc(v.title)+scanNewBadge(v,true)+'</td>'+
         '<td class="num vpmcell">'+fmtN(v.vpm)+'</td><td class="num">'+fmtN(v.views)+'</td>'+
         '<td class="num">'+fmtDur(v.durH)+'</td><td class="num">'+fmtDate(v.pub)+'</td>'+
         '<td>'+gtag(v.genre)+'</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(v.channel)+'</td>'+
@@ -1740,7 +1863,7 @@ function listHTML(kind,rows){
 }
 function vcardHTML(kind,v,i){
   return '<div class="vcard" onclick="openIdx(\''+kind+'\','+i+')">'+
-    '<div class="thumbwrap">'+(v.vid?wlStar('v',v.vid):'')+'<img loading="lazy" src="'+thumb(v.vid)+'" onerror="this.src=\'https://i.ytimg.com/vi/'+(v.vid||'')+'/hqdefault.jpg\';this.onerror=null;">'+
+    '<div class="thumbwrap">'+(v.vid?wlStar('v',v.vid):'')+scanNewBadge(v,false)+'<img loading="lazy" src="'+thumb(v.vid)+'" onerror="this.src=\'https://i.ytimg.com/vi/'+(v.vid||'')+'/hqdefault.jpg\';this.onerror=null;">'+
       (v.vid?'<span class="like-flag" style="display:none" data-likes="'+v.vid+'"></span>':'')+
       (v.durH!=null?'<span class="dur">'+fmtDur(v.durH)+'</span>':'')+'</div>'+
     '<div class="vbody">'+
@@ -1755,14 +1878,24 @@ function vcardHTML(kind,v,i){
       '</div></div></div>';
 }
 
+function isScanNew(v){
+  const added=Number(v&&v.added),age=ageMonths(v||{});
+  const since=Date.now()-added;
+  return Number.isFinite(added)&&age!=null&&age>=0&&age<=3&&since>=-10*60000&&since<=7*86400000;
+}
+function scanNewBadge(v,inline){
+  return isScanNew(v)?'<span class="scan-new'+(inline?' inline':'')+'" title="Detected by the daily scan in the last 7 days">NEW</span>':'';
+}
+
 /* ================= DRAWER ================= */
 function openIdx(kind,i){const v=(window['_page_'+kind]||[])[i];if(v)openDrawer(kind,v);}
 function openVid(kind,key){
   const v=DATA[kind].find(x=>x.vid===key||x.title===key);if(v)openDrawer(kind,v);
 }
-function openDrawer(kind,v,keepHistoryPeriod){
+function openDrawer(kind,v,keepHistoryPeriod,historyReload){
   if(!keepHistoryPeriod)VIDEO_HIST_PERIOD='d7';
   window._openVideoDrawer={kind,v};
+  if(v.vid&&!videoHistoryReady(v.vid)&&!videoHistoryBusy(v.vid)&&!videoHistoryError(v.vid)&&!historyReload)ensureVideoHistory(v.vid);
   const sec=(k,val,icon)=>val?'<div class="dw-sec"><div class="k">'+(icon||'')+' '+k+'</div><div class="v">'+esc(val)+'</div></div>':'';
   let extra='';
   if(kind==='mix'){
@@ -1795,7 +1928,7 @@ function openDrawer(kind,v,keepHistoryPeriod){
         '<div class="dw-stat"><b>'+fmtDur(v.durH)+'</b><span>duration</span></div>'+
         '<div class="dw-stat"><b>'+fmtAge(v.ageM)+'</b><span>age</span></div>'+
       '</div>'+
-      '<div class="dw-sec">'+videoHistoryAnalytics(DATA.hist&&v.vid?DATA.hist[v.vid]:null)+'</div>'+
+      '<div class="dw-sec">'+videoHistoryPanel(v.vid,DATA.hist&&v.vid?DATA.hist[v.vid]:null,false)+'</div>'+
       extra+
     '</div>';
   document.getElementById('drawer').classList.add('show');
@@ -1809,6 +1942,7 @@ function closeDrawer(){
   document.getElementById('backdrop').classList.remove('show');
   window._drawerRecoN=null;window._drawerReopen=null;
   window._openVideoDrawer=null;
+  window._openAnaVid=null;
   setTimeout(()=>{if(!dw.classList.contains('show'))dw.innerHTML='';},220);
 }
 const IO=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){IO.unobserve(e.target);e.target.click();}})},{rootMargin:'600px'});
@@ -2421,6 +2555,16 @@ const GKEYS=[[/lofi|chillhop|hip ?hop/i,'lofi'],[/synth|retro|outrun/i,'synthwav
 function genreKey(g){if(!g)return null;for(const p of GKEYS){if(p[0].test(g))return p[1];}return 'other';}
 const AS={sort:'date',mode:'grid'};
 let _anaCache=null,_anaT=0;
+let ANALYSIS_HISTORY_PROMISE=null;
+function ensureAnalysisHistory(){
+  if(!DATA||ANALYSIS_HISTORY_PROMISE)return;
+  const ids=[...new Set((DATA.ours||[]).map(v=>v.vid).filter(Boolean))];
+  const missing=ids.filter(vid=>!videoHistoryReady(vid)&&!videoHistoryError(vid));
+  if(!missing.length)return;
+  ANALYSIS_HISTORY_PROMISE=Promise.all(missing.map(ensureVideoHistory)).finally(()=>{
+    ANALYSIS_HISTORY_PROMISE=null;_anaCache=null;_anaT=0;if(route==='ana')render();
+  });
+}
 function anaRows(){
   if(_anaCache&&_anaT===SYNCED)return _anaCache;
   const out=(DATA.ours||[]).filter(v=>v.pub&&(v.durH==null||v.durH>=0.15)).map(v=>{
@@ -2430,8 +2574,10 @@ function anaRows(){
     o.views=s.length?s[s.length-1][1]:null;
     o.vpm=(o.views!=null&&o.ageM>0.1)?o.views/o.ageM:null;
     if(s.length>=2){
-      const days=Math.max((s[s.length-1][0]-s[0][0])/86400000,0.5);
-      o.vNow=(s[s.length-1][1]-s[0][1])/days*30.44;
+      const end=s[s.length-1],cut=end[0]-30.44*86400000,recent=s.filter(p=>p[0]>=cut);
+      const start=recent.length>=2?recent[0]:s[s.length-2];
+      const days=Math.max((end[0]-start[0])/86400000,0.5);
+      o.vNow=(end[1]-start[1])/days*30.44;
     }else o.vNow=null;
     const gk=genreKey(v.genre);
     let coh=mixRows().filter(x=>genreKey(x.genre)===gk&&x.ageM!=null&&x.ageM<=24&&x.vpm!=null);
@@ -2853,6 +2999,7 @@ function fillAnaLikes(){
   }
 }
 function anaHTML(){
+  ensureAnalysisHistory();
   const rows=[...anaRows()];
   if(!rows.length)return '<div class="empty">No long-form releases found in the 🎯 Our Videos tab.</div>';
   const sf=AS.sort;
@@ -2885,8 +3032,10 @@ function anaHTML(){
   }
   return h;
 }
-function openAnaIdx(i){
+function openAnaIdx(i,historyReload){
   const o=(window._page_ana||[])[i];if(!o)return;
+  window._openAnaVid=o.vid;
+  if(!videoHistoryReady(o.vid)&&!videoHistoryBusy(o.vid)&&!videoHistoryError(o.vid)&&!historyReload)ensureVideoHistory(o.vid);
   const sec=(k,val,icon)=>val?'<div class="dw-sec"><div class="k">'+(icon||'')+' '+k+'</div><div class="v">'+val+'</div></div>':'';
   document.getElementById('drawer').innerHTML=
     '<button class="dw-close" onclick="closeDrawer()">✕</button>'+
@@ -2906,7 +3055,7 @@ function openAnaIdx(i){
         '<div class="dw-stat"><b style="color:'+vsMed(o.st.awtMs,o.awtMed)+'">'+fmtWatch(o.st.awtMs)+'</b><span>avg view duration (median '+fmtWatch(o.awtMed)+')</span></div>'+
         '<div class="dw-stat"><b style="color:'+vsMed(o.st.awp,o.awpMed)+'">'+o.st.awp.toFixed(1)+'%</b><span>avg watched (median '+(o.awpMed?o.awpMed.toFixed(0):'—')+'%)</span></div>'+
       '</div>':'')+
-      '<div class="dw-sec"><div class="k">📈 View history</div>'+histChart((DATA.hist&&DATA.hist[o.vid])||null)+'</div>'+
+      '<div class="dw-sec">'+videoHistoryPanel(o.vid,(DATA.hist&&DATA.hist[o.vid])||null,true)+'</div>'+
       sec('Diagnosis',(o.diags||[]).map(d=>'• '+esc(d)).join('<br>'),'🔬')+
       (o.reco?sec('Linked recommendation','#'+Math.round(o.reco.n)+' · '+esc(o.reco.title)+(o.reco.pot?' · predicted '+esc(o.reco.pot):'')+(o.reco.scoreAdj!=null?' · score '+Math.round(o.reco.scoreAdj):''),'💡'):'')+
       '<div id="deepaudit" class="dw-sec"><div class="k">🔬 Deep audit (thumbnail, title, SEO)</div><div class="v">Analysis in progress <span class="spin-inline"></span></div></div>'+
@@ -3268,9 +3417,9 @@ function subs2For(name){
   return v==null?null:v;
 }
 function subsFor(v){
-  if(v.subs!=null)return v.subs;
   const c=chanFor(v);
   if(c&&c.subs!=null)return c.subs;
+  if(v.subs!=null)return v.subs;
   return subs2For(v.channel);
 }
 function wlVideoTableHTML(rows){

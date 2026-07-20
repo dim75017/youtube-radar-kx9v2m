@@ -1,0 +1,48 @@
+name: Refresh channel radar
+
+on:
+  schedule:
+    - cron: '37 6 1 * *'
+  push:
+    paths:
+      - 'refresh_channels_monthly.py'
+      - '.github/workflows/refresh-channel-radar.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-channel-radar
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sync latest main
+        run: git pull --ff-only origin main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install collector dependencies
+        run: pip install --disable-pip-version-check --upgrade yt-dlp openpyxl
+      - name: Refresh monthly public channel metrics
+        env:
+          PYTHONUNBUFFERED: '1'
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: python refresh_channels_monthly.py
+      - name: Commit channel snapshot and history
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Lofi_Radar_chx.js
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Refresh monthly YouTube channel metrics"
+          for attempt in 1 2 3; do
+            git pull --rebase origin main && git push && exit 0
+            sleep 5
+          done
+          exit 1

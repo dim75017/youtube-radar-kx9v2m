@@ -1,4 +1,4 @@
-name: Refresh instrumental radar
+name: Refresh YouTube radar
 
 on:
   schedule:
@@ -6,19 +6,55 @@ on:
   push:
     paths:
       - '.github/radar-heartbeat.txt'
+      - '.github/workflows/refresh-instrumental-radar.yml'
+      - 'refresh_youtube_daily.py'
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: refresh-instrumental-radar
+  group: refresh-youtube-radar
   cancel-in-progress: false
 
 jobs:
-  refresh:
+  scan:
+    name: Scan shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install collector dependencies
+        run: pip install --disable-pip-version-check --upgrade yt-dlp openpyxl
+      - name: Scan keywords and refresh tracked videos
+        env:
+          PYTHONUNBUFFERED: '1'
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        run: >-
+          python refresh_youtube_daily.py
+          --shard ${{ matrix.shard }}
+          --shards 20
+          --output artifacts/youtube-shard-${{ matrix.shard }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: youtube-shard-${{ matrix.shard }}
+          path: artifacts/youtube-shard-${{ matrix.shard }}.json
+          if-no-files-found: error
+          retention-days: 2
+
+  publish:
+    name: Publish daily snapshot and history
+    needs: scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - name: Sync latest main
@@ -26,19 +62,26 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install --disable-pip-version-check --upgrade yt-dlp
-      - run: python refresh_instrumental_extensions.py
-        env:
-          PYTHONUNBUFFERED: '1'
-          RADAR_SNAPSHOT: Lofi_Radar_data.js
-          RADAR_AVATARS: Lofi_Radar_new_channel_avatars.js
-      - name: Commit refreshed snapshot and channel logos
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: youtube-shard-*
+          path: shards
+          merge-multiple: true
+      - name: Merge only after all shards passed
+        run: >-
+          python refresh_youtube_daily.py
+          --merge-dir shards
+          --shards 20
+          --snapshot Lofi_Radar_data.js
+          --avatars Lofi_Radar_new_channel_avatars.js
+          --history-dir video_history
+      - name: Commit refreshed catalogue and daily analytics
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Lofi_Radar_data.js Lofi_Radar_new_channel_avatars.js
+          git add Lofi_Radar_data.js Lofi_Radar_new_channel_avatars.js video_history
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m "Refresh instrumental radar data and channel logos"
+          git commit -m "Refresh YouTube radar data and daily history"
           for attempt in 1 2 3; do
             git pull --rebase origin main && git push && exit 0
             sleep 5
