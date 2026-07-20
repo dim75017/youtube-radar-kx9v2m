@@ -881,12 +881,10 @@ a {
 
 .plan-contact-target {
   display: grid;
-  gap: 3px;
-  margin-top: 3px;
-  padding: 12px;
-  border: 1px solid rgba(155, 194, 226, .18);
-  border-radius: 14px;
-  background: rgba(128, 181, 224, .055);
+  gap: 9px;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
 }
 
 .plan-contact-kicker {
@@ -896,8 +894,47 @@ a {
   letter-spacing: .09em;
 }
 
-.plan-contact-target strong { color: var(--text); font-size: 13px; }
-.plan-contact-target small { color: var(--muted); font-size: 11px; }
+.plan-contact-details {
+  display: grid;
+  grid-template-columns: minmax(0, .95fr) minmax(0, 1.3fr) minmax(0, .75fr);
+  gap: 18px;
+}
+
+.plan-contact-details > div {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 3px;
+}
+
+.plan-contact-details small {
+  color: var(--dim);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.plan-contact-details strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-contact-details em {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-contact-email { color: #a9d9f8 !important; }
 
 .contact-cta,
 .send-email-btn {
@@ -920,20 +957,24 @@ a {
 
 .contact-cta {
   grid-template-columns: minmax(0, 1fr) auto;
-  min-height: 70px;
-  padding: 14px;
-  border-color: rgba(178, 222, 252, .38);
-  background: linear-gradient(145deg, rgba(178, 222, 252, .16), rgba(162, 157, 236, .16));
-  color: var(--text);
+  min-height: 46px;
+  padding: 0 15px;
+  border-color: rgba(143, 202, 243, .42);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(111, 179, 228, .18), rgba(144, 136, 225, .14));
+  box-shadow: inset 0 1px rgba(255,255,255,.04), 0 10px 24px rgba(0,0,0,.16);
+  color: #eaf6ff;
 }
 
-.contact-cta b { color: var(--text); font-size: 13px; }
-.contact-cta small { color: var(--muted); }
-.contact-cta > b,
-.contact-cta > small { grid-column: 1; }
-.contact-cta > b { align-self: end; }
-.contact-cta > small { align-self: start; }
-.contact-cta > i { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--gold-2); }
+.contact-cta > span {
+  min-width: 0;
+  color: #eaf6ff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .01em;
+}
+
+.contact-cta > i { color: #b9ddf5; font-size: 17px; }
 
 .contact-cta:hover,
 .send-email-btn:hover {
@@ -942,7 +983,6 @@ a {
   transform: translateY(-1px);
 }
 
-.contact-cta > span:first-child,
 .send-email-btn > span:first-child {
   display: grid;
   width: 34px;
@@ -953,11 +993,8 @@ a {
   font-size: 16px;
 }
 
-.contact-cta > span:nth-child(2),
 .send-email-btn > span:nth-child(2) { display: grid; gap: 2px; min-width: 0; }
-.contact-cta b,
 .send-email-btn b { color: #071019; font-size: 13px; }
-.contact-cta small,
 .send-email-btn small { overflow: hidden; color: rgba(7,16,25,.7); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .contact-cta i,
 .send-email-btn i { font-size: 20px; font-style: normal; }
