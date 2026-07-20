@@ -3,22 +3,31 @@ name: Refresh instrumental radar
 on:
   schedule:
     - cron: '17 * * * *'
+  push:
+    paths:
+      - '.github/radar-heartbeat.txt'
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: refresh-instrumental-radar
+  cancel-in-progress: false
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install yt-dlp
+      - run: pip install --disable-pip-version-check --upgrade yt-dlp
       - run: python refresh_instrumental_extensions.py
         env:
+          PYTHONUNBUFFERED: '1'
           RADAR_SNAPSHOT: Lofi_Radar_data.js
           RADAR_AVATARS: Lofi_Radar_new_channel_avatars.js
       - name: Commit refreshed snapshot and channel logos

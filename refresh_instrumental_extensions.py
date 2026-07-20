@@ -35,6 +35,11 @@ MIN_TREND_VIEWS = 500_000
 MAX_RESULTS = 100
 THREAD = threading.local()
 MAX_WORKERS = 4
+# A successful refresh currently returns well over one thousand candidates.
+# These deliberately conservative gates stop rate limits or extractor breakage
+# from being presented to the public site as a fresh scan.
+MIN_SUCCESS_RATIO = 0.80
+MIN_CANDIDATES = 100
 
 # Intentional strictness: do not let lyrics, rap or vocal performances leak
 # into a catalogue whose promise is long-form instrumental listening.
@@ -201,8 +206,15 @@ def write_avatar_overlay(payload: dict, active: list[str]) -> int:
         "Object.assign(window.YT_CHANNEL_AVATARS.channels," +
         json.dumps(channels, ensure_ascii=False, separators=(",", ":")) + ");\\n"
     )
-    AVATAR_SNAPSHOT.write_text(rendered, encoding="utf-8")
+    atomic_write_text(AVATAR_SNAPSHOT, rendered)
     return len(channels)
+
+
+def atomic_write_text(path: Path, content: str) -> None:
+    """Replace generated files only after their full content is on disk."""
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_text(content, encoding="utf-8")
+    temporary.replace(path)
 
 
 def main() -> None:
@@ -214,6 +226,8 @@ def main() -> None:
     d = payload["d"]
     candidates: list[dict] = []
     jobs = [(genre, query) for genre in active for query in QUERIES[genre]]
+    successful_queries = 0
+    failed_queries = 0
     # Independent search pages are safe to enrich concurrently. Four workers
     # keeps the hourly job practical without hammering YouTube.
     with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as pool:
@@ -225,16 +239,29 @@ def main() -> None:
             _genre, query = future_to_job[future]
             try:
                 candidates.extend(future.result())
+                successful_queries += 1
             except Exception as exc:
+                failed_queries += 1
                 print(f"WARN {query}: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
+    success_ratio = successful_queries / len(jobs) if jobs else 0
+    if success_ratio < MIN_SUCCESS_RATIO or len(candidates) < MIN_CANDIDATES:
+        raise RuntimeError(
+            "Refresh rejected: "
+            f"{successful_queries}/{len(jobs)} queries succeeded "
+            f"({success_ratio:.0%}), {failed_queries} failed, "
+            f"and only {len(candidates)} candidates passed the strict gates"
+        )
     all_rows = [r for r in candidates if r["views"] >= MIN_ALL_VIEWS]
     trend_rows = [r for r in candidates if r["views"] >= MIN_TREND_VIEWS and r["ageM"] <= 12]
     inserted_all = merge(d.setdefault("all", []), all_rows)
     inserted_trends = merge(d.setdefault("trends", []), trend_rows)
     avatar_count = write_avatar_overlay(payload, active)
     payload["t"] = int(datetime.now(timezone.utc).timestamp() * 1000)
-    SNAPSHOT.write_text("window.LOFI_DATA=" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + ";", encoding="utf-8")
-    print(json.dumps({"genres": active, "candidates": len(candidates), "all_added": inserted_all, "trends_added": inserted_trends, "avatars": avatar_count, "snapshot": str(SNAPSHOT)}, ensure_ascii=False))
+    atomic_write_text(
+        SNAPSHOT,
+        "window.LOFI_DATA=" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + ";",
+    )
+    print(json.dumps({"genres": active, "queries_ok": successful_queries, "queries_failed": failed_queries, "candidates": len(candidates), "all_added": inserted_all, "trends_added": inserted_trends, "avatars": avatar_count, "snapshot": str(SNAPSHOT)}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
