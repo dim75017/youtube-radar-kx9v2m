@@ -7,6 +7,16 @@ import refresh_soundcharts_daily as subject
 
 
 class RefreshSoundchartsTests(unittest.TestCase):
+    def test_clean_credential_removes_copy_paste_wrappers(self):
+        self.assertEqual(subject.clean_credential('  "client-value"\n'), "client-value")
+
+    def test_access_token_falls_back_to_form_credentials(self):
+        rejected = subject.SoundchartsHttpError(401)
+        with patch.object(subject, "request_json", side_effect=[rejected, rejected, {"access_token": "token"}]) as request:
+            token = subject.access_token(" client ", " secret ", "team")
+        self.assertEqual(token, "token")
+        self.assertEqual(request.call_count, 3)
+
     def test_read_and_write_payload_round_trip(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "soundcharts.js"

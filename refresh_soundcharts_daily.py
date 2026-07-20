@@ -32,6 +32,12 @@ class SoundchartsError(RuntimeError):
     """A safe, non-secret-bearing collector failure."""
 
 
+class SoundchartsHttpError(SoundchartsError):
+    def __init__(self, status: int):
+        self.status = status
+        super().__init__(f"Soundcharts authentication/plan error ({status})")
+
+
 def utc_now() -> str:
     return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
@@ -63,7 +69,7 @@ def request_json(url: str, headers: dict[str, str], *, data: bytes | None = None
             if exc.code == 404:
                 return None
             if exc.code in {401, 403}:
-                raise SoundchartsError(f"Soundcharts authentication/plan error ({exc.code})") from exc
+                raise SoundchartsHttpError(exc.code) from exc
             last_error = exc
             if exc.code != 429 and exc.code < 500:
                 break
@@ -73,19 +79,44 @@ def request_json(url: str, headers: dict[str, str], *, data: bytes | None = None
     raise SoundchartsError("Soundcharts request failed after retries") from last_error
 
 
+def clean_credential(value: str) -> str:
+    cleaned = value.strip().strip("\ufeff\u200b")
+    if len(cleaned) >= 2 and cleaned[0] == cleaned[-1] and cleaned[0] in {'"', "'"}:
+        cleaned = cleaned[1:-1].strip()
+    return cleaned
+
+
 def access_token(client_id: str, client_secret: str, team_id: str = "") -> str:
+    client_id = clean_credential(client_id)
+    client_secret = clean_credential(client_secret)
+    team_id = clean_credential(team_id)
     if not client_id or not client_secret:
         raise SoundchartsError("SOUNDCHARTS_CLIENT_ID or SOUNDCHARTS_CLIENT_SECRET is missing")
     basic = base64.b64encode(f"{client_id}:{client_secret}".encode("utf-8")).decode("ascii")
-    form = {"grant_type": "client_credentials"}
+    base_form = {"grant_type": "client_credentials"}
+    with_team = dict(base_form, team_id=team_id) if team_id else base_form
+    attempts = [
+        ({"Authorization": f"Basic {basic}", "Content-Type": "application/x-www-form-urlencoded"}, with_team),
+    ]
     if team_id:
-        form["team_id"] = team_id
-    body = urllib.parse.urlencode(form).encode("utf-8")
-    token = request_json(TOKEN_URL, {"Authorization": f"Basic {basic}", "Content-Type": "application/x-www-form-urlencoded"}, data=body)
-    value = token.get("access_token") if isinstance(token, dict) else None
-    if not value:
-        raise SoundchartsError("Soundcharts did not return an access token")
-    return str(value)
+        attempts.append(({"Authorization": f"Basic {basic}", "Content-Type": "application/x-www-form-urlencoded"}, base_form))
+    # Some OAuth gateways accept client credentials in the form body even
+    # though HTTP Basic is the documented method. This fallback stays entirely
+    # server-side and is useful during account migrations.
+    attempts.append(({"Content-Type": "application/x-www-form-urlencoded"}, dict(with_team, client_id=client_id, client_secret=client_secret)))
+    last_error: SoundchartsHttpError | None = None
+    for headers, form in attempts:
+        try:
+            token = request_json(TOKEN_URL, headers, data=urllib.parse.urlencode(form).encode("utf-8"), retries=1)
+        except SoundchartsHttpError as exc:
+            last_error = exc
+            continue
+        value = token.get("access_token") if isinstance(token, dict) else None
+        if value:
+            return str(value)
+    if last_error:
+        raise SoundchartsError("Soundcharts rejected the Client ID / Client secret pair (401)") from last_error
+    raise SoundchartsError("Soundcharts did not return an access token")
 
 
 def api_get(token: str, path: str) -> Any:
@@ -284,9 +315,16 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    client_id = clean_credential(os.environ.get("SOUNDCHARTS_CLIENT_ID", ""))
+    client_secret = clean_credential(os.environ.get("SOUNDCHARTS_CLIENT_SECRET", ""))
+    print(
+        "Soundcharts credentials loaded: "
+        f"client_id_chars={len(client_id)}, secret_chars={len(client_secret)}, "
+        f"client_id_format={'expected' if client_id.upper().startswith('DSOMOGUY-API_') else 'unexpected'}"
+    )
     token = access_token(
-        os.environ.get("SOUNDCHARTS_CLIENT_ID", ""),
-        os.environ.get("SOUNDCHARTS_CLIENT_SECRET", ""),
+        client_id,
+        client_secret,
         os.environ.get("SOUNDCHARTS_TEAM_ID", "dsomoguy-api"),
     )
     if args.mode == "smoke":
