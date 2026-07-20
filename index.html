@@ -6,28 +6,19 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Lofi Radar — YouTube Opportunity Map</title>
 <link rel="icon" type="image/jpeg" href="assets/lofi-radar-logo.jpg">
+<script type="speculationrules">
+{"prerender":[{"source":"list","urls":["spotify/"],"eagerness":"immediate"}]}
+</script>
 <script>
-/* Warm the other radar once this page is ready. Chromium activates the fully
-   rendered destination; other browsers at least reuse the prefetched HTML. */
 (()=>{
-  const target='spotify/';
-  const warm=()=>{
-    if(document.prerendering)return;
-    if(HTMLScriptElement.supports&&HTMLScriptElement.supports('speculationrules')){
-      const rules=document.createElement('script');
-      rules.type='speculationrules';
-      rules.textContent=JSON.stringify({prerender:[{source:'list',urls:[target],eagerness:'immediate'}]});
-      document.head.appendChild(rules);
-    }else{
+  window.__RADAR_WAS_PRERENDERED=!!document.prerendering;
+  if(!(HTMLScriptElement.supports&&HTMLScriptElement.supports('speculationrules'))){
+    ['spotify/','Spotify_Radar_data.js','Spotify_Playlists_data.js','Spotify_Labels_data.js','Spotify_Soundcharts_data_20260720T0217_editorial_strict.js?v=0217editorialstrict'].forEach(href=>{
       const hint=document.createElement('link');
-      hint.rel='prefetch';hint.href=target;
+      hint.rel='prefetch';hint.href=href;if(/\.js(?:\?|$)/.test(href))hint.as='script';
       document.head.appendChild(hint);
-    }
-  };
-  const schedule=()=>('requestIdleCallback'in window?requestIdleCallback(warm,{timeout:1200}):setTimeout(warm,0));
-  if(document.prerendering)document.addEventListener('prerenderingchange',schedule,{once:true});
-  else if(document.readyState==='complete')schedule();
-  else addEventListener('load',schedule,{once:true});
+    });
+  }
   addEventListener('click',event=>{
     const link=event.target&&event.target.closest?event.target.closest('.radar-switch a'):null;
     if(!link||link.classList.contains('on')||event.defaultPrevented||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||(event.button!=null&&event.button!==0))return;
