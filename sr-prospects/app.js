@@ -1146,13 +1146,13 @@
         badge(row.demo ? "Démo" : (item.status || "À contacter"), row.demo ? "violet" : statusColor(item.status)) +
       "</div>" +
       "<div class='plan-layout'>" +
-        "<div class='plan-message-choice plan-profile'><label>🧭 Profil du prospect</label>" +
+        "<div class='plan-prospect-info'>" +
           "<div class='plan-profession'>" + escapeHtml(professionOf(item)) + "</div>" +
           "<div class='plan-profile-copy'>" + escapeHtml(specialty || "Cabinet / structure professionnelle à qualifier") + "</div>" +
-          "<div class='plan-facts'><span>👥 " + escapeHtml(headcount) + "</span><span>📍 " + escapeHtml(item.address || "Adresse non renseignée") + "</span></div>" +
+          "<div class='plan-facts'><span><b>Effectif</b> " + escapeHtml(headcount) + "</span><span><b>Adresse</b> " + escapeHtml(item.address || "Adresse non renseignée") + "</span></div>" +
           "<div class='plan-contact-target'><span class='plan-contact-kicker'>INTERLOCUTEUR CIBLÉ</span><strong>👤 " + escapeHtml(contact) + "</strong><small>" + escapeHtml(contactRole) + "</small></div>" +
-          "<button class='contact-cta' data-action='open-contact' data-contact-id='" + escapeHtml(item.id) + "'><span>✉️</span><span><b>Contacter</b><small>Choisir puis envoyer l’email</small></span><i>→</i></button>" +
         "</div>" +
+        "<div class='plan-contact-action'><button class='contact-cta' data-action='open-contact' data-contact-id='" + escapeHtml(item.id) + "'><b>Contacter</b><small>Choisir un email</small><i>→</i></button></div>" +
         "<div class='plan-tracking'><div class='plan-tracking-head'><strong>📈 Suivi du prospect</strong><span>" + escapeHtml(statuses[active]) + "</span></div>" +
           "<div class='plan-timeline'>" + statuses.map(function (label, stepIndex) { return planStepMarkup(stepIndex, active, label); }).join("") + "</div>" +
           "<div class='plan-event'>" + (active === 0 ? "Prêt à être contacté" : active === 1 ? "Message envoyé · suivi d’ouverture" : active === 2 ? "Ouverture détectée · relance à préparer" : active === 3 ? "Réponse reçue · qualifier l’intérêt" : "Intérêt confirmé · organiser un échange") + "</div>" +

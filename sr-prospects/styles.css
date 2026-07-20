@@ -774,11 +774,13 @@ a {
 
 .plan-layout {
   display: grid;
-  grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.15fr);
+  grid-template-columns: minmax(310px, 1.05fr) minmax(160px, .42fr) minmax(320px, .92fr);
 }
 
 .plan-message-choice,
-.plan-tracking {
+.plan-tracking,
+.plan-prospect-info,
+.plan-contact-action {
   min-width: 0;
   padding: 18px;
 }
@@ -823,6 +825,21 @@ a {
   background: linear-gradient(135deg, rgba(191, 144, 63, .08), transparent 70%);
 }
 
+.plan-prospect-info {
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  border-right: 1px solid var(--line);
+  background: linear-gradient(135deg, rgba(191, 144, 63, .06), transparent 70%);
+}
+
+.plan-contact-action {
+  display: grid;
+  align-content: center;
+  border-right: 1px solid var(--line);
+  background: rgba(255,255,255,.012);
+}
+
 .plan-profession {
   color: var(--text);
   font-size: 18px;
@@ -855,6 +872,11 @@ a {
   color: var(--muted);
   font-size: 10px;
   line-height: 1.25;
+}
+
+.plan-facts b {
+  color: var(--text);
+  font-weight: 700;
 }
 
 .plan-contact-target {
@@ -895,6 +917,23 @@ a {
   text-align: left;
   transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
 }
+
+.contact-cta {
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 70px;
+  padding: 14px;
+  border-color: rgba(178, 222, 252, .38);
+  background: linear-gradient(145deg, rgba(178, 222, 252, .16), rgba(162, 157, 236, .16));
+  color: var(--text);
+}
+
+.contact-cta b { color: var(--text); font-size: 13px; }
+.contact-cta small { color: var(--muted); }
+.contact-cta > b,
+.contact-cta > small { grid-column: 1; }
+.contact-cta > b { align-self: end; }
+.contact-cta > small { align-self: start; }
+.contact-cta > i { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--gold-2); }
 
 .contact-cta:hover,
 .send-email-btn:hover {
@@ -2075,6 +2114,12 @@ textarea:focus-visible,
   }
 
   .plan-message-choice {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .plan-prospect-info,
+  .plan-contact-action {
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
