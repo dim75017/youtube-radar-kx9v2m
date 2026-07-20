@@ -4,8 +4,38 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Lofi Radar — Spotify Artistes & Catalogue</title>
+<title>Lofi Radar — Spotify · Veille</title>
 <link rel="icon" type="image/jpeg" href="../assets/lofi-radar-logo.jpg">
+<script>
+/* Warm the other radar once this page is ready. Chromium activates the fully
+   rendered destination; other browsers at least reuse the prefetched HTML. */
+(()=>{
+  const target='../';
+  const warm=()=>{
+    if(document.prerendering)return;
+    if(HTMLScriptElement.supports&&HTMLScriptElement.supports('speculationrules')){
+      const rules=document.createElement('script');
+      rules.type='speculationrules';
+      rules.textContent=JSON.stringify({prerender:[{source:'list',urls:[target],eagerness:'immediate'}]});
+      document.head.appendChild(rules);
+    }else{
+      const hint=document.createElement('link');
+      hint.rel='prefetch';hint.href=target;
+      document.head.appendChild(hint);
+    }
+  };
+  const schedule=()=>('requestIdleCallback'in window?requestIdleCallback(warm,{timeout:1200}):setTimeout(warm,0));
+  if(document.prerendering)document.addEventListener('prerenderingchange',schedule,{once:true});
+  else if(document.readyState==='complete')schedule();
+  else addEventListener('load',schedule,{once:true});
+  addEventListener('click',event=>{
+    const link=event.target&&event.target.closest?event.target.closest('.radar-switch a'):null;
+    if(!link||link.classList.contains('on')||event.defaultPrevented||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||(event.button!=null&&event.button!==0))return;
+    document.querySelectorAll('.radar-switch a').forEach(item=>{item.classList.remove('on');item.removeAttribute('aria-current');});
+    link.classList.add('on');link.setAttribute('aria-current','page');
+  });
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
 <script src="../Spotify_Radar_data.js"></script>
@@ -55,11 +85,12 @@ button,input,select{max-width:100%}
 .logo{display:flex;align-items:center;gap:11px;padding:2px 8px 20px}
 .logo .mark{
   width:40px;height:40px;border-radius:50%;flex:none;object-fit:cover;
-  border:2px solid rgba(255,255,255,.78);box-shadow:0 4px 22px rgba(30,215,96,.3);
+  clip-path:circle(45.8% at 50% 50%);transform:scale(1.09);
+  box-shadow:0 4px 22px rgba(30,215,96,.3);
 }
 .logo h1{font-family:'Sora';font-size:16.5px;font-weight:800;letter-spacing:.4px}
 .logo h1 span{background:linear-gradient(90deg,#1ed760,#4ade80);-webkit-background-clip:text;background-clip:text;color:transparent}
-.logo small{display:block;font-size:10px;font-weight:500;color:var(--dim);letter-spacing:1.6px;text-transform:uppercase;margin-top:2px}
+.logo small{display:block;font-size:10px;font-weight:500;color:var(--dim);letter-spacing:1.6px;text-transform:uppercase;margin-top:2px;white-space:nowrap}
 .radar-switch{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:0 4px 12px;padding:4px;border:1px solid var(--border);border-radius:11px;background:rgba(5,10,7,.42)}
 .radar-switch a{padding:7px 5px;border-radius:8px;text-align:center;color:var(--dim);font-size:10.5px;font-weight:750;letter-spacing:.15px}
 .radar-switch a:hover{color:var(--text);background:rgba(255,255,255,.05)}
@@ -673,11 +704,11 @@ td.selc,th.selc{width:44px;padding-left:14px}
     <img class="mark" src="../assets/lofi-radar-logo.jpg" alt="Lofi Radar">
     <div>
       <h1>Lofi <span>Radar</span></h1>
-      <small data-fr="Spotify · Veille artistes">Spotify · Veille artistes</small>
+      <small>Spotify · Veille</small>
     </div>
   </div>
   <div class="radar-switch" aria-label="Changer de radar">
-    <a class="yt" href="../" aria-label="Lofi Radar · YouTube" title="Lofi Radar · YouTube">YouTube</a><a class="sp on" href="./" aria-label="Lofi Radar · Spotify" title="Lofi Radar · Spotify">Spotify</a>
+    <a class="yt" href="../" aria-label="Lofi Radar · YouTube" title="Lofi Radar · YouTube">YouTube</a><a class="sp on" href="./" aria-current="page" aria-label="Lofi Radar · Spotify" title="Lofi Radar · Spotify">Spotify</a>
   </div>
   <nav class="nav" id="nav">
     <div class="nav-label" data-fr="Analyse">Analyse</div>
