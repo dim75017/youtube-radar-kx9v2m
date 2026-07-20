@@ -44,6 +44,7 @@ jobs:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
           SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
         run: >-
           python refresh_soundcharts_daily.py
           --mode "${{ inputs.mode || 'full' }}"

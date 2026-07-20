@@ -73,11 +73,14 @@ def request_json(url: str, headers: dict[str, str], *, data: bytes | None = None
     raise SoundchartsError("Soundcharts request failed after retries") from last_error
 
 
-def access_token(client_id: str, client_secret: str) -> str:
+def access_token(client_id: str, client_secret: str, team_id: str = "") -> str:
     if not client_id or not client_secret:
         raise SoundchartsError("SOUNDCHARTS_CLIENT_ID or SOUNDCHARTS_CLIENT_SECRET is missing")
     basic = base64.b64encode(f"{client_id}:{client_secret}".encode("utf-8")).decode("ascii")
-    body = urllib.parse.urlencode({"grant_type": "client_credentials"}).encode("utf-8")
+    form = {"grant_type": "client_credentials"}
+    if team_id:
+        form["team_id"] = team_id
+    body = urllib.parse.urlencode(form).encode("utf-8")
     token = request_json(TOKEN_URL, {"Authorization": f"Basic {basic}", "Content-Type": "application/x-www-form-urlencoded"}, data=body)
     value = token.get("access_token") if isinstance(token, dict) else None
     if not value:
@@ -281,7 +284,11 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    token = access_token(os.environ.get("SOUNDCHARTS_CLIENT_ID", ""), os.environ.get("SOUNDCHARTS_CLIENT_SECRET", ""))
+    token = access_token(
+        os.environ.get("SOUNDCHARTS_CLIENT_ID", ""),
+        os.environ.get("SOUNDCHARTS_CLIENT_SECRET", ""),
+        os.environ.get("SOUNDCHARTS_TEAM_ID", "dsomoguy-api"),
+    )
     if args.mode == "smoke":
         # One authenticated read proves the new credentials without altering data.
         api_get(token, "/api/v2/referential/platforms/streaming")
