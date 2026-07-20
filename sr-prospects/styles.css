@@ -841,6 +841,88 @@ a {
   padding-top: 2px;
 }
 
+.plan-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.plan-facts span {
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255,255,255,.025);
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.plan-contact-target {
+  display: grid;
+  gap: 3px;
+  margin-top: 3px;
+  padding: 12px;
+  border: 1px solid rgba(155, 194, 226, .18);
+  border-radius: 14px;
+  background: rgba(128, 181, 224, .055);
+}
+
+.plan-contact-kicker {
+  color: var(--gold-2);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .09em;
+}
+
+.plan-contact-target strong { color: var(--text); font-size: 13px; }
+.plan-contact-target small { color: var(--muted); font-size: 11px; }
+
+.contact-cta,
+.send-email-btn {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 60px;
+  padding: 10px 13px;
+  border: 1px solid rgba(178, 222, 252, .54);
+  border-radius: 16px;
+  background: linear-gradient(115deg, #d6efff, #a8d8f6 55%, #b8b0ff);
+  box-shadow: 0 12px 30px rgba(84, 154, 209, .16);
+  color: #071019;
+  cursor: pointer;
+  text-align: left;
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
+}
+
+.contact-cta:hover,
+.send-email-btn:hover {
+  box-shadow: 0 16px 35px rgba(84, 154, 209, .26);
+  filter: brightness(1.035);
+  transform: translateY(-1px);
+}
+
+.contact-cta > span:first-child,
+.send-email-btn > span:first-child {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 11px;
+  background: rgba(5, 17, 27, .13);
+  font-size: 16px;
+}
+
+.contact-cta > span:nth-child(2),
+.send-email-btn > span:nth-child(2) { display: grid; gap: 2px; min-width: 0; }
+.contact-cta b,
+.send-email-btn b { color: #071019; font-size: 13px; }
+.contact-cta small,
+.send-email-btn small { overflow: hidden; color: rgba(7,16,25,.7); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.contact-cta i,
+.send-email-btn i { font-size: 20px; font-style: normal; }
+
 .plan-tracking {
   display: grid;
   align-content: center;
@@ -919,6 +1001,7 @@ a {
 
 .contact-modal {
   width: min(760px, calc(100vw - 32px));
+  animation: none;
 }
 
 .contact-modal-body {
@@ -970,7 +1053,7 @@ a {
   transition: border-color .16s ease, background .16s ease, transform .16s ease;
 }
 
-.message-option:hover { border-color: var(--gold); transform: translateY(-1px); }
+.message-option:hover { border-color: var(--gold); background: rgba(255,255,255,.04); }
 .message-option.selected { border-color: var(--gold); background: var(--gold-soft); box-shadow: inset 0 0 0 1px rgba(212,164,80,.18); }
 .message-option-icon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 10px; background: rgba(255,255,255,.06); font-size: 17px; }
 .message-option > span:last-child { min-width: 0; display: grid; gap: 4px; }
@@ -1008,6 +1091,8 @@ a {
 }
 
 .contact-modal-body > .primary-btn { justify-self: start; }
+
+.contact-modal-body > .send-email-btn { justify-self: stretch; }
 
 .contact-modal-actions {
   display: flex;

@@ -1137,18 +1137,21 @@
     var normalStatus = normalize(item.status);
     var active = normalStatus === "interesse" ? 4 : normalStatus === "repondu" ? 3 : normalStatus === "ouvert" ? 2 : normalStatus === "envoye" || normalStatus === "contacte" ? 1 : 0;
     var contact = firstDecisionMakerName(item) || cleanText(item.email) || "Contact à confirmer";
+    var contactRole = firstDecisionMakerRole(item) || "Interlocuteur du cabinet";
     var specialty = cleanText(item.specialties);
+    var headcount = item.headcountCode === "NN" ? "Effectif non communiqué" : (item.headcountLabel || item.headcountCode || "Effectif non communiqué");
     return "<article class='plan-card'>" +
       "<div class='plan-card-head'>" + avatarMarkup(item) +
-        "<div class='plan-card-title'><strong>" + escapeHtml(item.name) + "</strong><span>" + escapeHtml(contact) + " · " + escapeHtml(item.address) + "</span></div>" +
+        "<div class='plan-card-title'><strong>" + escapeHtml(item.name) + "</strong><span>" + escapeHtml(item.address) + "</span></div>" +
         badge(row.demo ? "Démo" : (item.status || "À contacter"), row.demo ? "violet" : statusColor(item.status)) +
       "</div>" +
       "<div class='plan-layout'>" +
         "<div class='plan-message-choice plan-profile'><label>🧭 Profil du prospect</label>" +
           "<div class='plan-profession'>" + escapeHtml(professionOf(item)) + "</div>" +
           "<div class='plan-profile-copy'>" + escapeHtml(specialty || "Cabinet / structure professionnelle à qualifier") + "</div>" +
-          "<div class='plan-contact-line'>👤 " + escapeHtml(contact) + "</div>" +
-          "<button class='primary-btn' data-action='open-contact' data-contact-id='" + escapeHtml(item.id) + "'>✉️ Contacter</button>" +
+          "<div class='plan-facts'><span>👥 " + escapeHtml(headcount) + "</span><span>📍 " + escapeHtml(item.address || "Adresse non renseignée") + "</span></div>" +
+          "<div class='plan-contact-target'><span class='plan-contact-kicker'>INTERLOCUTEUR CIBLÉ</span><strong>👤 " + escapeHtml(contact) + "</strong><small>" + escapeHtml(contactRole) + "</small></div>" +
+          "<button class='contact-cta' data-action='open-contact' data-contact-id='" + escapeHtml(item.id) + "'><span>✉️</span><span><b>Contacter</b><small>Choisir puis envoyer l’email</small></span><i>→</i></button>" +
         "</div>" +
         "<div class='plan-tracking'><div class='plan-tracking-head'><strong>📈 Suivi du prospect</strong><span>" + escapeHtml(statuses[active]) + "</span></div>" +
           "<div class='plan-timeline'>" + statuses.map(function (label, stepIndex) { return planStepMarkup(stepIndex, active, label); }).join("") + "</div>" +
@@ -1262,7 +1265,7 @@
     return "<div class='modal-backdrop' data-action='close-contact'>" +
       "<section class='modal contact-modal' role='dialog' aria-modal='true' aria-label='Contacter ce prospect'>" +
         "<div class='modal-head'>" + avatarMarkup(prospect, "avatar-large") +
-          "<div class='modal-title'><h2>Contacter " + escapeHtml(prospect.name) + "</h2><p>Choisissez une approche courte, puis préparez le message dans votre messagerie.</p></div>" +
+          "<div class='modal-title'><h2>Contacter " + escapeHtml(prospect.name) + "</h2><p>Choisissez une approche courte, puis envoyez l’email depuis votre messagerie.</p></div>" +
           "<button class='icon-btn' data-action='close-contact' aria-label='Fermer'><span aria-hidden='true'>✖️</span></button>" +
         "</div>" +
         "<div class='modal-scroll contact-modal-body'>" +
@@ -1274,9 +1277,9 @@
           }).join("") + "</div>" +
           "<div class='contact-preview'><div class='contact-preview-label'>Objet</div><strong id='contactSubject'>" + escapeHtml(message.subject) + "</strong><div class='contact-preview-label'>Message</div><pre id='contactBody'>" + escapeHtml(message.body) + "</pre></div>" +
           (email
-            ? "<a class='primary-btn' id='contactMailLink' href='" + escapeHtml(mailto) + "'>✉️ Préparer l’email à " + escapeHtml(email) + "</a>"
+            ? "<button class='send-email-btn' data-action='send-email' data-contact-id='" + escapeHtml(prospect.id) + "' data-mailto='" + escapeHtml(mailto) + "'><span>✉️</span><span><b>Envoyer l’email</b><small>À " + escapeHtml(email) + "</small></span><i>↗</i></button>"
             : "<div class='notice red'>Aucun email professionnel renseigné pour ce prospect. Complétez la fiche avant l’envoi.</div>") +
-          "<div class='contact-modal-actions'><button class='ghost-btn' data-action='mark-sent' data-contact-id='" + escapeHtml(prospect.id) + "'>✅ Marquer comme envoyé</button><span>Le statut est mis à jour manuellement après l’envoi réel.</span></div>" +
+          "<div class='contact-modal-actions'><span>Le statut passe automatiquement à « Envoyé » lors de l’ouverture de l’email.</span></div>" +
         "</div>" +
       "</section>" +
     "</div>";
@@ -1377,12 +1380,12 @@
   function firstDecisionMakerName(prospect) {
     var people = Array.isArray(prospect && prospect.decisionMakers) ? prospect.decisionMakers : [];
     var person = people[0] || {};
-    return [cleanText(person.firstName), cleanText(person.lastName)].filter(Boolean).join(" ");
+    return [cleanText(person.firstName), cleanText(person.lastName)].filter(Boolean).join(" ") || cleanText(prospect && prospect.contactName);
   }
 
   function firstDecisionMakerRole(prospect) {
     var people = Array.isArray(prospect && prospect.decisionMakers) ? prospect.decisionMakers : [];
-    return cleanText((people[0] || {}).role);
+    return cleanText((people[0] || {}).role) || cleanText(prospect && prospect.contactRole);
   }
 
   function decisionMakersMarkup(prospect) {
@@ -1575,6 +1578,24 @@
     }
   }
 
+  function refreshContactModal() {
+    var oldBackdrop = root.querySelector(".modal-backdrop[data-action='close-contact']");
+    var prospect = getProspect(state.contactId);
+    if (!oldBackdrop || !prospect) {
+      render();
+      return;
+    }
+    var holder = document.createElement("div");
+    holder.innerHTML = renderContactModal(prospect);
+    var nextBackdrop = holder.firstElementChild;
+    if (!nextBackdrop) {
+      render();
+      return;
+    }
+    oldBackdrop.replaceWith(nextBackdrop);
+    wireImageFallbacks();
+  }
+
   var searchTimer = null;
 
   root.addEventListener("click", function (event) {
@@ -1662,11 +1683,11 @@
       render();
     } else if (actionName === "select-contact-message") {
       state.contactMessageId = action.getAttribute("data-message-id") || "";
-      render();
+      refreshContactModal();
     } else if (actionName === "rotate-contact-messages") {
       state.contactSet += 1;
       state.contactMessageId = "";
-      render();
+      refreshContactModal();
     } else if (actionName === "close-contact") {
       if (action.classList.contains("modal-backdrop") && event.target !== action) return;
       state.contactId = null;
@@ -1682,6 +1703,15 @@
       saveProspect();
     } else if (actionName === "prospect-client") {
       saveProspect(true);
+    } else if (actionName === "send-email") {
+      var emailProspectId = action.getAttribute("data-contact-id");
+      var emailHref = action.getAttribute("data-mailto");
+      if (emailProspectId) {
+        patches[emailProspectId] = Object.assign({}, patches[emailProspectId] || {}, { status: "Envoyé", sentAt: new Date().toISOString(), localUpdatedAt: new Date().toISOString() });
+        safeStorageSet(STORAGE.patches, JSON.stringify(patches));
+      }
+      if (emailHref) window.location.href = emailHref;
+      showToast("Email prêt à être envoyé dans votre messagerie");
     } else if (actionName === "mark-sent") {
       var sentId = action.getAttribute("data-contact-id");
       if (sentId) {
