@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Lofi Radar — Spotify · Veille</title>
-<link rel="icon" type="image/jpeg" href="../assets/lofi-radar-logo.jpg">
+<link rel="icon" type="image/png" href="../assets/lofi-radar-favicon.png">
 <script type="speculationrules">
 {"prerender":[{"source":"list","urls":["../"],"eagerness":"immediate"}]}
 </script>
@@ -19,12 +19,6 @@
       document.head.appendChild(hint);
     });
   }
-  addEventListener('click',event=>{
-    const link=event.target&&event.target.closest?event.target.closest('.radar-switch a'):null;
-    if(!link||link.classList.contains('on')||event.defaultPrevented||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||(event.button!=null&&event.button!==0))return;
-    document.querySelectorAll('.radar-switch a').forEach(item=>{item.classList.remove('on');item.removeAttribute('aria-current');});
-    link.classList.add('on');link.setAttribute('aria-current','page');
-  });
 })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -79,7 +73,7 @@ button,input,select{max-width:100%}
   clip-path:circle(45.8% at 50% 50%);transform:scale(1.09);
   box-shadow:0 4px 22px rgba(30,215,96,.3);
 }
-.logo h1{font-family:'Sora';font-size:16.5px;font-weight:800;letter-spacing:.4px}
+.logo h1{font-family:'Sora';font-size:15.5px;font-weight:800;letter-spacing:.3px;white-space:nowrap}
 .logo h1 span{background:linear-gradient(90deg,#1ed760,#4ade80);-webkit-background-clip:text;background-clip:text;color:transparent}
 .logo small{display:block;font-size:10px;font-weight:500;color:var(--dim);letter-spacing:1.6px;text-transform:uppercase;margin-top:2px;white-space:nowrap}
 .radar-switch{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:0 4px 12px;padding:4px;border:1px solid var(--border);border-radius:11px;background:rgba(5,10,7,.42)}
