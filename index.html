@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Lofi Radar — YouTube Opportunity Map</title>
-<link rel="icon" type="image/jpeg" href="assets/lofi-radar-logo.jpg">
+<link rel="icon" type="image/png" href="assets/lofi-radar-favicon.png">
 <script type="speculationrules">
 {"prerender":[{"source":"list","urls":["spotify/"],"eagerness":"immediate"}]}
 </script>
@@ -19,12 +19,6 @@
       document.head.appendChild(hint);
     });
   }
-  addEventListener('click',event=>{
-    const link=event.target&&event.target.closest?event.target.closest('.radar-switch a'):null;
-    if(!link||link.classList.contains('on')||event.defaultPrevented||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey||(event.button!=null&&event.button!==0))return;
-    document.querySelectorAll('.radar-switch a').forEach(item=>{item.classList.remove('on');item.removeAttribute('aria-current');});
-    link.classList.add('on');link.setAttribute('aria-current','page');
-  });
 })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
