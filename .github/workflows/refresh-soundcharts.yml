@@ -1,6 +1,10 @@
 name: Refresh Soundcharts radar
 
 on:
+  push:
+    paths:
+      - 'refresh_soundcharts_daily.py'
+      - '.github/workflows/refresh-soundcharts.yml'
   schedule:
     - cron: '35 2 * * *'
   workflow_dispatch:
