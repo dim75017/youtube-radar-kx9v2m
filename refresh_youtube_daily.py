@@ -55,6 +55,7 @@ VOCAL = re.compile(
     re.I,
 )
 VIDEO_ID = re.compile(r"^[\w-]{11}$")
+CHANNEL_ID = re.compile(r"^UC[\w-]{22}$")
 ISO_DURATION = re.compile(
     r"^P(?:(?P<days>\d+)D)?(?:T(?:(?P<hours>\d+)H)?(?:(?P<minutes>\d+)M)?(?:(?P<seconds>\d+)S)?)?$"
 )
@@ -202,6 +203,9 @@ def info_to_row(info: dict, now_ms: int, *, genre: str = "", cluster: str = "", 
         "channel": info.get("channel") or info.get("uploader") or "Unknown channel",
         "chUrl": info.get("channel_url") or info.get("uploader_url") or "",
     }
+    channel_id = str(info.get("channel_id") or "")
+    if CHANNEL_ID.match(channel_id):
+        row["channelId"] = channel_id
     followers = info.get("channel_follower_count")
     if isinstance(followers, (int, float)) and followers > 0:
         row["subs"] = int(followers)
@@ -309,6 +313,7 @@ def fetch_api_rows(video_ids: list[str], now_ms: int, key: str) -> dict[str, dic
                 "vpm": views / age if age else None,
                 "channel": snippet.get("channelTitle") or "Unknown channel",
                 "chUrl": f"https://www.youtube.com/channel/{snippet.get('channelId', '')}",
+                "channelId": snippet.get("channelId") or "",
             }
             if duration is not None:
                 row["durH"] = duration / 3600
@@ -468,7 +473,7 @@ def run_shard(snapshot: Path, output: Path, shard: int, shards: int) -> dict:
 
 
 def update_row(existing: dict, fresh: dict, now_ms: int) -> None:
-    for key in ("title", "url", "durH", "views", "pub", "channel", "chUrl", "subs"):
+    for key in ("title", "url", "durH", "views", "pub", "channel", "chUrl", "channelId", "subs"):
         if fresh.get(key) not in (None, ""):
             existing[key] = fresh[key]
     published = existing.get("pub")
@@ -572,19 +577,31 @@ def update_history_shards(
 
 def write_avatar_overlay(payload: dict, path: Path) -> int:
     channels: dict[str, str] = {}
+    aliases: dict[str, str] = {}
     for bucket in ("all", "trends", "news"):
         for row in payload.get("d", {}).get(bucket, []):
-            match = re.search(r"/channel/(UC[\w-]+)", str(row.get("chUrl") or ""))
-            if match:
-                channel_id = match.group(1)
+            channel_url = str(row.get("chUrl") or "")
+            id_match = re.search(r"/channel/(UC[\w-]+)", channel_url)
+            handle_match = re.search(r"youtube\.com/@([^/?#]+)", channel_url, re.I)
+            channel_id = str(row.get("channelId") or (id_match.group(1) if id_match else ""))
+            handle = "@" + handle_match.group(1) if handle_match else ""
+            if CHANNEL_ID.match(channel_id):
                 channels[channel_id] = f"https://unavatar.io/youtube/{channel_id}?fallback=false"
+                if handle:
+                    aliases[handle] = channel_id
+            elif handle:
+                channels[handle] = f"https://unavatar.io/youtube/{handle}?fallback=false"
     rendered = (
         "/* Channel logos refreshed automatically alongside the daily YouTube radar. */\n"
         "window.YT_CHANNEL_AVATARS=window.YT_CHANNEL_AVATARS||{channels:{},videos:{}};\n"
         "window.YT_CHANNEL_AVATARS.channels=window.YT_CHANNEL_AVATARS.channels||{};\n"
-        "Object.assign(window.YT_CHANNEL_AVATARS.channels,"
+        "window.YT_CHANNEL_AVATARS.aliases=window.YT_CHANNEL_AVATARS.aliases||{};\n"
+        "(()=>{const atlas=window.YT_CHANNEL_AVATARS,fresh="
         + json.dumps(channels, ensure_ascii=False, separators=(",", ":"))
-        + ");\n"
+        + ";Object.keys(fresh).forEach(key=>{if(!atlas.channels[key])atlas.channels[key]=fresh[key];});"
+        "Object.assign(atlas.aliases,"
+        + json.dumps(aliases, ensure_ascii=False, separators=(",", ":"))
+        + ");})();\n"
     )
     atomic_write_text(path, rendered)
     return len(channels)

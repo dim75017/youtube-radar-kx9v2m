@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>Spotify Radar — Veille Artistes & Catalogue</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='42' fill='%231ed760'/><circle cx='50' cy='50' r='16' fill='%2307080d'/></svg>">
+<title>Lofi Radar — Spotify Artistes & Catalogue</title>
+<link rel="icon" type="image/jpeg" href="../assets/lofi-radar-logo.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
 <script src="../Spotify_Radar_data.js"></script>
@@ -54,11 +54,9 @@ button,input,select{max-width:100%}
 }
 .logo{display:flex;align-items:center;gap:11px;padding:2px 8px 20px}
 .logo .mark{
-  width:38px;height:38px;border-radius:12px;flex:none;
-  background:linear-gradient(135deg, #1ed760, #14913f);
-  display:grid;place-items:center;box-shadow:0 4px 22px rgba(30,215,96,.4);
+  width:40px;height:40px;border-radius:50%;flex:none;object-fit:cover;
+  border:2px solid rgba(255,255,255,.78);box-shadow:0 4px 22px rgba(30,215,96,.3);
 }
-.logo .mark::after{content:'';width:14px;height:14px;border-radius:50%;background:#0a120c;box-shadow:0 0 0 3px rgba(10,18,12,.35)}
 .logo h1{font-family:'Sora';font-size:16.5px;font-weight:800;letter-spacing:.4px}
 .logo h1 span{background:linear-gradient(90deg,#1ed760,#4ade80);-webkit-background-clip:text;background-clip:text;color:transparent}
 .logo small{display:block;font-size:10px;font-weight:500;color:var(--dim);letter-spacing:1.6px;text-transform:uppercase;margin-top:2px}
@@ -672,14 +670,14 @@ td.selc,th.selc{width:44px;padding-left:14px}
 
 <aside id="sidebar">
   <div class="logo">
-    <div class="mark"></div>
+    <img class="mark" src="../assets/lofi-radar-logo.jpg" alt="Lofi Radar">
     <div>
-      <h1>Spotify <span>Radar</span></h1>
-      <small data-fr="Veille artistes">Veille artistes</small>
+      <h1>Lofi <span>Radar</span></h1>
+      <small data-fr="Spotify · Veille artistes">Spotify · Veille artistes</small>
     </div>
   </div>
   <div class="radar-switch" aria-label="Changer de radar">
-    <a class="yt" href="../" aria-label="YouTube Radar" title="YouTube Radar">YouTube</a><a class="sp on" href="./" aria-label="Spotify Radar" title="Spotify Radar">Spotify</a>
+    <a class="yt" href="../" aria-label="Lofi Radar · YouTube" title="Lofi Radar · YouTube">YouTube</a><a class="sp on" href="./" aria-label="Lofi Radar · Spotify" title="Lofi Radar · Spotify">Spotify</a>
   </div>
   <nav class="nav" id="nav">
     <div class="nav-label" data-fr="Analyse">Analyse</div>

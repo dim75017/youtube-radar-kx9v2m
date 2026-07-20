@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>YouTube Radar — Lofi Girl Opportunity Map</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='42' fill='%23ff0033'/><circle cx='50' cy='50' r='16' fill='%2307080d'/></svg>">
+<title>Lofi Radar — YouTube Opportunity Map</title>
+<link rel="icon" type="image/jpeg" href="assets/lofi-radar-logo.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -62,11 +62,9 @@ input,select{font-family:inherit;color:var(--text)}
 }
 .logo{display:flex;align-items:center;gap:11px;padding:2px 8px 20px}
 .logo .mark{
-  width:38px;height:38px;border-radius:12px;flex:none;
-  background:conic-gradient(from 220deg, #ff0033, #ff6a5e, #ff2d55, #ff0033);
-  display:grid;place-items:center;box-shadow:0 4px 22px rgba(255,0,51,.45);
+  width:40px;height:40px;border-radius:50%;flex:none;object-fit:cover;
+  border:2px solid rgba(255,255,255,.78);box-shadow:0 4px 22px rgba(255,0,51,.32);
 }
-.logo .mark::after{content:'';width:14px;height:14px;border-radius:50%;background:#0a0b12;box-shadow:0 0 0 3px rgba(10,11,18,.35)}
 .logo h1{font-family:'Sora';font-size:15.5px;font-weight:800;letter-spacing:.3px;white-space:nowrap}
 .logo h1 span{background:linear-gradient(90deg,var(--acc),var(--acc2));-webkit-background-clip:text;background-clip:text;color:transparent}
 .logo small{display:block;font-family:'Inter';font-size:10px;font-weight:500;color:var(--dim);letter-spacing:1.6px;text-transform:uppercase;margin-top:2px}
@@ -589,8 +587,7 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 #loader{position:fixed;inset:0;z-index:100;display:grid;place-items:center;background:var(--bg);transition:opacity .4s}
 #loader.hide{opacity:0;pointer-events:none}
 .loader-in{text-align:center}
-.loader-mark{width:74px;height:74px;border-radius:24px;margin:0 auto 22px;background:conic-gradient(from 220deg,#8b7cf6,#67e8f9,#f9a8d4,#8b7cf6);display:grid;place-items:center;animation:breathe 2.2s ease-in-out infinite;box-shadow:0 10px 50px rgba(139,124,246,.5)}
-.loader-mark::after{content:'';width:26px;height:26px;border-radius:50%;background:#07080d}
+.loader-mark{width:82px;height:82px;border-radius:50%;margin:0 auto 22px;object-fit:cover;border:3px solid rgba(255,255,255,.82);animation:breathe 2.2s ease-in-out infinite;box-shadow:0 10px 50px rgba(139,124,246,.5)}
 @keyframes breathe{50%{transform:scale(1.07);box-shadow:0 10px 70px rgba(139,124,246,.75)}}
 .loader-in h2{font-family:'Sora';font-size:19px;font-weight:700;margin-bottom:7px}
 .loader-in p{color:var(--dim);font-size:12.5px}
@@ -702,8 +699,8 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 </head>
 <body>
 <div id="loader"><div class="loader-in">
-  <div class="loader-mark"></div>
-  <h2>YouTube Radar</h2>
+  <img class="loader-mark" src="assets/lofi-radar-logo.jpg" alt="Lofi Radar">
+  <h2>Lofi Radar</h2>
   <p id="loader-msg">Syncing with the Opportunity Map…</p>
 </div></div>
 
@@ -711,11 +708,11 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 <div id="side-veil" onclick="document.getElementById('sidebar').classList.remove('open');this.classList.remove('show')"></div>
 <aside id="sidebar">
   <div class="logo">
-    <div class="mark"></div>
-    <div><h1>Youtube <span>Radar</span><small>Opportunity Map</small></h1></div>
+    <img class="mark" src="assets/lofi-radar-logo.jpg" alt="Lofi Radar">
+    <div><h1>Lofi <span>Radar</span><small>YouTube Opportunity Map</small></h1></div>
   </div>
   <div class="radar-switch" aria-label="Switch radar">
-    <a class="yt on" href="./" aria-label="YouTube Radar" title="YouTube Radar">YouTube</a><a class="sp" href="spotify/" aria-label="Spotify Radar" title="Spotify Radar">Spotify</a>
+    <a class="yt on" href="./" aria-label="Lofi Radar · YouTube" title="Lofi Radar · YouTube">YouTube</a><a class="sp" href="spotify/" aria-label="Lofi Radar · Spotify" title="Lofi Radar · Spotify">Spotify</a>
   </div>
   <nav class="nav" id="nav"></nav>
   <div class="side-foot">
@@ -3204,14 +3201,8 @@ function openLiveDrawer(v){
 
 /* ================= CHANNELS ================= */
 function handleOf(u){const m=String(u||'').match(/@([^\/?]+)/);if(m)return '@'+m[1];const m2=String(u||'').match(/channel\/(UC[\w-]+)/);return m2?m2[1]:'';}
-function avaFallback(img,handle,step){
-  step=step||0;
-  if(step<2){
-    img.onerror=function(){avaFallback(img,handle,step+1);};
-    setTimeout(()=>{img.src=img.src.split('#')[0]+'#r'+(step+1);},400*(step+1));
-    return;
-  }
-  if(handle&&!img.dataset.fb){
+function avaFallback(img,handle){
+  if(handle&&!img.dataset.fb&&!/unavatar\.io\/youtube\//i.test(img.src||'')){
     img.dataset.fb='1';
     img.onerror=function(){this.remove();};
     img.src='https://unavatar.io/youtube/'+encodeURIComponent(handle)+'?fallback=false';
@@ -3220,25 +3211,29 @@ function avaFallback(img,handle,step){
   img.remove();
 }
 function vChanAva(v,size){
-  const atlas=window.YT_CHANNEL_AVATARS||{},channels=atlas.channels||{},videos=atlas.videos||{};
-  const uc=handleOf(v.chUrl||'');
+  const atlas=window.YT_CHANNEL_AVATARS||{},channels=atlas.channels||{},videos=atlas.videos||{},aliases=atlas.aliases||{};
+  const uc=handleOf(v.chUrl||''),explicit=/^UC[\w-]{22}$/.test(String(v.channelId||''))?String(v.channelId):'';
+  const channelKey=explicit||aliases[uc]||uc;
   const c=(typeof chanFor==='function'?chanFor(v):null)||null;
-  let src=(uc&&channels[uc])||(v.vid&&videos[v.vid])||'';
+  let src=(channelKey&&channels[channelKey])||(uc&&channels[uc])||(v.vid&&videos[v.vid])||'';
   if(!src&&c&&c.av)src='https://yt3.googleusercontent.com/'+c.av;
+  const fallbackKey=channelKey||uc;
+  if(!src&&fallbackKey)src='https://unavatar.io/youtube/'+encodeURIComponent(fallbackKey)+'?fallback=false';
   if(src){
     src=String(src);
     if(!/^https?:\/\//i.test(src))src=src.replace(/=(?:w|s)\d+.*$/,'')+'=s'+(size*2)+'-c-k-c0x00ffffff-no-rj';
   }
   return '<span class="ch-ava yt-ava" style="width:'+size+'px;height:'+size+'px" title="'+esc(v.channel||'YouTube channel')+'">'+
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21.6 7.2a2.7 2.7 0 0 0-1.9-1.9C18 4.8 12 4.8 12 4.8s-6 0-7.7.5a2.7 2.7 0 0 0-1.9 1.9A28 28 0 0 0 2 12a28 28 0 0 0 .4 4.8 2.7 2.7 0 0 0 1.9 1.9c1.7.5 7.7.5 7.7.5s6 0 7.7-.5a2.7 2.7 0 0 0 1.9-1.9A28 28 0 0 0 22 12a28 28 0 0 0-.4-4.8ZM10 15.2V8.8l5.5 3.2-5.5 3.2Z"/></svg>'+
-    (src?'<img loading="lazy" src="'+esc(src)+'" onerror="this.remove()" alt="">':'')+'</span>';
+    (src?'<img loading="lazy" src="'+esc(src)+'" onerror="avaFallback(this,\''+fallbackKey.replace(/'/g,"\\'")+'\')" alt="">':'')+'</span>';
 }
 function chAva(c,size){
   const col=gcolor(c.niche);
   const hd=handleOf(c.url);
-  const handleArg=(hd&&hd[0]==='@')?hd:'';
-  const src=c.av?('https://yt3.googleusercontent.com/'+c.av+'=s'+(size*2)+'-c-k-c0x00ffffff-no-rj'):(handleArg?'https://unavatar.io/youtube/'+encodeURIComponent(handleArg)+'?fallback=false':null);
-  return '<span class="ch-ava" style="width:'+size+'px;height:'+size+'px;background:'+col+'22;color:'+col+'">'+esc((c.name||'?').charAt(0).toUpperCase())+(src?'<img loading="lazy" src="'+src+'" onerror="avaFallback(this,\''+handleArg.replace(/'/g,"\\'")+'\')">':'')+'</span>';
+  const atlas=window.YT_CHANNEL_AVATARS||{},channels=atlas.channels||{},aliases=atlas.aliases||{};
+  const channelKey=aliases[hd]||hd;
+  const src=c.av?('https://yt3.googleusercontent.com/'+c.av+'=s'+(size*2)+'-c-k-c0x00ffffff-no-rj'):(channels[channelKey]||(channelKey?'https://unavatar.io/youtube/'+encodeURIComponent(channelKey)+'?fallback=false':null));
+  return '<span class="ch-ava" style="width:'+size+'px;height:'+size+'px;background:'+col+'22;color:'+col+'">'+esc((c.name||'?').charAt(0).toUpperCase())+(src?'<img loading="lazy" src="'+src+'" onerror="avaFallback(this,\''+channelKey.replace(/'/g,"\\'")+'\')">':'')+'</span>';
 }
 const FLAGS={'Japon':'jp','Norvège':'no','États-Unis':'us','Australie':'au','Italie':'it','Portugal':'pt','Ukraine':'ua','Royaume-Uni':'gb','Danemark':'dk','France':'fr','Corée du Sud':'kr','Suisse':'ch','Lituanie':'lt','Pays-Bas':'nl','Espagne':'es','Slovaquie':'sk','Canada':'ca','Kazakhstan':'kz','Irlande':'ie','Allemagne':'de','Estonie':'ee','Slovénie':'si','Inde':'in','Afrique du Sud':'za','Bulgarie':'bg','Islande':'is','Belgique':'be','Autriche':'at','Suède':'se','Finlande':'fi','Pologne':'pl','Grèce':'gr','Brésil':'br','Mexique':'mx','Indonésie':'id','Vietnam':'vn','Thaïlande':'th','Philippines':'ph','Turquie':'tr','Russie':'ru','Roumanie':'ro','Tchéquie':'cz','République tchèque':'cz','Hongrie':'hu','Nouvelle-Zélande':'nz','Argentine':'ar','Colombie':'co','Chili':'cl','Israël':'il','Taïwan':'tw','Chine':'cn','Hong Kong':'hk','Singapour':'sg','Malaisie':'my','Maroc':'ma','Égypte':'eg','Nigéria':'ng','Pakistan':'pk','Bangladesh':'bd','Sri Lanka':'lk','Népal':'np','Lettonie':'lv','Croatie':'hr','Serbie':'rs','Biélorussie':'by','Géorgie':'ge','Arménie':'am','Azerbaïdjan':'az','Luxembourg':'lu','Norway':'no'};
 function flagOf(c){const k=FLAGS[c];return k?'<img class="flg" loading="lazy" src="https://flagcdn.com/20x15/'+k+'.png" alt="">':'';}

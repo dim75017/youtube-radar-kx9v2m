@@ -47,7 +47,14 @@ class DailyHistoryTests(unittest.TestCase):
                 "queries_ok": 1,
                 "queries_raw": 10,
                 "queries_enriched": 10,
-                "fresh": [{"vid": "abcdefghijk", "title": "Fresh", "views": 150, "pub": 1700000000000}],
+                "fresh": [{
+                    "vid": "abcdefghijk",
+                    "title": "Fresh",
+                    "views": 150,
+                    "pub": 1700000000000,
+                    "chUrl": "https://www.youtube.com/@FocusChannel",
+                    "channelId": "UC1234567890123456789012",
+                }],
                 "candidates": [],
             }
             (shards / "youtube-shard-0.json").write_text(json.dumps(artifact), encoding="utf-8")
@@ -56,6 +63,7 @@ class DailyHistoryTests(unittest.TestCase):
             history = json.loads((root / "video_history" / "61.json").read_text(encoding="utf-8"))
             self.assertEqual(merged["d"]["all"][0]["views"], 150)
             self.assertEqual(merged["d"]["all"][0]["title"], "Fresh")
+            self.assertEqual(merged["d"]["all"][0]["channelId"], "UC1234567890123456789012")
             self.assertNotIn("hist", merged["d"])
             self.assertEqual(history["d"]["abcdefghijk"], [[generated, 150]])
             self.assertEqual(merged["videoMetricsT"], generated)
@@ -85,6 +93,43 @@ class DailyHistoryTests(unittest.TestCase):
             now,
         )
         self.assertNotIn("subs", row)
+
+    def test_video_info_preserves_channel_id_for_avatar_lookup(self):
+        now = int(datetime(2026, 7, 20, 8, tzinfo=timezone.utc).timestamp() * 1000)
+        row = radar.info_to_row(
+            {
+                "id": "abcdefghijk",
+                "title": "Focus mix",
+                "view_count": 100,
+                "duration": 3600,
+                "upload_date": "20260719",
+                "channel_id": "UC1234567890123456789012",
+                "channel_url": "https://www.youtube.com/@FocusChannel",
+            },
+            now,
+        )
+        self.assertEqual(row["channelId"], "UC1234567890123456789012")
+
+    def test_avatar_overlay_links_handle_to_channel_id_without_overwriting_atlas(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "avatars.js"
+            count = radar.write_avatar_overlay(
+                {
+                    "d": {
+                        "all": [{
+                            "chUrl": "https://www.youtube.com/@FocusChannel",
+                            "channelId": "UC1234567890123456789012",
+                        }],
+                        "trends": [],
+                        "news": [],
+                    }
+                },
+                output,
+            )
+            rendered = output.read_text(encoding="utf-8")
+        self.assertEqual(count, 1)
+        self.assertIn('"@FocusChannel":"UC1234567890123456789012"', rendered)
+        self.assertIn("if(!atlas.channels[key])", rendered)
 
     def test_recent_search_uses_month_filter_and_enriches_results(self):
         now = int(datetime(2026, 7, 20, 8, tzinfo=timezone.utc).timestamp() * 1000)
