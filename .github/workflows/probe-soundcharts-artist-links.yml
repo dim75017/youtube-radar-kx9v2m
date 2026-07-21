@@ -1,0 +1,61 @@
+name: Probe Soundcharts artist links
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/probe-soundcharts-artist-links.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/rebuild-spotify-ar-engine
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Inspect artist Spotify identifier and current stats responses
+        env:
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.parse
+          from pathlib import Path
+          from refresh_soundcharts_daily import SoundchartsClient
+          artists=[
+              ('ba7dd907-f866-42a9-9f66-89bd8bf41a55','Nova Issue'),
+              ('b9ddf6c5-22f5-480d-8b64-d30abc3ac510','Apollo Vision'),
+              ('911a1a4b-c6b7-4f61-9d21-080d714f8136','Opheralis'),
+              ('1e9153cb-e983-4b51-9b58-ecf2b544d115','Edith Whiskers'),
+          ]
+          client=SoundchartsClient(os.environ.get('SOUNDCHARTS_CLIENT_ID',''),os.environ.get('SOUNDCHARTS_CLIENT_SECRET',''),os.environ.get('SOUNDCHARTS_TEAM_ID',''))
+          client.authenticate()
+          out={'auth_mode':client.auth_mode,'quota_start':client.quota_remaining,'artists':[]}
+          for uuid,name in artists:
+              identifiers=client.get(f'/api/v2/artist/{urllib.parse.quote(uuid)}/identifiers?platform=spotify&offset=0&limit=100')
+              stats=client.get(f'/api/v2/artist/{urllib.parse.quote(uuid)}/current/stats')
+              out['artists'].append({'uuid':uuid,'name':name,'identifiers':identifiers,'stats':stats})
+          out['quota_end']=client.quota_remaining
+          Path('soundcharts-artist-links-probe.json').write_text(json.dumps(out,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps({'auth_mode':out['auth_mode'],'quota_start':out['quota_start'],'quota_end':out['quota_end'],'artists':[{'name':a['name'],'identifier_keys':sorted(a['identifiers'].keys()) if isinstance(a['identifiers'],dict) else [],'stats_keys':sorted(a['stats'].keys()) if isinstance(a['stats'],dict) else []} for a in out['artists']]},ensure_ascii=False))
+          PY
+      - name: Commit safe artist link probe report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add soundcharts-artist-links-probe.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Record Soundcharts artist link fields"
+          git pull --rebase origin agent/rebuild-spotify-ar-engine
+          git push origin HEAD:agent/rebuild-spotify-ar-engine
