@@ -1,0 +1,109 @@
+{
+  "total_count": 8,
+  "runs": [
+    {
+      "id": 29846488595,
+      "name": "Refresh Soundcharts A&R engine",
+      "event": "push",
+      "status": "in_progress",
+      "conclusion": null,
+      "head_branch": "main",
+      "head_sha": "afad93d2ef3b6db2b818377bdf0a28c0d7613edc",
+      "run_number": 57,
+      "created_at": "2026-07-21T15:58:45Z",
+      "updated_at": "2026-07-21T15:58:49Z",
+      "html_url": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/29846488595"
+    },
+    {
+      "id": 29829839066,
+      "name": "Refresh Soundcharts radar",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "main",
+      "head_sha": "f0e33cb4e084b6daa7a61e73d240ddcf78f2a095",
+      "run_number": 31,
+      "created_at": "2026-07-21T12:22:40Z",
+      "updated_at": "2026-07-21T12:39:44Z",
+      "html_url": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/29829839066"
+    },
+    {
+      "id": 29827597174,
+      "name": "Refresh Soundcharts radar",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "main",
+      "head_sha": "2857f10af085b6c3719dd27cf471d4992b987dfd",
+      "run_number": 28,
+      "created_at": "2026-07-21T11:49:11Z",
+      "updated_at": "2026-07-21T12:05:46Z",
+      "html_url": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/29827597174"
+    },
+    {
+      "id": 29825983818,
+      "name": "Refresh Soundcharts radar",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "main",
+      "head_sha": "38a41f8223b12e9bf7790bd1b96923d43ee8b717",
+      "run_number": 18,
+      "created_at": "2026-07-21T11:24:31Z",
+      "updated_at": "2026-07-21T11:41:23Z",
+      "html_url": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/29825983818"
+    },
+    {
+      "id": 29823051082,
+      "name": "Refresh Soundcharts radar",
+      "event": "schedule",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "main",
+      "head_sha": "b3afb2768cdd94a4da06e4c107e6690bdb4f8046",
+      "run_number": 4,
+      "created_at": "2026-07-21T10:39:22Z",
+      "updated_at": "2026-07-21T10:57:17Z",
+      "html_url": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/29823051082"
+    },
+    {
+      "id": 29775947891,
+      "name": "Refresh Soundcharts radar",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_branch": "main",
+      "head_sha": "c6b3b325b36fae52055a8e0ceca7da4a829ac158",
+      "run_number": 3,
+      "created_at": "2026-07-20T20:23:58Z",
+      "updated_at": "2026-07-20T20:43:24Z",
+      "html_url": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/29775947891"
+    },
+    {
+      "id": 29751151314,
+      "name": "Refresh Soundcharts radar",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "main",
+      "head_sha": "e9cdf92a5f6e9f65414e4a54c85c5a9b7c6be5c8",
+      "run_number": 2,
+      "created_at": "2026-07-20T14:33:19Z",
+      "updated_at": "2026-07-20T20:22:01Z",
+      "html_url": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/29751151314"
+    },
+    {
+      "id": 29750997579,
+      "name": "Refresh Soundcharts radar",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "failure",
+      "head_branch": "main",
+      "head_sha": "4af5b158f4f78b2d8483b2910d8f45667d133591",
+      "run_number": 1,
+      "created_at": "2026-07-20T14:31:16Z",
+      "updated_at": "2026-07-20T14:31:31Z",
+      "html_url": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/29750997579"
+    }
+  ]
+}
