@@ -1,0 +1,67 @@
+name: Refactor dashboard assets
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  split-dashboard:
+    if: github.head_ref == 'agent/reduce-truncated-dashboard-output'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the pull-request branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Split the monolithic dashboard
+        run: python .github/scripts/refactor_dashboard_assets.py
+
+      - name: Validate generated files
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(wc -l < index.html)" -lt 500
+          test -s assets/css/dashboard.css
+          test "$(find assets/js -maxdepth 1 -name 'dashboard-*.js' | wc -l)" -ge 2
+          grep -q 'assets/css/dashboard.css' index.html
+          grep -q 'assets/js/dashboard-' index.html
+          ! grep -q '<style' index.html
+          find assets/js -maxdepth 1 -name 'dashboard-*.js' -print0 | xargs -0 -n1 node --check
+          git diff --check
+
+      - name: Upload the refactored files for inspection
+        uses: actions/upload-artifact@v4
+        with:
+          name: refactored-dashboard
+          retention-days: 7
+          path: |
+            index.html
+            assets/css/dashboard.css
+            assets/js/dashboard-*.js
+
+      - name: Commit the generated refactor
+        shell: bash
+        env:
+          HEAD_BRANCH: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/scripts/refactor_dashboard_assets.py
+          git rm .github/workflows/refactor-dashboard-assets.yml
+          git add index.html assets/css/dashboard.css assets/js/dashboard-*.js
+          git diff --cached --check
+          git commit -m 'Split dashboard CSS and JavaScript assets'
+          git push origin "HEAD:${HEAD_BRANCH}"
