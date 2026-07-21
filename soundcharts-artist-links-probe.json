@@ -1,6 +1,6 @@
 {
   "auth_mode": "oauth_bearer",
-  "quota_start": 3757463,
+  "quota_start": 3757435,
   "artists": [
     {
       "uuid": "ba7dd907-f866-42a9-9f66-89bd8bf41a55",
@@ -485,11 +485,11 @@
             "percentEvolution": 0
           },
           {
-            "platform": "spotify",
-            "value": 227994,
+            "platform": "soundcloud",
+            "value": 3959,
             "date": "2026-07-21T00:00:00+00:00",
-            "evolution": 672,
-            "percentEvolution": 0.3
+            "evolution": 6,
+            "percentEvolution": 0.15
           },
           {
             "platform": "youtube",
@@ -499,18 +499,18 @@
             "percentEvolution": 0.12
           },
           {
-            "platform": "soundcloud",
-            "value": 3959,
+            "platform": "spotify",
+            "value": 227994,
             "date": "2026-07-21T00:00:00+00:00",
-            "evolution": 6,
-            "percentEvolution": 0.15
+            "evolution": 672,
+            "percentEvolution": 0.3
           },
           {
-            "platform": "deezer",
-            "value": 14669,
+            "platform": "yandex",
+            "value": 21161,
             "date": "2026-07-20T00:00:00+00:00",
-            "evolution": 22,
-            "percentEvolution": 0.15
+            "evolution": 12,
+            "percentEvolution": 0.06
           },
           {
             "platform": "amazon",
@@ -520,11 +520,11 @@
             "percentEvolution": 1.09
           },
           {
-            "platform": "yandex",
-            "value": 21161,
+            "platform": "deezer",
+            "value": 14669,
             "date": "2026-07-20T00:00:00+00:00",
-            "evolution": 12,
-            "percentEvolution": 0.06
+            "evolution": 22,
+            "percentEvolution": 0.15
           },
           {
             "platform": "twitter",
@@ -681,5 +681,5 @@
       }
     }
   ],
-  "quota_end": 3757463
+  "quota_end": 3757435
 }
