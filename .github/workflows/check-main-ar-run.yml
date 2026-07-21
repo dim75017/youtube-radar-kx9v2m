@@ -1,0 +1,63 @@
+name: Inspect main Soundcharts A&R run
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/check-main-ar-run.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - name: Query main workflow runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+          from pathlib import Path
+
+          url='https://api.github.com/repos/dim75017/youtube-radar-kx9v2m/actions/workflows/refresh-soundcharts.yml/runs?branch=main&per_page=10'
+          request=urllib.request.Request(url,headers={
+              'Accept':'application/vnd.github+json',
+              'Authorization':'Bearer '+os.environ['GH_TOKEN'],
+              'X-GitHub-Api-Version':'2022-11-28',
+          })
+          with urllib.request.urlopen(request,timeout=60) as response:
+              payload=json.loads(response.read().decode('utf-8'))
+          runs=[]
+          for run in payload.get('workflow_runs',[]):
+              runs.append({
+                  'id':run.get('id'),
+                  'name':run.get('name'),
+                  'event':run.get('event'),
+                  'status':run.get('status'),
+                  'conclusion':run.get('conclusion'),
+                  'head_branch':run.get('head_branch'),
+                  'head_sha':run.get('head_sha'),
+                  'run_number':run.get('run_number'),
+                  'created_at':run.get('created_at'),
+                  'updated_at':run.get('updated_at'),
+                  'html_url':run.get('html_url'),
+              })
+          report={'total_count':payload.get('total_count'),'runs':runs}
+          Path('main-ar-run-report.json').write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(report))
+          PY
+      - name: Commit report
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add main-ar-run-report.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Record main A&R workflow status'
+          git pull --rebase origin '${{ github.event.pull_request.head.ref }}'
+          git push origin HEAD:'${{ github.event.pull_request.head.ref }}'
