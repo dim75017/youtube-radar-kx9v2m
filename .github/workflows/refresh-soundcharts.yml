@@ -14,6 +14,7 @@ on:
     paths:
       - 'refresh_soundcharts_daily.py'
       - 'sync_soundcharts_opportunities.py'
+      - 'audit_soundcharts_totals.py'
       - 'tests/test_refresh_soundcharts_daily.py'
       - 'tests/test_sync_soundcharts_opportunities.py'
       - '.github/workflows/refresh-soundcharts.yml'
@@ -48,6 +49,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
           fetch-depth: 0
 
       - name: Sync latest main before a publishing run
@@ -101,6 +103,25 @@ jobs:
 
       - name: Refresh the strict track-first opportunity export
         run: python sync_soundcharts_opportunities.py
+
+      - name: Count the live Soundcharts discography for this audit
+        if: github.event_name == 'pull_request' && github.head_ref == 'agent/full-track-inventory'
+        env:
+          PYTHONUNBUFFERED: '1'
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+        run: python audit_soundcharts_totals.py
+
+      - name: Commit the audit report to the pull-request branch
+        if: github.event_name == 'pull_request' && github.head_ref == 'agent/full-track-inventory'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add soundcharts-live-total-count.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Record live Soundcharts discography totals"
+          git push origin HEAD:${{ github.head_ref }}
 
       - name: Publish only validated daily snapshots
         if: steps.plan.outputs.publish == 'true'
