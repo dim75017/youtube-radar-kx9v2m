@@ -1,0 +1,56 @@
+name: Export Spotify Radar rebuild source bundle
+
+on:
+  push:
+    branches:
+      - agent/rebuild-spotify-ar-engine
+    paths:
+      - '.github/workflows/export-rebuild-source-bundle.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/rebuild-spotify-ar-engine
+          fetch-depth: 0
+
+      - name: Build source bundle and repository inventory
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          import zipfile
+
+          root = Path('.')
+          skip_parts = {'.git', 'node_modules', '__pycache__'}
+          inventory = []
+          selected = []
+          for path in sorted(root.rglob('*')):
+              if not path.is_file() or any(part in skip_parts for part in path.parts):
+                  continue
+              size = path.stat().st_size
+              inventory.append({'path': str(path), 'bytes': size})
+              suffix = path.suffix.lower()
+              code_like = suffix in {'.py','.js','.html','.css','.yml','.yaml','.md','.json','.toml','.txt'}
+              generated_big = path.name.startswith(('Spotify_Soundcharts_data','Spotify_Performance_data','Spotify_Radar_data','Spotify_Playlists_data','Spotify_Labels_data'))
+              if code_like and size <= 2_500_000 and not generated_big:
+                  selected.append(path)
+          Path('repository-inventory.json').write_text(json.dumps(inventory, indent=2) + '\n', encoding='utf-8')
+          with zipfile.ZipFile('spotify-radar-source-bundle.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
+              archive.write('repository-inventory.json')
+              for path in selected:
+                  archive.write(path)
+          print(json.dumps({'files': len(inventory), 'selected': len(selected), 'zip_bytes': Path('spotify-radar-source-bundle.zip').stat().st_size}))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: spotify-radar-source-bundle
+          path: spotify-radar-source-bundle.zip
+          retention-days: 2
