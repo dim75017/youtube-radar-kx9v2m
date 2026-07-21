@@ -19,14 +19,15 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
-      - name: Write inline asset report
+      - name: Recover and inspect the last complete Spotify dashboard
         shell: bash
         run: |
+          git show 7d8c5feb249726a8f1c7c856ca1681da146ffa2f:spotify/index.html > /tmp/spotify-good.html
           python3 - <<'PY'
           from pathlib import Path
           import re
 
-          path = Path('spotify/index.html')
+          path = Path('/tmp/spotify-good.html')
           text = path.read_text(encoding='utf-8')
           out = []
           out.append(f'FILE bytes={len(text.encode("utf-8"))} chars={len(text)} lines={text.count(chr(10))+1}')
@@ -51,7 +52,7 @@ jobs:
                   out.append('  MARKERS: ' + ' | '.join(m.strip() for m in markers[:120]))
 
           report = '\n'.join(out) + '\n'
-          Path('spotify/asset-structure.txt').write_text(report, encoding='utf-8')
+          Path('spotify/asset-structure-good.txt').write_text(report, encoding='utf-8')
           print(report)
           PY
 
@@ -60,7 +61,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add spotify/asset-structure.txt
+          git add spotify/asset-structure-good.txt
           git diff --cached --quiet && exit 0
-          git commit -m "Report Spotify dashboard asset structure"
+          git commit -m "Report complete Spotify dashboard structure"
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
