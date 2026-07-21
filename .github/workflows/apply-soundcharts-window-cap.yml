@@ -1,0 +1,94 @@
+name: Apply Soundcharts history-window guard
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/apply-soundcharts-window-cap.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cap Soundcharts history requests at 90 calendar days
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          collector = Path('refresh_soundcharts_daily.py')
+          text = collector.read_text(encoding='utf-8')
+          old = '''    start = (utc_today() - dt.timedelta(days=max(65, history_days))).isoformat()
+              end = utc_today().isoformat()'''.replace('              end', '    end')
+          new = '''    period_days = min(90, max(65, history_days))
+              start = (utc_today() - dt.timedelta(days=period_days - 1)).isoformat()
+              end = utc_today().isoformat()'''.replace('              start', '    start').replace('              end', '    end')
+          if old not in text:
+              raise SystemExit('Track history window block not found')
+          text = text.replace(old, new, 1)
+
+          old_smoke = '''    start = (utc_today() - dt.timedelta(days=max(10, history_days))).isoformat()
+              end = utc_today().isoformat()'''.replace('              end', '    end')
+          new_smoke = '''    period_days = min(90, max(10, history_days))
+              start = (utc_today() - dt.timedelta(days=period_days - 1)).isoformat()
+              end = utc_today().isoformat()'''.replace('              start', '    start').replace('              end', '    end')
+          if old_smoke not in text:
+              raise SystemExit('Smoke history window block not found')
+          collector.write_text(text.replace(old_smoke, new_smoke, 1), encoding='utf-8')
+
+          workflow = Path('.github/workflows/refresh-soundcharts.yml')
+          flow = workflow.read_text(encoding='utf-8')
+          flow = flow.replace('cancel-in-progress: false', 'cancel-in-progress: true', 1)
+          flow = flow.replace('--history-days 95', '--history-days 90', 1)
+          workflow.write_text(flow, encoding='utf-8')
+
+          tests = Path('tests/test_refresh_soundcharts_daily.py')
+          body = tests.read_text(encoding='utf-8')
+          body = body.replace('from pathlib import Path\n', 'import datetime as dt\nfrom pathlib import Path\nimport urllib.parse\n', 1)
+          marker = '    def test_performance_payload_round_trip(self):\n'
+          regression = '''    def test_track_history_request_never_exceeds_90_calendar_days(self):
+                  payload = {
+                      'schemas': {'tracks': ['soundcharts_uuid', 'spotify_id']},
+                      'tracks': [['song-uuid', 'track-1']],
+                  }
+                  response = {'items': [{'date': '2026-07-21', 'plots': [{'identifier': 'track-1', 'value': 1}]}]}
+                  client = FakeClient(response)
+                  with patch.object(subject, 'utc_today', return_value=dt.date(2026, 7, 21)):
+                      subject.refresh_tracks(payload, {'tracks': {}}, client, 1, 10, 95)
+                  query = urllib.parse.parse_qs(urllib.parse.urlparse(client.paths[0]).query)
+                  start = dt.date.fromisoformat(query['startDate'][0])
+                  end = dt.date.fromisoformat(query['endDate'][0])
+                  self.assertLessEqual((end - start).days, 89)
+
+          '''
+          regression = '\n'.join(line[10:] if line.startswith('          ') else line for line in regression.splitlines()) + '\n'
+          if marker not in body:
+              raise SystemExit('Test insertion point not found')
+          tests.write_text(body.replace(marker, regression + marker, 1), encoding='utf-8')
+          PY
+
+      - name: Run the full collector test suite
+        run: |
+          python -m unittest tests/test_refresh_soundcharts_daily.py -v
+          python -m py_compile refresh_soundcharts_daily.py
+          grep -q 'period_days = min(90' refresh_soundcharts_daily.py
+          grep -q -- '--history-days 90' .github/workflows/refresh-soundcharts.yml
+          git diff --check
+
+      - name: Commit the final guard only
+        run: |
+          rm -f .github/workflows/apply-soundcharts-window-cap.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Cap Soundcharts stream history at 90 days"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
