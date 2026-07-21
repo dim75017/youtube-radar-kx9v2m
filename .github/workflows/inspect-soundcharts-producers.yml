@@ -17,7 +17,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
-      - name: Search the repository for opportunity exporters
+      - name: Search repository and inspect Soundcharts snapshots
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -54,14 +54,68 @@ jobs:
               'matches': matches,
           }
           Path('soundcharts-producer-report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-          print(json.dumps({'file_count': report['file_count'], 'matches': len(matches), 'named_files': len(report['soundcharts_named_files'])}))
+
+          prefix = 'window.SPOTIFY_SOUNDCHARTS='
+          snapshots = []
+          for path in sorted(Path('.').glob('Spotify_Soundcharts_data*.js')):
+              try:
+                  text = path.read_text(encoding='utf-8')
+                  if not text.startswith(prefix):
+                      continue
+                  payload = json.loads(text[len(prefix):].strip().removesuffix(';'))
+              except Exception as exc:
+                  snapshots.append({'path': str(path), 'error': repr(exc), 'bytes': path.stat().st_size})
+                  continue
+              schemas = payload.get('schemas') if isinstance(payload.get('schemas'), dict) else {}
+              opp_schema = schemas.get('opportunities') if isinstance(schemas.get('opportunities'), list) else []
+              opps = payload.get('opportunities') if isinstance(payload.get('opportunities'), list) else []
+              editorial = payload.get('editorial') if isinstance(payload.get('editorial'), dict) else {}
+              sample = None
+              if opps:
+                  row = opps[0]
+                  if isinstance(row, list) and opp_schema:
+                      sample = {name: row[index] if index < len(row) else None for index, name in enumerate(opp_schema)}
+                  elif isinstance(row, dict):
+                      sample = row
+              snapshots.append({
+                  'path': str(path),
+                  'bytes': path.stat().st_size,
+                  'generated_at': payload.get('generated_at'),
+                  'top_level_keys': sorted(payload.keys()),
+                  'schema_keys': sorted(schemas.keys()),
+                  'artists': len(payload.get('artists', [])) if isinstance(payload.get('artists'), list) else 0,
+                  'tracks': len(payload.get('tracks', [])) if isinstance(payload.get('tracks'), list) else 0,
+                  'opportunities': len(opps),
+                  'opportunity_schema': opp_schema,
+                  'opportunity_sample': sample,
+                  'editorial_keys': sorted(editorial.keys()),
+                  'editorial_artists': len(editorial.get('artists', [])) if isinstance(editorial.get('artists'), list) else 0,
+                  'editorial_tracks': len(editorial.get('tracks', [])) if isinstance(editorial.get('tracks'), list) else 0,
+              })
+          candidates = [item for item in snapshots if item.get('opportunities', 0)]
+          candidates.sort(key=lambda item: str(item.get('generated_at') or ''))
+          snapshot_report = {
+              'snapshot_count': len(snapshots),
+              'with_opportunities': len(candidates),
+              'latest_with_opportunities': candidates[-1] if candidates else None,
+              'current': next((item for item in snapshots if item.get('path') == 'Spotify_Soundcharts_data.js'), None),
+              'snapshots': snapshots,
+          }
+          Path('soundcharts-snapshot-report.json').write_text(json.dumps(snapshot_report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps({
+              'file_count': report['file_count'],
+              'matches': len(matches),
+              'snapshot_count': len(snapshots),
+              'with_opportunities': len(candidates),
+              'latest_with_opportunities': candidates[-1]['path'] if candidates else None,
+          }))
           PY
 
-      - name: Commit producer report
+      - name: Commit inspection reports
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add soundcharts-producer-report.json
+          git add soundcharts-producer-report.json soundcharts-snapshot-report.json
           git diff --cached --quiet && exit 0
-          git commit -m "Record Soundcharts producer inspection"
+          git commit -m "Record Soundcharts snapshot inspection"
           git push origin HEAD:${{ github.event.pull_request.head.ref }}
