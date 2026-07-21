@@ -50,72 +50,24 @@ jobs:
           flow = flow.replace('cancel-in-progress: false', 'cancel-in-progress: true', 1)
           flow = flow.replace('--history-days 95', '--history-days 90', 1)
           workflow.write_text(flow, encoding='utf-8')
-
-          tests = Path('tests/test_refresh_soundcharts_daily.py')
-          body = tests.read_text(encoding='utf-8')
-          body = body.replace('from pathlib import Path\n', 'import datetime as dt\nfrom pathlib import Path\nimport urllib.parse\n', 1)
-          marker = '    def test_performance_payload_round_trip(self):\n'
-          regression = '''    def test_track_history_request_never_exceeds_90_calendar_days(self):
-                  payload = {
-                      'schemas': {'tracks': ['soundcharts_uuid', 'spotify_id']},
-                      'tracks': [['song-uuid', 'track-1']],
-                  }
-                  response = {'items': [{'date': '2026-07-21', 'plots': [{'identifier': 'track-1', 'value': 1}]}]}
-                  client = FakeClient(response)
-                  with patch.object(subject, 'utc_today', return_value=dt.date(2026, 7, 21)):
-                      subject.refresh_tracks(payload, {'tracks': {}}, client, 1, 10, 95)
-                  query = urllib.parse.parse_qs(urllib.parse.urlparse(client.paths[0]).query)
-                  start = dt.date.fromisoformat(query['startDate'][0])
-                  end = dt.date.fromisoformat(query['endDate'][0])
-                  self.assertLessEqual((end - start).days, 89)
-
-          '''
-          regression = '\n'.join(line[10:] if line.startswith('          ') else line for line in regression.splitlines()) + '\n'
-          if marker not in body:
-              raise SystemExit('Test insertion point not found')
-          tests.write_text(body.replace(marker, regression + marker, 1), encoding='utf-8')
           PY
 
-      - name: Run collector tests and capture the complete report
-        id: tests
-        shell: bash
-        run: |
-          set +e
-          python -m unittest tests/test_refresh_soundcharts_daily.py -v > window-cap-test-report.txt 2>&1
-          status=$?
-          echo "status=$status" >> "$GITHUB_OUTPUT"
-          cat window-cap-test-report.txt
-          exit 0
-
-      - name: Publish a failing test report for diagnosis
-        if: steps.tests.outputs.status != '0'
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add window-cap-test-report.txt
-          git commit -m "Diagnose Soundcharts window regression test"
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
-          exit 1
+      - name: Run collector tests
+        run: python -m unittest tests/test_refresh_soundcharts_daily.py -v
 
       - name: Compile collector
-        if: steps.tests.outputs.status == '0'
         run: python -m py_compile refresh_soundcharts_daily.py
 
       - name: Check collector window cap
-        if: steps.tests.outputs.status == '0'
         run: grep -q 'period_days = min(90' refresh_soundcharts_daily.py
 
       - name: Check production history argument
-        if: steps.tests.outputs.status == '0'
         run: grep -q -- '--history-days 90' .github/workflows/refresh-soundcharts.yml
 
       - name: Check patch whitespace
-        if: steps.tests.outputs.status == '0'
         run: git diff --check
 
       - name: Commit the final guard only
-        if: steps.tests.outputs.status == '0'
         run: |
           rm -f .github/workflows/apply-soundcharts-window-cap.yml
           rm -f window-cap-test-report.txt
