@@ -190,7 +190,8 @@ const A = (D.artists || []).map(artist=>Array.isArray(artist)?artist.slice():art
 /* Explicit quarantine requested by Dim for mainstream/vocal identities. This
    applies to the general views as well as to future Soundcharts merges. */
 const GENERAL_VIEW_QUARANTINED_ARTISTS = new Set([
-  'powfu','metallica','michael jackson','justin bieber','dua lipa','black eyed peas',
+  'powfu','metallica','michael jackson','justin bieber','bruno mars','shakira','lady gaga',
+  'pitbull','david guetta','calvin harris','dua lipa','kendrick lamar','black eyed peas',
   'sean paul','jennifer lopez','ellie goulding','bring me the horizon','a$ap rocky','asap rocky',
   'sarcastic sounds','rxseboy','sody'
 ]);
@@ -1614,6 +1615,27 @@ function arTrackRowById(spotifyId){
   if(!AR_TRACK_ROW_CACHE) AR_TRACK_ROW_CACHE=new Map(R.filter(row=>row&&row[6]).map(row=>[String(row[6]),row]));
   return AR_TRACK_ROW_CACHE.get(String(spotifyId||''))||null;
 }
+function arHasCompleteStructuredArtists(artists){
+  return Array.isArray(artists)&&artists.length>0&&artists.every(artist=>
+    String(artist&&artist.spotify_id||'').trim()&&String(artist&&artist.soundcharts_uuid||'').trim());
+}
+function arIsContactable(opportunity){
+  const contactStatus=String(opportunity&&opportunity.contactStatus||'').toLowerCase();
+  const hasChannel=(contactStatus==='ready'&&Boolean(opportunity&&opportunity.contactEmail))
+    ||(contactStatus==='social'&&Boolean(opportunity&&opportunity.contactUrl));
+  return Boolean(opportunity
+    &&opportunity.status==='verified'
+    &&SC_ALLOWED_GENRES.has(opportunity.genre)
+    &&opportunity.genreConfidence!=null
+    &&opportunity.genreConfidence>=.5
+    &&opportunity.instrumental==='instrumental'
+    &&opportunity.instrumentalConfidence!=null
+    &&opportunity.instrumentalConfidence>=.5
+    &&opportunity.aiRisk==='low'
+    &&['self_released','independent_label','indie'].includes(opportunity.rights)
+    &&arHasCompleteStructuredArtists(opportunity.artists)
+    &&hasChannel);
+}
 function arOpportunityRows(){
   if(AR_OPPORTUNITY_CACHE) return AR_OPPORTUNITY_CACHE;
   if(!SC || !Array.isArray(SC.opportunities)) return [];
@@ -1621,6 +1643,20 @@ function arOpportunityRows(){
   AR_OPPORTUNITY_CACHE=SC.opportunities.map(row=>{
     const spotifyId=String(scValue(row,schema,'spotify_id')||'');
     const structured=Array.isArray(scValue(row,schema,'artists'))?scValue(row,schema,'artists'):[];
+    const status=String(scValue(row,schema,'opportunity_status')||'needs_listen').toLowerCase();
+    const genre=String(scValue(row,schema,'primary_genre')||'other').toLowerCase();
+    const genreConfidence=arNullableNumber(scValue(row,schema,'genre_confidence'));
+    const instrumental=String(scValue(row,schema,'instrumental_status')||'unknown').toLowerCase();
+    const instrumentalConfidence=arNullableNumber(scValue(row,schema,'instrumental_confidence'));
+    const aiRisk=String(scValue(row,schema,'ai_risk')||'unknown').toLowerCase();
+    const rights=String(scValue(row,schema,'rights_status')||'unknown').toLowerCase();
+    const rawContactEmail=String(scValue(row,schema,'contact_email')||'');
+    const rawContactUrl=String(scValue(row,schema,'contact_url')||'');
+    const rawContactPlatform=String(scValue(row,schema,'contact_platform')||'');
+    const rawContactStatus=String(scValue(row,schema,'contact_status')||'enrich').toLowerCase();
+    const contactProbe={status,genre,genreConfidence,instrumental,instrumentalConfidence,aiRisk,rights,artists:structured,
+      contactEmail:rawContactEmail,contactUrl:rawContactUrl,contactStatus:rawContactStatus};
+    const contactable=arIsContactable(contactProbe);
     const reasons=Array.isArray(scValue(row,schema,'reasons'))?scValue(row,schema,'reasons').filter(Boolean):[];
     const reasonCodes=Array.isArray(scValue(row,schema,'reason_codes'))?scValue(row,schema,'reason_codes').filter(Boolean):[];
     const labels=Array.isArray(scValue(row,schema,'labels'))?scValue(row,schema,'labels').filter(Boolean):[];
@@ -1634,21 +1670,21 @@ function arOpportunityRows(){
       && rosterRelationship.status==='existing'&&relationshipArtists.length);
     const credit=String(scValue(row,schema,'credit_name')||structured.map(artist=>artist&&artist.name).filter(Boolean).join(' & ')||'Artiste non renseigné');
     return {
-      status:String(scValue(row,schema,'opportunity_status')||'verified'),
+      status,
       spotifyId,
       soundchartsUuid:String(scValue(row,schema,'soundcharts_uuid')||''),
       title:String(scValue(row,schema,'title')||'Titre non renseigné'),
       credit,
       artists:structured,
       releaseDate:String(scValue(row,schema,'release_date')||''),
-      genre:String(scValue(row,schema,'primary_genre')||'other'),
+      genre,
       subgenres:Array.isArray(scValue(row,schema,'subgenres'))?scValue(row,schema,'subgenres'):[],
-      genreConfidence:arNullableNumber(scValue(row,schema,'genre_confidence')),
-      instrumental:String(scValue(row,schema,'instrumental_status')||'unknown'),
-      instrumentalConfidence:arNullableNumber(scValue(row,schema,'instrumental_confidence')),
-      aiRisk:String(scValue(row,schema,'ai_risk')||'unknown'),
+      genreConfidence,
+      instrumental,
+      instrumentalConfidence,
+      aiRisk,
       aiRiskScore:arNullableNumber(scValue(row,schema,'ai_risk_score')),
-      rights:String(scValue(row,schema,'rights_status')||'unknown'),
+      rights,
       label:String(scValue(row,schema,'label')||labels[0]||''),
       labels,
       copyright:String(scValue(row,schema,'copyright')||''),
@@ -1683,10 +1719,11 @@ function arOpportunityRows(){
       artistMonthlyListeners:arNullableNumber(scValue(row,schema,'artist_monthly_listeners')),
       artistSpotifyId:String(scValue(row,schema,'artist_spotify_id')||''),
       artistSoundchartsUuid:String(scValue(row,schema,'artist_soundcharts_uuid')||''),
-      contactEmail:String(scValue(row,schema,'contact_email')||''),
-      contactUrl:String(scValue(row,schema,'contact_url')||''),
-      contactPlatform:String(scValue(row,schema,'contact_platform')||''),
-      contactStatus:String(scValue(row,schema,'contact_status')||'enrich'),
+      contactEmail:contactable?rawContactEmail:'',
+      contactUrl:contactable?rawContactUrl:'',
+      contactPlatform:contactable?rawContactPlatform:'',
+      contactStatus:contactable?rawContactStatus:'blocked',
+      contactable,
       streams7:arNullableNumber(scValue(row,schema,'streams_7d')),
       streams30:arNullableNumber(scValue(row,schema,'streams_30d')),
       streamsPrevious7:arNullableNumber(scValue(row,schema,'streams_previous_7d')),
@@ -1695,11 +1732,11 @@ function arOpportunityRows(){
       velocityPerListener:arNullableNumber(scValue(row,schema,'velocity_per_listener')),
       releaseAgeDays:arNullableNumber(scValue(row,schema,'release_age_days')),
       rightsConfidence:arNullableNumber(scValue(row,schema,'rights_confidence')),
-      classificationStatus:String(scValue(row,schema,'classification_status')||scValue(row,schema,'opportunity_status')||'needs_listen'),
+      classificationStatus:String(scValue(row,schema,'classification_status')||status),
       selectionTier:String(scValue(row,schema,'selection_tier')||'review'),
       sourceTier:String(scValue(row,schema,'source_tier')||'soundcharts_measured'),
     };
-  }).filter(item=>item.spotifyId && item.title);
+  }).filter(item=>item.spotifyId&&item.title&&arHasCompleteStructuredArtists(item.artists));
   return AR_OPPORTUNITY_CACHE;
 }
 function arGenreLabel(genre){
@@ -1715,6 +1752,7 @@ function arDealHelp(type){
   return ({distribution:'Sortie récente indépendante à approcher pour la distribution.',label_advance:'Traction suffisante pour une offre label ou une avance.',catalog_acquisition:'Flux installé à étudier pour un rachat de catalogue.',rights_review:'Signal fort, propriété des droits à confirmer.'})[type]||'';
 }
 function arContactHtml(opportunity,compact=false){
+  if(!arIsContactable(opportunity)) return '<span class="ar-contact-missing">Contact bloqué par les garde-fous</span>';
   if(opportunity.contactEmail) return `<a class="ar-contact-link" href="mailto:${esc(opportunity.contactEmail)}" onclick="event.stopPropagation()">✉ ${compact?'E-mail':esc(opportunity.contactEmail)}</a>`;
   if(opportunity.contactUrl) return `<a class="ar-contact-link" href="${esc(opportunity.contactUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗ ${compact?(opportunity.contactPlatform||'Contact'):esc(opportunity.contactPlatform||'Contact')}</a>`;
   return '<span class="ar-contact-missing">Contact à enrichir</span>';
@@ -1790,7 +1828,7 @@ function arOpportunityFiltered(all){
     if(['distribution','label_advance','catalog_acquisition','rights_review'].includes(S.radarFilter)) return opportunity.dealType===S.radarFilter;
     if(S.radarFilter==='rising') return (arOpportunityMetric(opportunity,1)||0)>0;
     if(S.radarFilter==='accelerating') return (opportunity.acceleration7||0)>0;
-    if(S.radarFilter==='contactable') return opportunity.contactStatus==='ready'||opportunity.contactStatus==='social';
+    if(S.radarFilter==='contactable') return arIsContactable(opportunity);
     if(S.radarFilter==='editorial') return arStrongEditorial(opportunity);
     if(S.radarFilter==='recent') { const age=opportunity.releaseAgeDays??arReleaseAgeDays(opportunity); return age!=null&&age<=180; }
     if(S.radarFilter==='verified') return opportunity.status==='verified';
@@ -1860,7 +1898,7 @@ function renderRadar(){
   const catalogues=all.filter(item=>item.dealType==='catalog_acquisition');
   const rightsReview=all.filter(item=>item.dealType==='rights_review');
   const accelerating=all.filter(item=>(item.acceleration7||0)>0);
-  const contactable=all.filter(item=>item.contactStatus==='ready'||item.contactStatus==='social');
+  const contactable=all.filter(arIsContactable);
   const verified=all.filter(item=>item.status==='verified'), needsListen=all.filter(item=>item.status==='needs_listen');
   const filtered=arOpportunityFiltered(all), rows=filtered.slice(0,S.radarLimit), selected=all.find(item=>item.spotifyId===S.radarTrackId)||null;
   const genres=[...new Set(all.map(item=>item.genre).filter(Boolean))].sort((a,b)=>arGenreLabel(a).localeCompare(arGenreLabel(b)));

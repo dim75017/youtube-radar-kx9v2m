@@ -7,9 +7,12 @@ on:
       - 'refresh_soundcharts_daily.py'
       - 'expand_soundcharts_instrumental_pool.py'
       - 'sync_soundcharts_opportunities.py'
+      - 'prepare_soundcharts_snapshot.py'
       - 'tests/test_refresh_soundcharts_daily.py'
       - 'tests/test_expand_soundcharts_instrumental_pool.py'
       - 'tests/test_sync_soundcharts_opportunities.py'
+      - 'tests/test_prepare_soundcharts_snapshot.py'
+      - 'tests/test_dashboard_opportunity_guardrails.js'
       - '.github/workflows/refresh-soundcharts.yml'
       - 'spotify/index.html'
       - 'spotify/dashboard.js'
@@ -19,9 +22,12 @@ on:
       - 'refresh_soundcharts_daily.py'
       - 'expand_soundcharts_instrumental_pool.py'
       - 'sync_soundcharts_opportunities.py'
+      - 'prepare_soundcharts_snapshot.py'
       - 'tests/test_refresh_soundcharts_daily.py'
       - 'tests/test_expand_soundcharts_instrumental_pool.py'
       - 'tests/test_sync_soundcharts_opportunities.py'
+      - 'tests/test_prepare_soundcharts_snapshot.py'
+      - 'tests/test_dashboard_opportunity_guardrails.js'
       - '.github/workflows/refresh-soundcharts.yml'
       - 'spotify/index.html'
       - 'spotify/dashboard.js'
@@ -37,16 +43,16 @@ on:
         type: choice
         options: [daily_target, artists, smoke, legacy_full]
       max_requests:
-        description: 'Hard request cap for the instrumental pool expansion'
+        description: 'Expansion data-call cap (1-9490; total workflow cap stays <=10000 including auth)'
         required: true
-        default: '85000'
+        default: '9490'
         type: string
 
 permissions:
   contents: write
 
 concurrency:
-  group: refresh-soundcharts-ar-${{ github.ref }}
+  group: refresh-soundcharts-ar-${{ (github.event_name == 'push' || github.event_name == 'pull_request') && 'ci' || 'collection' }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -60,7 +66,7 @@ jobs:
           fetch-depth: 0
 
       - name: Sync latest main before a publishing run
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.scope != 'smoke'))
         run: git pull --ff-only origin main
 
       - uses: actions/setup-python@v5
@@ -73,42 +79,75 @@ jobs:
           tests/test_refresh_soundcharts_daily.py
           tests/test_expand_soundcharts_instrumental_pool.py
           tests/test_sync_soundcharts_opportunities.py
+          tests/test_prepare_soundcharts_snapshot.py
           -v
 
       - name: Validate production source syntax
         run: |
-          python -m py_compile refresh_soundcharts_daily.py expand_soundcharts_instrumental_pool.py sync_soundcharts_opportunities.py
+          python -m py_compile refresh_soundcharts_daily.py expand_soundcharts_instrumental_pool.py sync_soundcharts_opportunities.py prepare_soundcharts_snapshot.py
           node --check spotify/dashboard.js
+          node tests/test_dashboard_opportunity_guardrails.js
           git diff --check
 
       - name: Select safe execution plan
         id: plan
         shell: bash
+        env:
+          REQUESTED_SCOPE: ${{ inputs.scope }}
+          REQUESTED_MAX_REQUESTS: ${{ inputs.max_requests }}
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            scope="smoke"
-            expansion_limit="20"
-            expansion_requests="120"
+          artist_data_cap="500"
+          legacy_data_cap="2500"
+          expansion_data_cap="9490"
+          if [[ "${{ github.event_name }}" == "pull_request" || "${{ github.event_name }}" == "push" ]]; then
+            scope="ci_smoke"
+            expansion_limit=""
+            expansion_requests="0"
             publish="false"
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            scope="${{ inputs.scope }}"
-            expansion_limit=""
-            expansion_requests="${{ inputs.max_requests }}"
+            scope="$REQUESTED_SCOPE"
+            case "$scope" in
+              daily_target) expansion_limit="2500" ;;
+              artists|smoke|legacy_full) expansion_limit="" ;;
+              *) echo "Unsupported scope: $scope" >&2; exit 1 ;;
+            esac
+            if [[ ! "$REQUESTED_MAX_REQUESTS" =~ ^[1-9][0-9]{0,3}$ ]] || (( 10#$REQUESTED_MAX_REQUESTS > expansion_data_cap )); then
+              echo "max_requests must be an integer between 1 and $expansion_data_cap" >&2
+              exit 1
+            fi
+            expansion_requests="$REQUESTED_MAX_REQUESTS"
             if [[ "$GITHUB_REF" == "refs/heads/main" && "$scope" != "smoke" ]]; then publish="true"; else publish="false"; fi
-          else
+          elif [[ "${{ github.event_name }}" == "schedule" ]]; then
             scope="daily_target"
-            expansion_limit=""
-            expansion_requests="85000"
+            expansion_limit="2500"
+            expansion_requests="$expansion_data_cap"
             publish="true"
+          else
+            echo "Unsupported event: ${{ github.event_name }}" >&2
+            exit 1
           fi
           echo "scope=$scope" >> "$GITHUB_OUTPUT"
           echo "expansion_limit=$expansion_limit" >> "$GITHUB_OUTPUT"
           echo "expansion_requests=$expansion_requests" >> "$GITHUB_OUTPUT"
+          echo "artist_requests=$artist_data_cap" >> "$GITHUB_OUTPUT"
+          echo "legacy_requests=$legacy_data_cap" >> "$GITHUB_OUTPUT"
           echo "publish=$publish" >> "$GITHUB_OUTPUT"
           echo "Selected scope=$scope, expansion_requests=$expansion_requests, publish=$publish"
 
+      - name: Create an isolated Soundcharts candidate
+        id: snapshot
+        if: steps.plan.outputs.scope == 'daily_target' || steps.plan.outputs.scope == 'artists' || steps.plan.outputs.scope == 'legacy_full'
+        shell: bash
+        run: |
+          old_snapshot="$(python prepare_soundcharts_snapshot.py current --index spotify/index.html)"
+          candidate="$RUNNER_TEMP/Spotify_Soundcharts_candidate.js"
+          cp -- "$old_snapshot" "$candidate"
+          echo "old=$old_snapshot" >> "$GITHUB_OUTPUT"
+          echo "candidate=$candidate" >> "$GITHUB_OUTPUT"
+          echo "Candidate copied from $old_snapshot"
+
       - name: Verify Soundcharts authentication and response contracts
-        if: steps.plan.outputs.scope == 'smoke'
+        if: github.event_name == 'workflow_dispatch' && steps.plan.outputs.scope == 'smoke'
         env:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
@@ -121,7 +160,7 @@ jobs:
           --history-days 14
 
       - name: Refresh mapped artist audience
-        if: steps.plan.outputs.scope == 'daily_target' || steps.plan.outputs.scope == 'artists' || steps.plan.outputs.scope == 'legacy_full'
+        if: steps.plan.outputs.scope == 'daily_target' || steps.plan.outputs.scope == 'artists'
         env:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
@@ -130,8 +169,10 @@ jobs:
         run: >-
           python refresh_soundcharts_daily.py
           --mode artists
-          --max-requests 5000
+          --workers 10
+          --max-requests "${{ steps.plan.outputs.artist_requests }}"
           --history-days 90
+          --soundcharts "${{ steps.snapshot.outputs.candidate }}"
 
       - name: Run legacy full collector only when explicitly requested
         if: steps.plan.outputs.scope == 'legacy_full'
@@ -143,11 +184,13 @@ jobs:
         run: >-
           python refresh_soundcharts_daily.py
           --mode full
-          --max-requests 100000
+          --workers 10
+          --max-requests "${{ steps.plan.outputs.legacy_requests }}"
           --history-days 90
+          --soundcharts "${{ steps.snapshot.outputs.candidate }}"
 
       - name: Expand and measure the target instrumental pool
-        if: steps.plan.outputs.scope == 'daily_target' || steps.plan.outputs.scope == 'legacy_full' || steps.plan.outputs.scope == 'smoke'
+        if: steps.plan.outputs.scope == 'daily_target'
         env:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
@@ -158,27 +201,46 @@ jobs:
           args=(
             --max-requests "${{ steps.plan.outputs.expansion_requests }}"
             --history-days 90
-            --workers 24
+            --workers 10
           )
           if [[ -n "${{ steps.plan.outputs.expansion_limit }}" ]]; then
             args+=(--limit "${{ steps.plan.outputs.expansion_limit }}")
           fi
-          python expand_soundcharts_instrumental_pool.py "${args[@]}"
+          python expand_soundcharts_instrumental_pool.py \
+            --soundcharts "${{ steps.snapshot.outputs.candidate }}" \
+            "${args[@]}"
 
       - name: Recalculate actionable A&R opportunities
-        if: steps.plan.outputs.scope != 'artists'
+        if: steps.plan.outputs.scope == 'daily_target' || steps.plan.outputs.scope == 'artists' || steps.plan.outputs.scope == 'legacy_full'
         run: >-
           python sync_soundcharts_opportunities.py
+          --soundcharts "${{ steps.snapshot.outputs.candidate }}"
           --max-artist-listeners 5000000
           --max-track-streams 250000000
           --max-opportunities 2000
           --minimum-score 20
 
+      - name: Prepare public-safe dated snapshot
+        id: prepared
+        if: steps.plan.outputs.scope == 'daily_target' || steps.plan.outputs.scope == 'artists' || steps.plan.outputs.scope == 'legacy_full'
+        shell: bash
+        run: |
+          result="$RUNNER_TEMP/soundcharts-snapshot-result.json"
+          python prepare_soundcharts_snapshot.py prepare \
+            --source "${{ steps.snapshot.outputs.candidate }}" \
+            --output-dir . > "$result"
+          cat "$result"
+          snapshot="$(python -c 'import json, pathlib, sys; print(pathlib.Path(json.load(open(sys.argv[1], encoding="utf-8"))["output"]).name)' "$result")"
+          echo "name=$snapshot" >> "$GITHUB_OUTPUT"
+
       - name: Validate generated business outputs
-        if: steps.plan.outputs.scope != 'artists'
+        if: steps.plan.outputs.scope == 'daily_target' || steps.plan.outputs.scope == 'artists' || steps.plan.outputs.scope == 'legacy_full'
+        env:
+          SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
         run: |
           python3 - <<'PY'
           import json
+          import os
           from pathlib import Path
 
           def load(path, prefix):
@@ -186,7 +248,7 @@ jobs:
               assert raw.startswith(prefix), path
               return json.loads(raw[len(prefix):].strip().removesuffix(';'))
 
-          soundcharts = load('Spotify_Soundcharts_data.js', 'window.SPOTIFY_SOUNDCHARTS=')
+          soundcharts = load(os.environ['SNAPSHOT_NAME'], 'window.SPOTIFY_SOUNDCHARTS=')
           performance = load('Spotify_Performance_data.js', 'window.SPOTIFY_PERFORMANCE=')
           pool = soundcharts.get('instrumental_pool') or {}
           scoring = soundcharts.get('opportunity_scoring') or {}
@@ -209,22 +271,52 @@ jobs:
           }, ensure_ascii=False))
           PY
 
-      - name: Publish only validated daily A&R snapshots
+      - name: Publish validated dated snapshot first
         if: steps.plan.outputs.publish == 'true'
+        env:
+          SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- "$SNAPSHOT_NAME"
+          git commit -m "data: stage validated Soundcharts snapshot"
+          for attempt in 1 2 3; do
+            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1
+
+      - name: Verify dated snapshot exists on main
+        if: steps.plan.outputs.publish == 'true'
+        env:
+          SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
+        shell: bash
+        run: |
+          git fetch origin main
+          local_blob="$(git hash-object "$SNAPSHOT_NAME")"
+          remote_blob="$(git rev-parse "origin/main:$SNAPSHOT_NAME")"
+          test "$local_blob" = "$remote_blob"
+          echo "Validated remote blob $remote_blob for $SNAPSHOT_NAME"
+
+      - name: Activate snapshot only after remote validation
+        if: steps.plan.outputs.publish == 'true'
+        env:
+          SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
+          OLD_SNAPSHOT: ${{ steps.snapshot.outputs.old }}
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+          python prepare_soundcharts_snapshot.py activate \
+            --index spotify/index.html \
+            --expected-old "$OLD_SNAPSHOT" \
+            --new "$SNAPSHOT_NAME"
           git add \
-            Spotify_Soundcharts_data.js \
+            spotify/index.html \
             Spotify_Performance_data.js \
             soundcharts-instrumental-cache.json \
             soundcharts-history
-          if git diff --cached --quiet; then
-            echo "No validated A&R metric change to publish"
-            exit 0
-          fi
-          git commit -m "Refresh instrumental A&R radar metrics"
+          git commit -m "data: activate validated Soundcharts snapshot"
           for attempt in 1 2 3; do
             git pull --rebase origin main && git push origin HEAD:main && exit 0
             sleep 5

@@ -328,9 +328,7 @@ def resolve_artist_context(
     preserved: dict[str, Any],
     by_uuid: dict[str, dict[str, Any]],
     by_spotify: dict[str, dict[str, Any]],
-    by_name: dict[str, dict[str, Any]],
     contacts_by_spotify: dict[str, dict[str, str]],
-    contacts_by_name: dict[str, dict[str, str]],
 ) -> dict[str, Any]:
     structured = main_artists(track, preserved)
     resolved: list[dict[str, Any]] = []
@@ -338,12 +336,15 @@ def resolve_artist_context(
         uuid = str(item.get("soundcharts_uuid") or "")
         spotify_id = str(item.get("spotify_id") or "")
         name = str(item.get("name") or "")
-        artist = by_uuid.get(uuid) or by_spotify.get(spotify_id) or by_name.get(normalize_name(name)) or {}
+        # Identity resolution must start from a structured provider ID.  A
+        # display name is context only and can never join a collaborator to a
+        # Soundcharts/Spotify identity.
+        artist = (by_uuid.get(uuid) if uuid else None) or (by_spotify.get(spotify_id) if spotify_id else None) or {}
         artist_spotify = str(artist.get("spotify_id") or spotify_id)
         artist_uuid = str(artist.get("soundcharts_uuid") or uuid)
         artist_name = str(artist.get("name") or name)
         listeners = finite_number(artist.get("monthly_listeners"))
-        contact = contacts_by_spotify.get(artist_spotify) or contacts_by_name.get(normalize_name(artist_name)) or {}
+        contact = contacts_by_spotify.get(artist_spotify) or {}
         email = str(contact.get("email") or "")
         url = str(contact.get("url") or artist.get("contact_url") or "")
         platform = str(artist.get("contact_platform") or ("email" if email else ""))
@@ -359,32 +360,18 @@ def resolve_artist_context(
                 "contact_platform": platform,
             }
         )
-    if not resolved:
-        credit = str(track.get("artist") or track.get("credit_name") or "")
-        # Composite display credits are not treated as identity, but an exact
-        # artist export match remains safe enough for audience/contact context.
-        artist = by_name.get(normalize_name(credit)) or {}
-        contact = contacts_by_name.get(normalize_name(credit)) or {}
-        listeners = finite_number(artist.get("monthly_listeners"))
-        resolved = [
-            {
-                "spotify_id": str(artist.get("spotify_id") or ""),
-                "soundcharts_uuid": str(artist.get("soundcharts_uuid") or ""),
-                "name": str(artist.get("name") or credit),
-                "role": "display_credit",
-                "monthly_listeners": int(listeners) if listeners is not None else None,
-                "email": str(contact.get("email") or ""),
-                "url": str(contact.get("url") or artist.get("contact_url") or ""),
-                "contact_platform": str(artist.get("contact_platform") or ""),
-            }
-        ]
     listeners_values = [item["monthly_listeners"] for item in resolved if item.get("monthly_listeners") is not None]
-    primary = resolved[0]
+    primary = resolved[0] if resolved else {}
     email = next((item["email"] for item in resolved if item.get("email")), "")
     url = next((item["url"] for item in resolved if item.get("url")), "")
     platform = next((item["contact_platform"] for item in resolved if item.get("contact_platform")), "")
+    identity_complete = bool(resolved) and all(
+        str(item.get("spotify_id") or "").strip() and str(item.get("soundcharts_uuid") or "").strip()
+        for item in resolved
+    )
     return {
         "artists": resolved,
+        "identity_complete": identity_complete,
         "monthly_listeners": max(listeners_values) if listeners_values else None,
         "primary_spotify_id": primary.get("spotify_id") or "",
         "primary_soundcharts_uuid": primary.get("soundcharts_uuid") or "",
@@ -579,7 +566,7 @@ def score_candidate(
         classification["status"] == "verified",
         rights in {"self_released", "independent_label"},
         listeners is not None,
-        contact_status != "enrich",
+        contact_status in {"ready", "social"},
     ]
     confidence = round(sum(completeness) / len(completeness), 3)
     return {
@@ -693,12 +680,19 @@ def generate_opportunities(
 
     editorial = editorial_map(current)
     preserved_by_id = existing_opportunity_map(current)
-    artist_by_uuid, artist_by_spotify, artist_by_name = artist_maps(current)
-    contacts_by_spotify, contacts_by_name = legacy_contacts(legacy)
+    artist_by_uuid, artist_by_spotify, _ = artist_maps(current)
+    contacts_by_spotify, _ = legacy_contacts(legacy)
     performance_tracks = performance.get("tracks") if isinstance(performance.get("tracks"), dict) else {}
 
     candidates: list[dict[str, Any]] = []
-    excluded = {"major_or_mixed": 0, "superstar": 0, "classification": 0, "no_metric": 0, "weak_signal": 0}
+    excluded = {
+        "major_or_mixed": 0,
+        "superstar": 0,
+        "classification": 0,
+        "identity": 0,
+        "no_metric": 0,
+        "weak_signal": 0,
+    }
     measured_target_tracks = 0
     independent_tracks = 0
     rights_review_tracks = 0
@@ -734,10 +728,27 @@ def generate_opportunities(
             preserved,
             artist_by_uuid,
             artist_by_spotify,
-            artist_by_name,
             contacts_by_spotify,
-            contacts_by_name,
         )
+        if not context["identity_complete"]:
+            excluded["identity"] += 1
+            continue
+
+        # A public contact is actionable only for a fully verified,
+        # instrumental, low-AI-risk track with independent rights.  Review
+        # rows stay useful for human listening/rights checks, but never expose
+        # or score a contact channel.
+        contact_allowed = (
+            classification["status"] == "verified"
+            and classification["instrumental"] == "instrumental"
+            and classification["ai_risk"] == "low"
+            and rights in {"self_released", "independent_label"}
+        )
+        if not contact_allowed:
+            context["contact_email"] = ""
+            context["contact_url"] = ""
+            context["contact_platform"] = ""
+            context["contact_status"] = "blocked"
         listeners = context["monthly_listeners"]
         if (listeners is not None and listeners > max_artist_listeners) or (metrics["total"] or 0) > max_track_streams:
             excluded["superstar"] += 1

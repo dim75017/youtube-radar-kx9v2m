@@ -249,6 +249,32 @@ class InstrumentalPoolTests(unittest.TestCase):
         self.assertEqual(subject.field(artist, artist_schema, "monthly_listeners"), 1_283_880)
         self.assertEqual(subject.field(artist, artist_schema, "contact_url"), "https://instagram.com/novaissue")
 
+    def test_parallel_expansion_propagates_quota_reserve_stop(self):
+        class ReserveClient:
+            def get(self, _path):
+                raise subject.SoundchartsQuotaReserveError("protected reserve reached")
+
+        with self.assertRaises(subject.SoundchartsQuotaReserveError):
+            subject.parallel_requests(
+                ReserveClient(),
+                [("track", "/api/v2/song/track")],
+                subject.RequestBudget(1),
+                workers=1,
+            )
+
+    def test_parallel_expansion_propagates_request_limit_stop(self):
+        class LimitedClient:
+            def get(self, _path):
+                raise subject.SoundchartsRequestLimitError("request cap reached")
+
+        with self.assertRaises(subject.SoundchartsRequestLimitError):
+            subject.parallel_requests(
+                LimitedClient(),
+                [("track", "/api/v2/song/track")],
+                subject.RequestBudget(1),
+                workers=1,
+            )
+
     def test_major_rights_are_excluded_by_classifier(self):
         rights, confidence = subject.infer_rights(
             "Columbia Records",

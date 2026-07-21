@@ -22,7 +22,7 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field as dataclass_field
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Callable, Iterable, Mapping
 
 
 API_BASE = "https://customer.api.soundcharts.com"
@@ -31,6 +31,7 @@ SOUNDCHARTS_PREFIX = "window.SPOTIFY_SOUNDCHARTS="
 PERFORMANCE_PREFIX = "window.SPOTIFY_PERFORMANCE="
 PLAYLISTS_PREFIX = "window.SPOTIFY_PLAYLISTS="
 AUTH_PROBE = "/api/v2/referential/platforms/streaming"
+MIN_SERVER_QUOTA_RESERVE = 500_000
 
 
 class SoundchartsError(RuntimeError):
@@ -41,6 +42,14 @@ class SoundchartsHttpError(SoundchartsError):
     def __init__(self, status: int):
         self.status = status
         super().__init__(f"Soundcharts HTTP error ({status})")
+
+
+class SoundchartsQuotaReserveError(SoundchartsError):
+    """Raised before a request could consume the protected server reserve."""
+
+
+class SoundchartsRequestLimitError(SoundchartsError):
+    """Raised before a request could exceed this collector's attempt cap."""
 
 
 def utc_now() -> str:
@@ -109,11 +118,14 @@ def request_json(
     data: bytes | None = None,
     retries: int = 3,
     timeout: int = 40,
+    before_attempt: Callable[[], None] | None = None,
 ) -> tuple[Any, Mapping[str, str]]:
     """Return decoded JSON plus response headers, with bounded retry handling."""
 
     last_error: Exception | None = None
     for attempt in range(max(1, retries)):
+        if before_attempt is not None:
+            before_attempt()
         request = urllib.request.Request(
             url,
             data=data,
@@ -190,7 +202,14 @@ def access_token(client_id: str, client_secret: str, team_id: str = "") -> str:
 class SoundchartsClient:
     """Authenticated Soundcharts client with official API-key auth and OAuth fallback."""
 
-    def __init__(self, app_id: str, api_key: str, team_id: str = ""):
+    def __init__(
+        self,
+        app_id: str,
+        api_key: str,
+        team_id: str = "",
+        quota_reserve: int = MIN_SERVER_QUOTA_RESERVE,
+        request_limit: int | None = None,
+    ):
         self.app_id = clean_credential(app_id)
         self.api_key = clean_credential(api_key)
         self.team_id = clean_credential(team_id)
@@ -199,9 +218,12 @@ class SoundchartsClient:
         self.headers: dict[str, str] = {}
         self.auth_mode = "uninitialized"
         self.quota_remaining: int | None = None
+        self.quota_reserve = max(0, quota_reserve)
+        self.request_limit = None if request_limit is None else max(0, request_limit)
+        self.requests_claimed = 0
         self._quota_lock = threading.Lock()
 
-    def _record_headers(self, headers: Mapping[str, str]) -> None:
+    def _record_headers(self, headers: Mapping[str, str], *, reset: bool = False) -> None:
         raw = headers.get("x-quota-remaining") or headers.get("X-Quota-Remaining")
         try:
             value = int(raw) if raw is not None else None
@@ -209,7 +231,44 @@ class SoundchartsClient:
             value = None
         if value is not None:
             with self._quota_lock:
-                self.quota_remaining = value
+                if reset or self.quota_remaining is None:
+                    self.quota_remaining = value
+                else:
+                    # Concurrent responses can arrive out of order. Keep the
+                    # lowest observed/claimed value so the guard stays fail-safe.
+                    self.quota_remaining = min(self.quota_remaining, value)
+
+    def require_quota_reserve(self) -> None:
+        with self._quota_lock:
+            remaining = self.quota_remaining
+        if remaining is None:
+            raise SoundchartsQuotaReserveError(
+                "Soundcharts did not report x-quota-remaining; collection is blocked"
+            )
+        if remaining <= self.quota_reserve:
+            raise SoundchartsQuotaReserveError(
+                f"Soundcharts quota reserve reached ({remaining} remaining; {self.quota_reserve} protected)"
+            )
+
+    def _claim_quota_request(self) -> None:
+        """Reserve one server call before every HTTP attempt, including retries."""
+
+        with self._quota_lock:
+            if self.request_limit is not None and self.requests_claimed >= self.request_limit:
+                raise SoundchartsRequestLimitError(
+                    f"Soundcharts collector request cap reached ({self.request_limit})"
+                )
+            remaining = self.quota_remaining
+            if remaining is None:
+                raise SoundchartsQuotaReserveError(
+                    "Soundcharts did not report x-quota-remaining; collection is blocked"
+                )
+            if remaining <= self.quota_reserve:
+                raise SoundchartsQuotaReserveError(
+                    f"Soundcharts quota reserve reached ({remaining} remaining; {self.quota_reserve} protected)"
+                )
+            self.requests_claimed += 1
+            self.quota_remaining = remaining - 1
 
     def authenticate(self) -> None:
         direct = {"x-app-id": self.app_id, "x-api-key": self.api_key, "Accept": "application/json"}
@@ -217,7 +276,7 @@ class SoundchartsClient:
             _, response_headers = request_json(API_BASE + AUTH_PROBE, direct, retries=1)
             self.headers = direct
             self.auth_mode = "api_headers"
-            self._record_headers(response_headers)
+            self._record_headers(response_headers, reset=True)
             return
         except SoundchartsHttpError:
             pass
@@ -227,12 +286,16 @@ class SoundchartsClient:
         _, response_headers = request_json(API_BASE + AUTH_PROBE, bearer, retries=1)
         self.headers = bearer
         self.auth_mode = "oauth_bearer"
-        self._record_headers(response_headers)
+        self._record_headers(response_headers, reset=True)
 
     def get(self, path: str) -> Any:
         if not self.headers:
             raise SoundchartsError("Soundcharts client is not authenticated")
-        payload, response_headers = request_json(API_BASE + path, self.headers)
+        payload, response_headers = request_json(
+            API_BASE + path,
+            self.headers,
+            before_attempt=self._claim_quota_request,
+        )
         self._record_headers(response_headers)
         return payload
 
@@ -462,11 +525,17 @@ def parallel_collect(
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
         futures = [pool.submit(collect, task) for task in selected]
+        stop_error: SoundchartsError | None = None
         for future in concurrent.futures.as_completed(futures):
             try:
                 results.append(future.result())
+            except (SoundchartsQuotaReserveError, SoundchartsRequestLimitError) as exc:
+                stop_error = exc
+                failures += 1
             except SoundchartsError:
                 failures += 1
+    if stop_error is not None:
+        raise stop_error
     return results, len(selected), failures, len(all_tasks), len(selected)
 
 
@@ -792,8 +861,10 @@ def main() -> int:
         os.environ.get("SOUNDCHARTS_CLIENT_ID", ""),
         os.environ.get("SOUNDCHARTS_CLIENT_SECRET", ""),
         os.environ.get("SOUNDCHARTS_TEAM_ID", ""),
+        request_limit=args.max_requests,
     )
     client.authenticate()
+    client.require_quota_reserve()
     print(json.dumps({"authentication": "success", "mode": client.auth_mode, "quota_remaining": client.quota_remaining}))
 
     payload = read_js_payload(args.soundcharts)

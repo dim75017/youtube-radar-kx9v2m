@@ -31,6 +31,95 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertEqual(request.call_args.args[1]['x-app-id'], 'app')
         self.assertEqual(request.call_args.args[1]['x-api-key'], 'key')
 
+    def test_each_http_attempt_is_counted_before_retrying(self):
+        class FakeResponse:
+            headers = {}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def read(self):
+                return b'{}'
+
+        claims = []
+        with patch.object(
+            subject.urllib.request,
+            'urlopen',
+            side_effect=[subject.urllib.error.URLError('temporary'), FakeResponse()],
+        ), patch.object(subject.time, 'sleep'):
+            subject.request_json(
+                'https://example.invalid/test',
+                {},
+                retries=2,
+                before_attempt=lambda: claims.append(True),
+            )
+        self.assertEqual(len(claims), 2)
+
+    def test_client_stops_before_consuming_server_quota_reserve(self):
+        client = subject.SoundchartsClient('app', 'key')
+        client.headers = {'x-app-id': 'app', 'x-api-key': 'key'}
+        client.quota_remaining = subject.MIN_SERVER_QUOTA_RESERVE + 1
+        attempts = []
+
+        def fake_request(_url, _headers, *, before_attempt=None, **_kwargs):
+            before_attempt()
+            attempts.append(True)
+            return {'ok': True}, {'x-quota-remaining': str(subject.MIN_SERVER_QUOTA_RESERVE)}
+
+        with patch.object(subject, 'request_json', side_effect=fake_request):
+            self.assertEqual(client.get('/first'), {'ok': True})
+            with self.assertRaises(subject.SoundchartsQuotaReserveError):
+                client.get('/blocked')
+
+        self.assertEqual(len(attempts), 1)
+        self.assertEqual(client.quota_remaining, subject.MIN_SERVER_QUOTA_RESERVE)
+
+    def test_collection_is_blocked_when_server_quota_header_is_missing(self):
+        client = subject.SoundchartsClient('app', 'key')
+        with self.assertRaises(subject.SoundchartsQuotaReserveError):
+            client.require_quota_reserve()
+
+    def test_client_request_limit_counts_real_attempts(self):
+        client = subject.SoundchartsClient('app', 'key', request_limit=1)
+        client.headers = {'x-app-id': 'app', 'x-api-key': 'key'}
+        client.quota_remaining = 4_000_000
+        attempts = []
+
+        def fake_request(_url, _headers, *, before_attempt=None, **_kwargs):
+            before_attempt()
+            attempts.append(True)
+            return {'ok': True}, {}
+
+        with patch.object(subject, 'request_json', side_effect=fake_request):
+            client.get('/first')
+            with self.assertRaises(subject.SoundchartsRequestLimitError):
+                client.get('/blocked')
+
+        self.assertEqual(len(attempts), 1)
+        self.assertEqual(client.requests_claimed, 1)
+
+    def test_parallel_collection_cannot_overshoot_quota_reserve(self):
+        client = subject.SoundchartsClient('app', 'key')
+        client.headers = {'x-app-id': 'app', 'x-api-key': 'key'}
+        client.quota_remaining = subject.MIN_SERVER_QUOTA_RESERVE + 3
+        attempts = []
+
+        def fake_request(_url, _headers, *, before_attempt=None, **_kwargs):
+            before_attempt()
+            attempts.append(True)
+            return {'ok': True}, {}
+
+        tasks = [{'path': f'/item/{index}'} for index in range(20)]
+        with patch.object(subject, 'request_json', side_effect=fake_request):
+            with self.assertRaises(subject.SoundchartsQuotaReserveError):
+                subject.parallel_collect(client, tasks, workers=10, max_requests=20)
+
+        self.assertEqual(len(attempts), 3)
+        self.assertEqual(client.quota_remaining, subject.MIN_SERVER_QUOTA_RESERVE)
+
     def test_artist_current_stats_parser_uses_streaming_spotify_value(self):
         response = {
             'object': {
@@ -115,6 +204,30 @@ class RefreshSoundchartsTests(unittest.TestCase):
             original = {'source': 'soundcharts_daily', 'tracks': {'track-1': {'history': [['2026-07-21', 1]]}}}
             subject.write_js_payload(path, original, subject.PERFORMANCE_PREFIX)
             self.assertEqual(subject.read_performance_payload(path)['tracks'], original['tracks'])
+
+    def test_workflow_push_and_pull_request_use_non_publishing_smoke(self):
+        workflow = (Path(__file__).parents[1] / '.github' / 'workflows' / 'refresh-soundcharts.yml').read_text(
+            encoding='utf-8'
+        )
+        self.assertIn('github.event_name }}" == "pull_request" || "${{ github.event_name }}" == "push"', workflow)
+        self.assertIn('scope="ci_smoke"', workflow)
+        self.assertIn('expansion_requests="0"', workflow)
+        self.assertIn("&& 'ci' || 'collection'", workflow)
+        self.assertIn("default: '9490'", workflow)
+        self.assertIn('artist_data_cap="500"', workflow)
+        self.assertIn('legacy_data_cap="2500"', workflow)
+        self.assertIn('expansion_data_cap="9490"', workflow)
+        self.assertIn('10#$REQUESTED_MAX_REQUESTS > expansion_data_cap', workflow)
+        self.assertIn('expansion_limit="2500"', workflow)
+        self.assertIn('--max-requests "${{ steps.plan.outputs.artist_requests }}"', workflow)
+        self.assertIn('--max-requests "${{ steps.plan.outputs.legacy_requests }}"', workflow)
+        self.assertGreaterEqual(workflow.count('--workers 10'), 3)
+        self.assertIn(
+            "if: github.event_name == 'workflow_dispatch' && steps.plan.outputs.scope == 'smoke'",
+            workflow,
+        )
+        self.assertIn("if: steps.plan.outputs.publish == 'true'", workflow)
+        self.assertNotIn("scope == 'legacy_full' || steps.plan.outputs.scope == 'smoke'", workflow)
 
 
 if __name__ == '__main__':

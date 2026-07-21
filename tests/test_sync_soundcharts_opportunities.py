@@ -271,6 +271,68 @@ class OpportunityEngineTests(unittest.TestCase):
         matching = [row for row in rows if row["spotify_id"] == "track-distribution-01"]
         self.assertEqual(len(matching), 1)
 
+    def test_display_name_never_repairs_missing_structured_artist_ids(self):
+        current = base_payload()
+        track = subject.row_dict(current["tracks"][0], TRACK_SCHEMA)
+        # The name still exactly matches an exported artist.  Without a
+        # structured provider ID this must remain quarantined, not name-joined.
+        track["artists"] = [{"spotify_id": "", "soundcharts_uuid": "", "name": "Quiet Artist", "role": "main"}]
+        current["tracks"][0] = [track.get(name) for name in TRACK_SCHEMA]
+
+        with patch.object(subject, "utc_today", return_value=dt.date(2026, 7, 21)):
+            subject.generate_opportunities(current, performance_payload(), legacy_payload())
+
+        schema = current["schemas"]["opportunities"]
+        ids = {subject.field(row, schema, "spotify_id") for row in current["opportunities"]}
+        self.assertNotIn("track-distribution-01", ids)
+        self.assertGreaterEqual(current["opportunity_scoring"]["excluded"]["identity"], 1)
+
+    def test_needs_listen_never_exposes_or_scores_a_contact(self):
+        current = base_payload()
+        track = subject.row_dict(current["tracks"][0], TRACK_SCHEMA)
+        track["instrumental_status"] = "instrumental"
+        track["instrumental_confidence"] = None
+        track["expansion_status"] = "review"
+        current["tracks"][0] = [track.get(name) for name in TRACK_SCHEMA]
+
+        with patch.object(subject, "utc_today", return_value=dt.date(2026, 7, 21)):
+            subject.generate_opportunities(current, performance_payload(), legacy_payload())
+
+        schema = current["schemas"]["opportunities"]
+        row = next(
+            subject.row_dict(item, schema)
+            for item in current["opportunities"]
+            if subject.field(item, schema, "spotify_id") == "track-distribution-01"
+        )
+        self.assertEqual(row["opportunity_status"], "needs_listen")
+        self.assertEqual(row["contact_status"], "blocked")
+        self.assertEqual(row["contact_email"], "")
+        self.assertEqual(row["contact_url"], "")
+        self.assertEqual(row["score_relationship"], 0)
+
+    def test_unknown_rights_never_exposes_or_scores_a_contact(self):
+        current = base_payload()
+        track = subject.row_dict(current["tracks"][0], TRACK_SCHEMA)
+        track["rights_status"] = "unknown"
+        track["rights_confidence"] = 0.25
+        current["tracks"][0] = [track.get(name) for name in TRACK_SCHEMA]
+
+        with patch.object(subject, "utc_today", return_value=dt.date(2026, 7, 21)):
+            subject.generate_opportunities(current, performance_payload(), legacy_payload())
+
+        schema = current["schemas"]["opportunities"]
+        row = next(
+            subject.row_dict(item, schema)
+            for item in current["opportunities"]
+            if subject.field(item, schema, "spotify_id") == "track-distribution-01"
+        )
+        self.assertEqual(row["opportunity_status"], "verified")
+        self.assertEqual(row["deal_type"], "rights_review")
+        self.assertEqual(row["contact_status"], "blocked")
+        self.assertEqual(row["contact_email"], "")
+        self.assertEqual(row["contact_url"], "")
+        self.assertEqual(row["score_relationship"], 0)
+
     def test_nonconsecutive_history_never_invents_24h_delta(self):
         track = subject.row_dict(base_payload()["tracks"][0], TRACK_SCHEMA)
         metrics = subject.metric_snapshot(

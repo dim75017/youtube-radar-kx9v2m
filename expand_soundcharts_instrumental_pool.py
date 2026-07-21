@@ -29,7 +29,12 @@ import urllib.parse
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from refresh_soundcharts_daily import SoundchartsClient, SoundchartsError
+from refresh_soundcharts_daily import (
+    SoundchartsClient,
+    SoundchartsError,
+    SoundchartsQuotaReserveError,
+    SoundchartsRequestLimitError,
+)
 
 
 SOUNDCHARTS_PREFIX = "window.SPOTIFY_SOUNDCHARTS="
@@ -554,12 +559,18 @@ def parallel_requests(
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
         futures = [pool.submit(fetch, task) for task in selected]
+        stop_error: SoundchartsError | None = None
         for future in concurrent.futures.as_completed(futures):
             try:
                 key, payload = future.result()
                 results[key] = payload
+            except (SoundchartsQuotaReserveError, SoundchartsRequestLimitError) as exc:
+                stop_error = exc
+                failures += 1
             except (SoundchartsError, OSError, RuntimeError):
                 failures += 1
+    if stop_error is not None:
+        raise stop_error
     return results, failures
 
 
@@ -983,8 +994,10 @@ def main() -> int:
         __import__("os").environ.get("SOUNDCHARTS_CLIENT_ID", ""),
         __import__("os").environ.get("SOUNDCHARTS_CLIENT_SECRET", ""),
         __import__("os").environ.get("SOUNDCHARTS_TEAM_ID", ""),
+        request_limit=args.max_requests,
     )
     client.authenticate()
+    client.require_quota_reserve()
     summary = expand_instrumental_pool(
         soundcharts,
         performance,
