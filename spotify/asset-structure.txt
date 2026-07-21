@@ -1,9 +1,0 @@
-FILE bytes=80110 chars=79879 lines=1149
-STYLE_BLOCKS 0
-SCRIPT_BLOCKS 6
-SCRIPT 1: head start_line=12 attrs='type="speculationrules"' bytes=74 lines=3 markers=0
-SCRIPT 2: head start_line=15 attrs='' bytes=614 lines=12 markers=0
-SCRIPT 3: head start_line=29 attrs='src="../Spotify_Radar_data.js"' bytes=0 lines=1 markers=0
-SCRIPT 4: head start_line=30 attrs='src="../Spotify_Playlists_data.js"' bytes=0 lines=1 markers=0
-SCRIPT 5: head start_line=31 attrs='src="../Spotify_Labels_data.js"' bytes=0 lines=1 markers=0
-SCRIPT 6: head start_line=32 attrs='src="../Spotify_Soundcharts_data.js?v=soundcharts-live"' bytes=0 lines=1 markers=0
