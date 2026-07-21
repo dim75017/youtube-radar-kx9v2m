@@ -1,0 +1,348 @@
+{
+  "auth_mode": "oauth_bearer",
+  "quota_start": 3757576,
+  "tracks": [
+    {
+      "uuid": "db682833-ffbd-4185-bcb9-8ef1eda90a2d",
+      "title": "Dignity",
+      "artist": "Nova Issue",
+      "top_level_keys": [
+        "errors",
+        "items",
+        "page",
+        "related"
+      ],
+      "shape": {
+        "related": {
+          "uuid": "str",
+          "name": "str",
+          "creditName": "str",
+          "imageUrl": "str"
+        },
+        "items": [
+          {
+            "date": "str",
+            "plots": [
+              {
+                "identifier": "str",
+                "value": "int"
+              }
+            ]
+          }
+        ],
+        "page": {
+          "offset": "int",
+          "limit": "int",
+          "next": "NoneType",
+          "previous": "NoneType",
+          "total": "int"
+        },
+        "errors": []
+      },
+      "identifiers": [
+        "4vFL08pP0H9RDUVj05qXyL"
+      ],
+      "points_tail": [
+        {
+          "date": "2026-07-17",
+          "identifier": "4vFL08pP0H9RDUVj05qXyL",
+          "value": 57322799
+        },
+        {
+          "date": "2026-07-18",
+          "identifier": "4vFL08pP0H9RDUVj05qXyL",
+          "value": 57388223
+        },
+        {
+          "date": "2026-07-19",
+          "identifier": "4vFL08pP0H9RDUVj05qXyL",
+          "value": 57454690
+        },
+        {
+          "date": "2026-07-20",
+          "identifier": "4vFL08pP0H9RDUVj05qXyL",
+          "value": 57510625
+        },
+        {
+          "date": "2026-07-21",
+          "identifier": "4vFL08pP0H9RDUVj05qXyL",
+          "value": 57566224
+        }
+      ]
+    },
+    {
+      "uuid": "fc30f950-d6e4-4004-b592-fa01bb86f231",
+      "title": "Unfolding",
+      "artist": "Apollo Vision",
+      "top_level_keys": [
+        "errors",
+        "items",
+        "page",
+        "related"
+      ],
+      "shape": {
+        "related": {
+          "uuid": "str",
+          "name": "str",
+          "creditName": "str",
+          "imageUrl": "str"
+        },
+        "items": [
+          {
+            "date": "str",
+            "plots": [
+              {
+                "identifier": "str",
+                "value": "int"
+              }
+            ]
+          }
+        ],
+        "page": {
+          "offset": "int",
+          "limit": "int",
+          "next": "NoneType",
+          "previous": "NoneType",
+          "total": "int"
+        },
+        "errors": []
+      },
+      "identifiers": [
+        "48mlRAvshVJNRCaZxOJBb3"
+      ],
+      "points_tail": [
+        {
+          "date": "2026-07-17",
+          "identifier": "48mlRAvshVJNRCaZxOJBb3",
+          "value": 5693957
+        },
+        {
+          "date": "2026-07-18",
+          "identifier": "48mlRAvshVJNRCaZxOJBb3",
+          "value": 5728925
+        },
+        {
+          "date": "2026-07-19",
+          "identifier": "48mlRAvshVJNRCaZxOJBb3",
+          "value": 5794759
+        },
+        {
+          "date": "2026-07-20",
+          "identifier": "48mlRAvshVJNRCaZxOJBb3",
+          "value": 5794759
+        },
+        {
+          "date": "2026-07-21",
+          "identifier": "48mlRAvshVJNRCaZxOJBb3",
+          "value": 5822763
+        }
+      ]
+    },
+    {
+      "uuid": "e4983d99-3905-4bdf-b02b-151ed75acc54",
+      "title": "Deep Connection",
+      "artist": "Opheralis",
+      "top_level_keys": [
+        "errors",
+        "items",
+        "page",
+        "related"
+      ],
+      "shape": {
+        "related": {
+          "uuid": "str",
+          "name": "str",
+          "creditName": "str",
+          "imageUrl": "str"
+        },
+        "items": [
+          {
+            "date": "str",
+            "plots": [
+              {
+                "identifier": "str",
+                "value": "int"
+              }
+            ]
+          }
+        ],
+        "page": {
+          "offset": "int",
+          "limit": "int",
+          "next": "NoneType",
+          "previous": "NoneType",
+          "total": "int"
+        },
+        "errors": []
+      },
+      "identifiers": [
+        "4ekfS6mdgPJMCoHnky3Sa8"
+      ],
+      "points_tail": [
+        {
+          "date": "2026-07-17",
+          "identifier": "4ekfS6mdgPJMCoHnky3Sa8",
+          "value": 3871170
+        },
+        {
+          "date": "2026-07-18",
+          "identifier": "4ekfS6mdgPJMCoHnky3Sa8",
+          "value": 3894011
+        },
+        {
+          "date": "2026-07-19",
+          "identifier": "4ekfS6mdgPJMCoHnky3Sa8",
+          "value": 3937150
+        },
+        {
+          "date": "2026-07-20",
+          "identifier": "4ekfS6mdgPJMCoHnky3Sa8",
+          "value": 3937150
+        },
+        {
+          "date": "2026-07-21",
+          "identifier": "4ekfS6mdgPJMCoHnky3Sa8",
+          "value": 3957206
+        }
+      ]
+    },
+    {
+      "uuid": "dd125bc9-9320-47f5-99d9-6a981f6936f7",
+      "title": "vertigo",
+      "artist": "énouement & insensible",
+      "top_level_keys": [
+        "errors",
+        "items",
+        "page",
+        "related"
+      ],
+      "shape": {
+        "related": {
+          "uuid": "str",
+          "name": "str",
+          "creditName": "str",
+          "imageUrl": "str"
+        },
+        "items": [
+          {
+            "date": "str",
+            "plots": [
+              {
+                "identifier": "str",
+                "value": "int"
+              }
+            ]
+          }
+        ],
+        "page": {
+          "offset": "int",
+          "limit": "int",
+          "next": "NoneType",
+          "previous": "NoneType",
+          "total": "int"
+        },
+        "errors": []
+      },
+      "identifiers": [
+        "11DtUkOzvRc4PLMvWdzSKn",
+        "5UpeJ6WZJdbX2ucwsYIRua"
+      ],
+      "points_tail": [
+        {
+          "date": "2026-07-19",
+          "identifier": "5UpeJ6WZJdbX2ucwsYIRua",
+          "value": 29178131
+        },
+        {
+          "date": "2026-07-20",
+          "identifier": "11DtUkOzvRc4PLMvWdzSKn",
+          "value": 29205819
+        },
+        {
+          "date": "2026-07-20",
+          "identifier": "5UpeJ6WZJdbX2ucwsYIRua",
+          "value": 29205819
+        },
+        {
+          "date": "2026-07-21",
+          "identifier": "11DtUkOzvRc4PLMvWdzSKn",
+          "value": 29233408
+        },
+        {
+          "date": "2026-07-21",
+          "identifier": "5UpeJ6WZJdbX2ucwsYIRua",
+          "value": 29233408
+        }
+      ]
+    },
+    {
+      "uuid": "fae87079-0498-4927-b349-ca5ae1bc7602",
+      "title": "Lights Are On (Instrumental)",
+      "artist": "Edith Whiskers",
+      "top_level_keys": [
+        "errors",
+        "items",
+        "page",
+        "related"
+      ],
+      "shape": {
+        "related": {
+          "uuid": "str",
+          "name": "str",
+          "creditName": "str",
+          "imageUrl": "str"
+        },
+        "items": [
+          {
+            "date": "str",
+            "plots": [
+              {
+                "identifier": "str",
+                "value": "int"
+              }
+            ]
+          }
+        ],
+        "page": {
+          "offset": "int",
+          "limit": "int",
+          "next": "NoneType",
+          "previous": "NoneType",
+          "total": "int"
+        },
+        "errors": []
+      },
+      "identifiers": [
+        "322jQ92QZRnliN8VbQMsUh"
+      ],
+      "points_tail": [
+        {
+          "date": "2026-07-17",
+          "identifier": "322jQ92QZRnliN8VbQMsUh",
+          "value": 92499057
+        },
+        {
+          "date": "2026-07-18",
+          "identifier": "322jQ92QZRnliN8VbQMsUh",
+          "value": 92564459
+        },
+        {
+          "date": "2026-07-19",
+          "identifier": "322jQ92QZRnliN8VbQMsUh",
+          "value": 92628070
+        },
+        {
+          "date": "2026-07-20",
+          "identifier": "322jQ92QZRnliN8VbQMsUh",
+          "value": 92686529
+        },
+        {
+          "date": "2026-07-21",
+          "identifier": "322jQ92QZRnliN8VbQMsUh",
+          "value": 92741711
+        }
+      ]
+    }
+  ],
+  "quota_end": 3757576
+}
