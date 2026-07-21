@@ -1,44 +1,52 @@
-name: Refresh Soundcharts radar
+name: Refresh Soundcharts A&R engine
 
 on:
   push:
     branches: [main]
     paths:
       - 'refresh_soundcharts_daily.py'
+      - 'expand_soundcharts_instrumental_pool.py'
       - 'sync_soundcharts_opportunities.py'
       - 'tests/test_refresh_soundcharts_daily.py'
+      - 'tests/test_expand_soundcharts_instrumental_pool.py'
       - 'tests/test_sync_soundcharts_opportunities.py'
       - '.github/workflows/refresh-soundcharts.yml'
       - 'spotify/index.html'
+      - 'spotify/dashboard.js'
+      - 'spotify/dashboard.css'
   pull_request:
     paths:
       - 'refresh_soundcharts_daily.py'
+      - 'expand_soundcharts_instrumental_pool.py'
       - 'sync_soundcharts_opportunities.py'
       - 'tests/test_refresh_soundcharts_daily.py'
+      - 'tests/test_expand_soundcharts_instrumental_pool.py'
       - 'tests/test_sync_soundcharts_opportunities.py'
       - '.github/workflows/refresh-soundcharts.yml'
       - 'spotify/index.html'
+      - 'spotify/dashboard.js'
+      - 'spotify/dashboard.css'
   schedule:
     - cron: '35 2 * * *'
   workflow_dispatch:
     inputs:
-      mode:
-        description: 'Collection to run'
+      scope:
+        description: 'Collection scope'
         required: true
-        default: 'full'
+        default: 'daily_target'
         type: choice
-        options: [full, artists, tracks, fal, playlists, smoke]
+        options: [daily_target, artists, smoke, legacy_full]
       max_requests:
-        description: 'Hard request cap for this run'
+        description: 'Hard request cap for the instrumental pool expansion'
         required: true
-        default: '100000'
+        default: '85000'
         type: string
 
 permissions:
   contents: write
 
 concurrency:
-  group: refresh-soundcharts-radar-${{ github.ref }}
+  group: refresh-soundcharts-ar-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -48,6 +56,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
           fetch-depth: 0
 
       - name: Sync latest main before a publishing run
@@ -58,36 +67,48 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Run collector and opportunity-bridge unit tests
+      - name: Run collector and A&R engine tests
         run: >-
           python -m unittest
           tests/test_refresh_soundcharts_daily.py
+          tests/test_expand_soundcharts_instrumental_pool.py
           tests/test_sync_soundcharts_opportunities.py
           -v
 
-      - name: Select safe run mode
+      - name: Validate production source syntax
+        run: |
+          python -m py_compile refresh_soundcharts_daily.py expand_soundcharts_instrumental_pool.py sync_soundcharts_opportunities.py
+          node --check spotify/dashboard.js
+          git diff --check
+
+      - name: Select safe execution plan
         id: plan
         shell: bash
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            mode="smoke"
-            max_requests="25"
+            scope="smoke"
+            expansion_limit="20"
+            expansion_requests="120"
             publish="false"
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            mode="${{ inputs.mode }}"
-            max_requests="${{ inputs.max_requests }}"
-            if [[ "$GITHUB_REF" == "refs/heads/main" && "$mode" != "smoke" ]]; then publish="true"; else publish="false"; fi
+            scope="${{ inputs.scope }}"
+            expansion_limit=""
+            expansion_requests="${{ inputs.max_requests }}"
+            if [[ "$GITHUB_REF" == "refs/heads/main" && "$scope" != "smoke" ]]; then publish="true"; else publish="false"; fi
           else
-            mode="full"
-            max_requests="100000"
+            scope="daily_target"
+            expansion_limit=""
+            expansion_requests="85000"
             publish="true"
           fi
-          echo "mode=$mode" >> "$GITHUB_OUTPUT"
-          echo "max_requests=$max_requests" >> "$GITHUB_OUTPUT"
+          echo "scope=$scope" >> "$GITHUB_OUTPUT"
+          echo "expansion_limit=$expansion_limit" >> "$GITHUB_OUTPUT"
+          echo "expansion_requests=$expansion_requests" >> "$GITHUB_OUTPUT"
           echo "publish=$publish" >> "$GITHUB_OUTPUT"
-          echo "Selected mode=$mode, max_requests=$max_requests, publish=$publish"
+          echo "Selected scope=$scope, expansion_requests=$expansion_requests, publish=$publish"
 
-      - name: Collect licensed Soundcharts data
+      - name: Verify Soundcharts authentication and response contracts
+        if: steps.plan.outputs.scope == 'smoke'
         env:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
@@ -95,25 +116,115 @@ jobs:
           SOUNDCHARTS_TEAM_ID: dsomoguy-api
         run: >-
           python refresh_soundcharts_daily.py
-          --mode "${{ steps.plan.outputs.mode }}"
-          --max-requests "${{ steps.plan.outputs.max_requests }}"
+          --mode smoke
+          --max-requests 25
+          --history-days 14
+
+      - name: Refresh mapped artist audience
+        if: steps.plan.outputs.scope == 'daily_target' || steps.plan.outputs.scope == 'artists' || steps.plan.outputs.scope == 'legacy_full'
+        env:
+          PYTHONUNBUFFERED: '1'
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        run: >-
+          python refresh_soundcharts_daily.py
+          --mode artists
+          --max-requests 5000
           --history-days 90
 
-      - name: Refresh the strict track-first opportunity export
-        run: python sync_soundcharts_opportunities.py
+      - name: Run legacy full collector only when explicitly requested
+        if: steps.plan.outputs.scope == 'legacy_full'
+        env:
+          PYTHONUNBUFFERED: '1'
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        run: >-
+          python refresh_soundcharts_daily.py
+          --mode full
+          --max-requests 100000
+          --history-days 90
 
-      - name: Publish only validated daily snapshots
+      - name: Expand and measure the target instrumental pool
+        if: steps.plan.outputs.scope == 'daily_target' || steps.plan.outputs.scope == 'legacy_full' || steps.plan.outputs.scope == 'smoke'
+        env:
+          PYTHONUNBUFFERED: '1'
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        shell: bash
+        run: |
+          args=(
+            --max-requests "${{ steps.plan.outputs.expansion_requests }}"
+            --history-days 90
+            --workers 24
+          )
+          if [[ -n "${{ steps.plan.outputs.expansion_limit }}" ]]; then
+            args+=(--limit "${{ steps.plan.outputs.expansion_limit }}")
+          fi
+          python expand_soundcharts_instrumental_pool.py "${args[@]}"
+
+      - name: Recalculate actionable A&R opportunities
+        if: steps.plan.outputs.scope != 'artists'
+        run: >-
+          python sync_soundcharts_opportunities.py
+          --max-artist-listeners 5000000
+          --max-track-streams 250000000
+          --max-opportunities 2000
+          --minimum-score 20
+
+      - name: Validate generated business outputs
+        if: steps.plan.outputs.scope != 'artists'
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          def load(path, prefix):
+              raw = Path(path).read_text(encoding='utf-8')
+              assert raw.startswith(prefix), path
+              return json.loads(raw[len(prefix):].strip().removesuffix(';'))
+
+          soundcharts = load('Spotify_Soundcharts_data.js', 'window.SPOTIFY_SOUNDCHARTS=')
+          performance = load('Spotify_Performance_data.js', 'window.SPOTIFY_PERFORMANCE=')
+          pool = soundcharts.get('instrumental_pool') or {}
+          scoring = soundcharts.get('opportunity_scoring') or {}
+          opportunities = soundcharts.get('opportunities') or []
+          if int(pool.get('measured') or 0) < 1:
+              raise SystemExit('Instrumental pool produced no real Spotify counter')
+          if not opportunities:
+              raise SystemExit('A&R engine produced no actionable opportunity')
+          if not performance.get('tracks'):
+              raise SystemExit('Performance history export is empty')
+          print(json.dumps({
+              'catalog_total': scoring.get('catalog_total'),
+              'target_tracks': pool.get('target_tracks'),
+              'measured': pool.get('measured'),
+              'daily_delta_ready': pool.get('daily_delta_ready'),
+              'opportunities': len(opportunities),
+              'deal_types': scoring.get('deal_types'),
+              'contacts': scoring.get('contacts'),
+              'quota_remaining': pool.get('quota_remaining'),
+          }, ensure_ascii=False))
+          PY
+
+      - name: Publish only validated daily A&R snapshots
         if: steps.plan.outputs.publish == 'true'
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Spotify_Soundcharts_data.js Spotify_Performance_data.js Spotify_Playlists_data.js soundcharts-history
+          git add \
+            Spotify_Soundcharts_data.js \
+            Spotify_Performance_data.js \
+            soundcharts-instrumental-cache.json \
+            soundcharts-history
           if git diff --cached --quiet; then
-            echo "No validated metric change to publish"
+            echo "No validated A&R metric change to publish"
             exit 0
           fi
-          git commit -m "Refresh licensed Soundcharts daily metrics"
+          git commit -m "Refresh instrumental A&R radar metrics"
           for attempt in 1 2 3; do
             git pull --rebase origin main && git push origin HEAD:main && exit 0
             sleep 5
