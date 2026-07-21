@@ -6,6 +6,9 @@ on:
       - agent/daily-soundcharts-discovery
     paths:
       - '.github/workflows/export-daily-discovery-sources.yml'
+  pull_request:
+    paths:
+      - '.github/workflows/export-daily-discovery-sources.yml'
 
 permissions:
   contents: read
@@ -16,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: agent/daily-soundcharts-discovery
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
           fetch-depth: 0
       - name: Package current production sources and fixtures
         run: |
