@@ -5,13 +5,17 @@ on:
     branches: [main]
     paths:
       - 'refresh_soundcharts_daily.py'
+      - 'sync_soundcharts_opportunities.py'
       - 'tests/test_refresh_soundcharts_daily.py'
+      - 'tests/test_sync_soundcharts_opportunities.py'
       - '.github/workflows/refresh-soundcharts.yml'
       - 'spotify/index.html'
   pull_request:
     paths:
       - 'refresh_soundcharts_daily.py'
+      - 'sync_soundcharts_opportunities.py'
       - 'tests/test_refresh_soundcharts_daily.py'
+      - 'tests/test_sync_soundcharts_opportunities.py'
       - '.github/workflows/refresh-soundcharts.yml'
       - 'spotify/index.html'
   schedule:
@@ -54,8 +58,12 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Run collector unit tests
-        run: python -m unittest tests/test_refresh_soundcharts_daily.py -v
+      - name: Run collector and opportunity-bridge unit tests
+        run: >-
+          python -m unittest
+          tests/test_refresh_soundcharts_daily.py
+          tests/test_sync_soundcharts_opportunities.py
+          -v
 
       - name: Select safe run mode
         id: plan
@@ -90,6 +98,9 @@ jobs:
           --mode "${{ steps.plan.outputs.mode }}"
           --max-requests "${{ steps.plan.outputs.max_requests }}"
           --history-days 90
+
+      - name: Refresh the strict track-first opportunity export
+        run: python sync_soundcharts_opportunities.py
 
       - name: Publish only validated daily snapshots
         if: steps.plan.outputs.publish == 'true'
