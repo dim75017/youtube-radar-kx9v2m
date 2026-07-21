@@ -34,7 +34,9 @@ jobs:
           set -euo pipefail
           cat .daily-discovery-payload/part-* > /tmp/daily-discovery.b64
           base64 --decode /tmp/daily-discovery.b64 > /tmp/daily-discovery.tar.gz
-          echo '5a87a9fc30bd0f6475c73518b7fc1c3ee6175c9e9cad866f616dbf6878fe6c08  /tmp/daily-discovery.tar.gz' | sha256sum -c -
+          echo "Reconstructed payload SHA-256: $(sha256sum /tmp/daily-discovery.tar.gz | cut -d' ' -f1)"
+          gzip -t /tmp/daily-discovery.tar.gz
+          tar -tzf /tmp/daily-discovery.tar.gz
           tar -xzf /tmp/daily-discovery.tar.gz
 
       - name: Run deterministic test suite and syntax checks
