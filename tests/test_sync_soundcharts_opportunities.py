@@ -1,19 +1,33 @@
 import copy
+import datetime as dt
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import sync_soundcharts_opportunities as subject
 
 
-OPPORTUNITY_SCHEMA = [
-    "opportunity_status",
+TRACK_SCHEMA = [
     "spotify_id",
-    "soundcharts_uuid",
+    "artist",
     "title",
-    "credit_name",
-    "artists",
     "release_date",
+    "streams",
+    "delta",
+    "source_date",
+    "observed_at",
+    "rights_status",
+    "status_source",
+    "label",
+    "copyright",
+    "distributor",
+    "metadata_status",
+    "identifiers_status",
+    "metadata_updated_at",
+    "soundcharts_uuid",
+    "previous_source_date",
+    "artists",
     "primary_genre",
     "subgenres",
     "genre_confidence",
@@ -21,189 +35,268 @@ OPPORTUNITY_SCHEMA = [
     "instrumental_confidence",
     "ai_risk",
     "ai_risk_score",
-    "rights_status",
-    "label",
-    "labels",
-    "copyright",
-    "distributor",
-    "streams",
-    "streams_source_date",
-    "streams_observed_at",
-    "streams_delta_24h",
-    "delta_previous_source_date",
-    "delta_previous_observed_at",
-    "delta_window_hours",
-    "editorial_placement_count",
-    "editorial_best_position",
-    "editorial_followers_total",
-    "editorial_followers_known_count",
-    "editorial_top_playlist",
-    "editorial_first_seen_at",
-    "editorial_last_seen_at",
-    "roster_relationship",
-    "score",
-    "score_momentum",
-    "score_editorial",
-    "score_traction",
-    "score_recency",
-    "score_relationship",
-    "score_confidence",
-    "reason_codes",
-    "reasons",
-    "metadata_updated_at",
+    "expansion_status",
+    "rights_confidence",
+    "source_tier",
+]
+
+ARTIST_SCHEMA = [
+    "spotify_id",
+    "name",
+    "monthly_listeners",
+    "delta",
+    "source_date",
+    "observed_at",
+    "qualifies",
+    "fal_in",
+    "fal_out",
+    "soundcharts_uuid",
+    "spotify_followers",
+    "contact_url",
+    "contact_platform",
+    "source_tier",
 ]
 
 
-def opportunity_row(spotify_id="track-1"):
+def track_row(
+    spotify_id,
+    uuid,
+    title,
+    artist,
+    release_date,
+    rights,
+    artist_spotify,
+    artist_uuid,
+    genre="ambient",
+    instrumental="instrumental",
+    listeners=None,
+):
     values = {
-        "opportunity_status": "verified",
         "spotify_id": spotify_id,
-        "soundcharts_uuid": "song-uuid",
-        "title": "Quiet Track",
-        "credit_name": "Quiet Artist",
-        "artists": [{"spotify_id": "artist-1", "soundcharts_uuid": "artist-uuid", "name": "Quiet Artist", "role": "main"}],
-        "release_date": "2026-07-01",
-        "primary_genre": "ambient",
-        "subgenres": [],
+        "artist": artist,
+        "title": title,
+        "release_date": release_date,
+        "streams": 1_000_000,
+        "delta": 1_000,
+        "source_date": "2026-07-21",
+        "observed_at": "2026-07-21T12:00:00Z",
+        "rights_status": rights,
+        "status_source": "soundcharts_song_metadata",
+        "label": artist if rights == "self_released" else "Indie Label",
+        "copyright": f"2026 {artist}",
+        "distributor": "Independent",
+        "metadata_status": "complete",
+        "identifiers_status": "complete",
+        "metadata_updated_at": "2026-07-21T12:00:00Z",
+        "soundcharts_uuid": uuid,
+        "previous_source_date": "2026-07-20",
+        "artists": [
+            {
+                "spotify_id": artist_spotify,
+                "soundcharts_uuid": artist_uuid,
+                "name": artist,
+                "role": "main",
+            }
+        ],
+        "primary_genre": genre,
+        "subgenres": ["piano"],
         "genre_confidence": 0.9,
-        "instrumental_status": "instrumental",
-        "instrumental_confidence": 1,
+        "instrumental_status": instrumental,
+        "instrumental_confidence": 1.0 if instrumental == "instrumental" else 0.0,
         "ai_risk": "low",
         "ai_risk_score": 0,
-        "rights_status": "self_released",
-        "label": "Quiet Artist",
-        "labels": [],
-        "copyright": "2026 Quiet Artist",
-        "distributor": "Independent",
-        "editorial_placement_count": 2,
-        "editorial_best_position": 20,
-        "editorial_top_playlist": {"name": "Goodnight Mix", "spotify_id": "playlist-1"},
-        "score": 20,
-        "score_momentum": 0,
-        "score_editorial": 7,
-        "score_traction": 0,
-        "score_recency": 12,
-        "score_relationship": 0,
-        "score_confidence": 0.8,
-        "reason_codes": ["instrumental_verified", "self_released_confirmed"],
-        "reasons": ["Instrumental confirmé.", "Self-release confirmé."],
+        "expansion_status": "eligible" if instrumental == "instrumental" else "review",
+        "rights_confidence": 0.9 if rights != "unknown" else 0.25,
+        "source_tier": "instrumental_editorial_daily",
     }
-    return [values.get(name) for name in OPPORTUNITY_SCHEMA]
+    return [values.get(name) for name in TRACK_SCHEMA]
 
 
-def seed_payload():
+def artist_row(spotify_id, uuid, name, listeners, contact_url=""):
+    values = {
+        "spotify_id": spotify_id,
+        "name": name,
+        "monthly_listeners": listeners,
+        "delta": 100,
+        "source_date": "2026-07-21",
+        "observed_at": "2026-07-21T12:00:00Z",
+        "qualifies": 1,
+        "fal_in": 0,
+        "fal_out": 0,
+        "soundcharts_uuid": uuid,
+        "spotify_followers": 1000,
+        "contact_url": contact_url,
+        "contact_platform": "instagram" if contact_url else "",
+        "source_tier": "instrumental_editorial",
+    }
+    return [values.get(name) for name in ARTIST_SCHEMA]
+
+
+def history(latest=1_000_000, d1=1_000, d7=20_000, previous7=10_000, d30=80_000):
+    # Exact points required by the engine: D, D-1, D-7, D-14, D-30.
+    return [
+        ["2026-06-21", latest - d30],
+        ["2026-07-07", latest - d7 - previous7],
+        ["2026-07-14", latest - d7],
+        ["2026-07-20", latest - d1],
+        ["2026-07-21", latest],
+    ]
+
+
+def base_payload():
+    tracks = [
+        track_row(
+            "track-distribution-01",
+            "song-dist",
+            "Quiet Rise",
+            "Quiet Artist",
+            "2026-06-01",
+            "self_released",
+            "artist-dist-spotify01",
+            "artist-dist",
+        ),
+        track_row(
+            "track-catalogue-001",
+            "song-cat",
+            "Evergreen Sleep",
+            "Catalog Artist",
+            "2022-01-01",
+            "independent_label",
+            "artist-cat-spotify001",
+            "artist-cat",
+        ),
+        track_row(
+            "track-major-exclude01",
+            "song-major",
+            "Major Track",
+            "Major Artist",
+            "2026-05-01",
+            "major",
+            "artist-major-spotify1",
+            "artist-major",
+        ),
+        track_row(
+            "track-superstar-001",
+            "song-star",
+            "Star Track",
+            "Star Artist",
+            "2026-05-01",
+            "self_released",
+            "artist-star-spotify01",
+            "artist-star",
+        ),
+        track_row(
+            "track-rights-review1",
+            "song-review",
+            "Unknown Rights",
+            "Mystery Artist",
+            "2026-04-01",
+            "unknown",
+            "artist-review-spotify1",
+            "artist-review",
+            instrumental="unknown",
+        ),
+    ]
+    artists = [
+        artist_row("artist-dist-spotify01", "artist-dist", "Quiet Artist", 120_000),
+        artist_row("artist-cat-spotify001", "artist-cat", "Catalog Artist", 450_000, "https://instagram.com/catalog"),
+        artist_row("artist-major-spotify1", "artist-major", "Major Artist", 200_000),
+        artist_row("artist-star-spotify01", "artist-star", "Star Artist", 12_000_000),
+        artist_row("artist-review-spotify1", "artist-review", "Mystery Artist", 80_000),
+    ]
     return {
-        "schemas": {"opportunities": copy.deepcopy(OPPORTUNITY_SCHEMA)},
-        "opportunities": [opportunity_row()],
-        "opportunity_scoring": {"version": "strict-test"},
+        "coverage": {"discography": {"total": 271713}},
+        "schemas": {"tracks": copy.deepcopy(TRACK_SCHEMA), "artists": copy.deepcopy(ARTIST_SCHEMA)},
+        "tracks": tracks,
+        "artists": artists,
+        "editorial": {"track_schema": [], "tracks": []},
     }
 
 
-def current_payload():
+def performance_payload():
     return {
-        "generated_at": "2026-07-21T12:00:00Z",
-        "schemas": {
-            "tracks": [
-                "spotify_id",
-                "title",
-                "streams",
-                "delta",
-                "source_date",
-                "observed_at",
-                "metadata_updated_at",
-                "soundcharts_uuid",
-                "previous_source_date",
-            ]
-        },
-        "tracks": [["track-1", "Quiet Track", 135, 35, "2026-07-21", "2026-07-21T12:00:00Z", "2026-07-20T10:00:00Z", "song-uuid", "2026-07-20"]],
-    }
-
-
-def performance_payload(history=None):
-    return {
-        "generated_at": "2026-07-21T12:00:00Z",
         "tracks": {
-            "track-1": {
-                "history": history or [["2026-07-20", 100], ["2026-07-21", 135]],
-                "observed_at": "2026-07-21T12:00:00Z",
-            }
-        },
+            "track-distribution-01": {"history": history(1_000_000, 5_000, 35_000, 15_000, 120_000)},
+            "track-catalogue-001": {"history": history(8_000_000, 2_000, 20_000, 18_000, 90_000)},
+            "track-major-exclude01": {"history": history(2_000_000, 10_000, 80_000, 40_000, 300_000)},
+            "track-superstar-001": {"history": history(20_000_000, 20_000, 100_000, 80_000, 500_000)},
+            "track-rights-review1": {"history": history(500_000, 2_000, 12_000, 4_000, 40_000)},
+        }
     }
 
 
-class OpportunitySyncTests(unittest.TestCase):
-    def test_restores_reviewed_seed_and_refreshes_daily_metrics(self):
-        current = current_payload()
-        summary = subject.synchronize_opportunities(
-            current,
-            seed_payload(),
-            performance_payload(),
-            seed_name="strict-seed.js",
-        )
+def legacy_payload():
+    return {
+        "artists": [
+            ["Quiet Artist", 0, "", 0, 0, "", "", "artist-dist-spotify01", "", "quiet@example.com", ""],
+        ]
+    }
+
+
+class OpportunityEngineTests(unittest.TestCase):
+    def test_dynamic_engine_creates_separate_deal_types_and_excludes_bad_targets(self):
+        current = base_payload()
+        with patch.object(subject, "utc_today", return_value=dt.date(2026, 7, 21)):
+            summary = subject.generate_opportunities(current, performance_payload(), legacy_payload())
+
         schema = current["schemas"]["opportunities"]
-        row = current["opportunities"][0]
-        self.assertTrue(summary["restored_from_seed"])
-        self.assertEqual(summary["opportunities"], 1)
-        self.assertEqual(summary["metrics_populated"], 1)
-        self.assertEqual(summary["daily_deltas_populated"], 1)
-        self.assertEqual(subject.field(row, schema, "streams"), 135)
-        self.assertEqual(subject.field(row, schema, "streams_source_date"), "2026-07-21")
-        self.assertEqual(subject.field(row, schema, "streams_delta_24h"), 35)
-        self.assertEqual(subject.field(row, schema, "delta_previous_source_date"), "2026-07-20")
-        self.assertEqual(subject.field(row, schema, "delta_window_hours"), 24)
-        self.assertEqual(subject.field(row, schema, "editorial_top_playlist"), "Goodnight Mix")
-        self.assertGreater(subject.field(row, schema, "score_momentum"), 0)
-        self.assertGreater(subject.field(row, schema, "score_traction"), 0)
-        self.assertEqual(current["opportunity_scoring"]["version"], "strict-test")
-        self.assertIn("streams_24h_positive", subject.field(row, schema, "reason_codes"))
-        self.assertIn("streams_observed", subject.field(row, schema, "reason_codes"))
+        rows = [subject.row_dict(row, schema) for row in current["opportunities"]]
+        by_id = {row["spotify_id"]: row for row in rows}
+        self.assertEqual(summary["status"], "success")
+        self.assertEqual(by_id["track-distribution-01"]["deal_type"], "distribution")
+        self.assertEqual(by_id["track-catalogue-001"]["deal_type"], "catalog_acquisition")
+        self.assertEqual(by_id["track-rights-review1"]["deal_type"], "rights_review")
+        self.assertNotIn("track-major-exclude01", by_id)
+        self.assertNotIn("track-superstar-001", by_id)
+        self.assertEqual(by_id["track-distribution-01"]["contact_email"], "quiet@example.com")
+        self.assertEqual(by_id["track-distribution-01"]["contact_status"], "ready")
+        self.assertGreater(by_id["track-distribution-01"]["acceleration_7d"], 0)
+        self.assertGreater(by_id["track-distribution-01"]["score"], 40)
+        self.assertEqual(current["opportunity_scoring"]["catalog_total"], 271713)
+        self.assertGreaterEqual(current["opportunity_scoring"]["excluded"]["major_or_mixed"], 1)
+        self.assertGreaterEqual(current["opportunity_scoring"]["excluded"]["superstar"], 1)
 
-    def test_existing_opportunity_identity_and_rights_are_preserved(self):
-        current = current_payload()
-        existing_seed = seed_payload()
-        current["schemas"]["opportunities"] = copy.deepcopy(OPPORTUNITY_SCHEMA)
-        current["opportunities"] = [opportunity_row()]
+    def test_duplicate_spotify_aliases_collapse_to_one_business_lead(self):
+        current = base_payload()
+        duplicate = copy.deepcopy(current["tracks"][0])
+        schema = current["schemas"]["tracks"]
+        duplicate[schema.index("soundcharts_uuid")] = "song-dist-alias"
+        duplicate[schema.index("title")] = "Quiet Rise - Alias"
+        current["tracks"].append(duplicate)
+        performance = performance_payload()
+        with patch.object(subject, "utc_today", return_value=dt.date(2026, 7, 21)):
+            subject.generate_opportunities(current, performance, legacy_payload())
         schema = current["schemas"]["opportunities"]
-        row = current["opportunities"][0]
-        subject.set_field(row, schema, "rights_status", "independent_label")
-        subject.set_field(row, schema, "credit_name", "Reviewed Identity")
+        rows = [subject.row_dict(row, schema) for row in current["opportunities"]]
+        matching = [row for row in rows if row["spotify_id"] == "track-distribution-01"]
+        self.assertEqual(len(matching), 1)
 
-        summary = subject.synchronize_opportunities(
-            current,
-            existing_seed,
-            performance_payload(),
-            seed_name="strict-seed.js",
+    def test_nonconsecutive_history_never_invents_24h_delta(self):
+        track = subject.row_dict(base_payload()["tracks"][0], TRACK_SCHEMA)
+        metrics = subject.metric_snapshot(
+            track,
+            {"history": [["2026-07-19", 100], ["2026-07-21", 200]]},
         )
-        self.assertFalse(summary["restored_from_seed"])
-        self.assertEqual(subject.field(row, schema, "rights_status"), "independent_label")
-        self.assertEqual(subject.field(row, schema, "credit_name"), "Reviewed Identity")
+        # Track fallback is rejected because previous_source_date is D-1 only for
+        # the synthetic row's 2026-07-21 source date, while its raw delta would be
+        # valid. Change it to a non-consecutive date to assert the gate.
+        track["previous_source_date"] = "2026-07-19"
+        metrics = subject.metric_snapshot(track, {"history": [["2026-07-19", 100], ["2026-07-21", 200]]})
+        self.assertIsNone(metrics["d1"])
 
-    def test_nonconsecutive_history_does_not_invent_a_24_hour_delta(self):
-        current = current_payload()
-        current["tracks"][0][3] = 35
-        current["tracks"][0][8] = "2026-07-19"
-        subject.synchronize_opportunities(
-            current,
-            seed_payload(),
-            performance_payload([["2026-07-19", 100], ["2026-07-21", 135]]),
-            seed_name="strict-seed.js",
-        )
-        schema = current["schemas"]["opportunities"]
-        row = current["opportunities"][0]
-        self.assertIsNone(subject.field(row, schema, "streams_delta_24h"))
-        self.assertIsNone(subject.field(row, schema, "delta_previous_source_date"))
-        self.assertIsNone(subject.field(row, schema, "delta_window_hours"))
-
-    def test_missing_joinable_metric_is_rejected(self):
-        current = current_payload()
-        current["tracks"] = []
-        with self.assertRaises(subject.OpportunitySyncError):
-            subject.synchronize_opportunities(
+    def test_artist_listener_cap_is_configurable(self):
+        current = base_payload()
+        with patch.object(subject, "utc_today", return_value=dt.date(2026, 7, 21)):
+            subject.generate_opportunities(
                 current,
-                seed_payload(),
-                {"tracks": {}},
-                seed_name="strict-seed.js",
+                performance_payload(),
+                legacy_payload(),
+                max_artist_listeners=100_000,
             )
+        schema = current["schemas"]["opportunities"]
+        ids = {subject.field(row, schema, "spotify_id") for row in current["opportunities"]}
+        self.assertNotIn("track-distribution-01", ids)
+        self.assertIn("track-rights-review1", ids)
 
     def test_js_payload_round_trip(self):
         with tempfile.TemporaryDirectory() as directory:
