@@ -1,0 +1,102 @@
+name: Apply daily Soundcharts synchronization fix
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/apply-soundcharts-daily-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install the corrected collector and browser history bridge
+        shell: bash
+        run: |
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          import base64
+          import gzip
+
+          files = {
+              Path('refresh_soundcharts_daily.py'): 'H4sIAE5TX2oC/909/XfbxpG/869A0csL0IAU5di5lg3bUx2l8V1i+yzlXnMsHw4iQQkxCLD4sMTy+L/fzOz3YkFStpP06vcSEYvZ2dnZ2ZnZ2dnFr3911tbV2U1WnKXFO2+zbe7K4vOB7/tv0lWV1ndec5d6ebZIizpdeldlWywXd0nV1F5dJJv6roRfLb662XpXm7LJVlvvTbJMqtFgcA1VfyxvvKotADyt3qXVsM6WqZcV3p+z5pv2xrtYNFlZ1CPveZUu06LJkrz2ihQgPXiC/2Pzm/YGKBhAq9kqWTQAfYE4vaz2FlAZMEJlr24Xi7SuV23ulUW+9e7v0sJLGi9Pk7qBotSr0r+1ad2ky8E6bapsgQgAX5vkAL5JKujG771vrq9fe0/GY4CuN4A9pUaaJCuy4tYrStlLjmNZDoqy8ZLlu6RYpB4xrQA6vCZbQ2PJelOPkJ+Dwaoq114cr9qmrdI49rL1pqygZgH1E2LDYCDKqluiRzzfJHX6xVPxBPQs2qoCBo0Yslq8WSZNiu16Se0tG1H6Y10W4ncpYZu7Kk2W0ClZABXF77bK8+xmlFZVWVllBmG8jHOWdRGISBZ5UiPrFF2sKPJWWZoviT5RFlMRq7tJmjtAKOq9hkf2otlukP+8/KLYRt4LkI/kJk8j77tkg28Hg8HF6xfxny6uLr2p5981zaaenJ0t2rop12k1SjbZqFYSPFqUa39w/eo/Ll/G37/5Vq+SLBYA19jQZ2XSNndnTfk2LfzB1avvX371/JuLN9dX8es3l1+/+AuiuM+KZXk/unr96vrF1z/EGtDUH7y+fPP1qzffXbx8ftlfRQPCKt9e/PDti6tDbUgQAL/4/vobgHz1J2LBGXT57N2TsypdpRWbXmebPGlWZbWuz+oGJGANjAPhHNBQ6BP8Esc+eANsALmgh3Ay8OAfCPOFVycrYHxRFsM6XVRpM7xJkwpHaFHmebpoyspbJVkOwjki4e/i/wZ4zdqwG+XtLNMVTBeYd00cB3WaryIP5lPT1hNQIA0Hwn/4bsReQafZD/Wy3aRVEI4kppWvazGa7iTmXrBjVfehHwLB2HzbLOKivA9Cb/gHQFyxNqG7bVXABBuJ+TZCIHjG338HVTOCiiHMCuD1Ig3W2aIqgU1lsZyOw1FWl8j/pAkUiP/ZeDwZj/3I8//baL0pl8mWtc/bexwN+DYQCBegC4t4IVVt8C7J23SCPTN7SICgU6ceQQBzq2wD5LK//l/bVbpa/bUFNXkD1GKNbAWKtgh4xdD7w9R7AqptKVDNxnNvOpVPw/O5/RaMwu5T/1PgwKf+Xg2uIkXAnk+gtiBJZwYH4J1F7Rb/WMebZJuXyTJA1TIhjRJ5G5gQ2QN1HBB3JzLjd7ZoZgARobqZM4qa9KGBGohrRA1gQZAWixI16dRvm9Xwt4olaBkQAqUTpO0+a+4C1rYmvlWS1Wl35q38HTazRytFFsbbsaoz7P/eSx9QFfK2mmqrEPIeA52o+Uf4uw6QjBkOEW/fm0geQk/W5bu0blfwIvB/74cMafqwSDfMfIz+/erVy69AhJdMFaACh9end4LbULAIBYhUtvQQoR96pNwBk86xrAbABs1pwLsS0WA8gmfLMmVc4+2CsHnlzY+gmAR3fEN0eCEXnfsqa9Je2WFlE0s+ThSqlzAzWTdIhlhLJESsuvcZ4/eyBcdBdR/cL3QaknqRZdOvwUkC5VunYIoT0LT1NPAjVB0TGDlA4P/+r4WPdWyp1CYGKEVSQsBkRy975Z+PENGePmR1Uwf6qDBm7mQBmQswotUi9Sf0S4xXvATrsPUjE/Q2LcCmg4cWJw1UQGZZEE2VLN7W8G63t96gewj0uF6Bjt3mjpf7gTldXCoj8rpGO9Trjeq0AbYmbd4Eoq+Rq6/9tXinIiCuH0j07zCU6qqCc8p4DKXVNl6mUCFImiZdbxoyrJF3B2xIKzCz3K9iQgD/m3v/S2MCrMI/JCUrwNlI4RBVtYl6D9C8eHSbAolvsOHhxQrcN1AAoEuMt0TWMGFvJRpDv2l9Au8l+Hw8GkfeOnkIxqNnESMogHbDUNXnqiy43m6YAou8/0LLpvsbSn3W9cBq4/wJtnE+eub9xhPcgpl2HqpJRR5wjJM3oNrgGpMuYOLWz1P2/jfsDzrFE1hLNaC+DF5HgqIqS5kDBC8+Z6Vo8cu2EaVPx9GAhqZpN3k6I1+50+pc+nJvuCdByp3pZW+TgyslFkCC9shD++XdoGADIA2UdwdWPAfMzMtDlODnNTF5VBPvktgOSxuzMwS3QivCOQkKukqKW3CVYBTPI9HP0NAtxGDAYK45Rm/Y38AYQ4AxdQAydor/M4t516ao6wL+EJogsM67K5dT//Wrq2sfZRyxCKNMnUpBHXv+ny+vNXV2QHSJi1Yn4LHcgHHmz5EY0yn/G6LBFQNiosN/N+VyS/qLAZBrAnadjWlgeCWOSaR5CYgoZNY2kNgEX+zZpC8SR+hIu10DrhqgbITkoBv4dPx00kcNSTujAKt0GrfRod/4dAxC83T8+d6B1fYU1LpDoLC8EPFPCTKw1n6pU/Ar6NCT35E/K8u+9J6BR98dKBiZtzYiTZ9APTHHO3XJya/zNN0ELuXt4JlDARpjBqtergyvmZjxJ5fHFzrH9RiPPk7XeD96nD5jPSfUBC4+QUmRHRHtCndTEc2Vd0KRo5jW9bCEyWB1FGdLpr09/syWubysgXWzgMB1tm8un0AXPi/X4D1kN1meNVugJs9vwMYzpceCCzXAZ3nutTUumzHO9eqiBc1wC/7PfbJVClUSJNZA+gpOvgx1WEbsAXgGwNcOrDMuaP7KWM8ocqAvWgFn0DEX3dcd4+ffvrh8eR2/+ApxOV5cXT5/c3mNynad1cgndGJpHiV1tgCKWWBsdPPFU/J2U1wBSAL3k51B294fcSihEZWKJM+aq0hEGqN3DA3s/FuwTE3cgOOALixHqHhU+8yLRK0eI7+gEk1EiUWKy1SwE1kpuE7GQ8ISKi71YObRk5sxM668cXIaPPN5DqtrbyZ5H+x8lKWyyv5OkUWgfOX/iXi2I9bt0UV9Dmsj6MTwmvcNfIQ8W1CFs4fh/f39EEkagspgbFv6+0j1k5vJuZANMSckEaIbI8CbFkvTQP+EFEpmhpY17iXIJG33Xs2a3gYKgORUpObMVP6yFMvUnJi2IxF2fSuXSetxs6QDR0KNq2EhYf1eCinDyIvJrbB9W/2fDKBGnVei3c4L8sb0ePJI8jKgkbMnauTyFlCnT8/NVx2L52TTo00ZhhGyok1lIcXFAJDYxFYuuhXxaY5rgQzOTgpjsDkvR4jPHxaLcy1yYIKzSJ0KtSk5OK5vDeuIIRCwi2huoE+r7LbFvRNdnXWN5KnYl6DO0CBwspOCG1aPs8QVBX5OYq8Cy6ATkJAFBgGM7SY2P5jzXK5W2QKI9S5evxi+TbcehuXJ/2ImVJhbZUMdsWSY1MrIJ5ssBkS95t0KNrO6LovJ3oQ2OGF3w9Mrq8KpJlkzyzpd3DDrbVuC9RPZZqMTcslrmio0qnuLPzBo8ZrWBp7fFjhM0NXs76BYTcC/tWWTgIe4ZttxbMXb1XkSPmYV8hJcr6na8Rp9CwVBqIlGBW5AtYw5yVxC+tfsViivJ9DxMKTmh5JeR7jjL8P/JJ3CqZfJwulA72mAAeOPbbbWYwanHhM7EO04FROejuOJa3N8a6b7xpDscegBiPRdACNhIPby6zCWC76Zw9DGJ1htgRDrc0BcB7wRYbqQb2hqQCvLhbIEtu0o33z9/3sjyO5whaSYltHuf/4mad24iJObqSMlrmc1acLuY8I3YUwpgl2hlfxu6C2QNt0hw47c4rldETKBobHAKQZqyljSMxR0DWdogf3EdOKRtbhILKXO8JNHuJJI/n+A8eocQ6cNWgM8oBeo73jmIFZau34aMnJgUqDaScWrRdbdxeFJqy6SehEZE+15tzgit0n3TBrOkruUDyCwSysrlMXDt5Tep2h7axYpg9xuQrqxR2oGb6MYsumIllrG57KfEy622jC+yIkI0IaYHVjc0xp0k5F0qGMIspwCKryntPCNoyOkicHlRonxW/0jMEbQX5oY0ZQc3JAqZ5uHtBJYqVf0oYtwOv+KCO3Tpv48SRH3IVFsi2VfQL9OrW2Ze3Z67siJDyjZIeo9t59wjqr+xCsgfu7LE9Vn7/k1GjtlPdiZUi7GwNeKPgpDRXxiO/IsY4wbsn9uu7e4G1VthvOJSQUnAqRvjKTDgVb6GuspZ+S+yJmz5qsaRvasQPF3mrbP6wEMyPYKx2c6Iq82Vz2tgevBdjdqRUjiuSGwgPV3iNq/vaEoX3Bd4l31K7Y7Eb+tQvMeOJjiotbZCeuaRlbDR3I33ChPbyg49OcC4CSS9EM0E/bFNCNTmjb7Ganl4cFTNcyEeEXu9BJ/jZGQaoDNbE0vY9G5V9Y5FHKEhMhEjNTBOdqA1ejlvB2Nte3NKGYlmYirzOCbPcCJhMqEp4fkjXp2tgJVmhoMal1hWpGntipH+0A354PZ5o7ybPYiUTQlNTISIt2TTvHfKH8HpTMdoR0P5cb5QVukKMKiTEHRx8DscBk49DdFFWlPJUp2VJmEl/H4/SAReVscj6e69kzABbi9sj5mPQ0PM6eUtqMP/Rlyb+KkgPBG54WNMIuq3QjRO+KL0C57fu5zJprb1QwQijFB9zKbmK2Vx3XLFUyZqmS0owrC2HKqMEyWLq/xsgQhSpEziXjHksIhOLnLAvyqkkoms6z2bykqoz4OXAuQ3aYAVXa6nbOFAylzqV+YfMAJRwFTZMf0R1N2ERuHR9srMSWeeIFWwF2y5+Dk2i/y2jJD5aFb5ODxIzy8h6z2TphKFWLSnwjPCCp+hXIDR8T36Gi+XQLiDO0jR6GR7Qm0RMji0RWlE1hDZ4cUng+HiMtvko6RHZq9ckJGVv1hlPvGdVLii2LoVm1cIRkOfCz3LR5UmXNlnIwEAf+AGlFXsKiIAzthlAygD5zsit+4ms/jPRkPD2DT3VUiZk74N1dDSN1ztgoVxDdd7tOCU0VNuYUDeH6L3IDUmcm1EQPRPquzFu+3lJMUKV9mDdptcD4tbs+f3t5CM2+L5Br7j6pyez0t62RqMFrCMDCTPNkfbNM1KuJF8jfszH4WurpfB6aaYUSHaYtzp7MRQaNmqAxyAIY8DpQRdzZEyqQRxNJ692UZW6kU2lAdqco14vBStQ43+WDKxFSB51q2Em/qJogoywlUUGEliKHldttnLRLWApiolgJElaberzTRbUfarmvdsbJ/8x+gH/D774bfvUV8L9dw8xtsndK2zNVUc//x2MNM8V/BSS9zstGC+5iepXuc2sKHnk912KOqC/iU9U5M9uHNYO2FM7xMMTU0O5Q4ndCtYi2q30J2Ok7drQuOTvZwjBn1HHosm6+pAnLaUXEKOx4rw46xEaFm0rD0By0F07qtR4ITRmgtVSoHZaP+kYgM97yXE9v4N0QjDnMvvQhodjhTJuu3NMNmXdpF9P6guHGpg7PfH1GhGogFndlnRYTzxou5T0SWZQZTcklSKNzo4ghEutk8gvReeT0MQfS4gCrMRV9mI3n/QjNqqIruCBafgjPNL3DXQRyY4U7MncTbDQveGPSdAKPjshDVsdCJFBdBPSgzesqfZeVdLaANA3JqOFLo48lgMSw4IECiRjHiPJmORTaGMtjR8wzwIrTN2DkA1QkiTMU/AwhI60SjOichgF1Cy55we6ly4AAwrmMQlXglPMxYdwzVjU8MAGrfhWTsCNk/frTXngdWJvztLqKUjikujTX3N3FKqtxVN8IGwjqgtUwOKdHuczVyWM5Aebna1gxeomUct6lepMuQNAXdKwsaZoE9MMSnFRh15ThOp2ZH2Fh4Vo+9C0OjkyYf7Ch5VTL0yrEANGV8EDIw9IdJiBH0ImOnNp5Xv8XEW3lstyBh1BWW9wuVMtup2PW8aLIOknHqesoAMpuQI/rJ235jK4bS/C9N6JzulNRUr9Z6FDYMypkB4lsVbmN5MKXoMiBZ7/OlSGxo0m8FWs43RjNtZ9WZC+vUYKOeWtiMJYdZ9K2IhooBeofszZnxkBhmPONYi1zpM96HDcdoOBulTDRyQ/afydtmRWLcq0e36bpBntXq4T08RGxQzGDGhMR4GHU6I5ER6AFDeFeoRm1Gzrv9lhcogPh3lhrshnRI9s5Lgixd+5YGyayMxbyxMy2KVcrAOf1hh4/qrdM8yZBQainPPld8i9831GjLPXeECBOKUaOGF3hlgiZdJwI5EQEB9C6unQeGtESaO/f5Llfngz0qm2A+3wS4WYptc7GAcPKfJVjBenIGTMOEAd8qyLGM+IwqlNSJwPt7IAUSBb84edTrdK2xkC6WZa8A9BucZ3mlE2lSuU2bd2u1wlIlkxfcB2m6j8yJQgWmQvi2TrXJHogwMSzBca6JIDYk314SvRQ5kqIAgtQ9FnAiWf9UBUXqqQCDyjNY34iONASlCfdFDB+lCWp3+p7Y9aoG2dl7svqLaXnZKI2TKDYGGvjIIwzmZZtzzHk7PST8T8+UtCRmEjDCQxoAnoIDSnAzAcBNpuw80iRQRJfDMIAgZj2ZfdqBGlxaD6wppAJxmKT9paj1m8X7o4AIg6RkkqWDt1MLJz5GGfF1fZA5jk7biAYXVNy1WtYP10+pKheKtSBMR8kodv4Y0inCTYyDkZ9ZIiw0/hiVLc366wJeCcjopAtNfEX6TzOeTPYwfDgeweVSQ3iuAauoLLkhZYd7WymaGMm4hWs5oiV6kFgd/qMYyPFGNXPYMVubOKz1iLyg0Qvw0hWYC+ktIUWoDySRpdRxOx0YaAfGexsULOX6kyoG+DI5O1OyJt2eZs2WgG3uMo94DPUMAL6XijGRVw77Z0ElIF9RFSVzPimA26K+2Sc8Ed5Q1eS0FHTSJxSjcnlg0dpEvVyzgY+7/FINy7WjWP6PWb9i2eR0ffQsoskNwXqkJ59BqUdzd0p57Z021LuqEzhiCRLjWOpCNaNTmLpsb1yFVFm61FnSxJIrj8lAtCH1VYd5bNTwHc+MfcrtltBvwEh8IeXwC94zjPQDz7TtOfjsclg7zPvmXDnJOucGzPdPRUfOgJ4sTvdd8Q0clEC/OnYyNB7PtF45YAk1YqJbeKiDoy3n+0MtmC+ZBrI9sL9mYjHn3Hcf9wRP/fWhtFe20GhnyWbZMB3Pt3kyeNQN0yRAFRuhyxRGkiUKEdBFmkW0e0EKF3C1HotDcOU/zUN55TpEWPysV1FTWUdPlFdlPd8ctF9HnL+MLsnj7pmUvlqsRe2+TA9bVOE9WimC8G8M8dYHXOWCe6R0yskdedj1LTBFFbWJ9RNJFesFZLGOWqztyixshsq4yvS/D/aTNqHhyd3RZxi6HEiKOvKli4xLUP4b2PRTPtjKpGTJuLRlR2rudeirVlZ8ZrGukS1HlrAggjWInkvEouCJY0sF2C80tBAQXFc7fFgWjVL6O8ONuq6la5nJzsC+hTH6tP5XuV+wtBWLC8EhFkXX0qx2WkDRZAznys4Hz1Da0WOACxCIYBE3KLuoOnYgLnsCHu0K+imck5BjHsbZJEsaTag7iWYc0ereDUCvjMoMGeTCNsNtIxQLRlRty/SpusjGh6tJxwA+nsc3PQLXELYV9PpQkSagJ8ibsebMf0YGBpVRagUpgCUm9mrbo4Zxo4y6oKQckIBHvSmKejj5QDjSQqatnHA4ODFT56i9aTfLuNK0o+YRDSxdllr0pzXlZMUqTm77/dWfgJ33TlbLRec393xy/vg7+dsyyRv7RKSmb8Gy3GXb2NcxuK9Lf3u9fwfy3395XzB011lByrcRDiAhF4fqN7xNdlYHvU2+RL6DC9Hq9/DxRQi80/nY3Yv5PkAJ1NuG52WQtkRe/b+kR4la+OXdCn1E22sCyq9w7UB7xL8rh7qOn3C26MkEo7O3hkU5dYuC7PFjLhONpyVKqRDsc0jnI+HlvTHPElWSnNbe3a5aSc5kuQ1Lk9yH7E1rbzD5VhzNPneBHF5Pj/uty5tiH7s/XV+Cje2z0nls5HrwpjpwuM+qstE/jRu6i/jBQoF8l5u4BH/74Djd8Dp+zm8OXnHWiAv8uOXA/4yLpykp/8KO+sSWb4nCWpsXcg9DYmGTXh4S36ezIblZ4NMKCz1tXNBy7hz1os3w6yMMIo5paLUh6AlkLpPU6LXsqxsXKeeH/NFmqnokThk1Lk7MlueyUYE08RFNKf6tKIRFjOlU2W8L3OjY85TeWa6jsBjbVv0OrUHEscPOLdqFrPcTNlsbwa45V+OnozPRLWzm+1QJBqJqGWv46m3Fe4dymVvJYr3eZ7qLsR/Ot/Tdc0jc0EOORsf4J+qCTB15hGq8OfOZyv3q/amXlTZTVo9x+uuaI+lW6Qm+d7waVV7zhzOo66tYJDl3P6Mrm33vKmlqawj2a7DgeIEqlUT3RNZdNwL1Lv+EaKK3NmTBDgcvg/wtOTsl5HAn8GPUdLS48loLOxCKBmeKK481rH5CI6LsJImo4w1ZmJYcF2j4EvflA/6eoHKcOq/ZBy09gpLAv+TH4afrIefLL1Pvpl88p0fGm3DoPNvRsQNCxJTCxaMugPYCeS8mzlSnepzdg56dKskPyE299OE3qT7xQ9ds+xV/RQ3v15Khd5sl0yvaYD9DGE3YCjdCNtTEzgbA4gZp6OWrARHgcdefSOYbOMP3vgjeD3Hw3YfFDCrUjSAyz/S/vT02fgDPBjg3v8/3+XkiNf6RtwTwi+aZYd/UIX7kVWKyX5c9O0T99Lz0HK6RaHqEjocONXAHvOWw04SNhWLPOSu+80Nz5Qj09yGAzYKI07sKfxY1gql4rCh4jE8RzSbyWZMPQBw+uuyRpoBnyiPsc9uOV2pA3bMlYN40hK8Xpdv8b58pS+7d230q+lu+lFvbqYIv36oiqZ9skeikckLM5l1x8mRUWIpdPyFmI0quVVp+X7zMJs8G88PGQCDCx9r+8Um2XDkpCRN9WTED9y0CO22PyTabqLAyySt/vxh6v3WZAG79fnxWWPn44+SNUYiyFNO7CR85RcwsJMFSRdSvMjisCDp0+DnyEKz2/vHykUzOf0o+f+wBDGbhsemNukHxbUBM5Ch9Tc7CBPi/EnvjOADbkyr48E77aJQ/LwAffwtxc8S3LSN/pU2hlZsr4G5ywEk5V97sz7Uo8+Tj0YActQTHOWnodxkdI4C+Ox7VPTlFPZxO83s+/JyOTTjTFRkkQ5maicAtkrszFkd1CzoYmVsjfnC1ig0TlDZTRipGXqRDsoTQNhr3oQOS7cxjDUvx7eullSMsV6wKtpBhToFC3Bbs+9siY/vjV7i6b5NspAf7IFCvN5AAlxUt+0a8NNFNVWwTDG6Rd+7mMbxslzEcajVHCXLJTZDVQJ/OKTBw0uMygwGdzrzV22e+0aWhVKzzOvzjMifT+4QhnX4Mn7KUBxslXvxUB3vNJ+yM3G8+vkXhwlOHoZSOpz1x/jvIA6uGIeUKObC8btnB+trpkNUZ99lEvXxSQb34yvjMzxNMvqxFnc29DSghVxPaeC19iGlExvQRvA4egF8InLJ3qw6hF7j4lCG9qyvBRF+fXKIs4AwiQJxJFp4y7csEKEBq4Ukfg3L9sXVcqesR2nxLqtKfo228w5iFHZdj5xQid1P/JiK15cX31lt6d0YGRfT8lGocH2nfbFr5yeGYTCUN24Iu/X16bprL5YE/Z+twgHQP10prRy9WPNvsHDlMdGTac2+dBdbkQwN4EeRCJ3u6ETe+dNQv5aDyxI/s6TNLEG16zNkhFZ7IcRSXRjMDxOx7ugHrOQZQop3ye7Ozc7jSXfSk2yNP9OUrKZ5DUWLyneuR2mMa615vIaflpZu85p/noYIMs4+q858ObVDWuYnYgBYDpj49plrJ4QYapz3kUOmsVKNH3FDBnSUZfQ6gxqaB6olNfJ7a0fIEbmP70VPX+PaF92ONK8265lcqTjxx6AD5eIYBRhc7syfE9rBC5a8X8O0TG7xylXwKRclfhh5KB0Q+vwxDDd+VxHvwzMvazx4web3Rd1uNnRomPVmh//f+50gVT1jM2gqIzFqcpszcqz1A4i0A5Vhv6LZsWO/MkbJD8+GdHMbxxizOCMFm2xVaMxu/B6U9KT4lNlTGFkuWvkNsbKLuGaR3RVAcxHEg3EeH7+z1H9ZigChcP0JEb/Finv+9/QZL1SK+K1pmdjGvnDNExBq7z6tUu8t3mvdo7rF3BPRcaLcDvB0MzBDvUvv0yNzNfWROqPmsqM7uhZ2bex/cJdk9sd7d4qbJ5rs7I4k6pqwADL2rkucuDG1u12HexxzfVkqMZ/UO/mNc+PjGe7l7yO658oc4DptZn61U9/uVR9Dd99VLN9rG4+KIZZAh4Z0zGT5vLPPKdFKIJuwTiPiHJzVhqUKnE0wmKMt0FaOhZ68ikO4cfdMQ2xcZoBBr3Yd2GqW5M4lcWQcanFYWTtRrmORxadhkTsiOg5eeBqGqi1iru/Re1Jree4pS1URnRgWWYFpwNnCdi4KPbVJv1bBEdOgj93QHn7nGoX+nQtfTk9Cyn+/d0ziMZEdcivxi7Y91vM0DbQXwRBL9GBgSO60Aep48f1ZHOyLt134XlVhQCm9MDeFQs21iaJVn8H4KuzEqdw1tHd6FWlcpAR1J7NmgKwprd5I/0FuJOqcNvrby+tOsoO9tIvUBxgcH5w+gMNwfo0H1+eO5SJfrQyyarR+C/8H1xZ3Wuop5aZ4dC1PXL6lx1A/82+OpPWlZ3OeHpj7h6ewdiHKoybxe0xSMeQfawLq4upPHuXUEaLuBQgTt42Luqe/uyhoXeOwYJGVm9CtqX9r+7GunIZrb1wXwS+YtiXQO8Pb23v2vvYj+gpMB4/+zXVtDcJBHvup9Z4vrTuXOdr0NmNt48FggNeKUi5lHJNXHMcoc3Hsu75Mwvy/Lfh568uHDG+bwpCc8WES2zvsfPOOkbeyvg9HOpJ/PRUkG2rgZ3ZW8DgtQfNs4T/w36oq7CfmPBz8Hx5j/3FXiAAA',
+              Path('tests/test_refresh_soundcharts_daily.py'): 'H4sIAE5TX2oC/7VYTW/jNhC9+1cIe6EMyK6dNLtIgByKbQL00HaR5lDAFQhGGtvcUKJCUkkMw/99h9QXJduJd7H1wZDE4ejNmzdDUksls6BgZi34Q8CzQioTfMHbUX1tICuWXEBzX+bcGNBmtLQTm7tpJpPHZjp6S9ajZoKCpQK9plqWeZqsmTKapoyLTcB0oMuHr5CY0WiUCKZ1cMse4bPgkJurUYC/FJYBpRzfQmmoQSwj9KcLmWsYVxb2ZwemzfPgujXpG9ggNY4u4lHrewWmdmtHhy7djCkrCsjT0Bm04wpMqfL+m9so7qqQ/+kivkeOdNiyZW8/szYGi8Q+p4kAltNEQYoMcCaogkw+g6aJLDa0YNoAfVEWkNIO9xAxvh2UuXkqmQhrbqdDpyEJgg+JI3nyzEQJH/7LyTgKiP+MjEd9aClX6IyygtM1sBQBUKaAFpheUOh7CKdyhnQ3MDw2qgyHBAMh+N5H2JCO2Rdu1pWEptLNbAJBSwVPpQXzVcucRHUSqAN8HW6JfCRXwb0qYRcFW/I6eSqlYRPkkKGC8hUOkvNL9yO78djqr3bYwe6gT1lp1paxhBkIx8d59sxpJlNAnB5L5P2ZDiZtYUZBDfKNmTXuacKEwDysUKX4t5jHCwwbaZ3wlMQOSEF+3A2f2NTEbYr6isBMcqvZEtOfG6oNw8oumEL3tNQoWm0UsAwjolgfhi83VaaGSvEKd9vLA6nyj2nrP3djhSxKwRQ3GxxfbEkhmFlKldkk16+z2qrEfBV8OsObFDNpx89mZx8ns0+TsxnZxdG+7xb4Sa7nZ+e/Xnw85H5uzeBZitJwFOxVgHbDF+5G+1cZGMUTr3bg1SiWtJQ3dFZ2YdsRjye6slzUmDGjFegTZrigrAS8qIZKwGpcUVamqOYEGgmgR4SuaWZL2RcBd31oyUH9HCVwXKK0zdTekP1tD2UdwymENLrKbwfImkmseuXnFyvR9ZO+mU3I42TeE8Jstot30akw5m/COOT//LD/+F1BHV0bGmENMih5jstVk46oQ4PLxGLRZxKjRnks+nEh1DgeyiQDtQK6RgVLtaEppGUhXHfFpSRP6SNAoWkOL4fbhJudekXRcxf2OPAwzi8RzuUAYoN7UIv7oc2PhNbNe7OELOLoRDTzE1ls9lMuJZqWReoYhFe723JEPij5YiuwoWZAZME2QrJ0v8h0ssY1yKpxWyXcCZP4G7eyxIUlatsgre4MNwKbxECang/rJF9Nmtmetu/tJfEJ7VSLuxzbdhlK0oLt/G13dmlzvbC9xSa9Ee2D3Qk95Xjf+O6e8R3N4Oc0gos93/EBAmVpEpmBVzN98YS1FCKf6sjbhHdLC4rRihTFe+Ep3gkG3dd+Fq2EcANRZ6vDhar0TZvxxSw+XkJ1BNNSsweB0Obj93saEifSEN8W1QCjZkXXtn8heT/oJAVhmHXxwx6wlBT2V6eA8XBNPerRS45HWysMvKwr3a7TJ7bni/3GsjamoLpMEtCa2l04kl9vMSjHxiwNrdLwPzeU7+8jh9vH6ervtZZdrwC2XZuId0eq4Jho6921flu2Q4nPDtreMqGhtXWYsHAWpJpF9pLpaYbWcVJlecfgeTHMoDtzNSd9PJ3akztTm9/dmc8uIe6wlDa3/eOSPRgjyfajQdiajINfsKd1IKZfNenNkoqveM6E6+xVXbj99fArQZtnT0aYcnvdqP6qJ3qn7zjeeWuA47LWwAseGQAPkA0r7lwftXCi1vDLzd3t33d//vbX5xv65e7m9o9/x32HxwofO016iP/qC0JXwd1Lu2eYxhG3nzxylgGlwfV1QCi1B0NKSUV798kFn+K59Bsk3zetwREAAA==',
+          }
+          for path, encoded in files.items():
+              path.parent.mkdir(parents=True, exist_ok=True)
+              path.write_bytes(gzip.decompress(base64.b64decode(encoded)))
+
+          performance = Path('Spotify_Performance_data.js')
+          if not performance.exists():
+              performance.write_text(
+                  'window.SPOTIFY_PERFORMANCE={"source":"soundcharts_daily","generated_at":null,"tracks":{},"artists":{},"playlists":{}};\n',
+                  encoding='utf-8',
+              )
+
+          index = Path('spotify/index.html')
+          text = index.read_text(encoding='utf-8')
+          old = '\n'.join([
+              '<script src="../Spotify_Radar_data.js"></script>',
+              '<script src="../Spotify_Playlists_data.js"></script>',
+              '<script src="../Spotify_Labels_data.js"></script>',
+              '<script src="../Spotify_Soundcharts_data.js?v=soundcharts-live"></script>',
+          ])
+          new = '\n'.join([
+              '<script src="../Spotify_Radar_data.js"></script>',
+              '<script src="../Spotify_Labels_data.js"></script>',
+              '<script>',
+              '(()=>{',
+              '  const stamp=Date.now();',
+              '  document.write(\'<script src="../Spotify_Playlists_data.js?payload=\'+stamp+\'"><\\/script>\');',
+              '  document.write(\'<script src="../Spotify_Soundcharts_data.js?payload=\'+stamp+\'"><\\/script>\');',
+              '  document.write(\'<script src="../Spotify_Performance_data.js?payload=\'+stamp+\'"><\\/script>\');',
+              '})();',
+              '</script>',
+          ])
+          if old not in text:
+              raise SystemExit('Expected Spotify data-script block was not found')
+          index.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PYCODE
+
+      - name: Run unit tests
+        run: python -m unittest tests/test_refresh_soundcharts_daily.py -v
+
+      - name: Verify real Soundcharts artist and song metrics
+        env:
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        run: python refresh_soundcharts_daily.py --mode smoke --max-requests 25 --history-days 14
+
+      - name: Validate the browser bridge
+        run: |
+          python -m py_compile refresh_soundcharts_daily.py
+          grep -q 'Spotify_Performance_data.js' spotify/index.html
+          grep -q 'window.SPOTIFY_PERFORMANCE=' Spotify_Performance_data.js
+          ! grep -R 'current/stats?period=1' refresh_soundcharts_daily.py
+          grep -q '/audience/spotify' refresh_soundcharts_daily.py
+          git diff --check
+
+      - name: Commit the final fix to the pull-request branch
+        shell: bash
+        run: |
+          rm -f .github/workflows/diagnose-soundcharts-daily.yml
+          rm -f .github/workflows/apply-soundcharts-daily-fix.yml
+          rm -f soundcharts-diagnostic.jsonl
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix daily Soundcharts stream synchronization"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
