@@ -2,9 +2,18 @@ name: Refresh Soundcharts radar
 
 on:
   push:
+    branches: [main]
     paths:
       - 'refresh_soundcharts_daily.py'
+      - 'tests/test_refresh_soundcharts_daily.py'
       - '.github/workflows/refresh-soundcharts.yml'
+      - 'spotify/index.html'
+  pull_request:
+    paths:
+      - 'refresh_soundcharts_daily.py'
+      - 'tests/test_refresh_soundcharts_daily.py'
+      - '.github/workflows/refresh-soundcharts.yml'
+      - 'spotify/index.html'
   schedule:
     - cron: '35 2 * * *'
   workflow_dispatch:
@@ -18,27 +27,58 @@ on:
       max_requests:
         description: 'Hard request cap for this run'
         required: true
-        default: '15000'
+        default: '100000'
         type: string
 
 permissions:
   contents: write
 
 concurrency:
-  group: refresh-soundcharts-radar
+  group: refresh-soundcharts-radar-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 240
     steps:
       - uses: actions/checkout@v4
-      - name: Sync latest main
+        with:
+          fetch-depth: 0
+
+      - name: Sync latest main before a publishing run
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: git pull --ff-only origin main
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      - name: Run collector unit tests
+        run: python -m unittest tests/test_refresh_soundcharts_daily.py -v
+
+      - name: Select safe run mode
+        id: plan
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            mode="smoke"
+            max_requests="25"
+            publish="false"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            mode="${{ inputs.mode }}"
+            max_requests="${{ inputs.max_requests }}"
+            if [[ "$GITHUB_REF" == "refs/heads/main" && "$mode" != "smoke" ]]; then publish="true"; else publish="false"; fi
+          else
+            mode="full"
+            max_requests="100000"
+            publish="true"
+          fi
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "max_requests=$max_requests" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          echo "Selected mode=$mode, max_requests=$max_requests, publish=$publish"
+
       - name: Collect licensed Soundcharts data
         env:
           PYTHONUNBUFFERED: '1'
@@ -47,18 +87,24 @@ jobs:
           SOUNDCHARTS_TEAM_ID: dsomoguy-api
         run: >-
           python refresh_soundcharts_daily.py
-          --mode "${{ inputs.mode || 'full' }}"
-          --max-requests "${{ inputs.max_requests || '15000' }}"
-      - name: Publish only a successful snapshot
-        if: ${{ inputs.mode != 'smoke' }}
+          --mode "${{ steps.plan.outputs.mode }}"
+          --max-requests "${{ steps.plan.outputs.max_requests }}"
+          --history-days 95
+
+      - name: Publish only validated daily snapshots
+        if: steps.plan.outputs.publish == 'true'
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Spotify_Soundcharts_data.js Spotify_Playlists_data.js soundcharts-history
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m "Refresh licensed Soundcharts radar data"
+          git add Spotify_Soundcharts_data.js Spotify_Performance_data.js Spotify_Playlists_data.js soundcharts-history
+          if git diff --cached --quiet; then
+            echo "No validated metric change to publish"
+            exit 0
+          fi
+          git commit -m "Refresh licensed Soundcharts daily metrics"
           for attempt in 1 2 3; do
-            git pull --rebase origin main && git push && exit 0
+            git pull --rebase origin main && git push origin HEAD:main && exit 0
             sleep 5
           done
           exit 1
