@@ -483,7 +483,8 @@ def refresh_tracks(
         "tracks",
         ["streams", "delta", "observed_at", "source_date", "previous_source_date"],
     )
-    start = (utc_today() - dt.timedelta(days=max(65, history_days))).isoformat()
+    period_days = min(90, max(65, history_days))
+    start = (utc_today() - dt.timedelta(days=period_days - 1)).isoformat()
     end = utc_today().isoformat()
     tasks = []
     for row in rows:
@@ -739,7 +740,8 @@ def smoke_test(payload: dict[str, Any], client: SoundchartsClient, history_days:
         if artist_metric or artist_requests >= 8:
             break
 
-    start = (utc_today() - dt.timedelta(days=max(10, history_days))).isoformat()
+    period_days = min(90, max(10, history_days))
+    start = (utc_today() - dt.timedelta(days=period_days - 1)).isoformat()
     end = utc_today().isoformat()
     track_points: list[list[Any]] = []
     track_requests = 0
