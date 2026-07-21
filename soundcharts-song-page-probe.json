@@ -1,0 +1,136 @@
+{
+  "auth_mode": "oauth_bearer",
+  "quota_start": 3757600,
+  "queries": [
+    {
+      "artist": "Lofi Fruits Music",
+      "uuid": "18dff8e6-e621-4a35-97b0-b26d1eaa0fce",
+      "top_level_keys": [
+        "errors",
+        "items",
+        "page",
+        "related"
+      ],
+      "page": {
+        "offset": 0,
+        "limit": 5,
+        "next": "/api/v2/artist/18dff8e6-e621-4a35-97b0-b26d1eaa0fce/songs?sortBy=spotifyStream&sortOrder=desc&offset=5&limit=5",
+        "previous": null,
+        "total": 1952
+      },
+      "related_shape": {
+        "uuid": "str",
+        "slug": "str",
+        "name": "str",
+        "appUrl": "str",
+        "imageUrl": "str"
+      },
+      "item_count": 5,
+      "item_keys": [
+        "creditName",
+        "imageUrl",
+        "name",
+        "uuid"
+      ],
+      "item_shape": {
+        "uuid": "str",
+        "name": "str",
+        "creditName": "str",
+        "imageUrl": "str"
+      },
+      "sample": {
+        "uuid": "4aa09964-59fe-11ea-91fa-e4434b2a4898",
+        "name": "I'm Yours",
+        "creditName": "Lofi Fruits Music & Chill Fruits Music",
+        "imageUrl": true
+      }
+    },
+    {
+      "artist": "ChillTide",
+      "uuid": "4ef4de8a-d40b-4508-b6cc-cd431fdfe95a",
+      "top_level_keys": [
+        "errors",
+        "items",
+        "page",
+        "related"
+      ],
+      "page": {
+        "offset": 0,
+        "limit": 5,
+        "next": "/api/v2/artist/4ef4de8a-d40b-4508-b6cc-cd431fdfe95a/songs?sortBy=spotifyStream&sortOrder=desc&offset=5&limit=5",
+        "previous": null,
+        "total": 3094
+      },
+      "related_shape": {
+        "uuid": "str",
+        "slug": "str",
+        "name": "str",
+        "appUrl": "str",
+        "imageUrl": "str"
+      },
+      "item_count": 5,
+      "item_keys": [
+        "creditName",
+        "imageUrl",
+        "name",
+        "uuid"
+      ],
+      "item_shape": {
+        "uuid": "str",
+        "name": "str",
+        "creditName": "str",
+        "imageUrl": "str"
+      },
+      "sample": {
+        "uuid": "14009c06-6a42-4b0e-b8d5-f8cbfa019d49",
+        "name": "Ibiza In My Mind",
+        "creditName": "Penelope Cru & ChillTide",
+        "imageUrl": true
+      }
+    },
+    {
+      "artist": "Johann Sebastian Bach",
+      "uuid": "11e83fe0-3787-454c-a7a3-a0369fe50396",
+      "top_level_keys": [
+        "errors",
+        "items",
+        "page",
+        "related"
+      ],
+      "page": {
+        "offset": 0,
+        "limit": 5,
+        "next": "/api/v2/artist/11e83fe0-3787-454c-a7a3-a0369fe50396/songs?sortBy=spotifyStream&sortOrder=desc&offset=5&limit=5",
+        "previous": null,
+        "total": 310362
+      },
+      "related_shape": {
+        "uuid": "str",
+        "slug": "str",
+        "name": "str",
+        "appUrl": "str",
+        "imageUrl": "str"
+      },
+      "item_count": 5,
+      "item_keys": [
+        "creditName",
+        "imageUrl",
+        "name",
+        "uuid"
+      ],
+      "item_shape": {
+        "uuid": "str",
+        "name": "str",
+        "creditName": "str",
+        "imageUrl": "str"
+      },
+      "sample": {
+        "uuid": "02dff726-ba99-4124-9b6d-f7078c2d5bc4",
+        "name": "Cello Suite #1 In G, Prelude",
+        "creditName": "Johann Sebastian Bach",
+        "imageUrl": true
+      }
+    }
+  ],
+  "quota_end": 3757600
+}
