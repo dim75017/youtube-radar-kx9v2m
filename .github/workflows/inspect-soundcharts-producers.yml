@@ -1,0 +1,67 @@
+name: Inspect Soundcharts opportunity producers
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/inspect-soundcharts-producers.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Search the repository for opportunity exporters
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+
+          terms = [
+              'opportunity_status',
+              'SC.opportunities',
+              '"opportunities"',
+              "'opportunities'",
+              'Spotify_Soundcharts_data.js',
+              'SPOTIFY_SOUNDCHARTS',
+          ]
+          skip_parts = {'.git', '__pycache__', 'node_modules'}
+          matches = []
+          files = []
+          for path in sorted(Path('.').rglob('*')):
+              if not path.is_file() or any(part in skip_parts for part in path.parts):
+                  continue
+              files.append(str(path))
+              try:
+                  if path.stat().st_size > 5_000_000:
+                      continue
+                  text = path.read_text(encoding='utf-8')
+              except (UnicodeDecodeError, OSError):
+                  continue
+              for number, line in enumerate(text.splitlines(), 1):
+                  hit = [term for term in terms if term in line]
+                  if hit:
+                      matches.append({'path': str(path), 'line': number, 'terms': hit, 'text': line[:1000]})
+          report = {
+              'file_count': len(files),
+              'soundcharts_named_files': [f for f in files if 'soundchart' in f.lower() or 'spotify' in f.lower()],
+              'matches': matches,
+          }
+          Path('soundcharts-producer-report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps({'file_count': report['file_count'], 'matches': len(matches), 'named_files': len(report['soundcharts_named_files'])}))
+          PY
+
+      - name: Commit producer report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add soundcharts-producer-report.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Record Soundcharts producer inspection"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
