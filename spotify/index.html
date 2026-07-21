@@ -24,9 +24,17 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
 <script src="../Spotify_Radar_data.js"></script>
-<script src="../Spotify_Playlists_data.js"></script>
 <script src="../Spotify_Labels_data.js"></script>
-<script src="../Spotify_Soundcharts_data.js?v=soundcharts-live"></script>
+<script>
+(()=>{
+  const stamp=Date.now();
+  [
+    '../Spotify_Playlists_data.js?payload='+stamp,
+    '../Spotify_Soundcharts_data.js?payload='+stamp,
+    '../Spotify_Performance_data.js?payload='+stamp
+  ].forEach(src=>document.write('<script src="'+src+'"><\/script>'));
+})();
+</script>
 <link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
