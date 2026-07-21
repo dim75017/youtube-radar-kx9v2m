@@ -1,6 +1,6 @@
 {
   "auth_mode": "oauth_bearer",
-  "quota_start": 3757201,
+  "quota_start": 3757168,
   "tracks": [
     {
       "uuid": "db682833-ffbd-4185-bcb9-8ef1eda90a2d",
@@ -344,5 +344,5 @@
       ]
     }
   ],
-  "quota_end": 3757201
+  "quota_end": 3757168
 }
