@@ -1,6 +1,6 @@
 {
   "auth_mode": "oauth_bearer",
-  "quota_start": 3757566,
+  "quota_start": 3757519,
   "queries": [
     {
       "artist": "Lofi Fruits Music",
@@ -132,5 +132,5 @@
       }
     }
   ],
-  "quota_end": 3757566
+  "quota_end": 3757519
 }
