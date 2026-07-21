@@ -7,6 +7,10 @@ on:
     paths:
       - '.github/workflows/apply-youtube-subscriber-fix.yml'
       - 'patches/youtube-subscriber-growth.patch'
+  pull_request:
+    paths:
+      - '.github/workflows/apply-youtube-subscriber-fix.yml'
+      - 'patches/youtube-subscriber-growth.patch'
   workflow_dispatch:
 
 permissions:
@@ -79,6 +83,7 @@ jobs:
           print(state)
           PY
       - name: Commit production and test changes
+        if: github.event_name != 'pull_request'
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
