@@ -67,6 +67,10 @@ input,select{font-family:inherit;color:var(--text)}
 .nav button.active .count{color:var(--acc2);background:rgba(139,124,246,.16)}
 .side-foot{border-top:1px solid var(--border);padding-top:13px;display:flex;flex-direction:column;gap:9px}
 .sync-row{display:flex;align-items:center;gap:8px;padding:0 8px}
+.sync-row.detailed{align-items:flex-start;gap:0;padding-top:2px}
+.sync-row.detailed>.sync-dot{display:none}
+.sync-row.detailed .sync-txt{display:flex;flex-direction:column;gap:6px;width:100%}
+.sync-row.detailed .sync-line{min-height:15px}
 .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);flex:none}
 .sync-dot.err{background:var(--red);box-shadow:0 0 8px var(--red)}
 .sync-dot.load{background:var(--amber);box-shadow:0 0 8px var(--amber);animation:pulse 1s infinite}
@@ -612,6 +616,8 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
   :root{--sidebar:64px}
 }
 @media(min-width:641px) and (max-width:900px){
+  .side-foot .sync-row.detailed .sync-txt{display:none}
+  .side-foot .sync-row.detailed>.sync-dot{display:block}
   .radar-switch{grid-template-columns:1fr;margin:0 0 10px;padding:3px}
   .radar-switch a{font-size:0;padding:6px 0}
   .radar-switch a::before{font-size:14px;line-height:1}
