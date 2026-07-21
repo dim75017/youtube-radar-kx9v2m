@@ -1,0 +1,97 @@
+name: Validate and apply YouTube subscriber fix
+
+on:
+  push:
+    branches:
+      - agent/fix-youtube-subscriber-growth-ui
+    paths:
+      - '.github/workflows/apply-youtube-subscriber-fix.yml'
+      - 'patches/youtube-subscriber-growth.patch'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-youtube-subscriber-growth-ui
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply reviewed production patch
+        run: patch --batch --forward -p1 < patches/youtube-subscriber-growth.patch
+      - name: Run channel-history tests and syntax checks
+        run: |
+          python -m unittest tests/test_refresh_channels_monthly.py -v
+          python -m py_compile refresh_channels_monthly.py
+          node --check assets/js/dashboard-02-helpers.js
+          git diff --check
+      - name: Verify browser-facing growth and footer behavior
+        run: |
+          python -m pip install --disable-pip-version-check playwright
+          python -m http.server 8765 >/tmp/youtube-radar-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid 2>/dev/null || true' EXIT
+          python3 - <<'PY'
+          from playwright.sync_api import sync_playwright
+          import shutil
+
+          chrome = shutil.which('google-chrome') or shutil.which('chromium') or shutil.which('chromium-browser')
+          if not chrome:
+              raise SystemExit('Chrome/Chromium is unavailable')
+          errors = []
+          with sync_playwright() as p:
+              browser = p.chromium.launch(headless=True, executable_path=chrome, args=['--no-sandbox'])
+              page = browser.new_page(viewport={'width': 1500, 'height': 950})
+              page.on('pageerror', lambda error: errors.append(str(error)))
+              page.goto('http://127.0.0.1:8765/', wait_until='domcontentloaded', timeout=120000)
+              page.wait_for_function('typeof setSync === "function" && typeof smoothedSubscriberGrowth === "function"', timeout=120000)
+              state = page.evaluate('''() => {
+                const line = '<span class="sync-line"><span class="sync-line-dot"></span><span>A</span></span>';
+                setSync('', line + line);
+                const row = document.querySelector('.sync-row');
+                return {
+                  detailed: row.classList.contains('detailed'),
+                  outerDisplay: getComputedStyle(document.querySelector('#sync-dot')).display,
+                  innerDots: document.querySelectorAll('.sync-line-dot').length,
+                  gap: getComputedStyle(document.querySelector('#sync-txt')).gap,
+                  recent: smoothedSubscriberGrowth([[Date.UTC(2025,6,1),10000],[Date.UTC(2026,6,1),22000]],366),
+                  fallback: smoothedSubscriberGrowth([[Date.UTC(2024,0,1),1000],[Date.UTC(2025,7,1),13000],[Date.UTC(2026,6,1),13000]],null),
+                  zeroLabel: fmtSubsMo(0)
+                };
+              }''')
+              browser.close()
+          if errors:
+              raise SystemExit('JavaScript errors: ' + ' | '.join(errors[:10]))
+          assert state['detailed'] is True, state
+          assert state['outerDisplay'] == 'none', state
+          assert state['innerDots'] == 2, state
+          assert state['gap'] == '6px', state
+          assert 980 <= state['recent'] <= 1020, state
+          assert state['fallback'] > 0, state
+          assert state['zeroLabel'] == '—', state
+          print(state)
+          PY
+      - name: Commit production and test changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            refresh_channels_monthly.py \
+            assets/js/dashboard-02-helpers.js \
+            assets/css/dashboard.css \
+            tests/test_refresh_channels_monthly.py
+          git diff --cached --check
+          git commit -m 'Fix YouTube subscriber growth fallbacks and footer status'
+          for attempt in 1 2 3; do
+            git pull --rebase origin agent/fix-youtube-subscriber-growth-ui && \
+              git push origin HEAD:agent/fix-youtube-subscriber-growth-ui && exit 0
+            sleep 5
+          done
+          exit 1
