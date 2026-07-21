@@ -314,6 +314,14 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
         )
         subject.validate_payload(sanitized)
 
+    def test_catalog_fal_resolved_count_is_not_replaced_by_export_size(self):
+        payload = minimal_payload()
+        payload["coverage"]["fal"]["resolved"] = 16_540
+
+        sanitized, _ = subject.sanitize_payload(payload)
+
+        self.assertEqual(sanitized["coverage"]["fal"]["resolved"], 16_540)
+
     def test_validation_rejects_incomplete_opportunity_ids(self):
         payload = minimal_payload()
         payload["opportunities"].append(

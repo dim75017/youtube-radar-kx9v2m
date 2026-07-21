@@ -694,11 +694,17 @@ def _refresh_counts(
             )
         if isinstance(fal_coverage, dict) and "resolved" in fal_coverage:
             fal_schema = _schema(payload, "fal")
-            fal_coverage["resolved"] = sum(
+            resolved_exported = sum(
                 1
                 for row in fal
                 if _nonempty(_row_value(row, fal_schema, "spotify_id"))
                 and _nonempty(_row_value(row, fal_schema, "soundcharts_uuid"))
+            )
+            _update_if_direct_count(
+                fal_coverage,
+                "resolved",
+                before_counts["fal"],
+                resolved_exported,
             )
 
     if isinstance(editorial, dict):
