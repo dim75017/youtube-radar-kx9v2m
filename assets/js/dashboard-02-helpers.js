@@ -331,7 +331,10 @@ let CHAN=null, CHAN_ERR=null, CHAN_T=null;
 
 /* ================= BOOT / SYNC ================= */
 function setSync(state,txt){
-  const d=document.getElementById('sync-dot');d.className='sync-dot '+state;
+  const d=document.getElementById('sync-dot'),row=d&&d.closest('.sync-row');
+  const detailed=typeof txt==='string'&&txt.includes('class="sync-line"');
+  if(row)row.classList.toggle('detailed',detailed);
+  if(d)d.className='sync-dot '+state;
   document.getElementById('sync-txt').innerHTML=(typeof LANG!=='undefined'&&LANG==='fr'&&typeof frz==='function')?frz(txt):txt;
 }
 async function fetchData(){
@@ -501,6 +504,7 @@ function parseChanWb(wb){
     if(x){
       if(x.av)c.av=x.av;
       if(x.s!=null)c.subs=x.s;
+      if(Number.isFinite(Number(x.sm))&&Number(x.sm)!==0)c.subsMo=Math.round(Number(x.sm));
       if(x.v!=null)c.views=x.v;
       if(x.n!=null)c.nvid=x.n;
       if(x.cr)c.created=toMs(x.cr);
@@ -537,12 +541,12 @@ function parseChanWb(wb){
   return {channels:chans,hist:hist};
 }
 function sbmFor(c){
-  if(!window.SBM)return null;
-  if(c.name&&window.SBM[c.name]!=null)return window.SBM[c.name];
-  return null;
+  if(!window.SBM||!c.name||window.SBM[c.name]==null)return null;
+  const value=Number(window.SBM[c.name]);
+  return Number.isFinite(value)&&Math.round(value)!==0?Math.round(value):null;
 }
 function fmtSubsMo(v){
-  if(v==null)return '—';
+  if(v==null||!Number.isFinite(Number(v))||Math.round(Number(v))===0)return '—';
   if(v<0)return '-'+fmtN(-v);
   return '+'+fmtN(v);
 }
@@ -553,19 +557,36 @@ function sbmColor(v){
   if(v<50000)return '#fbbf24';
   return '#34d399';
 }
+function smoothedSubscriberGrowth(points,maxDays){
+  const byMonth=new Map();
+  (points||[]).forEach(point=>{
+    if(!Array.isArray(point)||!Number.isFinite(Number(point[0])))return;
+    const subscribers=Number(point[1]),timestamp=Number(point[0]);
+    if(!Number.isFinite(subscribers)||subscribers<=0)return;
+    const month=new Date(timestamp).toISOString().slice(0,7),previous=byMonth.get(month);
+    if(!previous||timestamp>=previous[0])byMonth.set(month,[timestamp,subscribers]);
+  });
+  const series=[...byMonth.values()].sort((a,b)=>a[0]-b[0]);
+  if(series.length<2)return null;
+  const end=series[series.length-1];
+  const selected=maxDays==null?series:series.filter(point=>end[0]-point[0]<=maxDays*86400000);
+  if(selected.length<2)return null;
+  const first=selected[0],last=selected[selected.length-1],days=(last[0]-first[0])/86400000;
+  if(days<20)return null;
+  const value=Math.round((last[1]-first[1])/(days/30.4375));
+  return value===0?null:value;
+}
 function chanSubsMo(c){
-  if(c.subsMo!=null)return c.subsMo;
-  if(CHAN&&CHAN.hist){
-    const a=CHAN.hist[normUrl(c.url)]||[];
-    const s=a.filter(p=>p[1]!=null);
-    if(s.length>=2){
-      const end=s[s.length-1];
-      const prior=s.slice(0,-1).map(p=>({p,days:(end[0]-p[0])/86400000})).filter(x=>x.days>=6).sort((a,b)=>Math.abs(a.days-30.44)-Math.abs(b.days-30.44))[0];
-      if(prior){const d=(end[1]-prior.p[1])/prior.days*30.44;return d>0?Math.round(d):(d===0?0:null);}
-    }
-  }
-  const sb=sbmFor(c);
-  return sb!=null?sb:null;
+  const direct=Number(c.subsMo);
+  if(Number.isFinite(direct)&&Math.round(direct)!==0)return Math.round(direct);
+  const history=CHAN&&CHAN.hist?(CHAN.hist[normUrl(c.url)]||[]):[];
+  // Preferred method: smooth the most recent 12 months. Rounded subscriber
+  // plateaus fall through to the complete retained curve, then Social Blade.
+  const recent=smoothedSubscriberGrowth(history,366);
+  if(recent!=null)return recent;
+  const allTime=smoothedSubscriberGrowth(history,null);
+  if(allTime!=null)return allTime;
+  return sbmFor(c);
 }
 function normUrl(u){return String(u||'').toLowerCase().replace(/\/+$/,'');}
 async function loadChan(){

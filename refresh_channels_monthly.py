@@ -180,23 +180,100 @@ def enrich_from_api(rows: list[dict], key: str) -> int:
     return matched
 
 
+MONTH_DAYS = 30.4375
+
+
+def _positive_int(value: object) -> int | None:
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        return None
+    return number if number > 0 else None
+
+
 def append_monthly(points: list, timestamp: int, subscribers: int | None, views: int | None) -> list:
     clean = []
     for point in points or []:
         if isinstance(point, list) and len(point) >= 3:
             try:
-                clean.append([int(point[0]), int(point[1]) if point[1] is not None else None, int(point[2]) if point[2] is not None else None])
+                clean.append(
+                    [
+                        int(point[0]),
+                        _positive_int(point[1]),
+                        _positive_int(point[2]),
+                    ]
+                )
             except (TypeError, ValueError):
                 pass
     month = datetime.fromtimestamp(timestamp / 1000, timezone.utc).strftime("%Y-%m")
+    previous_same_month = next(
+        (
+            point
+            for point in reversed(clean)
+            if datetime.fromtimestamp(point[0] / 1000, timezone.utc).strftime("%Y-%m") == month
+        ),
+        None,
+    )
+    # A partial rerun must never replace a valid monthly subscriber/view point
+    # with 0/None.  This is especially important for rounded YouTube counters.
+    incoming_subscribers = _positive_int(subscribers)
+    incoming_views = _positive_int(views)
+    if previous_same_month:
+        incoming_subscribers = incoming_subscribers or previous_same_month[1]
+        incoming_views = incoming_views or previous_same_month[2]
     clean = [
         point
         for point in clean
         if datetime.fromtimestamp(point[0] / 1000, timezone.utc).strftime("%Y-%m") != month
     ]
-    clean.append([timestamp, subscribers, views])
+    clean.append([timestamp, incoming_subscribers, incoming_views])
     clean.sort(key=lambda point: point[0])
     return clean[-36:]
+
+
+def smoothed_monthly_subscriber_growth(points: list, recent_days: float = 366.0) -> int | None:
+    """Return a non-zero monthly subscriber estimate.
+
+    The preferred estimate is the average change across the most recent twelve
+    months.  When rounded public counters make that window look flat, the
+    function expands to the complete retained history.  A genuinely flat or
+    insufficient series is reported as unknown instead of the misleading 0.
+    """
+
+    by_month: dict[str, tuple[int, int]] = {}
+    for point in points or []:
+        if not isinstance(point, list) or len(point) < 2:
+            continue
+        try:
+            timestamp = int(point[0])
+        except (TypeError, ValueError):
+            continue
+        subscribers = _positive_int(point[1])
+        if subscribers is None:
+            continue
+        month = datetime.fromtimestamp(timestamp / 1000, timezone.utc).strftime("%Y-%m")
+        previous = by_month.get(month)
+        if previous is None or timestamp >= previous[0]:
+            by_month[month] = (timestamp, subscribers)
+    series = sorted(by_month.values())
+    if len(series) < 2:
+        return None
+
+    def estimate(window_days: float | None) -> int | None:
+        selected = series
+        if window_days is not None:
+            cutoff = series[-1][0] - int(window_days * 86_400_000)
+            selected = [point for point in series if point[0] >= cutoff]
+        if len(selected) < 2:
+            return None
+        first, last = selected[0], selected[-1]
+        span_days = (last[0] - first[0]) / 86_400_000
+        if span_days < 20:
+            return None
+        value = round((last[1] - first[1]) / (span_days / MONTH_DAYS))
+        return int(value) if value != 0 else None
+
+    return estimate(recent_days) or estimate(None)
 
 
 def main() -> None:
@@ -257,15 +334,21 @@ def main() -> None:
         for alias in aliases:
             existing = dict(data.get(alias) or {})
             existing.update(base)
-            data[alias] = existing
             # Never stamp an old cached total-view count as a fresh monthly
             # observation when the official API secret is unavailable.
-            history[alias] = append_monthly(
+            updated_history = append_monthly(
                 history.get(alias) or [],
                 timestamp,
                 row.get("s"),
                 row.get("v"),
             )
+            history[alias] = updated_history
+            smoothed_growth = smoothed_monthly_subscriber_growth(updated_history)
+            if smoothed_growth is not None:
+                existing["sm"] = smoothed_growth
+            elif existing.get("sm") == 0:
+                existing.pop("sm", None)
+            data[alias] = existing
         if row["name"] == "Lofi Girl":
             snapshot["lg"] = dict(snapshot.get("lg") or {})
             for key in ("s", "v", "n", "lu", "cr"):
@@ -282,6 +365,11 @@ def main() -> None:
         "failed": failed,
         "official_api": bool(api_key),
         "official_api_updated": api_updated,
+        "growth_estimates": sum(
+            1
+            for value in data.values()
+            if isinstance(value, dict) and isinstance(value.get("sm"), int) and value["sm"] != 0
+        ),
     }
     atomic_write(
         SNAPSHOT,
