@@ -122,7 +122,11 @@ jobs:
           git add soundcharts-live-total-count.json
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Record live Soundcharts discography totals"
-          git push origin HEAD:${{ github.head_ref }}
+          for attempt in 1 2 3; do
+            git pull --rebase origin "${{ github.head_ref }}" && git push origin HEAD:"${{ github.head_ref }}" && exit 0
+            sleep 5
+          done
+          exit 1
 
       - name: Publish only validated daily snapshots
         if: steps.plan.outputs.publish == 'true'
