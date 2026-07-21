@@ -64,6 +64,12 @@ PUBLIC_ARTIST_BLACKLIST = frozenset(
         "sarcastic sounds",
         "rxseboy",
         "sody",
+        "dominic fike",
+        "burna boy",
+        "dj snake",
+        "drake",
+        "the weeknd",
+        "ed sheeran",
     }
 )
 
@@ -94,6 +100,10 @@ TARGET_GENRES = frozenset(
         "dnb_instrumental",
     }
 )
+PUBLIC_MIN_CONFIDENCE = 0.5
+PUBLIC_MIN_ARTIST_MONTHLY_LISTENERS = 1_000
+PUBLIC_MAX_ARTIST_MONTHLY_LISTENERS = 5_000_000
+PUBLIC_MAX_TRACK_STREAMS = 250_000_000
 
 
 class SnapshotError(RuntimeError):
@@ -173,6 +183,36 @@ def _number_at_least(value: Any, minimum: float) -> bool:
     return number >= minimum
 
 
+def _finite_number(value: Any) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    if number != number or number in {float("inf"), float("-inf")}:
+        return None
+    return number
+
+
+def _identity_pair_from_row(row: Any, schema: Sequence[str]) -> tuple[str, str]:
+    return (
+        str(_row_value(row, schema, "spotify_id") or "").strip(),
+        str(_row_value(row, schema, "soundcharts_uuid") or "").strip(),
+    )
+
+
+def _identity_pair_from_collaborator(collaborator: Any) -> tuple[str, str]:
+    if not isinstance(collaborator, Mapping):
+        return "", ""
+    return (
+        str(collaborator.get("spotify_id") or "").strip(),
+        str(collaborator.get("soundcharts_uuid") or "").strip(),
+    )
+
+
+def _identity_pair_complete(pair: tuple[str, str]) -> bool:
+    return bool(pair[0] and pair[1])
+
+
 def _identity_from_row(row: Any, schema: Sequence[str]) -> tuple[str, str, str]:
     return (
         _normalise_text(_row_value(row, schema, "name")),
@@ -211,7 +251,7 @@ def _identity_is_banned(
 ) -> bool:
     name, spotify_id, soundcharts_uuid = identity
     return (
-        _mentions_name(name, banned_names)
+        name in banned_names
         or bool(spotify_id and spotify_id in banned_spotify_ids)
         or bool(soundcharts_uuid and soundcharts_uuid in banned_soundcharts_uuids)
     )
@@ -312,11 +352,11 @@ def _row_has_banned_credit_or_collaborator(
     banned_spotify_ids: set[str],
     banned_soundcharts_uuids: set[str],
 ) -> bool:
-    for field in ("artist", "credit_name"):
-        if _mentions_name(_row_value(row, schema, field), banned_names):
-            return True
     collaborators = _row_value(row, schema, "artists")
-    if isinstance(collaborators, list):
+    if isinstance(collaborators, list) and collaborators:
+        # Structured provider identities are authoritative.  The display
+        # credit may contain aliases or a legitimate canonical name such as
+        # "Drake Hughes" and must never override exact provider identity.
         return any(
             _identity_is_banned(
                 _collaborator_identity(collaborator),
@@ -326,6 +366,9 @@ def _row_has_banned_credit_or_collaborator(
             )
             for collaborator in collaborators
         )
+    for field in ("artist", "credit_name"):
+        if _mentions_name(_row_value(row, schema, field), banned_names):
+            return True
     return False
 
 
@@ -350,6 +393,8 @@ def _opportunity_contact_gate_passes(row: Any, schema: Sequence[str]) -> bool:
         and _normalise_text(_row_value(row, schema, "primary_genre"))
         in TARGET_GENRES
         and _number_at_least(_row_value(row, schema, "genre_confidence"), 0.5)
+        and _normalise_text(_row_value(row, schema, "ai_risk"))
+        in ALLOWED_AI_RISKS
         and _normalise_text(_row_value(row, schema, "rights_status"))
         in CONTACTABLE_RIGHTS
         and _structured_collaborators_complete(row, schema)
@@ -417,11 +462,169 @@ def _is_incomplete_composite_identity(row: Any, schema: Sequence[str]) -> bool:
     )
 
 
-def _filter_rows(rows: Any, keep: Any) -> tuple[list[Any], int]:
+def _strict_public_classification_passes(
+    row: Any, schema: Sequence[str]
+) -> bool:
+    return (
+        _normalise_text(_row_value(row, schema, "primary_genre"))
+        in TARGET_GENRES
+        and _number_at_least(
+            _row_value(row, schema, "genre_confidence"),
+            PUBLIC_MIN_CONFIDENCE,
+        )
+        and _normalise_text(_row_value(row, schema, "instrumental_status"))
+        == "instrumental"
+        and _number_at_least(
+            _row_value(row, schema, "instrumental_confidence"),
+            PUBLIC_MIN_CONFIDENCE,
+        )
+        and _normalise_text(_row_value(row, schema, "ai_risk"))
+        in ALLOWED_AI_RISKS
+        and _normalise_text(_row_value(row, schema, "expansion_status"))
+        == "eligible"
+    )
+
+
+def _verified_opportunity_classification_passes(
+    row: Any, schema: Sequence[str]
+) -> bool:
+    return (
+        _normalise_text(_row_value(row, schema, "primary_genre"))
+        in TARGET_GENRES
+        and _number_at_least(
+            _row_value(row, schema, "genre_confidence"),
+            PUBLIC_MIN_CONFIDENCE,
+        )
+        and _normalise_text(_row_value(row, schema, "instrumental_status"))
+        == "instrumental"
+        and _number_at_least(
+            _row_value(row, schema, "instrumental_confidence"),
+            PUBLIC_MIN_CONFIDENCE,
+        )
+        and _normalise_text(_row_value(row, schema, "ai_risk"))
+        in ALLOWED_AI_RISKS
+    )
+
+
+def _public_artist_audience_is_bounded(
+    row: Any, schema: Sequence[str]
+) -> bool:
+    listeners = _finite_number(_row_value(row, schema, "monthly_listeners"))
+    return (
+        listeners is not None
+        and listeners >= PUBLIC_MIN_ARTIST_MONTHLY_LISTENERS
+        and listeners <= PUBLIC_MAX_ARTIST_MONTHLY_LISTENERS
+    )
+
+
+def _public_artist_rows_by_pair(
+    payload: Mapping[str, Any],
+) -> dict[tuple[str, str], Any]:
+    schema = _schema(payload, "artists")
+    rows = payload.get("artists")
     if not isinstance(rows, list):
-        return [], 0
-    retained = [row for row in rows if keep(row)]
-    return retained, len(rows) - len(retained)
+        return {}
+    return {
+        pair: row
+        for row in rows
+        if _identity_pair_complete(pair := _identity_pair_from_row(row, schema))
+    }
+
+
+def _public_track_failure_reason(
+    row: Any,
+    schema: Sequence[str],
+    artist_rows_by_pair: Mapping[tuple[str, str], Any],
+    artist_schema: Sequence[str],
+    banned_names: set[str],
+    banned_spotify_ids: set[str],
+    banned_soundcharts_uuids: set[str],
+) -> str | None:
+    if _row_has_banned_credit_or_collaborator(
+        row,
+        schema,
+        banned_names,
+        banned_spotify_ids,
+        banned_soundcharts_uuids,
+    ):
+        return "blacklisted_identity"
+    if not _nonempty(_row_value(row, schema, "spotify_id")) or not _nonempty(
+        _row_value(row, schema, "soundcharts_uuid")
+    ):
+        return "missing_track_ids"
+    if not _strict_public_classification_passes(row, schema):
+        return "classification_not_strict"
+    if _normalise_text(_row_value(row, schema, "rights_status")) not in (
+        CONTACTABLE_RIGHTS
+    ):
+        return "rights_not_self_or_indie"
+    if not _number_at_least(
+        _row_value(row, schema, "rights_confidence"),
+        PUBLIC_MIN_CONFIDENCE,
+    ):
+        return "rights_confidence_too_low"
+    streams = _finite_number(_row_value(row, schema, "streams"))
+    if streams is None or streams < 0 or streams > PUBLIC_MAX_TRACK_STREAMS:
+        return "track_size_unknown_or_too_large"
+    if not _structured_collaborators_complete(row, schema):
+        if _is_composite_credit(row, schema):
+            return "composite_credit_without_complete_ids"
+        return "incomplete_collaborators"
+    collaborators = _row_value(row, schema, "artists")
+    for collaborator in collaborators:
+        pair = _identity_pair_from_collaborator(collaborator)
+        artist = artist_rows_by_pair.get(pair)
+        if artist is None:
+            return "artist_identity_not_in_public_index"
+        if _row_identity_is_banned(
+            artist,
+            artist_schema,
+            banned_names,
+            banned_spotify_ids,
+            banned_soundcharts_uuids,
+        ):
+            return "blacklisted_identity"
+        if not _public_artist_audience_is_bounded(artist, artist_schema):
+            return "artist_size_unknown_or_too_large"
+    return None
+
+
+def _row_links_to_public_track(
+    row: Any,
+    schema: Sequence[str],
+    public_track_pairs: set[tuple[str, str]],
+) -> bool:
+    pair = _identity_pair_from_row(row, schema)
+    return _identity_pair_complete(pair) and pair in public_track_pairs
+
+
+def _unique_track_pairs_by_soundcharts_uuid(
+    public_track_pairs: Iterable[tuple[str, str]],
+) -> dict[str, tuple[str, str]]:
+    candidates: dict[str, set[str]] = {}
+    for spotify_id, soundcharts_uuid in public_track_pairs:
+        if not spotify_id or not soundcharts_uuid:
+            continue
+        candidates.setdefault(soundcharts_uuid, set()).add(spotify_id)
+    return {
+        soundcharts_uuid: (next(iter(spotify_ids)), soundcharts_uuid)
+        for soundcharts_uuid, spotify_ids in candidates.items()
+        if len(spotify_ids) == 1
+    }
+
+
+def _complete_editorial_track_pair(
+    row: Any,
+    schema: Sequence[str],
+    public_pair_by_soundcharts_uuid: Mapping[str, tuple[str, str]],
+) -> bool:
+    spotify_id, soundcharts_uuid = _identity_pair_from_row(row, schema)
+    canonical = public_pair_by_soundcharts_uuid.get(soundcharts_uuid)
+    if canonical is None or (spotify_id and spotify_id != canonical[0]):
+        return False
+    if not spotify_id:
+        _set_row_value(row, schema, "spotify_id", canonical[0])
+    return _identity_pair_from_row(row, schema) == canonical
 
 
 def _update_if_direct_count(
@@ -538,10 +741,11 @@ def _refresh_counts(
 def sanitize_payload(payload: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     """Return a public-safe copy and a deterministic removal report.
 
-    Simple unresolved track credits remain in ``SC.tracks`` as staging data.
-    A clearly composite unresolved credit is removed because it cannot safely
-    represent several people as one artist.  Every opportunity, however, must
-    have a non-empty structured collaborator list with both provider IDs.
+    General public collections are an allowlist, not a staging mirror.  A
+    public track must carry strict genre/instrumental/AI/rights evidence and
+    every collaborator must resolve by an exact Spotify + Soundcharts pair to
+    a measured, bounded artist.  ``needs_listen`` remains available only in
+    the track-first opportunity collection.
     """
 
     if not isinstance(payload, Mapping):
@@ -574,91 +778,179 @@ def sanitize_payload(payload: Mapping[str, Any]) -> tuple[dict[str, Any], dict[s
         _build_banned_identity_index(sanitized)
     )
     removed: dict[str, int] = {}
-
-    for collection in ("artists", "fal"):
-        schema = _schema(sanitized, collection)
-        retained, removed_count = _filter_rows(
-            sanitized.get(collection),
-            lambda row, schema=schema: (
-                not _row_identity_is_banned(
-                    row,
-                    schema,
-                    banned_names,
-                    banned_spotify_ids,
-                    banned_soundcharts_uuids,
-                )
-                and not _is_incomplete_composite_identity(row, schema)
-            ),
-        )
-        if isinstance(sanitized.get(collection), list):
-            sanitized[collection] = retained
-        removed[collection] = removed_count
-
-    if isinstance(editorial, dict):
-        artist_schema = editorial.get("artist_schema")
-        artist_schema = list(artist_schema) if isinstance(artist_schema, list) else []
-        retained, removed_count = _filter_rows(
-            editorial.get("artists"),
-            lambda row: (
-                not _row_identity_is_banned(
-                    row,
-                    artist_schema,
-                    banned_names,
-                    banned_spotify_ids,
-                    banned_soundcharts_uuids,
-                )
-                and not _is_incomplete_composite_identity(row, artist_schema)
-            ),
-        )
-        if isinstance(editorial.get("artists"), list):
-            editorial["artists"] = retained
-        removed["editorial.artists"] = removed_count
-
-        track_schema = editorial.get("track_schema")
-        track_schema = list(track_schema) if isinstance(track_schema, list) else []
-        retained, removed_count = _filter_rows(
-            editorial.get("tracks"),
-            lambda row: not _row_has_banned_credit_or_collaborator(
-                row,
-                track_schema,
-                banned_names,
-                banned_spotify_ids,
-                banned_soundcharts_uuids,
-            ),
-        )
-        if isinstance(editorial.get("tracks"), list):
-            editorial["tracks"] = retained
-        removed["editorial.tracks"] = removed_count
-
+    artist_schema = _schema(sanitized, "artists")
+    artist_rows_by_pair = _public_artist_rows_by_pair(sanitized)
     track_schema = _schema(sanitized, "tracks")
-    track_blacklist_removed = 0
-    track_composite_unresolved_removed = 0
+    track_reasons = Counter()
     retained_tracks: list[Any] = []
     for row in sanitized.get("tracks", []) if isinstance(sanitized.get("tracks"), list) else []:
-        if _row_has_banned_credit_or_collaborator(
+        failure = _public_track_failure_reason(
             row,
             track_schema,
+            artist_rows_by_pair,
+            artist_schema,
             banned_names,
             banned_spotify_ids,
             banned_soundcharts_uuids,
-        ):
-            track_blacklist_removed += 1
-            continue
-        if _is_composite_credit(row, track_schema) and not _structured_collaborators_complete(
-            row, track_schema
-        ):
-            track_composite_unresolved_removed += 1
+        )
+        if failure:
+            track_reasons[failure] += 1
             continue
         retained_tracks.append(row)
     if isinstance(sanitized.get("tracks"), list):
         sanitized["tracks"] = retained_tracks
-    removed["tracks"] = track_blacklist_removed + track_composite_unresolved_removed
+    removed["tracks"] = sum(track_reasons.values())
+
+    eligible_artist_pairs = {
+        _identity_pair_from_collaborator(collaborator)
+        for row in retained_tracks
+        for collaborator in (_row_value(row, track_schema, "artists") or [])
+    }
+    public_track_pairs = {
+        _identity_pair_from_row(row, track_schema) for row in retained_tracks
+    }
+    public_pair_by_soundcharts_uuid = _unique_track_pairs_by_soundcharts_uuid(
+        public_track_pairs
+    )
+
+    artist_reasons = Counter()
+    retained_artists: list[Any] = []
+    for row in sanitized.get("artists", []) if isinstance(sanitized.get("artists"), list) else []:
+        pair = _identity_pair_from_row(row, artist_schema)
+        if _row_identity_is_banned(
+            row,
+            artist_schema,
+            banned_names,
+            banned_spotify_ids,
+            banned_soundcharts_uuids,
+        ):
+            artist_reasons["blacklisted_identity"] += 1
+        elif _is_incomplete_composite_identity(row, artist_schema):
+            artist_reasons["composite_identity_without_complete_ids"] += 1
+        elif not _identity_pair_complete(pair):
+            artist_reasons["incomplete_identity"] += 1
+        elif pair not in eligible_artist_pairs:
+            artist_reasons["not_referenced_by_strict_track"] += 1
+        elif not _public_artist_audience_is_bounded(row, artist_schema):
+            artist_reasons["size_unknown_or_too_large"] += 1
+        else:
+            retained_artists.append(row)
+    if isinstance(sanitized.get("artists"), list):
+        sanitized["artists"] = retained_artists
+    removed["artists"] = sum(artist_reasons.values())
+
+    fal_schema = _schema(sanitized, "fal")
+    fal_reasons = Counter()
+    retained_fal: list[Any] = []
+    for row in sanitized.get("fal", []) if isinstance(sanitized.get("fal"), list) else []:
+        pair = _identity_pair_from_row(row, fal_schema)
+        if _row_identity_is_banned(
+            row,
+            fal_schema,
+            banned_names,
+            banned_spotify_ids,
+            banned_soundcharts_uuids,
+        ):
+            fal_reasons["blacklisted_identity"] += 1
+        elif _is_incomplete_composite_identity(row, fal_schema):
+            fal_reasons["composite_identity_without_complete_ids"] += 1
+        elif not _identity_pair_complete(pair):
+            fal_reasons["incomplete_identity"] += 1
+        elif pair not in eligible_artist_pairs:
+            fal_reasons["not_referenced_by_strict_track"] += 1
+        elif not _public_artist_audience_is_bounded(row, fal_schema):
+            fal_reasons["size_unknown_or_too_large"] += 1
+        elif not bool(_row_value(row, fal_schema, "qualifies")):
+            fal_reasons["not_qualified"] += 1
+        elif _normalise_text(_row_value(row, fal_schema, "rights_status")) not in CONTACTABLE_RIGHTS:
+            fal_reasons["rights_not_self_or_indie"] += 1
+        else:
+            retained_fal.append(row)
+    if isinstance(sanitized.get("fal"), list):
+        sanitized["fal"] = retained_fal
+    removed["fal"] = sum(fal_reasons.values())
+
+    editorial_artist_reasons = Counter()
+    editorial_track_reasons = Counter()
+    editorial_track_ids_completed = 0
+    if isinstance(editorial, dict):
+        editorial_artist_schema = editorial.get("artist_schema")
+        editorial_artist_schema = (
+            list(editorial_artist_schema)
+            if isinstance(editorial_artist_schema, list)
+            else []
+        )
+        retained_editorial_artists: list[Any] = []
+        for row in editorial.get("artists", []) if isinstance(editorial.get("artists"), list) else []:
+            pair = _identity_pair_from_row(row, editorial_artist_schema)
+            if _row_identity_is_banned(
+                row,
+                editorial_artist_schema,
+                banned_names,
+                banned_spotify_ids,
+                banned_soundcharts_uuids,
+            ):
+                editorial_artist_reasons["blacklisted_identity"] += 1
+            elif _is_incomplete_composite_identity(
+                row, editorial_artist_schema
+            ):
+                editorial_artist_reasons[
+                    "composite_identity_without_complete_ids"
+                ] += 1
+            elif not _identity_pair_complete(pair):
+                editorial_artist_reasons["incomplete_identity"] += 1
+            elif pair not in eligible_artist_pairs:
+                editorial_artist_reasons["not_referenced_by_strict_track"] += 1
+            elif not _strict_public_classification_passes(
+                row, editorial_artist_schema
+            ):
+                editorial_artist_reasons["classification_not_strict"] += 1
+            elif not _public_artist_audience_is_bounded(
+                row, editorial_artist_schema
+            ):
+                editorial_artist_reasons["size_unknown_or_too_large"] += 1
+            else:
+                retained_editorial_artists.append(row)
+        if isinstance(editorial.get("artists"), list):
+            editorial["artists"] = retained_editorial_artists
+        removed["editorial.artists"] = sum(editorial_artist_reasons.values())
+
+        editorial_track_schema = editorial.get("track_schema")
+        editorial_track_schema = (
+            list(editorial_track_schema)
+            if isinstance(editorial_track_schema, list)
+            else []
+        )
+        retained_editorial_tracks: list[Any] = []
+        for row in editorial.get("tracks", []) if isinstance(editorial.get("tracks"), list) else []:
+            spotify_id_before = _identity_pair_from_row(
+                row, editorial_track_schema
+            )[0]
+            if not _strict_public_classification_passes(
+                row, editorial_track_schema
+            ):
+                editorial_track_reasons["classification_not_strict"] += 1
+            elif not _complete_editorial_track_pair(
+                row,
+                editorial_track_schema,
+                public_pair_by_soundcharts_uuid,
+            ) or not _row_links_to_public_track(
+                row, editorial_track_schema, public_track_pairs
+            ):
+                editorial_track_reasons["not_linked_to_strict_track"] += 1
+            else:
+                editorial_track_ids_completed += int(not spotify_id_before)
+                retained_editorial_tracks.append(row)
+        if isinstance(editorial.get("tracks"), list):
+            editorial["tracks"] = retained_editorial_tracks
+        removed["editorial.tracks"] = sum(editorial_track_reasons.values())
 
     opportunity_schema = _schema(sanitized, "opportunities")
     opportunity_reasons = Counter()
     retained_opportunities: list[Any] = []
     seen_opportunity_spotify_ids: set[str] = set()
     contacts_scrubbed = 0
+    opportunities_downgraded = 0
     for row in sanitized["opportunities"]:
         if _row_has_banned_credit_or_collaborator(
             row,
@@ -687,10 +979,17 @@ def sanitize_payload(payload: Mapping[str, Any]) -> tuple[dict[str, Any], dict[s
         if status not in ALLOWED_OPPORTUNITY_STATUSES:
             opportunity_reasons["invalid_status"] += 1
             continue
-        ai_risk = _normalise_text(_row_value(row, opportunity_schema, "ai_risk"))
-        if ai_risk not in ALLOWED_AI_RISKS:
-            opportunity_reasons["ai_risk_not_low"] += 1
-            continue
+        if status == "verified" and not _verified_opportunity_classification_passes(
+            row, opportunity_schema
+        ):
+            _set_row_value(
+                row, opportunity_schema, "opportunity_status", "needs_listen"
+            )
+            _set_row_value(
+                row, opportunity_schema, "classification_status", "needs_listen"
+            )
+            status = "needs_listen"
+            opportunities_downgraded += 1
         rights = _normalise_text(_row_value(row, opportunity_schema, "rights_status"))
         if rights in FORBIDDEN_RIGHTS:
             opportunity_reasons["major_or_mixed"] += 1
@@ -729,12 +1028,15 @@ def sanitize_payload(payload: Mapping[str, Any]) -> tuple[dict[str, Any], dict[s
             else 0,
         },
         "removed": removed,
-        "track_removal_reasons": {
-            "blacklisted_identity": track_blacklist_removed,
-            "composite_credit_without_complete_ids": track_composite_unresolved_removed,
-        },
+        "track_removal_reasons": dict(track_reasons),
+        "artist_removal_reasons": dict(artist_reasons),
+        "fal_removal_reasons": dict(fal_reasons),
+        "editorial_artist_removal_reasons": dict(editorial_artist_reasons),
+        "editorial_track_removal_reasons": dict(editorial_track_reasons),
+        "editorial_track_spotify_ids_completed": editorial_track_ids_completed,
         "opportunity_removal_reasons": dict(opportunity_reasons),
         "opportunity_contacts_scrubbed": contacts_scrubbed,
+        "opportunities_downgraded_to_needs_listen": opportunities_downgraded,
         "blacklisted_spotify_ids": len(banned_spotify_ids),
         "blacklisted_soundcharts_uuids": len(banned_soundcharts_uuids),
     }
@@ -765,96 +1067,163 @@ def validate_payload(payload: Mapping[str, Any]) -> None:
         raise SnapshotValidationError("SC.opportunities must be present and be a list")
     if not opportunities:
         raise SnapshotValidationError("SC.opportunities must not be empty")
+    for collection in ("artists", "tracks"):
+        rows = payload.get(collection)
+        if not isinstance(rows, list) or not rows:
+            raise SnapshotValidationError(
+                f"SC.{collection} must be present and non-empty"
+            )
+    editorial = payload.get("editorial")
+    if not isinstance(editorial, Mapping):
+        raise SnapshotValidationError("SC.editorial must be present")
+    for collection in ("artists", "tracks"):
+        rows = editorial.get(collection)
+        if not isinstance(rows, list) or not rows:
+            raise SnapshotValidationError(
+                f"SC.editorial.{collection} must be present and non-empty"
+            )
     if _contains_gates(payload):
         raise SnapshotValidationError("forbidden Gates category/text remains")
 
     banned_names, banned_spotify_ids, banned_soundcharts_uuids = (
         _build_banned_identity_index(payload)
     )
-    # A blacklisted identity is allowed in the index only as one of the
-    # configured seed strings, never in an exported entity.
-    for collection in ("artists", "fal"):
-        schema = _schema(payload, collection)
-        rows = payload.get(collection)
-        if isinstance(rows, list) and any(
-            _row_identity_is_banned(
-                row,
-                schema,
-                set(NORMALISED_PUBLIC_ARTIST_BLACKLIST),
-                banned_spotify_ids,
-                banned_soundcharts_uuids,
-            )
-            for row in rows
-        ):
-            raise SnapshotValidationError(
-                f"blacklisted identity remains in SC.{collection}"
-            )
-        if isinstance(rows, list) and any(
-            _is_incomplete_composite_identity(row, schema) for row in rows
-        ):
-            raise SnapshotValidationError(
-                f"composite identity without both provider IDs remains in SC.{collection}"
-            )
-
-    editorial = payload.get("editorial")
-    if isinstance(editorial, Mapping):
-        artist_schema = editorial.get("artist_schema")
-        artist_schema = list(artist_schema) if isinstance(artist_schema, list) else []
-        if any(
-            _row_identity_is_banned(
-                row,
-                artist_schema,
-                set(NORMALISED_PUBLIC_ARTIST_BLACKLIST),
-                banned_spotify_ids,
-                banned_soundcharts_uuids,
-            )
-            for row in editorial.get("artists", [])
-            if isinstance(editorial.get("artists"), list)
-        ):
-            raise SnapshotValidationError(
-                "blacklisted identity remains in SC.editorial.artists"
-            )
-        if any(
-            _is_incomplete_composite_identity(row, artist_schema)
-            for row in editorial.get("artists", [])
-            if isinstance(editorial.get("artists"), list)
-        ):
-            raise SnapshotValidationError(
-                "composite identity without both provider IDs remains in SC.editorial.artists"
-            )
-        track_schema = editorial.get("track_schema")
-        track_schema = list(track_schema) if isinstance(track_schema, list) else []
-        if any(
-            _row_has_banned_credit_or_collaborator(
-                row,
-                track_schema,
-                set(NORMALISED_PUBLIC_ARTIST_BLACKLIST),
-                banned_spotify_ids,
-                banned_soundcharts_uuids,
-            )
-            for row in editorial.get("tracks", [])
-            if isinstance(editorial.get("tracks"), list)
-        ):
-            raise SnapshotValidationError(
-                "blacklisted identity remains in SC.editorial.tracks"
-            )
-
+    configured_banned_names = set(NORMALISED_PUBLIC_ARTIST_BLACKLIST)
+    artist_schema = _schema(payload, "artists")
+    artist_rows_by_pair = _public_artist_rows_by_pair(payload)
     track_schema = _schema(payload, "tracks")
+    eligible_artist_pairs: set[tuple[str, str]] = set()
+    public_track_pairs: set[tuple[str, str]] = set()
     for row in payload.get("tracks", []) if isinstance(payload.get("tracks"), list) else []:
-        if _row_has_banned_credit_or_collaborator(
+        failure = _public_track_failure_reason(
             row,
             track_schema,
-            set(NORMALISED_PUBLIC_ARTIST_BLACKLIST),
+            artist_rows_by_pair,
+            artist_schema,
+            configured_banned_names,
+            banned_spotify_ids,
+            banned_soundcharts_uuids,
+        )
+        if failure:
+            raise SnapshotValidationError(
+                f"SC.tracks contains non-public row: {failure}"
+            )
+        public_track_pairs.add(_identity_pair_from_row(row, track_schema))
+        eligible_artist_pairs.update(
+            _identity_pair_from_collaborator(collaborator)
+            for collaborator in (_row_value(row, track_schema, "artists") or [])
+        )
+
+    for row in payload.get("artists", []) if isinstance(payload.get("artists"), list) else []:
+        pair = _identity_pair_from_row(row, artist_schema)
+        if _row_identity_is_banned(
+            row,
+            artist_schema,
+            configured_banned_names,
             banned_spotify_ids,
             banned_soundcharts_uuids,
         ):
-            raise SnapshotValidationError("blacklisted identity remains in SC.tracks")
-        if _is_composite_credit(row, track_schema) and not _structured_collaborators_complete(
-            row, track_schema
+            raise SnapshotValidationError("blacklisted identity remains in SC.artists")
+        if not _identity_pair_complete(pair) or _is_incomplete_composite_identity(
+            row, artist_schema
         ):
             raise SnapshotValidationError(
-                "composite SC.tracks credit lacks complete structured collaborators"
+                "SC.artists contains incomplete/composite identity"
             )
+        if pair not in eligible_artist_pairs:
+            raise SnapshotValidationError(
+                "SC.artists identity is not referenced by a strict public track"
+            )
+        if not _public_artist_audience_is_bounded(row, artist_schema):
+            raise SnapshotValidationError(
+                "SC.artists contains unknown/too-large audience"
+            )
+
+    fal_schema = _schema(payload, "fal")
+    for row in payload.get("fal", []) if isinstance(payload.get("fal"), list) else []:
+        pair = _identity_pair_from_row(row, fal_schema)
+        if _row_identity_is_banned(
+            row,
+            fal_schema,
+            configured_banned_names,
+            banned_spotify_ids,
+            banned_soundcharts_uuids,
+        ):
+            raise SnapshotValidationError("blacklisted identity remains in SC.fal")
+        if not _identity_pair_complete(pair) or _is_incomplete_composite_identity(
+            row, fal_schema
+        ):
+            raise SnapshotValidationError("SC.fal contains incomplete/composite identity")
+        if pair not in eligible_artist_pairs:
+            raise SnapshotValidationError(
+                "SC.fal identity is not referenced by a strict public track"
+            )
+        if not _public_artist_audience_is_bounded(row, fal_schema):
+            raise SnapshotValidationError("SC.fal contains unknown/too-large audience")
+        if not bool(_row_value(row, fal_schema, "qualifies")):
+            raise SnapshotValidationError("SC.fal contains an unqualified candidate")
+        if _normalise_text(
+            _row_value(row, fal_schema, "rights_status")
+        ) not in CONTACTABLE_RIGHTS:
+            raise SnapshotValidationError("SC.fal lacks self-release/indie rights")
+
+    if isinstance(editorial, Mapping):
+        editorial_artist_schema = editorial.get("artist_schema")
+        editorial_artist_schema = (
+            list(editorial_artist_schema)
+            if isinstance(editorial_artist_schema, list)
+            else []
+        )
+        for row in editorial.get("artists", []) if isinstance(editorial.get("artists"), list) else []:
+            pair = _identity_pair_from_row(row, editorial_artist_schema)
+            if _row_identity_is_banned(
+                row,
+                editorial_artist_schema,
+                configured_banned_names,
+                banned_spotify_ids,
+                banned_soundcharts_uuids,
+            ):
+                raise SnapshotValidationError(
+                    "blacklisted identity remains in SC.editorial.artists"
+                )
+            if not _identity_pair_complete(
+                pair
+            ) or _is_incomplete_composite_identity(
+                row, editorial_artist_schema
+            ):
+                raise SnapshotValidationError(
+                    "SC.editorial.artists contains incomplete/composite identity"
+                )
+            if pair not in eligible_artist_pairs:
+                raise SnapshotValidationError(
+                    "SC.editorial.artists is not referenced by a strict public track"
+                )
+            if not _strict_public_classification_passes(
+                row, editorial_artist_schema
+            ) or not _public_artist_audience_is_bounded(
+                row, editorial_artist_schema
+            ):
+                raise SnapshotValidationError(
+                    "SC.editorial.artists fails strict public classification/size"
+                )
+
+        editorial_track_schema = editorial.get("track_schema")
+        editorial_track_schema = (
+            list(editorial_track_schema)
+            if isinstance(editorial_track_schema, list)
+            else []
+        )
+        for row in editorial.get("tracks", []) if isinstance(editorial.get("tracks"), list) else []:
+            if not _strict_public_classification_passes(
+                row, editorial_track_schema
+            ) or not _row_links_to_public_track(
+                row,
+                editorial_track_schema,
+                public_track_pairs,
+            ):
+                raise SnapshotValidationError(
+                    "SC.editorial.tracks is not a strict linked public track"
+                )
 
     opportunity_schema = _schema(payload, "opportunities")
     seen_spotify_track_ids: set[str] = set()
@@ -892,10 +1261,11 @@ def validate_payload(payload: Mapping[str, Any]) -> None:
             raise SnapshotValidationError(
                 "SC.opportunities status must be verified or needs_listen"
             )
-        ai_risk = _normalise_text(_row_value(row, opportunity_schema, "ai_risk"))
-        if ai_risk not in ALLOWED_AI_RISKS:
+        if status == "verified" and not _verified_opportunity_classification_passes(
+            row, opportunity_schema
+        ):
             raise SnapshotValidationError(
-                "SC.opportunities ai_risk must be low/faible"
+                "verified SC.opportunities must pass genre/instrumental/AI classification"
             )
         rights = _normalise_text(_row_value(row, opportunity_schema, "rights_status"))
         if rights in FORBIDDEN_RIGHTS:

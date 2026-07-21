@@ -13,6 +13,7 @@ on:
       - 'tests/test_sync_soundcharts_opportunities.py'
       - 'tests/test_prepare_soundcharts_snapshot.py'
       - 'tests/test_dashboard_opportunity_guardrails.js'
+      - 'tests/test_dashboard_general_view_guardrails.js'
       - '.github/workflows/refresh-soundcharts.yml'
       - 'spotify/index.html'
       - 'spotify/dashboard.js'
@@ -28,6 +29,7 @@ on:
       - 'tests/test_sync_soundcharts_opportunities.py'
       - 'tests/test_prepare_soundcharts_snapshot.py'
       - 'tests/test_dashboard_opportunity_guardrails.js'
+      - 'tests/test_dashboard_general_view_guardrails.js'
       - '.github/workflows/refresh-soundcharts.yml'
       - 'spotify/index.html'
       - 'spotify/dashboard.js'
@@ -49,7 +51,10 @@ on:
         type: string
 
 permissions:
+  actions: read
   contents: write
+  deployments: read
+  pages: read
 
 concurrency:
   group: refresh-soundcharts-ar-${{ (github.event_name == 'push' || github.event_name == 'pull_request') && 'ci' || 'collection' }}-${{ github.ref }}
@@ -87,6 +92,7 @@ jobs:
           python -m py_compile refresh_soundcharts_daily.py expand_soundcharts_instrumental_pool.py sync_soundcharts_opportunities.py prepare_soundcharts_snapshot.py
           node --check spotify/dashboard.js
           node tests/test_dashboard_opportunity_guardrails.js
+          node tests/test_dashboard_general_view_guardrails.js
           git diff --check
 
       - name: Select safe execution plan
@@ -272,6 +278,7 @@ jobs:
           PY
 
       - name: Publish validated dated snapshot first
+        id: publish_snapshot
         if: steps.plan.outputs.publish == 'true'
         env:
           SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
@@ -281,32 +288,117 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -- "$SNAPSHOT_NAME"
           git commit -m "data: stage validated Soundcharts snapshot"
+          published="false"
           for attempt in 1 2 3; do
-            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+            if git pull --rebase --autostash origin main && git push origin HEAD:main; then
+              published="true"
+              break
+            fi
             sleep 5
           done
-          exit 1
+          test "$published" = "true"
+          staged_sha="$(git rev-parse HEAD)"
+          echo "sha=$staged_sha" >> "$GITHUB_OUTPUT"
+          echo "Staged unreferenced snapshot at $staged_sha"
 
       - name: Verify dated snapshot exists on main
         if: steps.plan.outputs.publish == 'true'
         env:
           SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
+          STAGED_SHA: ${{ steps.publish_snapshot.outputs.sha }}
         shell: bash
         run: |
           git fetch origin main
+          test "$(git rev-parse origin/main)" = "$STAGED_SHA"
           local_blob="$(git hash-object "$SNAPSHOT_NAME")"
-          remote_blob="$(git rev-parse "origin/main:$SNAPSHOT_NAME")"
+          remote_blob="$(git rev-parse "$STAGED_SHA:$SNAPSHOT_NAME")"
           test "$local_blob" = "$remote_blob"
           echo "Validated remote blob $remote_blob for $SNAPSHOT_NAME"
+
+      - name: Wait for staged snapshot to be live and green
+        if: steps.plan.outputs.publish == 'true'
+        timeout-minutes: 12
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
+          STAGED_SHA: ${{ steps.publish_snapshot.outputs.sha }}
+          PUBLIC_BASE_URL: https://dim75017.github.io/youtube-radar-kx9v2m
+        shell: bash
+        run: |
+          set -euo pipefail
+          deployments_json="$RUNNER_TEMP/soundcharts-pages-deployments.json"
+          statuses_json="$RUNNER_TEMP/soundcharts-pages-statuses.json"
+          runs_json="$RUNNER_TEMP/soundcharts-pages-runs.json"
+          deployment_state="pending"
+          actions_state="pending"
+
+          # Status polling is bounded and read-only. It never retries a
+          # Soundcharts request or any collection/purchase operation.
+          for poll in $(seq 1 36); do
+            gh api -X GET "repos/$GITHUB_REPOSITORY/deployments" \
+              -f sha="$STAGED_SHA" \
+              -f environment="github-pages" \
+              -f per_page=20 > "$deployments_json"
+            deployment_id="$(python -c 'import json,sys; rows=json.load(open(sys.argv[1], encoding="utf-8")); sha=sys.argv[2]; print(next((row["id"] for row in rows if row.get("sha")==sha), ""))' "$deployments_json" "$STAGED_SHA")"
+            deployment_state="pending"
+            if [[ -n "$deployment_id" ]]; then
+              gh api -X GET "repos/$GITHUB_REPOSITORY/deployments/$deployment_id/statuses" \
+                -f per_page=20 > "$statuses_json"
+              deployment_state="$(python -c 'import json,sys; rows=json.load(open(sys.argv[1], encoding="utf-8")); print(rows[0].get("state", "pending") if rows else "pending")' "$statuses_json")"
+            fi
+
+            gh api -X GET "repos/$GITHUB_REPOSITORY/actions/runs" \
+              -f head_sha="$STAGED_SHA" \
+              -f per_page=100 > "$runs_json"
+            actions_state="$(python -c 'import json,sys; rows=json.load(open(sys.argv[1], encoding="utf-8")).get("workflow_runs", []); bad={"failure","cancelled","timed_out","action_required","startup_failure","stale"}; conclusions={str(row.get("conclusion") or "") for row in rows}; print("failure" if conclusions & bad else "success" if rows and all(row.get("status")=="completed" for row in rows) and any(row.get("conclusion")=="success" for row in rows) else "pending")' "$runs_json")"
+
+            if [[ "$deployment_state" == "failure" || "$deployment_state" == "error" || "$deployment_state" == "inactive" || "$actions_state" == "failure" ]]; then
+              echo "Pages/Actions failed for staged SHA $STAGED_SHA (deployment=$deployment_state, actions=$actions_state)" >&2
+              exit 1
+            fi
+            if [[ "$deployment_state" == "success" && "$actions_state" == "success" ]]; then
+              break
+            fi
+            if [[ "$poll" == "36" ]]; then
+              echo "Timed out waiting for Pages/Actions on staged SHA $STAGED_SHA (deployment=$deployment_state, actions=$actions_state)" >&2
+              exit 1
+            fi
+            sleep 10
+          done
+
+          local_sha256="$(sha256sum "$SNAPSHOT_NAME" | cut -d' ' -f1)"
+          public_copy="$RUNNER_TEMP/$SNAPSHOT_NAME.public"
+          public_verified="false"
+          for poll in $(seq 1 6); do
+            if curl --fail --silent --show-error --location --retry 0 --max-time 30 \
+              --header 'Cache-Control: no-cache' \
+              "$PUBLIC_BASE_URL/$SNAPSHOT_NAME?commit=$STAGED_SHA" \
+              --output "$public_copy"; then
+              public_sha256="$(sha256sum "$public_copy" | cut -d' ' -f1)"
+              if [[ "$public_sha256" == "$local_sha256" ]]; then
+                public_verified="true"
+                break
+              fi
+            fi
+            if [[ "$poll" != "6" ]]; then sleep 10; fi
+          done
+          if [[ "$public_verified" != "true" ]]; then
+            echo "Public staged snapshot is missing or differs from the validated blob; index remains unchanged" >&2
+            exit 1
+          fi
+          echo "Pages deployment, Actions and public snapshot bytes verified for $STAGED_SHA"
 
       - name: Activate snapshot only after remote validation
         if: steps.plan.outputs.publish == 'true'
         env:
           SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
           OLD_SNAPSHOT: ${{ steps.snapshot.outputs.old }}
+          STAGED_SHA: ${{ steps.publish_snapshot.outputs.sha }}
         shell: bash
         run: |
-          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$STAGED_SHA"
+          test "$(git rev-parse origin/main)" = "$STAGED_SHA"
           python prepare_soundcharts_snapshot.py activate \
             --index spotify/index.html \
             --expected-old "$OLD_SNAPSHOT" \

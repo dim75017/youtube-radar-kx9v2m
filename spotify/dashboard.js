@@ -196,6 +196,19 @@ const GENERAL_VIEW_QUARANTINED_ARTISTS = new Set([
   'sarcastic sounds','rxseboy','sody'
 ]);
 function generalArtistKey(value){ return String(value||'').trim().toLowerCase(); }
+/* A display credit is not an artist identity. Separators used by providers for
+   collaborations must be resolved through the structured artist array first. */
+function isCompositeArtistCredit(value){
+  const name=String(value||'').trim();
+  return /[&,]/.test(name)
+    || /(?:^|\s)(?:feat(?:uring)?|ft|x|×)\.?(?:\s|$)/i.test(name);
+}
+function isGeneralArtistQuarantined(value,structuredComplete=false){
+  const key=generalArtistKey(value);
+  return !key
+    || GENERAL_VIEW_QUARANTINED_ARTISTS.has(key)
+    || (isCompositeArtistCredit(value)&&!structuredComplete);
+}
 /* Preserve the historical catalogue. If its existing discriminator explicitly
    marks a retired discovery row, or the artist is in the reviewed vocal/
    mainstream quarantine above, keep the source data but hide it from the
@@ -203,7 +216,7 @@ function generalArtistKey(value){ return String(value||'').trim().toLowerCase();
 const LEGACY_R = (D.rows || []).filter(row=>{
   const artist=A[Number(row&&row[0])];
   return artist && Number(artist[4]||0)!==1
-    && !GENERAL_VIEW_QUARANTINED_ARTISTS.has(generalArtistKey(artist[0]));
+    && !isGeneralArtistQuarantined(artist[0]);
 });
 /* Keep the reviewed historical catalogue in the general views, then merge only
    the strict Soundcharts additions below. A&R and FAL expansion still use the
@@ -234,11 +247,13 @@ const SC_STAGING = {artists:0, tracks:0};
 function scField(row,schema,name){ const i=(schema||[]).indexOf(name); return i<0?null:row[i]; }
 function scKey(v){ return String(v||'').trim().toLowerCase(); }
 const SC_ALLOWED_GENRES = new Set([
-  'lofi_hip_hop','guitar','nature','jazz_jazzhop','classical','ambient','piano',
+  'lofi_hip_hop','guitar','acoustic','fingerstyle','nature','soundscape',
+  'jazz_jazzhop','classical','ambient','piano',
   'halloween_lofi','christmas_lofi','dark_ambient','phonk_instrumental','dnb_instrumental'
 ]);
-const SC_MIN_LISTENERS = 10000;
-const SC_MAX_LISTENERS = 750000;
+const SC_MIN_LISTENERS = 1000;
+const SC_MAX_LISTENERS = 5000000;
+const SC_MAX_TRACK_STREAMS = 250000000;
 function scVerifiedOpportunityIndex(){
   const out=new Map();
   if(!SC||!Array.isArray(SC.opportunities)) return out;
@@ -266,6 +281,75 @@ function scVerifiedOpportunityIndex(){
   return out;
 }
 const SC_VERIFIED_OPPORTUNITIES=scVerifiedOpportunityIndex();
+function scHasCompleteStructuredArtists(artists){
+  return Array.isArray(artists)&&artists.length>0&&artists.every(artist=>
+    String(artist&&artist.spotify_id||'').trim()
+      &&String(artist&&artist.soundcharts_uuid||'').trim());
+}
+function scArtistPairKey(spotifyId,soundchartsUuid){
+  const spotify=String(spotifyId||'').trim();
+  const soundcharts=String(soundchartsUuid||'').trim();
+  return spotify&&soundcharts?`${spotify}\u0000${soundcharts}`:'';
+}
+function scSanitizedArtistPairIndex(){
+  const out=new Map();
+  if(!SC||!Array.isArray(SC.artists)) return out;
+  const schema=(SC.schemas&&SC.schemas.artists)||[];
+  for(const row of SC.artists){
+    const key=scArtistPairKey(
+      scField(row,schema,'spotify_id'),
+      scField(row,schema,'soundcharts_uuid')
+    );
+    const rawListeners=scField(row,schema,'monthly_listeners');
+    const listeners=Number(rawListeners);
+    if(!key||rawListeners===null||rawListeners===''||!Number.isFinite(listeners)
+      ||listeners<SC_MIN_LISTENERS||listeners>SC_MAX_LISTENERS) continue;
+    out.set(key,{row,listeners});
+  }
+  return out;
+}
+const SC_SANITIZED_ARTISTS_BY_PAIR=scSanitizedArtistPairIndex();
+function scSanitizedArtistPair(artist){
+  const key=scArtistPairKey(
+    artist&&artist.spotify_id,
+    artist&&artist.soundcharts_uuid
+  );
+  return key?SC_SANITIZED_ARTISTS_BY_PAIR.get(key)||null:null;
+}
+function scHasEligibleSanitizedArtists(artists){
+  return scHasCompleteStructuredArtists(artists)
+    &&artists.every(artist=>Boolean(scSanitizedArtistPair(artist)));
+}
+/* General catalogue views only promote explicitly eligible instrumental
+   tracks. Unknown/needs-listen material remains available to the track-first
+   A&R radar through SC.opportunities, but never becomes a general-view source. */
+function scGeneralTrackEligible(row,schema){
+  const spotifyId=String(scField(row,schema,'spotify_id')||'').trim();
+  const soundchartsUuid=String(scField(row,schema,'soundcharts_uuid')||'').trim();
+  const genre=String(scField(row,schema,'primary_genre')||'');
+  const genreConfidence=Number(scField(row,schema,'genre_confidence'));
+  const instrumental=String(scField(row,schema,'instrumental_status')||'').toLowerCase();
+  const instrumentalConfidence=Number(scField(row,schema,'instrumental_confidence'));
+  const ai=String(scField(row,schema,'ai_risk')||'').toLowerCase();
+  const rights=String(scField(row,schema,'rights_status')||'').toLowerCase();
+  const rightsConfidence=Number(scField(row,schema,'rights_confidence'));
+  const expansion=String(scField(row,schema,'expansion_status')||'').toLowerCase();
+  const rawStreams=scField(row,schema,'streams');
+  const streams=Number(rawStreams);
+  const artists=scField(row,schema,'artists');
+  return Boolean(spotifyId&&soundchartsUuid)
+    &&SC_ALLOWED_GENRES.has(genre)
+    &&Number.isFinite(genreConfidence)&&genreConfidence>=0.5
+    &&instrumental==='instrumental'
+    &&Number.isFinite(instrumentalConfidence)&&instrumentalConfidence>=0.5
+    &&['low','faible'].includes(ai)
+    &&['self_released','independent_label','indie'].includes(rights)
+    &&Number.isFinite(rightsConfidence)&&rightsConfidence>=0.5
+    &&expansion==='eligible'
+    &&rawStreams!==null&&rawStreams!==''
+    &&Number.isFinite(streams)&&streams>=0&&streams<=SC_MAX_TRACK_STREAMS
+    &&scHasEligibleSanitizedArtists(artists);
+}
 function scEditorialIndex(){
   const out=new Map();
   if(!SC||!SC.editorial||!Array.isArray(SC.editorial.artists)) return out;
@@ -305,9 +389,14 @@ function scScopeEligible(uuid,listeners,rights='unknown'){
 function mergeSoundchartsStaging(){
   if(!SC) return;
   const artistById=new Map(), artistByUuid=new Map();
-  A.forEach((a,i)=>{ if(a[7]) artistById.set(a[7],i); });
+  /* A structured ID may exist on an old malformed display-credit row. Do not
+     let that row become visible again through an otherwise safe SC merge. */
+  A.forEach((a,i)=>{
+    if(a[7]&&!isGeneralArtistQuarantined(a[0])) artistById.set(a[7],i);
+  });
   const addArtist=(name,id,meta={},allowNew=false)=>{
-    if(GENERAL_VIEW_QUARANTINED_ARTISTS.has(generalArtistKey(name))) return -1;
+    const structuredComplete=Boolean(String(id||'').trim()&&String(meta.uuid||'').trim());
+    if(isGeneralArtistQuarantined(name,structuredComplete)) return -1;
     const mergeArtist=(i)=>{
       const artist=A[i];
       if(id&&!artist[7]) artist[7]=id;
@@ -377,6 +466,8 @@ function mergeSoundchartsStaging(){
   for(const row of (SC.tracks||[])){
     const id=scField(row,trackSchema,'spotify_id')||('soundcharts:'+String(scField(row,trackSchema,'soundcharts_uuid')||''));
     if(id==='soundcharts:') continue;
+    if(!scGeneralTrackEligible(row,trackSchema)) continue;
+    const existingTrack=trackById.has(id);
     const opportunity=SC_VERIFIED_OPPORTUNITIES.get(String(id))||null;
     const directGenre=String(scField(row,trackSchema,'primary_genre')||'');
     const directClassification=directGenre?{
@@ -387,7 +478,7 @@ function mergeSoundchartsStaging(){
       ai:String(scField(row,trackSchema,'ai_risk')||'unknown').toLowerCase(),
       source:String(scField(row,trackSchema,'classification_source')||'soundcharts_instrumental_pool')
     }:null;
-    if(trackById.has(id)){
+    if(existingTrack){
       const existing=trackById.get(id); if(!existing.sc){existing.sc=true; SC_STAGING.tracks++;}
       if(directClassification) existing.scClassification={
         genre:directClassification.genre,genre_confidence:directClassification.genreConfidence,genre_source:directClassification.source,
@@ -416,16 +507,16 @@ function mergeSoundchartsStaging(){
       const id=String(person&&person.spotify_id||'');
       const name=String(person&&person.name||'').trim();
       if(!id||!uuid) continue;
+      const sanitizedArtist=scSanitizedArtistPair(person);
+      if(!sanitizedArtist) continue;
       const meta=SC_EDITORIAL_BY_UUID.get(uuid);
-      /* SC.tracks is already the exporter's strict track allowlist. If an
-         editorial profile exists it must still pass the artist gate; otherwise
-         the structured export membership is the evidence. Major/mixed never pass. */
-      const eligible=!['major','major_label','mixed'].includes(rights)
-        && (!meta||scScopeEligible(uuid,meta.listeners,rights));
-      if(!eligible) continue;
+      /* The exact Spotify + Soundcharts pair must exist in the sanitized public
+         artist projection. A complete pair from the track alone is not proof. */
+      if(['major','major_label','mixed'].includes(rights)) continue;
+      if(meta&&!scScopeEligible(uuid,sanitizedArtist.listeners,rights)) continue;
       if(!trackClassificationMeta&&meta) trackClassificationMeta={genre:meta.genre,genreConfidence:meta.genreConfidence,instrumental:meta.instrumental,instrumentalConfidence:meta.instrumentalConfidence,ai:meta.ai,source:'soundcharts_strict'};
       const artistMeta={
-        listeners:Number(meta&&meta.listeners)||0,
+        listeners:sanitizedArtist.listeners,
         uuid,
         role:String(person&&person.role||'unknown'),
         scopeEligible:true

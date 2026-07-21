@@ -1,3 +1,4 @@
+import copy
 import datetime as dt
 import json
 import tempfile
@@ -7,8 +8,15 @@ from pathlib import Path
 import prepare_soundcharts_snapshot as subject
 
 
-ARTIST_SCHEMA = ["spotify_id", "name", "soundcharts_uuid"]
-FAL_SCHEMA = ["soundcharts_uuid", "spotify_id", "name"]
+ARTIST_SCHEMA = ["spotify_id", "name", "soundcharts_uuid", "monthly_listeners"]
+FAL_SCHEMA = [
+    "soundcharts_uuid",
+    "spotify_id",
+    "name",
+    "monthly_listeners",
+    "qualifies",
+    "rights_status",
+]
 TRACK_SCHEMA = [
     "spotify_id",
     "artist",
@@ -17,6 +25,13 @@ TRACK_SCHEMA = [
     "artists",
     "rights_status",
     "instrumental_status",
+    "streams",
+    "primary_genre",
+    "genre_confidence",
+    "instrumental_confidence",
+    "ai_risk",
+    "expansion_status",
+    "rights_confidence",
 ]
 OPPORTUNITY_SCHEMA = [
     "opportunity_status",
@@ -36,8 +51,30 @@ OPPORTUNITY_SCHEMA = [
     "contact_email",
     "contact_url",
 ]
-EDITORIAL_ARTIST_SCHEMA = ["soundcharts_uuid", "spotify_id", "name"]
-EDITORIAL_TRACK_SCHEMA = ["soundcharts_uuid", "spotify_id", "name", "artist"]
+EDITORIAL_ARTIST_SCHEMA = [
+    "soundcharts_uuid",
+    "spotify_id",
+    "name",
+    "monthly_listeners",
+    "primary_genre",
+    "genre_confidence",
+    "instrumental_status",
+    "instrumental_confidence",
+    "ai_risk",
+    "expansion_status",
+]
+EDITORIAL_TRACK_SCHEMA = [
+    "soundcharts_uuid",
+    "spotify_id",
+    "name",
+    "artist",
+    "primary_genre",
+    "genre_confidence",
+    "instrumental_status",
+    "instrumental_confidence",
+    "ai_risk",
+    "expansion_status",
+]
 
 
 def collaborator(name, spotify_id, soundcharts_uuid):
@@ -58,6 +95,13 @@ def track(spotify_id, credit, artists, soundcharts_uuid=None):
         artists,
         "self_released",
         "instrumental",
+        100_000,
+        "ambient",
+        0.9,
+        0.9,
+        "low",
+        "eligible",
+        0.9,
     ]
 
 
@@ -106,13 +150,35 @@ def minimal_payload():
             "fal": {"candidates": 1, "resolved": 1, "exported": 1},
             "tracks": {"exported": 1},
         },
-        "artists": [["artist-valid", "Quiet Keys", "uuid-valid"]],
-        "fal": [["uuid-valid", "artist-valid", "Quiet Keys"]],
+        "artists": [["artist-valid", "Quiet Keys", "uuid-valid", 50_000]],
+        "fal": [["uuid-valid", "artist-valid", "Quiet Keys", 50_000, 1, "self_released"]],
         "editorial": {
             "artist_schema": EDITORIAL_ARTIST_SCHEMA,
             "track_schema": EDITORIAL_TRACK_SCHEMA,
-            "artists": [["uuid-valid", "artist-valid", "Quiet Keys"]],
-            "tracks": [["song-valid", "track-valid", "Quiet Track", "Quiet Keys"]],
+            "artists": [[
+                "uuid-valid",
+                "artist-valid",
+                "Quiet Keys",
+                50_000,
+                "ambient",
+                0.9,
+                "instrumental",
+                0.9,
+                "low",
+                "eligible",
+            ]],
+            "tracks": [[
+                "song-track-valid",
+                "track-valid",
+                "Quiet Track",
+                "Quiet Keys",
+                "ambient",
+                0.9,
+                "instrumental",
+                0.9,
+                "low",
+                "eligible",
+            ]],
         },
         "tracks": [track("track-valid", "Quiet Keys", [valid_artist])],
         "opportunities": [
@@ -195,7 +261,7 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
         payload["tracks"] += [
             track("track-banned", "J. B. Alias", [alias]),
             track("track-composite", "Quiet Keys & Guest", [valid, incomplete_guest]),
-            # Simple unresolved rows remain visible only as staging data.
+            # Even a simple unresolved row is quarantine-only in a public snapshot.
             track("track-simple-unresolved", "Solo Unknown", None),
         ]
         payload["opportunities"] += [
@@ -224,7 +290,7 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
         )
         self.assertEqual(
             [row[0] for row in sanitized["tracks"]],
-            ["track-valid", "track-simple-unresolved"],
+            ["track-valid"],
         )
         self.assertEqual(
             [row[1] for row in sanitized["opportunities"]],
@@ -234,7 +300,7 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
             sanitized["coverage"]["artists"]["exported"], 1
         )
         self.assertEqual(sanitized["coverage"]["fal"]["exported"], 1)
-        self.assertEqual(sanitized["coverage"]["tracks"]["exported"], 2)
+        self.assertEqual(sanitized["coverage"]["tracks"]["exported"], 1)
         self.assertEqual(sanitized["opportunity_scoring"]["opportunities"], 1)
         self.assertEqual(
             report["track_removal_reasons"][
@@ -271,6 +337,63 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
             1,
         )
 
+    def test_general_collections_are_strict_size_bounded_and_id_linked(self):
+        payload = minimal_payload()
+        composite = collaborator(
+            "Sam & Dave", "artist-composite", "uuid-composite"
+        )
+        oversized = collaborator("Large Ambient", "artist-large", "uuid-large")
+        payload["artists"] += [
+            ["artist-composite", "Sam & Dave", "uuid-composite", 75_000],
+            ["artist-large", "Large Ambient", "uuid-large", 5_000_001],
+        ]
+        payload["tracks"] += [
+            track("track-composite-identity", "Sam & Dave", [composite]),
+            track("track-large", "Large Ambient", [oversized]),
+            track(
+                "track-vocal",
+                "Quiet Keys",
+                [collaborator("Quiet Keys", "artist-valid", "uuid-valid")],
+            ),
+            track(
+                "track-major",
+                "Quiet Keys",
+                [collaborator("Quiet Keys", "artist-valid", "uuid-valid")],
+            ),
+        ]
+        payload["tracks"][-2][TRACK_SCHEMA.index("instrumental_status")] = "unknown"
+        payload["tracks"][-2][TRACK_SCHEMA.index("expansion_status")] = "review"
+        payload["tracks"][-1][TRACK_SCHEMA.index("rights_status")] = "major"
+        payload["fal"] += [
+            ["uuid-large", "artist-large", "Large Ambient", 5_000_001, 1, "self_released"],
+            ["uuid-valid", "wrong-spotify-id", "Quiet Keys", 50_000, 1, "self_released"],
+        ]
+
+        sanitized, report = subject.sanitize_payload(payload)
+
+        self.assertEqual(
+            [row[0] for row in sanitized["tracks"]],
+            ["track-valid", "track-composite-identity"],
+        )
+        self.assertEqual(
+            [row[1] for row in sanitized["artists"]],
+            ["Quiet Keys", "Sam & Dave"],
+        )
+        self.assertEqual([row[2] for row in sanitized["fal"]], ["Quiet Keys"])
+        self.assertEqual(
+            report["track_removal_reasons"]["artist_size_unknown_or_too_large"],
+            1,
+        )
+        self.assertEqual(
+            report["track_removal_reasons"]["classification_not_strict"],
+            1,
+        )
+        self.assertEqual(
+            report["track_removal_reasons"]["rights_not_self_or_indie"],
+            1,
+        )
+        subject.validate_payload(sanitized)
+
     def test_validation_rejects_gates_and_loader_rejects_wrong_prefix(self):
         payload = minimal_payload()
         payload["category"] = "Gates"
@@ -282,6 +405,32 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
             path.write_text("window.WRONG={};\n", encoding="utf-8")
             with self.assertRaisesRegex(subject.SnapshotValidationError, "does not start"):
                 subject.load_payload(path)
+
+    def test_blacklist_name_match_is_exact_for_structured_identity(self):
+        payload = minimal_payload()
+        drake_hughes = collaborator(
+            "Drake Hughes", "artist-drake-hughes", "uuid-drake-hughes"
+        )
+        payload["artists"].append(
+            ["artist-drake-hughes", "Drake Hughes", "uuid-drake-hughes", 2_500]
+        )
+        payload["tracks"].append(
+            track("track-drake-hughes", "Drake Hughes", [drake_hughes])
+        )
+        payload["opportunities"].append(
+            opportunity("opp-drake-hughes", "Drake Hughes", [drake_hughes])
+        )
+
+        sanitized, _ = subject.sanitize_payload(payload)
+
+        self.assertIn("Drake Hughes", [row[1] for row in sanitized["artists"]])
+        self.assertIn(
+            "track-drake-hughes", [row[0] for row in sanitized["tracks"]]
+        )
+        self.assertIn(
+            "opp-drake-hughes", [row[1] for row in sanitized["opportunities"]]
+        )
+        subject.validate_payload(sanitized)
 
     def test_opportunity_validation_rejects_empty_duplicate_status_and_ai_risk(self):
         empty = minimal_payload()
@@ -303,8 +452,104 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
 
         invalid_ai = minimal_payload()
         invalid_ai["opportunities"][0][OPPORTUNITY_SCHEMA.index("ai_risk")] = "high"
-        with self.assertRaisesRegex(subject.SnapshotValidationError, "ai_risk"):
+        with self.assertRaisesRegex(subject.SnapshotValidationError, "classification"):
             subject.validate_payload(invalid_ai)
+
+    def test_invalid_verified_classification_downgrades_and_scrubs_contacts(self):
+        payload = minimal_payload()
+        artist = collaborator("Review Artist", "review-artist", "review-uuid")
+        invalid = [
+            opportunity("review-genre", "Review Artist", [artist]),
+            opportunity("review-vocal", "Review Artist", [artist]),
+            opportunity("review-ai", "Review Artist", [artist]),
+        ]
+        invalid[0][OPPORTUNITY_SCHEMA.index("primary_genre")] = "pop"
+        invalid[1][OPPORTUNITY_SCHEMA.index("instrumental_status")] = "unknown"
+        invalid[1][OPPORTUNITY_SCHEMA.index("instrumental_confidence")] = 0
+        invalid[2][OPPORTUNITY_SCHEMA.index("ai_risk")] = "high"
+        payload["opportunities"].extend(invalid)
+
+        with self.assertRaisesRegex(
+            subject.SnapshotValidationError, "verified.*classification"
+        ):
+            subject.validate_payload(payload)
+
+        sanitized, report = subject.sanitize_payload(payload)
+        by_id = {row[1]: row for row in sanitized["opportunities"]}
+        for spotify_id in ("review-genre", "review-vocal", "review-ai"):
+            row = by_id[spotify_id]
+            self.assertEqual(
+                row[OPPORTUNITY_SCHEMA.index("opportunity_status")],
+                "needs_listen",
+            )
+            self.assertEqual(
+                row[OPPORTUNITY_SCHEMA.index("contact_status")], "blocked"
+            )
+            self.assertFalse(row[OPPORTUNITY_SCHEMA.index("contact_email")])
+            self.assertFalse(row[OPPORTUNITY_SCHEMA.index("contact_url")])
+        self.assertEqual(report["opportunities_downgraded_to_needs_listen"], 3)
+        self.assertEqual(len(sanitized["opportunities"]), 4)
+        subject.validate_payload(sanitized)
+
+    def test_public_general_and_editorial_collections_must_not_be_empty(self):
+        cases = [
+            ("artists", lambda payload: payload.update(artists=[])),
+            ("tracks", lambda payload: payload.update(tracks=[])),
+            (
+                "editorial.artists",
+                lambda payload: payload["editorial"].update(artists=[]),
+            ),
+            (
+                "editorial.tracks",
+                lambda payload: payload["editorial"].update(tracks=[]),
+            ),
+        ]
+        for label, mutate in cases:
+            with self.subTest(collection=label):
+                payload = minimal_payload()
+                mutate(payload)
+                with self.assertRaisesRegex(
+                    subject.SnapshotValidationError, "must be present and non-empty"
+                ):
+                    subject.validate_payload(payload)
+
+    def test_editorial_track_pair_is_completed_then_compared_exactly(self):
+        missing_spotify = minimal_payload()
+        missing_spotify["editorial"]["tracks"][0][
+            EDITORIAL_TRACK_SCHEMA.index("spotify_id")
+        ] = ""
+
+        sanitized, report = subject.sanitize_payload(missing_spotify)
+        self.assertEqual(
+            sanitized["editorial"]["tracks"][0][
+                EDITORIAL_TRACK_SCHEMA.index("spotify_id")
+            ],
+            "track-valid",
+        )
+        self.assertEqual(report["editorial_track_spotify_ids_completed"], 1)
+
+        mismatched = minimal_payload()
+        mismatched_row = copy.deepcopy(mismatched["editorial"]["tracks"][0])
+        mismatched_row[EDITORIAL_TRACK_SCHEMA.index("spotify_id")] = "wrong-track"
+        mismatched["editorial"]["tracks"].append(mismatched_row)
+
+        sanitized, report = subject.sanitize_payload(mismatched)
+        self.assertEqual(len(sanitized["editorial"]["tracks"]), 1)
+        self.assertEqual(
+            report["editorial_track_removal_reasons"][
+                "not_linked_to_strict_track"
+            ],
+            1,
+        )
+
+        direct_mismatch = minimal_payload()
+        direct_mismatch["editorial"]["tracks"][0][
+            EDITORIAL_TRACK_SCHEMA.index("spotify_id")
+        ] = "wrong-track"
+        with self.assertRaisesRegex(
+            subject.SnapshotValidationError, "strict linked public track"
+        ):
+            subject.validate_payload(direct_mismatch)
 
     def test_needs_listen_unknown_rights_contacts_are_scrubbed_fail_closed(self):
         payload = minimal_payload()
