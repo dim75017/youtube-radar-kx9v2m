@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-21T13:37:50Z",
+  "generated_at": "2026-07-21T13:41:24Z",
   "source": "live_soundcharts_api",
   "endpoint": "/api/v2/artist/{uuid}/songs?limit=1",
   "artists_queried": 2464,
@@ -21,7 +21,6 @@
     "status": 401,
     "total": null
   },
-  "current_export_track_rows": 9268,
   "existing_export_coverage": {
     "tracks": {
       "catalog": 48397,
@@ -70,5 +69,6 @@
       "with_copyright": 20129,
       "updated_at": "2026-07-19T11:37:13.450Z"
     }
-  }
+  },
+  "current_export_track_rows": 9268
 }
