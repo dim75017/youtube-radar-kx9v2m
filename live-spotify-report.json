@@ -1,5 +1,5 @@
 {
-  "stamp": "baf980e7f1e371942b723976f4d9c83ecf713193",
+  "stamp": "224d90ffee4340a21dd5b8a390e11cc912c9cf18",
   "base": "https://dim75017.github.io/youtube-radar-kx9v2m/",
   "errors": [],
   "html": {
@@ -50,7 +50,7 @@
   },
   "chrome_path": "/usr/bin/google-chrome",
   "rendered_page": {
-    "href": "https://dim75017.github.io/youtube-radar-kx9v2m/spotify/?diagnostic=baf980e7f1e371942b723976f4d9c83ecf713193#opps",
+    "href": "https://dim75017.github.io/youtube-radar-kx9v2m/spotify/?diagnostic=224d90ffee4340a21dd5b8a390e11cc912c9cf18#opps",
     "hash": "#opps",
     "activeNav": "💎Opportunités A&R",
     "activeDatasetView": "radar",
@@ -67,8 +67,8 @@
   },
   "network_responses": {
     "https://dim75017.github.io/youtube-radar-kx9v2m/spotify/dashboard.js": 200,
-    "https://dim75017.github.io/youtube-radar-kx9v2m/Spotify_Soundcharts_data.js?payload=1784635723336": 200,
-    "https://dim75017.github.io/youtube-radar-kx9v2m/Spotify_Performance_data.js?payload=1784635723336": 200
+    "https://dim75017.github.io/youtube-radar-kx9v2m/Spotify_Performance_data.js?payload=1784635943032": 200,
+    "https://dim75017.github.io/youtube-radar-kx9v2m/Spotify_Soundcharts_data.js?payload=1784635943032": 200
   },
   "console_errors": [],
   "page_errors": [],
