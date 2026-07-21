@@ -115,7 +115,7 @@ jobs:
                     const active = document.querySelector('#nav button.active');
                     const bodyText = document.body.innerText || '';
                     const rows = [...document.querySelectorAll('#view table tbody tr')];
-                    const snippets = bodyText.split('\n').filter(line => /Streams|24 h|24 heures|7 j|30 j|Dernier scan|Soundcharts/i.test(line)).slice(0, 120);
+                    const snippets = bodyText.split(String.fromCharCode(10)).filter(line => /Streams|24 h|24 heures|7 j|30 j|Dernier scan|Soundcharts/i.test(line)).slice(0, 120);
                     return {
                       href: location.href,
                       hash: location.hash,
