@@ -1,0 +1,271 @@
+{
+  "auth_mode": "oauth_bearer",
+  "quota_start": 3757566,
+  "tracks": [
+    {
+      "uuid": "db682833-ffbd-4185-bcb9-8ef1eda90a2d",
+      "title": "Dignity",
+      "detail": {
+        "type": "song",
+        "object": {
+          "uuid": "db682833-ffbd-4185-bcb9-8ef1eda90a2d",
+          "name": "Dignity",
+          "isrc": "SE4RG2500506",
+          "creditName": "Nova Issue",
+          "artists": [
+            {
+              "uuid": "ba7dd907-f866-42a9-9f66-89bd8bf41a55",
+              "slug": "nova-issue",
+              "name": "Nova Issue",
+              "appUrl": "https://app.soundcharts.com/app/artist/nova-issue/overview",
+              "imageUrl": "https://assets.soundcharts.com/artist/6/6/8/ba7dd907-f866-42a9-9f66-89bd8bf41a55.jpg"
+            }
+          ],
+          "mainArtists": [
+            {
+              "uuid": "ba7dd907-f866-42a9-9f66-89bd8bf41a55",
+              "slug": "nova-issue",
+              "name": "Nova Issue",
+              "appUrl": "https://app.soundcharts.com/app/artist/nova-issue/overview",
+              "imageUrl": "https://assets.soundcharts.com/artist/6/6/8/ba7dd907-f866-42a9-9f66-89bd8bf41a55.jpg"
+            }
+          ],
+          "releaseDate": "2025-02-26T00:00:00+00:00",
+          "label": "Firefly Entertainment AB",
+          "copyright": "2025 Nova Issue",
+          "appUrl": "https://app.soundcharts.com/app/song/db682833-ffbd-4185-bcb9-8ef1eda90a2d/overview",
+          "imageUrl": "https://assets.soundcharts.com/song/d/b/f/db682833-ffbd-4185-bcb9-8ef1eda90a2d.jpg",
+          "duration": 166,
+          "explicit": false
+        },
+        "errors": []
+      },
+      "albums": {
+        "related": {
+          "uuid": "db682833-ffbd-4185-bcb9-8ef1eda90a2d",
+          "name": "Dignity",
+          "creditName": "Nova Issue",
+          "imageUrl": "https://assets.soundcharts.com/song/d/b/f/db682833-ffbd-4185-bcb9-8ef1eda90a2d.jpg",
+          "releaseDate": "2025-02-26T00:00:00+00:00"
+        },
+        "items": [
+          {
+            "name": "Dignity",
+            "creditName": "Nova Issue",
+            "releaseDate": "2025-02-26T00:00:00+00:00",
+            "uuid": "918683e5-173b-4368-b073-acf680a94dc6",
+            "default": true,
+            "type": "single"
+          }
+        ],
+        "page": {
+          "offset": 0,
+          "limit": 5,
+          "next": null,
+          "previous": null,
+          "total": 1
+        },
+        "errors": []
+      }
+    },
+    {
+      "uuid": "fc30f950-d6e4-4004-b592-fa01bb86f231",
+      "title": "Unfolding",
+      "detail": {
+        "type": "song",
+        "object": {
+          "uuid": "fc30f950-d6e4-4004-b592-fa01bb86f231",
+          "name": "Unfolding",
+          "isrc": "SE5W32600272",
+          "creditName": "Apollo Vision",
+          "artists": [
+            {
+              "uuid": "b9ddf6c5-22f5-480d-8b64-d30abc3ac510",
+              "slug": "apollo-vision",
+              "name": "Apollo Vision",
+              "appUrl": "https://app.soundcharts.com/app/artist/apollo-vision/overview",
+              "imageUrl": "https://assets.soundcharts.com/artist/5/f/2/b9ddf6c5-22f5-480d-8b64-d30abc3ac510.jpg"
+            }
+          ],
+          "mainArtists": [
+            {
+              "uuid": "b9ddf6c5-22f5-480d-8b64-d30abc3ac510",
+              "slug": "apollo-vision",
+              "name": "Apollo Vision",
+              "appUrl": "https://app.soundcharts.com/app/artist/apollo-vision/overview",
+              "imageUrl": "https://assets.soundcharts.com/artist/5/f/2/b9ddf6c5-22f5-480d-8b64-d30abc3ac510.jpg"
+            }
+          ],
+          "releaseDate": "2026-01-23T00:00:00+00:00",
+          "label": "",
+          "copyright": "Overtone Studios",
+          "appUrl": "https://app.soundcharts.com/app/song/fc30f950-d6e4-4004-b592-fa01bb86f231/overview",
+          "imageUrl": "https://assets.soundcharts.com/song/4/e/6/fc30f950-d6e4-4004-b592-fa01bb86f231.jpg",
+          "duration": 168,
+          "explicit": false
+        },
+        "errors": []
+      },
+      "albums": {
+        "related": {
+          "uuid": "fc30f950-d6e4-4004-b592-fa01bb86f231",
+          "name": "Unfolding",
+          "creditName": "Apollo Vision",
+          "imageUrl": "https://assets.soundcharts.com/song/4/e/6/fc30f950-d6e4-4004-b592-fa01bb86f231.jpg",
+          "releaseDate": "2026-01-23T00:00:00+00:00"
+        },
+        "items": [
+          {
+            "name": "Unfolding",
+            "creditName": "Apollo Vision",
+            "releaseDate": "2026-01-23T00:00:00+00:00",
+            "uuid": "cb497ac6-d06d-43bf-8f62-a5c667391932",
+            "default": true,
+            "type": "single"
+          }
+        ],
+        "page": {
+          "offset": 0,
+          "limit": 5,
+          "next": null,
+          "previous": null,
+          "total": 1
+        },
+        "errors": []
+      }
+    },
+    {
+      "uuid": "e4983d99-3905-4bdf-b02b-151ed75acc54",
+      "title": "Deep Connection",
+      "detail": {
+        "type": "song",
+        "object": {
+          "uuid": "e4983d99-3905-4bdf-b02b-151ed75acc54",
+          "name": "Deep Connection",
+          "isrc": "SE37J2603897",
+          "creditName": "Opheralis",
+          "artists": [
+            {
+              "uuid": "911a1a4b-c6b7-4f61-9d21-080d714f8136",
+              "slug": "opheralis",
+              "name": "Opheralis",
+              "appUrl": "https://app.soundcharts.com/app/artist/opheralis/overview",
+              "imageUrl": "https://assets.soundcharts.com/artist/7/b/6/911a1a4b-c6b7-4f61-9d21-080d714f8136.jpg"
+            }
+          ],
+          "mainArtists": [
+            {
+              "uuid": "911a1a4b-c6b7-4f61-9d21-080d714f8136",
+              "slug": "opheralis",
+              "name": "Opheralis",
+              "appUrl": "https://app.soundcharts.com/app/artist/opheralis/overview",
+              "imageUrl": "https://assets.soundcharts.com/artist/7/b/6/911a1a4b-c6b7-4f61-9d21-080d714f8136.jpg"
+            }
+          ],
+          "releaseDate": "2026-01-30T00:00:00+00:00",
+          "label": "",
+          "copyright": "2025 Opheralis",
+          "appUrl": "https://app.soundcharts.com/app/song/e4983d99-3905-4bdf-b02b-151ed75acc54/overview",
+          "imageUrl": "https://assets.soundcharts.com/song/5/0/9/e4983d99-3905-4bdf-b02b-151ed75acc54.jpg",
+          "duration": 162,
+          "explicit": false
+        },
+        "errors": []
+      },
+      "albums": {
+        "related": {
+          "uuid": "e4983d99-3905-4bdf-b02b-151ed75acc54",
+          "name": "Deep Connection",
+          "creditName": "Opheralis",
+          "imageUrl": "https://assets.soundcharts.com/song/5/0/9/e4983d99-3905-4bdf-b02b-151ed75acc54.jpg",
+          "releaseDate": "2026-01-30T00:00:00+00:00"
+        },
+        "items": [
+          {
+            "name": "Deep Connection",
+            "creditName": "Opheralis",
+            "releaseDate": "2026-01-30T00:00:00+00:00",
+            "uuid": "92925f9f-00c6-4cb2-a45a-553e6a66f387",
+            "default": true,
+            "type": "single"
+          }
+        ],
+        "page": {
+          "offset": 0,
+          "limit": 5,
+          "next": null,
+          "previous": null,
+          "total": 1
+        },
+        "errors": []
+      }
+    },
+    {
+      "uuid": "fae87079-0498-4927-b349-ca5ae1bc7602",
+      "title": "Lights Are On (Instrumental)",
+      "detail": {
+        "type": "song",
+        "object": {
+          "uuid": "fae87079-0498-4927-b349-ca5ae1bc7602",
+          "name": "Lights Are On (Instrumental)",
+          "isrc": "GBVHN2100016",
+          "creditName": "Edith Whiskers",
+          "artists": [
+            {
+              "uuid": "1e9153cb-e983-4b51-9b58-ecf2b544d115",
+              "slug": "edith-whiskers",
+              "name": "Edith Whiskers",
+              "appUrl": "https://app.soundcharts.com/app/artist/edith-whiskers/overview",
+              "imageUrl": "https://assets.soundcharts.com/artist/3/8/9/1e9153cb-e983-4b51-9b58-ecf2b544d115.jpg"
+            }
+          ],
+          "mainArtists": [
+            {
+              "uuid": "1e9153cb-e983-4b51-9b58-ecf2b544d115",
+              "slug": "edith-whiskers",
+              "name": "Edith Whiskers",
+              "appUrl": "https://app.soundcharts.com/app/artist/edith-whiskers/overview",
+              "imageUrl": "https://assets.soundcharts.com/artist/3/8/9/1e9153cb-e983-4b51-9b58-ecf2b544d115.jpg"
+            }
+          ],
+          "releaseDate": "2021-11-05T00:00:00+00:00",
+          "label": "Tinpot Records",
+          "copyright": "℗ 2021 Tinpot Records",
+          "appUrl": "https://app.soundcharts.com/app/song/fae87079-0498-4927-b349-ca5ae1bc7602/overview",
+          "imageUrl": "https://assets.soundcharts.com/song/8/9/4/fae87079-0498-4927-b349-ca5ae1bc7602.jpg",
+          "duration": 192,
+          "explicit": false
+        },
+        "errors": []
+      },
+      "albums": {
+        "related": {
+          "uuid": "fae87079-0498-4927-b349-ca5ae1bc7602",
+          "name": "Lights Are On (Instrumental)",
+          "creditName": "Edith Whiskers",
+          "imageUrl": "https://assets.soundcharts.com/song/8/9/4/fae87079-0498-4927-b349-ca5ae1bc7602.jpg",
+          "releaseDate": "2021-11-05T00:00:00+00:00"
+        },
+        "items": [
+          {
+            "name": "Lights Are On (Instrumental)",
+            "creditName": "Edith Whiskers",
+            "releaseDate": "2021-11-05T00:00:00+00:00",
+            "uuid": "c60038bb-026c-4f03-8ebf-17da4f7e0b39",
+            "default": true,
+            "type": "single"
+          }
+        ],
+        "page": {
+          "offset": 0,
+          "limit": 5,
+          "next": null,
+          "previous": null,
+          "total": 1
+        },
+        "errors": []
+      }
+    }
+  ],
+  "quota_end": 3757566
+}
