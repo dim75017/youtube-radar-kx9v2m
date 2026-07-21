@@ -26,6 +26,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # Export the latest branch state after reopening the pull request.
           zip -9 current-radar-sources.zip \
             .github/workflows/refresh-channel-radar.yml \
             .github/workflows/refresh-soundcharts.yml \
