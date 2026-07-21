@@ -7,7 +7,7 @@ on:
       - .github/workflows/inspect-spotify-dashboard.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   inspect:
@@ -16,9 +16,10 @@ jobs:
       - name: Check out the pull-request branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
 
-      - name: Report inline asset sizes
+      - name: Write inline asset report
         shell: bash
         run: |
           python3 - <<'PY'
@@ -27,24 +28,39 @@ jobs:
 
           path = Path('spotify/index.html')
           text = path.read_text(encoding='utf-8')
-          print(f'FILE bytes={len(text.encode("utf-8"))} chars={len(text)} lines={text.count(chr(10))+1}')
+          out = []
+          out.append(f'FILE bytes={len(text.encode("utf-8"))} chars={len(text)} lines={text.count(chr(10))+1}')
 
           styles = list(re.finditer(r'<style\b[^>]*>([\s\S]*?)</style>', text, re.I))
-          print(f'STYLE_BLOCKS {len(styles)}')
+          out.append(f'STYLE_BLOCKS {len(styles)}')
           for i, match in enumerate(styles, 1):
               body = match.group(1)
-              print(f'STYLE {i}: start_line={text.count(chr(10), 0, match.start())+1} bytes={len(body.encode("utf-8"))} lines={body.count(chr(10))+1}')
+              out.append(f'STYLE {i}: start_line={text.count(chr(10), 0, match.start())+1} bytes={len(body.encode("utf-8"))} lines={body.count(chr(10))+1}')
 
           body_start = text.lower().find('<body')
           scripts = list(re.finditer(r'<script\b([^>]*)>([\s\S]*?)</script>', text, re.I))
-          print(f'SCRIPT_BLOCKS {len(scripts)}')
+          out.append(f'SCRIPT_BLOCKS {len(scripts)}')
           for i, match in enumerate(scripts, 1):
               attrs = match.group(1).strip()
               body = match.group(2)
               start_line = text.count(chr(10), 0, match.start()) + 1
               location = 'body' if match.start() > body_start >= 0 else 'head'
               markers = re.findall(r'(?m)^\s*/\*\s*=+\s*([^*\n]+?)\s*=+\s*\*/\s*$', body)
-              print(f'SCRIPT {i}: {location} start_line={start_line} attrs={attrs!r} bytes={len(body.encode("utf-8"))} lines={body.count(chr(10))+1} markers={len(markers)}')
+              out.append(f'SCRIPT {i}: {location} start_line={start_line} attrs={attrs!r} bytes={len(body.encode("utf-8"))} lines={body.count(chr(10))+1} markers={len(markers)}')
               if markers:
-                  print('  MARKERS: ' + ' | '.join(m.strip() for m in markers[:80]))
+                  out.append('  MARKERS: ' + ' | '.join(m.strip() for m in markers[:120]))
+
+          report = '\n'.join(out) + '\n'
+          Path('spotify/asset-structure.txt').write_text(report, encoding='utf-8')
+          print(report)
           PY
+
+      - name: Commit the report
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add spotify/asset-structure.txt
+          git diff --cached --quiet && exit 0
+          git commit -m "Report Spotify dashboard asset structure"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
