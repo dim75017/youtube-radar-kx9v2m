@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Count the live Soundcharts song totals for every mapped radar artist.
+"""Count live Soundcharts song totals for every mapped radar artist.
 
-The script uses the production Soundcharts credentials supplied by GitHub Actions,
-never prints credentials, and stores only aggregate counts plus the largest
-artist discographies.
+The audit reuses the production client's OAuth/API-key fallback, never prints
+credentials, and stores only aggregate counts plus the largest discographies.
 """
 
 from __future__ import annotations
@@ -13,14 +12,17 @@ import json
 import os
 import threading
 import time
-import urllib.error
 import urllib.parse
-import urllib.request
 from collections import Counter
 from pathlib import Path
 from typing import Any
 
-API_BASE = "https://customer.api.soundcharts.com"
+from refresh_soundcharts_daily import (
+    SoundchartsClient,
+    SoundchartsError,
+    SoundchartsHttpError,
+)
+
 PREFIX = "window.SPOTIFY_SOUNDCHARTS="
 
 
@@ -41,8 +43,12 @@ def read_payload(path: Path) -> dict[str, Any]:
 def main() -> int:
     app_id = clean(os.environ.get("SOUNDCHARTS_CLIENT_ID", ""))
     api_key = clean(os.environ.get("SOUNDCHARTS_CLIENT_SECRET", ""))
+    team_id = clean(os.environ.get("SOUNDCHARTS_TEAM_ID", ""))
     if not app_id or not api_key:
         raise RuntimeError("Soundcharts credentials are missing")
+
+    client = SoundchartsClient(app_id, api_key, team_id)
+    client.authenticate()
 
     payload = read_payload(Path("Spotify_Soundcharts_data.js"))
     schema = list(payload.get("schemas", {}).get("artists", []))
@@ -66,19 +72,12 @@ def main() -> int:
     if not artists:
         raise RuntimeError("No mapped Soundcharts artists")
 
-    headers = {
-        "x-app-id": app_id,
-        "x-api-key": api_key,
-        "Accept": "application/json",
-        "User-Agent": "Lofi-Radar-Catalog-Count/1.0",
-    }
-
     state_lock = threading.Lock()
     rate_lock = threading.Lock()
-    state: dict[str, Any] = {"requests": 0, "quota": None, "next_call": 0.0}
+    state: dict[str, Any] = {"requests": 0, "next_call": 0.0}
 
     def throttle() -> None:
-        # 40 requests/second = 2,400/minute, below Soundcharts' 5,000/minute advice.
+        # 40 logical calls/second = 2,400/minute, below Soundcharts' advice.
         with rate_lock:
             now = time.monotonic()
             target = max(now, float(state["next_call"]))
@@ -87,39 +86,17 @@ def main() -> int:
         if delay > 0:
             time.sleep(delay)
 
-    def request_json(path: str, retries: int = 4) -> tuple[int, Any]:
-        last_error: Exception | None = None
-        for attempt in range(retries):
-            throttle()
-            with state_lock:
-                state["requests"] += 1
-            request = urllib.request.Request(API_BASE + path, headers=headers)
-            try:
-                with urllib.request.urlopen(request, timeout=45) as response:
-                    body = json.loads(response.read().decode("utf-8"))
-                    raw_quota = response.headers.get("x-quota-remaining") or response.headers.get(
-                        "X-Quota-Remaining"
-                    )
-                    try:
-                        quota = int(raw_quota) if raw_quota is not None else None
-                    except (TypeError, ValueError):
-                        quota = None
-                    if quota is not None:
-                        with state_lock:
-                            state["quota"] = quota
-                    return response.status, body
-            except urllib.error.HTTPError as exc:
-                if exc.code in {400, 401, 403, 404}:
-                    try:
-                        body = json.loads(exc.read().decode("utf-8"))
-                    except Exception:
-                        body = None
-                    return exc.code, body
-                last_error = exc
-            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-                last_error = exc
-            time.sleep(min(12.0, 1.5 * (attempt + 1)))
-        raise RuntimeError(f"Soundcharts request failed: {type(last_error).__name__}")
+    def request_json(path: str) -> tuple[int, Any]:
+        throttle()
+        with state_lock:
+            state["requests"] += 1
+        try:
+            body = client.get(path)
+        except SoundchartsHttpError as exc:
+            return exc.status, None
+        except SoundchartsError:
+            return 599, None
+        return (200, body) if body is not None else (404, None)
 
     favorite_probe: dict[str, Any]
     try:
@@ -129,7 +106,7 @@ def main() -> int:
             "status": status,
             "total": page.get("total") if isinstance(page, dict) else None,
         }
-    except Exception as exc:
+    except Exception as exc:  # pragma: no cover - diagnostic guard
         favorite_probe = {"error": type(exc).__name__}
 
     def count_artist(entry: tuple[str, str]) -> dict[str, Any]:
@@ -137,18 +114,9 @@ def main() -> int:
         query = urllib.parse.urlencode(
             {"offset": 0, "limit": 1, "sortBy": "releaseDate", "sortOrder": "desc"}
         )
-        try:
-            status, body = request_json(
-                f"/api/v2/artist/{urllib.parse.quote(uuid)}/songs?{query}"
-            )
-        except Exception as exc:
-            return {
-                "uuid": uuid,
-                "name": name,
-                "status": "exception",
-                "error": type(exc).__name__,
-                "total": 0,
-            }
+        status, body = request_json(
+            f"/api/v2/artist/{urllib.parse.quote(uuid)}/songs?{query}"
+        )
         page = body.get("page") if isinstance(body, dict) else None
         total = page.get("total") if isinstance(page, dict) else None
         return {
@@ -162,16 +130,25 @@ def main() -> int:
     with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
         futures = [pool.submit(count_artist, entry) for entry in artists]
         for index, future in enumerate(concurrent.futures.as_completed(futures), 1):
-            results.append(future.result())
+            try:
+                results.append(future.result())
+            except Exception as exc:  # pragma: no cover - diagnostic guard
+                results.append(
+                    {"status": "exception", "error": type(exc).__name__, "total": 0}
+                )
             if index % 250 == 0:
                 with state_lock:
-                    snapshot = {
-                        "processed": index,
-                        "artists": len(artists),
-                        "requests": state["requests"],
-                        "quota_remaining": state["quota"],
-                    }
-                print(json.dumps(snapshot))
+                    request_count = state["requests"]
+                print(
+                    json.dumps(
+                        {
+                            "processed": index,
+                            "artists": len(artists),
+                            "requests": request_count,
+                            "quota_remaining": client.quota_remaining,
+                        }
+                    )
+                )
 
     successful = [result for result in results if result.get("status") == 200]
     totals = [int(result.get("total") or 0) for result in successful]
@@ -180,12 +157,12 @@ def main() -> int:
 
     with state_lock:
         request_count = int(state["requests"])
-        quota_remaining = state["quota"]
 
     report = {
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "source": "live_soundcharts_api",
         "endpoint": "/api/v2/artist/{uuid}/songs?limit=1",
+        "authentication_mode": client.auth_mode,
         "artists_queried": len(artists),
         "status_counts": dict(Counter(str(result.get("status")) for result in results)),
         "artists_successful": len(successful),
@@ -200,7 +177,7 @@ def main() -> int:
             {key: item.get(key) for key in ("uuid", "name", "total")} for item in ranked[:30]
         ],
         "requests_used": request_count,
-        "quota_remaining": quota_remaining,
+        "quota_remaining": client.quota_remaining,
         "favorite_artist_probe": favorite_probe,
         "current_export_track_rows": len(payload.get("tracks", [])),
         "existing_export_coverage": payload.get("coverage", {}),
