@@ -1,6 +1,6 @@
 {
   "auth_mode": "oauth_bearer",
-  "quota_start": 3757102,
+  "quota_start": 3757069,
   "artists": [
     {
       "uuid": "ba7dd907-f866-42a9-9f66-89bd8bf41a55",
@@ -681,5 +681,5 @@
       }
     }
   ],
-  "quota_end": 3757102
+  "quota_end": 3757069
 }
