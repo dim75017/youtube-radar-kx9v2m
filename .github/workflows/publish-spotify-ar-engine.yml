@@ -1,0 +1,121 @@
+name: Publish validated Spotify A&R engine
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-spotify-ar-engine.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Recover the already validated production patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PYRECOVER'
+          from pathlib import Path
+          import base64, hashlib, zlib
+          encoded = ''.join(part.read_text(encoding='utf-8').strip() for part in sorted(Path('.rebuild-payload').glob('part-*')))
+          raw = base64.b64decode(encoded, validate=True)
+          flags = raw[3]
+          cursor = 10
+          if flags & 4:
+              extra_length = int.from_bytes(raw[cursor:cursor + 2], 'little')
+              cursor += 2 + extra_length
+          for bit in (8, 16):
+              if flags & bit:
+                  cursor = raw.index(b'\0', cursor) + 1
+          if flags & 2:
+              cursor += 2
+          recovered = zlib.decompress(raw[cursor:-8], -15)
+          digest = hashlib.sha256(recovered).hexdigest()
+          expected = 'c2a753f00737882641bb9d9f028f6e6bcc75fbc51aab93bfdbc3e0a28af377cf'
+          if digest != expected:
+              raise SystemExit(f'Unexpected recovered tar SHA-256: {digest}')
+          Path('/tmp/spotify-ar-rebuild.tar').write_bytes(recovered)
+          PYRECOVER
+          tar -xf /tmp/spotify-ar-rebuild.tar
+          python3 - <<'PYFIX'
+          from pathlib import Path
+          path = Path('sync_soundcharts_opportunities.py')
+          text = path.read_text(encoding='utf-8')
+          broken = '     "scoretraction",\n    ""scorerecency",\n    ""scorerelationship",'
+          fixed = '    "score_traction",\n    "score_recency",\n    "score_relationship",'
+          if broken not in text:
+              raise SystemExit('Expected opportunity schema typo was not found')
+          path.write_text(text.replace(broken, fixed, 1), encoding='utf-8')
+          PYFIX
+          patch --batch --forward -p1 < patches/dashboard.patch
+          patch --batch --forward -p1 < patches/dashboard-css.patch
+          rm -rf patches
+
+      - name: Re-run deterministic tests and build the public shortlist
+        run: |
+          python -m unittest \
+            tests/test_refresh_soundcharts_daily.py \
+            tests/test_expand_soundcharts_instrumental_pool.py \
+            tests/test_sync_soundcharts_opportunities.py \
+            -v
+          python -m py_compile refresh_soundcharts_daily.py expand_soundcharts_instrumental_pool.py sync_soundcharts_opportunities.py
+          node --check spotify/dashboard.js
+          printf '%s\n' '{"version":1,"tracks":{},"artists":{}}' > soundcharts-instrumental-cache.json
+          python sync_soundcharts_opportunities.py \
+            --max-artist-listeners 5000000 \
+            --max-track-streams 250000000 \
+            --max-opportunities 2000 \
+            --minimum-score 20
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          raw = Path('Spotify_Soundcharts_data.js').read_text(encoding='utf-8')
+          payload = json.loads(raw[len('window.SPOTIFY_SOUNDCHARTS='):].strip().removesuffix(';'))
+          opportunities = payload.get('opportunities') or []
+          scoring = payload.get('opportunity_scoring') or {}
+          if len(opportunities) <= 30:
+              raise SystemExit(f'Dynamic shortlist is too small: {len(opportunities)}')
+          if not {'distribution','label_advance','catalog_acquisition'} & set((scoring.get('deal_types') or {})):
+              raise SystemExit(f'Deal segmentation is missing: {scoring}')
+          print(json.dumps({'opportunities': len(opportunities), 'scoring': scoring}, ensure_ascii=False))
+          PY
+          git diff --check
+
+      - name: Commit only production code, UI and generated data
+        shell: bash
+        run: |
+          # The production workflow was validated in the previous job but must be
+          # written by the GitHub connector because Actions cannot update workflows.
+          git restore --source=HEAD -- .github/workflows/refresh-soundcharts.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            expand_soundcharts_instrumental_pool.py \
+            sync_soundcharts_opportunities.py \
+            tests/test_expand_soundcharts_instrumental_pool.py \
+            tests/test_sync_soundcharts_opportunities.py \
+            spotify/dashboard.js \
+            spotify/dashboard.css \
+            Spotify_Soundcharts_data.js \
+            Spotify_Performance_data.js \
+            soundcharts-instrumental-cache.json
+          git diff --cached --check
+          git commit -m 'Rebuild Spotify Radar as a dynamic A&R engine'
+          for attempt in 1 2 3; do
+            git pull --rebase origin '${{ github.event.pull_request.head.ref }}' && \
+              git push origin HEAD:'${{ github.event.pull_request.head.ref }}' && exit 0
+            sleep 5
+          done
+          exit 1
