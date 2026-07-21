@@ -55,6 +55,7 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
+          import re
 
           workflow = Path('.github/workflows/refresh-soundcharts.yml')
           text = workflow.read_text(encoding='utf-8')
@@ -66,37 +67,57 @@ jobs:
 
           test_path = Path('tests/test_refresh_soundcharts_daily.py')
           text = test_path.read_text(encoding='utf-8')
-          text = text.replace("        self.assertIn(\"default: '9490'\", workflow)\n", "        self.assertIn(\"default: '7200'\", workflow)\n")
-          text = text.replace(
-              "        self.assertIn('legacy_data_cap=\"2500\"', workflow)\n        self.assertIn('expansion_data_cap=\"9490\"', workflow)\n",
-              "        self.assertIn('discovery_data_cap=\"2200\"', workflow)\n        self.assertIn('legacy_data_cap=\"2500\"', workflow)\n        self.assertIn('expansion_data_cap=\"7200\"', workflow)\n",
-          )
-          marker = "        self.assertIn('--max-requests \\\"${{ steps.plan.outputs.artist_requests }}\\\"', workflow)\n"
-          addition = marker + "        self.assertIn('--max-requests \\\"${{ steps.plan.outputs.discovery_requests }}\\\"', workflow)\n"
-          if marker in text and 'steps.plan.outputs.discovery_requests' not in text:
-              text = text.replace(marker, addition, 1)
+          text = text.replace("default: '9490'", "default: '7200'")
+          text = text.replace('expansion_data_cap=\\"9490\\"', 'expansion_data_cap=\\"7200\\"')
+          artist_assert = "        self.assertIn('--max-requests \\\"${{ steps.plan.outputs.artist_requests }}\\\"', workflow)\n"
+          discovery_assert = "        self.assertIn('--max-requests \\\"${{ steps.plan.outputs.discovery_requests }}\\\"', workflow)\n"
+          if discovery_assert not in text:
+              insert_at = text.find(artist_assert)
+              if insert_at >= 0:
+                  insert_at += len(artist_assert)
+                  text = text[:insert_at] + discovery_assert + text[insert_at:]
+          discovery_cap_assert = "        self.assertIn('discovery_data_cap=\\\"2200\\\"', workflow)\n"
+          legacy_assert = "        self.assertIn('legacy_data_cap=\\\"2500\\\"', workflow)\n"
+          if discovery_cap_assert not in text:
+              insert_at = text.find(legacy_assert)
+              if insert_at >= 0:
+                  text = text[:insert_at] + discovery_cap_assert + text[insert_at:]
           test_path.write_text(text, encoding='utf-8')
           PY
 
       - name: Run playlist discovery and A&R tests
+        shell: bash
         run: |
-          python -m unittest \
-            tests/test_refresh_soundcharts_daily.py \
-            tests/test_discover_soundcharts_playlists.py \
-            tests/test_expand_soundcharts_instrumental_pool.py \
-            tests/test_sync_soundcharts_opportunities.py \
-            tests/test_prepare_soundcharts_snapshot.py \
-            -v
-          python -m py_compile \
-            refresh_soundcharts_daily.py \
-            discover_soundcharts_playlists.py \
-            expand_soundcharts_instrumental_pool.py \
-            sync_soundcharts_opportunities.py \
-            prepare_soundcharts_snapshot.py
-          node --check spotify/dashboard.js
-          node tests/test_spotify_dashboard_ui.js
-          ruby -e "require 'yaml'; YAML.load_file('.github/workflows/refresh-soundcharts.yml'); puts 'workflow yaml ok'"
-          git diff --check
+          set +e
+          {
+            python -m unittest \
+              tests/test_refresh_soundcharts_daily.py \
+              tests/test_discover_soundcharts_playlists.py \
+              tests/test_expand_soundcharts_instrumental_pool.py \
+              tests/test_sync_soundcharts_opportunities.py \
+              tests/test_prepare_soundcharts_snapshot.py \
+              -v
+            python -m py_compile \
+              refresh_soundcharts_daily.py \
+              discover_soundcharts_playlists.py \
+              expand_soundcharts_instrumental_pool.py \
+              sync_soundcharts_opportunities.py \
+              prepare_soundcharts_snapshot.py
+            node --check spotify/dashboard.js
+            node tests/test_spotify_dashboard_ui.js
+            ruby -e "require 'yaml'; YAML.load_file('.github/workflows/refresh-soundcharts.yml'); puts 'workflow yaml ok'"
+            git diff --check
+          } > "$RUNNER_TEMP/editorial-playlist-validation.log" 2>&1
+          status=$?
+          tail -n 100 "$RUNNER_TEMP/editorial-playlist-validation.log"
+          exit "$status"
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: editorial-playlist-validation-failure
+          path: ${{ runner.temp }}/editorial-playlist-validation.log
+          retention-days: 1
 
       - name: Commit only production changes
         shell: bash
