@@ -1,0 +1,53 @@
+{
+  "generated_at": "2026-07-21T13:33:38Z",
+  "source": "live_soundcharts_api_artist_songs",
+  "endpoint": "/api/v2/artist/{uuid}/songs",
+  "artists_from_current_soundcharts_export": 2464,
+  "favorite_artist_probe": {
+    "status": 401,
+    "total": null,
+    "items_returned": 0,
+    "top_level_keys": [
+      "errors"
+    ]
+  },
+  "artist_request_status_counts": {
+    "401": 2464
+  },
+  "artists_successful": 0,
+  "artists_partial": 0,
+  "sum_of_artist_song_totals": 0,
+  "associations_returned_across_all_pages": 0,
+  "unique_soundcharts_song_uuids": 0,
+  "unique_spotify_ids_found_in_collection_shape": 0,
+  "unique_casefolded_titles": 0,
+  "duplicate_artist_song_associations": 0,
+  "requests_used_by_this_audit": 2465,
+  "quota_remaining_after_audit": null,
+  "artist_song_total_statistics": {
+    "min": null,
+    "max": null,
+    "mean": null,
+    "median": null,
+    "artists_over_100_songs": 0,
+    "artists_over_500_songs": 0,
+    "artists_over_1000_songs": 0
+  },
+  "largest_artist_discographies": [],
+  "response_item_shapes": [],
+  "sample_items": [],
+  "comparison_with_existing_exports": {
+    "legacy_spotify_radar_rows": 45556,
+    "current_soundcharts_track_rows": 9268,
+    "performance_track_entries": 8381,
+    "coverage_discography_from_export": {
+      "total": 271713,
+      "spotify_mapped": 7823,
+      "metadata_complete": 21225,
+      "identifiers_complete": 7823,
+      "classified": 12463,
+      "with_copyright": 20129,
+      "updated_at": "2026-07-19T11:37:13.450Z"
+    }
+  }
+}
