@@ -1,6 +1,6 @@
 {
   "auth_mode": "oauth_bearer",
-  "quota_start": 3757491,
+  "quota_start": 3757463,
   "artists": [
     {
       "uuid": "ba7dd907-f866-42a9-9f66-89bd8bf41a55",
@@ -478,6 +478,13 @@
         },
         "social": [
           {
+            "platform": "qq-music",
+            "value": 708,
+            "date": "2026-07-21T00:00:00+00:00",
+            "evolution": 0,
+            "percentEvolution": 0
+          },
+          {
             "platform": "spotify",
             "value": 227994,
             "date": "2026-07-21T00:00:00+00:00",
@@ -499,11 +506,11 @@
             "percentEvolution": 0.15
           },
           {
-            "platform": "qq-music",
-            "value": 708,
-            "date": "2026-07-21T00:00:00+00:00",
-            "evolution": 0,
-            "percentEvolution": 0
+            "platform": "deezer",
+            "value": 14669,
+            "date": "2026-07-20T00:00:00+00:00",
+            "evolution": 22,
+            "percentEvolution": 0.15
           },
           {
             "platform": "amazon",
@@ -518,13 +525,6 @@
             "date": "2026-07-20T00:00:00+00:00",
             "evolution": 12,
             "percentEvolution": 0.06
-          },
-          {
-            "platform": "deezer",
-            "value": 14669,
-            "date": "2026-07-20T00:00:00+00:00",
-            "evolution": 22,
-            "percentEvolution": 0.15
           },
           {
             "platform": "twitter",
@@ -681,5 +681,5 @@
       }
     }
   ],
-  "quota_end": 3757491
+  "quota_end": 3757463
 }
