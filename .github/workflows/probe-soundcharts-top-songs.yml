@@ -1,0 +1,175 @@
+name: Probe Soundcharts global song discovery
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/probe-soundcharts-top-songs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probe referentials and POST /api/v2/top/songs
+        env:
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        run: |
+          python3 - <<'PY'
+          from __future__ import annotations
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+          from pathlib import Path
+          from refresh_soundcharts_daily import API_BASE, SoundchartsClient
+
+          client = SoundchartsClient(
+              os.environ.get('SOUNDCHARTS_CLIENT_ID', ''),
+              os.environ.get('SOUNDCHARTS_CLIENT_SECRET', ''),
+              os.environ.get('SOUNDCHARTS_TEAM_ID', ''),
+          )
+          client.authenticate()
+
+          def http(path, method='GET', body=None):
+              data = None if body is None else json.dumps(body).encode('utf-8')
+              headers = dict(client.headers)
+              headers['Accept'] = 'application/json'
+              if data is not None:
+                  headers['Content-Type'] = 'application/json'
+              request = urllib.request.Request(API_BASE + path, data=data, headers=headers, method=method)
+              try:
+                  with urllib.request.urlopen(request, timeout=60) as response:
+                      raw = response.read().decode('utf-8')
+                      try:
+                          payload = json.loads(raw)
+                      except json.JSONDecodeError:
+                          payload = {'raw_prefix': raw[:500]}
+                      return response.status, payload, dict(response.headers)
+              except urllib.error.HTTPError as exc:
+                  raw = exc.read().decode('utf-8', 'replace')
+                  try:
+                      payload = json.loads(raw)
+                  except json.JSONDecodeError:
+                      payload = {'raw_prefix': raw[:500]}
+                  return exc.code, payload, dict(exc.headers)
+
+          def dicts(value):
+              if isinstance(value, dict):
+                  yield value
+                  for child in value.values():
+                      yield from dicts(child)
+              elif isinstance(value, list):
+                  for child in value:
+                      yield from dicts(child)
+
+          def strings(value):
+              out=[]
+              if isinstance(value, str):
+                  out.append(value)
+              elif isinstance(value, dict):
+                  for key, child in value.items():
+                      if key.lower() in {'name','slug','value','type','genre','subgenre','label'} and isinstance(child,str):
+                          out.append(child)
+                      out.extend(strings(child))
+              elif isinstance(value, list):
+                  for child in value:
+                      out.extend(strings(child))
+              return out
+
+          def safe_item(payload):
+              candidates=[]
+              for item in dicts(payload):
+                  keys=set(item)
+                  if {'uuid','name'} <= keys or {'uuid','creditName'} <= keys:
+                      candidates.append(item)
+              if not candidates:
+                  return None
+              item=max(candidates,key=lambda x:len(x))
+              allow={
+                  'uuid','name','creditName','releaseDate','platform','metricType','value','total','volume','percent',
+                  'latestValue','latestDate','period','artists','genres','subgenres','labels','distributors','careerStage',
+                  'instrumentalness','explicit','spotify','spotifyId','isrc','imageUrl','appUrl','rank','score','metrics'
+              }
+              safe={}
+              for key,value in item.items():
+                  if key not in allow:
+                      continue
+                  if key in {'imageUrl','appUrl'}:
+                      safe[key]=bool(value)
+                  elif isinstance(value,(str,int,float,bool,type(None))):
+                      safe[key]=value
+                  elif isinstance(value,list):
+                      safe[key]=value[:3]
+                  elif isinstance(value,dict):
+                      safe[key]={k:v for k,v in list(value.items())[:12] if isinstance(v,(str,int,float,bool,type(None)))}
+              return {'keys':sorted(item), 'sample':safe}
+
+          report={'auth_mode':client.auth_mode,'quota_start':client.quota_remaining}
+          for name,path in [('song_genres','/api/v2/referential/song/genres'),('label_types','/api/v2/referential/label-types')]:
+              status,payload,headers=http(path)
+              values=sorted(set(strings(payload)))
+              report[name]={
+                  'status':status,
+                  'top_level_keys':sorted(payload) if isinstance(payload,dict) else [],
+                  'values_count':len(values),
+                  'target_like':[value for value in values if any(token in value.lower() for token in ('ambient','lofi','lo-fi','chill','sleep','new age','synth','downtempo','piano','classical','jazz','nature','meditation'))][:100],
+                  'sample_values':values[:50],
+              }
+
+          bodies={
+              'basic_weekly_growth':{
+                  'sort':{'type':'metric','platform':'spotify','metricType':'streams','sortBy':'volume','period':'week','order':'desc'},
+                  'filters':[
+                      {'type':'artistCareerStages','data':{'values':['superstar','mainstream'],'operator':'not_in'}},
+                      {'type':'metric','data':{'platform':'spotify','metricType':'streams','min':1000,'max':100000000}},
+                  ],
+              },
+              'instrumental_weekly_growth':{
+                  'sort':{'type':'metric','platform':'spotify','metricType':'streams','sortBy':'volume','period':'week','order':'desc'},
+                  'filters':[
+                      {'type':'artistCareerStages','data':{'values':['superstar','mainstream'],'operator':'not_in'}},
+                      {'type':'instrumentalness','data':{'min':70}},
+                      {'type':'metric','data':{'platform':'spotify','metricType':'streams','min':1000,'max':100000000}},
+                  ],
+              },
+          }
+          report['queries']={}
+          for name,body in bodies.items():
+              status,payload,headers=http('/api/v2/top/songs?offset=0&limit=10','POST',body)
+              page=payload.get('page') if isinstance(payload,dict) else None
+              items=payload.get('items') if isinstance(payload,dict) else None
+              report['queries'][name]={
+                  'status':status,
+                  'top_level_keys':sorted(payload) if isinstance(payload,dict) else [],
+                  'page':page,
+                  'item_count':len(items) if isinstance(items,list) else None,
+                  'safe_item':safe_item(payload),
+                  'error':payload.get('errors') if isinstance(payload,dict) else None,
+                  'quota_remaining':headers.get('x-quota-remaining') or headers.get('X-Quota-Remaining'),
+              }
+          report['quota_end']=client.quota_remaining
+          Path('soundcharts-top-songs-probe.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          print(json.dumps(report,ensure_ascii=False))
+          PY
+      - name: Commit safe probe report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add soundcharts-top-songs-probe.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Record Soundcharts global song discovery probe"
+          git pull --rebase origin "${{ github.event.pull_request.head.ref || github.ref_name }}"
+          git push origin HEAD:"${{ github.event.pull_request.head.ref || github.ref_name }}"
