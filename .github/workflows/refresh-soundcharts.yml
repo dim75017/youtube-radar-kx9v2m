@@ -35,7 +35,7 @@ permissions:
 
 concurrency:
   group: refresh-soundcharts-radar-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   refresh:
@@ -89,7 +89,7 @@ jobs:
           python refresh_soundcharts_daily.py
           --mode "${{ steps.plan.outputs.mode }}"
           --max-requests "${{ steps.plan.outputs.max_requests }}"
-          --history-days 95
+          --history-days 90
 
       - name: Publish only validated daily snapshots
         if: steps.plan.outputs.publish == 'true'

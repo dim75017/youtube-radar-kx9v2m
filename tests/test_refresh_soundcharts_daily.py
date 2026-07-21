@@ -1,6 +1,8 @@
+import datetime as dt
 from pathlib import Path
 import tempfile
 import unittest
+import urllib.parse
 from unittest.mock import patch
 
 import refresh_soundcharts_daily as subject
@@ -88,6 +90,24 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertEqual(outcome.requests, 1)
         self.assertEqual(outcome.usable, 0)
         self.assertFalse(outcome.items[0]['usable'])
+
+    def test_track_history_request_never_exceeds_90_calendar_days(self):
+        payload = {
+            'schemas': {'tracks': ['soundcharts_uuid', 'spotify_id']},
+            'tracks': [['song-uuid', 'track-1']],
+        }
+        response = {
+            'items': [
+                {'date': '2026-07-21', 'plots': [{'identifier': 'track-1', 'value': 1}]},
+            ]
+        }
+        client = FakeClient(response)
+        with patch.object(subject, 'utc_today', return_value=dt.date(2026, 7, 21)):
+            subject.refresh_tracks(payload, {'tracks': {}}, client, 1, 10, 95)
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(client.paths[0]).query)
+        start = dt.date.fromisoformat(query['startDate'][0])
+        end = dt.date.fromisoformat(query['endDate'][0])
+        self.assertLessEqual((end - start).days, 89)
 
     def test_performance_payload_round_trip(self):
         with tempfile.TemporaryDirectory() as directory:
