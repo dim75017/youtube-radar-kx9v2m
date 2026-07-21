@@ -1,0 +1,170 @@
+name: Diagnose Soundcharts daily metrics
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/diagnose-soundcharts-daily.yml'
+      - 'refresh_soundcharts_daily.py'
+      - 'Spotify_Soundcharts_data.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test authentication and one-day Spotify metrics
+        env:
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        run: |
+          python3 - <<'PY'
+          from __future__ import annotations
+          import base64
+          import datetime as dt
+          import json
+          import os
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+          from pathlib import Path
+
+          API = 'https://customer.api.soundcharts.com'
+          TOKEN = 'https://account.soundcharts.com/oauth/token'
+          PREFIX = 'window.SPOTIFY_SOUNDCHARTS='
+
+          def clean(value: str) -> str:
+              value = value.strip().strip('\ufeff\u200b')
+              if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+                  value = value[1:-1].strip()
+              return value
+
+          app_id = clean(os.environ.get('SOUNDCHARTS_CLIENT_ID', ''))
+          api_key = clean(os.environ.get('SOUNDCHARTS_CLIENT_SECRET', ''))
+          team_id = clean(os.environ.get('SOUNDCHARTS_TEAM_ID', ''))
+          if not app_id or not api_key:
+              raise SystemExit('Soundcharts secrets are missing')
+          print(json.dumps({'credentials_present': True, 'app_id_chars': len(app_id), 'api_key_chars': len(api_key)}))
+
+          raw = Path('Spotify_Soundcharts_data.js').read_text(encoding='utf-8')
+          payload = json.loads(raw[len(PREFIX):].strip().removesuffix(';'))
+
+          def field(row, schema, name):
+              try:
+                  index = schema.index(name)
+              except ValueError:
+                  return None
+              return row[index] if index < len(row) else None
+
+          artist_schema = list(payload.get('schemas', {}).get('artists', []))
+          track_schema = list(payload.get('schemas', {}).get('tracks', []))
+          artist_ids = [str(field(row, artist_schema, 'soundcharts_uuid')) for row in payload.get('artists', []) if field(row, artist_schema, 'soundcharts_uuid')][:5]
+          track_ids = [(str(field(row, track_schema, 'soundcharts_uuid')), str(field(row, track_schema, 'spotify_id') or '')) for row in payload.get('tracks', []) if field(row, track_schema, 'soundcharts_uuid')][:8]
+          print(json.dumps({'artist_candidates': len(artist_ids), 'track_candidates': len(track_ids)}))
+          if not artist_ids or not track_ids:
+              raise SystemExit('The export has no Soundcharts UUID candidates')
+
+          def call(url, headers, data=None):
+              request = urllib.request.Request(url, data=data, headers=headers, method='POST' if data is not None else 'GET')
+              try:
+                  with urllib.request.urlopen(request, timeout=35) as response:
+                      body = response.read().decode('utf-8')
+                      return response.status, dict(response.headers), json.loads(body)
+              except urllib.error.HTTPError as exc:
+                  return exc.code, dict(exc.headers), None
+
+          direct_headers = {'x-app-id': app_id, 'x-api-key': api_key, 'Accept': 'application/json'}
+          status, headers, _ = call(API + '/api/v2/referential/platforms/streaming', direct_headers)
+          auth_mode = 'api_headers'
+          auth_headers = direct_headers
+
+          if status in {401, 403}:
+              basic = base64.b64encode(f'{app_id}:{api_key}'.encode()).decode()
+              form = {'grant_type': 'client_credentials'}
+              if team_id:
+                  form['team_id'] = team_id
+              token_status, _, token_body = call(
+                  TOKEN,
+                  {'Authorization': f'Basic {basic}', 'Content-Type': 'application/x-www-form-urlencoded'},
+                  urllib.parse.urlencode(form).encode(),
+              )
+              token = token_body.get('access_token') if isinstance(token_body, dict) else None
+              if token_status >= 400 or not token:
+                  raise SystemExit(f'Authentication failed: direct={status}, oauth={token_status}')
+              auth_mode = 'oauth_bearer'
+              auth_headers = {'Authorization': f'Bearer {token}', 'Accept': 'application/json'}
+              status, headers, _ = call(API + '/api/v2/referential/platforms/streaming', auth_headers)
+
+          if status >= 400:
+              raise SystemExit(f'Authenticated API probe failed with HTTP {status}')
+          quota = headers.get('x-quota-remaining') or headers.get('X-Quota-Remaining')
+          print(json.dumps({'auth_mode': auth_mode, 'probe_status': status, 'quota_remaining': quota}))
+
+          def walk(value, path='$'):
+              if isinstance(value, dict):
+                  yield path, value
+                  for key, child in value.items():
+                      yield from walk(child, f'{path}.{key}')
+              elif isinstance(value, list):
+                  for index, child in enumerate(value):
+                      yield from walk(child, f'{path}[{index}]')
+
+          def spotify_values(value):
+              found = []
+              for path, item in walk(value):
+                  platform = str(item.get('platform') or item.get('platformCode') or item.get('identifier') or '').lower()
+                  metric = item.get('value')
+                  if platform == 'spotify' and isinstance(metric, (int, float)):
+                      found.append({'path': path, 'date': item.get('date'), 'value': metric})
+              return found
+
+          artist_result = None
+          for uuid in artist_ids:
+              status, _, body = call(API + f'/api/v2/artist/{urllib.parse.quote(uuid)}/current/stats', auth_headers)
+              values = spotify_values(body)
+              print(json.dumps({'artist_http': status, 'artist_uuid_suffix': uuid[-8:], 'spotify_values': values[:4], 'top_keys': sorted(body.keys())[:20] if isinstance(body, dict) else []}))
+              if status < 400 and values:
+                  artist_result = values[-1]
+                  break
+
+          start = (dt.date.today() - dt.timedelta(days=10)).isoformat()
+          end = dt.date.today().isoformat()
+          track_result = None
+          for uuid, spotify_id in track_ids:
+              query = urllib.parse.urlencode({'startDate': start, 'endDate': end, 'limit': 100})
+              status, _, body = call(API + f'/api/v2/song/{urllib.parse.quote(uuid)}/audience/spotify?{query}', auth_headers)
+              dated = []
+              for path, item in walk(body):
+                  date = str(item.get('date') or '')[:10]
+                  plots = item.get('plots')
+                  if not date or not isinstance(plots, list):
+                      continue
+                  for plot in plots:
+                      if not isinstance(plot, dict) or not isinstance(plot.get('value'), (int, float)):
+                          continue
+                      identifier = str(plot.get('identifier') or '')
+                      if spotify_id and identifier and identifier != spotify_id:
+                          continue
+                      dated.append({'date': date, 'identifier_suffix': identifier[-8:], 'value': plot['value']})
+              dated.sort(key=lambda point: point['date'])
+              print(json.dumps({'track_http': status, 'track_uuid_suffix': uuid[-8:], 'spotify_id_suffix': spotify_id[-8:], 'points': dated[-4:], 'top_keys': sorted(body.keys())[:20] if isinstance(body, dict) else []}))
+              if status < 400 and dated:
+                  track_result = dated[-1]
+                  break
+
+          if not artist_result:
+              raise SystemExit('Authentication worked, but no Spotify artist metric could be parsed')
+          if not track_result:
+              raise SystemExit('Authentication worked, but no Spotify song audience point could be parsed')
+          print(json.dumps({'diagnostic': 'success', 'artist_metric': artist_result, 'track_metric': track_result}))
+          PY
