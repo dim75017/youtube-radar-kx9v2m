@@ -1,0 +1,176 @@
+{
+  "repository": "dim75017/youtube-radar-kx9v2m",
+  "commits": [
+    {
+      "sha": "37bd131222764994b6d68ed73d40b8227c376a11",
+      "message": "Revert \"Restore the full Spotify track catalogue\"\n\nThis reverts commit f51e99bcb8ff51a3b5f01c8d79b09b07396cffb1.",
+      "author_login": "dim75017",
+      "committer_login": "dim75017",
+      "git_author": {
+        "name": "dim75017",
+        "email": "dim@lofigirl.com",
+        "date": "2026-07-22T12:17:29Z"
+      },
+      "git_committer": {
+        "name": "dim75017",
+        "email": "dim@lofigirl.com",
+        "date": "2026-07-22T12:17:29Z"
+      },
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      },
+      "parents": [
+        "f51e99bcb8ff51a3b5f01c8d79b09b07396cffb1"
+      ],
+      "check_runs": [
+        {
+          "name": "report-build-status",
+          "app": "github-actions",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/29919106305/job/88920040949"
+        },
+        {
+          "name": "deploy",
+          "app": "github-actions",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/29919106305/job/88920040942"
+        },
+        {
+          "name": "build",
+          "app": "github-actions",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/29919106305/job/88919877226"
+        },
+        {
+          "name": "refresh",
+          "app": "github-actions",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/29919107090/job/88919874853"
+        }
+      ],
+      "associated_pulls": []
+    },
+    {
+      "sha": "f0797bc5ac4b85215f1ae162d6103c26ba204953",
+      "message": "Revert \"Restore full Spotify catalogue and prevent 2k regressions\"\n\nThis reverts commit 90e2be6d054b2d058605fb32f19f03c04e277d64.",
+      "author_login": "dim75017",
+      "committer_login": "dim75017",
+      "git_author": {
+        "name": "dim75017",
+        "email": "dim@lofigirl.com",
+        "date": "2026-07-22T12:44:50Z"
+      },
+      "git_committer": {
+        "name": "dim75017",
+        "email": "dim@lofigirl.com",
+        "date": "2026-07-22T12:44:50Z"
+      },
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      },
+      "parents": [
+        "90e2be6d054b2d058605fb32f19f03c04e277d64"
+      ],
+      "check_runs": [
+        {
+          "name": "report-build-status",
+          "app": "github-actions",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/29920956255/job/88926286047"
+        },
+        {
+          "name": "deploy",
+          "app": "github-actions",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/29920956255/job/88926286043"
+        },
+        {
+          "name": "refresh",
+          "app": "github-actions",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/29920958588/job/88926036225"
+        },
+        {
+          "name": "build",
+          "app": "github-actions",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/29920956255/job/88926034474"
+        }
+      ],
+      "associated_pulls": []
+    },
+    {
+      "sha": "f88ab3a524a10e54f7b568225cad2b3c25c3062c",
+      "message": "fix: quarantine non-strict Spotify catalogue",
+      "author_login": "dim75017",
+      "committer_login": "dim75017",
+      "git_author": {
+        "name": "dim75017",
+        "email": "dim@lofigirl.com",
+        "date": "2026-07-22T11:45:26Z"
+      },
+      "git_committer": {
+        "name": "dim75017",
+        "email": "dim@lofigirl.com",
+        "date": "2026-07-22T11:45:26Z"
+      },
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      },
+      "parents": [
+        "19d3af6130fbc96aa0ea42b94804efa78c3e3502"
+      ],
+      "check_runs": [
+        {
+          "name": "report-build-status",
+          "app": "github-actions",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/29916943607/job/88913099112"
+        },
+        {
+          "name": "deploy",
+          "app": "github-actions",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/29916943607/job/88913099040"
+        },
+        {
+          "name": "refresh",
+          "app": "github-actions",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/29916944634/job/88912928782"
+        },
+        {
+          "name": "build",
+          "app": "github-actions",
+          "status": "completed",
+          "conclusion": "success",
+          "details_url": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/29916943607/job/88912928370"
+        }
+      ],
+      "associated_pulls": []
+    }
+  ]
+}
