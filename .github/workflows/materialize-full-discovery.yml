@@ -1,3 +1,4 @@
+# kick materialization after the workflow exists on the branch
 name: Materialize full discovery production files
 
 on:
