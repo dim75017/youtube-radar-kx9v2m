@@ -1,3 +1,4 @@
+# Refresh the observable record without dispatching a new collection.
 name: Observe full discovery catalogue refresh
 
 on:
