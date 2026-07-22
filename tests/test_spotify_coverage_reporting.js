@@ -12,8 +12,8 @@ assert.match(source, /playlist_discovery_measured/);
 assert.match(source, /discovery_catalogue/);
 assert.match(source, /measuredCatalogueTracks/);
 assert.match(source, /MutationObserver/);
-assert.match(source, /Sélection publique stricte/);
-assert.match(source, /les profils incomplets restent en quarantaine/);
+assert.match(source, /Catalogue complet disponible/);
+assert.match(source, /pistes encore incomplètes restent visibles/);
 assert.match(source, /startsWith\('détectée'\)/, 'legacy detected badges must be removed from All tracks');
 
 function element() {
@@ -88,11 +88,12 @@ const context = {
 vm.runInNewContext(source, context);
 
 assert.match(elements['c-opps'].title, /43.*265/);
-assert.match(elements['c-opps'].title, /pistes instrumentales vérifiées/);
+assert.match(elements['c-opps'].title, /3.*271/);
 assert.match(elements['c-art'].title, /1.*280/);
 assert.match(elements['c-art'].title, /enrichissement continu/);
 assert.match(elements['c-radar'].title, /2.*000/);
-assert.match(elements['sync-detail-tr'].innerHTML, /2.*000 opportunités A&R/);
-assert.match(elements['sync-detail-tr'].innerHTML, /sélection instrumentale stricte/);
+assert.match(elements['sync-detail-tr'].innerHTML, /220 playlists scannées/);
+assert.match(elements['sync-detail-tr'].innerHTML, /3.*271 pistes mesurées/);
+assert.match(elements['sync-detail-tr'].innerHTML, /catalogue vivant/);
 
 console.log('Spotify full-catalogue coverage reporting: OK');
