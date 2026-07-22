@@ -9,7 +9,7 @@ const dashboardPath = path.join(__dirname, '..', 'spotify', 'dashboard.js');
 const source = fs.readFileSync(dashboardPath, 'utf8');
 
 const identityStart = source.indexOf('const GENERAL_VIEW_QUARANTINED_ARTISTS');
-const identityEnd = source.indexOf('/* Legacy rows do not carry', identityStart);
+const identityEnd = source.indexOf('/* Preserve the historical catalogue.', identityStart);
 assert.ok(identityStart >= 0 && identityEnd > identityStart, 'general-view identity helpers must remain defined');
 
 const identityContext = {};
@@ -42,7 +42,7 @@ assert.equal(identityContext.isQuarantined('Bruno Mars'), true, 'reviewed mainst
 assert.equal(identityContext.isQuarantined('Bruno Mars', true), true,
   'a complete ID pair never overrides the reviewed mainstream quarantine');
 
-const legacyStart = source.indexOf('const A = [];');
+const legacyStart = source.indexOf('const A = (D.artists || [])');
 const legacyEnd = source.indexOf('/* Raccord progressif', legacyStart);
 const legacyContext = {
   D: {
@@ -63,8 +63,8 @@ const legacyContext = {
 vm.runInNewContext(`${source.slice(legacyStart, legacyEnd)}; this.visibleRows=LEGACY_R;`, legacyContext);
 assert.deepEqual(
   Array.from(legacyContext.visibleRows, row => row[6]),
-  [],
-  'legacy rows stay quarantined because they lack the full strict evidence contract',
+  ['safe-track'],
+  'legacy general views hide composite, reviewed mainstream, and retired identities',
 );
 
 const taxonomyStart = source.indexOf('const SC_ALLOWED_GENRES');
@@ -166,12 +166,7 @@ for (const invalid of [
   assert.equal(gateContext.isEligible(invalid, schema), false);
 }
 
-assert.match(source, /const A = \[\];/,
-  'legacy artist identities are not a public source');
-assert.match(source, /const LEGACY_R = \[\];/,
-  'legacy catalogue rows remain quarantined');
-assert.match(source, /const withTracks = AG\.filter\(g=>g\.n>0/,
-  'artists without a linked strict public track remain quarantined');
+assert.match(source, /!isGeneralArtistQuarantined\(artist\[0\]\)/);
 assert.match(source, /if\(a\[7\]&&!isGeneralArtistQuarantined\(a\[0\]\)\) artistById\.set\(a\[7\],i\)/,
   'a structured ID cannot revive an old malformed display-credit identity');
 assert.match(source, /const structuredComplete=Boolean\(String\(id\|\|''\)\.trim\(\)&&String\(meta\.uuid\|\|''\)\.trim\(\)\)/);

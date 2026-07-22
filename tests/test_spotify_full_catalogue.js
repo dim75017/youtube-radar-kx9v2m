@@ -6,10 +6,9 @@ const dashboard = fs.readFileSync('spotify/dashboard.js', 'utf8');
 const coverage = fs.readFileSync('spotify/coverage.js', 'utf8');
 const index = fs.readFileSync('spotify/index.html', 'utf8');
 
-assert.match(dashboard, /const DISCOVERY_CATALOGUE = \{tracks:\[\],artists:\[\],counts:\{\}\};/);
+assert.match(dashboard, /const DISCOVERY_CATALOGUE = SC&&SC\.discovery_catalogue/);
 assert.match(dashboard, /function mergeFullDiscoveryCatalogue\(/);
 assert.match(dashboard, /mergeFullDiscoveryCatalogue\(\);/);
-assert.match(dashboard, /const LEGACY_R = \[\];/);
 assert.match(dashboard, /Tout le catalogue/);
 assert.match(dashboard, /À mesurer/);
 assert.match(dashboard, /Présentes en playlist éditoriale/);
@@ -32,10 +31,9 @@ assert.doesNotMatch(
   /T\('détectée'\)/,
   'Toutes les pistes must not restore the obsolete detected badge',
 );
-assert.match(coverage, /Sélection publique stricte/);
-assert.match(coverage, /pistes instrumentales vérifiées/);
-assert.doesNotMatch(coverage, /pistes encore incomplètes restent visibles/);
-assert.match(index, /discovery\.css\?v=20260722-strict-public-v3/);
-assert.match(index, /dashboard\.js\?v=20260722-strict-public-v3/);
-assert.match(index, /coverage\.js\?v=20260722-strict-public-v3/);
-console.log('spotify strict public catalogue guardrails: OK');
+assert.match(coverage, /Catalogue complet disponible/);
+assert.match(coverage, /pistes disponibles/);
+assert.match(index, /discovery\.css\?v=20260722-full-catalogue-v2/);
+assert.match(index, /dashboard\.js\?v=20260722-full-catalogue-v2/);
+assert.match(index, /coverage\.js\?v=20260722-full-catalogue-v2/);
+console.log('spotify full discovery catalogue guardrails: OK');
