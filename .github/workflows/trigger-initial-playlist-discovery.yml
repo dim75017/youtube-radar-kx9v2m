@@ -8,19 +8,68 @@ on:
 
 permissions:
   actions: write
-  contents: read
+  contents: write
 
 jobs:
   dispatch:
     runs-on: ubuntu-latest
     steps:
-      - name: Dispatch the production Soundcharts daily target
+      - name: Reuse or dispatch a recent production Soundcharts run
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
-          gh workflow run refresh-soundcharts.yml \
-            --repo "$GITHUB_REPOSITORY" \
-            --ref main \
-            -f scope=daily_target \
-            -f max_requests=8230
-          echo 'Production Soundcharts daily_target dispatched.'
+          set -euo pipefail
+          runs="$RUNNER_TEMP/runs.json"
+          gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/refresh-soundcharts.yml/runs" \
+            -f event=workflow_dispatch -f branch=main -f per_page=10 > "$runs"
+
+          recent="$(python3 - "$runs" <<'PY'
+          import datetime as dt, json, sys
+          rows=json.load(open(sys.argv[1], encoding='utf-8')).get('workflow_runs', [])
+          cutoff=dt.datetime.now(dt.timezone.utc)-dt.timedelta(minutes=30)
+          for row in rows:
+              created=dt.datetime.fromisoformat(str(row.get('created_at','')).replace('Z','+00:00'))
+              if created >= cutoff:
+                  print(row.get('id',''))
+                  break
+          PY
+          )"
+
+          if [[ -z "$recent" ]]; then
+            gh workflow run refresh-soundcharts.yml \
+              --repo "$GITHUB_REPOSITORY" \
+              --ref main \
+              -f scope=daily_target \
+              -f max_requests=8230
+            sleep 5
+          fi
+
+          gh api -X GET "repos/$GITHUB_REPOSITORY/actions/workflows/refresh-soundcharts.yml/runs" \
+            -f event=workflow_dispatch -f branch=main -f per_page=10 > "$runs"
+          python3 - "$runs" <<'PY'
+          import json, sys
+          rows=json.load(open(sys.argv[1], encoding='utf-8')).get('workflow_runs', [])
+          if not rows:
+              raise SystemExit('No workflow_dispatch Soundcharts run found')
+          row=rows[0]
+          report={key:row.get(key) for key in ('id','name','event','status','conclusion','head_branch','head_sha','run_number','created_at','updated_at','html_url')}
+          report['workflow']='refresh-soundcharts.yml'
+          report['scope']='daily_target'
+          report['max_requests']=8230
+          open('initial-playlist-discovery-run.json','w',encoding='utf-8').write(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
+          print(json.dumps(report,ensure_ascii=False))
+          PY
+
+      - name: Publish the selected run identifier
+        run: |
+          git init
+          git remote add origin "https://x-access-token:${{ github.token }}@github.com/$GITHUB_REPOSITORY.git"
+          git fetch --depth=1 origin main
+          git checkout -B main FETCH_HEAD
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          cp "$GITHUB_WORKSPACE/initial-playlist-discovery-run.json" .
+          git add initial-playlist-discovery-run.json
+          git commit -m 'Record initial playlist discovery production run'
+          git push origin HEAD:main
