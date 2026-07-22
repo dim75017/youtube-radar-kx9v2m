@@ -1,12 +1,9 @@
-name: Apply editorial playlist production changes
+name: Materialize editorial playlist discovery
 
 on:
   push:
     branches:
-      - agent/playlist-editorial-discovery
-    paths:
-      - '.github/workflows/apply-editorial-playlist-production.yml'
-  pull_request:
+      - agent/activate-playlist-discovery
     paths:
       - '.github/workflows/apply-editorial-playlist-production.yml'
   workflow_dispatch:
@@ -15,25 +12,24 @@ permissions:
   contents: write
 
 concurrency:
-  group: apply-editorial-playlist-production
+  group: materialize-editorial-playlist-discovery
   cancel-in-progress: true
 
 jobs:
   apply:
-    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: agent/playlist-editorial-discovery
+          ref: agent/activate-playlist-discovery
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Recover and apply the production patch
+      - name: Recover and apply the validated production patch
         shell: bash
         run: |
           set -euo pipefail
@@ -67,7 +63,7 @@ jobs:
           test_path = Path('tests/test_refresh_soundcharts_daily.py')
           text = test_path.read_text(encoding='utf-8')
           text = text.replace("default: '9490'", "default: '7200'")
-          text = text.replace('expansion_data_cap=\\"9490\\"', 'expansion_data_cap=\\"7200\\"')
+          text = text.replace('expansion_data_cap=\"9490\"', 'expansion_data_cap=\"7200\"')
           artist_assert = "        self.assertIn('--max-requests \\\"${{ steps.plan.outputs.artist_requests }}\\\"', workflow)\n"
           discovery_assert = "        self.assertIn('--max-requests \\\"${{ steps.plan.outputs.discovery_requests }}\\\"', workflow)\n"
           if discovery_assert not in text:
@@ -104,28 +100,39 @@ jobs:
           ruby -e "require 'yaml'; YAML.load_file('.github/workflows/refresh-soundcharts.yml'); puts 'workflow yaml ok'"
           git diff --check
 
-      - name: Commit validated non-workflow production changes
+      - name: Archive the materialized production files
+        uses: actions/upload-artifact@v4
+        with:
+          name: editorial-playlist-production
+          path: |
+            discover_soundcharts_playlists.py
+            expand_soundcharts_instrumental_pool.py
+            sync_soundcharts_opportunities.py
+            spotify/dashboard.js
+            soundcharts-playlist-discovery-cache.json
+            .github/workflows/refresh-soundcharts.yml
+            tests/test_discover_soundcharts_playlists.py
+            tests/test_expand_soundcharts_instrumental_pool.py
+            tests/test_refresh_soundcharts_daily.py
+            tests/test_spotify_dashboard_ui.js
+            tests/test_sync_soundcharts_opportunities.py
+          retention-days: 2
+
+      - name: Commit the validated production implementation
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf \
-            .editorial-playlist-patch \
-            .playlist-editorial-payload
-          git restore --source=HEAD --staged --worktree .github/workflows
+          rm -rf .editorial-playlist-patch .playlist-editorial-payload
+          rm -f \
+            .github/workflows/apply-editorial-playlist-production.yml \
+            .github/workflows/export-current-radar-sources.yml \
+            .github/workflows/export-playlist-discovery-sources.yml \
+            .github/workflows/export-youtube-maintenance-sources.yml \
+            .github/workflows/probe-playlist-discovery.yml \
+            playlist-discovery-probe.json
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add \
-            discover_soundcharts_playlists.py \
-            expand_soundcharts_instrumental_pool.py \
-            spotify/dashboard.js \
-            soundcharts-playlist-discovery-cache.json \
-            sync_soundcharts_opportunities.py \
-            tests/test_discover_soundcharts_playlists.py \
-            tests/test_expand_soundcharts_instrumental_pool.py \
-            tests/test_refresh_soundcharts_daily.py \
-            tests/test_spotify_dashboard_ui.js \
-            tests/test_sync_soundcharts_opportunities.py
-          git add -u .editorial-playlist-patch .playlist-editorial-payload
+          git add -A
           git diff --cached --check
-          git commit -m 'Add editorial playlist catalogue discovery'
-          git push origin HEAD:agent/playlist-editorial-discovery
+          git commit -m 'Activate editorial playlist and artist catalogue discovery'
+          git push origin HEAD:agent/activate-playlist-discovery
