@@ -1,0 +1,147 @@
+name: Diagnose Spotify dashboard track count
+
+on:
+  push:
+    branches:
+      - agent/diagnose-dashboard-track-count
+    paths:
+      - '.github/workflows/diagnose-dashboard-track-count.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/diagnose-dashboard-track-count
+          fetch-depth: 0
+
+      - name: Count every catalogue layer
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          def load_js(path: Path):
+              raw = path.read_text(encoding='utf-8').strip()
+              start = raw.find('{')
+              if start < 0:
+                  raise SystemExit(f'No JSON object in {path}')
+              text = raw[start:].strip()
+              if text.endswith(';'):
+                  text = text[:-1]
+              return json.loads(text)
+
+          index = Path('spotify/index.html').read_text(encoding='utf-8')
+          match = re.search(r'Spotify_Soundcharts_data[^?"\x27]+\.js', index)
+          if not match:
+              raise SystemExit('Active Soundcharts snapshot not found')
+          snapshot_name = match.group(0)
+          sc = load_js(Path(snapshot_name))
+          radar = load_js(Path('Spotify_Radar_data.js'))
+
+          artists = radar.get('artists') if isinstance(radar.get('artists'), list) else []
+          rows = radar.get('rows') if isinstance(radar.get('rows'), list) else []
+          quarantined = {
+              'powfu','metallica','michael jackson','justin bieber','bruno mars','shakira','lady gaga',
+              'pitbull','david guetta','calvin harris','dua lipa','kendrick lamar','black eyed peas',
+              'sean paul','jennifer lopez','ellie goulding','bring me the horizon','a$ap rocky','asap rocky',
+              'sarcastic sounds','rxseboy','sody'
+          }
+          composite = re.compile(r'[&,]|(?:^|\s)(?:feat(?:uring)?|ft|x|×)\.?(?:\s|$)', re.I)
+          legacy_visible = []
+          for row in rows:
+              if not isinstance(row, list) or not row:
+                  continue
+              try:
+                  artist = artists[int(row[0])]
+              except (ValueError, TypeError, IndexError):
+                  continue
+              if not isinstance(artist, list) or not artist:
+                  continue
+              name = str(artist[0] or '').strip()
+              retired = int(artist[4] or 0) == 1 if len(artist) > 4 else False
+              if retired or not name or name.casefold() in quarantined or composite.search(name):
+                  continue
+              legacy_visible.append(row)
+
+          strict_tracks = sc.get('tracks') if isinstance(sc.get('tracks'), list) else []
+          editorial = sc.get('editorial') if isinstance(sc.get('editorial'), dict) else {}
+          editorial_tracks = editorial.get('tracks') if isinstance(editorial.get('tracks'), list) else []
+          editorial_artists = editorial.get('artists') if isinstance(editorial.get('artists'), list) else []
+          discovery = sc.get('discovery_catalogue') if isinstance(sc.get('discovery_catalogue'), dict) else {}
+          discovery_tracks = discovery.get('tracks') if isinstance(discovery.get('tracks'), list) else []
+          discovery_artists = discovery.get('artists') if isinstance(discovery.get('artists'), list) else []
+          track_schema = discovery.get('track_schema') if isinstance(discovery.get('track_schema'), list) else []
+
+          def field(row, schema, name):
+              if isinstance(row, dict):
+                  return row.get(name)
+              try:
+                  i = schema.index(name)
+              except ValueError:
+                  return None
+              return row[i] if isinstance(row, list) and i < len(row) else None
+
+          legacy_ids = {str(row[6]).strip() for row in legacy_visible if len(row) > 6 and str(row[6] or '').strip()}
+          discovery_keys = set()
+          discovery_with_spotify = 0
+          discovery_without_spotify = 0
+          for row in discovery_tracks:
+              spotify = str(field(row, track_schema, 'spotify_id') or '').strip()
+              uuid = str(field(row, track_schema, 'soundcharts_uuid') or '').strip()
+              if spotify:
+                  discovery_with_spotify += 1
+                  discovery_keys.add(spotify)
+              elif uuid:
+                  discovery_without_spotify += 1
+                  discovery_keys.add('soundcharts:' + uuid)
+          union_estimate = len(legacy_ids | discovery_keys)
+
+          report = {
+              'active_snapshot': snapshot_name,
+              'snapshot_generated_at': sc.get('generated_at'),
+              'snapshot_bytes': Path(snapshot_name).stat().st_size,
+              'legacy_radar': {
+                  'artists_total': len(artists),
+                  'rows_total': len(rows),
+                  'rows_visible_after_dashboard_legacy_filter': len(legacy_visible),
+                  'visible_rows_with_id': len(legacy_ids),
+              },
+              'soundcharts': {
+                  'strict_tracks': len(strict_tracks),
+                  'strict_artists': len(sc.get('artists') or []),
+                  'editorial_tracks': len(editorial_tracks),
+                  'editorial_artists': len(editorial_artists),
+                  'discovery_catalogue_tracks': len(discovery_tracks),
+                  'discovery_catalogue_artists': len(discovery_artists),
+                  'discovery_catalogue_counts': discovery.get('counts') or {},
+                  'discovery_tracks_with_spotify_id': discovery_with_spotify,
+                  'discovery_tracks_without_spotify_id': discovery_without_spotify,
+                  'playlist_discovery': sc.get('playlist_discovery') or {},
+                  'coverage': sc.get('coverage') or {},
+                  'limits': sc.get('limits') or {},
+              },
+              'estimated_unique_dashboard_track_keys': union_estimate,
+              'note': 'The estimate unions visible legacy IDs with discovery catalogue keys; dashboard artist-link gates can only reduce it slightly.'
+          }
+          Path('dashboard-track-count-report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(report, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Commit report
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add dashboard-track-count-report.json
+          git commit -m 'Record exact Spotify dashboard track counts'
+          git push origin HEAD:agent/diagnose-dashboard-track-count
