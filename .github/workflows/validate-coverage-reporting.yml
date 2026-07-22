@@ -1,0 +1,28 @@
+name: Validate Soundcharts coverage reporting
+
+on:
+  push:
+    branches:
+      - agent/report-expanded-soundcharts-coverage
+  pull_request:
+    paths:
+      - 'spotify/coverage.js'
+      - 'spotify/index.html'
+      - 'tests/test_spotify_coverage_reporting.js'
+      - '.github/workflows/validate-coverage-reporting.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+      - name: Validate JavaScript and reporting contract
+        run: |
+          node --check spotify/coverage.js
+          node tests/test_spotify_coverage_reporting.js
+          git diff --check
