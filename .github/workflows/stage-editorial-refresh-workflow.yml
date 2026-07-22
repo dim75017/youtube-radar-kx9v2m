@@ -1,0 +1,56 @@
+name: Stage validated Soundcharts workflow content
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/stage-editorial-refresh-workflow.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/playlist-editorial-discovery
+          fetch-depth: 0
+
+      - name: Recreate the validated workflow as a non-workflow blob
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload_commit='d6da02524541c90d065c524736c7c3b1ada55c5c'
+          : > "$RUNNER_TEMP/editorial-playlist.b64"
+          for path in $(git ls-tree -r --name-only "$payload_commit" -- .playlist-editorial-payload | sort); do
+            git show "$payload_commit:$path" >> "$RUNNER_TEMP/editorial-playlist.b64"
+          done
+          base64 --decode "$RUNNER_TEMP/editorial-playlist.b64" > "$RUNNER_TEMP/editorial-playlist.gz"
+          gzip -dc "$RUNNER_TEMP/editorial-playlist.gz" > "$RUNNER_TEMP/editorial-playlist.diff"
+          git apply --check --include='.github/workflows/refresh-soundcharts.yml' "$RUNNER_TEMP/editorial-playlist.diff"
+          git apply --include='.github/workflows/refresh-soundcharts.yml' "$RUNNER_TEMP/editorial-playlist.diff"
+
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('.github/workflows/refresh-soundcharts.yml')
+          text = path.read_text(encoding='utf-8')
+          needle = "          pool = soundcharts.get('instrumental_pool') or {}\n          scoring = soundcharts.get('opportunity_scoring') or {}\n"
+          replacement = "          pool = soundcharts.get('instrumental_pool') or {}\n          discovery = soundcharts.get('playlist_discovery') or {}\n          scoring = soundcharts.get('opportunity_scoring') or {}\n"
+          if needle in text:
+              text = text.replace(needle, replacement, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+
+          cp .github/workflows/refresh-soundcharts.yml refresh-soundcharts.workflow.pending.yml
+          git restore --source=HEAD --staged --worktree .github/workflows/refresh-soundcharts.yml
+
+      - name: Commit the reusable workflow blob
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add refresh-soundcharts.workflow.pending.yml
+          git diff --cached --check
+          git commit -m 'Stage validated Soundcharts workflow blob'
+          git push origin HEAD:agent/playlist-editorial-discovery

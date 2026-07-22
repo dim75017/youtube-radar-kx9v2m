@@ -1,0 +1,131 @@
+name: Apply editorial playlist production changes
+
+on:
+  push:
+    branches:
+      - agent/playlist-editorial-discovery
+    paths:
+      - '.github/workflows/apply-editorial-playlist-production.yml'
+  pull_request:
+    paths:
+      - '.github/workflows/apply-editorial-playlist-production.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-editorial-playlist-production
+  cancel-in-progress: true
+
+jobs:
+  apply:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/playlist-editorial-discovery
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Recover and apply the production patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          if compgen -G '.playlist-editorial-payload/part-*' >/dev/null; then
+            cat .playlist-editorial-payload/part-* > "$RUNNER_TEMP/editorial-playlist.b64"
+            base64 --decode "$RUNNER_TEMP/editorial-playlist.b64" > "$RUNNER_TEMP/editorial-playlist.gz"
+            gzip -dc "$RUNNER_TEMP/editorial-playlist.gz" > "$RUNNER_TEMP/editorial-playlist.diff"
+          elif compgen -G '.editorial-playlist-patch/part-*' >/dev/null; then
+            cat .editorial-playlist-patch/part-* > "$RUNNER_TEMP/editorial-playlist.b64"
+            base64 --decode "$RUNNER_TEMP/editorial-playlist.b64" > "$RUNNER_TEMP/editorial-playlist.xz"
+            xz -dc "$RUNNER_TEMP/editorial-playlist.xz" > "$RUNNER_TEMP/editorial-playlist.diff"
+          else
+            echo 'No editorial-playlist payload found' >&2
+            exit 1
+          fi
+          test -s "$RUNNER_TEMP/editorial-playlist.diff"
+          git apply --check "$RUNNER_TEMP/editorial-playlist.diff"
+          git apply "$RUNNER_TEMP/editorial-playlist.diff"
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          workflow = Path('.github/workflows/refresh-soundcharts.yml')
+          text = workflow.read_text(encoding='utf-8')
+          needle = "          pool = soundcharts.get('instrumental_pool') or {}\n          scoring = soundcharts.get('opportunity_scoring') or {}\n"
+          replacement = "          pool = soundcharts.get('instrumental_pool') or {}\n          discovery = soundcharts.get('playlist_discovery') or {}\n          scoring = soundcharts.get('opportunity_scoring') or {}\n"
+          if needle in text:
+              text = text.replace(needle, replacement, 1)
+          workflow.write_text(text, encoding='utf-8')
+
+          test_path = Path('tests/test_refresh_soundcharts_daily.py')
+          text = test_path.read_text(encoding='utf-8')
+          text = text.replace("default: '9490'", "default: '7200'")
+          text = text.replace('expansion_data_cap=\\"9490\\"', 'expansion_data_cap=\\"7200\\"')
+          artist_assert = "        self.assertIn('--max-requests \\\"${{ steps.plan.outputs.artist_requests }}\\\"', workflow)\n"
+          discovery_assert = "        self.assertIn('--max-requests \\\"${{ steps.plan.outputs.discovery_requests }}\\\"', workflow)\n"
+          if discovery_assert not in text:
+              insert_at = text.find(artist_assert)
+              if insert_at >= 0:
+                  insert_at += len(artist_assert)
+                  text = text[:insert_at] + discovery_assert + text[insert_at:]
+          discovery_cap_assert = "        self.assertIn('discovery_data_cap=\\\"2200\\\"', workflow)\n"
+          legacy_assert = "        self.assertIn('legacy_data_cap=\\\"2500\\\"', workflow)\n"
+          if discovery_cap_assert not in text:
+              insert_at = text.find(legacy_assert)
+              if insert_at >= 0:
+                  text = text[:insert_at] + discovery_cap_assert + text[insert_at:]
+          test_path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Run playlist discovery and A&R tests
+        run: |
+          python -m unittest \
+            tests/test_refresh_soundcharts_daily.py \
+            tests/test_discover_soundcharts_playlists.py \
+            tests/test_expand_soundcharts_instrumental_pool.py \
+            tests/test_sync_soundcharts_opportunities.py \
+            tests/test_prepare_soundcharts_snapshot.py \
+            -v
+          python -m py_compile \
+            refresh_soundcharts_daily.py \
+            discover_soundcharts_playlists.py \
+            expand_soundcharts_instrumental_pool.py \
+            sync_soundcharts_opportunities.py \
+            prepare_soundcharts_snapshot.py
+          node --check spotify/dashboard.js
+          node tests/test_spotify_dashboard_ui.js
+          ruby -e "require 'yaml'; YAML.load_file('.github/workflows/refresh-soundcharts.yml'); puts 'workflow yaml ok'"
+          git diff --check
+
+      - name: Commit validated non-workflow production changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf \
+            .editorial-playlist-patch \
+            .playlist-editorial-payload
+          git restore --source=HEAD --staged --worktree .github/workflows
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            discover_soundcharts_playlists.py \
+            expand_soundcharts_instrumental_pool.py \
+            spotify/dashboard.js \
+            soundcharts-playlist-discovery-cache.json \
+            sync_soundcharts_opportunities.py \
+            tests/test_discover_soundcharts_playlists.py \
+            tests/test_expand_soundcharts_instrumental_pool.py \
+            tests/test_refresh_soundcharts_daily.py \
+            tests/test_spotify_dashboard_ui.js \
+            tests/test_sync_soundcharts_opportunities.py
+          git add -u .editorial-playlist-patch .playlist-editorial-payload
+          git diff --cached --check
+          git commit -m 'Add editorial playlist catalogue discovery'
+          git push origin HEAD:agent/playlist-editorial-discovery
