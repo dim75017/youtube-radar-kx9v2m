@@ -36,22 +36,43 @@ jobs:
       - name: Apply the two-layer architecture
         run: python .github/scripts/apply_unified_spotify_catalogue.py
 
-      - name: Validate broad browsing and strict A&R
+      - name: Validate browse catalogue builder
+        run: |
+          python -m unittest tests/test_build_spotify_browse_catalogue.py -v
+          python -m py_compile build_spotify_browse_catalogue.py
+
+      - name: Validate Soundcharts snapshot and opportunity logic
         run: |
           python -m unittest \
-            tests/test_build_spotify_browse_catalogue.py \
             tests/test_prepare_soundcharts_snapshot.py \
             tests/test_sync_soundcharts_opportunities.py \
             -v
-          python -m py_compile build_spotify_browse_catalogue.py
+
+      - name: Validate dashboard JavaScript syntax
+        run: |
           node --check spotify/dashboard.js
           node --check spotify/coverage.js
-          node tests/test_dashboard_opportunity_guardrails.js
-          node tests/test_dashboard_general_view_guardrails.js
-          node tests/test_dashboard_ar_ui_guardrails.js
-          node tests/test_spotify_full_catalogue.js
-          node tests/test_spotify_coverage_reporting.js
-          node tests/test_spotify_catalogue_layers.js
+
+      - name: Validate strict A&R guardrails
+        run: node tests/test_dashboard_opportunity_guardrails.js
+
+      - name: Validate browsing identity guardrails
+        run: node tests/test_dashboard_general_view_guardrails.js
+
+      - name: Validate streamlined A&R UI
+        run: node tests/test_dashboard_ar_ui_guardrails.js
+
+      - name: Validate player and editorial evidence UI
+        run: node tests/test_spotify_full_catalogue.js
+
+      - name: Validate coverage reporting
+        run: node tests/test_spotify_coverage_reporting.js
+
+      - name: Validate broad browse and strict A&R separation
+        run: node tests/test_spotify_catalogue_layers.js
+
+      - name: Validate workflow and diff
+        run: |
           ruby -e "require 'yaml'; YAML.load_file('.github/workflows/refresh-spotify-browse-catalogue.yml'); puts 'browse workflow yaml ok'"
           git diff --check
 
