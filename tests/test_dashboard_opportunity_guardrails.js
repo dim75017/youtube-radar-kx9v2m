@@ -44,6 +44,27 @@ for (const invalid of [
   assert.equal(context.isContactable(invalid), false);
 }
 
+const searchStart = source.indexOf('function arSearchText');
+const searchEnd = source.indexOf('function arOpportunityFiltered', searchStart);
+assert.ok(searchStart >= 0 && searchEnd > searchStart, 'A&R search helpers must remain defined');
+const searchContext = {};
+vm.runInNewContext(
+  source.slice(searchStart, searchEnd) + '; this.matches=arOpportunityMatchesSearch;',
+  searchContext,
+);
+const searchable = {
+  title: 'Éveil',
+  credit: 'Måns Reitz',
+  label: 'Score à Score',
+  labels: ['Score à Score'],
+  artists: [{name: 'Måns Reitz'}],
+};
+for (const query of ['', 'eveil', 'mans reitz', 'score a score']) {
+  assert.equal(searchContext.matches(searchable, query), true);
+}
+assert.equal(searchContext.matches(searchable, 'absent'), false);
+
+assert.match(source, /arOpportunityMatchesSearch\(opportunity,S\.radarQ\)/);
 assert.match(source, /if\(S\.radarFilter==='contactable'\) return arIsContactable\(opportunity\)/);
 assert.match(source, /const contactable=all\.filter\(arIsContactable\)/);
 assert.match(source, /if\(!arIsContactable\(opportunity\)\) return/);
