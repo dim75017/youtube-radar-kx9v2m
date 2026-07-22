@@ -71,10 +71,15 @@ jobs:
           ruby -e "require 'yaml'; YAML.load_file('.github/workflows/refresh-soundcharts.yml'); puts 'workflow yaml ok'"
           git diff --check
 
-      - name: Commit the production implementation
+      - name: Publish the production implementation
+        id: publish
+        continue-on-error: true
         shell: bash
         run: |
-          set -euo pipefail
+          exec > >(tee publish.log) 2>&1
+          set -euxo pipefail
+          git rev-parse HEAD
+          git status --short
           rm -rf .editorial-playlist-patch .playlist-editorial-payload
           rm -f \
             .github/workflows/apply-editorial-playlist-production.yml \
@@ -83,9 +88,24 @@ jobs:
             .github/workflows/export-youtube-maintenance-sources.yml \
             .github/workflows/probe-playlist-discovery.yml \
             playlist-discovery-probe.json
+          git status --short
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
+          git diff --cached --stat
           git diff --cached --check
           git commit -m 'Activate editorial playlist and artist catalogue discovery'
+          git pull --rebase origin agent/activate-playlist-discovery
           git push origin HEAD:agent/activate-playlist-discovery
+
+      - name: Upload publication diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: editorial-playlist-publication-log
+          path: publish.log
+          retention-days: 2
+
+      - name: Stop on publication failure
+        if: always()
+        run: test '${{ steps.publish.outcome }}' = 'success'
