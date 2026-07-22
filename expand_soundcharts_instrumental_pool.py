@@ -344,17 +344,21 @@ def editorial_candidates(payload: dict[str, Any], include_review: bool = True) -
         uuid = str(field(row, schema, "soundcharts_uuid") or "").strip()
         genre = str(field(row, schema, "primary_genre") or "").strip()
         genre_confidence = finite_number(field(row, schema, "genre_confidence"))
-        ai_risk = str(field(row, schema, "ai_risk") or "").strip().casefold()
+        ai_risk = str(field(row, schema, "ai_risk") or "unknown").strip().casefold()
         expansion = str(field(row, schema, "expansion_status") or "review").strip().casefold()
         instrumental = str(field(row, schema, "instrumental_status") or "unknown").strip().casefold()
         instrumental_confidence = finite_number(field(row, schema, "instrumental_confidence"))
+        source_tier = str(field(row, schema, "source_tier") or "").strip().casefold()
+        playlist_source = source_tier in {"editorial_playlist", "playlist_artist_catalogue"}
+        ai_safe = ai_risk in {"low", "faible"}
+        ai_reviewable = playlist_source and ai_risk in {"", "unknown", "unclassified", "pending"}
         if not uuid or uuid in seen or genre not in TARGET_GENRES:
             continue
         if genre_confidence is None or genre_confidence < 0.5:
             continue
-        if ai_risk not in {"low", "faible"}:
+        if not ai_safe and not ai_reviewable:
             continue
-        verified = instrumental == "instrumental" and (instrumental_confidence or 0) >= 0.5
+        verified = ai_safe and instrumental == "instrumental" and (instrumental_confidence or 0) >= 0.5
         if expansion != "eligible" and not (include_review and expansion == "review"):
             continue
         if expansion == "eligible" and not verified and not include_review:
@@ -380,9 +384,92 @@ def editorial_candidates(payload: dict[str, Any], include_review: bool = True) -
                 "classification_status": "verified" if verified else "needs_listen",
                 "metadata_status": str(field(row, schema, "metadata_status") or ""),
                 "updated_at": str(field(row, schema, "updated_at") or ""),
+                "source_tier": source_tier,
+                "playlist_ids": list(field(row, schema, "playlist_ids") or [])
+                if isinstance(field(row, schema, "playlist_ids"), list)
+                else [],
+                "playlist_names": list(field(row, schema, "playlist_names") or [])
+                if isinstance(field(row, schema, "playlist_names"), list)
+                else [],
+                "playlist_count": int(finite_number(field(row, schema, "playlist_count")) or 0),
+                "playlist_best_position": finite_number(field(row, schema, "playlist_best_position")),
+                "playlist_followers_total": int(finite_number(field(row, schema, "playlist_followers_total")) or 0),
+                "playlist_first_seen_at": str(field(row, schema, "playlist_first_seen_at") or ""),
+                "playlist_last_seen_at": str(field(row, schema, "playlist_last_seen_at") or ""),
+                "discovered_at": str(field(row, schema, "discovered_at") or ""),
             }
         )
     return out
+
+
+def prioritize_candidates(
+    payload: dict[str, Any],
+    performance: dict[str, Any],
+    candidates: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    schemas = payload.get("schemas") if isinstance(payload.get("schemas"), dict) else {}
+    opportunity_schema = schemas.get("opportunities") if isinstance(schemas.get("opportunities"), list) else []
+    opportunity_rows = payload.get("opportunities") if isinstance(payload.get("opportunities"), list) else []
+    opportunity_uuids = {
+        str(field(row, opportunity_schema, "soundcharts_uuid") or "").strip()
+        for row in opportunity_rows
+    }
+    track_schema = schemas.get("tracks") if isinstance(schemas.get("tracks"), list) else []
+    track_rows = payload.get("tracks") if isinstance(payload.get("tracks"), list) else []
+    measured_uuids = {
+        str(field(row, track_schema, "soundcharts_uuid") or "").strip()
+        for row in track_rows
+        if field(row, track_schema, "soundcharts_uuid")
+    }
+    performance_tracks = performance.get("tracks") if isinstance(performance.get("tracks"), dict) else {}
+
+    def timestamp(value: Any) -> float:
+        raw = str(value or "").strip()
+        if not raw:
+            return 0.0
+        try:
+            parsed = dt.datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            return 0.0
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=dt.timezone.utc)
+        return parsed.timestamp()
+
+    def priority(item: dict[str, Any]) -> tuple[int, float, int, int, str]:
+        uuid = item["soundcharts_uuid"]
+        source_tier = str(item.get("source_tier") or "")
+        playlist_source = source_tier in {"editorial_playlist", "playlist_artist_catalogue"}
+        measured = uuid in measured_uuids or bool(item.get("spotify_id") and item.get("spotify_id") in performance_tracks)
+        if uuid in opportunity_uuids:
+            tier = 0
+        elif playlist_source and not measured:
+            tier = 1
+        elif item.get("classification_status") == "verified":
+            tier = 2
+        elif playlist_source:
+            tier = 3
+        else:
+            tier = 4
+        return (
+            tier,
+            timestamp(item.get("discovered_at") or item.get("updated_at")),
+            int(item.get("playlist_count") or 0),
+            int(item.get("playlist_followers_total") or 0),
+            uuid,
+        )
+
+    # Reverse evidence/date fields inside a stable tier without reversing the
+    # tier itself.
+    return sorted(
+        candidates,
+        key=lambda item: (
+            priority(item)[0],
+            -priority(item)[1],
+            -priority(item)[2],
+            -priority(item)[3],
+            priority(item)[4],
+        ),
+    )
 
 
 def normalize_name(value: Any) -> str:
@@ -606,7 +693,11 @@ def expand_instrumental_pool(
     limit: int | None = None,
     include_review: bool = True,
 ) -> dict[str, Any]:
-    candidates = editorial_candidates(soundcharts, include_review=include_review)
+    candidates = prioritize_candidates(
+        soundcharts,
+        performance,
+        editorial_candidates(soundcharts, include_review=include_review),
+    )
     if limit is not None:
         candidates = candidates[: max(0, limit)]
     if not candidates:
@@ -766,6 +857,11 @@ def expand_instrumental_pool(
     daily_ready = 0
     verified_measured = 0
     review_measured = 0
+    playlist_selected = sum(
+        str(item.get("source_tier") or "") in {"editorial_playlist", "playlist_artist_catalogue"}
+        for item in candidates
+    )
+    playlist_measured = 0
     rights_counts: dict[str, int] = {}
     latest_source_date: str | None = None
     now = utc_now()
@@ -843,7 +939,7 @@ def expand_instrumental_pool(
             "ai_risk_score": item["ai_risk_score"],
             "expansion_status": item["expansion_status"],
             "rights_confidence": rights_confidence,
-            "source_tier": "instrumental_editorial_daily",
+            "source_tier": item.get("source_tier") or "instrumental_editorial_daily",
         }
         for name, value in values.items():
             set_field(row, track_schema, name, value)
@@ -865,7 +961,7 @@ def expand_instrumental_pool(
                     "genre": item["primary_genre"],
                     "subgenres": item["subgenres"],
                     "genre_confidence": item["genre_confidence"],
-                    "genre_source": "soundcharts_editorial",
+                    "genre_source": item.get("source_tier") or "soundcharts_editorial",
                     "instrumental": item["instrumental_status"],
                     "instrumental_confidence": item["instrumental_confidence"],
                     "ai_risk": item["ai_risk"],
@@ -880,6 +976,9 @@ def expand_instrumental_pool(
         daily_ready += int(audience["delta_24h"] is not None)
         verified_measured += int(item["classification_status"] == "verified")
         review_measured += int(item["classification_status"] == "needs_listen")
+        playlist_measured += int(
+            str(item.get("source_tier") or "") in {"editorial_playlist", "playlist_artist_catalogue"}
+        )
         rights_counts[rights_status] = rights_counts.get(rights_status, 0) + 1
         if latest_source_date is None or latest_day > latest_source_date:
             latest_source_date = latest_day
@@ -943,6 +1042,8 @@ def expand_instrumental_pool(
         "daily_delta_ready": daily_ready,
         "verified_measured": verified_measured,
         "needs_listen_measured": review_measured,
+        "playlist_discovery_selected": playlist_selected,
+        "playlist_discovery_measured": playlist_measured,
         "inserted_tracks": inserted,
         "updated_tracks": updated,
         "rights": rights_counts,

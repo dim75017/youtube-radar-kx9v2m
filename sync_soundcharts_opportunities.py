@@ -254,6 +254,18 @@ def editorial_map(payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
             "ai_risk_score": finite_number(field(row, schema, "ai_risk_score")),
             "expansion_status": str(field(row, schema, "expansion_status") or "review").casefold(),
             "metadata_updated_at": str(field(row, schema, "updated_at") or ""),
+            "source_tier": str(field(row, schema, "source_tier") or "").casefold(),
+            "playlist_ids": list(field(row, schema, "playlist_ids") or [])
+            if isinstance(field(row, schema, "playlist_ids"), list)
+            else [],
+            "playlist_names": list(field(row, schema, "playlist_names") or [])
+            if isinstance(field(row, schema, "playlist_names"), list)
+            else [],
+            "playlist_count": int(finite_number(field(row, schema, "playlist_count")) or 0),
+            "playlist_best_position": finite_number(field(row, schema, "playlist_best_position")),
+            "playlist_followers_total": finite_number(field(row, schema, "playlist_followers_total")),
+            "playlist_first_seen_at": str(field(row, schema, "playlist_first_seen_at") or ""),
+            "playlist_last_seen_at": str(field(row, schema, "playlist_last_seen_at") or ""),
         }
     return out
 
@@ -414,17 +426,21 @@ def classification_for(track: dict[str, Any], editorial: dict[str, Any], preserv
         else preserved.get("ai_risk_score")
     )
     expansion = str(track.get("expansion_status") or editorial.get("expansion_status") or "review").casefold()
+    source_tier = str(track.get("source_tier") or editorial.get("source_tier") or preserved.get("source_tier") or "").casefold()
+    playlist_source = source_tier in {"editorial_playlist", "playlist_artist_catalogue"}
+    ai_safe = ai_risk in {"low", "faible"}
+    ai_reviewable = playlist_source and ai_risk in {"", "unknown", "unclassified", "pending"}
     verified = (
         genre in TARGET_GENRES
         and (genre_confidence or 0) >= 0.5
         and instrumental == "instrumental"
         and (instrumental_confidence or 0) >= 0.5
-        and ai_risk in {"low", "faible"}
+        and ai_safe
     )
     needs_listen = (
         genre in TARGET_GENRES
         and (genre_confidence or 0) >= 0.5
-        and ai_risk in {"low", "faible"}
+        and (ai_safe or ai_reviewable)
         and expansion in {"eligible", "review"}
         and not verified
     )
@@ -437,7 +453,45 @@ def classification_for(track: dict[str, Any], editorial: dict[str, Any], preserv
         "ai_risk": ai_risk,
         "ai_risk_score": ai_score,
         "expansion_status": expansion,
+        "source_tier": source_tier,
         "status": "verified" if verified else ("needs_listen" if needs_listen else "excluded"),
+    }
+
+
+def merged_playlist_evidence(editorial: dict[str, Any], preserved: dict[str, Any]) -> dict[str, Any]:
+    names = editorial.get("playlist_names") if isinstance(editorial.get("playlist_names"), list) else []
+    count = max(
+        int(finite_number(editorial.get("playlist_count")) or 0),
+        int(finite_number(preserved.get("editorial_placement_count")) or 0),
+    )
+    best_values = [
+        value
+        for value in (
+            finite_number(editorial.get("playlist_best_position")),
+            finite_number(preserved.get("editorial_best_position")),
+        )
+        if value is not None
+    ]
+    followers = max(
+        float(finite_number(editorial.get("playlist_followers_total")) or 0),
+        float(finite_number(preserved.get("editorial_followers_total")) or 0),
+    )
+    top = preserved.get("editorial_top_playlist")
+    if isinstance(top, Mapping):
+        top = top.get("name") or top.get("spotify_id") or ""
+    if not top and names:
+        top = names[0]
+    return {
+        "editorial_placement_count": count,
+        "editorial_best_position": min(best_values) if best_values else None,
+        "editorial_followers_total": followers or None,
+        "editorial_followers_known_count": max(
+            int(finite_number(preserved.get("editorial_followers_known_count")) or 0),
+            len(editorial.get("playlist_ids") or []) if isinstance(editorial.get("playlist_ids"), list) else 0,
+        ),
+        "editorial_top_playlist": str(top or ""),
+        "editorial_first_seen_at": editorial.get("playlist_first_seen_at") or preserved.get("editorial_first_seen_at"),
+        "editorial_last_seen_at": editorial.get("playlist_last_seen_at") or preserved.get("editorial_last_seen_at"),
     }
 
 
@@ -704,7 +758,10 @@ def generate_opportunities(
         if not spotify_id or not uuid:
             continue
         preserved = preserved_by_id.get(spotify_id, {})
-        classification = classification_for(track, editorial.get(uuid, {}), preserved)
+        editorial_entry = editorial.get(uuid, {})
+        playlist_evidence = merged_playlist_evidence(editorial_entry, preserved)
+        scoring_evidence = {**preserved, **playlist_evidence}
+        classification = classification_for(track, editorial_entry, preserved)
         if classification["status"] == "excluded":
             excluded["classification"] += 1
             continue
@@ -754,7 +811,7 @@ def generate_opportunities(
             excluded["superstar"] += 1
             continue
 
-        age = release_age_days(track.get("release_date") or editorial.get(uuid, {}).get("release_date"))
+        age = release_age_days(track.get("release_date") or editorial_entry.get("release_date"))
         deal_type = choose_deal_type(rights, age, metrics, classification["status"])
         if not deal_type:
             excluded["weak_signal"] += 1
@@ -768,7 +825,7 @@ def generate_opportunities(
             listeners,
             age,
             context["contact_status"],
-            preserved,
+            scoring_evidence,
         )
         if scores["score"] < minimum_score:
             excluded["weak_signal"] += 1
@@ -788,17 +845,15 @@ def generate_opportunities(
             if metrics["d30"] is not None and listeners is not None and listeners > 0
             else None
         )
-        playlist_top = preserved.get("editorial_top_playlist")
-        if isinstance(playlist_top, dict):
-            playlist_top = playlist_top.get("name") or playlist_top.get("spotify_id") or ""
+        playlist_top = playlist_evidence.get("editorial_top_playlist") or ""
         values = {
             "opportunity_status": classification["status"],
             "spotify_id": spotify_id,
             "soundcharts_uuid": uuid,
-            "title": str(track.get("title") or editorial.get(uuid, {}).get("title") or "Titre non renseigné"),
-            "credit_name": str(track.get("artist") or editorial.get(uuid, {}).get("credit_name") or "Artiste non renseigné"),
+            "title": str(track.get("title") or editorial_entry.get("title") or "Titre non renseigné"),
+            "credit_name": str(track.get("artist") or editorial_entry.get("credit_name") or "Artiste non renseigné"),
             "artists": context["artists"],
-            "release_date": str(track.get("release_date") or editorial.get(uuid, {}).get("release_date") or ""),
+            "release_date": str(track.get("release_date") or editorial_entry.get("release_date") or ""),
             "primary_genre": classification["genre"],
             "subgenres": classification["subgenres"],
             "genre_confidence": classification["genre_confidence"],
@@ -822,13 +877,13 @@ def generate_opportunities(
             ),
             "delta_previous_observed_at": None,
             "delta_window_hours": 24 if metrics["d1"] is not None else None,
-            "editorial_placement_count": int(finite_number(preserved.get("editorial_placement_count")) or 0),
-            "editorial_best_position": finite_number(preserved.get("editorial_best_position")),
-            "editorial_followers_total": finite_number(preserved.get("editorial_followers_total")),
-            "editorial_followers_known_count": int(finite_number(preserved.get("editorial_followers_known_count")) or 0),
+            "editorial_placement_count": playlist_evidence["editorial_placement_count"],
+            "editorial_best_position": playlist_evidence["editorial_best_position"],
+            "editorial_followers_total": playlist_evidence["editorial_followers_total"],
+            "editorial_followers_known_count": playlist_evidence["editorial_followers_known_count"],
             "editorial_top_playlist": str(playlist_top or ""),
-            "editorial_first_seen_at": preserved.get("editorial_first_seen_at"),
-            "editorial_last_seen_at": preserved.get("editorial_last_seen_at"),
+            "editorial_first_seen_at": playlist_evidence["editorial_first_seen_at"],
+            "editorial_last_seen_at": playlist_evidence["editorial_last_seen_at"],
             "roster_relationship": preserved.get("roster_relationship") or {"status": "unknown", "artists": []},
             "score": scores["score"],
             "score_momentum": scores["momentum"],
@@ -839,7 +894,7 @@ def generate_opportunities(
             "score_confidence": scores["confidence"],
             "reason_codes": reason_codes,
             "reasons": reasons,
-            "metadata_updated_at": track.get("metadata_updated_at") or editorial.get(uuid, {}).get("metadata_updated_at"),
+            "metadata_updated_at": track.get("metadata_updated_at") or editorial_entry.get("metadata_updated_at"),
             "deal_type": deal_type,
             "deal_priority": scores["score"],
             "artist_monthly_listeners": listeners,
@@ -859,7 +914,7 @@ def generate_opportunities(
             "rights_confidence": rights_confidence,
             "classification_status": classification["status"],
             "selection_tier": "priority" if scores["score"] >= 60 else ("watch" if scores["score"] >= 40 else "review"),
-            "source_tier": str(track.get("source_tier") or "soundcharts_measured"),
+            "source_tier": str(track.get("source_tier") or editorial_entry.get("source_tier") or "soundcharts_measured"),
         }
         candidates.append(values)
 

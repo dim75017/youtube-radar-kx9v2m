@@ -1024,7 +1024,7 @@ const S = {
   plq:'', plcur:'all', plsort:'followers', pldir:-1, plonly:false, shownPL:80, plview:'qualified', plmode:'table',
   amode:'table', omode:'table',
   lbq:'', lbsort:'streams', lbdir:-1, shownLB:80, lbmode:'table', labelKey:null, lbModalArtist:null,
-  radarFilter:'distribution', radarLimit:100, radarTrackId:'', radarQ:'', radarGenre:'all', radarSort:'score',
+  radarFilter:'distribution', radarLimit:100, radarTrackId:'', radarGenre:'all', radarSort:'score',
 };
 
 /* ---------- navigation ---------- */
@@ -1912,10 +1912,8 @@ function arMetricCompact(value,signed=false){
   return signed?signedFull(Math.round(value)):fmt(value);
 }
 function arOpportunityFiltered(all){
-  const query=S.radarQ.trim().toLowerCase();
   let rows=all.filter(opportunity=>{
     if(S.radarGenre!=='all'&&opportunity.genre!==S.radarGenre) return false;
-    if(query&&!`${opportunity.title} ${opportunity.credit} ${opportunity.genre} ${opportunity.label} ${opportunity.contactEmail} ${opportunity.contactPlatform}`.toLowerCase().includes(query)) return false;
     if(['distribution','label_advance','catalog_acquisition','rights_review'].includes(S.radarFilter)) return opportunity.dealType===S.radarFilter;
     if(S.radarFilter==='rising') return (arOpportunityMetric(opportunity,1)||0)>0;
     if(S.radarFilter==='accelerating') return (opportunity.acceleration7||0)>0;
@@ -1937,9 +1935,6 @@ function arOpportunityFiltered(all){
     return b.score-a.score||(b.scoreConfidence||0)-(a.scoreConfidence||0)||a.title.localeCompare(b.title);
   });
   return rows;
-}
-function arKpiButton(filter,label,value,help){
-  return `<button class="ar-kpi-action ${S.radarFilter===filter?'on':''}" data-radar-filter="${filter}" data-radar-kpi="1"><span class="ar-kpi-label">${esc(label)}</span><span class="ar-kpi-value">${fmtFull(value)}</span><span class="ar-kpi-help">${esc(help)}</span></button>`;
 }
 function arOpportunityCard(opportunity,index){
   const total=arOpportunityTotal(opportunity), d30=arOpportunityMetric(opportunity,30), d7=arOpportunityMetric(opportunity,7), d1=arOpportunityMetric(opportunity,1);
@@ -1983,33 +1978,21 @@ function renderRadar(){
     V.innerHTML=`<div class="page-head"><div><h2>Opportunités A&R</h2><p class="ar-radar-intro">Le moteur A&R dynamique n’est pas encore disponible.</p></div></div><div class="ar-empty-state">Export Soundcharts en préparation.</div>`;
     return;
   }
-  const scoring=SC.opportunity_scoring||{}, pool=SC.instrumental_pool||{};
-  const distributions=all.filter(item=>item.dealType==='distribution');
-  const advances=all.filter(item=>item.dealType==='label_advance');
-  const catalogues=all.filter(item=>item.dealType==='catalog_acquisition');
-  const rightsReview=all.filter(item=>item.dealType==='rights_review');
-  const accelerating=all.filter(item=>(item.acceleration7||0)>0);
   const contactable=all.filter(arIsContactable);
-  const verified=all.filter(item=>item.status==='verified'), needsListen=all.filter(item=>item.status==='needs_listen');
   const filtered=arOpportunityFiltered(all), rows=filtered.slice(0,S.radarLimit), selected=all.find(item=>item.spotifyId===S.radarTrackId)||null;
   const genres=[...new Set(all.map(item=>item.genre).filter(Boolean))].sort((a,b)=>arGenreLabel(a).localeCompare(arGenreLabel(b)));
-  const catalogTotal=Number(scoring.catalog_total||pool.catalog_total||0), measured=Number(scoring.measured_target_tracks||pool.measured||0), targetTotal=Number(pool.target_editorial_total||0);
-  V.innerHTML=`<div class="page-head"><div><h2>Radar A&R · musiques instrumentales</h2><p class="ar-radar-intro">Le moteur classe des tracks indépendantes par vélocité réelle, accélération, fit instrumental, droits, taille d’artiste et contactabilité. Les majors, droits mixtes et superstars sont retirés avant le scoring.</p></div></div>
-    <div class="ar-coverage-strip"><div><strong>${fmtFull(catalogTotal)}</strong><span>discographie Soundcharts</span></div><div><strong>${fmtFull(targetTotal||measured)}</strong><span>tracks cible classifiées</span></div><div><strong>${fmtFull(measured)}</strong><span>tracks cible mesurées</span></div><div><strong>${fmtFull(all.length)}</strong><span>leads actionnables</span></div><div><strong>${fmtFull(contactable.length)}</strong><span>contacts disponibles</span></div></div>
-    <div class="ar-kpi-actions">${arKpiButton('distribution','Distribution',distributions.length,'Sorties récentes self-release à approcher.')}${arKpiButton('label_advance','Label + avance',advances.length,'Traction suffisante pour une offre structurée.')}${arKpiButton('catalog_acquisition','Rachat catalogue',catalogues.length,'Flux récurrent sur des titres installés.')}${arKpiButton('rights_review','Droits à vérifier',rightsReview.length,'Signaux forts bloqués par la preuve de propriété.')}${arKpiButton('accelerating','En accélération',accelerating.length,'7 jours actuels supérieurs aux 7 jours précédents.')}</div>
+  V.innerHTML=`<div class="page-head"><div><h2>Radar A&R · musiques instrumentales</h2><p class="ar-radar-intro">Découverte quotidienne par playlists éditoriales, artistes crédités et catalogues associés. Le moteur classe ensuite les tracks indépendantes par vélocité, accélération, droits et taille d’artiste.</p></div></div>
     <div class="ar-data-note"><span>ⓘ</span><span><strong>Lecture :</strong> 24 h, 7 j et 30 j utilisent uniquement des compteurs Soundcharts datés. Aucun trou n’est extrapolé. « À valider à l’écoute » conserve les titres prometteurs dont l’instrumentalité doit être vérifiée humainement.</span></div>
-    <div class="ar-filterbar"><button class="chip ${S.radarFilter==='verified'?'on':''}" data-radar-filter="verified">Instrumental vérifié (${fmtFull(verified.length)})</button><button class="chip ${S.radarFilter==='needs_listen'?'on':''}" data-radar-filter="needs_listen">À écouter (${fmtFull(needsListen.length)})</button><button class="chip ${S.radarFilter==='contactable'?'on':''}" data-radar-filter="contactable">Contactables (${fmtFull(contactable.length)})</button><button class="chip ${S.radarFilter==='all'?'on':''}" data-radar-filter="all">Toutes (${fmtFull(all.length)})</button><input class="search" id="radar-q" value="${esc(S.radarQ)}" placeholder="Rechercher une track, un artiste, un genre…"><select id="radar-genre"><option value="all">Tous les genres</option>${genres.map(genre=>`<option value="${esc(genre)}" ${S.radarGenre===genre?'selected':''}>${esc(arGenreLabel(genre))}</option>`).join('')}</select><select id="radar-sort"><option value="score" ${S.radarSort==='score'?'selected':''}>Trier : priorité A&R</option><option value="momentum" ${S.radarSort==='momentum'?'selected':''}>Trier : 24 h</option><option value="acceleration" ${S.radarSort==='acceleration'?'selected':''}>Trier : accélération 7 j</option><option value="streams" ${S.radarSort==='streams'?'selected':''}>Trier : streams total</option><option value="listeners" ${S.radarSort==='listeners'?'selected':''}>Trier : audience artiste</option><option value="recent" ${S.radarSort==='recent'?'selected':''}>Trier : récence</option></select><select id="radar-limit"><option value="100" ${S.radarLimit===100?'selected':''}>Afficher 100</option><option value="250" ${S.radarLimit===250?'selected':''}>Afficher 250</option><option value="500" ${S.radarLimit===500?'selected':''}>Afficher 500</option><option value="1000" ${S.radarLimit===1000?'selected':''}>Afficher 1 000</option></select></div>
+    <div class="ar-filterbar"><button class="chip ${S.radarFilter==='distribution'?'on':''}" data-radar-filter="distribution">Distribution</button><button class="chip ${S.radarFilter==='label_advance'?'on':''}" data-radar-filter="label_advance">Label + avance</button><button class="chip ${S.radarFilter==='catalog_acquisition'?'on':''}" data-radar-filter="catalog_acquisition">Rachat catalogue</button><button class="chip ${S.radarFilter==='verified'?'on':''}" data-radar-filter="verified">Instrumental vérifié</button><button class="chip ${S.radarFilter==='needs_listen'?'on':''}" data-radar-filter="needs_listen">À écouter</button><button class="chip ${S.radarFilter==='contactable'?'on':''}" data-radar-filter="contactable">Contactables</button><button class="chip ${S.radarFilter==='all'?'on':''}" data-radar-filter="all">Toutes</button><span class="ar-filter-spacer"></span><select id="radar-genre"><option value="all">Tous les genres</option>${genres.map(genre=>`<option value="${esc(genre)}" ${S.radarGenre===genre?'selected':''}>${esc(arGenreLabel(genre))}</option>`).join('')}</select><select id="radar-sort"><option value="score" ${S.radarSort==='score'?'selected':''}>Trier : priorité A&R</option><option value="momentum" ${S.radarSort==='momentum'?'selected':''}>Trier : 24 h</option><option value="acceleration" ${S.radarSort==='acceleration'?'selected':''}>Trier : accélération 7 j</option><option value="streams" ${S.radarSort==='streams'?'selected':''}>Trier : streams total</option><option value="listeners" ${S.radarSort==='listeners'?'selected':''}>Trier : audience artiste</option><option value="recent" ${S.radarSort==='recent'?'selected':''}>Trier : récence</option></select><select id="radar-limit"><option value="100" ${S.radarLimit===100?'selected':''}>Afficher 100</option><option value="250" ${S.radarLimit===250?'selected':''}>Afficher 250</option><option value="500" ${S.radarLimit===500?'selected':''}>Afficher 500</option><option value="1000" ${S.radarLimit===1000?'selected':''}>Afficher 1 000</option></select></div>
     ${selected?`<div class="ar-player-shell"><div><div class="ar-player-kicker">Lecture en cours · ${esc(arDealLabel(selected.dealType))}</div><div class="ar-player-title">${esc(selected.title)}</div><div class="ar-player-meta">${esc(selected.credit)} · ${esc(arGenreLabel(selected.genre))} · score ${Math.round(selected.score)}/100</div></div><iframe title="Spotify player · ${esc(selected.title)}" src="https://open.spotify.com/embed/track/${esc(selected.spotifyId)}?utm_source=generator" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>`:''}
     <div class="ar-opportunity-list">${rows.map(arOpportunityCard).join('')}</div>${rows.length===0?`<div class="ar-empty-state">Aucune track ne correspond à ce filtre. Les critères restent stricts et aucune donnée manquante n’est inventée.</div>`:''}${filtered.length>rows.length?`<div class="analytics-note" style="text-align:center;margin-top:12px">${fmtFull(rows.length)} affichées sur ${fmtFull(filtered.length)} · augmente « Afficher » pour voir la suite.</div>`:''}`;
   document.querySelectorAll('[data-radar-filter]').forEach(button=>button.addEventListener('click',()=>{
     S.radarFilter=button.dataset.radarFilter; S.radarTrackId='';
-    if(button.dataset.radarKpi){S.radarQ='';S.radarGenre='all';S.radarSort=button.dataset.radarFilter==='accelerating'?'acceleration':'score';}
     renderRadar();
   }));
   document.querySelectorAll('[data-ar-play]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();const id=button.dataset.arPlay;S.radarTrackId=S.radarTrackId===id?'':id;renderRadar();}));
   document.querySelectorAll('[data-ar-open]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();openArOpportunity(button.dataset.arOpen);}));
   document.querySelectorAll('[data-ar-card]').forEach(card=>{const open=event=>{if(event.target.closest('button,a,input,select')) return;openArOpportunity(card.dataset.arCard);};card.addEventListener('click',open);card.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openArOpportunity(card.dataset.arCard);}});});
-  document.getElementById('radar-q').addEventListener('input',event=>{S.radarQ=event.target.value;renderRadar();keepFocus('radar-q');});
   document.getElementById('radar-genre').addEventListener('change',event=>{S.radarGenre=event.target.value;renderRadar();});
   document.getElementById('radar-sort').addEventListener('change',event=>{S.radarSort=event.target.value;renderRadar();});
   document.getElementById('radar-limit').addEventListener('change',event=>{S.radarLimit=Number(event.target.value)||100;renderRadar();});

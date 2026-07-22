@@ -213,15 +213,18 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertIn('scope="ci_smoke"', workflow)
         self.assertIn('expansion_requests="0"', workflow)
         self.assertIn("&& 'ci' || 'collection'", workflow)
-        self.assertIn("default: '9490'", workflow)
-        self.assertIn('artist_data_cap="500"', workflow)
+        self.assertIn("default: '8230'", workflow)
+        self.assertIn('artist_data_cap="350"', workflow)
         self.assertIn('legacy_data_cap="2500"', workflow)
-        self.assertIn('expansion_data_cap="9490"', workflow)
+        self.assertIn('playlist_data_cap="1400"', workflow)
+        self.assertIn('expansion_data_cap="8230"', workflow)
         self.assertIn('10#$REQUESTED_MAX_REQUESTS > expansion_data_cap', workflow)
         self.assertIn('expansion_limit="2500"', workflow)
         self.assertIn('--max-requests "${{ steps.plan.outputs.artist_requests }}"', workflow)
         self.assertIn('--max-requests "${{ steps.plan.outputs.legacy_requests }}"', workflow)
-        self.assertGreaterEqual(workflow.count('--workers 10'), 3)
+        self.assertIn('--max-requests "${{ steps.plan.outputs.playlist_requests }}"', workflow)
+        self.assertIn('python discover_soundcharts_playlists.py', workflow)
+        self.assertGreaterEqual(workflow.count('--workers 10'), 4)
         self.assertIn(
             "if: github.event_name == 'workflow_dispatch' && steps.plan.outputs.scope == 'smoke'",
             workflow,

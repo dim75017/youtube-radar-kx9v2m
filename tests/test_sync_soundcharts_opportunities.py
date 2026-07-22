@@ -333,6 +333,93 @@ class OpportunityEngineTests(unittest.TestCase):
         self.assertEqual(row["contact_url"], "")
         self.assertEqual(row["score_relationship"], 0)
 
+    def test_playlist_discovery_unknown_ai_remains_needs_listen_and_blocks_contact(self):
+        current = base_payload()
+        track = subject.row_dict(current["tracks"][0], TRACK_SCHEMA)
+        track["instrumental_status"] = "unknown"
+        track["instrumental_confidence"] = None
+        track["ai_risk"] = "unknown"
+        track["expansion_status"] = "review"
+        track["source_tier"] = "editorial_playlist"
+        current["tracks"][0] = [track.get(name) for name in TRACK_SCHEMA]
+        editorial_schema = [
+            "soundcharts_uuid",
+            "primary_genre",
+            "genre_confidence",
+            "instrumental_status",
+            "instrumental_confidence",
+            "ai_risk",
+            "expansion_status",
+            "source_tier",
+            "playlist_ids",
+            "playlist_names",
+            "playlist_count",
+            "playlist_best_position",
+            "playlist_followers_total",
+            "playlist_first_seen_at",
+            "playlist_last_seen_at",
+        ]
+        current["editorial"] = {
+            "track_schema": editorial_schema,
+            "tracks": [[
+                "song-dist",
+                "ambient",
+                0.8,
+                "unknown",
+                None,
+                "unknown",
+                "review",
+                "editorial_playlist",
+                ["playlist-1"],
+                ["Peaceful Ambient"],
+                1,
+                8,
+                1_000_000,
+                "2026-07-20",
+                "2026-07-21",
+            ]],
+        }
+
+        with patch.object(subject, "utc_today", return_value=dt.date(2026, 7, 21)):
+            subject.generate_opportunities(current, performance_payload(), legacy_payload())
+
+        schema = current["schemas"]["opportunities"]
+        row = next(
+            subject.row_dict(item, schema)
+            for item in current["opportunities"]
+            if subject.field(item, schema, "spotify_id") == "track-distribution-01"
+        )
+        self.assertEqual(row["opportunity_status"], "needs_listen")
+        self.assertEqual(row["contact_status"], "blocked")
+        self.assertEqual(row["editorial_placement_count"], 1)
+        self.assertEqual(row["editorial_best_position"], 8)
+        self.assertEqual(row["editorial_top_playlist"], "Peaceful Ambient")
+        self.assertEqual(row["source_tier"], "editorial_playlist")
+
+    def test_playlist_evidence_merges_with_preserved_values(self):
+        merged = subject.merged_playlist_evidence(
+            {
+                "playlist_ids": ["a", "b"],
+                "playlist_names": ["One", "Two"],
+                "playlist_count": 2,
+                "playlist_best_position": 12,
+                "playlist_followers_total": 500_000,
+                "playlist_first_seen_at": "2026-07-01",
+                "playlist_last_seen_at": "2026-07-21",
+            },
+            {
+                "editorial_placement_count": 1,
+                "editorial_best_position": 20,
+                "editorial_followers_total": 100_000,
+                "editorial_top_playlist": "Legacy",
+            },
+        )
+        self.assertEqual(merged["editorial_placement_count"], 2)
+        self.assertEqual(merged["editorial_best_position"], 12)
+        self.assertEqual(merged["editorial_followers_total"], 500_000)
+        self.assertEqual(merged["editorial_top_playlist"], "Legacy")
+        self.assertEqual(merged["editorial_followers_known_count"], 2)
+
     def test_nonconsecutive_history_never_invents_24h_delta(self):
         track = subject.row_dict(base_payload()["tracks"][0], TRACK_SCHEMA)
         metrics = subject.metric_snapshot(

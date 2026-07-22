@@ -275,6 +275,64 @@ class InstrumentalPoolTests(unittest.TestCase):
                 workers=1,
             )
 
+    def test_playlist_discovery_unknown_ai_enters_measurement_as_needs_listen(self):
+        current = payload()
+        schema = current["editorial"]["track_schema"]
+        for name in (
+            "source_tier",
+            "playlist_ids",
+            "playlist_names",
+            "playlist_count",
+            "playlist_best_position",
+            "playlist_followers_total",
+            "discovered_at",
+        ):
+            schema.append(name)
+            current["editorial"]["tracks"][0].append(None)
+        row = current["editorial"]["tracks"][0]
+        row[schema.index("instrumental_status")] = "unknown"
+        row[schema.index("instrumental_confidence")] = None
+        row[schema.index("ai_risk")] = "unknown"
+        row[schema.index("expansion_status")] = "review"
+        row[schema.index("source_tier")] = "editorial_playlist"
+        row[schema.index("playlist_count")] = 2
+        row[schema.index("playlist_followers_total")] = 1_500_000
+        row[schema.index("discovered_at")] = "2026-07-21T10:00:00Z"
+
+        candidates = subject.editorial_candidates(current)
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["classification_status"], "needs_listen")
+        self.assertEqual(candidates[0]["source_tier"], "editorial_playlist")
+
+    def test_candidate_priority_keeps_opportunities_then_new_playlist_tracks(self):
+        current = payload()
+        schema = current["editorial"]["track_schema"]
+        for name in ("source_tier", "playlist_count", "playlist_followers_total", "discovered_at"):
+            schema.append(name)
+            current["editorial"]["tracks"][0].append(None)
+        original = current["editorial"]["tracks"][0]
+        original[schema.index("source_tier")] = "instrumental_editorial"
+
+        playlist_row = copy.deepcopy(original)
+        playlist_row[schema.index("soundcharts_uuid")] = "playlist-song"
+        playlist_row[schema.index("name")] = "Playlist Discovery"
+        playlist_row[schema.index("instrumental_status")] = "unknown"
+        playlist_row[schema.index("instrumental_confidence")] = None
+        playlist_row[schema.index("ai_risk")] = "unknown"
+        playlist_row[schema.index("expansion_status")] = "review"
+        playlist_row[schema.index("source_tier")] = "editorial_playlist"
+        playlist_row[schema.index("playlist_count")] = 3
+        playlist_row[schema.index("playlist_followers_total")] = 2_000_000
+        playlist_row[schema.index("discovered_at")] = "2026-07-21T10:00:00Z"
+        current["editorial"]["tracks"].append(playlist_row)
+
+        opp_schema = ["soundcharts_uuid"]
+        current["schemas"]["opportunities"] = opp_schema
+        current["opportunities"] = [["song-uuid"]]
+        candidates = subject.editorial_candidates(current)
+        ordered = subject.prioritize_candidates(current, {"tracks": {}}, candidates)
+        self.assertEqual([item["soundcharts_uuid"] for item in ordered], ["song-uuid", "playlist-song"])
+
     def test_major_rights_are_excluded_by_classifier(self):
         rights, confidence = subject.infer_rights(
             "Columbia Records",
