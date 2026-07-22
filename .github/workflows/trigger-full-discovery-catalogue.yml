@@ -1,4 +1,4 @@
-name: Trigger full discovery catalogue refresh
+name: Observe full discovery catalogue refresh
 
 on:
   push:
@@ -8,11 +8,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: write
+  actions: read
   contents: write
 
 jobs:
-  dispatch:
+  observe:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,36 +20,20 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Dispatch and record the production Soundcharts daily target
+      - name: Record the latest production Soundcharts daily target
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          before="$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/refresh-soundcharts.yml/runs?event=workflow_dispatch&branch=main&per_page=1" --jq '.workflow_runs[0].id // 0')"
-          gh workflow run refresh-soundcharts.yml \
-            --repo "$GITHUB_REPOSITORY" \
-            --ref main \
-            -f scope=daily_target \
-            -f max_requests=8230
-          run_json=''
-          for attempt in $(seq 1 30); do
-            run_json="$(gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/refresh-soundcharts.yml/runs?event=workflow_dispatch&branch=main&per_page=5")"
-            run_id="$(jq -r --argjson before "$before" '.workflow_runs | map(select(.id != $before)) | sort_by(.created_at) | reverse | .[0].id // 0' <<<"$run_json")"
-            if [[ "$run_id" != "0" ]]; then
-              jq --argjson run_id "$run_id" --arg triggered_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-                '{run_id:$run_id, triggered_at:$triggered_at, workflow:"refresh-soundcharts.yml", scope:"daily_target", max_requests:8230}' \
-                > full-discovery-production-run.json
-              git config user.name 'github-actions[bot]'
-              git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-              git add full-discovery-production-run.json
-              git commit -m 'Record full discovery production run'
-              git pull --rebase origin main
-              git push origin HEAD:main
-              echo "Production run $run_id dispatched and recorded."
-              exit 0
-            fi
-            sleep 2
-          done
-          echo 'The production workflow was dispatched but its run ID was not observed.' >&2
-          exit 1
+          gh api "/repos/$GITHUB_REPOSITORY/actions/workflows/refresh-soundcharts.yml/runs?event=workflow_dispatch&branch=main&per_page=1" \
+            --jq '.workflow_runs[0] | {run_id:.id, status:.status, conclusion:.conclusion, head_sha:.head_sha, created_at:.created_at, updated_at:.updated_at, html_url:.html_url, workflow:"refresh-soundcharts.yml", scope:"daily_target", max_requests:8230}' \
+            > full-discovery-production-run.json
+          test -s full-discovery-production-run.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add full-discovery-production-run.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'Record observable full discovery production run'
+          git pull --rebase origin main
+          git push origin HEAD:main
