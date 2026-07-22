@@ -1,0 +1,149 @@
+name: Materialize full discovery production files
+
+on:
+  push:
+    branches:
+      - agent/expose-full-discovery-catalogue
+    paths:
+      - '.github/workflows/materialize-full-discovery.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: materialize-full-discovery-production
+  cancel-in-progress: true
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/expose-full-discovery-catalogue
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Download reviewed materialized source artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/artifact" "$RUNNER_TEMP/materialized"
+          gh api "/repos/$GITHUB_REPOSITORY/actions/artifacts/8525245865/zip" > "$RUNNER_TEMP/artifact.zip"
+          unzip -q "$RUNNER_TEMP/artifact.zip" -d "$RUNNER_TEMP/artifact"
+          inner="$(find "$RUNNER_TEMP/artifact" -type f -name 'materialized-full-catalogue*.zip' -print -quit)"
+          test -n "$inner"
+          unzip -q "$inner" -d "$RUNNER_TEMP/materialized"
+
+      - name: Install production files and validated player/evidence overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          active_snapshot="$(python3 - <<'PY'
+          import re
+          from pathlib import Path
+          text=Path('spotify/index.html').read_text(encoding='utf-8')
+          match=re.search(r'Spotify_Soundcharts_data[^?"\x27]+\.js', text)
+          if not match:
+              raise SystemExit('active Soundcharts snapshot not found')
+          print(match.group(0))
+          PY
+          )"
+          src="$RUNNER_TEMP/materialized"
+          install -m 755 "$src/refresh_soundcharts_daily.py" refresh_soundcharts_daily.py
+          install -m 755 "$src/discover_soundcharts_playlists.py" discover_soundcharts_playlists.py
+          install -m 755 "$src/expand_soundcharts_instrumental_pool.py" expand_soundcharts_instrumental_pool.py
+          install -m 755 "$src/prepare_soundcharts_snapshot.py" prepare_soundcharts_snapshot.py
+          install -m 755 "$src/sync_soundcharts_opportunities.py" sync_soundcharts_opportunities.py
+          install -m 644 "$src/spotify/dashboard.js" spotify/dashboard.js
+          install -m 644 "$src/spotify/coverage.js" spotify/coverage.js
+          install -m 644 "$src/spotify/index.html" spotify/index.html
+          install -m 644 "$src/spotify/discovery.css" spotify/discovery.css
+          install -m 644 "$src/tests/test_refresh_soundcharts_daily.py" tests/test_refresh_soundcharts_daily.py
+          install -m 644 "$src/tests/test_discover_soundcharts_playlists.py" tests/test_discover_soundcharts_playlists.py
+          install -m 644 "$src/tests/test_expand_soundcharts_instrumental_pool.py" tests/test_expand_soundcharts_instrumental_pool.py
+          install -m 644 "$src/tests/test_sync_soundcharts_opportunities.py" tests/test_sync_soundcharts_opportunities.py
+          install -m 644 "$src/tests/test_prepare_soundcharts_snapshot.py" tests/test_prepare_soundcharts_snapshot.py
+          install -m 644 "$src/tests/test_full_discovery_catalogue.py" tests/test_full_discovery_catalogue.py
+          install -m 644 "$src/tests/test_spotify_full_catalogue.js" tests/test_spotify_full_catalogue.js
+          python3 - "$active_snapshot" <<'PY'
+          import re, sys
+          from pathlib import Path
+          path=Path('spotify/index.html')
+          text=path.read_text(encoding='utf-8')
+          text=re.sub(r'Spotify_Soundcharts_data[^?"\x27]+\.js', sys.argv[1], text, count=1)
+          text=text.replace('20260722-full-catalogue-v1','20260722-full-catalogue-v2')
+          path.write_text(text, encoding='utf-8')
+          PY
+          cat .full-catalogue-fix/part-* > "$RUNNER_TEMP/full-catalogue-overlay.b64"
+          base64 --decode "$RUNNER_TEMP/full-catalogue-overlay.b64" > "$RUNNER_TEMP/full-catalogue-overlay.patch.xz"
+          echo 'eaa097e4768bee84d4fce1c0050f1ee4845a9f6326edb175fc0f7b41f472c4ac  '"$RUNNER_TEMP/full-catalogue-overlay.patch.xz" | sha256sum --check
+          xz -dc "$RUNNER_TEMP/full-catalogue-overlay.patch.xz" > "$RUNNER_TEMP/full-catalogue-overlay.patch"
+          echo 'da45a05c971d604ae426889cfebf4c187e9036bb57f298f38e09d1fc28b3fe35  '"$RUNNER_TEMP/full-catalogue-overlay.patch" | sha256sum --check
+          git apply --check "$RUNNER_TEMP/full-catalogue-overlay.patch"
+          git apply "$RUNNER_TEMP/full-catalogue-overlay.patch"
+
+      - name: Validate collectors, full catalogue, playlist evidence and players
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest \
+            tests/test_refresh_soundcharts_daily.py \
+            tests/test_discover_soundcharts_playlists.py \
+            tests/test_expand_soundcharts_instrumental_pool.py \
+            tests/test_sync_soundcharts_opportunities.py \
+            tests/test_prepare_soundcharts_snapshot.py \
+            tests/test_full_discovery_catalogue.py \
+            -v
+          python -m py_compile \
+            refresh_soundcharts_daily.py \
+            discover_soundcharts_playlists.py \
+            expand_soundcharts_instrumental_pool.py \
+            sync_soundcharts_opportunities.py \
+            prepare_soundcharts_snapshot.py
+          node --check spotify/dashboard.js
+          node --check spotify/coverage.js
+          for test in \
+            tests/test_dashboard_opportunity_guardrails.js \
+            tests/test_dashboard_general_view_guardrails.js \
+            tests/test_dashboard_ar_ui_guardrails.js \
+            tests/test_spotify_coverage_reporting.js \
+            tests/test_spotify_full_catalogue.js; do
+            [[ -f "$test" ]] && node "$test"
+          done
+          git diff --check
+
+      - name: Commit production files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            refresh_soundcharts_daily.py \
+            discover_soundcharts_playlists.py \
+            expand_soundcharts_instrumental_pool.py \
+            prepare_soundcharts_snapshot.py \
+            sync_soundcharts_opportunities.py \
+            spotify/dashboard.js \
+            spotify/coverage.js \
+            spotify/index.html \
+            spotify/discovery.css \
+            tests/test_refresh_soundcharts_daily.py \
+            tests/test_discover_soundcharts_playlists.py \
+            tests/test_expand_soundcharts_instrumental_pool.py \
+            tests/test_sync_soundcharts_opportunities.py \
+            tests/test_prepare_soundcharts_snapshot.py \
+            tests/test_full_discovery_catalogue.py \
+            tests/test_spotify_full_catalogue.js
+          git diff --cached --check
+          git commit -m 'Expose full discovery catalogue and playlist evidence'
+          git push origin HEAD:agent/expose-full-discovery-catalogue
