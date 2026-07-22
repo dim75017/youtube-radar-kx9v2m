@@ -1,0 +1,136 @@
+{
+  "active_snapshot": "Spotify_Soundcharts_data_20260722T071915Z.js",
+  "generated_at": "2026-07-22T07:12:22Z",
+  "tracks_rows": 2064,
+  "artists_rows": 1280,
+  "opportunities_rows": 2000,
+  "tracks_catalog_total": 48397,
+  "tracks_exported": 2064,
+  "artists_catalog_total": 5848,
+  "artists_exported": 1280,
+  "playlist_discovery": {
+    "status": "success",
+    "finished_at": "2026-07-22T07:12:25Z",
+    "playlists_targeted": 229,
+    "playlists_resolved": 226,
+    "playlists_scanned": 220,
+    "tracklist_rows": 20675,
+    "unique_playlist_tracks": 16790,
+    "unseen_playlist_tracks": 14732,
+    "new_playlist_tracks": 450,
+    "new_artist_credits": 7157,
+    "catalogue_artists_available": 8346,
+    "catalogue_artists_scanned": 250,
+    "new_catalogue_tracks": 1200,
+    "editorial_tracks_total": 3714,
+    "editorial_artists_total": 8351,
+    "requests": 1236,
+    "quota_remaining": 3660537,
+    "failures": {
+      "playlist_metadata": 0,
+      "playlist_first_pages": 0,
+      "playlist_extra_pages": 0,
+      "song_details": 0,
+      "artist_catalogues": 0
+    },
+    "cadence": {
+      "playlist_tracklists": "daily_all_target_editorial",
+      "artist_catalogues": "daily_rotating_page",
+      "no_instrumental_or_ai_assumption": true
+    }
+  },
+  "instrumental_pool": {
+    "status": "success",
+    "finished_at": "2026-07-22T07:19:11Z",
+    "catalog_total": 643063,
+    "target_editorial_total": 3714,
+    "target_verified_total": 2064,
+    "target_needs_listen_total": 1650,
+    "selected": 2500,
+    "measured": 2140,
+    "daily_delta_ready": 2138,
+    "verified_measured": 933,
+    "needs_listen_measured": 1207,
+    "playlist_discovery_selected": 2495,
+    "playlist_discovery_measured": 2135,
+    "inserted_tracks": 1207,
+    "updated_tracks": 933,
+    "rights": {
+      "independent_label": 604,
+      "self_released": 1150,
+      "unknown": 334,
+      "major": 52
+    },
+    "latest_source_date": "2026-07-22",
+    "requests": 4417,
+    "quota_remaining": 3654976,
+    "failures": {
+      "audience": 0,
+      "metadata": 0,
+      "artist_identifiers": 0,
+      "artist_stats": 0
+    },
+    "cadence": {
+      "target_pool": "daily",
+      "history_window_days": 90,
+      "no_extrapolation": true
+    }
+  },
+  "opportunity_scoring": {
+    "version": "2026-07-dynamic-ar-v1",
+    "generated_at": "2026-07-22T07:19:14Z",
+    "catalog_total": 643063,
+    "measured_target_tracks": 3271,
+    "independent_tracks": 2885,
+    "rights_review_tracks": 334,
+    "candidates_before_limit": 2655,
+    "opportunities": 2000,
+    "deal_types": {
+      "distribution": 449,
+      "label_advance": 1090,
+      "catalog_acquisition": 370,
+      "rights_review": 91
+    },
+    "classification": {
+      "verified": 1593,
+      "needs_listen": 407
+    },
+    "contacts": {
+      "social": 1258,
+      "enrich": 330,
+      "blocked": 407,
+      "ready": 5
+    },
+    "excluded": {
+      "major_or_mixed": 52,
+      "superstar": 21,
+      "classification": 0,
+      "identity": 1,
+      "no_metric": 7,
+      "weak_signal": 535
+    },
+    "thresholds": {
+      "max_artist_monthly_listeners": 5000000,
+      "max_track_streams": 250000000,
+      "minimum_score": 20,
+      "allowed_rights": [
+        "self_released",
+        "independent_label",
+        "unknown_review"
+      ],
+      "excluded_rights": [
+        "major",
+        "mixed",
+        "other_label"
+      ]
+    },
+    "score_components": {
+      "momentum_and_acceleration": 35,
+      "genre_editorial_and_rights_fit": 20,
+      "traction": 25,
+      "recency_or_catalog_stability": 15,
+      "contactability": 5
+    },
+    "no_extrapolation": true
+  }
+}
