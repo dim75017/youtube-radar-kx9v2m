@@ -5,15 +5,18 @@ on:
     branches: [main]
     paths:
       - 'refresh_soundcharts_daily.py'
+      - 'discover_soundcharts_playlists.py'
       - 'expand_soundcharts_instrumental_pool.py'
       - 'sync_soundcharts_opportunities.py'
       - 'prepare_soundcharts_snapshot.py'
       - 'tests/test_refresh_soundcharts_daily.py'
+      - 'tests/test_discover_soundcharts_playlists.py'
       - 'tests/test_expand_soundcharts_instrumental_pool.py'
       - 'tests/test_sync_soundcharts_opportunities.py'
       - 'tests/test_prepare_soundcharts_snapshot.py'
       - 'tests/test_dashboard_opportunity_guardrails.js'
       - 'tests/test_dashboard_general_view_guardrails.js'
+      - 'tests/test_dashboard_ar_ui_guardrails.js'
       - '.github/workflows/refresh-soundcharts.yml'
       - 'spotify/index.html'
       - 'spotify/dashboard.js'
@@ -21,15 +24,18 @@ on:
   pull_request:
     paths:
       - 'refresh_soundcharts_daily.py'
+      - 'discover_soundcharts_playlists.py'
       - 'expand_soundcharts_instrumental_pool.py'
       - 'sync_soundcharts_opportunities.py'
       - 'prepare_soundcharts_snapshot.py'
       - 'tests/test_refresh_soundcharts_daily.py'
+      - 'tests/test_discover_soundcharts_playlists.py'
       - 'tests/test_expand_soundcharts_instrumental_pool.py'
       - 'tests/test_sync_soundcharts_opportunities.py'
       - 'tests/test_prepare_soundcharts_snapshot.py'
       - 'tests/test_dashboard_opportunity_guardrails.js'
       - 'tests/test_dashboard_general_view_guardrails.js'
+      - 'tests/test_dashboard_ar_ui_guardrails.js'
       - '.github/workflows/refresh-soundcharts.yml'
       - 'spotify/index.html'
       - 'spotify/dashboard.js'
@@ -45,9 +51,9 @@ on:
         type: choice
         options: [daily_target, artists, smoke, legacy_full]
       max_requests:
-        description: 'Expansion data-call cap (1-9490; total workflow cap stays <=10000 including auth)'
+        description: 'Expansion data-call cap (1-8230; total workflow cap stays <=10000 including auth)'
         required: true
-        default: '9490'
+        default: '8230'
         type: string
 
 permissions:
@@ -82,6 +88,7 @@ jobs:
         run: >-
           python -m unittest
           tests/test_refresh_soundcharts_daily.py
+          tests/test_discover_soundcharts_playlists.py
           tests/test_expand_soundcharts_instrumental_pool.py
           tests/test_sync_soundcharts_opportunities.py
           tests/test_prepare_soundcharts_snapshot.py
@@ -89,10 +96,11 @@ jobs:
 
       - name: Validate production source syntax
         run: |
-          python -m py_compile refresh_soundcharts_daily.py expand_soundcharts_instrumental_pool.py sync_soundcharts_opportunities.py prepare_soundcharts_snapshot.py
+          python -m py_compile refresh_soundcharts_daily.py discover_soundcharts_playlists.py expand_soundcharts_instrumental_pool.py sync_soundcharts_opportunities.py prepare_soundcharts_snapshot.py
           node --check spotify/dashboard.js
           node tests/test_dashboard_opportunity_guardrails.js
           node tests/test_dashboard_general_view_guardrails.js
+          node tests/test_dashboard_ar_ui_guardrails.js
           git diff --check
 
       - name: Select safe execution plan
@@ -102,9 +110,10 @@ jobs:
           REQUESTED_SCOPE: ${{ inputs.scope }}
           REQUESTED_MAX_REQUESTS: ${{ inputs.max_requests }}
         run: |
-          artist_data_cap="500"
+          artist_data_cap="350"
+          playlist_data_cap="1400"
           legacy_data_cap="2500"
-          expansion_data_cap="9490"
+          expansion_data_cap="8230"
           if [[ "${{ github.event_name }}" == "pull_request" || "${{ github.event_name }}" == "push" ]]; then
             scope="ci_smoke"
             expansion_limit=""
@@ -136,6 +145,7 @@ jobs:
           echo "expansion_limit=$expansion_limit" >> "$GITHUB_OUTPUT"
           echo "expansion_requests=$expansion_requests" >> "$GITHUB_OUTPUT"
           echo "artist_requests=$artist_data_cap" >> "$GITHUB_OUTPUT"
+          echo "playlist_requests=$playlist_data_cap" >> "$GITHUB_OUTPUT"
           echo "legacy_requests=$legacy_data_cap" >> "$GITHUB_OUTPUT"
           echo "publish=$publish" >> "$GITHUB_OUTPUT"
           echo "Selected scope=$scope, expansion_requests=$expansion_requests, publish=$publish"
@@ -195,6 +205,26 @@ jobs:
           --history-days 90
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
 
+      - name: Discover tracks and artist catalogues from editorial playlists
+        if: steps.plan.outputs.scope == 'daily_target'
+        env:
+          PYTHONUNBUFFERED: '1'
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        run: >-
+          python discover_soundcharts_playlists.py
+          --soundcharts "${{ steps.snapshot.outputs.candidate }}"
+          --playlists Spotify_Playlists_data.js
+          --cache soundcharts-instrumental-cache.json
+          --workers 10
+          --max-requests "${{ steps.plan.outputs.playlist_requests }}"
+          --page-size 100
+          --max-new-playlist-tracks 450
+          --max-catalog-artists 250
+          --catalog-page-size 25
+          --max-new-catalog-tracks 1200
+
       - name: Expand and measure the target instrumental pool
         if: steps.plan.outputs.scope == 'daily_target'
         env:
@@ -243,6 +273,7 @@ jobs:
         if: steps.plan.outputs.scope == 'daily_target' || steps.plan.outputs.scope == 'artists' || steps.plan.outputs.scope == 'legacy_full'
         env:
           SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
+          RUN_SCOPE: ${{ steps.plan.outputs.scope }}
         run: |
           python3 - <<'PY'
           import json
@@ -257,8 +288,14 @@ jobs:
           soundcharts = load(os.environ['SNAPSHOT_NAME'], 'window.SPOTIFY_SOUNDCHARTS=')
           performance = load('Spotify_Performance_data.js', 'window.SPOTIFY_PERFORMANCE=')
           pool = soundcharts.get('instrumental_pool') or {}
+          discovery = soundcharts.get('playlist_discovery') or {}
           scoring = soundcharts.get('opportunity_scoring') or {}
           opportunities = soundcharts.get('opportunities') or []
+          if os.environ.get('RUN_SCOPE') == 'daily_target':
+              if int(discovery.get('playlists_scanned') or 0) < 1:
+                  raise SystemExit('Editorial playlist discovery scanned no playlist')
+              if int(discovery.get('unique_playlist_tracks') or 0) < 1:
+                  raise SystemExit('Editorial playlist discovery returned no tracks')
           if int(pool.get('measured') or 0) < 1:
               raise SystemExit('Instrumental pool produced no real Spotify counter')
           if not opportunities:
@@ -267,6 +304,10 @@ jobs:
               raise SystemExit('Performance history export is empty')
           print(json.dumps({
               'catalog_total': scoring.get('catalog_total'),
+              'playlists_scanned': discovery.get('playlists_scanned'),
+              'playlist_tracks': discovery.get('unique_playlist_tracks'),
+              'new_playlist_tracks': discovery.get('new_playlist_tracks'),
+              'new_catalogue_tracks': discovery.get('new_catalogue_tracks'),
               'target_tracks': pool.get('target_tracks'),
               'measured': pool.get('measured'),
               'daily_delta_ready': pool.get('daily_delta_ready'),
