@@ -85,6 +85,8 @@ OPPORTUNITY_SCHEMA = [
     "editorial_followers_total",
     "editorial_followers_known_count",
     "editorial_top_playlist",
+    "editorial_playlists",
+    "discovery_source_playlist_names",
     "editorial_first_seen_at",
     "editorial_last_seen_at",
     "roster_relationship",
@@ -266,6 +268,12 @@ def editorial_map(payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
             "playlist_followers_total": finite_number(field(row, schema, "playlist_followers_total")),
             "playlist_first_seen_at": str(field(row, schema, "playlist_first_seen_at") or ""),
             "playlist_last_seen_at": str(field(row, schema, "playlist_last_seen_at") or ""),
+            "playlist_placements": list(field(row, schema, "playlist_placements") or [])
+            if isinstance(field(row, schema, "playlist_placements"), list)
+            else [],
+            "discovery_source_playlist_names": list(field(row, schema, "discovery_source_playlist_names") or [])
+            if isinstance(field(row, schema, "discovery_source_playlist_names"), list)
+            else [],
         }
     return out
 
@@ -458,9 +466,79 @@ def classification_for(track: dict[str, Any], editorial: dict[str, Any], preserv
     }
 
 
+def _playlist_day(value: Any) -> str:
+    return normalize_day(value) or ""
+
+
+def _normalise_editorial_playlists(value: Any) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for item in value if isinstance(value, list) else []:
+        if not isinstance(item, Mapping):
+            continue
+        spotify_id = str(item.get("spotify_id") or item.get("playlist_id") or "").strip()
+        name = str(item.get("name") or item.get("playlist_name") or "").strip()
+        if not spotify_id and not name:
+            continue
+        position = finite_number(item.get("position"))
+        followers = finite_number(item.get("followers") or item.get("playlist_followers"))
+        rows.append(
+            {
+                "spotify_id": spotify_id,
+                "name": name,
+                "position": int(position) if position is not None and position > 0 else None,
+                "followers": max(0, int(followers or 0)),
+                "first_seen_at": _playlist_day(item.get("first_seen_at") or item.get("entry_date")),
+                "last_seen_at": _playlist_day(item.get("last_seen_at")),
+            }
+        )
+    return rows
+
+
+def _merge_editorial_playlists(*values: Any) -> list[dict[str, Any]]:
+    merged: dict[str, dict[str, Any]] = {}
+    for value in values:
+        for item in _normalise_editorial_playlists(value):
+            key = item["spotify_id"] or item["name"].casefold()
+            previous = merged.get(key)
+            if previous is None:
+                merged[key] = dict(item)
+                continue
+            positions = [v for v in (previous.get("position"), item.get("position")) if v is not None]
+            previous["position"] = min(positions) if positions else None
+            previous["followers"] = max(int(previous.get("followers") or 0), int(item.get("followers") or 0))
+            first_days = [v for v in (previous.get("first_seen_at"), item.get("first_seen_at")) if v]
+            last_days = [v for v in (previous.get("last_seen_at"), item.get("last_seen_at")) if v]
+            previous["first_seen_at"] = min(first_days) if first_days else ""
+            previous["last_seen_at"] = max(last_days) if last_days else ""
+            if not previous.get("name") and item.get("name"):
+                previous["name"] = item["name"]
+    return sorted(
+        merged.values(),
+        key=lambda item: (item.get("position") is None, item.get("position") or 10**9, -int(item.get("followers") or 0), item.get("name") or ""),
+    )
+
+
 def merged_playlist_evidence(editorial: dict[str, Any], preserved: dict[str, Any]) -> dict[str, Any]:
     names = editorial.get("playlist_names") if isinstance(editorial.get("playlist_names"), list) else []
+    ids = editorial.get("playlist_ids") if isinstance(editorial.get("playlist_ids"), list) else []
+    fallback_placements = [
+        {
+            "spotify_id": str(playlist_id or ""),
+            "name": str(names[index] if index < len(names) else ""),
+            "position": editorial.get("playlist_best_position") if index == 0 else None,
+            "followers": 0,
+            "first_seen_at": editorial.get("playlist_first_seen_at"),
+            "last_seen_at": editorial.get("playlist_last_seen_at"),
+        }
+        for index, playlist_id in enumerate(ids)
+    ]
+    placements = _merge_editorial_playlists(
+        editorial.get("playlist_placements"),
+        preserved.get("editorial_playlists"),
+        fallback_placements,
+    )
     count = max(
+        len(placements),
         int(finite_number(editorial.get("playlist_count")) or 0),
         int(finite_number(preserved.get("editorial_placement_count")) or 0),
     )
@@ -469,29 +547,55 @@ def merged_playlist_evidence(editorial: dict[str, Any], preserved: dict[str, Any
         for value in (
             finite_number(editorial.get("playlist_best_position")),
             finite_number(preserved.get("editorial_best_position")),
+            *[finite_number(item.get("position")) for item in placements],
         )
         if value is not None
     ]
+    placement_followers = sum(max(0, int(item.get("followers") or 0)) for item in placements)
     followers = max(
         float(finite_number(editorial.get("playlist_followers_total")) or 0),
         float(finite_number(preserved.get("editorial_followers_total")) or 0),
+        float(placement_followers),
     )
     top = preserved.get("editorial_top_playlist")
     if isinstance(top, Mapping):
         top = top.get("name") or top.get("spotify_id") or ""
+    if not top and placements:
+        top = placements[0].get("name") or placements[0].get("spotify_id") or ""
     if not top and names:
         top = names[0]
+    first_days = [
+        day
+        for day in (
+            editorial.get("playlist_first_seen_at"),
+            preserved.get("editorial_first_seen_at"),
+            *[item.get("first_seen_at") for item in placements],
+        )
+        if day
+    ]
+    last_days = [
+        day
+        for day in (
+            editorial.get("playlist_last_seen_at"),
+            preserved.get("editorial_last_seen_at"),
+            *[item.get("last_seen_at") for item in placements],
+        )
+        if day
+    ]
     return {
         "editorial_placement_count": count,
         "editorial_best_position": min(best_values) if best_values else None,
         "editorial_followers_total": followers or None,
         "editorial_followers_known_count": max(
             int(finite_number(preserved.get("editorial_followers_known_count")) or 0),
-            len(editorial.get("playlist_ids") or []) if isinstance(editorial.get("playlist_ids"), list) else 0,
+            int(finite_number(editorial.get("playlist_followers_known_count")) or 0),
+            count if (finite_number(editorial.get("playlist_followers_total")) or 0) > 0 else 0,
+            sum(int(item.get("followers") or 0) > 0 for item in placements),
         ),
         "editorial_top_playlist": str(top or ""),
-        "editorial_first_seen_at": editorial.get("playlist_first_seen_at") or preserved.get("editorial_first_seen_at"),
-        "editorial_last_seen_at": editorial.get("playlist_last_seen_at") or preserved.get("editorial_last_seen_at"),
+        "editorial_playlists": placements,
+        "editorial_first_seen_at": min(first_days) if first_days else None,
+        "editorial_last_seen_at": max(last_days) if last_days else None,
     }
 
 
@@ -840,6 +944,21 @@ def generate_opportunities(
             context["contact_status"],
             age,
         )
+        if playlist_evidence["editorial_placement_count"]:
+            placement_names = [
+                str(item.get("name") or item.get("spotify_id") or "")
+                for item in playlist_evidence.get("editorial_playlists", [])
+                if isinstance(item, Mapping)
+            ]
+            label = ", ".join(name for name in placement_names[:3] if name)
+            since = playlist_evidence.get("editorial_first_seen_at")
+            editorial_reason = f"Présente dans {playlist_evidence['editorial_placement_count']} playlist(s) éditoriale(s)"
+            if label:
+                editorial_reason += f" : {label}"
+            if since:
+                editorial_reason += f" depuis {since}"
+            reason_codes.append("editorial_playlist_presence")
+            reasons.append(editorial_reason)
         velocity_per_listener = (
             metrics["d30"] / listeners
             if metrics["d30"] is not None and listeners is not None and listeners > 0
@@ -882,6 +1001,8 @@ def generate_opportunities(
             "editorial_followers_total": playlist_evidence["editorial_followers_total"],
             "editorial_followers_known_count": playlist_evidence["editorial_followers_known_count"],
             "editorial_top_playlist": str(playlist_top or ""),
+            "editorial_playlists": playlist_evidence["editorial_playlists"],
+            "discovery_source_playlist_names": editorial_entry.get("discovery_source_playlist_names") or [],
             "editorial_first_seen_at": playlist_evidence["editorial_first_seen_at"],
             "editorial_last_seen_at": playlist_evidence["editorial_last_seen_at"],
             "roster_relationship": preserved.get("roster_relationship") or {"status": "unknown", "artists": []},

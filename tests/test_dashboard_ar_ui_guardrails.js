@@ -11,6 +11,10 @@ const forbidden = [
   'ar-coverage-strip',
   'ar-kpi-actions',
   'ar-kpi-action',
+  'id="radar-q"',
+  "getElementById('radar-q')",
+  'Rechercher track, artiste, label…',
+  "keepFocus('radar-q')",
 ];
 for (const token of forbidden) {
   if (renderRadar.includes(token)) throw new Error(`Removed A&R UI token is still rendered: ${token}`);
@@ -21,10 +25,6 @@ for (const required of [
   'data-radar-filter="distribution"',
   'data-radar-filter="label_advance"',
   'data-radar-filter="catalog_acquisition"',
-  'id="radar-q"',
-  "getElementById('radar-q')",
-  'Rechercher track, artiste, label…',
-  "keepFocus('radar-q')",
   'id="radar-genre"',
   'id="radar-sort"',
 ]) {

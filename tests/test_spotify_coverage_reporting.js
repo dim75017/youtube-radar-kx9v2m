@@ -9,10 +9,11 @@ const index = fs.readFileSync('spotify/index.html', 'utf8');
 
 assert.ok(index.indexOf('dashboard.js') < index.indexOf('coverage.js'), 'coverage reporting must run after the dashboard');
 assert.match(source, /playlist_discovery_measured/);
-assert.match(source, /editorial_artists_total/);
-assert.match(source, /catalogue_artists_scanned/);
+assert.match(source, /discovery_catalogue/);
+assert.match(source, /measuredCatalogueTracks/);
 assert.match(source, /MutationObserver/);
-assert.match(source, /candidats à valider sont classés dans Opportunités A&R/);
+assert.match(source, /Catalogue complet disponible/);
+assert.match(source, /pistes encore incomplètes restent visibles/);
 assert.match(source, /startsWith\('détectée'\)/, 'legacy detected badges must be removed from All tracks');
 
 function element() {
@@ -89,10 +90,10 @@ vm.runInNewContext(source, context);
 assert.match(elements['c-opps'].title, /43.*265/);
 assert.match(elements['c-opps'].title, /3.*271/);
 assert.match(elements['c-art'].title, /1.*280/);
-assert.match(elements['c-art'].title, /8.*351/);
+assert.match(elements['c-art'].title, /enrichissement continu/);
 assert.match(elements['c-radar'].title, /2.*000/);
 assert.match(elements['sync-detail-tr'].innerHTML, /220 playlists scannées/);
-assert.match(elements['sync-detail-tr'].innerHTML, /16.*790 pistes uniques/);
-assert.match(elements['sync-detail-tr'].innerHTML, /2.*135 découvertes mesurées/);
+assert.match(elements['sync-detail-tr'].innerHTML, /3.*271 pistes mesurées/);
+assert.match(elements['sync-detail-tr'].innerHTML, /catalogue vivant/);
 
-console.log('Spotify discovery coverage reporting: OK');
+console.log('Spotify full-catalogue coverage reporting: OK');

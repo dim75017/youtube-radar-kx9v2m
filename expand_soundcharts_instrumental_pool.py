@@ -808,7 +808,8 @@ def expand_instrumental_pool(
     for uuid, response in metadata_responses.items():
         parsed = parse_song_detail(response, candidate_by_uuid[uuid])
         if parsed:
-            cache_tracks[uuid] = parsed
+            existing = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
+            cache_tracks[uuid] = {**existing, **parsed}
 
     unique_artists: dict[str, str] = {}
     for item in candidates:

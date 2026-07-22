@@ -5,6 +5,8 @@
   const discovery = SC.playlist_discovery || {};
   const pool = SC.instrumental_pool || {};
   const scoring = SC.opportunity_scoring || {};
+  const catalogue = SC.discovery_catalogue || {};
+  const catalogueCounts = catalogue.counts || {};
 
   const firstNumber = (...values) => {
     for (const value of values) {
@@ -46,6 +48,12 @@
     discoveredArtists: firstNumber(discovery.editorial_artists_total),
     artistCredits: firstNumber(discovery.new_artist_credits),
     catalogueArtistsScanned: firstNumber(discovery.catalogue_artists_scanned),
+    discoveredTracks: firstNumber(catalogueCounts.tracks, discovery.editorial_tracks_total),
+    discoveredArtistsTotal: firstNumber(catalogueCounts.artists, discovery.editorial_artists_total),
+    measuredCatalogueTracks: firstNumber(catalogueCounts.measured_tracks, scoring.measured_target_tracks, pool.measured),
+    playlistCatalogueTracks: firstNumber(catalogueCounts.playlist_tracks, discovery.unique_playlist_tracks),
+    catalogueOnlyTracks: firstNumber(catalogueCounts.catalogue_tracks),
+    verifiedCatalogueTracks: firstNumber(catalogueCounts.verified_tracks),
     opportunities: Array.isArray(SC.opportunities)
       ? SC.opportunities.length
       : firstNumber(scoring.opportunities),
@@ -62,26 +70,26 @@
     tracks() {
       const visible = liveTracks();
       if (isFrench()) {
-        return `Scan Soundcharts terminé : ${format(metrics.newPlaylistTracks + metrics.newCatalogueTracks)} nouvelles pistes ajoutées au pool, ${format(metrics.measuredDiscoveries)} découvertes mesurées et ${format(metrics.measuredTracks)} pistes cibles mesurées. La liste ci-dessous reste le catalogue vérifié (${format(visible)} lignes) ; les candidats à valider sont classés dans Opportunités A&R.`;
+        return `Catalogue complet disponible : ${format(visible)} pistes affichables, dont ${format(metrics.measuredCatalogueTracks)} déjà mesurées. Les pistes encore incomplètes restent visibles avec les statuts « À mesurer », « À écouter » ou « Droits à vérifier » au lieu d’être cachées.`;
       }
-      return `Soundcharts scan completed: ${format(metrics.newPlaylistTracks + metrics.newCatalogueTracks)} new tracks added to the pool, ${format(metrics.measuredDiscoveries)} discoveries measured and ${format(metrics.measuredTracks)} target tracks measured. The list below remains the verified catalogue (${format(visible)} rows); review candidates are ranked in A&R Opportunities.`;
+      return `Full catalogue available: ${format(visible)} tracks can be browsed, including ${format(metrics.measuredCatalogueTracks)} already measured. Incomplete tracks remain visible with To measure, Needs listening or Rights review statuses instead of being hidden.`;
     },
     artists() {
       const visible = liveArtists();
       if (isFrench()) {
-        return `${format(metrics.discoveredArtists)} artistes/crédits structurés découverts via ${format(metrics.playlistsScanned)} playlists ; ${format(metrics.catalogueArtistsScanned)} catalogues artistes ont été parcourus lors de ce cycle. ${format(visible)} profils vérifiés sont affichés ci-dessous.`;
+        return `${format(visible)} artistes et crédits sont maintenant consultables. Le scan a parcouru ${format(metrics.playlistsScanned)} playlists et ${format(metrics.catalogueArtistsScanned)} catalogues artistes ; les profils incomplets restent affichés pendant leur enrichissement.`;
       }
-      return `${format(metrics.discoveredArtists)} structured artists/credits discovered across ${format(metrics.playlistsScanned)} playlists; ${format(metrics.catalogueArtistsScanned)} artist catalogues were crawled in this cycle. ${format(visible)} verified profiles are displayed below.`;
+      return `${format(visible)} artists and credits are now browsable. The scan covered ${format(metrics.playlistsScanned)} playlists and ${format(metrics.catalogueArtistsScanned)} artist catalogues; incomplete profiles remain visible while enrichment continues.`;
     },
     trackResult() {
       return isFrench()
-        ? `${format(liveTracks())} pistes vérifiées affichées · ${format(metrics.measuredTracks)} pistes cibles mesurées`
-        : `${format(liveTracks())} verified tracks shown · ${format(metrics.measuredTracks)} target tracks measured`;
+        ? `${format(liveTracks())} pistes disponibles · ${format(metrics.measuredCatalogueTracks)} mesurées`
+        : `${format(liveTracks())} tracks available · ${format(metrics.measuredCatalogueTracks)} measured`;
     },
     artistResult() {
       return isFrench()
-        ? `${format(liveArtists())} artistes vérifiés affichés · ${format(metrics.discoveredArtists)} découverts`
-        : `${format(liveArtists())} verified artists shown · ${format(metrics.discoveredArtists)} discovered`;
+        ? `${format(liveArtists())} artistes disponibles · enrichissement continu`
+        : `${format(liveArtists())} artists available · continuous enrichment`;
     },
   };
 
@@ -131,8 +139,8 @@
     if (!detail) return;
     const generated = String(SC.generated_at || (SC.freshness && SC.freshness.tracks_at) || '').slice(0, 19);
     const html = isFrench()
-      ? `<b>Soundcharts · découverte + mesure</b><br>${format(metrics.playlistsScanned)} playlists scannées · ${format(metrics.uniquePlaylistTracks)} pistes uniques<br>${format(metrics.measuredDiscoveries)} découvertes mesurées · ${format(metrics.opportunities)} opportunités${generated ? `<br>Snapshot ${generated.replace('T', ' ')}` : ''}`
-      : `<b>Soundcharts · discovery + measurement</b><br>${format(metrics.playlistsScanned)} playlists scanned · ${format(metrics.uniquePlaylistTracks)} unique tracks<br>${format(metrics.measuredDiscoveries)} discoveries measured · ${format(metrics.opportunities)} opportunities${generated ? `<br>Snapshot ${generated.replace('T', ' ')}` : ''}`;
+      ? `<b>Soundcharts · catalogue vivant</b><br>${format(liveTracks())} pistes disponibles · ${format(liveArtists())} artistes/crédits<br>${format(metrics.playlistsScanned)} playlists scannées · ${format(metrics.measuredCatalogueTracks)} pistes mesurées<br>${format(metrics.opportunities)} opportunités A&R${generated ? `<br>Snapshot ${generated.replace('T', ' ')}` : ''}`
+      : `<b>Soundcharts · living catalogue</b><br>${format(liveTracks())} tracks available · ${format(liveArtists())} artists/credits<br>${format(metrics.playlistsScanned)} playlists scanned · ${format(metrics.measuredCatalogueTracks)} measured tracks<br>${format(metrics.opportunities)} A&R opportunities${generated ? `<br>Snapshot ${generated.replace('T', ' ')}` : ''}`;
     if (detail.innerHTML !== html) detail.innerHTML = html;
   }
 

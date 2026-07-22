@@ -744,6 +744,338 @@ def _refresh_counts(
             )
 
 
+DISCOVERY_CATALOGUE_VERSION = 1
+DISCOVERY_TRACK_FIELDS = (
+    "soundcharts_uuid",
+    "spotify_id",
+    "title",
+    "credit_name",
+    "artists",
+    "release_date",
+    "image_url",
+    "label",
+    "copyright",
+    "rights_status",
+    "rights_confidence",
+    "streams",
+    "streams_delta_24h",
+    "streams_source_date",
+    "primary_genre",
+    "subgenres",
+    "genre_confidence",
+    "instrumental_status",
+    "instrumental_confidence",
+    "ai_risk",
+    "ai_risk_score",
+    "expansion_status",
+    "review_reasons",
+    "metadata_status",
+    "source_tier",
+    "playlist_ids",
+    "playlist_names",
+    "playlist_count",
+    "playlist_best_position",
+    "playlist_followers_total",
+    "playlist_first_seen_at",
+    "playlist_last_seen_at",
+    "playlist_placements",
+    "discovery_source_playlist_ids",
+    "discovery_source_playlist_names",
+    "artist_soundcharts_uuids",
+    "discovered_at",
+    "updated_at",
+    "availability_status",
+)
+
+DISCOVERY_ARTIST_FIELDS = (
+    "soundcharts_uuid",
+    "spotify_id",
+    "name",
+    "monthly_listeners",
+    "primary_genre",
+    "subgenres",
+    "genre_confidence",
+    "instrumental_status",
+    "instrumental_confidence",
+    "ai_risk",
+    "ai_risk_score",
+    "expansion_status",
+    "review_reasons",
+    "source_tier",
+    "playlist_ids",
+    "playlist_names",
+    "playlist_count",
+    "catalogue_tracks_discovered",
+    "discovered_at",
+    "last_catalogue_scan_at",
+    "track_count",
+    "availability_status",
+)
+
+DISCOVERY_PLAYLIST_FIELDS = (
+    "spotify_id",
+    "name",
+    "position",
+    "followers",
+    "first_seen_at",
+    "last_seen_at",
+)
+
+
+def _mapping_from_row(row: Any, schema: Sequence[str]) -> dict[str, Any]:
+    if isinstance(row, Mapping):
+        return dict(row)
+    if not isinstance(row, (list, tuple)):
+        return {}
+    return {
+        name: row[index] if index < len(row) else None
+        for index, name in enumerate(schema)
+    }
+
+
+def _catalogue_playlist_placements(editorial_track: Mapping[str, Any]) -> list[dict[str, Any]]:
+    placements: list[dict[str, Any]] = []
+    raw = editorial_track.get("playlist_placements")
+    for item in raw if isinstance(raw, list) else []:
+        if not isinstance(item, Mapping):
+            continue
+        spotify_id = str(item.get("spotify_id") or item.get("playlist_id") or "").strip()
+        name = str(item.get("name") or item.get("playlist_name") or "").strip()
+        if not spotify_id and not name:
+            continue
+        placements.append(
+            {
+                "spotify_id": spotify_id,
+                "name": name,
+                "position": _finite_number(item.get("position")),
+                "followers": int(_finite_number(item.get("followers") or item.get("playlist_followers")) or 0),
+                "first_seen_at": str(item.get("first_seen_at") or item.get("entry_date") or "")[:10],
+                "last_seen_at": str(item.get("last_seen_at") or "")[:10],
+            }
+        )
+    if placements:
+        placements.sort(
+            key=lambda item: (
+                item.get("position") is None,
+                item.get("position") or 10**9,
+                -int(item.get("followers") or 0),
+                item.get("name") or "",
+            )
+        )
+        return placements
+    ids = editorial_track.get("playlist_ids") if isinstance(editorial_track.get("playlist_ids"), list) else []
+    names = editorial_track.get("playlist_names") if isinstance(editorial_track.get("playlist_names"), list) else []
+    return [
+        {
+            "spotify_id": str(playlist_id or ""),
+            "name": str(names[index] if index < len(names) else ""),
+            "position": editorial_track.get("playlist_best_position") if index == 0 else None,
+            "followers": 0,
+            "first_seen_at": str(editorial_track.get("playlist_first_seen_at") or "")[:10],
+            "last_seen_at": str(editorial_track.get("playlist_last_seen_at") or "")[:10],
+        }
+        for index, playlist_id in enumerate(ids)
+        if playlist_id or (index < len(names) and names[index])
+    ]
+
+
+def _build_discovery_catalogue(payload: Mapping[str, Any]) -> dict[str, Any]:
+    editorial = payload.get("editorial") if isinstance(payload.get("editorial"), Mapping) else {}
+    editorial_track_schema = editorial.get("track_schema") if isinstance(editorial.get("track_schema"), list) else []
+    editorial_track_rows = editorial.get("tracks") if isinstance(editorial.get("tracks"), list) else []
+    editorial_artist_schema = editorial.get("artist_schema") if isinstance(editorial.get("artist_schema"), list) else []
+    editorial_artist_rows = editorial.get("artists") if isinstance(editorial.get("artists"), list) else []
+
+    measured_schema = _schema(payload, "tracks")
+    measured_rows = payload.get("tracks") if isinstance(payload.get("tracks"), list) else []
+    measured_by_uuid = {
+        str(_row_value(row, measured_schema, "soundcharts_uuid") or "").strip(): _mapping_from_row(row, measured_schema)
+        for row in measured_rows
+        if _row_value(row, measured_schema, "soundcharts_uuid")
+    }
+    opportunity_schema = _schema(payload, "opportunities")
+    opportunity_rows = payload.get("opportunities") if isinstance(payload.get("opportunities"), list) else []
+    opportunity_by_uuid = {
+        str(_row_value(row, opportunity_schema, "soundcharts_uuid") or "").strip(): _mapping_from_row(row, opportunity_schema)
+        for row in opportunity_rows
+        if _row_value(row, opportunity_schema, "soundcharts_uuid")
+    }
+
+    tracks: list[dict[str, Any]] = []
+    artist_track_counts: Counter[str] = Counter()
+    for raw in editorial_track_rows:
+        editorial_track = _mapping_from_row(raw, editorial_track_schema)
+        uuid = str(editorial_track.get("soundcharts_uuid") or "").strip()
+        if not uuid:
+            continue
+        measured = measured_by_uuid.get(uuid, {})
+        opportunity = opportunity_by_uuid.get(uuid, {})
+        placements = _catalogue_playlist_placements(editorial_track)
+        spotify_id = str(editorial_track.get("spotify_id") or measured.get("spotify_id") or "").strip()
+        structured_artists = measured.get("artists") if isinstance(measured.get("artists"), list) else []
+        artist_uuids = editorial_track.get("artist_soundcharts_uuids") if isinstance(editorial_track.get("artist_soundcharts_uuids"), list) else []
+        for artist_uuid in artist_uuids:
+            if artist_uuid:
+                artist_track_counts[str(artist_uuid)] += 1
+        measured_flag = bool(measured and measured.get("streams") is not None)
+        opportunity_status = str(opportunity.get("opportunity_status") or "").casefold()
+        source_tier = str(editorial_track.get("source_tier") or measured.get("source_tier") or "").casefold()
+        if opportunity_status == "verified":
+            availability = "verified"
+        elif opportunity_status == "needs_listen":
+            availability = "needs_listen"
+        elif measured_flag:
+            availability = "measured"
+        elif source_tier == "playlist_artist_catalogue":
+            availability = "catalogue_discovered"
+        elif placements:
+            availability = "playlist_discovered"
+        else:
+            availability = "discovered"
+        rights_status = str(measured.get("rights_status") or editorial_track.get("rights_status") or "unknown")
+        row = {
+            "soundcharts_uuid": uuid,
+            "spotify_id": spotify_id,
+            "title": str(measured.get("title") or editorial_track.get("name") or "Titre non renseigné"),
+            "credit_name": str(measured.get("artist") or editorial_track.get("artist") or "Artiste non renseigné"),
+            "artists": structured_artists,
+            "release_date": str(measured.get("release_date") or editorial_track.get("release_date") or ""),
+            "image_url": str(measured.get("image_url") or editorial_track.get("image_url") or ""),
+            "label": str(measured.get("label") or editorial_track.get("label") or ""),
+            "copyright": str(measured.get("copyright") or editorial_track.get("copyright") or ""),
+            "rights_status": rights_status,
+            "rights_confidence": _finite_number(measured.get("rights_confidence") or editorial_track.get("rights_confidence")),
+            "streams": _finite_number(measured.get("streams")),
+            "streams_delta_24h": _finite_number(measured.get("delta")),
+            "streams_source_date": str(measured.get("source_date") or ""),
+            "primary_genre": str(measured.get("primary_genre") or editorial_track.get("primary_genre") or "other_instrumental"),
+            "subgenres": measured.get("subgenres") if isinstance(measured.get("subgenres"), list) else (
+                editorial_track.get("subgenres") if isinstance(editorial_track.get("subgenres"), list) else []
+            ),
+            "genre_confidence": _finite_number(measured.get("genre_confidence") or editorial_track.get("genre_confidence")),
+            "instrumental_status": str(measured.get("instrumental_status") or editorial_track.get("instrumental_status") or "unknown"),
+            "instrumental_confidence": _finite_number(measured.get("instrumental_confidence") or editorial_track.get("instrumental_confidence")),
+            "ai_risk": str(measured.get("ai_risk") or editorial_track.get("ai_risk") or "unknown"),
+            "ai_risk_score": _finite_number(measured.get("ai_risk_score") or editorial_track.get("ai_risk_score")),
+            "expansion_status": str(measured.get("expansion_status") or editorial_track.get("expansion_status") or "review"),
+            "review_reasons": editorial_track.get("review_reasons") if isinstance(editorial_track.get("review_reasons"), list) else [],
+            "metadata_status": str(measured.get("metadata_status") or editorial_track.get("metadata_status") or "playlist_only"),
+            "source_tier": source_tier,
+            "playlist_ids": [item.get("spotify_id") for item in placements if item.get("spotify_id")],
+            "playlist_names": [item.get("name") for item in placements if item.get("name")],
+            "playlist_count": len(placements),
+            "playlist_best_position": min(
+                [int(item["position"]) for item in placements if item.get("position") is not None],
+                default=None,
+            ),
+            "playlist_followers_total": sum(int(item.get("followers") or 0) for item in placements),
+            "playlist_first_seen_at": min(
+                [item.get("first_seen_at") for item in placements if item.get("first_seen_at")],
+                default=str(editorial_track.get("playlist_first_seen_at") or "")[:10],
+            ),
+            "playlist_last_seen_at": max(
+                [item.get("last_seen_at") for item in placements if item.get("last_seen_at")],
+                default=str(editorial_track.get("playlist_last_seen_at") or "")[:10],
+            ),
+            "playlist_placements": placements,
+            "discovery_source_playlist_ids": editorial_track.get("discovery_source_playlist_ids")
+            if isinstance(editorial_track.get("discovery_source_playlist_ids"), list)
+            else [],
+            "discovery_source_playlist_names": editorial_track.get("discovery_source_playlist_names")
+            if isinstance(editorial_track.get("discovery_source_playlist_names"), list)
+            else [],
+            "artist_soundcharts_uuids": artist_uuids,
+            "discovered_at": str(editorial_track.get("discovered_at") or ""),
+            "updated_at": str(editorial_track.get("updated_at") or measured.get("metadata_updated_at") or ""),
+            "availability_status": availability,
+        }
+        tracks.append(row)
+
+    artists: list[dict[str, Any]] = []
+    for raw in editorial_artist_rows:
+        artist = _mapping_from_row(raw, editorial_artist_schema)
+        uuid = str(artist.get("soundcharts_uuid") or "").strip()
+        if not uuid:
+            continue
+        spotify_id = str(artist.get("spotify_id") or "").strip()
+        listeners = _finite_number(artist.get("monthly_listeners"))
+        expansion = str(artist.get("expansion_status") or "review")
+        availability = "identified" if spotify_id else "discovered"
+        if listeners is not None:
+            availability = "measured"
+        if expansion == "eligible" and spotify_id and listeners is not None:
+            availability = "verified"
+        row = {
+            "soundcharts_uuid": uuid,
+            "spotify_id": spotify_id,
+            "name": str(artist.get("name") or "Artiste non renseigné"),
+            "monthly_listeners": listeners,
+            "primary_genre": str(artist.get("primary_genre") or "other_instrumental"),
+            "subgenres": artist.get("subgenres") if isinstance(artist.get("subgenres"), list) else [],
+            "genre_confidence": _finite_number(artist.get("genre_confidence")),
+            "instrumental_status": str(artist.get("instrumental_status") or "unknown"),
+            "instrumental_confidence": _finite_number(artist.get("instrumental_confidence")),
+            "ai_risk": str(artist.get("ai_risk") or "unknown"),
+            "ai_risk_score": _finite_number(artist.get("ai_risk_score")),
+            "expansion_status": expansion,
+            "review_reasons": artist.get("review_reasons") if isinstance(artist.get("review_reasons"), list) else [],
+            "source_tier": str(artist.get("source_tier") or ""),
+            "playlist_ids": artist.get("playlist_ids") if isinstance(artist.get("playlist_ids"), list) else [],
+            "playlist_names": artist.get("playlist_names") if isinstance(artist.get("playlist_names"), list) else [],
+            "playlist_count": int(_finite_number(artist.get("playlist_count")) or 0),
+            "catalogue_tracks_discovered": int(_finite_number(artist.get("catalogue_tracks_discovered")) or 0),
+            "discovered_at": str(artist.get("discovered_at") or ""),
+            "last_catalogue_scan_at": str(artist.get("last_catalogue_scan_at") or ""),
+            "track_count": int(artist_track_counts.get(uuid, 0)),
+            "availability_status": availability,
+        }
+        artists.append(row)
+
+    tracks.sort(
+        key=lambda row: (
+            0 if row.get("availability_status") == "verified" else 1,
+            0 if row.get("streams") is not None else 1,
+            -(float(row.get("streams_delta_24h") or 0)),
+            -(float(row.get("streams") or 0)),
+            row.get("title") or "",
+        )
+    )
+    artists.sort(
+        key=lambda row: (
+            0 if row.get("availability_status") == "verified" else 1,
+            -(float(row.get("monthly_listeners") or 0)),
+            row.get("name") or "",
+        )
+    )
+    counts = {
+        "tracks": len(tracks),
+        "artists": len(artists),
+        "measured_tracks": sum(row.get("streams") is not None for row in tracks),
+        "playlist_tracks": sum(bool(row.get("playlist_count")) for row in tracks),
+        "catalogue_tracks": sum(row.get("source_tier") == "playlist_artist_catalogue" for row in tracks),
+        "verified_tracks": sum(row.get("availability_status") == "verified" for row in tracks),
+    }
+    for row in tracks:
+        placements = row.get("playlist_placements") if isinstance(row.get("playlist_placements"), list) else []
+        row["playlist_placements"] = [
+            [placement.get(key) for key in DISCOVERY_PLAYLIST_FIELDS]
+            for placement in placements
+            if isinstance(placement, Mapping)
+        ]
+    compact_tracks = [[row.get(key) for key in DISCOVERY_TRACK_FIELDS] for row in tracks]
+    compact_artists = [[row.get(key) for key in DISCOVERY_ARTIST_FIELDS] for row in artists]
+    return {
+        "version": DISCOVERY_CATALOGUE_VERSION,
+        "generated_at": str(payload.get("generated_at") or ""),
+        "track_schema": list(DISCOVERY_TRACK_FIELDS),
+        "artist_schema": list(DISCOVERY_ARTIST_FIELDS),
+        "playlist_schema": list(DISCOVERY_PLAYLIST_FIELDS),
+        "tracks": compact_tracks,
+        "artists": compact_artists,
+        "counts": counts,
+    }
+
+
 def sanitize_payload(payload: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     """Return a public-safe copy and a deterministic removal report.
 
@@ -761,6 +1093,7 @@ def sanitize_payload(payload: Mapping[str, Any]) -> tuple[dict[str, Any], dict[s
         raise SnapshotValidationError("SC.opportunities must be present and be a list")
 
     editorial = sanitized.get("editorial")
+    sanitized["discovery_catalogue"] = _build_discovery_catalogue(sanitized)
     before_counts = {
         "artists": len(sanitized.get("artists", []))
         if isinstance(sanitized.get("artists"), list)
@@ -777,6 +1110,12 @@ def sanitize_payload(payload: Mapping[str, Any]) -> tuple[dict[str, Any], dict[s
         else 0,
         "editorial.tracks": len(editorial.get("tracks", []))
         if isinstance(editorial, Mapping) and isinstance(editorial.get("tracks"), list)
+        else 0,
+        "discovery.tracks": len(sanitized.get("discovery_catalogue", {}).get("tracks", []))
+        if isinstance(sanitized.get("discovery_catalogue"), Mapping)
+        else 0,
+        "discovery.artists": len(sanitized.get("discovery_catalogue", {}).get("artists", []))
+        if isinstance(sanitized.get("discovery_catalogue"), Mapping)
         else 0,
     }
 
@@ -1032,6 +1371,12 @@ def sanitize_payload(payload: Mapping[str, Any]) -> tuple[dict[str, Any], dict[s
             "editorial.tracks": len(editorial.get("tracks", []))
             if isinstance(editorial, Mapping)
             else 0,
+            "discovery.tracks": len(sanitized.get("discovery_catalogue", {}).get("tracks", []))
+            if isinstance(sanitized.get("discovery_catalogue"), Mapping)
+            else 0,
+            "discovery.artists": len(sanitized.get("discovery_catalogue", {}).get("artists", []))
+            if isinstance(sanitized.get("discovery_catalogue"), Mapping)
+            else 0,
         },
         "removed": removed,
         "track_removal_reasons": dict(track_reasons),
@@ -1088,7 +1433,38 @@ def validate_payload(payload: Mapping[str, Any]) -> None:
             raise SnapshotValidationError(
                 f"SC.editorial.{collection} must be present and non-empty"
             )
-    if _contains_gates(payload):
+    discovery_catalogue = payload.get("discovery_catalogue")
+    # Legacy collector fixtures and pre-projection payloads are still valid inputs
+    # to the generic validator. Public snapshots always receive a discovery
+    # catalogue in ``sanitize_payload`` before this function is called.
+    if discovery_catalogue is not None:
+        if not isinstance(discovery_catalogue, Mapping):
+            raise SnapshotValidationError("SC.discovery_catalogue must be an object")
+        for collection in ("artists", "tracks"):
+            rows = discovery_catalogue.get(collection)
+            if not isinstance(rows, list) or not rows:
+                raise SnapshotValidationError(
+                    f"SC.discovery_catalogue.{collection} must be present and non-empty"
+                )
+        forbidden_discovery_fields = {"contact_email", "contact_url", "email", "phone"}
+        discovery_track_schema = discovery_catalogue.get("track_schema")
+        discovery_artist_schema = discovery_catalogue.get("artist_schema")
+        if not isinstance(discovery_track_schema, list) or not isinstance(discovery_artist_schema, list):
+            raise SnapshotValidationError("SC.discovery_catalogue schemas are missing")
+        if forbidden_discovery_fields.intersection(discovery_track_schema) or forbidden_discovery_fields.intersection(discovery_artist_schema):
+            raise SnapshotValidationError("SC.discovery_catalogue exposes a contact field")
+        for row in discovery_catalogue.get("tracks", []):
+            if not isinstance(row, (list, tuple, Mapping)):
+                raise SnapshotValidationError("SC.discovery_catalogue.tracks contains an invalid row")
+            if not _nonempty(_row_value(row, discovery_track_schema, "soundcharts_uuid")):
+                raise SnapshotValidationError("SC.discovery_catalogue track lacks Soundcharts UUID")
+        for row in discovery_catalogue.get("artists", []):
+            if not isinstance(row, (list, tuple, Mapping)):
+                raise SnapshotValidationError("SC.discovery_catalogue.artists contains an invalid row")
+            if not _nonempty(_row_value(row, discovery_artist_schema, "soundcharts_uuid")):
+                raise SnapshotValidationError("SC.discovery_catalogue artist lacks Soundcharts UUID")
+    gate_payload = {key: value for key, value in payload.items() if key != "discovery_catalogue"}
+    if _contains_gates(gate_payload):
         raise SnapshotValidationError("forbidden Gates category/text remains")
 
     banned_names, banned_spotify_ids, banned_soundcharts_uuids = (

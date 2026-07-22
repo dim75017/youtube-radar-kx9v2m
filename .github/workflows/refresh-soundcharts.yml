@@ -14,6 +14,8 @@ on:
       - 'tests/test_expand_soundcharts_instrumental_pool.py'
       - 'tests/test_sync_soundcharts_opportunities.py'
       - 'tests/test_prepare_soundcharts_snapshot.py'
+      - 'tests/test_full_discovery_catalogue.py'
+      - 'tests/test_spotify_full_catalogue.js'
       - 'tests/test_dashboard_opportunity_guardrails.js'
       - 'tests/test_dashboard_general_view_guardrails.js'
       - 'tests/test_dashboard_ar_ui_guardrails.js'
@@ -21,6 +23,8 @@ on:
       - 'spotify/index.html'
       - 'spotify/dashboard.js'
       - 'spotify/dashboard.css'
+      - 'spotify/discovery.css'
+      - 'spotify/coverage.js'
   pull_request:
     paths:
       - 'refresh_soundcharts_daily.py'
@@ -33,6 +37,8 @@ on:
       - 'tests/test_expand_soundcharts_instrumental_pool.py'
       - 'tests/test_sync_soundcharts_opportunities.py'
       - 'tests/test_prepare_soundcharts_snapshot.py'
+      - 'tests/test_full_discovery_catalogue.py'
+      - 'tests/test_spotify_full_catalogue.js'
       - 'tests/test_dashboard_opportunity_guardrails.js'
       - 'tests/test_dashboard_general_view_guardrails.js'
       - 'tests/test_dashboard_ar_ui_guardrails.js'
@@ -40,6 +46,8 @@ on:
       - 'spotify/index.html'
       - 'spotify/dashboard.js'
       - 'spotify/dashboard.css'
+      - 'spotify/discovery.css'
+      - 'spotify/coverage.js'
   schedule:
     - cron: '35 2 * * *'
   workflow_dispatch:
@@ -92,6 +100,7 @@ jobs:
           tests/test_expand_soundcharts_instrumental_pool.py
           tests/test_sync_soundcharts_opportunities.py
           tests/test_prepare_soundcharts_snapshot.py
+          tests/test_full_discovery_catalogue.py
           -v
 
       - name: Validate production source syntax
@@ -101,6 +110,7 @@ jobs:
           node tests/test_dashboard_opportunity_guardrails.js
           node tests/test_dashboard_general_view_guardrails.js
           node tests/test_dashboard_ar_ui_guardrails.js
+          node tests/test_spotify_full_catalogue.js
           git diff --check
 
       - name: Select safe execution plan
@@ -289,13 +299,18 @@ jobs:
           performance = load('Spotify_Performance_data.js', 'window.SPOTIFY_PERFORMANCE=')
           pool = soundcharts.get('instrumental_pool') or {}
           discovery = soundcharts.get('playlist_discovery') or {}
+          catalogue = soundcharts.get('discovery_catalogue') or {}
           scoring = soundcharts.get('opportunity_scoring') or {}
           opportunities = soundcharts.get('opportunities') or []
           if os.environ.get('RUN_SCOPE') == 'daily_target':
               if int(discovery.get('playlists_scanned') or 0) < 1:
                   raise SystemExit('Editorial playlist discovery scanned no playlist')
-              if int(discovery.get('unique_playlist_tracks') or 0) < 1:
+              unique_playlist_tracks = int(discovery.get('unique_playlist_tracks') or 0)
+              if unique_playlist_tracks < 1:
                   raise SystemExit('Editorial playlist discovery returned no tracks')
+              public_discovery_tracks = catalogue.get('tracks') if isinstance(catalogue, dict) else []
+              if not isinstance(public_discovery_tracks, list) or len(public_discovery_tracks) < unique_playlist_tracks:
+                  raise SystemExit('Full discovery catalogue did not publish every playlist track')
           if int(pool.get('measured') or 0) < 1:
               raise SystemExit('Instrumental pool produced no real Spotify counter')
           if not opportunities:
@@ -309,6 +324,8 @@ jobs:
               'new_playlist_tracks': discovery.get('new_playlist_tracks'),
               'new_catalogue_tracks': discovery.get('new_catalogue_tracks'),
               'target_tracks': pool.get('target_tracks'),
+              'published_discovery_tracks': len(catalogue.get('tracks') or []),
+              'published_discovery_artists': len(catalogue.get('artists') or []),
               'measured': pool.get('measured'),
               'daily_delta_ready': pool.get('daily_delta_ready'),
               'opportunities': len(opportunities),

@@ -55,6 +55,12 @@ TRACK_FIELDS = (
     "name",
     "artist",
     "release_date",
+    "label",
+    "copyright",
+    "isrc",
+    "image_url",
+    "rights_status",
+    "rights_confidence",
     "primary_genre",
     "subgenres",
     "genre_confidence",
@@ -74,6 +80,9 @@ TRACK_FIELDS = (
     "playlist_followers_total",
     "playlist_first_seen_at",
     "playlist_last_seen_at",
+    "playlist_placements",
+    "discovery_source_playlist_ids",
+    "discovery_source_playlist_names",
     "artist_soundcharts_uuids",
     "discovered_at",
 )
@@ -338,6 +347,7 @@ def parse_playlist_track_page(response: Any, playlist: Mapping[str, Any]) -> tup
                 "playlist_followers": int(_finite_number(playlist.get("followers")) or 0),
                 "position": int(position) if position is not None and position > 0 else None,
                 "entry_date": _day(item.get("entryDate")),
+                "exit_date": _day(item.get("exitDate")),
             }
         )
     return out, total
@@ -376,6 +386,19 @@ def aggregate_track_evidence(placements: Iterable[dict[str, Any]], observed_day:
                 by_playlist[playlist_id] = placement
         unique = list(by_playlist.values())
         unique.sort(key=lambda item: (item.get("position") is None, item.get("position") or 10**9, -int(item.get("playlist_followers") or 0)))
+        placement_rows = [
+            {
+                "spotify_id": str(item.get("playlist_id") or ""),
+                "soundcharts_uuid": str(item.get("playlist_uuid") or ""),
+                "name": str(item.get("playlist_name") or ""),
+                "position": int(item["position"]) if item.get("position") is not None else None,
+                "followers": max(0, int(item.get("playlist_followers") or 0)),
+                "first_seen_at": _first_day(item.get("entry_date"), observed_day),
+                "last_seen_at": observed_day,
+                "exit_date": item.get("exit_date"),
+            }
+            for item in unique
+        ]
         follower_sum = sum(max(0, int(item.get("playlist_followers") or 0)) for item in unique)
         positions = [int(item["position"]) for item in unique if item.get("position") is not None]
         genre_weight: dict[str, int] = {}
@@ -392,6 +415,7 @@ def aggregate_track_evidence(placements: Iterable[dict[str, Any]], observed_day:
                 "playlist_followers_total": follower_sum,
                 "playlist_first_seen_at": _first_day(*(item.get("entry_date") for item in unique), observed_day),
                 "playlist_last_seen_at": observed_day,
+                "playlist_placements": placement_rows,
                 "primary_genre": primary_genre,
                 "subgenres": sorted(genre for genre in genre_weight if genre and genre != primary_genre),
                 "top_playlist": unique[0] if unique else None,
@@ -433,6 +457,107 @@ def _genre_confidence(evidence: Mapping[str, Any]) -> float:
     return 0.6
 
 
+def _normalise_playlist_placements(value: Any) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for item in value if isinstance(value, list) else []:
+        if not isinstance(item, Mapping):
+            continue
+        spotify_id = str(item.get("spotify_id") or item.get("playlist_id") or "").strip()
+        name = str(item.get("name") or item.get("playlist_name") or "").strip()
+        if not spotify_id and not name:
+            continue
+        position = _finite_number(item.get("position"))
+        followers = _finite_number(item.get("followers") or item.get("playlist_followers"))
+        rows.append(
+            {
+                "spotify_id": spotify_id,
+                "soundcharts_uuid": str(item.get("soundcharts_uuid") or item.get("playlist_uuid") or "").strip(),
+                "name": name,
+                "position": int(position) if position is not None and position > 0 else None,
+                "followers": max(0, int(followers or 0)),
+                "first_seen_at": _day(item.get("first_seen_at") or item.get("entry_date")),
+                "last_seen_at": _day(item.get("last_seen_at")),
+                "exit_date": _day(item.get("exit_date")),
+            }
+        )
+    return rows
+
+
+def _merge_playlist_placements(*values: Any) -> list[dict[str, Any]]:
+    merged: dict[str, dict[str, Any]] = {}
+    for value in values:
+        for item in _normalise_playlist_placements(value):
+            key = item["spotify_id"] or item["name"].casefold()
+            previous = merged.get(key)
+            if previous is None:
+                merged[key] = dict(item)
+                continue
+            positions = [v for v in (previous.get("position"), item.get("position")) if v is not None]
+            previous["position"] = min(positions) if positions else None
+            previous["followers"] = max(int(previous.get("followers") or 0), int(item.get("followers") or 0))
+            previous["first_seen_at"] = _first_day(previous.get("first_seen_at"), item.get("first_seen_at"))
+            previous["last_seen_at"] = _latest_day(previous.get("last_seen_at"), item.get("last_seen_at"))
+            previous["exit_date"] = _latest_day(previous.get("exit_date"), item.get("exit_date"))
+            if not previous.get("name") and item.get("name"):
+                previous["name"] = item["name"]
+            if not previous.get("soundcharts_uuid") and item.get("soundcharts_uuid"):
+                previous["soundcharts_uuid"] = item["soundcharts_uuid"]
+    return sorted(
+        merged.values(),
+        key=lambda item: (item.get("position") is None, item.get("position") or 10**9, -int(item.get("followers") or 0), item.get("name") or ""),
+    )
+
+
+def cache_track_discovery_evidence(
+    cache_tracks: dict[str, Any],
+    evidence: Mapping[str, Any],
+    *,
+    source_tier: str,
+    now: str,
+) -> dict[str, Any]:
+    uuid = str(evidence.get("soundcharts_uuid") or "").strip()
+    current = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
+    placements = _merge_playlist_placements(current.get("playlist_placements"), evidence.get("playlist_placements"))
+    playlist_ids = _merge_unique(current.get("playlist_ids"), evidence.get("playlist_ids"))
+    playlist_names = _merge_unique(current.get("playlist_names"), evidence.get("playlist_names"))
+    current.update(
+        {
+            "soundcharts_uuid": uuid,
+            "title": str(current.get("title") or evidence.get("name") or "Titre non renseigné"),
+            "credit_name": str(current.get("credit_name") or evidence.get("credit_name") or "Artiste non renseigné"),
+            "primary_genre": str(current.get("primary_genre") or evidence.get("primary_genre") or "other_instrumental"),
+            "subgenres": _merge_unique(current.get("subgenres"), evidence.get("subgenres")),
+            "source_tier": str(current.get("source_tier") or source_tier),
+            "metadata_status": str(current.get("metadata_status") or "playlist_only"),
+            "playlist_ids": playlist_ids,
+            "playlist_names": playlist_names,
+            "playlist_count": len(playlist_ids),
+            "playlist_best_position": min(
+                [
+                    value
+                    for value in (
+                        _finite_number(current.get("playlist_best_position")),
+                        _finite_number(evidence.get("playlist_best_position")),
+                    )
+                    if value is not None
+                ],
+                default=None,
+            ),
+            "playlist_followers_total": max(
+                int(_finite_number(current.get("playlist_followers_total")) or 0),
+                int(_finite_number(evidence.get("playlist_followers_total")) or 0),
+            ),
+            "playlist_first_seen_at": _first_day(current.get("playlist_first_seen_at"), evidence.get("playlist_first_seen_at")),
+            "playlist_last_seen_at": _latest_day(current.get("playlist_last_seen_at"), evidence.get("playlist_last_seen_at")),
+            "playlist_placements": placements,
+            "discovered_at": str(current.get("discovered_at") or now),
+            "updated_at": now,
+        }
+    )
+    cache_tracks[uuid] = current
+    return current
+
+
 def upsert_editorial_track(
     rows: list[list[Any]],
     schema: list[str],
@@ -456,6 +581,9 @@ def upsert_editorial_track(
     current_source = str(field(row, schema, "source_tier") or "")
     playlist_ids = _merge_unique(field(row, schema, "playlist_ids"), evidence.get("playlist_ids"))
     playlist_names = _merge_unique(field(row, schema, "playlist_names"), evidence.get("playlist_names"))
+    playlist_placements = _merge_playlist_placements(
+        field(row, schema, "playlist_placements"), evidence.get("playlist_placements")
+    )
     existing_first = field(row, schema, "playlist_first_seen_at")
     existing_last = field(row, schema, "playlist_last_seen_at")
     artist_uuids = _merge_unique(
@@ -478,6 +606,14 @@ def upsert_editorial_track(
         "name": str((detail or {}).get("title") or evidence.get("name") or field(row, schema, "name") or "Titre non renseigné"),
         "artist": str((detail or {}).get("credit_name") or evidence.get("credit_name") or field(row, schema, "artist") or "Artiste non renseigné"),
         "release_date": str((detail or {}).get("release_date") or field(row, schema, "release_date") or ""),
+        "label": str((detail or {}).get("label") or field(row, schema, "label") or ""),
+        "copyright": str((detail or {}).get("copyright") or field(row, schema, "copyright") or ""),
+        "isrc": str((detail or {}).get("isrc") or field(row, schema, "isrc") or ""),
+        "image_url": str((detail or {}).get("image_url") or field(row, schema, "image_url") or ""),
+        "rights_status": str((detail or {}).get("rights_status") or field(row, schema, "rights_status") or "unknown"),
+        "rights_confidence": _finite_number((detail or {}).get("rights_confidence"))
+        or _finite_number(field(row, schema, "rights_confidence"))
+        or 0.25,
         "primary_genre": genre,
         "subgenres": _merge_unique(field(row, schema, "subgenres"), evidence.get("subgenres")),
         "genre_confidence": max(float(existing_confidence or 0), _genre_confidence(evidence)),
@@ -513,6 +649,13 @@ def upsert_editorial_track(
         ),
         "playlist_first_seen_at": _first_day(existing_first, evidence.get("playlist_first_seen_at")),
         "playlist_last_seen_at": _latest_day(existing_last, evidence.get("playlist_last_seen_at")),
+        "playlist_placements": playlist_placements,
+        "discovery_source_playlist_ids": _merge_unique(
+            field(row, schema, "discovery_source_playlist_ids"), evidence.get("discovery_source_playlist_ids")
+        ),
+        "discovery_source_playlist_names": _merge_unique(
+            field(row, schema, "discovery_source_playlist_names"), evidence.get("discovery_source_playlist_names")
+        ),
         "artist_soundcharts_uuids": artist_uuids,
         "discovered_at": str(field(row, schema, "discovered_at") or now),
     }
@@ -774,38 +917,50 @@ def discover_from_playlists(
                 cached_artist.setdefault("name", str(artist.get("name") or ""))
                 cached_artist.setdefault("source_tier", "editorial_playlist")
 
+    known_track_uuids = set(tracks_by_uuid)
+    unseen = [evidence for uuid, evidence in evidence_by_uuid.items() if uuid not in known_track_uuids]
+    unseen.sort(key=discovery_rank, reverse=True)
+
+    # Persist every playlist track immediately as a lightweight discovery row.
+    # Detail/identifier/stream enrichment remains quota-aware, but visibility no
+    # longer waits for those later stages.
+    new_playlist_tracks = 0
     for evidence in evidence_by_uuid.values():
-        cached_detail = cache_tracks.get(evidence["soundcharts_uuid"])
-        cached_detail = cached_detail if isinstance(cached_detail, Mapping) else None
-        if evidence["soundcharts_uuid"] in tracks_by_uuid:
-            upsert_editorial_track(
-                track_rows,
-                track_schema,
-                tracks_by_uuid,
-                evidence,
-                detail=cached_detail,
-                source_tier="editorial_playlist",
-                now=now,
-            )
+        cached_detail = cache_track_discovery_evidence(
+            cache_tracks, evidence, source_tier="editorial_playlist", now=now
+        )
+        _, inserted = upsert_editorial_track(
+            track_rows,
+            track_schema,
+            tracks_by_uuid,
+            evidence,
+            detail=cached_detail if cached_detail.get("artists") else None,
+            source_tier="editorial_playlist",
+            now=now,
+        )
+        new_playlist_tracks += int(inserted)
         register_detail_artists(cached_detail, evidence)
 
-    unseen = [evidence for uuid, evidence in evidence_by_uuid.items() if uuid not in tracks_by_uuid]
-    unseen.sort(key=discovery_rank, reverse=True)
     selected_unseen = unseen[: max(0, max_new_playlist_tracks)]
     detail_tasks = [
         (item["soundcharts_uuid"], "/api/v2/song/" + urllib.parse.quote(item["soundcharts_uuid"]))
         for item in selected_unseen
     ]
     detail_responses, detail_failures = parallel_get(client, detail_tasks, workers=workers)
-    new_playlist_tracks = 0
+    playlist_tracks_detailed = 0
 
     for evidence in selected_unseen:
         uuid = evidence["soundcharts_uuid"]
         raw_detail = detail_responses.get(uuid)
         parsed_detail = parse_song_detail(raw_detail, evidence) if raw_detail is not None else None
         if parsed_detail:
-            cache_tracks[uuid] = parsed_detail
-        _, inserted = upsert_editorial_track(
+            existing = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
+            cache_tracks[uuid] = {**existing, **parsed_detail}
+            cache_track_discovery_evidence(
+                cache_tracks, evidence, source_tier="editorial_playlist", now=now
+            )
+            playlist_tracks_detailed += 1
+        upsert_editorial_track(
             track_rows,
             track_schema,
             tracks_by_uuid,
@@ -814,7 +969,6 @@ def discover_from_playlists(
             source_tier="editorial_playlist",
             now=now,
         )
-        new_playlist_tracks += int(inserted)
         register_detail_artists(parsed_detail, evidence)
 
     # Existing playlist-derived artists remain in the rotation, even on days
@@ -877,15 +1031,23 @@ def discover_from_playlists(
                 continue
             song_evidence = {
                 **song,
-                "playlist_ids": evidence.get("playlist_ids") or [],
-                "playlist_names": evidence.get("playlist_names") or [],
-                "playlist_count": evidence.get("playlist_count") or 0,
-                "playlist_best_position": evidence.get("playlist_best_position"),
-                "playlist_followers_total": evidence.get("playlist_followers_total") or 0,
-                "playlist_first_seen_at": evidence.get("playlist_first_seen_at"),
-                "playlist_last_seen_at": evidence.get("playlist_last_seen_at"),
+                # The artist was discovered through these playlists; the
+                # catalogue track itself was not necessarily present in them.
+                "playlist_ids": [],
+                "playlist_names": [],
+                "playlist_count": 0,
+                "playlist_best_position": None,
+                "playlist_followers_total": 0,
+                "playlist_first_seen_at": None,
+                "playlist_last_seen_at": None,
+                "playlist_placements": [],
+                "discovery_source_playlist_ids": evidence.get("playlist_ids") or [],
+                "discovery_source_playlist_names": evidence.get("playlist_names") or [],
                 "subgenres": evidence.get("subgenres") or [],
             }
+            cache_track_discovery_evidence(
+                cache_tracks, song_evidence, source_tier="playlist_artist_catalogue", now=now
+            )
             upsert_editorial_track(
                 track_rows,
                 track_schema,
@@ -932,6 +1094,7 @@ def discover_from_playlists(
         "unique_playlist_tracks": len(evidence_by_uuid),
         "unseen_playlist_tracks": len(unseen),
         "new_playlist_tracks": new_playlist_tracks,
+        "playlist_tracks_detailed": playlist_tracks_detailed,
         "new_artist_credits": len(new_artist_uuids),
         "catalogue_artists_available": len(all_playlist_artist_uuids),
         "catalogue_artists_scanned": len(catalogue_responses),

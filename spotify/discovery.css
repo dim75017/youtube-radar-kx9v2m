@@ -1,0 +1,8 @@
+/* Full Soundcharts discovery catalogue + editorial evidence */
+.ar-playlist-evidence-list{display:grid;gap:8px}
+.ar-playlist-evidence{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 12px;border:1px solid var(--border);border-radius:11px;background:rgba(150,214,170,.04);transition:background .15s,border-color .15s,transform .15s}
+a.ar-playlist-evidence:hover{background:rgba(30,215,96,.08);border-color:var(--border2);transform:translateY(-1px)}
+.ar-playlist-name{min-width:0;color:var(--text);font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ar-playlist-meta{flex:none;color:var(--muted);font-size:11px;text-align:right;line-height:1.45}
+.discovery-coverage-summary{max-width:980px}
+@media(max-width:720px){.ar-playlist-evidence{align-items:flex-start;flex-direction:column;gap:4px}.ar-playlist-meta{text-align:left}}

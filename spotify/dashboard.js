@@ -548,6 +548,216 @@ function mergeSoundchartsStaging(){
   }
 }
 mergeSoundchartsStaging();
+
+/* ---------- catalogue Soundcharts complet : découvert d'abord, enrichi ensuite ---------- */
+const DISCOVERY_CATALOGUE = SC&&SC.discovery_catalogue&&typeof SC.discovery_catalogue==='object'
+  ? SC.discovery_catalogue : {tracks:[],artists:[],counts:{}};
+const DISCOVERY_TRACKS = Array.isArray(DISCOVERY_CATALOGUE.tracks)?DISCOVERY_CATALOGUE.tracks:[];
+const DISCOVERY_ARTISTS = Array.isArray(DISCOVERY_CATALOGUE.artists)?DISCOVERY_CATALOGUE.artists:[];
+const DISCOVERY_TRACK_SCHEMA = Array.isArray(DISCOVERY_CATALOGUE.track_schema)?DISCOVERY_CATALOGUE.track_schema:[];
+const DISCOVERY_ARTIST_SCHEMA = Array.isArray(DISCOVERY_CATALOGUE.artist_schema)?DISCOVERY_CATALOGUE.artist_schema:[];
+const DISCOVERY_PLAYLIST_SCHEMA = Array.isArray(DISCOVERY_CATALOGUE.playlist_schema)?DISCOVERY_CATALOGUE.playlist_schema:[];
+const SC_DISCOVERY = {tracks:0,artists:0,unmeasured:0,review:0,verified:0};
+function discoveryArray(value){ return Array.isArray(value)?value:[]; }
+function discoveryRecord(row,schema){
+  if(row&&typeof row==='object'&&!Array.isArray(row)) return row;
+  const out={};
+  if(!Array.isArray(row)) return out;
+  schema.forEach((name,index)=>{out[name]=index<row.length?row[index]:null;});
+  return out;
+}
+function discoveryPlacement(row){ return discoveryRecord(row,DISCOVERY_PLAYLIST_SCHEMA); }
+function discoveryNumber(value){
+  if(value==null||value==='') return null;
+  const number=Number(value); return Number.isFinite(number)?number:null;
+}
+function discoveryArtistKey(spotifyId,soundchartsUuid,name){
+  const spotify=String(spotifyId||'').trim(), soundcharts=String(soundchartsUuid||'').trim();
+  if(spotify) return 'spotify:'+spotify;
+  if(soundcharts) return 'soundcharts:'+soundcharts;
+  return 'name:'+String(name||'Artiste non renseigné').trim().toLowerCase();
+}
+function discoveryTrackKey(track){
+  const spotify=String(track&&track.spotify_id||'').trim();
+  const soundcharts=String(track&&track.soundcharts_uuid||'').trim();
+  return spotify||('soundcharts:'+soundcharts);
+}
+function mergeFullDiscoveryCatalogue(){
+  if(!DISCOVERY_TRACKS.length&&!DISCOVERY_ARTISTS.length) return;
+  const artistIndex=new Map();
+  A.forEach((artist,index)=>{
+    if(!artist) return;
+    const spotify=String(artist[7]||'').trim();
+    const soundcharts=String(artist.discoveryMeta&&artist.discoveryMeta.soundchartsUuid||artist.sc&&artist.sc.uuid||'').trim();
+    const name=String(artist[0]||'');
+    if(spotify) artistIndex.set('spotify:'+spotify,index);
+    if(soundcharts) artistIndex.set('soundcharts:'+soundcharts,index);
+    if(name) artistIndex.set('name:'+name.trim().toLowerCase(),index);
+  });
+  const addArtist=(source={})=>{
+    const name=String(source.name||'Artiste non renseigné').trim()||'Artiste non renseigné';
+    const spotifyId=String(source.spotify_id||'').trim();
+    const soundchartsUuid=String(source.soundcharts_uuid||'').trim();
+    const keys=[
+      spotifyId&&'spotify:'+spotifyId,
+      soundchartsUuid&&'soundcharts:'+soundchartsUuid,
+      'name:'+name.toLowerCase()
+    ].filter(Boolean);
+    let index=-1;
+    for(const key of keys){ if(artistIndex.has(key)){ index=artistIndex.get(key); break; } }
+    const meta={
+      soundchartsUuid,spotifyId,name,
+      monthlyListeners:discoveryNumber(source.monthly_listeners),
+      genre:String(source.primary_genre||'other_instrumental'),
+      subgenres:discoveryArray(source.subgenres),
+      genreConfidence:discoveryNumber(source.genre_confidence),
+      instrumental:String(source.instrumental_status||'unknown').toLowerCase(),
+      instrumentalConfidence:discoveryNumber(source.instrumental_confidence),
+      aiRisk:String(source.ai_risk||'unknown').toLowerCase(),
+      expansionStatus:String(source.expansion_status||'review').toLowerCase(),
+      sourceTier:String(source.source_tier||'soundcharts_discovery'),
+      playlistIds:discoveryArray(source.playlist_ids),
+      playlistNames:discoveryArray(source.playlist_names),
+      playlistCount:discoveryNumber(source.playlist_count)||0,
+      catalogueTracks:discoveryNumber(source.catalogue_tracks_discovered)||0,
+      availabilityStatus:String(source.availability_status||'discovered')
+    };
+    if(index>=0){
+      const artist=A[index];
+      artist.discovery=true;
+      artist.discoveryMeta=Object.assign({},artist.discoveryMeta||{},meta);
+      if(spotifyId&&!artist[7]) artist[7]=spotifyId;
+      if(!artist[8]&&source.image_url) artist[8]=source.image_url;
+    }else{
+      const artist=[name,0,'discovery',false,false,'soundcharts_discovery',meta.sourceTier,spotifyId,'','',''];
+      artist.discovery=true;
+      artist.discoveryMeta=meta;
+      index=A.push(artist)-1;
+      SC_DISCOVERY.artists++;
+    }
+    for(const key of keys) artistIndex.set(key,index);
+    return index;
+  };
+  DISCOVERY_ARTISTS.forEach(row=>addArtist(discoveryRecord(row,DISCOVERY_ARTIST_SCHEMA)));
+
+  const trackIndex=new Map();
+  R.forEach(track=>{
+    const id=String(track&&track[6]||'').trim();
+    if(id) trackIndex.set(id,track);
+    const uuid=String(track&&track.discoveryMeta&&track.discoveryMeta.soundchartsUuid||'').trim();
+    if(uuid) trackIndex.set('soundcharts:'+uuid,track);
+  });
+  for(const rawSource of DISCOVERY_TRACKS){
+    const source=discoveryRecord(rawSource,DISCOVERY_TRACK_SCHEMA);
+    if(!source||typeof source!=='object') continue;
+    const key=discoveryTrackKey(source); if(!key||key==='soundcharts:') continue;
+    const spotifyId=String(source.spotify_id||'').trim();
+    const soundchartsUuid=String(source.soundcharts_uuid||'').trim();
+    const structured=discoveryArray(source.artists);
+    const artistUuids=discoveryArray(source.artist_soundcharts_uuids);
+    const linked=[];
+    for(const person of structured){
+      if(!person||typeof person!=='object') continue;
+      linked.push(addArtist({
+        name:person.name||source.credit_name,
+        spotify_id:person.spotify_id,
+        soundcharts_uuid:person.soundcharts_uuid,
+        primary_genre:source.primary_genre,
+        subgenres:source.subgenres,
+        genre_confidence:source.genre_confidence,
+        instrumental_status:source.instrumental_status,
+        instrumental_confidence:source.instrumental_confidence,
+        ai_risk:source.ai_risk,
+        expansion_status:source.expansion_status,
+        source_tier:source.source_tier,
+        availability_status:source.availability_status
+      }));
+    }
+    if(!linked.length){
+      for(const uuid of artistUuids){
+        const existing=artistIndex.get('soundcharts:'+String(uuid));
+        if(existing!=null) linked.push(existing);
+      }
+    }
+    if(!linked.length) linked.push(addArtist({
+      name:source.credit_name||'Artiste non renseigné',
+      primary_genre:source.primary_genre,
+      subgenres:source.subgenres,
+      genre_confidence:source.genre_confidence,
+      instrumental_status:source.instrumental_status,
+      instrumental_confidence:source.instrumental_confidence,
+      ai_risk:source.ai_risk,
+      expansion_status:source.expansion_status,
+      source_tier:source.source_tier,
+      availability_status:source.availability_status
+    }));
+    const rights=String(source.rights_status||'unknown').toLowerCase();
+    const streams=discoveryNumber(source.streams);
+    const meta={
+      soundchartsUuid,spotifyId,
+      availabilityStatus:String(source.availability_status||'discovered'),
+      measured:streams!=null,
+      title:String(source.title||'Titre non renseigné'),
+      credit:String(source.credit_name||A[linked[0]]&&A[linked[0]][0]||'Artiste non renseigné'),
+      rights,
+      rightsConfidence:discoveryNumber(source.rights_confidence),
+      label:String(source.label||''),
+      copyright:String(source.copyright||''),
+      sourceTier:String(source.source_tier||'soundcharts_discovery'),
+      metadataStatus:String(source.metadata_status||'playlist_only'),
+      playlistIds:discoveryArray(source.playlist_ids),
+      playlistNames:discoveryArray(source.playlist_names),
+      playlistCount:discoveryNumber(source.playlist_count)||0,
+      bestPosition:discoveryNumber(source.playlist_best_position),
+      playlistFollowers:discoveryNumber(source.playlist_followers_total),
+      firstPlaylistSeen:String(source.playlist_first_seen_at||''),
+      lastPlaylistSeen:String(source.playlist_last_seen_at||''),
+      playlistPlacements:discoveryArray(source.playlist_placements).map(discoveryPlacement),
+      discoverySourcePlaylistIds:discoveryArray(source.discovery_source_playlist_ids),
+      discoverySourcePlaylistNames:discoveryArray(source.discovery_source_playlist_names),
+      discoveredAt:String(source.discovered_at||''),
+      updatedAt:String(source.updated_at||''),
+      reviewReasons:discoveryArray(source.review_reasons)
+    };
+    let track=trackIndex.get(spotifyId)||trackIndex.get('soundcharts:'+soundchartsUuid)||trackIndex.get(key);
+    if(track){
+      track.discovery=true;
+      track.discoveryMeta=Object.assign({},track.discoveryMeta||{},meta);
+      if(!track[8]&&source.image_url) track[8]=source.image_url;
+      if(Number(track[3])<0&&streams!=null) track[3]=streams;
+      if(!track[2]&&source.release_date) track[2]=String(source.release_date).slice(0,10);
+      if(!track[5]&&(source.label||source.copyright)) track[5]=source.label||source.copyright;
+      if(!track.scArtistIndexes&&linked.length) track.scArtistIndexes=[...new Set(linked)];
+    }else{
+      const id=spotifyId||('soundcharts:'+soundchartsUuid);
+      track=[linked[0],meta.title,String(source.release_date||'').slice(0,10),streams==null?-1:streams,
+        rights==='self_released'?0:1,String(source.label||source.copyright||'À enrichir'),id,String(source.discovered_at||''),String(source.image_url||'')];
+      track.discovery=true;
+      track.discoveryMeta=meta;
+      track.scArtistIndexes=[...new Set(linked)];
+      R.push(track);
+      SC_DISCOVERY.tracks++;
+      if(streams==null) SC_DISCOVERY.unmeasured++;
+      if(meta.availabilityStatus==='needs_listen') SC_DISCOVERY.review++;
+      if(meta.availabilityStatus==='verified') SC_DISCOVERY.verified++;
+    }
+    track.scClassification={
+      genre:String(source.primary_genre||'other_instrumental'),
+      genre_confidence:discoveryNumber(source.genre_confidence),
+      genre_source:'soundcharts_discovery_catalogue',
+      instrumental:String(source.instrumental_status||'unknown').toLowerCase(),
+      instrumental_confidence:discoveryNumber(source.instrumental_confidence),
+      ai_risk:String(source.ai_risk||'unknown').toLowerCase(),
+      ai_risk_source:'soundcharts_discovery_catalogue'
+    };
+    const delta=discoveryNumber(source.streams_delta_24h);
+    if(delta!=null) track.scDelta24=delta;
+    trackIndex.set(key,track);
+    if(spotifyId) trackIndex.set(spotifyId,track);
+    if(soundchartsUuid) trackIndex.set('soundcharts:'+soundchartsUuid,track);
+  }
+}
+mergeFullDiscoveryCatalogue();
 const GENRE_TAXONOMY = Object.freeze({
   version:'2026-07-v1',
   genres:Object.freeze([
@@ -567,8 +777,10 @@ for (const [tid,entry] of Object.entries(PERF_TRACKS)){
   const pts = perfHistory(entry); if (pts.length) HIST[tid] = pts;
 }
 const AG = A.map((a,i)=>({i, name:a[0], lofi:a[1], flag:a[2], done:a[3], disco:a[4],
-  origin:a[5], seedSrc:a[6], id:a[7]||'', img:a[8]||'', email:a[9]||'', link:a[10]||'', sc:a.sc||null,
-  source:a.sc?'soundcharts_staging':'catalogue', listeners:a.sc&&a.sc.listeners||null, n:0, self:0, streams:0, streams24:null, streams7:null, streams30:null, mstreams:0, hot:0, last:'', top:null, perf:null}));
+  origin:a[5], seedSrc:a[6], id:a[7]||'', img:a[8]||'', email:a[9]||'', link:a[10]||'', sc:a.sc||null, discovery:a.discoveryMeta||null,
+  source:a.discovery?'soundcharts_discovery':(a.sc?'soundcharts_staging':'catalogue'),
+  listeners:a.discoveryMeta&&a.discoveryMeta.monthlyListeners!=null?a.discoveryMeta.monthlyListeners:(a.sc&&a.sc.listeners||null),
+  n:0, self:0, streams:0, streams24:null, streams7:null, streams30:null, mstreams:0, hot:0, last:'', top:null, perf:null}));
 const TRACKS_BY_ARTIST = new Map();
 for (const r of R){
   const artistIndexes=[...new Set(Array.isArray(r.scArtistIndexes)&&r.scArtistIndexes.length
@@ -815,7 +1027,7 @@ function classificationFromEntry(entry){
   };
 }
 function trackClassification(r){ return classificationFromEntry(Object.assign({},r.scClassification||{},trackPerfEntry(r))); }
-function artistClassification(g){ return classificationFromEntry(Object.assign({},g.sc&&g.sc.classification||{},artistPerfEntry(g))); }
+function artistClassification(g){ return classificationFromEntry(Object.assign({},g.sc&&g.sc.classification||{},g.discovery?{genre:g.discovery.genre,subgenres:g.discovery.subgenres,genre_confidence:g.discovery.genreConfidence,genre_source:'soundcharts_discovery_catalogue',instrumental:g.discovery.instrumental,instrumental_confidence:g.discovery.instrumentalConfidence,ai_risk:g.discovery.aiRisk,ai_risk_source:'soundcharts_discovery_catalogue'}:{},artistPerfEntry(g))); }
 function riskPass(c,mode){
   if(mode==='high_only') return c.aiRisk==='élevé';
   if(mode==='hide_high') return c.aiRisk!=='élevé';
@@ -864,6 +1076,9 @@ function artistAudience(g){
     const schema=SC.schemas.artists||[], cur=Number(row[schema.indexOf('monthly_listeners')]), delta=Number(row[schema.indexOf('delta')]);
     return {current:Number.isFinite(cur)?cur:null,delta:Number.isFinite(delta)?delta:null,date:row[schema.indexOf('source_date')]||null,history:[],partial:true};
   }
+  if(g&&g.discovery&&g.discovery.monthlyListeners!=null){
+    return {current:Number(g.discovery.monthlyListeners),delta:null,date:null,history:[],partial:true};
+  }
   return {current:null,delta:null,date:null,history:[],partial:true};
 }
 function performanceSignal(perf,entry){
@@ -891,7 +1106,59 @@ function revTotal(r){ return r[3]>0 ? r[3]*RATE : 0; }
 function rev30(r){ const v=streams30(r).val; return v==null?null:v*RATE; }
 function daysAgo(d){ return d ? Math.round((TODAY-new Date(d+'T00:00:00'))/864e5) : 1e9; }
 function esc(s){ return (''+s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-const trackUrl = id => 'https://open.spotify.com/track/'+id;
+function spotifyTrackId(id){
+  const raw=String(id||'').trim();
+  return /^[A-Za-z0-9]{22}$/.test(raw)?raw:'';
+}
+function spotifyTrackEmbedHtml(id,title,extraClass=''){
+  const spotifyId=spotifyTrackId(id);
+  if(!spotifyId) return '';
+  return `<div class="ar-detail-player ${esc(extraClass)}"><iframe title="Spotify player · ${esc(title||'Track')}" src="https://open.spotify.com/embed/track/${esc(spotifyId)}?utm_source=generator" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>`;
+}
+function trackUrl(id,row=null){
+  const raw=String(id||'').trim();
+  const spotifyId=spotifyTrackId(raw);
+  if(spotifyId) return 'https://open.spotify.com/track/'+spotifyId;
+  const track=row||R.find(item=>String(item&&item[6]||'')===raw)||null;
+  const artist=track&&A[track[0]]?A[track[0]][0]:'';
+  const query=[artist,track&&track[1]].filter(Boolean).join(' ');
+  return 'https://open.spotify.com/search/'+encodeURIComponent(query||raw);
+}
+function discoveryAvailabilityInfo(track){
+  const meta=track&&track.discoveryMeta;
+  if(!meta) return null;
+  const status=String(meta.availabilityStatus||'discovered').toLowerCase();
+  const map={
+    verified:{label:LANG==='fr'?'Vérifiée':'Verified',cls:'self'},
+    needs_listen:{label:LANG==='fr'?'À écouter':'Needs listening',cls:'new'},
+    measured:{label:LANG==='fr'?'Mesurée':'Measured',cls:'self'},
+    playlist_discovered:{label:LANG==='fr'?'Playlist éditoriale':'Editorial playlist',cls:'new'},
+    catalogue_discovered:{label:LANG==='fr'?'Catalogue artiste':'Artist catalogue',cls:'new'},
+    discovered:{label:LANG==='fr'?'Découverte':'Discovered',cls:'new'}
+  };
+  return map[status]||map.discovered;
+}
+function trackStatusHtml(track){
+  const availability=discoveryAvailabilityInfo(track);
+  const meta=track&&track.discoveryMeta;
+  const rights=String(meta&&meta.rights||'').toLowerCase();
+  const rightsLabel=rights==='self_released'?(LANG==='fr'?'Indé':'Self-released')
+    :rights==='independent_label'?(LANG==='fr'?'Label indépendant':'Independent label')
+    :['major','major_label','mixed'].includes(rights)?'Major'
+    :rights==='unknown'?(LANG==='fr'?'Droits à vérifier':'Rights review')
+    :(track&&track[4]===0?T('Indé'):'Label');
+  const rightsClass=rights==='self_released'?'self':(['major','major_label','mixed'].includes(rights)?'other':'new');
+  return `${availability?`<span class="badge ${availability.cls}">${esc(availability.label)}</span> `:''}<span class="badge ${rightsClass}">${esc(rightsLabel)}</span>`;
+}
+function discoveryStatusMatches(track,status){
+  const meta=track&&track.discoveryMeta;
+  if(status==='measured') return Boolean(meta&&meta.measured)||Number(track&&track[3])>=0;
+  if(status==='unmeasured') return Boolean(meta&&!meta.measured)||Number(track&&track[3])<0;
+  if(status==='review') return Boolean(meta&&['needs_listen','discovered','playlist_discovered','catalogue_discovered'].includes(String(meta.availabilityStatus||'')));
+  if(status==='playlist') return Boolean(meta&&(meta.playlistCount||0)>0);
+  if(status==='catalogue') return Boolean(meta&&String(meta.sourceTier||'')==='playlist_artist_catalogue');
+  return true;
+}
 const artistSearch = n => 'https://open.spotify.com/search/'+encodeURIComponent(n)+'/artists';
 
 /* ---------- Radar A&R : lecture seule du flux Soundcharts exporté ---------- */
@@ -1065,6 +1332,8 @@ function rowsBeforePeriod(){
     if (S.rel!=='all' && seg(AG[r[0]])!==S.rel) return false;
     if (S.statut==='self' && r[4]!==0) return false;
     if (S.statut==='other' && r[4]!==1) return false;
+    if (['measured','unmeasured','review','playlist','catalogue'].includes(S.statut)
+      && !discoveryStatusMatches(r,S.statut)) return false;
     if (S.min>0 && r[3]<S.min) return false;
     if (S.genres.size && !S.genres.has(classification.genre)) return false;
     if (q && !(r[1].toLowerCase().includes(q) || A[r[0]][0].toLowerCase().includes(q) || r[5].toLowerCase().includes(q))) return false;
@@ -1384,7 +1653,7 @@ function artistTableRows(rows){
       <td class="num">${streamStackHtml(w1.current,false,false)}</td>
       <td class="num"><span style="color:var(--acc2);font-weight:600">${perMonth(r)<0?'—':eur(advance(perMonth(r)))}</span></td>
       <td>${fmtDate(r[2])}</td>
-      <td><span class="badge ${r[4]===0?'self':'other'}">${r[4]===0?T('Indé'):'Label'}</span></td>
+      <td>${trackStatusHtml(r)}</td>
     </tr>`;}).join('');
 }
 function renderArtistModal(){
@@ -1521,6 +1790,34 @@ function trackOfferHtml(r){
     </div>
   </div>`;
 }
+function trackEditorialEvidenceHtml(track){
+  if(!track) return '';
+  const spotifyId=spotifyTrackId(track[6]);
+  const opportunity=spotifyId&&typeof arOpportunityRows==='function'
+    ?arOpportunityRows().find(item=>item.spotifyId===spotifyId):null;
+  if(opportunity) return arEditorialPlaylistEvidenceHtml(opportunity);
+  const meta=track.discoveryMeta||{};
+  const placements=Array.isArray(meta.playlistPlacements)?meta.playlistPlacements.filter(Boolean):[];
+  const editorialPlaylists=placements.map(item=>({
+    spotifyId:String(item.spotify_id||item.playlist_id||''),
+    name:String(item.name||item.playlist_name||''),
+    position:discoveryNumber(item.position),
+    followers:discoveryNumber(item.followers||item.playlist_followers),
+    firstSeen:String(item.first_seen_at||item.entry_date||''),
+    lastSeen:String(item.last_seen_at||'')
+  }));
+  const sourceNames=Array.isArray(meta.discoverySourcePlaylistNames)?meta.discoverySourcePlaylistNames:[];
+  return arEditorialPlaylistEvidenceHtml({
+    editorialPlaylists,
+    topPlaylist:meta.playlistNames&&meta.playlistNames[0]||'',
+    playlistCount:meta.playlistCount||editorialPlaylists.length,
+    bestPosition:meta.bestPosition,
+    playlistFollowers:meta.playlistFollowers,
+    firstPlaylistSeen:meta.firstPlaylistSeen,
+    lastPlaylistSeen:meta.lastPlaylistSeen,
+    discoverySourcePlaylistNames:sourceNames
+  });
+}
 function openTrack(tid){
   const r = R.find(x=>x[6]===tid); if(!r) return;
   const g = AG[r[0]];
@@ -1541,25 +1838,27 @@ function openTrack(tid){
       </div>
       <button class="tclose" onclick="closeTrack()">✕</button>
     </div>
+    ${spotifyTrackEmbedHtml(r[6],r[1],'track-modal-player')}
     <div class="tgrid">
       <div class="tg"><div class="l">${T(S.metricMode==='revenue'?'Revenu estimé / jour':'Vélocité réelle')}</div><div class="v" style="color:var(--cyan)">${velocity==null?'—':(S.metricMode==='revenue'?revenueEstimate(velocity):fmt(Math.round(velocity))+'/'+T('jour'))}</div></div>
       <div class="tg"><div class="l">${T('Cadence')}</div><div class="v">${cadence}</div></div>
       <div class="tg"><div class="l">${T('Signal performance')}</div><div class="v" style="font-size:13px">${performanceSignal(perf,entry)}</div></div>
       <div class="tg"><div class="l">${T('Sortie')}</div><div class="v">${fmtDate(r[2])}</div></div>
-      <div class="tg"><div class="l">${T('Classification')}</div><div class="v" style="font-size:13px">${r[4]===0?T('Indépendant'):'Label'}</div></div>
+      <div class="tg"><div class="l">${T('Classification')}</div><div class="v" style="font-size:13px">${trackStatusHtml(r)}</div></div>
       <div class="tg"><div class="l">${T('Label')}</div><div class="v" style="font-size:12px;line-height:1.4">${label?esc(label):'—'}</div></div>
       <div class="tg"><div class="l">© / ℗</div><div class="v" style="font-size:12px;line-height:1.4">${r[5]?esc(r[5]):'—'}</div></div>
     </div>
     <div class="toolbar" style="justify-content:flex-end;margin:0 0 10px">${metricModeToggleHtml()}</div>
     ${perfGridHtml(perf,'Streams',r[3]>=0?r[3]:null,true)}
     ${classificationAnalyticsHtml(classification)}
+    ${trackEditorialEvidenceHtml(r)}
     <div class="analytics-section">
       <h4>${T(S.metricMode==='revenue'?'Courbe quotidienne des revenus estimés':'Courbe quotidienne des streams')} <span class="analytics-note">${T(S.metricMode==='revenue'?'Revenu quotidien estimé d’après les streams':'Flux quotidien, pas compteur lifetime')}</span></h4>
       ${dailyChartHtml(metricSeries(daily),T('Historique quotidien insuffisant pour tracer la courbe.'))}
     </div>
     ${trackOfferHtml(r)}
     <div style="display:flex;gap:10px;margin-top:14px">
-      <a class="btn-back" style="margin:0;text-decoration:none" href="${trackUrl(r[6])}" target="_blank" rel="noopener">▶ ${T('Ouvrir sur Spotify')}</a>
+      <a class="btn-back" style="margin:0;text-decoration:none" href="${trackUrl(r[6],r)}" target="_blank" rel="noopener">▶ ${T('Ouvrir sur Spotify')}</a>
       <button class="chip" onclick="toggleWL('t','${r[6]}',event);openTrack('${r[6]}')">${wlHas('t',r[6])?'⭐ '+T('Épinglé'):'☆ '+T('Épingler')}</button>
     </div>
     <div class="tnote">${T("Les fenêtres Analytics utilisent uniquement l'historique quotidien et comparent des périodes de même durée. Le simulateur de rachat reste une estimation séparée.")}</div>`;
@@ -1751,6 +2050,16 @@ function arOpportunityRows(){
     const reasons=Array.isArray(scValue(row,schema,'reasons'))?scValue(row,schema,'reasons').filter(Boolean):[];
     const reasonCodes=Array.isArray(scValue(row,schema,'reason_codes'))?scValue(row,schema,'reason_codes').filter(Boolean):[];
     const labels=Array.isArray(scValue(row,schema,'labels'))?scValue(row,schema,'labels').filter(Boolean):[];
+    const rawEditorialPlaylists=Array.isArray(scValue(row,schema,'editorial_playlists'))
+      ?scValue(row,schema,'editorial_playlists').filter(item=>item&&typeof item==='object'):[];
+    const editorialPlaylists=rawEditorialPlaylists.map(item=>({
+      spotifyId:String(item.spotify_id||item.playlist_id||''),
+      name:String(item.name||item.playlist_name||''),
+      position:arNullableNumber(item.position),
+      followers:arNullableNumber(item.followers||item.playlist_followers),
+      firstSeen:String(item.first_seen_at||item.entry_date||''),
+      lastSeen:String(item.last_seen_at||'')
+    }));
     const rosterRelationship=scValue(row,schema,'roster_relationship');
     const relationshipArtists=rosterRelationship&&typeof rosterRelationship==='object'&&Array.isArray(rosterRelationship.artists)
       ? rosterRelationship.artists.filter(Boolean)
@@ -1791,6 +2100,8 @@ function arOpportunityRows(){
       playlistFollowers:arNullableNumber(scValue(row,schema,'editorial_followers_total')),
       playlistFollowersKnown:arNullableNumber(scValue(row,schema,'editorial_followers_known_count'))||0,
       topPlaylist:String(scValue(row,schema,'editorial_top_playlist')||''),
+      editorialPlaylists,
+      discoverySourcePlaylistNames:Array.isArray(scValue(row,schema,'discovery_source_playlist_names'))?scValue(row,schema,'discovery_source_playlist_names').filter(Boolean):[],
       firstPlaylistSeen:String(scValue(row,schema,'editorial_first_seen_at')||''),
       lastPlaylistSeen:String(scValue(row,schema,'editorial_last_seen_at')||''),
       knownRoster,
@@ -1878,6 +2189,50 @@ function arOpportunityTotal(opportunity){
 function arStrongEditorial(opportunity){
   return opportunity.playlistCount>=2 || (opportunity.bestPosition!=null&&opportunity.bestPosition<=30) || (opportunity.playlistFollowers!=null&&opportunity.playlistFollowers>=100000);
 }
+function arEditorialPlaylists(opportunity){
+  const rows=Array.isArray(opportunity&&opportunity.editorialPlaylists)
+    ?opportunity.editorialPlaylists.filter(item=>item&&(item.spotifyId||item.name)):[];
+  if(rows.length) return rows;
+  if(opportunity&&opportunity.topPlaylist){
+    return [{
+      spotifyId:'',name:opportunity.topPlaylist,position:opportunity.bestPosition,
+      followers:opportunity.playlistFollowers,firstSeen:opportunity.firstPlaylistSeen,lastSeen:opportunity.lastPlaylistSeen
+    }];
+  }
+  return [];
+}
+function arPlaylistSince(day){
+  const raw=String(day||'').slice(0,10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw)?fmtDate(raw):'';
+}
+function arEditorialSummary(opportunity,limit=3){
+  const playlists=arEditorialPlaylists(opportunity);
+  if(!playlists.length) return '';
+  const names=playlists.slice(0,limit).map(item=>item.name||item.spotifyId).filter(Boolean);
+  const extra=playlists.length>limit?` +${playlists.length-limit}`:'';
+  const since=arPlaylistSince(opportunity.firstPlaylistSeen||playlists.map(item=>item.firstSeen).filter(Boolean).sort()[0]);
+  return `${playlists.length} playlist${playlists.length>1?'s':''} éditoriale${playlists.length>1?'s':''}${names.length?' · '+names.join(', ')+extra:''}${since?' · depuis '+since:''}`;
+}
+function arEditorialPlaylistEvidenceHtml(opportunity){
+  const playlists=arEditorialPlaylists(opportunity);
+  if(!playlists.length){
+    const sourceNames=Array.isArray(opportunity&&opportunity.discoverySourcePlaylistNames)?opportunity.discoverySourcePlaylistNames:[];
+    return sourceNames.length
+      ?`<div class="analytics-section"><h4>Origine de la découverte</h4><div class="analytics-note">Artiste découvert via ${esc(sourceNames.slice(0,4).join(', '))}. Cette track n’est pas confirmée comme présente dans ces playlists.</div></div>`
+      :'';
+  }
+  const rows=playlists.map(item=>{
+    const name=item.name||item.spotifyId||'Playlist éditoriale';
+    const position=item.position==null?'position inconnue':'#'+Math.round(item.position);
+    const since=arPlaylistSince(item.firstSeen||opportunity.firstPlaylistSeen);
+    const followers=item.followers==null||item.followers<=0?'':` · ${fmt(item.followers)} followers`;
+    const content=`<span class="ar-playlist-name">${esc(name)}</span><span class="ar-playlist-meta">${esc(position)}${followers}${since?' · depuis '+esc(since):''}</span>`;
+    return item.spotifyId
+      ?`<a class="ar-playlist-evidence" href="https://open.spotify.com/playlist/${esc(item.spotifyId)}" target="_blank" rel="noopener">${content}</a>`
+      :`<div class="ar-playlist-evidence">${content}</div>`;
+  }).join('');
+  return `<div class="analytics-section"><h4>Présence en playlists éditoriales <span class="analytics-note">${fmtFull(playlists.length)} confirmée${playlists.length>1?'s':''}</span></h4><div class="ar-playlist-evidence-list">${rows}</div></div>`;
+}
 function arOpportunityReasons(opportunity){
   const reasonRank=code=>(code==='streams_24h'||/^streams_24h_/.test(code))?0
     : code==='acceleration_7d'?1
@@ -1903,6 +2258,8 @@ function arOpportunityReasons(opportunity){
     if(total!=null&&total>0) reasons.push(`${fmt(total)} streams total`);
     if(age!=null&&age<=180) reasons.push(`sortie il y a ${age} jours`);
   }
+  const editorialSummary=arEditorialSummary(opportunity,2);
+  if(editorialSummary&&!reasons.some(reason=>/playlist|éditorial/i.test(reason))) reasons.push(editorialSummary);
   if(opportunity.status==='needs_listen'&&!reasons.some(reason=>/instrumental/i.test(reason))) reasons.push('instrumental à valider par écoute');
   if(opportunity.knownRoster&&!reasons.some(reason=>/relation|connu/i.test(reason))) reasons.push('artiste déjà en relation avec Lofi');
   return reasons.length?reasons:['Découverte éditoriale qualifiée · historique performance en construction'];
@@ -1919,7 +2276,8 @@ function arOpportunityMatchesSearch(opportunity,query){
   if(!terms.length) return true;
   const artists=Array.isArray(opportunity.artists)?opportunity.artists.map(artist=>artist&&artist.name):[];
   const labels=Array.isArray(opportunity.labels)?opportunity.labels:[];
-  const haystack=arSearchText([opportunity.title,opportunity.credit,opportunity.label,...labels,...artists].filter(Boolean).join(' '));
+  const playlists=(typeof arEditorialPlaylists==='function'?arEditorialPlaylists(opportunity):[]).map(item=>item.name);
+  const haystack=arSearchText([opportunity.title,opportunity.credit,opportunity.label,...labels,...artists,...playlists].filter(Boolean).join(' '));
   return terms.every(term=>haystack.includes(term));
 }
 function arOpportunityFiltered(all){
@@ -1951,7 +2309,8 @@ function arOpportunityFiltered(all){
 function arOpportunityCard(opportunity,index){
   const total=arOpportunityTotal(opportunity), d30=arOpportunityMetric(opportunity,30), d7=arOpportunityMetric(opportunity,7), d1=arOpportunityMetric(opportunity,1);
   const reasons=arOpportunityReasons(opportunity), genre=arGenreLabel(opportunity.genre);
-  const proof=`${arRightsLabel(opportunity.rights)} · ${genre} · ${opportunity.status==='verified'?'instrumental vérifié':'instrumental à écouter'}`;
+  const editorialSummary=arEditorialSummary(opportunity,1);
+  const proof=`${arRightsLabel(opportunity.rights)} · ${genre} · ${opportunity.status==='verified'?'instrumental vérifié':'instrumental à écouter'}${editorialSummary?' · '+editorialSummary:''}`;
   const listeners=opportunity.artistMonthlyListeners==null?'—':fmt(opportunity.artistMonthlyListeners);
   const accel=opportunity.acceleration7==null?'—':signedFull(Math.round(opportunity.acceleration7));
   return `<article class="ar-opportunity-card ${S.radarTrackId===opportunity.spotifyId?'playing':''}" tabindex="0" data-ar-card="${esc(opportunity.spotifyId)}">
@@ -1974,9 +2333,10 @@ function openArOpportunity(spotifyId){
   const track=arTrackRowById(spotifyId), confidence=arConfidenceLabel(opportunity.scoreConfidence);
   box.className='tmbox ambox';
   box.innerHTML=`<div class="thd"><div class="av-sm">♫</div><div style="min-width:0;flex:1"><h3>${esc(opportunity.title)}</h3><div class="tar" style="cursor:default">${esc(opportunity.credit)} · opportunité de track</div></div><button class="tclose" onclick="closeArModal()">✕</button></div>
-    <div class="ar-detail-player"><iframe title="Spotify player · ${esc(opportunity.title)}" src="https://open.spotify.com/embed/track/${esc(spotifyId)}?utm_source=generator" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>
+    ${spotifyTrackEmbedHtml(spotifyId,opportunity.title,'ar-opportunity-player')}
     <div class="perf-grid">${totalMetricCardHtml('Streams',total,true)}${perfCardHtml(streamMetricLabel(30),{current:d30,currentReady:d30!=null,comparisonReady:false,total:1},true)}${perfCardHtml(streamMetricLabel(7),{current:d7,currentReady:d7!=null,comparisonReady:false,total:1},true)}${perfCardHtml(streamMetricLabel(1),{current:d1,currentReady:d1!=null,comparisonReady:false,total:1},true)}</div>
     <div class="analytics-section"><h4>Pourquoi cette musique est dans la liste</h4><div class="ar-detail-reasons">${reasons.map(reason=>`<div class="ar-detail-reason">${esc(reason)}</div>`).join('')}</div></div>
+    ${arEditorialPlaylistEvidenceHtml(opportunity)}
     <div class="analytics-section"><h4>Score track <span class="analytics-note">${Math.round(opportunity.score)}/100 · ${esc(confidence)}</span></h4><div class="ar-score-breakdown">${arScoreLine('Momentum',opportunity.scoreMomentum,35)}${arScoreLine('Signal éditorial',opportunity.scoreEditorial,20)}${arScoreLine('Traction',opportunity.scoreTraction,25)}${arScoreLine('Récence',opportunity.scoreRecency,15)}${arScoreLine('Relation',opportunity.scoreRelationship,5)}</div></div>
     <div class="tgrid"><div class="tg"><div class="l">Type d'offre</div><div class="v" style="font-size:13px">${esc(arDealLabel(opportunity.dealType))}</div><div class="genre-sub">${esc(arDealHelp(opportunity.dealType))}</div></div><div class="tg"><div class="l">Genre</div><div class="v" style="font-size:13px">${esc(arGenreLabel(opportunity.genre))}</div></div><div class="tg"><div class="l">Droits</div><div class="v" style="font-size:13px">${esc(arRightsLabel(opportunity.rights))}</div><div class="genre-sub">confiance ${opportunity.rightsConfidence==null?'—':Math.round(opportunity.rightsConfidence*100)+' %'}</div></div><div class="tg"><div class="l">Audience artiste</div><div class="v">${opportunity.artistMonthlyListeners==null?'—':fmt(opportunity.artistMonthlyListeners)}</div><div class="genre-sub">auditeurs mensuels Spotify</div></div><div class="tg"><div class="l">Accélération 7 j</div><div class="v">${opportunity.acceleration7==null?'—':signedFull(Math.round(opportunity.acceleration7))}</div><div class="genre-sub">vs 7 jours précédents</div></div><div class="tg"><div class="l">Contact</div><div class="v" style="font-size:12px">${arContactHtml(opportunity,false)}</div></div><div class="tg"><div class="l">Sortie</div><div class="v">${opportunity.releaseDate?fmtDate(opportunity.releaseDate.slice(0,10)):'—'}</div></div><div class="tg"><div class="l">Label / distributeur</div><div class="v" style="font-size:12px;line-height:1.4">${esc(opportunity.label||opportunity.distributor||'—')}</div></div><div class="tg"><div class="l">© / ℗</div><div class="v" style="font-size:11px;line-height:1.4">${esc(opportunity.copyright||'—')}</div></div><div class="tg"><div class="l">Playlists éditoriales</div><div class="v">${fmtFull(opportunity.playlistCount)}</div><div class="genre-sub">${opportunity.bestPosition==null?'position —':'meilleure #'+Math.round(opportunity.bestPosition)}</div></div></div>
     <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:14px"><a class="btn-back" style="margin:0;text-decoration:none" href="${trackUrl(spotifyId)}" target="_blank" rel="noopener">▶ Ouvrir sur Spotify</a>${opportunity.artistSpotifyId?`<a class="chip" style="text-decoration:none" href="https://open.spotify.com/artist/${esc(opportunity.artistSpotifyId)}" target="_blank" rel="noopener">Profil artiste</a>`:''}${track?`<button class="chip" id="ar-open-full-track">Fiche analytics complète</button>`:''}</div>
@@ -1995,7 +2355,6 @@ function renderRadar(){
   const genres=[...new Set(all.map(item=>item.genre).filter(Boolean))].sort((a,b)=>arGenreLabel(a).localeCompare(arGenreLabel(b)));
   V.innerHTML=`<div class="page-head"><div><h2>Radar A&R · musiques instrumentales</h2><p class="ar-radar-intro">Découverte quotidienne par playlists éditoriales, artistes crédités et catalogues associés. Le moteur classe ensuite les tracks indépendantes par vélocité, accélération, droits et taille d’artiste.</p></div></div>
     <div class="ar-data-note"><span>ⓘ</span><span><strong>Lecture :</strong> 24 h, 7 j et 30 j utilisent uniquement des compteurs Soundcharts datés. Aucun trou n’est extrapolé. « À valider à l’écoute » conserve les titres prometteurs dont l’instrumentalité doit être vérifiée humainement.</span></div>
-    <div class="ar-filterbar"><div class="search-wrap"><span class="sico">🔍</span><input type="text" id="radar-q" placeholder="${T('Rechercher track, artiste, label…')}" aria-label="${T('Rechercher track, artiste, label…')}" value="${esc(S.radarQ)}"></div></div>
     <div class="ar-filterbar"><button class="chip ${S.radarFilter==='distribution'?'on':''}" data-radar-filter="distribution">Distribution</button><button class="chip ${S.radarFilter==='label_advance'?'on':''}" data-radar-filter="label_advance">Label + avance</button><button class="chip ${S.radarFilter==='catalog_acquisition'?'on':''}" data-radar-filter="catalog_acquisition">Rachat catalogue</button><button class="chip ${S.radarFilter==='verified'?'on':''}" data-radar-filter="verified">Instrumental vérifié</button><button class="chip ${S.radarFilter==='needs_listen'?'on':''}" data-radar-filter="needs_listen">À écouter</button><button class="chip ${S.radarFilter==='contactable'?'on':''}" data-radar-filter="contactable">Contactables</button><button class="chip ${S.radarFilter==='all'?'on':''}" data-radar-filter="all">Toutes</button><span class="ar-filter-spacer"></span><select id="radar-genre"><option value="all">Tous les genres</option>${genres.map(genre=>`<option value="${esc(genre)}" ${S.radarGenre===genre?'selected':''}>${esc(arGenreLabel(genre))}</option>`).join('')}</select><select id="radar-sort"><option value="score" ${S.radarSort==='score'?'selected':''}>Trier : priorité A&R</option><option value="momentum" ${S.radarSort==='momentum'?'selected':''}>Trier : 24 h</option><option value="acceleration" ${S.radarSort==='acceleration'?'selected':''}>Trier : accélération 7 j</option><option value="streams" ${S.radarSort==='streams'?'selected':''}>Trier : streams total</option><option value="listeners" ${S.radarSort==='listeners'?'selected':''}>Trier : audience artiste</option><option value="recent" ${S.radarSort==='recent'?'selected':''}>Trier : récence</option></select><select id="radar-limit"><option value="100" ${S.radarLimit===100?'selected':''}>Afficher 100</option><option value="250" ${S.radarLimit===250?'selected':''}>Afficher 250</option><option value="500" ${S.radarLimit===500?'selected':''}>Afficher 500</option><option value="1000" ${S.radarLimit===1000?'selected':''}>Afficher 1 000</option></select></div>
     ${selected?`<div class="ar-player-shell"><div><div class="ar-player-kicker">Lecture en cours · ${esc(arDealLabel(selected.dealType))}</div><div class="ar-player-title">${esc(selected.title)}</div><div class="ar-player-meta">${esc(selected.credit)} · ${esc(arGenreLabel(selected.genre))} · score ${Math.round(selected.score)}/100</div></div><iframe title="Spotify player · ${esc(selected.title)}" src="https://open.spotify.com/embed/track/${esc(selected.spotifyId)}?utm_source=generator" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>`:''}
     <div class="ar-opportunity-list">${rows.map(arOpportunityCard).join('')}</div>${rows.length===0?`<div class="ar-empty-state">Aucune track ne correspond à ce filtre. Les critères restent stricts et aucune donnée manquante n’est inventée.</div>`:''}${filtered.length>rows.length?`<div class="analytics-note" style="text-align:center;margin-top:12px">${fmtFull(rows.length)} affichées sur ${fmtFull(filtered.length)} · augmente « Afficher » pour voir la suite.</div>`:''}`;
@@ -2006,7 +2365,6 @@ function renderRadar(){
   document.querySelectorAll('[data-ar-play]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();const id=button.dataset.arPlay;S.radarTrackId=S.radarTrackId===id?'':id;renderRadar();}));
   document.querySelectorAll('[data-ar-open]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();openArOpportunity(button.dataset.arOpen);}));
   document.querySelectorAll('[data-ar-card]').forEach(card=>{const open=event=>{if(event.target.closest('button,a,input,select')) return;openArOpportunity(card.dataset.arCard);};card.addEventListener('click',open);card.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openArOpportunity(card.dataset.arCard);}});});
-  document.getElementById('radar-q').addEventListener('input',event=>{S.radarQ=event.target.value;S.radarTrackId='';keepScroll(renderRadar);keepFocus('radar-q');});
   document.getElementById('radar-genre').addEventListener('change',event=>{S.radarGenre=event.target.value;renderRadar();});
   document.getElementById('radar-sort').addEventListener('change',event=>{S.radarSort=event.target.value;renderRadar();});
   document.getElementById('radar-limit').addEventListener('change',event=>{S.radarLimit=Number(event.target.value)||100;renderRadar();});
@@ -2088,7 +2446,7 @@ function renderOpps(){
         <tr data-basehot="${r[3]>=HOT?1:0}" class="${r[3]>=HOT||(ag&&S.sel.has(r[6]))?'hot':''}">
           ${ag?`<td class="selc"><input type="checkbox" class="ck sel-track" data-tid="${r[6]}" ${S.sel.has(r[6])?'checked':''}></td>`:''}
           <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
-          <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span> ${wlStar('t',r[6])}${r[7]?' <span class="badge new">'+T('détectée')+' '+r[7].slice(5)+'</span>':''}</td>
+          <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span> ${wlStar('t',r[6])}</td>
           <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
           <td>${classificationCellHtml(classification)}</td>
           <td class="num" title="${fmtFull(r[3])}">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</td>
@@ -2097,7 +2455,7 @@ function renderOpps(){
           <td class="num" title="${T('Streams des dernières 24 h')} · ${T('Aucune extrapolation')}">${streamStackHtml(w1.current,false,false)}</td>
           <td class="num" title="${perMonth(r)<0?'':T('Payback')+' '+paybackTxt(payback(perMonth(r)))}"><span style="color:var(--acc2);font-weight:600">${perMonth(r)<0?'—':eur(advance(perMonth(r)))}</span></td>
           <td style="white-space:nowrap;font-variant-numeric:tabular-nums">${fmtDate(r[2])}</td>
-          <td><span class="badge ${r[4]===0?'self':'other'}">${r[4]===0?T('Indé'):'Label'}</span></td>
+          <td>${trackStatusHtml(r)}</td>
           <td><span class="lb" title="${esc(r[5])}">${esc(r[5])}</span></td>
         </tr>`;}).join('')}
       </tbody>
@@ -2110,12 +2468,12 @@ function renderOpps(){
     ${slice.map(r=>{ const w1=trackWindow(r,1), w7=trackWindow(r,7), w30=trackWindow(r,30), classification=trackClassification(r); return `
     <div class="acard plcard grid-clean" onclick="openTrack('${r[6]}')">
       ${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}
-      <div class="nm">${esc(r[1])} ${wlStar('t',r[6])}${r[7]?' <span class="badge new">'+T('détectée')+'</span>':''}</div>
+      <div class="nm">${esc(r[1])} ${wlStar('t',r[6])}</div>
       <div style="font-size:11px;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span class="ar" onclick="event.stopPropagation();goArtist(${r[0]})">${esc(A[r[0]][0])}</span>
         <span class="genre-main">${esc(classification.genre)}</span>
         <span class="genre-sub">${esc(classification.instrumental)}</span>
-        <span class="badge ${r[4]===0?'self':'other'}">${r[4]===0?T('Indé'):'Label'}</span>
+        ${trackStatusHtml(r)}
       </div>
       <div class="stats stats2">
         <div class="st"><div class="v">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</div><div class="l">${streamMetricLabel(0)}</div></div>
@@ -2147,7 +2505,12 @@ function renderOpps(){
       <option value="all" ${S.period==='all'?'selected':''}>🔵 ${T("Tout l'historique")} (${fmtFull(pcnt['all'])})</option>
     </select>
     <select id="f-st">
-      <option value="all" ${S.statut==='all'?'selected':''}>🌍 ${T('Type de sortie : tous')}</option>
+      <option value="all" ${S.statut==='all'?'selected':''}>🌍 ${LANG==='fr'?'Tout le catalogue':'Full catalogue'}</option>
+      <option value="measured" ${S.statut==='measured'?'selected':''}>📈 ${LANG==='fr'?'Mesurées':'Measured'}</option>
+      <option value="unmeasured" ${S.statut==='unmeasured'?'selected':''}>⏳ ${LANG==='fr'?'À mesurer':'To measure'}</option>
+      <option value="review" ${S.statut==='review'?'selected':''}>🎧 ${LANG==='fr'?'À vérifier / écouter':'Review / listen'}</option>
+      <option value="playlist" ${S.statut==='playlist'?'selected':''}>📻 ${LANG==='fr'?'Présentes en playlist éditoriale':'Editorial playlist'}</option>
+      <option value="catalogue" ${S.statut==='catalogue'?'selected':''}>🗂️ ${LANG==='fr'?'Découvertes via catalogue artiste':'Artist catalogue discoveries'}</option>
       <option value="self" ${S.statut==='self'?'selected':''}>🎛️ Self-released</option>
       <option value="other" ${S.statut==='other'?'selected':''}>🏷️ ${T('Autre label')}</option>
     </select>
@@ -2376,7 +2739,7 @@ function renderNew(){
           <td class="num">${streamStackHtml(w30.current,false,false)}</td>
           <td class="num">${streamStackHtml(w7.current,false,false)}</td>
           <td class="num">${streamStackHtml(w1.current,false,false)}</td>
-          <td><span class="badge ${r[4]===0?'self':'other'}">${r[4]===0?T('Indé'):'Label'}</span></td>
+          <td>${trackStatusHtml(r)}</td>
           <td><span class="lb" title="${esc(r[5])}">${esc(r[5])}</span></td>
         </tr>`;}).join('')}
       </tbody>
