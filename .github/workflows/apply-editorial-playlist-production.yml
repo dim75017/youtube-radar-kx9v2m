@@ -71,23 +71,17 @@ jobs:
           ruby -e "require 'yaml'; YAML.load_file('.github/workflows/refresh-soundcharts.yml'); puts 'workflow yaml ok'"
           git diff --check
 
-      - name: Commit and push the production implementation
+      - name: Commit and push non-workflow production files
         shell: bash
         run: |
           set -euxo pipefail
+          cp .github/workflows/refresh-soundcharts.yml refresh-soundcharts-materialized.yml
+          git restore --source=HEAD --staged --worktree .github/workflows
           rm -rf .editorial-playlist-patch .playlist-editorial-payload
-          rm -f \
-            .github/workflows/apply-editorial-playlist-production.yml \
-            .github/workflows/export-current-radar-sources.yml \
-            .github/workflows/export-playlist-discovery-sources.yml \
-            .github/workflows/export-youtube-maintenance-sources.yml \
-            .github/workflows/probe-playlist-discovery.yml \
-            playlist-discovery-probe.json \
-            publish.log \
-            recovery.log
+          rm -f publish.log recovery.log
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
           git diff --cached --check
-          git commit -m 'Activate editorial playlist and artist catalogue discovery'
+          git commit -m 'Activate editorial playlist and artist catalogue discovery code'
           git push origin HEAD:agent/activate-playlist-discovery
