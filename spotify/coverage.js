@@ -2,10 +2,11 @@
 
 (() => {
   const SC = window.SPOTIFY_SOUNDCHARTS || {};
-  const discovery = SC.playlist_discovery || {};
-  const pool = SC.instrumental_pool || {};
+  const BROWSE = window.SPOTIFY_BROWSE_CATALOGUE || {};
+  const discovery = BROWSE.playlist_discovery || SC.playlist_discovery || {};
+  const pool = BROWSE.instrumental_pool || SC.instrumental_pool || {};
   const scoring = SC.opportunity_scoring || {};
-  const catalogue = SC.discovery_catalogue || {};
+  const catalogue = BROWSE.discovery_catalogue || SC.discovery_catalogue || {};
   const catalogueCounts = catalogue.counts || {};
 
   const firstNumber = (...values) => {
@@ -70,21 +71,21 @@
     tracks() {
       const visible = liveTracks();
       if (isFrench()) {
-        return `Sélection publique stricte : ${format(visible)} pistes instrumentales vérifiées avec identités structurées, risque IA faible et droits indépendants.`;
+        return `Catalogue vivant : ${format(visible)} pistes disponibles, dont ${format(metrics.measuredCatalogueTracks)} déjà mesurées. Les lignes à enrichir restent consultables ; A&R reste strict et séparé.`;
       }
-      return `Strict public selection: ${format(visible)} verified instrumental tracks with structured identities, low AI risk and independent rights.`;
+      return `Living catalogue: ${format(visible)} tracks available, including ${format(metrics.measuredCatalogueTracks)} already measured. Enrichment rows remain browseable; A&R stays strict and separate.`;
     },
     artists() {
       const visible = liveArtists();
       if (isFrench()) {
-        return `${format(visible)} artistes structurés sont consultables dans la sélection instrumentale vérifiée ; les profils incomplets restent en quarantaine.`;
+        return `${format(visible)} artistes et crédits sont consultables dans le catalogue vivant. Les profils incomplets restent non contactables tant qu’ils ne passent pas les garde-fous A&R.`;
       }
-      return `${format(visible)} structured artists are browsable in the verified instrumental selection; incomplete profiles remain quarantined.`;
+      return `${format(visible)} artists and credits are browseable in the living catalogue. Incomplete profiles remain non-contactable until they pass A&R guardrails.`;
     },
     trackResult() {
       return isFrench()
-        ? `${format(liveTracks())} pistes instrumentales vérifiées`
-        : `${format(liveTracks())} verified instrumental tracks`;
+        ? `${format(liveTracks())} pistes disponibles · ${format(metrics.measuredCatalogueTracks)} mesurées`
+        : `${format(liveTracks())} tracks available · ${format(metrics.measuredCatalogueTracks)} measured`;
     },
     artistResult() {
       return isFrench()
@@ -137,10 +138,10 @@
   function updateFooter() {
     const detail = document.getElementById('sync-detail-tr');
     if (!detail) return;
-    const generated = String(SC.generated_at || (SC.freshness && SC.freshness.tracks_at) || '').slice(0, 19);
+    const generated = String(BROWSE.generated_at || SC.generated_at || (SC.freshness && SC.freshness.tracks_at) || '').slice(0, 19);
     const html = isFrench()
-      ? `<b>Soundcharts · sélection instrumentale stricte</b><br>${format(liveTracks())} pistes vérifiées · ${format(liveArtists())} artistes structurés<br>${format(metrics.opportunities)} opportunités A&R${generated ? `<br>Snapshot ${generated.replace('T', ' ')}` : ''}`
-      : `<b>Soundcharts · strict instrumental selection</b><br>${format(liveTracks())} verified tracks · ${format(liveArtists())} structured artists<br>${format(metrics.opportunities)} A&R opportunities${generated ? `<br>Snapshot ${generated.replace('T', ' ')}` : ''}`;
+      ? `<b>Soundcharts · catalogue vivant + A&R strict</b><br>${format(liveTracks())} pistes disponibles · ${format(liveArtists())} artistes/crédits<br>${format(metrics.playlistsScanned)} playlists scannées · ${format(metrics.measuredCatalogueTracks)} pistes mesurées<br>${format(metrics.opportunities)} opportunités A&R strictes${generated ? `<br>Snapshot ${generated.replace('T', ' ')}` : ''}`
+      : `<b>Soundcharts · living catalogue + strict A&R</b><br>${format(liveTracks())} tracks available · ${format(liveArtists())} artists/credits<br>${format(metrics.playlistsScanned)} playlists scanned · ${format(metrics.measuredCatalogueTracks)} measured tracks<br>${format(metrics.opportunities)} strict A&R opportunities${generated ? `<br>Snapshot ${generated.replace('T', ' ')}` : ''}`;
     if (detail.innerHTML !== html) detail.innerHTML = html;
   }
 

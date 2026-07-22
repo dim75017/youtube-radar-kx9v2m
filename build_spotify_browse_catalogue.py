@@ -276,18 +276,64 @@ def merge_catalogues(catalogues: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     artist_schema = _schema_union(catalogues, "artist_schema")
     playlist_schema = _schema_union(catalogues, "playlist_schema")
 
-    tracks_by_key: dict[str, dict[str, Any]] = {}
-    artists_by_key: dict[str, dict[str, Any]] = {}
+    tracks: list[dict[str, Any]] = []
+    artists: list[dict[str, Any]] = []
+    track_by_spotify: dict[str, int] = {}
+    track_by_soundcharts: dict[str, int] = {}
+    artist_by_spotify: dict[str, int] = {}
+    artist_by_soundcharts: dict[str, int] = {}
+    artist_by_name: dict[str, int] = {}
+
+    def upsert_track(row: Mapping[str, Any]) -> None:
+        spotify = str(row.get("spotify_id") or "").strip()
+        soundcharts = str(row.get("soundcharts_uuid") or "").strip()
+        index = track_by_spotify.get(spotify) if spotify else None
+        if index is None and soundcharts:
+            index = track_by_soundcharts.get(soundcharts)
+        if index is None:
+            index = len(tracks)
+            tracks.append(dict(row))
+        else:
+            tracks[index] = _merge_record(tracks[index], row)
+        merged = tracks[index]
+        spotify = str(merged.get("spotify_id") or "").strip()
+        soundcharts = str(merged.get("soundcharts_uuid") or "").strip()
+        if spotify:
+            track_by_spotify[spotify] = index
+        if soundcharts:
+            track_by_soundcharts[soundcharts] = index
+
+    def upsert_artist(row: Mapping[str, Any]) -> None:
+        spotify = str(row.get("spotify_id") or "").strip()
+        soundcharts = str(row.get("soundcharts_uuid") or "").strip()
+        name = str(row.get("name") or "").strip().casefold()
+        index = artist_by_spotify.get(spotify) if spotify else None
+        if index is None and soundcharts:
+            index = artist_by_soundcharts.get(soundcharts)
+        if index is None and name:
+            index = artist_by_name.get(name)
+        if index is None:
+            index = len(artists)
+            artists.append(dict(row))
+        else:
+            artists[index] = _merge_record(artists[index], row)
+        merged = artists[index]
+        spotify = str(merged.get("spotify_id") or "").strip()
+        soundcharts = str(merged.get("soundcharts_uuid") or "").strip()
+        name = str(merged.get("name") or "").strip().casefold()
+        if spotify:
+            artist_by_spotify[spotify] = index
+        if soundcharts:
+            artist_by_soundcharts[soundcharts] = index
+        if name:
+            artist_by_name[name] = index
+
     for catalogue in normalised:
         for row in catalogue["track_records"]:
-            key = _row_key(row, TRACK_KEY_FIELDS)
-            tracks_by_key[key] = _merge_record(tracks_by_key.get(key, {}), row)
+            upsert_track(row)
         for row in catalogue["artist_records"]:
-            key = _row_key(row, ARTIST_KEY_FIELDS)
-            artists_by_key[key] = _merge_record(artists_by_key.get(key, {}), row)
+            upsert_artist(row)
 
-    tracks = list(tracks_by_key.values())
-    artists = list(artists_by_key.values())
     tracks.sort(
         key=lambda row: (
             _availability_rank(row.get("availability_status")),
