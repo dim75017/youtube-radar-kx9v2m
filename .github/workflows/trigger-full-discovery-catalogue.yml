@@ -1,0 +1,26 @@
+name: Trigger full discovery catalogue refresh
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/trigger-full-discovery-catalogue.yml'
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch the production Soundcharts daily target
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run refresh-soundcharts.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref main \
+            -f scope=daily_target \
+            -f max_requests=8230
+          echo 'Full discovery catalogue refresh dispatched.'
