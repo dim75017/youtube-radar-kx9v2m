@@ -1,0 +1,35 @@
+name: Validate Spotify catalogue visibility
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Spotify_Radar_data.js'
+      - 'Spotify_Soundcharts_data_*.js'
+      - 'spotify/dashboard.js'
+      - 'spotify/index.html'
+      - 'tests/test_dashboard_catalogue_visibility.js'
+      - '.github/workflows/validate-dashboard-catalogue-visibility.yml'
+  pull_request:
+    paths:
+      - 'Spotify_Radar_data.js'
+      - 'Spotify_Soundcharts_data_*.js'
+      - 'spotify/dashboard.js'
+      - 'spotify/index.html'
+      - 'tests/test_dashboard_catalogue_visibility.js'
+      - '.github/workflows/validate-dashboard-catalogue-visibility.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify catalogue sources and minimum visible coverage
+        run: node tests/test_dashboard_catalogue_visibility.js
+      - name: Verify dashboard JavaScript syntax
+        run: |
+          node --check spotify/dashboard.js
+          node --check spotify/coverage.js
