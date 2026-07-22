@@ -1,0 +1,77 @@
+name: Refresh Spotify browsing catalogue
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'spotify/index.html'
+      - 'Spotify_Soundcharts_data_*.js'
+      - 'build_spotify_browse_catalogue.py'
+      - '.github/workflows/refresh-spotify-browse-catalogue.yml'
+  schedule:
+    - cron: '20 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-spotify-browsing-catalogue
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build the cumulative browsing catalogue
+        shell: bash
+        run: |
+          set -euo pipefail
+          git pull --ff-only origin main
+          current="$(python prepare_soundcharts_snapshot.py current --index spotify/index.html)"
+          args=(
+            --source "$current"
+            --existing Spotify_Browse_Catalogue_data.js
+            --output Spotify_Browse_Catalogue_data.js
+            --minimum-tracks 10000
+          )
+          if [[ -f Spotify_Soundcharts_data_20260722T105508Z.js ]]; then
+            args+=(--fallback Spotify_Soundcharts_data_20260722T105508Z.js)
+          fi
+          python build_spotify_browse_catalogue.py "${args[@]}"
+
+      - name: Validate the two-layer contract
+        run: |
+          python -m unittest tests/test_build_spotify_browse_catalogue.py -v
+          node --check spotify/dashboard.js
+          node --check spotify/coverage.js
+          node tests/test_spotify_catalogue_layers.js
+          git diff --check
+
+      - name: Publish only when the catalogue changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- Spotify_Browse_Catalogue_data.js; then
+            echo 'Browsing catalogue already up to date.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Spotify_Browse_Catalogue_data.js
+          git commit -m 'data: refresh Spotify browsing catalogue'
+          for attempt in 1 2 3; do
+            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1

@@ -186,10 +186,10 @@ function paybackClass(months){
 /* ---------- préparation ---------- */
 // artists: [nom, nbLofi, flag, done, disco, origine, seedSrc]
 // rows:    [ai, track, date, streams, statut(0 self/1 autre), label, id, firstSeen]
-/* The historical Spotify catalogue is retained as an input for compatible
-   history lookups only. It is not a public identity source: general views are
-   rebuilt from the strict Soundcharts projection below. */
-const A = [];
+/* Two explicit layers share the same interface: broad read-only browsing
+   and strict fail-closed A&R. The browsing layer never grants contactability. */
+const BROWSE = window.SPOTIFY_BROWSE_CATALOGUE || {};
+const A = (D.artists || []).map(artist=>Array.isArray(artist)?artist.slice():artist);
 /* Explicit quarantine requested by Dim for mainstream/vocal identities. This
    applies to the general views as well as to future Soundcharts merges. */
 const GENERAL_VIEW_QUARANTINED_ARTISTS = new Set([
@@ -212,12 +212,14 @@ function isGeneralArtistQuarantined(value,structuredComplete=false){
     || GENERAL_VIEW_QUARANTINED_ARTISTS.has(key)
     || (isCompositeArtistCredit(value)&&!structuredComplete);
 }
-/* Legacy rows do not carry the structured artist pairs, instrumental proof,
-   AI risk and rights evidence required for public promotion. They stay in the
-   source file as quarantined staging and cannot enter either general view. */
-const LEGACY_R = [];
-/* General views are populated exclusively by the strict Soundcharts merge.
-   Needs-listen rows remain available only through SC.opportunities. */
+/* Historical rows remain browseable inventory, but never become A&R seeds,
+   contacts or offers. Explicit retired, mainstream and composite identities
+   stay quarantined from the public inventory. */
+const LEGACY_R = (D.rows || []).filter(row=>{
+  const artist=A[Number(row&&row[0])];
+  return artist && Number(artist[4]||0)!==1
+    && !isGeneralArtistQuarantined(artist[0]);
+});
 const R = LEGACY_R.map(row=>Array.isArray(row)?row.slice():row);
 /* Raccord progressif aux historiques journaliers validés.
    Le dashboard ne lit jamais SQLite et ne promeut aucune table staging. Un export approuvé
@@ -546,11 +548,14 @@ function mergeSoundchartsStaging(){
 }
 mergeSoundchartsStaging();
 
-/* ---------- catalogue Soundcharts complet : découvert d'abord, enrichi ensuite ---------- */
-/* Full discovery remains staging-only. Its incomplete/name-only rows can never
-   become a public track or artist source, even if a future export carries the
-   raw discovery_catalogue payload again. */
-const DISCOVERY_CATALOGUE = {tracks:[],artists:[],counts:{}};
+/* ---------- catalogue de navigation : large, explicite, non contactable ---------- */
+const BROWSE_DISCOVERY = BROWSE&&BROWSE.discovery_catalogue&&typeof BROWSE.discovery_catalogue==='object'
+  ? BROWSE.discovery_catalogue : null;
+const STRICT_DISCOVERY = SC&&SC.discovery_catalogue&&typeof SC.discovery_catalogue==='object'
+  ? SC.discovery_catalogue : null;
+const DISCOVERY_CATALOGUE = BROWSE_DISCOVERY&&Array.isArray(BROWSE_DISCOVERY.tracks)&&BROWSE_DISCOVERY.tracks.length
+  ? BROWSE_DISCOVERY
+  : (STRICT_DISCOVERY||{tracks:[],artists:[],counts:{}});
 const DISCOVERY_TRACKS = Array.isArray(DISCOVERY_CATALOGUE.tracks)?DISCOVERY_CATALOGUE.tracks:[];
 const DISCOVERY_ARTISTS = Array.isArray(DISCOVERY_CATALOGUE.artists)?DISCOVERY_CATALOGUE.artists:[];
 const DISCOVERY_TRACK_SCHEMA = Array.isArray(DISCOVERY_CATALOGUE.track_schema)?DISCOVERY_CATALOGUE.track_schema:[];
