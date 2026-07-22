@@ -1,0 +1,42 @@
+{
+  "snapshot": "Spotify_Soundcharts_data_20260722T120243Z.js",
+  "generated_at": "2026-07-22T12:02:43.045Z",
+  "strict_tracks": 2063,
+  "editorial_tracks": 2064,
+  "editorial_artists": 1194,
+  "discovery_catalogue_tracks": 0,
+  "discovery_catalogue_artists": 0,
+  "discovery_catalogue_counts": {},
+  "playlist_discovery": {
+    "status": "success",
+    "finished_at": "2026-07-22T10:43:47Z",
+    "playlists_targeted": 229,
+    "playlists_resolved": 226,
+    "playlists_scanned": 220,
+    "tracklist_rows": 20675,
+    "unique_playlist_tracks": 16792,
+    "unseen_playlist_tracks": 14734,
+    "new_playlist_tracks": 14734,
+    "playlist_tracks_detailed": 450,
+    "new_artist_credits": 7157,
+    "catalogue_artists_available": 8346,
+    "catalogue_artists_scanned": 250,
+    "new_catalogue_tracks": 1200,
+    "editorial_tracks_total": 17998,
+    "editorial_artists_total": 8351,
+    "requests": 1010,
+    "quota_remaining": 3645047,
+    "failures": {
+      "playlist_metadata": 0,
+      "playlist_first_pages": 0,
+      "playlist_extra_pages": 0,
+      "song_details": 0,
+      "artist_catalogues": 0
+    },
+    "cadence": {
+      "playlist_tracklists": "daily_all_target_editorial",
+      "artist_catalogues": "daily_rotating_page",
+      "no_instrumental_or_ai_assumption": true
+    }
+  }
+}
