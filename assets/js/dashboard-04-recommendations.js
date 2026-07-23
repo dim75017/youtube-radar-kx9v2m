@@ -1675,8 +1675,10 @@ function mountLangBtn(){
     '<span class="lg-opt'+(LANG==='en'?' on':'')+'"><img src="https://flagcdn.com/40x30/gb.png" alt="EN"></span>'+
     '<span class="lg-opt'+(LANG==='fr'?' on':'')+'"><img src="https://flagcdn.com/40x30/fr.png" alt="FR"></span>';
   // éléments statiques jamais reconstruits par render() : synchro idempotente sur LANG (pas de replace destructif)
+  const mode=LANG==='fr'?'Veille':'Scan';
   const tag=document.querySelector('.logo h1 small');
-  if(tag)tag.textContent='YouTube Veille';
+  if(tag)tag.textContent='YouTube · '+mode;
+  document.title='Lofi Radar — YouTube · '+mode;
 }
 function toggleLang(){
   LANG=LANG==='en'?'fr':'en';
@@ -1806,7 +1808,7 @@ function i18nView(){
 }
 function i18nZone(el){if(LANG==='fr'&&el)el.innerHTML=frz(el.innerHTML);}
 function i18nDrawer(){if(LANG!=='fr')return;const d=document.getElementById('drawer');d.innerHTML=frz(d.innerHTML);fillLikes();}
-const FR_NAV={'Videos':'Vidéos','Analysis':'Analyse','Channels':'Chaînes','Recommendations':'Recommandations','Keywords':'Mots-clés'};
+const FR_NAV={'Dashboard':'Tableau de bord','Videos':'Vidéos','Analysis':'Analyse','Channels':'Chaînes','Recommendations':'Recommandations','Keywords':'Mots-clés'};
 
 function labelResponsiveTables(root){
   const tables=[];

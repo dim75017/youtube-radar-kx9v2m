@@ -630,7 +630,10 @@ async function loadChan(){
   render(); // re-render la vue courante : les badges AI dépendent des données Channels
 }
 async function boot(){
-  if(typeof LANG!=='undefined'&&LANG==='fr'){const lm=document.getElementById('loader-msg');if(lm&&/YouTube Veille/.test(lm.textContent))lm.textContent='Synchronisation avec YouTube Veille…';}
+  if(typeof LANG!=='undefined'){
+    const lm=document.getElementById('loader-msg');
+    if(lm)lm.textContent=LANG==='fr'?'Synchronisation avec YouTube · Veille…':'Synchronizing YouTube · Scan…';
+  }
   const hs=(location.hash||'').slice(1);
   if(hs&&VIEWS.some(v=>v.id===hs))route=hs;
   loadChan();
@@ -686,7 +689,7 @@ function render(){
   const t=document.getElementById('view-title'),s=document.getElementById('view-sub'),el=document.getElementById('view');
   closeDrawer();
   s.textContent='';
-  if(route==='dashboard'){t.textContent='Dashboard';el.innerHTML=dashHTML();}
+  if(route==='dashboard'){t.textContent=(typeof LANG!=='undefined'&&LANG==='fr')?'Tableau de bord':'Dashboard';el.innerHTML=dashHTML();}
   else if(route==='mix'){t.innerHTML='Videos <span class="pill">DAILY SCAN</span>';el.innerHTML=videosHTML('mix');}
   else if(route==='all'||route==='trends'||route==='news'){route='mix';renderNav();render();return;}
   else if(route==='recos'){t.textContent='Recommendations';el.innerHTML=recosHTML();}

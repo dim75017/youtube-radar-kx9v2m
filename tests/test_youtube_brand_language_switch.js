@@ -11,11 +11,14 @@ const spotifyIndex = fs.readFileSync('spotify/index.html', 'utf8');
 const spotifyCss = fs.readFileSync('spotify/dashboard.css', 'utf8');
 const spotifyDashboard = fs.readFileSync('spotify/dashboard.js', 'utf8');
 
-assert.match(youtubeIndex, /<title>Lofi Radar — YouTube Veille<\/title>/);
-assert.match(youtubeIndex, /<small>YouTube Veille<\/small>/);
+assert.match(youtubeIndex, /<title>Lofi Radar — YouTube · Scan<\/title>/);
+assert.match(youtubeIndex, /<small>YouTube · Scan<\/small>/);
 assert.doesNotMatch(youtubeIndex, /Opportunity Map/);
-assert.match(youtubeRecommendations, /tag\.textContent='YouTube Veille'/);
-assert.match(youtubeHelpers, /Synchronisation avec YouTube Veille/);
+assert.match(youtubeRecommendations, /const mode=LANG==='fr'\?'Veille':'Scan'/);
+assert.match(youtubeRecommendations, /tag\.textContent='YouTube · '\+mode/);
+assert.match(youtubeRecommendations, /'Dashboard':'Tableau de bord'/);
+assert.match(youtubeHelpers, /Synchronisation avec YouTube · Veille/);
+assert.match(youtubeHelpers, /'Tableau de bord':'Dashboard'/);
 assert.match(youtubeCss, /--acc:#ff0033; --acc2:#ff5272; --accSoft:rgba\(255,0,51,\.13\)/);
 for (const oldAccent of ['#8b7cf6', '#a78bfa', 'rgba(139,124,246', 'rgba(167,139,250']) {
   assert.equal(youtubeCss.includes(oldAccent), false, `YouTube UI still contains its old violet accent: ${oldAccent}`);
