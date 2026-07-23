@@ -1150,6 +1150,12 @@ function anaStat(val,med,lbl,hl,fmt,baseline){
   const col=vsMed(val,med);
   return '<div class="vstat'+(hl?' hl':'')+(tip?' tipw':'')+'"'+(tip?' style="--tipc:'+col+'"':'')+'><b style="color:'+col+'">'+f(val)+'</b><span>'+lbl+'</span>'+tipHTML(val,med,f,baseline)+'</div>';
 }
+function anaProgressBarHTML(o){
+  const hasPercentile=Number.isFinite(Number(o&&o.pctCh));
+  const width=hasPercentile?Math.max(0,Math.min(100,Number(o.pctCh))):50;
+  const color=hasPercentile?pcol(Number(o.pctCh)):'#64748b';
+  return '<div style="display:flex;align-items:center;gap:8px;margin:2px 0 10px"><div class="pbar" aria-label="'+(hasPercentile?'Channel performance percentile':'Channel performance comparison pending')+'"><i style="width:'+width+'%;background:'+color+'"></i></div></div>';
+}
 function anaCardHTML(o,i){
   const cmt=(window.CMT&&window.CMT[o.vid]!=null)?window.CMT[o.vid]:null;
   const ageRef='Same-age channel median ('+o.chAgeLabel+') · ';
@@ -1157,8 +1163,8 @@ function anaCardHTML(o,i){
     '<div class="thumbwrap"><img loading="lazy" src="'+thumb(o.vid)+'" onerror="this.style.visibility=\'hidden\'"></div>'+
     '<div class="vbody">'+
       '<div class="vtitle">'+esc(o.title)+'</div>'+
-      '<div class="vtags">'+gtag(o.genre)+(o.durH!=null?ghosttag(fmtDur(o.durH)):'')+(o.pub?'<span class="tag ghost">📅 '+fmtDateFull(o.pub)+'</span>':'')+(o.ageCohort?ghosttag('age cohort · '+o.chAgeLabel):'')+'</div>'+
-      '<div style="display:flex;align-items:center;gap:8px;margin:2px 0 10px"><div class="pbar"><i style="width:'+(o.pctCh==null?0:o.pctCh)+'%;background:'+pcol(o.pctCh)+'"></i></div></div>'+
+      '<div class="vtags">'+gtag(o.genre)+(o.durH!=null?ghosttag(fmtDur(o.durH)):'')+(o.pub?'<span class="tag ghost">📅 '+fmtDateFull(o.pub)+'</span>':'')+'</div>'+
+      anaProgressBarHTML(o)+
       '<div class="vstats">'+
         anaStat(o.views,o.medViews,'views',true,null,ageRef)+
         anaStat(o.vpm,o.chMed,'views/mo',false,null,ageRef)+
@@ -1211,7 +1217,7 @@ function anaHTML(){
         '<div style="flex:1;min-width:0">'+
           '<div style="font-weight:600;font-size:13.5px;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(o.title)+'</div>'+
           '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px">'+gtag(o.genre)+ghosttag(o.perso)+(o.durH!=null?ghosttag(fmtDur(o.durH)):'')+'<span class="tag ghost">'+fmtDateFull(o.pub)+'</span>'+(o.st?'<span class="tag ghost" style="color:'+(o.ctrMed&&o.st.ctr<o.ctrMed*0.75?'#f87171':o.ctrMed&&o.st.ctr>o.ctrMed*1.25?'#34d399':'var(--muted)')+'">CTR '+o.st.ctr.toFixed(1)+'%</span><span class="tag ghost" style="color:'+vsMed(o.st.awtMs,o.awtMed)+'">avg view '+fmtWatch(o.st.awtMs)+'</span>':'')+(o.reco?'<span class="tag ghost">reco #'+Math.round(o.reco.n)+(o.reco.pot?' · '+o.reco.pot[0]:'')+'</span>':'')+'</div>'+
-          '<div style="display:flex;align-items:center;gap:10px"><div class="pbar"><i style="width:'+(o.pctCh==null?0:o.pctCh)+'%;background:'+pcol(o.pctCh)+'"></i></div></div>'+
+          anaProgressBarHTML(o)+
         '</div>'+
         '<div style="text-align:right;flex:none">'+
           '<div style="font-family:Sora;font-size:17px;font-weight:700;color:'+pcol(o.pctCh)+'">'+fmtN(o.views)+'</div>'+
@@ -1800,9 +1806,10 @@ function frz(s){
   FR_RX.forEach(p=>{s=s.replace(p[0],p[1]);});
   return s;
 }
-function i18nView(){
+function i18nView(options){
   if(LANG!=='fr')return;
-  ['view-title','view-sub','view','nav'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=frz(e.innerHTML);});
+  const ids=options&&options.skipContent?['nav']:['view-title','view-sub','view','nav'];
+  ids.forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=frz(e.innerHTML);});
   const st=document.getElementById('sync-txt');if(st)st.innerHTML=frz(st.innerHTML);
   document.querySelectorAll('.side-foot button,.sheet-link,.nav-label').forEach(e=>{e.innerHTML=frz(e.innerHTML);});
 }
