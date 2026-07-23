@@ -2944,6 +2944,12 @@ function playlistRecentVariations(r){
   return out.slice(-5).reverse();
 }
 
+function playlistDescription(spotifyId){
+  const metadata=SC&&SC.playlist_discovery&&SC.playlist_discovery.playlist_metadata;
+  const entry=metadata&&typeof metadata==='object'?metadata[String(spotifyId||'')]:null;
+  return String(entry&&entry.description||'').trim();
+}
+
 function openPlaylist(pid){
   const r = PLrows.find(x=>x[0]===pid); if(!r) return;
   const hist = plHistory(r);
@@ -2951,6 +2957,7 @@ function openPlaylist(pid){
   const entry=playlistPerfEntry(r);
   const placements=Array.isArray(entry.placements)?entry.placements:[];
   const variations=Array.isArray(entry.last_variations)&&entry.last_variations.length?entry.last_variations:playlistRecentVariations(r);
+  const description=playlistDescription(r[0]);
   const box = document.getElementById('tmbox');
   box.innerHTML = `
     <div class="thd">
@@ -2971,6 +2978,12 @@ function openPlaylist(pid){
       <div class="tg"><div class="l">${T('Création estimée')}</div><div class="v" style="font-size:13px">${plEstDateCell(r)}</div></div>
     </div>
     ${perfGridHtml(perf,'Followers',r[5]==='ok'?r[4]:null,false)}
+    <div class="analytics-section">
+      <h4>${T('Description de la playlist')}</h4>
+      ${description
+        ?`<div class="analytics-note" style="white-space:pre-wrap;line-height:1.55">${esc(description)}</div>`
+        :`<div class="analytics-note">— · ${T('Description non encore collectée via Soundcharts')}</div>`}
+    </div>
     <div class="analytics-section">
       <h4>${T('Courbe historique des followers')} <span class="analytics-note">${T('Compteur followers')}</span></h4>
       ${dailyChartHtml(hist,T('Historique quotidien insuffisant pour tracer la courbe.'))}
