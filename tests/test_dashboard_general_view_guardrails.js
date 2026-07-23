@@ -188,4 +188,23 @@ assert.match(source, /function arOpportunityRows\(/, 'track-first A&R opportunit
 assert.match(source, /const AR_MAX_MONTHLY_LISTENERS = SC_MAX_LISTENERS/,
   'A&R and general views share the explicit pipeline ceiling');
 
+const descriptionStart = source.indexOf('function playlistDescription');
+const descriptionEnd = source.indexOf('function openPlaylist', descriptionStart);
+assert.ok(descriptionStart >= 0 && descriptionEnd > descriptionStart,
+  'playlist detail must resolve an editorial description from the Soundcharts snapshot');
+const descriptionContext = {
+  SC: {playlist_discovery: {playlist_metadata: {
+    'playlist-1': {description: 'Calm piano for reading and unwinding.'},
+  }}},
+};
+vm.runInNewContext(
+  `${source.slice(descriptionStart, descriptionEnd)}; this.playlistDescription=playlistDescription;`,
+  descriptionContext,
+);
+assert.equal(descriptionContext.playlistDescription('playlist-1'), 'Calm piano for reading and unwinding.');
+assert.equal(descriptionContext.playlistDescription('unknown-playlist'), '',
+  'missing evidence stays unavailable instead of being fabricated');
+assert.match(source, /Description non encore collectée via Soundcharts/,
+  'playlist details disclose missing descriptions instead of inventing one');
+
 console.log('dashboard general-view guardrails: OK');

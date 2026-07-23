@@ -314,6 +314,7 @@ def parse_playlist_metadata(response: Any) -> dict[str, Any] | None:
     return {
         "soundcharts_uuid": uuid,
         "name": str(obj.get("name") or ""),
+        "description": str(obj.get("description") or obj.get("shortDescription") or "").strip(),
         "followers": int(_finite_number(obj.get("latestSubscriberCount")) or 0),
         "tracks": int(_finite_number(obj.get("latestTrackCount")) or 0),
         "latest_crawl_date": str(obj.get("latestCrawlDate") or ""),
@@ -817,7 +818,10 @@ def discover_from_playlists(
         cached_uuid = str(state.get("soundcharts_uuid") or "") if isinstance(state, dict) else ""
         if cached_uuid:
             item["soundcharts_uuid"] = cached_uuid
-        else:
+        # Existing cache rows pre-date public descriptions. Refresh each of
+        # those rows once, then retain the result (including a known absence)
+        # so the 30-minute bootstrap does not keep spending calls on it.
+        if not cached_uuid or not isinstance(state, dict) or "description_checked_at" not in state:
             metadata_tasks.append(
                 (
                     item["spotify_id"],
@@ -841,6 +845,7 @@ def discover_from_playlists(
             "spotify_id": spotify_id,
             "primary_genre": item["primary_genre"],
             "resolved_at": now,
+            "description_checked_at": now,
         }
 
     resolved_playlists = [item for item in playlists if item.get("soundcharts_uuid")]
@@ -1084,6 +1089,17 @@ def discover_from_playlists(
         "song_details": detail_failures,
         "artist_catalogues": catalogue_failures,
     }
+    playlist_metadata = {}
+    for item in playlists:
+        state = playlist_state.get(item["spotify_id"])
+        if not isinstance(state, dict):
+            continue
+        description = str(state.get("description") or "").strip()
+        if description:
+            playlist_metadata[item["spotify_id"]] = {
+                "description": description,
+                "updated_at": str(state.get("description_checked_at") or state.get("resolved_at") or ""),
+            }
     summary = {
         "status": "success",
         "finished_at": now,
@@ -1104,6 +1120,7 @@ def discover_from_playlists(
         "requests": int(getattr(client, "requests_claimed", 0)),
         "quota_remaining": getattr(client, "quota_remaining", None),
         "failures": failures,
+        "playlist_metadata": playlist_metadata,
         "cadence": {
             "playlist_tracklists": "daily_all_target_editorial",
             "artist_catalogues": "daily_rotating_page",

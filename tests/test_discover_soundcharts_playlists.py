@@ -83,6 +83,7 @@ def playlist_metadata():
         "object": {
             "uuid": "playlist-uuid-1",
             "name": "Peaceful Piano",
+            "description": "Calm piano for reading, studying and unwinding.",
             "latestSubscriberCount": 1_100_000,
             "latestTrackCount": 2,
             "latestCrawlDate": "2026-07-21",
@@ -222,6 +223,14 @@ class PlaylistDiscoveryTests(unittest.TestCase):
         self.assertEqual(summary["new_playlist_tracks"], 2)
         self.assertEqual(summary["new_artist_credits"], 2)
         self.assertEqual(summary["new_catalogue_tracks"], 2)
+        self.assertEqual(
+            summary["playlist_metadata"]["playlist-1"]["description"],
+            "Calm piano for reading, studying and unwinding.",
+        )
+        self.assertEqual(
+            cache["playlist_discovery"]["playlists"]["playlist-1"]["description_checked_at"],
+            "2026-07-21T12:00:00Z",
+        )
         editorial = soundcharts["editorial"]
         track_schema = editorial["track_schema"]
         rows = {subject.field(row, track_schema, "soundcharts_uuid"): row for row in editorial["tracks"]}
