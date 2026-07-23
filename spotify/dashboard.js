@@ -2673,10 +2673,12 @@ function arMetricCompact(value,signed=false){
   if(value==null) return '—';
   return signed?signedFull(Math.round(value)):fmt(value);
 }
-function arRightsShortLabel(rights){
-  if(rights==='self_released') return 'Self-release';
-  if(['indie','independent_label'].includes(rights)) return 'Label indépendant';
-  return 'Droits à vérifier';
+function arReleaseTypeLabel(opportunity){
+  /* The strict export reconciles the rights status with the ℗ / © credits.
+     In the browsing UI we expose only the actionable ownership outcome. */
+  if(String(opportunity&&opportunity.rights||'').toLowerCase()==='self_released') return 'Self-release';
+  if(String(opportunity&&opportunity.label||'').trim()||String(opportunity&&opportunity.copyright||'').trim()) return 'Label';
+  return 'Label';
 }
 function arPlaylistPreviewHtml(opportunity){
   const playlists=arEditorialPlaylists(opportunity);
@@ -2850,7 +2852,7 @@ function arOpportunityCard(opportunity,index){
     <label class="ar-card-select" title="${selectable?'Sélectionner cette track':'Sélection réservée aux tracks vérifiées'}"><input type="checkbox" data-ar-select="${esc(opportunity.spotifyId)}" ${selected?'checked':''} ${selectable?'':'disabled'}><span></span></label>
     <div class="ar-score-box" title="Score A&R"><div class="ar-score-value">${Math.round(opportunity.score)}</div></div>
     <div class="ar-track-cover ${coverUrl?'has':''}"><span data-ar-track-cover-id="${coverUrl?'':esc(opportunity.spotifyId)}">♫</span>${coverUrl?`<img src="${esc(coverUrl)}" alt="" loading="lazy" onerror="this.remove()">`:''}</div>
-    <div class="ar-opp-main"><div class="ar-opp-titleline"><div class="ar-opp-title">${esc(opportunity.title)}</div></div><div class="ar-opp-artist">${esc(opportunity.credit)}</div><div class="ar-opp-tags"><span class="ar-mini-tag good">${esc(arRightsShortLabel(opportunity.rights))}</span></div></div>
+    <div class="ar-opp-main"><div class="ar-opp-titleline"><div class="ar-opp-title">${esc(opportunity.title)}</div></div><div class="ar-opp-artist">${esc(opportunity.credit)}</div><div class="ar-opp-tags"><span class="ar-mini-tag good">${esc(arReleaseTypeLabel(opportunity))}</span></div></div>
     <div class="ar-release-card">${esc(release)}</div>
     <div class="ar-genre-card" style="--genre-color:${genreVisual.color}"><span>${genreVisual.emoji}</span><strong>${esc(genre)}</strong></div>
     <div class="ar-opp-metrics"><div class="ar-opp-metric total"><div class="v">${arMetricCompact(total)}</div></div><div class="ar-opp-metric"><div class="v">${arMetricCompact(d30)}</div></div><div class="ar-opp-metric"><div class="v">${arMetricCompact(d7)}</div></div><div class="ar-opp-metric current"><div class="v ${d1!=null&&d1>0?'up':''}">${arMetricCompact(d1,true)}</div></div><div class="ar-opp-metric listeners"><div class="v">${listeners}</div></div></div>
@@ -2868,7 +2870,7 @@ function arWorkspaceTabs(active){
 function openArOpportunity(spotifyId){
   const opportunity=arOpportunityRows().find(item=>item.spotifyId===spotifyId); if(!opportunity) return;
   S.radarTrackId=spotifyId;
-  const box=document.getElementById('ar-body'), reasonItems=arOpportunityReasonItems(opportunity);
+  const box=document.getElementById('ar-body');
   const total=arOpportunityTotal(opportunity), d30=arOpportunityMetric(opportunity,30), d7=arOpportunityMetric(opportunity,7), d1=arOpportunityMetric(opportunity,1);
   const isListed=arListHas(spotifyId);
   const selectable=arContactEligible(opportunity);
@@ -2877,13 +2879,10 @@ function openArOpportunity(spotifyId){
     ${arOpportunityPlayerHtml(opportunity)}
     <div class="perf-grid">${totalMetricCardHtml('Streams',total,true)}${perfCardHtml(streamMetricLabel(30),{current:d30,currentReady:d30!=null,comparisonReady:false,total:1},true)}${perfCardHtml(streamMetricLabel(7),{current:d7,currentReady:d7!=null,comparisonReady:false,total:1},true)}${perfCardHtml(streamMetricLabel(1),{current:d1,currentReady:d1!=null,comparisonReady:false,total:1},true)}</div>
     ${arDetailEditorialPlaylistsHtml(opportunity)}
-    <div class="tgrid ar-detail-facts ar-detail-reasons">${reasonItems.slice(0,4).map(item=>`<div class="tg ar-detail-reason"><div class="l"><span class="ar-detail-reason-icon">${esc(item.icon)}</span></div><div class="v">${esc(item.reason)}</div></div>`).join('')}</div>
-    <div class="tgrid ar-detail-facts"><div class="tg ar-fact-plain"><div class="l">Genre</div><div class="v">🎼 ${esc(arGenreLabel(opportunity.genre))}</div></div><div class="tg ar-fact-plain"><div class="l">Type</div><div class="v ${opportunity.rights==='self_released'?'ar-self-release-type':''}">${opportunity.rights==='self_released'?'<span aria-hidden="true">↗</span> ':''}${esc(arRightsShortLabel(opportunity.rights))}</div></div><div class="tg ar-detail-listeners"><div class="l">👥 Auditeurs mensuels</div><div class="v">${opportunity.artistMonthlyListeners==null?'—':fmt(opportunity.artistMonthlyListeners)}</div></div><div class="tg"><div class="l">🗓️ Sortie</div><div class="v">${opportunity.releaseDate?fmtDate(opportunity.releaseDate.slice(0,10)):'—'}</div></div></div>
+    <div class="tgrid ar-detail-facts"><div class="tg ar-fact-plain"><div class="l">Genre</div><div class="v">🎼 ${esc(arGenreLabel(opportunity.genre))}</div></div><div class="tg ar-fact-plain"><div class="l">Type</div><div class="v ${opportunity.rights==='self_released'?'ar-self-release-type':''}">${opportunity.rights==='self_released'?'<span aria-hidden="true">↗</span> ':''}${esc(arReleaseTypeLabel(opportunity))}</div></div><div class="tg ar-detail-listeners"><div class="l">👥 Auditeurs mensuels</div><div class="v">${opportunity.artistMonthlyListeners==null?'—':fmt(opportunity.artistMonthlyListeners)}</div></div><div class="tg"><div class="l">🗓️ Sortie</div><div class="v">${opportunity.releaseDate?fmtDate(opportunity.releaseDate.slice(0,10)):'—'}</div></div></div>
     ${selectable?`<div class="ar-detail-actions"><button class="btn-back" onclick="${isListed?`arRemoveFromList('${esc(spotifyId)}',event);openArOpportunity('${esc(spotifyId)}')`:`arAddToList('${esc(spotifyId)}',event);openArOpportunity('${esc(spotifyId)}')`}">${isListed?'Retirer de la sélection':'⭐ Ajouter à la sélection'}</button></div>`:''}`;
   const artistLine=box.querySelector('.ar-detail-artists');
   if(artistLine) artistLine.innerHTML=arArtistLinksHtml(opportunity);
-  const typeFact=[...box.querySelectorAll('.ar-detail-facts .ar-fact-plain')].find(node=>node.querySelector('.l')?.textContent.trim()==='Type');
-  if(typeFact) typeFact.remove();
   document.getElementById('ar-modal').style.display='flex';
   hydrateArPlaylistCovers();
 }
@@ -2986,8 +2985,8 @@ function arSelectionArtistGroups(rows){
   }).sort((a,b)=>(b.priority.opportunity.score||0)-(a.priority.opportunity.score||0));
 }
 function arSelectionTrackHtml({opportunity,entry}){
-  const coverUrl=arTrackCoverUrl(opportunity),release=opportunity.releaseDate?fmtDate(opportunity.releaseDate.slice(0,10)):'—';
-  return `<div class="ar-selection-track"><div class="ar-track-cover ${coverUrl?'has':''}"><span>♫</span>${coverUrl?`<img src="${esc(coverUrl)}" alt="" loading="lazy">`:''}</div><div class="ar-selection-track-main"><button class="ar-selection-track-title" onclick="openArOpportunity('${esc(opportunity.spotifyId)}')">${esc(opportunity.title)}</button><span>${esc(arGenreLabel(opportunity.genre))} · ${esc(release)}</span></div><button class="ar-remove" onclick="arRemoveFromList('${esc(opportunity.spotifyId)}',event)">Retirer</button></div>`;
+  const coverUrl=arTrackCoverUrl(opportunity),releaseType=arReleaseTypeLabel(opportunity);
+  return `<div class="ar-selection-track"><div class="ar-track-cover ${coverUrl?'has':''}"><span>♫</span>${coverUrl?`<img src="${esc(coverUrl)}" alt="" loading="lazy">`:''}</div><div class="ar-selection-track-main"><button class="ar-selection-track-title" onclick="openArOpportunity('${esc(opportunity.spotifyId)}')">${esc(opportunity.title)}</button><span class="ar-selection-release-type">${esc(releaseType)}</span></div><button class="ar-remove" onclick="arRemoveFromList('${esc(opportunity.spotifyId)}',event)">Retirer</button></div>`;
 }
 function arOpenSelectionArtistProfile(artistSpotifyId,fallbackTrackId){
   const track=R.find(item=>spotifyTrackId(item&&item[6])===String(fallbackTrackId||''));
