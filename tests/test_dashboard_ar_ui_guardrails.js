@@ -31,6 +31,15 @@ for (const token of forbidden) {
 for (const required of [
   'id="radar-genre"',
   'id="radar-sort"',
+  'value="score"',
+  'value="artist"',
+  'value="genre"',
+  'value="streams"',
+  'value="streams3"',
+  'value="streams6"',
+  'value="momentum"',
+  'value="listeners"',
+  'value="editorial"',
   'sentinel(filtered.length-rows.length)',
   'attachInfinite(',
 ]) {
@@ -46,6 +55,22 @@ for (const removed of ['ar-score-confidence', 'ar-open-detail', 'Pourquoi ?']) {
 }
 for (const required of ['arTrackCoverUrl(opportunity)', 'Auditeurs/mois', 'arEditorialCardHtml(opportunity)', 'arGenreVisual(opportunity.genre)']) {
   if (!card.includes(required)) throw new Error(`A&R card data is missing: ${required}`);
+}
+const filteredStart = source.indexOf('function arOpportunityFiltered(all){');
+const filteredEnd = source.indexOf('\nfunction arOpportunityCard', filteredStart);
+if (filteredStart < 0 || filteredEnd < 0) throw new Error('A&R sorting function was not found');
+const filtered = source.slice(filteredStart, filteredEnd);
+for (const required of [
+  "S.radarSort==='artist'",
+  "S.radarSort==='genre'",
+  "S.radarSort==='streams3'",
+  "S.radarSort==='streams6'",
+  'arOpportunityMetric(b,3)',
+  'arOpportunityMetric(b,6)',
+  '(b.playlistCount||0)-(a.playlistCount||0)',
+  '(b.artistMonthlyListeners??-Infinity)-(a.artistMonthlyListeners??-Infinity)',
+]) {
+  if (!filtered.includes(required)) throw new Error(`Expected A&R sort behavior is missing: ${required}`);
 }
 const identity = card.indexOf('class="ar-opp-main"');
 const metrics = card.indexOf('class="ar-opp-metrics"');
