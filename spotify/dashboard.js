@@ -1041,7 +1041,32 @@ function classificationFromEntry(entry){
   };
 }
 function trackClassification(r){ return classificationFromEntry(Object.assign({},r.scClassification||{},trackPerfEntry(r))); }
-function artistClassification(g){ return classificationFromEntry(Object.assign({},g.sc&&g.sc.classification||{},g.discovery?{genre:g.discovery.genre,subgenres:g.discovery.subgenres,genre_confidence:g.discovery.genreConfidence,genre_source:'soundcharts_discovery_catalogue',instrumental:g.discovery.instrumental,instrumental_confidence:g.discovery.instrumentalConfidence,ai_risk:g.discovery.aiRisk,ai_risk_source:'soundcharts_discovery_catalogue'}:{},artistPerfEntry(g))); }
+function artistTrackClassification(g){
+  const candidates=(TRACKS_BY_ARTIST.get(g&&g.i)||[]).map(trackClassification)
+    .filter(classification=>classification.genre&&classification.genre!==UNCLASSIFIED_GENRE);
+  if(!candidates.length) return null;
+  const grouped=new Map();
+  candidates.forEach(classification=>{
+    const key=classification.genre;
+    const entry=grouped.get(key)||{count:0,confidence:0,items:[]};
+    entry.count++; entry.confidence+=Number(classification.genreConfidence)||0; entry.items.push(classification);
+    grouped.set(key,entry);
+  });
+  const [,winner]=[...grouped.entries()].sort((a,b)=>b[1].count-a[1].count||b[1].confidence-a[1].confidence||a[0].localeCompare(b[0]))[0];
+  const primary=winner.items[0];
+  return Object.assign({},primary,{
+    genreConfidence:winner.confidence/winner.count||null,
+    genreSource:'tracks_catalogue',
+    subgenres:[...new Set(winner.items.flatMap(item=>item.subgenres||[]))]
+  });
+}
+function artistClassification(g){
+  const direct=classificationFromEntry(Object.assign({},g.sc&&g.sc.classification||{},g.discovery?{genre:g.discovery.genre,subgenres:g.discovery.subgenres,genre_confidence:g.discovery.genreConfidence,genre_source:'soundcharts_discovery_catalogue',instrumental:g.discovery.instrumental,instrumental_confidence:g.discovery.instrumentalConfidence,ai_risk:g.discovery.aiRisk,ai_risk_source:'soundcharts_discovery_catalogue'}:{},artistPerfEntry(g)));
+  // The historical catalogue is an ownership/source marker, never a musical
+  // genre. Recover the dominant measured genre from the artist's tracks when
+  // a direct artist-level classification is unavailable.
+  return direct.genre!==UNCLASSIFIED_GENRE?direct:(artistTrackClassification(g)||direct);
+}
 function riskPass(c,mode){
   if(mode==='high_only') return c.aiRisk==='élevé';
   if(mode==='hide_high') return c.aiRisk!=='élevé';
