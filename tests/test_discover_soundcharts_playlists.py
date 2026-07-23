@@ -263,6 +263,38 @@ class PlaylistDiscoveryTests(unittest.TestCase):
         )
         self.assertEqual(ordered, ["c", "a", "b"])
 
+    def test_catalogue_track_cap_does_not_advance_unintegrated_artist_cursor(self):
+        client = FakeClient(
+            {
+                "/by-platform/spotify/playlist-1": playlist_metadata(),
+                "/playlist/playlist-uuid-1/tracks/latest": playlist_page(),
+                "/api/v2/song/song-1": song_detail("song-1", "Soft Rain", "artist-1", "Quiet Artist"),
+                "/api/v2/song/song-2": song_detail("song-2", "Night Keys", "artist-2", "Second Artist"),
+                "/artist/artist-1/songs?": catalogue_page("artist-1", "catalogue-song-1", "Morning Catalogue"),
+                "/artist/artist-2/songs?": catalogue_page("artist-2", "catalogue-song-2", "Evening Catalogue"),
+            }
+        )
+        soundcharts = empty_soundcharts()
+        cache = {"version": 1, "tracks": {}, "artists": {}}
+        with patch.object(subject, "utc_today", return_value=dt.date(2026, 7, 21)), patch.object(
+            subject, "utc_now", return_value="2026-07-21T12:00:00Z"
+        ):
+            summary = subject.discover_from_playlists(
+                soundcharts,
+                playlists_payload(),
+                cache,
+                client,
+                workers=1,
+                max_new_playlist_tracks=10,
+                max_catalog_artists=10,
+                max_new_catalog_tracks=1,
+            )
+
+        self.assertEqual(summary["new_catalogue_tracks"], 1)
+        state = cache["playlist_discovery"]["artists"]
+        self.assertEqual(state["artist-1"]["offset"], 25)
+        self.assertNotIn("artist-2", state)
+
 
 if __name__ == "__main__":
     unittest.main()

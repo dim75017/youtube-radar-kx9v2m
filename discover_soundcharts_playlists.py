@@ -1057,10 +1057,15 @@ def discover_from_playlists(
         evidence = evidence_by_artist.get(artist_uuid, {})
         genre = str(evidence.get("primary_genre") or "other_instrumental")
         songs, total, next_offset = parse_catalogue_page(response, artist_uuid, artist_name, genre)
+        # Never advance an artist cursor past a page that could not be fully
+        # integrated because of the per-run track cap.  A later cycle must
+        # retry the same page, otherwise the rotation silently loses part of
+        # that artist's discography.
+        unseen_songs = [song for song in songs if song["soundcharts_uuid"] not in tracks_by_uuid]
+        if new_catalogue_tracks + len(unseen_songs) > max_new_catalog_tracks:
+            break
         added_for_artist = 0
         for song in songs:
-            if new_catalogue_tracks >= max_new_catalog_tracks:
-                break
             uuid = song["soundcharts_uuid"]
             if uuid in tracks_by_uuid:
                 continue
