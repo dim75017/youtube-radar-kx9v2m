@@ -464,7 +464,10 @@ function suggestRoadmapDate(reco,avoidKeys){
   ];
   for(const pass of passes){
     let d=new Date(today);d.setDate(d.getDate()+3);
-    for(let tries=0;tries<420;tries++,d=new Date(d.getTime()+86400000)){
+    // A recommendation must always receive its next eligible release date.
+    // The roadmap is finite, so an eligible weekday will eventually recur;
+    // do not turn an arbitrary look-ahead horizon into a validation failure.
+    for(;;d=new Date(d.getTime()+86400000)){
       const dow=d.getDay();
       if(dow===0||dow===6)continue;
       if(dow===5&&!pass.allowFriday)continue;
@@ -484,7 +487,6 @@ function suggestRoadmapDate(reco,avoidKeys){
       return {date:d,bucket,rule,relaxed:pass!==passes[0]};
     }
   }
-  return null;
 }
 let SCHED_LOCAL=(()=>{try{return JSON.parse(localStorage.getItem('radar_sched_local')||'[]').map(x=>({...x,date:+x.date}));}catch(e){return [];}})();
 function schedSaveLocal(){try{localStorage.setItem('radar_sched_local',JSON.stringify(SCHED_LOCAL));}catch(e){}}
@@ -521,7 +523,7 @@ function renderSchedPopup(){
   const {reco,sug}=SCHED_CUR||{};
   const el=document.getElementById('sched-modal');
   if(!reco||!sug){
-    el.innerHTML='<div class="sched-h">No date available</div><div class="sched-sub">No open slot found in the next 400 days for this genre.</div><div class="sched-actions"><button class="sched-btn-cancel" onclick="closeSchedPopup()">Close</button></div>';
+    el.innerHTML='<div class="sched-h">Schedule unavailable</div><div class="sched-sub">Please reopen this recommendation to generate its release date.</div><div class="sched-actions"><button class="sched-btn-cancel" onclick="closeSchedPopup()">Close</button></div>';
     if(typeof LANG!=='undefined'&&LANG==='fr')el.innerHTML=frz(el.innerHTML);
     return;
   }
@@ -1587,7 +1589,7 @@ const FR_LIT=[
 ['No data available','Aucune donnée disponible'],
 ['Keep <b>Lofi_Radar_data.js</b> next to this file (daily snapshot), or open the page from a web server for live sync.','Garde <b>Lofi_Radar_data.js</b> à côté de ce fichier (snapshot quotidien), ou ouvre la page depuis un serveur web pour la synchro live.'],
 ['>Retry<','>Réessayer<'],
-['No date available','Pas de date disponible'],['No open slot found in the next 400 days for this genre.','Aucun créneau trouvé dans les 400 prochains jours pour ce genre.'],['>Close<','>Fermer<'],
+['Schedule unavailable','Planning indisponible'],['Please reopen this recommendation to generate its release date.','Rouvre cette recommandation pour générer sa date de sortie.'],['>Close<','>Fermer<'],
 ['» validated','» validé'],['Placement proposal for the schedule — let me know if it works for you.','Proposition de placement dans le planning — dis-moi si ça te va.'],
 ['General cadence (~1 release/week, free week)','Cadence générale (~1 sortie/semaine, semaine libre)'],['relaxed constraint (few open slots)','contrainte assouplie (peu de créneaux libres)'],
 ['Spaced out from the last rain/storm concept (≥3 weeks)','Espacé du dernier concept pluie/orage (≥3 semaines)'],
