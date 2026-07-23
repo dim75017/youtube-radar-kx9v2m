@@ -12,6 +12,7 @@ for (const token of ['AR_LIST_STORAGE', 'function arAddToList(', 'function rende
 for (const token of ['function arAddManyToList(', 'function arToggleSelection(', 'function arSelectVisible(', 'id="ar-select-all"', 'data-ar-select=', "addEventListener('contextmenu'", 'if(arListHas(opportunity.spotifyId)) return false;']) {
   assert.ok(spotify.includes(token), `Missing A&R selection workflow component: ${token}`);
 }
+assert.match(spotify, /📅 Sortie \$\{esc\(release\)\}/, 'A&R cards must show the release date');
 assert.match(spotify, /arContactEligible\(opportunity\)/, 'Outreach must retain strict contact eligibility');
 assert.match(spotify, /mailto:\$\{encodeURIComponent\(currentEmail\)\}/, 'The mail client handoff must remain user initiated');
 assert.match(spotify, /aucun e-mail n’est envoyé/i, 'The UI must not imply automatic sending');

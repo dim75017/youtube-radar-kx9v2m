@@ -2573,13 +2573,14 @@ function arOpportunityCard(opportunity,index){
   const genre=arGenreLabel(opportunity.genre);
   const genreVisual=arGenreVisual(opportunity.genre);
   const listeners=opportunity.artistMonthlyListeners==null?'—':fmt(opportunity.artistMonthlyListeners);
+  const release=opportunity.releaseDate?fmtDate(opportunity.releaseDate.slice(0,10)):'—';
   const coverUrl=arTrackCoverUrl(opportunity);
   const selected=Boolean(S.arSelected&&S.arSelected[opportunity.spotifyId]);
   return `<article class="ar-opportunity-card ${selected?'is-selected':''}" tabindex="0" data-ar-card="${esc(opportunity.spotifyId)}">
     <label class="ar-card-select" title="Sélectionner cette track"><input type="checkbox" data-ar-select="${esc(opportunity.spotifyId)}" ${selected?'checked':''}><span></span></label>
     <span class="ar-rank">${index+1}</span>
     <div class="ar-track-cover ${coverUrl?'has':''}"><span data-ar-track-cover-id="${coverUrl?'':esc(opportunity.spotifyId)}">♫</span>${coverUrl?`<img src="${esc(coverUrl)}" alt="" loading="lazy" onerror="this.remove()">`:''}</div>
-    <div class="ar-opp-main"><div class="ar-opp-title">${esc(opportunity.title)}</div><div class="ar-opp-artist">${esc(opportunity.credit)}</div><div class="ar-opp-tags"><span class="ar-mini-tag good">${esc(arRightsShortLabel(opportunity.rights))}</span></div></div>
+    <div class="ar-opp-main"><div class="ar-opp-title">${esc(opportunity.title)}</div><div class="ar-opp-artist">${esc(opportunity.credit)}</div><div class="ar-opp-tags"><span class="ar-mini-tag good">${esc(arRightsShortLabel(opportunity.rights))}</span><span class="ar-mini-tag">📅 Sortie ${esc(release)}</span></div></div>
     <div class="ar-genre-card" style="--genre-color:${genreVisual.color}"><span>${genreVisual.emoji}</span><strong>${esc(genre)}</strong></div>
     ${arEditorialCardHtml(opportunity)}
     <div class="ar-opp-metrics"><div class="ar-opp-metric total"><div class="l">Streams total</div><div class="v">${arMetricCompact(total)}</div></div><div class="ar-opp-metric"><div class="l">30 jours</div><div class="v">${arMetricCompact(d30)}</div></div><div class="ar-opp-metric"><div class="l">7 jours</div><div class="v">${arMetricCompact(d7)}</div></div><div class="ar-opp-metric current"><div class="l">24 heures</div><div class="v ${d1!=null&&d1>0?'up':''}">${arMetricCompact(d1,true)}</div></div><div class="ar-opp-metric listeners"><div class="l">Auditeurs/mois</div><div class="v">${listeners}</div></div></div>
