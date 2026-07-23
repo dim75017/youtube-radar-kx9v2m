@@ -15,6 +15,7 @@ on:
       - 'tests/test_sync_soundcharts_opportunities.py'
       - 'tests/test_prepare_soundcharts_snapshot.py'
       - 'tests/test_full_discovery_catalogue.py'
+      - 'tests/test_soundcharts_workflow_guardrails.py'
       - 'tests/test_spotify_full_catalogue.js'
       - 'tests/test_dashboard_opportunity_guardrails.js'
       - 'tests/test_dashboard_general_view_guardrails.js'
@@ -38,6 +39,7 @@ on:
       - 'tests/test_sync_soundcharts_opportunities.py'
       - 'tests/test_prepare_soundcharts_snapshot.py'
       - 'tests/test_full_discovery_catalogue.py'
+      - 'tests/test_soundcharts_workflow_guardrails.py'
       - 'tests/test_spotify_full_catalogue.js'
       - 'tests/test_dashboard_opportunity_guardrails.js'
       - 'tests/test_dashboard_general_view_guardrails.js'
@@ -101,6 +103,7 @@ jobs:
           tests/test_sync_soundcharts_opportunities.py
           tests/test_prepare_soundcharts_snapshot.py
           tests/test_full_discovery_catalogue.py
+          tests/test_soundcharts_workflow_guardrails.py
           -v
 
       - name: Validate production source syntax
@@ -375,11 +378,12 @@ jobs:
 
       - name: Wait for staged snapshot to be live and green
         if: steps.plan.outputs.publish == 'true'
-        timeout-minutes: 12
+        timeout-minutes: 45
         env:
           GH_TOKEN: ${{ github.token }}
           SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
           STAGED_SHA: ${{ steps.publish_snapshot.outputs.sha }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
           PUBLIC_BASE_URL: https://dim75017.github.io/youtube-radar-kx9v2m
         shell: bash
         run: |
@@ -392,7 +396,7 @@ jobs:
 
           # Status polling is bounded and read-only. It never retries a
           # Soundcharts request or any collection/purchase operation.
-          for poll in $(seq 1 36); do
+          for poll in $(seq 1 160); do
             gh api -X GET "repos/$GITHUB_REPOSITORY/deployments" \
               -f sha="$STAGED_SHA" \
               -f environment="github-pages" \
@@ -408,7 +412,7 @@ jobs:
             gh api -X GET "repos/$GITHUB_REPOSITORY/actions/runs" \
               -f head_sha="$STAGED_SHA" \
               -f per_page=100 > "$runs_json"
-            actions_state="$(python -c 'import json,sys; rows=json.load(open(sys.argv[1], encoding="utf-8")).get("workflow_runs", []); bad={"failure","cancelled","timed_out","action_required","startup_failure","stale"}; conclusions={str(row.get("conclusion") or "") for row in rows}; print("failure" if conclusions & bad else "success" if rows and all(row.get("status")=="completed" for row in rows) and any(row.get("conclusion")=="success" for row in rows) else "pending")' "$runs_json")"
+            actions_state="$(python -c 'import json,sys; rows=json.load(open(sys.argv[1], encoding="utf-8")).get("workflow_runs", []); current=str(sys.argv[2]); rows=[row for row in rows if str(row.get("id") or "") != current]; bad={"failure","cancelled","timed_out","action_required","startup_failure","stale"}; good={"success","skipped","neutral"}; conclusions={str(row.get("conclusion") or "") for row in rows}; print("failure" if conclusions & bad else "success" if not rows or all(row.get("status")=="completed" and str(row.get("conclusion") or "") in good for row in rows) else "pending")' "$runs_json" "$CURRENT_RUN_ID")"
 
             if [[ "$deployment_state" == "failure" || "$deployment_state" == "error" || "$deployment_state" == "inactive" || "$actions_state" == "failure" ]]; then
               echo "Pages/Actions failed for staged SHA $STAGED_SHA (deployment=$deployment_state, actions=$actions_state)" >&2
@@ -417,17 +421,17 @@ jobs:
             if [[ "$deployment_state" == "success" && "$actions_state" == "success" ]]; then
               break
             fi
-            if [[ "$poll" == "36" ]]; then
+            if [[ "$poll" == "160" ]]; then
               echo "Timed out waiting for Pages/Actions on staged SHA $STAGED_SHA (deployment=$deployment_state, actions=$actions_state)" >&2
               exit 1
             fi
-            sleep 10
+            sleep 15
           done
 
           local_sha256="$(sha256sum "$SNAPSHOT_NAME" | cut -d' ' -f1)"
           public_copy="$RUNNER_TEMP/$SNAPSHOT_NAME.public"
           public_verified="false"
-          for poll in $(seq 1 6); do
+          for poll in $(seq 1 12); do
             if curl --fail --silent --show-error --location --retry 0 --max-time 30 \
               --header 'Cache-Control: no-cache' \
               "$PUBLIC_BASE_URL/$SNAPSHOT_NAME?commit=$STAGED_SHA" \
@@ -438,7 +442,7 @@ jobs:
                 break
               fi
             fi
-            if [[ "$poll" != "6" ]]; then sleep 10; fi
+            if [[ "$poll" != "12" ]]; then sleep 15; fi
           done
           if [[ "$public_verified" != "true" ]]; then
             echo "Public staged snapshot is missing or differs from the validated blob; index remains unchanged" >&2
