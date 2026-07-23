@@ -11,6 +11,7 @@ const forbidden = [
   'ar-coverage-strip',
   'ar-kpi-actions',
   'ar-kpi-action',
+  '<div class="ar-bulkbar">',
   'id="radar-q"',
   "getElementById('radar-q')",
   "keepFocus('radar-q')",
@@ -51,8 +52,8 @@ const metrics = card.indexOf('class="ar-opp-metrics"');
 const score = card.indexOf('class="ar-score-box"');
 const genre = card.indexOf('class="ar-genre-card"');
 const editorials = card.indexOf('arEditorialCardHtml(opportunity)');
-if (!(score < identity && identity < metrics && metrics < genre && genre < editorials)) {
-  throw new Error('A&R card must read score, identity, metrics, genre, then editorials');
+if (!(score < identity && identity < genre && genre < metrics && metrics < editorials)) {
+  throw new Error('A&R card must read score, identity, genre, metrics, then editorials');
 }
 if (renderRadar.includes("arWorkspaceTabs('radar')") || renderRadar.includes('musiques instrumentales')) {
   throw new Error('A&R opportunity header must not render redundant workspace tabs or subtitle');
@@ -60,6 +61,8 @@ if (renderRadar.includes("arWorkspaceTabs('radar')") || renderRadar.includes('mu
 if (!renderRadar.includes('<h2>Opportunités A&R</h2>')) throw new Error('A&R opportunity header is missing');
 if (card.includes('À valider à l’écoute')) throw new Error('Needs-listen must not be shown as a card badge');
 if (card.includes('arContactHtml(opportunity,true)')) throw new Error('Platform contacts must stay in the detail sheet, not the A&R card preview');
+const editorialCard = source.slice(source.indexOf('function arEditorialCardHtml'), source.indexOf('const AR_PLAYLIST_COVER_CACHE'));
+if (editorialCard.includes('${fmtFull(count)}')) throw new Error('Editorial placement count must not occupy the right edge of cards');
 for (const required of ['function hydrateArTrackCovers()', 'function arPublicContactChannels(', 'E-mail public à enrichir', 'public_contacts']) {
   if (!source.includes(required)) throw new Error(`A&R public-contact UI is missing: ${required}`);
 }

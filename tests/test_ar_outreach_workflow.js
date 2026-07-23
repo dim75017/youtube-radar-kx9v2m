@@ -16,7 +16,7 @@ assert.doesNotMatch(spotify, /id="ar-select-all"/, 'The A&R bulk select-all cont
 assert.match(spotify, /arOpenContextMenu\(card\.dataset\.arCard,event\.clientX,event\.clientY\)/, 'The context menu must open at the click position');
 assert.match(spotify, /playlists\.map\(\(playlist,index\)=>/, 'Every editorial playlist must render in the A&R card');
 assert.match(spotify, /function arEditorialPlaylistTooltip\(/, 'Each editorial playlist needs a detailed hover tooltip');
-assert.match(spotify, /📅 Sortie \$\{esc\(release\)\}/, 'A&R cards must show the release date');
+assert.match(spotify, /ar-opp-metric release/, 'A&R cards must show the release date as a metric');
 assert.match(spotify, /ar-editorial-cover-link/, 'Editorial playlist covers must be rendered as direct links');
 assert.match(spotify, /openPlaylist\('\$\{esc\(playlistId\)\}'\)/, 'Editorial playlist icons must open the internal playlist detail');
 const editorialCard = spotify.slice(spotify.indexOf('function arEditorialCardHtml'), spotify.indexOf('const AR_PLAYLIST_COVER_CACHE'));
