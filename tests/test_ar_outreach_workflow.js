@@ -65,5 +65,10 @@ assert.doesNotMatch(youtubeNav, /id:'watch'/, 'YouTube watchlist navigation must
 assert.match(spotify, /function arOpenSelectionArtistProfile\(/, 'Selection must open the internal artist profile');
 assert.match(spotify, /arOpenSelectionArtistProfile\('\$\{esc\(artist\.spotifyId\)\}','\$\{esc\(contactOpportunity\.spotifyId\)\}'\)/, 'Selection must pass structured artist and track ids to its profile action');
 assert.match(spotify, /document\.getElementById\('ar-outreach-body'\)\?\.focus\(\)/, 'The prepared message text must receive focus');
+assert.match(spotify, /AR_ARTIST_STORAGE/, 'Artist-level outreach state must be stored separately from tracks');
+assert.match(spotify, /function arArtistStatus\(/, 'Artist-level status must default from artist state');
+assert.match(spotify, /Statut artiste/, 'Selection must expose one status per artist');
+assert.doesNotMatch(spotify.slice(spotify.indexOf('function arSelectionTrackHtml'),spotify.indexOf('function arOpenSelectionArtistProfile')), /<label class="ar-selection-track-field">Statut/, 'Track rows must not duplicate the artist status');
+assert.match(spotify, /label:'Personnalisé'/, 'Message preparation must offer the expanded set of personalised templates');
 
 console.log('A&R outreach workflow and watchlist removal: OK');
