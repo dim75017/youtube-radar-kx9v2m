@@ -1,5 +1,7 @@
 import copy
 import datetime as dt
+import json
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -150,6 +152,47 @@ class PlaylistDiscoveryTests(unittest.TestCase):
         self.assertEqual([item["spotify_id"] for item in selected], ["playlist-1"])
         self.assertEqual(selected[0]["primary_genre"], "piano")
 
+    def test_publisher_profile_seeds_are_prioritized_but_unclassified(self):
+        publisher_sources = [
+            {
+                "spotify_id": "publisher-1",
+                "name": "Publisher instrumental playlist",
+                "primary_genre": "other_instrumental",
+                "display_genre": "Unclassified publisher source",
+                "followers": 0,
+                "expected_tracks": 0,
+                "source_tier": "publisher_profile_playlist",
+                "source_profile_id": "publisher",
+            }
+        ]
+        selected = subject.select_discovery_playlists(playlists_payload(), publisher_sources)
+        self.assertEqual([item["spotify_id"] for item in selected[:2]], ["publisher-1", "playlist-1"])
+        self.assertEqual(selected[0]["primary_genre"], "other_instrumental")
+        self.assertEqual(selected[0]["source_tier"], "publisher_profile_playlist")
+
+    def test_publisher_sources_require_explicit_playlist_ids(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            path = subject.Path(temporary_directory) / "sources.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "version": 1,
+                        "publishers": [
+                            {
+                                "id": "chillhopmusic",
+                                "spotify_profile_url": "https://open.spotify.com/user/chillhopmusic",
+                                "expected_public_playlists": 39,
+                                "playlists": [{"spotify_id": "playlist-1", "name": "Known playlist"}],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            sources = subject.read_publisher_sources(path)
+        self.assertEqual(sources[0]["source_profile_id"], "chillhopmusic")
+        self.assertEqual(sources[0]["primary_genre"], "other_instrumental")
+
     def test_playlist_evidence_deduplicates_and_prefers_best_position(self):
         placements = [
             {
@@ -184,6 +227,8 @@ class PlaylistDiscoveryTests(unittest.TestCase):
                 "playlist_followers": 250_000,
                 "position": 12,
                 "entry_date": "2026-07-03",
+                "source_tier": "publisher_profile_playlist",
+                "source_profile_id": "chillhopmusic",
             },
         ]
         evidence = subject.aggregate_track_evidence(placements, "2026-07-21")["song-1"]
@@ -191,6 +236,8 @@ class PlaylistDiscoveryTests(unittest.TestCase):
         self.assertEqual(evidence["playlist_best_position"], 5)
         self.assertEqual(evidence["playlist_followers_total"], 350_000)
         self.assertEqual(evidence["primary_genre"], "ambient")
+        self.assertEqual(evidence["source_tiers"], ["publisher_profile_playlist"])
+        self.assertEqual(evidence["source_profile_ids"], ["chillhopmusic"])
 
     def test_discovery_onboards_playlist_tracks_artists_and_catalogues(self):
         client = FakeClient(
