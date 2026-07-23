@@ -10,7 +10,7 @@ function validState(v){
 function noteOf(v){const m=String(v||'').match(/^[x-]\s*·\s*([\s\S]*)$/i);if(m)return m[1];const s=validState(v);return (s==='note')?String(v):'';}
 function isValidated(v){return ['x','xnote'].includes(validState(v));}
 function isRefused(v){return ['no','nonote'].includes(validState(v));}
-function setValid(n,mode,btn,ev){
+function setValid(n,mode,btn,ev,opts){
   if(ev)ev.stopPropagation();
   clearTimeout(_cmtTimer);
   const rec=DATA.recos.find(x=>x.n===n);if(!rec)return;
@@ -29,8 +29,14 @@ function setValid(n,mode,btn,ev){
   if(window._drawerRecoN===n&&document.getElementById('drawer').classList.contains('show')&&window._drawerReopen){
     window._drawerReopen();
   }
-  if(!wasVal&&isValidated(val))openSchedulePopup(rec);
+  if(!wasVal&&isValidated(val)&&!(opts&&opts.skipSchedulePopup))openSchedulePopup(rec);
   writeValid(n,val,btn);
+}
+/* Direct tri from the daily rotation: card validation schedules the idea immediately. */
+function validateRecommendationNow(n,btn,ev){
+  const rec=DATA.recos.find(x=>x.n===n);if(!rec)return;
+  setValid(n,'X',btn,ev,{skipSchedulePopup:true});
+  scheduleRecommendation(rec);
 }
 const WRITE_URL='https://script.google.com/macros/s/AKfycbynEewHZzfecwty-E5TV4Otgsxi3ieGy_N5PPYiM7GpPeMVz_5ka1rxY-Y67H3eknto4w/exec';
 const WRITE_KEY='lofiradar2026kx';
@@ -197,6 +203,14 @@ function recoReasons(r,p,day){
 function dailyRecommendationSet(){
   const day=recoDayKey(),history=recoRotationHistory(),profile=recoProfile();
   const candidates=(DATA.recos||[]).filter(r=>!isValidated(r.valid)&&!isRefused(r.valid));
+  const decorate=rows=>rows.map(r=>Object.assign({},r,{_dailyScore:recoDailyScore(r,profile,day),_dailyReasons:recoReasons(r,profile,day),_dailyProfile:profile}));
+  const todayIds=Array.isArray(history[day])?history[day]:[];
+  // Keep one stable, finite review queue for the whole day. Decisions remove an
+  // idea from this queue instead of instantly filling its place with a new one.
+  if(todayIds.length){
+    const byId=new Map(candidates.map(r=>[Number(r.n),r]));
+    return decorate(todayIds.map(n=>byId.get(Number(n))).filter(Boolean));
+  }
   const previous=Object.keys(history).filter(k=>k!==day).sort().slice(-14).flatMap(k=>history[k]||[]);
   let pool=candidates.filter(r=>!new Set(previous).has(r.n));if(pool.length<RECO_DAILY_LIMIT)pool=candidates;
   const picked=[],genres={},personas={};
@@ -205,7 +219,7 @@ function dailyRecommendationSet(){
     if(!ranked.length)break;const r=ranked[0].r;picked.push(r);const g=String(r.genre||''),p=persoCategory(r.perso);genres[g]=(genres[g]||0)+1;personas[p]=(personas[p]||0)+1;
   }
   history[day]=[...new Set([...(history[day]||[]),...picked.map(r=>r.n)])].slice(-200);Object.keys(history).sort().slice(0,-21).forEach(k=>delete history[k]);saveRecoRotation(history);
-  return picked.map(r=>Object.assign({},r,{_dailyScore:recoDailyScore(r,profile,day),_dailyReasons:recoReasons(r,profile,day),_dailyProfile:profile}));
+  return decorate(picked);
 }
 function activeDailyRecommendationCount(){return dailyRecommendationSet().length;}
 function legacyDailyRecoBrief(rows){
@@ -223,7 +237,7 @@ function dailyRecoListHTML(rows){
   if(!rows.length)return '<div class="empty">'+((typeof LANG!=='undefined'&&LANG==='fr')?'Aucune proposition en attente.':'No proposal awaiting review.')+'</div>';
   window._pageRecos=rows;return '<div class="rgrid2">'+rows.map((r,i)=>recoCardHTML(r,i)).join('')+'</div>';
 }
-function recosHTML(){const rows=dailyRecommendationSet();return dailyRecoBrief(rows)+'<div id="reco-list">'+dailyRecoListHTML(rows)+'</div>';}
+function recosHTML(){const rows=dailyRecommendationSet();return '<div id="reco-list">'+dailyRecoListHTML(rows)+'</div>';}
 function rerenderRecos(){const el=document.getElementById('reco-list');if(el){el.innerHTML=dailyRecoListHTML(dailyRecommendationSet());i18nZone(el);}}
 
 function legacyRecoCardHTML(r,i){
@@ -246,8 +260,11 @@ function recoCardHTML(r,i){
     '<div class="rt-tags">'+gtag(r.genre)+(r.dur?ghosttag(r.dur):'')+'</div>'+
     (r.concept?'<div class="rt-desc">'+esc(String(r.concept).slice(0,130))+(String(r.concept).length>130?'...':'')+'</div>':'')+
     (r.scene?'<div class="rt-scene">Scene: '+esc(String(r.scene).slice(0,100))+(String(r.scene).length>100?'...':'')+'</div>':'')+
-    (r._dailyReasons?'<div class="reco-reasons">'+r._dailyReasons.map(x=>'<span class="reco-reason">'+esc(x)+'</span>').join('')+'</div>':'')+
     (note?'<div class="rt-note">Note: '+esc(note.slice(0,60))+(note.length>60?'...':'')+'</div>':'')+
+    '<div class="reco-quick-actions" onclick="event.stopPropagation()">'+
+      '<button class="rbtn rbtn-ok" onclick="validateRecommendationNow('+r.n+',this,event)">✓ Validate &amp; schedule</button>'+
+      '<button class="rbtn rbtn-ko" onclick="setValid('+r.n+',\'-\',this,event)">✕ Refuse</button>'+
+    '</div>'+
   '</div>';
 }
 function recoInfoRows(r){
@@ -361,7 +378,7 @@ function copyTxt(btn,i,field){
 
 /* ================= ROADMAP ================= */
 function roadmapHTML(){
-  let rows=DATA.roadmap.filter(r=>r.date);
+  let rows=scheduledRows();
   rows.sort((a,b)=>a.date-b.date);
   const vt='<div class="viewtoggle">'+
       '<button class="'+(RM.mode!=='cal'?'on':'')+'" onclick="RM.mode=\'table\';render()" title="List">'+ICONS.rows+'</button>'+
@@ -530,6 +547,13 @@ const SCHED_RULES={
   halloween:{seasonalMonths:[9],label:'Halloween · fenêtre saisonnière (octobre)'},
   noel:{seasonalMonths:[11],seasonalDayMax:25,label:'Noël · fenêtre saisonnière (décembre)'}
 };
+function scheduledRows(){
+  const seen=new Set();
+  return (DATA.roadmap||[]).filter(r=>r.date).concat(SCHED_LOCAL||[]).filter(r=>{
+    const key=(r.recoN!=null?'reco:'+r.recoN:'title:'+String(r.title||'').toLowerCase())+'|'+r.date;
+    if(seen.has(key))return false;seen.add(key);return true;
+  });
+}
 function schedBucket(r){
   const g=(r.genre||'').toLowerCase(), t=((r.title||'')+' '+(r.concept||'')+' '+(r.style||'')+' '+(r.niche||'')).toLowerCase();
   if(/halloween/.test(g+t))return 'halloween';
@@ -548,7 +572,7 @@ function suggestRoadmapDate(reco,avoidKeys){
   const bucket=schedBucket(reco);
   const rule=SCHED_RULES[bucket]||{};
   const rain=schedIsRain(reco);
-  const rmRows=(DATA.roadmap||[]).filter(r=>r.date).concat(SCHED_LOCAL);
+  const rmRows=scheduledRows();
   rmRows.sort((a,b)=>a.date-b.date);
   const usedWeeks=new Set(rmRows.map(r=>schedWeekKey(new Date(r.date))));
   const lastOfBucket=[...rmRows].reverse().find(r=>schedBucket(r)===bucket);
@@ -589,6 +613,22 @@ function suggestRoadmapDate(reco,avoidKeys){
 }
 let SCHED_LOCAL=(()=>{try{return JSON.parse(localStorage.getItem('radar_sched_local')||'[]').map(x=>({...x,date:+x.date}));}catch(e){return [];}})();
 function schedSaveLocal(){try{localStorage.setItem('radar_sched_local',JSON.stringify(SCHED_LOCAL));}catch(e){}}
+function scheduleRecommendation(reco,sug){
+  if(!reco)return null;
+  const existing=scheduledRows().find(r=>Number(r.recoN)===Number(reco.n));
+  if(existing)return existing;
+  const placement=sug||suggestRoadmapDate(reco,new Set());
+  if(!placement)return null;
+  const d=placement.date;
+  const entry={date:+d,jour:['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'][d.getDay()],
+    src:'Proposition rotation (à valider)',recoN:reco.n,title:reco.title,genre:reco.genre,perso:reco.perso,dur:reco.dur,
+    concept:reco.concept,scene:reco.scene,style:reco.style,niche:reco.niche,cadence:placement.rule.label||'',note:'Ajouté depuis la rotation quotidienne'};
+  SCHED_LOCAL.push(entry);
+  schedSaveLocal();
+  DATA.roadmap=(DATA.roadmap||[]).concat([entry]);
+  saveCache(DATA);
+  return entry;
+}
 let SCHED_CUR=null;
 function schedMiniCal(dateHi,rows){
   const y=dateHi.getFullYear(),m=dateHi.getMonth();
@@ -634,7 +674,7 @@ function renderSchedPopup(){
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
   const jour=(fr?dowFR:dowEN)[d.getDay()];
   const MFULL=fr?mFR:mEN;
-  const rows=(DATA.roadmap||[]).filter(r=>r.date).concat(SCHED_LOCAL);
+  const rows=scheduledRows();
   const ruleLabel=sug.rule.label||'General cadence (~1 release/week, free week)';
   let h=
     '<div class="sched-h">✓ « '+esc(reco.title)+' » validated</div>'+
