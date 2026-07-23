@@ -1140,8 +1140,25 @@ function contributorsHtml(rows,days){
   if(!top.length) return `<div class="analytics-note">${T('Historique insuffisant')} · ${T('Aucune extrapolation')}</div>`;
   return `<div class="contributors">${top.map(x=>`<div class="contributor"><span class="cn">${esc(x.r[1])}</span><span class="cv">${streamStackHtml(x.w.current,false,true)}</span></div>`).join('')}</div>`;
 }
-function dailyChartHtml(points,emptyText){
-  return points&&points.length>=2?sparkline(points):`<div class="analytics-note" style="padding:18px 2px">${emptyText||T('Historique insuffisant')} · ${T('Aucune extrapolation')}</div>`;
+function dailyChartHtml(points,emptyText,unit='value'){
+  return points&&points.length>=2?sparkline(points,unit):`<div class="analytics-note" style="padding:18px 2px">${emptyText||T('Historique insuffisant')} · ${T('Aucune extrapolation')}</div>`;
+}
+function recentDailyPoints(points,days){
+  if(!Array.isArray(points)||!points.length) return [];
+  const end=new Date(points[points.length-1][0]+'T00:00:00');
+  const start=new Date(end); start.setDate(start.getDate()-(days-1));
+  const startKey=start.toISOString().slice(0,10);
+  return points.filter(point=>point[0]>=startKey);
+}
+function artistFlowWindowControls(){
+  const active=Number(S.artistFlowDays)||7;
+  return `<div class="analytics-window" role="group" aria-label="${T('Période de la courbe')}">
+    ${[3,7,90].map(days=>`<button class="${active===days?'on':''}" onclick="setArtistFlowWindow(${days})">${days} j</button>`).join('')}
+  </div>`;
+}
+function setArtistFlowWindow(days){
+  S.artistFlowDays=Number(days)||7;
+  renderArtistModal();
 }
 function revTotal(r){ return r[3]>0 ? r[3]*RATE : 0; }
 function rev30(r){ const v=streams30(r).val; return v==null?null:v*RATE; }
@@ -1349,6 +1366,7 @@ const S = {
   amode:'table', omode:'table',
   lbq:'', lbsort:'streams', lbdir:-1, shownLB:80, lbmode:'table', labelKey:null, lbModalArtist:null,
   radarFilter:'all', radarLimit:100, radarShown:100, radarTrackId:'', radarGenre:'all', radarSort:'score', radarSortDir:-1, radarQ:'', arSelected:{},
+  artistFlowDays:7,
 };
 
 /* ---------- navigation ---------- */
@@ -1697,41 +1715,48 @@ function setPalier(k){ S.palier = k; render(); }
 /* ---------- Fiche artiste en pop-up (simulateur + tracks) ---------- */
 /* fiche artiste = uniquement les tracks indé (self-released), les tracks sous label
    se rachètent via la fiche label correspondante */
-function artistRows(i){ return R.filter(r=>r[0]===i && r[4]===0).sort((a,b)=>b[3]-a[3]); }
+function artistDiscographyRows(i){
+  return (TRACKS_BY_ARTIST.get(i)||[]).slice().sort((a,b)=>b[3]-a[3]);
+}
+function artistAcquisitionRows(i){
+  return artistDiscographyRows(i).filter(r=>r[4]===0);
+}
 function artistTableRows(rows){
-  return rows.map(r=>{ const w30=trackWindow(r,30), w7=trackWindow(r,7), w1=trackWindow(r,1); return `
+  return rows.map(r=>{ const w30=trackWindow(r,30), w7=trackWindow(r,7), w1=trackWindow(r,1), acquirable=r[4]===0; return `
     <tr data-basehot="${r[3]>=HOT?1:0}" class="${r[3]>=HOT||S.sel.has(r[6])?'hot':''}">
-      <td class="selc"><input type="checkbox" class="ck sel-track" data-tid="${r[6]}" ${S.sel.has(r[6])?'checked':''}></td>
+      <td class="selc"><input type="checkbox" class="ck sel-track" data-tid="${r[6]}" ${acquirable?'':'disabled title="Sous label : simulation indisponible"'} ${S.sel.has(r[6])?'checked':''}></td>
       <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
       <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span>${r[7]?' <span class="badge new">'+T('détectée')+' '+r[7].slice(5)+'</span>':''}</td>
       <td class="num" title="${fmtFull(r[3])}">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</td>
       <td class="num">${streamStackHtml(w30.current,false,false)}</td>
       <td class="num">${streamStackHtml(w7.current,false,false)}</td>
       <td class="num">${streamStackHtml(w1.current,false,false)}</td>
-      <td class="num"><span style="color:var(--acc2);font-weight:600">${perMonth(r)<0?'—':eur(advance(perMonth(r)))}</span></td>
+      <td class="num"><span style="color:var(--acc2);font-weight:600">${acquirable&&perMonth(r)>=0?eur(advance(perMonth(r))):'—'}</span></td>
       <td>${fmtDate(r[2])}</td>
       <td>${trackStatusHtml(r)}</td>
     </tr>`;}).join('');
 }
 function renderArtistModal(){
   const i = S.artist; const g = AG[i]; if(!g) return;
-  const rows = artistRows(i);
-  const allRows = TRACKS_BY_ARTIST.get(i) || [];
+  const rows = artistDiscographyRows(i);
+  const acquisitionRows = artistAcquisitionRows(i);
+  const allRows = rows;
   const perf = g.perf || performanceForRows(allRows);
   const flows = aggregateDailyFlow(allRows);
   const audience = artistAudience(g);
   const entry = artistPerfEntry(g);
   const classification = artistClassification(g);
   const selfPct = g.n ? Math.round(g.self/g.n*100) : 0;
-  const selM = rows.filter(r=>S.sel.has(r[6])).reduce((s,r)=>s+Math.max(perMonth(r),0),0);
-  const selN = rows.filter(r=>S.sel.has(r[6])).length;
+  const selM = acquisitionRows.filter(r=>S.sel.has(r[6])).reduce((s,r)=>s+Math.max(perMonth(r),0),0);
+  const selN = acquisitionRows.filter(r=>S.sel.has(r[6])).length;
+  const flowPoints = recentDailyPoints(flows.points,Number(S.artistFlowDays)||7);
   const box = document.getElementById('am-body');
   box.innerHTML = `
     <div class="thd">
       <div class="av-sm">${esc(g.name[0]||'?').toUpperCase()}${avatarHtml(g)}</div>
       <div style="min-width:0;flex:1">
         <h3>${esc(g.name)}</h3>
-        <div class="tar" style="cursor:default">${T('Fiche Analytics')} · ${segBadge(g)} · ${rows.length} ${T('tracks indé')} (${T('sur')} ${g.n} ${T('hors Lofi')})</div>
+        <div class="tar" style="cursor:default">${T('Fiche Analytics')} · ${segBadge(g)} · ${rows.length} ${T('tracks dans la discographie')} · ${acquisitionRows.length} ${T('self-release éligibles')}</div>
         <a class="chip" style="display:inline-flex;margin-top:8px;text-decoration:none" href="${g.id?spotifyArtistUrl(g.id):artistSearch(g.name)}" target="_blank" rel="noopener">▶ ${T('Ouvrir sur Spotify')}</a>
       </div>
       <button class="tclose" onclick="closeArtistModal()">✕</button>
@@ -1747,8 +1772,8 @@ function renderArtistModal(){
     ${perfGridHtml(perf,'Streams',g.streams,true)}
     ${classificationAnalyticsHtml(classification)}
     <div class="analytics-section">
-      <h4>${T(S.metricMode==='revenue'?'Courbe quotidienne des revenus estimés':'Courbe quotidienne des streams')} <span class="analytics-note">${T(S.metricMode==='revenue'?'Revenu quotidien estimé d’après les streams':'Flux quotidien, pas compteur lifetime')}</span></h4>
-      ${dailyChartHtml(metricSeries(flows.points),T('Historique quotidien insuffisant pour tracer la courbe.'))}
+      <h4>${T(S.metricMode==='revenue'?'Courbe quotidienne des revenus estimés':'Courbe quotidienne des streams')} <span class="analytics-note">${T(S.metricMode==='revenue'?'Revenu quotidien estimé d’après les streams':'Flux quotidien réel, pas compteur lifetime')}</span> ${artistFlowWindowControls()}</h4>
+      ${dailyChartHtml(metricSeries(flowPoints),T('Historique quotidien insuffisant pour tracer la courbe.'),S.metricMode==='revenue'?'revenue':'streams')}
       ${flows.points.length?`<div class="analytics-note">${T('Données partielles')} · ${T('couverture variable selon les tracks')}</div>`:''}
     </div>
     <div class="analytics-section">
@@ -1764,35 +1789,35 @@ function renderArtistModal(){
       <h4>${T('Tracks les plus contributrices')} <span class="analytics-note">7 j</span></h4>
       ${contributorsHtml(allRows,7)}
     </div>
-    ${offerHtml(g, selM, selN, rows.length)}
-    <label class="selall" style="margin:2px 0 8px"><input type="checkbox" class="ck" id="am-sel-all" ${rows.length&&rows.every(r=>S.sel.has(r[6]))?'checked':''}> ${T('Tout sélectionner')}</label>
+    ${offerHtml(g, selM, selN, acquisitionRows.length)}
+    <label class="selall" style="margin:2px 0 8px"><input type="checkbox" class="ck" id="am-sel-all" ${acquisitionRows.length&&acquisitionRows.every(r=>S.sel.has(r[6]))?'checked':''}> ${T('Tout sélectionner les self-release')}</label>
     <table><thead><tr>
       <th class="selc"></th><th></th><th>Track</th>
       <th class="num">${streamMetricLabel(0)}</th><th class="num">${streamMetricLabel(30)}</th>
       <th class="num">${streamMetricLabel(7)}</th><th class="num">${streamMetricLabel(1)}</th><th class="num">${T('Rachat')} ${S.palier}</th>
       <th>${T('Sortie')}</th><th>${T('Statut')}</th>
     </tr></thead><tbody>${artistTableRows(rows)}</tbody></table>
-    ${rows.length===0?'<div class="empty">'+T('Aucune track indé. Les tracks de cet artiste sont toutes sous label : passe par la fiche du label (onglet All labels).')+'</div>':''}
+    ${rows.length===0?'<div class="empty">'+T('Aucune track connue dans la discographie de cet artiste.')+'</div>':''}
   `;
   bindMetricModeToggle(renderArtistModal,box);
   attachCovers();
   function updateSel(){
-    const selM2 = rows.filter(r=>S.sel.has(r[6])).reduce((s,r)=>s+Math.max(perMonth(r),0),0);
-    const selN2 = rows.filter(r=>S.sel.has(r[6])).length;
+    const selM2 = acquisitionRows.filter(r=>S.sel.has(r[6])).reduce((s,r)=>s+Math.max(perMonth(r),0),0);
+    const selN2 = acquisitionRows.filter(r=>S.sel.has(r[6])).length;
     const off = box.querySelector('.offer');
-    if (off) off.outerHTML = offerHtml(g, selM2, selN2, rows.length);
+    if (off) off.outerHTML = offerHtml(g, selM2, selN2, acquisitionRows.length);
     box.querySelectorAll('.sel-track').forEach(cb=>{
       const tr=cb.closest('tr'); const on=S.sel.has(cb.dataset.tid);
       cb.checked=on; if(tr) tr.classList.toggle('hot', on || tr.dataset.basehot==='1');
     });
-    const allOn = rows.length && rows.every(r=>S.sel.has(r[6]));
+    const allOn = acquisitionRows.length && acquisitionRows.every(r=>S.sel.has(r[6]));
     const sa=document.getElementById('am-sel-all'); if(sa) sa.checked=allOn;
   }
   box.querySelectorAll('.sel-track').forEach(cb=>{
     cb.addEventListener('change', ()=>{ if(cb.checked)S.sel.add(cb.dataset.tid); else S.sel.delete(cb.dataset.tid); updateSel(); });
   });
   const sa = document.getElementById('am-sel-all');
-  if (sa) sa.addEventListener('change', ()=>{ if(sa.checked) rows.forEach(r=>S.sel.add(r[6])); else rows.forEach(r=>S.sel.delete(r[6])); updateSel(); });
+  if (sa) sa.addEventListener('change', ()=>{ if(sa.checked) acquisitionRows.forEach(r=>S.sel.add(r[6])); else acquisitionRows.forEach(r=>S.sel.delete(r[6])); updateSel(); });
 }
 
 /* ---------- Liste A&R (locale au navigateur, aucun e-mail n'est envoyé) ---------- */
@@ -1942,7 +1967,25 @@ function fmtDateTime(iso){if(!iso)return '—';const date=new Date(iso);return N
 function fmtDate(iso){ const m=(''+iso).match(/^(\d{4})-(\d{2})-(\d{2})/); return m?m[3]+'/'+m[2]+'/'+m[1]:(iso||'?'); }
 
 /* ---------- Fiche track (analytics) ---------- */
-function sparkline(pts){
+function sparklineValueLabel(value,unit){
+  if(unit==='revenue') return revenueEstimate(value);
+  if(unit==='streams') return `+${fmtFull(value)} streams`;
+  if(unit==='listeners') return `${fmtFull(value)} auditeurs mensuels`;
+  return fmtFull(value);
+}
+function showSparkTooltip(dot,event){
+  const wrap=dot.closest('.spark-wrap'); if(!wrap) return;
+  const tip=wrap.querySelector('.spark-tooltip'); if(!tip) return;
+  tip.textContent=`${dot.dataset.date} · ${dot.dataset.value}`;
+  const rect=wrap.getBoundingClientRect();
+  tip.style.left=`${Math.max(56,Math.min(rect.width-56,event.clientX-rect.left))}px`;
+  tip.style.top=`${Math.max(4,event.clientY-rect.top-38)}px`;
+  wrap.classList.add('has-tip');
+}
+function hideSparkTooltip(dot){
+  const wrap=dot.closest('.spark-wrap'); if(wrap) wrap.classList.remove('has-tip');
+}
+function sparkline(pts,unit='value'){
   if (!pts || pts.length<2) return '';
   const w=560, h=120, pad=6;
   const xs=pts.map(p=>+new Date(p[0])), ys=pts.map(p=>p[1]);
@@ -1952,10 +1995,12 @@ function sparkline(pts){
   const d=pts.map((p,i)=>(i?'L':'M')+sx(+new Date(p[0])).toFixed(1)+' '+sy(p[1]).toFixed(1)).join(' ');
   const up = ys[ys.length-1]>=ys[0];
   const col = up?'#4ade80':'#fb7185';
-  return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="100%" height="120" preserveAspectRatio="none">
+  const dots=pts.map(p=>`<circle class="spark-point" cx="${sx(+new Date(p[0])).toFixed(1)}" cy="${sy(p[1]).toFixed(1)}" r="7" fill="transparent" data-date="${fmtDate(p[0])}" data-value="${esc(sparklineValueLabel(p[1],unit))}" onmouseenter="showSparkTooltip(this,event)" onmousemove="showSparkTooltip(this,event)" onmouseleave="hideSparkTooltip(this)"/>`).join('');
+  return `<div class="spark-wrap"><svg class="spark" viewBox="0 0 ${w} ${h}" width="100%" height="120" preserveAspectRatio="none">
     <path d="${d}" fill="none" stroke="${col}" stroke-width="2.5"/>
     <path d="${d} L ${sx(x1)} ${h-pad} L ${sx(x0)} ${h-pad} Z" fill="${col}" opacity="0.12"/>
-  </svg>`;
+    ${dots}
+  </svg><div class="spark-tooltip" role="status"></div></div>`;
 }
 /* mini simulateur d'offre pour une track seule (pop-up track) */
 function trackOfferHtml(r){

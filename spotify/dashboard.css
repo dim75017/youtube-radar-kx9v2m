@@ -328,7 +328,16 @@ td.selc,th.selc{width:44px;padding-left:14px}
 .tmbox .tg{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:11px 13px}
 .tmbox .tg .l{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);font-weight:600}
 .tmbox .tg .v{font-family:'Sora';font-weight:700;font-size:16px;margin-top:4px}
-.spark{margin-top:6px}
+.spark-wrap{position:relative;margin-top:6px}
+.spark{display:block}
+.spark-point{cursor:crosshair}
+.spark-tooltip{position:absolute;z-index:4;top:0;transform:translate(-50%,-100%);padding:5px 7px;border:1px solid rgba(150,214,170,.35);border-radius:7px;background:#111b16;color:var(--text);font:600 10px Inter,system-ui;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .12s}
+.spark-wrap.has-tip .spark-tooltip{opacity:1}
+.analytics-window{display:inline-flex;align-items:center;gap:3px;margin-left:auto;border:1px solid var(--border);border-radius:8px;padding:3px;background:rgba(150,214,170,.04)}
+.analytics-window button{border:0;border-radius:5px;background:transparent;color:var(--muted);font:700 10px Inter,system-ui;padding:4px 7px;cursor:pointer}
+.analytics-window button:hover{color:var(--text);background:rgba(150,214,170,.1)}
+.analytics-window button.on{color:#06240f;background:var(--acc2)}
+.ck:disabled{cursor:not-allowed;opacity:.35;filter:grayscale(1)}
 .perf-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:12px 0 16px}
 .perf-grid.compact{margin:0 0 14px}
 .perf-card{min-width:0;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 13px}
