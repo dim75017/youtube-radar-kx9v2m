@@ -968,8 +968,8 @@ function streamStackHtml(v,full,signed){
 }
 function metricModeToggleHtml(){
   return `<div class="metric-toggle" role="group" aria-label="Streams ou revenus">
-    <button type="button" class="${S.metricMode==='streams'?'on':''}" data-metric-mode="streams" title="${T('Vue streams')}">▶ ${T('Streams')}</button>
-    <button type="button" class="${S.metricMode==='revenue'?'on':''}" data-metric-mode="revenue" title="${T('Vue revenus')}">$ ${T('Revenus')}</button>
+    <button type="button" class="${S.metricMode==='streams'?'on':''}" data-metric-mode="streams" title="${T('Vue streams')}">🎧 ${T('Streams')}</button>
+    <button type="button" class="${S.metricMode==='revenue'?'on':''}" data-metric-mode="revenue" title="${T('Vue revenus')}">💶 ${T('Revenus')}</button>
   </div>`;
 }
 function metricSeries(points){
@@ -2640,8 +2640,10 @@ function arArtistLinksHtml(opportunity){
   return links.length?links.join('<span class="ar-detail-artist-separator"> · </span>'):esc(opportunity&&opportunity.credit||'Artiste non renseigné');
 }
 function arMetricCompact(value,signed=false){
-  if(value==null) return '—';
-  return signed?signedFull(Math.round(value)):fmt(value);
+  const numeric=value==null?null:Number(value);
+  if(numeric==null||!Number.isFinite(numeric)) return '—';
+  if(S.metricMode==='revenue') return (signed&&numeric>0?'+':'')+revenueEstimate(numeric);
+  return signed?signedFull(Math.round(numeric)):fmt(numeric);
 }
 function arReleaseTypeLabel(opportunity){
   /* The strict export reconciles the rights status with the ℗ / © credits.
@@ -2882,7 +2884,7 @@ function hydrateArArtistAvatars(){
     });
 }
 function arColumnBarHtml(){
-  const choices=[['score','Note'],['artist','Artiste'],['recent','Sortie'],['genre','Genre'],['streams','Streams total'],['streams30','30 jours'],['streams7','7 jours'],['momentum','24 heures'],['listeners','Auditeurs/mois'],['editorial','Éditoriales']];
+  const choices=[['score','Note'],['artist','Artiste'],['recent','Sortie'],['genre','Genre'],['streams',streamMetricLabel(0)],['streams30',S.metricMode==='revenue'?'Revenus 30 jours':'30 jours'],['streams7',S.metricMode==='revenue'?'Revenus 7 jours':'7 jours'],['momentum',S.metricMode==='revenue'?'Revenus 24 heures':'24 heures'],['listeners','Auditeurs/mois'],['editorial','Éditoriales']];
   const button=([value,label])=>{const active=S.radarSort===value,dir=active?(S.radarSortDir===1?'asc':'desc'):'';return `<button type="button" data-ar-sort="${value}" class="${active?'on':''} ${dir}" title="Trier ${label.toLowerCase()} dans les deux sens"><span>${label}</span>${sortTriangleIndicator(active,S.radarSortDir)}</button>`;};
   // The cover has no sortable value. Keep its explicit spacer so the header
   // stays aligned with the row instead of squeezing Artiste into that slot.
@@ -2901,12 +2903,13 @@ function renderRadar(){
   const filtered=arOpportunityFiltered(all), rows=filtered.slice(0,S.radarShown);
   const genres=[...new Set(all.map(item=>item.genre).filter(Boolean))].sort((a,b)=>arGenreLabel(a).localeCompare(arGenreLabel(b)));
   const selectedIds=arSelectedIds();
-  V.innerHTML=`<div class="page-head ar-radar-head"><div><h2>Opportunités</h2><div class="ar-filterbar ar-filterbar-simple"><div class="search-wrap ar-radar-search"><span class="sico">🔍</span><input type="text" id="radar-q" placeholder="Rechercher track, artiste, label…" value="${esc(S.radarQ)}" aria-label="Rechercher une opportunité"></div>${arGenreSelectHtml(genres)}</div></div></div>${arColumnBarHtml()}
+  V.innerHTML=`<div class="page-head ar-radar-head"><div><h2>Opportunités</h2><div class="ar-filterbar ar-filterbar-simple"><div class="search-wrap ar-radar-search"><span class="sico">🔍</span><input type="text" id="radar-q" placeholder="Rechercher track, artiste, label…" value="${esc(S.radarQ)}" aria-label="Rechercher une opportunité"></div>${arGenreSelectHtml(genres)}</div></div>${metricModeToggleHtml()}</div>${arColumnBarHtml()}
     <div class="ar-opportunity-list">${rows.map(arOpportunityCard).join('')}</div>${rows.length===0?`<div class="ar-empty-state">Aucune track ne correspond à ce filtre. Les critères restent stricts et aucune donnée manquante n’est inventée.</div>`:''}${sentinel(filtered.length-rows.length)}${selectedIds.length?`<div class="ar-selection-float" role="status" aria-live="polite"><span><b>${selectedIds.length}</b> track${selectedIds.length>1?'s':''} sélectionnée${selectedIds.length>1?'s':''}</span><button id="ar-add-selected" type="button">⭐ Ajouter à la sélection</button></div>`:''}`;
   document.querySelectorAll('[data-ar-select]').forEach(input=>input.addEventListener('change',event=>arToggleSelection(input.dataset.arSelect,event.target.checked)));
   const addSelected=document.getElementById('ar-add-selected');if(addSelected)addSelected.addEventListener('click',()=>arAddManyToList(arSelectedIds()));
   document.querySelectorAll('[data-ar-card]').forEach(card=>{const open=event=>{if(event.target.closest('button,a,input,select,label')) return;openArOpportunity(card.dataset.arCard);};card.addEventListener('click',open);card.addEventListener('contextmenu',event=>{if(event.target.closest('button,a,input,select,label'))return;event.preventDefault();arOpenContextMenu(card.dataset.arCard,event.clientX,event.clientY);});card.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openArOpportunity(card.dataset.arCard);}});});
   document.getElementById('radar-q').addEventListener('input',event=>{S.radarQ=event.target.value;S.radarShown=100;keepScroll(renderRadar);keepFocus('radar-q');});
+  bindMetricModeToggle(renderRadar,V);
   document.getElementById('radar-genre').addEventListener('change',event=>{S.radarGenre=event.target.value;S.radarShown=100;renderRadar();});
   document.querySelectorAll('[data-ar-sort]').forEach(button=>button.addEventListener('click',()=>{const next=button.dataset.arSort;S.radarSortDir=S.radarSort===next?(S.radarSortDir===1?-1:1):arOpportunitySortDefaultDir(next);S.radarSort=next;S.radarShown=100;renderRadar();}));
   attachInfinite(()=>{if(S.radarShown>=filtered.length) return;S.radarShown=Math.min(filtered.length,S.radarShown+100);renderRadar();});
@@ -3143,6 +3146,7 @@ function renderOpps(){
     <div>
       <h2>${T('Toutes les pistes')}</h2>
     </div>
+    ${metricModeToggleHtml()}
   </div>
   <div class="toolbar">
     <div class="search-wrap"><span class="sico">🔍</span><input type="text" id="f-q" placeholder="${T('Rechercher track, artiste, label…')}" value="${esc(S.q)}"></div>
@@ -3173,7 +3177,6 @@ function renderOpps(){
       <option value="occ" ${S.rel==='occ'?'selected':''}>🎲 Occasional (1-24)</option>
       <option value="ext" ${S.rel==='ext'?'selected':''}>🚫 ${T('Jamais')}</option>
     </select>
-    ${metricModeToggleHtml()}
     <span class="spacer"></span>
     <span class="result-count">${fmtFull(rows.length)} ${T('tracks')}</span>
   </div>
@@ -3320,6 +3323,7 @@ function renderArtists(){
     <div>
       <h2>${T('Tous les artistes')}</h2>
     </div>
+    ${metricModeToggleHtml()}
   </div>
   <div class="toolbar">
     <div class="search-wrap"><span class="sico">🔍</span><input type="text" id="a-q" placeholder="${T('Rechercher un artiste…')}" value="${esc(S.aq)}"></div>
@@ -3331,7 +3335,6 @@ function renderArtists(){
       <option value="occ" ${S.aseg==='occ'?'selected':''}>🎲 ${T('Occasionnels')}</option>
       <option value="ext" ${S.aseg==='ext'?'selected':''}>🚫 ${T('Jamais')}</option>
     </select>
-    ${metricModeToggleHtml()}
     <span class="spacer"></span>
     <span class="result-count">${list.length} ${T('artistes')}</span>
   </div>
@@ -4011,10 +4014,10 @@ function renderLabels(){
     <div>
       <h2>${T('Tous les labels')} <span class="badge new" style="vertical-align:middle">${T('Non exhaustif')}</span></h2>
     </div>
+    ${metricModeToggleHtml()}
   </div>
   <div class="toolbar">
     <div class="search-wrap"><span class="sico">🔍</span><input type="text" id="lb-q" placeholder="${T('Rechercher un label…')}" value="${esc(S.lbq)}"></div>
-    ${metricModeToggleHtml()}
     <span class="spacer"></span>
     <span class="result-count">${fmtFull(rows.length)} labels</span>
   </div>

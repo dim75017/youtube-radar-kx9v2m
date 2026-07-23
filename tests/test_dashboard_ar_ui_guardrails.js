@@ -37,7 +37,7 @@ for (const required of [
 ]) {
   if (!renderRadar.includes(required)) throw new Error(`Expected streamlined A&R UI token is missing: ${required}`);
 }
-for (const required of ["['score','Note']", "['artist','Artiste']", "['recent','Sortie']", "['genre','Genre']", "['streams','Streams total']", "['streams30','30 jours']", "['streams7','7 jours']", "['momentum','24 heures']", "['listeners','Auditeurs/mois']", "['editorial','Éditoriales']"]) {
+for (const required of ["['score','Note']", "['artist','Artiste']", "['recent','Sortie']", "['genre','Genre']", "['streams',streamMetricLabel(0)]", "['streams30',S.metricMode==='revenue'", "['streams7',S.metricMode==='revenue'", "['momentum',S.metricMode==='revenue'", "['listeners','Auditeurs/mois']", "['editorial','Éditoriales']"]) {
   if (!source.includes(required)) throw new Error(`Expected A&R sort button is missing: ${required}`);
 }
 for (const required of ['ar-selection-float', 'id="ar-add-selected"', "arAddManyToList(arSelectedIds())"]) {
@@ -118,6 +118,8 @@ if (renderRadar.includes("arWorkspaceTabs('radar')") || renderRadar.includes('mu
 }
 if (!renderRadar.includes('<h2>Opportunités</h2>')) throw new Error('Opportunity header is missing');
 if (!renderRadar.includes('arColumnBarHtml()') || renderRadar.includes('arSortBarHtml()')) throw new Error('A&R sorting must use the integrated column bar');
+if (!renderRadar.includes('metricModeToggleHtml()') || !renderRadar.includes('bindMetricModeToggle(renderRadar,V)')) throw new Error('Opportunity header must expose the shared streams / revenue mode control');
+if (!source.includes("if(S.metricMode==='revenue') return (signed&&numeric>0?'+':'')+revenueEstimate(numeric);")) throw new Error('Opportunity values must switch to revenue estimates in revenue mode');
 if (card.includes('À valider à l’écoute')) throw new Error('Needs-listen must not be shown as a card badge');
 if (card.includes('arContactHtml(opportunity,true)')) throw new Error('Platform contacts must stay in the detail sheet, not the A&R card preview');
 for (const label of ['<div class="l">Sortie</div>', '<div class="l">Streams total</div>', '<div class="l">30 jours</div>', '<div class="l">7 jours</div>', '<div class="l">24 heures</div>', '<div class="l">Auditeurs/mois</div>']) {
