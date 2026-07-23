@@ -676,7 +676,7 @@ async function boot(){
 const VIEWS=[
   {id:'dashboard',label:'Dashboard',emo:'📊',cnt:()=>''},
   {id:'mix',label:'Videos',emo:'🎬',cnt:()=>DATA?fmtN(mixRows().length):''},
-  {id:'live',label:'Livestreams',emo:'📺',cnt:()=>DATA&&DATA.lives?String(DATA.lives.length):''},
+  {id:'live',label:'Livestreams',emo:'📺',cnt:()=>DATA&&DATA.lives?String(typeof activeLives==='function'?activeLives().length:DATA.lives.length):''},
   {id:'chan',label:'Channels',emo:'📡',cnt:()=>CHAN?String(CHAN.channels.length):''},
   {id:'recos',label:'Recommendations',emo:'💡',cnt:()=>DATA?String(activeDailyRecommendationCount()):''},
   {id:'roadmap',label:'Roadmap',emo:'🗓️',cnt:()=>DATA?String(DATA.roadmap.length):''},

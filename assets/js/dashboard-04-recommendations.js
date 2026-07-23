@@ -1463,9 +1463,16 @@ function liveSeries(vid){
 function liveNow(vid){const s=liveSeries(vid);return s.length?s[s.length-1][1]:null;}
 function livePeak(vid){const s=liveSeries(vid);return s.length?Math.max.apply(null,s.map(p=>p[1])):null;}
 function livePeak24h(vid){const s=liveSeries(vid).filter(p=>p[0]>=Date.now()-86400000);return s.length?Math.max.apply(null,s.map(p=>p[1])):null;}
+const LIVE_ACTIVE_FRESHNESS_MS=3*3600000;
+function liveIsActive(v){
+  const s=liveSeries(v&&v.vid);if(!s.length)return false;
+  const latest=s[s.length-1];
+  return Number(latest[1])>0&&Date.now()-Number(latest[0])<=LIVE_ACTIVE_FRESHNESS_MS;
+}
+function activeLives(){return (DATA.lives||[]).filter(liveIsActive);}
 function isOurs(ch){return /lofi girl|lofi records/i.test(ch||'');}
 function filterLives(){
-  let rows=DATA.lives||[];
+  let rows=activeLives();
   if(LS.q){const q=LS.q.toLowerCase();rows=rows.filter(v=>(v.title+' '+v.channel+' '+v.disc).toLowerCase().includes(q));}
   const sf=LS.sort;
   return [...rows].sort((a,b)=>{
@@ -1477,7 +1484,7 @@ function filterLives(){
   });
 }
 function livesHTML(){
-  const rows=filterLives();const all=DATA.lives||[];
+  const rows=filterLives();const all=activeLives();
   if(!all.length)return '<div class="empty">No livestream data yet — the 📡 Live Streams tab of the Sheet is empty or missing. It fills up on the next ChatGPT scan.</div>';
   const lsSortKeys=[['now','🔴','Viewers now'],['peak','🚀','Peak viewers'],['started','🆕','Recently started'],['channel','👥','Channel']];
   const lsSortOpts=lsSortKeys.map(s=>({label:s[1]+' Sort · '+s[2],sel:LS.sort===s[0],onclick:'LS.sort='+jsq(s[0])+';rerenderLives()'}));
