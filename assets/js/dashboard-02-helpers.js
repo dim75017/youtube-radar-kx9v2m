@@ -665,7 +665,7 @@ const VIEWS=[
   {id:'mix',label:'Videos',emo:'🎬',cnt:()=>DATA?fmtN(mixRows().length):''},
   {id:'live',label:'Livestreams',emo:'📺',cnt:()=>DATA&&DATA.lives?String(DATA.lives.length):''},
   {id:'chan',label:'Channels',emo:'📡',cnt:()=>CHAN?String(CHAN.channels.length):''},
-  {id:'recos',label:'Recommendations',emo:'💡',cnt:()=>DATA?fmtN(DATA.recos.length):''},
+  {id:'recos',label:'Recommendations',emo:'💡',cnt:()=>DATA?String(activeDailyRecommendationCount()):''},
   {id:'roadmap',label:'Roadmap',emo:'🗓️',cnt:()=>DATA?String(DATA.roadmap.length):''},
   {id:'ana',label:'Analysis',emo:'🔬',cnt:()=>DATA&&DATA.ours?String(DATA.ours.filter(v=>v.pub&&(v.durH==null||v.durH>=0.15)).length):''},
   {id:'watch',label:'Watchlist',emo:'⭐',cnt:()=>{const w=wlGet();return String(w.v.length+w.l.length+w.c.length);}},
