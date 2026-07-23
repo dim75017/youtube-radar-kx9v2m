@@ -49,7 +49,7 @@ const GENRE_COLORS=[
   [/nature/i,'#6ee7b7'],
   [/ambient/i,'#67e8f9'],
   [/electro/i,'#38bdf8'],
-  [/lofi|chillhop/i,'#a78bfa'],
+  [/lofi|chillhop/i,'#ff5272'],
 ];
 function gcolor(g){
   if(!g)return '#9ca3af';
@@ -261,9 +261,9 @@ function histChart(pts,unit,showMeta){
   return (showMeta===false?'':'<div class="hist-meta">'+meta+'</div>')+
     '<div class="hist-wrap" data-hid="'+hid+'">'+
     '<svg class="hist-svg" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+
-    '<path d="'+area+'" fill="rgba(139,124,246,.14)"/>'+
-    '<path d="'+line+'" fill="none" stroke="#a78bfa" stroke-width="2"/>'+
-    pts.map(p=>'<circle cx="'+X(p[0]).toFixed(1)+'" cy="'+Y(p[1]).toFixed(1)+'" r="'+(u==='viewers'?3.4:2.6)+'" fill="#a78bfa"/>').join('')+
+    '<path d="'+area+'" fill="rgba(255,0,51,.14)"/>'+
+    '<path d="'+line+'" fill="none" stroke="#ff5272" stroke-width="2"/>'+
+    pts.map(p=>'<circle cx="'+X(p[0]).toFixed(1)+'" cy="'+Y(p[1]).toFixed(1)+'" r="'+(u==='viewers'?3.4:2.6)+'" fill="#ff5272"/>').join('')+
     '</svg>'+
     '<div class="hist-guide"></div><div class="hist-dot"></div><div class="hist-tip"></div>'+
     '</div>'+
@@ -630,7 +630,7 @@ async function loadChan(){
   render(); // re-render la vue courante : les badges AI dépendent des données Channels
 }
 async function boot(){
-  if(typeof LANG!=='undefined'&&LANG==='fr'){const lm=document.getElementById('loader-msg');if(lm&&/Opportunity Map/.test(lm.textContent))lm.textContent='Synchro avec la carte des opportunités…';}
+  if(typeof LANG!=='undefined'&&LANG==='fr'){const lm=document.getElementById('loader-msg');if(lm&&/YouTube Veille/.test(lm.textContent))lm.textContent='Synchronisation avec YouTube Veille…';}
   const hs=(location.hash||'').slice(1);
   if(hs&&VIEWS.some(v=>v.id===hs))route=hs;
   loadChan();
@@ -707,7 +707,7 @@ function dashHTML(){
   const liveTotal=L.length?L.map(v=>liveNow(v.vid)).filter(x=>x!=null).reduce((s,x)=>s+x,0):null;
   const kpi=(lbl,val,sub,c)=>'<div class="kpi" style="--kc:'+c+'"><div class="k-lbl">'+lbl+'</div><div class="k-val">'+val+'</div><div class="k-sub">'+sub+'</div></div>';
   let h='<div class="kpis">'+
-    kpi('Videos audited',fmtInt(A.length),'≥1M views · all time','#8b7cf6')+
+    kpi('Videos audited',fmtInt(A.length),'≥1M views · all time','#ff0033')+
     kpi('Trending now',fmtInt(T.length),'<12 months · ≥500k views','#fbbf24')+
     kpi('Unique channels',fmtInt(channels),'competitive landscape','#f9a8d4')+
     kpi('Livestreams',fmtInt(L.length),liveTotal!=null?fmtN(liveTotal)+' watching right now':'live scan pending','#f87171')+
