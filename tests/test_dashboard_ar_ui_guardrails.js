@@ -72,6 +72,22 @@ for (const required of [
 ]) {
   if (!filtered.includes(required)) throw new Error(`Expected A&R sort behavior is missing: ${required}`);
 }
+const detailStart = source.indexOf('function openArOpportunity(spotifyId){');
+const detailEnd = source.indexOf('\nfunction renderRadar(){', detailStart);
+if (detailStart < 0 || detailEnd < 0) throw new Error('A&R opportunity detail function was not found');
+const detail = source.slice(detailStart, detailEnd);
+for (const required of ['<div class="l">Genre</div>', '<div class="l">Type</div>', 'ar-self-release-type']) {
+  if (!detail.includes(required)) throw new Error(`A&R detail fact is missing: ${required}`);
+}
+for (const removed of ['Score track', 'E-mail professionnel & plateformes', 'Label / distributeur']) {
+  if (detail.includes(removed)) throw new Error(`Removed A&R detail block is still rendered: ${removed}`);
+}
+const closeStart = source.indexOf('function closeArModal(){');
+const closeEnd = source.indexOf('\nfunction openArMessage', closeStart);
+const close = source.slice(closeStart, closeEnd);
+for (const required of ["iframe[src*=\"open.spotify.com/embed/\"]", "player.src='about:blank'", 'player.remove()']) {
+  if (!close.includes(required)) throw new Error(`Closing the A&R modal must stop the embedded player: ${required}`);
+}
 const identity = card.indexOf('class="ar-opp-main"');
 const metrics = card.indexOf('class="ar-opp-metrics"');
 const score = card.indexOf('class="ar-score-box"');
