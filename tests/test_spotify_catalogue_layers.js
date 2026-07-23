@@ -42,7 +42,11 @@ const prefix = 'window.SPOTIFY_BROWSE_CATALOGUE=';
 const browseText = fs.readFileSync('Spotify_Browse_Catalogue_data.js', 'utf8');
 assert.ok(browseText.startsWith(prefix), 'broad catalogue file must use its dedicated global');
 const browse = JSON.parse(browseText.slice(prefix.length).trim().replace(/;$/, ''));
-assert.ok(['full', 'strict_instrumental_rebased'].includes(browse.policy.browsing));
+assert.ok([
+  'full',
+  'strict_instrumental_rebased',
+  'trusted_internal_catalogue_plus_strict_soundcharts',
+].includes(browse.policy.browsing));
 assert.equal(browse.policy.ar, 'strict');
 assert.equal(browse.policy.unverified_records_contactable, false);
 const catalogue = browse.discovery_catalogue || {};
