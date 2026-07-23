@@ -681,11 +681,36 @@ function go(r){route=r;try{history.replaceState(null,'','#'+r);}catch(e){}render
   const sb=document.getElementById('sidebar'),vl=document.getElementById('side-veil');
   if(sb)sb.classList.remove('open');if(vl)vl.classList.remove('show');
 }
+function viewGuide(){
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
+  const guides=fr?{
+    dashboard:'Synthèse des signaux de la veille, des tendances et du catalogue suivi.',
+    mix:'Catalogue vivant des vidéos surveillées et de leurs performances observées.',
+    recos:'25 propositions renouvelées chaque jour, classées selon les 90 derniers jours de la chaîne et tes retours.',
+    roadmap:'Planning éditorial et suivi des projets déjà retenus.',
+    ana:'Chaque vidéo est comparée à des sorties d’un âge similaire pour rendre les performances lisibles.',
+    watch:'Sélection manuelle des vidéos, chaînes et mots-clés à garder sous surveillance.',
+    live:'Flux en direct et évolution des audiences observées.',
+    chan:'Analyse des chaînes suivies et de leurs signaux publics.',
+    kw:'Mots-clés et angles utilisés pour explorer les tendances.'
+  }:{
+    dashboard:'A summary of monitoring signals, trends and the tracked catalogue.',
+    mix:'A living catalogue of monitored videos and observed performance.',
+    recos:'25 proposals refreshed daily, ranked from the channel’s last 90 days and your feedback.',
+    roadmap:'Editorial planning and follow-up for ideas already retained.',
+    ana:'Each video is compared with releases of a similar age for meaningful performance readings.',
+    watch:'A manual selection of videos, channels and keywords to monitor.',
+    live:'Live streams and observed audience evolution.',
+    chan:'Analysis of monitored channels and their public signals.',
+    kw:'Keywords and angles used to explore trends.'
+  };
+  return guides[route]||'';
+}
 function render(){
   if(!DATA)return;
   const t=document.getElementById('view-title'),s=document.getElementById('view-sub'),el=document.getElementById('view');
   closeDrawer();
-  s.textContent='';
+  s.textContent=viewGuide();
   if(route==='dashboard'){t.textContent='Dashboard';el.innerHTML=dashHTML();}
   else if(route==='mix'){t.innerHTML='Videos <span class="pill">DAILY SCAN</span>';el.innerHTML=videosHTML('mix');}
   else if(route==='all'||route==='trends'||route==='news'){route='mix';renderNav();render();return;}
