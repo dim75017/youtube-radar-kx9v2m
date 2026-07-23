@@ -64,8 +64,9 @@ if (card.includes('arContactHtml(opportunity,true)')) throw new Error('Platform 
 if (!renderRadar.includes('page-head ar-radar-head') || renderRadar.includes('ar-filter-spacer')) throw new Error('A&R filters must sit compactly under the title on the left');
 const editorialCard = source.slice(source.indexOf('function arEditorialCardHtml'), source.indexOf('const AR_PLAYLIST_COVER_CACHE'));
 if (editorialCard.includes('${fmtFull(count)}')) throw new Error('Editorial placement count must not occupy the right edge of cards');
-for (const required of ['function hydrateArTrackCovers()', 'function arPublicContactChannels(', 'E-mail public à enrichir', 'public_contacts']) {
+for (const required of ['function hydrateArTrackCovers()', 'function arPublicContactChannels(', 'arOutreachDrafts(', 'public_contacts']) {
   if (!source.includes(required)) throw new Error(`A&R public-contact UI is missing: ${required}`);
 }
+if (source.includes('E-mail public à enrichir') || source.includes('E-mail à enrichir')) throw new Error('A&R must not display email-enrichment placeholders');
 
 console.log('Spotify A&R UI guardrails passed');

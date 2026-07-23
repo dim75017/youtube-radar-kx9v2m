@@ -1808,6 +1808,29 @@ function arAddManyToList(spotifyIds){
 function arAddToList(spotifyId,event){
   if(event)event.stopPropagation();
   arAddManyToList([spotifyId]);
+  const prompted=arPromptArtistCompanions(spotifyId);
+  const modal=document.getElementById('ar-modal');
+  if(!prompted&&modal&&modal.style.display==='flex')openArOpportunity(spotifyId);
+}
+function arStructuredArtistIds(opportunity){
+  return new Set((Array.isArray(opportunity&&opportunity.artists)?opportunity.artists:[]).map(artist=>String(artist&&artist.spotify_id||'').trim()).filter(Boolean));
+}
+function arArtistCompanionRows(spotifyId){
+  const source=arOpportunityRows().find(item=>item.spotifyId===spotifyId);
+  const artistIds=arStructuredArtistIds(source);
+  if(!source||!artistIds.size)return [];
+  return arOpportunityRows().filter(item=>item.spotifyId!==spotifyId&&!arListHas(item.spotifyId)&&arContactEligible(item)&&[...arStructuredArtistIds(item)].some(id=>artistIds.has(id)));
+}
+function arPromptArtistCompanions(spotifyId){
+  const source=arOpportunityRows().find(item=>item.spotifyId===spotifyId);
+  const companions=arArtistCompanionRows(spotifyId);
+  if(!source||!companions.length)return false;
+  const artist=(Array.isArray(source.artists)?source.artists.map(item=>item&&item.name).filter(Boolean)[0]:null)||source.credit||'cet artiste';
+  const box=document.getElementById('ar-body');box.className='tmbox ambox';
+  box.innerHTML=`<div class="thd"><div class="av-sm">⭐</div><div style="min-width:0;flex:1"><h3>Autres tracks de ${esc(artist)}</h3><div class="tar">${companions.length} autre${companions.length>1?'s':''} opportunité${companions.length>1?'s':''} éligible${companions.length>1?'s':''}</div></div><button class="tclose" onclick="closeArModal()">✕</button></div><div class="ar-companion-list">${companions.map(item=>`<label class="ar-companion-item"><input type="checkbox" value="${esc(item.spotifyId)}" checked><span><strong>${esc(item.title)}</strong><small>${esc(arGenreLabel(item.genre))} · ${item.releaseDate?fmtDate(item.releaseDate.slice(0,10)):'—'}</small></span></label>`).join('')}</div><div class="ar-actions"><button class="btn-back" id="ar-add-companions">Ajouter les tracks sélectionnées</button><button class="chip" onclick="closeArModal();renderRadar()">Pas maintenant</button></div>`;
+  document.getElementById('ar-add-companions').addEventListener('click',()=>{const ids=[...box.querySelectorAll('input:checked')].map(input=>input.value);arAddManyToList(ids);closeArModal();});
+  document.getElementById('ar-modal').style.display='flex';
+  return true;
 }
 let AR_CONTEXT_MENU=null;
 function arCloseContextMenu(){
@@ -1835,12 +1858,21 @@ function arRemoveFromList(spotifyId,event){if(event)event.stopPropagation();cons
 function arUpdateList(spotifyId,patch){const items=arListGet();if(!items[spotifyId])return;items[spotifyId]=Object.assign({},items[spotifyId],patch);arListSet(items);arSyncListCount();}
 function arFollowUpDate(days=7){const date=new Date();date.setDate(date.getDate()+days);return date.toISOString().slice(0,10);}
 function arPublicEmail(opportunity){const candidate=arPublicContactChannels(opportunity).find(item=>item.type==='email'&&item.value);return candidate?String(candidate.value):'';}
-function arOutreachDraft(opportunity){
+function arOutreachDrafts(opportunity){
   const artist=(Array.isArray(opportunity.artists)?opportunity.artists.map(item=>item&&item.name).filter(Boolean)[0]:null)||opportunity.credit||'there';
   const playlist=(arEditorialPlaylists(opportunity)[0]||{}).name||'our independent instrumental research';
-  return {subject:`About “${opportunity.title}”`,body:`Hi ${artist},\n\nWe discovered “${opportunity.title}” through ${playlist} while reviewing independent instrumental releases. The track stood out for its ${arGenreLabel(opportunity.genre)} direction and current audience signals.\n\nWe would love to learn more about your plans for the project and see whether a conversation could be useful. Would you be open to a short introduction?\n\nBest,\n[Your name]`};
+  return [
+    {label:'Découverte',subject:`About “${opportunity.title}”`,body:`Hi ${artist},\n\nWe discovered “${opportunity.title}” through ${playlist} while reviewing independent instrumental releases. The track stood out for its ${arGenreLabel(opportunity.genre)} direction and current audience signals.\n\nWe would love to learn more about your plans for the project and see whether a conversation could be useful. Would you be open to a short introduction?\n\nBest,\n[Your name]`},
+    {label:'Partenariat',subject:`A quick note about “${opportunity.title}”`,body:`Hi ${artist},\n\nI’m reaching out after spending time with “${opportunity.title}”. Its ${arGenreLabel(opportunity.genre)} direction caught our attention while we were mapping independent instrumental projects.\n\nAt Lofi Girl, we are always interested in learning how artists want to develop their next releases and whether our label, distribution or publishing teams could be useful. Would you be open to a short conversation?\n\nBest,\n[Your name]`},
+    {label:'Court',subject:`Loved “${opportunity.title}”`,body:`Hi ${artist},\n\nI wanted to send a quick note after discovering “${opportunity.title}” via ${playlist}. We really connected with its ${arGenreLabel(opportunity.genre)} identity.\n\nIf you are open to it, I would love to introduce Lofi Girl and learn more about your next steps.\n\nBest,\n[Your name]`}
+  ];
 }
+function arOutreachDraft(opportunity){return arOutreachDrafts(opportunity)[0];}
 function arMarkContacted(spotifyId){arUpdateList(spotifyId,{status:'contacted',contactedAt:new Date().toISOString(),nextFollowUp:arFollowUpDate()});renderArList();}
+function arSelectionArtistInfoHtml(opportunity){
+  const listeners=opportunity.artistMonthlyListeners==null?'':` · ${fmt(opportunity.artistMonthlyListeners)} auditeurs/mois`;
+  return `<div class="ar-follow-artist">${arArtistLinksHtml(opportunity)}<span> · ${esc(arGenreLabel(opportunity.genre))}${listeners}</span></div><div class="ar-follow-contact ar-selection-contact">${arContactHtml(opportunity,true)}</div>`;
+}
 function fmtDateTime(iso){if(!iso)return '—';const date=new Date(iso);return Number.isNaN(date.getTime())?'—':date.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});}
 function fmtDate(iso){ const m=(''+iso).match(/^(\d{4})-(\d{2})-(\d{2})/); return m?m[3]+'/'+m[2]+'/'+m[1]:(iso||'?'); }
 
@@ -2275,7 +2307,8 @@ function arPlatformFromUrl(platform,url){
 }
 function arPlatformLogo(platform){
   const slug=({instagram:'instagram',bandcamp:'bandcamp',soundcloud:'soundcloud',youtube:'youtube',tiktok:'tiktok',facebook:'facebook',twitter:'x',x:'x',spotify:'spotify'})[platform];
-  return slug?`<img src="https://cdn.simpleicons.org/${slug}" alt="" loading="lazy">`:'';
+  const color=({instagram:'E4405F',bandcamp:'1DA0C3',soundcloud:'FF5500',youtube:'FF0000',tiktok:'FFFFFF',facebook:'1877F2',twitter:'FFFFFF',x:'FFFFFF',spotify:'1ED760'})[platform]||'FFFFFF';
+  return slug?`<img src="https://cdn.simpleicons.org/${slug}/${color}" alt="" loading="lazy">`:'';
 }
 function arPlatformLabel(platform){
   return ({email:'E-mail professionnel',website:'Site officiel',instagram:'Instagram',bandcamp:'Bandcamp',soundcloud:'SoundCloud',youtube:'YouTube',tiktok:'TikTok',facebook:'Facebook',twitter:'X / Twitter',x:'X / Twitter',spotify:'Spotify',contact:'Formulaire de contact'})[platform]||'Profil public';
@@ -2309,9 +2342,9 @@ function arContactHtml(opportunity,compact=false){
   const platforms=channels.filter(channel=>channel.type!=='email');
   const emailHtml=email
     ?`<a class="ar-email-contact" href="mailto:${esc(email.value)}" onclick="event.stopPropagation()">${compact?'E-mail':esc(email.value)}</a>`
-    :`<span class="ar-email-slot">${compact?'E-mail à enrichir':'E-mail public à enrichir'}</span>`;
+    :'';
   const links=platforms.map(channel=>`<a class="ar-platform-link ${arPlatformLogo(channel.type)?'has-logo':'text-link'}" href="${esc(channel.value)}" target="_blank" rel="noopener" title="${esc(arPlatformLabel(channel.type))}" aria-label="${esc(arPlatformLabel(channel.type))}" onclick="event.stopPropagation()">${arPlatformLogo(channel.type)||esc(arPlatformLabel(channel.type))}</a>`).join('');
-  return `<span class="ar-contact-set">${emailHtml}${links?`<span class="ar-platform-links">${links}</span>`:''}</span>`;
+  return emailHtml||links?`<span class="ar-contact-set">${emailHtml}${links?`<span class="ar-platform-links">${links}</span>`:''}</span>`:'<span class="ar-contact-missing">Profils publics indisponibles</span>';
 }
 function arConfidenceLabel(value){
   if(value==null) return 'preuve en construction';
@@ -2700,15 +2733,18 @@ function arCopyText(value){
 function openArOutreach(spotifyId){
   const opportunity=arOpportunityRows().find(item=>item.spotifyId===spotifyId);const entry=arListEntry(spotifyId);if(!opportunity||!entry)return;
   if(!arContactEligible(opportunity)){alert('Ce titre ne peut pas être contacté : les garde-fous instrumental, IA, droits ou identité ne sont pas tous validés.');return;}
-  const draft=arOutreachDraft(opportunity);const email=arPublicEmail(opportunity);const subject=entry.subject||draft.subject;const body=entry.body||draft.body;
+  const drafts=arOutreachDrafts(opportunity);const email=arPublicEmail(opportunity);let selectedIndex=Math.max(0,Math.min(drafts.length-1,Number(entry.draftVariant)||0));
+  const initial=drafts[selectedIndex];const subject=entry.subject||initial.subject;const body=entry.body||initial.body;
   const box=document.getElementById('ar-body');box.className='tmbox ambox ar-composer';
   box.innerHTML=`<div class="thd"><div class="av-sm">✉️</div><div style="min-width:0;flex:1"><h3>Préparer le contact</h3><div class="tar">${esc(opportunity.title)} · ${esc(opportunity.credit)}</div></div><button class="tclose" onclick="closeArModal()">✕</button></div>
     <div class="ar-outreach-note">Brouillon local : aucun e-mail n’est envoyé ni suivi depuis le radar. L’ouverture se fait dans votre messagerie, après validation humaine.</div>
-    <label class="ar-form-label">Destinataire public<input id="ar-outreach-email" value="${esc(email)}" placeholder="E-mail public à enrichir" ${email?'readonly':''}></label>
+    <div class="ar-draft-choices">${drafts.map((draft,index)=>`<button class="chip ${index===selectedIndex?'on':''}" type="button" data-ar-draft="${index}">${esc(draft.label)}</button>`).join('')}</div>
+    ${email?`<label class="ar-form-label">Destinataire public<input id="ar-outreach-email" value="${esc(email)}" readonly></label>`:''}
     <label class="ar-form-label">Objet<input id="ar-outreach-subject" value="${esc(subject)}"></label>
     <label class="ar-form-label">Message<textarea id="ar-outreach-body">${esc(body)}</textarea></label>
-    <div class="ar-actions"><button class="chip" id="ar-copy-draft">Copier le message</button>${email?`<button class="btn-back" id="ar-open-mail">Ouvrir dans ma messagerie</button><button class="chip" id="ar-mark-contacted">Marquer comme contacté</button>`:`<span class="analytics-note">E-mail public absent : ajoutez-le seulement après vérification manuelle.</span>`}</div>`;
-  const save=()=>arUpdateList(spotifyId,{subject:document.getElementById('ar-outreach-subject').value,body:document.getElementById('ar-outreach-body').value,status:'draft_ready'});
+    <div class="ar-actions"><button class="chip" id="ar-copy-draft">Copier le message</button>${email?`<button class="btn-back" id="ar-open-mail">Ouvrir dans ma messagerie</button><button class="chip" id="ar-mark-contacted">Marquer comme contacté</button>`:''}</div>`;
+  const save=()=>arUpdateList(spotifyId,{subject:document.getElementById('ar-outreach-subject').value,body:document.getElementById('ar-outreach-body').value,draftVariant:selectedIndex,status:'draft_ready'});
+  box.querySelectorAll('[data-ar-draft]').forEach(button=>button.addEventListener('click',()=>{selectedIndex=Number(button.dataset.arDraft);const draft=drafts[selectedIndex];document.getElementById('ar-outreach-subject').value=draft.subject;document.getElementById('ar-outreach-body').value=draft.body;box.querySelectorAll('[data-ar-draft]').forEach(item=>item.classList.toggle('on',item===button));save();}));
   document.getElementById('ar-copy-draft').addEventListener('click',()=>{save();arCopyText(`Subject: ${document.getElementById('ar-outreach-subject').value}\n\n${document.getElementById('ar-outreach-body').value}`);});
   const openMail=document.getElementById('ar-open-mail');if(openMail)openMail.addEventListener('click',()=>{save();const currentEmail=document.getElementById('ar-outreach-email').value.trim();window.location.href=`mailto:${encodeURIComponent(currentEmail)}?subject=${encodeURIComponent(document.getElementById('ar-outreach-subject').value)}&body=${encodeURIComponent(document.getElementById('ar-outreach-body').value)}`;});
   const mark=document.getElementById('ar-mark-contacted');if(mark)mark.addEventListener('click',()=>{arUpdateList(spotifyId,{status:'contacted',contactedAt:new Date().toISOString(),nextFollowUp:arFollowUpDate()});closeArModal();renderArList();});
@@ -2717,8 +2753,7 @@ function openArOutreach(spotifyId){
 function renderArList(){
   const saved=arListGet();const rows=Object.keys(saved).map(id=>({opportunity:arOpportunityRows().find(item=>item.spotifyId===id),entry:saved[id]})).filter(item=>item.opportunity&&arContactEligible(item.opportunity));
   V.innerHTML=`<div class="page-head"><div><h2>⭐ Sélection A&R</h2></div></div>
-    <div class="ar-list-note">Sélection et suivi conservés dans ce navigateur. Les e-mails restent des brouillons : l’envoi et toute mesure d’ouverture passent par votre messagerie ou CRM, jamais automatiquement ici.</div>
-    ${rows.length?`<div class="ar-follow-list">${rows.map(({opportunity,entry})=>{const email=arPublicEmail(opportunity),coverUrl=arTrackCoverUrl(opportunity);return `<article class="ar-follow-card"><div class="ar-track-cover ${coverUrl?'has':''}"><span>♫</span>${coverUrl?`<img src="${esc(coverUrl)}" alt="" loading="lazy">`:''}</div><div class="ar-follow-main"><button class="ar-follow-title" onclick="openArOpportunity('${esc(opportunity.spotifyId)}')">${esc(opportunity.title)}</button><div>${esc(opportunity.credit)} · ${esc(arGenreLabel(opportunity.genre))}</div><div class="ar-follow-contact">${email?`✉️ ${esc(email)}`:'✉️ E-mail public à enrichir'} ${arContactHtml(opportunity,true)}</div></div><label class="ar-follow-field">Statut<select onchange="arUpdateList('${esc(opportunity.spotifyId)}',{status:this.value});renderArList()">${Object.entries(AR_STATUSES).map(([key,label])=>`<option value="${key}" ${entry.status===key?'selected':''}>${label}</option>`).join('')}</select></label><label class="ar-follow-field">Relance<input type="date" value="${esc(entry.nextFollowUp||'')}" onchange="arUpdateList('${esc(opportunity.spotifyId)}',{nextFollowUp:this.value})"></label><div class="ar-follow-actions"><button class="chip" onclick="openArOutreach('${esc(opportunity.spotifyId)}')">Préparer e-mail</button>${email?`<button class="chip" onclick="arMarkContacted('${esc(opportunity.spotifyId)}')">Contacté</button>`:''}<button class="ar-remove" onclick="arRemoveFromList('${esc(opportunity.spotifyId)}',event)">Retirer de la sélection</button></div></article>`;}).join('')}</div>`:`<div class="ar-empty-state">Aucune track sélectionnée. Dans les opportunités, coche les tracks puis ajoute-les à ta sélection A&R.</div>`}`;
+    ${rows.length?`<div class="ar-follow-list">${rows.map(({opportunity,entry})=>{const email=arPublicEmail(opportunity),coverUrl=arTrackCoverUrl(opportunity);return `<article class="ar-follow-card"><div class="ar-track-cover ${coverUrl?'has':''}"><span>♫</span>${coverUrl?`<img src="${esc(coverUrl)}" alt="" loading="lazy">`:''}</div><div class="ar-follow-main"><button class="ar-follow-title" onclick="openArOpportunity('${esc(opportunity.spotifyId)}')">${esc(opportunity.title)}</button>${arSelectionArtistInfoHtml(opportunity)}</div><label class="ar-follow-field">Statut<select onchange="arUpdateList('${esc(opportunity.spotifyId)}',{status:this.value});renderArList()">${Object.entries(AR_STATUSES).map(([key,label])=>`<option value="${key}" ${entry.status===key?'selected':''}>${label}</option>`).join('')}</select></label><label class="ar-follow-field">Relance<input type="date" value="${esc(entry.nextFollowUp||'')}" onchange="arUpdateList('${esc(opportunity.spotifyId)}',{nextFollowUp:this.value})"></label><div class="ar-follow-actions"><button class="chip" onclick="openArOutreach('${esc(opportunity.spotifyId)}')">Préparer un message</button>${email?`<button class="chip" onclick="arMarkContacted('${esc(opportunity.spotifyId)}')">Contacté</button>`:''}<button class="ar-remove" onclick="arRemoveFromList('${esc(opportunity.spotifyId)}',event)">Retirer de la sélection</button></div></article>`;}).join('')}</div>`:`<div class="ar-empty-state">Aucune track sélectionnée. Dans les opportunités, coche les tracks puis ajoute-les à ta sélection A&R.</div>`}`;
   hydrateArTrackCovers();
 }
 

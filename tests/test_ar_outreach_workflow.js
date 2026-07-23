@@ -30,6 +30,10 @@ assert.match(spotify, /filter\(item=>item\.opportunity&&arContactEligible\(item\
 assert.match(spotify, /mailto:\$\{encodeURIComponent\(currentEmail\)\}/, 'The mail client handoff must remain user initiated');
 assert.match(spotify, /aucun e-mail n’est envoyé/i, 'The UI must not imply automatic sending');
 assert.match(spotify, /cdn\.simpleicons\.org/, 'Detail contacts must use platform logos rather than emoji');
+assert.match(spotify, /function arPromptArtistCompanions\(spotifyId\)/, 'Adding a track must offer other eligible tracks from the same structured artist');
+assert.match(spotify, /function arOutreachDrafts\(opportunity\)/, 'Message preparation exposes multiple draft proposals');
+assert.match(spotify, /Préparer un message/, 'Selection cards expose a message-preparation action');
+assert.doesNotMatch(spotify, /E-mail public à enrichir|E-mail à enrichir/, 'No email-enrichment placeholder is shown to the user');
 const cardStart = spotify.indexOf('function arOpportunityCard(');
 const cardEnd = spotify.indexOf('\nfunction arScoreLine', cardStart);
 assert.doesNotMatch(spotify.slice(cardStart, cardEnd), /arContactHtml\(opportunity,true\)/, 'Card previews must not render contact platforms');
