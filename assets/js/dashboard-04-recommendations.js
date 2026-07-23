@@ -305,11 +305,11 @@ function openRoad(i){
         (reco?'<div class="dw-stat"><b>'+(reco.scoreAdj!=null?Math.round(reco.scoreAdj):Math.round(reco.score||0))+'</b><span>reco score</span></div>':'')+
         (reco&&reco.pot?'<div class="dw-stat"><b>'+esc(reco.pot[0])+'</b><span>potential</span></div>':'')+
       '</div>'+
-      '<button class="rm-del-btn" onclick="deleteRoadmapEntry('+i+',event)">🗑️ Remove from schedule</button>'+
       (reco
         ?recoDetailBody(reco,-1)
         :recoRow('Concept',r.concept)+recoRow('Thumbnail scene',r.scene)+recoRow('Music style',r.style)+
          recoRow('Niche',r.niche)+recoRow('Cadence',r.cadence)+recoRow('Seasonal note',r.note))+
+      '<div class="rm-detail-actions"><button class="rm-del-btn" onclick="deleteRoadmapEntry('+i+',event)">🗑️ Remove from schedule</button></div>'+
     '</div>';
   document.getElementById('drawer').classList.add('show');
   document.getElementById('backdrop').classList.add('show');
