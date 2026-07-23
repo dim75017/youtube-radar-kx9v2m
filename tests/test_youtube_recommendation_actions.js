@@ -57,6 +57,8 @@ assert.ok(detail.indexOf('rbtn-ko') < detail.indexOf('rbtn-ok'),
 const css = fs.readFileSync('assets/css/dashboard.css', 'utf8');
 assert.match(css, /\.rbtn-ok\{background:rgba\(74,222,128,\.1\);color:var\(--green\);border:1\.5px solid rgba\(74,222,128,\.5\)\}/,
   'validation uses the same transparent treatment as refusal');
+assert.match(css, /\.rtile:hover\{[^}]*border-color:color-mix\(in srgb,var\(--gc\) 58%,var\(--border\)\)/,
+  'recommendation hover follows the card genre accent instead of a fixed red border');
 assert.match(css, /\.sched-cell\{appearance:none;border:1px solid transparent;background:rgba\(150,163,214,\.06\);width:34px;height:34px/,
   'the date picker renders large circular day controls');
 assert.match(css, /\.sched-cell\.has-event\{background:var\(--sched-event-color/,
