@@ -1167,6 +1167,12 @@ function spotifyTrackEmbedHtml(id,title,extraClass=''){
   if(!spotifyId) return '';
   return `<div class="ar-detail-player ${esc(extraClass)}"><iframe title="Spotify player · ${esc(title||'Track')}" src="${spotifyEmbedUrl('track',spotifyId)}" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>`;
 }
+function arOpportunityCoverPlayerHtml(opportunity){
+  const spotifyId=spotifyTrackId(opportunity&&opportunity.spotifyId);
+  if(!spotifyId) return '';
+  const imageUrl=arTrackCoverUrl(opportunity);
+  return `<a class="ar-detail-cover-player" href="${spotifyTrackUrl(spotifyId)}" target="_blank" rel="noopener" aria-label="Écouter ${esc(opportunity.title||'la track')} sur Spotify"><span class="ar-detail-cover-art">${imageUrl?`<img src="${esc(imageUrl)}" alt="" loading="lazy" onerror="this.remove()">`:''}<span class="ar-detail-cover-fallback">♫</span></span><span class="ar-detail-cover-play" aria-hidden="true">▶</span></a>`;
+}
 function trackUrl(id,row=null){
   const raw=String(id||'').trim();
   const spotifyId=spotifyTrackId(raw);
@@ -2593,7 +2599,7 @@ function arPlaylistPreviewHtml(opportunity){
 function arEditorialCardHtml(opportunity){
   const playlists=arEditorialPlaylists(opportunity);
   const count=Number(opportunity.playlistCount||playlists.length||0);
-  if(!count)return '<div class="ar-editorial-card muted"><span class="ar-editorial-label">Éditoriales</span><strong>—</strong></div>';
+  if(!count)return '<div class="ar-editorial-card muted" aria-label="Aucune playlist éditoriale">—</div>';
   const covers=playlists.map((playlist,index)=>{
     const playlistId=String(playlist.spotifyId||'').trim();
     const imageUrl=String(playlist.imageUrl||playlist.image_url||'').trim();
@@ -2605,7 +2611,7 @@ function arEditorialCardHtml(opportunity){
       ?`<button type="button" class="ar-playlist-cover ar-editorial-cover-link" ${data} onclick="event.stopPropagation();arOpenEditorialPopover(this)" aria-label="Voir le résumé de ${esc(label)}">${visual}</button>`
       :`<span class="ar-playlist-cover" title="${esc(label)}">${visual}</span>`;
   }).join('');
-  return `<div class="ar-editorial-card" title="${esc(arEditorialSummary(opportunity,4))}"><span class="ar-editorial-label">Éditoriales</span><span class="ar-editorial-cover-stack">${covers}</span></div>`;
+  return `<div class="ar-editorial-card" title="${esc(arEditorialSummary(opportunity,4))}"><span class="ar-editorial-cover-stack">${covers}</span></div>`;
 }
 const AR_PLAYLIST_COVER_CACHE=new Map();
 const AR_TRACK_COVER_CACHE=new Map();
@@ -2713,6 +2719,8 @@ function arOpportunityFiltered(all){
     if(S.radarSort==='genre') return arGenreLabel(a.genre).localeCompare(arGenreLabel(b.genre),'fr',{sensitivity:'base'})||b.score-a.score;
     if(S.radarSort==='streams3') return (arOpportunityMetric(b,3)??-Infinity)-(arOpportunityMetric(a,3)??-Infinity)||b.score-a.score;
     if(S.radarSort==='streams6') return (arOpportunityMetric(b,6)??-Infinity)-(arOpportunityMetric(a,6)??-Infinity)||b.score-a.score;
+    if(S.radarSort==='streams30') return (arOpportunityMetric(b,30)??-Infinity)-(arOpportunityMetric(a,30)??-Infinity)||b.score-a.score;
+    if(S.radarSort==='streams7') return (arOpportunityMetric(b,7)??-Infinity)-(arOpportunityMetric(a,7)??-Infinity)||b.score-a.score;
     if(S.radarSort==='momentum') return (arOpportunityMetric(b,1)||-Infinity)-(arOpportunityMetric(a,1)||-Infinity)||b.score-a.score;
     if(S.radarSort==='acceleration') return (b.acceleration7??-Infinity)-(a.acceleration7??-Infinity)||b.score-a.score;
     if(S.radarSort==='streams') return (arOpportunityTotal(b)||-Infinity)-(arOpportunityTotal(a)||-Infinity)||b.score-a.score;
@@ -2737,8 +2745,9 @@ function arOpportunityCard(opportunity,index){
     <div class="ar-score-box" title="Score A&R"><div class="ar-score-value">${Math.round(opportunity.score)}</div></div>
     <div class="ar-track-cover ${coverUrl?'has':''}"><span data-ar-track-cover-id="${coverUrl?'':esc(opportunity.spotifyId)}">♫</span>${coverUrl?`<img src="${esc(coverUrl)}" alt="" loading="lazy" onerror="this.remove()">`:''}</div>
     <div class="ar-opp-main"><div class="ar-opp-titleline"><div class="ar-opp-title">${esc(opportunity.title)}</div></div><div class="ar-opp-artist">${esc(opportunity.credit)}</div><div class="ar-opp-tags"><span class="ar-mini-tag good">${esc(arRightsShortLabel(opportunity.rights))}</span></div></div>
+    <div class="ar-release-card">${esc(release)}</div>
     <div class="ar-genre-card" style="--genre-color:${genreVisual.color}"><span>${genreVisual.emoji}</span><strong>${esc(genre)}</strong></div>
-    <div class="ar-opp-metrics"><div class="ar-opp-metric release"><div class="l">Sortie</div><div class="v">${esc(release)}</div></div><div class="ar-opp-metric total"><div class="l">Streams total</div><div class="v">${arMetricCompact(total)}</div></div><div class="ar-opp-metric"><div class="l">30 jours</div><div class="v">${arMetricCompact(d30)}</div></div><div class="ar-opp-metric"><div class="l">7 jours</div><div class="v">${arMetricCompact(d7)}</div></div><div class="ar-opp-metric current"><div class="l">24 heures</div><div class="v ${d1!=null&&d1>0?'up':''}">${arMetricCompact(d1,true)}</div></div><div class="ar-opp-metric listeners"><div class="l">Auditeurs/mois</div><div class="v">${listeners}</div></div></div>
+    <div class="ar-opp-metrics"><div class="ar-opp-metric total"><div class="v">${arMetricCompact(total)}</div></div><div class="ar-opp-metric"><div class="v">${arMetricCompact(d30)}</div></div><div class="ar-opp-metric"><div class="v">${arMetricCompact(d7)}</div></div><div class="ar-opp-metric current"><div class="v ${d1!=null&&d1>0?'up':''}">${arMetricCompact(d1,true)}</div></div><div class="ar-opp-metric listeners"><div class="v">${listeners}</div></div></div>
     ${arEditorialCardHtml(opportunity)}
   </article>`;
 }
@@ -2759,26 +2768,22 @@ function openArOpportunity(spotifyId){
   const selectable=arContactEligible(opportunity);
   box.className='tmbox ambox';
   box.innerHTML=`<div class="thd"><div class="av-sm">♫</div><div style="min-width:0;flex:1"><h3>${esc(opportunity.title)}</h3><div class="tar ar-detail-artists">${arArtistLinksHtml(opportunity)}<span class="ar-detail-artist-separator"> · </span>opportunité de track</div></div><button class="tclose" onclick="closeArModal()">✕</button></div>
-    ${spotifyTrackEmbedHtml(spotifyId,opportunity.title,'ar-opportunity-player')}
+    ${arOpportunityCoverPlayerHtml(opportunity)}
     <div class="perf-grid">${totalMetricCardHtml('Streams',total,true)}${perfCardHtml(streamMetricLabel(30),{current:d30,currentReady:d30!=null,comparisonReady:false,total:1},true)}${perfCardHtml(streamMetricLabel(7),{current:d7,currentReady:d7!=null,comparisonReady:false,total:1},true)}${perfCardHtml(streamMetricLabel(1),{current:d1,currentReady:d1!=null,comparisonReady:false,total:1},true)}</div>
-    <div class="analytics-section"><h4>Pourquoi cette musique est dans la liste</h4><div class="ar-detail-reasons">${reasonItems.slice(0,4).map(item=>`<div class="ar-detail-reason"><span class="ar-detail-reason-icon">${esc(item.icon)}</span><span>${esc(item.reason)}</span></div>`).join('')}</div></div>
+    ${arDetailEditorialPlaylistsHtml(opportunity)}
+    <div class="tgrid ar-detail-facts ar-detail-reasons">${reasonItems.slice(0,4).map(item=>`<div class="tg ar-detail-reason"><div class="l"><span class="ar-detail-reason-icon">${esc(item.icon)}</span></div><div class="v">${esc(item.reason)}</div></div>`).join('')}</div>
     <div class="tgrid ar-detail-facts"><div class="tg ar-fact-plain"><div class="l">Genre</div><div class="v">🎼 ${esc(arGenreLabel(opportunity.genre))}</div></div><div class="tg ar-fact-plain"><div class="l">Type</div><div class="v ${opportunity.rights==='self_released'?'ar-self-release-type':''}">${opportunity.rights==='self_released'?'<span aria-hidden="true">↗</span> ':''}${esc(arRightsShortLabel(opportunity.rights))}</div></div><div class="tg ar-detail-listeners"><div class="l">👥 Auditeurs mensuels</div><div class="v">${opportunity.artistMonthlyListeners==null?'—':fmt(opportunity.artistMonthlyListeners)}</div></div><div class="tg"><div class="l">🗓️ Sortie</div><div class="v">${opportunity.releaseDate?fmtDate(opportunity.releaseDate.slice(0,10)):'—'}</div></div></div>
     ${selectable?`<div class="ar-detail-actions"><button class="btn-back" onclick="${isListed?`arRemoveFromList('${esc(spotifyId)}',event);openArOpportunity('${esc(spotifyId)}')`:`arAddToList('${esc(spotifyId)}',event);openArOpportunity('${esc(spotifyId)}')`}">${isListed?'Retirer de la sélection':'⭐ Ajouter à la sélection'}</button></div>`:''}`;
   const artistLine=box.querySelector('.ar-detail-artists');
   if(artistLine) artistLine.innerHTML=arArtistLinksHtml(opportunity);
   const typeFact=[...box.querySelectorAll('.ar-detail-facts .ar-fact-plain')].find(node=>node.querySelector('.l')?.textContent.trim()==='Type');
   if(typeFact) typeFact.remove();
-  const reasonsSection=box.querySelector('.ar-detail-reasons')?.closest('.analytics-section');
-  if(reasonsSection){
-    reasonsSection.querySelector('h4').textContent='Pourquoi cette musique';
-    reasonsSection.insertAdjacentHTML('beforebegin',arDetailEditorialPlaylistsHtml(opportunity));
-  }
   document.getElementById('ar-modal').style.display='flex';
   hydrateArPlaylistCovers();
 }
-function arSortBarHtml(){
-  const choices=[['score','Note A&R'],['artist','Artiste'],['genre','Genre'],['streams','Streams total'],['streams3','3 j'],['streams6','6 j'],['momentum','24 h'],['listeners','Auditeurs'],['editorial','Éditoriales']];
-  return `<div class="ar-sortbar" role="toolbar" aria-label="Trier les opportunités A&R"><span>Trier par</span>${choices.map(([value,label])=>`<button type="button" data-ar-sort="${value}" class="${S.radarSort===value?'on':''}">${label}</button>`).join('')}</div>`;
+function arColumnBarHtml(){
+  const choices=[['score','Note'],['artist','Artiste'],['recent','Sortie'],['genre','Genre'],['streams','Streams total'],['streams30','30 jours'],['streams7','7 jours'],['momentum','24 heures'],['listeners','Auditeurs/mois'],['editorial','Éditoriales']];
+  return `<div class="ar-columnbar" role="toolbar" aria-label="Trier les opportunités A&R"><button type="button" data-ar-sort="${choices[0][0]}" class="${S.radarSort===choices[0][0]?'on':''}">${choices[0][1]}</button><span aria-hidden="true"></span>${choices.slice(1).map(([value,label])=>`<button type="button" data-ar-sort="${value}" class="${S.radarSort===value?'on':''}">${label}</button>`).join('')}</div>`;
 }
 function arGenreSelectHtml(genres){
   const visual=S.radarGenre==='all'?{emoji:'🎼',color:'#a7f3d0'}:arGenreVisual(S.radarGenre);
@@ -2793,7 +2798,7 @@ function renderRadar(){
   const filtered=arOpportunityFiltered(all), rows=filtered.slice(0,S.radarShown);
   const genres=[...new Set(all.map(item=>item.genre).filter(Boolean))].sort((a,b)=>arGenreLabel(a).localeCompare(arGenreLabel(b)));
   const selectedIds=arSelectedIds();
-  V.innerHTML=`<div class="page-head ar-radar-head"><div><h2>Opportunités A&R</h2>${arSortBarHtml()}<div class="ar-filterbar">${arGenreSelectHtml(genres)}</div></div></div>
+  V.innerHTML=`<div class="page-head ar-radar-head"><div><h2>Opportunités A&R</h2><div class="ar-filterbar">${arGenreSelectHtml(genres)}</div></div></div>${arColumnBarHtml()}
     <div class="ar-opportunity-list">${rows.map(arOpportunityCard).join('')}</div>${rows.length===0?`<div class="ar-empty-state">Aucune track ne correspond à ce filtre. Les critères restent stricts et aucune donnée manquante n’est inventée.</div>`:''}${sentinel(filtered.length-rows.length)}${selectedIds.length?`<div class="ar-selection-float" role="status" aria-live="polite"><span><b>${selectedIds.length}</b> track${selectedIds.length>1?'s':''} sélectionnée${selectedIds.length>1?'s':''}</span><button id="ar-add-selected" type="button">⭐ Ajouter à la Sélection A&R</button></div>`:''}`;
   document.querySelectorAll('[data-ar-select]').forEach(input=>input.addEventListener('change',event=>arToggleSelection(input.dataset.arSelect,event.target.checked)));
   const addSelected=document.getElementById('ar-add-selected');if(addSelected)addSelected.addEventListener('click',()=>arAddManyToList(arSelectedIds()));
@@ -2810,7 +2815,9 @@ function arCopyText(value){
   else prompt('Copiez ce brouillon :',value);
 }
 function openArOutreach(spotifyId){
-  const opportunity=arOpportunityRows().find(item=>item.spotifyId===spotifyId);const entry=arListEntry(spotifyId);if(!opportunity||!entry)return;
+  const opportunity=arOpportunityRows().find(item=>item.spotifyId===spotifyId);let entry=arListEntry(spotifyId);if(!opportunity)return;
+  if(!entry){arAddManyToList([spotifyId]);entry=arListEntry(spotifyId);}
+  if(!entry)return;
   if(!arContactEligible(opportunity)){alert('Ce titre ne peut pas être contacté : les garde-fous instrumental, IA, droits ou identité ne sont pas tous validés.');return;}
   const drafts=arOutreachDrafts(opportunity);const email=arPublicEmail(opportunity);let selectedIndex=Math.max(0,Math.min(drafts.length-1,Number(entry.draftVariant)||0));
   const initial=drafts[selectedIndex];const subject=entry.subject||initial.subject;const body=entry.body||initial.body;
@@ -2828,6 +2835,7 @@ function openArOutreach(spotifyId){
   const openMail=document.getElementById('ar-open-mail');if(openMail)openMail.addEventListener('click',()=>{save();const currentEmail=document.getElementById('ar-outreach-email').value.trim();window.location.href=`mailto:${encodeURIComponent(currentEmail)}?subject=${encodeURIComponent(document.getElementById('ar-outreach-subject').value)}&body=${encodeURIComponent(document.getElementById('ar-outreach-body').value)}`;});
   const mark=document.getElementById('ar-mark-contacted');if(mark)mark.addEventListener('click',()=>{arUpdateList(spotifyId,{status:'contacted',contactedAt:new Date().toISOString(),nextFollowUp:arFollowUpDate()});closeArModal();renderArList();});
   document.getElementById('ar-modal').style.display='flex';
+  window.setTimeout(()=>document.getElementById('ar-outreach-body')?.focus(),0);
 }
 function arSelectionPrimaryArtist(opportunity){
   const artist=(Array.isArray(opportunity&&opportunity.artists)?opportunity.artists:[]).find(item=>String(item&&item.spotify_id||'').trim()&&String(item&&item.name||'').trim())||{};
@@ -2851,14 +2859,22 @@ function arSelectionTrackHtml({opportunity,entry}){
   const coverUrl=arTrackCoverUrl(opportunity),release=opportunity.releaseDate?fmtDate(opportunity.releaseDate.slice(0,10)):'—';
   return `<div class="ar-selection-track"><div class="ar-track-cover ${coverUrl?'has':''}"><span>♫</span>${coverUrl?`<img src="${esc(coverUrl)}" alt="" loading="lazy">`:''}</div><div class="ar-selection-track-main"><button class="ar-selection-track-title" onclick="openArOpportunity('${esc(opportunity.spotifyId)}')">${esc(opportunity.title)}</button><span>${esc(arGenreLabel(opportunity.genre))} · ${esc(release)}</span></div><label class="ar-selection-track-field">Statut<select onchange="arUpdateList('${esc(opportunity.spotifyId)}',{status:this.value});renderArList()">${Object.entries(AR_STATUSES).map(([key,label])=>`<option value="${key}" ${entry.status===key?'selected':''}>${label}</option>`).join('')}</select></label><label class="ar-selection-track-field">Relance<input type="date" value="${esc(entry.nextFollowUp||'')}" onchange="arUpdateList('${esc(opportunity.spotifyId)}',{nextFollowUp:this.value})"></label><button class="ar-remove" onclick="arRemoveFromList('${esc(opportunity.spotifyId)}',event)">Retirer</button></div>`;
 }
+function arOpenSelectionArtistProfile(artistSpotifyId,fallbackTrackId){
+  const track=R.find(item=>spotifyTrackId(item&&item[6])===String(fallbackTrackId||''));
+  const index=track?track[0]:AG.findIndex(item=>String(item&&item.id||'')===String(artistSpotifyId||''));
+  if(index>=0){goArtist(index);return;}
+  const opportunity=arOpportunityRows().find(item=>item.spotifyId===fallbackTrackId);
+  const name=opportunity?arSelectionPrimaryArtist(opportunity).name:'artiste';
+  window.open(artistSpotifyId?spotifyArtistUrl(artistSpotifyId):spotifySearchUrl(name),'_blank','noopener');
+}
 function arSelectionArtistCardHtml(group){
   const {artist,rows,priority}=group,contactOpportunity=priority.opportunity;
   const listeners=Math.max(...rows.map(row=>Number(row.opportunity.artistMonthlyListeners)||0));
   const genres=[...new Set(rows.map(row=>arGenreLabel(row.opportunity.genre)).filter(Boolean))].join(' · ');
-  const artistName=artist.spotifyId?`<a class="ar-detail-artist-link" href="${spotifyArtistUrl(artist.spotifyId)}" target="_blank" rel="noopener">${esc(artist.name)}</a>`:esc(artist.name);
+  const artistName=`<button type="button" class="ar-selection-artist-name" onclick="arOpenSelectionArtistProfile('${esc(artist.spotifyId)}','${esc(contactOpportunity.spotifyId)}')">${esc(artist.name)}</button>`;
   const countLabel=`${rows.length} track${rows.length>1?'s':''} retenue${rows.length>1?'s':''}`;
   const initials=artist.name.split(/\s+/).map(part=>part[0]).join('').slice(0,2).toUpperCase()||'A';
-  return `<article class="ar-artist-selection"><header class="ar-artist-selection-head"><div class="ar-selection-artist-avatar">${esc(initials)}</div><div class="ar-selection-artist-main"><h3>${artistName}</h3><div class="ar-selection-artist-meta">${esc(genres||'—')}${listeners?` · ${fmt(listeners)} auditeurs/mois`:''}</div><div class="ar-selection-artist-contact">${arContactHtml(contactOpportunity,true)}</div></div><div class="ar-selection-artist-count">${esc(countLabel)}</div><button class="ar-artist-message" onclick="openArOutreach('${esc(contactOpportunity.spotifyId)}')">✉ Préparer un message</button></header><div class="ar-selection-track-list">${rows.map(arSelectionTrackHtml).join('')}</div></article>`;
+  return `<article class="ar-artist-selection"><header class="ar-artist-selection-head"><div class="ar-selection-artist-avatar">${esc(initials)}</div><div class="ar-selection-artist-main"><h3>${artistName}</h3><div class="ar-selection-artist-meta">${esc(genres||'—')}${listeners?` · ${fmt(listeners)} auditeurs/mois`:''}</div><div class="ar-selection-artist-contact">${arContactHtml(contactOpportunity,true)}</div></div><div class="ar-selection-artist-count">${esc(countLabel)}</div><button class="ar-artist-message" onclick="openArOutreach('${esc(contactOpportunity.spotifyId)}')">✉ Préparer le message</button></header><div class="ar-selection-track-list">${rows.map(arSelectionTrackHtml).join('')}</div></article>`;
 }
 function arSelectionEconomics(group){
   const ids=new Set(group.rows.map(row=>String(row.opportunity&&row.opportunity.spotifyId||'').trim()).filter(Boolean));
