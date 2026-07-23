@@ -46,6 +46,9 @@ for (const required of [
 ]) {
   if (!renderRadar.includes(required)) throw new Error(`Expected streamlined A&R UI token is missing: ${required}`);
 }
+for (const required of ['ar-selection-float', 'id="ar-add-selected"', "arAddManyToList(arSelectedIds())"]) {
+  if (!renderRadar.includes(required)) throw new Error(`A&R bulk-selection action is missing: ${required}`);
+}
 
 const cardStart = source.indexOf('function arOpportunityCard(');
 const cardEnd = source.indexOf('\nfunction arScoreLine', cardStart);
