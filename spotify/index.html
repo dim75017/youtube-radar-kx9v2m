@@ -36,7 +36,7 @@
   ].forEach(src=>document.write('<script src="'+src+'"><\/script>'));
 })();
 </script>
-  <link rel="stylesheet" href="dashboard.css?v=20260723-artist-discography-history-v1">
+  <link rel="stylesheet" href="dashboard.css?v=20260724-update-status-v1">
 <link rel="stylesheet" href="discovery.css?v=20260722-unified-catalogue-v1">
 </head>
 <body>
@@ -62,10 +62,12 @@
     <button data-v="labels" data-fr="Labels"><span class="emo">🏷️</span>Labels<span class="count" id="c-lb"></span></button>
   </nav>
   <div class="side-foot">
-    <div class="sync-row" id="sync-row-global">
-      <div class="sync-dot" id="sync-dot-global"></div>
-      <div class="sync-txt" id="sync-txt-global">—</div>
-      <div class="sync-detail" id="sync-detail-global"></div>
+    <div class="spotify-update-status-control">
+      <button class="btn-spotify-update-status" id="btn-spotify-update-status" type="button" aria-expanded="false" aria-controls="spotify-update-status-panel" onclick="toggleSpotifyUpdateStatus(event)">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M20 7 10.8 16.2 6 11.4"/><path d="M20 12v7a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h10"/></svg>
+        <span class="lbl">Mises à jour</span>
+      </button>
+      <section class="spotify-update-status-panel" id="spotify-update-status-panel" hidden aria-live="polite"></section>
     </div>
   </div>
 </aside>
@@ -92,7 +94,7 @@
   <div class="tmbox ambox" id="ar-body"></div>
 </div>
 
-  <script src="dashboard.js?v=20260723-artist-discography-history-v1"></script>
+  <script src="dashboard.js?v=20260724-update-status-v1"></script>
 <script src="coverage.js?v=20260723-stale-copy-cleanup-v1"></script>
 </body>
 </html>

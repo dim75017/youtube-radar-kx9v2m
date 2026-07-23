@@ -4013,23 +4013,68 @@ function fmtTs(ts){
   if (LANG==='fr') return m[3]+'/'+m[2]+'/'+m[1] + (m[4] ? ' à '+m[4] : '');
   return m[3]+'/'+m[2]+'/'+m[1] + (m[4] ? ', '+m[4] : '');
 }
-function updateFooter(){
-  // volontairement compact (peu de texte) : icône + date, détail complet dans un popover custom au clic/survol
-  const globalRow = document.getElementById('sync-row-global');
-  const globalTxt = document.getElementById('sync-txt-global');
-  const globalDetail = document.getElementById('sync-detail-global');
-  const globalTimestamp=(SC&&(SC.generated_at||(SC.freshness&&SC.freshness.tracks_at)))||BROWSE.generated_at||D.ts||D.t;
-  if (!globalRow || !globalTxt || !globalDetail) return;
-  globalTxt.innerHTML = '⟳ '+esc(fmtTs(globalTimestamp));
-  globalDetail.innerHTML = `<b>Soundcharts · ${T('Snapshot global')}</b><br>${fmtFull(R.length)} tracks · ${fmtFull(withTracks.length)} ${T('artistes visibles')} · ${fmtFull(PLrows.length)} ${T('playlists')}<br>${fmtFull(SC_STAGING.tracks)} ${T('tracks Soundcharts strictes intégrées')} · ${T('Export Soundcharts le')} ${esc(fmtTs(globalTimestamp))}`;
+function spotifyUpdateTimestamp(...values){
+  return values.find(value=>value!=null&&String(value).trim()&&String(value).trim()!=='?')||null;
 }
-function toggleSyncDetail(row){
-  document.querySelectorAll('.sync-row.open').forEach(r=>{ if(r!==row) r.classList.remove('open'); });
-  row.classList.toggle('open');
+function spotifyUpdateAge(when){
+  if(!when) return null;
+  const millis=Date.parse(String(when).replace(' ','T'));
+  return Number.isFinite(millis)?Date.now()-millis:null;
 }
-const globalSyncRow=document.getElementById('sync-row-global');
-if (globalSyncRow) globalSyncRow.addEventListener('click', e=>{ e.stopPropagation(); toggleSyncDetail(e.currentTarget); });
-document.addEventListener('click', ()=>{ document.querySelectorAll('.sync-row.open').forEach(r=>r.classList.remove('open')); });
+function spotifyUpdateColor(when){
+  const age=spotifyUpdateAge(when);
+  if(age==null) return 'var(--dim)';
+  if(age<=28*3600000) return 'var(--acc2)';
+  if(age<=7*24*3600000) return 'var(--amber)';
+  return 'var(--red)';
+}
+function spotifyUpdateRows(){
+  const freshness=(SC&&SC.freshness)||{};
+  const snapshot=SC&&SC.generated_at;
+  const browse=BROWSE.generated_at;
+  const performance=PERF.generated_at;
+  const tracksAt=spotifyUpdateTimestamp(performance,freshness.tracks_at,snapshot,browse,D.ts,D.t);
+  const artistsAt=spotifyUpdateTimestamp(freshness.artists_at,performance,snapshot,browse,D.ts,D.t);
+  const playlistsAt=spotifyUpdateTimestamp(PLmeta&&PLmeta.generated_ts,PLmeta&&PLmeta.snapshot_ts,freshness.playlists_at,snapshot,browse);
+  const labelsAt=spotifyUpdateTimestamp(LBmeta&&LBmeta.generated_ts,LBmeta&&LBmeta.source_ts,freshness.labels_at,D.ts,D.t);
+  const fr=LANG==='fr';
+  const row=(when,label,detail)=>({when,label,detail});
+  return [
+    row(tracksAt,T('Pistes'),fr?`${fmtFull(R.length)} pistes · streams et catalogue`:`${fmtFull(R.length)} tracks · streams and catalogue`),
+    row(artistsAt,T('Artistes'),fr?`${fmtFull(withTracks.length)} artistes · profils et métriques`:`${fmtFull(withTracks.length)} artists · profiles and metrics`),
+    row(playlistsAt,T('Playlists'),fr?`${fmtFull(PLrows.length)} playlists · audiences et placements`:`${fmtFull(PLrows.length)} playlists · audiences and placements`),
+    row(labelsAt,T('Labels'),fr?`${fmtFull(LBrows.length)} labels · index de catalogue`:`${fmtFull(LBrows.length)} labels · catalogue index`)
+  ];
+}
+function refreshSpotifyUpdateStatus(){
+  const btn=document.getElementById('btn-spotify-update-status');
+  const panel=document.getElementById('spotify-update-status-panel');
+  if(!btn||!panel) return;
+  const fr=LANG==='fr';
+  const label=btn.querySelector('.lbl'); if(label) label.textContent=fr?'Mises à jour':'Update status';
+  btn.title=fr?'Voir le détail des mises à jour':'View update details';
+  panel.innerHTML=`<div class="spotify-update-status-head"><span>${fr?'État des mises à jour':'Update status'}</span><small>${fr?'Automatique':'Automatic'}</small></div>${spotifyUpdateRows().map(item=>{
+    const timestamp=item.when?fmtTs(item.when):(fr?'En attente de données':'Awaiting data');
+    const color=spotifyUpdateColor(item.when);
+    return `<div class="spotify-update-status-line"><i class="spotify-update-status-dot" style="background:${color};color:${color}"></i><div><b>${esc(item.label)}</b><span>${esc(timestamp)} · ${esc(item.detail)}</span></div></div>`;
+  }).join('')}`;
+}
+function toggleSpotifyUpdateStatus(event){
+  if(event) event.stopPropagation();
+  const btn=document.getElementById('btn-spotify-update-status');
+  const panel=document.getElementById('spotify-update-status-panel');
+  if(!btn||!panel) return;
+  const open=panel.hidden;
+  refreshSpotifyUpdateStatus();
+  panel.hidden=!open;
+  btn.setAttribute('aria-expanded',String(open));
+}
+function updateFooter(){ refreshSpotifyUpdateStatus(); }
+document.addEventListener('click',()=>{
+  const panel=document.getElementById('spotify-update-status-panel');
+  const btn=document.getElementById('btn-spotify-update-status');
+  if(panel){ panel.hidden=true; if(btn) btn.setAttribute('aria-expanded','false'); }
+});
 function applyLang(){
   document.querySelectorAll('[data-fr]').forEach(el=>{
     if (el.tagName==='SMALL' || el.classList.contains('nav-label')){ el.textContent = T(el.dataset.fr); return; }

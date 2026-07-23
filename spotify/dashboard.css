@@ -82,6 +82,19 @@ button,input,select{max-width:100%}
 .sync-row:hover .sync-detail, .sync-row.open .sync-detail{opacity:1;pointer-events:auto;transform:translateY(0)}
 .sync-detail::after{content:'';position:absolute;left:16px;top:100%;border:6px solid transparent;border-top-color:var(--bg2)}
 .sync-detail b{color:#fff}
+.spotify-update-status-control{position:relative}
+.btn-spotify-update-status{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:9px 10px;border:1px solid rgba(30,215,96,.42);border-radius:10px;background:rgba(30,215,96,.14);color:#86efb3;font:700 12px Inter,system-ui;cursor:pointer;transition:background .15s,border-color .15s,transform .15s}
+.btn-spotify-update-status:hover,.btn-spotify-update-status[aria-expanded="true"]{background:rgba(30,215,96,.22);border-color:rgba(134,239,179,.72);color:#d8ffe8}
+.btn-spotify-update-status:active{transform:translateY(1px)}
+.btn-spotify-update-status svg{width:15px;height:15px;flex:none}
+.spotify-update-status-panel{position:absolute;left:0;bottom:calc(100% + 10px);z-index:70;width:272px;padding:12px;background:linear-gradient(160deg,var(--panel),var(--bg2));border:1px solid var(--border2);border-radius:12px;box-shadow:0 16px 42px rgba(0,0,0,.52);color:var(--muted)}
+.spotify-update-status-panel[hidden]{display:none}
+.spotify-update-status-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:9px;color:var(--text);font-size:11px;font-weight:700}
+.spotify-update-status-head small{color:var(--acc2);font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.spotify-update-status-line{display:grid;grid-template-columns:7px minmax(0,1fr);gap:8px;align-items:start;padding:7px 0;border-top:1px solid rgba(150,214,170,.1)}
+.spotify-update-status-dot{width:7px;height:7px;margin-top:4px;border-radius:50%;box-shadow:0 0 8px currentColor}
+.spotify-update-status-line b{display:block;color:var(--text);font-size:11px;line-height:1.25}
+.spotify-update-status-line span{display:block;margin-top:2px;color:var(--dim);font-size:10px;line-height:1.45}
 
 /* ---------- Sélecteur de langue (switch à drapeaux) ---------- */
 #lang-btn{position:fixed;top:14px;right:18px;z-index:60;display:flex;align-items:center;gap:5px;padding:5px;border-radius:999px;border:1px solid var(--border);background:rgba(15,18,30,.88);backdrop-filter:blur(8px);cursor:pointer;user-select:none}

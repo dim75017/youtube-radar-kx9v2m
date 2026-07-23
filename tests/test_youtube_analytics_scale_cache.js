@@ -8,7 +8,7 @@ function requireText(text,needle,label){
   if(!text.includes(needle)) throw new Error(label+': missing '+needle);
 }
 
-requireText(index,'dashboard-02-helpers.js?v=20260723-youtube-analytics-scale-v2','cache version');
+requireText(index,'dashboard-02-helpers.js?v=20260724-channel-status-v1','cache version');
 for(const text of [helpers,legacy]){
   requireText(text,'const actualMin=Math.min.apply(null,ys),actualMax=Math.max.apply(null,ys);','observed range');
   requireText(text,'const y0=flatRange?actualMin-1:actualMin,y1=flatRange?actualMax+1:actualMax;','bounded y scale');
