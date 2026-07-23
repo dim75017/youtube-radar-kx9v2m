@@ -21,6 +21,15 @@ assert.match(source, /Validate &amp; schedule/,
   'each card exposes a one-click validation and scheduling control');
 assert.match(source, /setValid\('\+r\.n\+',\\'-\\'/,
   'each card exposes a direct refusal control');
+const card = source.slice(source.indexOf('function recoCardHTML'), source.indexOf('function recoInfoRows'));
+assert.ok(card.indexOf('rbtn-ko') < card.indexOf('rbtn-ok'),
+  'card refusal must sit left of validation');
+const detail = source.slice(source.indexOf('function recoActions'), source.indexOf('function recoCommentBox'));
+assert.ok(detail.indexOf('rbtn-ko') < detail.indexOf('rbtn-ok'),
+  'detail refusal must sit left of validation');
+const css = fs.readFileSync('assets/css/dashboard.css', 'utf8');
+assert.match(css, /\.rbtn-ok\{background:rgba\(74,222,128,\.1\);color:var\(--green\);border:1\.5px solid rgba\(74,222,128,\.5\)\}/,
+  'validation uses the same transparent treatment as refusal');
 assert.match(source, /if\(todayIds\.length\)/,
   'the day queue remains stable after decisions');
 

@@ -262,8 +262,8 @@ function recoCardHTML(r,i){
     (r.scene?'<div class="rt-scene">Scene: '+esc(String(r.scene).slice(0,100))+(String(r.scene).length>100?'...':'')+'</div>':'')+
     (note?'<div class="rt-note">Note: '+esc(note.slice(0,60))+(note.length>60?'...':'')+'</div>':'')+
     '<div class="reco-quick-actions" onclick="event.stopPropagation()">'+
-      '<button class="rbtn rbtn-ok" onclick="validateRecommendationNow('+r.n+',this,event)">✓ Validate &amp; schedule</button>'+
       '<button class="rbtn rbtn-ko" onclick="setValid('+r.n+',\'-\',this,event)">✕ Refuse</button>'+
+      '<button class="rbtn rbtn-ok" onclick="validateRecommendationNow('+r.n+',this,event)">✓ Validate &amp; schedule</button>'+
     '</div>'+
   '</div>';
 }
@@ -294,7 +294,7 @@ function recoActions(r){
     ?'<span class="rst-done rst-ok" style="flex:1;text-align:center">✅ Validated</span><button class="rst-x" title="Reset to pending" onclick="setValid('+r.n+',\'\',this,event)">✕</button>'
     :isRef
     ?'<span class="rst-done rst-ko" style="flex:1;text-align:center">❌ Refused</span><button class="rst-x" title="Reset to pending" onclick="setValid('+r.n+',\'\',this,event)">✕</button>'
-    :'<button class="rbtn rbtn-ok" style="flex:1" onclick="setValid('+r.n+',\'X\',this,event)">✓ Validate</button><button class="rbtn rbtn-ko" style="flex:1" onclick="setValid('+r.n+',\'-\',this,event)">✕ Refuse</button>';
+    :'<button class="rbtn rbtn-ko" style="flex:1" onclick="setValid('+r.n+',\'-\',this,event)">✕ Refuse</button><button class="rbtn rbtn-ok" style="flex:1" onclick="setValid('+r.n+',\'X\',this,event)">✓ Validate</button>';
   return '<div class="rt-actions" style="margin:16px 0 12px;gap:12px" onclick="event.stopPropagation()">'+actions+'</div>';
 }
 function recoCommentBox(r){
