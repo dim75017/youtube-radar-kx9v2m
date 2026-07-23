@@ -1821,6 +1821,18 @@ function arArtistCompanionRows(spotifyId){
   if(!source||!artistIds.size)return [];
   return arOpportunityRows().filter(item=>item.spotifyId!==spotifyId&&!arListHas(item.spotifyId)&&arContactEligible(item)&&[...arStructuredArtistIds(item)].some(id=>artistIds.has(id)));
 }
+function arCompanionSignalsHtml(opportunity){
+  const metric=(label,value)=>`<span><b>${esc(arMetricCompact(value,true))}</b><small>${label}</small></span>`;
+  const playlists=arEditorialPlaylists(opportunity);
+  const covers=playlists.map((playlist,index)=>{
+    const playlistId=String(playlist.spotifyId||'').trim();
+    const imageUrl=String(playlist.imageUrl||playlist.image_url||'').trim();
+    const label=arEditorialPlaylistTooltip(playlist,opportunity);
+    const visual=`${imageUrl?`<img src="${esc(imageUrl)}" alt="" loading="lazy" onerror="this.remove()">`:''}<span class="ar-playlist-fallback" data-ar-playlist-id="${esc(playlistId)}" data-ar-playlist-slot="companion-${esc(opportunity.spotifyId)}-${index}">♫</span>`;
+    return playlistId?`<a class="ar-companion-playlist-cover" href="https://open.spotify.com/playlist/${esc(playlistId)}" target="_blank" rel="noopener" title="${esc(label)}" onclick="event.stopPropagation()">${visual}</a>`:'';
+  }).join('');
+  return `<div class="ar-companion-signals"><div class="ar-companion-metrics">${metric('24 h',arOpportunityMetric(opportunity,1))}${metric('7 j',arOpportunityMetric(opportunity,7))}${metric('30 j',arOpportunityMetric(opportunity,30))}</div><div class="ar-companion-editorials">${covers||'<small>— aucune éditoriale</small>'}</div></div>`;
+}
 function arPromptArtistCompanions(spotifyId){
   const source=arOpportunityRows().find(item=>item.spotifyId===spotifyId);
   const companions=arArtistCompanionRows(spotifyId);
@@ -1828,8 +1840,10 @@ function arPromptArtistCompanions(spotifyId){
   const artist=(Array.isArray(source.artists)?source.artists.map(item=>item&&item.name).filter(Boolean)[0]:null)||source.credit||'cet artiste';
   const box=document.getElementById('ar-body');box.className='tmbox ambox';
   box.innerHTML=`<div class="thd"><div class="av-sm">⭐</div><div style="min-width:0;flex:1"><h3>Autres tracks de ${esc(artist)}</h3><div class="tar">${companions.length} autre${companions.length>1?'s':''} opportunité${companions.length>1?'s':''} éligible${companions.length>1?'s':''}</div></div><button class="tclose" onclick="closeArModal()">✕</button></div><div class="ar-companion-list">${companions.map(item=>`<label class="ar-companion-item"><input type="checkbox" value="${esc(item.spotifyId)}" checked><span><strong>${esc(item.title)}</strong><small>${esc(arGenreLabel(item.genre))} · ${item.releaseDate?fmtDate(item.releaseDate.slice(0,10)):'—'}</small></span></label>`).join('')}</div><div class="ar-actions"><button class="btn-back" id="ar-add-companions">Ajouter les tracks sélectionnées</button><button class="chip" onclick="closeArModal();renderRadar()">Pas maintenant</button></div>`;
+  box.querySelectorAll('.ar-companion-item').forEach((node,index)=>node.querySelector(':scope > span')?.insertAdjacentHTML('beforeend',arCompanionSignalsHtml(companions[index])));
   document.getElementById('ar-add-companions').addEventListener('click',()=>{const ids=[...box.querySelectorAll('input:checked')].map(input=>input.value);arAddManyToList(ids);closeArModal();});
   document.getElementById('ar-modal').style.display='flex';
+  hydrateArPlaylistCovers();
   return true;
 }
 let AR_CONTEXT_MENU=null;

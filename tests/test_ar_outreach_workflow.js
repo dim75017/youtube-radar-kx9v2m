@@ -24,6 +24,10 @@ assert.match(spotify, /ar-editorial-popover-title/, 'Editorial popovers must sho
 const editorialCard = spotify.slice(spotify.indexOf('function arEditorialCardHtml'), spotify.indexOf('const AR_PLAYLIST_COVER_CACHE'));
 assert.doesNotMatch(editorialCard, /ar-editorial-names/, 'Editorial playlist names stay out of the compact card');
 assert.doesNotMatch(spotify, /ar-list-toggle/, 'Selection now uses checkboxes and bulk actions, not a redundant card button');
+assert.match(spotify, /function arCompanionSignalsHtml\(/, 'Artist companion choices must expose stream metrics and editorial placements');
+assert.match(spotify, /arOpportunityMetric\(opportunity,1\)/, 'Artist companion choices must expose 24-hour streams');
+assert.match(spotify, /arOpportunityMetric\(opportunity,7\)/, 'Artist companion choices must expose 7-day streams');
+assert.match(spotify, /arOpportunityMetric\(opportunity,30\)/, 'Artist companion choices must expose 30-day streams');
 assert.match(spotify, /arContactEligible\(opportunity\)/, 'Outreach must retain strict contact eligibility');
 assert.match(spotify, /function arSelectionEligible\(spotifyId\)/, 'Selection must reuse the strict A&R eligibility gate');
 assert.match(spotify, /arOpportunityRows\(\)\.some\(item=>item\.spotifyId===id\)&&arSelectionEligible\(id\)/, 'Bulk selection must reject non-verified tracks');
