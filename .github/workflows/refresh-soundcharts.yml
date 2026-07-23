@@ -388,13 +388,17 @@ jobs:
           set -euo pipefail
           deployments_json="$RUNNER_TEMP/soundcharts-pages-deployments.json"
           statuses_json="$RUNNER_TEMP/soundcharts-pages-statuses.json"
-          runs_json="$RUNNER_TEMP/soundcharts-pages-runs.json"
-          deployment_state="pending"
-          actions_state="pending"
+            deployment_state="pending"
+            local_sha256="$(sha256sum "$SNAPSHOT_NAME" | cut -d' ' -f1)"
+            public_copy="$RUNNER_TEMP/$SNAPSHOT_NAME.public"
+            public_verified="false"
 
           # Status polling is bounded and read-only. It never retries a
-          # Soundcharts request or any collection/purchase operation.
-          for poll in $(seq 1 160); do
+            # Soundcharts request or any collection/purchase operation. A
+            # GitHub Pages deployment may be superseded by a later, unrelated
+            # main commit, so the public snapshot hash is the authoritative
+            # proof in that case.
+            for poll in $(seq 1 160); do
             gh api -X GET "repos/$GITHUB_REPOSITORY/deployments" \
               -f sha="$STAGED_SHA" \
               -f environment="github-pages" \
@@ -407,46 +411,51 @@ jobs:
               deployment_state="$(python -c 'import json,sys; rows=json.load(open(sys.argv[1], encoding="utf-8")); print(rows[0].get("state", "pending") if rows else "pending")' "$statuses_json")"
             fi
 
-            gh api -X GET "repos/$GITHUB_REPOSITORY/actions/runs" \
-              -f head_sha="$STAGED_SHA" \
-              -f per_page=100 > "$runs_json"
-            actions_state="$(python -c 'import json,sys; rows=json.load(open(sys.argv[1], encoding="utf-8")).get("workflow_runs", []); current=str(sys.argv[2]); rows=[row for row in rows if str(row.get("id") or "") != current]; bad={"failure","cancelled","timed_out","action_required","startup_failure","stale"}; good={"success","skipped","neutral"}; conclusions={str(row.get("conclusion") or "") for row in rows}; print("failure" if conclusions & bad else "success" if not rows or all(row.get("status")=="completed" and str(row.get("conclusion") or "") in good for row in rows) else "pending")' "$runs_json" "$CURRENT_RUN_ID")"
+              if curl --fail --silent --show-error --location --retry 0 --max-time 30 \
+                --header 'Cache-Control: no-cache' \
+                "$PUBLIC_BASE_URL/$SNAPSHOT_NAME?commit=$STAGED_SHA" \
+                --output "$public_copy"; then
+                public_sha256="$(sha256sum "$public_copy" | cut -d' ' -f1)"
+                if [[ "$public_sha256" == "$local_sha256" ]]; then
+                  public_verified="true"
+                  break
+                fi
+              fi
 
-            if [[ "$deployment_state" == "failure" || "$deployment_state" == "error" || "$deployment_state" == "inactive" || "$actions_state" == "failure" ]]; then
-              echo "Pages/Actions failed for staged SHA $STAGED_SHA (deployment=$deployment_state, actions=$actions_state)" >&2
-              exit 1
-            fi
-            if [[ "$deployment_state" == "success" && "$actions_state" == "success" ]]; then
-              break
-            fi
-            if [[ "$poll" == "160" ]]; then
-              echo "Timed out waiting for Pages/Actions on staged SHA $STAGED_SHA (deployment=$deployment_state, actions=$actions_state)" >&2
-              exit 1
+              if [[ "$deployment_state" == "failure" || "$deployment_state" == "error" ]]; then
+                echo "Pages failed for staged SHA $STAGED_SHA (deployment=$deployment_state)" >&2
+                exit 1
+              fi
+              if [[ "$deployment_state" == "success" ]]; then
+                break
+              fi
+              if [[ "$poll" == "160" ]]; then
+                echo "Timed out waiting for Pages on staged SHA $STAGED_SHA (deployment=$deployment_state)" >&2
+                exit 1
             fi
             sleep 15
           done
 
-          local_sha256="$(sha256sum "$SNAPSHOT_NAME" | cut -d' ' -f1)"
-          public_copy="$RUNNER_TEMP/$SNAPSHOT_NAME.public"
-          public_verified="false"
-          for poll in $(seq 1 12); do
-            if curl --fail --silent --show-error --location --retry 0 --max-time 30 \
-              --header 'Cache-Control: no-cache' \
-              "$PUBLIC_BASE_URL/$SNAPSHOT_NAME?commit=$STAGED_SHA" \
-              --output "$public_copy"; then
-              public_sha256="$(sha256sum "$public_copy" | cut -d' ' -f1)"
-              if [[ "$public_sha256" == "$local_sha256" ]]; then
-                public_verified="true"
-                break
-              fi
+            if [[ "$public_verified" != "true" ]]; then
+              for poll in $(seq 1 12); do
+                if curl --fail --silent --show-error --location --retry 0 --max-time 30 \
+                  --header 'Cache-Control: no-cache' \
+                  "$PUBLIC_BASE_URL/$SNAPSHOT_NAME?commit=$STAGED_SHA" \
+                  --output "$public_copy"; then
+                  public_sha256="$(sha256sum "$public_copy" | cut -d' ' -f1)"
+                  if [[ "$public_sha256" == "$local_sha256" ]]; then
+                    public_verified="true"
+                    break
+                  fi
+                fi
+                if [[ "$poll" != "12" ]]; then sleep 15; fi
+              done
             fi
-            if [[ "$poll" != "12" ]]; then sleep 15; fi
-          done
           if [[ "$public_verified" != "true" ]]; then
             echo "Public staged snapshot is missing or differs from the validated blob; index remains unchanged" >&2
             exit 1
           fi
-          echo "Pages deployment, Actions and public snapshot bytes verified for $STAGED_SHA"
+          echo "Pages deployment and public snapshot bytes verified for $STAGED_SHA"
 
       - name: Activate snapshot only after remote validation
         if: steps.plan.outputs.publish == 'true'
@@ -457,8 +466,11 @@ jobs:
         shell: bash
         run: |
           git fetch origin main
-          test "$(git rev-parse HEAD)" = "$STAGED_SHA"
-          test "$(git rev-parse origin/main)" = "$STAGED_SHA"
+          git rebase origin/main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+          local_blob="$(git hash-object "$SNAPSHOT_NAME")"
+          staged_blob="$(git rev-parse "$STAGED_SHA:$SNAPSHOT_NAME")"
+          test "$local_blob" = "$staged_blob"
           python prepare_soundcharts_snapshot.py activate \
             --index spotify/index.html \
             --expected-old "$OLD_SNAPSHOT" \

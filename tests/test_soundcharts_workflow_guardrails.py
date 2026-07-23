@@ -18,11 +18,16 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("sleep 15", self.workflow)
         self.assertIn("for poll in $(seq 1 12); do", self.workflow)
 
-    def test_missing_secondary_actions_run_is_not_a_blocker(self):
-        self.assertIn("CURRENT_RUN_ID: ${{ github.run_id }}", self.workflow)
-        self.assertIn('rows=[row for row in rows if str(row.get("id") or "") != current]', self.workflow)
-        self.assertIn('"success" if not rows or all(', self.workflow)
-        self.assertIn('"$runs_json" "$CURRENT_RUN_ID"', self.workflow)
+    def test_superseded_pages_deployment_relies_on_public_bytes(self):
+        self.assertIn('public_verified="false"', self.workflow)
+        self.assertIn('if [[ "$public_sha256" == "$local_sha256" ]]', self.workflow)
+        self.assertNotIn('"$deployment_state" == "inactive"', self.workflow)
+        self.assertNotIn('actions_state=', self.workflow)
+
+    def test_activation_rebases_a_benign_later_main_commit(self):
+        self.assertIn("git rebase origin/main", self.workflow)
+        self.assertIn('staged_blob="$(git rev-parse "$STAGED_SHA:$SNAPSHOT_NAME")"', self.workflow)
+        self.assertIn('test "$local_blob" = "$staged_blob"', self.workflow)
 
     def test_live_bytes_are_still_required_before_activation(self):
         wait = self.workflow.index("Wait for staged snapshot to be live and green")
