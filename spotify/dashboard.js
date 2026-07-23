@@ -220,7 +220,17 @@ const LEGACY_R = (D.rows || []).filter(row=>{
   return artist && Number(artist[4]||0)!==1
     && !isGeneralArtistQuarantined(artist[0]);
 });
-const R = LEGACY_R.map(row=>Array.isArray(row)?row.slice():row);
+/* The raw historical collection stays intact above.  During the strict
+   rebaseline only legacy rows backed by a current Soundcharts evidence pair
+   are rendered in the active public catalogue. */
+const ACTIVE_LEGACY_SPOTIFY_IDS = new Set(
+  Array.isArray(BROWSE.active_legacy_spotify_ids)
+    ? BROWSE.active_legacy_spotify_ids.map(id=>String(id||'').trim()).filter(Boolean)
+    : []
+);
+const R = LEGACY_R
+  .filter(row=>ACTIVE_LEGACY_SPOTIFY_IDS.has(String(row&&row[6]||'').trim()))
+  .map(row=>Array.isArray(row)?row.slice():row);
 /* Raccord progressif aux historiques journaliers validés.
    Le dashboard ne lit jamais SQLite et ne promeut aucune table staging. Un export approuvé
    pourra définir window.SPOTIFY_PERFORMANCE avant ce script avec ce contrat :
@@ -828,8 +838,8 @@ for (const [pid,entry] of Object.entries(PERF_PLAYLISTS)){
 
 /* ---------- module Labels (récap par label, dérivé des tracks "Autre label") ---------- */
 const LB = window.SPOTIFY_LABELS || null;
-const LBmeta = (LB && LB.meta) || null;
-const LBrows = (LB && LB.rows) || [];
+let LBmeta = (LB && LB.meta) || null;
+let LBrows = (LB && LB.rows) || [];
 /* colonnes LBrows : key,name,tracks,streams,revenue,since,nArtists */
 
 function fmt(n){
@@ -3142,6 +3152,35 @@ function labelKeyOf(cop){
   return name.trim().toLowerCase().normalize('NFKD').replace(/(?![\uFE00-\uFE0F])\p{M}/gu,'').replace(/\s+/g,' ');
 }
 let LBTRACKS = null; // key -> rows, construit à la demande (une seule passe sur R)
+/* The label index follows the active track projection, never the retired
+   broad catalogue. Historical curation only contributes public logo/contact
+   metadata for a label that is actually represented by an active track. */
+function rebuildActiveLabelIndex(){
+  const legacyByKey=new Map((LB&&Array.isArray(LB.rows)?LB.rows:[]).map(row=>[row[0],row]));
+  const grouped=new Map();
+  for(const r of R){
+    if(r[4]!==1) continue;
+    const key=labelKeyOf(r[5]); if(!key) continue;
+    let entry=grouped.get(key);
+    if(!entry){ entry={name:String(r[5]||key),tracks:0,streams:0,since:'',artists:new Set()}; grouped.set(key,entry); }
+    entry.tracks++;
+    if(Number.isFinite(Number(r[3]))&&Number(r[3])>0) entry.streams+=Number(r[3]);
+    if(r[2]&&(!entry.since||String(r[2])<entry.since)) entry.since=String(r[2]);
+    entry.artists.add(r[0]);
+  }
+  LBrows=[...grouped.entries()].map(([key,entry])=>{
+    const curated=legacyByKey.get(key)||[];
+    return [key,entry.name,entry.tracks,entry.streams,Math.round(entry.streams*RATE),entry.since,entry.artists.size,curated[7]||'',curated[8]||''];
+  });
+  LBmeta=Object.assign({},LBmeta||{}, {
+    generated_ts:new Date().toISOString(),
+    source:'active_instrumental_catalogue',
+    labels_count:LBrows.length,
+    tracks_covered:[...grouped.values()].reduce((sum,entry)=>sum+entry.tracks,0),
+    exhaustive:false
+  });
+}
+rebuildActiveLabelIndex();
 function labelRowsOf(key){
   if (!LBTRACKS){
     LBTRACKS = new Map();

@@ -1,0 +1,2081 @@
++{
+  "version": 1,
+  "source": "Rachat_catalogue_Spotify_artistes_LOFI",
+  "source_spreadsheet_id": "1CLJl8MS6fmzOmHMB3dzPtePJ7YaMBTwvFFWtd9M5mGo",
+  "source_track_rows": 51053,
+  "source_artist_rows": 533,
+  "structured_artist_seeds": 517,
+  "unresolved_artist_rows": 16,
+  "policy": "archive_and_seed_only; never public without validated editorial evidence and strict track gates",
+  "artists": [
+    {
+      "name": "softy",
+      "spotify_id": "0wcen0V8FgQu6xYupnZMbB"
+    },
+    {
+      "name": "Tibeauthetraveler",
+      "spotify_id": "1csp9v9FfSxU0LcBtfWFCb"
+    },
+    {
+      "name": "xander.",
+      "spotify_id": "6ysKfYgiKUTMCuq2fSTLK3"
+    },
+    {
+      "name": "Hoogway",
+      "spotify_id": "1Mh9G47YfuaLdQs44voLrQ"
+    },
+    {
+      "name": "Casiio",
+      "spotify_id": "5zUSfxfP1NETZiaWt0Ui0a"
+    },
+    {
+      "name": "Living Room",
+      "spotify_id": "0sLb0ouettR8lDLnEgCSVK"
+    },
+    {
+      "name": "Mondo Loops",
+      "spotify_id": "1XFN3VcuKr4tsTtQlRiTgK"
+    },
+    {
+      "name": "Laffey",
+      "spotify_id": "7LWdcPFBFcRaamGjIJbPV7"
+    },
+    {
+      "name": "HoKø",
+      "spotify_id": "7pRU1CndlfPZTkcMG5ZkBD"
+    },
+    {
+      "name": "No Spirit",
+      "spotify_id": "4XbnhifKeOnyfTsCInrQsX"
+    },
+    {
+      "name": "Bcalm",
+      "spotify_id": "7M4y7qvcYja7RcXNCGrjeP"
+    },
+    {
+      "name": "Purrple Cat",
+      "spotify_id": "73aKnLT4O8G2pBEfdlQzrE"
+    },
+    {
+      "name": "Krynoze",
+      "spotify_id": "3iGthn6RykA9JUHnilAIr0"
+    },
+    {
+      "name": "Yasumu",
+      "spotify_id": "53rCVzFVlyntj7jEjnY2oM"
+    },
+    {
+      "name": "Dimension 32",
+      "spotify_id": "46RYzJ2442SuhtOTl281nz"
+    },
+    {
+      "name": "Dosi",
+      "spotify_id": "5p2HHGakKOJCICf9fnfnQ9"
+    },
+    {
+      "name": "seeyouthere",
+      "spotify_id": "3aspJpj1ZByvp1P16mFeRC"
+    },
+    {
+      "name": "Kainbeats",
+      "spotify_id": "4n9z9czt00gzw36hdoVU3G"
+    },
+    {
+      "name": "WYS",
+      "spotify_id": "2CiO7xWdwPMDlVwlt9qa1f"
+    },
+    {
+      "name": "Kupla",
+      "spotify_id": "7daSp9zXk1dmqNxwKFkL35"
+    },
+    {
+      "name": "Towerz",
+      "spotify_id": "1bbah9s09626gweOzzLbKG"
+    },
+    {
+      "name": "brillion.",
+      "spotify_id": "77aATgrzmuoRjmqxPcEIHU"
+    },
+    {
+      "name": "Jalaapeno",
+      "spotify_id": "4xorMLctHhagO8AYvWyxZ8"
+    },
+    {
+      "name": "Phlocalyst",
+      "spotify_id": "5xJ9q1lHwa8AShRof94oIt"
+    },
+    {
+      "name": "Kanisan",
+      "spotify_id": "0Q6S7QIOyuvDYzbhpvM5FO"
+    },
+    {
+      "name": "Nadav Cohen",
+      "spotify_id": "04TycqJU9QoZ0DRQfuDM5S"
+    },
+    {
+      "name": "Sleepermane",
+      "spotify_id": "4gGsx7blPpBj7gKGmDBEfI"
+    },
+    {
+      "name": "steezy prime",
+      "spotify_id": "4ApyJoQGYHAcMtJEvK5tRx"
+    },
+    {
+      "name": "Jhove",
+      "spotify_id": "1R9fj5Tiy9XMFp5ANzS7FA"
+    },
+    {
+      "name": "Team Astro",
+      "spotify_id": "5BJiJign2sqMUCJhpStgNd"
+    },
+    {
+      "name": "Lucid Keys",
+      "spotify_id": "5l1oiy2VufzI1tbdpiaoQi"
+    },
+    {
+      "name": "amies",
+      "spotify_id": "2zNmlxTlRfyMAAifd2f71Q"
+    },
+    {
+      "name": "Hevi",
+      "spotify_id": "4vv1FFVqxnHyQFLmWxjizb"
+    },
+    {
+      "name": "S N U G",
+      "spotify_id": "0liH4Jfiz66Rqjz4DH3JZk"
+    },
+    {
+      "name": "Erwin Do",
+      "spotify_id": "4EUMzs3VfIVjB5yrHv153S"
+    },
+    {
+      "name": "cxlt.",
+      "spotify_id": "1TFqjcoVis5TzVQxrHMSfA"
+    },
+    {
+      "name": "Swink",
+      "spotify_id": "1pvbdPT4qv8egDvkcOhBN0"
+    },
+    {
+      "name": "Loafy Building",
+      "spotify_id": "656fNsyi29ZFuxOc7cBdIs"
+    },
+    {
+      "name": "Thaehan",
+      "spotify_id": "2n0sjgdrfHYJT6B39cdvWW"
+    },
+    {
+      "name": "Fugee",
+      "spotify_id": "6xtxoTYp3AgomC2pfUKl8Q"
+    },
+    {
+      "name": "Sátyr",
+      "spotify_id": "5D6V4Z6oPz4waooiuBaWIf"
+    },
+    {
+      "name": "DaniSogen",
+      "spotify_id": "7igN8kqLCyyGn6QoVmB6CO"
+    },
+    {
+      "name": "Lawrence Walther",
+      "spotify_id": "40GMyQ5sv1bfiui9CrEPME"
+    },
+    {
+      "name": "Downtown Binary",
+      "spotify_id": "0H4t3GcGse8cqfL222mfbv"
+    },
+    {
+      "name": "BluntOne",
+      "spotify_id": "225l1KEprObX8xgl8xo2Gc"
+    },
+    {
+      "name": "Tenno",
+      "spotify_id": "3yu4VilcxpQ6h35vRcemBp"
+    },
+    {
+      "name": "Raimu",
+      "spotify_id": "4PMAJlYIlc9EafX6z8lwZ3"
+    },
+    {
+      "name": "Idyllyn",
+      "spotify_id": "7jul3FTzlUyct79IKS2g5T"
+    },
+    {
+      "name": "another silent weekend",
+      "spotify_id": "7tYro3kW5Ocevel9uXDCKA"
+    },
+    {
+      "name": "Dontcry",
+      "spotify_id": "3vzJueN7TkCtYpz1myVmDU"
+    },
+    {
+      "name": "Osaki",
+      "spotify_id": "5mBv1P6ffkM2YlJvsBJlze"
+    },
+    {
+      "name": "fnonose",
+      "spotify_id": "74yvhBPUU5nloVsshHE95q"
+    },
+    {
+      "name": "inertia.",
+      "spotify_id": "3g0TdQT1NW2ZQUiertTxxH"
+    },
+    {
+      "name": "Øutgrown",
+      "spotify_id": "3Mqo6hd9UQljzHJTJETjsU"
+    },
+    {
+      "name": "mell-ø",
+      "spotify_id": "6bA2OonnJsG1tN9yClu2aC"
+    },
+    {
+      "name": "Juliàn",
+      "spotify_id": "2SJLGPoAJhy9Id6N8oAftk"
+    },
+    {
+      "name": "Kabes",
+      "spotify_id": "483Rl4WY6iIJ9czOrOgymb"
+    },
+    {
+      "name": "morningtime",
+      "spotify_id": "7xwOP2sBEig4hhduDiYwHS"
+    },
+    {
+      "name": "Elijah Lee",
+      "spotify_id": "2ZVKeej6s975bMSdzxjIhu"
+    },
+    {
+      "name": "Goson",
+      "spotify_id": "3b0TLzX6FkeQvv9daBtFBe"
+    },
+    {
+      "name": "Hotel Pools",
+      "spotify_id": "5bQ1u5yLlL2WZv49doSgRz"
+    },
+    {
+      "name": "Yoann Garel",
+      "spotify_id": "2RRf9tUE1EcvP4W4v9Hi4B"
+    },
+    {
+      "name": "BVG",
+      "spotify_id": "6epVsx5GlfaQOg5cNe4fUP"
+    },
+    {
+      "name": "Virtua",
+      "spotify_id": "4ZiZ0nrOQfILe9wua4Q86k"
+    },
+    {
+      "name": "undercurrent.",
+      "spotify_id": "1GadL8gKNORWAIsnnaJcpO"
+    },
+    {
+      "name": "Northern Harbor",
+      "spotify_id": "6K1puSRCe1hPBkccMZq3XC"
+    },
+    {
+      "name": "HM Surf",
+      "spotify_id": "6TeBxtluBMQixZcKkJ3ZrB"
+    },
+    {
+      "name": "ENRA",
+      "spotify_id": "1jDbZQQs4VNtiC4AerpIg4"
+    },
+    {
+      "name": "Project AER",
+      "spotify_id": "0iMWUBpWAGKAenBVePrZFP"
+    },
+    {
+      "name": "Soothing Spore",
+      "spotify_id": "2qVPIhHmtBA79wJk9rWzln"
+    },
+    {
+      "name": "dryhope",
+      "spotify_id": "50Ej4gF8iYESted3e4JZ4t"
+    },
+    {
+      "name": "Pierson Booth",
+      "spotify_id": "45BqLp2kWLyeljj3x0WBER"
+    },
+    {
+      "name": "azayaka",
+      "spotify_id": "6NlDyXtng5iheiZRAzt4NF"
+    },
+    {
+      "name": "DLJ",
+      "spotify_id": "3chQixmxhv9UmwQc8aBApA"
+    },
+    {
+      "name": "iamalex",
+      "spotify_id": "6M6LWvHKgBle8SUtSpq6SU"
+    },
+    {
+      "name": "Lenny Loops",
+      "spotify_id": "6MvnyPinXRQbUCMsPoymhR"
+    },
+    {
+      "name": "Le Metroid",
+      "spotify_id": "7cTgysaFT0KmEXfQ2aE1Az"
+    },
+    {
+      "name": "vyrtex",
+      "spotify_id": "27wIjxWDJOnOFXdqJhzk8y"
+    },
+    {
+      "name": "Nothingtosay",
+      "spotify_id": "53xwq54syWZgXoordzYUnA"
+    },
+    {
+      "name": "TABAL",
+      "spotify_id": "3xGCm4ewXGKJFwrrwummsJ"
+    },
+    {
+      "name": "Cosmic Koala",
+      "spotify_id": "3ARvFGBfNt9K1SIDM9yMwu"
+    },
+    {
+      "name": "Theo Aabel",
+      "spotify_id": "6yxMxVw1MRLoB9EJWO5XVe"
+    },
+    {
+      "name": "Indo Silver",
+      "spotify_id": "65k46RouF8KJu8xlCXo8iY"
+    },
+    {
+      "name": "John Lee",
+      "spotify_id": "5yY5Dd7ek0OzZgy6a7j52E"
+    },
+    {
+      "name": "Ornithology",
+      "spotify_id": "1EpXwbpQDflfGg6juJz89j"
+    },
+    {
+      "name": "Sling Dilly",
+      "spotify_id": "6dY8i34qqvAmPgYeOzHTO9"
+    },
+    {
+      "name": "D0d.",
+      "spotify_id": "6dISDGkIeVuRe5yN4NiwBB"
+    },
+    {
+      "name": "Aisake",
+      "spotify_id": "6TFQJV5WynYysXq0LJraYe"
+    },
+    {
+      "name": "j'san",
+      "spotify_id": "5iMUho98faEp2w6j5p44PH"
+    },
+    {
+      "name": "Tom Doolie",
+      "spotify_id": "4C7NcNb9V6lakzMGHQlm8i"
+    },
+    {
+      "name": "Dinis",
+      "spotify_id": "6jlKK6jwCQOcdsNlNfKlMq"
+    },
+    {
+      "name": "Budsy",
+      "spotify_id": "0n9qcYFECgshcmGQleDdFD"
+    },
+    {
+      "name": "Kurt Stewart",
+      "spotify_id": "1SzLvjYm0lQLPi3AneCpDO"
+    },
+    {
+      "name": "Solar Body",
+      "spotify_id": "74xLamiAg7I4qmr2XsOddO"
+    },
+    {
+      "name": "Lock",
+      "spotify_id": "0gpKex5pDrVpQ6YGOrOb6A"
+    },
+    {
+      "name": "Stilte",
+      "spotify_id": "6JoJfn9UgVJm4mIWMgMC1f"
+    },
+    {
+      "name": "juniorodeo",
+      "spotify_id": "0UVbCcNJ7xNvJ55Zq2YwrN"
+    },
+    {
+      "name": "l'Outlander",
+      "spotify_id": "5tvVRGHiqZjsZDIYvLDdl5"
+    },
+    {
+      "name": "idylla",
+      "spotify_id": "3D7OiZlCToIsRybYCEDvIL"
+    },
+    {
+      "name": "Blue Fox",
+      "spotify_id": "4VfNwO9Vm7qytrCtUlwwGY"
+    },
+    {
+      "name": "luv pug",
+      "spotify_id": "5oYQJceaUGHcz6d7TGry4q"
+    },
+    {
+      "name": "Mariposa",
+      "spotify_id": "2F7TJTonDywvUL3brkPO7g"
+    },
+    {
+      "name": "Ambulo",
+      "spotify_id": "6sPQwc6lix6K1Gv64v91Ml"
+    },
+    {
+      "name": "Blue Wednesday",
+      "spotify_id": "7185Q95lPFld0aoPqO6e0U"
+    },
+    {
+      "name": "Ky akasha",
+      "spotify_id": "4961tplpADAjhtfTzgBtKk"
+    },
+    {
+      "name": "Kinissue",
+      "spotify_id": "4CSOdm2yCuB71TxCfV105e"
+    },
+    {
+      "name": "Prithvi",
+      "spotify_id": "4GKyEHBQxZKcVESiIggVaU"
+    },
+    {
+      "name": "Sheath",
+      "spotify_id": "0IlAtf4VeHUzQYRM8GMWXw"
+    },
+    {
+      "name": "nightfall",
+      "spotify_id": "2bxsey6NsNogSPVrrlFZGx"
+    },
+    {
+      "name": "trxxshed",
+      "spotify_id": "5H3acacLmK93wEdJWZhERU"
+    },
+    {
+      "name": "Rudy Raw",
+      "spotify_id": "4ZITuhWAaVoUTge2JwIton"
+    },
+    {
+      "name": "Chau Sara",
+      "spotify_id": "4VjWi8luQOkJ3hLEW7UMhl"
+    },
+    {
+      "name": "Levon Forever",
+      "spotify_id": "1rxmf99pwyGSAXQPavEary"
+    },
+    {
+      "name": "sonka",
+      "spotify_id": "7yizZOVd3Y8B3V21CyOOir"
+    },
+    {
+      "name": "Mujo",
+      "spotify_id": "0vg08N1z9G9LrGLkG1nNDS"
+    },
+    {
+      "name": "Odd Panda",
+      "spotify_id": "0Sd0BsazzL4j7U88C3v2iB"
+    },
+    {
+      "name": "Late Night Tones",
+      "spotify_id": "52wkMMF7s4aXTW4WYKvKmC"
+    },
+    {
+      "name": "A.L.I.S.O.N",
+      "spotify_id": "3gi5McAv9c0qTjJ5jSmbL0"
+    },
+    {
+      "name": "less.people",
+      "spotify_id": "0QmdasntOdQpEwRd40wyp3"
+    },
+    {
+      "name": "eugenio izzi",
+      "spotify_id": "0vpi2tMaHCn6YHS6L7qgoe"
+    },
+    {
+      "name": "blurred figures",
+      "spotify_id": "3vVw6m3rihy77VuqxApdLA"
+    },
+    {
+      "name": "So.Lo",
+      "spotify_id": "5vxaqyEjb7eMVm9bUnbwQj"
+    },
+    {
+      "name": "slowburn",
+      "spotify_id": "3f33w5RmmO0PJ2ktZi3L02"
+    },
+    {
+      "name": "Akraa",
+      "spotify_id": "4LlBzEZ8alrrhSbYW10gVW"
+    },
+    {
+      "name": "MyceliumBug",
+      "spotify_id": "4Ck1JIZA91251fV2hyHGHK"
+    },
+    {
+      "name": "Lofi Girl",
+      "spotify_id": "1eDIWVJt7ZWKsrXw5WVNsN"
+    },
+    {
+      "name": "H.1",
+      "spotify_id": "3azKf6nXrUCI1RLZkX4Aj6"
+    },
+    {
+      "name": "Lilac",
+      "spotify_id": "3wKV11EdqfY7lFaUeDUEC1"
+    },
+    {
+      "name": "Takeo",
+      "spotify_id": "77ONEFnCEJnH1qm5dBzDcf"
+    },
+    {
+      "name": "Blumen",
+      "spotify_id": "1iAP06My9fOKSWunfLK9FH"
+    },
+    {
+      "name": "squeeda",
+      "spotify_id": "0rgPemi3mvhFTP6R5nQ2tt"
+    },
+    {
+      "name": "fourwalls",
+      "spotify_id": "5eVIYwZMAOuB0QQB7dEWAx"
+    },
+    {
+      "name": "no one's perfect",
+      "spotify_id": "4vXVzSSH673xUv5sUmRGYX"
+    },
+    {
+      "name": "dreamẅalker",
+      "spotify_id": "0RLKFwsO0EBc8UeWClLSIC"
+    },
+    {
+      "name": "Jorrit Brodersen",
+      "spotify_id": "7sNEkOMz2a5ZOIsjR2ML57"
+    },
+    {
+      "name": "Opal",
+      "spotify_id": "0vmsCLJEmPS1HyUS6sXj1x"
+    },
+    {
+      "name": "alcinous",
+      "spotify_id": "5exJeWiFSaSkGtUAThzDB2"
+    },
+    {
+      "name": "Pandrezz",
+      "spotify_id": "65ZGdYSRT3Rmv6P7DN4XCC"
+    },
+    {
+      "name": "Dario Lessing",
+      "spotify_id": "0EocooOvTYLsjqSSQdqiyi"
+    },
+    {
+      "name": "LUQĘT",
+      "spotify_id": "2ZSBQcpkzOiygKAT0uRmaH"
+    },
+    {
+      "name": "Le Promeneur",
+      "spotify_id": "2f186fEKMhDjztlDg5wf4M"
+    },
+    {
+      "name": "Shoganai",
+      "spotify_id": "2ye57fswWGmqTjYVUNxH9X"
+    },
+    {
+      "name": "Allem Iversom",
+      "spotify_id": "6RaUtVLO8R5TsVdJIxSrq1"
+    },
+    {
+      "name": "kyu",
+      "spotify_id": "4vLg4WFBnzNgIpLWyxQJMW"
+    },
+    {
+      "name": "Nokiaa",
+      "spotify_id": "0ikgHu560bYMZOOXFQnRLN"
+    },
+    {
+      "name": "Yestalgia",
+      "spotify_id": "68Re4wugc13HVak1p8Zawl"
+    },
+    {
+      "name": "Bhxa",
+      "spotify_id": "0FayAsrcVWzpOFe9FCn4t4"
+    },
+    {
+      "name": "Gerardo Millán",
+      "spotify_id": "3Te1e4bESVFb1KcrMSmvhC"
+    },
+    {
+      "name": "Strong.AL&",
+      "spotify_id": "41iDgaNQFTv4Igs0WMw8d1"
+    },
+    {
+      "name": "Miguel Carne",
+      "spotify_id": "2vSvbaTOhGaRyk5o2hIEoh"
+    },
+    {
+      "name": "goosetaf",
+      "spotify_id": "46NCqFl8vhQZD77y7XkvJs"
+    },
+    {
+      "name": "Protocols",
+      "spotify_id": "3Xi9NGRGPDLOUHt03WMZJx"
+    },
+    {
+      "name": "KioKo",
+      "spotify_id": "1QCUosyjrXG8kXxVpnSRgi"
+    },
+    {
+      "name": "Yoens",
+      "spotify_id": "74SMRJQnrJfHIk3sV22bMG"
+    },
+    {
+      "name": "after noon",
+      "spotify_id": "23ZyvK3IS7xXY1COP8KiRW"
+    },
+    {
+      "name": "Jxsn",
+      "spotify_id": "7BeumVAbvoeULv5kuq5lhS"
+    },
+    {
+      "name": "Sebastian Kamae",
+      "spotify_id": "7GsvnIE0bUBu6WZXO3ryJe"
+    },
+    {
+      "name": "kudo",
+      "spotify_id": "2Gq799yTibgF2YWweyB16G"
+    },
+    {
+      "name": "Sitting Duck",
+      "spotify_id": "7nlZWVZ0U8EVad0g71xiZt"
+    },
+    {
+      "name": "Nuver",
+      "spotify_id": "7INJXFDyMoyqqp91q0FWqh"
+    },
+    {
+      "name": "Banks",
+      "spotify_id": "6L9h5cN2DNOoMqFRgIv7uU"
+    },
+    {
+      "name": "Rōōh",
+      "spotify_id": "4iv8oWq1lizY7C7bmB5HzB"
+    },
+    {
+      "name": "Moors",
+      "spotify_id": "4DS5oSMrVOutkivBpMokoh"
+    },
+    {
+      "name": "AERwave",
+      "spotify_id": "1C4Jxp9br1TrvwLCCWwrSl"
+    },
+    {
+      "name": "pxlse.",
+      "spotify_id": "1cGyguqPQY22oUd4fKglFS"
+    },
+    {
+      "name": "Tah.",
+      "spotify_id": "5tbllvHfDoHsDZuTnrs9Pb"
+    },
+    {
+      "name": "Ellis Laifer",
+      "spotify_id": "1LVHJT2bTChLPTFp344M3J"
+    },
+    {
+      "name": "Medieval Tales",
+      "spotify_id": "2nyokcPMN21qhDUKx70HoN"
+    },
+    {
+      "name": "Flowerpot",
+      "spotify_id": "3HVqt9TQqgDejjhsEKTM0D"
+    },
+    {
+      "name": "C4C",
+      "spotify_id": "5jZeLexrrwGNUy6nv7tzdr"
+    },
+    {
+      "name": "Spencer Hunt",
+      "spotify_id": "4btBTQ1pWqpnDPY4BWMh1S"
+    },
+    {
+      "name": "Kalaido",
+      "spotify_id": "5LXHT7v9uYGrsyEnL9q9K8"
+    },
+    {
+      "name": "Miramare",
+      "spotify_id": "1GobnwKx4ZG8tvfqJxOMXg"
+    },
+    {
+      "name": "Enluv",
+      "spotify_id": "5g8EUiiIZDqp2xd9eUUHin"
+    },
+    {
+      "name": "altered sigh",
+      "spotify_id": "5ZymRYYNzW02mJmhAqUSC5"
+    },
+    {
+      "name": "Blissful Radiance",
+      "spotify_id": "7hrJrU2yFtaDBuXpKa5CcH"
+    },
+    {
+      "name": "Simon Groß",
+      "spotify_id": "4pQcgEsdyEy5XTd0QMmjvD"
+    },
+    {
+      "name": "Lomme",
+      "spotify_id": "2UxHowdAHxVWPhQQswzpT6"
+    },
+    {
+      "name": "96 Zeus",
+      "spotify_id": "4QJlbrf6YpfIkRB5GrK34n"
+    },
+    {
+      "name": "Jason Masoud",
+      "spotify_id": "2ZDVnuPd31hILsEUXMKcC1"
+    },
+    {
+      "name": "Philipp Alexander Geitmann",
+      "spotify_id": "2p9SjkT6fz8Pb6rxnNpeLv"
+    },
+    {
+      "name": "Oatmello",
+      "spotify_id": "0YAkOkbeAPiS35qyouiM4O"
+    },
+    {
+      "name": "tender spring",
+      "spotify_id": "0WCCipy2qiobvuygnTMdkC"
+    },
+    {
+      "name": "hi jude",
+      "spotify_id": "2dBS8Xu2YMVFGg4AeGpAyO"
+    },
+    {
+      "name": "Epona",
+      "spotify_id": "4Q4RI9i7blNnSW4QZCMIwL"
+    },
+    {
+      "name": "PBdR",
+      "spotify_id": "2f4COA6IKZu722NBWix5od"
+    },
+    {
+      "name": "schimmerlicht",
+      "spotify_id": "0xYPpEBeCK56ULyvE0l60b"
+    },
+    {
+      "name": "Dorian Pinto",
+      "spotify_id": "4v5L9lrRMKwu1fbEhrPjRt"
+    },
+    {
+      "name": "Antonio Roberto",
+      "spotify_id": "1MPnkkIDlbT3ZoryQbOiyc"
+    },
+    {
+      "name": "ornaut",
+      "spotify_id": "0RNomvzbv3GepTSlgM26sv"
+    },
+    {
+      "name": "maeLstro",
+      "spotify_id": "1VXeGSEZ9TeBnbxDqjm1Hv"
+    },
+    {
+      "name": "Dreamfield",
+      "spotify_id": "0Z1g78JEjg1BhRNw6hToVm"
+    },
+    {
+      "name": "Ryquil Dormer",
+      "spotify_id": "1ZVV3MNBCv0wEUrvNR3Y6A"
+    },
+    {
+      "name": "ethxreal.wav",
+      "spotify_id": "3XHWSut6tnAg7I6hjnLhz4"
+    },
+    {
+      "name": "tulki",
+      "spotify_id": "5mTdiQpWihYqE3gijaGWYj"
+    },
+    {
+      "name": "Epektase",
+      "spotify_id": "31jYTsfmnHqcK7ahdqlqmo"
+    },
+    {
+      "name": "Emil Rottmayer",
+      "spotify_id": "2UuvaSzB0VNumArR71ReMT"
+    },
+    {
+      "name": "Bert",
+      "spotify_id": "3Zi91vuWAU6SUwcKDf8zDq"
+    },
+    {
+      "name": "Anbuu",
+      "spotify_id": "00i4PzAbt6fpwgBqdtSP0q"
+    },
+    {
+      "name": "LESKY",
+      "spotify_id": "7eMZ8gfgZq14cbSR52vBy6"
+    },
+    {
+      "name": "Charlee Nguyen",
+      "spotify_id": "5ffORofXMmNRRtwIeQsyW3"
+    },
+    {
+      "name": "ticofaces",
+      "spotify_id": "7fG9d41QElOF8zSI1OoRbE"
+    },
+    {
+      "name": "kokoro",
+      "spotify_id": "1uJZwuCV2hXbQDSdJvj198"
+    },
+    {
+      "name": "DavZ",
+      "spotify_id": "1AOsohWDEAkuaJElJnHfkx"
+    },
+    {
+      "name": "Girl From Nowhere",
+      "spotify_id": "3APsK1h2YmH8uiS45fny8K"
+    },
+    {
+      "name": "Alto",
+      "spotify_id": "1qxsFKTu2u0qvv0fqNRv3r"
+    },
+    {
+      "name": "nightquest",
+      "spotify_id": "2i7ybCGCXKSrcLzsoashPT"
+    },
+    {
+      "name": "fragile keys",
+      "spotify_id": "18uHhd1i866SZTLRTCWCbF"
+    },
+    {
+      "name": "Moonseed",
+      "spotify_id": "0Zu24HBoYQMLne2zTxgkMp"
+    },
+    {
+      "name": "Klemsis",
+      "spotify_id": "0r7O4KBzhl6RxxDjyvWy8j"
+    },
+    {
+      "name": "JazzyHan",
+      "spotify_id": "1DSr1LDXAAmLgyWLEOeoIS"
+    },
+    {
+      "name": "vhskid.",
+      "spotify_id": "7jqvj8jfIMreNLAN8DJWlq"
+    },
+    {
+      "name": "Julián Aponte",
+      "spotify_id": "0CbnFagNOhGkRNpQnHS0z7"
+    },
+    {
+      "name": "softlyspoken",
+      "spotify_id": "2BELCGYdewEUWUNOxdoDUA"
+    },
+    {
+      "name": "TyLuv.",
+      "spotify_id": "6ay740FQIPgTMahZqP9Opx"
+    },
+    {
+      "name": "Pointy Features",
+      "spotify_id": "2juH2VRAmfRlPlu1oaGsuH"
+    },
+    {
+      "name": "Tatami Construct",
+      "spotify_id": "3DS80e9pCgy5RyTztgncuC"
+    },
+    {
+      "name": "Distant Motions",
+      "spotify_id": "6JvKtxunamMj7IwfnlzSA5"
+    },
+    {
+      "name": "memoryboy",
+      "spotify_id": "1FzC74JBvVKAzIOJ9tdJtI"
+    },
+    {
+      "name": "Simon Henry",
+      "spotify_id": "2y08rerlq1FrjvgyLgSUbu"
+    },
+    {
+      "name": "Berezy",
+      "spotify_id": "3XrRt4tc8xQk7ANDbJjZsv"
+    },
+    {
+      "name": "lake balboa",
+      "spotify_id": "3WdeppzrwwIJOhlN12ryDR"
+    },
+    {
+      "name": "Voyage",
+      "spotify_id": "6aAXBSjwLUEukyVDhOuKNO"
+    },
+    {
+      "name": "Chris Mazuera",
+      "spotify_id": "3Sb3oI3Xw7FcgYS262zXPE"
+    },
+    {
+      "name": "Peak Twilight",
+      "spotify_id": "25qDYhjZHVzZS6sOVzAVAx"
+    },
+    {
+      "name": "Mavine",
+      "spotify_id": "1oRksjwNYW92FqcOx55fcG"
+    },
+    {
+      "name": "møndberg",
+      "spotify_id": "7i9PhtRTxJnGvgoOXgTox2"
+    },
+    {
+      "name": "eleven",
+      "spotify_id": "2je6GFLTZmAbrnjokRtWfU"
+    },
+    {
+      "name": "Foudroie",
+      "spotify_id": "1P689RfBCQpBQoZhCCgFma"
+    },
+    {
+      "name": "Just Steezy Things",
+      "spotify_id": "1WGInLKTtABkRppFt2637E"
+    },
+    {
+      "name": "Alexis Geitmann",
+      "spotify_id": "0U3jaqzlcyoHDpVLgGM60Y"
+    },
+    {
+      "name": "omens.",
+      "spotify_id": "6S9L1lIpducACXroYSe3nB"
+    },
+    {
+      "name": "Droner",
+      "spotify_id": "1XHCSxunHr6IVLuZ7FH5rl"
+    },
+    {
+      "name": "thatlofiguy",
+      "spotify_id": "2hbYHGP33vdMYXULbpsKaP"
+    },
+    {
+      "name": "Juliro",
+      "spotify_id": "2E4dLv7s4bEGDAMXWjrnFF"
+    },
+    {
+      "name": "lov sum",
+      "spotify_id": "33PmLS3NlrdMiDJpXnYNSs"
+    },
+    {
+      "name": "arancina",
+      "spotify_id": "5YdVyeU1XSouFk8VBSfLAO"
+    },
+    {
+      "name": "meandmydreams",
+      "spotify_id": "4yPn3g7udviZYdOnCFNQVt"
+    },
+    {
+      "name": "ØNEMOR3",
+      "spotify_id": "75XUnXCiMd1YMHwBvAIfnn"
+    },
+    {
+      "name": "L'Indécis",
+      "spotify_id": "5p1ichthTka1KT0iUvrlIu"
+    },
+    {
+      "name": "Elior",
+      "spotify_id": "0tquhVod10o2zf1ht2aVoz"
+    },
+    {
+      "name": "Monma",
+      "spotify_id": "50nVKm0xa3p8KYXXssG2ym"
+    },
+    {
+      "name": "Celestial Alignment",
+      "spotify_id": "7lGQNJ5Ypof1wZrM0ysNIU"
+    },
+    {
+      "name": "Kayba",
+      "spotify_id": "6ALIOkppAXyMd9G0MbHqOL"
+    },
+    {
+      "name": "KING PALM",
+      "spotify_id": "54GbY8x05TU5lF1wjGAGwq"
+    },
+    {
+      "name": "Tonion",
+      "spotify_id": "4tQMVafcBzEyxZqY81q3Fj"
+    },
+    {
+      "name": "Jasper De Ceuster",
+      "spotify_id": "4E653XDFNhfX7sIlJWCiwb"
+    },
+    {
+      "name": "Andrew Stephen",
+      "spotify_id": "0WV5PCjDIgKRginwqx99NT"
+    },
+    {
+      "name": "Paxkalito",
+      "spotify_id": "3GzNXHI7uiWVe0TnkUvP0f"
+    },
+    {
+      "name": "hotpotatoes",
+      "spotify_id": "1dZJR80G2bQzlGD2F9bOwG"
+    },
+    {
+      "name": "somewun",
+      "spotify_id": "0djEDTs2It7myhLDXypLae"
+    },
+    {
+      "name": "volmus",
+      "spotify_id": "24cCzCF9eeEaoCddKUqRvp"
+    },
+    {
+      "name": "gpds",
+      "spotify_id": "0TGmtumJBxJpMWBwdeKUDE"
+    },
+    {
+      "name": "anębu",
+      "spotify_id": "0NwRrmuxl1zetoERsUrEDE"
+    },
+    {
+      "name": "Cinemantica",
+      "spotify_id": "3wNwwplAtcQCihCHAu5xIM"
+    },
+    {
+      "name": "coldfront",
+      "spotify_id": "0prgiHOQWea6CHeI6bRh6V"
+    },
+    {
+      "name": "Yimpromptu",
+      "spotify_id": "2ohzZBPeP3tCsHK6DmcTtv"
+    },
+    {
+      "name": "tokyo tapes",
+      "spotify_id": "246O0CmlqprfAlZko91K6F"
+    },
+    {
+      "name": "Nøthing",
+      "spotify_id": "3pvndbmpiPzqsqYUVHKDTz"
+    },
+    {
+      "name": "Luca Verdant",
+      "spotify_id": "1fL5eZC34fv79A9eUbCkp7"
+    },
+    {
+      "name": "karasu.",
+      "spotify_id": "5DqGtuUBthl8KW4C98OYae"
+    },
+    {
+      "name": "coldlakes",
+      "spotify_id": "3jxJQ1JkYdqHNGnvIoW0nI"
+    },
+    {
+      "name": "Fatb",
+      "spotify_id": "39c9r5tc96HMSEX9BbxE4T"
+    },
+    {
+      "name": "G Mills",
+      "spotify_id": "0djvqMepj2XkHfvWTqkH1N"
+    },
+    {
+      "name": "GlobulDub",
+      "spotify_id": "5gigjnekB1RsPwKKitalWD"
+    },
+    {
+      "name": "Kaspa.",
+      "spotify_id": "06O3Epykgsr2PuMgTwZCWF"
+    },
+    {
+      "name": "Nogymx",
+      "spotify_id": "0F1wth3t5bL0Vdjuk34yMP"
+    },
+    {
+      "name": "Mau",
+      "spotify_id": "5CS3XLJFttgRcOpK2EZFRH"
+    },
+    {
+      "name": "Two Scents",
+      "spotify_id": "7sRau6OFIdLc2jMdzZRt81"
+    },
+    {
+      "name": "Worldtraveller",
+      "spotify_id": "5bD3IY6lj5iEqasOqqnllb"
+    },
+    {
+      "name": "yawgooh",
+      "spotify_id": "0iqknMAZ3KzJjDhcdgJsBZ"
+    },
+    {
+      "name": "knownbyC",
+      "spotify_id": "3r6IlT9KI2aOfSuBClGBxb"
+    },
+    {
+      "name": "Guy Rickard",
+      "spotify_id": "0YxB3L46MotRo4ngOeOB5M"
+    },
+    {
+      "name": "Saint Rumi",
+      "spotify_id": "4KZj9rS07i3nfijzVtkqMQ"
+    },
+    {
+      "name": "null space",
+      "spotify_id": "0bbwesoDTNRTEaQz8AbkIt"
+    },
+    {
+      "name": "Yotsugi",
+      "spotify_id": "3nHodZxQw99Ewvb9v9x48u"
+    },
+    {
+      "name": "Dr. Dundiff",
+      "spotify_id": "6T2NShr7SAArhtegdIpHHN"
+    },
+    {
+      "name": "Chiccote's Beats",
+      "spotify_id": "0ETiNCZavTPXNnEJBF1JBA"
+    },
+    {
+      "name": "chief.",
+      "spotify_id": "0HCAzT0cSCpiNje7AcAQaD"
+    },
+    {
+      "name": "Nvmb.",
+      "spotify_id": "5vf2wspF7dOG6RmqqdZiiJ"
+    },
+    {
+      "name": "M e a d o w",
+      "spotify_id": "6kG4rnzy0AVEvZb7RGZtoy"
+    },
+    {
+      "name": "gCoope",
+      "spotify_id": "0VyTdP8A5VGuLAxSzJHind"
+    },
+    {
+      "name": "Nitewalk",
+      "spotify_id": "0IEo7LtbFGCx6M71t1VerI"
+    },
+    {
+      "name": "B9",
+      "spotify_id": "3lmesvHCSW3jY5C5mspMce"
+    },
+    {
+      "name": "Your Magnolia",
+      "spotify_id": "0rIfbcjazp0ICQF2AU0Qjv"
+    },
+    {
+      "name": "nytø",
+      "spotify_id": "1HZSZHE4C1vJymt4CWEfHH"
+    },
+    {
+      "name": "Intoku",
+      "spotify_id": "0Eoy1XlOfZ0xiHKayBoJbi"
+    },
+    {
+      "name": "forever dreaming",
+      "spotify_id": "7sFBr3PEjRa5qVSD75VAFZ"
+    },
+    {
+      "name": "fosse",
+      "spotify_id": "6WBZG0alPQd3mwP53qU6ZG"
+    },
+    {
+      "name": "pajama boy",
+      "spotify_id": "4tZPHS7cFlf3wwlNpN51ff"
+    },
+    {
+      "name": "Limin",
+      "spotify_id": "3uZRP94YvYp5KVLwclXdZU"
+    },
+    {
+      "name": "Richome",
+      "spotify_id": "7wT96tCUu2nwZ056pObwZS"
+    },
+    {
+      "name": "evansgleb",
+      "spotify_id": "2uQJ5MCru45vAUm7fpwjer"
+    },
+    {
+      "name": "drkmnd",
+      "spotify_id": "1j1zhORHvaQ7DAIKpuK42C"
+    },
+    {
+      "name": "Flitz&Suppe",
+      "spotify_id": "49WbztFLx9iDTh8LHEIF84"
+    },
+    {
+      "name": "Mila Coolness",
+      "spotify_id": "3gdyXwWMfOPBIZrIDMg40u"
+    },
+    {
+      "name": "Slo Loris",
+      "spotify_id": "5LhPD5fY0zH2Rre4wfBUxX"
+    },
+    {
+      "name": "aimless",
+      "spotify_id": "5dGqZk0lZFQB6MIus08k8e"
+    },
+    {
+      "name": "Leavv",
+      "spotify_id": "7sNw4pNLLJNGrU62O80WGE"
+    },
+    {
+      "name": "Mindeliq",
+      "spotify_id": "33FKoUeAEFuzVHGBd9IhcL"
+    },
+    {
+      "name": "Plant Guy",
+      "spotify_id": "0xC8LfT2owfXVS57Bcz6sH"
+    },
+    {
+      "name": "Jam'addict",
+      "spotify_id": "0VzXnkUTwKDYznbgEvn3Ca"
+    },
+    {
+      "name": "voidreams",
+      "spotify_id": "6KmrmUbtfiJm4ryVMPRV29"
+    },
+    {
+      "name": "Gemp",
+      "spotify_id": "7aGBJiUws3qcoRhY2lUizy"
+    },
+    {
+      "name": "John Coldrain",
+      "spotify_id": "1A5XCmjpd1wD8y11otSknA"
+    },
+    {
+      "name": "herman.",
+      "spotify_id": "3WyJSGYPoo86oOCSCcWNr6"
+    },
+    {
+      "name": "Lazlow",
+      "spotify_id": "4HDIsEQVKPkey4XVbvgUcT"
+    },
+    {
+      "name": "bashful",
+      "spotify_id": "2J5V5SFRt0Lh4WY2MG8RXx"
+    },
+    {
+      "name": "Marsquake",
+      "spotify_id": "7JHsA8iL2mnUsAteuzehsb"
+    },
+    {
+      "name": "Drxnk",
+      "spotify_id": "0wN7ALPeSqOb16sG7vl4RC"
+    },
+    {
+      "name": "Powfu",
+      "spotify_id": "6bmlMHgSheBauioMgKv2tn"
+    },
+    {
+      "name": "Simone",
+      "spotify_id": "79O1wMwePxGN6MrEDbM0qv"
+    },
+    {
+      "name": "VIQ",
+      "spotify_id": "6XpN8mRlhuOXuvEyva4yjZ"
+    },
+    {
+      "name": "Flovry",
+      "spotify_id": "2pLu3Ut2C3RviYZ3xUanBs"
+    },
+    {
+      "name": "Aylior",
+      "spotify_id": "2yCHwCR4w8pZyoSCyoQQfx"
+    },
+    {
+      "name": "Khutko",
+      "spotify_id": "26e6xlrurIqVfo2GzwuSMQ"
+    },
+    {
+      "name": "Ivylake",
+      "spotify_id": "0UaXCEXCTPbdBBs0w8ae2Y"
+    },
+    {
+      "name": "Akīn",
+      "spotify_id": "1KIGjwZj1Iojrjpf9FPrfS"
+    },
+    {
+      "name": "sinnr",
+      "spotify_id": "4rgy5K4lHDLbaSC1MMuY5m"
+    },
+    {
+      "name": "Maiso Linua",
+      "spotify_id": "5xtRy4a2R7tyIVuFv9lGwd"
+    },
+    {
+      "name": "Tin.",
+      "spotify_id": "1NM0S8JHgGBHe40IFtROvR"
+    },
+    {
+      "name": "nuit polaire",
+      "spotify_id": "1c4axR8peJ7wQE8o4FnHOS"
+    },
+    {
+      "name": "Little Music",
+      "spotify_id": "5mVEDoST12PuoC0W0asYK1"
+    },
+    {
+      "name": "Antonio Arcangeli",
+      "spotify_id": "35cFb2HrrYGgoT9RYts3UP"
+    },
+    {
+      "name": "Quantum Break",
+      "spotify_id": "1mTleyaaJ910LuKKbtNDr1"
+    },
+    {
+      "name": "Rogue VHS",
+      "spotify_id": "55DhV9I8VahoWvpa3QMPP5"
+    },
+    {
+      "name": "Runaway Horses",
+      "spotify_id": "1lHNqvzVo8By9u0C0pLwlh"
+    },
+    {
+      "name": "Väsno",
+      "spotify_id": "37jpY0RSl4SPIQKtBQhzpg"
+    },
+    {
+      "name": "Unfound",
+      "spotify_id": "7u4YxeFiaq5WBD6izDeTry"
+    },
+    {
+      "name": "oDDling",
+      "spotify_id": "2zhOohLhIGzDcBhAqmBmuE"
+    },
+    {
+      "name": "A[way]",
+      "spotify_id": "28XW8jjpjlHw3L3ZWRPzHc"
+    },
+    {
+      "name": "SPEECHLESS",
+      "spotify_id": "0RUwm9ukhlW1oXDzXxj3C0"
+    },
+    {
+      "name": "Comodo",
+      "spotify_id": "48Fimh8FHISFkwxpgOOvGe"
+    },
+    {
+      "name": "Ajmw",
+      "spotify_id": "64StAk1W7veJKQ9x0rlE2R"
+    },
+    {
+      "name": "Refeeld",
+      "spotify_id": "04VwrPirvx6CXRzbEjofQP"
+    },
+    {
+      "name": "tomcbumpz",
+      "spotify_id": "0klU31gyC6EZqKgLvVANCy"
+    },
+    {
+      "name": "Dream Theory",
+      "spotify_id": "2vRqpOHRXUgEozhHxpd6LY"
+    },
+    {
+      "name": "goodnyght",
+      "spotify_id": "4BJR5CJ5btzmku8BpERMwp"
+    },
+    {
+      "name": "noni",
+      "spotify_id": "0bBJ13wnqpIMpCGiz8SMRF"
+    },
+    {
+      "name": "Krosia",
+      "spotify_id": "3DMRmCWZFPz3IX8LUgoLVb"
+    },
+    {
+      "name": "Mar Sara",
+      "spotify_id": "4xRzg1YfDnwWfpTAPPy4QF"
+    },
+    {
+      "name": "flâneur",
+      "spotify_id": "1u1zs47JhYDIbDkFjamdzx"
+    },
+    {
+      "name": "niv.",
+      "spotify_id": "4I3orcccuqwyHIXkqUsHP9"
+    },
+    {
+      "name": "Tawbe",
+      "spotify_id": "0BPbwAPdkXrOHRgqXP4wNn"
+    },
+    {
+      "name": "Kiabits",
+      "spotify_id": "7Iwn7mwI12WYQtlVoi4GAg"
+    },
+    {
+      "name": "Siyāh",
+      "spotify_id": "7rB8dGPFM7J4JNLFqSsQsB"
+    },
+    {
+      "name": "Joshua Hoe",
+      "spotify_id": "41963teTeNr89gV8NWzqYc"
+    },
+    {
+      "name": "Malte Kuhn",
+      "spotify_id": "6IKX14494aeufMV7unQB5L"
+    },
+    {
+      "name": "so.tired",
+      "spotify_id": "4ordIijwezMyR8fJkOaVNy"
+    },
+    {
+      "name": "milligon",
+      "spotify_id": "62h3mAlyYduSmprbNEdKKD"
+    },
+    {
+      "name": "Rook1e",
+      "spotify_id": "5NlA3ayVBDY3uDCCEZ1dID"
+    },
+    {
+      "name": "Glimlip",
+      "spotify_id": "5wEF5my54dE5vMMmSUz2q3"
+    },
+    {
+      "name": "Otaam",
+      "spotify_id": "0yABOXFZ5fJ1KyoXXgj5B0"
+    },
+    {
+      "name": "GRAEDA",
+      "spotify_id": "5bwqwISuLkDV1i8HJL41V7"
+    },
+    {
+      "name": "ZENDR",
+      "spotify_id": "71DwiHPKOnvr0mrJKovKcm"
+    },
+    {
+      "name": "MEGAS",
+      "spotify_id": "1e9L6JvckFG915fCtQoif6"
+    },
+    {
+      "name": "Screen Jazzmaster",
+      "spotify_id": "0ccv58yNhOu5FERx9Kpvgt"
+    },
+    {
+      "name": "Soundgo",
+      "spotify_id": "1Pi1KrPdzid5B3yfBy2jwr"
+    },
+    {
+      "name": "Jonas Hoffmann",
+      "spotify_id": "5cEU3AV44x8TnbyQjOlInP"
+    },
+    {
+      "name": "pines & pines",
+      "spotify_id": "4nqhJG2kSGZ9BZxUFVavn3"
+    },
+    {
+      "name": "Viktor Minsky",
+      "spotify_id": "5mS3l0prvJ5cpqzx8zz4GH"
+    },
+    {
+      "name": "Aboueb",
+      "spotify_id": "2Cqn7ymgFOsf2QMhLloUuT"
+    },
+    {
+      "name": "Lotus Beats",
+      "spotify_id": "667RkTKDzJP6Hi3viSrkWI"
+    },
+    {
+      "name": "Toti Cisneros",
+      "spotify_id": "2RzBTtaoFmXDvt5vP8lPYf"
+    },
+    {
+      "name": "Shopan",
+      "spotify_id": "2XHa2Sy9IYid9hnQ2YmtGl"
+    },
+    {
+      "name": "Jérôme Thirion",
+      "spotify_id": "4Lu7Qz0O7r4h8KwqEJeZbo"
+    },
+    {
+      "name": "Forhill",
+      "spotify_id": "4qpWUfUAeI34HzvCORn1ze"
+    },
+    {
+      "name": "Aso",
+      "spotify_id": "45Ui3GdcxzbdJhhTtZLXO8"
+    },
+    {
+      "name": "E I S U",
+      "spotify_id": "3XUMv4qB3v7QXUgAx08OGu"
+    },
+    {
+      "name": "Lofty",
+      "spotify_id": "0WgGNGfn5nr4B1d5nhn4r0"
+    },
+    {
+      "name": "azula",
+      "spotify_id": "1ExCrobB2mqThavegHEHeS"
+    },
+    {
+      "name": "Boy From Nowhere",
+      "spotify_id": "1VURNWjXDR62CZ7EgNwK8Q"
+    },
+    {
+      "name": "Quist",
+      "spotify_id": "5aAoxh5kzdhSfHhsPThqdH"
+    },
+    {
+      "name": "Inreload",
+      "spotify_id": "1p9OoczbKsdQ4UEyRcWLNJ"
+    },
+    {
+      "name": "Corey J. Beats",
+      "spotify_id": "0CpOAY2TliyvzxykFggFVS"
+    },
+    {
+      "name": "vimef",
+      "spotify_id": "1xUOwpofiLq183kHa1Y8cb"
+    },
+    {
+      "name": "flowray",
+      "spotify_id": "7apxuBS2y7E7Cs8ruOYhvd"
+    },
+    {
+      "name": "a bowl of rice",
+      "spotify_id": "5WjSn8i1BGc2BPTzMxAghd"
+    },
+    {
+      "name": "Chronodrift",
+      "spotify_id": "6QtkNSYRqYxK8EkuITV3fk"
+    },
+    {
+      "name": "Mike Beating",
+      "spotify_id": "3EuxGwWNxr2SRmosxJZEB3"
+    },
+    {
+      "name": "Hazy Year",
+      "spotify_id": "1FtS4zSQaKNwJDXcXWX9CD"
+    },
+    {
+      "name": "eli filosov [ p h i l o ]",
+      "spotify_id": "69C7agUvyZMUv0P58MvBwc"
+    },
+    {
+      "name": "Lenny B",
+      "spotify_id": "3PplCjTWQ2AbTboXJNCpSa"
+    },
+    {
+      "name": "ØDYSSEE",
+      "spotify_id": "6f2Y46Pw2IYGoURJREJDiA"
+    },
+    {
+      "name": "MARSIX",
+      "spotify_id": "6Sula8bUAZqGJENWr6xx5p"
+    },
+    {
+      "name": "Xtract",
+      "spotify_id": "24Czv2dNQjRYh7thO4y2re"
+    },
+    {
+      "name": "Departure",
+      "spotify_id": "1hKMcEF7YVRkjXMRpl6aqN"
+    },
+    {
+      "name": "cocabona",
+      "spotify_id": "5V8HGb7Pt982HEbpmglIYT"
+    },
+    {
+      "name": "Psalm Trees",
+      "spotify_id": "5pmXkV6A8yQdoa64xzvZ0S"
+    },
+    {
+      "name": "Novus Sana",
+      "spotify_id": "1N0bJseMIb8vhxRuMNGc0D"
+    },
+    {
+      "name": "eaup",
+      "spotify_id": "5MvvhhTGyd2iGzaksZpLEt"
+    },
+    {
+      "name": "mtch.",
+      "spotify_id": "5c9Xrr1IzKEbGhRNeLYppn"
+    },
+    {
+      "name": "Monolism",
+      "spotify_id": "2AuO7oIWRt96rwS6bd526s"
+    },
+    {
+      "name": "Neon Galaxy",
+      "spotify_id": "7kdooHDfCuZKEjtiDjUa04"
+    },
+    {
+      "name": "Lucie Cravero",
+      "spotify_id": "2e0eTUckm1xVdKFHmjSlrT"
+    },
+    {
+      "name": "bedroom lofi",
+      "spotify_id": "2LrcxltMHRqQBYByx4rtW2"
+    },
+    {
+      "name": "Nova Dust",
+      "spotify_id": "5UyiEIfJDSqqBP0lRVQUVI"
+    },
+    {
+      "name": "mōro",
+      "spotify_id": "6NlEWnaqYdKOVUHjocjDSt"
+    },
+    {
+      "name": "Mariuga",
+      "spotify_id": "4IIFgXxuv62qZgOzQvDBoN"
+    },
+    {
+      "name": "andrew g.",
+      "spotify_id": "7GnXQZSxaVdKYDkAK7IkHi"
+    },
+    {
+      "name": "eevee",
+      "spotify_id": "4pwqNyMSvuv7VOhQBdjB6Q"
+    },
+    {
+      "name": "sunday museum",
+      "spotify_id": "7Dmb3mabrQmXGMFatQHh8N"
+    },
+    {
+      "name": "Fred Paci",
+      "spotify_id": "24snO5m4Z01DjKf5gtl14T"
+    },
+    {
+      "name": "Solo San",
+      "spotify_id": "6P1mgZSQeztdWbWpJYy718"
+    },
+    {
+      "name": "L'atune",
+      "spotify_id": "726Z6CGT1KJnKXjMPNCCog"
+    },
+    {
+      "name": "Gatz2Gatz",
+      "spotify_id": "5YfpC2gY9twAVAQJqB8vIi"
+    },
+    {
+      "name": "lost & proud",
+      "spotify_id": "1qccWz7mM8FN43aEbt8YSS"
+    },
+    {
+      "name": "S I M",
+      "spotify_id": "6IUKOT5oMnQ8ZUyJlZFxO2"
+    },
+    {
+      "name": "Cap Kendricks",
+      "spotify_id": "3Nc3vycu3NLmfOLxGKPXLj"
+    },
+    {
+      "name": "Mr. Käfer",
+      "spotify_id": "79U1adgS3jIlP28wwMHqGJ"
+    },
+    {
+      "name": "Ariel T",
+      "spotify_id": "1jV6ZVJ5WPoWiYZfOolQV6"
+    },
+    {
+      "name": "farewell",
+      "spotify_id": "4wGoZhMN4NyNoZqUgMxUxc"
+    },
+    {
+      "name": "meadowy",
+      "spotify_id": "2eI1oBbt2dIjtPDHsXk7sK"
+    },
+    {
+      "name": "Tosso",
+      "spotify_id": "0pYbYmiGEC2nEe02Npg4bp"
+    },
+    {
+      "name": "surfin",
+      "spotify_id": "57WUQBBdhGg58XkvPleu9e"
+    },
+    {
+      "name": "Tarng",
+      "spotify_id": "3iFHuUEmw431puLFMU12ZM"
+    },
+    {
+      "name": "YUAN",
+      "spotify_id": "3xPXAe15gml6ZkVJrb2KCn"
+    },
+    {
+      "name": "刘允文",
+      "spotify_id": "5WBPrBB4lTX7P4O5eJUXsm"
+    },
+    {
+      "name": "INKY!",
+      "spotify_id": "4jlY0hmEPAg8KTa4KVe4R4"
+    },
+    {
+      "name": "Sarcastic Sounds",
+      "spotify_id": "1bq8rqNnfrojn0OSAfeNXJ"
+    },
+    {
+      "name": "Jordy Chandra",
+      "spotify_id": "28VbaiiRmV4vk9O5ykVvCh"
+    },
+    {
+      "name": "Mvdb",
+      "spotify_id": "0hleYpwrJSPEh2pCRTU0AY"
+    },
+    {
+      "name": "ocha",
+      "spotify_id": "2XXkRPi7NhXPf4vOPIG9zh"
+    },
+    {
+      "name": "Yasper",
+      "spotify_id": "1axdL80XjVHdInGsJbURyt"
+    },
+    {
+      "name": "Jay-Lounge",
+      "spotify_id": "47sdYTwmCqrIVcJV11c6Cj"
+    },
+    {
+      "name": "tzelun",
+      "spotify_id": "269jtl9COsb9QegcI96xDo"
+    },
+    {
+      "name": "SwuM",
+      "spotify_id": "2Fc1UZXKRmPpWWx1sxcb9m"
+    },
+    {
+      "name": "lōland",
+      "spotify_id": "5AUK3KLrqdHpcsRowJVJIn"
+    },
+    {
+      "name": "Arbour",
+      "spotify_id": "3pSfwb3p6BVPTYDkNdgxS2"
+    },
+    {
+      "name": "midnight alpha.",
+      "spotify_id": "5bGpu7IGzmlPjg4cCx85tK"
+    },
+    {
+      "name": "Sweet Medicine",
+      "spotify_id": "0CF9CnQbK6uS8u78KVnIPv"
+    },
+    {
+      "name": "Hoffy Beats",
+      "spotify_id": "2z92TjllsDfZLyBjp0SDuq"
+    },
+    {
+      "name": "Diiolme",
+      "spotify_id": "29GPUrWlYRtiq1NMNpQiQo"
+    },
+    {
+      "name": "twofiveone",
+      "spotify_id": "5Fex9xz9rkPqQqMBVtuIrE"
+    },
+    {
+      "name": "Jisatsu",
+      "spotify_id": "0T1Ope3kfLPZQ6l715wc34"
+    },
+    {
+      "name": "DJ Garlik",
+      "spotify_id": "0N2on1pgu8mv01ch9Cs9XF"
+    },
+    {
+      "name": "Ayzic",
+      "spotify_id": "2XCHpjjS3zJJy9OafEt7bC"
+    },
+    {
+      "name": "Dyrean",
+      "spotify_id": "5fn1tnRpZpWa31F9ZLPrjS"
+    },
+    {
+      "name": "jaackson",
+      "spotify_id": "1Mvzmc04DfxzjMsV6oCohI"
+    },
+    {
+      "name": "Iamcloud",
+      "spotify_id": "6bzWspcEBMECSYiZ4ynQCK"
+    },
+    {
+      "name": "Blocktane",
+      "spotify_id": "2DL1LxN8dHBG1tI3Q3TlK7"
+    },
+    {
+      "name": "sftspkn",
+      "spotify_id": "2RTHRVmtTiMDjDCZIOO9wq"
+    },
+    {
+      "name": "Aiguille",
+      "spotify_id": "3MhGQxnXMGb8fgTlAqcxeu"
+    },
+    {
+      "name": "affogato.wav",
+      "spotify_id": "5IVNgz7eOCRq61neiYgXZT"
+    },
+    {
+      "name": "Twindex",
+      "spotify_id": "7aaoS1lVqJrRhZ4UvWqsm0"
+    },
+    {
+      "name": "Cheekybeefy",
+      "spotify_id": "1anJKb6IVtSwR7jAadjF3I"
+    },
+    {
+      "name": "deja blue",
+      "spotify_id": "4VrW4pBxsWGEYmLRJOE5dL"
+    },
+    {
+      "name": "dakota ryder",
+      "spotify_id": "7rhhJKomCJF0EOKbxdNDQg"
+    },
+    {
+      "name": "blūūm",
+      "spotify_id": "28TW1uNN93nk8hQ1aOr1Qc"
+    },
+    {
+      "name": "khaõ",
+      "spotify_id": "4AqWyb5ilQ5KDe0vxpy6or"
+    },
+    {
+      "name": "itsoktodie",
+      "spotify_id": "674RSEKNa55u7pgzy0h90H"
+    },
+    {
+      "name": "leapyear",
+      "spotify_id": "6daNUvi9Bp2w8C1HoZBVIR"
+    },
+    {
+      "name": "unknown self",
+      "spotify_id": "3UxnkB5CBHJXesluSlwlTj"
+    },
+    {
+      "name": "far.north",
+      "spotify_id": "7n02WRwc541PajNfnGSiSR"
+    },
+    {
+      "name": "Seeing Stars",
+      "spotify_id": "32kk0iJAoUWafRI1VuWHSt"
+    },
+    {
+      "name": "BreadSim",
+      "spotify_id": "24rEXIpRtIEgDQZWQmKzz3"
+    },
+    {
+      "name": "Viktor Makhnovich",
+      "spotify_id": "430mZ73z1vKgdunZhGweAs"
+    },
+    {
+      "name": "Blunoise",
+      "spotify_id": "7syMWDVpS6TKhANwohVAUr"
+    },
+    {
+      "name": "chromagen",
+      "spotify_id": "5NBb6PpUrvJVJ81ztOyd7o"
+    },
+    {
+      "name": "Solith",
+      "spotify_id": "0nJ0hL4QhTaAlSCz6JzjRy"
+    },
+    {
+      "name": "Synthnaut",
+      "spotify_id": "35x3uVSISRP4bCDvh0ruyE"
+    },
+    {
+      "name": "Little Blue",
+      "spotify_id": "2XFZZmIyJXknSTMVj7rJp6"
+    },
+    {
+      "name": "evndl",
+      "spotify_id": "1xCBdmVIsCaRlLTuP0yD35"
+    },
+    {
+      "name": "Showyou",
+      "spotify_id": "7KbVIv3ToW5rD8qJNnypKO"
+    },
+    {
+      "name": "Vihta",
+      "spotify_id": "3eRsN8sKiHgPK5LqK72wrN"
+    },
+    {
+      "name": "Snazzy",
+      "spotify_id": "7lDQhKVaKvuNDftiiZVrYy"
+    },
+    {
+      "name": "Less Gravity",
+      "spotify_id": "37gab2kHkQ8LnCRXYRPHxe"
+    },
+    {
+      "name": "Copacetik",
+      "spotify_id": "16yiFmVZFzt1xPL3t7CHID"
+    },
+    {
+      "name": "Neele Harder",
+      "spotify_id": "4KxuKYAXcdSrZGi1s19G5c"
+    },
+    {
+      "name": "Coils",
+      "spotify_id": "42ZHdNbPJ9KjZR6fiqj9lY"
+    },
+    {
+      "name": "burbanksy",
+      "spotify_id": "00fgTUICCqBEzgNwbAhbYf"
+    },
+    {
+      "name": "frad",
+      "spotify_id": "1XLYJ9VzlgEpBdlkC4MhOL"
+    },
+    {
+      "name": "Loyae",
+      "spotify_id": "4Euj21Xnjoe3pGCcXPAo4I"
+    },
+    {
+      "name": "Maelk",
+      "spotify_id": "5iv7276O5MpFO01YZ1TTjx"
+    },
+    {
+      "name": "SYNC.EXE",
+      "spotify_id": "2SvBRTr0oEXAaTzqw7p4rx"
+    },
+    {
+      "name": "Frances The Mute",
+      "spotify_id": "2wCcRWGIQVa5m5oJuBplAs"
+    },
+    {
+      "name": "Evenbluer",
+      "spotify_id": "0dGyH4WtSO8PP2sW9Yq2Fo"
+    },
+    {
+      "name": "Razlo",
+      "spotify_id": "6FwGTF3itFLSXKZJws5ZUw"
+    },
+    {
+      "name": "Spaniel Mac",
+      "spotify_id": "3mwsqk2Ccx0YemdC8FSz30"
+    },
+    {
+      "name": "Monocloud",
+      "spotify_id": "5nljYdfvafyRYs5soqzJ1U"
+    },
+    {
+      "name": ".Eehou",
+      "spotify_id": "5n9SautEmQzoC7G47NBta0"
+    },
+    {
+      "name": "Proudmany",
+      "spotify_id": "4i1IeNFx3mzhdxdqijOwuH"
+    },
+    {
+      "name": "Auren",
+      "spotify_id": "44SeHh43z9jw38YgobMI1q"
+    },
+    {
+      "name": "Baton",
+      "spotify_id": "3xA0zb2n27I3kLJ7z9B2Zy"
+    },
+    {
+      "name": "Adieu Aru",
+      "spotify_id": "2OLKbeDx8WAJfKvc4Wh3k3"
+    },
+    {
+      "name": "Space Cassette",
+      "spotify_id": "101Gki4BZfkxf8iRpNqVCI"
+    },
+    {
+      "name": "Euan Ellis",
+      "spotify_id": "1uivqPv0xxpaqrB8Ero5xJ"
+    },
+    {
+      "name": "Ogster",
+      "spotify_id": "0sx3UDkeqG4781n1WE4yyJ"
+    },
+    {
+      "name": "Cenit85",
+      "spotify_id": "4oA33WGYnsqe9zJANC717g"
+    },
+    {
+      "name": "Neonspace",
+      "spotify_id": "2vzreHvvCZkIABnzwU8k9h"
+    },
+    {
+      "name": "Moon-uh",
+      "spotify_id": "31r9bJirjfcF8JfkLoWAbR"
+    },
+    {
+      "name": "Hikari",
+      "spotify_id": "6zcdZhEldo0uGgl1rrEA3P"
+    },
+    {
+      "name": "Elijah Who",
+      "spotify_id": "2b0aKuno01NxPWVCUVIEc8"
+    },
+    {
+      "name": "Kudasaibeats",
+      "spotify_id": "3VcaBezSFVJHqylrhaYun2"
+    },
+    {
+      "name": "Idealism",
+      "spotify_id": "6YJ4EgQzDfJnIHRbqIHAdD"
+    },
+    {
+      "name": "Nymano",
+      "spotify_id": "3BoSEarTgKiw8sHE0ixJNK"
+    },
+    {
+      "name": "jhfly",
+      "spotify_id": "7D6kLgvRHr6DNDavc0LhvI"
+    },
+    {
+      "name": "The Deli",
+      "spotify_id": "1EJzWKVDeysgbyuZGfEFde"
+    },
+    {
+      "name": "Kendall Miles",
+      "spotify_id": "4Z5eM7HLu4b0LAKrywoWR2"
+    },
+    {
+      "name": "flughand",
+      "spotify_id": "6x5HLaMcoxaULXpgN0NJbb"
+    },
+    {
+      "name": "Wun Two",
+      "spotify_id": "69cjjIQEN8M6heOBT2SqZE"
+    },
+    {
+      "name": "A L E X",
+      "spotify_id": "3nCJkmgdZQ6l8o828Y3vNQ"
+    },
+    {
+      "name": "Jacob Gossel",
+      "spotify_id": "51bks9nYow2ocV3gnf9RuO"
+    },
+    {
+      "name": "Boyfifty",
+      "spotify_id": "1UXAQeRmVW5aEd4W0gTIA9"
+    },
+    {
+      "name": "autrioly",
+      "spotify_id": "2SalqIZD5x6AJLLHEuctcU"
+    },
+    {
+      "name": "ElaZ",
+      "spotify_id": "1NFdLYtu29c6NKzd49BdEd"
+    },
+    {
+      "name": "The Fox",
+      "spotify_id": "6T8X5Dh4G7RaLINqzqlkV3"
+    },
+    {
+      "name": "okinami",
+      "spotify_id": "5SulT12uH9qQMQsGCBMzoH"
+    },
+    {
+      "name": "Leyona Music",
+      "spotify_id": "46uy052bl3jcyjuxPXQGRD"
+    },
+    {
+      "name": "ohladays",
+      "spotify_id": "6DW7lX1yiS5yxPCK87vrm0"
+    },
+    {
+      "name": "AirJordy",
+      "spotify_id": "1NuYQXLKIZAAiutglGYwUw"
+    },
+    {
+      "name": "Deauxnuts",
+      "spotify_id": "4FCrhj46HBtMVt61k35zMB"
+    },
+    {
+      "name": "Dennisivnvc",
+      "spotify_id": "03sYI7Ckj5JOq6cYowPUmo"
+    },
+    {
+      "name": "Grisp",
+      "spotify_id": "4Ss8Vh1dqwdci0DqaNycZM"
+    },
+    {
+      "name": "odem medo",
+      "spotify_id": "6LhkZAXeIA7HiigDvecUcI"
+    },
+    {
+      "name": "Cloudsurfin'",
+      "spotify_id": "5Dsg7x6lNQTgWSgnYlIpif"
+    },
+    {
+      "name": "Dani Català",
+      "spotify_id": "47KS10JqzPOZND1Uxr7U1i"
+    }
+  ]
+}
+

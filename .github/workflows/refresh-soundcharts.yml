@@ -6,6 +6,7 @@ on:
     paths:
       - 'refresh_soundcharts_daily.py'
       - 'discover_soundcharts_playlists.py'
+      - 'spotify-catalogue-baseline.json'
       - 'expand_soundcharts_instrumental_pool.py'
       - 'sync_soundcharts_opportunities.py'
       - 'prepare_soundcharts_snapshot.py'
@@ -30,6 +31,7 @@ on:
     paths:
       - 'refresh_soundcharts_daily.py'
       - 'discover_soundcharts_playlists.py'
+      - 'spotify-catalogue-baseline.json'
       - 'expand_soundcharts_instrumental_pool.py'
       - 'sync_soundcharts_opportunities.py'
       - 'prepare_soundcharts_snapshot.py'
@@ -60,9 +62,9 @@ on:
       scope:
         description: 'Collection scope'
         required: true
-        default: 'daily_target'
+        default: 'strict_rebaseline'
         type: choice
-        options: [daily_target, artists, smoke, legacy_full]
+        options: [strict_rebaseline, artists, smoke]
       max_requests:
         description: 'Expansion data-call cap (1-8230; total workflow cap stays <=10000 including auth)'
         required: true
@@ -131,7 +133,6 @@ jobs:
         run: |
           artist_data_cap="350"
           playlist_data_cap="1400"
-          legacy_data_cap="2500"
           expansion_data_cap="8230"
           if [[ "${{ github.event_name }}" == "pull_request" || "${{ github.event_name }}" == "push" ]]; then
             scope="ci_smoke"
@@ -141,8 +142,8 @@ jobs:
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             scope="$REQUESTED_SCOPE"
             case "$scope" in
-              daily_target) expansion_limit="2500" ;;
-              artists|smoke|legacy_full) expansion_limit="" ;;
+              strict_rebaseline) expansion_limit="2500" ;;
+              artists|smoke) expansion_limit="" ;;
               *) echo "Unsupported scope: $scope" >&2; exit 1 ;;
             esac
             if [[ ! "$REQUESTED_MAX_REQUESTS" =~ ^[1-9][0-9]{0,3}$ ]] || (( 10#$REQUESTED_MAX_REQUESTS > expansion_data_cap )); then
@@ -152,7 +153,7 @@ jobs:
             expansion_requests="$REQUESTED_MAX_REQUESTS"
             if [[ "$GITHUB_REF" == "refs/heads/main" && "$scope" != "smoke" ]]; then publish="true"; else publish="false"; fi
           elif [[ "${{ github.event_name }}" == "schedule" ]]; then
-            scope="daily_target"
+            scope="strict_rebaseline"
             expansion_limit="2500"
             expansion_requests="$expansion_data_cap"
             publish="true"
@@ -165,13 +166,12 @@ jobs:
           echo "expansion_requests=$expansion_requests" >> "$GITHUB_OUTPUT"
           echo "artist_requests=$artist_data_cap" >> "$GITHUB_OUTPUT"
           echo "playlist_requests=$playlist_data_cap" >> "$GITHUB_OUTPUT"
-          echo "legacy_requests=$legacy_data_cap" >> "$GITHUB_OUTPUT"
           echo "publish=$publish" >> "$GITHUB_OUTPUT"
           echo "Selected scope=$scope, expansion_requests=$expansion_requests, publish=$publish"
 
       - name: Create an isolated Soundcharts candidate
         id: snapshot
-        if: steps.plan.outputs.scope == 'daily_target' || steps.plan.outputs.scope == 'artists' || steps.plan.outputs.scope == 'legacy_full'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'artists'
         shell: bash
         run: |
           old_snapshot="$(python prepare_soundcharts_snapshot.py current --index spotify/index.html)"
@@ -194,8 +194,8 @@ jobs:
           --max-requests 25
           --history-days 14
 
-      - name: Refresh mapped artist audience
-        if: steps.plan.outputs.scope == 'daily_target' || steps.plan.outputs.scope == 'artists'
+      - name: Refresh mapped artist audience only when explicitly requested
+        if: steps.plan.outputs.scope == 'artists'
         env:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
@@ -209,23 +209,8 @@ jobs:
           --history-days 90
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
 
-      - name: Run legacy full collector only when explicitly requested
-        if: steps.plan.outputs.scope == 'legacy_full'
-        env:
-          PYTHONUNBUFFERED: '1'
-          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
-          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
-          SOUNDCHARTS_TEAM_ID: dsomoguy-api
-        run: >-
-          python refresh_soundcharts_daily.py
-          --mode full
-          --workers 10
-          --max-requests "${{ steps.plan.outputs.legacy_requests }}"
-          --history-days 90
-          --soundcharts "${{ steps.snapshot.outputs.candidate }}"
-
       - name: Discover tracks and artist catalogues from editorial playlists
-        if: steps.plan.outputs.scope == 'daily_target'
+        if: steps.plan.outputs.scope == 'strict_rebaseline'
         env:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
@@ -235,6 +220,7 @@ jobs:
           python discover_soundcharts_playlists.py
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
           --playlists Spotify_Playlists_data.js
+          --baseline spotify-catalogue-baseline.json
           --cache soundcharts-instrumental-cache.json
           --workers 10
           --max-requests "${{ steps.plan.outputs.playlist_requests }}"
@@ -245,7 +231,7 @@ jobs:
           --max-new-catalog-tracks 1200
 
       - name: Expand and measure the target instrumental pool
-        if: steps.plan.outputs.scope == 'daily_target'
+        if: steps.plan.outputs.scope == 'strict_rebaseline'
         env:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
@@ -266,7 +252,7 @@ jobs:
             "${args[@]}"
 
       - name: Recalculate actionable A&R opportunities
-        if: steps.plan.outputs.scope == 'daily_target' || steps.plan.outputs.scope == 'artists' || steps.plan.outputs.scope == 'legacy_full'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'artists'
         run: >-
           python sync_soundcharts_opportunities.py
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
@@ -277,7 +263,7 @@ jobs:
 
       - name: Prepare public-safe dated snapshot
         id: prepared
-        if: steps.plan.outputs.scope == 'daily_target' || steps.plan.outputs.scope == 'artists' || steps.plan.outputs.scope == 'legacy_full'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'artists'
         shell: bash
         run: |
           result="$RUNNER_TEMP/soundcharts-snapshot-result.json"
@@ -289,7 +275,7 @@ jobs:
           echo "name=$snapshot" >> "$GITHUB_OUTPUT"
 
       - name: Validate generated business outputs
-        if: steps.plan.outputs.scope == 'daily_target' || steps.plan.outputs.scope == 'artists' || steps.plan.outputs.scope == 'legacy_full'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'artists'
         env:
           SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
           RUN_SCOPE: ${{ steps.plan.outputs.scope }}
@@ -311,7 +297,7 @@ jobs:
           catalogue = soundcharts.get('discovery_catalogue') or {}
           scoring = soundcharts.get('opportunity_scoring') or {}
           opportunities = soundcharts.get('opportunities') or []
-          if os.environ.get('RUN_SCOPE') == 'daily_target':
+          if os.environ.get('RUN_SCOPE') == 'strict_rebaseline':
               if int(discovery.get('playlists_scanned') or 0) < 1:
                   raise SystemExit('Editorial playlist discovery scanned no playlist')
               unique_playlist_tracks = int(discovery.get('unique_playlist_tracks') or 0)

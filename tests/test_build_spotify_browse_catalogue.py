@@ -83,6 +83,55 @@ class BrowseCatalogueTests(unittest.TestCase):
         merged = subject.merge_catalogues([unsafe])
         self.assertNotIn("contact_email", merged["artist_schema"])
 
+    def test_strict_rebaseline_keeps_only_evidenced_instrumental_editorial_rows(self):
+        strict_schema = [
+            "soundcharts_uuid", "spotify_id", "title", "credit_name", "artists",
+            "primary_genre", "genre_confidence", "instrumental_status",
+            "instrumental_confidence", "ai_risk", "rights_status",
+            "rights_confidence", "source_tier",
+        ]
+        artist_schema = ["soundcharts_uuid", "spotify_id", "name"]
+        valid_artist = {
+            "soundcharts_uuid": "artist-a", "spotify_id": "artist-spotify-a", "name": "Artist A"
+        }
+        valid = {
+            "soundcharts_uuid": "track-a", "spotify_id": "spotify-a", "title": "Instrumental",
+            "credit_name": "Artist A", "artists": [valid_artist], "primary_genre": "ambient",
+            "genre_confidence": 0.9, "instrumental_status": "instrumental",
+            "instrumental_confidence": 0.9, "ai_risk": "low", "rights_status": "self_released",
+            "rights_confidence": 0.9, "source_tier": "editorial_playlist",
+        }
+        vocal = {**valid, "soundcharts_uuid": "track-b", "spotify_id": "spotify-b", "instrumental_status": "unknown"}
+        major = {**valid, "soundcharts_uuid": "track-c", "spotify_id": "spotify-c", "rights_status": "major"}
+        composite = {
+            **valid, "soundcharts_uuid": "track-d", "spotify_id": "spotify-d",
+            "credit_name": "Artist A & Missing", "artists": [valid_artist],
+        }
+        source_catalogue = {
+            "version": 1,
+            "generated_at": "2026-07-23T10:00:00Z",
+            "track_schema": strict_schema,
+            "artist_schema": artist_schema,
+            "playlist_schema": [],
+            "tracks": [[row.get(name) for name in strict_schema] for row in [valid, vocal, major, composite]],
+            "artists": [["artist-a", "artist-spotify-a", "Artist A"]],
+        }
+        strict, reasons, active_ids = subject.strict_rebase_catalogue([source_catalogue])
+        records = [subject._record(row, strict["track_schema"]) for row in strict["tracks"]]
+        self.assertEqual([row["spotify_id"] for row in records], ["spotify-a"])
+        self.assertEqual(active_ids, ["spotify-a"])
+        self.assertEqual(reasons["instrumental_unconfirmed"], 1)
+        self.assertEqual(reasons["rights_unconfirmed"], 1)
+        self.assertEqual(reasons["composite_credit_unresolved"], 1)
+
+        payload = {"generated_at": "2026-07-23T10:00:00Z", "discovery_catalogue": source_catalogue}
+        result = subject.build_payload(
+            [(subject.Path("snapshot.js"), payload)], None, minimum_tracks=1, strict_rebased=True
+        )
+        self.assertEqual(result["policy"]["browsing"], "strict_instrumental_rebased")
+        self.assertEqual(result["policy"]["archive"], "Spotify_Radar_data.js")
+        self.assertEqual(result["active_legacy_spotify_ids"], ["spotify-a"])
+
 
 if __name__ == "__main__":
     unittest.main()

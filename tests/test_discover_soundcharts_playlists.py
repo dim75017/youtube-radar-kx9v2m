@@ -216,12 +216,19 @@ class PlaylistDiscoveryTests(unittest.TestCase):
                 max_new_playlist_tracks=10,
                 max_catalog_artists=10,
                 max_new_catalog_tracks=10,
+                baseline={
+                    "source_track_rows": 51_053,
+                    "source_artist_rows": 533,
+                    "artists": [{"name": "Quiet Artist", "spotify_id": "artist-1-spotify"}],
+                },
             )
 
         self.assertEqual(summary["playlists_scanned"], 1)
         self.assertEqual(summary["new_playlist_tracks"], 2)
         self.assertEqual(summary["new_artist_credits"], 2)
         self.assertEqual(summary["new_catalogue_tracks"], 2)
+        self.assertEqual(summary["baseline_catalogue"]["source_track_rows"], 51_053)
+        self.assertEqual(summary["baseline_catalogue"]["structured_artist_seeds"], 1)
         editorial = soundcharts["editorial"]
         track_schema = editorial["track_schema"]
         rows = {subject.field(row, track_schema, "soundcharts_uuid"): row for row in editorial["tracks"]}
@@ -246,6 +253,15 @@ class PlaylistDiscoveryTests(unittest.TestCase):
             limit=3,
         )
         self.assertEqual(ordered, ["b", "c", "a"])
+
+    def test_catalogue_rotation_prioritizes_revalidated_baseline_artist(self):
+        ordered = subject.catalogue_artist_order(
+            ["a", "b", "c"],
+            {"a": {}, "b": {}, "c": {}},
+            limit=3,
+            baseline_artist_uuids={"c"},
+        )
+        self.assertEqual(ordered, ["c", "a", "b"])
 
 
 if __name__ == "__main__":

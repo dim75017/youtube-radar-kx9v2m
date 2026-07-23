@@ -45,6 +45,7 @@ assert.equal(identityContext.isQuarantined('Bruno Mars', true), true,
 const legacyStart = source.indexOf('const A = (D.artists || [])');
 const legacyEnd = source.indexOf('/* Raccord progressif', legacyStart);
 const legacyContext = {
+  BROWSE: {active_legacy_spotify_ids: ['safe-track']},
   D: {
     artists: [
       ['Solo Artist', 0, 'ok', 1, 0],
@@ -60,11 +61,16 @@ const legacyContext = {
     ],
   },
 };
-vm.runInNewContext(`${source.slice(legacyStart, legacyEnd)}; this.visibleRows=LEGACY_R;`, legacyContext);
+vm.runInNewContext(`${source.slice(legacyStart, legacyEnd)}; this.archiveRows=LEGACY_R; this.visibleRows=R;`, legacyContext);
+assert.deepEqual(
+  Array.from(legacyContext.archiveRows, row => row[6]),
+  ['safe-track'],
+  'legacy archive keeps safe inventory while quarantining composite, mainstream and retired rows',
+);
 assert.deepEqual(
   Array.from(legacyContext.visibleRows, row => row[6]),
   ['safe-track'],
-  'legacy browsing keeps safe inventory while quarantining composite, mainstream and retired rows',
+  'active public rows require a current Soundcharts-backed identity pair',
 );
 
 const taxonomyStart = source.indexOf('const SC_ALLOWED_GENRES');

@@ -140,6 +140,28 @@ def read_cache(path: Path) -> dict[str, Any]:
     return payload
 
 
+def read_baseline(path: Path | None) -> dict[str, Any]:
+    """Read the spreadsheet-derived archive seed without importing contacts."""
+    if path is None or not path.exists():
+        return {"artists": []}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise PlaylistDiscoveryError(f"Baseline seed file {path} is invalid") from exc
+    artists = payload.get("artists") if isinstance(payload, dict) else None
+    if not isinstance(artists, list):
+        raise PlaylistDiscoveryError("Baseline seed file is missing artists")
+    clean: list[dict[str, str]] = []
+    for artist in artists:
+        if not isinstance(artist, Mapping):
+            continue
+        spotify_id = str(artist.get("spotify_id") or "").strip()
+        name = str(artist.get("name") or "").strip()
+        if spotify_id and name:
+            clean.append({"spotify_id": spotify_id, "name": name})
+    return {**payload, "artists": clean}
+
+
 def write_cache(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
 
@@ -722,10 +744,13 @@ def catalogue_artist_order(
     artist_state: Mapping[str, Any],
     *,
     limit: int,
+    baseline_artist_uuids: Iterable[str] = (),
 ) -> list[str]:
     unique = sorted(set(str(uuid) for uuid in artist_uuids if uuid))
+    baseline = {str(uuid) for uuid in baseline_artist_uuids if uuid}
     unique.sort(
         key=lambda uuid: (
+            0 if uuid in baseline else 1,
             1 if isinstance(artist_state.get(uuid), Mapping) and artist_state[uuid].get("last_scan_at") else 0,
             str((artist_state.get(uuid) or {}).get("last_scan_at") or ""),
             uuid,
@@ -782,6 +807,7 @@ def discover_from_playlists(
     max_catalog_artists: int = 250,
     catalog_page_size: int = 25,
     max_new_catalog_tracks: int = 1_200,
+    baseline: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     now = utc_now()
     observed_day = utc_today().isoformat()
@@ -806,6 +832,12 @@ def discover_from_playlists(
     artist_state = discovery.setdefault("artists", {})
     if not isinstance(playlist_state, dict) or not isinstance(artist_state, dict):
         raise PlaylistDiscoveryError("Invalid playlist discovery state")
+    baseline_ids = {
+        str(item.get("spotify_id") or "").strip()
+        for item in (baseline or {}).get("artists", [])
+        if isinstance(item, Mapping) and str(item.get("spotify_id") or "").strip()
+    }
+    baseline_playlist_artist_uuids: set[str] = set()
 
     playlists = select_editorial_playlists(playlists_payload)
     if playlist_limit is not None:
@@ -900,6 +932,8 @@ def discover_from_playlists(
             if not artist_uuid:
                 continue
             all_playlist_artist_uuids.add(artist_uuid)
+            if str(artist.get("spotify_id") or "").strip() in baseline_ids:
+                baseline_playlist_artist_uuids.add(artist_uuid)
             evidence_by_artist.setdefault(artist_uuid, dict(evidence))
             _, inserted_artist = upsert_editorial_artist(
                 artist_rows,
@@ -993,6 +1027,7 @@ def discover_from_playlists(
         all_playlist_artist_uuids,
         artist_state,
         limit=max_catalog_artists,
+        baseline_artist_uuids=baseline_playlist_artist_uuids,
     )
     catalogue_tasks: list[tuple[str, str]] = []
     for artist_uuid in artists_to_scan:
@@ -1101,6 +1136,14 @@ def discover_from_playlists(
         "new_catalogue_tracks": new_catalogue_tracks,
         "editorial_tracks_total": len(track_rows),
         "editorial_artists_total": len(artist_rows),
+        "baseline_catalogue": {
+            "source_track_rows": int(_finite_number((baseline or {}).get("source_track_rows")) or 0),
+            "source_artist_rows": int(_finite_number((baseline or {}).get("source_artist_rows")) or 0),
+            "structured_artist_seeds": len(baseline_ids),
+            "playlist_artist_matches": len(baseline_playlist_artist_uuids),
+            "prioritized_catalogues": sum(artist_uuid in baseline_playlist_artist_uuids for artist_uuid in artists_to_scan),
+            "archive_only_until_validated": True,
+        },
         "requests": int(getattr(client, "requests_claimed", 0)),
         "quota_remaining": getattr(client, "quota_remaining", None),
         "failures": failures,
@@ -1124,6 +1167,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--soundcharts", type=Path, default=Path("Spotify_Soundcharts_data.js"))
     parser.add_argument("--playlists", type=Path, default=Path("Spotify_Playlists_data.js"))
     parser.add_argument("--cache", type=Path, default=Path("soundcharts-instrumental-cache.json"))
+    parser.add_argument("--baseline", type=Path, default=Path("spotify-catalogue-baseline.json"))
     parser.add_argument("--workers", type=int, default=10)
     parser.add_argument("--max-requests", type=int, default=1_400)
     parser.add_argument("--page-size", type=int, default=100)
@@ -1140,6 +1184,7 @@ def main() -> int:
     soundcharts = read_js_payload(args.soundcharts, SOUNDCHARTS_PREFIX)
     playlists = read_js_payload(args.playlists, PLAYLISTS_PREFIX)
     cache = read_cache(args.cache)
+    baseline = read_baseline(args.baseline)
     client = SoundchartsClient(
         os.environ.get("SOUNDCHARTS_CLIENT_ID", ""),
         os.environ.get("SOUNDCHARTS_CLIENT_SECRET", ""),
@@ -1160,6 +1205,7 @@ def main() -> int:
         max_catalog_artists=max(0, args.max_catalog_artists),
         catalog_page_size=max(5, min(100, args.catalog_page_size)),
         max_new_catalog_tracks=max(0, args.max_new_catalog_tracks),
+        baseline=baseline,
     )
     write_js_payload(args.soundcharts, soundcharts, SOUNDCHARTS_PREFIX)
     write_cache(args.cache, cache)

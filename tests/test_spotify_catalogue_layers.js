@@ -42,14 +42,19 @@ const prefix = 'window.SPOTIFY_BROWSE_CATALOGUE=';
 const browseText = fs.readFileSync('Spotify_Browse_Catalogue_data.js', 'utf8');
 assert.ok(browseText.startsWith(prefix), 'broad catalogue file must use its dedicated global');
 const browse = JSON.parse(browseText.slice(prefix.length).trim().replace(/;$/, ''));
-assert.equal(browse.policy.browsing, 'full');
+assert.ok(['full', 'strict_instrumental_rebased'].includes(browse.policy.browsing));
 assert.equal(browse.policy.ar, 'strict');
 assert.equal(browse.policy.unverified_records_contactable, false);
 const catalogue = browse.discovery_catalogue || {};
-assert.ok(Array.isArray(catalogue.tracks) && catalogue.tracks.length >= 10_000,
-  `broad discovery catalogue unexpectedly small: ${Array.isArray(catalogue.tracks) ? catalogue.tracks.length : 0}`);
-assert.ok(Array.isArray(catalogue.artists) && catalogue.artists.length >= 1_000,
-  `broad discovery artist catalogue unexpectedly small: ${Array.isArray(catalogue.artists) ? catalogue.artists.length : 0}`);
+const strictRebased = browse.policy.browsing === 'strict_instrumental_rebased';
+assert.ok(Array.isArray(catalogue.tracks) && catalogue.tracks.length >= (strictRebased ? 1 : 10_000),
+  `active discovery catalogue unexpectedly small: ${Array.isArray(catalogue.tracks) ? catalogue.tracks.length : 0}`);
+assert.ok(Array.isArray(catalogue.artists) && catalogue.artists.length >= (strictRebased ? 1 : 1_000),
+  `active discovery artist catalogue unexpectedly small: ${Array.isArray(catalogue.artists) ? catalogue.artists.length : 0}`);
+if (strictRebased) {
+  assert.equal(browse.policy.archive, 'Spotify_Radar_data.js');
+  assert.ok(Array.isArray(browse.active_legacy_spotify_ids));
+}
 for (const schema of [catalogue.track_schema || [], catalogue.artist_schema || []]) {
   for (const forbidden of ['contact_email', 'contact_url', 'contact_platform', 'email', 'phone']) {
     assert.equal(schema.includes(forbidden), false, `browsing catalogue must not expose ${forbidden}`);
