@@ -83,6 +83,7 @@ input,select{font-family:inherit;color:var(--text)}
 .sync-micro b{display:block;color:var(--text);font-size:11px;margin-bottom:2px}
 .sync-line:hover .sync-micro,.sync-line:focus-visible .sync-micro{opacity:1;visibility:visible;transform:translate(0,-50%)}
 .topbar .sub:empty{display:none}
+.topbar.no-view-title{display:none}
 .side-foot .btn-refresh{
   display:flex;align-items:center;justify-content:center;gap:7px;padding:8px;border-radius:10px;
   background:rgba(150,163,214,.07);border:1px solid var(--border);font-size:12px;font-weight:600;color:var(--muted);

@@ -333,9 +333,13 @@ function lastScanText(){
 
 /* ================= STATE ================= */
 let DATA=null, SYNCED=null, route='dashboard';
+const VIEW_CACHE=new Map();
+let VIEW_WARMUP_TOKEN=0;
 function setRadarData(d){
   DATA=d;mergeLoadedVideoHistoryIntoData(DATA);
+  VIEW_CACHE.clear();VIEW_WARMUP_TOKEN++;
   if(typeof _anaCache!=='undefined'){_anaCache=null;_anaT=0;}
+  if(typeof scheduleViewWarmup==='function')scheduleViewWarmup();
 }
 const VS={
   all:{q:'',genre:'',sort:'vpm',mode:'grid',limit:60},
@@ -626,6 +630,7 @@ async function loadChan(){
       else CHAN_ERR=e.message;
     }catch(e2){CHAN_ERR=e.message;}
   }
+  VIEW_CACHE.clear();VIEW_WARMUP_TOKEN++;
   renderNav();
   render(); // re-render la vue courante : les badges AI dépendent des données Channels
 }
@@ -679,26 +684,59 @@ function renderNav(){
     '<div class="nav-label">Workspace</div>'+
     VIEWS.map(v=>'<button class="'+(route===v.id?'active':'')+(v.small?' nsmall':'')+'" onclick="go(\''+v.id+'\')"><span class="emo">'+v.emo+'</span><span class="lbl">'+_frnav(v.label)+'</span><span class="count">'+v.cnt()+'</span></button>').join('');
 }
-function go(r){route=r;try{history.replaceState(null,'','#'+r);}catch(e){}renderNav();render();window.scrollTo({top:0});
+function go(r){route=r;try{history.replaceState(null,'','#'+r);}catch(e){}renderNav();render({preferCache:true});window.scrollTo({top:0});
   const sb=document.getElementById('sidebar'),vl=document.getElementById('side-veil');
   if(sb)sb.classList.remove('open');if(vl)vl.classList.remove('show');
 }
-function render(){
+function viewMarkupForRoute(currentRoute){
+  if(currentRoute==='dashboard')return {title:(typeof LANG!=='undefined'&&LANG==='fr')?'Tableau de bord':'Dashboard',html:dashHTML()};
+  if(currentRoute==='mix')return {title:'Videos <span class="pill">DAILY SCAN</span>',html:videosHTML('mix')};
+  if(currentRoute==='recos')return {title:'Recommendations',html:recosHTML()};
+  if(currentRoute==='roadmap')return {title:'Roadmap',html:roadmapHTML()};
+  if(currentRoute==='ana')return {title:'',html:anaHTML()};
+  if(currentRoute==='live')return {title:'Livestreams <span class="pill">HOURLY SCAN</span>',html:livesHTML()};
+  if(currentRoute==='chan')return {title:'Channels <span class="pill">MONTHLY SCAN</span>',html:chanHTML()};
+  if(currentRoute==='kw')return {title:'Keywords',html:kwHTML()};
+  return {title:'',html:''};
+}
+function viewCacheKey(currentRoute){return currentRoute+'|'+(typeof LANG!=='undefined'?LANG:'en');}
+function viewMarkupWithLanguage(currentRoute){
+  const output=viewMarkupForRoute(currentRoute);
+  if(typeof LANG!=='undefined'&&LANG==='fr'&&typeof frz==='function')return {title:frz(output.title),html:frz(output.html)};
+  return output;
+}
+function scheduleViewWarmup(){
+  if(!DATA)return;
+  const token=++VIEW_WARMUP_TOKEN;
+  const pending=['dashboard','mix','recos','roadmap','live','chan','kw'].filter(item=>item!==route);
+  const warm=()=>{
+    if(token!==VIEW_WARMUP_TOKEN||!pending.length)return;
+    const current=pending.shift(),key=viewCacheKey(current);
+    if(!VIEW_CACHE.has(key))VIEW_CACHE.set(key,viewMarkupWithLanguage(current));
+    if(pending.length){
+      if('requestIdleCallback' in window)window.requestIdleCallback(warm,{timeout:180});
+      else setTimeout(warm,0);
+    }
+  };
+  if('requestIdleCallback' in window)window.requestIdleCallback(warm,{timeout:180});
+  else setTimeout(warm,0);
+}
+function render(options){
   if(!DATA)return;
   if(route==='watch'){route='dashboard';try{history.replaceState(null,'','#dashboard');}catch(e){}renderNav();}
   const t=document.getElementById('view-title'),s=document.getElementById('view-sub'),el=document.getElementById('view');
+  const topbar=t&&t.closest('.topbar');
   closeDrawer();
   s.textContent='';
-  if(route==='dashboard'){t.textContent=(typeof LANG!=='undefined'&&LANG==='fr')?'Tableau de bord':'Dashboard';el.innerHTML=dashHTML();}
-  else if(route==='mix'){t.innerHTML='Videos <span class="pill">DAILY SCAN</span>';el.innerHTML=videosHTML('mix');}
-  else if(route==='all'||route==='trends'||route==='news'){route='mix';renderNav();render();return;}
-  else if(route==='recos'){t.textContent='Recommendations';el.innerHTML=recosHTML();}
-  else if(route==='roadmap'){t.textContent='Roadmap';el.innerHTML=roadmapHTML();}
-  else if(route==='ana'){t.innerHTML='Analysis <span class="pill">OUR VIDEOS</span>';el.innerHTML=anaHTML();}
-  else if(route==='live'){t.innerHTML='Livestreams <span class="pill">HOURLY SCAN</span>';el.innerHTML=livesHTML();}
-  else if(route==='chan'){t.innerHTML='Channels <span class="pill">MONTHLY SCAN</span>';el.innerHTML=chanHTML();}
-  else if(route==='kw'){t.textContent='Keywords';el.innerHTML=kwHTML();}
-  i18nView();armAutoLoad();fillLikes();if(route==='ana')fillAnaLikes();
+  if(route==='all'||route==='trends'||route==='news'){route='mix';renderNav();render(options);return;}
+  const key=viewCacheKey(route),cached=options&&options.preferCache?VIEW_CACHE.get(key):null;
+  if(cached){t.innerHTML=cached.title;el.innerHTML=cached.html;i18nView({skipContent:true});}
+  else{
+    const output=viewMarkupForRoute(route);t.innerHTML=output.title;el.innerHTML=output.html;i18nView();
+    VIEW_CACHE.set(key,{title:t.innerHTML,html:el.innerHTML});
+  }
+  if(topbar)topbar.classList.toggle('no-view-title',route==='ana');
+  armAutoLoad();fillLikes();if(route==='ana')fillAnaLikes();
 }
 
 /* ================= DASHBOARD ================= */

@@ -51,5 +51,14 @@ assert.equal(young.cohN, 3, 'market comparison must exclude the older, high-view
 assert.equal(young.medViews, 700, 'channel raw-view baseline must only use releases of the same age');
 assert.equal(old.pctCh, null, 'insufficient same-age peers must remain neutral instead of falling back to all ages');
 assert.ok(young.vpm > 0, 'lifetime velocity stays available as an age-normalized raw metric');
+assert.match(source, /function anaProgressBarHTML\(o\)/,
+  'Analysis cards must use one shared progress-bar renderer');
+assert.match(source, /hasPercentile\?Math\.max\(0,Math\.min\(100,Number\(o\.pctCh\)\)\):50/,
+  'Missing comparable peers must render a neutral midpoint bar, not an invisible zero-width bar');
+const cardStart = source.indexOf('function anaCardHTML(');
+const cardEnd = source.indexOf('\nfunction fillAnaLikes', cardStart);
+assert.ok(cardStart >= 0 && cardEnd > cardStart, 'Analysis card renderer must remain available');
+assert.doesNotMatch(source.slice(cardStart, cardEnd), /age cohort ·/,
+  'The age-cohort label must not clutter Analysis cards');
 
 console.log('YouTube age-normalized analysis: OK');
