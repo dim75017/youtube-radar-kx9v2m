@@ -76,11 +76,13 @@ for (const required of [
   "S.radarSort==='streams7'",
   'arOpportunityMetric(b,3)',
   'arOpportunityMetric(b,6)',
-  '(b.playlistCount||0)-(a.playlistCount||0)',
-  '(b.artistMonthlyListeners??-Infinity)-(a.artistMonthlyListeners??-Infinity)',
+  'const direction=S.radarSortDir===1?1:-1;',
+  'const number=(left,right)=>',
+  'rows.sort(compare);',
 ]) {
   if (!filtered.includes(required)) throw new Error(`Expected A&R sort behavior is missing: ${required}`);
 }
+if (!source.includes('function arOpportunitySortDefaultDir(sort)')) throw new Error('A&R sort direction helper is missing');
 const detailStart = source.indexOf('function openArOpportunity(spotifyId){');
 const detailEnd = source.indexOf('\nfunction renderRadar(){', detailStart);
 if (detailStart < 0 || detailEnd < 0) throw new Error('A&R opportunity detail function was not found');
@@ -120,7 +122,7 @@ if (card.includes('arContactHtml(opportunity,true)')) throw new Error('Platform 
 for (const label of ['<div class="l">Sortie</div>', '<div class="l">Streams total</div>', '<div class="l">30 jours</div>', '<div class="l">7 jours</div>', '<div class="l">24 heures</div>', '<div class="l">Auditeurs/mois</div>']) {
   if (card.includes(label)) throw new Error(`A&R card metric label must live only in the column bar: ${label}`);
 }
-if (!renderRadar.includes('page-head ar-radar-head') || renderRadar.includes('ar-filter-spacer')) throw new Error('A&R filters must sit compactly under the title on the left');
+if (!renderRadar.includes('page-head ar-radar-head') || renderRadar.includes('ar-filter-spacer') || !renderRadar.includes('ar-filter-section')) throw new Error('A&R filters must sit compactly under the title on the left');
 const editorialCard = source.slice(source.indexOf('function arEditorialCardHtml'), source.indexOf('const AR_PLAYLIST_COVER_CACHE'));
 if (editorialCard.includes('${fmtFull(count)}')) throw new Error('Editorial placement count must not occupy the right edge of cards');
 for (const required of ['function hydrateArTrackCovers()', 'function arPublicContactChannels(', 'arOutreachDrafts(', 'public_contacts']) {

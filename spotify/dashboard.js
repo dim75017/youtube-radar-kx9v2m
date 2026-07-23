@@ -1349,7 +1349,7 @@ const S = {
   plq:'', plcur:'all', plsort:'followers', pldir:-1, plonly:false, shownPL:80, plview:'qualified', plmode:'table',
   amode:'table', omode:'table',
   lbq:'', lbsort:'streams', lbdir:-1, shownLB:80, lbmode:'table', labelKey:null, lbModalArtist:null,
-  radarFilter:'all', radarLimit:100, radarShown:100, radarTrackId:'', radarGenre:'all', radarSort:'score', radarQ:'', arSelected:{},
+  radarFilter:'all', radarLimit:100, radarShown:100, radarTrackId:'', radarGenre:'all', radarSort:'score', radarSortDir:-1, radarQ:'', arSelected:{},
 };
 
 /* ---------- navigation ---------- */
@@ -2731,6 +2731,9 @@ function arOpportunityMatchesSearch(opportunity,query){
   const haystack=arSearchText([opportunity.title,opportunity.credit,opportunity.label,...labels,...artists,...playlists].filter(Boolean).join(' '));
   return terms.every(term=>haystack.includes(term));
 }
+function arOpportunitySortDefaultDir(sort){
+  return ['artist','genre','recent'].includes(sort)?1:-1;
+}
 function arOpportunityFiltered(all){
   let rows=all.filter(opportunity=>{
     if(arListHas(opportunity.spotifyId)) return false;
@@ -2747,21 +2750,29 @@ function arOpportunityFiltered(all){
     if(S.radarFilter==='known') return opportunity.knownRoster;
     return true;
   });
-  rows.sort((a,b)=>{
-    if(S.radarSort==='artist') return a.credit.localeCompare(b.credit,'fr',{sensitivity:'base'})||a.title.localeCompare(b.title,'fr',{sensitivity:'base'})||b.score-a.score;
-    if(S.radarSort==='genre') return arGenreLabel(a.genre).localeCompare(arGenreLabel(b.genre),'fr',{sensitivity:'base'})||b.score-a.score;
-    if(S.radarSort==='streams3') return (arOpportunityMetric(b,3)??-Infinity)-(arOpportunityMetric(a,3)??-Infinity)||b.score-a.score;
-    if(S.radarSort==='streams6') return (arOpportunityMetric(b,6)??-Infinity)-(arOpportunityMetric(a,6)??-Infinity)||b.score-a.score;
-    if(S.radarSort==='streams30') return (arOpportunityMetric(b,30)??-Infinity)-(arOpportunityMetric(a,30)??-Infinity)||b.score-a.score;
-    if(S.radarSort==='streams7') return (arOpportunityMetric(b,7)??-Infinity)-(arOpportunityMetric(a,7)??-Infinity)||b.score-a.score;
-    if(S.radarSort==='momentum') return (arOpportunityMetric(b,1)||-Infinity)-(arOpportunityMetric(a,1)||-Infinity)||b.score-a.score;
-    if(S.radarSort==='acceleration') return (b.acceleration7??-Infinity)-(a.acceleration7??-Infinity)||b.score-a.score;
-    if(S.radarSort==='streams') return (arOpportunityTotal(b)||-Infinity)-(arOpportunityTotal(a)||-Infinity)||b.score-a.score;
-    if(S.radarSort==='editorial') return (b.playlistCount||0)-(a.playlistCount||0)||(b.playlistFollowers||0)-(a.playlistFollowers||0)||b.score-a.score;
-    if(S.radarSort==='recent') return (a.releaseAgeDays??arReleaseAgeDays(a)??Infinity)-(b.releaseAgeDays??arReleaseAgeDays(b)??Infinity)||b.score-a.score;
-    if(S.radarSort==='listeners') return (b.artistMonthlyListeners??-Infinity)-(a.artistMonthlyListeners??-Infinity)||b.score-a.score;
-    return b.score-a.score||(b.scoreConfidence||0)-(a.scoreConfidence||0)||a.title.localeCompare(b.title);
-  });
+  const direction=S.radarSortDir===1?1:-1;
+  const number=(left,right)=>{
+    const leftValid=Number.isFinite(Number(left)), rightValid=Number.isFinite(Number(right));
+    if(!leftValid||!rightValid) return leftValid===rightValid?0:(leftValid?-1:1);
+    return direction*(Number(left)-Number(right));
+  };
+  const text=(left,right)=>direction*String(left||'').localeCompare(String(right||''),'fr',{sensitivity:'base'});
+  const compare=(a,b)=>{
+    if(S.radarSort==='artist') return text(a.credit,b.credit)||text(a.title,b.title)||number(a.score,b.score);
+    if(S.radarSort==='genre') return text(arGenreLabel(a.genre),arGenreLabel(b.genre))||number(a.score,b.score);
+    if(S.radarSort==='streams3') return number(arOpportunityMetric(a,3),arOpportunityMetric(b,3))||number(a.score,b.score);
+    if(S.radarSort==='streams6') return number(arOpportunityMetric(a,6),arOpportunityMetric(b,6))||number(a.score,b.score);
+    if(S.radarSort==='streams30') return number(arOpportunityMetric(a,30),arOpportunityMetric(b,30))||number(a.score,b.score);
+    if(S.radarSort==='streams7') return number(arOpportunityMetric(a,7),arOpportunityMetric(b,7))||number(a.score,b.score);
+    if(S.radarSort==='momentum') return number(arOpportunityMetric(a,1),arOpportunityMetric(b,1))||number(a.score,b.score);
+    if(S.radarSort==='acceleration') return number(a.acceleration7,b.acceleration7)||number(a.score,b.score);
+    if(S.radarSort==='streams') return number(arOpportunityTotal(a),arOpportunityTotal(b))||number(a.score,b.score);
+    if(S.radarSort==='editorial') return number(a.playlistCount,b.playlistCount)||number(a.playlistFollowers,b.playlistFollowers)||number(a.score,b.score);
+    if(S.radarSort==='recent') return number(a.releaseAgeDays??arReleaseAgeDays(a),b.releaseAgeDays??arReleaseAgeDays(b))||number(a.score,b.score);
+    if(S.radarSort==='listeners') return number(a.artistMonthlyListeners,b.artistMonthlyListeners)||number(a.score,b.score);
+    return number(a.score,b.score)||number(a.scoreConfidence,b.scoreConfidence)||text(a.title,b.title);
+  };
+  rows.sort(compare);
   return rows;
 }
 function arOpportunityCard(opportunity,index){
@@ -2816,7 +2827,7 @@ function openArOpportunity(spotifyId){
 }
 function arColumnBarHtml(){
   const choices=[['score','Note'],['artist','Artiste'],['recent','Sortie'],['genre','Genre'],['streams','Streams total'],['streams30','30 jours'],['streams7','7 jours'],['momentum','24 heures'],['listeners','Auditeurs/mois'],['editorial','Éditoriales']];
-  return `<div class="ar-columnbar" role="toolbar" aria-label="Trier les opportunités"><button type="button" data-ar-sort="${choices[0][0]}" class="${S.radarSort===choices[0][0]?'on':''}">${choices[0][1]}</button><span aria-hidden="true"></span>${choices.slice(1).map(([value,label])=>`<button type="button" data-ar-sort="${value}" class="${S.radarSort===value?'on':''}">${label}</button>`).join('')}</div>`;
+  return `<div class="ar-columnbar" role="toolbar" aria-label="Trier les opportunités dans les deux sens">${choices.map(([value,label])=>{const active=S.radarSort===value,dir=active?(S.radarSortDir===1?'asc':'desc'):'';return `<button type="button" data-ar-sort="${value}" class="${active?'on':''} ${dir}" title="Trier ${label.toLowerCase()} dans les deux sens"><span>${label}</span><i class="ar-sort-indicator" aria-hidden="true"><b>↑</b><b>↓</b></i></button>`;}).join('')}</div>`;
 }
 function arGenreSelectHtml(genres){
   const visual=S.radarGenre==='all'?{emoji:'🎼',color:'#a7f3d0'}:arGenreVisual(S.radarGenre);
@@ -2831,13 +2842,13 @@ function renderRadar(){
   const filtered=arOpportunityFiltered(all), rows=filtered.slice(0,S.radarShown);
   const genres=[...new Set(all.map(item=>item.genre).filter(Boolean))].sort((a,b)=>arGenreLabel(a).localeCompare(arGenreLabel(b)));
   const selectedIds=arSelectedIds();
-  V.innerHTML=`<div class="page-head ar-radar-head"><div><h2>Opportunités</h2><div class="ar-filterbar">${arGenreSelectHtml(genres)}</div></div></div>${arColumnBarHtml()}
+  V.innerHTML=`<div class="page-head ar-radar-head"><div><h2>Opportunités</h2><section class="ar-filter-section" aria-label="Filtres des opportunités"><span class="ar-filter-section-label">Filtres</span><div class="ar-filterbar">${arGenreSelectHtml(genres)}</div></section></div></div>${arColumnBarHtml()}
     <div class="ar-opportunity-list">${rows.map(arOpportunityCard).join('')}</div>${rows.length===0?`<div class="ar-empty-state">Aucune track ne correspond à ce filtre. Les critères restent stricts et aucune donnée manquante n’est inventée.</div>`:''}${sentinel(filtered.length-rows.length)}${selectedIds.length?`<div class="ar-selection-float" role="status" aria-live="polite"><span><b>${selectedIds.length}</b> track${selectedIds.length>1?'s':''} sélectionnée${selectedIds.length>1?'s':''}</span><button id="ar-add-selected" type="button">⭐ Ajouter à la sélection</button></div>`:''}`;
   document.querySelectorAll('[data-ar-select]').forEach(input=>input.addEventListener('change',event=>arToggleSelection(input.dataset.arSelect,event.target.checked)));
   const addSelected=document.getElementById('ar-add-selected');if(addSelected)addSelected.addEventListener('click',()=>arAddManyToList(arSelectedIds()));
   document.querySelectorAll('[data-ar-card]').forEach(card=>{const open=event=>{if(event.target.closest('button,a,input,select,label')) return;openArOpportunity(card.dataset.arCard);};card.addEventListener('click',open);card.addEventListener('contextmenu',event=>{if(event.target.closest('button,a,input,select,label'))return;event.preventDefault();arOpenContextMenu(card.dataset.arCard,event.clientX,event.clientY);});card.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openArOpportunity(card.dataset.arCard);}});});
   document.getElementById('radar-genre').addEventListener('change',event=>{S.radarGenre=event.target.value;S.radarShown=100;renderRadar();});
-  document.querySelectorAll('[data-ar-sort]').forEach(button=>button.addEventListener('click',()=>{S.radarSort=button.dataset.arSort;S.radarShown=100;renderRadar();}));
+  document.querySelectorAll('[data-ar-sort]').forEach(button=>button.addEventListener('click',()=>{const next=button.dataset.arSort;S.radarSortDir=S.radarSort===next?(S.radarSortDir===1?-1:1):arOpportunitySortDefaultDir(next);S.radarSort=next;S.radarShown=100;renderRadar();}));
   attachInfinite(()=>{if(S.radarShown>=filtered.length) return;S.radarShown=Math.min(filtered.length,S.radarShown+100);renderRadar();});
   hydrateArPlaylistCovers();
   hydrateArTrackCovers();
