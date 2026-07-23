@@ -2479,19 +2479,16 @@ function arEditorialCardHtml(opportunity){
   const playlists=arEditorialPlaylists(opportunity);
   const count=Number(opportunity.playlistCount||playlists.length||0);
   if(!count)return '<div class="ar-editorial-card muted"><span class="ar-editorial-label">Éditoriales</span><strong>—</strong></div>';
-  const names=playlists.map(item=>item.name||item.spotifyId).filter(Boolean);
-  const detail=names.length?names.join(' · '):'Placement confirmé';
-  const more='';
   const covers=playlists.map((playlist,index)=>{
     const playlistId=String(playlist.spotifyId||'').trim();
     const imageUrl=String(playlist.imageUrl||playlist.image_url||'').trim();
     const label=arEditorialPlaylistTooltip(playlist,opportunity);
     const visual=`${imageUrl?`<img src="${esc(imageUrl)}" alt="" loading="lazy" onerror="this.remove()">`:''}<span class="ar-playlist-fallback" data-ar-playlist-id="${esc(playlistId)}" data-ar-playlist-slot="${index}">♪</span>`;
     return playlistId
-      ?`<a class="ar-playlist-cover ar-editorial-cover-link" href="https://open.spotify.com/playlist/${esc(playlistId)}" target="_blank" rel="noopener" title="${esc(label)}" aria-label="Ouvrir ${esc(label)} dans Spotify">${visual}</a>`
+      ?`<button type="button" class="ar-playlist-cover ar-editorial-cover-link" onclick="event.stopPropagation();openPlaylist('${esc(playlistId)}')" title="${esc(label)}" aria-label="Voir les informations de ${esc(label)}">${visual}</button>`
       :`<span class="ar-playlist-cover" title="${esc(label)}">${visual}</span>`;
   }).join('');
-  return `<div class="ar-editorial-card" title="${esc(arEditorialSummary(opportunity,4))}"><span class="ar-editorial-label">Éditoriales</span><span class="ar-editorial-cover-stack">${covers}</span><strong>${fmtFull(count)}</strong><span class="ar-editorial-names">${esc(detail)}${more}</span></div>`;
+  return `<div class="ar-editorial-card" title="${esc(arEditorialSummary(opportunity,4))}"><span class="ar-editorial-label">Éditoriales</span><span class="ar-editorial-cover-stack">${covers}</span><strong>${fmtFull(count)}</strong></div>`;
 }
 const AR_PLAYLIST_COVER_CACHE=new Map();
 const AR_TRACK_COVER_CACHE=new Map();
@@ -2616,11 +2613,10 @@ function arOpportunityCard(opportunity,index){
   const selectable=arContactEligible(opportunity);
   return `<article class="ar-opportunity-card ${selected?'is-selected':''}" tabindex="0" data-ar-card="${esc(opportunity.spotifyId)}">
     <label class="ar-card-select" title="${selectable?'Sélectionner cette track':'Sélection A&R réservée aux tracks vérifiées'}"><input type="checkbox" data-ar-select="${esc(opportunity.spotifyId)}" ${selected?'checked':''} ${selectable?'':'disabled'}><span></span></label>
-    <span class="ar-rank">${index+1}</span>
+    <div class="ar-score-box" title="Score A&R"><div class="ar-score-value">${Math.round(opportunity.score)}</div></div>
     <div class="ar-track-cover ${coverUrl?'has':''}"><span data-ar-track-cover-id="${coverUrl?'':esc(opportunity.spotifyId)}">♫</span>${coverUrl?`<img src="${esc(coverUrl)}" alt="" loading="lazy" onerror="this.remove()">`:''}</div>
     <div class="ar-opp-main"><div class="ar-opp-title">${esc(opportunity.title)}</div><div class="ar-opp-artist">${esc(opportunity.credit)}</div><div class="ar-opp-tags"><span class="ar-mini-tag good">${esc(arRightsShortLabel(opportunity.rights))}</span><span class="ar-mini-tag">📅 Sortie ${esc(release)}</span></div></div>
     <div class="ar-opp-metrics"><div class="ar-opp-metric total"><div class="l">Streams total</div><div class="v">${arMetricCompact(total)}</div></div><div class="ar-opp-metric"><div class="l">30 jours</div><div class="v">${arMetricCompact(d30)}</div></div><div class="ar-opp-metric"><div class="l">7 jours</div><div class="v">${arMetricCompact(d7)}</div></div><div class="ar-opp-metric current"><div class="l">24 heures</div><div class="v ${d1!=null&&d1>0?'up':''}">${arMetricCompact(d1,true)}</div></div><div class="ar-opp-metric listeners"><div class="l">Auditeurs/mois</div><div class="v">${listeners}</div></div></div>
-    <div class="ar-score-box"><div class="ar-score-value">${Math.round(opportunity.score)}</div></div>
     <div class="ar-genre-card" style="--genre-color:${genreVisual.color}"><span>${genreVisual.emoji}</span><strong>${esc(genre)}</strong></div>
     ${arEditorialCardHtml(opportunity)}
   </article>`;

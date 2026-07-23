@@ -18,7 +18,9 @@ assert.match(spotify, /playlists\.map\(\(playlist,index\)=>/, 'Every editorial p
 assert.match(spotify, /function arEditorialPlaylistTooltip\(/, 'Each editorial playlist needs a detailed hover tooltip');
 assert.match(spotify, /📅 Sortie \$\{esc\(release\)\}/, 'A&R cards must show the release date');
 assert.match(spotify, /ar-editorial-cover-link/, 'Editorial playlist covers must be rendered as direct links');
-assert.match(spotify, /open\.spotify\.com\/playlist\//, 'Editorial playlist links must open the exact Spotify playlist');
+assert.match(spotify, /openPlaylist\('\$\{esc\(playlistId\)\}'\)/, 'Editorial playlist icons must open the internal playlist detail');
+const editorialCard = spotify.slice(spotify.indexOf('function arEditorialCardHtml'), spotify.indexOf('const AR_PLAYLIST_COVER_CACHE'));
+assert.doesNotMatch(editorialCard, /ar-editorial-names/, 'Editorial playlist names stay out of the compact card');
 assert.doesNotMatch(spotify, /ar-list-toggle/, 'Selection now uses checkboxes and bulk actions, not a redundant card button');
 assert.match(spotify, /arContactEligible\(opportunity\)/, 'Outreach must retain strict contact eligibility');
 assert.match(spotify, /function arSelectionEligible\(spotifyId\)/, 'Selection must reuse the strict A&R eligibility gate');

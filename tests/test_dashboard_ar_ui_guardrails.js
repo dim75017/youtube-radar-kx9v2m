@@ -51,8 +51,8 @@ const metrics = card.indexOf('class="ar-opp-metrics"');
 const score = card.indexOf('class="ar-score-box"');
 const genre = card.indexOf('class="ar-genre-card"');
 const editorials = card.indexOf('arEditorialCardHtml(opportunity)');
-if (!(identity < metrics && metrics < score && score < genre && genre < editorials)) {
-  throw new Error('A&R card must read identity, metrics + score, genre, then editorials');
+if (!(score < identity && identity < metrics && metrics < genre && genre < editorials)) {
+  throw new Error('A&R card must read score, identity, metrics, genre, then editorials');
 }
 if (renderRadar.includes("arWorkspaceTabs('radar')") || renderRadar.includes('musiques instrumentales')) {
   throw new Error('A&R opportunity header must not render redundant workspace tabs or subtitle');
