@@ -36,6 +36,15 @@ assert.match(dashboard, /ar-selection-offers/);
 for (const required of ['.ar-selection-offers', '.ar-status-follow_up', '.ar-artist-deal', '.ar-selection-artist-avatar img']) {
   assert.ok(css.includes(required), `Missing selection workflow style: ${required}`);
 }
-assert.match(index, /dashboard\.js\?v=20260724-streamline-track-release-type-v1/);
+for (const required of [
+  'linear-gradient(135deg,rgba(30,215,96,.13),rgba(34,211,238,.07)',
+  'min-height:52px',
+  'grid-template-columns:48px minmax(180px,1fr) minmax(330px,.98fr) minmax(172px,.46fr) 132px',
+]) assert.ok(css.includes(required), `Missing refined artist-selection header style: ${required}`);
+const cardStart = dashboard.indexOf('function arSelectionArtistCardHtml(group){');
+const cardEnd = dashboard.indexOf('\nfunction arSelectionEconomics(group){', cardStart);
+const card = dashboard.slice(cardStart, cardEnd);
+assert.ok(card.indexOf('ar-artist-actions') < card.indexOf('arSelectionStatusHtml(artist.key)'), 'Artist status must render after the message action, at the far right.');
+assert.match(index, /dashboard\.js\?v=20260724-selection-artist-header-v1/);
 
 console.log('spotify selection artist offers/status: OK');
