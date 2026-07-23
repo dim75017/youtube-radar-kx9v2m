@@ -2870,9 +2870,13 @@ function openArOpportunity(spotifyId){
   document.getElementById('ar-modal').style.display='flex';
   hydrateArPlaylistCovers();
 }
+function sortTriangleIndicator(active,direction){
+  const dir=active?(direction===-1?'desc':'asc'):'';
+  return `<span class="sort-triangles ${active?'on ':''}${dir}" aria-hidden="true"><b>▲</b><b>▼</b></span>`;
+}
 function arColumnBarHtml(){
   const choices=[['score','Note'],['artist','Artiste'],['recent','Sortie'],['genre','Genre'],['streams','Streams total'],['streams30','30 jours'],['streams7','7 jours'],['momentum','24 heures'],['listeners','Auditeurs/mois'],['editorial','Éditoriales']];
-  return `<div class="ar-columnbar" role="toolbar" aria-label="Trier les opportunités dans les deux sens">${choices.map(([value,label])=>{const active=S.radarSort===value,dir=active?(S.radarSortDir===1?'asc':'desc'):'';return `<button type="button" data-ar-sort="${value}" class="${active?'on':''} ${dir}" title="Trier ${label.toLowerCase()} dans les deux sens"><span>${label}</span><i class="ar-sort-indicator" aria-hidden="true"><b>↑</b><b>↓</b></i></button>`;}).join('')}</div>`;
+  return `<div class="ar-columnbar" role="toolbar" aria-label="Trier les opportunités dans les deux sens">${choices.map(([value,label])=>{const active=S.radarSort===value,dir=active?(S.radarSortDir===1?'asc':'desc'):'';return `<button type="button" data-ar-sort="${value}" class="${active?'on':''} ${dir}" title="Trier ${label.toLowerCase()} dans les deux sens"><span>${label}</span>${sortTriangleIndicator(active,S.radarSortDir)}</button>`;}).join('')}</div>`;
 }
 function arGenreSelectHtml(genres){
   const visual=S.radarGenre==='all'?{emoji:'🎼',color:'#a7f3d0'}:arGenreVisual(S.radarGenre);
@@ -3020,7 +3024,7 @@ function renderWatch(){
   V.innerHTML=h; bindMetricModeToggle(renderWatch,V); attachCovers();
 }
 
-function sortArrow(k){ return S.sort.k===k ? `<span class="arr">${S.sort.dir===-1?'▼':'▲'}</span>` : ''; }
+function sortArrow(k){ return sortTriangleIndicator(S.sort.k===k,S.sort.dir); }
 
 function renderOpps(){
   /* The catalogue remains complete; these are only the focused ownership
@@ -3046,7 +3050,7 @@ function renderOpps(){
         <th data-k="1">Track ${sortArrow(1)}</th>
         <th data-k="0">${T('Artiste')} ${sortArrow(0)}</th>
         <th data-k="30">Genre principal ${sortArrow(30)}</th>
-        <th data-k="3" class="num">${streamMetricLabel(0)}</th>
+        <th data-k="3" class="num">${streamMetricLabel(0)} ${sortArrow(3)}</th>
         <th data-k="10" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(30)} ${sortArrow(10)}</th>
         <th data-k="21" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(7)} ${sortArrow(21)}</th>
         <th data-k="20" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(1)} ${sortArrow(20)}</th>
@@ -3189,7 +3193,7 @@ function renderOpps(){
 }
 function keepFocus(id){ const el=document.getElementById(id); if(el){ el.focus(); el.setSelectionRange(el.value.length,el.value.length);} }
 function keepScroll(fn){ const y=window.scrollY; fn(); window.scrollTo(0,y); }
-function artistSortArrow(k){ return S.asort===k ? `<span class="arr">${S.adir===-1?'▼':'▲'}</span>` : ''; }
+function artistSortArrow(k){ return sortTriangleIndicator(S.asort===k,S.adir); }
 
 function renderArtists(){
   const q = S.aq.trim().toLowerCase();
@@ -3241,7 +3245,7 @@ function renderArtists(){
         <th data-asort="name">${T('Artiste')} ${artistSortArrow('name')}</th>
         <th data-asort="genre">Genre principal ${artistSortArrow('genre')}</th>
         <th data-asort="status">${T('Statut')} ${artistSortArrow('status')}</th>
-        <th data-asort="streams" class="num">${streamMetricLabel(0)}</th>
+        <th data-asort="streams" class="num">${streamMetricLabel(0)} ${artistSortArrow('streams')}</th>
         <th data-asort="streams30" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(30)} ${artistSortArrow('streams30')}</th>
         <th data-asort="streams7" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(7)} ${artistSortArrow('streams7')}</th>
         <th data-asort="streams24" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(1)} ${artistSortArrow('streams24')}</th>
@@ -3501,7 +3505,7 @@ function plFiltered(){
   rows = rows.slice().sort((a,b)=>S.pldir*sorter(a,b));
   return rows;
 }
-function plSortArrow(k){ return S.plsort===k ? `<span class="arr">${S.pldir===-1?'▼':'▲'}</span>` : ''; }
+function plSortArrow(k){ return sortTriangleIndicator(S.plsort===k,S.pldir); }
 function plCuratorBadge(cat){
   if (cat==='editorial') return `<span class="badge lofi" style="margin-left:6px">${T('Éditoriale')}</span>`;
   if (cat==='independent') return `<span class="badge self" style="margin-left:6px">${T('Indépendante')}</span>`;
@@ -3628,7 +3632,7 @@ function renderPlaylists(){
         <th></th>
         <th data-plsort="name">Playlist ${plSortArrow('name')}</th>
         <th data-plsort="curator">${T('Curateur')} ${plSortArrow('curator')}</th>
-        <th data-plsort="followers" class="num">${T('Followers total')}</th>
+        <th data-plsort="followers" class="num">${T('Followers total')} ${plSortArrow('followers')}</th>
         <th data-plsort="growth30" class="num" title="${T('Évolution followers sur les 30 derniers jours')}">${T('Followers 30 jours')} ${plSortArrow('growth30')}</th>
         <th data-plsort="growth7" class="num" title="${T('Évolution followers sur les 7 derniers jours')}">${T('Followers 7 jours')} ${plSortArrow('growth7')}</th>
         <th data-plsort="growth24" class="num" title="${T('Évolution followers sur les dernières 24 h')}">${T('Followers 24 heures')} ${plSortArrow('growth24')}</th>
@@ -3753,7 +3757,7 @@ function lbFiltered(){
   const sorter = sorters[S.lbsort] || sorters.streams;
   return rows.slice().sort((a,b)=>S.lbdir*sorter(a,b));
 }
-function labelSortArrow(k){ return S.lbsort===k ? `<span class="arr">${S.lbdir===-1?'▼':'▲'}</span>` : ''; }
+function labelSortArrow(k){ return sortTriangleIndicator(S.lbsort===k,S.lbdir); }
 /* ---------- Fiche label en pop-up (tracks groupées par artiste + simulateur) ---------- */
 /* extraction du label côté client : même logique que gen_labels_data.py */
 const LB_LICENSE_RE = /(?:under\s+(?:an?\s+)?|on\s+)?exclusive\s+licen[cs]e\s+(?:to|with|from)\s+(.+?)(?:\s*[;.]|$)/i;
@@ -3925,7 +3929,7 @@ function renderLabels(){
         <th></th>
         <th data-lbsort="name">${T('Label')} ${labelSortArrow('name')}</th>
         <th data-lbsort="tracks" class="num">Tracks ${labelSortArrow('tracks')}</th>
-        <th data-lbsort="streams" class="num">${streamMetricLabel(0)}</th>
+        <th data-lbsort="streams" class="num">${streamMetricLabel(0)} ${labelSortArrow('streams')}</th>
         <th data-lbsort="streams30" class="num">${streamMetricLabel(30)} ${labelSortArrow('streams30')}</th>
         <th data-lbsort="streams7" class="num">${streamMetricLabel(7)} ${labelSortArrow('streams7')}</th>
         <th data-lbsort="streams24" class="num">${streamMetricLabel(1)} ${labelSortArrow('streams24')}</th>

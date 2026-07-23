@@ -504,7 +504,7 @@ td.selc,th.selc{width:44px;padding-left:14px}
 .ar-columnbar button>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .ar-columnbar button:nth-child(3),.ar-columnbar button:nth-child(4),.ar-columnbar button:nth-child(5){justify-content:flex-start;text-align:left}
 .ar-columnbar button:hover,.ar-columnbar button.on{background:rgba(30,215,96,.07);color:#ddffe9}
-.ar-sort-indicator{display:inline-grid;grid-template-columns:repeat(2,auto);gap:1px;flex:0 0 auto;color:#8aa497;font:900 10px/.8 Inter;font-style:normal;letter-spacing:-1px}.ar-sort-indicator b{opacity:.5;font-weight:900}.ar-columnbar button.asc .ar-sort-indicator b:first-child,.ar-columnbar button.desc .ar-sort-indicator b:last-child{color:#e7fff0;opacity:1}
+.sort-triangles{display:inline-grid;grid-template-columns:repeat(2,auto);gap:1px;vertical-align:middle;color:#8aa497;font:900 9px/.8 Inter;font-style:normal;letter-spacing:-1px}.sort-triangles b{opacity:.48;font-weight:900}.sort-triangles.asc b:first-child,.sort-triangles.desc b:last-child{color:#e7fff0;opacity:1}.ar-columnbar .sort-triangles{flex:0 0 auto;font-size:10px}.ar-columnbar button.asc .sort-triangles b:first-child,.ar-columnbar button.desc .sort-triangles b:last-child{color:#e7fff0;opacity:1}
 .ar-opportunity-card{grid-template-columns:46px 46px minmax(150px,.95fr) minmax(76px,.43fr) minmax(86px,.5fr) repeat(5,minmax(66px,.46fr)) minmax(88px,.48fr);gap:8px;padding:9px 12px 9px 31px}
 .ar-release-card{min-width:0;color:#eafff1;font:750 11px/1.2 Sora;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
 .ar-genre-card{margin-left:0;padding-left:0;border-left:0}
