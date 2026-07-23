@@ -16,6 +16,6 @@ assert.match(dashboard, /ar-filterbar-simple/);
 assert.match(dashboard, /ar-columnbar-cover-spacer/);
 assert.match(css, /\.ar-filterbar-simple\{/);
 assert.match(css, /\.ar-columnbar button\.asc \.sort-triangles/);
-assert.match(index, /dashboard\.js\?v=20260724-opportunity-layout-v1/);
+assert.match(index, /dashboard\.js\?v=20260724-payback-horizon-v1/);
 
 console.log('spotify opportunity sorting bar: OK');

@@ -266,6 +266,10 @@ button,input,select{max-width:100%}
 .offer .pal button{padding:7px 13px;border-radius:10px;border:1px solid var(--border);font-size:12px;font-weight:700;color:var(--muted);transition:all .14s}
 .offer .pal button.on{color:#052e12;background:linear-gradient(90deg,#1ed760,#4ade80);border-color:transparent}
 .offer .pal button:hover:not(.on){color:var(--text);border-color:var(--border2)}
+.payback-horizon{display:inline-flex;align-items:center;gap:4px;margin-left:auto;padding-left:10px;border-left:1px solid var(--border)}
+.payback-horizon>span{color:var(--dim);font:800 9px Inter;letter-spacing:.35px;text-transform:uppercase;white-space:nowrap}
+.payback-horizon button{min-width:31px!important;padding:6px 7px!important;font-size:10px!important}
+.payback-horizon button.on{color:#06210f!important;background:linear-gradient(90deg,#22c55e,#86efac)!important;border-color:transparent!important}
 .periodbar{display:flex;gap:8px;margin:2px 0 16px;flex-wrap:wrap}
 .periodbar button{display:flex;align-items:center;gap:7px;padding:10px 16px;border-radius:13px;border:1.5px solid var(--border2);font-size:11px;font-weight:700;letter-spacing:.1px;color:var(--text);background:var(--card);transition:all .14s}
 .periodbar button .dot{width:7px;height:7px;border-radius:50%;flex:none;box-shadow:0 0 6px currentColor}
@@ -756,6 +760,7 @@ td.selc,th.selc{width:44px;padding-left:14px}
 .ar-artist-selection-head{grid-template-columns:48px minmax(180px,1fr) minmax(330px,.98fr) minmax(172px,.46fr) 132px;padding:15px 16px;gap:14px}
 .ar-selection-economics{min-width:330px;padding:13px 15px;border-color:rgba(30,215,96,.36);background:linear-gradient(135deg,rgba(30,215,96,.13),rgba(34,211,238,.07) 58%,rgba(15,23,42,.1))}
 .ar-selection-economics-top{display:flex;align-items:center;justify-content:space-between;gap:9px}.ar-selection-offers{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px}.ar-selection-offers button{border:1px solid rgba(30,215,96,.28);border-radius:7px;background:rgba(30,215,96,.045);color:#bbf7d0;padding:4px 6px;font:800 9px Sora;cursor:pointer}.ar-selection-offers button:hover,.ar-selection-offers button.on{border-color:rgba(34,211,238,.78);background:rgba(34,211,238,.15);color:#ecfeff}
+.ar-selection-economics .payback-horizon{margin:9px 0 0;padding:8px 0 0;border-top:1px solid rgba(30,215,96,.16);border-left:0}.ar-selection-economics .payback-horizon button{border-color:rgba(30,215,96,.28);color:#bbf7d0;background:rgba(30,215,96,.045)}
 .ar-selection-economics-label{font-size:12px;letter-spacing:.45px;color:#d8fff0}
 .ar-selection-economics-grid{gap:15px;margin-top:9px}
 .ar-selection-economics-grid span{font-size:9px}.ar-selection-economics-grid strong{margin-top:4px;font-size:18px}

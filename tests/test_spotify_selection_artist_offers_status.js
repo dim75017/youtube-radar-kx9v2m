@@ -33,6 +33,10 @@ assert.ok(!dashboard.includes('arRightsShortLabel('), 'Legacy verbose release la
 assert.ok(!dashboard.includes("draft_ready:'Brouillon prêt'"), 'Draft ready must not remain an artist status');
 assert.match(dashboard, /elapsed>=7\*24\*60\*60\*1000/);
 assert.match(dashboard, /ar-selection-offers/);
+assert.match(dashboard, /const PAYBACK_HORIZONS = \[1,2,3,4,5\]/, 'The estimation horizon must offer 1 to 5 years');
+assert.match(dashboard, /paybackYears:2/, 'The default estimation horizon must stay at two years');
+assert.match(dashboard, /function setPaybackHorizon\(years\)/, 'Tracks and artists must be able to change the estimation horizon');
+assert.match(dashboard, /function arSetPaybackHorizon\(years\)/, 'A&R selection must share the same editable estimation horizon');
 for (const required of ['.ar-selection-offers', '.ar-status-follow_up', '.ar-artist-deal', '.ar-selection-artist-avatar img']) {
   assert.ok(css.includes(required), `Missing selection workflow style: ${required}`);
 }
@@ -45,6 +49,6 @@ const cardStart = dashboard.indexOf('function arSelectionArtistCardHtml(group){'
 const cardEnd = dashboard.indexOf('\nfunction arSelectionEconomics(group){', cardStart);
 const card = dashboard.slice(cardStart, cardEnd);
 assert.ok(card.indexOf('ar-artist-actions') < card.indexOf('arSelectionStatusHtml(artist.key)'), 'Artist status must render after the message action, at the far right.');
-assert.match(index, /dashboard\.js\?v=20260724-opportunity-layout-v1/);
+assert.match(index, /dashboard\.js\?v=20260724-payback-horizon-v1/);
 
 console.log('spotify selection artist offers/status: OK');

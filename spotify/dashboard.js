@@ -95,10 +95,10 @@ const EN_MAP = {
   "est.":"est.","mesuré sur historique réel":"measured from real history","estimation, moyenne depuis la sortie":"estimate, average since release",
   "ans":"yr","Rachat":"Buyout",
   "Simulation d'offre de rachat":"Buyout offer simulator",
-  "Choisir le split artiste / label. Avance = prix d'achat de la part cédée. Payback = temps pour rembourser l'avance avec les revenus captés (objectif 2-3 ans).":"Pick the artist / label split. Advance = purchase price of the ceded share. Payback = time to recoup the advance from captured revenue (target 2-3 years).",
+  "Choisir le split artiste / label et l'horizon de projection. Avance = prix d'achat de la part cédée. Payback = temps pour rembourser l'avance avec les revenus captés.":"Pick the artist / label split and the projection horizon. Advance = purchase price of the ceded share. Payback = time to recoup the advance from captured revenue.",
   "rachat total":"full buyout","Avance à verser":"Advance to pay","Revenu capté /mois":"Captured revenue /mo","Payback":"Payback","Part cédée au label":"Share ceded to label","Contact":"Contact","contact à trouver":"contact to find",
   "top artiste":"top artist","fidèle":"loyal","Tracks sélectionnées":"Selected tracks","Tout sélectionner":"Select all",
-  "Coche les tracks à racheter ci-dessous, choisis le split artiste / label : l'avance et le payback se recalculent. Objectif payback 2-3 ans.":"Tick the tracks to buy below, pick the artist / label split: advance and payback recompute. Target payback 2-3 years.",
+  "Coche les tracks à racheter, choisis le split artiste / label et l'horizon : l'avance et le payback se recalculent.":"Tick the tracks to buy, choose the artist / label split and the horizon: advance and payback recompute.",
   "Aucune track sélectionnée — coche des lignes pour simuler une offre.":"No track selected — tick rows to simulate an offer.",
   "Watchlist":"Watchlist","Date de sortie":"Release date","Ajouter / retirer de la watchlist":"Add / remove from watchlist",
   "Tes tracks et artistes épinglés, à suivre pour un rachat. Stocké dans ce navigateur.":"Your pinned tracks and artists to track for a buyout. Stored in this browser.",
@@ -112,8 +112,7 @@ const EN_MAP = {
   "Ouvrir sur Spotify":"Open on Spotify","Épinglé":"Pinned","Épingler":"Pin",
   "Revenus & rachat estimés (0,0035$/stream, +20% multi-plateformes, modèle LOFI RECORDS). L'historique des streams est capté par la veille pour tracer la tendance dans le temps.":"Revenue & buyout estimated (0.0035$/stream, +20% multi-platform, LOFI RECORDS model). Stream history is captured by the watch to plot the trend over time.",
   "Aucun artiste épinglé. Clique sur l'étoile ☆ d'une carte artiste.":"No pinned artists yet. Hit the ☆ on any artist card.",
-  "Base : revenu 24 mois projeté (vélocité × 0,0035$/stream) → EUR ×0,875, −8% Orchard, −12% coûts, −15% décote. Grille et paramètres repris du modèle LOFI RECORDS. Estimation indicative, hors CIPP (rachat catalogue non éligible).":"Base: projected 24-month revenue (velocity × $0.0035/stream) → EUR ×0.875, −8% Orchard, −12% costs, −15% haircut. Grid and parameters from the LOFI RECORDS model. Indicative estimate, excl. CIPP (catalog buyouts not eligible).",
-  "Base : revenu 24 mois projeté (vélocité × 0,0035$/stream, +20% Apple Music & autres plateformes) → EUR ×0,875, −8% Orchard, −12% coûts, −15% décote. Grille du modèle LOFI RECORDS. Publishing = +10% sur l'avance. Coche des tracks pour simuler. Estimation indicative, hors CIPP.":"Base: projected 24-month revenue (velocity × $0.0035/stream, +20% Apple Music & other platforms) → EUR ×0.875, −8% Orchard, −12% costs, −15% haircut. LOFI RECORDS grid. Publishing = +10% on the advance. Tick tracks to simulate. Indicative estimate, excl. CIPP."
+  "Horizon de projection":"Projection horizon","mois de revenu projeté":"months of projected revenue","Durée choisie pour calculer l'avance et le payback.":"Chosen duration used to calculate the advance and payback."
 };
 const T = s => LANG === 'fr' ? s : (EN_MAP[s] !== undefined ? EN_MAP[s] : s);
 const HOT = 500000;                       // seuil de mise en évidence
@@ -151,8 +150,18 @@ const BUY = {
   ],
 };
 function palier(){ return BUY.paliers.find(p=>p.k===S.palier) || BUY.paliers[4]; }
-// revenu 24 mois projeté (USD) depuis la vélocité de streams Spotify, majoré multi-plateformes
-function rev24(monthlyStreams){ return monthlyStreams * 24 * RATE * (1+BUY.multiPlat); }
+const PAYBACK_HORIZONS = [1,2,3,4,5];
+function projectionYears(){ return PAYBACK_HORIZONS.includes(Number(S.paybackYears)) ? Number(S.paybackYears) : 2; }
+function projectionMonths(){ return projectionYears()*12; }
+function paybackHorizonHtml(actionForYear){
+  return `<div class="payback-horizon" title="${T("Durée choisie pour calculer l'avance et le payback.")}"><span>${T('Horizon de projection')}</span>${PAYBACK_HORIZONS.map(year=>`<button type="button" class="${year===projectionYears()?'on':''}" onclick="${actionForYear(year)}">${year} ${T('ans')}</button>`).join('')}</div>`;
+}
+function setPaybackHorizon(years){
+  if(!PAYBACK_HORIZONS.includes(Number(years))) return;
+  S.paybackYears=Number(years); render();
+}
+// revenu projeté depuis la vélocité de streams Spotify, majoré multi-plateformes
+function rev24(monthlyStreams){ return monthlyStreams * projectionMonths() * RATE * (1+BUY.multiPlat); }
 // base de référence (EUR) nettoyée, comme le calculateur de l'Excel
 function baseRef(monthlyStreams){
   const e = rev24(monthlyStreams) * BUY.fx;
@@ -1359,7 +1368,7 @@ function arKnownContact(name){
 
 /* ---------- état ---------- */
 const S = {
-  view:'opps', back:null, palier:'100/0', sel:new Set(), publishing:false, metricMode:'streams',
+  view:'opps', back:null, palier:'100/0', paybackYears:2, sel:new Set(), publishing:false, metricMode:'streams',
   q:'', statut:'all', min:0, period:'all', artist:-1, rel:'all', genres:new Set(),
   sort:{k:3, dir:-1}, shown:100,
   aq:'', asort:'streams', adir:-1, shownA:60, aseg:'all', agenres:new Set(),
@@ -1697,10 +1706,11 @@ function offerHtml(g, selMonthly, selCount, totCount){
   const contact = g.email?`<a href="mailto:${esc(g.email)}" style="color:var(--cyan)">✉ ${esc(g.email)}</a>`:(g.link?`<a href="${esc(g.link)}" target="_blank" style="color:var(--violet)">${g.link.includes('instagram')?'📷 Instagram':'🔗 Site'}</a>`:'<span style="color:var(--dim)">'+T('contact à trouver')+'</span>');
   return `<div class="offer">
     <h3>💰 ${T("Simulation d'offre de rachat")}</h3>
-    <div class="osub">${T("Coche les tracks à racheter ci-dessous, choisis le split artiste / label : l'avance et le payback se recalculent. Objectif payback 2-3 ans.")}</div>
+    <div class="osub">${T("Coche les tracks à racheter, choisis le split artiste / label et l'horizon : l'avance et le payback se recalculent.")}</div>
     <div class="pal">
       ${BUY.paliers.map(pp=>`<button class="${pp.k===S.palier?'on':''}" onclick="setPalier('${pp.k}')">${pp.k}${pp.k==='100/0'?' · '+T('rachat total'):''}</button>`).join('')}
       <label class="selall" style="margin-left:12px"><input type="checkbox" class="ck" ${S.publishing?'checked':''} onchange="S.publishing=this.checked;render()"> Publishing +10%</label>
+      ${paybackHorizonHtml(year=>`setPaybackHorizon(${year})`)}
     </div>
     <div class="ogrid">
       <div class="ob"><div class="l">${T('Tracks sélectionnées')}</div><div class="v">${selCount}<span style="font-size:12px;color:var(--dim);font-weight:600"> / ${totCount}</span></div></div>
@@ -1709,7 +1719,7 @@ function offerHtml(g, selMonthly, selCount, totCount){
       <div class="ob"><div class="l">${T('Payback')}</div><div class="v ${none?'':paybackClass(pb)}">${none?'—':paybackTxt(pb)}</div></div>
       <div class="ob"><div class="l">${T('Contact')}</div><div class="v" style="font-size:12.5px;font-family:Inter;font-weight:600;margin-top:8px">${contact}</div></div>
     </div>
-    <div style="font-size:10.5px;color:var(--dim);margin-top:12px">${T("Base : revenu 24 mois projeté (vélocité × 0,0035$/stream, +20% Apple Music & autres plateformes) → EUR ×0,875, −8% Orchard, −12% coûts, −15% décote. Grille du modèle LOFI RECORDS. Publishing = +10% sur l'avance. Coche des tracks pour simuler. Estimation indicative, hors CIPP.")}</div>
+    <div style="font-size:10.5px;color:var(--dim);margin-top:12px">${projectionMonths()} ${T('mois de revenu projeté')} (vélocité × 0,0035$/stream, +20% Apple Music & autres plateformes) → EUR ×0,875, −8% Orchard, −12% coûts, −15% décote. Publishing = +10% sur l'avance. Estimation indicative, hors CIPP.</div>
   </div>`;
 }
 function setPalier(k){ S.palier = k; render(); }
@@ -2028,6 +2038,7 @@ function trackOfferHtml(r){
     <div class="pal" style="margin-bottom:10px">
       ${BUY.paliers.map(pp=>`<button class="${pp.k===S.palier?'on':''}" onclick="S.palier='${pp.k}';openTrack('${r[6]}')">${pp.k}</button>`).join('')}
       <label class="selall" style="margin-left:12px"><input type="checkbox" class="ck" ${S.publishing?'checked':''} onchange="S.publishing=this.checked;openTrack('${r[6]}')"> Publishing +10%</label>
+      ${paybackHorizonHtml(year=>`setPaybackHorizon(${year});openTrack('${r[6]}')`)}
     </div>
     <div class="ogrid" style="grid-template-columns:repeat(3,1fr)">
       <div class="ob"><div class="l">${T('Avance à proposer')}</div><div class="v" style="color:var(--acc2)">${m>0?eur(adv):'—'}</div></div>
@@ -3007,6 +3018,10 @@ function arSetSelectionOffer(artistKey,split){
   if(!BUY.paliers.some(item=>item.k===split))return;
   arArtistUpdate(artistKey,{offerSplit:split});renderArList();
 }
+function arSetPaybackHorizon(years){
+  if(!PAYBACK_HORIZONS.includes(Number(years))) return;
+  S.paybackYears=Number(years); renderArList();
+}
 function arSelectionStatusHtml(artistKey){
   const entry=arArtistEntry(artistKey)||{},status=arArtistStatus(artistKey),label=AR_STATUSES[status]||AR_STATUSES.to_contact;
   let detail='Prêt à contacter';
@@ -3040,7 +3055,7 @@ function arSelectionEconomics(group){
 function arSelectionEconomicsHtml(group){
   const economics=arSelectionEconomics(group);
   const value=number=>economics.measurable?number:'—';
-  return `<section class="ar-selection-economics" title="Même calcul que Pistes et Artistes. Ces estimations restent internes et ne sont jamais ajoutées au message."><div class="ar-selection-economics-top"><div class="ar-selection-economics-label">💶 Estimation interne</div><div class="ar-selection-offers">${BUY.paliers.map(offer=>`<button type="button" class="${offer.k===economics.offer.k?'on':''}" onclick="arSetSelectionOffer('${esc(group.artist.key)}','${offer.k}')">${offer.k}</button>`).join('')}</div></div><div class="ar-selection-economics-grid"><div><span>Coût estimé</span><strong>${value(eur(economics.advance))}</strong></div><div><span>Revenu / mois</span><strong>${value(eur(economics.labelMonthly))}</strong></div><div><span>Payback</span><strong class="${economics.measurable?paybackClass(economics.payback):''}">${value(paybackTxt(economics.payback))}</strong></div></div></section>`;
+  return `<section class="ar-selection-economics" title="Même calcul que Pistes et Artistes. Ces estimations restent internes et ne sont jamais ajoutées au message."><div class="ar-selection-economics-top"><div class="ar-selection-economics-label">💶 Estimation interne</div><div class="ar-selection-offers">${BUY.paliers.map(offer=>`<button type="button" class="${offer.k===economics.offer.k?'on':''}" onclick="arSetSelectionOffer('${esc(group.artist.key)}','${offer.k}')">${offer.k}</button>`).join('')}</div></div>${paybackHorizonHtml(year=>`arSetPaybackHorizon(${year})`)}<div class="ar-selection-economics-grid"><div><span>Coût estimé</span><strong>${value(eur(economics.advance))}</strong></div><div><span>Revenu / mois</span><strong>${value(eur(economics.labelMonthly))}</strong></div><div><span>Payback</span><strong class="${economics.measurable?paybackClass(economics.payback):''}">${value(paybackTxt(economics.payback))}</strong></div></div></section>`;
 }
 function renderArList(){
   const saved=arListGet(),rows=Object.keys(saved).map(id=>({opportunity:arOpportunityRows().find(item=>item.spotifyId===id),entry:saved[id]})).filter(item=>item.opportunity&&arContactEligible(item.opportunity));
