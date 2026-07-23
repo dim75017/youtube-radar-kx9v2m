@@ -145,8 +145,8 @@ function legacyRerenderRecos(){
   const rc=document.querySelector('.result-count');if(rc)rc.innerHTML='<b>'+fmtInt(rows.length)+'</b> concepts';
   armAutoLoad();
 }
-/* Daily recommendation rotation: the large source catalogue stays intact; this view exposes 25 actionable ideas. */
-const RECO_DAILY_LIMIT=25;
+/* Daily recommendation rotation: the large source catalogue stays intact; this view exposes 50 actionable ideas. */
+const RECO_DAILY_LIMIT=50;
 const RECO_ROTATION_KEY='lofi_radar_reco_rotation_v1';
 function recoDayKey(){
   const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
@@ -207,16 +207,17 @@ function dailyRecommendationSet(){
   history[day]=[...new Set([...(history[day]||[]),...picked.map(r=>r.n)])].slice(-200);Object.keys(history).sort().slice(0,-21).forEach(k=>delete history[k]);saveRecoRotation(history);
   return picked.map(r=>Object.assign({},r,{_dailyScore:recoDailyScore(r,profile,day),_dailyReasons:recoReasons(r,profile,day),_dailyProfile:profile}));
 }
+function activeDailyRecommendationCount(){return dailyRecommendationSet().length;}
 function legacyDailyRecoBrief(rows){
   const fr=typeof LANG!=='undefined'&&LANG==='fr',p=rows[0]&&rows[0]._dailyProfile||{recentVideos:0};
-  return '<div class="reco-daily-brief"><div><div class="reco-daily-kicker">'+(fr?'SÉLECTION DU JOUR':'DAILY SELECTION')+' · '+recoDayKey()+'</div><h3>'+(fr?'25 propositions à examiner':'25 proposals to review')+'</h3><p>'+(fr?'Classement basé sur les 90 derniers jours de la chaîne, les performances comparées à l’âge des vidéos, puis tes validations et refus. Les idées déjà proposées sont mises en rotation.':'Ranking uses the channel’s last 90 days, age-normalized video performance, then your validations and refusals. Previously shown ideas are rotated out.')+'</p></div><div class="reco-daily-stats"><b>'+rows.length+' / '+RECO_DAILY_LIMIT+'</b><span>'+(fr?'idées actives':'active ideas')+'</span><b>'+p.recentVideos+'</b><span>'+(fr?'vidéos récentes analysées':'recent videos analysed')+'</span></div></div>';
+  return '<div class="reco-daily-brief"><div><div class="reco-daily-kicker">'+(fr?'SÉLECTION DU JOUR':'DAILY SELECTION')+' · '+recoDayKey()+'</div><h3>'+RECO_DAILY_LIMIT+' '+(fr?'propositions à examiner':'proposals to review')+'</h3><p>'+(fr?'Classement basé sur les 90 derniers jours de la chaîne, les performances comparées à l’âge des vidéos, puis tes validations et refus. Les idées déjà proposées sont mises en rotation.':'Ranking uses the channel’s last 90 days, age-normalized video performance, then your validations and refusals. Previously shown ideas are rotated out.')+'</p></div><div class="reco-daily-stats"><b>'+rows.length+' / '+RECO_DAILY_LIMIT+'</b><span>'+(fr?'idées actives':'active ideas')+'</span><b>'+p.recentVideos+'</b><span>'+(fr?'vidéos récentes analysées':'recent videos analysed')+'</span></div></div>';
 }
 function dailyRecoBrief(rows){
   const fr=typeof LANG!=='undefined'&&LANG==='fr',p=rows[0]&&rows[0]._dailyProfile||{recentVideos:0};
   const text=p.recentVideos
     ?(fr?'Classement basé sur les 90 derniers jours de la chaîne, les performances comparées à l’âge des vidéos, puis tes validations et refus. Les idées déjà proposées sont mises en rotation.':'Ranking uses the channel’s last 90 days, age-normalized video performance, then your validations and refusals. Previously shown ideas are rotated out.')
     :(fr?'Les données de performance récentes arriveront avec le prochain import YouTube. En attendant, la sélection utilise le score catalogue, tes validations/refus et la rotation anti-répétition.':'Recent performance data will be used after the next YouTube import. Until then, the selection uses the catalogue score, your feedback and anti-repeat rotation.');
-  return '<div class="reco-daily-brief"><div><div class="reco-daily-kicker">'+(fr?'SÉLECTION DU JOUR':'DAILY SELECTION')+' · '+recoDayKey()+'</div><h3>'+(fr?'25 propositions à examiner':'25 proposals to review')+'</h3><p>'+text+'</p></div><div class="reco-daily-stats"><b>'+rows.length+' / '+RECO_DAILY_LIMIT+'</b><span>'+(fr?'idées actives':'active ideas')+'</span><b>'+p.recentVideos+'</b><span>'+(fr?'vidéos récentes analysées':'recent videos analysed')+'</span></div></div>';
+  return '<div class="reco-daily-brief"><div><div class="reco-daily-kicker">'+(fr?'SÉLECTION DU JOUR':'DAILY SELECTION')+' · '+recoDayKey()+'</div><h3>'+RECO_DAILY_LIMIT+' '+(fr?'propositions à examiner':'proposals to review')+'</h3><p>'+text+'</p></div><div class="reco-daily-stats"><b>'+rows.length+' / '+RECO_DAILY_LIMIT+'</b><span>'+(fr?'idées actives':'active ideas')+'</span><b>'+p.recentVideos+'</b><span>'+(fr?'vidéos récentes analysées':'recent videos analysed')+'</span></div></div>';
 }
 function dailyRecoListHTML(rows){
   if(!rows.length)return '<div class="empty">'+((typeof LANG!=='undefined'&&LANG==='fr')?'Aucune proposition en attente.':'No proposal awaiting review.')+'</div>';
