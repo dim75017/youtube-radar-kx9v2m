@@ -512,27 +512,21 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 .sched-sub{font-size:12px;color:var(--dim);margin-bottom:16px;line-height:1.5}
 .sched-rationale{background:rgba(255,0,51,.09);border:1px solid rgba(255,0,51,.28);border-radius:11px;padding:11px 13px;font-size:12px;line-height:1.6;color:#ffd9e1;margin-bottom:16px}
 .sched-cal{background:rgba(8,10,18,.5);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px}
-.sched-cal-h{font-size:12px;font-weight:700;text-align:center;margin-bottom:8px;color:var(--text)}
+.sched-cal-h{display:grid;grid-template-columns:28px 1fr 28px;align-items:center;font-size:12px;font-weight:700;text-align:center;margin-bottom:8px;color:var(--text)}
+.sched-cal-nav{width:26px;height:26px;padding:0;border:1px solid var(--border);border-radius:8px;background:rgba(150,163,214,.06);color:var(--text);font:800 18px/1 Inter;cursor:pointer}.sched-cal-nav:hover{border-color:rgba(150,163,214,.55);background:rgba(150,163,214,.14)}
 .sched-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
 .sched-dow{font-size:9px;color:var(--dim);text-align:center;font-weight:700;text-transform:uppercase}
 .sched-cell{appearance:none;border:1px solid transparent;background:rgba(150,163,214,.06);width:34px;height:34px;margin:auto;display:flex;align-items:center;justify-content:center;font:700 11px/1 inherit;border-radius:50%;color:var(--muted);position:relative;cursor:pointer;transition:transform .12s,border-color .12s,background .12s}
 .sched-cell:hover{transform:scale(1.12);border-color:rgba(150,163,214,.48);color:var(--text)}
 .sched-cell.out{opacity:.25}
-.sched-cell.has-event{background:rgba(150,163,214,.18);color:var(--text)}
+.sched-cell.has-event{background:var(--sched-event-color,#8b5cf6);border-color:var(--sched-event-color,#8b5cf6);color:#fff;box-shadow:0 0 0 2px color-mix(in srgb,var(--sched-event-color,#8b5cf6) 26%,transparent)}
 .sched-cell.proposed{background:var(--acc);color:#fff;font-weight:800;box-shadow:0 0 0 3px rgba(255,0,51,.28)}
 .sched-cell.selected:not(.proposed){border-color:rgba(74,222,128,.72);box-shadow:0 0 0 2px rgba(74,222,128,.16)}
-.sched-cell .dot{position:absolute;bottom:2px;width:4px;height:4px;border-radius:50%}
-.sched-nearby{border:1px solid var(--border);background:rgba(8,10,18,.35);border-radius:11px;padding:10px 12px;margin:0 0 16px}
-.sched-nearby.empty{font-size:12px;color:var(--dim)}
-.sched-nearby-h{font-size:11px;font-weight:800;color:var(--text);margin-bottom:6px}
-.sched-nearby-row{display:grid;grid-template-columns:54px minmax(0,1fr) auto;gap:8px;align-items:center;font-size:11px;padding:5px 0;border-top:1px solid rgba(150,163,214,.1)}
-.sched-nearby-date{font-weight:700;color:var(--muted)}
-.sched-nearby-title{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
-.sched-nearby-genre{color:var(--dim);max-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sched-day-popover{position:absolute;z-index:4;min-width:180px;max-width:250px;padding:8px 9px;border:1px solid rgba(255,0,51,.55);border-radius:10px;background:#211117;box-shadow:0 12px 28px rgba(0,0,0,.46);pointer-events:none}.sched-day-popover-h{font:800 10px Sora;color:#ff9aae;margin-bottom:5px}.sched-day-popover-row{display:grid;gap:2px;padding:5px 0;border-top:1px solid rgba(255,0,51,.16)}.sched-day-popover-row strong{font:750 10.5px Inter;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}.sched-day-popover-row span{font:700 9px Inter;color:#ffc1cc}
 .sched-actions{display:flex;gap:8px;flex-wrap:wrap}
 .sched-actions button{flex:1;min-width:120px;font-family:inherit;font-size:12.5px;font-weight:700;padding:11px 14px;border-radius:11px;cursor:pointer;border:1px solid var(--border)}
 .sched-btn-ok{background:rgba(74,222,128,.16);color:var(--green);border-color:rgba(74,222,128,.4)}
-.sched-btn-alt{background:rgba(150,163,214,.06);color:var(--text)}
+.sched-btn-alt{background:rgba(251,191,36,.13);color:#fde68a;border-color:rgba(251,191,36,.42)!important}
 .sched-btn-cancel{background:transparent;color:var(--dim)}
 .sched-confirmed{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.3);border-radius:11px;padding:12px 14px;font-size:12px;color:#bbf7d0;line-height:1.6}
 #backdrop.show{opacity:1;pointer-events:auto}
