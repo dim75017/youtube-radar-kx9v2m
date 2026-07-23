@@ -25,6 +25,7 @@ ROOT = Path(__file__).resolve().parent
 DEFAULT_SNAPSHOT = ROOT / "Lofi_Radar_data.js"
 DEFAULT_AVATARS = ROOT / "Lofi_Radar_new_channel_avatars.js"
 DEFAULT_HISTORY_DIR = ROOT / "video_history"
+DAILY_VIEW_HISTORY_START_MS = int(datetime(2026, 7, 20, tzinfo=timezone.utc).timestamp() * 1000)
 SHEET_EXPORT = (
     "https://docs.google.com/spreadsheets/d/"
     "1XE_M9pQWn8w2Qu83vV_tv9sEFDFQ13fTePseG6mh1vI/export?format=xlsx"
@@ -511,7 +512,7 @@ def normalize_daily_points(points: list, now_ms: int) -> list[list[int]]:
                     by_day[day] = parsed
             except (TypeError, ValueError):
                 pass
-    cutoff = now_ms - HISTORY_RETENTION_DAYS * 86400000
+    cutoff = max(now_ms - HISTORY_RETENTION_DAYS * 86400000, DAILY_VIEW_HISTORY_START_MS)
     return sorted(
         (point for point in by_day.values() if point[0] >= cutoff),
         key=lambda point: point[0],

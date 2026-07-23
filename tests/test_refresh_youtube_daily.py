@@ -80,6 +80,13 @@ class DailyHistoryTests(unittest.TestCase):
         )
         self.assertEqual(points, [[evening, 125], [next_day, 140]])
 
+    def test_daily_history_drops_points_before_20_july_2026(self):
+        before = int(datetime(2026, 7, 19, 20, tzinfo=timezone.utc).timestamp() * 1000)
+        start = int(datetime(2026, 7, 20, 20, tzinfo=timezone.utc).timestamp() * 1000)
+        next_day = start + 86400000
+        points = radar.normalize_daily_points([[before, 100], [start, 120], [next_day, 150]], next_day)
+        self.assertEqual(points, [[start, 120], [next_day, 150]])
+
     def test_missing_subscriber_count_does_not_become_zero(self):
         now = int(datetime(2026, 7, 20, 8, tzinfo=timezone.utc).timestamp() * 1000)
         row = radar.info_to_row(
