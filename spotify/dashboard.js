@@ -1373,9 +1373,8 @@ const S = {
   sort:{k:3, dir:-1}, shown:100,
   aq:'', asort:'streams', adir:-1, shownA:60, aseg:'all', agenres:new Set(),
   newDays:90, shownN:100,
-  plq:'', plcur:'all', plgenre:'all', plsort:'followers', pldir:-1, plonly:false, shownPL:80, plview:'qualified', plmode:'table',
-  amode:'table', omode:'table',
-  lbq:'', lbsort:'streams', lbdir:-1, shownLB:80, lbmode:'table', labelKey:null, lbModalArtist:null,
+  plq:'', plcur:'all', plgenre:'all', plsort:'followers', pldir:-1, plonly:false, shownPL:80, plview:'qualified',
+  lbq:'', lbsort:'streams', lbdir:-1, shownLB:80, labelKey:null, lbModalArtist:null,
   radarFilter:'all', radarLimit:100, radarShown:100, radarTrackId:'', radarGenre:'all', radarSort:'score', radarSortDir:-1, radarQ:'', arSelected:{},
   artistFlowDays:7,
 };
@@ -3160,7 +3159,7 @@ function renderOpps(){
     ${rows.length===0?'<div class="empty">'+T('Aucune track ne correspond à ces filtres.')+'</div>':''}
     ${sentinel(rows.length-S.shown)}
   </div>`;
-  const gridView = `
+  const gridView = () => `
   <div class="acards">
     ${slice.map(r=>{ const w1=trackWindow(r,1), w7=trackWindow(r,7), w30=trackWindow(r,30); return `
     <div class="acard plcard grid-clean" data-ar-browse-track="${esc(spotifyTrackId(r[6]))}" onclick="openTrack('${r[6]}')">
@@ -3220,12 +3219,8 @@ function renderOpps(){
     ${metricModeToggleHtml()}
     <span class="spacer"></span>
     <span class="result-count">${fmtFull(rows.length)} ${T('tracks')}</span>
-    <div class="viewtoggle">
-      <button class="${S.omode==='table'?'on':''}" data-omode="table" title="${T('Vue liste')}"><span class="view-ico">☰</span><span class="view-label">${T('Vue liste')}</span></button>
-      <button class="${S.omode==='grid'?'on':''}" data-omode="grid" title="${T('Vue grille')}"><span class="view-ico">▦</span><span class="view-label">${T('Vue grille')}</span></button>
-    </div>
   </div>
-  ${S.omode==='grid' ? gridView : tableView}`;
+  ${tableView}`;
 
   document.getElementById('f-q').addEventListener('input', e=>{ S.q=e.target.value; S.shown=100; keepScroll(renderOpps); keepFocus('f-q'); });
   bindMetricModeToggle(renderOpps,V);
@@ -3234,7 +3229,6 @@ function renderOpps(){
   document.getElementById('f-min').addEventListener('change', e=>{ S.min=+e.target.value; S.shown=100; keepScroll(renderOpps); });
   document.getElementById('f-period').addEventListener('change', e=>{ S.period=e.target.value; S.shown=100; keepScroll(renderOpps); });
   document.getElementById('f-rel').addEventListener('change', e=>{ S.rel=e.target.value; S.shown=100; keepScroll(renderOpps); });
-  document.querySelectorAll('.viewtoggle button[data-omode]').forEach(b=>b.addEventListener('click', ()=>{ S.omode=b.dataset.omode; keepScroll(renderOpps); }));
   const ca = document.getElementById('f-clear-artist');
   if (ca) ca.addEventListener('click', ()=>{ S.artist=-1; S.shown=100; keepScroll(renderOpps); });
   attachInfinite(()=>{ const y=window.scrollY; S.shown+=200; renderOpps(); window.scrollTo(0,y); });
@@ -3308,7 +3302,7 @@ function renderArtists(){
   list = list.slice().sort((a,b)=>S.adir*aSorter(a,b));
   const slice = list.slice(0,S.shownA);
   const artistSortChoices=[['name',T('Artiste')],['status',T('Statut')],['streams',streamMetricLabel(0)],['streams30',streamMetricLabel(30)],['streams7',streamMetricLabel(7)],['streams24',streamMetricLabel(1)],['n','Tracks'],['hot','≥ 500k'],['self',T('indÃ©')],['last',T('derniÃ¨re sortie')]];
-  const gridView = `
+  const gridView = () => `
   <div class="acards">
     ${slice.map(g=>{ return `
       <div class="acard plcard grid-clean" data-ar-browse-artist="${g.i}" onclick="goArtist(${g.i})">
@@ -3383,14 +3377,9 @@ function renderArtists(){
     ${metricModeToggleHtml()}
     <span class="spacer"></span>
     <span class="result-count">${list.length} ${T('artistes')}</span>
-    <div class="viewtoggle">
-      <button class="${S.amode==='table'?'on':''}" data-amode="table" title="${T('Vue liste')}"><span class="view-ico">☰</span><span class="view-label">${T('Vue liste')}</span></button>
-      <button class="${S.amode==='grid'?'on':''}" data-amode="grid" title="${T('Vue grille')}"><span class="view-ico">▦</span><span class="view-label">${T('Vue grille')}</span></button>
-    </div>
   </div>
-  ${S.amode==='table' ? tableView : gridView}`;
+  ${tableView}`;
 
-  document.querySelectorAll('.viewtoggle button[data-amode]').forEach(b=>b.addEventListener('click', ()=>{ S.amode=b.dataset.amode; keepScroll(renderArtists); }));
   bindMetricModeToggle(renderArtists,V);
   document.getElementById('a-q').addEventListener('input', e=>{ S.aq=e.target.value; S.shownA=60; keepScroll(renderArtists); keepFocus('a-q'); });
   bindGenreFilter('a-genres',S.agenres,()=>{ S.shownA=60; keepScroll(renderArtists); });
@@ -3752,7 +3741,7 @@ function renderPlaylists(){
     ${rows.length===0?'<div class="empty">'+T('Aucune playlist ne correspond à ces filtres.')+'</div>':''}
     ${sentinel(rows.length-S.shownPL)}
   </div>`;
-  const gridView = `
+  const gridView = () => `
   <div class="acards">
     ${slice.map(r=>`
     <div class="acard plcard grid-clean" onclick="openPlaylist('${r[0]}')">
@@ -3793,14 +3782,9 @@ function renderPlaylists(){
     </select>
     <span class="spacer"></span>
     <span class="result-count">${fmtFull(rows.length)} playlists</span>
-    <div class="viewtoggle">
-      <button class="${S.plmode==='table'?'on':''}" data-plmode="table" title="${T('Vue liste')}"><span class="view-ico">☰</span><span class="view-label">${T('Vue liste')}</span></button>
-      <button class="${S.plmode==='grid'?'on':''}" data-plmode="grid" title="${T('Vue grille')}"><span class="view-ico">▦</span><span class="view-label">${T('Vue grille')}</span></button>
-    </div>
   </div>
-  ${S.plmode==='grid' ? gridView : tableView}`;
+  ${tableView}`;
 
-  document.querySelectorAll('.viewtoggle button[data-plmode]').forEach(b=>b.addEventListener('click', ()=>{ S.plmode=b.dataset.plmode; keepScroll(renderPlaylists); }));
   document.getElementById('pl-q').addEventListener('input', e=>{ S.plq=e.target.value; S.shownPL=80; keepScroll(renderPlaylists); keepFocus('pl-q'); });
   document.getElementById('pl-cur').addEventListener('change', e=>{ S.plcur=e.target.value; S.shownPL=80; keepScroll(renderPlaylists); });
   document.getElementById('pl-genre').addEventListener('change', e=>{ S.plgenre=e.target.value; S.shownPL=80; keepScroll(renderPlaylists); });
@@ -4047,7 +4031,7 @@ function renderLabels(){
     ${rows.length===0?'<div class="empty">'+T('Aucun label ne correspond à cette recherche.')+'</div>':''}
     ${sentinel(rows.length-S.shownLB)}
   </div>`;
-  const gridView = `
+  const gridView = () => `
   <div class="acards">
     ${slice.map(r=>`
     <div class="acard plcard lbl-row" data-lbkey="${esc(r[0])}">
@@ -4076,16 +4060,11 @@ function renderLabels(){
     ${metricModeToggleHtml()}
     <span class="spacer"></span>
     <span class="result-count">${fmtFull(rows.length)} labels</span>
-    <div class="viewtoggle">
-      <button class="${S.lbmode==='table'?'on':''}" data-lbmode="table" title="${T('Vue liste')}"><span class="view-ico">☰</span><span class="view-label">${T('Vue liste')}</span></button>
-      <button class="${S.lbmode==='grid'?'on':''}" data-lbmode="grid" title="${T('Vue grille')}"><span class="view-ico">▦</span><span class="view-label">${T('Vue grille')}</span></button>
-    </div>
   </div>
-  ${S.lbmode==='grid' ? gridView : tableView}`;
+  ${tableView}`;
 
   document.querySelectorAll('.lbl-row[data-lbkey]').forEach(el=>el.addEventListener('click', ()=>openLabel(el.dataset.lbkey)));
   bindMetricModeToggle(renderLabels,V);
-  document.querySelectorAll('.viewtoggle button[data-lbmode]').forEach(b=>b.addEventListener('click', ()=>{ S.lbmode=b.dataset.lbmode; keepScroll(renderLabels); }));
   document.getElementById('lb-q').addEventListener('input', e=>{ S.lbq=e.target.value; S.shownLB=80; keepScroll(renderLabels); keepFocus('lb-q'); });
   document.querySelectorAll('th[data-lbsort]').forEach(h=>h.addEventListener('click', ()=>{
     const key=h.dataset.lbsort;

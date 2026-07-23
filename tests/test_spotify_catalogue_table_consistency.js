@@ -16,8 +16,13 @@ for(const token of ['.catalogue-sortbar','.catalogue-table-wrap','.catalogue-tab
 const tracks=dashboard.slice(dashboard.indexOf('function renderOpps(){'),dashboard.indexOf('function renderArtists(){'));
 const artists=dashboard.slice(dashboard.indexOf('function renderArtists(){'),dashboard.indexOf('function renderNew(){'));
 const playlists=dashboard.slice(dashboard.indexOf('function renderPlaylists(){'),dashboard.indexOf('function labelPerformance('));
+const labels=dashboard.slice(dashboard.indexOf('function renderLabels(){'),dashboard.indexOf('function spotifyUpdateRows(){'));
 assert.doesNotMatch(tracks,/Genre principal/,'Track table must not show the verbose genre/instrumental stack');
 assert.doesNotMatch(artists,/Genre principal/,'Artist table must not show the verbose genre/instrumental stack');
+for(const [name,section] of [['tracks',tracks],['artists',artists],['playlists',playlists],['labels',labels]]){
+  assert.doesNotMatch(section,/class="viewtoggle"/,`${name} must stay in the list view without a grid/list switch`);
+  assert.doesNotMatch(section,/data-(?:o|a|pl|lb)mode=/,`${name} must not expose an alternate grid mode`);
+}
 for(const column of ['data-plsort="usage"','data-plsort="created"','data-plsort="recent"']) assert.ok(!playlists.includes(column),`Playlist column must be removed: ${column}`);
 assert.match(dashboard,/comparisonReady\?`\$\{T\('vs période précédente'\)\}.*:'—'/,'Incomplete playlist comparisons must render a dash only');
 
