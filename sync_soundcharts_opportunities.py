@@ -343,6 +343,32 @@ def main_artists(track: dict[str, Any], preserved: dict[str, Any]) -> list[dict[
     return out
 
 
+def public_contact_channels(artist: Mapping[str, Any], fallback_url: str = "", fallback_platform: str = "") -> list[dict[str, str]]:
+    """Return only explicit, public HTTP profile links from provider data."""
+    candidates = artist.get("public_contacts")
+    if not isinstance(candidates, list):
+        candidates = []
+    candidates = [
+        *candidates,
+        {"platform": fallback_platform, "url": fallback_url} if fallback_url else {},
+    ]
+    channels: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for item in candidates:
+        if not isinstance(item, Mapping):
+            continue
+        platform = str(item.get("platform") or "website").strip().casefold()
+        url = str(item.get("url") or "").strip()
+        if not url.startswith(("https://", "http://")):
+            continue
+        pair = (platform, url)
+        if pair in seen:
+            continue
+        seen.add(pair)
+        channels.append({"platform": platform, "url": url})
+    return channels
+
+
 def resolve_artist_context(
     track: dict[str, Any],
     preserved: dict[str, Any],
@@ -368,6 +394,10 @@ def resolve_artist_context(
         email = str(contact.get("email") or "")
         url = str(contact.get("url") or artist.get("contact_url") or "")
         platform = str(artist.get("contact_platform") or ("email" if email else ""))
+        public_contacts = public_contact_channels(artist, url, platform)
+        if public_contacts:
+            url = public_contacts[0]["url"]
+            platform = public_contacts[0]["platform"]
         resolved.append(
             {
                 "spotify_id": artist_spotify,
@@ -378,6 +408,7 @@ def resolve_artist_context(
                 "email": email,
                 "url": url,
                 "contact_platform": platform,
+                "public_contacts": public_contacts,
             }
         )
     listeners_values = [item["monthly_listeners"] for item in resolved if item.get("monthly_listeners") is not None]

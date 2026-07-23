@@ -248,6 +248,10 @@ class InstrumentalPoolTests(unittest.TestCase):
         artist = soundcharts["artists"][0]
         self.assertEqual(subject.field(artist, artist_schema, "monthly_listeners"), 1_283_880)
         self.assertEqual(subject.field(artist, artist_schema, "contact_url"), "https://instagram.com/novaissue")
+        self.assertEqual(
+            subject.field(artist, artist_schema, "public_contacts"),
+            [{"platform": "instagram", "url": "https://instagram.com/novaissue"}],
+        )
 
     def test_parallel_expansion_propagates_quota_reserve_stop(self):
         class ReserveClient:

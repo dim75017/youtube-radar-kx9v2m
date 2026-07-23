@@ -414,7 +414,7 @@ def _opportunity_exposes_contact(row: Any, schema: Sequence[str]) -> bool:
         isinstance(collaborator, Mapping)
         and any(
             _nonempty(collaborator.get(field))
-            for field in ("email", "url", "contact_email", "contact_url")
+            for field in ("email", "url", "contact_email", "contact_url", "public_contacts")
         )
         for collaborator in collaborators
     )
@@ -443,9 +443,10 @@ def _scrub_opportunity_contacts(row: Any, schema: Sequence[str]) -> None:
             "contact_email",
             "contact_url",
             "contact_platform",
+            "public_contacts",
         ):
             if field in collaborator:
-                collaborator[field] = ""
+                collaborator[field] = [] if field == "public_contacts" else ""
 
 
 def _is_composite_credit(row: Any, schema: Sequence[str]) -> bool:

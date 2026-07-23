@@ -84,6 +84,7 @@ ARTIST_EXTRA_FIELDS = (
     "spotify_followers",
     "contact_url",
     "contact_platform",
+    "public_contacts",
     "source_tier",
 )
 
@@ -579,9 +580,28 @@ def parse_artist_identifiers(response: Any) -> dict[str, Any]:
         if url and code in priority:
             social_candidates.append((priority[code], code, url))
     social_candidates.sort()
-    contact_platform = social_candidates[0][1] if social_candidates else ""
-    contact_url = social_candidates[0][2] if social_candidates else ""
-    return {"spotify_id": spotify_id, "contact_platform": contact_platform, "contact_url": contact_url}
+    # Keep every explicit public profile returned by Soundcharts, not merely
+    # the preferred one. These are provider identifiers / public URLs only:
+    # no inferred handle, guessed address or private contact is ever created.
+    public_contacts: list[dict[str, str]] = []
+    seen_contacts: set[tuple[str, str]] = set()
+    for _, platform, url in social_candidates:
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            continue
+        pair = (platform, url)
+        if pair in seen_contacts:
+            continue
+        seen_contacts.add(pair)
+        public_contacts.append({"platform": platform, "url": url})
+    contact_platform = public_contacts[0]["platform"] if public_contacts else ""
+    contact_url = public_contacts[0]["url"] if public_contacts else ""
+    return {
+        "spotify_id": spotify_id,
+        "contact_platform": contact_platform,
+        "contact_url": contact_url,
+        "public_contacts": public_contacts,
+    }
 
 
 def parse_artist_stats(response: Any) -> dict[str, Any]:
@@ -1011,6 +1031,7 @@ def expand_instrumental_pool(
                 "spotify_followers": cached_artist.get("spotify_followers"),
                 "contact_url": cached_artist.get("contact_url"),
                 "contact_platform": cached_artist.get("contact_platform"),
+                "public_contacts": cached_artist.get("public_contacts") or [],
                 "source_tier": "instrumental_editorial",
             }
             for name, value in artist_values.items():

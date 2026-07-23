@@ -35,4 +35,18 @@ for (const required of [
   if (!renderRadar.includes(required)) throw new Error(`Expected streamlined A&R UI token is missing: ${required}`);
 }
 
+const cardStart = source.indexOf('function arOpportunityCard(');
+const cardEnd = source.indexOf('\nfunction arScoreLine', cardStart);
+if (cardStart < 0 || cardEnd < 0) throw new Error('A&R opportunity card function was not found');
+const card = source.slice(cardStart, cardEnd);
+for (const removed of ['ar-score-confidence', 'ar-open-detail', 'Pourquoi ?']) {
+  if (card.includes(removed)) throw new Error(`Removed A&R score control is still rendered: ${removed}`);
+}
+for (const required of ['arTrackCoverUrl(opportunity)', 'Auditeurs/mois', 'arContactHtml(opportunity,true)']) {
+  if (!card.includes(required)) throw new Error(`A&R card data is missing: ${required}`);
+}
+for (const required of ['function hydrateArTrackCovers()', 'function arPublicContactChannels(', 'E-mail public à enrichir', 'public_contacts']) {
+  if (!source.includes(required)) throw new Error(`A&R public-contact UI is missing: ${required}`);
+}
+
 console.log('Spotify A&R UI guardrails passed');

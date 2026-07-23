@@ -26,6 +26,15 @@ Une ligne peut être vérifiée, mesurée, à écouter, découverte dans une pla
 
 Les pistes incomplètes restent non contactables.
 
+Pour une track éligible, le collecteur conserve tous les profils publics
+explicitement retournés par les identifiants Soundcharts (site officiel,
+Instagram, Bandcamp, SoundCloud, etc.) et les présente sous forme d’icônes.
+L’e-mail professionnel est prioritaire lorsqu’il est publié ; sinon la fiche
+garde l’état « E-mail public à enrichir ». Aucun handle, e-mail ou lien n’est
+deviné : l’enrichissement ne peut utiliser que des pages et profils officiels
+accessibles publiquement et reste bloqué tant que les garde-fous A&R ne passent
+pas.
+
 ## Règle de maintenance
 
 Ne jamais sécuriser A&R en vidant le catalogue de navigation. Les formes suivantes constituent une régression :

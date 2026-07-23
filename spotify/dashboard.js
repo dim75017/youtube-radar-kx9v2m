@@ -2023,10 +2023,7 @@ function arHasCompleteStructuredArtists(artists){
   return Array.isArray(artists)&&artists.length>0&&artists.every(artist=>
     String(artist&&artist.spotify_id||'').trim()&&String(artist&&artist.soundcharts_uuid||'').trim());
 }
-function arIsContactable(opportunity){
-  const contactStatus=String(opportunity&&opportunity.contactStatus||'').toLowerCase();
-  const hasChannel=(contactStatus==='ready'&&Boolean(opportunity&&opportunity.contactEmail))
-    ||(contactStatus==='social'&&Boolean(opportunity&&opportunity.contactUrl));
+function arContactEligible(opportunity){
   return Boolean(opportunity
     &&opportunity.status==='verified'
     &&SC_ALLOWED_GENRES.has(opportunity.genre)
@@ -2037,8 +2034,17 @@ function arIsContactable(opportunity){
     &&opportunity.instrumentalConfidence>=.5
     &&opportunity.aiRisk==='low'
     &&['self_released','independent_label','indie'].includes(opportunity.rights)
-    &&arHasCompleteStructuredArtists(opportunity.artists)
-    &&hasChannel);
+    &&arHasCompleteStructuredArtists(opportunity.artists));
+}
+function arIsContactable(opportunity){
+  const contactStatus=String(opportunity&&opportunity.contactStatus||'').toLowerCase();
+  const hasArtistChannel=Array.isArray(opportunity&&opportunity.artists)&&opportunity.artists.some(artist=>
+    String(artist&&artist.email||'').trim()||String(artist&&artist.url||'').trim()
+      ||(Array.isArray(artist&&artist.public_contacts)&&artist.public_contacts.some(channel=>channel&&channel.url)));
+  const hasChannel=(contactStatus==='ready'&&Boolean(opportunity&&opportunity.contactEmail))
+    ||(contactStatus==='social'&&Boolean(opportunity&&opportunity.contactUrl))
+    ||hasArtistChannel;
+  return arContactEligible(opportunity)&&hasChannel;
 }
 function arOpportunityRows(){
   if(AR_OPPORTUNITY_CACHE) return AR_OPPORTUNITY_CACHE;
@@ -2060,6 +2066,7 @@ function arOpportunityRows(){
     const rawContactStatus=String(scValue(row,schema,'contact_status')||'enrich').toLowerCase();
     const contactProbe={status,genre,genreConfidence,instrumental,instrumentalConfidence,aiRisk,rights,artists:structured,
       contactEmail:rawContactEmail,contactUrl:rawContactUrl,contactStatus:rawContactStatus};
+    const contactEligible=arContactEligible(contactProbe);
     const contactable=arIsContactable(contactProbe);
     const reasons=Array.isArray(scValue(row,schema,'reasons'))?scValue(row,schema,'reasons').filter(Boolean):[];
     const reasonCodes=Array.isArray(scValue(row,schema,'reason_codes'))?scValue(row,schema,'reason_codes').filter(Boolean):[];
@@ -2136,10 +2143,11 @@ function arOpportunityRows(){
       artistMonthlyListeners:arNullableNumber(scValue(row,schema,'artist_monthly_listeners')),
       artistSpotifyId:String(scValue(row,schema,'artist_spotify_id')||''),
       artistSoundchartsUuid:String(scValue(row,schema,'artist_soundcharts_uuid')||''),
-      contactEmail:contactable?rawContactEmail:'',
-      contactUrl:contactable?rawContactUrl:'',
-      contactPlatform:contactable?rawContactPlatform:'',
-      contactStatus:contactable?rawContactStatus:'blocked',
+      contactEmail:contactEligible?rawContactEmail:'',
+      contactUrl:contactEligible?rawContactUrl:'',
+      contactPlatform:contactEligible?rawContactPlatform:'',
+      contactStatus:contactEligible?rawContactStatus:'blocked',
+      contactEligible,
       contactable,
       streams7:arNullableNumber(scValue(row,schema,'streams_7d')),
       streams30:arNullableNumber(scValue(row,schema,'streams_30d')),
@@ -2168,11 +2176,61 @@ function arDealLabel(type){
 function arDealHelp(type){
   return ({distribution:'Sortie récente indépendante à approcher pour la distribution.',label_advance:'Traction suffisante pour une offre label ou une avance.',catalog_acquisition:'Flux installé à étudier pour un rachat de catalogue.',rights_review:'Signal fort, propriété des droits à confirmer.'})[type]||'';
 }
+function arSafePublicUrl(value){
+  try{const url=new URL(String(value||''));return ['https:','http:'].includes(url.protocol)?url.href:'';}catch(_){return '';}
+}
+function arPlatformFromUrl(platform,url){
+  const explicit=String(platform||'').trim().toLowerCase();
+  if(explicit) return explicit;
+  const host=String(url||'').toLowerCase();
+  if(host.includes('instagram.')) return 'instagram';
+  if(host.includes('bandcamp.')) return 'bandcamp';
+  if(host.includes('soundcloud.')) return 'soundcloud';
+  if(host.includes('youtube.')) return 'youtube';
+  if(host.includes('tiktok.')) return 'tiktok';
+  if(host.includes('facebook.')) return 'facebook';
+  if(host.includes('twitter.')||host.includes('x.com')) return 'x';
+  if(host.includes('spotify.')) return 'spotify';
+  return 'website';
+}
+function arPlatformIcon(platform){
+  return ({email:'✉️',website:'🌐',instagram:'📸',bandcamp:'🎟️',soundcloud:'☁️',youtube:'▶️',tiktok:'♪',facebook:'ⓕ',twitter:'𝕏',x:'𝕏',spotify:'🟢',contact:'📋'})[platform]||'🔗';
+}
+function arPlatformLabel(platform){
+  return ({email:'E-mail professionnel',website:'Site officiel',instagram:'Instagram',bandcamp:'Bandcamp',soundcloud:'SoundCloud',youtube:'YouTube',tiktok:'TikTok',facebook:'Facebook',twitter:'X / Twitter',x:'X / Twitter',spotify:'Spotify',contact:'Formulaire de contact'})[platform]||'Profil public';
+}
+function arPublicContactChannels(opportunity){
+  if(!arContactEligible(opportunity)) return [];
+  const channels=[], seen=new Set();
+  const add=(platform,url,email='')=>{
+    const value=email?String(email).trim():arSafePublicUrl(url);
+    if(!value) return;
+    const type=email?'email':arPlatformFromUrl(platform,value);
+    const key=`${type}:${value.toLowerCase()}`;
+    if(seen.has(key)) return;
+    seen.add(key); channels.push({type,value});
+  };
+  add('email','',opportunity.contactEmail);
+  (Array.isArray(opportunity.artists)?opportunity.artists:[]).forEach(artist=>{
+    add('email','',artist&&artist.email);
+    (Array.isArray(artist&&artist.public_contacts)?artist.public_contacts:[]).forEach(channel=>add(channel&&channel.platform,channel&&channel.url));
+    add(artist&&artist.contact_platform,artist&&artist.url);
+    const spotifyId=String(artist&&artist.spotify_id||'').trim();
+    if(spotifyId) add('spotify',`https://open.spotify.com/artist/${spotifyId}`);
+  });
+  add(opportunity.contactPlatform,opportunity.contactUrl);
+  return channels;
+}
 function arContactHtml(opportunity,compact=false){
-  if(!arIsContactable(opportunity)) return '<span class="ar-contact-missing">Contact bloqué par les garde-fous</span>';
-  if(opportunity.contactEmail) return `<a class="ar-contact-link" href="mailto:${esc(opportunity.contactEmail)}" onclick="event.stopPropagation()">✉ ${compact?'E-mail':esc(opportunity.contactEmail)}</a>`;
-  if(opportunity.contactUrl) return `<a class="ar-contact-link" href="${esc(opportunity.contactUrl)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">↗ ${compact?(opportunity.contactPlatform||'Contact'):esc(opportunity.contactPlatform||'Contact')}</a>`;
-  return '<span class="ar-contact-missing">Contact à enrichir</span>';
+  if(!arContactEligible(opportunity)) return '<span class="ar-contact-missing">Contact bloqué par les garde-fous</span>';
+  const channels=arPublicContactChannels(opportunity);
+  const email=channels.find(channel=>channel.type==='email');
+  const platforms=channels.filter(channel=>channel.type!=='email');
+  const emailHtml=email
+    ?`<a class="ar-email-contact" href="mailto:${esc(email.value)}" onclick="event.stopPropagation()">✉️ ${compact?'E-mail':esc(email.value)}</a>`
+    :`<span class="ar-email-slot">✉️ ${compact?'E-mail à enrichir':'E-mail public à enrichir'}</span>`;
+  const links=platforms.map(channel=>`<a class="ar-platform-link" href="${esc(channel.value)}" target="_blank" rel="noopener" title="${esc(arPlatformLabel(channel.type))}" aria-label="${esc(arPlatformLabel(channel.type))}" onclick="event.stopPropagation()">${arPlatformIcon(channel.type)}</a>`).join('');
+  return `<span class="ar-contact-set">${emailHtml}${links?`<span class="ar-platform-links">${links}</span>`:''}</span>`;
 }
 function arConfidenceLabel(value){
   if(value==null) return 'preuve en construction';
@@ -2329,6 +2387,38 @@ function arPlaylistPreviewHtml(opportunity){
   return `<div class="ar-playlist-preview" title="${esc(arEditorialSummary(opportunity,3))}"><div class="ar-playlist-cover-stack">${covers}</div><span><strong>${fmtFull(count)}</strong> éditorial${count>1?'es':''}</span></div>`;
 }
 const AR_PLAYLIST_COVER_CACHE=new Map();
+const AR_TRACK_COVER_CACHE=new Map();
+function arTrackCoverUrl(opportunity){
+  const direct=arSafePublicUrl(opportunity&&opportunity.imageUrl);
+  if(direct) return direct;
+  const row=arTrackRowById(opportunity&&opportunity.spotifyId);
+  return arSafePublicUrl(row&&row[8]);
+}
+function hydrateArTrackCovers(){
+  if(typeof fetch!=='function') return;
+  const pending=[...document.querySelectorAll('[data-ar-track-cover-id]')]
+    .filter(node=>node.dataset.arTrackCoverId&&!node.dataset.arTrackCoverHydrated)
+    .slice(0,60);
+  pending.forEach(node=>{
+    node.dataset.arTrackCoverHydrated='1';
+    const id=node.dataset.arTrackCoverId;
+    const apply=imageUrl=>{
+      if(!imageUrl) return;
+      const image=document.createElement('img');
+      image.src=imageUrl; image.alt=''; image.loading='lazy';
+      image.onerror=()=>image.remove();
+      node.before(image); node.parentElement&&node.parentElement.classList.add('has'); node.remove();
+    };
+    const known=AR_TRACK_COVER_CACHE.get(id);
+    if(known!==undefined){ apply(known); return; }
+    fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent('https://open.spotify.com/track/'+id)}`)
+      .then(response=>response.ok?response.json():null)
+      .then(payload=>{
+        const imageUrl=payload&&typeof payload.thumbnail_url==='string'?payload.thumbnail_url:'';
+        AR_TRACK_COVER_CACHE.set(id,imageUrl); apply(imageUrl);
+      }).catch(()=>AR_TRACK_COVER_CACHE.set(id,''));
+  });
+}
 function hydrateArPlaylistCovers(){
   if(typeof fetch!=='function') return;
   const pending=[...document.querySelectorAll('[data-ar-playlist-id]')]
@@ -2396,12 +2486,13 @@ function arOpportunityCard(opportunity,index){
   const total=arOpportunityTotal(opportunity), d30=arOpportunityMetric(opportunity,30), d7=arOpportunityMetric(opportunity,7), d1=arOpportunityMetric(opportunity,1);
   const genre=arGenreLabel(opportunity.genre);
   const listeners=opportunity.artistMonthlyListeners==null?'—':fmt(opportunity.artistMonthlyListeners);
+  const coverUrl=arTrackCoverUrl(opportunity);
   return `<article class="ar-opportunity-card" tabindex="0" data-ar-card="${esc(opportunity.spotifyId)}">
     <span class="ar-rank">${index+1}</span>
-    <div class="ar-track-cover ${opportunity.imageUrl?'has':''}"><span>♫</span>${opportunity.imageUrl?`<img src="${esc(opportunity.imageUrl)}" alt="" loading="lazy" onerror="this.remove()">`:''}</div>
-    <div class="ar-opp-main"><div class="ar-opp-title">${esc(opportunity.title)}</div><div class="ar-opp-artist">${esc(opportunity.credit)}</div><div class="ar-opp-tags"><span class="ar-mini-tag good">${esc(arRightsShortLabel(opportunity.rights))}</span><span class="ar-mini-tag">${esc(genre)}</span>${opportunity.status==='needs_listen'?'<span class="ar-mini-tag">À valider à l’écoute</span>':''}</div><div class="ar-card-bottom">${arPlaylistPreviewHtml(opportunity)}<div class="ar-card-listeners"><strong>${listeners}</strong> auditeurs/mois ${arContactHtml(opportunity,true)}</div></div></div>
-    <div class="ar-opp-metrics"><div class="ar-opp-metric total"><div class="l">Streams total</div><div class="v">${arMetricCompact(total)}</div></div><div class="ar-opp-metric"><div class="l">30 jours</div><div class="v">${arMetricCompact(d30)}</div></div><div class="ar-opp-metric"><div class="l">7 jours</div><div class="v">${arMetricCompact(d7)}</div></div><div class="ar-opp-metric current"><div class="l">24 heures</div><div class="v ${d1!=null&&d1>0?'up':''}">${arMetricCompact(d1,true)}</div></div></div>
-    <div class="ar-score-box"><div class="ar-score-value">${Math.round(opportunity.score)}</div><div class="ar-score-confidence">${esc(arConfidenceLabel(opportunity.scoreConfidence))}</div><button class="ar-open-detail" data-ar-open="${esc(opportunity.spotifyId)}">Pourquoi ?</button></div>
+    <div class="ar-track-cover ${coverUrl?'has':''}"><span data-ar-track-cover-id="${coverUrl?'':esc(opportunity.spotifyId)}">♫</span>${coverUrl?`<img src="${esc(coverUrl)}" alt="" loading="lazy" onerror="this.remove()">`:''}</div>
+    <div class="ar-opp-main"><div class="ar-opp-title">${esc(opportunity.title)}</div><div class="ar-opp-artist">${esc(opportunity.credit)}</div><div class="ar-opp-tags"><span class="ar-mini-tag good">${esc(arRightsShortLabel(opportunity.rights))}</span><span class="ar-mini-tag">${esc(genre)}</span>${opportunity.status==='needs_listen'?'<span class="ar-mini-tag">À valider à l’écoute</span>':''}</div><div class="ar-card-bottom">${arPlaylistPreviewHtml(opportunity)}${arContactHtml(opportunity,true)}</div></div>
+    <div class="ar-opp-metrics"><div class="ar-opp-metric total"><div class="l">Streams total</div><div class="v">${arMetricCompact(total)}</div></div><div class="ar-opp-metric"><div class="l">30 jours</div><div class="v">${arMetricCompact(d30)}</div></div><div class="ar-opp-metric"><div class="l">7 jours</div><div class="v">${arMetricCompact(d7)}</div></div><div class="ar-opp-metric current"><div class="l">24 heures</div><div class="v ${d1!=null&&d1>0?'up':''}">${arMetricCompact(d1,true)}</div></div><div class="ar-opp-metric listeners"><div class="l">Auditeurs/mois</div><div class="v">${listeners}</div></div></div>
+    <div class="ar-score-box"><div class="ar-score-value">${Math.round(opportunity.score)}</div></div>
   </article>`;
 }
 function arScoreLine(label,value,max){
@@ -2420,7 +2511,7 @@ function openArOpportunity(spotifyId){
     <div class="perf-grid">${totalMetricCardHtml('Streams',total,true)}${perfCardHtml(streamMetricLabel(30),{current:d30,currentReady:d30!=null,comparisonReady:false,total:1},true)}${perfCardHtml(streamMetricLabel(7),{current:d7,currentReady:d7!=null,comparisonReady:false,total:1},true)}${perfCardHtml(streamMetricLabel(1),{current:d1,currentReady:d1!=null,comparisonReady:false,total:1},true)}</div>
     <div class="analytics-section"><h4>Pourquoi cette musique est dans la liste</h4><div class="ar-detail-reasons">${reasonItems.slice(0,4).map(item=>`<div class="ar-detail-reason"><span class="ar-detail-reason-icon">${esc(item.icon)}</span><span>${esc(item.reason)}</span></div>`).join('')}</div></div>
     <div class="analytics-section"><h4>Score track <span class="analytics-note">${Math.round(opportunity.score)}/100 · ${esc(confidence)}</span></h4><div class="ar-score-breakdown">${arScoreLine('Momentum',opportunity.scoreMomentum,35)}${arScoreLine('Signal éditorial',opportunity.scoreEditorial,20)}${arScoreLine('Traction',opportunity.scoreTraction,25)}${arScoreLine('Récence',opportunity.scoreRecency,15)}${arScoreLine('Relation',opportunity.scoreRelationship,5)}</div></div>
-    <div class="tgrid ar-detail-facts"><div class="tg ar-fact-plain"><div class="v">🎼 ${esc(arGenreLabel(opportunity.genre))}</div></div><div class="tg ar-fact-plain"><div class="v">©️ ${esc(arRightsShortLabel(opportunity.rights))}</div></div><div class="tg ar-detail-listeners"><div class="l">👥 Auditeurs mensuels</div><div class="v">${opportunity.artistMonthlyListeners==null?'—':fmt(opportunity.artistMonthlyListeners)}</div></div><div class="tg"><div class="l">✉️ Contact</div><div class="v" style="font-size:12px">${arContactHtml(opportunity,false)}</div></div><div class="tg"><div class="l">🗓️ Sortie</div><div class="v">${opportunity.releaseDate?fmtDate(opportunity.releaseDate.slice(0,10)):'—'}</div></div><div class="tg"><div class="l">🏷️ Label / distributeur</div><div class="v" style="font-size:12px;line-height:1.4">${esc(opportunity.label||opportunity.distributor||'—')}</div></div></div>`;
+    <div class="tgrid ar-detail-facts"><div class="tg ar-fact-plain"><div class="v">🎼 ${esc(arGenreLabel(opportunity.genre))}</div></div><div class="tg ar-fact-plain"><div class="v">©️ ${esc(arRightsShortLabel(opportunity.rights))}</div></div><div class="tg ar-detail-listeners"><div class="l">👥 Auditeurs mensuels</div><div class="v">${opportunity.artistMonthlyListeners==null?'—':fmt(opportunity.artistMonthlyListeners)}</div></div><div class="tg ar-contact-fact"><div class="l">✉️ E-mail professionnel & plateformes</div><div class="v">${arContactHtml(opportunity,false)}</div></div><div class="tg"><div class="l">🗓️ Sortie</div><div class="v">${opportunity.releaseDate?fmtDate(opportunity.releaseDate.slice(0,10)):'—'}</div></div><div class="tg"><div class="l">🏷️ Label / distributeur</div><div class="v" style="font-size:12px;line-height:1.4">${esc(opportunity.label||opportunity.distributor||'—')}</div></div></div>`;
   document.getElementById('ar-modal').style.display='flex';
 }
 function renderRadar(){
@@ -2434,12 +2525,12 @@ function renderRadar(){
   V.innerHTML=`<div class="page-head"><div><h2>Radar A&R · musiques instrumentales</h2></div></div>
     <div class="ar-filterbar"><span class="ar-filter-spacer"></span><select id="radar-genre"><option value="all">Tous les genres</option>${genres.map(genre=>`<option value="${esc(genre)}" ${S.radarGenre===genre?'selected':''}>${esc(arGenreLabel(genre))}</option>`).join('')}</select><select id="radar-sort"><option value="score" ${S.radarSort==='score'?'selected':''}>Trier : priorité A&R</option><option value="momentum" ${S.radarSort==='momentum'?'selected':''}>Trier : 24 h</option><option value="acceleration" ${S.radarSort==='acceleration'?'selected':''}>Trier : accélération 7 j</option><option value="streams" ${S.radarSort==='streams'?'selected':''}>Trier : streams total</option><option value="listeners" ${S.radarSort==='listeners'?'selected':''}>Trier : audience artiste</option><option value="recent" ${S.radarSort==='recent'?'selected':''}>Trier : récence</option></select><select id="radar-limit"><option value="100" ${S.radarLimit===100?'selected':''}>Afficher 100</option><option value="250" ${S.radarLimit===250?'selected':''}>Afficher 250</option><option value="500" ${S.radarLimit===500?'selected':''}>Afficher 500</option><option value="1000" ${S.radarLimit===1000?'selected':''}>Afficher 1 000</option></select></div>
     <div class="ar-opportunity-list">${rows.map(arOpportunityCard).join('')}</div>${rows.length===0?`<div class="ar-empty-state">Aucune track ne correspond à ce filtre. Les critères restent stricts et aucune donnée manquante n’est inventée.</div>`:''}${filtered.length>rows.length?`<div class="analytics-note" style="text-align:center;margin-top:12px">${fmtFull(rows.length)} affichées sur ${fmtFull(filtered.length)} · augmente « Afficher » pour voir la suite.</div>`:''}`;
-  document.querySelectorAll('[data-ar-open]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();openArOpportunity(button.dataset.arOpen);}));
   document.querySelectorAll('[data-ar-card]').forEach(card=>{const open=event=>{if(event.target.closest('button,a,input,select')) return;openArOpportunity(card.dataset.arCard);};card.addEventListener('click',open);card.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openArOpportunity(card.dataset.arCard);}});});
   document.getElementById('radar-genre').addEventListener('change',event=>{S.radarGenre=event.target.value;renderRadar();});
   document.getElementById('radar-sort').addEventListener('change',event=>{S.radarSort=event.target.value;renderRadar();});
   document.getElementById('radar-limit').addEventListener('change',event=>{S.radarLimit=Number(event.target.value)||100;renderRadar();});
   hydrateArPlaylistCovers();
+  hydrateArTrackCovers();
 }
 
 function renderWatch(){
