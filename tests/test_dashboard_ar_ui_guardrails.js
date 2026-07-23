@@ -87,10 +87,11 @@ const detailStart = source.indexOf('function openArOpportunity(spotifyId){');
 const detailEnd = source.indexOf('\nfunction renderRadar(){', detailStart);
 if (detailStart < 0 || detailEnd < 0) throw new Error('A&R opportunity detail function was not found');
 const detail = source.slice(detailStart, detailEnd);
-for (const required of ['<div class="l">Genre</div>', 'arOpportunityCoverPlayerHtml(opportunity)', 'arDetailEditorialPlaylistsHtml(opportunity)', 'typeFact.remove()', 'tgrid ar-detail-facts ar-detail-reasons']) {
+for (const required of ['<div class="l">Genre</div>', 'arOpportunityPlayerHtml(opportunity)', 'arDetailEditorialPlaylistsHtml(opportunity)', 'typeFact.remove()', 'tgrid ar-detail-facts ar-detail-reasons']) {
   if (!detail.includes(required)) throw new Error(`A&R detail fact is missing: ${required}`);
 }
-for (const removed of ["spotifyTrackEmbedHtml(spotifyId,opportunity.title,'ar-opportunity-player')", 'Pourquoi cette musique est dans la liste', "reasonsSection.querySelector('h4')"]) {
+if (!source.includes("spotifyTrackEmbedHtml(spotifyId,opportunity.title,'ar-opportunity-player')")) throw new Error('A&R detail player must use the embedded Spotify player.');
+for (const removed of ['arOpportunityCoverPlayerHtml(opportunity)', 'Pourquoi cette musique est dans la liste', "reasonsSection.querySelector('h4')"]) {
   if (detail.includes(removed)) throw new Error(`A&R detail must not retain the old player/reasons UI: ${removed}`);
 }
 if (!source.includes('function arDetailEditorialPlaylistsHtml(opportunity)')) throw new Error('A&R detail must render editorial playlists with their own compact cards');

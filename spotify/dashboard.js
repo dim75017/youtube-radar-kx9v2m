@@ -1183,11 +1183,12 @@ function spotifyTrackEmbedHtml(id,title,extraClass=''){
   if(!spotifyId) return '';
   return `<div class="ar-detail-player ${esc(extraClass)}"><iframe title="Spotify player · ${esc(title||'Track')}" src="${spotifyEmbedUrl('track',spotifyId)}" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>`;
 }
-function arOpportunityCoverPlayerHtml(opportunity){
+function arOpportunityPlayerHtml(opportunity){
   const spotifyId=spotifyTrackId(opportunity&&opportunity.spotifyId);
   if(!spotifyId) return '';
-  const imageUrl=arTrackCoverUrl(opportunity);
-  return `<a class="ar-detail-cover-player" href="${spotifyTrackUrl(spotifyId)}" target="_blank" rel="noopener" aria-label="Écouter ${esc(opportunity.title||'la track')} sur Spotify"><span class="ar-detail-cover-art">${imageUrl?`<img src="${esc(imageUrl)}" alt="" loading="lazy" onerror="this.remove()">`:''}<span class="ar-detail-cover-fallback">♫</span></span><span class="ar-detail-cover-play" aria-hidden="true">▶</span></a>`;
+  // Le lecteur Spotify embarqué conserve l'écoute dans le radar :
+  // artwork, lecture/pause, progression et durée restent directement disponibles.
+  return spotifyTrackEmbedHtml(spotifyId,opportunity.title,'ar-opportunity-player');
 }
 function trackUrl(id,row=null){
   const raw=String(id||'').trim();
@@ -2856,7 +2857,7 @@ function openArOpportunity(spotifyId){
   const selectable=arContactEligible(opportunity);
   box.className='tmbox ambox';
   box.innerHTML=`<div class="thd"><div class="av-sm">♫</div><div style="min-width:0;flex:1"><h3>${esc(opportunity.title)}</h3><div class="tar ar-detail-artists">${arArtistLinksHtml(opportunity)}<span class="ar-detail-artist-separator"> · </span>opportunité de track</div></div><button class="tclose" onclick="closeArModal()">✕</button></div>
-    ${arOpportunityCoverPlayerHtml(opportunity)}
+    ${arOpportunityPlayerHtml(opportunity)}
     <div class="perf-grid">${totalMetricCardHtml('Streams',total,true)}${perfCardHtml(streamMetricLabel(30),{current:d30,currentReady:d30!=null,comparisonReady:false,total:1},true)}${perfCardHtml(streamMetricLabel(7),{current:d7,currentReady:d7!=null,comparisonReady:false,total:1},true)}${perfCardHtml(streamMetricLabel(1),{current:d1,currentReady:d1!=null,comparisonReady:false,total:1},true)}</div>
     ${arDetailEditorialPlaylistsHtml(opportunity)}
     <div class="tgrid ar-detail-facts ar-detail-reasons">${reasonItems.slice(0,4).map(item=>`<div class="tg ar-detail-reason"><div class="l"><span class="ar-detail-reason-icon">${esc(item.icon)}</span></div><div class="v">${esc(item.reason)}</div></div>`).join('')}</div>
