@@ -15,6 +15,6 @@ assert.match(dashboard, /function sortTriangleIndicator\(active,direction\)/);
 assert.match(dashboard, /<section class="ar-filter-section"/);
 assert.match(css, /\.ar-filter-section\{/);
 assert.match(css, /\.ar-columnbar button\.asc \.sort-triangles/);
-assert.match(index, /dashboard\.js\?v=20260724-standard-sort-triangles-v1/);
+assert.match(index, /dashboard\.js\?v=20260724-selection-artist-offers-status-v1/);
 
 console.log('spotify opportunity sorting bar: OK');

@@ -142,6 +142,7 @@ const BUY = {
   publishing: 0.10,   // surcoût si on rachète aussi le publishing (option)
   // paliers : clé = "part artiste / part label", adv = avance en % de la base
   paliers: [
+    {k:'50/50',  artist:0.50, adv:0.30},
     {k:'60/40',  artist:0.60, adv:0.40},
     {k:'70/30',  artist:0.30, adv:0.50},
     {k:'80/20',  artist:0.20, adv:0.60},
@@ -1824,15 +1825,25 @@ function renderArtistModal(){
 /* ---------- Liste A&R (locale au navigateur, aucun e-mail n'est envoyé) ---------- */
 const AR_LIST_STORAGE='spotify_ar_outreach_list_v1';
 const AR_ARTIST_STORAGE='spotify_ar_outreach_artists_v1';
-const AR_STATUSES={shortlisted:'À contacter',draft_ready:'Brouillon prêt',contacted:'Contacté',follow_up:'Relance à faire',closed:'Terminé'};
+const AR_STATUSES={to_contact:'À contacter',contacted:'Contacté',follow_up:'Relance à faire',closed:'Terminé'};
 function arListGet(){try{const raw=JSON.parse(localStorage.getItem(AR_LIST_STORAGE)||'{}');return raw&&typeof raw==='object'?raw:{};}catch(e){return {};}}
 function arListSet(items){try{localStorage.setItem(AR_LIST_STORAGE,JSON.stringify(items));}catch(e){}}
 function arArtistGet(){try{const raw=JSON.parse(localStorage.getItem(AR_ARTIST_STORAGE)||'{}');return raw&&typeof raw==='object'?raw:{};}catch(e){return {};}}
 function arArtistSet(items){try{localStorage.setItem(AR_ARTIST_STORAGE,JSON.stringify(items));}catch(e){}}
 function arArtistEntry(artistKey){return arArtistGet()[artistKey]||null;}
-function arArtistUpdate(artistKey,patch){const items=arArtistGet();items[artistKey]=Object.assign({status:'shortlisted'},items[artistKey]||{},patch);arArtistSet(items);}
-function arArtistStatus(artistKey){return (arArtistEntry(artistKey)||{}).status||'shortlisted';}
-function arSetArtistStatus(artistKey,status){arArtistUpdate(artistKey,{status});}
+function arArtistUpdate(artistKey,patch){const items=arArtistGet();items[artistKey]=Object.assign({status:'to_contact'},items[artistKey]||{},patch);arArtistSet(items);}
+function arArtistStatus(artistKey){
+  const entry=arArtistEntry(artistKey)||{};
+  if(entry.status==='closed'||entry.dealClosedAt)return 'closed';
+  if(entry.contactedAt){
+    const elapsed=Date.now()-new Date(entry.contactedAt).getTime();
+    if(Number.isFinite(elapsed)&&elapsed>=7*24*60*60*1000)return 'follow_up';
+    return 'contacted';
+  }
+  return 'to_contact';
+}
+function arMarkArtistContacted(artistKey){arArtistUpdate(artistKey,{status:'contacted',contactedAt:new Date().toISOString(),nextFollowUp:arFollowUpDate()});}
+function arCloseArtistDeal(artistKey){arArtistUpdate(artistKey,{status:'closed',dealClosedAt:new Date().toISOString(),nextFollowUp:''});}
 function arListEntry(spotifyId){return arListGet()[spotifyId]||null;}
 function arSelectionEligible(spotifyId){
   const opportunity=arOpportunityRows().find(item=>item.spotifyId===spotifyId);
@@ -1852,7 +1863,7 @@ function arSelectVisible(spotifyIds,selected){if(!S.arSelected)S.arSelected={};s
 function arAddManyToList(spotifyIds){
   const valid=[...new Set(spotifyIds||[])].filter(id=>arOpportunityRows().some(item=>item.spotifyId===id)&&arSelectionEligible(id));if(!valid.length)return;
   const items=arListGet(),addedAt=new Date().toISOString();
-  valid.forEach(id=>{if(!items[id])items[id]={addedAt,status:'shortlisted',note:'',nextFollowUp:'',contactedAt:'',subject:'',body:''};});
+  valid.forEach(id=>{if(!items[id])items[id]={addedAt,status:'to_contact',note:'',nextFollowUp:'',contactedAt:'',subject:'',body:''};});
   S.arSelected={};arListSet(items);arSyncListCount();
   if(S.view==='ar-list')renderArList();
   else if(S.view==='radar')renderRadar();
@@ -1959,7 +1970,12 @@ function arOutreachDrafts(opportunity){
   ];
 }
 function arOutreachDraft(opportunity){return arOutreachDrafts(opportunity)[0];}
-function arMarkContacted(spotifyId){arUpdateList(spotifyId,{status:'contacted',contactedAt:new Date().toISOString(),nextFollowUp:arFollowUpDate()});renderArList();}
+function arMarkContacted(spotifyId){
+  arUpdateList(spotifyId,{status:'contacted',contactedAt:new Date().toISOString(),nextFollowUp:arFollowUpDate()});
+  const opportunity=arOpportunityRows().find(item=>item.spotifyId===spotifyId);
+  if(opportunity)arMarkArtistContacted(arSelectionPrimaryArtist(opportunity).key);
+  renderArList();
+}
 function arSelectionArtistInfoHtml(opportunity){
   const listeners=opportunity.artistMonthlyListeners==null?'':` · ${fmt(opportunity.artistMonthlyListeners)} auditeurs/mois`;
   return `<div class="ar-follow-artist">${arArtistLinksHtml(opportunity)}<span> · ${esc(arGenreLabel(opportunity.genre))}${listeners}</span></div><div class="ar-follow-contact ar-selection-contact">${arContactHtml(opportunity,true)}</div>`;
@@ -2693,6 +2709,7 @@ function arEditorialCardHtml(opportunity){
 }
 const AR_PLAYLIST_COVER_CACHE=new Map();
 const AR_TRACK_COVER_CACHE=new Map();
+const AR_ARTIST_AVATAR_CACHE=new Map();
 let arPlaylistCoverObserver=null;
 function arTrackCoverUrl(opportunity){
   const direct=arSafePublicUrl(opportunity&&opportunity.imageUrl);
@@ -2874,6 +2891,30 @@ function sortTriangleIndicator(active,direction){
   const dir=active?(direction===-1?'desc':'asc'):'';
   return `<span class="sort-triangles ${active?'on ':''}${dir}" aria-hidden="true"><b>▲</b><b>▼</b></span>`;
 }
+function hydrateArArtistAvatars(){
+  if(typeof fetch!=='function') return;
+  [...document.querySelectorAll('[data-ar-artist-avatar-id]')]
+    .filter(node=>node.dataset.arArtistAvatarId&&!node.dataset.arArtistAvatarHydrated)
+    .slice(0,40)
+    .forEach(node=>{
+      node.dataset.arArtistAvatarHydrated='1';
+      const id=node.dataset.arArtistAvatarId;
+      const apply=imageUrl=>{
+        if(!imageUrl||!node.isConnected)return;
+        const image=document.createElement('img');
+        image.src=imageUrl;image.alt='';image.loading='lazy';
+        image.onerror=()=>image.remove();
+        node.prepend(image);node.classList.add('has');
+      };
+      if(AR_ARTIST_AVATAR_CACHE.has(id)){apply(AR_ARTIST_AVATAR_CACHE.get(id));return;}
+      fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(spotifyArtistUrl(id))}`)
+        .then(response=>response.ok?response.json():null)
+        .then(payload=>{
+          const imageUrl=payload&&typeof payload.thumbnail_url==='string'?payload.thumbnail_url:'';
+          AR_ARTIST_AVATAR_CACHE.set(id,imageUrl);apply(imageUrl);
+        }).catch(()=>AR_ARTIST_AVATAR_CACHE.set(id,''));
+    });
+}
 function arColumnBarHtml(){
   const choices=[['score','Note'],['artist','Artiste'],['recent','Sortie'],['genre','Genre'],['streams','Streams total'],['streams30','30 jours'],['streams7','7 jours'],['momentum','24 heures'],['listeners','Auditeurs/mois'],['editorial','Éditoriales']];
   return `<div class="ar-columnbar" role="toolbar" aria-label="Trier les opportunités dans les deux sens">${choices.map(([value,label])=>{const active=S.radarSort===value,dir=active?(S.radarSortDir===1?'asc':'desc'):'';return `<button type="button" data-ar-sort="${value}" class="${active?'on':''} ${dir}" title="Trier ${label.toLowerCase()} dans les deux sens"><span>${label}</span>${sortTriangleIndicator(active,S.radarSortDir)}</button>`;}).join('')}</div>`;
@@ -2917,12 +2958,12 @@ function openArOutreach(spotifyId){
   const initial=drafts[selectedIndex];const subject=artistEntry.subject||entry.subject||initial.subject;const body=artistEntry.body||entry.body||initial.body;
   const box=document.getElementById('ar-body');box.className='tmbox ambox ar-composer';
   box.innerHTML=`<header class="ar-composer-head"><div class="ar-composer-icon">✉</div><div><div class="ar-composer-kicker">CONTACT ARTISTE</div><h3>${esc(artist.name)}</h3><p>À propos de “${esc(opportunity.title)}”</p></div><button class="tclose" onclick="closeArModal()">✕</button></header>
-    <div class="ar-composer-content"><aside class="ar-composer-side"><div class="ar-outreach-note">Brouillon local : aucun e-mail n’est envoyé ni suivi depuis le radar. L’ouverture se fait dans votre messagerie, après validation humaine.</div><div class="ar-draft-heading">Choisir un angle</div><div class="ar-draft-choices">${drafts.map((draft,index)=>`<button class="${index===selectedIndex?'on':''}" type="button" data-ar-draft="${index}">${esc(draft.label)}</button>`).join('')}</div></aside><section class="ar-composer-form">${email?`<label class="ar-form-label">Destinataire public<input id="ar-outreach-email" value="${esc(email)}" readonly></label>`:''}<label class="ar-form-label">Objet<input id="ar-outreach-subject" value="${esc(subject)}"></label><label class="ar-form-label ar-message-field">Message<textarea id="ar-outreach-body">${esc(body)}</textarea></label><div class="ar-actions"><button class="chip" id="ar-copy-draft">Copier le message</button>${email?`<button class="btn-back" id="ar-open-mail">Ouvrir dans ma messagerie</button><button class="chip" id="ar-mark-contacted">Marquer comme contacté</button>`:''}</div></section></div>`;
-  const save=(patch={})=>arArtistUpdate(artistKey,Object.assign({subject:document.getElementById('ar-outreach-subject').value,body:document.getElementById('ar-outreach-body').value,draftVariant:selectedIndex,status:'draft_ready'},patch));
+    <div class="ar-composer-content"><aside class="ar-composer-side"><div class="ar-outreach-note">Le message reste sous votre contrôle : ouvrez votre messagerie puis confirmez l’envoi ici. Aucun e-mail n’est envoyé automatiquement.</div><div class="ar-draft-heading">Choisir un angle</div><div class="ar-draft-choices">${drafts.map((draft,index)=>`<button class="${index===selectedIndex?'on':''}" type="button" data-ar-draft="${index}">${esc(draft.label)}</button>`).join('')}</div></aside><section class="ar-composer-form">${email?`<label class="ar-form-label">Destinataire public<input id="ar-outreach-email" value="${esc(email)}" readonly></label>`:''}<label class="ar-form-label">Objet<input id="ar-outreach-subject" value="${esc(subject)}"></label><label class="ar-form-label ar-message-field">Message<textarea id="ar-outreach-body">${esc(body)}</textarea></label><div class="ar-actions"><button class="chip" id="ar-copy-draft">Copier le message</button>${email?`<button class="btn-back" id="ar-open-mail">Ouvrir dans ma messagerie</button><button class="chip" id="ar-mark-contacted">✓ Message envoyé</button>`:''}</div></section></div>`;
+  const save=(patch={})=>arArtistUpdate(artistKey,Object.assign({subject:document.getElementById('ar-outreach-subject').value,body:document.getElementById('ar-outreach-body').value,draftVariant:selectedIndex},patch));
   box.querySelectorAll('[data-ar-draft]').forEach(button=>button.addEventListener('click',()=>{selectedIndex=Number(button.dataset.arDraft);const draft=drafts[selectedIndex];document.getElementById('ar-outreach-subject').value=draft.subject;document.getElementById('ar-outreach-body').value=draft.body;box.querySelectorAll('[data-ar-draft]').forEach(item=>item.classList.toggle('on',item===button));save();}));
   document.getElementById('ar-copy-draft').addEventListener('click',()=>{save();arCopyText(`Subject: ${document.getElementById('ar-outreach-subject').value}\n\n${document.getElementById('ar-outreach-body').value}`);});
   const openMail=document.getElementById('ar-open-mail');if(openMail)openMail.addEventListener('click',()=>{save();const currentEmail=document.getElementById('ar-outreach-email').value.trim();window.location.href=`mailto:${encodeURIComponent(currentEmail)}?subject=${encodeURIComponent(document.getElementById('ar-outreach-subject').value)}&body=${encodeURIComponent(document.getElementById('ar-outreach-body').value)}`;});
-  const mark=document.getElementById('ar-mark-contacted');if(mark)mark.addEventListener('click',()=>{save({status:'contacted',contactedAt:new Date().toISOString(),nextFollowUp:arFollowUpDate()});closeArModal();renderArList();});
+  const mark=document.getElementById('ar-mark-contacted');if(mark)mark.addEventListener('click',()=>{save();arMarkArtistContacted(artistKey);arUpdateList(spotifyId,{status:'contacted',contactedAt:new Date().toISOString(),nextFollowUp:arFollowUpDate()});closeArModal();renderArList();});
   document.getElementById('ar-modal').style.display='flex';
   window.setTimeout(()=>document.getElementById('ar-outreach-body')?.focus(),0);
 }
@@ -2956,6 +2997,22 @@ function arOpenSelectionArtistProfile(artistSpotifyId,fallbackTrackId){
   const name=opportunity?arSelectionPrimaryArtist(opportunity).name:'artiste';
   window.open(artistSpotifyId?spotifyArtistUrl(artistSpotifyId):spotifySearchUrl(name),'_blank','noopener');
 }
+function arSelectionOffer(artistKey){
+  const split=(arArtistEntry(artistKey)||{}).offerSplit;
+  return BUY.paliers.find(item=>item.k===split)||BUY.paliers.find(item=>item.k==='60/40')||BUY.paliers[0];
+}
+function arSetSelectionOffer(artistKey,split){
+  if(!BUY.paliers.some(item=>item.k===split))return;
+  arArtistUpdate(artistKey,{offerSplit:split});renderArList();
+}
+function arSelectionStatusHtml(artistKey){
+  const entry=arArtistEntry(artistKey)||{},status=arArtistStatus(artistKey),label=AR_STATUSES[status]||AR_STATUSES.to_contact;
+  let detail='Prêt à contacter';
+  if(status==='follow_up'&&entry.nextFollowUp)detail=`Depuis le ${fmtDate(entry.nextFollowUp)}`;
+  else if(status==='contacted'&&entry.contactedAt)detail=`Envoyé le ${fmtDateTime(entry.contactedAt)}`;
+  else if(status==='closed'&&entry.dealClosedAt)detail=`Conclu le ${fmtDateTime(entry.dealClosedAt)}`;
+  return `<div class="ar-artist-status"><span>Statut artiste</span><strong class="ar-status-${esc(status)}">${esc(label)}</strong><small>${esc(detail)}</small></div>`;
+}
 function arSelectionArtistCardHtml(group){
   const {artist,rows,priority}=group,contactOpportunity=priority.opportunity;
   const listeners=Math.max(...rows.map(row=>Number(row.opportunity.artistMonthlyListeners)||0));
@@ -2963,7 +3020,9 @@ function arSelectionArtistCardHtml(group){
   const artistName=`<button type="button" class="ar-selection-artist-name" onclick="arOpenSelectionArtistProfile('${esc(artist.spotifyId)}','${esc(contactOpportunity.spotifyId)}')">${esc(artist.name)}</button>`;
   const initials=artist.name.split(/\s+/).map(part=>part[0]).join('').slice(0,2).toUpperCase()||'A';
   const status=arArtistStatus(artist.key);
-  return `<article class="ar-artist-selection"><header class="ar-artist-selection-head"><div class="ar-selection-artist-avatar">${esc(initials)}</div><div class="ar-selection-artist-main"><h3>${artistName}</h3><div class="ar-selection-artist-meta">${esc(genres||'—')}${listeners?` · ${fmt(listeners)} auditeurs/mois`:''}</div><div class="ar-selection-artist-contact">${arContactHtml(contactOpportunity,true)}</div></div>${arSelectionEconomicsHtml(group)}<label class="ar-artist-status">Statut artiste<select onchange="arSetArtistStatus('${esc(artist.key)}',this.value);renderArList()">${Object.entries(AR_STATUSES).map(([key,label])=>`<option value="${key}" ${status===key?'selected':''}>${label}</option>`).join('')}</select></label><button class="ar-artist-message" onclick="openArOutreach('${esc(contactOpportunity.spotifyId)}')">✉ Préparer le message</button></header><div class="ar-selection-track-list">${rows.map(arSelectionTrackHtml).join('')}</div></article>`;
+  const avatar=artist.spotifyId?`<div class="ar-selection-artist-avatar" data-ar-artist-avatar-id="${esc(artist.spotifyId)}"><span>${esc(initials)}</span></div>`:`<div class="ar-selection-artist-avatar"><span>${esc(initials)}</span></div>`;
+  const dealAction=(status==='contacted'||status==='follow_up')?`<button class="ar-artist-deal" onclick="arCloseArtistDeal('${esc(artist.key)}');renderArList()">✓ Deal conclu</button>`:'';
+  return `<article class="ar-artist-selection"><header class="ar-artist-selection-head">${avatar}<div class="ar-selection-artist-main"><h3>${artistName}</h3><div class="ar-selection-artist-meta">${esc(genres||'—')}${listeners?` · ${fmt(listeners)} auditeurs/mois`:''}</div><div class="ar-selection-artist-contact">${arContactHtml(contactOpportunity,true)}</div></div>${arSelectionEconomicsHtml(group)}${arSelectionStatusHtml(artist.key)}<div class="ar-artist-actions"><button class="ar-artist-message" onclick="openArOutreach('${esc(contactOpportunity.spotifyId)}')">✉ Préparer le message</button>${dealAction}</div></header><div class="ar-selection-track-list">${rows.map(arSelectionTrackHtml).join('')}</div></article>`;
 }
 function arSelectionEconomics(group){
   const ids=new Set(group.rows.map(row=>String(row.opportunity&&row.opportunity.spotifyId||'').trim()).filter(Boolean));
@@ -2971,18 +3030,22 @@ function arSelectionEconomics(group){
   const monthly=tracks.map(perMonth).filter(value=>Number.isFinite(value)&&value>=0);
   const monthlyStreams=monthly.reduce((sum,value)=>sum+value,0);
   const measurable=monthly.length;
-  return {measurable,monthlyStreams,advance:measurable?advance(monthlyStreams):null,labelMonthly:measurable?labelMonthly(monthlyStreams):null,payback:measurable?payback(monthlyStreams):null};
+  const offer=arSelectionOffer(group.artist.key);
+  const labelMonthlyValue=monthlyStreams*RATE*(1+BUY.multiPlat)*BUY.fx*(1-BUY.orchard)*(1-BUY.costs)*(1-offer.artist);
+  const advanceValue=baseRef(monthlyStreams)*offer.adv*(S.publishing?1+BUY.publishing:1);
+  return {measurable,monthlyStreams,offer,advance:measurable?advanceValue:null,labelMonthly:measurable?labelMonthlyValue:null,payback:measurable&&labelMonthlyValue>0?advanceValue/labelMonthlyValue:null};
 }
 function arSelectionEconomicsHtml(group){
   const economics=arSelectionEconomics(group);
   const value=number=>economics.measurable?number:'—';
-  return `<section class="ar-selection-economics" title="Même calcul que Pistes et Artistes. Ces estimations restent internes et ne sont jamais ajoutées au message."><div class="ar-selection-economics-label">💶 Estimation interne · ${esc(S.palier)}</div><div class="ar-selection-economics-grid"><div><span>Coût estimé</span><strong>${value(eur(economics.advance))}</strong></div><div><span>Revenu / mois</span><strong>${value(eur(economics.labelMonthly))}</strong></div><div><span>Payback</span><strong class="${economics.measurable?paybackClass(economics.payback):''}">${value(paybackTxt(economics.payback))}</strong></div></div></section>`;
+  return `<section class="ar-selection-economics" title="Même calcul que Pistes et Artistes. Ces estimations restent internes et ne sont jamais ajoutées au message."><div class="ar-selection-economics-top"><div class="ar-selection-economics-label">💶 Estimation interne</div><div class="ar-selection-offers">${BUY.paliers.map(offer=>`<button type="button" class="${offer.k===economics.offer.k?'on':''}" onclick="arSetSelectionOffer('${esc(group.artist.key)}','${offer.k}')">${offer.k}</button>`).join('')}</div></div><div class="ar-selection-economics-grid"><div><span>Coût estimé</span><strong>${value(eur(economics.advance))}</strong></div><div><span>Revenu / mois</span><strong>${value(eur(economics.labelMonthly))}</strong></div><div><span>Payback</span><strong class="${economics.measurable?paybackClass(economics.payback):''}">${value(paybackTxt(economics.payback))}</strong></div></div></section>`;
 }
 function renderArList(){
   const saved=arListGet(),rows=Object.keys(saved).map(id=>({opportunity:arOpportunityRows().find(item=>item.spotifyId===id),entry:saved[id]})).filter(item=>item.opportunity&&arContactEligible(item.opportunity));
   const groups=arSelectionArtistGroups(rows);
   V.innerHTML=`<div class="page-head"><div><h2>⭐ Sélection</h2></div></div>${groups.length?`<div class="ar-artist-selection-list">${groups.map(arSelectionArtistCardHtml).join('')}</div>`:`<div class="ar-empty-state">Aucune track sélectionnée. Dans les opportunités, coche les tracks puis ajoute-les à ta sélection.</div>`}`;
   hydrateArTrackCovers();
+  hydrateArArtistAvatars();
 }
 
 function renderWatch(){
