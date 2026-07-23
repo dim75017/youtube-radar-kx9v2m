@@ -3121,15 +3121,16 @@ function renderOpps(){
     '365': pbase.filter(r=>daysAgo(r[2])<=365).length,
     'all': pbase.length,
   };
+  const trackSortChoices=[[1,'Track'],[0,T('Artiste')],[3,streamMetricLabel(0)],[10,streamMetricLabel(30)],[21,streamMetricLabel(7)],[20,streamMetricLabel(1)],[13,T('Rachat')],[2,T('Sortie')],[5,'Copyright']];
   const tableView = `
   <div class="panel" style="padding:6px 14px 14px">
-    <table>
+    ${catalogueSortBarHtml('tracks',trackSortChoices,S.sort.k,S.sort.dir)}
+    <div class="catalogue-table-wrap"><table class="catalogue-table">
       <thead><tr>
         ${ag?`<th class="selc"><input type="checkbox" class="ck" id="sel-all" title="${T('Tout sélectionner')}" ${rows.length&&rows.every(r=>S.sel.has(r[6]))?'checked':''}></th>`:''}
         <th></th>
         <th data-k="1">Track ${sortArrow(1)}</th>
         <th data-k="0">${T('Artiste')} ${sortArrow(0)}</th>
-        <th data-k="30">Genre principal ${sortArrow(30)}</th>
         <th data-k="3" class="num">${streamMetricLabel(0)} ${sortArrow(3)}</th>
         <th data-k="10" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(30)} ${sortArrow(10)}</th>
         <th data-k="21" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(7)} ${sortArrow(21)}</th>
@@ -3139,13 +3140,12 @@ function renderOpps(){
         <th data-k="5">Copyright ${sortArrow(5)}</th>
       </tr></thead>
       <tbody>
-      ${slice.map(r=>{ const w1=trackWindow(r,1), w7=trackWindow(r,7), w30=trackWindow(r,30), classification=trackClassification(r); return `
+      ${slice.map(r=>{ const w1=trackWindow(r,1), w7=trackWindow(r,7), w30=trackWindow(r,30); return `
         <tr data-ar-browse-track="${esc(spotifyTrackId(r[6]))}" data-basehot="${r[3]>=HOT?1:0}" class="${r[3]>=HOT||(ag&&S.sel.has(r[6]))?'hot':''}">
           ${ag?`<td class="selc"><input type="checkbox" class="ck sel-track" data-tid="${r[6]}" ${S.sel.has(r[6])?'checked':''}></td>`:''}
           <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
           <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span></td>
           <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
-          <td>${classificationCellHtml(classification)}</td>
           <td class="num" title="${fmtFull(r[3])}">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</td>
           <td class="num" title="${T('Streams des 30 derniers jours')} · ${T('Aucune extrapolation')}">${streamStackHtml(w30.current,false,false)}</td>
           <td class="num" title="${T('Streams des 7 derniers jours')} · ${T('Aucune extrapolation')}">${streamStackHtml(w7.current,false,false)}</td>
@@ -3155,20 +3155,18 @@ function renderOpps(){
           <td><span class="lb" title="${esc(r[5])}">${esc(r[5])}</span></td>
         </tr>`;}).join('')}
       </tbody>
-    </table>
+    </table></div>
     ${rows.length===0?'<div class="empty">'+T('Aucune track ne correspond à ces filtres.')+'</div>':''}
     ${sentinel(rows.length-S.shown)}
   </div>`;
   const gridView = `
   <div class="acards">
-    ${slice.map(r=>{ const w1=trackWindow(r,1), w7=trackWindow(r,7), w30=trackWindow(r,30), classification=trackClassification(r); return `
+    ${slice.map(r=>{ const w1=trackWindow(r,1), w7=trackWindow(r,7), w30=trackWindow(r,30); return `
     <div class="acard plcard grid-clean" data-ar-browse-track="${esc(spotifyTrackId(r[6]))}" onclick="openTrack('${r[6]}')">
       ${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}
       <div class="nm">${esc(r[1])}</div>
       <div style="font-size:11px;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span class="ar" onclick="event.stopPropagation();goArtist(${r[0]})">${esc(A[r[0]][0])}</span>
-        <span class="genre-main">${esc(classification.genre)}</span>
-        <span class="genre-sub">${esc(classification.instrumental)}</span>
       </div>
       <div class="stats stats2">
         <div class="st"><div class="v">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</div><div class="l">${streamMetricLabel(0)}</div></div>
@@ -3244,6 +3242,11 @@ function renderOpps(){
     if (S.sort.k===k) S.sort.dir*=-1; else S.sort={k, dir:[0,1,5,30].includes(k)?1:-1};
     keepScroll(renderOpps);
   }));
+  document.querySelectorAll('[data-catalogue-sort="tracks"]').forEach(h=>h.addEventListener('click', ()=>{
+    const k=+h.dataset.catalogueKey;
+    if (S.sort.k===k) S.sort.dir*=-1; else S.sort={k, dir:[0,1,5].includes(k)?1:-1};
+    keepScroll(renderOpps);
+  }));
   document.querySelectorAll('[data-ar-browse-track]').forEach(node=>node.addEventListener('contextmenu',event=>{
     if(event.target.closest('a,button,input,select,label')) return;
     event.preventDefault();
@@ -3274,6 +3277,9 @@ function renderOpps(){
 function keepFocus(id){ const el=document.getElementById(id); if(el){ el.focus(); el.setSelectionRange(el.value.length,el.value.length);} }
 function keepScroll(fn){ const y=window.scrollY; fn(); window.scrollTo(0,y); }
 function artistSortArrow(k){ return sortTriangleIndicator(S.asort===k,S.adir); }
+function catalogueSortBarHtml(scope,choices,active,direction){
+  return `<div class="catalogue-sortbar" role="toolbar" aria-label="Trier la liste dans les deux sens">${choices.map(([key,label])=>{const on=String(key)===String(active);return `<button type="button" data-catalogue-sort="${esc(scope)}" data-catalogue-key="${esc(key)}" class="${on?'on':''} ${on?(direction===1?'asc':'desc'):''}"><span>${esc(label)}</span>${sortTriangleIndicator(on,direction)}</button>`;}).join('')}</div>`;
+}
 
 function renderArtists(){
   const q = S.aq.trim().toLowerCase();
@@ -3300,13 +3306,13 @@ function renderArtists(){
   const aSorter = aSorters[S.asort] || aSorters.streams;
   list = list.slice().sort((a,b)=>S.adir*aSorter(a,b));
   const slice = list.slice(0,S.shownA);
+  const artistSortChoices=[['name',T('Artiste')],['status',T('Statut')],['streams',streamMetricLabel(0)],['streams30',streamMetricLabel(30)],['streams7',streamMetricLabel(7)],['streams24',streamMetricLabel(1)],['n','Tracks'],['hot','≥ 500k'],['self',T('indÃ©')],['last',T('derniÃ¨re sortie')]];
   const gridView = `
   <div class="acards">
-    ${slice.map(g=>{ const classification=artistClassification(g); return `
+    ${slice.map(g=>{ return `
       <div class="acard plcard grid-clean" data-ar-browse-artist="${g.i}" onclick="goArtist(${g.i})">
         ${artistCoverHtml(g)}
         <div class="nm">${esc(g.name)}</div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:3px 0 9px"><span class="genre-main">${esc(classification.genre)}</span><span class="genre-sub">${esc(classification.instrumental)}</span></div>
         <div style="font-size:11px;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">${segBadge(g)} <span>${g.lofi?g.lofi+' '+T('tracks chez Lofi'):''}${g.disco?' · '+T('découverte')+' ('+esc(g.origin||'related')+')':''}</span></div>
         <div class="stats stats2">
           <div class="st"><div class="v">${streamStackHtml(g.streams,false,false)}</div><div class="l">${streamMetricLabel(0)}</div></div>
@@ -3319,11 +3325,11 @@ function renderArtists(){
   ${sentinel(list.length-S.shownA)}`;
   const tableView = `
   <div class="panel" style="padding:6px 14px 14px">
-    <table>
+    ${catalogueSortBarHtml('artists',artistSortChoices,S.asort,S.adir)}
+    <div class="catalogue-table-wrap"><table class="catalogue-table">
       <thead><tr>
         <th></th>
         <th data-asort="name">${T('Artiste')} ${artistSortArrow('name')}</th>
-        <th data-asort="genre">Genre principal ${artistSortArrow('genre')}</th>
         <th data-asort="status">${T('Statut')} ${artistSortArrow('status')}</th>
         <th data-asort="streams" class="num">${streamMetricLabel(0)} ${artistSortArrow('streams')}</th>
         <th data-asort="streams30" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(30)} ${artistSortArrow('streams30')}</th>
@@ -3337,13 +3343,11 @@ function renderArtists(){
       <tbody>
       ${slice.map(g=>{
         const p = g.n ? Math.round(g.self/g.n*100) : 0;
-        const classification = artistClassification(g);
         return `
         <tr data-ar-browse-artist="${g.i}" onclick="goArtist(${g.i})" style="cursor:pointer">
           <td class="covtd">${artistCoverHtml(g)}</td>
           <td>${esc(g.name)}</td>
-          <td>${classificationCellHtml(classification)}</td>
-          <td style="white-space:nowrap"><div>${segBadge(g)}</div><div style="font-size:11px;color:var(--dim);margin-top:3px">${g.lofi||0} ${T('tracks chez Lofi')}</div></td>
+          <td><span class="catalogue-status">${segBadge(g)}<small>${g.lofi||0} ${T('tracks chez Lofi')}</small></span></td>
           <td class="num">${streamStackHtml(g.streams,false,false)}</td>
           <td class="num">${streamStackHtml(g.streams30,false,false)}</td>
           <td class="num">${streamStackHtml(g.streams7,false,false)}</td>
@@ -3354,7 +3358,7 @@ function renderArtists(){
           <td style="white-space:nowrap">${g.last||'?'}</td>
         </tr>`;}).join('')}
       </tbody>
-    </table>
+    </table></div>
     ${list.length===0?'<div class="empty">'+T('Aucun artiste ne correspond à ces filtres.')+'</div>':''}
     ${sentinel(list.length-S.shownA)}
   </div>`;
@@ -3394,6 +3398,12 @@ function renderArtists(){
     const key=h.dataset.asort;
     if (S.asort===key) S.adir*=-1;
     else { S.asort=key; S.adir=['name','genre'].includes(key)?1:-1; }
+    keepScroll(renderArtists);
+  }));
+  document.querySelectorAll('[data-catalogue-sort="artists"]').forEach(h=>h.addEventListener('click', ()=>{
+    const key=h.dataset.catalogueKey;
+    if (S.asort===key) S.adir*=-1;
+    else { S.asort=key; S.adir=key==='name'?1:-1; }
     keepScroll(renderArtists);
   }));
   document.querySelectorAll('[data-ar-browse-artist]').forEach(node=>node.addEventListener('contextmenu',event=>{
@@ -3642,7 +3652,7 @@ function playlistWindowCell(r,days){
   const w=playlistWindow(r,days);
   const main=w.currentReady?signedFull(w.current):'—';
   const color=w.currentReady?(w.current>0?'var(--acc2)':(w.current<0?'var(--red)':'var(--muted)')):'var(--dim)';
-  const compare=w.comparisonReady?`${T('vs période précédente')} ${signedFull(w.change)}${signedPct(w.pct)}`:T('Données partielles');
+  const compare=w.comparisonReady?`${T('vs période précédente')} ${signedFull(w.change)}${signedPct(w.pct)}`:'—';
   return `<span class="delta-stack" title="${w.currentReady?'':T('Historique quotidien requis pour cette fenêtre.')}"><span class="delta-main" style="color:${color}">${main}</span><span class="delta-compare">${compare}</span></span>`;
 }
 function playlistRecentVariations(r){
@@ -3705,9 +3715,11 @@ function renderPlaylists(){
   }
   const rows = plFiltered();
   const slice = rows.slice(0, S.shownPL);
+  const playlistSortChoices=[['name','Playlist'],['curator',T('Curateur')],['followers',T('Followers total')],['growth30',T('Followers 30 jours')],['growth7',T('Followers 7 jours')],['growth24',T('Followers 24 heures')],['tracks','Tracks'],['fit','Fit score'],['genre',T('Genre')]];
   const tableView = `
   <div class="panel" style="padding:6px 14px 14px">
-    <table>
+    ${catalogueSortBarHtml('playlists',playlistSortChoices,S.plsort,S.pldir)}
+    <div class="catalogue-table-wrap"><table class="catalogue-table">
       <thead><tr>
         <th></th>
         <th data-plsort="name">Playlist ${plSortArrow('name')}</th>
@@ -3719,10 +3731,6 @@ function renderPlaylists(){
         <th data-plsort="tracks" class="num">Tracks ${plSortArrow('tracks')}</th>
         <th data-plsort="fit" class="num">Fit score ${plSortArrow('fit')}</th>
         <th data-plsort="genre">Genre ${plSortArrow('genre')}</th>
-        <th data-plsort="usage">Usage ${plSortArrow('usage')}</th>
-        <th data-plsort="created">${T('Création estimée')} ${plSortArrow('created')}</th>
-        <th data-plsort="recent">${T('Dernière observation')} ${plSortArrow('recent')}</th>
-        <th>${T('Lien')}</th>
       </tr></thead>
       <tbody>
       ${slice.map(r=>`
@@ -3737,13 +3745,9 @@ function renderPlaylists(){
           <td class="num">${r[16]?(r[6]||'?'):'—'}</td>
           <td class="num">${r[16]?(r[12]||0):'—'}</td>
           <td>${esc(r[10]||'?')}</td>
-          <td>${esc(r[11]||'?')}</td>
-          <td style="white-space:nowrap">${plEstDateCell(r)}</td>
-          <td style="white-space:nowrap;font-variant-numeric:tabular-nums">${fmtDate(r[8])}</td>
-          <td><a href="${spotifyPlaylistUrl(r[0])}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${T('Ouvrir')} ↗</a></td>
         </tr>`).join('')}
       </tbody>
-    </table>
+    </table></div>
     ${rows.length===0?'<div class="empty">'+T('Aucune playlist ne correspond à ces filtres.')+'</div>':''}
     ${sentinel(rows.length-S.shownPL)}
   </div>`;
@@ -3806,6 +3810,12 @@ function renderPlaylists(){
       S.plsort=key;
       S.pldir=['name','curator','genre','usage'].includes(key)?1:-1;
     }
+    keepScroll(renderPlaylists);
+  }));
+  document.querySelectorAll('[data-catalogue-sort="playlists"]').forEach(h=>h.addEventListener('click', ()=>{
+    const key=h.dataset.catalogueKey;
+    if (S.plsort===key) S.pldir*=-1;
+    else { S.plsort=key; S.pldir=['name','curator','genre'].includes(key)?1:-1; }
     keepScroll(renderPlaylists);
   }));
   attachInfinite(()=>{ const y=window.scrollY; S.shownPL+=80; renderPlaylists(); window.scrollTo(0,y); });
@@ -4002,9 +4012,11 @@ function renderLabels(){
   }
   const rows = lbFiltered();
   const slice = rows.slice(0, S.shownLB);
+  const labelSortChoices=[['name',T('Label')],['tracks','Tracks'],['streams',streamMetricLabel(0)],['streams30',streamMetricLabel(30)],['streams7',streamMetricLabel(7)],['streams24',streamMetricLabel(1)],['since',T('Connu depuis')],['artists',T('Artistes')]];
   const tableView = `
   <div class="panel" style="padding:6px 14px 14px">
-    <table>
+    ${catalogueSortBarHtml('labels',labelSortChoices,S.lbsort,S.lbdir)}
+    <div class="catalogue-table-wrap"><table class="catalogue-table">
       <thead><tr>
         <th></th>
         <th data-lbsort="name">${T('Label')} ${labelSortArrow('name')}</th>
@@ -4030,7 +4042,7 @@ function renderLabels(){
           <td class="num">${r[6]}</td>
         </tr>`).join('')}
       </tbody>
-    </table>
+    </table></div>
     ${rows.length===0?'<div class="empty">'+T('Aucun label ne correspond à cette recherche.')+'</div>':''}
     ${sentinel(rows.length-S.shownLB)}
   </div>`;
@@ -4076,6 +4088,12 @@ function renderLabels(){
   document.getElementById('lb-q').addEventListener('input', e=>{ S.lbq=e.target.value; S.shownLB=80; keepScroll(renderLabels); keepFocus('lb-q'); });
   document.querySelectorAll('th[data-lbsort]').forEach(h=>h.addEventListener('click', ()=>{
     const key=h.dataset.lbsort;
+    if (S.lbsort===key) S.lbdir*=-1;
+    else { S.lbsort=key; S.lbdir=key==='name'?1:-1; }
+    keepScroll(renderLabels);
+  }));
+  document.querySelectorAll('[data-catalogue-sort="labels"]').forEach(h=>h.addEventListener('click', ()=>{
+    const key=h.dataset.catalogueKey;
     if (S.lbsort===key) S.lbdir*=-1;
     else { S.lbsort=key; S.lbdir=key==='name'?1:-1; }
     keepScroll(renderLabels);
