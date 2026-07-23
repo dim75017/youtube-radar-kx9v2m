@@ -23,6 +23,8 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn('if [[ "$public_sha256" == "$local_sha256" ]]', self.workflow)
         self.assertNotIn('"$deployment_state" == "inactive"', self.workflow)
         self.assertNotIn('actions_state=', self.workflow)
+        self.assertIn('waiting for a superseding deployment', self.workflow)
+        self.assertNotIn('Pages failed for staged SHA', self.workflow)
 
     def test_activation_rebases_a_benign_later_main_commit(self):
         self.assertIn('git stash push --include-untracked -m "soundcharts-activation-rebase"', self.workflow)

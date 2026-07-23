@@ -423,8 +423,11 @@ jobs:
               fi
 
               if [[ "$deployment_state" == "failure" || "$deployment_state" == "error" ]]; then
-                echo "Pages failed for staged SHA $STAGED_SHA (deployment=$deployment_state)" >&2
-                exit 1
+                # A later UI commit can supersede this deployment while the
+                # staged snapshot remains intact on main. Keep waiting for
+                # the authoritative public bytes instead of cancelling the
+                # already-completed collection.
+                echo "Pages reported $deployment_state for staged SHA $STAGED_SHA; waiting for a superseding deployment" >&2
               fi
               if [[ "$deployment_state" == "success" ]]; then
                 break
