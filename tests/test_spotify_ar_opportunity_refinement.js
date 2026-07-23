@@ -18,5 +18,6 @@ for (const required of ['imageUrl:String(scValue(row,schema,\'image_url\')||\'\'
   if (!(source + css).includes(required)) throw new Error(`Expected A&R refinement is missing: ${required}`);
 }
 if (renderRadar.includes('ar-player-shell')) throw new Error('The card-list Spotify player must not render');
+if (source.includes('<span>${visual.emoji} Genre</span>')) throw new Error('The redundant genre label is still rendered beside the opportunity filter');
 
 console.log('Spotify A&R opportunity refinement guardrails passed');
