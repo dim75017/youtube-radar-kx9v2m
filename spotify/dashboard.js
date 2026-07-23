@@ -1018,10 +1018,12 @@ function confidenceText(value){
   const pct=n<=1?n*100:n;
   return Math.round(pct)+'%';
 }
+const NON_MUSICAL_GENRE_MARKERS=new Set(['trusted_catalogue','trusted catalogue','catalogue_trusted','catalogue trusted','trusted_internal_catalogue','internal_catalogue']);
 function classificationFromEntry(entry){
   const root=entry&&typeof entry==='object'?entry:{};
   const c=root.classification&&typeof root.classification==='object'?root.classification:root;
   const rawGenre=typeof c.genre==='string'?c.genre.trim():'';
+  const genreIsSourceMarker=NON_MUSICAL_GENRE_MARKERS.has(rawGenre.toLowerCase().replace(/[-\s]+/g,'_'));
   const subgenres=Array.isArray(c.subgenres)?c.subgenres.filter(x=>typeof x==='string'&&x.trim()).map(x=>x.trim()):[];
   let instrumental='À vérifier';
   if(c.instrumental===true || String(c.instrumental).toLowerCase()==='instrumental') instrumental='Instrumental';
@@ -1029,7 +1031,8 @@ function classificationFromEntry(entry){
   const riskRaw=String(c.ai_risk==null?'':c.ai_risk).trim().toLowerCase();
   const aiRisk=['faible','low'].includes(riskRaw)?'faible':(['élevé','eleve','high'].includes(riskRaw)?'élevé':'à vérifier');
   return {
-    genre:rawGenre||UNCLASSIFIED_GENRE,
+    // Provenance labels from the historical catalogue are not musical genres.
+    genre:rawGenre&&!genreIsSourceMarker?rawGenre:UNCLASSIFIED_GENRE,
     subgenres,
     genreConfidence:c.genre_confidence,
     genreSource:c.genre_source||c.source||null,
@@ -2932,7 +2935,6 @@ function renderOpps(){
         <th data-k="20" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(1)} ${sortArrow(20)}</th>
         <th data-k="13" class="num">${T('Rachat')} ${S.palier} ${sortArrow(13)}</th>
         <th data-k="2">${T('Sortie')} ${sortArrow(2)}</th>
-        <th data-k="4">${T('Statut')} ${sortArrow(4)}</th>
         <th data-k="5">Copyright ${sortArrow(5)}</th>
       </tr></thead>
       <tbody>
@@ -2949,7 +2951,6 @@ function renderOpps(){
           <td class="num" title="${T('Streams des dernières 24 h')} · ${T('Aucune extrapolation')}">${streamStackHtml(w1.current,false,false)}</td>
           <td class="num" title="${perMonth(r)<0?'':T('Payback')+' '+paybackTxt(payback(perMonth(r)))}"><span style="color:var(--acc2);font-weight:600">${perMonth(r)<0?'—':eur(advance(perMonth(r)))}</span></td>
           <td style="white-space:nowrap;font-variant-numeric:tabular-nums">${fmtDate(r[2])}</td>
-          <td>${trackStatusHtml(r)}</td>
           <td><span class="lb" title="${esc(r[5])}">${esc(r[5])}</span></td>
         </tr>`;}).join('')}
       </tbody>
@@ -2967,7 +2968,6 @@ function renderOpps(){
         <span class="ar" onclick="event.stopPropagation();goArtist(${r[0]})">${esc(A[r[0]][0])}</span>
         <span class="genre-main">${esc(classification.genre)}</span>
         <span class="genre-sub">${esc(classification.instrumental)}</span>
-        ${trackStatusHtml(r)}
       </div>
       <div class="stats stats2">
         <div class="st"><div class="v">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</div><div class="l">${streamMetricLabel(0)}</div></div>

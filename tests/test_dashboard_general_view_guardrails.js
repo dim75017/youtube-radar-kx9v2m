@@ -193,5 +193,16 @@ assert.doesNotMatch(source, /structured export membership is the evidence/,
 assert.match(source, /function arOpportunityRows\(/, 'track-first A&R opportunities remain a separate path');
 assert.match(source, /const AR_MAX_MONTHLY_LISTENERS = SC_MAX_LISTENERS/,
   'A&R and general views share the explicit pipeline ceiling');
+assert.match(source, /NON_MUSICAL_GENRE_MARKERS/,
+  'catalogue provenance markers must be explicitly kept out of genre displays');
+assert.match(source, /genre:rawGenre&&!genreIsSourceMarker\?rawGenre:UNCLASSIFIED_GENRE/,
+  'a provenance marker must resolve to the neutral genre state');
+const tracksStart=source.indexOf('function renderOpps()');
+const tracksEnd=source.indexOf('function renderArtists()', tracksStart);
+const tracksSource=source.slice(tracksStart, tracksEnd);
+assert.doesNotMatch(tracksSource, /<th data-k="4">\$\{T\('Statut'\)\}/,
+  'the tracks table must not expose the irrelevant status column');
+assert.doesNotMatch(tracksSource, /<td>\$\{trackStatusHtml\(r\)\}<\/td>/,
+  'the tracks table must not render a status cell');
 
 console.log('dashboard general-view guardrails: OK');
