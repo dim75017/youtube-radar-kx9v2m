@@ -37,7 +37,7 @@ for (const required of [
 ]) {
   if (!renderRadar.includes(required)) throw new Error(`Expected streamlined A&R UI token is missing: ${required}`);
 }
-for (const required of ["['score','Note A&R']", "['artist','Artiste']", "['genre','Genre']", "['streams','Streams total']", "['streams3','3 j']", "['streams6','6 j']", "['momentum','24 h']", "['listeners','Auditeurs']", "['editorial','Éditoriales']"]) {
+for (const required of ["['score','Note']", "['artist','Artiste']", "['recent','Sortie']", "['genre','Genre']", "['streams','Streams total']", "['streams30','30 jours']", "['streams7','7 jours']", "['momentum','24 heures']", "['listeners','Auditeurs/mois']", "['editorial','Éditoriales']"]) {
   if (!source.includes(required)) throw new Error(`Expected A&R sort button is missing: ${required}`);
 }
 for (const required of ['ar-selection-float', 'id="ar-add-selected"', "arAddManyToList(arSelectedIds())"]) {
@@ -52,14 +52,14 @@ const card = source.slice(cardStart, cardEnd);
 for (const removed of ['ar-score-confidence', 'ar-open-detail', 'Pourquoi ?']) {
   if (card.includes(removed)) throw new Error(`Removed A&R score control is still rendered: ${removed}`);
 }
-for (const required of ['arTrackCoverUrl(opportunity)', 'Auditeurs/mois', 'arEditorialCardHtml(opportunity)', 'arGenreVisual(opportunity.genre)']) {
+for (const required of ['arTrackCoverUrl(opportunity)', 'ar-release-card', 'ar-opp-metric listeners', 'arEditorialCardHtml(opportunity)', 'arGenreVisual(opportunity.genre)']) {
   if (!card.includes(required)) throw new Error(`A&R card data is missing: ${required}`);
 }
 for (const required of [
-  '--ar-column-gap:18px',
-  '--ar-column-inset:14px',
-  '.ar-genre-card{margin-left:var(--ar-column-gap);padding-left:var(--ar-column-inset);border-left:2px solid transparent}',
-  '.ar-editorial-card{margin-left:var(--ar-column-gap);padding-left:var(--ar-column-inset)}',
+  '.ar-columnbar{display:grid',
+  '.ar-opportunity-card{grid-template-columns:46px 46px',
+  '.ar-opp-metrics{display:contents}',
+  '.ar-opp-metric .l{display:none}',
 ]) {
   if (!css.includes(required)) throw new Error(`A&R genre/editorial alignment is missing: ${required}`);
 }
@@ -72,6 +72,8 @@ for (const required of [
   "S.radarSort==='genre'",
   "S.radarSort==='streams3'",
   "S.radarSort==='streams6'",
+  "S.radarSort==='streams30'",
+  "S.radarSort==='streams7'",
   'arOpportunityMetric(b,3)',
   'arOpportunityMetric(b,6)',
   '(b.playlistCount||0)-(a.playlistCount||0)',
@@ -83,8 +85,11 @@ const detailStart = source.indexOf('function openArOpportunity(spotifyId){');
 const detailEnd = source.indexOf('\nfunction renderRadar(){', detailStart);
 if (detailStart < 0 || detailEnd < 0) throw new Error('A&R opportunity detail function was not found');
 const detail = source.slice(detailStart, detailEnd);
-for (const required of ['<div class="l">Genre</div>', 'arDetailEditorialPlaylistsHtml(opportunity)', 'typeFact.remove()', "reasonsSection.querySelector('h4').textContent='Pourquoi cette musique'"]) {
+for (const required of ['<div class="l">Genre</div>', 'arOpportunityCoverPlayerHtml(opportunity)', 'arDetailEditorialPlaylistsHtml(opportunity)', 'typeFact.remove()', 'tgrid ar-detail-facts ar-detail-reasons']) {
   if (!detail.includes(required)) throw new Error(`A&R detail fact is missing: ${required}`);
+}
+for (const removed of ["spotifyTrackEmbedHtml(spotifyId,opportunity.title,'ar-opportunity-player')", 'Pourquoi cette musique est dans la liste', "reasonsSection.querySelector('h4')"]) {
+  if (detail.includes(removed)) throw new Error(`A&R detail must not retain the old player/reasons UI: ${removed}`);
 }
 if (!source.includes('function arDetailEditorialPlaylistsHtml(opportunity)')) throw new Error('A&R detail must render editorial playlists with their own compact cards');
 for (const removed of ['Score track', 'E-mail professionnel & plateformes', 'Label / distributeur']) {
@@ -99,17 +104,22 @@ for (const required of ["iframe[src*=\"open.spotify.com/embed/\"]", "player.src=
 const identity = card.indexOf('class="ar-opp-main"');
 const metrics = card.indexOf('class="ar-opp-metrics"');
 const score = card.indexOf('class="ar-score-box"');
+const release = card.indexOf('class="ar-release-card"');
 const genre = card.indexOf('class="ar-genre-card"');
 const editorials = card.indexOf('arEditorialCardHtml(opportunity)');
-if (!(score < identity && identity < genre && genre < metrics && metrics < editorials)) {
-  throw new Error('A&R card must read score, identity, genre, metrics, then editorials');
+if (!(score < identity && identity < release && release < genre && genre < metrics && metrics < editorials)) {
+  throw new Error('A&R card must read score, identity, release, genre, metrics, then editorials');
 }
 if (renderRadar.includes("arWorkspaceTabs('radar')") || renderRadar.includes('musiques instrumentales')) {
   throw new Error('A&R opportunity header must not render redundant workspace tabs or subtitle');
 }
 if (!renderRadar.includes('<h2>Opportunités A&R</h2>')) throw new Error('A&R opportunity header is missing');
+if (!renderRadar.includes('arColumnBarHtml()') || renderRadar.includes('arSortBarHtml()')) throw new Error('A&R sorting must use the integrated column bar');
 if (card.includes('À valider à l’écoute')) throw new Error('Needs-listen must not be shown as a card badge');
 if (card.includes('arContactHtml(opportunity,true)')) throw new Error('Platform contacts must stay in the detail sheet, not the A&R card preview');
+for (const label of ['<div class="l">Sortie</div>', '<div class="l">Streams total</div>', '<div class="l">30 jours</div>', '<div class="l">7 jours</div>', '<div class="l">24 heures</div>', '<div class="l">Auditeurs/mois</div>']) {
+  if (card.includes(label)) throw new Error(`A&R card metric label must live only in the column bar: ${label}`);
+}
 if (!renderRadar.includes('page-head ar-radar-head') || renderRadar.includes('ar-filter-spacer')) throw new Error('A&R filters must sit compactly under the title on the left');
 const editorialCard = source.slice(source.indexOf('function arEditorialCardHtml'), source.indexOf('const AR_PLAYLIST_COVER_CACHE'));
 if (editorialCard.includes('${fmtFull(count)}')) throw new Error('Editorial placement count must not occupy the right edge of cards');

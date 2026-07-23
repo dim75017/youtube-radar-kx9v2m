@@ -16,7 +16,7 @@ assert.doesNotMatch(spotify, /id="ar-select-all"/, 'The A&R bulk select-all cont
 assert.match(spotify, /arOpenContextMenu\(card\.dataset\.arCard,event\.clientX,event\.clientY\)/, 'The context menu must open at the click position');
 assert.match(spotify, /playlists\.map\(\(playlist,index\)=>/, 'Every editorial playlist must render in the A&R card');
 assert.match(spotify, /function arEditorialPlaylistTooltip\(/, 'Each editorial playlist needs a detailed hover tooltip');
-assert.match(spotify, /ar-opp-metric release/, 'A&R cards must show the release date with the stream metrics');
+assert.match(spotify, /ar-release-card/, 'A&R cards must show the release date before the genre column');
 assert.match(spotify, /ar-editorial-cover-link/, 'Editorial playlist covers must be rendered as direct links');
 assert.match(spotify, /function arOpenEditorialPopover\(/, 'Editorial playlist icons must open a compact popover');
 assert.match(spotify, /arOpenEditorialPopover\(this\)/, 'The compact popover must open beside the clicked editorial icon');
@@ -37,7 +37,7 @@ assert.match(spotify, /aucun e-mail n’est envoyé/i, 'The UI must not imply au
 assert.match(spotify, /cdn\.simpleicons\.org/, 'Detail contacts must use platform logos rather than emoji');
 assert.match(spotify, /function arPromptArtistCompanions\(spotifyId\)/, 'Adding a track must offer other eligible tracks from the same structured artist');
 assert.match(spotify, /function arOutreachDrafts\(opportunity\)/, 'Message preparation exposes multiple draft proposals');
-assert.match(spotify, /Préparer un message/, 'Selection cards expose a message-preparation action');
+assert.match(spotify, /Préparer le message/, 'Selection cards expose a message-preparation action');
 assert.match(spotify, /function arSelectionArtistGroups\(/, 'A&R selection must group retained tracks by structured artist');
 assert.match(spotify, /function arSelectionArtistCardHtml\(/, 'A&R selection must render an artist-level section');
 assert.match(spotify, /ar-artist-message/, 'A&R selection must promote the artist message action');
@@ -61,5 +61,9 @@ assert.match(spotifyNav, /data-v="playlists" data-fr="Playlists"><span class="em
 assert.match(spotifyNav, /data-v="labels" data-fr="Labels"><span class="emo">🏷️<\/span>Labels/, 'Spotify navigation uses the compact labels label');
 assert.doesNotMatch(spotifyNav, /Ma liste A&R/, 'The previous A&R list naming must be removed');
 assert.doesNotMatch(youtubeNav, /id:'watch'/, 'YouTube watchlist navigation must be removed');
+
+assert.match(spotify, /function arOpenSelectionArtistProfile\(/, 'Selection must open the internal artist profile');
+assert.match(spotify, /arOpenSelectionArtistProfile\('\$\{esc\(artist\.spotifyId\)\}','\$\{esc\(contactOpportunity\.spotifyId\)\}'\)/, 'Selection must pass structured artist and track ids to its profile action');
+assert.match(spotify, /document\.getElementById\('ar-outreach-body'\)\?\.focus\(\)/, 'The prepared message text must receive focus');
 
 console.log('A&R outreach workflow and watchlist removal: OK');
