@@ -51,4 +51,10 @@ assert.ok(daily.some(r => r._dailyReasons.some(reason => /Signal chaîne récent
 assert.match(source, /anaRows\(\).*ageM.*<=3/, 'the ranking uses videos from the last 90 days');
 assert.match(source, /RECO_DAILY_LIMIT=50/, 'the 50-item cap remains explicit');
 
+// A validation is removed from the same fixed daily queue. It must not be
+// replaced mid-day and the displayed/navigation count therefore drops live.
+recos.find(r => r.n === daily[0].n).valid = 'X';
+assert.equal(context.dailyRecommendationSet().length, 49,
+  'a decision immediately reduces the active queue instead of refilling it');
+
 console.log('YouTube daily recommendations: OK');
