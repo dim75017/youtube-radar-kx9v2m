@@ -2423,10 +2423,13 @@ function arEditorialMiniData(playlist){
 function arOpenEditorialPopover(anchor){
   document.querySelectorAll('.ar-editorial-popover').forEach(node=>node.remove());
   const popover=document.createElement('div');
+  const editorialLabel=(anchor.getAttribute('aria-label')||'Playlist editoriale').replace(/^Voir le résumé de\s*/i,'');
+  const name=editorialLabel.split(' · ')[0]||'Playlist editoriale';
   const followers=anchor.dataset.arFollowers||'—',tracks=anchor.dataset.arTracks||'—',genre=anchor.dataset.arGenre||'—';
   popover.className='ar-editorial-popover';
   popover.innerHTML=`<div><b>${esc(followers)}</b><span>followers</span></div><div><b>${esc(tracks)}</b><span>tracks</span></div><div><b>${esc(genre)}</b><span>genre</span></div>`;
   document.body.appendChild(popover);
+  popover.innerHTML=`<strong class="ar-editorial-popover-title">${esc(name)}</strong><div><b>${esc(followers)}</b><span>followers</span></div><div><b>${esc(tracks)}</b><span>tracks</span></div><div><b>${esc(genre)}</b><span>genre</span></div>`;
   const rect=anchor.getBoundingClientRect();
   const left=Math.max(8,Math.min(window.innerWidth-popover.offsetWidth-8,rect.left));
   const top=Math.min(window.innerHeight-popover.offsetHeight-8,rect.bottom+7);
