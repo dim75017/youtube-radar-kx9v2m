@@ -22,12 +22,20 @@ for (const required of [
   '✓ Deal conclu',
 ]) assert.ok(dashboard.includes(required), `Missing artist-selection workflow token: ${required}`);
 
+for (const required of [
+  'function arReleaseTypeLabel(opportunity)',
+  "return 'Self-release';",
+  "return 'Label';",
+  'class="ar-selection-release-type"',
+]) assert.ok(dashboard.includes(required), `Missing concise release-type token: ${required}`);
+assert.ok(!dashboard.includes('arRightsShortLabel('), 'Legacy verbose release label helper must be removed');
+
 assert.ok(!dashboard.includes("draft_ready:'Brouillon prêt'"), 'Draft ready must not remain an artist status');
 assert.match(dashboard, /elapsed>=7\*24\*60\*60\*1000/);
 assert.match(dashboard, /ar-selection-offers/);
 for (const required of ['.ar-selection-offers', '.ar-status-follow_up', '.ar-artist-deal', '.ar-selection-artist-avatar img']) {
   assert.ok(css.includes(required), `Missing selection workflow style: ${required}`);
 }
-assert.match(index, /dashboard\.js\?v=20260724-selection-artist-offers-status-v1/);
+assert.match(index, /dashboard\.js\?v=20260724-streamline-track-release-type-v1/);
 
 console.log('spotify selection artist offers/status: OK');
