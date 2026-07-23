@@ -2875,7 +2875,7 @@ function arColumnBarHtml(){
 }
 function arGenreSelectHtml(genres){
   const visual=S.radarGenre==='all'?{emoji:'🎼',color:'#a7f3d0'}:arGenreVisual(S.radarGenre);
-  return `<label class="ar-genre-filter" style="--genre-color:${visual.color}"><span>${visual.emoji} Genre</span><select id="radar-genre"><option value="all">🎼 Tous les genres</option>${genres.map(genre=>{const item=arGenreVisual(genre);return `<option value="${esc(genre)}" ${S.radarGenre===genre?'selected':''}>${item.emoji} ${esc(arGenreLabel(genre))}</option>`;}).join('')}</select></label>`;
+  return `<label class="ar-genre-filter" style="--genre-color:${visual.color}"><select id="radar-genre" aria-label="Filtrer par genre"><option value="all">🎼 Tous les genres</option>${genres.map(genre=>{const item=arGenreVisual(genre);return `<option value="${esc(genre)}" ${S.radarGenre===genre?'selected':''}>${item.emoji} ${esc(arGenreLabel(genre))}</option>`;}).join('')}</select></label>`;
 }
 function renderRadar(){
   const all=arOpportunityRows();
