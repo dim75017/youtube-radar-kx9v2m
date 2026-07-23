@@ -13,20 +13,24 @@ const forbidden = [
   'ar-kpi-action',
   'id="radar-q"',
   "getElementById('radar-q')",
-  'Rechercher track, artiste, label…',
   "keepFocus('radar-q')",
+  'Découverte quotidienne par playlists éditoriales',
+  '<div class="ar-data-note">',
+  'data-radar-filter="distribution"',
+  'data-radar-filter="label_advance"',
+  'data-radar-filter="catalog_acquisition"',
+  'data-radar-filter="verified"',
+  'data-radar-filter="needs_listen"',
+  'data-radar-filter="contactable"',
 ];
 for (const token of forbidden) {
   if (renderRadar.includes(token)) throw new Error(`Removed A&R UI token is still rendered: ${token}`);
 }
 
 for (const required of [
-  'Découverte quotidienne par playlists éditoriales',
-  'data-radar-filter="distribution"',
-  'data-radar-filter="label_advance"',
-  'data-radar-filter="catalog_acquisition"',
   'id="radar-genre"',
   'id="radar-sort"',
+  'id="radar-limit"',
 ]) {
   if (!renderRadar.includes(required)) throw new Error(`Expected streamlined A&R UI token is missing: ${required}`);
 }
