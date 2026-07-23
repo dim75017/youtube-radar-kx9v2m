@@ -11,7 +11,7 @@ const renderRadar = source.slice(start, end);
 for (const removed of ['Découverte quotidienne par playlists éditoriales', '<div class="ar-data-note">', 'data-radar-filter="distribution"', 'data-radar-filter="label_advance"', 'data-radar-filter="catalog_acquisition"', 'data-radar-filter="verified"', 'data-radar-filter="needs_listen"', 'data-radar-filter="contactable"']) {
   if (renderRadar.includes(removed)) throw new Error(`Removed A&R UI element is still rendered: ${removed}`);
 }
-for (const required of ['id="radar-genre"', 'id="radar-sort"', 'id="radar-limit"']) {
+for (const required of ['id="radar-genre"', 'id="radar-sort"', 'sentinel(filtered.length-rows.length)', 'attachInfinite(']) {
   if (!renderRadar.includes(required)) throw new Error(`Expected A&R control is missing: ${required}`);
 }
 for (const required of ['imageUrl:String(scValue(row,schema,\'image_url\')||\'\')', 'function arArtistLinksHtml(opportunity){', 'ar-detail-reason-icon', 'grid-template-columns:repeat(4,minmax(0,1fr))']) {

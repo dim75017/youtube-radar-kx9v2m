@@ -856,7 +856,7 @@ def generate_opportunities(
     *,
     max_artist_listeners: int = 5_000_000,
     max_track_streams: int = 250_000_000,
-    max_opportunities: int = 2_000,
+    max_opportunities: int = 10_000,
     minimum_score: int = 20,
 ) -> dict[str, Any]:
     schemas = current.setdefault("schemas", {})
@@ -1171,7 +1171,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--radar", type=Path, default=Path("Spotify_Radar_data.js"))
     parser.add_argument("--max-artist-listeners", type=int, default=5_000_000)
     parser.add_argument("--max-track-streams", type=int, default=250_000_000)
-    parser.add_argument("--max-opportunities", type=int, default=2_000)
+    parser.add_argument("--max-opportunities", type=int, default=10_000)
     parser.add_argument("--minimum-score", type=int, default=20)
     return parser.parse_args()
 
