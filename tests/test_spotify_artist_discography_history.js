@@ -11,16 +11,27 @@ for(const required of [
   'const acquisitionRows = artistAcquisitionRows(i);',
   'function recentDailyPoints(points,days)',
   'function artistFlowWindowControls()',
-  '[3,7,90]',
+  '[7,30,90,180,360]',
+  "setArtistFlowWindow('all')",
   'function showSparkTooltip(dot,event)',
   'data-value="${esc(sparklineValueLabel(p[1],unit))}"'
 ]) if(!dashboard.includes(required)) throw new Error('Missing artist discography/history behaviour: '+required);
+
+const artistModal=dashboard.slice(dashboard.indexOf('function renderArtistModal(){'),dashboard.indexOf('\nfunction openTrack',dashboard.indexOf('function renderArtistModal(){')));
+const trackModal=dashboard.slice(dashboard.indexOf('function openTrack(tid){'),dashboard.indexOf('\nfunction closeTrack',dashboard.indexOf('function openTrack(tid){')));
+if(artistModal.includes('classificationAnalyticsHtml')||trackModal.includes('classificationAnalyticsHtml'))
+  throw new Error('Track and artist profiles must not render classification blocks');
+if(artistModal.includes('Tracks les plus contributrices')||artistModal.includes('contributorsHtml(allRows,7)'))
+  throw new Error('Artist profile must not render a top-contributors panel');
+const perfCard=dashboard.slice(dashboard.indexOf('function perfCardHtml('),dashboard.indexOf('\nfunction totalMetricCardHtml',dashboard.indexOf('function perfCardHtml(')));
+if(perfCard.includes("T('vs période précédente')")||perfCard.includes("T('Données partielles')"))
+  throw new Error('Performance cards must show only a compact percentage delta');
 
 if(dashboard.includes('function artistRows(i){ return R.filter(r=>r[0]===i && r[4]===0)'))
   throw new Error('Artist modal still limits the discography to primary self-release rows');
 for(const required of ['.spark-tooltip','.analytics-window','.ck:disabled'])
   if(!css.includes(required)) throw new Error('Missing chart or acquisition control styling: '+required);
-if(!index.includes('dashboard.js?v=20260724-list-only-views-v1'))
+if(!index.includes('dashboard.js?v=20260724-analytics-simplify-v1'))
   throw new Error('Dashboard cache version is stale');
 
 console.log('spotify artist full discography and history controls: ok');

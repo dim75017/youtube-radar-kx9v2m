@@ -387,6 +387,9 @@ td.selc,th.selc{width:44px;padding-left:14px}
 .acard .st .stream-stack{align-items:center;width:100%}
 .acard .st .delta-stack{align-items:center;width:100%}
 .top-row .stream-stack{align-items:flex-end}
+.perf-card .pvalue{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.perf-card .pdelta{font:750 11px Inter;color:var(--muted);white-space:nowrap}
+.perf-card .pdelta.good{color:var(--acc2)}.perf-card .pdelta.bad{color:var(--red)}
 .perf-card .pcompare{font-size:10.5px;color:var(--muted);line-height:1.45;margin-top:5px;min-height:30px}
 .perf-card .pcompare.good{color:var(--acc2)}
 .perf-card .pcompare.bad{color:var(--red)}
