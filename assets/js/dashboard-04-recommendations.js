@@ -32,12 +32,6 @@ function setValid(n,mode,btn,ev,opts){
   if(!wasVal&&isValidated(val)&&!(opts&&opts.skipSchedulePopup))openSchedulePopup(rec);
   writeValid(n,val,btn);
 }
-/* Direct tri from the daily rotation: card validation schedules the idea immediately. */
-function validateRecommendationNow(n,btn,ev){
-  const rec=DATA.recos.find(x=>x.n===n);if(!rec)return;
-  setValid(n,'X',btn,ev,{skipSchedulePopup:true});
-  scheduleRecommendation(rec);
-}
 const WRITE_URL='https://script.google.com/macros/s/AKfycbynEewHZzfecwty-E5TV4Otgsxi3ieGy_N5PPYiM7GpPeMVz_5ka1rxY-Y67H3eknto4w/exec';
 const WRITE_KEY='lofiradar2026kx';
 async function writeValid(n,val,btn){
@@ -205,11 +199,16 @@ function dailyRecommendationSet(){
   const candidates=(DATA.recos||[]).filter(r=>!isValidated(r.valid)&&!isRefused(r.valid));
   const decorate=rows=>rows.map(r=>Object.assign({},r,{_dailyScore:recoDailyScore(r,profile,day),_dailyReasons:recoReasons(r,profile,day),_dailyProfile:profile}));
   const todayIds=Array.isArray(history[day])?history[day]:[];
+  // A previous version could preserve a larger queue after the daily target
+  // was changed. Keep the stored queue stable, but never show more than the
+  // current daily limit.
+  const activeTodayIds=todayIds.slice(0,RECO_DAILY_LIMIT);
+  if(activeTodayIds.length!==todayIds.length){history[day]=activeTodayIds;saveRecoRotation(history);}
   // Keep one stable, finite review queue for the whole day. Decisions remove an
   // idea from this queue instead of instantly filling its place with a new one.
-  if(todayIds.length){
+  if(activeTodayIds.length){
     const byId=new Map(candidates.map(r=>[Number(r.n),r]));
-    return decorate(todayIds.map(n=>byId.get(Number(n))).filter(Boolean));
+    return decorate(activeTodayIds.map(n=>byId.get(Number(n))).filter(Boolean));
   }
   const previous=Object.keys(history).filter(k=>k!==day).sort().slice(-14).flatMap(k=>history[k]||[]);
   let pool=candidates.filter(r=>!new Set(previous).has(r.n));if(pool.length<RECO_DAILY_LIMIT)pool=candidates;
@@ -237,8 +236,41 @@ function dailyRecoListHTML(rows){
   if(!rows.length)return '<div class="empty">'+((typeof LANG!=='undefined'&&LANG==='fr')?'Aucune proposition en attente.':'No proposal awaiting review.')+'</div>';
   window._pageRecos=rows;return '<div class="rgrid2">'+rows.map((r,i)=>recoCardHTML(r,i)).join('')+'</div>';
 }
-function recosHTML(){const rows=dailyRecommendationSet();return '<div id="reco-list">'+dailyRecoListHTML(rows)+'</div>';}
-function rerenderRecos(){const el=document.getElementById('reco-list');if(el){el.innerHTML=dailyRecoListHTML(dailyRecommendationSet());i18nZone(el);}}
+let RECO_ARCHIVE_OPEN=false;
+function refusedRecommendationRows(){return (DATA.recos||[]).filter(r=>isRefused(r.valid));}
+function recoArchiveControlHTML(){
+  const fr=typeof LANG!=='undefined'&&LANG==='fr',count=refusedRecommendationRows().length;
+  return '<div class="reco-controlbar">'+
+    '<span class="reco-control-label">'+(RECO_ARCHIVE_OPEN?(fr?'Archives':'Archive'):(fr?'En attente':'Awaiting review'))+'</span>'+
+    '<button class="reco-archive-btn'+(RECO_ARCHIVE_OPEN?' on':'')+'" onclick="toggleRecoArchive()">🗄️ '+(fr?'Archive':'Archive')+' <b>'+count+'</b></button>'+
+  '</div>';
+}
+function recoArchiveCardHTML(r,i){
+  const note=noteOf(r.valid),tierL=r.pot?r.pot[0].toUpperCase():null;
+  const tier=tierL?('<span class="rtier tier-'+tierL+'" title="Tier '+tierL+'">'+tierL+'</span>'):'<span class="rtier" style="opacity:.35">-</span>';
+  return '<div class="rtile reco-archived" style="--gc:'+gcolor(r.genre)+'" onclick="openRecoIdx('+i+')">'+
+    '<div class="rt-head">'+tier+'<div class="rt-title">'+esc(r.title)+'</div></div>'+
+    '<div class="rt-tags">'+gtag(r.genre)+(r.dur?ghosttag(r.dur):'')+'</div>'+
+    (r.concept?'<div class="rt-desc">'+esc(String(r.concept).slice(0,130))+(String(r.concept).length>130?'...':'')+'</div>':'')+
+    (note?'<div class="rt-note">Note: '+esc(note.slice(0,60))+(note.length>60?'...':'')+'</div>':'')+
+    '<div class="reco-quick-actions" onclick="event.stopPropagation()"><button class="rbtn reco-restore" onclick="setValid('+r.n+',\'\',this,event)">↩ Restore</button></div>'+
+  '</div>';
+}
+function recoArchiveHTML(){
+  const rows=refusedRecommendationRows();window._pageRecos=rows;
+  if(!rows.length)return '<div class="empty">'+((typeof LANG!=='undefined'&&LANG==='fr')?'Aucune recommandation archivée.':'No archived recommendations.')+'</div>';
+  return '<div class="rgrid2">'+rows.map((r,i)=>recoArchiveCardHTML(r,i)).join('')+'</div>';
+}
+function recoVisibleHTML(){return RECO_ARCHIVE_OPEN?recoArchiveHTML():dailyRecoListHTML(dailyRecommendationSet());}
+function recosHTML(){return recoArchiveControlHTML()+'<div id="reco-list">'+recoVisibleHTML()+'</div>';}
+function toggleRecoArchive(){RECO_ARCHIVE_OPEN=!RECO_ARCHIVE_OPEN;rerenderRecos();}
+function rerenderRecos(){
+  const el=document.getElementById('reco-list'),controls=document.querySelector('.reco-controlbar');
+  if(el){el.innerHTML=recoVisibleHTML();i18nZone(el);}
+  if(controls){const holder=document.createElement('div');holder.innerHTML=recoArchiveControlHTML();controls.replaceWith(holder.firstChild);}
+  if(typeof VIEW_CACHE!=='undefined')VIEW_CACHE.delete(viewCacheKey('recos'));
+  if(typeof renderNav==='function')renderNav();
+}
 
 function legacyRecoCardHTML(r,i){
     const note=noteOf(r.valid);
@@ -263,7 +295,7 @@ function recoCardHTML(r,i){
     (note?'<div class="rt-note">Note: '+esc(note.slice(0,60))+(note.length>60?'...':'')+'</div>':'')+
     '<div class="reco-quick-actions" onclick="event.stopPropagation()">'+
       '<button class="rbtn rbtn-ko" onclick="setValid('+r.n+',\'-\',this,event)">✕ Refuse</button>'+
-      '<button class="rbtn rbtn-ok" onclick="validateRecommendationNow('+r.n+',this,event)">✓ Validate &amp; schedule</button>'+
+      '<button class="rbtn rbtn-ok" onclick="setValid('+r.n+',\'X\',this,event)">✓ Validate</button>'+
     '</div>'+
   '</div>';
 }
@@ -678,14 +710,14 @@ function renderSchedPopup(){
   const ruleLabel=sug.rule.label||'General cadence (~1 release/week, free week)';
   let h=
     '<div class="sched-h">✓ « '+esc(reco.title)+' » validated</div>'+
-    '<div class="sched-sub">Placement proposal for the schedule — let me know if it works for you.</div>'+
+    '<div class="sched-sub">Suggested release date — choose it or ask for another proposal.</div>'+
     '<div class="sched-rationale">📅 <b>'+jour+' '+d.getDate()+' '+MFULL[d.getMonth()]+' '+d.getFullYear()+'</b><br>'+
       '↳ '+esc(ruleLabel)+(sug.relaxed?' <span style="color:var(--amber)">· relaxed constraint (few open slots)</span>':'')+
       (schedIsRain(reco)?'<br>↳ Spaced out from the last rain/storm concept (≥3 weeks)':'')+
     '</div>'+
     '<div class="sched-cal">'+schedMiniCal(d,rows)+'</div>'+
     '<div class="sched-actions">'+
-      '<button class="sched-btn-ok" onclick="confirmSchedDate()">✓ Works for me, place it here</button>'+
+      '<button class="sched-btn-ok" onclick="confirmSchedDate()">✓ Confirm date</button>'+
       '<button class="sched-btn-alt" onclick="skipSchedDate()">🔁 Suggest another date</button>'+
     '</div>'+
     '<div style="display:flex;gap:8px;margin-top:8px">'+
@@ -709,7 +741,7 @@ function confirmSchedDate(){
   if(!SCHED_CUR)return;
   const {reco,sug}=SCHED_CUR;
   const entry={date:+sug.date,jour:['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'][sug.date.getDay()],
-    src:'Proposition rotation (à valider)',title:reco.title,genre:reco.genre,perso:reco.perso,dur:reco.dur,
+    src:'Proposition rotation (à valider)',recoN:reco.n,title:reco.title,genre:reco.genre,perso:reco.perso,dur:reco.dur,
     concept:reco.concept,scene:reco.scene,style:reco.style,niche:reco.niche,cadence:sug.rule.label||'',note:'Placé automatiquement via le popup de validation'};
   SCHED_LOCAL.push(entry);
   schedSaveLocal();
@@ -719,10 +751,10 @@ function confirmSchedDate(){
   const MFULL=fr?['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre']
     :['January','February','March','April','May','June','July','August','September','October','November','December'];
   const d=sug.date;
-  let h='<div class="sched-h">✓ Placed in the schedule</div>'+
+  let h='<div class="sched-h">✓ Date confirmed</div>'+
     '<div class="sched-confirmed">« '+esc(reco.title)+' » is added on '+d.getDate()+' '+MFULL[d.getMonth()]+' '+d.getFullYear()+' (visible in Roadmap, tagged “to validate”).<br><br>Remember to also report this date in the Google Sheet Roadmap so it persists for the whole team.</div>'+
     '<div class="sched-actions" style="margin-top:14px">'+
-      '<button class="sched-btn-ok" onclick="closeSchedPopup();go(\'roadmap\')">See in the schedule</button>'+
+      '<button class="sched-btn-ok" onclick="closeSchedPopup();go(\'roadmap\')">Open roadmap</button>'+
       '<button class="sched-btn-cancel" onclick="closeSchedPopup()">Close</button>'+
     '</div>';
   if(fr)h=frz(h);
