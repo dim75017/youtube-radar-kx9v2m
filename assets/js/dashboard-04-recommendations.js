@@ -663,14 +663,15 @@ function scheduleRecommendation(reco,sug){
 }
 let SCHED_CUR=null;
 function schedDateKey(d){return d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();}
-function schedMiniCal(dateHi,rows,previewDate){
-  const y=dateHi.getFullYear(),m=dateHi.getMonth();
+function schedMiniCal(dateHi,rows,previewDate,calendarDate){
+  const calendar=calendarDate||dateHi;
+  const y=calendar.getFullYear(),m=calendar.getMonth();
   const MFULL=['January','February','March','April','May','June','July','August','September','October','November','December'];
   const first=new Date(y,m,1);
   const start=new Date(y,m,1-((first.getDay()+6)%7));
   const byDay={};rows.forEach(r=>{const k=schedDateKey(new Date(r.date));(byDay[k]=byDay[k]||[]).push(r);});
   const selected=previewDate||dateHi;
-  let h='<div class="sched-cal-h">'+MFULL[m]+' '+y+'</div><div class="sched-grid">'+
+  let h='<div class="sched-cal-h"><button class="sched-cal-nav" type="button" aria-label="Previous month" title="Previous month" onclick="shiftSchedMonth(-1)">‹</button><span>'+MFULL[m]+' '+y+'</span><button class="sched-cal-nav" type="button" aria-label="Next month" title="Next month" onclick="shiftSchedMonth(1)">›</button></div><div class="sched-grid">'+
     ['L','M','M','J','V','S','D'].map(x=>'<div class="sched-dow">'+x+'</div>').join('');
   for(let i=0;i<42;i++){
     const d=new Date(start);d.setDate(start.getDate()+i);
@@ -678,28 +679,28 @@ function schedMiniCal(dateHi,rows,previewDate){
     const isHi=schedDateKey(d)===schedDateKey(dateHi);
     const isSelected=schedDateKey(d)===schedDateKey(selected);
     const label=(evs.length?evs.length+' release'+(evs.length>1?'s':'')+' planned: '+evs.map(e=>e.title).join(', '):'No release planned')+' — '+d.getDate()+' '+MFULL[d.getMonth()];
-    h+='<button type="button" class="sched-cell'+(d.getMonth()!==m?' out':'')+(evs.length?' has-event':'')+(isHi?' proposed':'')+(isSelected?' selected':'')+'" aria-label="'+esc(label)+'" title="'+esc(label)+'" onclick="previewSchedDay('+d.getTime()+')">'+d.getDate()+
-      (evs.length&&!isHi?'<span class="dot" style="background:'+gcolor(evs[0].genre)+'"></span>':'')+'</button>';
+    const eventStyle=evs.length?' style="--sched-event-color:'+esc(gcolor(evs[0].genre))+'"':'';
+    h+='<button type="button" data-sched-day="'+schedDateKey(d)+'" class="sched-cell'+(d.getMonth()!==m?' out':'')+(evs.length?' has-event':'')+(isHi?' proposed':'')+(isSelected?' selected':'')+'"'+eventStyle+' aria-label="'+esc(label)+'" title="'+esc(label)+'" onclick="previewSchedDay('+d.getTime()+')">'+d.getDate()+'</button>';
   }
   h+='</div>';
   return h;
 }
-function schedNearbyReleases(date,rows){
-  const selected=new Date(date);selected.setHours(0,0,0,0);
-  const start=+selected-7*86400000,end=+selected+7*86400000;
-  const nearby=rows.map(r=>({row:r,date:new Date(r.date)})).filter(x=>+x.date>=start&&+x.date<=end).sort((a,b)=>+a.date-+b.date);
+function schedDayPopoverHtml(date,rows){
+  if(!date)return '';
+  const key=schedDateKey(new Date(date));
+  const releases=rows.filter(row=>schedDateKey(new Date(row.date))===key);
+  if(!releases.length)return '';
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
   const fmt=d=>d.toLocaleDateString(fr?'fr-FR':'en-GB',{day:'numeric',month:'short'});
-  if(!nearby.length)return '<div class="sched-nearby empty">'+(fr?'Aucune sortie planifiée dans les 7 jours autour de cette date.':'No releases planned within 7 days of this date.')+'</div>';
-  return '<div class="sched-nearby"><div class="sched-nearby-h">'+(fr?'Sorties proches':'Nearby releases')+'</div>'+nearby.map(({row,date})=>
-    '<div class="sched-nearby-row"><span class="sched-nearby-date">'+fmt(date)+'</span><span class="sched-nearby-title">'+esc(row.title||'Sans titre')+'</span><span class="sched-nearby-genre">'+esc(row.genre||'—')+'</span></div>'
+  return '<div id="sched-day-popover" class="sched-day-popover" role="status"><div class="sched-day-popover-h">'+fmt(new Date(date))+'</div>'+releases.map(row=>
+    '<div class="sched-day-popover-row"><strong>'+esc(row.title||'Sans titre')+'</strong><span>'+esc(row.genre||'—')+'</span></div>'
   ).join('')+'</div>';
 }
 function openSchedulePopup(reco){
   const avoid=new Set();
   const sug=suggestRoadmapDate(reco,avoid);
   if(sug)avoid.add(sug.date.getFullYear()+'-'+sug.date.getMonth()+'-'+sug.date.getDate());
-  SCHED_CUR={reco,sug,avoid,previewDate:new Date(sug.date)};
+  SCHED_CUR={reco,sug,avoid,previewDate:new Date(sug.date),calendarDate:new Date(sug.date),popoverDate:null};
   renderSchedPopup();
   document.getElementById('sched-backdrop').classList.add('show');
   document.getElementById('sched-modal').classList.add('show');
@@ -724,22 +725,23 @@ function renderSchedPopup(){
   const ruleLabel=sug.rule.label||'General cadence (~1 release/week, free week)';
   let h=
     '<div class="sched-h">✓ « '+esc(reco.title)+' » validated</div>'+
-    '<div class="sched-sub">Suggested release date — click a day to see nearby planned releases.</div>'+
+    '<div class="sched-sub">'+(fr?'Date de sortie proposée — clique sur un jour occupé pour voir cette sortie.':'Suggested release date — click an occupied day to view that release.')+'</div>'+
     '<div class="sched-rationale">📅 <b>'+jour+' '+d.getDate()+' '+MFULL[d.getMonth()]+' '+d.getFullYear()+'</b><br>'+
       '↳ '+esc(ruleLabel)+(sug.relaxed?' <span style="color:var(--amber)">· relaxed constraint (few open slots)</span>':'')+
       (schedIsRain(reco)?'<br>↳ Spaced out from the last rain/storm concept (≥3 weeks)':'')+
     '</div>'+
-    '<div class="sched-cal">'+schedMiniCal(d,rows,SCHED_CUR.previewDate)+'</div>'+
-    schedNearbyReleases(SCHED_CUR.previewDate||d,rows)+
+    '<div class="sched-cal">'+schedMiniCal(d,rows,SCHED_CUR.previewDate,SCHED_CUR.calendarDate)+'</div>'+
+    schedDayPopoverHtml(SCHED_CUR.popoverDate,rows)+
     '<div class="sched-actions">'+
-      '<button class="sched-btn-alt" onclick="skipSchedDate()">Date suivante</button>'+
-      '<button class="sched-btn-ok" onclick="confirmSchedDate()">✓ Confirm date</button>'+
+      '<button class="sched-btn-alt" onclick="skipSchedDate()">'+(fr?'&#x1F5D3;&#xFE0F; Autre date':'&#x1F5D3;&#xFE0F; Other date')+'</button>'+
+      '<button class="sched-btn-ok" onclick="confirmSchedDate()">'+(fr?'&#x2705; Confirmer la date':'&#x2705; Confirm date')+'</button>'+
     '</div>'+
     '<div style="display:flex;gap:8px;margin-top:8px">'+
       '<button class="sched-btn-cancel" style="flex:1" onclick="closeSchedPopup()">Not now</button>'+
     '</div>';
   if(fr)h=frz(h);
   el.innerHTML=h;
+  positionSchedDayPopover();
 }
 function skipSchedDate(){
   if(!SCHED_CUR)return;
@@ -749,6 +751,8 @@ function skipSchedDate(){
   if(sug){
     SCHED_CUR.sug=sug;
     SCHED_CUR.previewDate=new Date(sug.date);
+    SCHED_CUR.calendarDate=new Date(sug.date);
+    SCHED_CUR.popoverDate=null;
     SCHED_CUR.avoid.add(sug.date.getFullYear()+'-'+sug.date.getMonth()+'-'+sug.date.getDate());
   }
   renderSchedPopup();
@@ -756,7 +760,27 @@ function skipSchedDate(){
 function previewSchedDay(timestamp){
   if(!SCHED_CUR)return;
   SCHED_CUR.previewDate=new Date(Number(timestamp));
+  SCHED_CUR.popoverDate=scheduledRows().some(row=>schedDateKey(new Date(row.date))===schedDateKey(SCHED_CUR.previewDate))?new Date(SCHED_CUR.previewDate):null;
   renderSchedPopup();
+}
+function shiftSchedMonth(delta){
+  if(!SCHED_CUR)return;
+  const current=new Date(SCHED_CUR.calendarDate||SCHED_CUR.sug.date);
+  current.setDate(1);current.setMonth(current.getMonth()+Number(delta||0));
+  SCHED_CUR.calendarDate=current;
+  SCHED_CUR.popoverDate=null;
+  renderSchedPopup();
+}
+function positionSchedDayPopover(){
+  const pop=document.getElementById('sched-day-popover'), modal=document.getElementById('sched-modal');
+  if(!pop||!modal||!SCHED_CUR||!SCHED_CUR.popoverDate)return;
+  const anchor=modal.querySelector('[data-sched-day="'+schedDateKey(SCHED_CUR.popoverDate)+'"]');
+  if(!anchor)return;
+  const width=pop.offsetWidth,height=pop.offsetHeight;
+  const left=Math.max(8,Math.min(modal.clientWidth-width-8,anchor.offsetLeft+anchor.offsetWidth/2-width/2));
+  const below=anchor.offsetTop+anchor.offsetHeight+8;
+  const top=below+height<=modal.clientHeight-8?below:Math.max(8,anchor.offsetTop-height-8);
+  pop.style.left=Math.round(left)+'px';pop.style.top=Math.round(top)+'px';
 }
 function confirmSchedDate(){
   if(!SCHED_CUR)return;

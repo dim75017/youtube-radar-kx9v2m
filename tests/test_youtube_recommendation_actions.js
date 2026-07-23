@@ -16,11 +16,19 @@ assert.doesNotMatch(source, /Validate &amp; schedule/,
 assert.match(source, /openSchedulePopup\(rec\)/,
   'a newly validated recommendation opens its date proposal');
 assert.match(source, /function previewSchedDay\(timestamp\)/,
-  'each date circle can reveal releases scheduled near that day');
-assert.match(source, /schedNearbyReleases\(SCHED_CUR\.previewDate\|\|d,rows\)/,
-  'the date picker renders nearby releases for the selected day');
-assert.match(source, /Date suivante/,
-  'the next proposal action uses the concise French label');
+  'each date circle can reveal releases on that day');
+assert.match(source, /function schedDayPopoverHtml\(date,rows\)/,
+  'the date picker opens a compact release popover beside an occupied day');
+assert.match(source, /function positionSchedDayPopover\(\)/,
+  'the compact release popover is positioned by its clicked date');
+assert.match(source, /function shiftSchedMonth\(delta\)/,
+  'the date picker can navigate to adjacent months');
+assert.match(source, /data-sched-day=/,
+  'calendar controls identify their exact day for the popover');
+assert.match(source, /Other date/,
+  'the alternate placement action no longer implies the following day');
+assert.doesNotMatch(source, /schedNearbyReleases/,
+  'nearby releases must be replaced by the compact exact-day popover');
 assert.match(source, /recoN:reco\.n/,
   'roadmap entries preserve their recommendation identity');
 assert.match(source, /toggleRecoArchive\(\)/,
@@ -44,6 +52,14 @@ assert.match(css, /\.rbtn-ok\{background:rgba\(74,222,128,\.1\);color:var\(--gre
   'validation uses the same transparent treatment as refusal');
 assert.match(css, /\.sched-cell\{appearance:none;border:1px solid transparent;background:rgba\(150,163,214,\.06\);width:34px;height:34px/,
   'the date picker renders large circular day controls');
+assert.match(css, /\.sched-cell\.has-event\{background:var\(--sched-event-color/,
+  'occupied days fill the whole date circle with their genre color');
+assert.match(css, /\.sched-cal-nav\{width:26px;height:26px/,
+  'calendar month navigation uses compact previous/next controls');
+assert.match(css, /\.sched-day-popover\{position:absolute/,
+  'the release detail is a mini popover instead of a block below the calendar');
+assert.match(css, /\.sched-btn-alt\{background:rgba\(251,191,36,\.13\)/,
+  'the alternate date action is visually distinct in yellow');
 assert.match(source, /if\(activeTodayIds\.length\)/,
   'the day queue remains stable after decisions');
 
