@@ -236,15 +236,22 @@ function dailyRecoListHTML(rows){
   if(!rows.length)return '<div class="empty">'+((typeof LANG!=='undefined'&&LANG==='fr')?'Aucune proposition en attente.':'No proposal awaiting review.')+'</div>';
   window._pageRecos=rows;return '<div class="rgrid2">'+rows.map((r,i)=>recoCardHTML(r,i)).join('')+'</div>';
 }
-let RECO_ARCHIVE_OPEN=false;
+let RECO_TAB='pending';
 function refusedRecommendationRows(){return (DATA.recos||[]).filter(r=>isRefused(r.valid));}
-function recoArchiveControlHTML(){
-  const fr=typeof LANG!=='undefined'&&LANG==='fr',count=refusedRecommendationRows().length;
-  return '<div class="reco-controlbar">'+
-    '<span class="reco-control-label">'+(RECO_ARCHIVE_OPEN?(fr?'Archives':'Archive'):(fr?'En attente':'Awaiting review'))+'</span>'+
-    '<button class="reco-archive-btn'+(RECO_ARCHIVE_OPEN?' on':'')+'" onclick="toggleRecoArchive()">🗄️ '+(fr?'Archive':'Archive')+' <b>'+count+'</b></button>'+
-  '</div>';
+function validatedRecommendationRows(){return (DATA.recos||[]).filter(r=>isValidated(r.valid));}
+function recoTabControlHTML(){
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
+  const counts={pending:dailyRecommendationSet().length,validated:validatedRecommendationRows().length,archive:refusedRecommendationRows().length};
+  const tabs=[
+    ['pending','🟡 '+(fr?'À valider':'To review')],
+    ['validated','✓ '+(fr?'Validées':'Validated')],
+    ['archive','🗄️ '+(fr?'Archives':'Archive')]
+  ];
+  return '<div class="reco-controlbar"><div class="reco-tabbar">'+tabs.map(([key,label])=>
+    '<button class="reco-tab '+key+(RECO_TAB===key?' on':'')+'" onclick="setRecoTab('+jsq(key)+')"><span>'+label+'</span><b>'+counts[key]+'</b></button>'
+  ).join('')+'</div></div>';
 }
+function recoArchiveControlHTML(){return recoTabControlHTML();}
 function recoArchiveCardHTML(r,i){
   const note=noteOf(r.valid),tierL=r.pot?r.pot[0].toUpperCase():null;
   const tier=tierL?('<span class="rtier tier-'+tierL+'" title="Tier '+tierL+'">'+tierL+'</span>'):'<span class="rtier" style="opacity:.35">-</span>';
@@ -261,13 +268,34 @@ function recoArchiveHTML(){
   if(!rows.length)return '<div class="empty">'+((typeof LANG!=='undefined'&&LANG==='fr')?'Aucune recommandation archivée.':'No archived recommendations.')+'</div>';
   return '<div class="rgrid2">'+rows.map((r,i)=>recoArchiveCardHTML(r,i)).join('')+'</div>';
 }
-function recoVisibleHTML(){return RECO_ARCHIVE_OPEN?recoArchiveHTML():dailyRecoListHTML(dailyRecommendationSet());}
-function recosHTML(){return recoArchiveControlHTML()+'<div id="reco-list">'+recoVisibleHTML()+'</div>';}
-function toggleRecoArchive(){RECO_ARCHIVE_OPEN=!RECO_ARCHIVE_OPEN;rerenderRecos();}
+function recoValidatedCardHTML(r,i){
+  const note=noteOf(r.valid),tierL=r.pot?r.pot[0].toUpperCase():null;
+  const tier=tierL?('<span class="rtier tier-'+tierL+'" title="Tier '+tierL+'">'+tierL+'</span>'):'<span class="rtier" style="opacity:.35">-</span>';
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
+  return '<div class="rtile reco-validated" style="--gc:'+gcolor(r.genre)+'" onclick="openRecoIdx('+i+')">'+
+    '<div class="rt-head">'+tier+'<div class="rt-title">'+esc(r.title)+'</div></div>'+
+    '<div class="rt-tags">'+gtag(r.genre)+(r.dur?ghosttag(r.dur):'')+'</div>'+
+    (r.concept?'<div class="rt-desc">'+esc(String(r.concept).slice(0,130))+(String(r.concept).length>130?'...':'')+'</div>':'')+
+    (note?'<div class="rt-note">Note: '+esc(note.slice(0,60))+(note.length>60?'...':'')+'</div>':'')+
+    '<div class="reco-quick-actions" onclick="event.stopPropagation()"><span class="reco-validated-state">✓ '+(fr?'Validée · planning':'Validated · roadmap')+'</span></div>'+
+  '</div>';
+}
+function recoValidatedHTML(){
+  const rows=validatedRecommendationRows();window._pageRecos=rows;
+  if(!rows.length)return '<div class="empty">'+((typeof LANG!=='undefined'&&LANG==='fr')?'Aucune recommandation validée pour le moment.':'No validated recommendation yet.')+'</div>';
+  return '<div class="rgrid2">'+rows.map((r,i)=>recoValidatedCardHTML(r,i)).join('')+'</div>';
+}
+function recoVisibleHTML(){
+  if(RECO_TAB==='archive')return recoArchiveHTML();
+  if(RECO_TAB==='validated')return recoValidatedHTML();
+  return dailyRecoListHTML(dailyRecommendationSet());
+}
+function recosHTML(){return recoTabControlHTML()+'<div id="reco-list">'+recoVisibleHTML()+'</div>';}
+function setRecoTab(tab){if(!['pending','validated','archive'].includes(tab))return;RECO_TAB=tab;rerenderRecos();}
 function rerenderRecos(){
   const el=document.getElementById('reco-list'),controls=document.querySelector('.reco-controlbar');
   if(el){el.innerHTML=recoVisibleHTML();i18nZone(el);}
-  if(controls){const holder=document.createElement('div');holder.innerHTML=recoArchiveControlHTML();controls.replaceWith(holder.firstChild);}
+  if(controls){const holder=document.createElement('div');holder.innerHTML=recoTabControlHTML();controls.replaceWith(holder.firstChild);}
   if(typeof VIEW_CACHE!=='undefined')VIEW_CACHE.delete(viewCacheKey('recos'));
   if(typeof renderNav==='function')renderNav();
 }
