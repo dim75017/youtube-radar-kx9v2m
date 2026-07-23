@@ -61,6 +61,7 @@ if (renderRadar.includes("arWorkspaceTabs('radar')") || renderRadar.includes('mu
 if (!renderRadar.includes('<h2>Opportunités A&R</h2>')) throw new Error('A&R opportunity header is missing');
 if (card.includes('À valider à l’écoute')) throw new Error('Needs-listen must not be shown as a card badge');
 if (card.includes('arContactHtml(opportunity,true)')) throw new Error('Platform contacts must stay in the detail sheet, not the A&R card preview');
+if (!renderRadar.includes('page-head ar-radar-head') || renderRadar.includes('ar-filter-spacer')) throw new Error('A&R filters must sit compactly under the title on the left');
 const editorialCard = source.slice(source.indexOf('function arEditorialCardHtml'), source.indexOf('const AR_PLAYLIST_COVER_CACHE'));
 if (editorialCard.includes('${fmtFull(count)}')) throw new Error('Editorial placement count must not occupy the right edge of cards');
 for (const required of ['function hydrateArTrackCovers()', 'function arPublicContactChannels(', 'E-mail public à enrichir', 'public_contacts']) {

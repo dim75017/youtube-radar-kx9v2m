@@ -400,6 +400,8 @@ td.selc,th.selc{width:44px;padding-left:14px}
 .ar-radar-intro{max-width:980px;color:var(--muted);font-size:13px;line-height:1.65;margin-top:6px}
 .ar-filterbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .ar-filterbar .ar-filter-spacer{flex:1}
+.ar-radar-head{margin-bottom:10px}
+.ar-radar-head .ar-filterbar{justify-content:flex-start;margin:8px 0 0}
 .ar-data-note{display:flex;align-items:flex-start;gap:9px;padding:11px 13px;border:1px solid rgba(94,234,212,.16);border-radius:12px;background:rgba(94,234,212,.035);color:var(--muted);font-size:11.5px;line-height:1.5;margin-bottom:14px}
 .ar-data-note strong{color:#dffdf0}
 .ar-opportunity-list{display:grid;gap:10px}
