@@ -32,7 +32,7 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertLess(hash_check, activate)
 
     def test_bootstrap_runs_every_five_minutes_without_cancelling_a_live_run(self):
-        self.assertIn("- cron: '*/5 * * * *'", self.workflow)
+        self.assertIn("- cron: '2-57/5 * * * *'", self.workflow)
         self.assertIn("cancel-in-progress: false", self.workflow)
 
 
