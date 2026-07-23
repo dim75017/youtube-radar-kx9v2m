@@ -714,52 +714,24 @@ function renderSchedPopup(){
     return;
   }
   const d=sug.date;
-  const dowEN=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const dowFR=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
-  const mEN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const mFR=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
-  const jour=(fr?dowFR:dowEN)[d.getDay()];
-  const MFULL=fr?mFR:mEN;
   const rows=scheduledRows();
-  const ruleLabel=sug.rule.label||'General cadence (~1 release/week, free week)';
-  let h=
-    '<div class="sched-h">✓ « '+esc(reco.title)+' » validated</div>'+
-    '<div class="sched-sub">'+(fr?'Date de sortie proposée — clique sur un jour occupé pour voir cette sortie.':'Suggested release date — click an occupied day to view that release.')+'</div>'+
-    '<div class="sched-rationale">📅 <b>'+jour+' '+d.getDate()+' '+MFULL[d.getMonth()]+' '+d.getFullYear()+'</b><br>'+
-      '↳ '+esc(ruleLabel)+(sug.relaxed?' <span style="color:var(--amber)">· relaxed constraint (few open slots)</span>':'')+
-      (schedIsRain(reco)?'<br>↳ Spaced out from the last rain/storm concept (≥3 weeks)':'')+
-    '</div>'+
-    '<div class="sched-cal">'+schedMiniCal(d,rows,SCHED_CUR.previewDate,SCHED_CUR.calendarDate)+'</div>'+
+  let h='<div class="sched-cal">'+schedMiniCal(d,rows,SCHED_CUR.previewDate,SCHED_CUR.calendarDate)+'</div>'+
     schedDayPopoverHtml(SCHED_CUR.popoverDate,rows)+
     '<div class="sched-actions">'+
-      '<button class="sched-btn-alt" onclick="skipSchedDate()">'+(fr?'&#x1F5D3;&#xFE0F; Autre date':'&#x1F5D3;&#xFE0F; Other date')+'</button>'+
       '<button class="sched-btn-ok" onclick="confirmSchedDate()">'+(fr?'&#x2705; Confirmer la date':'&#x2705; Confirm date')+'</button>'+
-    '</div>'+
-    '<div style="display:flex;gap:8px;margin-top:8px">'+
-      '<button class="sched-btn-cancel" style="flex:1" onclick="closeSchedPopup()">Not now</button>'+
     '</div>';
   if(fr)h=frz(h);
   el.innerHTML=h;
   positionSchedDayPopover();
 }
-function skipSchedDate(){
-  if(!SCHED_CUR)return;
-  if(!SCHED_CUR.avoid)SCHED_CUR.avoid=new Set();
-  if(SCHED_CUR.sug){const p=SCHED_CUR.sug.date;SCHED_CUR.avoid.add(p.getFullYear()+'-'+p.getMonth()+'-'+p.getDate());}
-  const sug=suggestRoadmapDate(SCHED_CUR.reco,SCHED_CUR.avoid);
-  if(sug){
-    SCHED_CUR.sug=sug;
-    SCHED_CUR.previewDate=new Date(sug.date);
-    SCHED_CUR.calendarDate=new Date(sug.date);
-    SCHED_CUR.popoverDate=null;
-    SCHED_CUR.avoid.add(sug.date.getFullYear()+'-'+sug.date.getMonth()+'-'+sug.date.getDate());
-  }
-  renderSchedPopup();
-}
 function previewSchedDay(timestamp){
   if(!SCHED_CUR)return;
-  SCHED_CUR.previewDate=new Date(Number(timestamp));
+  const date=new Date(Number(timestamp));
+  // A date click is an explicit user choice: move the proposed release marker
+  // and persist that exact date if the confirmation button is pressed.
+  SCHED_CUR.sug=Object.assign({},SCHED_CUR.sug,{date});
+  SCHED_CUR.previewDate=new Date(date);
   SCHED_CUR.popoverDate=scheduledRows().some(row=>schedDateKey(new Date(row.date))===schedDateKey(SCHED_CUR.previewDate))?new Date(SCHED_CUR.previewDate):null;
   renderSchedPopup();
 }

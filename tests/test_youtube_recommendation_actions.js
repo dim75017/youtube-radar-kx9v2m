@@ -25,8 +25,11 @@ assert.match(source, /function shiftSchedMonth\(delta\)/,
   'the date picker can navigate to adjacent months');
 assert.match(source, /data-sched-day=/,
   'calendar controls identify their exact day for the popover');
-assert.match(source, /Other date/,
-  'the alternate placement action no longer implies the following day');
+assert.match(source, /SCHED_CUR\.sug=Object\.assign\(\{\},SCHED_CUR\.sug,\{date\}\)/,
+  'a date click must move the proposed release marker and saved date');
+const schedulePopup = source.slice(source.indexOf('function renderSchedPopup()'), source.indexOf('function previewSchedDay('));
+assert.doesNotMatch(schedulePopup, /sched-btn-alt|Not now|Date de sortie proposée|Suggested release date/,
+  'the date picker stays minimal: no explanatory header or deferred action');
 assert.doesNotMatch(source, /schedNearbyReleases/,
   'nearby releases must be replaced by the compact exact-day popover');
 assert.match(source, /recoN:reco\.n/,
@@ -58,8 +61,6 @@ assert.match(css, /\.sched-cal-nav\{width:26px;height:26px/,
   'calendar month navigation uses compact previous/next controls');
 assert.match(css, /\.sched-day-popover\{position:absolute/,
   'the release detail is a mini popover instead of a block below the calendar');
-assert.match(css, /\.sched-btn-alt\{background:rgba\(251,191,36,\.13\)/,
-  'the alternate date action is visually distinct in yellow');
 assert.match(source, /if\(activeTodayIds\.length\)/,
   'the day queue remains stable after decisions');
 
