@@ -13,6 +13,9 @@ for (const token of ['function arAddManyToList(', 'function arToggleSelection(',
   assert.ok(spotify.includes(token), `Missing A&R selection workflow component: ${token}`);
 }
 assert.match(spotify, /📅 Sortie \$\{esc\(release\)\}/, 'A&R cards must show the release date');
+assert.match(spotify, /ar-editorial-cover-link/, 'Editorial playlist covers must be rendered as direct links');
+assert.match(spotify, /open\.spotify\.com\/playlist\//, 'Editorial playlist links must open the exact Spotify playlist');
+assert.doesNotMatch(spotify, /ar-list-toggle/, 'Selection now uses checkboxes and bulk actions, not a redundant card button');
 assert.match(spotify, /arContactEligible\(opportunity\)/, 'Outreach must retain strict contact eligibility');
 assert.match(spotify, /mailto:\$\{encodeURIComponent\(currentEmail\)\}/, 'The mail client handoff must remain user initiated');
 assert.match(spotify, /aucun e-mail n’est envoyé/i, 'The UI must not imply automatic sending');

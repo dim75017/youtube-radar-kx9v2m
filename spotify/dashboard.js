@@ -2452,7 +2452,10 @@ function arEditorialCardHtml(opportunity){
     const playlistId=String(playlist.spotifyId||'').trim();
     const imageUrl=String(playlist.imageUrl||playlist.image_url||'').trim();
     const label=playlist.name||'Playlist éditoriale';
-    return `<span class="ar-playlist-cover" title="${esc(label)}">${imageUrl?`<img src="${esc(imageUrl)}" alt="" loading="lazy" onerror="this.remove()">`:''}<span class="ar-playlist-fallback" data-ar-playlist-id="${esc(playlistId)}" data-ar-playlist-slot="${index}">♪</span></span>`;
+    const visual=`${imageUrl?`<img src="${esc(imageUrl)}" alt="" loading="lazy" onerror="this.remove()">`:''}<span class="ar-playlist-fallback" data-ar-playlist-id="${esc(playlistId)}" data-ar-playlist-slot="${index}">♪</span>`;
+    return playlistId
+      ?`<a class="ar-playlist-cover ar-editorial-cover-link" href="https://open.spotify.com/playlist/${esc(playlistId)}" target="_blank" rel="noopener" title="${esc(label)}" aria-label="Ouvrir ${esc(label)} dans Spotify">${visual}</a>`
+      :`<span class="ar-playlist-cover" title="${esc(label)}">${visual}</span>`;
   }).join('');
   return `<div class="ar-editorial-card" title="${esc(arEditorialSummary(opportunity,4))}"><span class="ar-editorial-label">Éditoriales</span><span class="ar-editorial-cover-stack">${covers}</span><strong>${fmtFull(count)}</strong><span class="ar-editorial-names">${esc(detail)}${more}</span></div>`;
 }
@@ -2584,7 +2587,7 @@ function arOpportunityCard(opportunity,index){
     <div class="ar-genre-card" style="--genre-color:${genreVisual.color}"><span>${genreVisual.emoji}</span><strong>${esc(genre)}</strong></div>
     ${arEditorialCardHtml(opportunity)}
     <div class="ar-opp-metrics"><div class="ar-opp-metric total"><div class="l">Streams total</div><div class="v">${arMetricCompact(total)}</div></div><div class="ar-opp-metric"><div class="l">30 jours</div><div class="v">${arMetricCompact(d30)}</div></div><div class="ar-opp-metric"><div class="l">7 jours</div><div class="v">${arMetricCompact(d7)}</div></div><div class="ar-opp-metric current"><div class="l">24 heures</div><div class="v ${d1!=null&&d1>0?'up':''}">${arMetricCompact(d1,true)}</div></div><div class="ar-opp-metric listeners"><div class="l">Auditeurs/mois</div><div class="v">${listeners}</div></div></div>
-    <div class="ar-score-box"><div class="ar-score-value">${Math.round(opportunity.score)}</div><button class="ar-list-toggle" onclick="arAddToList('${esc(opportunity.spotifyId)}',event)">⭐ Sélection</button></div>
+    <div class="ar-score-box"><div class="ar-score-value">${Math.round(opportunity.score)}</div></div>
   </article>`;
 }
 function arScoreLine(label,value,max){
