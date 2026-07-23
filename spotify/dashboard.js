@@ -3460,16 +3460,16 @@ function applyLang(){
       if (n.nodeType===3 && n.nodeValue.trim()){ n.nodeValue = T(el.dataset.fr); break; }
     }
   });
-  const lsw = document.getElementById('lang-switch');
+  const lsw = document.getElementById('lang-btn');
   if (lsw){
-    lsw.dataset.lang = LANG;
+    lsw.classList.toggle('fr', LANG==='fr');
     lsw.title = LANG==='fr' ? 'Français / English' : 'English / Français';
-    lsw.querySelectorAll('.ls-flag').forEach(f=>f.classList.toggle('active', f.dataset.l===LANG));
+    lsw.querySelectorAll('.lg-opt').forEach(f=>f.classList.toggle('on', f.dataset.l===LANG));
   }
   document.documentElement.lang = LANG;
   updateFooter(); render();
 }
-document.getElementById('lang-switch').addEventListener('click', ()=>{
+document.getElementById('lang-btn').addEventListener('click', ()=>{
   LANG = LANG==='fr' ? 'en' : 'fr';
   try{ localStorage.setItem('sr_lang', LANG); }catch(e){}
   applyLang();

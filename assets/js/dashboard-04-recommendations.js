@@ -974,7 +974,7 @@ function copyOptim(vid,what,btn){
 function optimHTML(o,p){
   if(!p)return '';
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
-  let h='<div class="dw-sec" style="border:1px solid rgba(139,124,246,.35);border-radius:12px;padding:14px;background:rgba(139,124,246,.06)">';
+  let h='<div class="dw-sec" style="border:1px solid rgba(255,0,51,.35);border-radius:12px;padding:14px;background:rgba(255,0,51,.06)">';
   h+='<div class="k">🛠️ Optimization proposal (ready to paste into Studio)</div><div class="v">';
   h+='<b style="color:var(--acc2)">Suggested keywords ('+p.tags.length+' tags, '+p.tagsStr.length+'/500 characters)</b>:'+
     '<div class="optim-diff">'+p.kept.map(t=>optimChipHTML(t,'keep')).join('')+p.added.map(t=>optimChipHTML(t,'add')).join('')+p.removed.map(t=>optimChipHTML(t,'remove')).join('')+'</div>'+
@@ -1372,7 +1372,7 @@ function chanHTML(){
 }
 function chanCardHTML(c,i){
   return '<div class="vcard" onclick="openChanIdx('+i+')">'+
-    '<div class="thumbwrap" style="height:auto;aspect-ratio:auto;padding:24px 16px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;background:linear-gradient(160deg,rgba(139,124,246,.12),rgba(139,124,246,.02))">'+
+    '<div class="thumbwrap" style="height:auto;aspect-ratio:auto;padding:24px 16px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;background:linear-gradient(160deg,rgba(255,0,51,.12),rgba(255,0,51,.02))">'+
       wlStar('c',normUrl(c.url))+chAva(c,68)+
       '<div style="text-align:center;max-width:100%"><div class="ttitle" style="white-space:normal">'+esc(c.name)+'</div></div>'+
     '</div>'+
@@ -1577,7 +1577,7 @@ function mountLangBtn(){
     '<span class="lg-opt'+(LANG==='fr'?' on':'')+'"><img src="https://flagcdn.com/40x30/fr.png" alt="FR"></span>';
   // éléments statiques jamais reconstruits par render() : synchro idempotente sur LANG (pas de replace destructif)
   const tag=document.querySelector('.logo h1 small');
-  if(tag)tag.textContent=LANG==='fr'?'Carte des opportunités':'Opportunity Map';
+  if(tag)tag.textContent='YouTube Veille';
 }
 function toggleLang(){
   LANG=LANG==='en'?'fr':'en';
