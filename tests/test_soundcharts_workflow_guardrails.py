@@ -25,6 +25,9 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertNotIn('actions_state=', self.workflow)
 
     def test_activation_rebases_a_benign_later_main_commit(self):
+        self.assertIn('git stash push --include-untracked -m "soundcharts-activation-rebase"', self.workflow)
+        self.assertIn('if [[ "$stashed_changes" == "true" ]]; then', self.workflow)
+        self.assertIn("git stash pop", self.workflow)
         self.assertIn("git rebase origin/main", self.workflow)
         self.assertIn('staged_blob="$(git rev-parse "$STAGED_SHA:$SNAPSHOT_NAME")"', self.workflow)
         self.assertIn('test "$local_blob" = "$staged_blob"', self.workflow)

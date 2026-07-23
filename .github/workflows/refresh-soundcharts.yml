@@ -466,7 +466,15 @@ jobs:
         shell: bash
         run: |
           git fetch origin main
+          stashed_changes="false"
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git stash push --include-untracked -m "soundcharts-activation-rebase"
+            stashed_changes="true"
+          fi
           git rebase origin/main
+          if [[ "$stashed_changes" == "true" ]]; then
+            git stash pop
+          fi
           test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
           local_blob="$(git hash-object "$SNAPSHOT_NAME")"
           staged_blob="$(git rev-parse "$STAGED_SHA:$SNAPSHOT_NAME")"
