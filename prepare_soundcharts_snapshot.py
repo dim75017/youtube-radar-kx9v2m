@@ -1350,6 +1350,15 @@ def sanitize_payload(payload: Mapping[str, Any]) -> tuple[dict[str, Any], dict[s
                 row, opportunity_schema
             )
             _scrub_opportunity_contacts(row, opportunity_schema)
+            # A snapshot must never be held hostage by a malformed legacy row,
+            # but it must also never publish a contact whose underlying track
+            # is not contactable.  Rows normally arrive as mutable JSON lists
+            # or objects.  If an unusual shape prevents the scrub from taking
+            # effect, quarantine that one opportunity instead of failing the
+            # complete collection/publish cycle.
+            if _opportunity_exposes_contact(row, opportunity_schema):
+                opportunity_reasons["unscrubbable_contact"] += 1
+                continue
             contacts_scrubbed += int(exposed_before_scrub)
         seen_opportunity_spotify_ids.add(spotify_track_id)
         retained_opportunities.append(row)

@@ -594,6 +594,33 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
         self.assertEqual(report["opportunity_contacts_scrubbed"], 1)
         subject.validate_payload(sanitized)
 
+    def test_unscrubbable_noncontactable_opportunity_is_quarantined(self):
+        payload = minimal_payload()
+        # A legacy immutable row cannot be rewritten in-place.  It must be
+        # removed rather than making the entire dated snapshot fail or
+        # exposing a contact on a non-contactable opportunity.
+        payload["opportunities"].append(
+            tuple(
+                opportunity(
+                    "legacy-unsafe-contact",
+                    "Legacy Contact",
+                    [collaborator("Legacy Contact", "legacy-artist", "legacy-uuid")],
+                    rights="unknown",
+                    status="needs_listen",
+                    contact_status="ready",
+                    contact_email="public@example.test",
+                )
+            )
+        )
+
+        sanitized, report = subject.sanitize_payload(payload)
+
+        self.assertEqual(len(sanitized["opportunities"]), 1)
+        self.assertEqual(
+            report["opportunity_removal_reasons"]["unscrubbable_contact"], 1
+        )
+        subject.validate_payload(sanitized)
+
     def test_activate_is_strict_cas_and_preserves_old_export(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
