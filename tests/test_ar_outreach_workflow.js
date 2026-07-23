@@ -9,9 +9,13 @@ const youtubeNav = fs.readFileSync('assets/js/dashboard-02-helpers.js', 'utf8');
 for (const token of ['AR_LIST_STORAGE', 'function arAddToList(', 'function renderArList(', 'function openArOutreach(', 'function arOutreachDraft(', 'function arMarkContacted(']) {
   assert.ok(spotify.includes(token), `Missing A&R outreach workflow component: ${token}`);
 }
-for (const token of ['function arAddManyToList(', 'function arToggleSelection(', 'function arSelectVisible(', 'id="ar-select-all"', 'data-ar-select=', "addEventListener('contextmenu'", 'if(arListHas(opportunity.spotifyId)) return false;']) {
+for (const token of ['function arAddManyToList(', 'function arToggleSelection(', 'data-ar-select=', "addEventListener('contextmenu'", 'function arOpenContextMenu(', 'if(arListHas(opportunity.spotifyId)) return false;']) {
   assert.ok(spotify.includes(token), `Missing A&R selection workflow component: ${token}`);
 }
+assert.doesNotMatch(spotify, /id="ar-select-all"/, 'The A&R bulk select-all control must be removed');
+assert.match(spotify, /arOpenContextMenu\(card\.dataset\.arCard,event\.clientX,event\.clientY\)/, 'The context menu must open at the click position');
+assert.match(spotify, /playlists\.map\(\(playlist,index\)=>/, 'Every editorial playlist must render in the A&R card');
+assert.match(spotify, /function arEditorialPlaylistTooltip\(/, 'Each editorial playlist needs a detailed hover tooltip');
 assert.match(spotify, /📅 Sortie \$\{esc\(release\)\}/, 'A&R cards must show the release date');
 assert.match(spotify, /ar-editorial-cover-link/, 'Editorial playlist covers must be rendered as direct links');
 assert.match(spotify, /open\.spotify\.com\/playlist\//, 'Editorial playlist links must open the exact Spotify playlist');
@@ -19,7 +23,6 @@ assert.doesNotMatch(spotify, /ar-list-toggle/, 'Selection now uses checkboxes an
 assert.match(spotify, /arContactEligible\(opportunity\)/, 'Outreach must retain strict contact eligibility');
 assert.match(spotify, /function arSelectionEligible\(spotifyId\)/, 'Selection must reuse the strict A&R eligibility gate');
 assert.match(spotify, /arOpportunityRows\(\)\.some\(item=>item\.spotifyId===id\)&&arSelectionEligible\(id\)/, 'Bulk selection must reject non-verified tracks');
-assert.match(spotify, /rows\.filter\(arContactEligible\)\.map\(item=>item\.spotifyId\)/, 'Select-all must include only contact-eligible tracks');
 assert.match(spotify, /filter\(item=>item\.opportunity&&arContactEligible\(item\.opportunity\)\)/, 'The outreach selection must hide legacy non-verified entries');
 assert.match(spotify, /mailto:\$\{encodeURIComponent\(currentEmail\)\}/, 'The mail client handoff must remain user initiated');
 assert.match(spotify, /aucun e-mail n’est envoyé/i, 'The UI must not imply automatic sending');

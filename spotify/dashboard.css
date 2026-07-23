@@ -655,3 +655,13 @@ td.selc,th.selc{width:44px;padding-left:14px}
 .ar-card-contact{font-size:10px;color:var(--dim);margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ar-contact-link{color:var(--cyan);text-decoration:none;font-weight:700}.ar-contact-link:hover{text-decoration:underline}
 .ar-contact-missing{color:var(--dim)}
+
+/* A&R list: every editorial placement stays visible and the right-click action
+   appears exactly at the pointer location. */
+.ar-editorial-cover-stack{gap:2px}
+.ar-editorial-cover-stack .ar-playlist-cover{width:18px;height:18px;margin-left:0;border-width:1px;border-radius:6px}
+.ar-editorial-cover-link:hover{transform:translateY(-2px) scale(1.12);z-index:2}
+.ar-context-menu{position:fixed;z-index:10000;min-width:220px;padding:5px;border:1px solid rgba(30,215,96,.32);border-radius:10px;background:#111b18;box-shadow:0 16px 42px rgba(0,0,0,.52)}
+.ar-context-menu button{display:block;width:100%;border:0;border-radius:7px;background:transparent;color:#eefff4;padding:9px 10px;text-align:left;font:750 12px Inter;cursor:pointer}
+.ar-context-menu button:hover{background:rgba(30,215,96,.13)}
+.ar-context-menu button:disabled{color:var(--dim);cursor:not-allowed}
