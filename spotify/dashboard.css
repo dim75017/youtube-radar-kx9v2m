@@ -518,7 +518,8 @@ td.selc,th.selc{width:44px;padding-left:14px}
 @media(max-width:1300px){.ar-opportunity-card{--ar-column-gap:13px;--ar-column-inset:10px;grid-template-columns:46px 46px minmax(150px,.9fr) minmax(75px,.42fr) minmax(390px,1.45fr) minmax(74px,.38fr)}.ar-opp-metrics{grid-template-columns:repeat(6,minmax(56px,1fr))}}
 @media(max-width:1050px){.ar-opportunity-card{--ar-column-gap:0px;--ar-column-inset:0px}.ar-opp-metrics{grid-template-columns:repeat(6,minmax(56px,1fr))}}
 /* Opportunities: one sortable column bar, then values only in every track row. */
-.ar-filterbar-simple{margin:12px 0 0!important}
+.ar-filterbar-simple{margin:12px 0 0!important}.ar-filterbar-simple .ar-radar-search input{min-width:270px}
+@media(max-width:600px){.ar-filterbar-simple{align-items:stretch}.ar-filterbar-simple .ar-radar-search{width:100%}.ar-filterbar-simple .ar-radar-search input{width:100%;min-width:0}.ar-filterbar-simple .ar-genre-filter{width:100%}.ar-filterbar-simple .ar-genre-filter select{flex:1}}
 .ar-columnbar,.ar-opportunity-card{--ar-opportunity-columns:60px 48px minmax(190px,1.05fr) minmax(76px,.43fr) minmax(86px,.5fr) repeat(5,minmax(66px,.46fr)) minmax(88px,.48fr)}
 .ar-columnbar{display:grid;grid-template-columns:var(--ar-opportunity-columns);gap:8px;align-items:center;margin:0 0 8px;padding:0 12px 0 31px;color:var(--dim)}
 .ar-columnbar button{display:flex;align-items:center;justify-content:flex-end;gap:3px;min-width:0;padding:7px 4px;border:0;border-radius:8px;background:transparent;color:var(--dim);font:800 8.5px/1.1 Inter;letter-spacing:.28px;text-transform:uppercase;text-align:right;white-space:nowrap;cursor:pointer}

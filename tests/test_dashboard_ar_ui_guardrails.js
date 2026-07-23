@@ -13,9 +13,6 @@ const forbidden = [
   'ar-kpi-actions',
   'ar-kpi-action',
   '<div class="ar-bulkbar">',
-  'id="radar-q"',
-  "getElementById('radar-q')",
-  "keepFocus('radar-q')",
   'Découverte quotidienne par playlists éditoriales',
   '<div class="ar-data-note">',
   'data-radar-filter="distribution"',
@@ -31,6 +28,9 @@ for (const token of forbidden) {
 
 for (const required of [
   'arGenreSelectHtml(genres)',
+  'id="radar-q"',
+  "getElementById('radar-q')",
+  "keepFocus('radar-q')",
   'data-ar-sort',
   'sentinel(filtered.length-rows.length)',
   'attachInfinite(',

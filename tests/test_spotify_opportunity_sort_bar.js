@@ -13,12 +13,15 @@ assert.match(dashboard, /S\.radarSort===next\?\(S\.radarSortDir===1\?-1:1\):arOp
 assert.match(dashboard, /class="sort-triangles/);
 assert.match(dashboard, /function sortTriangleIndicator\(active,direction\)/);
 assert.match(dashboard, /ar-filterbar-simple/);
+assert.match(dashboard, /id="radar-q"/);
+assert.match(dashboard, /S\.radarQ=event\.target\.value/);
 assert.match(dashboard, /ar-columnbar-cover-spacer/);
 assert.match(css, /\.ar-filterbar-simple\{/);
+assert.match(css, /\.ar-radar-search input/);
 assert.match(css, /\.ar-columnbar button\.asc \.sort-triangles/);
 assert.match(css, /--ar-opportunity-columns/);
 assert.match(css, /ar-opp-metric:nth-child\(5\)\{grid-column:10\}/);
 assert.match(css, /ar-editorial-card\{grid-column:11\}/);
-assert.match(index, /dashboard\.js\?v=20260724-opportunity-columns-v1/);
+assert.match(index, /dashboard\.js\?v=20260724-opportunity-search-v1/);
 
 console.log('spotify opportunity sorting bar: OK');
