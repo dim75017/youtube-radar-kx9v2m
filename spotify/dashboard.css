@@ -451,14 +451,14 @@ td.selc,th.selc{width:44px;padding-left:14px}
 @media(max-width:1050px){.ar-opportunity-card{grid-template-columns:46px 46px minmax(190px,1fr) minmax(100px,.7fr)}.ar-editorial-card{display:none}.ar-opp-metrics{grid-column:3/-1;grid-row:2;grid-template-columns:repeat(5,minmax(60px,1fr))}.ar-score-box{grid-column:1;grid-row:1}.ar-track-cover{grid-column:2;grid-row:1}.ar-genre-card{grid-column:4;grid-row:1}}
 @media(max-width:650px){.ar-opportunity-card{grid-template-columns:46px 46px minmax(0,1fr)}.ar-rank{display:none}.ar-score-box{grid-column:1;grid-row:1}.ar-track-cover{grid-column:2;grid-row:1}.ar-opp-main{grid-column:3;grid-row:1}.ar-genre-card{display:none}.ar-opp-metrics{grid-column:1/-1;grid-template-columns:repeat(2,1fr)}.ar-opp-metric .v,.ar-opp-metric.total .v,.ar-opp-metric.current .v,.ar-opp-metric.listeners .v{font-size:13px}}
 .ar-card-select{left:5px}.ar-opportunity-card{padding-left:31px}@media(max-width:650px){.ar-bulkbar{align-items:flex-start;flex-wrap:wrap}.ar-bulkbar span{margin-left:0;flex:1 1 100%}}
-/* Compact A&R row: identity, genre, metrics (including release), then editorials. */
+/* Compact A&R row: identity/release, genre, metrics, then editorials. */
 .ar-opportunity-card{grid-template-columns:48px 48px minmax(190px,1.05fr) minmax(100px,.55fr) minmax(510px,1.72fr) minmax(94px,.55fr)}
-.ar-opp-metrics{grid-template-columns:repeat(6,minmax(72px,1fr));gap:7px}
-.ar-opp-metric.release{margin-left:5px}
-.ar-opp-metric .v,.ar-opp-metric.total .v,.ar-opp-metric.current .v,.ar-opp-metric.listeners .v,.ar-opp-metric.release .v{font-size:14px;margin-top:3px}
+.ar-opp-titleline{display:flex;align-items:baseline;gap:9px;min-width:0}.ar-opp-titleline .ar-opp-title{min-width:0}.ar-release-inline{flex:0 0 auto;color:#eafff1;font:750 11px Sora;letter-spacing:.01em;white-space:nowrap}
+.ar-opp-metrics{grid-template-columns:repeat(5,minmax(72px,1fr));gap:7px}
+.ar-opp-metric .v,.ar-opp-metric.total .v,.ar-opp-metric.current .v,.ar-opp-metric.listeners .v{font-size:14px;margin-top:3px}
 .ar-editorial-card{grid-template-columns:auto}
-@media(max-width:1300px){.ar-opportunity-card{grid-template-columns:46px 46px minmax(175px,1fr) minmax(90px,.55fr) minmax(390px,1.45fr) minmax(80px,.5fr)}.ar-opp-metrics{grid-template-columns:repeat(6,minmax(58px,1fr))}.ar-opp-metric .v,.ar-opp-metric.total .v,.ar-opp-metric.current .v,.ar-opp-metric.listeners .v,.ar-opp-metric.release .v{font-size:12.5px}}
-@media(max-width:1050px){.ar-opp-metrics{grid-template-columns:repeat(6,minmax(58px,1fr))}}
+@media(max-width:1300px){.ar-opportunity-card{grid-template-columns:46px 46px minmax(175px,1fr) minmax(90px,.55fr) minmax(390px,1.45fr) minmax(80px,.5fr)}.ar-opp-metrics{grid-template-columns:repeat(5,minmax(58px,1fr))}.ar-opp-metric .v,.ar-opp-metric.total .v,.ar-opp-metric.current .v,.ar-opp-metric.listeners .v{font-size:12.5px}}
+@media(max-width:1050px){.ar-opp-metrics{grid-template-columns:repeat(5,minmax(58px,1fr))}}
 .btn-more{
   padding:9px 22px;border-radius:11px;border:1px solid var(--border2);font-size:12.5px;font-weight:600;
   color:var(--muted);transition:all .15s;
