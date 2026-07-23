@@ -264,7 +264,7 @@ jobs:
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
           --max-artist-listeners 5000000
           --max-track-streams 250000000
-          --max-opportunities 2000
+          --max-opportunities 10000
           --minimum-score 20
 
       - name: Prepare public-safe dated snapshot

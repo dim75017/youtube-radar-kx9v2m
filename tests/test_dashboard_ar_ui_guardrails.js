@@ -30,7 +30,8 @@ for (const token of forbidden) {
 for (const required of [
   'id="radar-genre"',
   'id="radar-sort"',
-  'id="radar-limit"',
+  'sentinel(filtered.length-rows.length)',
+  'attachInfinite(',
 ]) {
   if (!renderRadar.includes(required)) throw new Error(`Expected streamlined A&R UI token is missing: ${required}`);
 }
@@ -45,6 +46,7 @@ for (const removed of ['ar-score-confidence', 'ar-open-detail', 'Pourquoi ?']) {
 for (const required of ['arTrackCoverUrl(opportunity)', 'Auditeurs/mois', 'arEditorialCardHtml(opportunity)', 'arGenreVisual(opportunity.genre)']) {
   if (!card.includes(required)) throw new Error(`A&R card data is missing: ${required}`);
 }
+if (card.includes('À valider à l’écoute')) throw new Error('Needs-listen must not be shown as a card badge');
 if (card.includes('arContactHtml(opportunity,true)')) throw new Error('Platform contacts must stay in the detail sheet, not the A&R card preview');
 for (const required of ['function hydrateArTrackCovers()', 'function arPublicContactChannels(', 'E-mail public à enrichir', 'public_contacts']) {
   if (!source.includes(required)) throw new Error(`A&R public-contact UI is missing: ${required}`);
