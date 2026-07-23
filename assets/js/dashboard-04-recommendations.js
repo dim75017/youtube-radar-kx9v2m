@@ -662,30 +662,44 @@ function scheduleRecommendation(reco,sug){
   return entry;
 }
 let SCHED_CUR=null;
-function schedMiniCal(dateHi,rows){
+function schedDateKey(d){return d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();}
+function schedMiniCal(dateHi,rows,previewDate){
   const y=dateHi.getFullYear(),m=dateHi.getMonth();
   const MFULL=['January','February','March','April','May','June','July','August','September','October','November','December'];
   const first=new Date(y,m,1);
   const start=new Date(y,m,1-((first.getDay()+6)%7));
-  const key=d=>d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate();
-  const byDay={};rows.forEach(r=>{const k=key(new Date(r.date));(byDay[k]=byDay[k]||[]).push(r);});
+  const byDay={};rows.forEach(r=>{const k=schedDateKey(new Date(r.date));(byDay[k]=byDay[k]||[]).push(r);});
+  const selected=previewDate||dateHi;
   let h='<div class="sched-cal-h">'+MFULL[m]+' '+y+'</div><div class="sched-grid">'+
     ['L','M','M','J','V','S','D'].map(x=>'<div class="sched-dow">'+x+'</div>').join('');
   for(let i=0;i<42;i++){
     const d=new Date(start);d.setDate(start.getDate()+i);
-    const evs=byDay[key(d)]||[];
-    const isHi=key(d)===key(dateHi);
-    h+='<div class="sched-cell'+(d.getMonth()!==m?' out':'')+(evs.length?' has-event':'')+(isHi?' proposed':'')+'" title="'+evs.map(e=>esc(e.title)).join(' · ')+'">'+d.getDate()+
-      (evs.length&&!isHi?'<span class="dot" style="background:'+gcolor(evs[0].genre)+'"></span>':'')+'</div>';
+    const evs=byDay[schedDateKey(d)]||[];
+    const isHi=schedDateKey(d)===schedDateKey(dateHi);
+    const isSelected=schedDateKey(d)===schedDateKey(selected);
+    const label=(evs.length?evs.length+' release'+(evs.length>1?'s':'')+' planned: '+evs.map(e=>e.title).join(', '):'No release planned')+' — '+d.getDate()+' '+MFULL[d.getMonth()];
+    h+='<button type="button" class="sched-cell'+(d.getMonth()!==m?' out':'')+(evs.length?' has-event':'')+(isHi?' proposed':'')+(isSelected?' selected':'')+'" aria-label="'+esc(label)+'" title="'+esc(label)+'" onclick="previewSchedDay('+d.getTime()+')">'+d.getDate()+
+      (evs.length&&!isHi?'<span class="dot" style="background:'+gcolor(evs[0].genre)+'"></span>':'')+'</button>';
   }
   h+='</div>';
   return h;
+}
+function schedNearbyReleases(date,rows){
+  const selected=new Date(date);selected.setHours(0,0,0,0);
+  const start=+selected-7*86400000,end=+selected+7*86400000;
+  const nearby=rows.map(r=>({row:r,date:new Date(r.date)})).filter(x=>+x.date>=start&&+x.date<=end).sort((a,b)=>+a.date-+b.date);
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
+  const fmt=d=>d.toLocaleDateString(fr?'fr-FR':'en-GB',{day:'numeric',month:'short'});
+  if(!nearby.length)return '<div class="sched-nearby empty">'+(fr?'Aucune sortie planifiée dans les 7 jours autour de cette date.':'No releases planned within 7 days of this date.')+'</div>';
+  return '<div class="sched-nearby"><div class="sched-nearby-h">'+(fr?'Sorties proches':'Nearby releases')+'</div>'+nearby.map(({row,date})=>
+    '<div class="sched-nearby-row"><span class="sched-nearby-date">'+fmt(date)+'</span><span class="sched-nearby-title">'+esc(row.title||'Sans titre')+'</span><span class="sched-nearby-genre">'+esc(row.genre||'—')+'</span></div>'
+  ).join('')+'</div>';
 }
 function openSchedulePopup(reco){
   const avoid=new Set();
   const sug=suggestRoadmapDate(reco,avoid);
   if(sug)avoid.add(sug.date.getFullYear()+'-'+sug.date.getMonth()+'-'+sug.date.getDate());
-  SCHED_CUR={reco,sug,avoid};
+  SCHED_CUR={reco,sug,avoid,previewDate:new Date(sug.date)};
   renderSchedPopup();
   document.getElementById('sched-backdrop').classList.add('show');
   document.getElementById('sched-modal').classList.add('show');
@@ -710,15 +724,16 @@ function renderSchedPopup(){
   const ruleLabel=sug.rule.label||'General cadence (~1 release/week, free week)';
   let h=
     '<div class="sched-h">✓ « '+esc(reco.title)+' » validated</div>'+
-    '<div class="sched-sub">Suggested release date — choose it or ask for another proposal.</div>'+
+    '<div class="sched-sub">Suggested release date — click a day to see nearby planned releases.</div>'+
     '<div class="sched-rationale">📅 <b>'+jour+' '+d.getDate()+' '+MFULL[d.getMonth()]+' '+d.getFullYear()+'</b><br>'+
       '↳ '+esc(ruleLabel)+(sug.relaxed?' <span style="color:var(--amber)">· relaxed constraint (few open slots)</span>':'')+
       (schedIsRain(reco)?'<br>↳ Spaced out from the last rain/storm concept (≥3 weeks)':'')+
     '</div>'+
-    '<div class="sched-cal">'+schedMiniCal(d,rows)+'</div>'+
+    '<div class="sched-cal">'+schedMiniCal(d,rows,SCHED_CUR.previewDate)+'</div>'+
+    schedNearbyReleases(SCHED_CUR.previewDate||d,rows)+
     '<div class="sched-actions">'+
+      '<button class="sched-btn-alt" onclick="skipSchedDate()">Date suivante</button>'+
       '<button class="sched-btn-ok" onclick="confirmSchedDate()">✓ Confirm date</button>'+
-      '<button class="sched-btn-alt" onclick="skipSchedDate()">🔁 Suggest another date</button>'+
     '</div>'+
     '<div style="display:flex;gap:8px;margin-top:8px">'+
       '<button class="sched-btn-cancel" style="flex:1" onclick="closeSchedPopup()">Not now</button>'+
@@ -733,8 +748,14 @@ function skipSchedDate(){
   const sug=suggestRoadmapDate(SCHED_CUR.reco,SCHED_CUR.avoid);
   if(sug){
     SCHED_CUR.sug=sug;
+    SCHED_CUR.previewDate=new Date(sug.date);
     SCHED_CUR.avoid.add(sug.date.getFullYear()+'-'+sug.date.getMonth()+'-'+sug.date.getDate());
   }
+  renderSchedPopup();
+}
+function previewSchedDay(timestamp){
+  if(!SCHED_CUR)return;
+  SCHED_CUR.previewDate=new Date(Number(timestamp));
   renderSchedPopup();
 }
 function confirmSchedDate(){
@@ -1821,7 +1842,7 @@ const FR_LIT=[
 ['» validated','» validé'],['Placement proposal for the schedule — let me know if it works for you.','Proposition de placement dans le planning — dis-moi si ça te va.'],
 ['General cadence (~1 release/week, free week)','Cadence générale (~1 sortie/semaine, semaine libre)'],['relaxed constraint (few open slots)','contrainte assouplie (peu de créneaux libres)'],
 ['Spaced out from the last rain/storm concept (≥3 weeks)','Espacé du dernier concept pluie/orage (≥3 semaines)'],
-['✓ Works for me, place it here','✓ Ça me va, on place ici'],['🔁 Suggest another date','🔁 Proposer une autre date'],['>Not now<','>Plus tard<'],
+['Suggested release date — click a day to see nearby planned releases.','Date de sortie proposée — clique sur un jour pour voir les sorties proches.'],['✓ Confirm date','✓ Confirmer la date'],['Date suivante','Date suivante'],['Nearby releases','Sorties proches'],['No releases planned within 7 days of this date.','Aucune sortie planifiée dans les 7 jours autour de cette date.'],['>Not now<','>Plus tard<'],
 ['✓ Placed in the schedule','✓ Placé au planning'],['» is added on ','» est ajouté au '],[' (visible in Roadmap, tagged “to validate”).',' (visible dans Roadmap, tag « à valider »).'],
 ['Remember to also report this date in the Google Sheet Roadmap so it persists for the whole team.','Pense à reporter cette date dans le Google Sheet Roadmap pour que ça persiste pour toute l’équipe.'],
 ['See in the schedule','Voir dans le planning'],

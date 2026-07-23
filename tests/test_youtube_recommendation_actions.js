@@ -15,6 +15,12 @@ assert.doesNotMatch(source, /Validate &amp; schedule/,
   'the action must remain a plain validation');
 assert.match(source, /openSchedulePopup\(rec\)/,
   'a newly validated recommendation opens its date proposal');
+assert.match(source, /function previewSchedDay\(timestamp\)/,
+  'each date circle can reveal releases scheduled near that day');
+assert.match(source, /schedNearbyReleases\(SCHED_CUR\.previewDate\|\|d,rows\)/,
+  'the date picker renders nearby releases for the selected day');
+assert.match(source, /Date suivante/,
+  'the next proposal action uses the concise French label');
 assert.match(source, /recoN:reco\.n/,
   'roadmap entries preserve their recommendation identity');
 assert.match(source, /toggleRecoArchive\(\)/,
@@ -36,6 +42,8 @@ assert.ok(detail.indexOf('rbtn-ko') < detail.indexOf('rbtn-ok'),
 const css = fs.readFileSync('assets/css/dashboard.css', 'utf8');
 assert.match(css, /\.rbtn-ok\{background:rgba\(74,222,128,\.1\);color:var\(--green\);border:1\.5px solid rgba\(74,222,128,\.5\)\}/,
   'validation uses the same transparent treatment as refusal');
+assert.match(css, /\.sched-cell\{appearance:none;border:1px solid transparent;background:rgba\(150,163,214,\.06\);width:34px;height:34px/,
+  'the date picker renders large circular day controls');
 assert.match(source, /if\(activeTodayIds\.length\)/,
   'the day queue remains stable after decisions');
 
