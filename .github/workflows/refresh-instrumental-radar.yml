@@ -52,6 +52,10 @@ jobs:
 
   publish:
     name: Publish daily snapshot and history
+    # A feature branch may validate all scan shards, but it must never try to
+    # publish a shared snapshot. This also avoids an impossible fast-forward
+    # from a diverged PR branch to main.
+    if: github.ref == 'refs/heads/main'
     needs: scan
     runs-on: ubuntu-latest
     timeout-minutes: 20
