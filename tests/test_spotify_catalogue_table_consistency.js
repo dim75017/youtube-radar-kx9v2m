@@ -24,6 +24,6 @@ for(const [name,section] of [['tracks',tracks],['artists',artists],['playlists',
   assert.doesNotMatch(section,/data-(?:o|a|pl|lb)mode=/,`${name} must not expose an alternate grid mode`);
 }
 for(const column of ['data-plsort="usage"','data-plsort="created"','data-plsort="recent"']) assert.ok(!playlists.includes(column),`Playlist column must be removed: ${column}`);
-assert.match(dashboard,/comparisonReady\?`\$\{T\('vs période précédente'\)\}.*:'—'/,'Incomplete playlist comparisons must render a dash only');
+assert.match(dashboard,/const pct=w\.comparisonReady\?signedPct\(w\.pct\):'';/,'Playlist comparisons must use the compact percentage only');
 
 console.log('spotify catalogue tables consistency: ok');

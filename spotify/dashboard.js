@@ -987,21 +987,11 @@ function bindMetricModeToggle(renderFn,root){
 }
 function signedFull(v){ return v==null?'—':(v>0?'+':'')+fmtFull(v); }
 function signedPct(v){ return v==null?'':` (${v>0?'+':''}${v.toFixed(1)}%)`; }
-function previousPeriodName(days){ return days===1?T('24 h précédentes'):days===7?T('7 j précédents'):T('30 j précédents'); }
 function perfCardHtml(label,w,withRevenue){
   const value=withRevenue?streamStackHtml(w.currentReady?w.current:null,true,true):(w.currentReady?signedFull(w.current):'—');
-  let compare=T("Comparaison indisponible tant que la période précédente n'est pas complète.");
-  let cls='';
-  if(w.comparisonReady){
-    const change=withRevenue?streamStackHtml(w.change,true,true):signedFull(w.change);
-    compare=`${T('vs période précédente')} ${change}${signedPct(w.pct)}`;
-    cls=w.change>0?'good':(w.change<0?'bad':'');
-  }
-  let partial='';
-  if(!w.currentReady) partial=T('Historique quotidien requis pour cette fenêtre.');
-  else if(w.total>1 && w.partial) partial=`${T('Données partielles')} · ${w.currentCount}/${w.total} ${T('tracks couvertes')}`;
-  else if(w.comparisonPartial) partial=T('Données partielles');
-  return `<div class="perf-card"><div class="plabel" title="${T('Flux réel sur la période')}">${label}</div><div class="pvalue">${value}</div><div class="pcompare ${cls}">${compare}</div>${partial?`<span class="ppartial">${partial} · ${T('Aucune extrapolation')}</span>`:''}</div>`;
+  const cls=w.comparisonReady?(w.change>0?'good':(w.change<0?'bad':'')):'';
+  const pct=w.comparisonReady?signedPct(w.pct):'';
+  return `<div class="perf-card"><div class="plabel" title="${T('Flux réel sur la période')}">${label}</div><div class="pvalue">${value}${pct?`<span class="pdelta ${cls}">${pct}</span>`:''}</div></div>`;
 }
 function totalMetricCardHtml(prefix,total,withRevenue){
   const label=prefix==='Streams'?streamMetricLabel(0):T('Followers total');
@@ -1089,27 +1079,6 @@ function aiRiskBadgeHtml(c){
   const label=c.aiRisk==='à vérifier'?'À vérifier':c.aiRisk.charAt(0).toUpperCase()+c.aiRisk.slice(1);
   return `<span class="badge ${cls}">${label}</span>`;
 }
-function classificationCellHtml(c){
-  const conf=confidenceText(c.instrumentalConfidence);
-  return `<div class="genre-cell"><div class="genre-main">${esc(c.genre)}</div><div class="genre-sub">${esc(c.instrumental)}${conf==='—'?'':' · '+conf}</div></div>`;
-}
-function classificationAnalyticsHtml(c){
-  const sub=c.subgenres.length?c.subgenres.map(esc).join(' · '):'—';
-  const instConf=confidenceText(c.instrumentalConfidence);
-  const riskConf=confidenceText(c.aiRiskConfidence);
-  return `<div class="analytics-section classification-analytics">
-    <h4>Classification <span class="analytics-note">Taxonomie ${esc(GENRE_TAXONOMY.version)} · raccord export progressif</span></h4>
-    <div class="analytics-kpis">
-      <div class="analytics-kpi"><div class="l">Genre principal</div><div class="v">${esc(c.genre)}</div></div>
-      <div class="analytics-kpi"><div class="l">Sous-genres</div><div class="v">${sub}</div></div>
-      <div class="analytics-kpi"><div class="l">Confiance genre</div><div class="v">${confidenceText(c.genreConfidence)}</div></div>
-      <div class="analytics-kpi"><div class="l">Source genre</div><div class="v">${c.genreSource?esc(c.genreSource):'—'}</div></div>
-      <div class="analytics-kpi"><div class="l">Statut instrumental</div><div class="v">${esc(c.instrumental)}</div><div class="genre-sub">Confiance ${instConf}</div></div>
-      <div class="analytics-kpi"><div class="l">Risque IA</div><div class="v">${aiRiskBadgeHtml(c)}</div><div class="genre-sub">Confiance ${riskConf}</div></div>
-      <div class="analytics-kpi"><div class="l">Source risque IA</div><div class="v">${c.aiRiskSource?esc(c.aiRiskSource):'—'}</div></div>
-    </div>
-  </div>`;
-}
 function scArtistRow(g){
   if(!SC || !Array.isArray(SC.artists)) return null;
   const schema=(SC.schemas&&SC.schemas.artists)||[];
@@ -1139,35 +1108,25 @@ function performanceSignal(perf,entry){
   if(w&&w.comparisonReady&&w.change>0) return `${T('Rising')} · 7 j vs 7 j`;
   return '—';
 }
-function contributorRows(rows,days){
-  const out=[];
-  for(const r of rows){ const w=trackWindow(r,days); if(w.currentReady) out.push({r,w}); }
-  out.sort((a,b)=>b.w.current-a.w.current);
-  return out.slice(0,5);
-}
-function contributorsHtml(rows,days){
-  const top=contributorRows(rows,days);
-  if(!top.length) return `<div class="analytics-note">${T('Historique insuffisant')} · ${T('Aucune extrapolation')}</div>`;
-  return `<div class="contributors">${top.map(x=>`<div class="contributor"><span class="cn">${esc(x.r[1])}</span><span class="cv">${streamStackHtml(x.w.current,false,true)}</span></div>`).join('')}</div>`;
-}
 function dailyChartHtml(points,emptyText,unit='value'){
   return points&&points.length>=2?sparkline(points,unit):`<div class="analytics-note" style="padding:18px 2px">${emptyText||T('Historique insuffisant')} · ${T('Aucune extrapolation')}</div>`;
 }
 function recentDailyPoints(points,days){
   if(!Array.isArray(points)||!points.length) return [];
+  if(days==='all') return points;
   const end=new Date(points[points.length-1][0]+'T00:00:00');
   const start=new Date(end); start.setDate(start.getDate()-(days-1));
   const startKey=start.toISOString().slice(0,10);
   return points.filter(point=>point[0]>=startKey);
 }
 function artistFlowWindowControls(){
-  const active=Number(S.artistFlowDays)||7;
+  const active=S.artistFlowDays==='all'?'all':(Number(S.artistFlowDays)||7);
   return `<div class="analytics-window" role="group" aria-label="${T('Période de la courbe')}">
-    ${[3,7,90].map(days=>`<button class="${active===days?'on':''}" onclick="setArtistFlowWindow(${days})">${days} j</button>`).join('')}
+    ${[7,30,90,180,360].map(days=>`<button class="${active===days?'on':''}" onclick="setArtistFlowWindow(${days})">${days} j</button>`).join('')}<button class="${active==='all'?'on':''}" onclick="setArtistFlowWindow('all')">${T("Tout l'historique")}</button>
   </div>`;
 }
 function setArtistFlowWindow(days){
-  S.artistFlowDays=Number(days)||7;
+  S.artistFlowDays=days==='all'?'all':(Number(days)||7);
   renderArtistModal();
 }
 function revTotal(r){ return r[3]>0 ? r[3]*RATE : 0; }
@@ -1756,11 +1715,10 @@ function renderArtistModal(){
   const flows = aggregateDailyFlow(allRows);
   const audience = artistAudience(g);
   const entry = artistPerfEntry(g);
-  const classification = artistClassification(g);
   const selfPct = g.n ? Math.round(g.self/g.n*100) : 0;
   const selM = acquisitionRows.filter(r=>S.sel.has(r[6])).reduce((s,r)=>s+Math.max(perMonth(r),0),0);
   const selN = acquisitionRows.filter(r=>S.sel.has(r[6])).length;
-  const flowPoints = recentDailyPoints(flows.points,Number(S.artistFlowDays)||7);
+  const flowPoints = recentDailyPoints(flows.points,S.artistFlowDays==='all'?'all':(Number(S.artistFlowDays)||7));
   const box = document.getElementById('am-body');
   box.innerHTML = `
     <div class="thd">
@@ -1781,11 +1739,9 @@ function renderArtistModal(){
     </div>
     <div class="toolbar" style="justify-content:flex-end;margin:0 0 10px">${metricModeToggleHtml()}</div>
     ${perfGridHtml(perf,'Streams',g.streams,true)}
-    ${classificationAnalyticsHtml(classification)}
     <div class="analytics-section">
       <h4>${T(S.metricMode==='revenue'?'Courbe quotidienne des revenus estimés':'Courbe quotidienne des streams')} <span class="analytics-note">${T(S.metricMode==='revenue'?'Revenu quotidien estimé d’après les streams':'Flux quotidien réel, pas compteur lifetime')}</span> ${artistFlowWindowControls()}</h4>
       ${dailyChartHtml(metricSeries(flowPoints),T('Historique quotidien insuffisant pour tracer la courbe.'),S.metricMode==='revenue'?'revenue':'streams')}
-      ${flows.points.length?`<div class="analytics-note">${T('Données partielles')} · ${T('couverture variable selon les tracks')}</div>`:''}
     </div>
     <div class="analytics-section">
       <h4>${T('Évolution des monthly listeners')}</h4>
@@ -1795,10 +1751,6 @@ function renderArtistModal(){
         <div class="analytics-kpi"><div class="l">${T('Dernière observation')}</div><div class="v">${audience.date?fmtDate(audience.date):'—'}</div></div>
       </div>
       ${dailyChartHtml(audience.history,T("Historique de monthly listeners non raccordé."))}
-    </div>
-    <div class="analytics-section">
-      <h4>${T('Tracks les plus contributrices')} <span class="analytics-note">7 j</span></h4>
-      ${contributorsHtml(allRows,7)}
     </div>
     ${offerHtml(g, selM, selN, acquisitionRows.length)}
     <label class="selall" style="margin:2px 0 8px"><input type="checkbox" class="ck" id="am-sel-all" ${acquisitionRows.length&&acquisitionRows.every(r=>S.sel.has(r[6]))?'checked':''}> ${T('Tout sélectionner les self-release')}</label>
@@ -2080,7 +2032,6 @@ function openTrack(tid){
   const perf = {1:trackWindow(r,1),7:trackWindow(r,7),30:trackWindow(r,30)};
   const daily = dailyFlowSeries(HIST[tid] || []);
   const entry = trackPerfEntry(r);
-  const classification = trackClassification(r);
   const velocity = perf[7].currentReady ? perf[7].current/7 : null;
   const cadence = Number.isFinite(Number(entry.cadence_days)) ? Number(entry.cadence_days)+' j' : '—';
   const label = entry.label || (r[4]===1 ? r[5] : null);
@@ -2100,13 +2051,11 @@ function openTrack(tid){
       <div class="tg"><div class="l">${T('Cadence')}</div><div class="v">${cadence}</div></div>
       <div class="tg"><div class="l">${T('Signal performance')}</div><div class="v" style="font-size:13px">${performanceSignal(perf,entry)}</div></div>
       <div class="tg"><div class="l">${T('Sortie')}</div><div class="v">${fmtDate(r[2])}</div></div>
-      <div class="tg"><div class="l">${T('Classification')}</div><div class="v" style="font-size:13px">${trackStatusHtml(r)}</div></div>
       <div class="tg"><div class="l">${T('Label')}</div><div class="v" style="font-size:12px;line-height:1.4">${label?esc(label):'—'}</div></div>
       <div class="tg"><div class="l">© / ℗</div><div class="v" style="font-size:12px;line-height:1.4">${r[5]?esc(r[5]):'—'}</div></div>
     </div>
     <div class="toolbar" style="justify-content:flex-end;margin:0 0 10px">${metricModeToggleHtml()}</div>
     ${perfGridHtml(perf,'Streams',r[3]>=0?r[3]:null,true)}
-    ${classificationAnalyticsHtml(classification)}
     ${trackEditorialEvidenceHtml(r)}
     <div class="analytics-section">
       <h4>${T(S.metricMode==='revenue'?'Courbe quotidienne des revenus estimés':'Courbe quotidienne des streams')} <span class="analytics-note">${T(S.metricMode==='revenue'?'Revenu quotidien estimé d’après les streams':'Flux quotidien, pas compteur lifetime')}</span></h4>
@@ -3642,8 +3591,8 @@ function playlistWindowCell(r,days){
   const w=playlistWindow(r,days);
   const main=w.currentReady?signedFull(w.current):'—';
   const color=w.currentReady?(w.current>0?'var(--acc2)':(w.current<0?'var(--red)':'var(--muted)')):'var(--dim)';
-  const compare=w.comparisonReady?`${T('vs période précédente')} ${signedFull(w.change)}${signedPct(w.pct)}`:'—';
-  return `<span class="delta-stack" title="${w.currentReady?'':T('Historique quotidien requis pour cette fenêtre.')}"><span class="delta-main" style="color:${color}">${main}</span><span class="delta-compare">${compare}</span></span>`;
+  const pct=w.comparisonReady?signedPct(w.pct):'';
+  return `<span class="delta-stack" title="${w.currentReady?'':T('Historique quotidien requis pour cette fenêtre.')}"><span class="delta-main" style="color:${color}">${main}${pct?` <small>${pct}</small>`:''}</span></span>`;
 }
 function playlistRecentVariations(r){
   const pts=normalizeCounterHistory(plHistory(r)), out=[];
