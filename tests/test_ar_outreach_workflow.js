@@ -16,9 +16,10 @@ assert.doesNotMatch(spotify, /id="ar-select-all"/, 'The A&R bulk select-all cont
 assert.match(spotify, /arOpenContextMenu\(card\.dataset\.arCard,event\.clientX,event\.clientY\)/, 'The context menu must open at the click position');
 assert.match(spotify, /playlists\.map\(\(playlist,index\)=>/, 'Every editorial playlist must render in the A&R card');
 assert.match(spotify, /function arEditorialPlaylistTooltip\(/, 'Each editorial playlist needs a detailed hover tooltip');
-assert.match(spotify, /ar-release-inline/, 'A&R cards must show the release date beside the track title');
+assert.match(spotify, /ar-opp-metric release/, 'A&R cards must show the release date with the stream metrics');
 assert.match(spotify, /ar-editorial-cover-link/, 'Editorial playlist covers must be rendered as direct links');
-assert.match(spotify, /openPlaylist\('\$\{esc\(playlistId\)\}'\)/, 'Editorial playlist icons must open the internal playlist detail');
+assert.match(spotify, /function arOpenEditorialPopover\(/, 'Editorial playlist icons must open a compact popover');
+assert.match(spotify, /arOpenEditorialPopover\(this\)/, 'The compact popover must open beside the clicked editorial icon');
 const editorialCard = spotify.slice(spotify.indexOf('function arEditorialCardHtml'), spotify.indexOf('const AR_PLAYLIST_COVER_CACHE'));
 assert.doesNotMatch(editorialCard, /ar-editorial-names/, 'Editorial playlist names stay out of the compact card');
 assert.doesNotMatch(spotify, /ar-list-toggle/, 'Selection now uses checkboxes and bulk actions, not a redundant card button');

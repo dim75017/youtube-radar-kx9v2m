@@ -459,6 +459,14 @@ td.selc,th.selc{width:44px;padding-left:14px}
 .ar-editorial-card{grid-template-columns:auto}
 @media(max-width:1300px){.ar-opportunity-card{grid-template-columns:46px 46px minmax(175px,1fr) minmax(90px,.55fr) minmax(390px,1.45fr) minmax(80px,.5fr)}.ar-opp-metrics{grid-template-columns:repeat(5,minmax(58px,1fr))}.ar-opp-metric .v,.ar-opp-metric.total .v,.ar-opp-metric.current .v,.ar-opp-metric.listeners .v{font-size:12.5px}}
 @media(max-width:1050px){.ar-opp-metrics{grid-template-columns:repeat(5,minmax(58px,1fr))}}
+/* A&R row refinement: compact playlist facts stay beside the clicked editorial cover. */
+.ar-opportunity-card{grid-template-columns:46px 46px minmax(160px,.95fr) minmax(82px,.45fr) minmax(495px,1.56fr) minmax(88px,.42fr);gap:8px}
+.ar-opp-metrics{grid-template-columns:repeat(6,minmax(68px,1fr));gap:6px}
+.ar-opp-metric.release{background:rgba(30,215,96,.055);border-color:rgba(30,215,96,.18)}
+.ar-editorial-card{margin-left:18px;padding-left:14px}
+.ar-editorial-popover{position:fixed;z-index:10020;display:grid;grid-template-columns:repeat(3,auto);gap:8px;padding:7px 8px;border:1px solid rgba(30,215,96,.34);border-radius:9px;background:#101b16;box-shadow:0 10px 26px rgba(0,0,0,.4);pointer-events:none}.ar-editorial-popover div{display:grid;gap:1px;white-space:nowrap}.ar-editorial-popover b{font:800 10px Sora;color:#effff4}.ar-editorial-popover span{font:700 8px Inter;letter-spacing:.02em;color:#9caf9f}
+@media(max-width:1300px){.ar-opportunity-card{grid-template-columns:46px 46px minmax(150px,.9fr) minmax(75px,.42fr) minmax(390px,1.45fr) minmax(74px,.38fr)}.ar-opp-metrics{grid-template-columns:repeat(6,minmax(56px,1fr))}.ar-editorial-card{margin-left:13px}}
+@media(max-width:1050px){.ar-opp-metrics{grid-template-columns:repeat(6,minmax(56px,1fr))}.ar-editorial-card{margin-left:0}}
 .btn-more{
   padding:9px 22px;border-radius:11px;border:1px solid var(--border2);font-size:12.5px;font-weight:600;
   color:var(--muted);transition:all .15s;

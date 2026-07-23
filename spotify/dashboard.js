@@ -2367,6 +2367,30 @@ function arEditorialPlaylistTooltip(playlist,opportunity){
   const seen=arPlaylistSince(playlist.lastSeen||opportunity.lastPlaylistSeen);
   return [name,position,followers,since?'depuis '+since:'',seen&&seen!==since?'vu le '+seen:''].filter(Boolean).join(' · ');
 }
+function arEditorialMiniData(playlist){
+  const playlistId=String(playlist&&playlist.spotifyId||'').trim();
+  const row=typeof PLrows!=='undefined'&&Array.isArray(PLrows)?PLrows.find(item=>String(item[0])===playlistId):null;
+  const first=(...values)=>values.find(value=>value!==null&&value!==undefined&&value!=='');
+  return {
+    followers:first(playlist&&playlist.followers,row&&row[4]),
+    tracks:first(playlist&&playlist.trackCount,playlist&&playlist.tracks,row&&row[6]),
+    genre:first(playlist&&playlist.genre,row&&row[10]),
+  };
+}
+function arOpenEditorialPopover(anchor){
+  document.querySelectorAll('.ar-editorial-popover').forEach(node=>node.remove());
+  const popover=document.createElement('div');
+  const followers=anchor.dataset.arFollowers||'—',tracks=anchor.dataset.arTracks||'—',genre=anchor.dataset.arGenre||'—';
+  popover.className='ar-editorial-popover';
+  popover.innerHTML=`<div><b>${esc(followers)}</b><span>followers</span></div><div><b>${esc(tracks)}</b><span>tracks</span></div><div><b>${esc(genre)}</b><span>genre</span></div>`;
+  document.body.appendChild(popover);
+  const rect=anchor.getBoundingClientRect();
+  const left=Math.max(8,Math.min(window.innerWidth-popover.offsetWidth-8,rect.left));
+  const top=Math.min(window.innerHeight-popover.offsetHeight-8,rect.bottom+7);
+  popover.style.left=`${left}px`;popover.style.top=`${Math.max(8,top)}px`;
+  const close=event=>{if(!popover.contains(event.target)&&event.target!==anchor){popover.remove();document.removeEventListener('pointerdown',close,true);}};
+  setTimeout(()=>document.addEventListener('pointerdown',close,true),0);
+}
 function arEditorialSummary(opportunity,limit=3){
   const playlists=arEditorialPlaylists(opportunity);
   if(!playlists.length) return '';
@@ -2483,9 +2507,11 @@ function arEditorialCardHtml(opportunity){
     const playlistId=String(playlist.spotifyId||'').trim();
     const imageUrl=String(playlist.imageUrl||playlist.image_url||'').trim();
     const label=arEditorialPlaylistTooltip(playlist,opportunity);
+    const mini=arEditorialMiniData(playlist);
+    const data=`data-ar-followers="${esc(mini.followers==null||mini.followers<=0?'—':fmtFull(mini.followers))}" data-ar-tracks="${esc(mini.tracks==null||mini.tracks<=0?'—':fmtFull(mini.tracks))}" data-ar-genre="${esc(mini.genre||'—')}"`;
     const visual=`${imageUrl?`<img src="${esc(imageUrl)}" alt="" loading="lazy" onerror="this.remove()">`:''}<span class="ar-playlist-fallback" data-ar-playlist-id="${esc(playlistId)}" data-ar-playlist-slot="${index}">♪</span>`;
     return playlistId
-      ?`<button type="button" class="ar-playlist-cover ar-editorial-cover-link" onclick="event.stopPropagation();openPlaylist('${esc(playlistId)}')" title="${esc(label)}" aria-label="Voir les informations de ${esc(label)}">${visual}</button>`
+      ?`<button type="button" class="ar-playlist-cover ar-editorial-cover-link" ${data} onclick="event.stopPropagation();arOpenEditorialPopover(this)" aria-label="Voir le résumé de ${esc(label)}">${visual}</button>`
       :`<span class="ar-playlist-cover" title="${esc(label)}">${visual}</span>`;
   }).join('');
   return `<div class="ar-editorial-card" title="${esc(arEditorialSummary(opportunity,4))}"><span class="ar-editorial-label">Éditoriales</span><span class="ar-editorial-cover-stack">${covers}</span></div>`;
@@ -2615,9 +2641,9 @@ function arOpportunityCard(opportunity,index){
     <label class="ar-card-select" title="${selectable?'Sélectionner cette track':'Sélection A&R réservée aux tracks vérifiées'}"><input type="checkbox" data-ar-select="${esc(opportunity.spotifyId)}" ${selected?'checked':''} ${selectable?'':'disabled'}><span></span></label>
     <div class="ar-score-box" title="Score A&R"><div class="ar-score-value">${Math.round(opportunity.score)}</div></div>
     <div class="ar-track-cover ${coverUrl?'has':''}"><span data-ar-track-cover-id="${coverUrl?'':esc(opportunity.spotifyId)}">♫</span>${coverUrl?`<img src="${esc(coverUrl)}" alt="" loading="lazy" onerror="this.remove()">`:''}</div>
-    <div class="ar-opp-main"><div class="ar-opp-titleline"><div class="ar-opp-title">${esc(opportunity.title)}</div><span class="ar-release-inline">${esc(release)}</span></div><div class="ar-opp-artist">${esc(opportunity.credit)}</div><div class="ar-opp-tags"><span class="ar-mini-tag good">${esc(arRightsShortLabel(opportunity.rights))}</span></div></div>
+    <div class="ar-opp-main"><div class="ar-opp-titleline"><div class="ar-opp-title">${esc(opportunity.title)}</div></div><div class="ar-opp-artist">${esc(opportunity.credit)}</div><div class="ar-opp-tags"><span class="ar-mini-tag good">${esc(arRightsShortLabel(opportunity.rights))}</span></div></div>
     <div class="ar-genre-card" style="--genre-color:${genreVisual.color}"><span>${genreVisual.emoji}</span><strong>${esc(genre)}</strong></div>
-    <div class="ar-opp-metrics"><div class="ar-opp-metric total"><div class="l">Streams total</div><div class="v">${arMetricCompact(total)}</div></div><div class="ar-opp-metric"><div class="l">30 jours</div><div class="v">${arMetricCompact(d30)}</div></div><div class="ar-opp-metric"><div class="l">7 jours</div><div class="v">${arMetricCompact(d7)}</div></div><div class="ar-opp-metric current"><div class="l">24 heures</div><div class="v ${d1!=null&&d1>0?'up':''}">${arMetricCompact(d1,true)}</div></div><div class="ar-opp-metric listeners"><div class="l">Auditeurs/mois</div><div class="v">${listeners}</div></div></div>
+    <div class="ar-opp-metrics"><div class="ar-opp-metric release"><div class="l">Sortie</div><div class="v">${esc(release)}</div></div><div class="ar-opp-metric total"><div class="l">Streams total</div><div class="v">${arMetricCompact(total)}</div></div><div class="ar-opp-metric"><div class="l">30 jours</div><div class="v">${arMetricCompact(d30)}</div></div><div class="ar-opp-metric"><div class="l">7 jours</div><div class="v">${arMetricCompact(d7)}</div></div><div class="ar-opp-metric current"><div class="l">24 heures</div><div class="v ${d1!=null&&d1>0?'up':''}">${arMetricCompact(d1,true)}</div></div><div class="ar-opp-metric listeners"><div class="l">Auditeurs/mois</div><div class="v">${listeners}</div></div></div>
     ${arEditorialCardHtml(opportunity)}
   </article>`;
 }
