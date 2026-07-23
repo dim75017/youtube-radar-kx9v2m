@@ -30,25 +30,20 @@ for (const token of forbidden) {
 }
 
 for (const required of [
-  'id="radar-genre"',
-  'id="radar-sort"',
-  'value="score"',
-  'value="artist"',
-  'value="genre"',
-  'value="streams"',
-  'value="streams3"',
-  'value="streams6"',
-  'value="momentum"',
-  'value="listeners"',
-  'value="editorial"',
+  'arGenreSelectHtml(genres)',
+  'data-ar-sort',
   'sentinel(filtered.length-rows.length)',
   'attachInfinite(',
 ]) {
   if (!renderRadar.includes(required)) throw new Error(`Expected streamlined A&R UI token is missing: ${required}`);
 }
+for (const required of ["['score','Note A&R']", "['artist','Artiste']", "['genre','Genre']", "['streams','Streams total']", "['streams3','3 j']", "['streams6','6 j']", "['momentum','24 h']", "['listeners','Auditeurs']", "['editorial','Éditoriales']"]) {
+  if (!source.includes(required)) throw new Error(`Expected A&R sort button is missing: ${required}`);
+}
 for (const required of ['ar-selection-float', 'id="ar-add-selected"', "arAddManyToList(arSelectedIds())"]) {
   if (!renderRadar.includes(required)) throw new Error(`A&R bulk-selection action is missing: ${required}`);
 }
+if (renderRadar.includes('id="radar-sort"')) throw new Error('A&R sort must use the clickable sort bar, not a dropdown');
 
 const cardStart = source.indexOf('function arOpportunityCard(');
 const cardEnd = source.indexOf('\nfunction arScoreLine', cardStart);

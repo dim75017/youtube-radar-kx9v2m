@@ -2773,6 +2773,14 @@ function openArOpportunity(spotifyId){
   document.getElementById('ar-modal').style.display='flex';
   hydrateArPlaylistCovers();
 }
+function arSortBarHtml(){
+  const choices=[['score','Note A&R'],['artist','Artiste'],['genre','Genre'],['streams','Streams total'],['streams3','3 j'],['streams6','6 j'],['momentum','24 h'],['listeners','Auditeurs'],['editorial','Éditoriales']];
+  return `<div class="ar-sortbar" role="toolbar" aria-label="Trier les opportunités A&R"><span>Trier par</span>${choices.map(([value,label])=>`<button type="button" data-ar-sort="${value}" class="${S.radarSort===value?'on':''}">${label}</button>`).join('')}</div>`;
+}
+function arGenreSelectHtml(genres){
+  const visual=S.radarGenre==='all'?{emoji:'🎼',color:'#a7f3d0'}:arGenreVisual(S.radarGenre);
+  return `<label class="ar-genre-filter" style="--genre-color:${visual.color}"><span>${visual.emoji} Genre</span><select id="radar-genre"><option value="all">🎼 Tous les genres</option>${genres.map(genre=>{const item=arGenreVisual(genre);return `<option value="${esc(genre)}" ${S.radarGenre===genre?'selected':''}>${item.emoji} ${esc(arGenreLabel(genre))}</option>`;}).join('')}</select></label>`;
+}
 function renderRadar(){
   const all=arOpportunityRows();
   if(!SC || !Array.isArray(SC.opportunities)){
@@ -2782,13 +2790,13 @@ function renderRadar(){
   const filtered=arOpportunityFiltered(all), rows=filtered.slice(0,S.radarShown);
   const genres=[...new Set(all.map(item=>item.genre).filter(Boolean))].sort((a,b)=>arGenreLabel(a).localeCompare(arGenreLabel(b)));
   const selectedIds=arSelectedIds();
-  V.innerHTML=`<div class="page-head ar-radar-head"><div><h2>Opportunités A&R</h2><div class="ar-filterbar"><select id="radar-genre"><option value="all">Tous les genres</option>${genres.map(genre=>`<option value="${esc(genre)}" ${S.radarGenre===genre?'selected':''}>${esc(arGenreLabel(genre))}</option>`).join('')}</select><select id="radar-sort" aria-label="Trier les opportunités A&R"><option value="score" ${S.radarSort==='score'?'selected':''}>Trier : note A&R</option><option value="artist" ${S.radarSort==='artist'?'selected':''}>Trier : artiste</option><option value="genre" ${S.radarSort==='genre'?'selected':''}>Trier : genre</option><option value="streams" ${S.radarSort==='streams'?'selected':''}>Trier : streams total</option><option value="streams3" ${S.radarSort==='streams3'?'selected':''}>Trier : streams 3 j</option><option value="streams6" ${S.radarSort==='streams6'?'selected':''}>Trier : streams 6 j</option><option value="momentum" ${S.radarSort==='momentum'?'selected':''}>Trier : streams 24 h</option><option value="listeners" ${S.radarSort==='listeners'?'selected':''}>Trier : auditeurs mensuels</option><option value="editorial" ${S.radarSort==='editorial'?'selected':''}>Trier : nombre d’éditoriales</option></select></div></div></div>
+  V.innerHTML=`<div class="page-head ar-radar-head"><div><h2>Opportunités A&R</h2>${arSortBarHtml()}<div class="ar-filterbar">${arGenreSelectHtml(genres)}</div></div></div>
     <div class="ar-opportunity-list">${rows.map(arOpportunityCard).join('')}</div>${rows.length===0?`<div class="ar-empty-state">Aucune track ne correspond à ce filtre. Les critères restent stricts et aucune donnée manquante n’est inventée.</div>`:''}${sentinel(filtered.length-rows.length)}${selectedIds.length?`<div class="ar-selection-float" role="status" aria-live="polite"><span><b>${selectedIds.length}</b> track${selectedIds.length>1?'s':''} sélectionnée${selectedIds.length>1?'s':''}</span><button id="ar-add-selected" type="button">⭐ Ajouter à la Sélection A&R</button></div>`:''}`;
   document.querySelectorAll('[data-ar-select]').forEach(input=>input.addEventListener('change',event=>arToggleSelection(input.dataset.arSelect,event.target.checked)));
   const addSelected=document.getElementById('ar-add-selected');if(addSelected)addSelected.addEventListener('click',()=>arAddManyToList(arSelectedIds()));
   document.querySelectorAll('[data-ar-card]').forEach(card=>{const open=event=>{if(event.target.closest('button,a,input,select,label')) return;openArOpportunity(card.dataset.arCard);};card.addEventListener('click',open);card.addEventListener('contextmenu',event=>{if(event.target.closest('button,a,input,select,label'))return;event.preventDefault();arOpenContextMenu(card.dataset.arCard,event.clientX,event.clientY);});card.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openArOpportunity(card.dataset.arCard);}});});
   document.getElementById('radar-genre').addEventListener('change',event=>{S.radarGenre=event.target.value;S.radarShown=100;renderRadar();});
-  document.getElementById('radar-sort').addEventListener('change',event=>{S.radarSort=event.target.value;S.radarShown=100;renderRadar();});
+  document.querySelectorAll('[data-ar-sort]').forEach(button=>button.addEventListener('click',()=>{S.radarSort=button.dataset.arSort;S.radarShown=100;renderRadar();}));
   attachInfinite(()=>{if(S.radarShown>=filtered.length) return;S.radarShown=Math.min(filtered.length,S.radarShown+100);renderRadar();});
   hydrateArPlaylistCovers();
   hydrateArTrackCovers();
