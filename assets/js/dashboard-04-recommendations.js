@@ -1327,7 +1327,7 @@ function liveCardHTML(v,i){
   const now=liveNow(v.vid),peak24=livePeak24h(v.vid),peakAll=livePeak(v.vid);
   const chSubs=subsFor(v);
   return '<div class="vcard" onclick="openLiveIdx('+i+')">'+
-    '<div class="thumbwrap">'+wlStar('l',v.vid)+'<img loading="lazy" src="'+thumb(v.vid)+'" onerror="if(!this._f){this._f=1;this.src=\'https://i.ytimg.com/vi/'+v.vid+'/hqdefault.jpg\'}else this.style.visibility=\'hidden\'">'+
+    '<div class="thumbwrap"><img loading="lazy" src="'+thumb(v.vid)+'" onerror="if(!this._f){this._f=1;this.src=\'https://i.ytimg.com/vi/'+v.vid+'/hqdefault.jpg\'}else this.style.visibility=\'hidden\'">'+
       '<span class="vpm-flag" style="background:rgba(220,38,38,.94);color:#fff"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ff1a1a;box-shadow:0 0 0 0.8px rgba(255,255,255,.9);margin-right:2px"></span> '+fmtN(now)+' watching</span>'+
       '<span class="like-flag" style="display:none" data-likes="'+v.vid+'"></span>'+'</div>'+
     '<div class="vbody">'+
@@ -1472,7 +1472,7 @@ function chanHTML(){
 function chanCardHTML(c,i){
   return '<div class="vcard" onclick="openChanIdx('+i+')">'+
     '<div class="thumbwrap" style="height:auto;aspect-ratio:auto;padding:24px 16px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;background:linear-gradient(160deg,rgba(255,0,51,.12),rgba(255,0,51,.02))">'+
-      wlStar('c',normUrl(c.url))+chAva(c,68)+
+      chAva(c,68)+
       '<div style="text-align:center;max-width:100%"><div class="ttitle" style="white-space:normal">'+esc(c.name)+'</div></div>'+
     '</div>'+
     '<div class="vbody">'+
@@ -1493,7 +1493,7 @@ function chanListHTML(rows){
   }else{
     h='<table class="vtable"><thead><tr><th>Channel</th><th>Niche</th><th>Country</th><th>Subs</th><th>Subs per month</th><th>Total views</th><th>Views per year</th><th>Avg last 10</th><th>Uploads per month</th><th>Last upload</th></tr></thead><tbody>'+
       page.map((c,i)=>'<tr class="row" onclick="openChanIdx('+i+')">'+
-        '<td><div style="display:flex;align-items:center;gap:12px">'+chAva(c,64)+'<span class="ttitle">'+esc(c.name)+'</span>'+wlStar('c',normUrl(c.url)).replace('class="wl-star','style="margin-left:8px" class="wl-star inline')+'</div></td>'+
+        '<td><div style="display:flex;align-items:center;gap:12px">'+chAva(c,64)+'<span class="ttitle">'+esc(c.name)+'</span></div></td>'+
         '<td>'+gtag(c.niche)+'</td>'+
         '<td style="white-space:nowrap">'+flagOf(c.country)+' '+esc(c.country||'—')+'</td>'+
         '<td class="num vpmcell">'+fmtN(c.subs)+'</td>'+

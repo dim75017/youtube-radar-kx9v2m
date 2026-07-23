@@ -156,7 +156,7 @@ function listHTML(kind,rows){
 }
 function vcardHTML(kind,v,i){
   return '<div class="vcard" onclick="openIdx(\''+kind+'\','+i+')">'+
-    '<div class="thumbwrap">'+(v.vid?wlStar('v',v.vid):'')+scanNewBadge(v,false)+'<img loading="lazy" src="'+thumb(v.vid)+'" onerror="this.src=\'https://i.ytimg.com/vi/'+(v.vid||'')+'/hqdefault.jpg\';this.onerror=null;">'+
+    '<div class="thumbwrap">'+scanNewBadge(v,false)+'<img loading="lazy" src="'+thumb(v.vid)+'" onerror="this.src=\'https://i.ytimg.com/vi/'+(v.vid||'')+'/hqdefault.jpg\';this.onerror=null;">'+
       (v.vid?'<span class="like-flag" style="display:none" data-likes="'+v.vid+'"></span>':'')+
       (v.durH!=null?'<span class="dur">'+fmtDur(v.durH)+'</span>':'')+'</div>'+
     '<div class="vbody">'+

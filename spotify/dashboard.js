@@ -1322,7 +1322,7 @@ function arKnownContact(name){
 
 /* ---------- état ---------- */
 const S = {
-  view:'opps', back:null, palier:'100/0', sel:new Set(), wltab:'tracks', publishing:false, metricMode:'streams',
+  view:'opps', back:null, palier:'100/0', sel:new Set(), publishing:false, metricMode:'streams',
   q:'', statut:'all', min:0, period:'all', artist:-1, rel:'all', genres:new Set(),
   sort:{k:3, dir:-1}, shown:100,
   aq:'', asort:'streams', adir:-1, shownA:60, aseg:'all', agenres:new Set(),
@@ -1685,7 +1685,7 @@ function artistTableRows(rows){
     <tr data-basehot="${r[3]>=HOT?1:0}" class="${r[3]>=HOT||S.sel.has(r[6])?'hot':''}">
       <td class="selc"><input type="checkbox" class="ck sel-track" data-tid="${r[6]}" ${S.sel.has(r[6])?'checked':''}></td>
       <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
-      <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span> ${wlStar('t',r[6])}${r[7]?' <span class="badge new">'+T('détectée')+' '+r[7].slice(5)+'</span>':''}</td>
+      <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span>${r[7]?' <span class="badge new">'+T('détectée')+' '+r[7].slice(5)+'</span>':''}</td>
       <td class="num" title="${fmtFull(r[3])}">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</td>
       <td class="num">${streamStackHtml(w30.current,false,false)}</td>
       <td class="num">${streamStackHtml(w7.current,false,false)}</td>
@@ -1777,23 +1777,33 @@ function renderArtistModal(){
   if (sa) sa.addEventListener('change', ()=>{ if(sa.checked) rows.forEach(r=>S.sel.add(r[6])); else rows.forEach(r=>S.sel.delete(r[6])); updateSel(); });
 }
 
-/* ---------- Watchlist (épinglage tracks + artistes, localStorage) ---------- */
-function wlGet(){ try{ return Object.assign({t:[],a:[]}, JSON.parse(localStorage.getItem('sr_wl')||'{}')); }catch(e){ return {t:[],a:[]}; } }
-function wlSet(w){ try{ localStorage.setItem('sr_wl', JSON.stringify(w)); }catch(e){} }
-function wlHas(type,k){ return wlGet()[type].includes(k); }
-function toggleWL(type,k,ev){
-  if(ev) ev.stopPropagation();
-  const w=wlGet(); const i=w[type].indexOf(k);
-  if(i>=0) w[type].splice(i,1); else w[type].push(k);
-  wlSet(w);
-  const el=document.getElementById('c-watch'); if(el) el.textContent=w.t.length+w.a.length||'';
-  if(ev&&ev.currentTarget){ const on=w[type].includes(k); ev.currentTarget.classList.toggle('on',on); ev.currentTarget.textContent=on?'⭐':'☆'; if(on){ ev.currentTarget.classList.remove('pop'); void ev.currentTarget.offsetWidth; ev.currentTarget.classList.add('pop'); } }
-  if(S.view==='watch') render();
+/* ---------- Liste A&R (locale au navigateur, aucun e-mail n'est envoyé) ---------- */
+const AR_LIST_STORAGE='spotify_ar_outreach_list_v1';
+const AR_STATUSES={shortlisted:'À contacter',draft_ready:'Brouillon prêt',contacted:'Contacté',follow_up:'Relance à faire',closed:'Terminé'};
+function arListGet(){try{const raw=JSON.parse(localStorage.getItem(AR_LIST_STORAGE)||'{}');return raw&&typeof raw==='object'?raw:{};}catch(e){return {};}}
+function arListSet(items){try{localStorage.setItem(AR_LIST_STORAGE,JSON.stringify(items));}catch(e){}}
+function arListEntry(spotifyId){return arListGet()[spotifyId]||null;}
+function arListCount(){return Object.keys(arListGet()).length;}
+function arListHas(spotifyId){return Boolean(arListEntry(spotifyId));}
+function arSyncListCount(){const c=document.getElementById('c-ar-list');if(c)c.textContent=arListCount()||'';}
+function arAddToList(spotifyId,event){
+  if(event)event.stopPropagation();
+  const opportunity=arOpportunityRows().find(item=>item.spotifyId===spotifyId);if(!opportunity)return;
+  const items=arListGet();if(!items[spotifyId])items[spotifyId]={addedAt:new Date().toISOString(),status:'shortlisted',note:'',nextFollowUp:'',contactedAt:'',subject:'',body:''};
+  arListSet(items);arSyncListCount();
+  if(S.view==='ar-list')renderArList();else renderRadar();
 }
-function wlStar(type,k){
-  const on=wlHas(type,k);
-  return `<button class="wl-star ${on?'on':''}" title="${T('Ajouter / retirer de la watchlist')}" onclick="toggleWL('${type}','${String(k).replace(/'/g,"\\'")}',event)">${on?'⭐':'☆'}</button>`;
+function arRemoveFromList(spotifyId,event){if(event)event.stopPropagation();const items=arListGet();delete items[spotifyId];arListSet(items);arSyncListCount();render();}
+function arUpdateList(spotifyId,patch){const items=arListGet();if(!items[spotifyId])return;items[spotifyId]=Object.assign({},items[spotifyId],patch);arListSet(items);arSyncListCount();}
+function arFollowUpDate(days=7){const date=new Date();date.setDate(date.getDate()+days);return date.toISOString().slice(0,10);}
+function arPublicEmail(opportunity){const candidate=arPublicContactChannels(opportunity).find(item=>item.type==='email'&&item.value);return candidate?String(candidate.value):'';}
+function arOutreachDraft(opportunity){
+  const artist=(Array.isArray(opportunity.artists)?opportunity.artists.map(item=>item&&item.name).filter(Boolean)[0]:null)||opportunity.credit||'there';
+  const playlist=(arEditorialPlaylists(opportunity)[0]||{}).name||'our independent instrumental research';
+  return {subject:`About “${opportunity.title}”`,body:`Hi ${artist},\n\nWe discovered “${opportunity.title}” through ${playlist} while reviewing independent instrumental releases. The track stood out for its ${arGenreLabel(opportunity.genre)} direction and current audience signals.\n\nWe would love to learn more about your plans for the project and see whether a conversation could be useful. Would you be open to a short introduction?\n\nBest,\n[Your name]`};
 }
+function arMarkContacted(spotifyId){arUpdateList(spotifyId,{status:'contacted',contactedAt:new Date().toISOString(),nextFollowUp:arFollowUpDate()});renderArList();}
+function fmtDateTime(iso){if(!iso)return '—';const date=new Date(iso);return Number.isNaN(date.getTime())?'—':date.toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'numeric'});}
 function fmtDate(iso){ const m=(''+iso).match(/^(\d{4})-(\d{2})-(\d{2})/); return m?m[3]+'/'+m[2]+'/'+m[1]:(iso||'?'); }
 
 /* ---------- Fiche track (analytics) ---------- */
@@ -1898,7 +1908,6 @@ function openTrack(tid){
     ${trackOfferHtml(r)}
     <div style="display:flex;gap:10px;margin-top:14px">
       <a class="btn-back" style="margin:0;text-decoration:none" href="${trackUrl(r[6],r)}" target="_blank" rel="noopener">▶ ${T('Ouvrir sur Spotify')}</a>
-      <button class="chip" onclick="toggleWL('t','${r[6]}',event);openTrack('${r[6]}')">${wlHas('t',r[6])?'⭐ '+T('Épinglé'):'☆ '+T('Épingler')}</button>
     </div>
     <div class="tnote">${T("Les fenêtres Analytics utilisent uniquement l'historique quotidien et comparent des périodes de même durée. Le simulateur de rachat reste une estimation séparée.")}</div>`;
   bindMetricModeToggle(()=>openTrack(tid),box);
@@ -2517,12 +2526,15 @@ function arOpportunityCard(opportunity,index){
     <div class="ar-track-cover ${coverUrl?'has':''}"><span data-ar-track-cover-id="${coverUrl?'':esc(opportunity.spotifyId)}">♫</span>${coverUrl?`<img src="${esc(coverUrl)}" alt="" loading="lazy" onerror="this.remove()">`:''}</div>
     <div class="ar-opp-main"><div class="ar-opp-title">${esc(opportunity.title)}</div><div class="ar-opp-artist">${esc(opportunity.credit)}</div><div class="ar-opp-tags"><span class="ar-mini-tag good">${esc(arRightsShortLabel(opportunity.rights))}</span><span class="ar-mini-tag">${esc(genre)}</span>${opportunity.status==='needs_listen'?'<span class="ar-mini-tag">À valider à l’écoute</span>':''}</div><div class="ar-card-bottom">${arPlaylistPreviewHtml(opportunity)}${arContactHtml(opportunity,true)}</div></div>
     <div class="ar-opp-metrics"><div class="ar-opp-metric total"><div class="l">Streams total</div><div class="v">${arMetricCompact(total)}</div></div><div class="ar-opp-metric"><div class="l">30 jours</div><div class="v">${arMetricCompact(d30)}</div></div><div class="ar-opp-metric"><div class="l">7 jours</div><div class="v">${arMetricCompact(d7)}</div></div><div class="ar-opp-metric current"><div class="l">24 heures</div><div class="v ${d1!=null&&d1>0?'up':''}">${arMetricCompact(d1,true)}</div></div><div class="ar-opp-metric listeners"><div class="l">Auditeurs/mois</div><div class="v">${listeners}</div></div></div>
-    <div class="ar-score-box"><div class="ar-score-value">${Math.round(opportunity.score)}</div></div>
+    <div class="ar-score-box"><div class="ar-score-value">${Math.round(opportunity.score)}</div><button class="ar-list-toggle ${arListHas(opportunity.spotifyId)?'in-list':''}" onclick="${arListHas(opportunity.spotifyId)?`arRemoveFromList('${esc(opportunity.spotifyId)}',event)`: `arAddToList('${esc(opportunity.spotifyId)}',event)`}">${arListHas(opportunity.spotifyId)?'Retirer':'＋ Liste'}</button></div>
   </article>`;
 }
 function arScoreLine(label,value,max){
   const width=Math.max(0,Math.min(100,(Number(value)||0)/max*100));
   return `<div class="ar-score-line"><span>${esc(label)}</span><span class="ar-score-track"><span class="ar-score-fill" style="width:${width}%"></span></span><span class="n">${Math.round(Number(value)||0)}/${max}</span></div>`;
+}
+function arWorkspaceTabs(active){
+  return `<div class="ar-workspace-tabs"><button class="${active==='radar'?'on':''}" onclick="goTab('radar')">Opportunités <span>${fmtFull(arOpportunityRows().length)}</span></button><button class="${active==='list'?'on':''}" onclick="goTab('ar-list')">Ma liste <span>${arListCount()}</span></button></div>`;
 }
 function openArOpportunity(spotifyId){
   const opportunity=arOpportunityRows().find(item=>item.spotifyId===spotifyId); if(!opportunity) return;
@@ -2530,13 +2542,15 @@ function openArOpportunity(spotifyId){
   const box=document.getElementById('ar-body'), reasonItems=arOpportunityReasonItems(opportunity);
   const total=arOpportunityTotal(opportunity), d30=arOpportunityMetric(opportunity,30), d7=arOpportunityMetric(opportunity,7), d1=arOpportunityMetric(opportunity,1);
   const confidence=arConfidenceLabel(opportunity.scoreConfidence);
+  const isListed=arListHas(spotifyId);
   box.className='tmbox ambox';
   box.innerHTML=`<div class="thd"><div class="av-sm">♫</div><div style="min-width:0;flex:1"><h3>${esc(opportunity.title)}</h3><div class="tar ar-detail-artists">${arArtistLinksHtml(opportunity)}<span class="ar-detail-artist-separator"> · </span>opportunité de track</div></div><button class="tclose" onclick="closeArModal()">✕</button></div>
     ${spotifyTrackEmbedHtml(spotifyId,opportunity.title,'ar-opportunity-player')}
     <div class="perf-grid">${totalMetricCardHtml('Streams',total,true)}${perfCardHtml(streamMetricLabel(30),{current:d30,currentReady:d30!=null,comparisonReady:false,total:1},true)}${perfCardHtml(streamMetricLabel(7),{current:d7,currentReady:d7!=null,comparisonReady:false,total:1},true)}${perfCardHtml(streamMetricLabel(1),{current:d1,currentReady:d1!=null,comparisonReady:false,total:1},true)}</div>
     <div class="analytics-section"><h4>Pourquoi cette musique est dans la liste</h4><div class="ar-detail-reasons">${reasonItems.slice(0,4).map(item=>`<div class="ar-detail-reason"><span class="ar-detail-reason-icon">${esc(item.icon)}</span><span>${esc(item.reason)}</span></div>`).join('')}</div></div>
     <div class="analytics-section"><h4>Score track <span class="analytics-note">${Math.round(opportunity.score)}/100 · ${esc(confidence)}</span></h4><div class="ar-score-breakdown">${arScoreLine('Momentum',opportunity.scoreMomentum,35)}${arScoreLine('Signal éditorial',opportunity.scoreEditorial,20)}${arScoreLine('Traction',opportunity.scoreTraction,25)}${arScoreLine('Récence',opportunity.scoreRecency,15)}${arScoreLine('Relation',opportunity.scoreRelationship,5)}</div></div>
-    <div class="tgrid ar-detail-facts"><div class="tg ar-fact-plain"><div class="v">🎼 ${esc(arGenreLabel(opportunity.genre))}</div></div><div class="tg ar-fact-plain"><div class="v">©️ ${esc(arRightsShortLabel(opportunity.rights))}</div></div><div class="tg ar-detail-listeners"><div class="l">👥 Auditeurs mensuels</div><div class="v">${opportunity.artistMonthlyListeners==null?'—':fmt(opportunity.artistMonthlyListeners)}</div></div><div class="tg ar-contact-fact"><div class="l">✉️ E-mail professionnel & plateformes</div><div class="v">${arContactHtml(opportunity,false)}</div></div><div class="tg"><div class="l">🗓️ Sortie</div><div class="v">${opportunity.releaseDate?fmtDate(opportunity.releaseDate.slice(0,10)):'—'}</div></div><div class="tg"><div class="l">🏷️ Label / distributeur</div><div class="v" style="font-size:12px;line-height:1.4">${esc(opportunity.label||opportunity.distributor||'—')}</div></div></div>`;
+    <div class="tgrid ar-detail-facts"><div class="tg ar-fact-plain"><div class="v">🎼 ${esc(arGenreLabel(opportunity.genre))}</div></div><div class="tg ar-fact-plain"><div class="v">©️ ${esc(arRightsShortLabel(opportunity.rights))}</div></div><div class="tg ar-detail-listeners"><div class="l">👥 Auditeurs mensuels</div><div class="v">${opportunity.artistMonthlyListeners==null?'—':fmt(opportunity.artistMonthlyListeners)}</div></div><div class="tg ar-contact-fact"><div class="l">✉️ E-mail professionnel & plateformes</div><div class="v">${arContactHtml(opportunity,false)}</div></div><div class="tg"><div class="l">🗓️ Sortie</div><div class="v">${opportunity.releaseDate?fmtDate(opportunity.releaseDate.slice(0,10)):'—'}</div></div><div class="tg"><div class="l">🏷️ Label / distributeur</div><div class="v" style="font-size:12px;line-height:1.4">${esc(opportunity.label||opportunity.distributor||'—')}</div></div></div>
+    <div class="ar-detail-actions"><button class="btn-back" onclick="${isListed?`arRemoveFromList('${esc(spotifyId)}',event);openArOpportunity('${esc(spotifyId)}')`:`arAddToList('${esc(spotifyId)}',event);openArOpportunity('${esc(spotifyId)}')`}">${isListed?'Retirer de ma liste':'＋ Ajouter à ma liste'}</button>${isListed?`<button class="chip" onclick="closeArModal();goTab('ar-list')">Ouvrir le suivi</button>`:''}</div>`;
   document.getElementById('ar-modal').style.display='flex';
 }
 function renderRadar(){
@@ -2547,7 +2561,7 @@ function renderRadar(){
   }
   const filtered=arOpportunityFiltered(all), rows=filtered.slice(0,S.radarLimit);
   const genres=[...new Set(all.map(item=>item.genre).filter(Boolean))].sort((a,b)=>arGenreLabel(a).localeCompare(arGenreLabel(b)));
-  V.innerHTML=`<div class="page-head"><div><h2>Radar A&R · musiques instrumentales</h2></div></div>
+  V.innerHTML=`<div class="page-head"><div><h2>Radar A&R · musiques instrumentales</h2></div></div>${arWorkspaceTabs('radar')}
     <div class="ar-filterbar"><span class="ar-filter-spacer"></span><select id="radar-genre"><option value="all">Tous les genres</option>${genres.map(genre=>`<option value="${esc(genre)}" ${S.radarGenre===genre?'selected':''}>${esc(arGenreLabel(genre))}</option>`).join('')}</select><select id="radar-sort"><option value="score" ${S.radarSort==='score'?'selected':''}>Trier : priorité A&R</option><option value="momentum" ${S.radarSort==='momentum'?'selected':''}>Trier : 24 h</option><option value="acceleration" ${S.radarSort==='acceleration'?'selected':''}>Trier : accélération 7 j</option><option value="streams" ${S.radarSort==='streams'?'selected':''}>Trier : streams total</option><option value="listeners" ${S.radarSort==='listeners'?'selected':''}>Trier : audience artiste</option><option value="recent" ${S.radarSort==='recent'?'selected':''}>Trier : récence</option></select><select id="radar-limit"><option value="100" ${S.radarLimit===100?'selected':''}>Afficher 100</option><option value="250" ${S.radarLimit===250?'selected':''}>Afficher 250</option><option value="500" ${S.radarLimit===500?'selected':''}>Afficher 500</option><option value="1000" ${S.radarLimit===1000?'selected':''}>Afficher 1 000</option></select></div>
     <div class="ar-opportunity-list">${rows.map(arOpportunityCard).join('')}</div>${rows.length===0?`<div class="ar-empty-state">Aucune track ne correspond à ce filtre. Les critères restent stricts et aucune donnée manquante n’est inventée.</div>`:''}${filtered.length>rows.length?`<div class="analytics-note" style="text-align:center;margin-top:12px">${fmtFull(rows.length)} affichées sur ${fmtFull(filtered.length)} · augmente « Afficher » pour voir la suite.</div>`:''}`;
   document.querySelectorAll('[data-ar-card]').forEach(card=>{const open=event=>{if(event.target.closest('button,a,input,select')) return;openArOpportunity(card.dataset.arCard);};card.addEventListener('click',open);card.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openArOpportunity(card.dataset.arCard);}});});
@@ -2555,6 +2569,35 @@ function renderRadar(){
   document.getElementById('radar-sort').addEventListener('change',event=>{S.radarSort=event.target.value;renderRadar();});
   document.getElementById('radar-limit').addEventListener('change',event=>{S.radarLimit=Number(event.target.value)||100;renderRadar();});
   hydrateArPlaylistCovers();
+  hydrateArTrackCovers();
+}
+
+function arCopyText(value){
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(value).then(()=>alert('Brouillon copié.')).catch(()=>prompt('Copiez ce brouillon :',value));}
+  else prompt('Copiez ce brouillon :',value);
+}
+function openArOutreach(spotifyId){
+  const opportunity=arOpportunityRows().find(item=>item.spotifyId===spotifyId);const entry=arListEntry(spotifyId);if(!opportunity||!entry)return;
+  if(!arContactEligible(opportunity)){alert('Ce titre ne peut pas être contacté : les garde-fous instrumental, IA, droits ou identité ne sont pas tous validés.');return;}
+  const draft=arOutreachDraft(opportunity);const email=arPublicEmail(opportunity);const subject=entry.subject||draft.subject;const body=entry.body||draft.body;
+  const box=document.getElementById('ar-body');box.className='tmbox ambox ar-composer';
+  box.innerHTML=`<div class="thd"><div class="av-sm">✉️</div><div style="min-width:0;flex:1"><h3>Préparer le contact</h3><div class="tar">${esc(opportunity.title)} · ${esc(opportunity.credit)}</div></div><button class="tclose" onclick="closeArModal()">✕</button></div>
+    <div class="ar-outreach-note">Brouillon local : aucun e-mail n’est envoyé ni suivi depuis le radar. L’ouverture se fait dans votre messagerie, après validation humaine.</div>
+    <label class="ar-form-label">Destinataire public<input id="ar-outreach-email" value="${esc(email)}" placeholder="E-mail public à enrichir" ${email?'readonly':''}></label>
+    <label class="ar-form-label">Objet<input id="ar-outreach-subject" value="${esc(subject)}"></label>
+    <label class="ar-form-label">Message<textarea id="ar-outreach-body">${esc(body)}</textarea></label>
+    <div class="ar-actions"><button class="chip" id="ar-copy-draft">Copier le message</button>${email?`<button class="btn-back" id="ar-open-mail">Ouvrir dans ma messagerie</button><button class="chip" id="ar-mark-contacted">Marquer comme contacté</button>`:`<span class="analytics-note">E-mail public absent : ajoutez-le seulement après vérification manuelle.</span>`}</div>`;
+  const save=()=>arUpdateList(spotifyId,{subject:document.getElementById('ar-outreach-subject').value,body:document.getElementById('ar-outreach-body').value,status:'draft_ready'});
+  document.getElementById('ar-copy-draft').addEventListener('click',()=>{save();arCopyText(`Subject: ${document.getElementById('ar-outreach-subject').value}\n\n${document.getElementById('ar-outreach-body').value}`);});
+  const openMail=document.getElementById('ar-open-mail');if(openMail)openMail.addEventListener('click',()=>{save();const currentEmail=document.getElementById('ar-outreach-email').value.trim();window.location.href=`mailto:${encodeURIComponent(currentEmail)}?subject=${encodeURIComponent(document.getElementById('ar-outreach-subject').value)}&body=${encodeURIComponent(document.getElementById('ar-outreach-body').value)}`;});
+  const mark=document.getElementById('ar-mark-contacted');if(mark)mark.addEventListener('click',()=>{arUpdateList(spotifyId,{status:'contacted',contactedAt:new Date().toISOString(),nextFollowUp:arFollowUpDate()});closeArModal();renderArList();});
+  document.getElementById('ar-modal').style.display='flex';
+}
+function renderArList(){
+  const saved=arListGet();const rows=Object.keys(saved).map(id=>({opportunity:arOpportunityRows().find(item=>item.spotifyId===id),entry:saved[id]})).filter(item=>item.opportunity);
+  V.innerHTML=`<div class="page-head"><div><h2>Ma liste A&R</h2></div></div>${arWorkspaceTabs('list')}
+    <div class="ar-list-note">Sélection et suivi conservés dans ce navigateur. Les e-mails restent des brouillons : l’envoi et toute mesure d’ouverture passent par votre messagerie ou CRM, jamais automatiquement ici.</div>
+    ${rows.length?`<div class="ar-follow-list">${rows.map(({opportunity,entry})=>{const email=arPublicEmail(opportunity),coverUrl=arTrackCoverUrl(opportunity);return `<article class="ar-follow-card"><div class="ar-track-cover ${coverUrl?'has':''}"><span>♫</span>${coverUrl?`<img src="${esc(coverUrl)}" alt="" loading="lazy">`:''}</div><div class="ar-follow-main"><button class="ar-follow-title" onclick="openArOpportunity('${esc(opportunity.spotifyId)}')">${esc(opportunity.title)}</button><div>${esc(opportunity.credit)} · ${esc(arGenreLabel(opportunity.genre))}</div><div class="ar-follow-contact">${email?`✉️ ${esc(email)}`:'✉️ E-mail public à enrichir'} ${arContactHtml(opportunity,true)}</div></div><label class="ar-follow-field">Statut<select onchange="arUpdateList('${esc(opportunity.spotifyId)}',{status:this.value});renderArList()">${Object.entries(AR_STATUSES).map(([key,label])=>`<option value="${key}" ${entry.status===key?'selected':''}>${label}</option>`).join('')}</select></label><label class="ar-follow-field">Relance<input type="date" value="${esc(entry.nextFollowUp||'')}" onchange="arUpdateList('${esc(opportunity.spotifyId)}',{nextFollowUp:this.value})"></label><div class="ar-follow-actions"><button class="chip" onclick="openArOutreach('${esc(opportunity.spotifyId)}')">Préparer e-mail</button>${email?`<button class="chip" onclick="arMarkContacted('${esc(opportunity.spotifyId)}')">Contacté</button>`:''}<button class="ar-remove" onclick="arRemoveFromList('${esc(opportunity.spotifyId)}',event)">Retirer</button></div></article>`;}).join('')}</div>`:`<div class="ar-empty-state">Aucune track sélectionnée. Dans les opportunités, clique sur « ＋ Liste » pour constituer ton suivi A&R.</div>`}`;
   hydrateArTrackCovers();
 }
 
@@ -2634,7 +2677,7 @@ function renderOpps(){
         <tr data-basehot="${r[3]>=HOT?1:0}" class="${r[3]>=HOT||(ag&&S.sel.has(r[6]))?'hot':''}">
           ${ag?`<td class="selc"><input type="checkbox" class="ck sel-track" data-tid="${r[6]}" ${S.sel.has(r[6])?'checked':''}></td>`:''}
           <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
-          <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span> ${wlStar('t',r[6])}</td>
+          <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span></td>
           <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
           <td>${classificationCellHtml(classification)}</td>
           <td class="num" title="${fmtFull(r[3])}">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</td>
@@ -2656,7 +2699,7 @@ function renderOpps(){
     ${slice.map(r=>{ const w1=trackWindow(r,1), w7=trackWindow(r,7), w30=trackWindow(r,30), classification=trackClassification(r); return `
     <div class="acard plcard grid-clean" onclick="openTrack('${r[6]}')">
       ${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}
-      <div class="nm">${esc(r[1])} ${wlStar('t',r[6])}</div>
+      <div class="nm">${esc(r[1])}</div>
       <div style="font-size:11px;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span class="ar" onclick="event.stopPropagation();goArtist(${r[0]})">${esc(A[r[0]][0])}</span>
         <span class="genre-main">${esc(classification.genre)}</span>
@@ -2797,7 +2840,6 @@ function renderArtists(){
   <div class="acards">
     ${slice.map(g=>{ const classification=artistClassification(g); return `
       <div class="acard plcard grid-clean" onclick="goArtist(${g.i})">
-        ${wlStar('a',g.name)}
         ${artistCoverHtml(g)}
         <div class="nm">${esc(g.name)}</div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:3px 0 9px"><span class="genre-main">${esc(classification.genre)}</span><span class="genre-sub">${esc(classification.instrumental)}</span></div>
@@ -2835,7 +2877,7 @@ function renderArtists(){
         return `
         <tr onclick="goArtist(${g.i})" style="cursor:pointer">
           <td class="covtd">${artistCoverHtml(g)}</td>
-          <td>${esc(g.name)} ${wlStar('a',g.name)}</td>
+          <td>${esc(g.name)}</td>
           <td>${classificationCellHtml(classification)}</td>
           <td style="white-space:nowrap"><div>${segBadge(g)}</div><div style="font-size:11px;color:var(--dim);margin-top:3px">${g.lofi||0} ${T('tracks chez Lofi')}</div></td>
           <td class="num">${streamStackHtml(g.streams,false,false)}</td>
@@ -2918,7 +2960,6 @@ function renderNew(){
       <tbody>
       ${slice.map(r=>{const w30=trackWindow(r,30),w7=trackWindow(r,7),w1=trackWindow(r,1);return `
         <tr class="${r[3]>=HOT?'hot':''}">
-          <td>${wlStar('t',r[6])}</td>
           <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
           <td style="white-space:nowrap;font-variant-numeric:tabular-nums">${fmtDate(r[2])}</td>
           <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span>${r[7]?' <span class="badge new">'+T('détectée')+'</span>':''}</td>
@@ -3394,7 +3435,7 @@ function labelModalRows(rows){
     <tr data-basehot="${r[3]>=HOT?1:0}" class="${r[3]>=HOT||S.sel.has(r[6])?'hot':''}">
       <td class="selc"><input type="checkbox" class="ck sel-track" data-tid="${r[6]}" ${S.sel.has(r[6])?'checked':''}></td>
       <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
-      <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span> ${wlStar('t',r[6])}</td>
+      <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span></td>
       <td><span class="ar" onclick="closeArtistModal();goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
       <td class="num" title="${fmtFull(r[3])}">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</td>
       <td class="num">${streamStackHtml(w30.current,false,false)}</td>
@@ -3561,7 +3602,7 @@ function render(){
   else if (S.view==='artists') renderArtists();
   else if (S.view==='playlists') renderPlaylists();
   else if (S.view==='labels') renderLabels();
-  else if (S.view==='watch') renderWatch();
+  else if (S.view==='ar-list') renderArList();
   attachCovers();
   if (document.getElementById('artist-modal').style.display==='flex'){
     if (S.labelKey) renderLabelModal();
@@ -3575,7 +3616,7 @@ document.getElementById('c-opps').textContent = fmt(R.length);
 document.getElementById('c-art').textContent = withTracks.length;
 (function(){ const c=document.getElementById('c-pl'); if(c && PLmeta) c.textContent = fmt(PLmeta.playlists_10k_plus); })();
 (function(){ const c=document.getElementById('c-lb'); if(c && LBmeta) c.textContent = fmt(LBrows.length); })();
-(function(){ const w=wlGet(); const c=document.getElementById('c-watch'); if(c) c.textContent = (w.t.length+w.a.length)||''; })();
+(function(){ arSyncListCount(); })();
 function fmtTs(ts){
   const raw=''+(ts||'');
   if(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(raw)){
@@ -3629,7 +3670,7 @@ document.getElementById('lang-btn').addEventListener('click', ()=>{
 /* restauration de la vue après F5 (hash d'URL) */
 const initV = location.hash.slice(1);
 const initialView = initV==='opps' ? 'radar' : initV==='tracks' ? 'opps' : initV;
-if (['radar','opps','artists','watch','playlists','labels','tracks'].includes(initV)){
+if (['radar','opps','ar-list','artists','playlists','labels','tracks'].includes(initV)){
   S.view = initialView;
   document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('active', x.dataset.v===initialView));
 }else if(initV==='overview'){

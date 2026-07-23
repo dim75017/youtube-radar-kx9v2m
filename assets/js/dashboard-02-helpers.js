@@ -668,7 +668,6 @@ const VIEWS=[
   {id:'recos',label:'Recommendations',emo:'💡',cnt:()=>DATA?String(activeDailyRecommendationCount()):''},
   {id:'roadmap',label:'Roadmap',emo:'🗓️',cnt:()=>DATA?String(DATA.roadmap.length):''},
   {id:'ana',label:'Analysis',emo:'🔬',cnt:()=>DATA&&DATA.ours?String(DATA.ours.filter(v=>v.pub&&(v.durH==null||v.durH>=0.15)).length):''},
-  {id:'watch',label:'Watchlist',emo:'⭐',cnt:()=>{const w=wlGet();return String(w.v.length+w.l.length+w.c.length);}},
   {id:'kw',label:'Keywords',emo:'🔎',small:1,cnt:()=>''}
 ];
 function renderNav(){
@@ -683,6 +682,7 @@ function go(r){route=r;try{history.replaceState(null,'','#'+r);}catch(e){}render
 }
 function render(){
   if(!DATA)return;
+  if(route==='watch'){route='dashboard';try{history.replaceState(null,'','#dashboard');}catch(e){}renderNav();}
   const t=document.getElementById('view-title'),s=document.getElementById('view-sub'),el=document.getElementById('view');
   closeDrawer();
   s.textContent='';
@@ -692,7 +692,6 @@ function render(){
   else if(route==='recos'){t.textContent='Recommendations';el.innerHTML=recosHTML();}
   else if(route==='roadmap'){t.textContent='Roadmap';el.innerHTML=roadmapHTML();}
   else if(route==='ana'){t.innerHTML='Analysis <span class="pill">OUR VIDEOS</span>';el.innerHTML=anaHTML();}
-  else if(route==='watch'){t.innerHTML='Watchlist <span class="pill">⭐</span>';el.innerHTML=watchHTML();}
   else if(route==='live'){t.innerHTML='Livestreams <span class="pill">HOURLY SCAN</span>';el.innerHTML=livesHTML();}
   else if(route==='chan'){t.innerHTML='Channels <span class="pill">MONTHLY SCAN</span>';el.innerHTML=chanHTML();}
   else if(route==='kw'){t.textContent='Keywords';el.innerHTML=kwHTML();}
