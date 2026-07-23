@@ -27,6 +27,6 @@ assert.match(coverage, /Catalogue vivant/);
 assert.match(coverage, /A&R reste strict/);
 assert.match(index, /Spotify_Browse_Catalogue_data\.js\?payload=/);
 assert.match(index, /discovery\.css\?v=20260722-unified-catalogue-v1/);
-assert.match(index, /dashboard\.js\?v=20260723-ar-density-v1/);
+assert.match(index, /dashboard\.js\?v=20260723-ar-density-v2/);
 assert.match(index, /coverage\.js\?v=20260722-unified-catalogue-v1/);
 console.log('spotify unified catalogue guardrails: OK');
