@@ -123,7 +123,7 @@ if (card.includes('arContactHtml(opportunity,true)')) throw new Error('Platform 
 for (const label of ['<div class="l">Sortie</div>', '<div class="l">Streams total</div>', '<div class="l">30 jours</div>', '<div class="l">7 jours</div>', '<div class="l">24 heures</div>', '<div class="l">Auditeurs/mois</div>']) {
   if (card.includes(label)) throw new Error(`A&R card metric label must live only in the column bar: ${label}`);
 }
-if (!renderRadar.includes('page-head ar-radar-head') || renderRadar.includes('ar-filter-spacer') || !renderRadar.includes('ar-filter-section')) throw new Error('A&R filters must sit compactly under the title on the left');
+if (!renderRadar.includes('page-head ar-radar-head') || renderRadar.includes('ar-filter-spacer') || !renderRadar.includes('ar-filterbar-simple') || renderRadar.includes('ar-filter-section')) throw new Error('A&R keeps only the compact genre filter under the title');
 const editorialCard = source.slice(source.indexOf('function arEditorialCardHtml'), source.indexOf('const AR_PLAYLIST_COVER_CACHE'));
 if (editorialCard.includes('${fmtFull(count)}')) throw new Error('Editorial placement count must not occupy the right edge of cards');
 for (const required of ['function hydrateArTrackCovers()', 'function arPublicContactChannels(', 'arOutreachDrafts(', 'public_contacts']) {

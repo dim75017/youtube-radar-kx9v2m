@@ -16,5 +16,5 @@ for(const required of [
 ]) if(!dashboard.includes(required)) throw new Error('Spotify update status is incomplete: '+required);
 for(const required of ['.btn-spotify-update-status','.spotify-update-status-panel','.spotify-update-status-line'])
   if(!css.includes(required)) throw new Error('Spotify update status styling missing: '+required);
-if(!index.includes('dashboard.js?v=20260724-selection-artist-header-v1')) throw new Error('Spotify status cache version is stale');
+if(!index.includes('dashboard.js?v=20260724-opportunity-layout-v1')) throw new Error('Spotify status cache version is stale');
 console.log('spotify update status: ok');

@@ -2916,7 +2916,10 @@ function hydrateArArtistAvatars(){
 }
 function arColumnBarHtml(){
   const choices=[['score','Note'],['artist','Artiste'],['recent','Sortie'],['genre','Genre'],['streams','Streams total'],['streams30','30 jours'],['streams7','7 jours'],['momentum','24 heures'],['listeners','Auditeurs/mois'],['editorial','Éditoriales']];
-  return `<div class="ar-columnbar" role="toolbar" aria-label="Trier les opportunités dans les deux sens">${choices.map(([value,label])=>{const active=S.radarSort===value,dir=active?(S.radarSortDir===1?'asc':'desc'):'';return `<button type="button" data-ar-sort="${value}" class="${active?'on':''} ${dir}" title="Trier ${label.toLowerCase()} dans les deux sens"><span>${label}</span>${sortTriangleIndicator(active,S.radarSortDir)}</button>`;}).join('')}</div>`;
+  const button=([value,label])=>{const active=S.radarSort===value,dir=active?(S.radarSortDir===1?'asc':'desc'):'';return `<button type="button" data-ar-sort="${value}" class="${active?'on':''} ${dir}" title="Trier ${label.toLowerCase()} dans les deux sens"><span>${label}</span>${sortTriangleIndicator(active,S.radarSortDir)}</button>`;};
+  // The cover has no sortable value. Keep its explicit spacer so the header
+  // stays aligned with the row instead of squeezing Artiste into that slot.
+  return `<div class="ar-columnbar" role="toolbar" aria-label="Trier les opportunités dans les deux sens">${button(choices[0])}<span class="ar-columnbar-cover-spacer" aria-hidden="true"></span>${choices.slice(1).map(button).join('')}</div>`;
 }
 function arGenreSelectHtml(genres){
   const visual=S.radarGenre==='all'?{emoji:'🎼',color:'#a7f3d0'}:arGenreVisual(S.radarGenre);
@@ -2931,7 +2934,7 @@ function renderRadar(){
   const filtered=arOpportunityFiltered(all), rows=filtered.slice(0,S.radarShown);
   const genres=[...new Set(all.map(item=>item.genre).filter(Boolean))].sort((a,b)=>arGenreLabel(a).localeCompare(arGenreLabel(b)));
   const selectedIds=arSelectedIds();
-  V.innerHTML=`<div class="page-head ar-radar-head"><div><h2>Opportunités</h2><section class="ar-filter-section" aria-label="Filtres des opportunités"><span class="ar-filter-section-label">Filtres</span><div class="ar-filterbar">${arGenreSelectHtml(genres)}</div></section></div></div>${arColumnBarHtml()}
+  V.innerHTML=`<div class="page-head ar-radar-head"><div><h2>Opportunités</h2><div class="ar-filterbar ar-filterbar-simple">${arGenreSelectHtml(genres)}</div></div></div>${arColumnBarHtml()}
     <div class="ar-opportunity-list">${rows.map(arOpportunityCard).join('')}</div>${rows.length===0?`<div class="ar-empty-state">Aucune track ne correspond à ce filtre. Les critères restent stricts et aucune donnée manquante n’est inventée.</div>`:''}${sentinel(filtered.length-rows.length)}${selectedIds.length?`<div class="ar-selection-float" role="status" aria-live="polite"><span><b>${selectedIds.length}</b> track${selectedIds.length>1?'s':''} sélectionnée${selectedIds.length>1?'s':''}</span><button id="ar-add-selected" type="button">⭐ Ajouter à la sélection</button></div>`:''}`;
   document.querySelectorAll('[data-ar-select]').forEach(input=>input.addEventListener('change',event=>arToggleSelection(input.dataset.arSelect,event.target.checked)));
   const addSelected=document.getElementById('ar-add-selected');if(addSelected)addSelected.addEventListener('click',()=>arAddManyToList(arSelectedIds()));

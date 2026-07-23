@@ -45,6 +45,6 @@ const cardStart = dashboard.indexOf('function arSelectionArtistCardHtml(group){'
 const cardEnd = dashboard.indexOf('\nfunction arSelectionEconomics(group){', cardStart);
 const card = dashboard.slice(cardStart, cardEnd);
 assert.ok(card.indexOf('ar-artist-actions') < card.indexOf('arSelectionStatusHtml(artist.key)'), 'Artist status must render after the message action, at the far right.');
-assert.match(index, /dashboard\.js\?v=20260724-selection-artist-header-v1/);
+assert.match(index, /dashboard\.js\?v=20260724-opportunity-layout-v1/);
 
 console.log('spotify selection artist offers/status: OK');
