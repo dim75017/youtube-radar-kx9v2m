@@ -16,6 +16,7 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("for poll in $(seq 1 160); do", self.workflow)
         self.assertIn('if [[ "$poll" == "160" ]]; then', self.workflow)
         self.assertIn("sleep 15", self.workflow)
+        self.assertIn("for poll in $(seq 1 12); do", self.workflow)
 
     def test_missing_secondary_actions_run_is_not_a_blocker(self):
         self.assertIn("CURRENT_RUN_ID: ${{ github.run_id }}", self.workflow)
