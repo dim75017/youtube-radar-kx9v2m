@@ -85,9 +85,10 @@ const detailStart = source.indexOf('function openArOpportunity(spotifyId){');
 const detailEnd = source.indexOf('\nfunction renderRadar(){', detailStart);
 if (detailStart < 0 || detailEnd < 0) throw new Error('A&R opportunity detail function was not found');
 const detail = source.slice(detailStart, detailEnd);
-for (const required of ['<div class="l">Genre</div>', '<div class="l">Type</div>', 'ar-self-release-type']) {
+for (const required of ['<div class="l">Genre</div>', 'arDetailEditorialPlaylistsHtml(opportunity)', 'typeFact.remove()', "reasonsSection.querySelector('h4').textContent='Pourquoi cette musique'"]) {
   if (!detail.includes(required)) throw new Error(`A&R detail fact is missing: ${required}`);
 }
+if (!source.includes('function arDetailEditorialPlaylistsHtml(opportunity)')) throw new Error('A&R detail must render editorial playlists with their own compact cards');
 for (const removed of ['Score track', 'E-mail professionnel & plateformes', 'Label / distributeur']) {
   if (detail.includes(removed)) throw new Error(`Removed A&R detail block is still rendered: ${removed}`);
 }

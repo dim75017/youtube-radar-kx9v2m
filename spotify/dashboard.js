@@ -2465,6 +2465,24 @@ function arEditorialPlaylistEvidenceHtml(opportunity){
   }).join('');
   return `<div class="analytics-section"><h4>Présence en playlists éditoriales <span class="analytics-note">${fmtFull(playlists.length)} confirmée${playlists.length>1?'s':''}</span></h4><div class="ar-playlist-evidence-list">${rows}</div></div>`;
 }
+function arDetailEditorialPlaylistsHtml(opportunity){
+  const playlists=arEditorialPlaylists(opportunity);
+  if(!playlists.length) return '';
+  const cards=playlists.map((playlist,index)=>{
+    const playlistId=String(playlist.spotifyId||'').trim();
+    const mini=arEditorialMiniData(playlist);
+    const name=playlist.name||playlistId||'Playlist editoriale';
+    const imageUrl=String(playlist.imageUrl||playlist.image_url||'').trim();
+    const followers=mini.followers==null||mini.followers<=0?'—':fmtFull(mini.followers)+' followers';
+    const tracks=mini.tracks==null||mini.tracks<=0?'—':fmtFull(mini.tracks)+' tracks';
+    const genre=mini.genre?arGenreLabel(mini.genre):'—';
+    const position=playlist.position==null?'':` · #${Math.round(playlist.position)}`;
+    const cover=`<span class="ar-detail-editorial-cover">${imageUrl?`<img src="${esc(imageUrl)}" alt="" loading="lazy" onerror="this.remove()">`:''}<span class="ar-playlist-fallback" data-ar-playlist-id="${esc(playlistId)}" data-ar-playlist-slot="detail-${index}">♫</span></span>`;
+    const content=`${cover}<span class="ar-detail-editorial-copy"><strong>${esc(name)}</strong><small>${esc(followers)} · ${esc(tracks)} · ${esc(genre)}${esc(position)}</small></span>`;
+    return playlistId?`<a class="ar-detail-editorial" href="https://open.spotify.com/playlist/${esc(playlistId)}" target="_blank" rel="noopener">${content}</a>`:`<div class="ar-detail-editorial">${content}</div>`;
+  }).join('');
+  return `<div class="analytics-section ar-detail-editorials"><h4>Playlists éditoriales <span class="analytics-note">${fmtFull(playlists.length)}</span></h4><div class="ar-detail-editorial-list">${cards}</div></div>`;
+}
 function arReasonRank(code){
   return (code==='streams_24h'||/^streams_24h_/.test(code))?0
     : code==='acceleration_7d'?1
@@ -2719,7 +2737,17 @@ function openArOpportunity(spotifyId){
     <div class="analytics-section"><h4>Pourquoi cette musique est dans la liste</h4><div class="ar-detail-reasons">${reasonItems.slice(0,4).map(item=>`<div class="ar-detail-reason"><span class="ar-detail-reason-icon">${esc(item.icon)}</span><span>${esc(item.reason)}</span></div>`).join('')}</div></div>
     <div class="tgrid ar-detail-facts"><div class="tg ar-fact-plain"><div class="l">Genre</div><div class="v">🎼 ${esc(arGenreLabel(opportunity.genre))}</div></div><div class="tg ar-fact-plain"><div class="l">Type</div><div class="v ${opportunity.rights==='self_released'?'ar-self-release-type':''}">${opportunity.rights==='self_released'?'<span aria-hidden="true">↗</span> ':''}${esc(arRightsShortLabel(opportunity.rights))}</div></div><div class="tg ar-detail-listeners"><div class="l">👥 Auditeurs mensuels</div><div class="v">${opportunity.artistMonthlyListeners==null?'—':fmt(opportunity.artistMonthlyListeners)}</div></div><div class="tg"><div class="l">🗓️ Sortie</div><div class="v">${opportunity.releaseDate?fmtDate(opportunity.releaseDate.slice(0,10)):'—'}</div></div></div>
     ${selectable?`<div class="ar-detail-actions"><button class="btn-back" onclick="${isListed?`arRemoveFromList('${esc(spotifyId)}',event);openArOpportunity('${esc(spotifyId)}')`:`arAddToList('${esc(spotifyId)}',event);openArOpportunity('${esc(spotifyId)}')`}">${isListed?'Retirer de la sélection':'⭐ Ajouter à la sélection'}</button></div>`:''}`;
+  const artistLine=box.querySelector('.ar-detail-artists');
+  if(artistLine) artistLine.innerHTML=arArtistLinksHtml(opportunity);
+  const typeFact=[...box.querySelectorAll('.ar-detail-facts .ar-fact-plain')].find(node=>node.querySelector('.l')?.textContent.trim()==='Type');
+  if(typeFact) typeFact.remove();
+  const reasonsSection=box.querySelector('.ar-detail-reasons')?.closest('.analytics-section');
+  if(reasonsSection){
+    reasonsSection.querySelector('h4').textContent='Pourquoi cette musique';
+    reasonsSection.insertAdjacentHTML('beforebegin',arDetailEditorialPlaylistsHtml(opportunity));
+  }
   document.getElementById('ar-modal').style.display='flex';
+  hydrateArPlaylistCovers();
 }
 function renderRadar(){
   const all=arOpportunityRows();
