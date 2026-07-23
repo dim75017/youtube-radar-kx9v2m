@@ -40,6 +40,7 @@ from refresh_soundcharts_daily import (
 
 CACHE_VERSION = 1
 DISCOVERY_VERSION = 1
+PUBLISHER_SOURCES_VERSION = 1
 
 PLAYLIST_GENRE_MAP = {
     "piano": "piano",
@@ -267,9 +268,92 @@ def select_editorial_playlists(payload: dict[str, Any]) -> list[dict[str, Any]]:
                 "primary_genre": internal_genre,
                 "followers": int(followers) if followers is not None and followers >= 0 else 0,
                 "expected_tracks": int(tracks) if tracks is not None and tracks >= 0 else 0,
+                "source_tier": "editorial_playlist",
+                "source_profile_id": None,
             }
         )
     selected.sort(key=lambda item: (-item["followers"], item["name"].casefold(), item["spotify_id"]))
+    return selected
+
+
+def read_publisher_sources(path: Path) -> list[dict[str, Any]]:
+    """Read curated publisher-profile playlist IDs without scraping Spotify."""
+    if not path.exists():
+        return []
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise PlaylistDiscoveryError(f"{path} contains invalid publisher source JSON") from exc
+    if not isinstance(payload, dict) or payload.get("version") != PUBLISHER_SOURCES_VERSION:
+        raise PlaylistDiscoveryError("Publisher source configuration has an unsupported version")
+    publishers = payload.get("publishers")
+    if not isinstance(publishers, list):
+        raise PlaylistDiscoveryError("Publisher source configuration must contain a publishers list")
+
+    out: list[dict[str, Any]] = []
+    seen_playlist_ids: set[str] = set()
+    for publisher in publishers:
+        if not isinstance(publisher, Mapping):
+            raise PlaylistDiscoveryError("Publisher source entries must be objects")
+        publisher_id = str(publisher.get("id") or "").strip()
+        profile_url = str(publisher.get("spotify_profile_url") or "").strip()
+        expected = _finite_number(publisher.get("expected_public_playlists"))
+        playlists = publisher.get("playlists")
+        if not publisher_id or not profile_url or not isinstance(playlists, list):
+            raise PlaylistDiscoveryError("Publisher sources require id, spotify_profile_url and playlists")
+        for playlist in playlists:
+            if not isinstance(playlist, Mapping):
+                raise PlaylistDiscoveryError("Publisher playlist entries must be objects")
+            spotify_id = str(playlist.get("spotify_id") or "").strip()
+            name = str(playlist.get("name") or "").strip()
+            if not spotify_id or not name:
+                raise PlaylistDiscoveryError("Publisher playlists require spotify_id and name")
+            if spotify_id in seen_playlist_ids:
+                raise PlaylistDiscoveryError(f"Publisher playlist ID is declared twice: {spotify_id}")
+            seen_playlist_ids.add(spotify_id)
+            out.append(
+                {
+                    "spotify_id": spotify_id,
+                    "name": name,
+                    # Ownership is verified by the profile, but genre is not
+                    # inferred from a title. Tracks remain review-only until
+                    # Soundcharts and the strict gates classify them.
+                    "primary_genre": "other_instrumental",
+                    "display_genre": "Unclassified publisher source",
+                    "followers": 0,
+                    "expected_tracks": 0,
+                    "source_tier": "publisher_profile_playlist",
+                    "source_profile_id": publisher_id,
+                    "source_profile_url": profile_url,
+                    "source_profile_expected_playlists": int(expected) if expected is not None and expected >= 0 else None,
+                }
+            )
+    return out
+
+
+def evidence_source_tier(evidence: Mapping[str, Any]) -> str:
+    """Prefer the stronger discovery provenance when a track has several."""
+    tiers = _clean_list(evidence.get("source_tiers"))
+    if "editorial_playlist" in tiers:
+        return "editorial_playlist"
+    if "publisher_profile_playlist" in tiers:
+        return "publisher_profile_playlist"
+    return tiers[0] if tiers else "editorial_playlist"
+
+
+def select_discovery_playlists(payload: dict[str, Any], publisher_sources: Iterable[Mapping[str, Any]] = ()) -> list[dict[str, Any]]:
+    """Return explicit publisher seeds, then the existing Spotify editorial set."""
+    selected: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in publisher_sources:
+        spotify_id = str(item.get("spotify_id") or "").strip()
+        if spotify_id and spotify_id not in seen:
+            selected.append(dict(item))
+            seen.add(spotify_id)
+    for item in select_editorial_playlists(payload):
+        if item["spotify_id"] not in seen:
+            selected.append(item)
+            seen.add(item["spotify_id"])
     return selected
 
 
@@ -346,6 +430,8 @@ def parse_playlist_track_page(response: Any, playlist: Mapping[str, Any]) -> tup
                 "playlist_name": str(playlist.get("name") or ""),
                 "primary_genre": str(playlist.get("primary_genre") or ""),
                 "playlist_followers": int(_finite_number(playlist.get("followers")) or 0),
+                "source_tier": str(playlist.get("source_tier") or "editorial_playlist"),
+                "source_profile_id": str(playlist.get("source_profile_id") or ""),
                 "position": int(position) if position is not None and position > 0 else None,
                 "entry_date": _day(item.get("entryDate")),
                 "exit_date": _day(item.get("exitDate")),
@@ -419,6 +505,8 @@ def aggregate_track_evidence(placements: Iterable[dict[str, Any]], observed_day:
                 "playlist_placements": placement_rows,
                 "primary_genre": primary_genre,
                 "subgenres": sorted(genre for genre in genre_weight if genre and genre != primary_genre),
+                "source_tiers": _merge_unique([item.get("source_tier") for item in unique]),
+                "source_profile_ids": _merge_unique([item.get("source_profile_id") for item in unique]),
                 "top_playlist": unique[0] if unique else None,
             }
         )
@@ -783,6 +871,7 @@ def discover_from_playlists(
     max_catalog_artists: int = 250,
     catalog_page_size: int = 25,
     max_new_catalog_tracks: int = 1_200,
+    publisher_sources: Iterable[Mapping[str, Any]] = (),
 ) -> dict[str, Any]:
     now = utc_now()
     observed_day = utc_today().isoformat()
@@ -808,7 +897,8 @@ def discover_from_playlists(
     if not isinstance(playlist_state, dict) or not isinstance(artist_state, dict):
         raise PlaylistDiscoveryError("Invalid playlist discovery state")
 
-    playlists = select_editorial_playlists(playlists_payload)
+    publisher_playlists = list(publisher_sources)
+    playlists = select_discovery_playlists(playlists_payload, publisher_playlists)
     if playlist_limit is not None:
         playlists = playlists[: max(0, playlist_limit)]
     metadata_tasks: list[tuple[str, str]] = []
@@ -844,6 +934,8 @@ def discover_from_playlists(
             **parsed,
             "spotify_id": spotify_id,
             "primary_genre": item["primary_genre"],
+            "source_tier": item["source_tier"],
+            "source_profile_id": item.get("source_profile_id"),
             "resolved_at": now,
             "description_checked_at": now,
         }
@@ -877,6 +969,8 @@ def discover_from_playlists(
                 "soundcharts_uuid": item["soundcharts_uuid"],
                 "name": item["name"],
                 "primary_genre": item["primary_genre"],
+                "source_tier": item["source_tier"],
+                "source_profile_id": item.get("source_profile_id"),
                 "followers": item["followers"],
                 "latest_track_count": total,
                 "last_scan_at": now,
@@ -912,7 +1006,7 @@ def discover_from_playlists(
                 artists_by_uuid,
                 artist,
                 evidence,
-                source_tier="editorial_playlist",
+                source_tier=evidence_source_tier(evidence),
                 now=now,
             )
             if inserted_artist:
@@ -920,7 +1014,7 @@ def discover_from_playlists(
             cached_artist = cache_artists.setdefault(artist_uuid, {})
             if isinstance(cached_artist, dict):
                 cached_artist.setdefault("name", str(artist.get("name") or ""))
-                cached_artist.setdefault("source_tier", "editorial_playlist")
+                cached_artist.setdefault("source_tier", evidence_source_tier(evidence))
 
     known_track_uuids = set(tracks_by_uuid)
     unseen = [evidence for uuid, evidence in evidence_by_uuid.items() if uuid not in known_track_uuids]
@@ -932,7 +1026,7 @@ def discover_from_playlists(
     new_playlist_tracks = 0
     for evidence in evidence_by_uuid.values():
         cached_detail = cache_track_discovery_evidence(
-            cache_tracks, evidence, source_tier="editorial_playlist", now=now
+            cache_tracks, evidence, source_tier=evidence_source_tier(evidence), now=now
         )
         _, inserted = upsert_editorial_track(
             track_rows,
@@ -940,7 +1034,7 @@ def discover_from_playlists(
             tracks_by_uuid,
             evidence,
             detail=cached_detail if cached_detail.get("artists") else None,
-            source_tier="editorial_playlist",
+            source_tier=evidence_source_tier(evidence),
             now=now,
         )
         new_playlist_tracks += int(inserted)
@@ -962,7 +1056,7 @@ def discover_from_playlists(
             existing = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
             cache_tracks[uuid] = {**existing, **parsed_detail}
             cache_track_discovery_evidence(
-                cache_tracks, evidence, source_tier="editorial_playlist", now=now
+                cache_tracks, evidence, source_tier=evidence_source_tier(evidence), now=now
             )
             playlist_tracks_detailed += 1
         upsert_editorial_track(
@@ -971,7 +1065,7 @@ def discover_from_playlists(
             tracks_by_uuid,
             evidence,
             detail=parsed_detail,
-            source_tier="editorial_playlist",
+            source_tier=evidence_source_tier(evidence),
             now=now,
         )
         register_detail_artists(parsed_detail, evidence)
@@ -980,7 +1074,7 @@ def discover_from_playlists(
     # when every playlist song is already known.
     for artist_uuid, row in artists_by_uuid.items():
         source_tier = str(field(row, artist_schema, "source_tier") or "")
-        if source_tier in {"editorial_playlist", "playlist_artist_catalogue"}:
+        if source_tier in {"editorial_playlist", "publisher_profile_playlist", "playlist_artist_catalogue"}:
             all_playlist_artist_uuids.add(artist_uuid)
             evidence_by_artist.setdefault(
                 artist_uuid,
@@ -1100,10 +1194,21 @@ def discover_from_playlists(
                 "description": description,
                 "updated_at": str(state.get("description_checked_at") or state.get("resolved_at") or ""),
             }
+    publisher_profiles = {}
+    for profile_id in sorted({str(item.get("source_profile_id") or "") for item in publisher_playlists if item.get("source_profile_id")}):
+        profile_items = [item for item in publisher_playlists if str(item.get("source_profile_id") or "") == profile_id]
+        expected = next((item.get("source_profile_expected_playlists") for item in profile_items), None)
+        publisher_profiles[profile_id] = {
+            "declared_playlists": len(profile_items),
+            "expected_public_playlists": expected,
+            "remaining_public_playlists": max(0, int(expected) - len(profile_items)) if expected is not None else None,
+        }
     summary = {
         "status": "success",
         "finished_at": now,
         "playlists_targeted": len(playlists),
+        "publisher_playlists_targeted": len(publisher_playlists),
+        "publisher_profiles": publisher_profiles,
         "playlists_resolved": len(resolved_playlists),
         "playlists_scanned": scanned_playlists,
         "tracklist_rows": len(placements),
@@ -1140,6 +1245,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--soundcharts", type=Path, default=Path("Spotify_Soundcharts_data.js"))
     parser.add_argument("--playlists", type=Path, default=Path("Spotify_Playlists_data.js"))
+    parser.add_argument("--publisher-sources", type=Path, default=Path("soundcharts-publisher-sources.json"))
     parser.add_argument("--cache", type=Path, default=Path("soundcharts-instrumental-cache.json"))
     parser.add_argument("--workers", type=int, default=10)
     parser.add_argument("--max-requests", type=int, default=1_400)
@@ -1156,6 +1262,7 @@ def main() -> int:
     args = parse_args()
     soundcharts = read_js_payload(args.soundcharts, SOUNDCHARTS_PREFIX)
     playlists = read_js_payload(args.playlists, PLAYLISTS_PREFIX)
+    publisher_sources = read_publisher_sources(args.publisher_sources)
     cache = read_cache(args.cache)
     client = SoundchartsClient(
         os.environ.get("SOUNDCHARTS_CLIENT_ID", ""),
@@ -1177,6 +1284,7 @@ def main() -> int:
         max_catalog_artists=max(0, args.max_catalog_artists),
         catalog_page_size=max(5, min(100, args.catalog_page_size)),
         max_new_catalog_tracks=max(0, args.max_new_catalog_tracks),
+        publisher_sources=publisher_sources,
     )
     write_js_payload(args.soundcharts, soundcharts, SOUNDCHARTS_PREFIX)
     write_cache(args.cache, cache)

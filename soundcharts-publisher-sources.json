@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "publishers": [
+    {
+      "id": "chillhopmusic",
+      "name": "Chillhop Music",
+      "spotify_profile_url": "https://open.spotify.com/user/chillhopmusic",
+      "expected_public_playlists": 39,
+      "playlists": [
+        {
+          "spotify_id": "3ZpHqPN0cF2Dj8IYoSZjxk",
+          "name": "The Best of Essentials Summer"
+        },
+        {
+          "spotify_id": "1s8KCpGJKXkMuka4pVc1s4",
+          "name": "Underwater Lofi"
+        },
+        {
+          "spotify_id": "2UycsHECm5jiUtJmRNuadz",
+          "name": "Chillhop Cozy Reading Session | Instrumental Beats for Book Lovers (No Vocals) 📚"
+        },
+        {
+          "spotify_id": "1WwXFgBoUkz7IAWhfQodan",
+          "name": "Chillhop Home Office | Lofi Beats for Working from Home | WFH Productivity & Focus 🏠"
+        }
+      ]
+    }
+  ]
+}
