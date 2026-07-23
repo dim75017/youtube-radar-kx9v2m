@@ -52,7 +52,6 @@ const EN_MAP = {
   "Veille":"Watch","Il rejoint ensuite le rafraîchissement hebdomadaire, quasi gratuit. Ses tracks apparaissent dans l'onglet Tracks avec le badge « découverte ».":"It then joins the weekly refresh, nearly free. Its tracks appear in the Tracks tab with the “discovery” badge.",
   "Élargissement":"Expansion","Quand le lot de 200 est digéré, on monte le plafond et on ajoute les playlists éditoriales par genre (lofi, ambient, piano, jazz…) comme seconde source.":"Once the batch of 200 is digested, we raise the cap and add editorial playlists by genre (lofi, ambient, piano, jazz…) as a second source.",
   "Origine":"Origin","scanné":"scanned","en file":"queued",
-  "Scan incomplet, pause sécurité Spotify":"Scan incomplete, Spotify safety pause",
   "Recensement des playlists éditoriales Spotify et indépendantes sur nos genres, alimenté par le scanner de mots-clés. Suivi des followers et du fit pour repérer ce qui marche.":"Census of Spotify editorial and independent playlists in our genres, powered by the keyword scanner. Follower and fit tracking to spot what works.",
   "Mots-clés scannés":"Keywords scanned","Compteur déclaré, pas encore exporté automatiquement par le scanner":"Declared count, not yet automatically exported by the scanner","déclaré":"declared",
   "Playlists découvertes":"Playlists discovered","Fiches détaillées":"Detailed profiles",
@@ -3629,7 +3628,7 @@ function renderPlaylists(){
   V.innerHTML = `
   <div class="page-head">
     <div>
-      <h2>${T('Toutes les playlists')} <span class="badge new" style="vertical-align:middle">${T('Scan incomplet, pause sécurité Spotify')}</span></h2>
+      <h2>${T('Toutes les playlists')}</h2>
     </div>
   </div>
   <div class="toolbar">

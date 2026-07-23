@@ -135,6 +135,10 @@
     });
   }
 
+  function removeCategorySummaries() {
+    document.querySelectorAll('#view .discovery-coverage-summary').forEach(summary => summary.remove());
+  }
+
   function updateFooter() {
     const detail = document.getElementById('sync-detail-global');
     if (!detail) return;
@@ -148,17 +152,16 @@
   function updateView() {
     updateNavigation();
     updateFooter();
+    removeCategorySummaries();
     const route = location.hash.slice(1);
     const heading = document.querySelector('#view .page-head h2');
     const title = (heading && heading.textContent || '').trim().toLowerCase();
 
     if (route === 'tracks' || title.includes('toutes les pistes') || title.includes('all tracks')) {
-      ensureSummary('tracks', text.tracks());
       const result = document.querySelector('#view .result-count');
       if (result && result.textContent !== text.trackResult()) result.textContent = text.trackResult();
       removeLegacyDetectedBadges();
     } else if (route === 'artists' || title.includes('tous les artistes') || title.includes('all artists')) {
-      ensureSummary('artists', text.artists());
       const result = document.querySelector('#view .result-count');
       if (result && result.textContent !== text.artistResult()) result.textContent = text.artistResult();
     }
