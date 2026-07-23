@@ -136,12 +136,12 @@
   }
 
   function updateFooter() {
-    const detail = document.getElementById('sync-detail-tr');
+    const detail = document.getElementById('sync-detail-global');
     if (!detail) return;
-    const generated = String(BROWSE.generated_at || SC.generated_at || (SC.freshness && SC.freshness.tracks_at) || '').slice(0, 19);
+    const generated = String(SC.generated_at || (SC.freshness && SC.freshness.tracks_at) || BROWSE.generated_at || '').slice(0, 19);
     const html = isFrench()
-      ? `<b>Soundcharts · catalogue vivant + A&R strict</b><br>${format(liveTracks())} pistes disponibles · ${format(liveArtists())} artistes/crédits<br>${format(metrics.playlistsScanned)} playlists scannées · ${format(metrics.measuredCatalogueTracks)} pistes mesurées<br>${format(metrics.opportunities)} opportunités A&R strictes${generated ? `<br>Snapshot ${generated.replace('T', ' ')}` : ''}`
-      : `<b>Soundcharts · living catalogue + strict A&R</b><br>${format(liveTracks())} tracks available · ${format(liveArtists())} artists/credits<br>${format(metrics.playlistsScanned)} playlists scanned · ${format(metrics.measuredCatalogueTracks)} measured tracks<br>${format(metrics.opportunities)} strict A&R opportunities${generated ? `<br>Snapshot ${generated.replace('T', ' ')}` : ''}`;
+      ? `<b>Soundcharts · mise à jour globale du catalogue vivant + A&R strict</b><br>${format(liveTracks())} pistes disponibles · ${format(liveArtists())} artistes/crédits · ${format(metrics.playlistsScanned)} playlists scannées<br>${format(metrics.measuredCatalogueTracks)} pistes mesurées · ${format(metrics.opportunities)} opportunités A&R strictes${generated ? `<br>Snapshot ${generated.replace('T', ' ')}` : ''}`
+      : `<b>Soundcharts · global refresh</b><br>${format(liveTracks())} tracks available · ${format(liveArtists())} artists/credits · ${format(metrics.playlistsScanned)} playlists scanned<br>${format(metrics.measuredCatalogueTracks)} measured tracks · ${format(metrics.opportunities)} strict A&R opportunities${generated ? `<br>Snapshot ${generated.replace('T', ' ')}` : ''}`;
     if (detail.innerHTML !== html) detail.innerHTML = html;
   }
 

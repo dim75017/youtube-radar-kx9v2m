@@ -9,7 +9,8 @@ assert.match(source, /SPOTIFY_BROWSE_CATALOGUE/);
 assert.match(source, /Catalogue vivant/);
 assert.match(source, /A&R reste strict/);
 function element(){return {textContent:'',title:'',innerHTML:'',dataset:{},addEventListener(){},querySelector(){return null;},querySelectorAll(){return [];},insertAdjacentElement(){}};}
-const elements={'c-opps':element(),'c-art':element(),'c-radar':element(),'sync-detail-tr':element(),view:element()};
+const footer=element();
+const elements={'c-opps':element(),'c-art':element(),'c-radar':element(),'sync-detail-tr':footer,'sync-detail-global':footer,view:element()};
 const document={documentElement:{lang:'fr'},head:{appendChild(){}},getElementById(id){return elements[id]||null;},querySelector(){return null;},querySelectorAll(){return [];},createElement(){return element();}};
 const context={console,document,location:{hash:'#tracks'},requestAnimationFrame(cb){cb();},setTimeout(cb){cb();},MutationObserver:class{observe(){}},R:Array.from({length:62832}),withTracks:Array.from({length:8351}),window:{SPOTIFY_SOUNDCHARTS:{generated_at:'2026-07-22T12:00:00Z',opportunities:Array.from({length:2000}),opportunity_scoring:{opportunities:2000}},SPOTIFY_BROWSE_CATALOGUE:{generated_at:'2026-07-22T12:00:00Z',playlist_discovery:{playlists_scanned:220},instrumental_pool:{measured:2968},discovery_catalogue:{counts:{tracks:17998,artists:8351,measured_tracks:2968}}},addEventListener(){}}};
 vm.runInNewContext(source,context);
@@ -21,4 +22,6 @@ assert.match(elements['sync-detail-tr'].innerHTML,/catalogue vivant/);
 assert.match(elements['sync-detail-tr'].innerHTML,/220 playlists scannées/);
 assert.match(elements['sync-detail-tr'].innerHTML,/2.*968 pistes mesurées/);
 assert.match(elements['sync-detail-tr'].innerHTML,/A&R strictes/);
+assert.match(index,/id="sync-row-global"/);
+assert.doesNotMatch(index,/id="sync-row-pl"/);
 console.log('Spotify unified coverage reporting: OK');

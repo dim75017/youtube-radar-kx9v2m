@@ -3416,35 +3416,20 @@ function fmtTs(ts){
 }
 function updateFooter(){
   // volontairement compact (peu de texte) : icône + date, détail complet dans un popover custom au clic/survol
-  const trRow = document.getElementById('sync-row-tr');
-  const trTxt = document.getElementById('sync-txt-tr');
-  const trDetail = document.getElementById('sync-detail-tr');
-  const strictTimestamp=SC&&(SC.generated_at||(SC.freshness&&SC.freshness.tracks_at))||D.ts||D.t;
-  trTxt.innerHTML = '🎶 '+esc(fmtTs(strictTimestamp));
-  trDetail.innerHTML = `<b>${T('Tracks')} · ${T('Catalogue + staging Soundcharts strict')}</b><br>${fmtFull(R.length)} tracks · ${fmtFull(withTracks.length)} ${T('artistes visibles')}<br>${fmtFull(SC_STAGING.tracks)} ${T('tracks Soundcharts strictes intégrées')} · ${T('Export Soundcharts le')} ${esc(fmtTs(strictTimestamp))}`;
-  const plRow = document.getElementById('sync-row-pl');
-  const plTxt = document.getElementById('sync-txt-pl');
-  const plDot = document.getElementById('sync-dot-pl');
-  const plDetail = document.getElementById('sync-detail-pl');
-  if (plRow){
-    if (PLmeta){
-      const paused = PLmeta.scan_status && PLmeta.scan_status !== 'ok';
-      plTxt.innerHTML = '📻 '+esc(fmtTs(PLmeta.snapshot_ts))+(paused?' ⏸':'');
-      const c = paused ? '#fbbf24' : 'var(--green)';
-      plDot.style.background = c; plDot.style.boxShadow = '0 0 8px '+c;
-      plDetail.innerHTML = `<b>${T('Playlists')}</b><br>${fmtFull(PLmeta.playlists_discovered)} ${T('Playlists découvertes')} · ${fmtFull(PLmeta.playlists_10k_plus)} ≥10k<br>${T('Snapshot')} ${esc(fmtTs(PLmeta.snapshot_ts))}${paused?'<br><span style="color:#fbbf24">⏸ '+T('Scan incomplet, pause sécurité Spotify')+'</span>':''}`;
-      plRow.style.display = '';
-    } else {
-      plRow.style.display = 'none';
-    }
-  }
+  const globalRow = document.getElementById('sync-row-global');
+  const globalTxt = document.getElementById('sync-txt-global');
+  const globalDetail = document.getElementById('sync-detail-global');
+  const globalTimestamp=(SC&&(SC.generated_at||(SC.freshness&&SC.freshness.tracks_at)))||BROWSE.generated_at||D.ts||D.t;
+  if (!globalRow || !globalTxt || !globalDetail) return;
+  globalTxt.innerHTML = '⟳ '+esc(fmtTs(globalTimestamp));
+  globalDetail.innerHTML = `<b>Soundcharts · ${T('Snapshot global')}</b><br>${fmtFull(R.length)} tracks · ${fmtFull(withTracks.length)} ${T('artistes visibles')} · ${fmtFull(PLrows.length)} ${T('playlists')}<br>${fmtFull(SC_STAGING.tracks)} ${T('tracks Soundcharts strictes intégrées')} · ${T('Export Soundcharts le')} ${esc(fmtTs(globalTimestamp))}`;
 }
 function toggleSyncDetail(row){
   document.querySelectorAll('.sync-row.open').forEach(r=>{ if(r!==row) r.classList.remove('open'); });
   row.classList.toggle('open');
 }
-document.getElementById('sync-row-tr').addEventListener('click', e=>{ e.stopPropagation(); toggleSyncDetail(e.currentTarget); });
-document.getElementById('sync-row-pl').addEventListener('click', e=>{ e.stopPropagation(); toggleSyncDetail(e.currentTarget); });
+const globalSyncRow=document.getElementById('sync-row-global');
+if (globalSyncRow) globalSyncRow.addEventListener('click', e=>{ e.stopPropagation(); toggleSyncDetail(e.currentTarget); });
 document.addEventListener('click', ()=>{ document.querySelectorAll('.sync-row.open').forEach(r=>r.classList.remove('open')); });
 function applyLang(){
   document.querySelectorAll('[data-fr]').forEach(el=>{
