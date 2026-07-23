@@ -443,21 +443,27 @@ function roadmapHTML(){
   const vt='<div class="viewtoggle">'+
       '<button class="'+(RM.mode!=='cal'?'on':'')+'" onclick="RM.mode=\'table\';render()" title="List">'+ICONS.rows+'</button>'+
       '<button class="'+(RM.mode==='cal'?'on':'')+'" onclick="RM.mode=\'cal\';render()" title="Calendar">'+ICONS.roadmap+'</button></div>';
-  window._rm_rows=rows;
+  // The list is a forward-looking production queue. Past releases remain
+  // available in the calendar as history instead of cluttering this view.
+  const listRows=roadmapUpcomingRows(rows);
+  window._rm_rows=RM.mode==='cal'?rows:listRows;
   if(ROADMAP_ARCHIVE_VIEW)return roadmapArchiveHTML(vt);
   if(RM.mode==='cal')return calHTML(rows,vt);
   return '<div class="toolbar" style="justify-content:flex-end">'+
     (ROADMAP_ARCHIVE_LOCAL.length?'<button class="rm-archive-toggle" onclick="toggleRoadmapArchive()">&#128230; Archives ('+ROADMAP_ARCHIVE_LOCAL.length+')</button>':'')+vt+'</div>'+roadmapTableHTML(rows);
 }
+function roadmapUpcomingRows(rows,now=Date.now()){
+  const today=new Date(now);today.setHours(0,0,0,0);
+  return rows.filter(r=>Number.isFinite(Number(r&&r.date))&&Number(r.date)>=today.getTime());
+}
 function roadmapTableHTML(rows){
+  rows=roadmapUpcomingRows(rows);
   if(!rows.length)return '<div class="empty">No releases scheduled.</div>';
-  const now=Date.now()-86400000*3;
   return '<table class="vtable"><thead><tr><th>Date</th><th>Title</th><th>Genre</th><th>Duration</th><th>Source</th><th></th></tr></thead><tbody>'+
     rows.map((r,i)=>{
       const d=new Date(r.date);
       const srcClass=/Monday/.test(r.src)?'src-monday':/Nouveau/.test(r.src)?'src-new':'src-rot';
-      const past=r.date<now?'opacity:.5':'';
-      return '<tr class="row" style="'+past+'" onclick="openRoad('+i+')" oncontextmenu="openRoadmapContextMenu('+i+',event);return false">'+
+      return '<tr class="row" onclick="openRoad('+i+')" oncontextmenu="openRoadmapContextMenu('+i+',event);return false">'+
         '<td style="white-space:nowrap">'+d.getDate()+' '+MONTHS[d.getMonth()]+' '+d.getFullYear()+'</td>'+
         '<td class="ttitle">'+esc(r.title)+'</td>'+
         '<td>'+gtag(r.genre)+'</td>'+
@@ -1682,7 +1688,7 @@ function chanCardHTML(c,i){
     '<div class="vbody">'+
       '<div class="vtags">'+gtag(c.niche)+(c.country?'<span class="tag ghost">'+flagOf(c.country)+' '+esc(c.country)+'</span>':'')+'</div>'+
       '<div class="vstats">'+
-        '<div class="vstat hl"><b>'+fmtN(c.subs)+'</b><span>subs</span></div>'+
+        '<div class="vstat"><b>'+fmtN(c.subs)+'</b><span>subs</span></div>'+
         '<div class="vstat"><b style="color:'+sbmColor(chanSubsMo(c))+'">'+fmtSubsMo(chanSubsMo(c))+'</b><span>subs/mo</span></div>'+
         '<div class="vstat"><b>'+fmtN(c.viewsYr)+'</b><span>views/yr</span></div>'+
       '</div></div></div>';
@@ -1726,7 +1732,7 @@ function openChanDrawer(c){
       '<div class="dw-title" style="display:flex;align-items:center;gap:12px">'+chAva(c,72)+'<a href="'+esc(c.url)+'" target="_blank">'+esc(c.name)+' ↗</a></div>'+
       '<div class="dw-sub">'+gtag(c.niche)+ghosttag(c.country)+ghosttag(c.status)+(c.ageY!=null?'<span class="tag ghost">'+c.ageY+' yrs old</span>':'')+'</div>'+
       '<div class="dw-stats">'+
-        '<div class="dw-stat hl"><b>'+fmtN(c.subs)+'</b><span>subscribers</span></div>'+
+        '<div class="dw-stat"><b>'+fmtN(c.subs)+'</b><span>subscribers</span></div>'+
         '<div class="dw-stat"><b style="color:'+sbmColor(chanSubsMo(c))+'">'+fmtSubsMo(chanSubsMo(c))+'</b><span>subs / month</span></div>'+
         '<div class="dw-stat"><b>'+fmtN(c.views)+'</b><span>total views</span></div>'+
         '<div class="dw-stat"><b>'+fmtN(c.viewsYr)+'</b><span>views / year</span></div>'+
