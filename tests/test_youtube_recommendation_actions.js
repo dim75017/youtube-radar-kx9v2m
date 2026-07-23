@@ -28,7 +28,11 @@ assert.match(source, /data-sched-day=/,
 assert.match(source, /SCHED_CUR\.sug=Object\.assign\(\{\},SCHED_CUR\.sug,\{date\}\)/,
   'a date click must move the proposed release marker and saved date');
 const schedulePopup = source.slice(source.indexOf('function renderSchedPopup()'), source.indexOf('function previewSchedDay('));
-assert.doesNotMatch(schedulePopup, /sched-btn-alt|Not now|Date de sortie proposée|Suggested release date/,
+assert.match(schedulePopup, /sched-btn-alt/,
+  'the date picker restores the yellow alternate-date action beside confirmation');
+assert.match(source, /function proposeAlternateSchedDate\(\)/,
+  'the alternate-date action generates another rules-based proposal');
+assert.doesNotMatch(schedulePopup, /Not now|Date de sortie proposée|Suggested release date/,
   'the date picker stays minimal: no explanatory header or deferred action');
 assert.doesNotMatch(source, /schedNearbyReleases/,
   'nearby releases must be replaced by the compact exact-day popover');

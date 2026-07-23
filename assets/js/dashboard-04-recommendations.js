@@ -416,8 +416,10 @@ function roadmapHTML(){
       '<button class="'+(RM.mode!=='cal'?'on':'')+'" onclick="RM.mode=\'table\';render()" title="List">'+ICONS.rows+'</button>'+
       '<button class="'+(RM.mode==='cal'?'on':'')+'" onclick="RM.mode=\'cal\';render()" title="Calendar">'+ICONS.roadmap+'</button></div>';
   window._rm_rows=rows;
+  if(ROADMAP_ARCHIVE_VIEW)return roadmapArchiveHTML(vt);
   if(RM.mode==='cal')return calHTML(rows,vt);
-  return '<div class="toolbar" style="justify-content:flex-end">'+vt+'</div>'+roadmapTableHTML(rows);
+  return '<div class="toolbar" style="justify-content:flex-end">'+
+    (ROADMAP_ARCHIVE_LOCAL.length?'<button class="rm-archive-toggle" onclick="toggleRoadmapArchive()">&#128230; Archives ('+ROADMAP_ARCHIVE_LOCAL.length+')</button>':'')+vt+'</div>'+roadmapTableHTML(rows);
 }
 function roadmapTableHTML(rows){
   if(!rows.length)return '<div class="empty">No releases scheduled.</div>';
@@ -427,7 +429,7 @@ function roadmapTableHTML(rows){
       const d=new Date(r.date);
       const srcClass=/Monday/.test(r.src)?'src-monday':/Nouveau/.test(r.src)?'src-new':'src-rot';
       const past=r.date<now?'opacity:.5':'';
-      return '<tr class="row" style="'+past+'" onclick="openRoad('+i+')">'+
+      return '<tr class="row" style="'+past+'" onclick="openRoad('+i+')" oncontextmenu="openRoadmapContextMenu('+i+',event);return false">'+
         '<td style="white-space:nowrap">'+d.getDate()+' '+MONTHS[d.getMonth()]+' '+d.getFullYear()+'</td>'+
         '<td class="ttitle">'+esc(r.title)+'</td>'+
         '<td>'+gtag(r.genre)+'</td>'+
@@ -436,6 +438,16 @@ function roadmapTableHTML(rows){
         '<td onclick="event.stopPropagation()"><button class="rm-del-btn" style="margin:0;padding:6px 10px" onclick="deleteRoadmapEntry('+i+',event)">🗑️</button></td></tr>';
     }).join('')+'</tbody></table>';
 }
+function roadmapArchiveHTML(vt){
+  const rows=[...ROADMAP_ARCHIVE_LOCAL].sort((a,b)=>b.archivedAt-a.archivedAt);
+  if(!rows.length){ROADMAP_ARCHIVE_VIEW=false;return roadmapHTML();}
+  return '<div class="toolbar" style="justify-content:flex-end"><button class="rm-archive-toggle" onclick="toggleRoadmapArchive()">&#8592; Back to roadmap</button>'+vt+'</div>'+
+    '<table class="vtable"><thead><tr><th>Title</th><th>Genre</th><th>Archived</th><th></th></tr></thead><tbody>'+rows.map((r,i)=>
+      '<tr class="row"><td class="ttitle">'+esc(r.title)+'</td><td>'+gtag(r.genre)+'</td><td class="num">'+new Date(r.archivedAt).toLocaleDateString()+'</td>'+
+      '<td><button class="rm-restore-btn" onclick="restoreRoadmapEntry('+i+')">&#8617; Restore</button></td></tr>'
+    ).join('')+'</tbody></table>';
+}
+function toggleRoadmapArchive(){ROADMAP_ARCHIVE_VIEW=!ROADMAP_ARCHIVE_VIEW;render();}
 function openRoad(i){
   const r=(window._rm_rows||[])[i];if(!r)return;
   const d=r.date?new Date(r.date):null;
@@ -464,9 +476,57 @@ function openRoad(i){
   document.getElementById('drawer').scrollTop=0;
   i18nDrawer();
 }
+let ROADMAP_ARCHIVE_VIEW=false;
+let ROADMAP_CONTEXT_MENU=null;
+let ROADMAP_ARCHIVE_LOCAL=(()=>{try{return JSON.parse(localStorage.getItem('radar_roadmap_archive')||'[]');}catch(e){return [];}})();
+function roadmapArchiveSave(){try{localStorage.setItem('radar_roadmap_archive',JSON.stringify(ROADMAP_ARCHIVE_LOCAL));}catch(e){}}
+function roadmapEntryMatches(a,b){return a&&b&&a.date===b.date&&a.title===b.title;}
+function closeRoadmapContextMenu(){
+  if(ROADMAP_CONTEXT_MENU){ROADMAP_CONTEXT_MENU.remove();ROADMAP_CONTEXT_MENU=null;}
+}
+function openRoadmapContextMenu(i,ev){
+  if(ev){ev.preventDefault();ev.stopPropagation();}
+  const r=(window._rm_rows||[])[i];if(!r)return;
+  closeRoadmapContextMenu();
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
+  const menu=document.createElement('div');
+  menu.className='roadmap-context-menu';menu.setAttribute('role','menu');
+  menu.innerHTML='<button type="button" role="menuitem" onclick="archiveRoadmapEntry('+i+',event)">&#128230; '+(fr?'Archiver':'Archive')+'</button>'+
+    '<button type="button" role="menuitem" class="danger" onclick="deleteRoadmapEntry('+i+',event)">&#128465; '+(fr?'Mettre à la corbeille':'Move to trash')+'</button>';
+  document.body.appendChild(menu);ROADMAP_CONTEXT_MENU=menu;
+  const width=menu.offsetWidth||176,height=menu.offsetHeight||82;
+  menu.style.left=Math.max(8,Math.min(window.innerWidth-width-8,(ev&&ev.clientX)||8))+'px';
+  menu.style.top=Math.max(8,Math.min(window.innerHeight-height-8,(ev&&ev.clientY)||8))+'px';
+  setTimeout(()=>document.addEventListener('click',closeRoadmapContextMenu,{once:true}),0);
+}
+document.addEventListener('contextmenu',ev=>{
+  const pill=ev.target&&ev.target.closest?ev.target.closest('.cal-pill'):null;
+  if(!pill)return;
+  const title=pill.textContent.trim();
+  const i=(window._rm_rows||[]).findIndex(row=>String(row.title||'').trim()===title);
+  if(i>=0)openRoadmapContextMenu(i,ev);
+});
+function archiveRoadmapEntry(i,ev){
+  if(ev)ev.stopPropagation();
+  const r=(window._rm_rows||[])[i];if(!r)return;
+  closeRoadmapContextMenu();
+  if(!ROADMAP_ARCHIVE_LOCAL.some(x=>roadmapEntryMatches(x,r)))ROADMAP_ARCHIVE_LOCAL.push({...r,archivedAt:Date.now()});
+  roadmapArchiveSave();
+  const li=SCHED_LOCAL.findIndex(x=>roadmapEntryMatches(x,r));
+  if(li>=0){SCHED_LOCAL.splice(li,1);schedSaveLocal();}
+  DATA.roadmap=(DATA.roadmap||[]).filter(x=>!roadmapEntryMatches(x,r));
+  saveCache(DATA);closeDrawer();render();
+}
+function restoreRoadmapEntry(i){
+  const r=ROADMAP_ARCHIVE_LOCAL[i];if(!r)return;
+  const entry={...r};delete entry.archivedAt;
+  if(!scheduledRows().some(x=>roadmapEntryMatches(x,entry))){SCHED_LOCAL.push(entry);schedSaveLocal();DATA.roadmap=(DATA.roadmap||[]).concat([entry]);saveCache(DATA);}
+  ROADMAP_ARCHIVE_LOCAL.splice(i,1);roadmapArchiveSave();render();
+}
 function deleteRoadmapEntry(i,ev){
   if(ev)ev.stopPropagation();
   const r=(window._rm_rows||[])[i];if(!r)return;
+  closeRoadmapContextMenu();
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
   if(!confirm(fr?('Retirer « '+r.title+' » du planning ?'):('Remove « '+r.title+' » from the schedule?')))return;
   const li=SCHED_LOCAL.findIndex(x=>x.date===r.date&&x.title===r.title);
@@ -719,6 +779,7 @@ function renderSchedPopup(){
   let h='<div class="sched-cal">'+schedMiniCal(d,rows,SCHED_CUR.previewDate,SCHED_CUR.calendarDate)+'</div>'+
     schedDayPopoverHtml(SCHED_CUR.popoverDate,rows)+
     '<div class="sched-actions">'+
+      '<button class="sched-btn-alt" onclick="proposeAlternateSchedDate()">'+(fr?'&#x1F504; Autre proposition':'&#x1F504; Another proposal')+'</button>'+
       '<button class="sched-btn-ok" onclick="confirmSchedDate()">'+(fr?'&#x2705; Confirmer la date':'&#x2705; Confirm date')+'</button>'+
     '</div>';
   if(fr)h=frz(h);
@@ -733,6 +794,19 @@ function previewSchedDay(timestamp){
   SCHED_CUR.sug=Object.assign({},SCHED_CUR.sug,{date});
   SCHED_CUR.previewDate=new Date(date);
   SCHED_CUR.popoverDate=scheduledRows().some(row=>schedDateKey(new Date(row.date))===schedDateKey(SCHED_CUR.previewDate))?new Date(SCHED_CUR.previewDate):null;
+  renderSchedPopup();
+}
+function proposeAlternateSchedDate(){
+  if(!SCHED_CUR||!SCHED_CUR.reco)return;
+  const current=SCHED_CUR.sug&&SCHED_CUR.sug.date;
+  if(current)SCHED_CUR.avoid.add(schedDateKey(new Date(current)));
+  const next=suggestRoadmapDate(SCHED_CUR.reco,SCHED_CUR.avoid);
+  if(!next)return;
+  SCHED_CUR.avoid.add(schedDateKey(next.date));
+  SCHED_CUR.sug=next;
+  SCHED_CUR.previewDate=new Date(next.date);
+  SCHED_CUR.calendarDate=new Date(next.date);
+  SCHED_CUR.popoverDate=null;
   renderSchedPopup();
 }
 function shiftSchedMonth(delta){
