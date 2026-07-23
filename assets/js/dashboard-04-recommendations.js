@@ -610,14 +610,53 @@ function ensureAnalysisHistory(){
     ANALYSIS_HISTORY_PROMISE=null;_anaCache=null;_anaT=0;if(route==='ana')render();
   });
 }
+const ANA_AGE_COHORTS=[
+  {id:'launch',max:7,label:'0-7 days'},
+  {id:'month',max:30,label:'8-30 days'},
+  {id:'quarter',max:90,label:'1-3 months'},
+  {id:'half',max:180,label:'3-6 months'},
+  {id:'year',max:365,label:'6-12 months'},
+  {id:'mature',max:Infinity,label:'12+ months'}
+];
+function anaAgeDays(v){
+  const pub=Number(v&&v.pub);
+  return Number.isFinite(pub)&&pub>0?Math.max((Date.now()-pub)/86400000,0):null;
+}
+function anaAgeCohort(ageDays){
+  if(ageDays==null)return null;
+  return ANA_AGE_COHORTS.find(c=>ageDays<=c.max)||ANA_AGE_COHORTS[ANA_AGE_COHORTS.length-1];
+}
+function anaLifetimeVpm(v,ageDays){
+  const days=ageDays==null?anaAgeDays(v):ageDays;
+  const views=Number(v&&v.views);
+  return Number.isFinite(views)&&days!=null&&days>0?views/days*30.44:null;
+}
+function anaAgeComparable(rows,ageDays,minCount){
+  const target=anaAgeCohort(ageDays);
+  if(!target)return {rows:[],label:'unknown age',exact:false,sufficient:false};
+  const indexed=ANA_AGE_COHORTS.findIndex(c=>c.id===target.id);
+  const exact=rows.filter(row=>anaAgeCohort(anaAgeDays(row))?.id===target.id);
+  if(exact.length>=minCount)return {rows:exact,label:target.label,exact:true,sufficient:true};
+  // Adjacent cohorts are still age-aware. They are used only when the exact
+  // cohort is too small to make a meaningful comparison.
+  const nearby=rows.filter(row=>{
+    const other=anaAgeCohort(anaAgeDays(row));
+    const otherIndex=other?ANA_AGE_COHORTS.findIndex(c=>c.id===other.id):-99;
+    return Math.abs(otherIndex-indexed)<=1;
+  });
+  if(nearby.length>=minCount)return {rows:nearby,label:target.label+' (nearby ages)',exact:false,sufficient:true};
+  return {rows:exact,label:target.label,exact:true,sufficient:false};
+}
 function anaRows(){
   if(_anaCache&&_anaT===SYNCED)return _anaCache;
   const out=(DATA.ours||[]).filter(v=>v.pub&&(v.durH==null||v.durH>=0.15)).map(v=>{
     const o=Object.assign({},v);
-    o.ageM=(Date.now()-v.pub)/2629800000;
+    o.ageDays=anaAgeDays(v);
+    o.ageM=o.ageDays==null?null:o.ageDays/30.44;
+    o.ageCohort=anaAgeCohort(o.ageDays);
     const s=(DATA.hist&&DATA.hist[v.vid])||[];
-    o.views=s.length?s[s.length-1][1]:null;
-    o.vpm=(o.views!=null&&o.ageM>0.1)?o.views/o.ageM:null;
+    o.views=s.length?s[s.length-1][1]:Number.isFinite(Number(v.views))?Number(v.views):null;
+    o.vpm=anaLifetimeVpm(o,o.ageDays);
     if(s.length>=2){
       const end=s[s.length-1],cut=end[0]-30.44*86400000,recent=s.filter(p=>p[0]>=cut);
       const start=recent.length>=2?recent[0]:s[s.length-2];
@@ -625,35 +664,36 @@ function anaRows(){
       o.vNow=(end[1]-start[1])/days*30.44;
     }else o.vNow=null;
     const gk=genreKey(v.genre);
-    let coh=mixRows().filter(x=>genreKey(x.genre)===gk&&x.ageM!=null&&x.ageM<=24&&x.vpm!=null);
-    if(coh.length<8)coh=mixRows().filter(x=>genreKey(x.genre)===gk&&x.vpm!=null);
-    if(coh.length<8)coh=mixRows().filter(x=>x.ageM!=null&&x.ageM<=24&&x.vpm!=null);
-    o.cohN=coh.length;o.gk=gk;
-    if(o.vpm!=null&&coh.length){
-      const below=coh.filter(x=>x.vpm<o.vpm).length;
+    const market=mixRows().filter(x=>genreKey(x.genre)===gk&&anaLifetimeVpm(x)!=null);
+    const ageMatched=anaAgeComparable(market,o.ageDays,8);
+    const coh=ageMatched.rows;
+    o.cohN=coh.length;o.gk=gk;o.cohAgeLabel=ageMatched.label;o.cohAgeExact=ageMatched.exact;
+    if(o.vpm!=null&&ageMatched.sufficient){
+      const below=coh.filter(x=>anaLifetimeVpm(x)<o.vpm).length;
       o.pct=Math.round(below/coh.length*100);
-      const tops=coh.filter(x=>x.vpm!=null).sort((a,b)=>b.vpm-a.vpm).slice(0,Math.max(3,Math.round(coh.length/4)));
+      const tops=coh.slice().sort((a,b)=>anaLifetimeVpm(b)-anaLifetimeVpm(a)).slice(0,Math.max(3,Math.round(coh.length/4)));
       o.topDur=median(tops.map(x=>x.durH));
-      o.cohMed=median(coh.map(x=>x.vpm));
-      o.fresh=coh.filter(x=>x.ageM!=null&&x.ageM<=6).length;
-    }else o.pct=null;
+      o.cohMed=median(coh.map(x=>anaLifetimeVpm(x)));
+    }else{o.pct=null;o.topDur=null;o.cohMed=null;}
     o.verdict=o.ageM<1?'early':(o.pct==null?'early':(o.pct>=70?'over':(o.pct>=40?'inline':'under')));
     o.reco=v.recoN!=null?DATA.recos.find(r=>r.n===v.recoN):null;
     return o;
   });
   const SD=(window.STUDIO_DATA&&window.STUDIO_DATA.d)||{};
   out.forEach(o=>{o.st=SD[o.vid]||null;});
-  const chMed=median(out.map(x=>x.vpm));
-  const ctrMed=median(out.map(x=>x.st?x.st.ctr:null));
-  const awpMed=median(out.map(x=>x.st?x.st.awp:null));
-  const awtMed=median(out.map(x=>x.st?x.st.awtMs:null));
-  const medViews=median(out.map(x=>x.views));
   const CM=window.CMT||{};
-  const medCmt=median(out.map(x=>CM[x.vid]!=null?CM[x.vid]:null));
-  const scored=out.filter(x=>x.vpm!=null);
   out.forEach(o=>{
-    o.chMed=chMed;o.ctrMed=ctrMed;o.awpMed=awpMed;o.awtMed=awtMed;o.medViews=medViews;o.medCmt=medCmt;
-    o.pctCh=(o.vpm!=null&&scored.length>1)?Math.round(scored.filter(x=>x.vpm<o.vpm).length/(scored.length-1)*100):null;
+    const peers=anaAgeComparable(out.filter(x=>x.vid!==o.vid),o.ageDays,2);
+    const comparable=peers.sufficient?peers.rows:[];
+    const velocityPeers=comparable.filter(x=>x.vpm!=null);
+    o.chAgeLabel=peers.label;o.chAgeExact=peers.exact;o.chN=velocityPeers.length;
+    o.chMed=median(velocityPeers.map(x=>x.vpm));
+    o.ctrMed=median(comparable.map(x=>x.st?x.st.ctr:null));
+    o.awpMed=median(comparable.map(x=>x.st?x.st.awp:null));
+    o.awtMed=median(comparable.map(x=>x.st?x.st.awtMs:null));
+    o.medViews=median(comparable.map(x=>x.views));
+    o.medCmt=median(comparable.map(x=>CM[x.vid]!=null?CM[x.vid]:null));
+    o.pctCh=(o.vpm!=null&&velocityPeers.length>=2)?Math.round(velocityPeers.filter(x=>x.vpm<o.vpm).length/velocityPeers.length*100):null;
     o.diags=anaDiags(o);
   });
   _anaCache=out;_anaT=SYNCED;
@@ -673,16 +713,14 @@ function anaDiags(o){
     else if(o.vNow<o.vpm*0.5)d.push('Decelerating: current pace ('+fmtN(o.vNow)+'/mo measured) is well below its lifetime average — the push phase is over.');
   }
   if(o.cohMed!=null&&o.vpm!=null){
-    if(o.vpm<o.cohMed)d.push('Below the genre bar: '+fmtN(o.vpm)+' views/mo vs a median of '+fmtN(o.cohMed)+' across '+fmtInt(o.cohN)+' competing '+o.gk+' videos.');
-    else d.push('Above the genre median ('+fmtN(o.cohMed)+' views/mo across '+fmtInt(o.cohN)+' competing '+o.gk+' videos).');
+    const scope=fmtInt(o.cohN)+' competing '+o.gk+' videos at '+o.cohAgeLabel;
+    if(o.vpm<o.cohMed)d.push('Below the genre bar at the same release age: '+fmtN(o.vpm)+' views/mo vs a median of '+fmtN(o.cohMed)+' across '+scope+'.');
+    else d.push('Above the genre median at the same release age ('+fmtN(o.cohMed)+' views/mo across '+scope+').');
   }
   if(o.topDur!=null&&o.durH!=null){
     const ratio=o.durH/o.topDur;
     if(ratio<0.45)d.push('Short for the winners’ format: top '+o.gk+' performers run '+fmtDur(o.topDur)+' median, this one is '+fmtDur(o.durH)+' — longer mixes capture sleep/focus watch sessions.');
     else if(ratio>2.5)d.push('Much longer than the winning format ('+fmtDur(o.topDur)+' median for top performers).');
-  }
-  if(o.fresh!=null){
-    if(o.fresh>o.cohN*0.35)d.push('Crowded niche right now: '+fmtInt(o.fresh)+' competing '+o.gk+' videos published in the last 6 months.');
   }
   if(o.st){
     if(o.st.ctr!=null&&o.ctrMed!=null){
@@ -697,8 +735,8 @@ function anaDiags(o){
   }
   if(o.chMed!=null&&o.vpm!=null){
     const r=o.vpm/o.chMed;
-    if(r>=1.5)d.push('One of the channel\u2019s strongest launches: \u00d7'+r.toFixed(1)+' the channel\u2019s median velocity ('+fmtN(o.chMed)+' views/mo).');
-    else if(r<=0.5)d.push('Well below the channel\u2019s own median ('+fmtN(o.chMed)+' views/mo, this one at \u00d7'+r.toFixed(1)+') \u2014 the audience that usually shows up didn\u2019t.');
+    if(r>=1.5)d.push('One of the channel\u2019s strongest releases at this age: \u00d7'+r.toFixed(1)+' the same-age channel median ('+fmtN(o.chMed)+' views/mo).');
+    else if(r<=0.5)d.push('Well below the channel\u2019s same-age median ('+fmtN(o.chMed)+' views/mo, this one at \u00d7'+r.toFixed(1)+').');
   }
   if(o.reco&&o.reco.pot){
     const p=o.reco.pot[0];
@@ -753,7 +791,12 @@ function titleSignals(title){
 }
 async function buildDeepAudit(o){
   const out={title:[],thumb:[],kw:[],coh:0};
-  const coh=mixRows().filter(x=>genreKey(x.genre)===o.gk&&x.vpm!=null).sort((a,b)=>b.vpm-a.vpm).slice(0,6);
+  const ageMatched=anaAgeComparable(
+    mixRows().filter(x=>genreKey(x.genre)===o.gk&&anaLifetimeVpm(x)!=null),
+    o.ageDays,
+    6
+  );
+  const coh=(ageMatched.sufficient?ageMatched.rows:[]).sort((a,b)=>anaLifetimeVpm(b)-anaLifetimeVpm(a)).slice(0,6);
   out.coh=coh.length;
   if(!coh.length)return out;
   const [ourThumb,...cohThumbs]=await Promise.all([analyzeThumb(o.vid),...coh.map(c=>analyzeThumb(c.vid))]);
@@ -970,22 +1013,24 @@ function vsMed(v,med){
   return v>=med*1.15?'#34d399':(v<=med*0.85?'#f87171':'#fbbf24');
 }
 function fmtPct(v){return v==null?'—':(v>=10?Math.round(v):v.toFixed(1))+'%';}
-function tipText(val,med,fmt){
+function tipText(val,med,fmt,baseline){
   if(val==null||med==null||!med)return '';
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
   const f=fmt||fmtN;
   const diff=Math.round((val/med-1)*100);
   const rel=diff>0?('+'+diff+'% '+(fr?'au-dessus de la médiane chaîne':'above channel median')):diff<0?(diff+'% '+(fr?'sous la médiane chaîne':'below channel median')):(fr?'dans la médiane chaîne':'at channel median');
-  return (fr?'Médiane chaîne : ':'Channel median: ')+f(med)+'  ·  '+rel;
+  const label=baseline||(fr?'Médiane chaîne : ':'Channel median: ');
+  return label+f(med)+'  ·  '+rel;
 }
-function tipHTML(val,med,fmt){
+function tipHTML(val,med,fmt,baseline){
   if(val==null||med==null||!med)return '';
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
   const f=fmt||fmtN,diff=Math.round((val/med-1)*100),col=vsMed(val,med);
   const pct=(diff>0?'+':'')+diff+'%';
   const rel=diff>0?(fr?' au-dessus de la médiane chaîne':' above channel median'):
     diff<0?(fr?' sous la médiane chaîne':' below channel median'):(fr?' dans la médiane chaîne':' at channel median');
-  return '<span class="metric-tip" style="--tipc:'+col+'">'+(fr?'Médiane chaîne : ':'Channel median: ')+esc(f(med))+' · <b>'+pct+'</b>'+rel+'</span>';
+  const label=baseline||(fr?'Médiane chaîne : ':'Channel median: ');
+  return '<span class="metric-tip" style="--tipc:'+col+'">'+esc(label)+esc(f(med))+' · <b>'+pct+'</b>'+rel+'</span>';
 }
 document.addEventListener('pointerover',e=>{
   const wrap=e.target.closest&&e.target.closest('.vcard.ana-c .tipw');
@@ -1000,26 +1045,27 @@ document.addEventListener('pointerover',e=>{
     tip.style.setProperty('--tip-shift',shift+'px');
   });
 });
-function anaStat(val,med,lbl,hl,fmt){
+function anaStat(val,med,lbl,hl,fmt,baseline){
   const f=fmt||fmtN;
-  const tip=tipText(val,med,f);
+  const tip=tipText(val,med,f,baseline);
   const col=vsMed(val,med);
-  return '<div class="vstat'+(hl?' hl':'')+(tip?' tipw':'')+'"'+(tip?' style="--tipc:'+col+'"':'')+'><b style="color:'+col+'">'+f(val)+'</b><span>'+lbl+'</span>'+tipHTML(val,med,f)+'</div>';
+  return '<div class="vstat'+(hl?' hl':'')+(tip?' tipw':'')+'"'+(tip?' style="--tipc:'+col+'"':'')+'><b style="color:'+col+'">'+f(val)+'</b><span>'+lbl+'</span>'+tipHTML(val,med,f,baseline)+'</div>';
 }
 function anaCardHTML(o,i){
   const cmt=(window.CMT&&window.CMT[o.vid]!=null)?window.CMT[o.vid]:null;
+  const ageRef='Same-age channel median ('+o.chAgeLabel+') · ';
   return '<div class="vcard ana-c" onclick="openAnaIdx('+i+')">'+
     '<div class="thumbwrap"><img loading="lazy" src="'+thumb(o.vid)+'" onerror="this.style.visibility=\'hidden\'"></div>'+
     '<div class="vbody">'+
       '<div class="vtitle">'+esc(o.title)+'</div>'+
-      '<div class="vtags">'+gtag(o.genre)+(o.durH!=null?ghosttag(fmtDur(o.durH)):'')+(o.pub?'<span class="tag ghost">📅 '+fmtDateFull(o.pub)+'</span>':'')+'</div>'+
+      '<div class="vtags">'+gtag(o.genre)+(o.durH!=null?ghosttag(fmtDur(o.durH)):'')+(o.pub?'<span class="tag ghost">📅 '+fmtDateFull(o.pub)+'</span>':'')+(o.ageCohort?ghosttag('age cohort · '+o.chAgeLabel):'')+'</div>'+
       '<div style="display:flex;align-items:center;gap:8px;margin:2px 0 10px"><div class="pbar"><i style="width:'+(o.pctCh==null?0:o.pctCh)+'%;background:'+pcol(o.pctCh)+'"></i></div></div>'+
       '<div class="vstats">'+
-        anaStat(o.views,o.medViews,'views',true)+
-        anaStat(o.vpm,o.chMed,'views/mo')+
+        anaStat(o.views,o.medViews,'views',true,null,ageRef)+
+        anaStat(o.vpm,o.chMed,'views/mo',false,null,ageRef)+
         '<div class="vstat" data-alikesw="'+o.vid+'"><b data-alikes="'+o.vid+'">…</b><span>likes</span></div>'+
-        anaStat(cmt,o.medCmt,'comments')+
-        (o.st&&o.st.awp!=null?anaStat(o.st.awp,o.awpMed,'avg view',false,fmtPct):'')+
+        anaStat(cmt,o.medCmt,'comments',false,null,ageRef)+
+        (o.st&&o.st.awp!=null?anaStat(o.st.awp,o.awpMed,'avg view',false,fmtPct,ageRef):'')+
       '</div></div></div>';
 }
 function fillAnaLikes(){
@@ -1029,17 +1075,18 @@ function fillAnaLikes(){
   let pending=0;const got={};
   rows.forEach(o=>{pending++;fetchLikes(o.vid,n=>{got[o.vid]=n;if(--pending===0)done();});});
   function done(){
-    const vals=Object.values(got).filter(x=>x!=null).sort((a,b)=>a-b);
-    const med=vals.length?vals[Math.floor(vals.length/2)]:null;
     for(const vid in els){
       const el=els[vid],n=got[vid];
       if(n==null){el.textContent='—';continue;}
+      const row=rows.find(o=>o.vid===vid);
+      const peers=row?anaAgeComparable(rows.filter(o=>o.vid!==vid&&got[o.vid]!=null),row.ageDays,2):{rows:[],label:'same age'};
+      const med=median((peers.sufficient?peers.rows:[]).map(o=>got[o.vid]));
       const col=vsMed(n,med);
       el.textContent=fmtN(n);
       el.style.color=col;
-      const tip=tipText(n,med,fmtN);
+      const tip=tipText(n,med,fmtN,'Same-age channel median ('+peers.label+') · ');
       const wrap=el.closest('[data-alikesw]');
-      if(tip&&wrap){wrap.classList.add('tipw');wrap.style.setProperty('--tipc',col);wrap.insertAdjacentHTML('beforeend',tipHTML(n,med,fmtN));}
+      if(tip&&wrap){wrap.classList.add('tipw');wrap.style.setProperty('--tipc',col);wrap.insertAdjacentHTML('beforeend',tipHTML(n,med,fmtN,'Same-age channel median ('+peers.label+') · '));}
     }
   }
 }
@@ -1094,6 +1141,7 @@ function openAnaIdx(i,historyReload){
         '<div class="dw-stat"><b style="color:'+vsMed(o.vpm,o.chMed)+'">'+fmtN(o.vpm)+'</b><span>views/mo lifetime</span></div>'+
         '<div class="dw-stat"><b style="color:'+vsMed(o.vNow,o.vpm)+'">'+fmtN(o.vNow)+'</b><span>views/mo now</span></div>'+
       '</div>'+
+      '<div class="dw-sec"><div class="k">⚖️ Age-matched comparison</div><div class="v">Published '+fmtDateFull(o.pub)+' · '+Math.round(o.ageDays||0)+' days old · market cohort: '+esc(o.cohAgeLabel||'—')+' ('+fmtInt(o.cohN||0)+' videos) · channel cohort: '+esc(o.chAgeLabel||'—')+' ('+fmtInt(o.chN||0)+' videos). Raw totals stay visible; performance colors and percentiles only compare releases at a similar age.</div></div>'+
       (o.st?'<div class="dw-stats" style="margin-top:10px">'+
         '<div class="dw-stat"><b>'+fmtN(o.st.imp)+'</b><span>impressions</span></div>'+
         '<div class="dw-stat"><b style="color:'+vsMed(o.st.ctr,o.ctrMed)+'">'+o.st.ctr.toFixed(1)+'%</b><span>CTR (median '+(o.ctrMed?o.ctrMed.toFixed(1):'—')+'%)</span></div>'+
@@ -1565,6 +1613,7 @@ const FR_LIT=[
 ['>Stream<','>Stream<'],['>👀 Now<','>👀 Actuel<'],['>Peak<','>Pic<'],['>Started<','>Lancé<'],['>Discovery keywords<','>Mots-clés de découverte<'],
 ['>Channel</th>','>Chaîne</th>'],['>Niche<','>Niche<'],['>Country<','>Pays<'],['>Subs</th>','>Abonnés</th>'],['>Subs per month<','>Abonnés par mois<'],['>Total views<','>Vues totales<'],['>Views per year<','>Vues par an<'],['>Avg last 10<','>Moy. 10 dern.<'],['>Uploads per month<','>Uploads par mois<'],['>Last upload<','>Dernier upload<'],['>Title<','>Titre<'],['>Views/mo<','>Vues/mois<'],['>Views<','>Vues<'],['>Duration<','>Durée<'],['>Published<','>Publiée<'],['>Genre<','>Genre<'],
 ['>views/mo</span>','>vues/mois</span>'],['>views</span>','>vues</span>'],['>age</span>','>âge</span>'],['>published</span>','>publiée</span>'],['>duration</span>','>durée</span>'],['>watching now</span>','>spectateurs</span>'],['>peak measured</span>','>pic mesuré</span>'],['>peak</span>','>pic</span>'],['>started</span>','>lancé</span>'],['>scans</span>','>scans</span>'],['>subscribers</span>','>abonnés</span>'],['>total views</span>','>vues totales</span>'],['>views / year</span>','>vues / an</span>'],['>avg last 10</span>','>moy. 10 dern.</span>'],['>percentile vs market</span>','>percentile vs marché</span>'],['>percentile · channel</span>','>percentile · chaîne</span>'],['th · channel<','e · chaîne<'],['>avg view duration (median ','>durée moy. de vue (médiane '],['>views/mo lifetime</span>','>vues/mois (vie)</span>'],['>views/mo now</span>','>vues/mois (actuel)</span>'],['>impressions</span>','>impressions</span>'],['>avg view duration</span>','>durée moy. de vue</span>'],['>reco score</span>','>score reco</span>'],['>potential</span>','>potentiel</span>'],['>release date</span>','>date de sortie</span>'],
+['age cohort · ','cohorte d’âge · '],['Same-age channel median (','Médiane chaîne à âge équivalent ('],['⚖️ Age-matched comparison','⚖️ Comparaison à âge équivalent'],['Published ','Publiée '],[' days old',' jours'],['market cohort: ','cohorte marché : '],['channel cohort: ','cohorte chaîne : '],[' videos)',' vidéos)'],['Raw totals stay visible; performance colors and percentiles only compare releases at a similar age.','Les totaux bruts restent visibles ; couleurs et percentiles ne comparent que des sorties d’âge proche.'],
 [' watching</span>',' spectateurs</span>'],[' watching<',' spectateurs<'],
 ['>Overperforming<','>Surperforme<'],['>In line<','>Dans la norme<'],['>Underperforming<','>Sous-performe<'],['>Too early<','>Trop tôt<'],
 ['beating 70% of their genre cohort','au-dessus de 70 % de leur cohorte de genre'],['below 40% of their genre cohort','sous les 40 % de leur cohorte de genre'],['long-form releases · full channel history','sorties long format · historique complet de la chaîne'],['vs competing videos of the same genre','vs les vidéos concurrentes du même genre'],['median views/mo across our releases','vues/mois médianes de nos sorties'],['impressions click-through · YouTube Studio, 365 days','taux de clic des impressions · YouTube Studio, 365 jours'],
