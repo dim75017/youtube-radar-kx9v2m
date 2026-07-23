@@ -86,7 +86,7 @@ function autoSaveComment(n){
       }).catch(e=>{const fr=typeof LANG!=='undefined'&&LANG==='fr';const s=document.getElementById('cstat-dw');if(s){s.textContent=fr?'⚠ Non enregistré':'⚠ Not saved';s.style.color='var(--red)';}console.error(e);});
   },700);
 }
-function filterRecos(){
+function legacyFilterRecos(){
   let rows=DATA.recos;
   if(RS.genre)rows=rows.filter(r=>(r.genre||'(unset)')===RS.genre);
   if(RS.pot)rows=rows.filter(r=>r.pot&&r.pot.startsWith(RS.pot));
@@ -98,7 +98,7 @@ function filterRecos(){
   const sf=RS.sort;
   return [...rows].sort((a,b)=>sf==='n'?(a.n-b.n):(((b[sf]!=null?b[sf]:b.score)||0)-((a[sf]!=null?a[sf]:a.score)||0)));
 }
-function recosHTML(){
+function legacyRecosHTML(){
   const all=DATA.recos;
   const rows=filterRecos();
   const genres=[...new Set(all.map(r=>r.genre||'(unset)'))].sort();
@@ -139,13 +139,93 @@ function recosHTML(){
   h+='<div id="reco-list">'+recoListHTML(rows)+'</div>';
   return h;
 }
-function rerenderRecos(){
+function legacyRerenderRecos(){
   const rows=filterRecos();
   const el=document.getElementById('reco-list');if(el){el.innerHTML=recoListHTML(rows);i18nZone(el);}
   const rc=document.querySelector('.result-count');if(rc)rc.innerHTML='<b>'+fmtInt(rows.length)+'</b> concepts';
   armAutoLoad();
 }
-function recoCardHTML(r,i){
+/* Daily recommendation rotation: the large source catalogue stays intact; this view exposes 25 actionable ideas. */
+const RECO_DAILY_LIMIT=25;
+const RECO_ROTATION_KEY='lofi_radar_reco_rotation_v1';
+function recoDayKey(){
+  const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+  const get=t=>p.find(x=>x.type===t).value;
+  return get('year')+'-'+get('month')+'-'+get('day');
+}
+function recoHash(v){let h=2166136261;const s=String(v);for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function recoTokens(r){
+  const stop=new Set(['avec','dans','pour','the','and','from','lofi','music','radio','mix','video','youtube','ambient','chill']);
+  return [...new Set((String(r.title||'')+' '+String(r.concept||'')+' '+String(r.niche||'')+' '+String(r.kw||''))
+    .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').match(/[a-z0-9]{4,}/g)||[])].filter(x=>!stop.has(x)).slice(0,18);
+}
+function recoRotationHistory(){try{return JSON.parse(localStorage.getItem(RECO_ROTATION_KEY)||'{}')||{};}catch(e){return {};}}
+function saveRecoRotation(h){try{localStorage.setItem(RECO_ROTATION_KEY,JSON.stringify(h));}catch(e){}}
+function recoAddSignal(map,key,value){if(key)map[key]=(map[key]||0)+value;}
+function recoSignal(map,key){return Number(map[key]||0);}
+function recoProfile(){
+  const p={genre:{},persona:{},token:{},recentGenre:{},feedbackPersona:{},feedbackToken:{},recentVideos:0,feedback:0};
+  (DATA.recos||[]).forEach(r=>{
+    const feedback=isValidated(r.valid)?3:isRefused(r.valid)?-3:0;if(!feedback)return;
+    p.feedback++;recoAddSignal(p.genre,String(r.genre||''),feedback);recoAddSignal(p.persona,persoCategory(r.perso),feedback);
+    recoAddSignal(p.feedbackPersona,persoCategory(r.perso),feedback);recoTokens(r).forEach(t=>{recoAddSignal(p.token,t,feedback*.35);recoAddSignal(p.feedbackToken,t,feedback*.35);});
+  });
+  try{(anaRows()||[]).filter(o=>Number(o.ageM)<=3&&o.reco).forEach(o=>{
+    const relative=Number.isFinite(Number(o.pctCh))?Number(o.pctCh)-50:0;
+    const ctr=Number(o.st&&o.st.ctr),awp=Number(o.st&&o.st.awp);
+    const signal=Math.max(-18,Math.min(18,relative*.22+(Number.isFinite(ctr)?Math.max(-3,Math.min(3,(ctr-4)*.7)):0)+(Number.isFinite(awp)?Math.max(-3,Math.min(3,(awp-35)*.08)):0)));
+    if(!signal)return;p.recentVideos++;recoAddSignal(p.genre,String(o.reco.genre||''),signal);recoAddSignal(p.recentGenre,String(o.reco.genre||''),signal);recoAddSignal(p.persona,persoCategory(o.reco.perso),signal*.65);
+    recoTokens(o.reco).forEach(t=>recoAddSignal(p.token,t,signal*.18));
+  });}catch(e){}
+  return p;
+}
+function recoDailyScore(r,p,day){
+  const base=Number(r.scoreAdj!=null?r.scoreAdj:r.score)||0;
+  const genre=recoSignal(p.genre,String(r.genre||''));const persona=recoSignal(p.persona,persoCategory(r.perso));
+  const terms=recoTokens(r).reduce((sum,t)=>sum+recoSignal(p.token,t),0);const rotation=(recoHash(day+'|'+r.n)%1000)/1000*2.4;
+  return base+genre*.9+persona*.55+Math.max(-6,Math.min(6,terms))*.45+rotation;
+}
+function recoReasons(r,p,day){
+  const fr=typeof LANG!=='undefined'&&LANG==='fr',out=[];const base=Math.round(Number(r.scoreAdj!=null?r.scoreAdj:r.score)||0);
+  out.push(fr?'Score catalogue '+base:'Catalogue score '+base);
+  const genre=recoSignal(p.recentGenre,String(r.genre||''));
+  if(Math.abs(genre)>=1.5)out.push((genre>0?(fr?'Signal chaîne récent : ':'Recent channel signal: '):(fr?'Signal à surveiller : ':'Signal to watch: '))+String(r.genre||'—'));
+  const feedback=recoTokens(r).reduce((sum,t)=>sum+recoSignal(p.feedbackToken,t),0)+recoSignal(p.feedbackPersona,persoCategory(r.perso));
+  if(Math.abs(feedback)>=1.5)out.push(feedback>0?(fr?'Format proche de validations passées':'Close to past validations'):(fr?'Format moins retenu par le passé':'Format less retained in the past'));
+  out.push(fr?'Rotation quotidienne':'Daily rotation');return out.slice(0,4);
+}
+function dailyRecommendationSet(){
+  const day=recoDayKey(),history=recoRotationHistory(),profile=recoProfile();
+  const candidates=(DATA.recos||[]).filter(r=>!isValidated(r.valid)&&!isRefused(r.valid));
+  const previous=Object.keys(history).filter(k=>k!==day).sort().slice(-14).flatMap(k=>history[k]||[]);
+  let pool=candidates.filter(r=>!new Set(previous).has(r.n));if(pool.length<RECO_DAILY_LIMIT)pool=candidates;
+  const picked=[],genres={},personas={};
+  while(picked.length<RECO_DAILY_LIMIT&&pool.length){
+    const ranked=pool.filter(r=>!picked.includes(r)).map(r=>{const g=String(r.genre||''),p=persoCategory(r.perso);return {r,value:recoDailyScore(r,profile,day)-(genres[g]||0)*3-(personas[p]||0)*1.35};}).sort((a,b)=>b.value-a.value||a.r.n-b.r.n);
+    if(!ranked.length)break;const r=ranked[0].r;picked.push(r);const g=String(r.genre||''),p=persoCategory(r.perso);genres[g]=(genres[g]||0)+1;personas[p]=(personas[p]||0)+1;
+  }
+  history[day]=[...new Set([...(history[day]||[]),...picked.map(r=>r.n)])].slice(-200);Object.keys(history).sort().slice(0,-21).forEach(k=>delete history[k]);saveRecoRotation(history);
+  return picked.map(r=>Object.assign({},r,{_dailyScore:recoDailyScore(r,profile,day),_dailyReasons:recoReasons(r,profile,day),_dailyProfile:profile}));
+}
+function legacyDailyRecoBrief(rows){
+  const fr=typeof LANG!=='undefined'&&LANG==='fr',p=rows[0]&&rows[0]._dailyProfile||{recentVideos:0};
+  return '<div class="reco-daily-brief"><div><div class="reco-daily-kicker">'+(fr?'SÉLECTION DU JOUR':'DAILY SELECTION')+' · '+recoDayKey()+'</div><h3>'+(fr?'25 propositions à examiner':'25 proposals to review')+'</h3><p>'+(fr?'Classement basé sur les 90 derniers jours de la chaîne, les performances comparées à l’âge des vidéos, puis tes validations et refus. Les idées déjà proposées sont mises en rotation.':'Ranking uses the channel’s last 90 days, age-normalized video performance, then your validations and refusals. Previously shown ideas are rotated out.')+'</p></div><div class="reco-daily-stats"><b>'+rows.length+' / '+RECO_DAILY_LIMIT+'</b><span>'+(fr?'idées actives':'active ideas')+'</span><b>'+p.recentVideos+'</b><span>'+(fr?'vidéos récentes analysées':'recent videos analysed')+'</span></div></div>';
+}
+function dailyRecoBrief(rows){
+  const fr=typeof LANG!=='undefined'&&LANG==='fr',p=rows[0]&&rows[0]._dailyProfile||{recentVideos:0};
+  const text=p.recentVideos
+    ?(fr?'Classement basé sur les 90 derniers jours de la chaîne, les performances comparées à l’âge des vidéos, puis tes validations et refus. Les idées déjà proposées sont mises en rotation.':'Ranking uses the channel’s last 90 days, age-normalized video performance, then your validations and refusals. Previously shown ideas are rotated out.')
+    :(fr?'Les données de performance récentes arriveront avec le prochain import YouTube. En attendant, la sélection utilise le score catalogue, tes validations/refus et la rotation anti-répétition.':'Recent performance data will be used after the next YouTube import. Until then, the selection uses the catalogue score, your feedback and anti-repeat rotation.');
+  return '<div class="reco-daily-brief"><div><div class="reco-daily-kicker">'+(fr?'SÉLECTION DU JOUR':'DAILY SELECTION')+' · '+recoDayKey()+'</div><h3>'+(fr?'25 propositions à examiner':'25 proposals to review')+'</h3><p>'+text+'</p></div><div class="reco-daily-stats"><b>'+rows.length+' / '+RECO_DAILY_LIMIT+'</b><span>'+(fr?'idées actives':'active ideas')+'</span><b>'+p.recentVideos+'</b><span>'+(fr?'vidéos récentes analysées':'recent videos analysed')+'</span></div></div>';
+}
+function dailyRecoListHTML(rows){
+  if(!rows.length)return '<div class="empty">'+((typeof LANG!=='undefined'&&LANG==='fr')?'Aucune proposition en attente.':'No proposal awaiting review.')+'</div>';
+  window._pageRecos=rows;return '<div class="rgrid2">'+rows.map((r,i)=>recoCardHTML(r,i)).join('')+'</div>';
+}
+function recosHTML(){const rows=dailyRecommendationSet();return dailyRecoBrief(rows)+'<div id="reco-list">'+dailyRecoListHTML(rows)+'</div>';}
+function rerenderRecos(){const el=document.getElementById('reco-list');if(el){el.innerHTML=dailyRecoListHTML(dailyRecommendationSet());i18nZone(el);}}
+
+function legacyRecoCardHTML(r,i){
     const note=noteOf(r.valid);
     const tierL=r.pot?r.pot[0].toUpperCase():null;
     const tier=tierL?('<span class="rtier tier-'+tierL+'" title="Tier '+tierL+'">'+tierL+'</span>'):'<span class="rtier" style="opacity:.35">—</span>';
@@ -156,6 +236,18 @@ function recoCardHTML(r,i){
       (r.scene?'<div class="rt-scene">🖼️ '+esc(String(r.scene).slice(0,100))+(String(r.scene).length>100?'…':'')+'</div>':'')+
       (note?'<div class="rt-note">💬 '+esc(note.slice(0,60))+(note.length>60?'…':'')+'</div>':'')+
     '</div>';
+}
+function recoCardHTML(r,i){
+  const note=noteOf(r.valid),tierL=r.pot?r.pot[0].toUpperCase():null;
+  const tier=tierL?('<span class="rtier tier-'+tierL+'" title="Tier '+tierL+'">'+tierL+'</span>'):'<span class="rtier" style="opacity:.35">-</span>';
+  return '<div class="rtile" style="--gc:'+gcolor(r.genre)+'" onclick="openRecoIdx('+i+')">'+
+    '<div class="rt-head">'+tier+'<div class="rt-title">'+esc(r.title)+'</div></div>'+
+    '<div class="rt-tags">'+gtag(r.genre)+(r.dur?ghosttag(r.dur):'')+'</div>'+
+    (r.concept?'<div class="rt-desc">'+esc(String(r.concept).slice(0,130))+(String(r.concept).length>130?'...':'')+'</div>':'')+
+    (r.scene?'<div class="rt-scene">Scene: '+esc(String(r.scene).slice(0,100))+(String(r.scene).length>100?'...':'')+'</div>':'')+
+    (r._dailyReasons?'<div class="reco-reasons">'+r._dailyReasons.map(x=>'<span class="reco-reason">'+esc(x)+'</span>').join('')+'</div>':'')+
+    (note?'<div class="rt-note">Note: '+esc(note.slice(0,60))+(note.length>60?'...':'')+'</div>':'')+
+  '</div>';
 }
 function recoInfoRows(r){
   return recoRow('Concept',r.concept)+recoRow('Thumbnail scene',r.scene)+recoRow('Music style',r.style)+
@@ -194,6 +286,11 @@ function recoCommentBox(r){
     '<span id="cstat-dw" style="font-size:11px;color:var(--dim);margin-top:5px;display:inline-block;min-height:14px"></span>'+
   '</div>';
 }
+function recoReasonsDrawerHTML(r){
+  if(!r._dailyReasons||!r._dailyReasons.length)return '';
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
+  return '<div class="reco-why"><div class="k">'+(fr?'Pourquoi cette proposition aujourd’hui':'Why this proposal today')+'</div><div class="reco-reasons">'+r._dailyReasons.map(x=>'<span class="reco-reason">'+esc(x)+'</span>').join('')+'</div></div>';
+}
 function openRecoIdx(i){
   const r=(window._pageRecos||[])[i];if(!r)return;
   const tierL=r.pot?r.pot[0].toUpperCase():null;
@@ -206,6 +303,7 @@ function openRecoIdx(i){
       '<div class="dw-sub">'+gtag(r.genre)+(r.dur?ghosttag(r.dur):'')+(r.scoreAdj!=null?'<span class="tag ghost">score '+Math.round(r.scoreAdj)+'</span>':'')+'</div>'+
       recoActions(r)+
       recoCommentBox(r)+
+      recoReasonsDrawerHTML(r)+
       recoInfoRows(r)+
       recoDescKw(r)+
     '</div>';
