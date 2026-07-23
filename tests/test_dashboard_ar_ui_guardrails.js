@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const source = fs.readFileSync('spotify/dashboard.js', 'utf8');
+const css = fs.readFileSync('spotify/dashboard.css', 'utf8');
 const start = source.indexOf('function renderRadar(){');
 const end = source.indexOf('\nfunction renderWatch(){', start);
 if (start < 0 || end < 0) throw new Error('renderRadar function was not found');
@@ -55,6 +56,14 @@ for (const removed of ['ar-score-confidence', 'ar-open-detail', 'Pourquoi ?']) {
 }
 for (const required of ['arTrackCoverUrl(opportunity)', 'Auditeurs/mois', 'arEditorialCardHtml(opportunity)', 'arGenreVisual(opportunity.genre)']) {
   if (!card.includes(required)) throw new Error(`A&R card data is missing: ${required}`);
+}
+for (const required of [
+  '--ar-column-gap:18px',
+  '--ar-column-inset:14px',
+  '.ar-genre-card{margin-left:var(--ar-column-gap);padding-left:var(--ar-column-inset);border-left:2px solid transparent}',
+  '.ar-editorial-card{margin-left:var(--ar-column-gap);padding-left:var(--ar-column-inset)}',
+]) {
+  if (!css.includes(required)) throw new Error(`A&R genre/editorial alignment is missing: ${required}`);
 }
 const filteredStart = source.indexOf('function arOpportunityFiltered(all){');
 const filteredEnd = source.indexOf('\nfunction arOpportunityCard', filteredStart);
