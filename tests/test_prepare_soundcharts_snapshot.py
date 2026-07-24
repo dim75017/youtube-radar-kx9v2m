@@ -440,6 +440,29 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
         )
         subject.validate_payload(sanitized)
 
+    def test_reviewed_vocal_artist_is_quarantined_from_public_snapshot(self):
+        payload = minimal_payload()
+        corbon = collaborator(
+            "Corbon Amodio", "artist-corbon", "uuid-corbon"
+        )
+        payload["artists"].append(
+            ["artist-corbon", "Corbon Amodio", "uuid-corbon", 2_500]
+        )
+        payload["tracks"].append(
+            track("track-corbon", "Corbon Amodio", [corbon])
+        )
+        payload["opportunities"].append(
+            opportunity("opp-corbon", "Corbon Amodio", [corbon])
+        )
+
+        sanitized, report = subject.sanitize_payload(payload)
+
+        self.assertNotIn("Corbon Amodio", [row[1] for row in sanitized["artists"]])
+        self.assertNotIn("track-corbon", [row[0] for row in sanitized["tracks"]])
+        self.assertNotIn("opp-corbon", [row[1] for row in sanitized["opportunities"]])
+        self.assertGreater(report["track_removal_reasons"]["blacklisted_identity"], 0)
+        subject.validate_payload(sanitized)
+
     def test_opportunity_validation_rejects_empty_duplicate_status_and_ai_risk(self):
         empty = minimal_payload()
         empty["opportunities"] = []
