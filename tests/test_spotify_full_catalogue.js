@@ -39,7 +39,7 @@ assert.match(coverage, /Catalogue vivant/);
 assert.match(coverage, /A&R reste strict/);
 assert.match(index, /Spotify_Browse_Catalogue_data\.js\?payload=/);
 assert.match(index, /discovery\.css\?v=20260722-unified-catalogue-v1/);
-assert.match(index, /dashboard\.js\?v=20260724-catalogue-selection-v2/);
+assert.match(index, /dashboard\.js\?v=20260724-dark-ambient-restore-v1/);
 assert.match(dashboard, /const SPOTIFY_WEB_LOCALE='en'/);
 assert.match(dashboard, /locale=\$\{SPOTIFY_WEB_LOCALE\}/);
 assert.match(dashboard, /function artistTrackClassification\(g\)/);
