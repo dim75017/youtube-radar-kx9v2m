@@ -286,7 +286,6 @@ function archiveValidatedRecommendation(i,ev){
   const row=(window._pageRecos||[])[i];if(!row)return;
   const key=validatedRowKey(row),archive=validatedArchiveRows();
   if(!archive.some(item=>item.key===key)){archive.push({key,archivedAt:Date.now(),row:Object.assign({},row)});saveValidatedArchive(archive);}
-  archiveLinkedRoadmapRecommendation(row);
   closeDrawer();rerenderRecos();
 }
 function restoreValidatedRecommendation(key,ev){
@@ -596,8 +595,11 @@ function openRoad(i){
 }
 let ROADMAP_ARCHIVE_VIEW=false;
 let ROADMAP_CONTEXT_MENU=null;
-let ROADMAP_ARCHIVE_LOCAL=(()=>{try{return JSON.parse(localStorage.getItem('radar_roadmap_archive')||'[]');}catch(e){return [];}})();
-function roadmapArchiveSave(){try{localStorage.setItem('radar_roadmap_archive',JSON.stringify(ROADMAP_ARCHIVE_LOCAL));}catch(e){}}
+// Archive state is intentionally local to this browser.  v2 starts clean so
+// previous one-way "remove from roadmap" actions cannot hide Monday projects.
+const ROADMAP_ARCHIVE_STORAGE_KEY='radar_roadmap_archive_v2';
+let ROADMAP_ARCHIVE_LOCAL=(()=>{try{return JSON.parse(localStorage.getItem(ROADMAP_ARCHIVE_STORAGE_KEY)||'[]');}catch(e){return [];}})();
+function roadmapArchiveSave(){try{localStorage.setItem(ROADMAP_ARCHIVE_STORAGE_KEY,JSON.stringify(ROADMAP_ARCHIVE_LOCAL));}catch(e){}}
 function roadmapEntryMatches(a,b){return a&&b&&a.date===b.date&&a.title===b.title;}
 function closeRoadmapContextMenu(){
   if(ROADMAP_CONTEXT_MENU){ROADMAP_CONTEXT_MENU.remove();ROADMAP_CONTEXT_MENU=null;}
@@ -609,10 +611,14 @@ function openRoadmapContextMenu(i,ev){
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
   const menu=document.createElement('div');
   menu.className='roadmap-context-menu';menu.setAttribute('role','menu');
+  // Right-click is a reversible local archive, never a delete from the Monday source.
+  menu.innerHTML='<button type="button" role="menuitem" onclick="archiveRoadmapEntry('+i+',event)">&#128230; '+(fr?'Archiver':'Archive')+'</button>';
   menu.innerHTML='<button type="button" role="menuitem" onclick="archiveRoadmapEntry('+i+',event)">&#128230; '+(fr?'Archiver':'Archive')+'</button>'+
     '<button type="button" role="menuitem" class="danger" onclick="deleteRoadmapEntry('+i+',event)">&#128465; '+(fr?'Mettre à la corbeille':'Move to trash')+'</button>';
+  // Keep the native right-click menu deliberately limited to the reversible action.
+  menu.innerHTML='<button type="button" role="menuitem" onclick="archiveRoadmapEntry('+i+',event)">&#128230; '+(fr?'Archiver':'Archive')+'</button>';
   document.body.appendChild(menu);ROADMAP_CONTEXT_MENU=menu;
-  const width=menu.offsetWidth||176,height=menu.offsetHeight||82;
+  const width=menu.offsetWidth||176,height=menu.offsetHeight||44;
   menu.style.left=Math.max(8,Math.min(window.innerWidth-width-8,(ev&&ev.clientX)||8))+'px';
   menu.style.top=Math.max(8,Math.min(window.innerHeight-height-8,(ev&&ev.clientY)||8))+'px';
   setTimeout(()=>document.addEventListener('click',closeRoadmapContextMenu,{once:true}),0);
@@ -630,18 +636,15 @@ function archiveRoadmapEntry(i,ev){
   closeRoadmapContextMenu();
   if(!ROADMAP_ARCHIVE_LOCAL.some(x=>roadmapEntryMatches(x,r)))ROADMAP_ARCHIVE_LOCAL.push({...r,archivedAt:Date.now()});
   roadmapArchiveSave();
-  const li=SCHED_LOCAL.findIndex(x=>roadmapEntryMatches(x,r));
-  if(li>=0){SCHED_LOCAL.splice(li,1);schedSaveLocal();}
-  DATA.roadmap=(DATA.roadmap||[]).filter(x=>!roadmapEntryMatches(x,r));
-  saveCache(DATA);closeDrawer();render();
+  // DATA is the fresh Monday feed.  Keep it intact; only this browser hides the entry.
+  closeDrawer();render();
 }
 function restoreRoadmapEntry(i){
   const r=ROADMAP_ARCHIVE_LOCAL[i];if(!r)return;
-  const entry={...r};delete entry.archivedAt;
-  if(!scheduledRows().some(x=>roadmapEntryMatches(x,entry))){SCHED_LOCAL.push(entry);schedSaveLocal();DATA.roadmap=(DATA.roadmap||[]).concat([entry]);saveCache(DATA);}
   ROADMAP_ARCHIVE_LOCAL.splice(i,1);roadmapArchiveSave();render();
 }
 function deleteRoadmapEntry(i,ev){
+  archiveRoadmapEntry(i,ev);return;
   if(ev)ev.stopPropagation();
   const r=(window._rm_rows||[])[i];if(!r)return;
   closeRoadmapContextMenu();
@@ -760,18 +763,15 @@ const SCHED_RULES={
 function roadmapArchiveKey(row){
   const date=Number(row&&row.date);
   const safeDate=Number.isFinite(date)?String(date):String(row&&row.date||'');
-  return 'roadmap:'+safeDate+'|'+normalizedRecommendationTitle(row&&row.title);
+  const normalizer=typeof normalizedRecommendationTitle==='function'
+    ?normalizedRecommendationTitle
+    :value=>String(value||'').trim().toLowerCase().replace(/\s+/g,' ');
+  return 'roadmap:'+safeDate+'|'+normalizer(row&&row.title);
 }
 function archivedRoadmapKeys(){
   const keys=new Set(),add=row=>{if(row&&row.title)keys.add(roadmapArchiveKey(row));};
   if(typeof ROADMAP_ARCHIVE_LOCAL!=='undefined'&&Array.isArray(ROADMAP_ARCHIVE_LOCAL))ROADMAP_ARCHIVE_LOCAL.forEach(add);
-  // DATA is reloaded from Monday after a refresh.  Also honor the dedicated
-  // Validated archive so items archived before the roadmap bridge existed do
-  // not reappear merely because the in-memory DATA mutation was lost.
-  if(typeof validatedArchiveRows==='function')validatedArchiveRows().forEach(item=>{
-    if(item&&typeof item.key==='string'&&item.key.startsWith('roadmap:'))keys.add(item.key);
-    if(item&&item.row&&item.row.__kind==='roadmap')add(item.row);
-  });
+  // Recommendation-card archives are separate from the Monday roadmap.
   return keys;
 }
 function isArchivedRoadmapEntry(row){return archivedRoadmapKeys().has(roadmapArchiveKey(row));}

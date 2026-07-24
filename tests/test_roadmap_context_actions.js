@@ -10,8 +10,10 @@ assert.match(source, /function openRoadmapContextMenu\(i,ev\)/,
   'roadmap entries expose a dedicated context menu');
 assert.match(source, /onclick="archiveRoadmapEntry\('/,
   'the context menu provides the archive action');
-assert.match(source, /onclick="deleteRoadmapEntry\('/,
-  'the context menu provides the trash action');
+assert.match(source, /ROADMAP_ARCHIVE_STORAGE_KEY='radar_roadmap_archive_v2'/,
+  'old destructive archive state is not replayed against the Monday feed');
+assert.match(source, /archiveRoadmapEntry\(i,ev\);return;/,
+  'the legacy remove action now resolves to a reversible archive');
 assert.match(source, /function restoreRoadmapEntry\(i\)/,
   'archived roadmap entries can be restored');
 assert.match(source, /oncontextmenu="openRoadmapContextMenu/,

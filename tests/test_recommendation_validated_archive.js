@@ -39,8 +39,8 @@ context.window._pageRecos = rows;
 context.archive(rows.findIndex(row => row.title === 'Monday project'));
 rows = Array.from(context.rows());
 assert.equal(rows.length, 2, 'archiving hides a card from Validated');
-assert.equal(context.DATA.roadmap.length, 1, 'archiving a validated roadmap project removes it from the roadmap too');
-assert.equal(context.DATA.roadmap[0].title, 'Existing plan');
+assert.equal(context.DATA.roadmap.length, 2, 'archiving a validated card must not modify the Monday roadmap');
+assert.ok(context.DATA.roadmap.some(row => row.title === 'Monday project'));
 
 const scheduleStart = source.indexOf('function roadmapArchiveKey');
 const scheduleEnd = source.indexOf('function schedBucket', scheduleStart);
@@ -61,8 +61,8 @@ const reloadContext = {
 vm.runInNewContext(`${source.slice(scheduleStart, scheduleEnd)}; this.scheduled=scheduledRows;`, reloadContext);
 assert.deepEqual(
   Array.from(reloadContext.scheduled()).map(row => row.title),
-  ['Still scheduled'],
-  'a roadmap item archived from Validated stays out after a fresh source reload'
+  ['Archived after reload', 'Still scheduled'],
+  'a Validated-card archive must not filter a fresh Monday roadmap source'
 );
 
 assert.match(source, /rbtn-archive/, 'validated cards expose a visible archive action');
