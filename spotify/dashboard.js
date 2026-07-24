@@ -812,15 +812,24 @@ function mergeFullDiscoveryCatalogue(){
       if(meta.availabilityStatus==='needs_listen') SC_DISCOVERY.review++;
       if(meta.availabilityStatus==='verified') SC_DISCOVERY.verified++;
     }
-    track.scClassification={
-      genre:String(source.primary_genre||''),
-      genre_confidence:discoveryNumber(source.genre_confidence),
-      genre_source:'soundcharts_discovery_catalogue',
-      instrumental:String(source.instrumental_status||'unknown').toLowerCase(),
-      instrumental_confidence:discoveryNumber(source.instrumental_confidence),
-      ai_risk:String(source.ai_risk||'unknown').toLowerCase(),
-      ai_risk_source:'soundcharts_discovery_catalogue'
-    };
+    /* The strict discovery snapshot is merged before the broad browse baseline.
+       The baseline uses `trusted_catalogue` as an ownership marker, not a genre.
+       Never let that marker erase a verified musical genre already attached to
+       the same Spotify track (notably the Dark Ambient discovery batch). */
+    const sourceGenre=String(source.primary_genre||'').trim();
+    const sourceGenreIsMarker=/^(?:trusted(?:[\s_-]*(?:catalogue|internal[\s_-]*catalogue))?|catalogue[\s_-]*trusted|internal[\s_-]*catalogue)$/i.test(sourceGenre);
+    const currentGenre=String(track.scClassification&&track.scClassification.genre||'').trim();
+    if(!currentGenre || (!sourceGenreIsMarker && /^(?:trusted(?:[\s_-]*(?:catalogue|internal[\s_-]*catalogue))?|catalogue[\s_-]*trusted|internal[\s_-]*catalogue)$/i.test(currentGenre))){
+      track.scClassification={
+        genre:sourceGenre,
+        genre_confidence:discoveryNumber(source.genre_confidence),
+        genre_source:'soundcharts_discovery_catalogue',
+        instrumental:String(source.instrumental_status||'unknown').toLowerCase(),
+        instrumental_confidence:discoveryNumber(source.instrumental_confidence),
+        ai_risk:String(source.ai_risk||'unknown').toLowerCase(),
+        ai_risk_source:'soundcharts_discovery_catalogue'
+      };
+    }
     const delta=discoveryNumber(source.streams_delta_24h);
     if(delta!=null) track.scDelta24=delta;
     trackIndex.set(key,track);
