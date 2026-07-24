@@ -415,13 +415,16 @@ function mergeSoundchartsStaging(){
   /* A structured ID may exist on an old malformed display-credit row. Do not
      let that row become visible again through an otherwise safe SC merge. */
   A.forEach((a,i)=>{
-    if(a[7]&&!isGeneralArtistQuarantined(a[0])) artistById.set(a[7],i);
+    if(Array.isArray(a)&&a[7]&&!isGeneralArtistQuarantined(a[0])) artistById.set(a[7],i);
   });
   const addArtist=(name,id,meta={},allowNew=false)=>{
     const structuredComplete=Boolean(String(id||'').trim()&&String(meta.uuid||'').trim());
     if(isGeneralArtistQuarantined(name,structuredComplete)) return -1;
     const mergeArtist=(i)=>{
       const artist=A[i];
+      /* A stale index must never abort the whole dashboard load. The row can
+         safely be recreated from the structured Soundcharts identity below. */
+      if(!Array.isArray(artist)) return -1;
       if(id&&!artist[7]) artist[7]=id;
       artist.sc=Object.assign({listeners:0,sources:0,rank:null,qualifies:false},artist.sc||{},meta);
       if(id) artistById.set(id,i);
@@ -429,8 +432,16 @@ function mergeSoundchartsStaging(){
       return i;
     };
     const uuid=String(meta.uuid||'');
-    if(uuid&&artistByUuid.has(uuid)) return mergeArtist(artistByUuid.get(uuid));
-    if(id&&artistById.has(id)) return mergeArtist(artistById.get(id));
+    if(uuid&&artistByUuid.has(uuid)){
+      const existing=artistByUuid.get(uuid), merged=mergeArtist(existing);
+      if(merged>=0) return merged;
+      artistByUuid.delete(uuid);
+    }
+    if(id&&artistById.has(id)){
+      const existing=artistById.get(id), merged=mergeArtist(existing);
+      if(merged>=0) return merged;
+      artistById.delete(id);
+    }
     /* Never resolve an identity from a display name. A missing structured ID
        keeps the artist in staging quarantine and prevents composite credits. */
     if(!name||!id||!allowNew) return -1;
