@@ -178,6 +178,20 @@ class PlaylistDiscoveryTests(unittest.TestCase):
         self.assertEqual(selected[0]["source_tier"], "independent_playlist")
         self.assertEqual(selected[1]["primary_genre"], "dark_ambient")
 
+    def test_targeted_dark_ambient_scope_and_follower_floor(self):
+        payload = {
+            "cols": ["id", "name", "owner", "curatorCat", "followers", "tracks", "genre", "use_case", "kw"],
+            "rows": [
+                ["dark-small", "Dark Ambient", "Curator", "independent", 9_999, 60, "Ambient", "Focus", "dark ambient music"],
+                ["dark-large", "Dark Ambient", "Curator", "independent", 10_000, 90, "Ambient", "Focus", "dark ambient music"],
+                ["ambient-large", "Ambient", "Curator", "independent", 500_000, 90, "Ambient", "Focus", "ambient music"],
+            ],
+        }
+        selected = subject.select_playlists(payload, "dark_ambient")
+        self.assertEqual([item["spotify_id"] for item in selected], ["dark-large", "dark-small"])
+        eligible = subject.filter_playlists_by_followers(selected, 10_000)
+        self.assertEqual([item["spotify_id"] for item in eligible], ["dark-large"])
+
     def test_independent_playlist_rotation_prefers_unscanned_then_oldest(self):
         rows = [
             {"spotify_id": "new", "name": "New", "followers": 10},

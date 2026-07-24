@@ -257,7 +257,10 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertIn('python discover_soundcharts_playlists.py', workflow)
         self.assertGreaterEqual(workflow.count('--workers 10'), 3)
         self.assertIn("default: 'strict_rebaseline'", workflow)
-        self.assertIn("options: [strict_rebaseline, classification, artists, playlist_covers, smoke]", workflow)
+        self.assertIn("options: [strict_rebaseline, dark_ambient, classification, artists, playlist_covers, smoke]", workflow)
+        self.assertIn("Discover Dark Ambient playlists above 10k and their artist catalogues", workflow)
+        self.assertIn("--playlist-scope dark_ambient", workflow)
+        self.assertIn("--min-playlist-followers 10000", workflow)
         self.assertNotIn('legacy_full', workflow)
         self.assertIn(
             "if: github.event_name == 'workflow_dispatch' && steps.plan.outputs.scope == 'smoke'",

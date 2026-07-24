@@ -70,7 +70,7 @@ on:
         required: true
         default: 'strict_rebaseline'
         type: choice
-        options: [strict_rebaseline, classification, artists, playlist_covers, smoke]
+        options: [strict_rebaseline, dark_ambient, classification, artists, playlist_covers, smoke]
       max_requests:
         description: 'Data-call cap (strict: 1-6000; classification: 1-8230)'
         required: true
@@ -173,7 +173,7 @@ jobs:
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             scope="$REQUESTED_SCOPE"
             case "$scope" in
-              strict_rebaseline) expansion_limit="2500" ;;
+              strict_rebaseline|dark_ambient) expansion_limit="2500" ;;
               classification) expansion_limit="" ;;
               artists|playlist_covers|smoke) expansion_limit="" ;;
               *) echo "Unsupported scope: $scope" >&2; exit 1 ;;
@@ -207,7 +207,7 @@ jobs:
 
       - name: Create an isolated Soundcharts candidate
         id: snapshot
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         shell: bash
         run: |
           old_snapshot="$(python prepare_soundcharts_snapshot.py current --index spotify/index.html)"
@@ -306,8 +306,33 @@ jobs:
           --max-catalog-artists 0
           --max-new-catalog-tracks 0
 
+      - name: Discover Dark Ambient playlists above 10k and their artist catalogues
+        if: steps.plan.outputs.scope == 'dark_ambient'
+        env:
+          PYTHONUNBUFFERED: '1'
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        run: >-
+          python discover_soundcharts_playlists.py
+          --soundcharts "${{ steps.snapshot.outputs.candidate }}"
+          --playlists Spotify_Playlists_data.js
+          --baseline spotify-catalogue-baseline.json
+          --cache soundcharts-instrumental-cache.json
+          --workers 10
+          --max-requests "${{ steps.plan.outputs.expansion_requests }}"
+          --playlist-scope dark_ambient
+          --summary-key dark_ambient_playlist_discovery
+          --min-playlist-followers 10000
+          --playlist-limit 250
+          --page-size 100
+          --max-new-playlist-tracks 2500
+          --max-catalog-artists 500
+          --catalog-page-size 100
+          --max-new-catalog-tracks 12000
+
       - name: Expand and measure the target instrumental pool
-        if: steps.plan.outputs.scope == 'strict_rebaseline'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient'
         env:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
@@ -343,7 +368,7 @@ jobs:
           --classification-only
 
       - name: Enrich public professional contacts progressively
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         run: >-
           python enrich_public_artist_contacts.py
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
@@ -352,7 +377,7 @@ jobs:
           --max-profiles-per-artist 4
 
       - name: Recalculate actionable A&R opportunities
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         run: >-
           python sync_soundcharts_opportunities.py
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
@@ -363,7 +388,7 @@ jobs:
 
       - name: Prepare public-safe dated snapshot
         id: prepared
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         shell: bash
         run: |
           result="$RUNNER_TEMP/soundcharts-snapshot-result.json"
@@ -375,7 +400,7 @@ jobs:
           echo "name=$snapshot" >> "$GITHUB_OUTPUT"
 
       - name: Validate generated business outputs
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         env:
           SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
           RUN_SCOPE: ${{ steps.plan.outputs.scope }}
@@ -412,6 +437,12 @@ jobs:
               public_discovery_tracks = catalogue.get('tracks') if isinstance(catalogue, dict) else []
               if not isinstance(public_discovery_tracks, list) or len(public_discovery_tracks) < unique_playlist_tracks:
                   raise SystemExit('Full discovery catalogue did not publish every playlist track')
+          if os.environ.get('RUN_SCOPE') == 'dark_ambient':
+              dark_ambient = soundcharts.get('dark_ambient_playlist_discovery') or {}
+              if int(dark_ambient.get('playlists_scanned') or 0) < 1:
+                  raise SystemExit('Dark Ambient discovery scanned no eligible playlist')
+              if int(dark_ambient.get('unique_playlist_tracks') or 0) < 1:
+                  raise SystemExit('Dark Ambient discovery returned no tracks')
           if os.environ.get('RUN_SCOPE') == 'classification':
               pending_before = int(classification.get('pending_before') or 0)
               if pending_before > 0 and int(classification.get('updated') or 0) < 1:
