@@ -835,6 +835,23 @@ def refresh_fal(
     return outcome
 
 
+def merge_performance_freshness(
+    previous: Mapping[str, Any] | None,
+    payload_freshness: Mapping[str, Any] | None,
+    outcomes: Mapping[str, Outcome],
+    now: str,
+) -> dict[str, Any]:
+    """Preserve metric timestamps not touched by a focused refresh mode."""
+
+    old = previous if isinstance(previous, Mapping) else {}
+    current = payload_freshness if isinstance(payload_freshness, Mapping) else {}
+    return {
+        "tracks_at": now if outcomes.get("tracks") and outcomes["tracks"].usable else current.get("tracks_at") or old.get("tracks_at"),
+        "artists_at": now if outcomes.get("artists") and outcomes["artists"].usable else current.get("artists_at") or old.get("artists_at"),
+        "playlists_at": now if outcomes.get("playlists") and outcomes["playlists"].usable else old.get("playlists_at"),
+    }
+
+
 def smoke_test(payload: dict[str, Any], client: SoundchartsClient, history_days: int) -> dict[str, Any]:
     artist_schema = list(payload.get("schemas", {}).get("artists", []))
     track_schema = list(payload.get("schemas", {}).get("tracks", []))
@@ -974,13 +991,15 @@ def main() -> int:
     }
     freshness["run"] = run_summary
 
+    previous_performance_freshness = performance.get("freshness")
     performance["source"] = "soundcharts_daily"
     performance["generated_at"] = now
-    performance["freshness"] = {
-        "tracks_at": freshness.get("tracks_at"),
-        "artists_at": freshness.get("artists_at"),
-        "playlists_at": now if outcomes.get("playlists") and outcomes["playlists"].usable else None,
-    }
+    performance["freshness"] = merge_performance_freshness(
+        previous_performance_freshness,
+        freshness,
+        outcomes,
+        now,
+    )
     performance["run"] = run_summary
 
     write_js_payload(args.soundcharts, payload, SOUNDCHARTS_PREFIX)

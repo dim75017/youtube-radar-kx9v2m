@@ -149,6 +149,19 @@ class RefreshSoundchartsTests(unittest.TestCase):
         )
         self.assertEqual(merged, [['2026-07-19', 90], ['2026-07-20', 101], ['2026-07-21', 130]])
 
+    def test_focused_stream_refresh_keeps_the_last_playlist_collection_timestamp(self):
+        outcome = subject.Outcome('tracks')
+        outcome.usable = 1
+        freshness = subject.merge_performance_freshness(
+            {'playlists_at': '2026-07-24T19:00:45Z', 'artists_at': '2026-07-24T18:52:28Z'},
+            {'tracks_at': '2026-07-23T18:00:00Z'},
+            {'tracks': outcome},
+            '2026-07-24T19:01:00Z',
+        )
+        self.assertEqual(freshness['tracks_at'], '2026-07-24T19:01:00Z')
+        self.assertEqual(freshness['playlists_at'], '2026-07-24T19:00:45Z')
+        self.assertEqual(freshness['artists_at'], '2026-07-24T18:52:28Z')
+
     def test_refresh_tracks_updates_export_and_browser_history(self):
         payload = {
             'schemas': {'tracks': ['soundcharts_uuid', 'spotify_id', 'title']},
