@@ -20,7 +20,8 @@ assert.match(dashboard, /arEditorialPlaylistEvidenceHtml\(opportunity\)/);
 assert.match(dashboard, /function spotifyTrackEmbedHtml\(/);
 assert.match(dashboard, /function spotifyCenteredTrackPlayerHtml\(/);
 assert.match(dashboard, /spotifyCenteredTrackPlayerHtml\(r\[6\],r\[1\]\)/);
-assert.match(dashboard, /wrapper\._spotifyController\.togglePlay\(\)/);
+// The detail preview deliberately has no oversized central Play control.
+assert.doesNotMatch(dashboard, /wrapper\._spotifyController\.togglePlay\(\)/);
 assert.match(dashboard, /function openTrackFromCatalogueRow\(event,tid\)/);
 assert.match(dashboard, /onclick="openTrackFromCatalogueRow\(event,'\$\{r\[6\]\}'\)"/);
 assert.match(dashboard, /target\.closest\('a,button,input,select,option,label,\.ar,\.tk,\[data-no-track-open\]'\)/);
@@ -38,7 +39,7 @@ assert.match(coverage, /Catalogue vivant/);
 assert.match(coverage, /A&R reste strict/);
 assert.match(index, /Spotify_Browse_Catalogue_data\.js\?payload=/);
 assert.match(index, /discovery\.css\?v=20260722-unified-catalogue-v1/);
-assert.match(index, /dashboard\.js\?v=20260724-spotify-freeze-fix-v5/);
+assert.match(index, /dashboard\.js\?v=20260724-selection-estimate-modal-v1/);
 assert.match(dashboard, /const SPOTIFY_WEB_LOCALE='en'/);
 assert.match(dashboard, /locale=\$\{SPOTIFY_WEB_LOCALE\}/);
 assert.match(dashboard, /function artistTrackClassification\(g\)/);
