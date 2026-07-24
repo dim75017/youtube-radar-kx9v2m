@@ -198,7 +198,10 @@ function paybackClass(months){
 /* Two explicit layers share the same interface: broad read-only browsing
    and strict fail-closed A&R. The browsing layer never grants contactability. */
 const BROWSE = window.SPOTIFY_BROWSE_CATALOGUE || {};
-const A = (D.artists || []).map(artist=>Array.isArray(artist)?artist.slice():artist);
+/* Keep the catalogue index stable when an upstream payload contains an empty
+   artist slot. Tracks use these numeric indexes, so filtering would corrupt
+   their mapping; a quarantined placeholder is safer than a page-wide crash. */
+const A = (D.artists || []).map(artist=>Array.isArray(artist)?artist.slice():['',0,'',false,false,'invalid','','','','','']);
 /* Explicit quarantine requested by Dim for mainstream/vocal identities. This
    applies to the general views as well as to future Soundcharts merges. */
 const GENERAL_VIEW_QUARANTINED_ARTISTS = new Set([
