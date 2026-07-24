@@ -66,7 +66,7 @@ button,input,select{max-width:100%}
 .nav button .emo{width:20px;flex:none;font-size:15px;text-align:center;filter:saturate(.85)}
 .nav button[data-v="playlists"]{height:39px;min-height:39px;white-space:nowrap;font-size:12.5px;gap:8px}
 .nav button[data-v="playlists"] .count{padding-left:6px;padding-right:6px}
-.nav .count{margin-left:auto;font-size:10.5px;font-weight:600;color:var(--dim);background:rgba(150,214,170,.09);padding:2px 7px;border-radius:20px;min-width:26px;text-align:center}
+.nav .count{margin-left:auto;font-size:10.5px;font-weight:600;color:var(--dim);background:rgba(150,214,170,.09);padding:2px 7px;border-radius:20px;min-width:26px;text-align:center;cursor:default}
 .nav button.active .count{color:var(--acc2);background:rgba(30,215,96,.16)}
 .side-foot{border-top:1px solid var(--border);padding-top:13px}
 .sync-row{display:flex;align-items:center;gap:8px;padding:4px 8px;border-radius:9px;position:relative;cursor:pointer;transition:background .14s}
