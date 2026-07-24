@@ -7,6 +7,7 @@ const index = fs.readFileSync('spotify/index.html', 'utf8');
 assert.match(dashboard, /const BROWSE = window\.SPOTIFY_BROWSE_CATALOGUE \|\| \{\};/);
 assert.match(dashboard, /const DISCOVERY_CATALOGUE = BROWSE_DISCOVERY/);
 assert.match(dashboard, /function mergeFullDiscoveryCatalogue\(/);
+assert.match(dashboard, /catalogues\.flatMap\(source=>Array\.isArray\(source\.tracks\)\?source\.tracks:\[\]\)/);
 assert.match(dashboard, /mergeFullDiscoveryCatalogue\(\);/);
 assert.match(dashboard, /const LEGACY_R = \(D\.rows \|\| \[\]\)\.filter/);
 assert.match(dashboard, /Tout le catalogue/);
