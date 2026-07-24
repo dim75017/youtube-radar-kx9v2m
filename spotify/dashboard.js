@@ -1153,8 +1153,8 @@ function streamStackHtml(v,full,signed){
 }
 function metricModeToggleHtml(){
   return `<div class="metric-toggle" role="group" aria-label="Streams ou revenus">
-    <button type="button" class="${S.metricMode==='streams'?'on':''}" data-metric-mode="streams" title="${T('Vue streams')}">🎧 ${T('Streams')}</button>
-    <button type="button" class="${S.metricMode==='revenue'?'on':''}" data-metric-mode="revenue" title="${T('Vue revenus')}">💶 ${T('Revenus')}</button>
+    <button type="button" class="${S.metricMode==='streams'?'on':''}" data-metric-mode="streams">🎧 ${T('Streams')}</button>
+    <button type="button" class="${S.metricMode==='revenue'?'on':''}" data-metric-mode="revenue">💶 ${T('Revenus')}</button>
   </div>`;
 }
 function metricSeries(points){
@@ -1176,7 +1176,7 @@ function perfCardHtml(label,w,withRevenue){
   const value=withRevenue?streamStackHtml(w.currentReady?w.current:null,true,true):(w.currentReady?signedFull(w.current):'—');
   const cls=w.comparisonReady?(w.change>0?'good':(w.change<0?'bad':'')):'';
   const pct=w.comparisonReady?signedPct(w.pct):'';
-  return `<div class="perf-card"><div class="plabel" title="${T('Flux réel sur la période')}">${label}</div><div class="pvalue">${value}${pct?`<span class="pdelta ${cls}">${pct}</span>`:''}</div></div>`;
+  return `<div class="perf-card"><div class="plabel">${label}</div><div class="pvalue">${value}${pct?`<span class="pdelta ${cls}">${pct}</span>`:''}</div></div>`;
 }
 function totalMetricCardHtml(prefix,total,withRevenue){
   const label=prefix==='Streams'?streamMetricLabel(0):T('Followers total');
@@ -1957,7 +1957,7 @@ function artistTableRows(rows){
       <td class="selc"><input type="checkbox" class="ck sel-track" data-tid="${r[6]}" ${acquirable?'':'disabled title="Sous label : simulation indisponible"'} ${S.sel.has(r[6])?'checked':''}></td>
       <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
       <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span></td>
-      <td class="num" title="${fmtFull(r[3])}">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</td>
+      <td class="num">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</td>
       <td class="num">${streamStackHtml(w30.current,false,false)}</td>
       <td class="num">${streamStackHtml(w7.current,false,false)}</td>
       <td class="num">${streamStackHtml(w1.current,false,false)}</td>
@@ -2023,6 +2023,7 @@ function renderArtistModal(){
     ${rows.length===0?'<div class="empty">'+T('Aucune track connue dans la discographie de cet artiste.')+'</div>':''}
   `;
   bindMetricModeToggle(renderArtistModal,box);
+  bindSparklineHover(box);
   attachCovers();
   function updateSel(){
     const selM2 = acquisitionRows.filter(r=>S.sel.has(r[6])).reduce((s,r)=>s+Math.max(perMonth(r),0),0);
@@ -2282,6 +2283,14 @@ function hideNearestSparkPoint(svg){
   wrap.classList.remove('has-tip');
   const marker=svg.querySelector('.spark-hover-point'); if(marker) marker.style.display='none';
 }
+function bindSparklineHover(root){
+  (root||document).querySelectorAll('.spark:not([data-spark-hover-bound])').forEach(svg=>{
+    svg.dataset.sparkHoverBound='1';
+    svg.addEventListener('pointerenter',event=>showNearestSparkPoint(svg,event));
+    svg.addEventListener('pointermove',event=>showNearestSparkPoint(svg,event));
+    svg.addEventListener('pointerleave',()=>hideNearestSparkPoint(svg));
+  });
+}
 function sparkline(pts,unit='value'){
   if (!pts || pts.length<2) return '';
   const w=560, h=120, pad=6;
@@ -2293,7 +2302,7 @@ function sparkline(pts,unit='value'){
   const up = ys[ys.length-1]>=ys[0];
   const col = up?'#4ade80':'#fb7185';
   const dots=pts.map(p=>`<circle class="spark-point" cx="${sx(+new Date(p[0])).toFixed(1)}" cy="${sy(p[1]).toFixed(1)}" r="1" fill="transparent" data-date="${fmtDate(p[0])}" data-value="${esc(sparklineValueLabel(p[1],unit))}"/>`).join('');
-  return `<div class="spark-wrap"><svg class="spark" viewBox="0 0 ${w} ${h}" width="100%" height="120" preserveAspectRatio="none" onmouseenter="showNearestSparkPoint(this,event)" onmousemove="showNearestSparkPoint(this,event)" onmouseleave="hideNearestSparkPoint(this)">
+  return `<div class="spark-wrap"><svg class="spark" viewBox="0 0 ${w} ${h}" width="100%" height="120" preserveAspectRatio="none">
     <path d="${d}" fill="none" stroke="${col}" stroke-width="2.5"/>
     <path d="${d} L ${sx(x1)} ${h-pad} L ${sx(x0)} ${h-pad} Z" fill="${col}" opacity="0.12"/>
     ${dots}
@@ -2377,9 +2386,10 @@ function openTrack(tid){
     ${trackOfferHtml(r)}
     <div style="display:flex;gap:10px;margin-top:14px">
       <a class="btn-back" style="margin:0;text-decoration:none" href="${trackUrl(r[6],r)}" target="_blank" rel="noopener">▶ ${T('Ouvrir sur Spotify')}</a>
-    </div>
+  </div>
     <div class="tnote">${T("Les fenêtres Analytics utilisent uniquement l'historique quotidien et comparent des périodes de même durée. Le simulateur de rachat reste une estimation séparée.")}</div>`;
   bindMetricModeToggle(()=>openTrack(tid),box);
+  bindSparklineHover(box);
   document.getElementById('track-modal').style.display='flex';
   initSpotifyCenteredPlayers(box);
   hydrateArPlaylistCovers();
@@ -2881,10 +2891,12 @@ function arPlaylistCoverUrl(playlist){
 }
 function arEditorialPlaylistCoverHtml(playlist,index,slot='detail'){
   const imageUrl=arPlaylistCoverUrl(playlist);
-  // Les couvertures viennent uniquement du snapshot publié. Un appel oEmbed
-  // par icône dans le navigateur finit par déclencher des limites Spotify.
-  // En attente de l'image source, on ne remplace pas une pochette par une icône.
-  return imageUrl?`<img src="${esc(imageUrl)}" alt="" loading="lazy" onerror="this.remove()">`:'';
+  const playlistId=String(playlist&&playlist.spotifyId||'').trim();
+  /* On privilégie l'URL exportée. Si elle est absente ou expirée, la fiche
+     résout seulement ses quelques placements manquants, avec cache partagé. */
+  return imageUrl
+    ?`<img src="${esc(imageUrl)}" alt="" loading="lazy" onerror="arRetryPlaylistCover(this,'${esc(playlistId)}')">`
+    :(playlistId?`<span class="ar-playlist-fallback" data-ar-playlist-cover-id="${esc(playlistId)}">♫</span>`:'');
 }
 function arOpenEditorialPopover(anchor){
   document.querySelectorAll('.ar-editorial-popover').forEach(node=>node.remove());
@@ -3073,9 +3085,39 @@ function hydrateArTrackCovers(){
       }).catch(()=>AR_TRACK_COVER_CACHE.set(id,''));
   });
 }
+function arRetryPlaylistCover(image,playlistId){
+  const fallback=document.createElement('span');
+  fallback.className='ar-playlist-fallback';
+  fallback.dataset.arPlaylistCoverId=String(playlistId||'');
+  fallback.textContent='♫';
+  image.replaceWith(fallback);
+  hydrateArPlaylistCovers();
+}
 function hydrateArPlaylistCovers(){
-  // Intentionnellement sans requête réseau : une vignette absente reste un
-  // repère discret jusqu'au prochain export qui fournit une URL réelle.
+  if(typeof fetch!=='function') return;
+  const pending=[...document.querySelectorAll('.ar-detail-editorials [data-ar-playlist-cover-id]')]
+    .filter(node=>!node.dataset.arPlaylistCoverHydrated)
+    .slice(0,8);
+  pending.forEach(node=>{
+    node.dataset.arPlaylistCoverHydrated='1';
+    const playlistId=node.dataset.arPlaylistCoverId, key='p'+playlistId;
+    const apply=imageUrl=>{
+      if(!imageUrl||!node.isConnected) return;
+      const image=document.createElement('img');
+      image.src=imageUrl; image.alt=''; image.loading='lazy';
+      image.onerror=()=>image.remove();
+      node.before(image); node.remove();
+    };
+    const cached=covCache.get(key);
+    if(cached){ apply(cached); return; }
+    fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(spotifyPlaylistUrl(playlistId))}`)
+      .then(response=>response.ok?response.json():null)
+      .then(payload=>{
+        const imageUrl=arSafePublicUrl(payload&&payload.thumbnail_url);
+        if(!imageUrl) return;
+        covCache.set(key,imageUrl); covPersist(); apply(imageUrl);
+      }).catch(()=>{});
+  });
 }
 function arSearchText(value){
   return String(value||'').toLowerCase().normalize('NFKD').replace(/(?![\uFE00-\uFE0F])\p{M}/gu,'').replace(/\s+/g,' ').trim();
@@ -3449,9 +3491,9 @@ function renderOpps(){
         <th data-k="1">Track ${sortArrow(1)}</th>
         <th data-k="0">${T('Artiste')} ${sortArrow(0)}</th>
         <th data-k="3" class="num">${streamMetricLabel(0)} ${sortArrow(3)}</th>
-        <th data-k="10" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(30)} ${sortArrow(10)}</th>
-        <th data-k="21" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(7)} ${sortArrow(21)}</th>
-        <th data-k="20" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(1)} ${sortArrow(20)}</th>
+        <th data-k="10" class="num">${streamMetricLabel(30)} ${sortArrow(10)}</th>
+        <th data-k="21" class="num">${streamMetricLabel(7)} ${sortArrow(21)}</th>
+        <th data-k="20" class="num">${streamMetricLabel(1)} ${sortArrow(20)}</th>
         <th data-k="13" class="num">${T('Rachat')} ${S.palier} ${sortArrow(13)}</th>
         <th data-k="2">${T('Sortie')} ${sortArrow(2)}</th>
         <th data-k="5">Copyright ${sortArrow(5)}</th>
@@ -3463,11 +3505,11 @@ function renderOpps(){
           <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
           <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span></td>
           <td><span class="ar" onclick="goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
-          <td class="num" title="${fmtFull(r[3])}">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</td>
-          <td class="num" title="${T('Streams des 30 derniers jours')} · ${T('Aucune extrapolation')}">${streamStackHtml(w30.current,false,false)}</td>
-          <td class="num" title="${T('Streams des 7 derniers jours')} · ${T('Aucune extrapolation')}">${streamStackHtml(w7.current,false,false)}</td>
-          <td class="num stream-24h" title="${T('Streams des dernières 24 h')} · ${T('Aucune extrapolation')}">${streamStackHtml(w1.current,false,true)}</td>
-          <td class="num" title="${perMonth(r)<0?'':T('Payback')+' '+paybackTxt(payback(perMonth(r)))}"><span class="buyout-estimate">${perMonth(r)<0?'—':eur(advance(perMonth(r)))}</span></td>
+          <td class="num">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</td>
+          <td class="num">${streamStackHtml(w30.current,false,false)}</td>
+          <td class="num">${streamStackHtml(w7.current,false,false)}</td>
+          <td class="num stream-24h">${streamStackHtml(w1.current,false,true)}</td>
+          <td class="num"><span class="buyout-estimate">${perMonth(r)<0?'—':eur(advance(perMonth(r)))}</span></td>
           <td style="white-space:nowrap;font-variant-numeric:tabular-nums">${fmtDate(r[2])}</td>
           <td><span class="lb" title="${esc(r[5])}">${esc(r[5])}</span></td>
         </tr>`;}).join('')}
@@ -3645,9 +3687,9 @@ function renderArtists(){
         <th data-asort="name">${T('Artiste')} ${artistSortArrow('name')}</th>
         <th data-asort="status">${T('Statut')} ${artistSortArrow('status')}</th>
         <th data-asort="streams" class="num">${streamMetricLabel(0)} ${artistSortArrow('streams')}</th>
-        <th data-asort="streams30" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(30)} ${artistSortArrow('streams30')}</th>
-        <th data-asort="streams7" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(7)} ${artistSortArrow('streams7')}</th>
-        <th data-asort="streams24" class="num" title="${T('Flux réel sur la période')}">${streamMetricLabel(1)} ${artistSortArrow('streams24')}</th>
+        <th data-asort="streams30" class="num">${streamMetricLabel(30)} ${artistSortArrow('streams30')}</th>
+        <th data-asort="streams7" class="num">${streamMetricLabel(7)} ${artistSortArrow('streams7')}</th>
+        <th data-asort="streams24" class="num">${streamMetricLabel(1)} ${artistSortArrow('streams24')}</th>
         <th data-asort="n" class="num">tracks ${artistSortArrow('n')}</th>
         <th data-asort="hot" class="num">≥ 500k ${artistSortArrow('hot')}</th>
         <th data-asort="self" class="num">${T('indé')} ${artistSortArrow('self')}</th>
@@ -3957,7 +3999,7 @@ function plEstDateCell(r){
 }
 function plGrowthCell(r){
   if (r[5]!=='ok') return '<span style="color:var(--dim)">—</span>';
-  if (r[18]==null) return `<span style="color:var(--dim)" title="${T("Pas encore assez d'historique pour calculer une évolution, repasser dans quelques jours")}">${T('Historique en cours')}</span>`;
+  if (r[18]==null) return `<span style="color:var(--dim)">${T('Historique en cours')}</span>`;
   const g = r[18], days = r[19];
   const sign = g>0?'+':'';
   const color = g>0?'var(--acc2)':(g<0?'var(--red)':'var(--dim)');
@@ -4000,7 +4042,7 @@ function playlistWindowCell(r,days){
   const main=w.currentReady?signedFull(w.current):'—';
   const color=w.currentReady?(w.current>0?'var(--acc2)':(w.current<0?'var(--red)':'var(--muted)')):'var(--dim)';
   const pct=w.comparisonReady?signedPct(w.pct):'';
-  return `<span class="delta-stack" title="${w.currentReady?'':T('Historique quotidien requis pour cette fenêtre.')}"><span class="delta-main" style="color:${color}">${main}${pct?` <small>${pct}</small>`:''}</span></span>`;
+  return `<span class="delta-stack"><span class="delta-main" style="color:${color}">${main}${pct?` <small>${pct}</small>`:''}</span></span>`;
 }
 function playlistRecentVariations(r){
   const pts=normalizeCounterHistory(plHistory(r)), out=[];
@@ -4051,6 +4093,7 @@ function openPlaylist(pid){
       <a class="btn-back" style="margin:0;text-decoration:none" href="${spotifyPlaylistUrl(r[0])}" target="_blank" rel="noopener">▶ ${T('Ouvrir sur Spotify')}</a>
     </div>
     <div class="tnote">${T("Les évolutions comparent toujours des fenêtres de même durée et utilisent uniquement les snapshots quotidiens réellement disponibles.")}</div>`;
+  bindSparklineHover(box);
   document.getElementById('track-modal').style.display='flex';
   if (typeof attachCovers==='function') attachCovers();
 }
@@ -4071,9 +4114,9 @@ function renderPlaylists(){
         <th data-plsort="name">Playlist ${plSortArrow('name')}</th>
         <th data-plsort="curator">${T('Curateur')} ${plSortArrow('curator')}</th>
         <th data-plsort="followers" class="num">${T('Followers total')} ${plSortArrow('followers')}</th>
-        <th data-plsort="growth30" class="num" title="${T('Évolution followers sur les 30 derniers jours')}">${T('Followers 30 jours')} ${plSortArrow('growth30')}</th>
-        <th data-plsort="growth7" class="num" title="${T('Évolution followers sur les 7 derniers jours')}">${T('Followers 7 jours')} ${plSortArrow('growth7')}</th>
-        <th data-plsort="growth24" class="num" title="${T('Évolution followers sur les dernières 24 h')}">${T('Followers 24 heures')} ${plSortArrow('growth24')}</th>
+        <th data-plsort="growth30" class="num">${T('Followers 30 jours')} ${plSortArrow('growth30')}</th>
+        <th data-plsort="growth7" class="num">${T('Followers 7 jours')} ${plSortArrow('growth7')}</th>
+        <th data-plsort="growth24" class="num">${T('Followers 24 heures')} ${plSortArrow('growth24')}</th>
         <th data-plsort="tracks" class="num">Tracks ${plSortArrow('tracks')}</th>
         <th data-plsort="fit" class="num">Fit score ${plSortArrow('fit')}</th>
         <th data-plsort="genre">Genre ${plSortArrow('genre')}</th>
@@ -4084,7 +4127,7 @@ function renderPlaylists(){
           <td class="covtd"><div class="cov" data-plid="${r[0]}"></div></td>
           <td><span class="tk">${esc(r[1])}</span>${r[16]?'':' <span class="badge new" title="'+T('Détail pas encore récupéré')+'">'+T('en attente')+'</span>'}</td>
           <td>${esc(r[2])} ${plCuratorBadge(r[3])}</td>
-          <td class="num" title="${fmtFull(r[4])}">${plFollowersCell(r)}</td>
+          <td class="num">${plFollowersCell(r)}</td>
           <td class="num">${playlistWindowCell(r,30)}</td>
           <td class="num">${playlistWindowCell(r,7)}</td>
           <td class="num">${playlistWindowCell(r,1)}</td>
@@ -4282,7 +4325,7 @@ function labelModalRows(rows){
       <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
       <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span></td>
       <td><span class="ar" onclick="closeArtistModal();goArtist(${r[0]})">${esc(A[r[0]][0])}</span></td>
-      <td class="num" title="${fmtFull(r[3])}">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</td>
+      <td class="num">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</td>
       <td class="num">${streamStackHtml(w30.current,false,false)}</td>
       <td class="num">${streamStackHtml(w7.current,false,false)}</td>
       <td class="num">${streamStackHtml(w1.current,false,false)}</td>
