@@ -44,5 +44,5 @@ assert.match(dashboard, /const SPOTIFY_WEB_LOCALE='en'/);
 assert.match(dashboard, /locale=\$\{SPOTIFY_WEB_LOCALE\}/);
 assert.match(dashboard, /function artistTrackClassification\(g\)/);
 assert.match(dashboard, /genreSource:'tracks_catalogue'/);
-assert.match(index, /coverage\.js\?v=20260724-counter-tooltip-cleanup-v1/);
+assert.match(index, /coverage\.js\?v=20260725-nav-counter-hover-v2/);
 console.log('spotify unified catalogue guardrails: OK');

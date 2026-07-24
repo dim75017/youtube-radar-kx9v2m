@@ -95,12 +95,11 @@
   };
 
   function updateNavigation() {
-    // Sidebar totals are informational only: never attach native tooltips to
-    // their compact counter pills, which made a stray punctuation bubble pop
-    // up on hover.
+    // Sidebar totals are informational only: counter pills must never carry
+    // a title attribute or a help cursor.
     ['c-radar', 'c-ar-list', 'c-opps', 'c-art', 'c-pl', 'c-lb'].forEach(id => {
       const counter = document.getElementById(id);
-      if (counter) counter.title = '';
+      if (counter) counter.removeAttribute('title');
     });
     const trackCount = document.getElementById('c-opps');
     if (trackCount) {
@@ -172,7 +171,6 @@
   const style = document.createElement('style');
   style.textContent = `
     .discovery-coverage-summary{max-width:980px;margin-top:7px;color:var(--muted);font-size:12.5px;line-height:1.55}
-    #nav .count[title]{cursor:help}
   `;
   document.head.appendChild(style);
 
