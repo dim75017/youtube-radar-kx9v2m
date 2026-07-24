@@ -717,7 +717,7 @@ const VIEWS=[
   {id:'live',label:'Livestreams',emo:'📺',cnt:()=>DATA&&DATA.lives?String(typeof activeLives==='function'?activeLives().length:DATA.lives.length):''},
   {id:'chan',label:'Channels',emo:'📡',cnt:()=>CHAN?String(CHAN.channels.length):''},
   {id:'recos',label:'Recommendations',emo:'💡',cnt:()=>DATA?String(activeDailyRecommendationCount()):''},
-  {id:'roadmap',label:'Roadmap',emo:'🗓️',cnt:()=>DATA?String(DATA.roadmap.length):''},
+  {id:'roadmap',label:'Roadmap',emo:'🗓️',cnt:()=>DATA?String(typeof scheduledRows==='function'?scheduledRows().length:DATA.roadmap.length):''},
   {id:'ana',label:'Analysis',emo:'🔬',cnt:()=>DATA&&DATA.ours?String(DATA.ours.filter(v=>v.pub&&(v.durH==null||v.durH>=0.15)).length):''},
   {id:'kw',label:'Keywords',emo:'🔎',small:1,cnt:()=>''}
 ];
@@ -784,7 +784,7 @@ function render(options){
 
 /* ================= DASHBOARD ================= */
 function dashHTML(){
-  const A=DATA.all,T=DATA.trends,N=DATA.news,R=DATA.recos,RD=DATA.roadmap;
+  const A=DATA.all,T=DATA.trends,N=DATA.news,R=DATA.recos,RD=typeof scheduledRows==='function'?scheduledRows():DATA.roadmap;
   const channels=new Set(A.map(v=>v.channel)).size;
   const L=DATA.lives||[];
   const liveTotal=L.length?L.map(v=>liveNow(v.vid)).filter(x=>x!=null).reduce((s,x)=>s+x,0):null;

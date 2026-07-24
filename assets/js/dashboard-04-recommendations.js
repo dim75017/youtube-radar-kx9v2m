@@ -757,9 +757,28 @@ const SCHED_RULES={
   halloween:{seasonalMonths:[9],label:'Halloween · fenêtre saisonnière (octobre)'},
   noel:{seasonalMonths:[11],seasonalDayMax:25,label:'Noël · fenêtre saisonnière (décembre)'}
 };
+function roadmapArchiveKey(row){
+  const date=Number(row&&row.date);
+  const safeDate=Number.isFinite(date)?String(date):String(row&&row.date||'');
+  return 'roadmap:'+safeDate+'|'+normalizedRecommendationTitle(row&&row.title);
+}
+function archivedRoadmapKeys(){
+  const keys=new Set(),add=row=>{if(row&&row.title)keys.add(roadmapArchiveKey(row));};
+  if(typeof ROADMAP_ARCHIVE_LOCAL!=='undefined'&&Array.isArray(ROADMAP_ARCHIVE_LOCAL))ROADMAP_ARCHIVE_LOCAL.forEach(add);
+  // DATA is reloaded from Monday after a refresh.  Also honor the dedicated
+  // Validated archive so items archived before the roadmap bridge existed do
+  // not reappear merely because the in-memory DATA mutation was lost.
+  if(typeof validatedArchiveRows==='function')validatedArchiveRows().forEach(item=>{
+    if(item&&typeof item.key==='string'&&item.key.startsWith('roadmap:'))keys.add(item.key);
+    if(item&&item.row&&item.row.__kind==='roadmap')add(item.row);
+  });
+  return keys;
+}
+function isArchivedRoadmapEntry(row){return archivedRoadmapKeys().has(roadmapArchiveKey(row));}
 function scheduledRows(){
   const seen=new Set();
-  return (DATA.roadmap||[]).filter(r=>r.date).concat(SCHED_LOCAL||[]).filter(r=>{
+  return (DATA.roadmap||[]).filter(r=>r.date&&!isArchivedRoadmapEntry(r)).concat(SCHED_LOCAL||[]).filter(r=>{
+    if(isArchivedRoadmapEntry(r))return false;
     const key=(r.recoN!=null?'reco:'+r.recoN:'title:'+String(r.title||'').toLowerCase())+'|'+r.date;
     if(seen.has(key))return false;seen.add(key);return true;
   });
