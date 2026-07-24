@@ -552,7 +552,7 @@ function roadmapTableHTML(rows){
         '<td>'+gtag(r.genre)+'</td>'+
         '<td class="num">'+esc(r.dur||'—')+'</td>'+
         '<td><span class="tag '+srcClass+'">'+esc((r.src||'').replace(/\s*\(.*\)/,''))+'</span></td>'+
-        '<td onclick="event.stopPropagation()"><button class="rm-del-btn" style="margin:0;padding:6px 10px" onclick="deleteRoadmapEntry('+i+',event)">🗑️</button></td></tr>';
+        '<td onclick="event.stopPropagation()"><button class="rm-del-btn" style="margin:0;padding:6px 10px" title="Archive" onclick="archiveRoadmapEntry('+i+',event)">&#128230;</button></td></tr>';
     }).join('')+'</tbody></table>';
 }
 function roadmapArchiveHTML(vt){
@@ -586,7 +586,7 @@ function openRoad(i){
         ?recoDetailBody(reco,-1)
         :recoRow('Concept',r.concept)+recoRow('Thumbnail scene',r.scene)+recoRow('Music style',r.style)+
          recoRow('Niche',r.niche)+recoRow('Cadence',r.cadence)+recoRow('Seasonal note',r.note))+
-      '<div class="rm-detail-actions"><button class="rm-del-btn" onclick="deleteRoadmapEntry('+i+',event)">🗑️ Remove from schedule</button></div>'+
+      '<div class="rm-detail-actions"><button class="rm-del-btn" onclick="archiveRoadmapEntry('+i+',event)">&#128230; Archive</button></div>'+
     '</div>';
   document.getElementById('drawer').classList.add('show');
   document.getElementById('backdrop').classList.add('show');
@@ -612,10 +612,6 @@ function openRoadmapContextMenu(i,ev){
   const menu=document.createElement('div');
   menu.className='roadmap-context-menu';menu.setAttribute('role','menu');
   // Right-click is a reversible local archive, never a delete from the Monday source.
-  menu.innerHTML='<button type="button" role="menuitem" onclick="archiveRoadmapEntry('+i+',event)">&#128230; '+(fr?'Archiver':'Archive')+'</button>';
-  menu.innerHTML='<button type="button" role="menuitem" onclick="archiveRoadmapEntry('+i+',event)">&#128230; '+(fr?'Archiver':'Archive')+'</button>'+
-    '<button type="button" role="menuitem" class="danger" onclick="deleteRoadmapEntry('+i+',event)">&#128465; '+(fr?'Mettre à la corbeille':'Move to trash')+'</button>';
-  // Keep the native right-click menu deliberately limited to the reversible action.
   menu.innerHTML='<button type="button" role="menuitem" onclick="archiveRoadmapEntry('+i+',event)">&#128230; '+(fr?'Archiver':'Archive')+'</button>';
   document.body.appendChild(menu);ROADMAP_CONTEXT_MENU=menu;
   const width=menu.offsetWidth||176,height=menu.offsetHeight||44;
