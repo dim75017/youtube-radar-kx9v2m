@@ -408,6 +408,10 @@ def playlist_scan_order(
             if isinstance(playlist_state.get(str(item.get("spotify_id") or "")), Mapping)
             and playlist_state[str(item.get("spotify_id") or "")].get("last_scan_at")
             else 0,
+            # Dark ambient is an admitted, under-covered target niche.  Give
+            # it first pass in each unscanned/revalidation rotation instead
+            # of letting its playlists wait behind every generic source.
+            0 if str(item.get("primary_genre") or "") == "dark_ambient" else 1,
             str(
                 (playlist_state.get(str(item.get("spotify_id") or "")) or {}).get("last_scan_at")
                 if isinstance(playlist_state.get(str(item.get("spotify_id") or "")), Mapping)
