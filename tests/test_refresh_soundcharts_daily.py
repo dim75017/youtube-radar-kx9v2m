@@ -199,6 +199,26 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertEqual(client.paths, ['/api/v2.8/playlist/by-platform/spotify/playlist-1'])
         self.assertEqual(subject.field(refreshed['rows'][0], refreshed['cols'], 'image_url'), 'https://assets.test/playlist.jpg')
 
+    def test_refresh_playlists_merges_discovery_baseline_into_daily_history(self):
+        playlists = {
+            'cols': ['id', 'followers', 'last_seen'],
+            'rows': [['playlist-1', 100, '2026-07-17']],
+            'hist': {'playlist-1': [['2026-07-17', 100]]},
+        }
+        performance = {'playlists': {'playlist-1': {'history': [['2026-07-23', 120]]}}}
+        response = {'object': {'latestSubscriberCount': 125}}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'playlists.js'
+            subject.write_js_payload(path, playlists, subject.PLAYLISTS_PREFIX)
+            outcome = subject.refresh_playlists(path, performance, FakeClient(response), 1, 10)
+            refreshed = subject.read_js_payload(path, subject.PLAYLISTS_PREFIX)
+        expected = [['2026-07-17', 100], ['2026-07-23', 120], [subject.utc_today().isoformat(), 125]]
+        self.assertEqual(performance['playlists']['playlist-1']['history'], expected)
+        self.assertEqual(refreshed['hist']['playlist-1'], expected)
+        self.assertEqual(subject.field(refreshed['rows'][0], refreshed['cols'], 'last_seen'), subject.utc_today().isoformat())
+        self.assertEqual(refreshed['meta']['history_points_added_this_run'], 1)
+        self.assertEqual(outcome.usable, 1)
+
     def test_refresh_playlists_prioritizes_the_dashboard_visible_subset(self):
         playlists = {
             'cols': ['id', 'followers', 'big10k'],

@@ -964,7 +964,7 @@ const PLrows = ((PL && PL.rows) || []).map(row=>Array.isArray(row)?row.slice():r
 const PLAYLIST_COVERS = (window.SPOTIFY_PLAYLIST_COVERS && window.SPOTIFY_PLAYLIST_COVERS.covers) || {};
 const PLhist = Object.assign({}, (PL && PL.hist) || {});
 for (const [pid,entry] of Object.entries(PERF_PLAYLISTS)){
-  const pts = perfHistory(entry); if (pts.length) PLhist[pid] = pts;
+  const pts = perfHistory(entry); if (pts.length) PLhist[pid] = (PLhist[pid] || []).concat(pts);
 }
 /* Les 33 playlists du scan Dark Ambient sont présentes dans les placements
    réels des tracks Soundcharts, mais pas encore dans le payload Playlists.
@@ -3906,8 +3906,11 @@ function plGrowthCell(r){
 
 function plHistory(r){
   const pts = (PLhist[r[0]] || []).map(p=>[p[0],+p[1]]).filter(p=>p[0] && Number.isFinite(p[1]));
-  const currentDate = ((r[8] || (PLmeta&&PLmeta.snapshot_ts) || '')+'').slice(0,10);
-  if (r[5]==='ok' && currentDate && !pts.some(p=>p[0]===currentDate)) pts.push([currentDate,+r[4]]);
+  const rowDate = ((r[8] || '')+'').slice(0,10);
+  const snapshotDate = (((PLmeta&&PLmeta.snapshot_ts) || '')+'').slice(0,10);
+  const currentDate = [rowDate,snapshotDate].filter(Boolean).sort().pop() || '';
+  const currentFollowers = +r[4];
+  if (r[5]==='ok' && currentDate && Number.isFinite(currentFollowers) && !pts.some(p=>p[0]===currentDate)) pts.push([currentDate,currentFollowers]);
   pts.sort((a,b)=>a[0].localeCompare(b[0]));
   return pts;
 }

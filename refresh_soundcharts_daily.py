@@ -714,8 +714,17 @@ def refresh_playlists(
     followers_index = index_of(columns, "followers")
     image_index = index_of(columns, "image_url")
     dashboard_index = index_of(columns, "big10k")
+    last_seen_index = index_of(columns, "last_seen")
     if id_index is None or followers_index is None:
         raise SoundchartsError("Spotify playlist export does not contain id/followers columns")
+
+    # Keep the browser payload and the performance export in lockstep.  The
+    # former contains the initial discovery baseline while the latter is the
+    # daily refresh source; either one alone is not a complete time series.
+    history_store = playlists.get("hist")
+    if not isinstance(history_store, dict):
+        history_store = {}
+        playlists["hist"] = history_store
 
     # The public dashboard intentionally exposes the curated ``big10k``
     # subset (currently 554 playlists), while the backing discovery file also
@@ -751,6 +760,7 @@ def refresh_playlists(
     store = performance.setdefault("playlists", {})
     day = utc_today().isoformat()
     now = utc_now()
+    history_points_added = 0
     for task, response in results:
         followers = first_numeric_named(response, {"latestSubscriberCount", "subscriberCount", "followers"})
         image_url = first_text_named(response, {"imageUrl", "image_url", "coverUrl", "cover_url", "thumbnailUrl", "thumbnail_url"})
@@ -762,13 +772,24 @@ def refresh_playlists(
             while len(row) <= followers_index:
                 row.append(None)
             row[followers_index] = followers
+            if last_seen_index is not None:
+                while len(row) <= last_seen_index:
+                    row.append("")
+                row[last_seen_index] = day
         if image_url and image_index is not None:
             while len(row) <= image_index:
                 row.append("")
             row[image_index] = image_url
         if followers is not None:
             entry = store.setdefault(task["id"], {})
-            entry["history"] = merge_history(entry.get("history"), [[day, followers]])
+            previous_history = merge_history(history_store.get(task["id"]), entry.get("history"))
+            if day not in {point[0] for point in previous_history}:
+                history_points_added += 1
+            history = merge_history(previous_history, [[day, followers]])
+            # Persist the same merged history in both files.  This prevents a
+            # daily refresh from replacing the original baseline in the UI.
+            history_store[task["id"]] = history
+            entry["history"] = history
             entry["observed_at"] = now
             entry["source"] = "soundcharts_playlist_spotify"
         outcome.usable += 1
@@ -789,6 +810,7 @@ def refresh_playlists(
         stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M")
         meta["snapshot_ts"] = stamp
         meta["generated_ts"] = stamp
+        meta["history_points_added_this_run"] = history_points_added
         write_js_payload(path, playlists, PLAYLISTS_PREFIX)
     return outcome
 
