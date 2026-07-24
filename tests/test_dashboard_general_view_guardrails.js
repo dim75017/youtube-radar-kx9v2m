@@ -42,7 +42,7 @@ assert.equal(identityContext.isQuarantined('Bruno Mars'), true, 'reviewed mainst
 assert.equal(identityContext.isQuarantined('Bruno Mars', true), true,
   'a complete ID pair never overrides the reviewed mainstream quarantine');
 
-const legacyStart = source.indexOf('const A = (D.artists || [])');
+const legacyStart = source.indexOf('const A = Array.from(D.artists || []');
 const legacyEnd = source.indexOf('/* Raccord progressif', legacyStart);
 const legacyContext = {
   BROWSE: {active_legacy_spotify_ids: ['safe-track']},
@@ -172,13 +172,13 @@ for (const invalid of [
   assert.equal(gateContext.isEligible(invalid, schema), false);
 }
 
-assert.match(source, /const A = \(D\.artists \|\| \[\]\)\.map/,
+assert.match(source, /const A = Array\.from\(D\.artists \|\| \[\]/,
   'historical artists remain a browsing source');
 assert.match(source, /const LEGACY_R = \(D\.rows \|\| \[\]\)\.filter/,
   'historical tracks remain a browsing source');
 assert.doesNotMatch(source, /const A = \[\];/);
 assert.doesNotMatch(source, /const LEGACY_R = \[\];/);
-assert.match(source, /if\(a\[7\]&&!isGeneralArtistQuarantined\(a\[0\]\)\) artistById\.set\(a\[7\],i\)/,
+assert.match(source, /if\(Array\.isArray\(a\)&&a\[7\]&&!isGeneralArtistQuarantined\(a\[0\]\)\) artistById\.set\(a\[7\],i\)/,
   'a structured ID cannot revive an old malformed display-credit identity');
 assert.match(source, /const structuredComplete=Boolean\(String\(id\|\|''\)\.trim\(\)&&String\(meta\.uuid\|\|''\)\.trim\(\)\)/);
 assert.match(source, /if\(isGeneralArtistQuarantined\(name,structuredComplete\)\) return -1/);
