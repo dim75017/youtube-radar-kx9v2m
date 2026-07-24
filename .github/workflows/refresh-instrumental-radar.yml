@@ -7,6 +7,11 @@ on:
     paths:
       - '.github/radar-heartbeat.txt'
       - '.github/workflows/refresh-instrumental-radar.yml'
+      - 'Lofi_Radar.html'
+      - 'assets/js/dashboard-01-config.js'
+      - 'assets/js/dashboard-02-helpers.js'
+      - 'assets/js/dashboard-03-keywords.js'
+      - 'refresh_instrumental_extensions.py'
       - 'refresh_youtube_daily.py'
   workflow_dispatch:
 

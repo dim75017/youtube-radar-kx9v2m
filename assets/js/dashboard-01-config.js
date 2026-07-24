@@ -78,7 +78,6 @@ function _kwPool(r){
   if(/nature/.test(g)){add(['nature sounds','rain sounds','forest sounds','ocean sounds','white noise','rain for sleeping','thunderstorm sounds','nature ambience','river sounds','birds singing']);}
   if(/chill house|house/.test(g)){add(['chill house','chill house instrumental','lofi house instrumental','deep house instrumental','melodic house instrumental','downtempo house instrumental']);}
   if(/drum & bass|drum and bass|dnb|jungle/.test(g)){add(['drum and bass instrumental','liquid dnb instrumental','chill dnb instrumental','ambient drum and bass','drum and bass for work']);}
-  if(/phonk/.test(g)){add(['phonk instrumental','chill phonk instrumental','lofi phonk instrumental','phonk no vocals','phonk for work instrumental']);}
   if(/guitar|acoust/.test(g)){add(['acoustic guitar','guitar music','relaxing guitar','spanish guitar','fingerstyle guitar','soft guitar']);}
   if(/synth|retro|wave|electro/.test(g)){add(['synthwave','retrowave','80s synthwave','cyberpunk music','outrun','synthwave mix','chillwave','electronic music']);}
   if(/rain|storm|pluie|orage/.test(gt)){add(['rain ambience','cozy rain','rainy day','sleep sounds','heavy rain']);}
@@ -220,8 +219,7 @@ function normalizeExpandedGenre(rows){
     // Genre comes from the curated scan classification.  Do not infer it from
     // discovery keywords: terms such as “liquid” or “jungle” also occur in
     // ambient contexts and previously created false Drum & Bass entries.
-    if(v.genre==='Phonk')v.genre='Phonk';
-    else if(v.genre==='Drum & Bass')v.genre='Drum & Bass';
+    if(v.genre==='Drum & Bass')v.genre='Drum & Bass';
     else if(v.genre==='Chill house')v.genre='Chill house';
   });
   return rows;

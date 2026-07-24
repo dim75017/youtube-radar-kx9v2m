@@ -62,16 +62,6 @@ QUERIES = {
         "melodic house instrumental mix", "balearic house instrumental mix",
         "house music for focus instrumental", "house music for coding instrumental",
     ],
-    "Phonk": [
-        "phonk", "phonk music", "phonk mix",
-        "phonk instrumental mix", "phonk mix no vocals",
-        "chill phonk instrumental mix", "chill phonk no vocals mix",
-        "lofi phonk instrumental", "ambient phonk instrumental mix",
-        "atmospheric phonk instrumental", "wave phonk instrumental mix",
-        "drift phonk instrumental mix", "phonk for driving instrumental",
-        "phonk for gaming instrumental", "phonk for gym instrumental",
-        "dark phonk instrumental mix", "phonk background music instrumental",
-    ],
     "Drum & Bass": [
         "drum and bass", "drum and bass music", "dnb", "dnb music",
         "drum and bass instrumental mix", "dnb instrumental mix",
@@ -87,7 +77,6 @@ QUERIES = {
 
 GENRE_TITLE_MARKERS = {
     "Chill house": re.compile(r"\b(?:lo[- ]?fi|chill|deep|ambient|organic|downtempo|melodic|balearic)\s+house\b", re.I),
-    "Phonk": re.compile(r"\bphonk\b", re.I),
     "Drum & Bass": re.compile(r"\b(?:drum\s*(?:and|&|n)\s*bass|dnb|d&b|liquid\s+(?:dnb|drum\s*(?:and|&|n)\s*bass)|intelligent\s+(?:dnb|drum\s*(?:and|&|n)\s*bass)|jungle\s+(?:dnb|drum\s*(?:and|&|n)\s*bass))\b", re.I),
 }
 
