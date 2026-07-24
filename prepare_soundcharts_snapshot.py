@@ -62,6 +62,8 @@ PUBLIC_ARTIST_BLACKLIST = frozenset(
         "a$ap rocky",
         "asap rocky",
         "sarcastic sounds",
+        # Manual review: vocal artist surfaced as an instrumental candidate.
+        "corbon amodio",
         "rxseboy",
         "sody",
         "dominic fike",
