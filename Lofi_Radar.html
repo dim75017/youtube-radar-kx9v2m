@@ -558,7 +558,7 @@ select.ctl option{background:#141828;color:var(--text)}
 /* ================= CONFIG ================= */
 const SHEET_ID='1XE_M9pQWn8w2Qu83vV_tv9sEFDFQ13fTePseG6mh1vI';
 const XLSX_URL='https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/export?format=xlsx';
-const CACHE_KEY='lofiradar_v1';
+const CACHE_KEY='lofiradar_v2';
 
 const ICONS={
  dash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
@@ -832,6 +832,36 @@ const VS={
   news:{q:'',genres:new Set(),cluster:'',sort:'added',mode:'grid',limit:60},
   mix:{q:'',genres:new Set(),cluster:'',sort:'vpm',mode:'grid',limit:60,age:'all'}
 };
+// Phonk is paused in the current YouTube roadmap. Hide it even when a browser
+// still holds an older cache or snapshot, then keep it out on every live sync.
+const DEFERRED_YOUTUBE_GENRE=/\bphonk\b/i;
+function isDeferredYoutubeRow(row){
+  return DEFERRED_YOUTUBE_GENRE.test([
+    row&&row.genre,row&&row.title,row&&row.kw,row&&row.disc,row&&row.niche,
+    row&&row.concept,row&&row.scene,row&&row.style,row&&row.channel
+  ].filter(Boolean).join(' '));
+}
+function pruneDeferredYoutubeData(data){
+  if(!data)return data;
+  const dropped=new Set();
+  for(const bucket of ['all','trends','news','ours']){
+    if(!Array.isArray(data[bucket]))continue;
+    data[bucket]=data[bucket].filter(row=>{
+      const hidden=isDeferredYoutubeRow(row);
+      if(hidden&&row&&row.vid)dropped.add(row.vid);
+      return !hidden;
+    });
+  }
+  for(const bucket of ['recos','roadmap']){
+    if(Array.isArray(data[bucket]))data[bucket]=data[bucket].filter(row=>!isDeferredYoutubeRow(row));
+  }
+  if(Array.isArray(data.lives))data.lives=data.lives.filter(row=>!dropped.has(row.vid)&&!isDeferredYoutubeRow(row));
+  for(const bucket of ['hist','liveHist','liveHourly']){
+    if(!data[bucket])continue;
+    dropped.forEach(vid=>delete data[bucket][vid]);
+  }
+  return data;
+}
 const RS={q:'',genres:new Set(),pot:'',perso:'',val:'',sort:'scoreAdj',limit:80};
 const RM={src:'',genre:'',year:'',mode:'cal',cal:null,view:'month'};
 const LS={q:'',sort:'now',mode:'grid',limit:60};
@@ -852,21 +882,21 @@ async function fetchData(){
   const wb=XLSX.read(buf,{type:'array',cellDates:false});
   const d=parseWorkbook(wb);
   if(!d.all.length&&!d.trends.length)throw new Error('Parsed 0 rows — sheet structure may have changed');
-  return d;
+  return pruneDeferredYoutubeData(d);
 }
 function saveCache(d){
   try{localStorage.setItem(CACHE_KEY,JSON.stringify({t:Date.now(),d:d}));}catch(e){}
 }
 function loadCache(){
   try{const raw=localStorage.getItem(CACHE_KEY);if(!raw)return null;const o=JSON.parse(raw);
-    o.d.recos.forEach(r=>{if(r.valid==null)r.valid='';});return o;}catch(e){return null;}
+    (o.d.recos||[]).forEach(r=>{if(r.valid==null)r.valid='';});o.d=pruneDeferredYoutubeData(o.d);return o;}catch(e){return null;}
 }
 async function refresh(){
   const btn=document.getElementById('btn-refresh');btn.classList.add('spinning');
   setSync('load','Syncing…');
   try{
     const d=await fetchData();
-    DATA=d;SYNCED=Date.now();saveCache(d);
+    DATA=pruneDeferredYoutubeData(d);SYNCED=Date.now();saveCache(DATA);
     setSync('','Live · synced '+timeAgo(SYNCED));
     renderNav();render();
   }catch(e){
@@ -972,7 +1002,7 @@ async function boot(){
   if(cache&&(!snap||cache.t>=snap.t)){best=cache;src='cache';}
   else if(snap){best=snap;src='snap';}
   if(best){
-    DATA=best.d;SYNCED=best.t;
+    DATA=pruneDeferredYoutubeData(best.d);SYNCED=best.t;
     document.getElementById('loader').classList.add('hide');
     setSync('load',(src==='snap'?'Daily snapshot · ':'Cached · ')+'trying live sync…');
     renderNav();render();

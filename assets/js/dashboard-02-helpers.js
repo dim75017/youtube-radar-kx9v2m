@@ -32,7 +32,6 @@ const GENRE_COLORS=[
   [/sommeil/i,'#7dd3fc'],
   [/[eé]tude/i,'#86efac'],
   [/drum & bass|drum and bass|dnb|jungle/i,'#60a5fa'],
-  [/phonk/i,'#f472b6'],
   [/house/i,'#6ee7b7'],
   [/dark/i,'#818cf8'],
   [/christmas|noël|noel/i,'#fb7185'],

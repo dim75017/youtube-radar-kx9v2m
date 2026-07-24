@@ -60,6 +60,39 @@ CHANNEL_ID = re.compile(r"^UC[\w-]{22}$")
 ISO_DURATION = re.compile(
     r"^P(?:(?P<days>\d+)D)?(?:T(?:(?P<hours>\d+)H)?(?:(?P<minutes>\d+)M)?(?:(?P<seconds>\d+)S)?)?$"
 )
+DEFERRED_GENRE = re.compile(r"\bphonk\b", re.I)
+
+
+def is_deferred_row(row: dict) -> bool:
+    """Phonk is paused in the YouTube roadmap and must not re-enter the radar."""
+    fields = ("genre", "title", "kw", "disc", "niche", "concept", "scene", "style", "channel")
+    return bool(DEFERRED_GENRE.search(" ".join(str(row.get(field) or "") for field in fields)))
+
+
+def prune_deferred_rows(data: dict) -> set[str]:
+    """Remove paused genres from public buckets and return their video IDs."""
+    dropped: set[str] = set()
+    for bucket in ("all", "trends", "news", "ours"):
+        visible = []
+        for row in list(data.get(bucket) or []):
+            if is_deferred_row(row):
+                video_id = str(row.get("vid") or "")
+                if VIDEO_ID.match(video_id):
+                    dropped.add(video_id)
+                continue
+            visible.append(row)
+        data[bucket] = visible
+    for bucket in ("recos", "roadmap", "lives"):
+        data[bucket] = [
+            row for row in (data.get(bucket) or [])
+            if not is_deferred_row(row) and str(row.get("vid") or "") not in dropped
+        ]
+    for bucket in ("hist", "liveHist", "liveHourly"):
+        history = data.get(bucket)
+        if isinstance(history, dict):
+            for video_id in dropped:
+                history.pop(video_id, None)
+    return dropped
 
 
 def utc_now_ms() -> int:
@@ -326,6 +359,8 @@ def query_specs(payload: dict) -> list[dict]:
     votes: dict[str, dict[str, Counter]] = defaultdict(lambda: {"genre": Counter(), "cluster": Counter()})
     for bucket in ("all", "trends", "news"):
         for row in payload.get("d", {}).get(bucket, []):
+            if is_deferred_row(row):
+                continue
             for query in split_keywords(row.get("kw")):
                 votes[query]["genre"][str(row.get("genre") or "Other")] += 1
                 votes[query]["cluster"][str(row.get("cluster") or "Relaxation / meditation")] += 1
@@ -365,6 +400,7 @@ def tracked_ids(payload: dict) -> list[str]:
         str(row.get("vid"))
         for bucket in ("all", "trends", "news")
         for row in payload.get("d", {}).get(bucket, [])
+        if not is_deferred_row(row)
         if VIDEO_ID.match(str(row.get("vid") or ""))
     }
     ids.update(sheet_video_ids())
@@ -636,6 +672,7 @@ def merge_artifacts(
 
     payload = read_snapshot(snapshot)
     data = payload.setdefault("d", {})
+    prune_deferred_rows(data)
     legacy_history = data.pop("hist", {})
     now_ms = max(int(a.get("generated_ms", 0)) for a in artifacts) or utc_now_ms()
     fresh: dict[str, dict] = {}
@@ -663,6 +700,8 @@ def merge_artifacts(
     inserted_trends = 0
     inserted_news = 0
     for row in merge_keyword_rows(candidates):
+        if is_deferred_row(row):
+            continue
         views = int(row.get("views") or 0)
         age = row.get("ageM")
         for current in (by_all.get(row["vid"]), by_trends.get(row["vid"]), by_news.get(row["vid"])):
@@ -717,6 +756,7 @@ def merge_artifacts(
         data["news"] = sorted(
             data["news"], key=lambda row: row.get("added") or 0, reverse=True
         )[:MAX_NEWS_ROWS]
+    prune_deferred_rows(data)
 
     desired_ids = {
         str(video_id)
