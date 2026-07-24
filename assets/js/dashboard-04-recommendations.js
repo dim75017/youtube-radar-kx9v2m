@@ -257,11 +257,36 @@ function validatedRecommendationRows(){
   const recos=(DATA.recos||[]).filter(row=>isValidated(row.valid)&&!plannedTitles.has(normalizedRecommendationTitle(row.title)));
   return recos.concat(planned).filter(row=>!isValidatedRowArchived(row));
 }
+function roadmapMatchesValidatedRecommendation(roadmapRow,row){
+  if(!roadmapRow||!row)return false;
+  return normalizedRecommendationTitle(roadmapRow.title)===normalizedRecommendationTitle(row.title)&&
+    String(roadmapRow.date||'')===String(row.date||'');
+}
+function archiveLinkedRoadmapRecommendation(row){
+  if(!row||row.__kind!=='roadmap')return;
+  const linked=(DATA.roadmap||[]).filter(entry=>roadmapMatchesValidatedRecommendation(entry,row));
+  if(!linked.length)return;
+  if(typeof ROADMAP_ARCHIVE_LOCAL!=='undefined'&&Array.isArray(ROADMAP_ARCHIVE_LOCAL)){
+    linked.forEach(entry=>{
+      if(!ROADMAP_ARCHIVE_LOCAL.some(saved=>roadmapMatchesValidatedRecommendation(saved,entry))){
+        ROADMAP_ARCHIVE_LOCAL.push(Object.assign({},entry,{archivedAt:Date.now()}));
+      }
+    });
+    if(typeof roadmapArchiveSave==='function')roadmapArchiveSave();
+  }
+  if(typeof SCHED_LOCAL!=='undefined'&&Array.isArray(SCHED_LOCAL)){
+    SCHED_LOCAL=SCHED_LOCAL.filter(entry=>!roadmapMatchesValidatedRecommendation(entry,row));
+    if(typeof schedSaveLocal==='function')schedSaveLocal();
+  }
+  DATA.roadmap=(DATA.roadmap||[]).filter(entry=>!roadmapMatchesValidatedRecommendation(entry,row));
+  if(typeof saveCache==='function')saveCache(DATA);
+}
 function archiveValidatedRecommendation(i,ev){
   if(ev)ev.stopPropagation();
   const row=(window._pageRecos||[])[i];if(!row)return;
   const key=validatedRowKey(row),archive=validatedArchiveRows();
   if(!archive.some(item=>item.key===key)){archive.push({key,archivedAt:Date.now(),row:Object.assign({},row)});saveValidatedArchive(archive);}
+  archiveLinkedRoadmapRecommendation(row);
   closeDrawer();rerenderRecos();
 }
 function restoreValidatedRecommendation(key,ev){

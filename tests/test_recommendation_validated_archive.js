@@ -38,8 +38,9 @@ assert.ok(rows.some(row => row.__kind === 'roadmap' && row.title === 'Monday pro
 context.window._pageRecos = rows;
 context.archive(rows.findIndex(row => row.title === 'Monday project'));
 rows = Array.from(context.rows());
-assert.equal(rows.length, 2, 'archiving hides a card from Validated without mutating the roadmap source');
-assert.equal(context.DATA.roadmap.length, 2, 'archiving never deletes a Monday roadmap item');
+assert.equal(rows.length, 2, 'archiving hides a card from Validated');
+assert.equal(context.DATA.roadmap.length, 1, 'archiving a validated roadmap project removes it from the roadmap too');
+assert.equal(context.DATA.roadmap[0].title, 'Existing plan');
 
 assert.match(source, /rbtn-archive/, 'validated cards expose a visible archive action');
 console.log('Recommendation validated/archive checks passed.');
