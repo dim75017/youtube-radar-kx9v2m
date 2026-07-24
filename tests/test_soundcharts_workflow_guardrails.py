@@ -64,6 +64,13 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertLess(editorial, classify)
         self.assertLess(independent, classify)
 
+    def test_full_sync_refreshes_each_dashboard_source_and_daily_playlist_followers(self):
+        self.assertIn("full_sync", self.workflow)
+        self.assertIn("Refresh all measured track stream histories for a full synchronization", self.workflow)
+        self.assertIn("Refresh playlist follower history every 24 hours", self.workflow)
+        self.assertIn("playlist_followers_due", self.workflow)
+        self.assertIn("Spotify_Playlists_data.js", self.workflow[self.workflow.index("Activate snapshot only after remote validation"):])
+
 
 if __name__ == "__main__":
     unittest.main()

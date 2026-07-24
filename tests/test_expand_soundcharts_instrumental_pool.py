@@ -257,6 +257,31 @@ class InstrumentalPoolTests(unittest.TestCase):
         self.assertEqual(subject.field(row, refreshed_schema, "ai_risk"), "unknown")
         self.assertTrue(subject.field(row, refreshed_schema, "soundcharts_genres_checked_at"))
 
+    def test_explicit_artist_catalogue_can_be_exactly_classified_without_becoming_an_opportunity(self):
+        current = payload()
+        schema = current["editorial"]["track_schema"]
+        schema.append("source_tier")
+        current["editorial"]["tracks"][0].append("explicit_artist_catalogue")
+        row = current["editorial"]["tracks"][0]
+        row[schema.index("instrumental_status")] = "unknown"
+        row[schema.index("instrumental_confidence")] = None
+        row[schema.index("ai_risk")] = "unknown"
+        detail = song_detail()
+        detail["object"]["genres"] = [{"root": "Ambient", "sub": ["Instrumental"]}]
+        cache = {"version": 1, "tracks": {}, "artists": {}}
+        summary = subject.classify_soundcharts_genres(
+            current,
+            cache,
+            FakeClient({"/api/v2/song/song-uuid": detail}),
+            workers=1,
+            max_requests=1,
+        )
+        refreshed_schema = current["editorial"]["track_schema"]
+        self.assertEqual(summary["updated"], 1)
+        self.assertEqual(subject.field(row, refreshed_schema, "primary_genre"), "ambient")
+        self.assertEqual(subject.field(row, refreshed_schema, "ai_risk"), "unknown")
+        self.assertNotIn("explicit_artist_catalogue", subject.PLAYLIST_SOURCE_TIERS)
+
     def test_expansion_inserts_track_history_artist_and_contact(self):
         client = FakeClient(
             {

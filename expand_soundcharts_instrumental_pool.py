@@ -92,6 +92,14 @@ PLAYLIST_SOURCE_TIERS = frozenset(
     }
 )
 
+# A direct artist seed is an explicit discovery request, not an A&R verdict.
+# We may therefore look up its exact Soundcharts song metadata to classify it,
+# while keeping it out of the measured opportunity pool until the normal
+# instrumental and AI-risk guardrails are independently satisfied.
+CLASSIFIABLE_DISCOVERY_SOURCE_TIERS = PLAYLIST_SOURCE_TIERS | frozenset(
+    {"explicit_artist_catalogue"}
+)
+
 SOUNDCHARTS_GENRE_RULES = (
     ("christmas_lofi", ("christmas lofi", "holiday lofi")),
     ("halloween_lofi", ("halloween lofi",)),
@@ -872,7 +880,7 @@ def classify_soundcharts_genres(
         verified = ai_risk in {"low", "faible"} and instrumental == "instrumental" and instrumental_confidence >= 0.5
         cached = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
         checked_at = field(row, schema, "soundcharts_genres_checked_at") or cached.get("soundcharts_genres_checked_at")
-        if not uuid or source_tier not in PLAYLIST_SOURCE_TIERS or verified or checked_at:
+        if not uuid or source_tier not in CLASSIFIABLE_DISCOVERY_SOURCE_TIERS or verified or checked_at:
             continue
         pending.append((uuid, _editorial_row_context(row, schema)))
 
@@ -912,7 +920,7 @@ def classify_soundcharts_genres(
         verified = ai_risk in {"low", "faible"} and status == "instrumental" and confidence >= 0.5
         cached = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
         checked_at = field(row, refreshed_schema, "soundcharts_genres_checked_at") or cached.get("soundcharts_genres_checked_at")
-        if uuid and source_tier in PLAYLIST_SOURCE_TIERS and not verified and not checked_at:
+        if uuid and source_tier in CLASSIFIABLE_DISCOVERY_SOURCE_TIERS and not verified and not checked_at:
             remaining += 1
 
     now = utc_now()

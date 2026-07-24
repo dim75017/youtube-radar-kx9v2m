@@ -72,9 +72,9 @@ on:
         required: true
         default: 'strict_rebaseline'
         type: choice
-        options: [strict_rebaseline, dark_ambient, dark_ambient_catalogues, explicit_artists, classification, artists, playlist_covers, smoke]
+        options: [strict_rebaseline, full_sync, dark_ambient, dark_ambient_catalogues, explicit_artists, classification, artists, playlist_covers, smoke]
       max_requests:
-        description: 'Data-call cap (strict: 1-6000; classification: 1-8230)'
+        description: 'Data-call cap (full sync: 1-60000; classification: 1-8230; other scopes: 1-6000)'
         required: true
         default: '6000'
         type: string
@@ -164,6 +164,8 @@ jobs:
           REQUESTED_MAX_REQUESTS: ${{ inputs.max_requests }}
         run: |
           artist_data_cap="350"
+          full_sync_artist_data_cap="15000"
+          full_sync_track_data_cap="60000"
           playlist_data_cap="1400"
           independent_playlist_data_cap="2500"
           expansion_data_cap="6000"
@@ -177,19 +179,24 @@ jobs:
             scope="$REQUESTED_SCOPE"
             case "$scope" in
               strict_rebaseline|dark_ambient) expansion_limit="2500" ;;
+              full_sync) expansion_limit="" ;;
               dark_ambient_catalogues|explicit_artists) expansion_limit="" ;;
               classification) expansion_limit="" ;;
               artists|playlist_covers|smoke) expansion_limit="" ;;
               *) echo "Unsupported scope: $scope" >&2; exit 1 ;;
             esac
             request_cap="$expansion_data_cap"
+            if [[ "$scope" == "full_sync" ]]; then request_cap="$full_sync_track_data_cap"; fi
             if [[ "$scope" == "classification" ]]; then request_cap="$classification_data_cap"; fi
             if [[ "$scope" == "playlist_covers" ]]; then request_cap="$playlist_data_cap"; fi
-            if [[ ! "$REQUESTED_MAX_REQUESTS" =~ ^[1-9][0-9]{0,3}$ ]] || (( 10#$REQUESTED_MAX_REQUESTS > request_cap )); then
+            if [[ ! "$REQUESTED_MAX_REQUESTS" =~ ^[1-9][0-9]{0,4}$ ]] || (( 10#$REQUESTED_MAX_REQUESTS > request_cap )); then
               echo "max_requests must be an integer between 1 and $request_cap for $scope" >&2
               exit 1
             fi
             expansion_requests="$REQUESTED_MAX_REQUESTS"
+            if [[ "$scope" == "full_sync" ]]; then
+              artist_data_cap="$full_sync_artist_data_cap"
+            fi
             if [[ "$GITHUB_REF" == "refs/heads/main" && "$scope" != "smoke" ]]; then publish="true"; else publish="false"; fi
           elif [[ "${{ github.event_name }}" == "schedule" ]]; then
             scope="strict_rebaseline"
@@ -200,18 +207,52 @@ jobs:
             echo "Unsupported event: ${{ github.event_name }}" >&2
             exit 1
           fi
+          playlist_followers_due="false"
+          pool_requests="$expansion_requests"
+          if [[ "$scope" == "full_sync" ]]; then
+            # The all-track refresh has its own 60k cap.  Keep the guarded
+            # opportunity-pool expansion bounded so this maintenance run does
+            # not repeatedly consume the same API budget for a second pass.
+            pool_requests="$expansion_data_cap"
+          fi
+          if [[ "$scope" == "full_sync" ]]; then
+            playlist_followers_due="true"
+          elif [[ "$scope" == "strict_rebaseline" ]]; then
+            playlist_followers_due="$(python - <<'PY'
+          import datetime as dt
+          import json
+          from pathlib import Path
+
+          path = Path('Spotify_Performance_data.js')
+          prefix = 'window.SPOTIFY_PERFORMANCE='
+          try:
+              raw = path.read_text(encoding='utf-8')
+              payload = json.loads(raw[len(prefix):].strip().removesuffix(';'))
+              value = (payload.get('freshness') or {}).get('playlists_at')
+              observed = dt.datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+              if observed.tzinfo is None:
+                  observed = observed.replace(tzinfo=dt.timezone.utc)
+              due = dt.datetime.now(dt.timezone.utc) - observed.astimezone(dt.timezone.utc) >= dt.timedelta(hours=23)
+          except Exception:
+              due = True
+          print(str(due).lower())
+          PY
+            )"
+          fi
           echo "scope=$scope" >> "$GITHUB_OUTPUT"
           echo "expansion_limit=$expansion_limit" >> "$GITHUB_OUTPUT"
           echo "expansion_requests=$expansion_requests" >> "$GITHUB_OUTPUT"
+          echo "pool_requests=$pool_requests" >> "$GITHUB_OUTPUT"
           echo "artist_requests=$artist_data_cap" >> "$GITHUB_OUTPUT"
           echo "playlist_requests=$playlist_data_cap" >> "$GITHUB_OUTPUT"
           echo "independent_playlist_requests=$independent_playlist_data_cap" >> "$GITHUB_OUTPUT"
+          echo "playlist_followers_due=$playlist_followers_due" >> "$GITHUB_OUTPUT"
           echo "publish=$publish" >> "$GITHUB_OUTPUT"
-          echo "Selected scope=$scope, expansion_requests=$expansion_requests, publish=$publish"
+          echo "Selected scope=$scope, expansion_requests=$expansion_requests, playlist_followers_due=$playlist_followers_due, publish=$publish"
 
       - name: Create an isolated Soundcharts candidate
         id: snapshot
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         shell: bash
         run: |
           old_snapshot="$(python prepare_soundcharts_snapshot.py current --index spotify/index.html)"
@@ -235,7 +276,7 @@ jobs:
           --history-days 14
 
       - name: Refresh mapped artist audience only when explicitly requested
-        if: steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'artists' || steps.plan.outputs.scope == 'full_sync'
         env:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
@@ -246,6 +287,21 @@ jobs:
           --mode artists
           --workers 10
           --max-requests "${{ steps.plan.outputs.artist_requests }}"
+          --history-days 90
+          --soundcharts "${{ steps.snapshot.outputs.candidate }}"
+
+      - name: Refresh playlist follower history every 24 hours
+        if: steps.plan.outputs.scope == 'full_sync' || (steps.plan.outputs.scope == 'strict_rebaseline' && steps.plan.outputs.playlist_followers_due == 'true')
+        env:
+          PYTHONUNBUFFERED: '1'
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        run: >-
+          python refresh_soundcharts_daily.py
+          --mode playlists
+          --workers 10
+          --max-requests "${{ steps.plan.outputs.playlist_requests }}"
           --history-days 90
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
 
@@ -383,8 +439,25 @@ jobs:
           --catalog-page-size 100
           --max-new-catalog-tracks 5000
 
+      - name: Classify pending direct and playlist tracks before a full synchronization
+        # Only exact Soundcharts song metadata is used here.  This does not
+        # infer an AI-risk or turn a direct seed into an opportunity by name.
+        if: steps.plan.outputs.scope == 'full_sync'
+        env:
+          PYTHONUNBUFFERED: '1'
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        run: >-
+          python expand_soundcharts_instrumental_pool.py
+          --soundcharts "${{ steps.snapshot.outputs.candidate }}"
+          --cache soundcharts-instrumental-cache.json
+          --workers 16
+          --max-requests 6000
+          --classification-only
+
       - name: Expand and measure the target instrumental pool
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient'
         env:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
@@ -393,7 +466,7 @@ jobs:
         shell: bash
         run: |
           args=(
-            --max-requests "${{ steps.plan.outputs.expansion_requests }}"
+            --max-requests "${{ steps.plan.outputs.pool_requests }}"
             --history-days 90
             --workers 10
           )
@@ -403,6 +476,21 @@ jobs:
           python expand_soundcharts_instrumental_pool.py \
             --soundcharts "${{ steps.snapshot.outputs.candidate }}" \
             "${args[@]}"
+
+      - name: Refresh all measured track stream histories for a full synchronization
+        if: steps.plan.outputs.scope == 'full_sync'
+        env:
+          PYTHONUNBUFFERED: '1'
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        run: >-
+          python refresh_soundcharts_daily.py
+          --mode tracks
+          --workers 10
+          --max-requests "${{ steps.plan.outputs.expansion_requests }}"
+          --history-days 90
+          --soundcharts "${{ steps.snapshot.outputs.candidate }}"
 
       - name: Classify pending playlist tracks from exact Soundcharts song genres
         if: steps.plan.outputs.scope == 'classification'
@@ -420,7 +508,7 @@ jobs:
           --classification-only
 
       - name: Enrich public professional contacts progressively
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         run: >-
           python enrich_public_artist_contacts.py
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
@@ -429,7 +517,7 @@ jobs:
           --max-profiles-per-artist 4
 
       - name: Recalculate actionable A&R opportunities
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         run: >-
           python sync_soundcharts_opportunities.py
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
@@ -440,7 +528,7 @@ jobs:
 
       - name: Prepare public-safe dated snapshot
         id: prepared
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         shell: bash
         run: |
           result="$RUNNER_TEMP/soundcharts-snapshot-result.json"
@@ -452,7 +540,7 @@ jobs:
           echo "name=$snapshot" >> "$GITHUB_OUTPUT"
 
       - name: Validate generated business outputs
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         env:
           SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
           RUN_SCOPE: ${{ steps.plan.outputs.scope }}
@@ -496,7 +584,7 @@ jobs:
                   raise SystemExit('Dark Ambient discovery scanned no eligible playlist')
               if int(dark_ambient.get('unique_playlist_tracks') or 0) < 1:
                   raise SystemExit('Dark Ambient discovery returned no tracks')
-          if os.environ.get('RUN_SCOPE') == 'classification':
+          if os.environ.get('RUN_SCOPE') in {'classification', 'full_sync'}:
               pending_before = int(classification.get('pending_before') or 0)
               if pending_before > 0 and int(classification.get('updated') or 0) < 1:
                   raise SystemExit('Soundcharts genre classification updated no pending track')
@@ -505,6 +593,11 @@ jobs:
                   raise SystemExit('Explicit artist discovery resolved no supplied artist')
               if int(explicit_artists.get('catalogue_artists_scanned') or 0) < 1:
                   raise SystemExit('Explicit artist discovery scanned no catalogue')
+          if os.environ.get('RUN_SCOPE') == 'full_sync':
+              if not (performance.get('freshness') or {}).get('playlists_at'):
+                  raise SystemExit('Playlist follower history was not refreshed')
+              if not performance.get('playlists'):
+                  raise SystemExit('Playlist follower history export is empty')
           if int(pool.get('measured') or 0) < 1:
               raise SystemExit('Instrumental pool produced no real Spotify counter')
           if not opportunities:
@@ -713,6 +806,7 @@ jobs:
             --new "$SNAPSHOT_NAME"
           git add \
             spotify/index.html \
+            Spotify_Playlists_data.js \
             Spotify_Performance_data.js \
             soundcharts-history
           git commit -m "data: activate validated Soundcharts snapshot"
