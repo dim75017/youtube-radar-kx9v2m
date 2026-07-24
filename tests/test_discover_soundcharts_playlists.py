@@ -219,6 +219,31 @@ class PlaylistDiscoveryTests(unittest.TestCase):
         self.assertEqual(summary["playlists_targeted"], 1)
         self.assertEqual(summary["playlists_scanned"], 1)
 
+    def test_targeted_scan_reuses_cached_audience_before_follower_floor(self):
+        payload = {
+            "cols": ["id", "name", "owner", "curatorCat", "followers", "tracks", "genre", "use_case", "kw"],
+            "rows": [["dark-cached", "Dark Ambient", "Curator", "independent", 0, 0, "Ambient", "Focus", "dark ambient music"]],
+        }
+        page = {"page": {"offset": 0, "limit": 100, "total": 1, "next": None}, "items": [{"position": 1, "entryDate": "2026-07-20", "song": {"uuid": "dark-cached-song", "name": "Night", "creditName": "Artist"}}]}
+        client = FakeClient({"/playlist/dark-cached-playlist/tracks/latest": page})
+        soundcharts = empty_soundcharts()
+        cache = {
+            "version": 1,
+            "tracks": {},
+            "artists": {},
+            "dark_ambient_playlist_discovery": {
+                "playlists": {"dark-cached": {"soundcharts_uuid": "dark-cached-playlist", "followers": 25_000, "latest_track_count": 1}},
+                "artists": {},
+            },
+        }
+        summary = subject.discover_from_playlists(
+            soundcharts, payload, cache, client, workers=1,
+            playlist_scope="dark_ambient", min_playlist_followers=10_000,
+            summary_key="dark_ambient_playlist_discovery", max_new_playlist_tracks=0, max_catalog_artists=0,
+        )
+        self.assertEqual(summary["playlists_targeted"], 1)
+        self.assertEqual(summary["playlists_scanned"], 1)
+
     def test_independent_playlist_rotation_prefers_unscanned_then_oldest(self):
         rows = [
             {"spotify_id": "new", "name": "New", "followers": 10},

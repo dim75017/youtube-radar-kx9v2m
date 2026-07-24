@@ -1026,6 +1026,16 @@ def discover_from_playlists(
         cached_uuid = str(state.get("soundcharts_uuid") or "") if isinstance(state, dict) else ""
         if cached_uuid:
             item["soundcharts_uuid"] = cached_uuid
+            # The playlist export can legitimately have a zero/unknown
+            # follower count.  Reuse the already-resolved Soundcharts value
+            # before applying a targeted follower floor; otherwise every
+            # cached Dark Ambient playlist disappears from the next full pass.
+            cached_followers = _finite_number(state.get("followers")) if isinstance(state, dict) else None
+            if int(item.get("followers") or 0) <= 0 and cached_followers is not None and cached_followers > 0:
+                item["followers"] = int(cached_followers)
+            cached_tracks = _finite_number(state.get("latest_track_count")) if isinstance(state, dict) else None
+            if int(item.get("expected_tracks") or 0) <= 0 and cached_tracks is not None and cached_tracks > 0:
+                item["expected_tracks"] = int(cached_tracks)
         else:
             metadata_tasks.append(
                 (
