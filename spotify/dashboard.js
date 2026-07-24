@@ -1250,6 +1250,28 @@ function setArtistFlowWindow(days){
   S.artistFlowDays=days==='all'?'all':(Number(days)||7);
   renderArtistModal();
 }
+function trackFlowWindowControls(context,trackId){
+  const active=S.trackFlowDays==='all'?'all':(Number(S.trackFlowDays)||30);
+  return `<div class="analytics-window" role="group" aria-label="Période de la courbe">
+    ${[7,30,90,180,360].map(days=>`<button type="button" class="${active===days?'on':''}" data-track-flow-id="${esc(trackId)}" onclick="setTrackFlowWindow(${days},'${context}',this.dataset.trackFlowId)">${days} j</button>`).join('')}<button type="button" class="${active==='all'?'on':''}" data-track-flow-id="${esc(trackId)}" onclick="setTrackFlowWindow('all','${context}',this.dataset.trackFlowId)">${T("Tout l'historique")}</button>
+  </div>`;
+}
+function setTrackFlowWindow(days,context,trackId){
+  S.trackFlowDays=days==='all'?'all':(Number(days)||30);
+  if(context==='ar') openArOpportunity(trackId);
+  else openTrack(trackId);
+}
+function trackDailyAnalyticsHtml(trackId,context){
+  const period=S.trackFlowDays==='all'?'all':(Number(S.trackFlowDays)||30);
+  const daily=recentDailyPoints(dailyFlowSeries(HIST[String(trackId||'')]||[]),period);
+  const revenue=S.metricMode==='revenue';
+  const title=revenue?'Courbe quotidienne des revenus estimés':'Courbe quotidienne des streams';
+  const note=revenue?'Revenu quotidien estimé d’après les streams':'Flux quotidien, pas compteur lifetime';
+  return `<div class="analytics-section track-flow-analytics">
+    <h4><span>${title} <span class="analytics-note">${note}</span></span>${trackFlowWindowControls(context,trackId)}</h4>
+    ${dailyChartHtml(metricSeries(daily),'Historique quotidien insuffisant pour tracer la courbe.',revenue?'revenue':'streams')}
+  </div>`;
+}
 function revTotal(r){ return r[3]>0 ? r[3]*RATE : 0; }
 function rev30(r){ const v=streams30(r).val; return v==null?null:v*RATE; }
 function daysAgo(d){ return d ? Math.round((TODAY-new Date(d+'T00:00:00'))/864e5) : 1e9; }
@@ -1519,7 +1541,7 @@ const S = {
   plq:'', plcur:'all', plgenre:'all', plsort:'followers', pldir:-1, plonly:false, shownPL:80, plview:'qualified',
   lbq:'', lbsort:'streams', lbdir:-1, shownLB:80, labelKey:null, lbModalArtist:null,
   radarFilter:'all', radarLimit:100, radarShown:100, radarTrackId:'', radarGenre:'all', radarSort:'score', radarSortDir:-1, radarQ:'', arSelected:{},
-  artistFlowDays:7,
+  artistFlowDays:7, trackFlowDays:30,
 };
 
 /* ---------- navigation ---------- */
@@ -2228,7 +2250,6 @@ function openTrack(tid){
   const r = R.find(x=>x[6]===tid); if(!r) return;
   const g = AG[r[0]];
   const perf = {1:trackWindow(r,1),7:trackWindow(r,7),30:trackWindow(r,30)};
-  const daily = dailyFlowSeries(HIST[tid] || []);
   const entry = trackPerfEntry(r);
   const velocity = perf[7].currentReady ? perf[7].current/7 : null;
   const cadence = Number.isFinite(Number(entry.cadence_days)) ? Number(entry.cadence_days)+' j' : '—';
@@ -2255,10 +2276,7 @@ function openTrack(tid){
     <div class="toolbar" style="justify-content:flex-end;margin:0 0 10px">${metricModeToggleHtml()}</div>
     ${perfGridHtml(perf,'Streams',r[3]>=0?r[3]:null,true)}
     ${trackEditorialEvidenceHtml(r)}
-    <div class="analytics-section">
-      <h4>${T(S.metricMode==='revenue'?'Courbe quotidienne des revenus estimés':'Courbe quotidienne des streams')} <span class="analytics-note">${T(S.metricMode==='revenue'?'Revenu quotidien estimé d’après les streams':'Flux quotidien, pas compteur lifetime')}</span></h4>
-      ${dailyChartHtml(metricSeries(daily),T('Historique quotidien insuffisant pour tracer la courbe.'))}
-    </div>
+    ${trackDailyAnalyticsHtml(tid,'track')}
     ${trackOfferHtml(r)}
     <div style="display:flex;gap:10px;margin-top:14px">
       <a class="btn-back" style="margin:0;text-decoration:none" href="${trackUrl(r[6],r)}" target="_blank" rel="noopener">▶ ${T('Ouvrir sur Spotify')}</a>
@@ -3034,6 +3052,7 @@ function openArOpportunity(spotifyId){
   box.innerHTML=`<div class="thd"><div class="av-sm">♫</div><div style="min-width:0;flex:1"><h3>${esc(opportunity.title)}</h3><div class="tar ar-detail-artists">${arArtistLinksHtml(opportunity)}<span class="ar-detail-artist-separator"> · </span>opportunité de track</div></div><button class="tclose" onclick="closeArModal()">✕</button></div>
     ${arOpportunityPlayerHtml(opportunity)}
     <div class="perf-grid">${totalMetricCardHtml('Streams',total,true)}${perfCardHtml(streamMetricLabel(30),{current:d30,currentReady:d30!=null,comparisonReady:false,total:1},true)}${perfCardHtml(streamMetricLabel(7),{current:d7,currentReady:d7!=null,comparisonReady:false,total:1},true)}${perfCardHtml(streamMetricLabel(1),{current:d1,currentReady:d1!=null,comparisonReady:false,total:1},true)}</div>
+    ${trackDailyAnalyticsHtml(spotifyId,'ar')}
     ${arDetailEditorialPlaylistsHtml(opportunity)}
     <div class="tgrid ar-detail-facts"><div class="tg ar-fact-plain"><div class="l">Genre</div><div class="v">🎼 ${esc(arGenreLabel(opportunity.genre))}</div></div><div class="tg ar-fact-plain"><div class="l">Type</div><div class="v ${opportunity.rights==='self_released'?'ar-self-release-type':''}">${opportunity.rights==='self_released'?'<span aria-hidden="true">↗</span> ':''}${esc(arReleaseTypeLabel(opportunity))}</div></div><div class="tg ar-detail-listeners"><div class="l">👥 Auditeurs mensuels</div><div class="v">${opportunity.artistMonthlyListeners==null?'—':fmt(opportunity.artistMonthlyListeners)}</div></div><div class="tg"><div class="l">🗓️ Sortie</div><div class="v">${opportunity.releaseDate?fmtDate(opportunity.releaseDate.slice(0,10)):'—'}</div></div></div>
     ${selectable?`<div class="ar-detail-actions"><button class="btn-back" onclick="${isListed?`arRemoveFromList('${esc(spotifyId)}',event);openArOpportunity('${esc(spotifyId)}')`:`arAddToList('${esc(spotifyId)}',event);openArOpportunity('${esc(spotifyId)}')`}">${isListed?'Retirer de la sélection':'⭐ Ajouter à la sélection'}</button></div>`:''}`;
