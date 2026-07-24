@@ -178,6 +178,47 @@ class PlaylistDiscoveryTests(unittest.TestCase):
         self.assertEqual(selected[0]["source_tier"], "independent_playlist")
         self.assertEqual(selected[1]["primary_genre"], "dark_ambient")
 
+    def test_targeted_dark_ambient_scope_and_follower_floor(self):
+        payload = {
+            "cols": ["id", "name", "owner", "curatorCat", "followers", "tracks", "genre", "use_case", "kw"],
+            "rows": [
+                ["dark-small", "Dark Ambient", "Curator", "independent", 9_999, 60, "Ambient", "Focus", "dark ambient music"],
+                ["dark-large", "Dark Ambient", "Curator", "independent", 10_000, 90, "Ambient", "Focus", "dark ambient music"],
+                ["ambient-large", "Ambient", "Curator", "independent", 500_000, 90, "Ambient", "Focus", "ambient music"],
+            ],
+        }
+        selected = subject.select_playlists(payload, "dark_ambient")
+        self.assertEqual([item["spotify_id"] for item in selected], ["dark-large", "dark-small"])
+        eligible = subject.filter_playlists_by_followers(selected, 10_000)
+        self.assertEqual([item["spotify_id"] for item in eligible], ["dark-large"])
+
+    def test_targeted_scan_resolves_unknown_audiences_before_follower_floor(self):
+        payload = {
+            "cols": ["id", "name", "owner", "curatorCat", "followers", "tracks", "genre", "use_case", "kw"],
+            "rows": [
+                ["dark-unknown", "Dark Ambient", "Curator", "independent", 0, 0, "Ambient", "Focus", "dark ambient music"],
+                ["dark-small", "Dark Ambient Sleep", "Curator", "independent", 9_000, 10, "Ambient", "Focus", "dark ambient music"],
+            ],
+        }
+        page = {"page": {"offset": 0, "limit": 100, "total": 1, "next": None}, "items": [{"position": 1, "entryDate": "2026-07-20", "song": {"uuid": "dark-song", "name": "Night", "creditName": "Artist"}}]}
+        client = FakeClient(
+            {
+                "/by-platform/spotify/dark-unknown": {"object": {"uuid": "dark-playlist-unknown", "latestSubscriberCount": 20_000, "latestTrackCount": 1}},
+                "/by-platform/spotify/dark-small": {"object": {"uuid": "dark-playlist-small", "latestSubscriberCount": 9_000, "latestTrackCount": 1}},
+                "/playlist/dark-playlist-unknown/tracks/latest": page,
+            }
+        )
+        soundcharts = empty_soundcharts()
+        cache = {"version": 1, "tracks": {}, "artists": {}}
+        summary = subject.discover_from_playlists(
+            soundcharts, payload, cache, client, workers=1,
+            playlist_scope="dark_ambient", min_playlist_followers=10_000,
+            max_new_playlist_tracks=0, max_catalog_artists=0,
+        )
+        self.assertEqual(summary["playlists_candidates"], 2)
+        self.assertEqual(summary["playlists_targeted"], 1)
+        self.assertEqual(summary["playlists_scanned"], 1)
+
     def test_independent_playlist_rotation_prefers_unscanned_then_oldest(self):
         rows = [
             {"spotify_id": "new", "name": "New", "followers": 10},

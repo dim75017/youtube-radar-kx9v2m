@@ -342,7 +342,7 @@ def classify_independent_playlist(name: Any, keywords: Any, use_case: Any = "") 
 
 
 def select_playlists(payload: dict[str, Any], playlist_scope: str = "editorial") -> list[dict[str, Any]]:
-    if playlist_scope not in {"editorial", "independent", "all"}:
+    if playlist_scope not in {"editorial", "independent", "all", "dark_ambient"}:
         raise PlaylistDiscoveryError(f"Unsupported playlist scope: {playlist_scope}")
     columns = payload.get("cols") if isinstance(payload.get("cols"), list) else []
     rows = payload.get("rows") if isinstance(payload.get("rows"), list) else []
@@ -370,7 +370,14 @@ def select_playlists(payload: dict[str, Any], playlist_scope: str = "editorial")
         else:
             internal_genre = None
             source_tier = ""
-        if curator not in ({playlist_scope} if playlist_scope != "all" else {"editorial", "independent"}) or not internal_genre:
+        allowed_curators = (
+            {"editorial", "independent"}
+            if playlist_scope in {"all", "dark_ambient"}
+            else {playlist_scope}
+        )
+        if curator not in allowed_curators or not internal_genre:
+            continue
+        if playlist_scope == "dark_ambient" and internal_genre != "dark_ambient":
             continue
         if not spotify_id:
             continue
@@ -393,6 +400,15 @@ def select_playlists(payload: dict[str, Any], playlist_scope: str = "editorial")
 
 def select_editorial_playlists(payload: dict[str, Any]) -> list[dict[str, Any]]:
     return select_playlists(payload, "editorial")
+
+
+def filter_playlists_by_followers(
+    playlists: Iterable[dict[str, Any]], minimum_followers: int = 0
+) -> list[dict[str, Any]]:
+    minimum = max(0, int(minimum_followers))
+    return [
+        item for item in playlists if int(item.get("followers") or 0) >= minimum
+    ]
 
 
 def playlist_scan_order(
@@ -960,6 +976,7 @@ def discover_from_playlists(
     baseline: Mapping[str, Any] | None = None,
     playlist_scope: str = "editorial",
     summary_key: str | None = None,
+    min_playlist_followers: int = 0,
 ) -> dict[str, Any]:
     now = utc_now()
     observed_day = utc_today().isoformat()
@@ -992,8 +1009,13 @@ def discover_from_playlists(
     }
     baseline_playlist_artist_uuids: set[str] = set()
 
+    # The source export deliberately keeps unresolved playlists with 0
+    # followers.  Resolve their Soundcharts metadata before applying a
+    # follower floor, otherwise a targeted genre scan would silently exclude
+    # precisely the playlists whose audience still needs refreshing.
+    selected_playlists = select_playlists(playlists_payload, playlist_scope)
     playlists = playlist_scan_order(
-        select_playlists(playlists_payload, playlist_scope),
+        selected_playlists,
         playlist_state,
         limit=playlist_limit,
     )
@@ -1031,7 +1053,12 @@ def discover_from_playlists(
             "resolved_at": now,
         }
 
-    resolved_playlists = [item for item in playlists if item.get("soundcharts_uuid")]
+    eligible_playlists = filter_playlists_by_followers(
+        playlists, min_playlist_followers
+    )
+    resolved_playlists = [
+        item for item in eligible_playlists if item.get("soundcharts_uuid")
+    ]
     first_page_tasks = [
         (
             item["spotify_id"],
@@ -1287,7 +1314,8 @@ def discover_from_playlists(
         "status": "success",
         "finished_at": now,
         "playlist_scope": playlist_scope,
-        "playlists_targeted": len(playlists),
+        "playlists_candidates": len(playlists),
+        "playlists_targeted": len(eligible_playlists),
         "playlists_resolved": len(resolved_playlists),
         "playlists_scanned": scanned_playlists,
         "tracklist_rows": len(placements),
@@ -1337,8 +1365,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-requests", type=int, default=1_400)
     parser.add_argument("--page-size", type=int, default=100)
     parser.add_argument("--playlist-limit", type=int)
-    parser.add_argument("--playlist-scope", choices=("editorial", "independent", "all"), default="editorial")
+    parser.add_argument("--playlist-scope", choices=("editorial", "independent", "all", "dark_ambient"), default="editorial")
     parser.add_argument("--summary-key")
+    parser.add_argument("--min-playlist-followers", type=int, default=0)
     parser.add_argument("--max-new-playlist-tracks", type=int, default=450)
     parser.add_argument("--max-catalog-artists", type=int, default=250)
     parser.add_argument("--catalog-page-size", type=int, default=25)
@@ -1375,6 +1404,7 @@ def main() -> int:
         baseline=baseline,
         playlist_scope=args.playlist_scope,
         summary_key=args.summary_key,
+        min_playlist_followers=max(0, args.min_playlist_followers),
     )
     write_js_payload(args.soundcharts, soundcharts, SOUNDCHARTS_PREFIX)
     write_cache(args.cache, cache)
