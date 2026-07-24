@@ -33,7 +33,7 @@ if(dashboard.includes('function artistRows(i){ return R.filter(r=>r[0]===i && r[
   throw new Error('Artist modal still limits the discography to primary self-release rows');
 for(const required of ['.spark-tooltip','.analytics-window','.ck:disabled'])
   if(!css.includes(required)) throw new Error('Missing chart or acquisition control styling: '+required);
-if(!index.includes('dashboard.js?v=20260724-selection-metrics-player-v1'))
+if(!index.includes('dashboard.js?v=20260724-row-click-v1'))
   throw new Error('Dashboard cache version is stale');
 
 console.log('spotify artist full discography and history controls: ok');
