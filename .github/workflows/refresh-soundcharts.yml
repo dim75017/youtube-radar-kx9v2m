@@ -596,7 +596,7 @@ jobs:
             soundcharts-history
           git commit -m "data: activate validated Soundcharts snapshot"
           for attempt in 1 2 3; do
-            git pull --rebase origin main && git push origin HEAD:main && exit 0
+            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
             sleep 5
           done
           exit 1
