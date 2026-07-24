@@ -1010,13 +1010,14 @@ function mergeDarkAmbientDiscoveryPlaylists(){
       if(entry.first&&(!existing[7]||entry.first<existing[7])) existing[7]=entry.first;
       if(entry.last&&(!existing[8]||entry.last>existing[8])) existing[8]=entry.last;
       existing[10]='Dark ambient';
+      existing[13]='soundcharts_dark_ambient_discovery';
       if(!existing[11]) existing[11]='Soundcharts discovery';
       existing[16]=1; existing[17]=entry.followers>=10000?1:existing[17];
       continue;
     }
     PLrows.push([
       entry.id,entry.name,'','unknown',entry.followers,'ok',entry.tracks.size,
-      entry.first,entry.last,'','Dark ambient','Soundcharts discovery',0,'dark ambient',
+      entry.first,entry.last,'','Dark ambient','Soundcharts discovery',0,'soundcharts_dark_ambient_discovery',
       '', '', 1,entry.followers>=10000?1:0, null, null, ''
     ]);
   }
@@ -3825,6 +3826,7 @@ function playlistText(value){
 function playlistPrimaryGenre(r){
   const explicit=PLAYLIST_GENRE_OVERRIDES[String(r&&r[0]||'')];
   if(explicit) return explicit;
+  if(String(r&&r[13]||'')==='soundcharts_dark_ambient_discovery') return 'dark_ambient';
   const title=playlistText(r&&r[1]);
   /* Les signaux de titre explicites passent avant les catégories source plus larges. */
   if(/\b(?:halloween\s+(?:lo[ -]?fi)|(?:lo[ -]?fi)\s+halloween)\b/.test(title)) return 'halloween_lofi';

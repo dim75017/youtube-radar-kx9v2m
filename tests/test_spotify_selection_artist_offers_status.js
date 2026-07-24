@@ -53,6 +53,6 @@ const cardStart = dashboard.indexOf('function arSelectionArtistCardHtml(group){'
 const cardEnd = dashboard.indexOf('\nfunction arSelectionEconomics(group){', cardStart);
 const card = dashboard.slice(cardStart, cardEnd);
 assert.ok(card.includes('arSelectionEconomicsHtml(group)'), 'Each artist card must render its own economics section.');
-assert.match(index, /dashboard\.js\?v=20260724-dark-ambient-playlists-v2/);
+assert.match(index, /dashboard\.js\?v=20260724-dark-ambient-playlists-v3/);
 
 console.log('spotify selection artist offers/status: OK');
