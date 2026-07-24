@@ -4227,7 +4227,13 @@ function fmtTs(ts){
   return m[3]+'/'+m[2]+'/'+m[1] + (m[4] ? ', '+m[4] : '');
 }
 function spotifyUpdateTimestamp(...values){
-  return values.find(value=>value!=null&&String(value).trim()&&String(value).trim()!=='?')||null;
+  const candidates=values.filter(value=>value!=null&&String(value).trim()&&String(value).trim()!=='?');
+  const dated=candidates.map(value=>({
+    value,
+    time:Date.parse(String(value).replace(' ','T'))
+  })).filter(item=>Number.isFinite(item.time));
+  if(dated.length) return dated.sort((a,b)=>b.time-a.time)[0].value;
+  return candidates[0]||null;
 }
 function spotifyUpdateAge(when){
   if(!when) return null;
@@ -4246,10 +4252,18 @@ function spotifyUpdateRows(){
   const snapshot=SC&&SC.generated_at;
   const browse=BROWSE.generated_at;
   const performance=PERF.generated_at;
-  const tracksAt=spotifyUpdateTimestamp(performance,freshness.tracks_at,snapshot,browse,D.ts,D.t);
-  const artistsAt=spotifyUpdateTimestamp(freshness.artists_at,performance,snapshot,browse,D.ts,D.t);
-  const playlistsAt=spotifyUpdateTimestamp(PLmeta&&PLmeta.generated_ts,PLmeta&&PLmeta.snapshot_ts,freshness.playlists_at,snapshot,browse);
-  const labelsAt=spotifyUpdateTimestamp(LBmeta&&LBmeta.generated_ts,LBmeta&&LBmeta.source_ts,freshness.labels_at,D.ts,D.t);
+  // Every sidebar row describes the same published radar snapshot.  Do not
+  // surface an older per-source enrichment date as if that category were stale.
+  const publishedAt=spotifyUpdateTimestamp(
+    performance,snapshot,browse,D.ts,D.t,
+    freshness.tracks_at,freshness.artists_at,freshness.playlists_at,freshness.labels_at,
+    PLmeta&&PLmeta.generated_ts,PLmeta&&PLmeta.snapshot_ts,
+    LBmeta&&LBmeta.generated_ts,LBmeta&&LBmeta.source_ts
+  );
+  const tracksAt=publishedAt;
+  const artistsAt=publishedAt;
+  const playlistsAt=publishedAt;
+  const labelsAt=publishedAt;
   const fr=LANG==='fr';
   const row=(when,label,detail)=>({when,label,detail});
   return [
