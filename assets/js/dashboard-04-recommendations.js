@@ -237,11 +237,40 @@ function dailyRecoListHTML(rows){
   window._pageRecos=rows;return '<div class="rgrid2">'+rows.map((r,i)=>recoCardHTML(r,i)).join('')+'</div>';
 }
 let RECO_TAB='pending';
+const RECO_VALIDATED_ARCHIVE_KEY='lofi_radar_validated_archive_v1';
+function normalizedRecommendationTitle(value){return String(value||'').trim().toLocaleLowerCase().replace(/\s+/g,' ');}
+function validatedArchiveRows(){try{const rows=JSON.parse(localStorage.getItem(RECO_VALIDATED_ARCHIVE_KEY)||'[]');return Array.isArray(rows)?rows:[];}catch(e){return [];}}
+function saveValidatedArchive(rows){try{localStorage.setItem(RECO_VALIDATED_ARCHIVE_KEY,JSON.stringify(rows));}catch(e){}}
+function validatedRowKey(row){
+  return row&&row.__kind==='roadmap'
+    ?'roadmap:'+String(row.date||'')+'|'+normalizedRecommendationTitle(row.title)
+    :'reco:'+String(row&&row.n||'');
+}
+function isValidatedRowArchived(row){return validatedArchiveRows().some(item=>item.key===validatedRowKey(row));}
+function roadmapValidatedRows(){
+  return (DATA.roadmap||[]).filter(row=>row&&row.title).map(row=>Object.assign({},row,{__kind:'roadmap',valid:'X',planned:true}));
+}
 function refusedRecommendationRows(){return (DATA.recos||[]).filter(r=>isRefused(r.valid));}
-function validatedRecommendationRows(){return (DATA.recos||[]).filter(r=>isValidated(r.valid));}
+function validatedRecommendationRows(){
+  const planned=roadmapValidatedRows();
+  const plannedTitles=new Set(planned.map(row=>normalizedRecommendationTitle(row.title)));
+  const recos=(DATA.recos||[]).filter(row=>isValidated(row.valid)&&!plannedTitles.has(normalizedRecommendationTitle(row.title)));
+  return recos.concat(planned).filter(row=>!isValidatedRowArchived(row));
+}
+function archiveValidatedRecommendation(i,ev){
+  if(ev)ev.stopPropagation();
+  const row=(window._pageRecos||[])[i];if(!row)return;
+  const key=validatedRowKey(row),archive=validatedArchiveRows();
+  if(!archive.some(item=>item.key===key)){archive.push({key,archivedAt:Date.now(),row:Object.assign({},row)});saveValidatedArchive(archive);}
+  closeDrawer();rerenderRecos();
+}
+function restoreValidatedRecommendation(key,ev){
+  if(ev)ev.stopPropagation();
+  saveValidatedArchive(validatedArchiveRows().filter(item=>item.key!==key));rerenderRecos();
+}
 function recoTabControlHTML(){
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
-  const counts={pending:dailyRecommendationSet().length,validated:validatedRecommendationRows().length,archive:refusedRecommendationRows().length};
+  const counts={pending:dailyRecommendationSet().length,validated:validatedRecommendationRows().length,archive:refusedRecommendationRows().length+validatedArchiveRows().length};
   const tabs=[
     ['pending','🟡 '+(fr?'À valider':'To review')],
     ['validated','✓ '+(fr?'Validées':'Validated')],
@@ -264,26 +293,56 @@ function recoArchiveCardHTML(r,i){
   '</div>';
 }
 function recoArchiveHTML(){
+  const archived=validatedArchiveRows();
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
+  const archivedHTML=archived.length?('<div class="reco-group-h"><span>🗃️</span><span>'+ (fr?'Archivées depuis Validées':'Archived from Validated')+'</span><span class="cnt">'+archived.length+'</span></div><div class="rgrid2">'+archived.map(item=>{
+      const row=item.row||{},when=new Date(item.archivedAt).toLocaleDateString();
+      return '<div class="rtile reco-archived" style="--gc:'+gcolor(row.genre)+'">'+
+        '<div class="rt-head"><div class="rt-title">'+esc(row.title)+'</div></div>'+
+        '<div class="rt-tags">'+gtag(row.genre)+(row.dur?ghosttag(row.dur):'')+'</div>'+
+        '<div class="rt-note">'+(fr?'Archivée le ':'Archived on ')+esc(when)+'</div>'+
+        '<div class="reco-quick-actions"><button class="rbtn reco-restore" onclick="restoreValidatedRecommendation('+jsq(item.key)+',event)">↩ '+(fr?'Restaurer':'Restore')+'</button></div>'+
+      '</div>';
+    }).join('')+'</div>'):'';
   const rows=refusedRecommendationRows();window._pageRecos=rows;
-  if(!rows.length)return '<div class="empty">'+((typeof LANG!=='undefined'&&LANG==='fr')?'Aucune recommandation archivée.':'No archived recommendations.')+'</div>';
-  return '<div class="rgrid2">'+rows.map((r,i)=>recoArchiveCardHTML(r,i)).join('')+'</div>';
+  if(!archived.length&&!rows.length)return '<div class="empty">'+(fr?'Aucune recommandation archivée.':'No archived recommendations.')+'</div>';
+  const refusedHTML=rows.length?((archived.length?'<div class="reco-group-h"><span>—</span><span>'+ (fr?'Refusées':'Refused')+'</span><span class="cnt">'+rows.length+'</span></div>':'')+'<div class="rgrid2">'+rows.map((r,i)=>recoArchiveCardHTML(r,i)).join('')+'</div>'):'';
+  return archivedHTML+refusedHTML;
 }
 function recoValidatedCardHTML(r,i){
   const note=noteOf(r.valid),tierL=r.pot?r.pot[0].toUpperCase():null;
   const tier=tierL?('<span class="rtier tier-'+tierL+'" title="Tier '+tierL+'">'+tierL+'</span>'):'<span class="rtier" style="opacity:.35">-</span>';
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
-  return '<div class="rtile reco-validated" style="--gc:'+gcolor(r.genre)+'" onclick="openRecoIdx('+i+')">'+
+  const planned=r.__kind==='roadmap';
+  const plannedDate=planned&&r.date?new Date(r.date).toLocaleDateString(fr?'fr-FR':'en-GB',{day:'2-digit',month:'short',year:'numeric'}):'';
+  return '<div class="rtile reco-validated" style="--gc:'+gcolor(r.genre)+'" onclick="openValidatedReco('+i+')">'+
     '<div class="rt-head">'+tier+'<div class="rt-title">'+esc(r.title)+'</div></div>'+
-    '<div class="rt-tags">'+gtag(r.genre)+(r.dur?ghosttag(r.dur):'')+'</div>'+
+    '<div class="rt-tags">'+gtag(r.genre)+(r.dur?ghosttag(r.dur):'')+(planned?ghosttag((fr?'Planning':'Roadmap')+(plannedDate?' · '+plannedDate:'')):'')+'</div>'+
     (r.concept?'<div class="rt-desc">'+esc(String(r.concept).slice(0,130))+(String(r.concept).length>130?'...':'')+'</div>':'')+
     (note?'<div class="rt-note">Note: '+esc(note.slice(0,60))+(note.length>60?'...':'')+'</div>':'')+
-    '<div class="reco-quick-actions" onclick="event.stopPropagation()"><span class="reco-validated-state">✓ '+(fr?'Validée · planning':'Validated · roadmap')+'</span></div>'+
+    '<div class="reco-quick-actions" onclick="event.stopPropagation()"><span class="reco-validated-state">✓ '+(planned?(fr?'Planning synchronisé':'Synced roadmap'):(fr?'Validée':'Validated'))+'</span><button class="rbtn rbtn-archive" title="'+(fr?'Archiver cette fiche':'Archive this card')+'" onclick="archiveValidatedRecommendation('+i+',event)">🗑️</button></div>'+
   '</div>';
 }
 function recoValidatedHTML(){
   const rows=validatedRecommendationRows();window._pageRecos=rows;
   if(!rows.length)return '<div class="empty">'+((typeof LANG!=='undefined'&&LANG==='fr')?'Aucune recommandation validée pour le moment.':'No validated recommendation yet.')+'</div>';
   return '<div class="rgrid2">'+rows.map((r,i)=>recoValidatedCardHTML(r,i)).join('')+'</div>';
+}
+function openValidatedReco(i){
+  const row=(window._pageRecos||[])[i];if(!row)return;
+  if(row.__kind!=='roadmap'){openRecoIdx(i);return;}
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
+  window._drawerRecoN=null;window._drawerReopen=null;
+  document.getElementById('drawer').innerHTML=
+    '<button class="dw-close" onclick="closeDrawer()">✕</button>'+
+    '<div class="dw-body" style="padding-top:26px">'+
+      '<div class="dw-title">'+esc(row.title)+'</div>'+
+      '<div class="dw-sub">'+gtag(row.genre)+(row.dur?ghosttag(row.dur):'')+ghosttag(fr?'Planning synchronisé':'Synced roadmap')+'</div>'+
+      '<div class="dw-stats"><div class="dw-stat hl"><b>'+esc(row.date?new Date(row.date).toLocaleDateString(fr?'fr-FR':'en-GB'):'—')+'</b><span>'+ (fr?'date prévue':'planned date')+'</span></div><div class="dw-stat"><b>'+esc(row.src||'—')+'</b><span>'+ (fr?'source':'source')+'</span></div></div>'+
+      recoRow(fr?'Concept':'Concept',row.concept)+recoRow(fr?'Note':'Note',row.note)+
+      '<div class="rt-actions"><button class="rbtn rbtn-archive" onclick="archiveValidatedRecommendation('+i+',event)">🗑️ '+(fr?'Archiver cette fiche':'Archive this card')+'</button></div>'+
+    '</div>';
+  document.getElementById('drawer').classList.add('show');document.getElementById('backdrop').classList.add('show');document.getElementById('drawer').scrollTop=0;
 }
 function recoVisibleHTML(){
   if(RECO_TAB==='archive')return recoArchiveHTML();
@@ -348,10 +407,10 @@ function copyTxtN(btn,n,field){
     setTimeout(()=>{btn.textContent=old;btn.classList.remove('done');},1400);
   });
 }
-function recoActions(r){
+function recoActions(r,i){
   const isVal=isValidated(r.valid), isRef=isRefused(r.valid);
   const actions=isVal
-    ?'<span class="rst-done rst-ok" style="flex:1;text-align:center">✅ Validated</span><button class="rst-x" title="Reset to pending" onclick="setValid('+r.n+',\'\',this,event)">✕</button>'
+    ?'<span class="rst-done rst-ok" style="flex:1;text-align:center">✅ Validated</span><button class="rbtn rbtn-archive" title="Archive this card" onclick="archiveValidatedRecommendation('+i+',event)">🗑️</button><button class="rst-x" title="Reset to pending" onclick="setValid('+r.n+',\'\',this,event)">✕</button>'
     :isRef
     ?'<span class="rst-done rst-ko" style="flex:1;text-align:center">❌ Refused</span><button class="rst-x" title="Reset to pending" onclick="setValid('+r.n+',\'\',this,event)">✕</button>'
     :'<button class="rbtn rbtn-ko" style="flex:1" onclick="setValid('+r.n+',\'-\',this,event)">✕ Refuse</button><button class="rbtn rbtn-ok" style="flex:1" onclick="setValid('+r.n+',\'X\',this,event)">✓ Validate</button>';
@@ -379,7 +438,7 @@ function openRecoIdx(i){
     '<div class="dw-body" style="padding-top:26px">'+
       '<div class="dw-title" style="display:flex;gap:12px;align-items:flex-start">'+(tierL?'<span class="rtier tier-'+tierL+'" style="flex:none;margin-top:2px">'+tierL+'</span>':'')+'<span>'+esc(r.title)+'</span></div>'+
       '<div class="dw-sub">'+gtag(r.genre)+(r.dur?ghosttag(r.dur):'')+(r.scoreAdj!=null?'<span class="tag ghost">score '+Math.round(r.scoreAdj)+'</span>':'')+'</div>'+
-      recoActions(r)+
+      recoActions(r,i)+
       recoCommentBox(r)+
       recoReasonsDrawerHTML(r)+
       recoInfoRows(r)+
