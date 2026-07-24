@@ -124,6 +124,12 @@ class BrowseCatalogueTests(unittest.TestCase):
         self.assertEqual(reasons["rights_unconfirmed"], 1)
         self.assertEqual(reasons["composite_credit_unresolved"], 1)
 
+        blacklisted = {**valid, "soundcharts_uuid": "track-e", "spotify_id": "spotify-e", "credit_name": "Corbon Amodio", "artists": [{**valid_artist, "name": "Corbon Amodio"}]}
+        _, blacklisted_reasons, _ = subject.strict_rebase_catalogue([
+            {**source_catalogue, "tracks": [[row.get(name) for name in strict_schema] for row in [valid, blacklisted]]}
+        ])
+        self.assertEqual(blacklisted_reasons["blacklisted_identity"], 1)
+
         payload = {"generated_at": "2026-07-23T10:00:00Z", "discovery_catalogue": source_catalogue}
         result = subject.build_payload(
             [(subject.Path("snapshot.js"), payload)], None, minimum_tracks=1, strict_rebased=True

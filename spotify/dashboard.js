@@ -221,11 +221,6 @@ function isGeneralArtistQuarantined(value,structuredComplete=false){
     || GENERAL_VIEW_QUARANTINED_ARTISTS.has(key)
     || (isCompositeArtistCredit(value)&&!structuredComplete);
 }
-/* Keep the historical array indexed for legacy rows, but blank explicitly
-   quarantined profiles so they cannot be rendered through an old payload. */
-A.forEach((artist,index)=>{
-  if(artist&&isGeneralArtistQuarantined(artist[0])) A[index]=null;
-});
 /* Historical rows remain browseable inventory, but never become A&R seeds,
    contacts or offers. Explicit retired, mainstream and composite identities
    stay quarantined from the public inventory. */
@@ -245,6 +240,11 @@ const ACTIVE_LEGACY_SPOTIFY_IDS = new Set(
 const R = LEGACY_R
   .filter(row=>ACTIVE_LEGACY_SPOTIFY_IDS.has(String(row&&row[6]||'').trim()))
   .map(row=>Array.isArray(row)?row.slice():row);
+/* Keep the historical array indexed for legacy rows, but blank explicitly
+   quarantined profiles so they cannot be rendered through an old payload. */
+A.forEach((artist,index)=>{
+  if(artist&&isGeneralArtistQuarantined(artist[0])) A[index]=null;
+});
 /* Raccord progressif aux historiques journaliers validés.
    Le dashboard ne lit jamais SQLite et ne promeut aucune table staging. Un export approuvé
    pourra définir window.SPOTIFY_PERFORMANCE avant ce script avec ce contrat :

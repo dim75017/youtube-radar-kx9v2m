@@ -43,6 +43,7 @@ jobs:
           current="$(python prepare_soundcharts_snapshot.py current --index spotify/index.html)"
           args=(
             --source "$current"
+            --existing Spotify_Browse_Catalogue_data.js
             --output Spotify_Browse_Catalogue_data.js
             --minimum-tracks 1
             --strict-rebased

@@ -26,6 +26,8 @@ import re
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
+from prepare_soundcharts_snapshot import PUBLIC_ARTIST_BLACKLIST
+
 SOUNDCHARTS_PREFIX = "window.SPOTIFY_SOUNDCHARTS="
 BROWSE_PREFIX = "window.SPOTIFY_BROWSE_CATALOGUE="
 VERSION = 1
@@ -505,6 +507,11 @@ def merge_catalogues(catalogues: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
 
 def _strict_rebaseline_reason(row: Mapping[str, Any]) -> str | None:
     """Return the first factual reason an active-row candidate is quarantined."""
+    artists = _clean_nested_artists(row.get("artists"))
+    identities = [str(row.get("credit_name") or "").strip().casefold()]
+    identities.extend(str(artist.get("name") or "").strip().casefold() for artist in artists)
+    if any(identity in PUBLIC_ARTIST_BLACKLIST for identity in identities if identity):
+        return "blacklisted_identity"
     if str(row.get("source_tier") or "") == TRUSTED_CATALOGUE_SOURCE_TIER:
         return None
     if str(row.get("source_tier") or "") not in STRICT_SOURCE_TIERS:
@@ -525,7 +532,6 @@ def _strict_rebaseline_reason(row: Mapping[str, Any]) -> str | None:
         return "rights_confidence_low"
     if not str(row.get("spotify_id") or "").strip() or not str(row.get("soundcharts_uuid") or "").strip():
         return "track_identity_incomplete"
-    artists = _clean_nested_artists(row.get("artists"))
     if not artists:
         return "artist_identity_missing"
     if any(not artist.get("spotify_id") or not artist.get("soundcharts_uuid") for artist in artists):
@@ -594,7 +600,7 @@ def build_payload(
     trusted_catalogue: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     catalogues: list[Mapping[str, Any]] = []
-    if isinstance(existing, Mapping) and not strict_rebased:
+    if isinstance(existing, Mapping):
         old = existing.get("discovery_catalogue")
         if isinstance(old, Mapping):
             catalogues.append(old)
