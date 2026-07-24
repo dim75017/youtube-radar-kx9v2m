@@ -101,6 +101,10 @@ class BrowseCatalogueTests(unittest.TestCase):
             "instrumental_confidence": 0.9, "ai_risk": "low", "rights_status": "self_released",
             "rights_confidence": 0.9, "source_tier": "editorial_playlist",
         }
+        independent = {
+            **valid, "soundcharts_uuid": "track-independent", "spotify_id": "spotify-independent",
+            "source_tier": "independent_playlist",
+        }
         vocal = {**valid, "soundcharts_uuid": "track-b", "spotify_id": "spotify-b", "instrumental_status": "unknown"}
         major = {**valid, "soundcharts_uuid": "track-c", "spotify_id": "spotify-c", "rights_status": "major"}
         composite = {
@@ -113,13 +117,13 @@ class BrowseCatalogueTests(unittest.TestCase):
             "track_schema": strict_schema,
             "artist_schema": artist_schema,
             "playlist_schema": [],
-            "tracks": [[row.get(name) for name in strict_schema] for row in [valid, vocal, major, composite]],
+            "tracks": [[row.get(name) for name in strict_schema] for row in [valid, independent, vocal, major, composite]],
             "artists": [["artist-a", "artist-spotify-a", "Artist A"]],
         }
         strict, reasons, active_ids = subject.strict_rebase_catalogue([source_catalogue])
         records = [subject._record(row, strict["track_schema"]) for row in strict["tracks"]]
-        self.assertEqual([row["spotify_id"] for row in records], ["spotify-a"])
-        self.assertEqual(active_ids, ["spotify-a"])
+        self.assertEqual([row["spotify_id"] for row in records], ["spotify-a", "spotify-independent"])
+        self.assertEqual(active_ids, ["spotify-a", "spotify-independent"])
         self.assertEqual(reasons["instrumental_unconfirmed"], 1)
         self.assertEqual(reasons["rights_unconfirmed"], 1)
         self.assertEqual(reasons["composite_credit_unresolved"], 1)
@@ -136,7 +140,7 @@ class BrowseCatalogueTests(unittest.TestCase):
         )
         self.assertEqual(result["policy"]["browsing"], "trusted_internal_catalogue_plus_strict_soundcharts")
         self.assertEqual(result["policy"]["archive"], "Spotify_Radar_data.js")
-        self.assertEqual(result["active_legacy_spotify_ids"], ["spotify-a"])
+        self.assertEqual(result["active_legacy_spotify_ids"], ["spotify-a", "spotify-independent"])
 
 
 if __name__ == "__main__":

@@ -55,6 +55,10 @@ FORBIDDEN_SCHEMA_FIELDS = {
 # and declared in the collector configuration.
 STRICT_SOURCE_TIERS = {
     "editorial_playlist",
+    # These are playlist-discovery sources. They remain subject to every
+    # strict genre, instrumental, AI, rights and identity gate below.
+    "independent_playlist",
+    "instrumental_editorial_daily",
     "playlist_artist_catalogue",
 }
 STRICT_GENRES = {
