@@ -184,6 +184,18 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertEqual(outcome.usable, 1)
         self.assertEqual(subject.field(refreshed['rows'][0], refreshed['cols'], 'image_url'), 'https://assets.test/playlist.jpg')
 
+    def test_refresh_playlists_accepts_a_cover_when_followers_are_not_available(self):
+        playlists = {'cols': ['id', 'followers'], 'rows': [['playlist-1', 100]]}
+        response = {'object': {'imageUrl': 'https://assets.test/playlist.jpg'}}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'playlists.js'
+            subject.write_js_payload(path, playlists, subject.PLAYLISTS_PREFIX)
+            outcome = subject.refresh_playlists(path, {'playlists': {}}, FakeClient(response), 1, 10)
+            refreshed = subject.read_js_payload(path, subject.PLAYLISTS_PREFIX)
+        self.assertEqual(outcome.usable, 1)
+        self.assertEqual(subject.field(refreshed['rows'][0], refreshed['cols'], 'followers'), 100)
+        self.assertEqual(subject.field(refreshed['rows'][0], refreshed['cols'], 'image_url'), 'https://assets.test/playlist.jpg')
+
     def test_http_success_without_metric_is_not_usable(self):
         payload = {
             'schemas': {'tracks': ['soundcharts_uuid', 'spotify_id']},

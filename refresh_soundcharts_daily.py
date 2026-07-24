@@ -737,28 +737,31 @@ def refresh_playlists(
     now = utc_now()
     for task, response in results:
         followers = first_numeric_named(response, {"latestSubscriberCount", "subscriberCount", "followers"})
-        if followers is None:
+        image_url = first_text_named(response, {"imageUrl", "image_url", "coverUrl", "cover_url", "thumbnailUrl", "thumbnail_url"})
+        if followers is None and not image_url:
             outcome.items.append({"entity": "playlist", "id": task["id"], "ok": response is not None, "usable": False})
             continue
         row = task["row"]
-        while len(row) <= followers_index:
-            row.append(None)
-        row[followers_index] = followers
-        image_url = first_text_named(response, {"imageUrl", "image_url", "coverUrl", "cover_url", "thumbnailUrl", "thumbnail_url"})
+        if followers is not None:
+            while len(row) <= followers_index:
+                row.append(None)
+            row[followers_index] = followers
         if image_url and image_index is not None:
             while len(row) <= image_index:
                 row.append("")
             row[image_index] = image_url
-        entry = store.setdefault(task["id"], {})
-        entry["history"] = merge_history(entry.get("history"), [[day, followers]])
-        entry["observed_at"] = now
-        entry["source"] = "soundcharts_playlist_spotify"
+        if followers is not None:
+            entry = store.setdefault(task["id"], {})
+            entry["history"] = merge_history(entry.get("history"), [[day, followers]])
+            entry["observed_at"] = now
+            entry["source"] = "soundcharts_playlist_spotify"
         outcome.usable += 1
         outcome.items.append(
             {
                 "entity": "playlist",
                 "id": task["id"],
                 "followers": followers,
+                "image_url": image_url or None,
                 "date": day,
                 "ok": True,
                 "usable": True,
