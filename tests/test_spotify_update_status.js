@@ -25,7 +25,7 @@ for (const category of ['tracksAt','artistsAt','playlistsAt','labelsAt']) {
   assert.match(dashboard, new RegExp(`const ${category}=publishedAt;`),
     `${category} must use the common published snapshot timestamp`);
 }
-assert.match(index, /dashboard\.js\?v=20260724-real-update-status-v1/,
+assert.match(index, /dashboard\.js\?v=20260724-selection-layout-v1/,
   'the browser receives the new status script');
 
 console.log('Spotify synchronized update status: OK');
