@@ -1203,7 +1203,7 @@ def discover_from_playlists(
     # are only a request to inspect the actual catalogue, never proof of genre,
     # instrumental status, rights or opportunity status.
     seed_tasks = [
-        (spotify_id, "/api/v2.8/artist/by-platform/spotify/" + urllib.parse.quote(spotify_id))
+        (spotify_id, "/api/v2.9/artist/by-platform/spotify/" + urllib.parse.quote(spotify_id))
         for spotify_id in explicit_seed_ids
     ]
     seed_responses, seed_failures = parallel_get(client, seed_tasks, workers=workers)
