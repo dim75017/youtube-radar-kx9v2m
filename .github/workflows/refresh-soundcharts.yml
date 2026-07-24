@@ -308,7 +308,7 @@ jobs:
           --max-catalog-artists 0
           --max-new-catalog-tracks 0
 
-      - name: Discover Dark Ambient playlists above 10k and their artist catalogues
+      - name: Discover every Dark Ambient playlist and their artist catalogues
         if: steps.plan.outputs.scope == 'dark_ambient'
         env:
           PYTHONUNBUFFERED: '1'
@@ -325,7 +325,6 @@ jobs:
           --max-requests "${{ steps.plan.outputs.expansion_requests }}"
           --playlist-scope dark_ambient
           --summary-key dark_ambient_playlist_discovery
-          --min-playlist-followers 10000
           --playlist-limit 250
           --page-size 100
           --max-new-playlist-tracks 2500
