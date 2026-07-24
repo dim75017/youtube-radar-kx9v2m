@@ -250,6 +250,9 @@ function histChart(pts,unit,showMeta){
   const line=pts.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[1]).toFixed(1)).join(' ');
   const area=line+' L'+X(x1).toFixed(1)+' '+(H-P)+' L'+X(x0).toFixed(1)+' '+(H-P)+' Z';
   const dailyViews=u==='daily-views';
+  const liveViewers=u==='viewers';
+  const chartFill=liveViewers?'rgba(255,0,51,.14)':'rgba(154,168,255,.16)';
+  const chartStroke=liveViewers?'#ff5272':'#9aa8ff';
   const days=Math.max((x1-x0)/86400000,0.5);
   const perDay=(pts[pts.length-1][1]-pts[0][1])/days;
   const meta=u==='viewers'
@@ -260,11 +263,11 @@ function histChart(pts,unit,showMeta){
   const hid='h'+(++HIST_SEQ);
   HIST_REG[hid]={pts,unit:dailyViews?'views gained':u,W,H,P,x0,x1,y1};
   return (showMeta===false?'':'<div class="hist-meta">'+meta+'</div>')+
-    '<div class="hist-wrap" data-hid="'+hid+'">'+
+    '<div class="hist-wrap'+(liveViewers?' hist-live':'')+'" data-hid="'+hid+'">'+
     '<svg class="hist-svg" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+
-    '<path d="'+area+'" fill="rgba(255,0,51,.14)"/>'+
-    '<path d="'+line+'" fill="none" stroke="#ff5272" stroke-width="2"/>'+
-    pts.map(p=>'<circle cx="'+X(p[0]).toFixed(1)+'" cy="'+Y(p[1]).toFixed(1)+'" r="'+(u==='viewers'?3.4:2.6)+'" fill="#ff5272"/>').join('')+
+    '<path d="'+area+'" fill="'+chartFill+'"/>'+
+    '<path d="'+line+'" fill="none" stroke="'+chartStroke+'" stroke-width="2"/>'+
+    pts.map(p=>'<circle cx="'+X(p[0]).toFixed(1)+'" cy="'+Y(p[1]).toFixed(1)+'" r="'+(liveViewers?3.4:2.6)+'" fill="'+chartStroke+'"/>').join('')+
     '</svg>'+
     '<div class="hist-guide"></div><div class="hist-dot"></div><div class="hist-tip"></div>'+
     '</div>'+
@@ -788,7 +791,7 @@ function dashHTML(){
   const liveTotal=L.length?L.map(v=>liveNow(v.vid)).filter(x=>x!=null).reduce((s,x)=>s+x,0):null;
   const kpi=(lbl,val,sub,c)=>'<div class="kpi" style="--kc:'+c+'"><div class="k-lbl">'+lbl+'</div><div class="k-val">'+val+'</div><div class="k-sub">'+sub+'</div></div>';
   let h='<div class="kpis">'+
-    kpi('Videos audited',fmtInt(A.length),'≥1M views · all time','#ff0033')+
+    kpi('Videos audited',fmtInt(A.length),'≥1M views · all time','#9aa8ff')+
     kpi('Trending now',fmtInt(T.length),'<12 months · ≥500k views','#fbbf24')+
     kpi('Unique channels',fmtInt(channels),'competitive landscape','#f9a8d4')+
     kpi('Livestreams',fmtInt(L.length),liveTotal!=null?fmtN(liveTotal)+' watching right now':'live scan pending','#f87171')+
