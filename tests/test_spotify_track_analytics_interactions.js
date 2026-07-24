@@ -9,6 +9,10 @@ assert.match(dashboard, /function bindSparklineHover\(root\)/,
   'Daily analytics charts must bind their own hover interaction.');
 assert.match(dashboard, /addEventListener\('pointermove',event=>showNearestSparkPoint\(svg,event\)\)/,
   'Hovering any point along a chart must select the nearest daily data point.');
+assert.match(dashboard, /marker=wrap\.querySelector\('\.spark-hover-point'\)/,
+  'The visible hover marker must be looked up in the chart wrapper, beside the SVG.');
+assert.doesNotMatch(dashboard, /marker=svg\.querySelector\('\.spark-hover-point'\)/,
+  'The hover marker is not an SVG child and must never be looked up there.');
 assert.match(dashboard, /bindSparklineHover\(box\);/,
   'Track, artist, and playlist analytics panels must activate the hover marker.');
 assert.match(dashboard, /function arRetryPlaylistCover\(image,playlistId\)/,
@@ -19,5 +23,7 @@ assert.doesNotMatch(dashboard, /data-metric-mode="streams" title=/,
   'Metric-mode buttons must not have a native hover tooltip.');
 assert.doesNotMatch(dashboard, /class="num" title=/,
   'Numeric table cells must not have native hover tooltips.');
+assert.doesNotMatch(dashboard, /data-ar-sort="\$\{value\}" class="\$\{active\?'on':''\} \$\{dir\}" title=/,
+  'Opportunity sorting controls must not have a native hover tooltip.');
 
 console.log('spotify track analytics interactions: OK');

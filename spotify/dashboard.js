@@ -154,7 +154,7 @@ const PAYBACK_HORIZONS = [1,2,3,4,5];
 function projectionYears(){ return PAYBACK_HORIZONS.includes(Number(S.paybackYears)) ? Number(S.paybackYears) : 2; }
 function projectionMonths(){ return projectionYears()*12; }
 function paybackHorizonHtml(actionForYear){
-  return `<div class="payback-horizon" title="${T("Durée choisie pour calculer l'avance et le payback.")}"><span>${T('Horizon de projection')}</span>${PAYBACK_HORIZONS.map(year=>`<button type="button" class="${year===projectionYears()?'on':''}" onclick="${actionForYear(year)}">${year} ${T('ans')}</button>`).join('')}</div>`;
+  return `<div class="payback-horizon"><span>${T('Horizon de projection')}</span>${PAYBACK_HORIZONS.map(year=>`<button type="button" class="${year===projectionYears()?'on':''}" onclick="${actionForYear(year)}">${year} ${T('ans')}</button>`).join('')}</div>`;
 }
 function setPaybackHorizon(years){
   if(!PAYBACK_HORIZONS.includes(Number(years))) return;
@@ -2265,7 +2265,7 @@ function sparklineValueLabel(value,unit){
 }
 function showNearestSparkPoint(svg,event){
   const wrap=svg.closest('.spark-wrap'); if(!wrap) return;
-  const tip=wrap.querySelector('.spark-tooltip'),marker=svg.querySelector('.spark-hover-point');
+  const tip=wrap.querySelector('.spark-tooltip'),marker=wrap.querySelector('.spark-hover-point');
   const dots=[...svg.querySelectorAll('.spark-point')];
   if(!tip||!marker||!dots.length) return;
   const rect=svg.getBoundingClientRect();
@@ -2281,7 +2281,7 @@ function showNearestSparkPoint(svg,event){
 function hideNearestSparkPoint(svg){
   const wrap=svg.closest('.spark-wrap'); if(!wrap) return;
   wrap.classList.remove('has-tip');
-  const marker=svg.querySelector('.spark-hover-point'); if(marker) marker.style.display='none';
+  const marker=wrap.querySelector('.spark-hover-point'); if(marker) marker.style.display='none';
 }
 function bindSparklineHover(root){
   (root||document).querySelectorAll('.spark:not([data-spark-hover-bound])').forEach(svg=>{
@@ -3033,7 +3033,7 @@ function arPlaylistPreviewHtml(opportunity){
     const label=playlist.name||'Playlist éditoriale';
     return `<span class="ar-playlist-cover" title="${esc(label)}">${arEditorialPlaylistCoverHtml(playlist,index,'preview')}</span>`;
   }).join('');
-  return `<div class="ar-playlist-preview" title="${esc(arEditorialSummary(opportunity,3))}"><div class="ar-playlist-cover-stack">${covers}</div><span><strong>${fmtFull(count)}</strong> éditorial${count>1?'es':''}</span></div>`;
+  return `<div class="ar-playlist-preview"><div class="ar-playlist-cover-stack">${covers}</div><span><strong>${fmtFull(count)}</strong> éditorial${count>1?'es':''}</span></div>`;
 }
 function arEditorialCardHtml(opportunity){
   const playlists=arEditorialPlaylists(opportunity);
@@ -3049,7 +3049,7 @@ function arEditorialCardHtml(opportunity){
       ?`<button type="button" class="ar-playlist-cover ar-editorial-cover-link" ${data} onclick="event.stopPropagation();arOpenEditorialPopover(this)" aria-label="Voir le résumé de ${esc(label)}">${visual}</button>`
       :`<span class="ar-playlist-cover" title="${esc(label)}">${visual}</span>`;
   }).join('');
-  return `<div class="ar-editorial-card" title="${esc(arEditorialSummary(opportunity,4))}"><span class="ar-editorial-cover-stack">${covers}</span></div>`;
+  return `<div class="ar-editorial-card"><span class="ar-editorial-cover-stack">${covers}</span></div>`;
 }
 const AR_PLAYLIST_COVER_CACHE=new Map();
 const AR_TRACK_COVER_CACHE=new Map();
@@ -3186,7 +3186,7 @@ function arOpportunityCard(opportunity,index){
   const selectable=arContactEligible(opportunity);
   return `<article class="ar-opportunity-card ${selected?'is-selected':''}" tabindex="0" data-ar-card="${esc(opportunity.spotifyId)}">
     <label class="ar-card-select" title="${selectable?'Sélectionner cette track':'Sélection réservée aux tracks vérifiées'}"><input type="checkbox" data-ar-select="${esc(opportunity.spotifyId)}" ${selected?'checked':''} ${selectable?'':'disabled'}><span></span></label>
-    <div class="ar-score-box" title="Score A&R"><div class="ar-score-value">${Math.round(opportunity.score)}</div></div>
+    <div class="ar-score-box"><div class="ar-score-value">${Math.round(opportunity.score)}</div></div>
     <div class="ar-track-cover ${coverUrl?'has':''}"><span data-ar-track-cover-id="${coverUrl?'':esc(opportunity.spotifyId)}">♫</span>${coverUrl?`<img src="${esc(coverUrl)}" alt="" loading="lazy" onerror="this.remove()">`:''}</div>
     <div class="ar-opp-main"><div class="ar-opp-titleline"><div class="ar-opp-title">${esc(opportunity.title)}</div></div><div class="ar-opp-artist">${esc(opportunity.credit)}</div><div class="ar-opp-tags"><span class="ar-mini-tag good">${esc(arReleaseTypeLabel(opportunity))}</span></div></div>
     <div class="ar-release-card">${esc(release)}</div>
@@ -3253,7 +3253,7 @@ function hydrateArArtistAvatars(){
 }
 function arColumnBarHtml(){
   const choices=[['score','Note'],['artist','Artiste'],['recent','Sortie'],['genre','Genre'],['streams',streamMetricLabel(0)],['streams30',S.metricMode==='revenue'?'Revenus 30 jours':'30 jours'],['streams7',S.metricMode==='revenue'?'Revenus 7 jours':'7 jours'],['momentum',S.metricMode==='revenue'?'Revenus 24 heures':'24 heures'],['listeners','Auditeurs/mois'],['editorial','Éditoriales']];
-  const button=([value,label])=>{const active=S.radarSort===value,dir=active?(S.radarSortDir===1?'asc':'desc'):'';return `<button type="button" data-ar-sort="${value}" class="${active?'on':''} ${dir}" title="Trier ${label.toLowerCase()} dans les deux sens"><span>${label}</span>${sortTriangleIndicator(active,S.radarSortDir)}</button>`;};
+  const button=([value,label])=>{const active=S.radarSort===value,dir=active?(S.radarSortDir===1?'asc':'desc'):'';return `<button type="button" data-ar-sort="${value}" class="${active?'on':''} ${dir}"><span>${label}</span>${sortTriangleIndicator(active,S.radarSortDir)}</button>`;};
   // The cover has no sortable value. Keep its explicit spacer so the header
   // stays aligned with the row instead of squeezing Artiste into that slot.
   return `<div class="ar-columnbar" role="toolbar" aria-label="Trier les opportunités dans les deux sens">${button(choices[0])}<span class="ar-columnbar-cover-spacer" aria-hidden="true"></span>${choices.slice(1).map(button).join('')}</div>`;
@@ -3365,7 +3365,7 @@ function arSetSelectionYears(artistKey,years){
 }
 function arSelectionHorizonHtml(artistKey){
   const selected=arSelectionYears(artistKey);
-  return `<div class="payback-horizon" title="${T("Durée choisie pour calculer l'avance et le payback.")}"><span>${T('Horizon de projection')}</span>${PAYBACK_HORIZONS.map(year=>`<button type="button" class="${year===selected?'on':''}" onclick="arSetSelectionYears('${esc(artistKey)}',${year})">${year} ${T('ans')}</button>`).join('')}</div>`;
+  return `<div class="payback-horizon"><span>${T('Horizon de projection')}</span>${PAYBACK_HORIZONS.map(year=>`<button type="button" class="${year===selected?'on':''}" onclick="arSetSelectionYears('${esc(artistKey)}',${year})">${year} ${T('ans')}</button>`).join('')}</div>`;
 }
 function arSelectionStatusHtml(artistKey){
   const status=arArtistStatus(artistKey),label=AR_STATUSES[status]||AR_STATUSES.to_contact;
@@ -3399,7 +3399,7 @@ function arSelectionEconomics(group){
 function arSelectionEconomicsHtml(group){
   const economics=arSelectionEconomics(group);
   const value=number=>economics.measurable?number:'—';
-  return `<section class="ar-selection-economics" title="Même calcul que Pistes et Artistes. Chaque artiste conserve ses propres paramètres."><div class="ar-selection-economics-top"><div class="ar-selection-economics-label">💶 Estimation interne</div><div class="ar-selection-offers">${BUY.paliers.map(offer=>`<button type="button" class="${offer.k===economics.offer.k?'on':''}" onclick="arSetSelectionOffer('${esc(group.artist.key)}','${offer.k}')">${offer.k}</button>`).join('')}</div></div>${arSelectionHorizonHtml(group.artist.key)}<div class="ar-selection-economics-grid"><div><span>Coût estimé</span><strong>${value(eur(economics.advance))}</strong></div><div><span>Revenu / mois</span><strong>${value(eur(economics.labelMonthly))}</strong></div><div><span>Payback</span><strong class="${economics.measurable?paybackClass(economics.payback):''}">${value(paybackTxt(economics.payback))}</strong></div></div></section>`;
+  return `<section class="ar-selection-economics"><div class="ar-selection-economics-top"><div class="ar-selection-economics-label">💶 Estimation interne</div><div class="ar-selection-offers">${BUY.paliers.map(offer=>`<button type="button" class="${offer.k===economics.offer.k?'on':''}" onclick="arSetSelectionOffer('${esc(group.artist.key)}','${offer.k}')">${offer.k}</button>`).join('')}</div></div>${arSelectionHorizonHtml(group.artist.key)}<div class="ar-selection-economics-grid"><div><span>Coût estimé</span><strong>${value(eur(economics.advance))}</strong></div><div><span>Revenu / mois</span><strong>${value(eur(economics.labelMonthly))}</strong></div><div><span>Payback</span><strong class="${economics.measurable?paybackClass(economics.payback):''}">${value(paybackTxt(economics.payback))}</strong></div></div></section>`;
 }
 function arSelectionGroupByArtistKey(artistKey){
   const saved=arListGet();
