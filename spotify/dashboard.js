@@ -1151,6 +1151,66 @@ function spotifyTrackEmbedHtml(id,title,extraClass=''){
   if(!spotifyId) return '';
   return `<div class="ar-detail-player ${esc(extraClass)}"><iframe title="Spotify player · ${esc(title||'Track')}" src="${spotifyEmbedUrl('track',spotifyId)}" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>`;
 }
+let SPOTIFY_IFRAME_API_PROMISE=null;
+function spotifyIframeApi(){
+  if(window.__spotifyIframeApi) return Promise.resolve(window.__spotifyIframeApi);
+  if(SPOTIFY_IFRAME_API_PROMISE) return SPOTIFY_IFRAME_API_PROMISE;
+  SPOTIFY_IFRAME_API_PROMISE=new Promise(resolve=>{
+    const previous=window.onSpotifyIframeApiReady;
+    window.onSpotifyIframeApiReady=api=>{
+      window.__spotifyIframeApi=api;
+      if(typeof previous==='function') previous(api);
+      resolve(api);
+    };
+    if(!document.querySelector('script[data-spotify-iframe-api]')){
+      const script=document.createElement('script');
+      script.src='https://open.spotify.com/embed/iframe-api/v1';
+      script.async=true;
+      script.dataset.spotifyIframeApi='1';
+      document.head.appendChild(script);
+    }
+  });
+  return SPOTIFY_IFRAME_API_PROMISE;
+}
+function spotifyCenteredTrackPlayerHtml(id,title){
+  const spotifyId=spotifyTrackId(id);
+  if(!spotifyId) return '';
+  return `<div class="ar-detail-player track-modal-player spotify-centered-player" data-spotify-track="${esc(spotifyId)}"><div class="spotify-centered-host" title="Spotify player · ${esc(title||'Track')}"></div><button class="spotify-centered-toggle" type="button" aria-label="Lire ${esc(title||'cette piste')}" onclick="toggleSpotifyCenteredPlayer(this)"><span aria-hidden="true">▶</span></button></div>`;
+}
+async function initSpotifyCenteredPlayers(root=document){
+  const wrappers=[...root.querySelectorAll('.spotify-centered-player[data-spotify-track]')].filter(node=>!node.dataset.spotifyInitialized&&!node.dataset.spotifyInitializing);
+  if(!wrappers.length) return;
+  wrappers.forEach(node=>{node.dataset.spotifyInitializing='1';});
+  const api=await spotifyIframeApi();
+  wrappers.forEach(wrapper=>{
+    if(!wrapper.isConnected) return;
+    const host=wrapper.querySelector('.spotify-centered-host');
+    if(!host) return;
+    api.createController(host,{uri:`spotify:track:${wrapper.dataset.spotifyTrack}`,width:'100%',height:152},controller=>{
+      wrapper._spotifyController=controller;
+      wrapper.dataset.spotifyInitialized='1';
+      delete wrapper.dataset.spotifyInitializing;
+      const button=wrapper.querySelector('.spotify-centered-toggle');
+      controller.addListener('playback_update',event=>{
+        const playing=Boolean(event&&event.data&&!event.data.isPaused);
+        wrapper.classList.toggle('is-playing',playing);
+        if(button){
+          button.querySelector('span').textContent=playing?'Ⅱ':'▶';
+          button.setAttribute('aria-label',playing?'Mettre en pause':'Lire la piste');
+        }
+      });
+    });
+  });
+}
+async function toggleSpotifyCenteredPlayer(button){
+  const wrapper=button&&button.closest('.spotify-centered-player');
+  if(!wrapper) return;
+  if(!wrapper._spotifyController){
+    await initSpotifyCenteredPlayers(wrapper.parentElement||document);
+    if(!wrapper._spotifyController) return;
+  }
+  wrapper._spotifyController.togglePlay();
+}
 function arOpportunityPlayerHtml(opportunity){
   const spotifyId=spotifyTrackId(opportunity&&opportunity.spotifyId);
   if(!spotifyId) return '';
@@ -2057,7 +2117,7 @@ function openTrack(tid){
       </div>
       <button class="tclose" onclick="closeTrack()">✕</button>
     </div>
-    ${spotifyTrackEmbedHtml(r[6],r[1],'track-modal-player')}
+    ${spotifyCenteredTrackPlayerHtml(r[6],r[1])}
     <div class="tgrid">
       <div class="tg"><div class="l">${T(S.metricMode==='revenue'?'Revenu estimé / jour':'Vélocité réelle')}</div><div class="v" style="color:var(--cyan)">${velocity==null?'—':(S.metricMode==='revenue'?revenueEstimate(velocity):fmt(Math.round(velocity))+'/'+T('jour'))}</div></div>
       <div class="tg"><div class="l">${T('Cadence')}</div><div class="v">${cadence}</div></div>
@@ -2080,9 +2140,15 @@ function openTrack(tid){
     <div class="tnote">${T("Les fenêtres Analytics utilisent uniquement l'historique quotidien et comparent des périodes de même durée. Le simulateur de rachat reste une estimation séparée.")}</div>`;
   bindMetricModeToggle(()=>openTrack(tid),box);
   document.getElementById('track-modal').style.display='flex';
+  initSpotifyCenteredPlayers(box);
   hydrateArPlaylistCovers();
 }
-function closeTrack(){ document.getElementById('track-modal').style.display='none'; }
+function closeTrack(){
+  document.querySelectorAll('#track-modal .spotify-centered-player').forEach(player=>{
+    if(player._spotifyController&&typeof player._spotifyController.destroy==='function') player._spotifyController.destroy();
+  });
+  document.getElementById('track-modal').style.display='none';
+}
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeTrack(); });
 
 function arNoteKey(uuid){ return 'sr_ar_note_'+uuid; }
@@ -2970,7 +3036,10 @@ function arSelectionArtistGroups(rows){
 }
 function arSelectionTrackHtml({opportunity,entry}){
   const coverUrl=arTrackCoverUrl(opportunity),releaseType=arReleaseTypeLabel(opportunity);
-  return `<div class="ar-selection-track"><div class="ar-track-cover ${coverUrl?'has':''}"><span>♫</span>${coverUrl?`<img src="${esc(coverUrl)}" alt="" loading="lazy">`:''}</div><div class="ar-selection-track-main"><button class="ar-selection-track-title" onclick="openArOpportunity('${esc(opportunity.spotifyId)}')">${esc(opportunity.title)}</button><span class="ar-selection-release-type">${esc(releaseType)}</span></div><button class="ar-remove" onclick="arRemoveFromList('${esc(opportunity.spotifyId)}',event)">Retirer</button></div>`;
+  const genreVisual=arGenreVisual(opportunity.genre),genre=arGenreLabel(opportunity.genre);
+  const total=arOpportunityTotal(opportunity),d30=arOpportunityMetric(opportunity,30),d7=arOpportunityMetric(opportunity,7),d1=arOpportunityMetric(opportunity,1);
+  const release=opportunity.releaseDate?fmtDate(opportunity.releaseDate.slice(0,10)):'—';
+  return `<div class="ar-selection-track"><div class="ar-track-cover ${coverUrl?'has':''}"><span>♫</span>${coverUrl?`<img src="${esc(coverUrl)}" alt="" loading="lazy">`:''}</div><div class="ar-selection-track-main"><button class="ar-selection-track-title" onclick="openArOpportunity('${esc(opportunity.spotifyId)}')">${esc(opportunity.title)}</button><span class="ar-selection-release-type">${esc(releaseType)}</span></div><div class="ar-selection-track-facts"><div class="ar-selection-track-fact genre"><span>Genre</span><strong>${genreVisual.emoji} ${esc(genre)}</strong></div><div class="ar-selection-track-fact"><span>Sortie</span><strong>${esc(release)}</strong></div><div class="ar-selection-track-fact"><span>Streams total</span><strong>${arMetricCompact(total)}</strong></div><div class="ar-selection-track-fact"><span>Streams 30 jours</span><strong>${arMetricCompact(d30)}</strong></div><div class="ar-selection-track-fact"><span>Streams 7 jours</span><strong>${arMetricCompact(d7)}</strong></div><div class="ar-selection-track-fact"><span>Streams 24 heures</span><strong class="${d1!=null&&d1>0?'up':''}">${arMetricCompact(d1,true)}</strong></div></div><button class="ar-remove" onclick="arRemoveFromList('${esc(opportunity.spotifyId)}',event)">Retirer</button></div>`;
 }
 function arOpenSelectionArtistProfile(artistSpotifyId,fallbackTrackId){
   const track=R.find(item=>spotifyTrackId(item&&item[6])===String(fallbackTrackId||''));

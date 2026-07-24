@@ -40,6 +40,12 @@ assert.match(spotify, /function arOutreachDrafts\(opportunity\)/, 'Message prepa
 assert.match(spotify, /Préparer le message/, 'Selection cards expose a message-preparation action');
 assert.match(spotify, /function arSelectionArtistGroups\(/, 'A&R selection must group retained tracks by structured artist');
 assert.match(spotify, /function arSelectionArtistCardHtml\(/, 'A&R selection must render an artist-level section');
+const selectionTrackStart = spotify.indexOf('function arSelectionTrackHtml');
+const selectionTrackEnd = spotify.indexOf('function arOpenSelectionArtistProfile', selectionTrackStart);
+const selectionTrack = spotify.slice(selectionTrackStart, selectionTrackEnd);
+for (const metric of ['Genre', 'Sortie', 'Streams total', 'Streams 30 jours', 'Streams 7 jours', 'Streams 24 heures']) {
+  assert.ok(selectionTrack.includes(metric), `Selection track rows must show ${metric}`);
+}
 assert.match(spotify, /ar-artist-message/, 'A&R selection must promote the artist message action');
 assert.match(spotify, /function arSelectionEconomics\(/, 'Artist-level A&R selection must reuse the economics calculation');
 assert.match(spotify, /advance\(monthlyStreams\)/, 'Selection economics must use the same advance calculation as tracks');

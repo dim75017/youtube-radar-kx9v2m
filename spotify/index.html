@@ -30,13 +30,13 @@
   const stamp=Date.now();
   [
     '../Spotify_Playlists_data.js?payload='+stamp,
-    '../Spotify_Soundcharts_data_20260724T064320Z.js?payload='+stamp,
+    '../Spotify_Soundcharts_data_20260724T070254Z.js?payload='+stamp,
     '../Spotify_Browse_Catalogue_data.js?payload='+stamp,
     '../Spotify_Performance_data.js?payload='+stamp
   ].forEach(src=>document.write('<script src="'+src+'"><\/script>'));
 })();
 </script>
-  <link rel="stylesheet" href="dashboard.css?v=20260724-genre-density-analytics-v2">
+  <link rel="stylesheet" href="dashboard.css?v=20260724-selection-metrics-player-v1">
 <link rel="stylesheet" href="discovery.css?v=20260722-unified-catalogue-v1">
 </head>
 <body>
@@ -94,7 +94,7 @@
   <div class="tmbox ambox" id="ar-body"></div>
 </div>
 
-<script src="dashboard.js?v=20260724-genre-density-analytics-v2"></script>
+<script src="dashboard.js?v=20260724-selection-metrics-player-v1"></script>
 <script src="coverage.js?v=20260723-stale-copy-cleanup-v1"></script>
 </body>
 </html>

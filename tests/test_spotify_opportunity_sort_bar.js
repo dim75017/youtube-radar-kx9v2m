@@ -22,6 +22,6 @@ assert.match(css, /\.sort-triangles\{display:inline-block/);
 assert.match(css, /--ar-opportunity-columns/);
 assert.match(css, /ar-opp-metric:nth-child\(5\)\{grid-column:10\}/);
 assert.match(css, /ar-editorial-card\{grid-column:11\}/);
-assert.match(index, /dashboard\.js\?v=20260724-genre-density-analytics-v2/);
+assert.match(index, /dashboard\.js\?v=20260724-selection-metrics-player-v1/);
 
 console.log('spotify opportunity sorting bar: OK');

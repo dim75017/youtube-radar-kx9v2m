@@ -405,6 +405,27 @@ class InstrumentalPoolTests(unittest.TestCase):
             subject.write_cache(path, payload)
             self.assertEqual(subject.read_cache(path)["tracks"], payload["tracks"])
 
+    def test_cache_drops_snapshot_only_track_duplicates(self):
+        payload = {
+            "version": 1,
+            "tracks": {
+                "song-uuid": {
+                    "soundcharts_uuid": "song-uuid",
+                    "title": "Track",
+                    "playlist_placements": [{"spotify_id": "playlist"}],
+                    "updated_at": "2026-07-24T00:00:00Z",
+                    "soundcharts_genres_checked_at": "2026-07-24T00:00:00Z",
+                }
+            },
+            "artists": {},
+        }
+        compacted = subject.compact_cache(payload)
+        self.assertEqual(compacted["tracks"]["song-uuid"]["title"], "Track")
+        self.assertIn("soundcharts_genres_checked_at", compacted["tracks"]["song-uuid"])
+        self.assertNotIn("soundcharts_uuid", compacted["tracks"]["song-uuid"])
+        self.assertNotIn("playlist_placements", compacted["tracks"]["song-uuid"])
+        self.assertNotIn("updated_at", compacted["tracks"]["song-uuid"])
+
 
 if __name__ == "__main__":
     unittest.main()

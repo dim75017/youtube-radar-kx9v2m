@@ -165,6 +165,42 @@ MAJOR_MARKERS = tuple(
 
 SPOTIFY_ID_RE = re.compile(r"^[0-9A-Za-z]{22}$")
 
+# The track UUID is already the cache dictionary key. Exact placement rows and
+# discovery timestamps live in the staged snapshot; duplicating them for every
+# cached track eventually exceeds GitHub's 100 MB blob limit. Keep only the
+# fields required to resume discovery, metadata refreshes and classification.
+CACHE_TRACK_FIELDS = {
+    "spotify_id",
+    "title",
+    "credit_name",
+    "artists",
+    "release_date",
+    "label",
+    "copyright",
+    "isrc",
+    "image_url",
+    "duration",
+    "explicit",
+    "rights_status",
+    "rights_confidence",
+    "fetched_at",
+    "primary_genre",
+    "subgenres",
+    "genre_source",
+    "soundcharts_genres",
+    "soundcharts_genres_checked_at",
+    "instrumental_status",
+    "instrumental_confidence",
+    "source_tier",
+    "playlist_ids",
+    "playlist_names",
+    "playlist_count",
+    "playlist_best_position",
+    "playlist_followers_total",
+    "playlist_first_seen_at",
+    "playlist_last_seen_at",
+}
+
 
 class InstrumentalPoolError(RuntimeError):
     """Safe, secret-free failure raised by the pool collector."""
@@ -210,8 +246,24 @@ def read_cache(path: Path) -> dict[str, Any]:
     return payload
 
 
+def compact_cache(payload: dict[str, Any]) -> dict[str, Any]:
+    compacted = dict(payload)
+    source_tracks = payload.get("tracks") if isinstance(payload.get("tracks"), dict) else {}
+    compacted_tracks: dict[str, dict[str, Any]] = {}
+    for uuid, item in source_tracks.items():
+        if not isinstance(item, dict):
+            continue
+        compacted_tracks[str(uuid)] = {
+            key: value
+            for key, value in item.items()
+            if key in CACHE_TRACK_FIELDS and value not in (None, "", [], {})
+        }
+    compacted["tracks"] = compacted_tracks
+    return compacted
+
+
 def write_cache(path: Path, payload: dict[str, Any]) -> None:
-    path.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
+    path.write_text(json.dumps(compact_cache(payload), ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
 
 
 def index_of(schema: list[str], name: str) -> int | None:
