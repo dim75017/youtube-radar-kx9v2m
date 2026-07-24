@@ -314,6 +314,9 @@ select.ctl option{background:#141828;color:var(--text)}
 .rtile .rt-scene{font-size:11px;color:var(--dim);line-height:1.5;font-style:italic}
 .rm-del-btn{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--red);background:rgba(251,113,133,.08);border:1px solid rgba(251,113,133,.3);padding:6px 12px;border-radius:9px;margin:14px 0 6px;cursor:pointer;transition:background .13s}
 .rm-del-btn:hover{background:rgba(251,113,133,.18)}
+.rm-archive-btn,.rm-restore-btn,.rm-archive-toggle{display:inline-flex;align-items:center;gap:6px;font:600 11.5px/1 Inter;color:#fde68a;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.35);padding:6px 11px;border-radius:9px;cursor:pointer;transition:background .13s,border-color .13s}.rm-archive-btn:hover,.rm-restore-btn:hover,.rm-archive-toggle:hover{background:rgba(251,191,36,.2);border-color:rgba(251,191,36,.62)}
+.roadmap-context-menu{position:fixed;z-index:10050;min-width:176px;padding:5px;background:#111522;border:1px solid var(--border2);border-radius:10px;box-shadow:0 18px 48px rgba(0,0,0,.55)}.roadmap-context-menu button{width:100%;display:flex;align-items:center;gap:8px;background:transparent;border:0;border-radius:7px;color:var(--text);font:650 12px/1.2 Inter;text-align:left;padding:9px 10px;cursor:pointer}.roadmap-context-menu button:hover{background:rgba(150,163,214,.12)}.roadmap-context-menu button.danger{color:#fda4af}.roadmap-context-menu button.danger:hover{background:rgba(251,113,133,.13)}
+.rm-detail-actions{display:flex;justify-content:flex-end;gap:8px;margin:14px 0 6px}.rm-detail-actions .rm-del-btn{margin:0}
 .rt-actions{display:flex;gap:8px;align-items:center;margin-top:auto;flex-wrap:wrap}
 .rcbig{flex:none;height:40px;padding:0 15px;border-radius:11px;background:rgba(150,163,214,.07);border:1.5px solid var(--border2);color:var(--muted);cursor:pointer;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:7px;font-family:inherit}
 .rcbig.has{color:var(--amber);border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.08)}
@@ -1584,6 +1587,8 @@ function roadmapHTML(){
   if(RM.src)rows=rows.filter(r=>r.src===RM.src);
   if(RM.genre)rows=rows.filter(r=>r.genre===RM.genre);
   rows.sort((a,b)=>a.date-b.date);
+  window._rm_rows=rows;
+  if(ROADMAP_ARCHIVE_VIEW)return roadmapArchiveHTML();
   let h='<div class="toolbar">'+
     '<select class="ctl" onchange="RM.src=this.value;render()">'+
       '<option value="">All sources</option>'+['Existant (Monday)','Nouveau mix (à produire)','Proposition rotation (à valider)'].map(s=>'<option '+(RM.src===s?'selected':'')+' value="'+esc(s)+'">'+esc(s)+'</option>').join('')+'</select>'+
@@ -1591,8 +1596,8 @@ function roadmapHTML(){
       '<option value="">All genres</option>'+genres.map(g=>'<option '+(RM.genre===g?'selected':'')+' value="'+esc(g)+'">'+esc(g)+'</option>').join('')+'</select>'+
     '<div class="result-count"><b>'+rows.length+'</b> releases · '+
       '<span style="color:var(--muted)">grey Monday</span> · <span style="color:var(--green)">green to produce</span> · <span style="color:var(--amber)">yellow to validate</span></div>'+
+    (ROADMAP_ARCHIVE_LOCAL.length?'<button class="rm-archive-toggle" onclick="toggleRoadmapArchive()">📦 Archives ('+ROADMAP_ARCHIVE_LOCAL.length+')</button>':'')+
   '</div>';
-  window._rm_rows=rows;
   h+=calHTML(rows);
   h+='<div class="month-h" style="position:static;margin-top:34px">📋 All releases<span class="cnt">'+rows.length+'</span><span class="line"></span></div>';
   const now=Date.now()-86400000*3;
@@ -1608,7 +1613,7 @@ function roadmapHTML(){
     const srcClass=/Monday/.test(r.src)?'src-monday':/Nouveau/.test(r.src)?'src-new':'src-rot';
     const past=r.date<now?'opacity:.5':'';
     h+='<div class="rm-wrap" id="rm'+i+'" style="'+past+'">'+
-      '<div class="rm-item" style="--gc:'+gcolor(r.genre)+'" onclick="openRoad('+i+')">'+
+      '<div class="rm-item" style="--gc:'+gcolor(r.genre)+'" onclick="openRoad('+i+')" oncontextmenu="openRoadmapContextMenu('+i+',event);return false">'+
         '<div class="rm-date"><div class="dd">'+d.getDate()+'</div><div class="wd">'+esc((r.jour||'').slice(0,3))+'</div></div>'+
         '<div class="rm-main"><div class="rm-t">'+esc(r.title)+'</div>'+
           '<div class="rm-tags">'+gtag(r.genre)+ghosttag(r.perso)+(r.dur?ghosttag(r.dur):'')+(r.niche?ghosttag(r.niche):'')+'</div></div>'+
@@ -1645,9 +1650,56 @@ function openRoad(i){
   document.getElementById('drawer').scrollTop=0;
   i18nDrawer();
 }
+let ROADMAP_ARCHIVE_VIEW=false;
+let ROADMAP_CONTEXT_MENU=null;
+let ROADMAP_ARCHIVE_LOCAL=(()=>{try{return JSON.parse(localStorage.getItem('radar_roadmap_archive')||'[]');}catch(e){return [];}})();
+function roadmapArchiveSave(){try{localStorage.setItem('radar_roadmap_archive',JSON.stringify(ROADMAP_ARCHIVE_LOCAL));}catch(e){}}
+function roadmapEntryMatches(a,b){return a&&b&&a.date===b.date&&a.title===b.title;}
+function toggleRoadmapArchive(){ROADMAP_ARCHIVE_VIEW=!ROADMAP_ARCHIVE_VIEW;render();}
+function roadmapArchiveHTML(){
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
+  const rows=[...ROADMAP_ARCHIVE_LOCAL].sort((a,b)=>b.archivedAt-a.archivedAt);
+  if(!rows.length){ROADMAP_ARCHIVE_VIEW=false;return roadmapHTML();}
+  return '<div class="toolbar"><button class="rm-archive-toggle" onclick="toggleRoadmapArchive()">← '+(fr?'Retour à la roadmap':'Back to roadmap')+'</button></div>'+
+    '<div class="month-h" style="position:static;margin-top:18px">📦 '+(fr?'Archives':'Archives')+'<span class="cnt">'+rows.length+'</span><span class="line"></span></div>'+
+    rows.map((r,i)=>'<div class="rm-item" style="--gc:'+gcolor(r.genre)+'"><div class="rm-main"><div class="rm-t">'+esc(r.title)+'</div><div class="rm-tags">'+gtag(r.genre)+ghosttag((fr?'Archivé le ':'Archived ')+new Date(r.archivedAt).toLocaleDateString())+'</div></div><button class="rm-restore-btn" onclick="restoreRoadmapEntry('+i+')">↩ '+(fr?'Restaurer':'Restore')+'</button></div>').join('');
+}
+function closeRoadmapContextMenu(){if(ROADMAP_CONTEXT_MENU){ROADMAP_CONTEXT_MENU.remove();ROADMAP_CONTEXT_MENU=null;}}
+function openRoadmapContextMenu(i,ev){
+  if(ev){ev.preventDefault();ev.stopPropagation();}
+  if(!(window._rm_rows||[])[i])return;
+  closeRoadmapContextMenu();
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
+  const menu=document.createElement('div');
+  menu.className='roadmap-context-menu';menu.setAttribute('role','menu');
+  menu.innerHTML='<button type="button" role="menuitem" onclick="archiveRoadmapEntry('+i+',event)">📦 '+(fr?'Archiver':'Archive')+'</button><button type="button" role="menuitem" class="danger" onclick="deleteRoadmapEntry('+i+',event)">🗑️ '+(fr?'Mettre à la corbeille':'Move to trash')+'</button>';
+  document.body.appendChild(menu);ROADMAP_CONTEXT_MENU=menu;
+  const width=menu.offsetWidth||176,height=menu.offsetHeight||82;
+  menu.style.left=Math.max(8,Math.min(window.innerWidth-width-8,(ev&&ev.clientX)||8))+'px';
+  menu.style.top=Math.max(8,Math.min(window.innerHeight-height-8,(ev&&ev.clientY)||8))+'px';
+  setTimeout(()=>document.addEventListener('click',closeRoadmapContextMenu,{once:true}),0);
+}
+function archiveRoadmapEntry(i,ev){
+  if(ev)ev.stopPropagation();
+  const r=(window._rm_rows||[])[i];if(!r)return;
+  closeRoadmapContextMenu();
+  if(!ROADMAP_ARCHIVE_LOCAL.some(x=>roadmapEntryMatches(x,r)))ROADMAP_ARCHIVE_LOCAL.push({...r,archivedAt:Date.now()});
+  roadmapArchiveSave();
+  const li=SCHED_LOCAL.findIndex(x=>roadmapEntryMatches(x,r));
+  if(li>=0){SCHED_LOCAL.splice(li,1);schedSaveLocal();}
+  DATA.roadmap=(DATA.roadmap||[]).filter(x=>!roadmapEntryMatches(x,r));
+  saveCache(DATA);closeDrawer();render();
+}
+function restoreRoadmapEntry(i){
+  const r=ROADMAP_ARCHIVE_LOCAL[i];if(!r)return;
+  const entry={...r};delete entry.archivedAt;
+  if(!DATA.roadmap.some(x=>roadmapEntryMatches(x,entry))){SCHED_LOCAL.push(entry);schedSaveLocal();DATA.roadmap=(DATA.roadmap||[]).concat([entry]);saveCache(DATA);}
+  ROADMAP_ARCHIVE_LOCAL.splice(i,1);roadmapArchiveSave();render();
+}
 function deleteRoadmapEntry(i,ev){
   if(ev)ev.stopPropagation();
   const r=(window._rm_rows||[])[i];if(!r)return;
+  closeRoadmapContextMenu();
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
   if(!confirm(fr?('Retirer « '+r.title+' » du planning ?'):('Remove « '+r.title+' » from the schedule?')))return;
   const li=SCHED_LOCAL.findIndex(x=>x.date===r.date&&x.title===r.title);
@@ -1695,7 +1747,7 @@ function calHTML(rows){
     h+='<div class="cal-cell'+(d.getMonth()!==m?' out':'')+(d.getTime()===today.getTime()?' today':'')+'">'+
       '<span class="d">'+String(d.getDate()).padStart(2,'0')+'</span><div class="pills">'+
       evs.map(r=>{const c=gcolor(r.genre);
-        return '<div class="cal-pill" style="background:'+c+';cursor:pointer" onclick="openRoad('+r._ri+')" title="'+esc(r.title+' — '+(r.genre||'?')+' · '+(r.perso||'')+' · '+(r.src||''))+'">'+esc(r.title)+'</div>';}).join('')+
+        return '<div class="cal-pill" style="background:'+c+';cursor:pointer" onclick="openRoad('+r._ri+')" oncontextmenu="openRoadmapContextMenu('+r._ri+',event);return false" title="'+esc(r.title+' — '+(r.genre||'?')+' · '+(r.perso||'')+' · '+(r.src||''))+'">'+esc(r.title)+'</div>';}).join('')+
       '</div></div>';
   }
   h+='</div></div>';
@@ -1726,7 +1778,7 @@ function yearCalHTML(rows,y,toggle){
       const isToday=d.getTime()===today.getTime();
       const evStyle=evs.length?' style="background:'+gcolor(evs[0].genre)+';box-shadow:0 0 12px '+gcolor(evs[0].genre)+'66"':'';
       h+='<div class="year-cell'+(d.getMonth()!==m?' out':'')+(evs.length?' has-event':'')+(isToday?' today':'')+'"'+evStyle+
-        (evs.length?' onclick="openRoad('+evs[0]._ri+')" title="'+esc(evs.map(e=>e.title).join(' · '))+'"':'')+'>'+
+        (evs.length?' onclick="openRoad('+evs[0]._ri+')" oncontextmenu="openRoadmapContextMenu('+evs[0]._ri+',event);return false" title="'+esc(evs.map(e=>e.title).join(' · '))+'"':'')+'>'+
         d.getDate()+
       '</div>';
     }
