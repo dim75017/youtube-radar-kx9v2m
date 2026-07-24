@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "policy": "Artists explicitly requested by Dim for catalogue discovery. This seed never implies a genre, instrumental status, rights status, opportunity, or contactability.",
+  "artists": [
+    {"spotify_id": "5FsfZj0Mp6YwEWytuJUcWt"},
+    {"spotify_id": "0Q2Tc5yZFJpumLMc7Yz4e4"},
+    {"spotify_id": "7D6kLgvRHr6DNDavc0LhvI"},
+    {"spotify_id": "73aKnLT4O8G2pBEfdlQzrE"},
+    {"spotify_id": "69C7agUvyZMUv0P58MvBwc"}
+  ]
+}

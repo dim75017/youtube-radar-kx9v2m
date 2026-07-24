@@ -144,6 +144,43 @@ def catalogue_page(artist_uuid, song_uuid, title):
 
 
 class PlaylistDiscoveryTests(unittest.TestCase):
+    def test_explicit_artist_seed_scans_only_its_catalogue_without_assumptions(self):
+        soundcharts = empty_soundcharts()
+        client = FakeClient(
+            {
+                "/artist/by-platform/spotify/explicit-spotify-id": {
+                    "object": {"uuid": "explicit-artist", "name": "Explicit Artist"}
+                },
+                "/artist/explicit-artist/songs?": catalogue_page(
+                    "explicit-artist", "explicit-song", "Explicit catalogue song"
+                ),
+            }
+        )
+        cache = {"version": 1, "tracks": {}, "artists": {}}
+
+        summary = subject.discover_from_playlists(
+            soundcharts,
+            playlists_payload(),
+            cache,
+            client,
+            workers=1,
+            catalogues_only=True,
+            artist_seeds=[{"spotify_id": "explicit-spotify-id"}],
+            summary_key="explicit_artist_discovery",
+            max_catalog_artists=5,
+            max_new_catalog_tracks=20,
+        )
+
+        self.assertEqual(summary["explicit_artists_requested"], 1)
+        self.assertEqual(summary["explicit_artists_resolved"], 1)
+        self.assertEqual(summary["catalogue_artists_scanned"], 1)
+        self.assertEqual(summary["new_catalogue_tracks"], 1)
+        schema = soundcharts["editorial"]["track_schema"]
+        row = soundcharts["editorial"]["tracks"][0]
+        self.assertEqual(subject.field(row, schema, "source_tier"), "explicit_artist_catalogue")
+        self.assertEqual(subject.field(row, schema, "primary_genre"), "")
+        self.assertTrue(all("/playlist/" not in path for path in client.paths))
+
     def test_catalogues_only_continues_known_artists_without_playlist_calls(self):
         soundcharts = empty_soundcharts()
         schema, rows = subject.ensure_editorial_schema(

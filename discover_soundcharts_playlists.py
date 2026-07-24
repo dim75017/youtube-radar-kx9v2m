@@ -89,6 +89,11 @@ SOURCE_TIER_PRIORITY = {
     "editorial_playlist": 1,
     "independent_playlist": 2,
     "playlist_artist_catalogue": 3,
+    # A direct artist seed is a discovery instruction, not a genre, rights or
+    # instrumental classification.  Playlist evidence remains preferred when
+    # it becomes available for the same artist.
+    "explicit_artist_seed": 3,
+    "explicit_artist_catalogue": 4,
 }
 
 TRACK_FIELDS = (
@@ -205,6 +210,27 @@ def read_baseline(path: Path | None) -> dict[str, Any]:
         if spotify_id and name:
             clean.append({"spotify_id": spotify_id, "name": name})
     return {**payload, "artists": clean}
+
+
+def read_artist_seeds(path: Path | None) -> list[dict[str, str]]:
+    """Read user-requested Spotify artist IDs without implying any metadata."""
+    if path is None or not path.exists():
+        return []
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise PlaylistDiscoveryError(f"Artist seed file {path} is invalid") from exc
+    artists = payload.get("artists") if isinstance(payload, dict) else None
+    if not isinstance(artists, list):
+        raise PlaylistDiscoveryError("Artist seed file is missing artists")
+    clean: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for artist in artists:
+        spotify_id = str(artist.get("spotify_id") or "").strip() if isinstance(artist, Mapping) else ""
+        if spotify_id and spotify_id not in seen:
+            seen.add(spotify_id)
+            clean.append({"spotify_id": spotify_id})
+    return clean
 
 
 def write_cache(path: Path, payload: dict[str, Any]) -> None:
@@ -492,6 +518,20 @@ def parse_playlist_metadata(response: Any) -> dict[str, Any] | None:
         "followers": int(_finite_number(obj.get("latestSubscriberCount")) or 0),
         "tracks": int(_finite_number(obj.get("latestTrackCount")) or 0),
         "latest_crawl_date": str(obj.get("latestCrawlDate") or ""),
+    }
+
+
+def parse_artist_metadata(response: Any, spotify_id: str) -> dict[str, str] | None:
+    obj = response.get("object") if isinstance(response, dict) else None
+    if not isinstance(obj, Mapping):
+        return None
+    uuid = str(obj.get("uuid") or "").strip()
+    if not uuid:
+        return None
+    return {
+        "soundcharts_uuid": uuid,
+        "spotify_id": spotify_id,
+        "name": str(obj.get("name") or obj.get("artistName") or "").strip(),
     }
 
 
@@ -978,6 +1018,7 @@ def discover_from_playlists(
     summary_key: str | None = None,
     min_playlist_followers: int = 0,
     catalogues_only: bool = False,
+    artist_seeds: Iterable[Mapping[str, Any]] = (),
 ) -> dict[str, Any]:
     now = utc_now()
     observed_day = utc_today().isoformat()
@@ -1119,6 +1160,14 @@ def discover_from_playlists(
     evidence_by_artist: dict[str, dict[str, Any]] = {}
     new_artist_uuids: set[str] = set()
 
+    explicit_seed_ids: list[str] = []
+    explicit_seen: set[str] = set()
+    for seed in artist_seeds:
+        spotify_id = str(seed.get("spotify_id") or "").strip() if isinstance(seed, Mapping) else ""
+        if spotify_id and spotify_id not in explicit_seen:
+            explicit_seen.add(spotify_id)
+            explicit_seed_ids.append(spotify_id)
+
     def register_detail_artists(detail: Mapping[str, Any] | None, evidence: Mapping[str, Any]) -> None:
         if not isinstance(detail, Mapping):
             return
@@ -1149,6 +1198,52 @@ def discover_from_playlists(
                 cached_artist["source_tier"] = preferred_source_tier(
                     cached_artist.get("source_tier"), str(evidence.get("source_tier") or "editorial_playlist")
                 )
+
+    # Direct seeds deliberately start with blank classification fields.  They
+    # are only a request to inspect the actual catalogue, never proof of genre,
+    # instrumental status, rights or opportunity status.
+    seed_tasks = [
+        (spotify_id, "/api/v2.8/artist/by-platform/spotify/" + urllib.parse.quote(spotify_id))
+        for spotify_id in explicit_seed_ids
+    ]
+    seed_responses, seed_failures = parallel_get(client, seed_tasks, workers=workers)
+    explicit_resolved = 0
+    explicit_seed_uuids: set[str] = set()
+    for spotify_id, response in seed_responses.items():
+        artist = parse_artist_metadata(response, spotify_id)
+        if not artist:
+            continue
+        explicit_resolved += 1
+        artist_uuid = artist["soundcharts_uuid"]
+        explicit_seed_uuids.add(artist_uuid)
+        evidence = {
+            "primary_genre": "",
+            "subgenres": [],
+            "playlist_ids": [],
+            "playlist_names": [],
+            "playlist_count": 0,
+            "playlist_followers_total": 0,
+        }
+        all_playlist_artist_uuids.add(artist_uuid)
+        evidence_by_artist.setdefault(artist_uuid, evidence)
+        _, inserted_artist = upsert_editorial_artist(
+            artist_rows,
+            artist_schema,
+            artists_by_uuid,
+            artist,
+            evidence,
+            source_tier="explicit_artist_seed",
+            now=now,
+        )
+        if inserted_artist:
+            new_artist_uuids.add(artist_uuid)
+        cached_artist = cache_artists.setdefault(artist_uuid, {})
+        if isinstance(cached_artist, dict):
+            cached_artist["name"] = artist["name"]
+            cached_artist["spotify_id"] = spotify_id
+            cached_artist["source_tier"] = preferred_source_tier(
+                cached_artist.get("source_tier"), "explicit_artist_seed"
+            )
 
     known_track_uuids = set(tracks_by_uuid)
     unseen = [evidence for uuid, evidence in evidence_by_uuid.items() if uuid not in known_track_uuids]
@@ -1208,7 +1303,16 @@ def discover_from_playlists(
     # when every playlist song is already known.
     for artist_uuid, row in artists_by_uuid.items():
         source_tier = str(field(row, artist_schema, "source_tier") or "")
-        if source_tier in {"editorial_playlist", "independent_playlist", "playlist_artist_catalogue"}:
+        if (
+            source_tier in {
+                "editorial_playlist",
+                "independent_playlist",
+                "playlist_artist_catalogue",
+                "explicit_artist_seed",
+                "explicit_artist_catalogue",
+            }
+            and (not explicit_seed_ids or artist_uuid in explicit_seed_uuids)
+        ):
             all_playlist_artist_uuids.add(artist_uuid)
             evidence_by_artist.setdefault(
                 artist_uuid,
@@ -1254,6 +1358,11 @@ def discover_from_playlists(
         artist_row = artists_by_uuid.get(artist_uuid)
         artist_name = str(field(artist_row, artist_schema, "name") or cache_artists.get(artist_uuid, {}).get("name") or "Artiste non renseigné") if artist_row is not None else str((cache_artists.get(artist_uuid) or {}).get("name") or "Artiste non renseigné")
         evidence = evidence_by_artist.get(artist_uuid, {})
+        catalogue_source_tier = (
+            "explicit_artist_catalogue"
+            if artist_row is not None and str(field(artist_row, artist_schema, "source_tier") or "") == "explicit_artist_seed"
+            else "playlist_artist_catalogue"
+        )
         genre = str(evidence.get("primary_genre") or "")
         songs, total, next_offset = parse_catalogue_page(response, artist_uuid, artist_name, genre)
         # Never advance an artist cursor past a page that could not be fully
@@ -1270,8 +1379,8 @@ def discover_from_playlists(
                 continue
             song_evidence = {
                 **song,
-                # The artist was discovered through these playlists; the
-                # catalogue track itself was not necessarily present in them.
+                # The catalogue track itself was not necessarily present in
+                # the playlist or direct-seed source that led to its artist.
                 "playlist_ids": [],
                 "playlist_names": [],
                 "playlist_count": 0,
@@ -1285,7 +1394,7 @@ def discover_from_playlists(
                 "subgenres": evidence.get("subgenres") or [],
             }
             cache_track_discovery_evidence(
-                cache_tracks, song_evidence, source_tier="playlist_artist_catalogue", now=now
+                cache_tracks, song_evidence, source_tier=catalogue_source_tier, now=now
             )
             upsert_editorial_track(
                 track_rows,
@@ -1293,7 +1402,7 @@ def discover_from_playlists(
                 tracks_by_uuid,
                 song_evidence,
                 detail=None,
-                source_tier="playlist_artist_catalogue",
+                source_tier=catalogue_source_tier,
                 now=now,
             )
             new_catalogue_tracks += 1
@@ -1320,6 +1429,7 @@ def discover_from_playlists(
         "playlist_metadata": metadata_failures,
         "playlist_first_pages": first_page_failures,
         "playlist_extra_pages": extra_page_failures,
+        "explicit_artist_seeds": seed_failures,
         "song_details": detail_failures,
         "artist_catalogues": catalogue_failures,
     }
@@ -1338,6 +1448,8 @@ def discover_from_playlists(
         "new_playlist_tracks": int(previous_summary.get("new_playlist_tracks") or 0) if catalogues_only else new_playlist_tracks,
         "playlist_tracks_detailed": int(previous_summary.get("playlist_tracks_detailed") or 0) if catalogues_only else playlist_tracks_detailed,
         "new_artist_credits": len(new_artist_uuids),
+        "explicit_artists_requested": len(explicit_seed_ids),
+        "explicit_artists_resolved": explicit_resolved,
         "catalogue_artists_available": len(all_playlist_artist_uuids),
         "catalogue_artists_scanned": len(catalogue_responses),
         "new_catalogue_tracks": new_catalogue_tracks,
@@ -1375,6 +1487,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--playlists", type=Path, default=Path("Spotify_Playlists_data.js"))
     parser.add_argument("--cache", type=Path, default=Path("soundcharts-instrumental-cache.json"))
     parser.add_argument("--baseline", type=Path, default=Path("spotify-catalogue-baseline.json"))
+    parser.add_argument("--artist-seeds", type=Path)
     parser.add_argument("--workers", type=int, default=10)
     parser.add_argument("--max-requests", type=int, default=1_400)
     parser.add_argument("--page-size", type=int, default=100)
@@ -1400,6 +1513,7 @@ def main() -> int:
     playlists = read_js_payload(args.playlists, PLAYLISTS_PREFIX)
     cache = read_cache(args.cache)
     baseline = read_baseline(args.baseline)
+    artist_seeds = read_artist_seeds(args.artist_seeds)
     client = SoundchartsClient(
         os.environ.get("SOUNDCHARTS_CLIENT_ID", ""),
         os.environ.get("SOUNDCHARTS_CLIENT_SECRET", ""),
@@ -1425,6 +1539,7 @@ def main() -> int:
         summary_key=args.summary_key,
         min_playlist_followers=max(0, args.min_playlist_followers),
         catalogues_only=bool(args.catalogues_only),
+        artist_seeds=artist_seeds,
     )
     write_js_payload(args.soundcharts, soundcharts, SOUNDCHARTS_PREFIX)
     write_cache(args.cache, cache)

@@ -8,6 +8,7 @@ on:
       - 'discover_soundcharts_playlists.py'
       - 'spotify-catalogue-baseline.json'
       - 'spotify-catalogue-baseline.csv'
+      - 'spotify-explicit-artist-seeds.json'
       - 'expand_soundcharts_instrumental_pool.py'
       - 'sync_soundcharts_opportunities.py'
       - 'prepare_soundcharts_snapshot.py'
@@ -34,6 +35,7 @@ on:
       - 'discover_soundcharts_playlists.py'
       - 'spotify-catalogue-baseline.json'
       - 'spotify-catalogue-baseline.csv'
+      - 'spotify-explicit-artist-seeds.json'
       - 'expand_soundcharts_instrumental_pool.py'
       - 'sync_soundcharts_opportunities.py'
       - 'prepare_soundcharts_snapshot.py'
@@ -70,7 +72,7 @@ on:
         required: true
         default: 'strict_rebaseline'
         type: choice
-        options: [strict_rebaseline, dark_ambient, dark_ambient_catalogues, classification, artists, playlist_covers, smoke]
+        options: [strict_rebaseline, dark_ambient, dark_ambient_catalogues, explicit_artists, classification, artists, playlist_covers, smoke]
       max_requests:
         description: 'Data-call cap (strict: 1-6000; classification: 1-8230)'
         required: true
@@ -175,7 +177,7 @@ jobs:
             scope="$REQUESTED_SCOPE"
             case "$scope" in
               strict_rebaseline|dark_ambient) expansion_limit="2500" ;;
-              dark_ambient_catalogues) expansion_limit="" ;;
+              dark_ambient_catalogues|explicit_artists) expansion_limit="" ;;
               classification) expansion_limit="" ;;
               artists|playlist_covers|smoke) expansion_limit="" ;;
               *) echo "Unsupported scope: $scope" >&2; exit 1 ;;
@@ -209,7 +211,7 @@ jobs:
 
       - name: Create an isolated Soundcharts candidate
         id: snapshot
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         shell: bash
         run: |
           old_snapshot="$(python prepare_soundcharts_snapshot.py current --index spotify/index.html)"
@@ -357,6 +359,30 @@ jobs:
           --catalog-page-size 100
           --max-new-catalog-tracks 60000
 
+      - name: Scan explicitly requested Spotify artists and their tracks
+        # Seeds are direct discovery instructions from Dim.  They do not add
+        # a genre, instrumental verdict, rights status or opportunity by name.
+        if: steps.plan.outputs.scope == 'explicit_artists'
+        env:
+          PYTHONUNBUFFERED: '1'
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        run: >-
+          python discover_soundcharts_playlists.py
+          --soundcharts "${{ steps.snapshot.outputs.candidate }}"
+          --playlists Spotify_Playlists_data.js
+          --baseline spotify-catalogue-baseline.json
+          --artist-seeds spotify-explicit-artist-seeds.json
+          --cache soundcharts-instrumental-cache.json
+          --workers 10
+          --max-requests "${{ steps.plan.outputs.expansion_requests }}"
+          --summary-key explicit_artist_discovery
+          --catalogues-only
+          --max-catalog-artists 5
+          --catalog-page-size 100
+          --max-new-catalog-tracks 5000
+
       - name: Expand and measure the target instrumental pool
         if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient'
         env:
@@ -394,7 +420,7 @@ jobs:
           --classification-only
 
       - name: Enrich public professional contacts progressively
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         run: >-
           python enrich_public_artist_contacts.py
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
@@ -403,7 +429,7 @@ jobs:
           --max-profiles-per-artist 4
 
       - name: Recalculate actionable A&R opportunities
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         run: >-
           python sync_soundcharts_opportunities.py
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
@@ -414,7 +440,7 @@ jobs:
 
       - name: Prepare public-safe dated snapshot
         id: prepared
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         shell: bash
         run: |
           result="$RUNNER_TEMP/soundcharts-snapshot-result.json"
@@ -426,7 +452,7 @@ jobs:
           echo "name=$snapshot" >> "$GITHUB_OUTPUT"
 
       - name: Validate generated business outputs
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         env:
           SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
           RUN_SCOPE: ${{ steps.plan.outputs.scope }}
@@ -446,6 +472,7 @@ jobs:
           pool = soundcharts.get('instrumental_pool') or {}
           discovery = soundcharts.get('playlist_discovery') or {}
           independent_discovery = soundcharts.get('independent_playlist_discovery') or {}
+          explicit_artists = soundcharts.get('explicit_artist_discovery') or {}
           classification = soundcharts.get('classification_backfill') or {}
           catalogue = soundcharts.get('discovery_catalogue') or {}
           scoring = soundcharts.get('opportunity_scoring') or {}
@@ -473,6 +500,11 @@ jobs:
               pending_before = int(classification.get('pending_before') or 0)
               if pending_before > 0 and int(classification.get('updated') or 0) < 1:
                   raise SystemExit('Soundcharts genre classification updated no pending track')
+          if os.environ.get('RUN_SCOPE') == 'explicit_artists':
+              if int(explicit_artists.get('explicit_artists_resolved') or 0) < 1:
+                  raise SystemExit('Explicit artist discovery resolved no supplied artist')
+              if int(explicit_artists.get('catalogue_artists_scanned') or 0) < 1:
+                  raise SystemExit('Explicit artist discovery scanned no catalogue')
           if int(pool.get('measured') or 0) < 1:
               raise SystemExit('Instrumental pool produced no real Spotify counter')
           if not opportunities:
@@ -489,6 +521,8 @@ jobs:
               'independent_playlist_tracks': independent_discovery.get('unique_playlist_tracks'),
               'classified_tracks': classification.get('updated'),
               'classification_remaining': classification.get('remaining'),
+              'explicit_artists_resolved': explicit_artists.get('explicit_artists_resolved'),
+              'explicit_catalogue_tracks': explicit_artists.get('new_catalogue_tracks'),
               'target_tracks': pool.get('target_tracks'),
               'published_discovery_tracks': len(catalogue.get('tracks') or []),
               'published_discovery_artists': len(catalogue.get('artists') or []),

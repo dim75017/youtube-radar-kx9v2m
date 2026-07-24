@@ -1388,7 +1388,7 @@ function discoveryStatusMatches(track,status){
   if(status==='unmeasured') return Boolean(meta&&!meta.measured)||Number(track&&track[3])<0;
   if(status==='review') return Boolean(meta&&['needs_listen','discovered','playlist_discovered','catalogue_discovered'].includes(String(meta.availabilityStatus||'')));
   if(status==='playlist') return Boolean(meta&&(meta.playlistCount||0)>0);
-  if(status==='catalogue') return Boolean(meta&&String(meta.sourceTier||'')==='playlist_artist_catalogue');
+  if(status==='catalogue') return Boolean(meta&&['playlist_artist_catalogue','explicit_artist_catalogue'].includes(String(meta.sourceTier||'')));
   return true;
 }
 const artistSearch = n => spotifySearchUrl(n,'/artists');
