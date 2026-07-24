@@ -572,9 +572,24 @@ const BROWSE_DISCOVERY = BROWSE&&BROWSE.discovery_catalogue&&typeof BROWSE.disco
   ? BROWSE.discovery_catalogue : null;
 const STRICT_DISCOVERY = SC&&SC.discovery_catalogue&&typeof SC.discovery_catalogue==='object'
   ? SC.discovery_catalogue : null;
-const DISCOVERY_CATALOGUE = BROWSE_DISCOVERY&&Array.isArray(BROWSE_DISCOVERY.tracks)&&BROWSE_DISCOVERY.tracks.length
-  ? BROWSE_DISCOVERY
-  : (STRICT_DISCOVERY||{tracks:[],artists:[],counts:{}});
+const DISCOVERY_CATALOGUE = (() => {
+  const catalogues=[BROWSE_DISCOVERY,STRICT_DISCOVERY].filter(source=>
+    source&&typeof source==='object'&&(
+      (Array.isArray(source.tracks)&&source.tracks.length)||
+      (Array.isArray(source.artists)&&source.artists.length)
+    )
+  );
+  if(!catalogues.length) return {tracks:[],artists:[],counts:{}};
+  if(catalogues.length===1) return catalogues[0];
+  const primary=catalogues.find(source=>source===STRICT_DISCOVERY)||catalogues[0];
+  // The browse catalogue is the internal baseline and Soundcharts is the
+  // rotating discovery delta.  Both must be merged: choosing one source
+  // silently hid every newly discovered track as soon as the baseline existed.
+  return Object.assign({},primary,{
+    tracks:catalogues.flatMap(source=>Array.isArray(source.tracks)?source.tracks:[]),
+    artists:catalogues.flatMap(source=>Array.isArray(source.artists)?source.artists:[])
+  });
+})();
 const DISCOVERY_TRACKS = Array.isArray(DISCOVERY_CATALOGUE.tracks)?DISCOVERY_CATALOGUE.tracks:[];
 const DISCOVERY_ARTISTS = Array.isArray(DISCOVERY_CATALOGUE.artists)?DISCOVERY_CATALOGUE.artists:[];
 const DISCOVERY_TRACK_SCHEMA = Array.isArray(DISCOVERY_CATALOGUE.track_schema)?DISCOVERY_CATALOGUE.track_schema:[];
