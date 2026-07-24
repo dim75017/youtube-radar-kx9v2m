@@ -144,6 +144,41 @@ def catalogue_page(artist_uuid, song_uuid, title):
 
 
 class PlaylistDiscoveryTests(unittest.TestCase):
+    def test_catalogues_only_continues_known_artists_without_playlist_calls(self):
+        soundcharts = empty_soundcharts()
+        schema, rows = subject.ensure_editorial_schema(
+            soundcharts["editorial"], "artists", subject.ARTIST_FIELDS
+        )
+        artist = {field: None for field in schema}
+        artist.update({
+            "soundcharts_uuid": "artist-1",
+            "spotify_id": "spotify-artist-1",
+            "name": "Quiet Artist",
+            "primary_genre": "dark_ambient",
+            "source_tier": "editorial_playlist",
+        })
+        rows.append([artist[field] for field in schema])
+        client = FakeClient({"/artist/artist-1/songs": catalogue_page("artist-1", "catalogue-1", "Catalogue song")})
+        cache = {"version": 1, "tracks": {}, "artists": {}, "dark_ambient_playlist_discovery": {"playlists": {}, "artists": {}}}
+
+        summary = subject.discover_from_playlists(
+            soundcharts,
+            playlists_payload(),
+            cache,
+            client,
+            workers=1,
+            playlist_scope="dark_ambient",
+            summary_key="dark_ambient_playlist_discovery",
+            catalogues_only=True,
+            max_catalog_artists=1,
+            max_new_catalog_tracks=10,
+        )
+
+        self.assertEqual(summary["playlists_scanned"], 0)
+        self.assertEqual(summary["catalogue_artists_scanned"], 1)
+        self.assertEqual(summary["new_catalogue_tracks"], 1)
+        self.assertTrue(all("/playlist/" not in path for path in client.paths))
+
     def test_only_target_editorial_playlists_are_selected(self):
         selected = subject.select_editorial_playlists(playlists_payload())
         self.assertEqual([item["spotify_id"] for item in selected], ["playlist-1"])

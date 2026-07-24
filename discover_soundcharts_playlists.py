@@ -977,6 +977,7 @@ def discover_from_playlists(
     playlist_scope: str = "editorial",
     summary_key: str | None = None,
     min_playlist_followers: int = 0,
+    catalogues_only: bool = False,
 ) -> dict[str, Any]:
     now = utc_now()
     observed_day = utc_today().isoformat()
@@ -991,6 +992,8 @@ def discover_from_playlists(
     cache_tracks = cache.setdefault("tracks", {})
     cache_artists = cache.setdefault("artists", {})
     summary_key = summary_key or ("playlist_discovery" if playlist_scope == "editorial" else f"{playlist_scope}_playlist_discovery")
+    previous_summary = soundcharts.get(summary_key)
+    previous_summary = previous_summary if isinstance(previous_summary, Mapping) else {}
     discovery = cache.setdefault(
         summary_key,
         {"version": DISCOVERY_VERSION, "playlists": {}, "artists": {}},
@@ -1014,7 +1017,7 @@ def discover_from_playlists(
     # follower floor, otherwise a targeted genre scan would silently exclude
     # precisely the playlists whose audience still needs refreshing.
     selected_playlists = select_playlists(playlists_payload, playlist_scope)
-    playlists = playlist_scan_order(
+    playlists = [] if catalogues_only else playlist_scan_order(
         selected_playlists,
         playlist_state,
         limit=playlist_limit,
@@ -1324,15 +1327,16 @@ def discover_from_playlists(
         "status": "success",
         "finished_at": now,
         "playlist_scope": playlist_scope,
-        "playlists_candidates": len(playlists),
-        "playlists_targeted": len(eligible_playlists),
-        "playlists_resolved": len(resolved_playlists),
-        "playlists_scanned": scanned_playlists,
-        "tracklist_rows": len(placements),
-        "unique_playlist_tracks": len(evidence_by_uuid),
-        "unseen_playlist_tracks": len(unseen),
-        "new_playlist_tracks": new_playlist_tracks,
-        "playlist_tracks_detailed": playlist_tracks_detailed,
+        "catalogues_only": catalogues_only,
+        "playlists_candidates": int(previous_summary.get("playlists_candidates") or 0) if catalogues_only else len(playlists),
+        "playlists_targeted": int(previous_summary.get("playlists_targeted") or 0) if catalogues_only else len(eligible_playlists),
+        "playlists_resolved": int(previous_summary.get("playlists_resolved") or 0) if catalogues_only else len(resolved_playlists),
+        "playlists_scanned": int(previous_summary.get("playlists_scanned") or 0) if catalogues_only else scanned_playlists,
+        "tracklist_rows": int(previous_summary.get("tracklist_rows") or 0) if catalogues_only else len(placements),
+        "unique_playlist_tracks": int(previous_summary.get("unique_playlist_tracks") or 0) if catalogues_only else len(evidence_by_uuid),
+        "unseen_playlist_tracks": int(previous_summary.get("unseen_playlist_tracks") or 0) if catalogues_only else len(unseen),
+        "new_playlist_tracks": int(previous_summary.get("new_playlist_tracks") or 0) if catalogues_only else new_playlist_tracks,
+        "playlist_tracks_detailed": int(previous_summary.get("playlist_tracks_detailed") or 0) if catalogues_only else playlist_tracks_detailed,
         "new_artist_credits": len(new_artist_uuids),
         "catalogue_artists_available": len(all_playlist_artist_uuids),
         "catalogue_artists_scanned": len(catalogue_responses),
@@ -1356,7 +1360,7 @@ def discover_from_playlists(
             "no_instrumental_or_ai_assumption": True,
         },
     }
-    if scanned_playlists == 0 or not evidence_by_uuid:
+    if not catalogues_only and (scanned_playlists == 0 or not evidence_by_uuid):
         raise PlaylistDiscoveryError(f"No target {playlist_scope} playlist returned a usable tracklist")
     soundcharts[summary_key] = summary
     freshness = soundcharts.setdefault("freshness", {})
@@ -1378,6 +1382,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--playlist-scope", choices=("editorial", "independent", "all", "dark_ambient"), default="editorial")
     parser.add_argument("--summary-key")
     parser.add_argument("--min-playlist-followers", type=int, default=0)
+    parser.add_argument(
+        "--catalogues-only",
+        action="store_true",
+        help="continue artist catalogue pages without re-reading playlist tracklists",
+    )
     parser.add_argument("--max-new-playlist-tracks", type=int, default=450)
     parser.add_argument("--max-catalog-artists", type=int, default=250)
     parser.add_argument("--catalog-page-size", type=int, default=25)
@@ -1415,6 +1424,7 @@ def main() -> int:
         playlist_scope=args.playlist_scope,
         summary_key=args.summary_key,
         min_playlist_followers=max(0, args.min_playlist_followers),
+        catalogues_only=bool(args.catalogues_only),
     )
     write_js_payload(args.soundcharts, soundcharts, SOUNDCHARTS_PREFIX)
     write_cache(args.cache, cache)
