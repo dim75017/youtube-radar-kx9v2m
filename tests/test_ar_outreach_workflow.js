@@ -76,7 +76,8 @@ assert.match(spotify, /arOpenSelectionArtistProfile\('\$\{esc\(artist\.spotifyId
 assert.match(spotify, /document\.getElementById\('ar-outreach-body'\)\?\.focus\(\)/, 'The prepared message text must receive focus');
 assert.match(spotify, /AR_ARTIST_STORAGE/, 'Artist-level outreach state must be stored separately from tracks');
 assert.match(spotify, /function arArtistStatus\(/, 'Artist-level status must default from artist state');
-assert.match(spotify, /Statut artiste/, 'Selection must expose one status per artist');
+assert.match(spotify, /function arSelectionStatusHtml\(artistKey\)/, 'Selection must expose one compact status per artist');
+assert.doesNotMatch(spotify.slice(spotify.indexOf('function arSelectionStatusHtml'), spotify.indexOf('function arSelectionArtistCardHtml')), /Statut artiste|Prêt à contacter/, 'The compact status must not repeat legacy helper copy');
 assert.doesNotMatch(spotify.slice(spotify.indexOf('function arSelectionTrackHtml'),spotify.indexOf('function arOpenSelectionArtistProfile')), /<label class="ar-selection-track-field">Statut/, 'Track rows must not duplicate the artist status');
 assert.match(spotify, /label:'Personnalisé'/, 'Message preparation must offer the expanded set of personalised templates');
 

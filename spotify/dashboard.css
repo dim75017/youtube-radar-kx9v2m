@@ -825,3 +825,14 @@ td.selc,th.selc{width:44px;padding-left:14px}
 @media(max-width:820px){.ar-artist-selection-head{grid-template-columns:48px minmax(0,1fr)}.ar-selection-economics,.ar-artist-status,.ar-artist-actions{grid-column:1/-1;grid-row:auto;min-width:0}.ar-selection-economics{order:4}}
 @media(max-width:1120px){.ar-selection-track{grid-template-columns:36px minmax(0,1fr) auto}.ar-selection-track-facts{grid-column:2/-1;grid-template-columns:repeat(3,minmax(0,1fr))}.ar-selection-track .ar-remove{grid-column:3;grid-row:1}}
 @media(max-width:620px){.ar-selection-track{grid-template-columns:36px minmax(0,1fr)}.ar-selection-track-facts{grid-column:1/-1;grid-template-columns:repeat(2,minmax(0,1fr))}.ar-selection-track .ar-remove{grid-column:1/-1;grid-row:auto}.ar-selection-track-fact{border-left:0;border-top:1px solid rgba(148,163,184,.09);padding:7px 2px}}
+
+/* Sélection : statut compact en tête, estimation centrale et action à droite. */
+.ar-artist-selection-head{position:relative;grid-template-columns:48px minmax(180px,1fr) minmax(330px,430px) auto;align-items:center;padding-top:43px}
+.ar-artist-status{position:absolute;top:10px;left:16px;display:block;grid-column:auto!important;align-self:auto!important}
+.ar-artist-status strong{padding:6px 9px}
+.ar-artist-status strong.ar-status-to_contact{border-color:rgba(248,113,113,.62);background:rgba(248,113,113,.14);color:#fecaca}
+.ar-selection-economics{grid-column:3!important;grid-row:1!important;justify-self:center;align-self:stretch}
+.ar-artist-actions{grid-column:4!important;grid-row:1!important;justify-self:end;align-self:center}
+.ar-artist-message{justify-self:end}
+@media(max-width:1180px){.ar-artist-selection-head{grid-template-columns:48px minmax(0,1fr) minmax(280px,.9fr) auto}.ar-selection-economics{grid-column:3!important}.ar-artist-actions{grid-column:4!important}}
+@media(max-width:820px){.ar-artist-selection-head{grid-template-columns:48px minmax(0,1fr);padding-top:43px}.ar-selection-economics,.ar-artist-actions{grid-column:1/-1!important;grid-row:auto!important;justify-self:stretch}.ar-artist-message{justify-self:start}}

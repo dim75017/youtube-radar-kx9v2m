@@ -44,13 +44,15 @@ for (const required of ['.ar-selection-offers', '.ar-status-follow_up', '.ar-art
 for (const required of [
   'linear-gradient(135deg,rgba(30,215,96,.13),rgba(34,211,238,.07)',
   'min-height:52px',
-  'grid-template-columns:48px minmax(180px,1fr) minmax(172px,.46fr) 132px minmax(330px,.98fr)',
-  'grid-column:5;grid-row:1',
+  'position:absolute;top:10px;left:16px',
+  'strong.ar-status-to_contact',
+  'grid-template-columns:48px minmax(180px,1fr) minmax(330px,430px) auto',
+  'grid-column:3!important;grid-row:1!important',
 ]) assert.ok(css.includes(required), `Missing refined artist-selection header style: ${required}`);
 const cardStart = dashboard.indexOf('function arSelectionArtistCardHtml(group){');
 const cardEnd = dashboard.indexOf('\nfunction arSelectionEconomics(group){', cardStart);
 const card = dashboard.slice(cardStart, cardEnd);
 assert.ok(card.includes('arSelectionEconomicsHtml(group)'), 'Each artist card must render its own economics section.');
-assert.match(index, /dashboard\.js\?v=20260724-playlist-cover-source-v1/);
+assert.match(index, /dashboard\.js\?v=20260724-selection-layout-v1/);
 
 console.log('spotify selection artist offers/status: OK');

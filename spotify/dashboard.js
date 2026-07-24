@@ -3109,12 +3109,8 @@ function arSelectionHorizonHtml(artistKey){
   return `<div class="payback-horizon" title="${T("Durée choisie pour calculer l'avance et le payback.")}"><span>${T('Horizon de projection')}</span>${PAYBACK_HORIZONS.map(year=>`<button type="button" class="${year===selected?'on':''}" onclick="arSetSelectionYears('${esc(artistKey)}',${year})">${year} ${T('ans')}</button>`).join('')}</div>`;
 }
 function arSelectionStatusHtml(artistKey){
-  const entry=arArtistEntry(artistKey)||{},status=arArtistStatus(artistKey),label=AR_STATUSES[status]||AR_STATUSES.to_contact;
-  let detail='Prêt à contacter';
-  if(status==='follow_up'&&entry.nextFollowUp)detail=`Depuis le ${fmtDate(entry.nextFollowUp)}`;
-  else if(status==='contacted'&&entry.contactedAt)detail=`Envoyé le ${fmtDateTime(entry.contactedAt)}`;
-  else if(status==='closed'&&entry.dealClosedAt)detail=`Conclu le ${fmtDateTime(entry.dealClosedAt)}`;
-  return `<div class="ar-artist-status"><span>Statut artiste</span><strong class="ar-status-${esc(status)}">${esc(label)}</strong><small>${esc(detail)}</small></div>`;
+  const status=arArtistStatus(artistKey),label=AR_STATUSES[status]||AR_STATUSES.to_contact;
+  return `<div class="ar-artist-status"><strong class="ar-status-${esc(status)}">${esc(label)}</strong></div>`;
 }
 function arSelectionArtistCardHtml(group){
   const {artist,rows,priority}=group,contactOpportunity=priority.opportunity;
@@ -3125,7 +3121,7 @@ function arSelectionArtistCardHtml(group){
   const status=arArtistStatus(artist.key);
   const avatar=artist.spotifyId?`<div class="ar-selection-artist-avatar" data-ar-artist-avatar-id="${esc(artist.spotifyId)}"><span>${esc(initials)}</span></div>`:`<div class="ar-selection-artist-avatar"><span>${esc(initials)}</span></div>`;
   const dealAction=(status==='contacted'||status==='follow_up')?`<button class="ar-artist-deal" onclick="arCloseArtistDeal('${esc(artist.key)}');renderArList()">✓ Deal conclu</button>`:'';
-  return `<article class="ar-artist-selection"><header class="ar-artist-selection-head">${avatar}<div class="ar-selection-artist-main"><h3>${artistName}</h3><div class="ar-selection-artist-meta">${esc(genres||'—')}${listeners?` · ${fmt(listeners)} auditeurs/mois`:''}</div><div class="ar-selection-artist-contact">${arContactHtml(contactOpportunity,true)}</div></div>${arSelectionEconomicsHtml(group)}<div class="ar-artist-actions"><button class="ar-artist-message" onclick="openArOutreach('${esc(contactOpportunity.spotifyId)}')">✉ Préparer le message</button>${dealAction}</div>${arSelectionStatusHtml(artist.key)}</header><div class="ar-selection-track-list">${rows.map(arSelectionTrackHtml).join('')}</div></article>`;
+  return `<article class="ar-artist-selection"><header class="ar-artist-selection-head">${arSelectionStatusHtml(artist.key)}${avatar}<div class="ar-selection-artist-main"><h3>${artistName}</h3><div class="ar-selection-artist-meta">${esc(genres||'—')}${listeners?` · ${fmt(listeners)} auditeurs/mois`:''}</div><div class="ar-selection-artist-contact">${arContactHtml(contactOpportunity,true)}</div></div>${arSelectionEconomicsHtml(group)}<div class="ar-artist-actions"><button class="ar-artist-message" onclick="openArOutreach('${esc(contactOpportunity.spotifyId)}')">✉ Préparer le message</button>${dealAction}</div></header><div class="ar-selection-track-list">${rows.map(arSelectionTrackHtml).join('')}</div></article>`;
 }
 function arSelectionEconomics(group){
   const ids=new Set(group.rows.map(row=>String(row.opportunity&&row.opportunity.spotifyId||'').trim()).filter(Boolean));
