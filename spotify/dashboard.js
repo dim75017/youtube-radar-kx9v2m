@@ -908,11 +908,14 @@ function buildStreamReportingGaps(histories){
   return new Map([...byDay].filter(([,stat])=>stat.samples>=100 && stat.flat/stat.samples>=.2));
 }
 const STREAM_REPORTING_GAPS=buildStreamReportingGaps(HIST);
-const AG = A.map((a,i)=>({i, name:a[0], lofi:a[1], flag:a[2], done:a[3], disco:a[4],
+const AG = A.map((a,i)=>{
+  a=Array.isArray(a)?a:['',0,'',false,false,'invalid','','','','',''];
+  return {i, name:a[0], lofi:a[1], flag:a[2], done:a[3], disco:a[4],
   origin:a[5], seedSrc:a[6], id:a[7]||'', img:a[8]||'', email:a[9]||'', link:a[10]||'', sc:a.sc||null, discovery:a.discoveryMeta||null,
   source:a.discovery?'soundcharts_discovery':(a.sc?'soundcharts_staging':'catalogue'),
   listeners:a.discoveryMeta&&a.discoveryMeta.monthlyListeners!=null?a.discoveryMeta.monthlyListeners:(a.sc&&a.sc.listeners||null),
-  n:0, self:0, streams:0, streams24:null, streams7:null, streams30:null, mstreams:0, hot:0, last:'', top:null, perf:null}));
+  n:0, self:0, streams:0, streams24:null, streams7:null, streams30:null, mstreams:0, hot:0, last:'', top:null, perf:null};
+});
 const TRACKS_BY_ARTIST = new Map();
 for (const r of R){
   const artistIndexes=[...new Set(Array.isArray(r.scArtistIndexes)&&r.scArtistIndexes.length
