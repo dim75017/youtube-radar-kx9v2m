@@ -960,12 +960,55 @@ const nSelf = R.reduce((s,r)=>s+(r[4]===0?1:0),0);
 const PL = window.SPOTIFY_PLAYLISTS || null;
 const PLmeta = (PL && PL.meta) || null;
 const PLcols = (PL && PL.cols) || [];
-const PLrows = (PL && PL.rows) || [];
+const PLrows = ((PL && PL.rows) || []).map(row=>Array.isArray(row)?row.slice():row);
 const PLAYLIST_COVERS = (window.SPOTIFY_PLAYLIST_COVERS && window.SPOTIFY_PLAYLIST_COVERS.covers) || {};
 const PLhist = Object.assign({}, (PL && PL.hist) || {});
 for (const [pid,entry] of Object.entries(PERF_PLAYLISTS)){
   const pts = perfHistory(entry); if (pts.length) PLhist[pid] = pts;
 }
+/* Les 33 playlists du scan Dark Ambient sont présentes dans les placements
+   réels des tracks Soundcharts, mais pas encore dans le payload Playlists.
+   On les expose ici comme découverte (sans les promouvoir en A&R), en
+   conservant strictement les identifiants, followers, positions et dates
+   observés dans ce snapshot. */
+function mergeDarkAmbientDiscoveryPlaylists(){
+  const catalogue=SC&&SC.discovery_catalogue;
+  const schema=catalogue&&catalogue.track_schema;
+  const rows=catalogue&&catalogue.tracks;
+  if(!Array.isArray(schema)||!Array.isArray(rows)) return;
+  const field=(row,name)=>{ const index=schema.indexOf(name); return index<0?null:row[index]; };
+  const existing=new Set(PLrows.map(row=>String(row&&row[0]||'')));
+  const found=new Map();
+  for(const row of rows){
+    if(String(field(row,'primary_genre')||'')!=='dark_ambient') continue;
+    const trackId=String(field(row,'spotify_id')||field(row,'soundcharts_uuid')||'').trim();
+    if(!trackId) continue;
+    const placements=discoveryArray(field(row,'playlist_placements'));
+    for(const placement of placements){
+      if(!Array.isArray(placement)) continue;
+      const [id,name,,rawFollowers,firstSeen,lastSeen]=placement;
+      const playlistId=String(id||'').trim(), playlistName=String(name||'').trim();
+      if(!playlistId||!playlistName||existing.has(playlistId)) continue;
+      const followers=Number(rawFollowers);
+      const entry=found.get(playlistId)||{id:playlistId,name:playlistName,followers:null,tracks:new Set(),first:'',last:''};
+      entry.tracks.add(trackId);
+      if(Number.isFinite(followers)&&followers>=0) entry.followers=Math.max(entry.followers==null?-1:entry.followers,followers);
+      const first=String(firstSeen||'').slice(0,10), last=String(lastSeen||'').slice(0,10);
+      if(first&&(!entry.first||first<entry.first)) entry.first=first;
+      if(last&&(!entry.last||last>entry.last)) entry.last=last;
+      found.set(playlistId,entry);
+    }
+  }
+  for(const entry of found.values()){
+    if(entry.followers==null) continue;
+    PLrows.push([
+      entry.id,entry.name,'','unknown',entry.followers,'ok',entry.tracks.size,
+      entry.first,entry.last,'','Dark ambient','Soundcharts discovery',0,'dark ambient',
+      '', '', 1,entry.followers>=10000?1:0, null, null, ''
+    ]);
+  }
+}
+mergeDarkAmbientDiscoveryPlaylists();
 /* colonnes PLrows : id,name,owner,curator,followers,tracks,first_seen,last_seen,lang,genre,use_case,fit,kw,enriched,big10k */
 
 /* ---------- module Labels (récap par label, dérivé des tracks "Autre label") ---------- */
@@ -3756,7 +3799,7 @@ const PLAYLIST_GENRES=Object.freeze({
 });
 const PLAYLIST_SOURCE_GENRES=Object.freeze({
   'lofi / chillhop':'lofi_hip_hop', 'guitar':'guitar', 'guitar / acoustic':'guitar',
-  'classical':'classical', 'piano':'piano', 'ambient':'ambient', 'nature':'nature',
+  'classical':'classical', 'piano':'piano', 'ambient':'ambient', 'dark ambient':'dark_ambient', 'nature':'nature',
   'jazz / bossa':'jazz_jazzhop', 'jazz / jazzhop':'jazz_jazzhop', 'synthwave / retro':'synthwave'
 });
 /* Une correction éditoriale ne s'applique qu'à cet identifiant Spotify vérifié. */
