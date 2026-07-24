@@ -223,7 +223,10 @@ jobs:
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
 
       - name: Discover tracks and artist catalogues from editorial playlists
-        if: steps.plan.outputs.scope == 'strict_rebaseline'
+        # Public snapshots intentionally retain only strict, publishable rows.
+        # Rebuild the wider playlist pool before a classification-only pass so
+        # the pending tracks are actually present in the isolated candidate.
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'classification'
         env:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
@@ -244,7 +247,7 @@ jobs:
           --max-new-catalog-tracks 2500
 
       - name: Discover a rotating batch of independent background playlists
-        if: steps.plan.outputs.scope == 'strict_rebaseline'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'classification'
         env:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}

@@ -45,6 +45,25 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("- cron: '2-57/5 * * * *'", self.workflow)
         self.assertIn("cancel-in-progress: false", self.workflow)
 
+    def test_classification_rebuilds_the_non_public_playlist_pool_first(self):
+        discovery_condition = (
+            "if: steps.plan.outputs.scope == 'strict_rebaseline' || "
+            "steps.plan.outputs.scope == 'classification'"
+        )
+        editorial = self.workflow.index(
+            "Discover tracks and artist catalogues from editorial playlists"
+        )
+        independent = self.workflow.index(
+            "Discover a rotating batch of independent background playlists"
+        )
+        classify = self.workflow.index(
+            "Classify pending playlist tracks from exact Soundcharts song genres"
+        )
+        self.assertIn(discovery_condition, self.workflow[editorial:independent])
+        self.assertIn(discovery_condition, self.workflow[independent:classify])
+        self.assertLess(editorial, classify)
+        self.assertLess(independent, classify)
+
 
 if __name__ == "__main__":
     unittest.main()
