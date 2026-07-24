@@ -166,6 +166,9 @@ jobs:
           artist_data_cap="350"
           full_sync_artist_data_cap="15000"
           full_sync_track_data_cap="60000"
+          # Enough for the entire public dashboard playlist set, while the
+          # collector itself prioritizes those visible rows over backlog-only
+          # discovery records.
           playlist_data_cap="1400"
           independent_playlist_data_cap="2500"
           expansion_data_cap="6000"

@@ -713,20 +713,36 @@ def refresh_playlists(
     id_index = index_of(columns, "id")
     followers_index = index_of(columns, "followers")
     image_index = index_of(columns, "image_url")
+    dashboard_index = index_of(columns, "big10k")
     if id_index is None or followers_index is None:
         raise SoundchartsError("Spotify playlist export does not contain id/followers columns")
 
-    tasks = []
-    for row in rows:
+    # The public dashboard intentionally exposes the curated ``big10k``
+    # subset (currently 554 playlists), while the backing discovery file also
+    # contains a much larger research backlog.  Refresh the visible set first
+    # so the daily follower history always serves what users can actually see.
+    # Rows without this flag retain the legacy behaviour and are refreshed
+    # after the visible collection when the request budget permits.
+    tasks_with_priority = []
+    for position, row in enumerate(rows):
         playlist_id = row[id_index] if id_index < len(row) else None
         if playlist_id:
-            tasks.append(
-                {
+            visible = bool(row[dashboard_index]) if dashboard_index is not None and dashboard_index < len(row) else False
+            tasks_with_priority.append(
+                (
+                    0 if visible else 1,
+                    position,
+                    {
                     "row": row,
                     "id": str(playlist_id),
-                    "path": f"/api/v2.20/playlist/by-platform/spotify/{urllib.parse.quote(str(playlist_id))}",
-                }
+                    # v2.8 is the current Soundcharts platform-ID lookup. It
+                    # returns the playlist metadata including its latest
+                    # Spotify subscriber count when Soundcharts has one.
+                    "path": f"/api/v2.8/playlist/by-platform/spotify/{urllib.parse.quote(str(playlist_id))}",
+                    },
+                )
             )
+    tasks = [task for _, _, task in sorted(tasks_with_priority, key=lambda item: (item[0], item[1]))]
 
     outcome = Outcome("playlists")
     results, outcome.requests, outcome.failures, outcome.available, outcome.selected = parallel_collect(
