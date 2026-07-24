@@ -849,3 +849,20 @@ td.selc,th.selc{width:44px;padding-left:14px}
 .ar-artist-message{justify-self:end}
 @media(max-width:1180px){.ar-artist-selection-head{grid-template-columns:48px minmax(0,1fr) minmax(280px,.9fr) auto}.ar-selection-economics{grid-column:3!important}.ar-artist-actions{grid-column:4!important}}
 @media(max-width:820px){.ar-artist-selection-head{grid-template-columns:48px minmax(0,1fr);padding-top:43px}.ar-selection-economics,.ar-artist-actions{grid-column:1/-1!important;grid-row:auto!important;justify-self:stretch}.ar-artist-message{justify-self:start}}
+
+/* Sélection : calcul à la demande, actions compactes et contacts lisibles. */
+.ar-artist-selection-head{grid-template-columns:48px minmax(0,1fr) auto!important}
+.ar-artist-actions{grid-column:3!important;display:flex;align-items:center;justify-content:flex-end;gap:9px;white-space:nowrap}
+.ar-artist-estimate{min-height:42px;border:1px solid rgba(34,211,238,.42);border-radius:11px;background:rgba(34,211,238,.1);color:#d8fbff;padding:10px 13px;font:800 11px Sora;cursor:pointer}
+.ar-artist-estimate:hover{border-color:rgba(103,232,249,.8);background:rgba(34,211,238,.18)}
+.ar-artist-message{min-height:42px;padding:10px 14px;font-size:11.5px}
+.ar-selection-contact .ar-contact-set,.ar-selection-contact .ar-platform-links{gap:10px}
+.ar-selection-contact .ar-platform-link{width:40px;height:40px;border-radius:12px}
+.ar-selection-contact .ar-platform-link.has-logo{padding:7px}
+.ar-selection-contact .ar-platform-link.has-logo img{width:25px;height:25px}
+.estimate-box{width:min(620px,calc(100vw - 28px));max-height:min(560px,88vh);overflow:auto}
+.estimate-box .ar-selection-economics{display:block;min-width:0;margin:0;padding:17px 18px;border-color:rgba(34,211,238,.3);background:linear-gradient(135deg,rgba(34,211,238,.1),rgba(30,215,96,.07));box-shadow:none}
+.estimate-box .ar-selection-economics-label{font-size:13px;color:#d8fbff}
+.estimate-box .ar-selection-economics-grid{gap:15px;margin-top:13px}
+.estimate-box .ar-selection-economics-grid strong{font-size:20px;color:#efffff}
+@media(max-width:820px){.ar-artist-selection-head{grid-template-columns:48px minmax(0,1fr)!important}.ar-artist-actions{grid-column:1/-1!important;justify-self:stretch;justify-content:flex-start;flex-wrap:wrap}.ar-artist-estimate,.ar-artist-message{flex:1 1 180px}}

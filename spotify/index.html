@@ -37,7 +37,7 @@
   ].forEach(src=>document.write('<script src="'+src+'"><\/script>'));
 })();
 </script>
-<link rel="stylesheet" href="dashboard.css?v=20260724-nav-counter-cursor-fix-v1">
+<link rel="stylesheet" href="dashboard.css?v=20260724-selection-estimate-modal-v1">
 <link rel="stylesheet" href="discovery.css?v=20260722-unified-catalogue-v1">
 </head>
 <body>
@@ -95,7 +95,11 @@
   <div class="tmbox ambox" id="ar-body"></div>
 </div>
 
-<script src="dashboard.js?v=20260724-track-analytics-v1"></script>
+<div id="estimate-modal" class="tmodal estimate-modal" style="display:none" onclick="if(event.target===this)closeArSelectionEstimate()">
+  <div class="tmbox estimate-box" id="estimate-body"></div>
+</div>
+
+<script src="dashboard.js?v=20260724-selection-estimate-modal-v1"></script>
 <script src="coverage.js?v=20260724-counter-tooltip-cleanup-v1"></script>
 </body>
 </html>
