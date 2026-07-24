@@ -30,9 +30,10 @@ assert.match(spotify, /arOpportunityMetric\(opportunity,1\)/, 'Artist companion 
 assert.match(spotify, /arOpportunityMetric\(opportunity,7\)/, 'Artist companion choices must expose 7-day streams');
 assert.match(spotify, /arOpportunityMetric\(opportunity,30\)/, 'Artist companion choices must expose 30-day streams');
 assert.match(spotify, /arContactEligible\(opportunity\)/, 'Outreach must retain strict contact eligibility');
-assert.match(spotify, /function arSelectionEligible\(spotifyId\)/, 'Selection must reuse the strict A&R eligibility gate');
-assert.match(spotify, /arOpportunityRows\(\)\.some\(item=>item\.spotifyId===id\)&&arSelectionEligible\(id\)/, 'Bulk selection must reject non-verified tracks');
-assert.match(spotify, /filter\(item=>item\.opportunity&&arContactEligible\(item\.opportunity\)\)/, 'The outreach selection must hide legacy non-verified entries');
+assert.match(spotify, /function arSelectionEligible\(spotifyId\)/, 'Selection keeps a dedicated catalogue eligibility check');
+assert.match(spotify, /function arCatalogueSelectionOpportunity\(spotifyId\)/, 'Visible catalogue tracks can be converted into selection rows');
+assert.match(spotify, /filter\(id=>arSelectionEligible\(id\)\)/, 'Bulk selection accepts every visible catalogue track');
+assert.match(spotify, /arSelectionOpportunityById\(id\)/, 'The selection renders catalogue rows even when outreach is not approved');
 assert.match(spotify, /mailto:\$\{encodeURIComponent\(currentEmail\)\}/, 'The mail client handoff must remain user initiated');
 assert.match(spotify, /aucun e-mail n’est envoyé/i, 'The UI must not imply automatic sending');
 assert.match(spotify, /cdn\.simpleicons\.org/, 'Detail contacts must use platform logos rather than emoji');

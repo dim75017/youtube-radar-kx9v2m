@@ -9,6 +9,8 @@ for (const required of [
   'function arSelectionOpportunityIdsForArtist(artist)',
   'function arOpenArtistContextMenu(artistIndex,clientX,clientY)',
   'function arOpenSelectionContextMenu(spotifyIds,clientX,clientY,options={})',
+  'function arCatalogueSelectionOpportunity(spotifyId)',
+  'function arSelectionOpportunityById(spotifyId)',
   'arStructuredArtistIds(opportunity).has(spotifyId)',
   'arSelectionEligible(opportunity.spotifyId)',
   'data-ar-browse-track=',
@@ -20,6 +22,8 @@ for (const required of [
 }
 
 assert.match(dashboard, /else if\(S\.view==='radar'\)renderRadar\(\);\s*else render\(\);/, 'Adding from browse views must stay on the current view');
+assert.match(dashboard, /return Boolean\(arSelectionOpportunityById\(spotifyId\)\);/, 'Any visible catalogue track can be retained in Selection');
+assert.match(dashboard, /Object\.keys\(saved\)\.map\(id=>\(\{opportunity:arSelectionOpportunityById\(id\)/, 'Catalogue tracks persist visibly in Selection');
 assert.match(index, /data-v="radar" data-fr="Opportunités"/, 'The opportunities label must be simplified');
 assert.match(index, /data-v="ar-list" data-fr="Sélection"/, 'The selection label must be simplified');
 assert.doesNotMatch(index, /data-v="radar" data-fr="Opportunités A&R"/, 'The legacy opportunities label must be removed');
