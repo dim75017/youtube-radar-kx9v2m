@@ -1009,9 +1009,11 @@ def discover_from_playlists(
     }
     baseline_playlist_artist_uuids: set[str] = set()
 
-    selected_playlists = filter_playlists_by_followers(
-        select_playlists(playlists_payload, playlist_scope), min_playlist_followers
-    )
+    # The source export deliberately keeps unresolved playlists with 0
+    # followers.  Resolve their Soundcharts metadata before applying a
+    # follower floor, otherwise a targeted genre scan would silently exclude
+    # precisely the playlists whose audience still needs refreshing.
+    selected_playlists = select_playlists(playlists_payload, playlist_scope)
     playlists = playlist_scan_order(
         selected_playlists,
         playlist_state,
@@ -1051,7 +1053,12 @@ def discover_from_playlists(
             "resolved_at": now,
         }
 
-    resolved_playlists = [item for item in playlists if item.get("soundcharts_uuid")]
+    eligible_playlists = filter_playlists_by_followers(
+        playlists, min_playlist_followers
+    )
+    resolved_playlists = [
+        item for item in eligible_playlists if item.get("soundcharts_uuid")
+    ]
     first_page_tasks = [
         (
             item["spotify_id"],
@@ -1307,7 +1314,8 @@ def discover_from_playlists(
         "status": "success",
         "finished_at": now,
         "playlist_scope": playlist_scope,
-        "playlists_targeted": len(playlists),
+        "playlists_candidates": len(playlists),
+        "playlists_targeted": len(eligible_playlists),
         "playlists_resolved": len(resolved_playlists),
         "playlists_scanned": scanned_playlists,
         "tracklist_rows": len(placements),
