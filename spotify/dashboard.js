@@ -1625,6 +1625,7 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeArtistModal
 function rowsBeforePeriod(){
   const q = S.q.trim().toLowerCase();
   return R.filter(r=>{
+    if (catalogueIsArchived('tracks',r[6])) return false;
     const classification=trackClassification(r);
     if (S.artist>=0 && r[0]!==S.artist) return false;
     if (S.rel!=='all' && seg(AG[r[0]])!==S.rel) return false;
@@ -1640,7 +1641,8 @@ function rowsBeforePeriod(){
 }
 function filteredRows(){
   const base = rowsBeforePeriod();
-  let rows = S.period==='all' ? base : base.filter(r=>daysAgo(r[2]) <= +S.period);
+  let rows = (S.period==='all' ? base : base.filter(r=>daysAgo(r[2]) <= +S.period))
+    .filter(r=>!catalogueIsArchived('tracks',r[6]));
   const {k,dir} = S.sort;
   rows.sort((a,b)=>{
     let x,y;
@@ -2127,13 +2129,63 @@ function arPromptArtistCompanions(spotifyId){
   hydrateArPlaylistCovers();
   return true;
 }
+/* ---------- Archives locales du catalogue (réversibles, jamais destructives) ---------- */
+const CATALOGUE_ARCHIVE_STORAGE='spotify_catalogue_archives_v1';
+function catalogueArchives(){
+  try{const value=JSON.parse(localStorage.getItem(CATALOGUE_ARCHIVE_STORAGE)||'{}');return value&&typeof value==='object'?value:{tracks:{},artists:{},playlists:{}};}catch(e){return {tracks:{},artists:{},playlists:{}};}
+}
+function catalogueArchivesSet(value){try{localStorage.setItem(CATALOGUE_ARCHIVE_STORAGE,JSON.stringify(value));}catch(e){}}
+function catalogueArchiveKey(kind,id){return String(id||'').trim();}
+function catalogueIsArchived(kind,id){const all=catalogueArchives();return Boolean(all[kind]&&all[kind][catalogueArchiveKey(kind,id)]);}
+function catalogueArchiveItem(kind,id,label){
+  const key=catalogueArchiveKey(kind,id); if(!key) return;
+  const all=catalogueArchives(); all[kind]=all[kind]||{};
+  all[kind][key]={label:String(label||key),archivedAt:new Date().toISOString()};
+  catalogueArchivesSet(all); arCloseContextMenu(); render();
+}
+function catalogueRestoreItem(kind,id){
+  const all=catalogueArchives(); if(all[kind]) delete all[kind][catalogueArchiveKey(kind,id)];
+  catalogueArchivesSet(all); render();
+}
+function catalogueArchivedEntries(){
+  const all=catalogueArchives(), labels={tracks:'Piste',artists:'Artiste',playlists:'Playlist'};
+  return Object.entries(all).flatMap(([kind,items])=>Object.entries(items||{}).map(([id,item])=>({kind,id,label:(item&&item.label)||id,type:labels[kind]||kind})));
+}
+function catalogueArchiveToolbar(){
+  const count=catalogueArchivedEntries().length;
+  return `<button type="button" class="chip" id="catalogue-archives" title="Restaurer un élément archivé">🗄️ Archives${count?` (${count})`:''}</button>`;
+}
+function catalogueOpenArchivePanel(anchor){
+  arCloseContextMenu();
+  const entries=catalogueArchivedEntries(), menu=document.createElement('div');
+  menu.className='ar-context-menu'; menu.setAttribute('role','menu');
+  menu.innerHTML=entries.length?entries.map(item=>`<button type="button" role="menuitem" data-restore-kind="${esc(item.kind)}" data-restore-id="${esc(item.id)}">↩ Restaurer ${esc(item.type)} · ${esc(item.label)}</button>`).join(''):`<button type="button" disabled>Aucune archive</button>`;
+  document.body.appendChild(menu);
+  const rect=anchor.getBoundingClientRect(), width=menu.offsetWidth||260, height=menu.offsetHeight||42;
+  menu.style.left=Math.max(8,Math.min(rect.right-width,window.innerWidth-width-8))+'px';
+  menu.style.top=Math.max(8,Math.min(rect.bottom+6,window.innerHeight-height-8))+'px';
+  menu.querySelectorAll('[data-restore-kind]').forEach(button=>button.addEventListener('click',event=>{event.stopPropagation();catalogueRestoreItem(button.dataset.restoreKind,button.dataset.restoreId);}));
+  AR_CONTEXT_MENU=menu; window.setTimeout(()=>document.addEventListener('click',arCloseContextMenu,{once:true}),0);
+}
+function bindCatalogueArchives(){const button=document.getElementById('catalogue-archives');if(button)button.addEventListener('click',()=>catalogueOpenArchivePanel(button));}
+function catalogueArchiveContext(kind,id,label,clientX,clientY){
+  arCloseContextMenu();
+  const menu=document.createElement('div'); menu.className='ar-context-menu'; menu.setAttribute('role','menu');
+  menu.innerHTML=`<button type="button" role="menuitem">🗄️ Archiver ${esc(label)}</button>`;
+  document.body.appendChild(menu);
+  const width=menu.offsetWidth||220,height=menu.offsetHeight||42;
+  menu.style.left=Math.max(8,Math.min(clientX,window.innerWidth-width-8))+'px';menu.style.top=Math.max(8,Math.min(clientY,window.innerHeight-height-8))+'px';
+  menu.querySelector('button').addEventListener('click',event=>{event.stopPropagation();catalogueArchiveItem(kind,id,label);});
+  AR_CONTEXT_MENU=menu; window.setTimeout(()=>document.addEventListener('click',arCloseContextMenu,{once:true}),0);
+}
 let AR_CONTEXT_MENU=null;
 function arCloseContextMenu(){
   if(AR_CONTEXT_MENU&&AR_CONTEXT_MENU.isConnected) AR_CONTEXT_MENU.remove();
   AR_CONTEXT_MENU=null;
 }
 function arOpenContextMenu(spotifyId,clientX,clientY){
-  arOpenSelectionContextMenu([spotifyId],clientX,clientY);
+  const row=R.find(item=>String(item&&item[6]||'')===String(spotifyId));
+  arOpenSelectionContextMenu([spotifyId],clientX,clientY,{archive:{kind:'tracks',id:spotifyId,label:row?row[1]:'cette piste'}});
 }
 function arSelectionOpportunityIdsForArtist(artist){
   const spotifyId=String(artist&&artist.id||'').trim();
@@ -2143,7 +2195,8 @@ function arSelectionOpportunityIdsForArtist(artist){
     .map(opportunity=>opportunity.spotifyId);
 }
 function arOpenArtistContextMenu(artistIndex,clientX,clientY){
-  arOpenSelectionContextMenu(arSelectionOpportunityIdsForArtist(AG[Number(artistIndex)]),clientX,clientY,{artist:true});
+  const artist=AG[Number(artistIndex)];
+  arOpenSelectionContextMenu(arSelectionOpportunityIdsForArtist(artist),clientX,clientY,{artist:true,archive:{kind:'artists',id:(artist&&artist.id)||artistIndex,label:(artist&&artist.name)||'cet artiste'}});
 }
 function arOpenSelectionContextMenu(spotifyIds,clientX,clientY,options={}){
   arCloseContextMenu();
@@ -2159,12 +2212,14 @@ function arOpenSelectionContextMenu(spotifyIds,clientX,clientY,options={}){
       ?(fr?`⭐ Ajouter ${eligibleIds.length} piste${plural?'s':''} à la sélection`:`⭐ Add ${eligibleIds.length} eligible track${plural?'s':''} to selection`)
       :(fr?'⭐ Ajouter à la sélection':'⭐ Add to selection'))
     :(fr?(options.artist?'Aucune piste éligible pour cet artiste':'Cette piste n\'est pas éligible à la sélection'):(options.artist?'No eligible tracks for this artist':'This track is not eligible for selection'));
-  menu.innerHTML=`<button type="button" role="menuitem" ${eligible?'':'disabled'}>${label}</button>`;
+  const archive=options.archive;
+  menu.innerHTML=`<button type="button" role="menuitem" ${eligible?'':'disabled'}>${label}</button>${archive?`<button type="button" role="menuitem" data-catalogue-archive>🗄️ Archiver ${esc(archive.label)}</button>`:''}`;
   document.body.appendChild(menu);
   const width=menu.offsetWidth||230, height=menu.offsetHeight||42;
   menu.style.left=Math.max(8,Math.min(clientX,window.innerWidth-width-8))+'px';
   menu.style.top=Math.max(8,Math.min(clientY,window.innerHeight-height-8))+'px';
   if(eligible)menu.querySelector('button').addEventListener('click',event=>{event.stopPropagation();arCloseContextMenu();arAddManyToList(eligibleIds);});
+  const archiveButton=menu.querySelector('[data-catalogue-archive]');if(archiveButton)archiveButton.addEventListener('click',event=>{event.stopPropagation();catalogueArchiveItem(archive.kind,archive.id,archive.label);});
   AR_CONTEXT_MENU=menu;
   window.setTimeout(()=>document.addEventListener('click',arCloseContextMenu,{once:true}),0);
 }
@@ -2543,7 +2598,7 @@ function arIsContactable(opportunity){
   return arContactEligible(opportunity)&&hasChannel;
 }
 function arOpportunityRows(){
-  if(AR_OPPORTUNITY_CACHE) return AR_OPPORTUNITY_CACHE;
+  if(AR_OPPORTUNITY_CACHE) return AR_OPPORTUNITY_CACHE.filter(opportunity=>!catalogueIsArchived('tracks',opportunity.spotifyId));
   if(!SC || !Array.isArray(SC.opportunities)) return [];
   const schema=SC.schemas&&SC.schemas.opportunities||[];
   AR_OPPORTUNITY_CACHE=SC.opportunities.map(row=>{
@@ -2664,7 +2719,7 @@ function arOpportunityRows(){
     && arHasCompleteStructuredArtists(item.artists)
     && !isGeneralArtistQuarantined(item.credit,true)
     && !item.artists.some(artist=>isGeneralArtistQuarantined(artist&&artist.name,true)));
-  return AR_OPPORTUNITY_CACHE;
+  return AR_OPPORTUNITY_CACHE.filter(opportunity=>!catalogueIsArchived('tracks',opportunity.spotifyId));
 }
 function arGenreLabel(genre){
   return ({lofi_hip_hop:'Lofi hip-hop',guitar:'Guitare',nature:'Nature',jazz_jazzhop:'Jazz / jazzhop',classical:'Classique',ambient:'Ambient',piano:'Piano',halloween_lofi:'Halloween lofi',christmas_lofi:'Christmas lofi',dark_ambient:'Dark ambient',phonk_instrumental:'Phonk instrumental',dnb_instrumental:'DnB instrumental'})[genre]||String(genre||'À classifier').replaceAll('_',' ');
@@ -3479,12 +3534,14 @@ function renderOpps(){
       <option value="ext" ${S.rel==='ext'?'selected':''}>🚫 ${T('Jamais')}</option>
     </select>
     <span class="spacer"></span>
+    ${catalogueArchiveToolbar()}
     ${metricModeToggleHtml()}
   </div>
   ${tableView}`;
 
   document.getElementById('f-q').addEventListener('input', e=>{ S.q=e.target.value; S.shown=100; keepScroll(renderOpps); keepFocus('f-q'); });
   bindMetricModeToggle(renderOpps,V);
+  bindCatalogueArchives();
   bindGenreFilter('f-genres',S.genres,()=>{ S.shown=100; keepScroll(renderOpps); });
   document.getElementById('f-st').addEventListener('change', e=>{ S.statut=e.target.value; S.shown=100; keepScroll(renderOpps); });
   document.getElementById('f-min').addEventListener('change', e=>{ S.min=+e.target.value; S.shown=100; keepScroll(renderOpps); });
@@ -3541,7 +3598,8 @@ function renderArtists(){
   const q = S.aq.trim().toLowerCase();
   let list = withTracks.filter(g=>{
     const classification=artistClassification(g);
-    return (!q || g.name.toLowerCase().includes(q)) &&
+    return !catalogueIsArchived('artists',g.id||g.name) &&
+      (!q || g.name.toLowerCase().includes(q)) &&
       (S.aseg==='all' || seg(g)===S.aseg) &&
       (!S.agenres.size || S.agenres.has(canonicalGenreKey(classification.genre)));
   });
@@ -3635,11 +3693,13 @@ function renderArtists(){
       <option value="ext" ${S.aseg==='ext'?'selected':''}>🚫 ${T('Jamais')}</option>
     </select>
     <span class="spacer"></span>
+    ${catalogueArchiveToolbar()}
     ${metricModeToggleHtml()}
   </div>
   ${tableView}`;
 
   bindMetricModeToggle(renderArtists,V);
+  bindCatalogueArchives();
   document.getElementById('a-q').addEventListener('input', e=>{ S.aq=e.target.value; S.shownA=60; keepScroll(renderArtists); keepFocus('a-q'); });
   bindGenreFilter('a-genres',S.agenres,()=>{ S.shownA=60; keepScroll(renderArtists); });
   document.getElementById('a-seg').addEventListener('change', e=>{ S.aseg=e.target.value; S.shownA=60; keepScroll(renderArtists); });
@@ -3853,6 +3913,7 @@ function playlistMatchesGenre(r, genre){ return genre==='all' || playlistPrimary
 function plFiltered(){
   const q = S.plq.trim().toLowerCase();
   let rows = PLrows.filter(r=>{
+    if (catalogueIsArchived('playlists',r[0])) return false;
     if (S.plview==='qualified' && !r[17]) return false;
     if (S.plcur!=='all' && r[3]!==S.plcur) return false;
     if (!playlistMatchesGenre(r, S.plgenre)) return false;
@@ -4019,7 +4080,7 @@ function renderPlaylists(){
       </tr></thead>
       <tbody>
       ${slice.map(r=>`
-        <tr onclick="openPlaylist('${r[0]}')" style="cursor:pointer">
+        <tr data-plid="${esc(r[0])}" onclick="openPlaylist('${r[0]}')" style="cursor:pointer">
           <td class="covtd"><div class="cov" data-plid="${r[0]}"></div></td>
           <td><span class="tk">${esc(r[1])}</span>${r[16]?'':' <span class="badge new" title="'+T('Détail pas encore récupéré')+'">'+T('en attente')+'</span>'}</td>
           <td>${esc(r[2])} ${plCuratorBadge(r[3])}</td>
@@ -4039,7 +4100,7 @@ function renderPlaylists(){
   const gridView = () => `
   <div class="acards">
     ${slice.map(r=>`
-    <div class="acard plcard grid-clean" onclick="openPlaylist('${r[0]}')">
+    <div class="acard plcard grid-clean" data-plid="${esc(r[0])}" onclick="openPlaylist('${r[0]}')">
       <div class="cov" data-plid="${r[0]}"></div>
       <div class="nm">${esc(r[1])}${r[16]?'':' <span class="badge new" title="'+T('Détail pas encore récupéré')+'">'+T('en attente')+'</span>'}</div>
       <div style="font-size:11px;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">${esc(r[2])} ${plCuratorBadge(r[3])}</div>
@@ -4074,6 +4135,8 @@ function renderPlaylists(){
       <option value="all" ${S.plgenre==='all'?'selected':''}>🎼 ${T('Tous les genres')}</option>
       ${playlistAvailableGenres().map(genre=>{const item=PLAYLIST_GENRES[genre];return `<option value="${genre}" ${S.plgenre===genre?'selected':''}>${item.emoji} ${esc(item.label)}</option>`;}).join('')}
     </select>
+    <span class="spacer"></span>
+    ${catalogueArchiveToolbar()}
   </div>
   ${tableView}`;
 
@@ -4095,6 +4158,13 @@ function renderPlaylists(){
     else { S.plsort=key; S.pldir=['name','curator','genre'].includes(key)?1:-1; }
     keepScroll(renderPlaylists);
   }));
+  document.querySelectorAll('tr[data-plid], .acard[data-plid]').forEach(node=>node.addEventListener('contextmenu',event=>{
+    if(event.target.closest('a,button,input,select,label')) return;
+    event.preventDefault();
+    const row=PLrows.find(item=>String(item[0])===String(node.dataset.plid));
+    catalogueArchiveContext('playlists',node.dataset.plid,row?row[1]:'cette playlist',event.clientX,event.clientY);
+  }));
+  bindCatalogueArchives();
   attachInfinite(()=>{ const y=window.scrollY; S.shownPL+=80; renderPlaylists(); window.scrollTo(0,y); });
   if (typeof attachCovers==='function') attachCovers();
 }
