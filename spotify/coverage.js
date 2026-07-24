@@ -95,22 +95,24 @@
   };
 
   function updateNavigation() {
+    // Sidebar totals are informational only: never attach native tooltips to
+    // their compact counter pills, which made a stray punctuation bubble pop
+    // up on hover.
+    ['c-radar', 'c-ar-list', 'c-opps', 'c-art', 'c-pl', 'c-lb'].forEach(id => {
+      const counter = document.getElementById(id);
+      if (counter) counter.title = '';
+    });
     const trackCount = document.getElementById('c-opps');
     if (trackCount) {
       trackCount.textContent = compact(liveTracks());
-      trackCount.title = text.trackResult();
     }
     const artistCount = document.getElementById('c-art');
     if (artistCount) {
       artistCount.textContent = compact(liveArtists());
-      artistCount.title = text.artistResult();
     }
     const radarCount = document.getElementById('c-radar');
     if (radarCount && metrics.opportunities) {
       radarCount.textContent = compact(metrics.opportunities);
-      radarCount.title = isFrench()
-        ? `${format(metrics.opportunities)} opportunités A&R recalculées`
-        : `${format(metrics.opportunities)} recalculated A&R opportunities`;
     }
   }
 

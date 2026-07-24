@@ -14,10 +14,9 @@ const elements={'c-opps':element(),'c-art':element(),'c-radar':element(),'sync-d
 const document={documentElement:{lang:'fr'},head:{appendChild(){}},getElementById(id){return elements[id]||null;},querySelector(){return null;},querySelectorAll(){return [];},createElement(){return element();}};
 const context={console,document,location:{hash:'#tracks'},requestAnimationFrame(cb){cb();},setTimeout(cb){cb();},MutationObserver:class{observe(){}},R:Array.from({length:62832}),withTracks:Array.from({length:8351}),window:{SPOTIFY_SOUNDCHARTS:{generated_at:'2026-07-22T12:00:00Z',opportunities:Array.from({length:2000}),opportunity_scoring:{opportunities:2000}},SPOTIFY_BROWSE_CATALOGUE:{generated_at:'2026-07-22T12:00:00Z',playlist_discovery:{playlists_scanned:220},instrumental_pool:{measured:2968},discovery_catalogue:{counts:{tracks:17998,artists:8351,measured_tracks:2968}}},addEventListener(){}}};
 vm.runInNewContext(source,context);
-assert.match(elements['c-opps'].title,/62.*832/);
-assert.match(elements['c-opps'].title,/pistes disponibles/);
-assert.match(elements['c-art'].title,/8.*351/);
-assert.match(elements['c-radar'].title,/2.*000/);
+assert.equal(elements['c-opps'].title,'');
+assert.equal(elements['c-art'].title,'');
+assert.equal(elements['c-radar'].title,'');
 assert.match(elements['sync-detail-tr'].innerHTML,/catalogue vivant/);
 assert.match(elements['sync-detail-tr'].innerHTML,/220 playlists scannées/);
 assert.match(elements['sync-detail-tr'].innerHTML,/2.*968 pistes mesurées/);
