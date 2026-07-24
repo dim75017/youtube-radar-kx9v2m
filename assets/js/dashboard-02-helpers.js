@@ -250,8 +250,8 @@ function histChart(pts,unit,showMeta){
   const area=line+' L'+X(x1).toFixed(1)+' '+(H-P)+' L'+X(x0).toFixed(1)+' '+(H-P)+' Z';
   const dailyViews=u==='daily-views';
   const liveViewers=u==='viewers';
-  const chartFill=liveViewers?'rgba(255,0,51,.14)':'rgba(154,168,255,.16)';
-  const chartStroke=liveViewers?'#ff5272':'#9aa8ff';
+  const chartFill=liveViewers?'rgba(167,139,250,.18)':'rgba(154,168,255,.16)';
+  const chartStroke=liveViewers?'#a78bfa':'#9aa8ff';
   const days=Math.max((x1-x0)/86400000,0.5);
   const perDay=(pts[pts.length-1][1]-pts[0][1])/days;
   const meta=u==='viewers'
