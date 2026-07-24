@@ -1079,6 +1079,69 @@ def _build_discovery_catalogue(payload: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _filter_discovery_catalogue_for_publication(
+    catalogue: Mapping[str, Any],
+    banned_names: set[str],
+    banned_spotify_ids: set[str],
+    banned_soundcharts_uuids: set[str],
+) -> dict[str, Any]:
+    """Keep the broad browse layer while applying identity quarantine.
+
+    The discovery catalogue deliberately contains tracks which have not yet
+    passed the strict contactability/classification gate.  It is a read-only
+    research surface (no contacts), so rebuilding it from the *strict* rows at
+    the end of sanitisation silently discarded all of those tracks.  Preserve
+    the pre-gate projection, but never let a quarantined identity back in.
+    """
+
+    result = copy.deepcopy(dict(catalogue))
+    track_schema = result.get("track_schema")
+    track_schema = list(track_schema) if isinstance(track_schema, list) else []
+    artist_schema = result.get("artist_schema")
+    artist_schema = list(artist_schema) if isinstance(artist_schema, list) else []
+
+    tracks = result.get("tracks") if isinstance(result.get("tracks"), list) else []
+    artists = result.get("artists") if isinstance(result.get("artists"), list) else []
+    retained_tracks = [
+        row for row in tracks
+        if not _row_has_banned_credit_or_collaborator(
+            row,
+            track_schema,
+            banned_names,
+            banned_spotify_ids,
+            banned_soundcharts_uuids,
+        )
+    ]
+    retained_artists = [
+        row for row in artists
+        if not _row_identity_is_banned(
+            row,
+            artist_schema,
+            banned_names,
+            banned_spotify_ids,
+            banned_soundcharts_uuids,
+        )
+    ]
+    track_records = [_mapping_from_row(row, track_schema) for row in retained_tracks]
+    result["tracks"] = retained_tracks
+    result["artists"] = retained_artists
+    result["counts"] = {
+        "tracks": len(retained_tracks),
+        "artists": len(retained_artists),
+        "measured_tracks": sum(record.get("streams") is not None for record in track_records),
+        "playlist_tracks": sum(bool(record.get("playlist_count")) for record in track_records),
+        "catalogue_tracks": sum(
+            record.get("source_tier") == "playlist_artist_catalogue"
+            for record in track_records
+        ),
+        "verified_tracks": sum(
+            record.get("availability_status") == "verified"
+            for record in track_records
+        ),
+    }
+    return result
+
+
 def sanitize_payload(payload: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
     """Return a public-safe copy and a deterministic removal report.
 
@@ -1096,7 +1159,11 @@ def sanitize_payload(payload: Mapping[str, Any]) -> tuple[dict[str, Any], dict[s
         raise SnapshotValidationError("SC.opportunities must be present and be a list")
 
     editorial = sanitized.get("editorial")
-    sanitized["discovery_catalogue"] = _build_discovery_catalogue(sanitized)
+    # Build this before strict public pruning.  The browse layer is allowed to
+    # expose an honest “À classifier” track; it must not be reduced to the
+    # small contactable/fully classified subset.
+    full_discovery_catalogue = _build_discovery_catalogue(sanitized)
+    sanitized["discovery_catalogue"] = full_discovery_catalogue
     before_counts = {
         "artists": len(sanitized.get("artists", []))
         if isinstance(sanitized.get("artists"), list)
@@ -1367,10 +1434,16 @@ def sanitize_payload(payload: Mapping[str, Any]) -> tuple[dict[str, Any], dict[s
     sanitized["opportunities"] = retained_opportunities
     removed["opportunities"] = sum(opportunity_reasons.values())
 
-    # The browse layer is derived data.  Rebuild it only after every public
-    # collection has passed quarantine, otherwise a removed identity can leak
-    # through a stale pre-sanitization discovery catalogue.
-    sanitized["discovery_catalogue"] = _build_discovery_catalogue(sanitized)
+    # Keep the broad, pre-gate browse projection, while applying the same
+    # quarantine index as the strict collections.  Rebuilding from the strict
+    # rows here would make newly scanned playlist/catalogue tracks disappear
+    # until a later classification pass.
+    sanitized["discovery_catalogue"] = _filter_discovery_catalogue_for_publication(
+        full_discovery_catalogue,
+        banned_names,
+        banned_spotify_ids,
+        banned_soundcharts_uuids,
+    )
     _refresh_counts(sanitized, before_counts)
     validate_payload(sanitized)
 

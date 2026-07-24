@@ -206,6 +206,40 @@ def wrapped(payload):
 
 
 class PrepareSoundchartsSnapshotTests(unittest.TestCase):
+    def test_discovery_catalogue_keeps_unclassified_editorial_rows(self):
+        payload = minimal_payload()
+        payload["editorial"]["artists"].append([
+            "uuid-listen-first",
+            "",
+            "Listen First",
+            None,
+            "other_instrumental",
+            None,
+            "unknown",
+            None,
+            "unknown",
+            "review",
+        ])
+        payload["editorial"]["tracks"].append([
+            "song-listen-first",
+            "",
+            "Unclassified playlist discovery",
+            "Listen First",
+            "other_instrumental",
+            None,
+            "unknown",
+            None,
+            "unknown",
+            "review",
+        ])
+
+        sanitized, _ = subject.sanitize_payload(payload)
+
+        schema = sanitized["discovery_catalogue"]["track_schema"]
+        titles = [row[schema.index("title")] for row in sanitized["discovery_catalogue"]["tracks"]]
+        self.assertIn("Unclassified playlist discovery", titles)
+        self.assertEqual(sanitized["discovery_catalogue"]["counts"]["tracks"], 2)
+
     def test_prepare_uses_utc_dated_name_and_leaves_source_and_index_unchanged(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
