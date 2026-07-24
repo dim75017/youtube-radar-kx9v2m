@@ -201,7 +201,7 @@ const BROWSE = window.SPOTIFY_BROWSE_CATALOGUE || {};
 /* Keep the catalogue index stable when an upstream payload contains an empty
    artist slot. Tracks use these numeric indexes, so filtering would corrupt
    their mapping; a quarantined placeholder is safer than a page-wide crash. */
-const A = (D.artists || []).map(artist=>Array.isArray(artist)?artist.slice():['',0,'',false,false,'invalid','','','','','']);
+const A = Array.from(D.artists || [], artist=>Array.isArray(artist)?artist.slice():['',0,'',false,false,'invalid','','','','','']);
 /* Explicit quarantine requested by Dim for mainstream/vocal identities. This
    applies to the general views as well as to future Soundcharts merges. */
 const GENERAL_VIEW_QUARANTINED_ARTISTS = new Set([
