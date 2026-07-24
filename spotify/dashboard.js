@@ -1319,7 +1319,7 @@ function spotifyIframeApi(){
 function spotifyCenteredTrackPlayerHtml(id,title){
   const spotifyId=spotifyTrackId(id);
   if(!spotifyId) return '';
-  return `<div class="ar-detail-player track-modal-player spotify-centered-player" data-spotify-track="${esc(spotifyId)}"><div class="spotify-centered-host" title="Spotify player · ${esc(title||'Track')}"></div><button class="spotify-centered-toggle" type="button" aria-label="Lire ${esc(title||'cette piste')}" onclick="toggleSpotifyCenteredPlayer(this)"><span aria-hidden="true">▶</span></button></div>`;
+  return `<div class="ar-detail-player track-modal-player spotify-centered-player" data-spotify-track="${esc(spotifyId)}"><div class="spotify-centered-host" title="Spotify player · ${esc(title||'Track')}"></div></div>`;
 }
 async function initSpotifyCenteredPlayers(root=document){
   const wrappers=[...root.querySelectorAll('.spotify-centered-player[data-spotify-track]')].filter(node=>!node.dataset.spotifyInitialized&&!node.dataset.spotifyInitializing);
@@ -1334,26 +1334,8 @@ async function initSpotifyCenteredPlayers(root=document){
       wrapper._spotifyController=controller;
       wrapper.dataset.spotifyInitialized='1';
       delete wrapper.dataset.spotifyInitializing;
-      const button=wrapper.querySelector('.spotify-centered-toggle');
-      controller.addListener('playback_update',event=>{
-        const playing=Boolean(event&&event.data&&!event.data.isPaused);
-        wrapper.classList.toggle('is-playing',playing);
-        if(button){
-          button.querySelector('span').textContent=playing?'Ⅱ':'▶';
-          button.setAttribute('aria-label',playing?'Mettre en pause':'Lire la piste');
-        }
-      });
     });
   });
-}
-async function toggleSpotifyCenteredPlayer(button){
-  const wrapper=button&&button.closest('.spotify-centered-player');
-  if(!wrapper) return;
-  if(!wrapper._spotifyController){
-    await initSpotifyCenteredPlayers(wrapper.parentElement||document);
-    if(!wrapper._spotifyController) return;
-  }
-  wrapper._spotifyController.togglePlay();
 }
 function arOpportunityPlayerHtml(opportunity){
   const spotifyId=spotifyTrackId(opportunity&&opportunity.spotifyId);
@@ -2251,8 +2233,6 @@ function openTrack(tid){
   const g = AG[r[0]];
   const perf = {1:trackWindow(r,1),7:trackWindow(r,7),30:trackWindow(r,30)};
   const entry = trackPerfEntry(r);
-  const velocity = perf[7].currentReady ? perf[7].current/7 : null;
-  const cadence = Number.isFinite(Number(entry.cadence_days)) ? Number(entry.cadence_days)+' j' : '—';
   const label = entry.label || (r[4]===1 ? r[5] : null);
   const box = document.getElementById('tmbox');
   box.innerHTML = `
@@ -2266,9 +2246,6 @@ function openTrack(tid){
     </div>
     ${spotifyCenteredTrackPlayerHtml(r[6],r[1])}
     <div class="tgrid">
-      <div class="tg"><div class="l">${T(S.metricMode==='revenue'?'Revenu estimé / jour':'Vélocité réelle')}</div><div class="v" style="color:var(--cyan)">${velocity==null?'—':(S.metricMode==='revenue'?revenueEstimate(velocity):fmt(Math.round(velocity))+'/'+T('jour'))}</div></div>
-      <div class="tg"><div class="l">${T('Cadence')}</div><div class="v">${cadence}</div></div>
-      <div class="tg"><div class="l">${T('Signal performance')}</div><div class="v" style="font-size:13px">${performanceSignal(perf,entry)}</div></div>
       <div class="tg"><div class="l">${T('Sortie')}</div><div class="v">${fmtDate(r[2])}</div></div>
       <div class="tg"><div class="l">${T('Label')}</div><div class="v" style="font-size:12px;line-height:1.4">${label?esc(label):'—'}</div></div>
       <div class="tg"><div class="l">© / ℗</div><div class="v" style="font-size:12px;line-height:1.4">${r[5]?esc(r[5]):'—'}</div></div>
