@@ -977,7 +977,7 @@ function mergeDarkAmbientDiscoveryPlaylists(){
   const rows=catalogue&&catalogue.tracks;
   if(!Array.isArray(schema)||!Array.isArray(rows)) return;
   const field=(row,name)=>{ const index=schema.indexOf(name); return index<0?null:row[index]; };
-  const existing=new Set(PLrows.map(row=>String(row&&row[0]||'')));
+  const existingById=new Map(PLrows.map(row=>[String(row&&row[0]||''),row]));
   const found=new Map();
   for(const row of rows){
     if(String(field(row,'primary_genre')||'')!=='dark_ambient') continue;
@@ -988,7 +988,7 @@ function mergeDarkAmbientDiscoveryPlaylists(){
       if(!Array.isArray(placement)) continue;
       const [id,name,,rawFollowers,firstSeen,lastSeen]=placement;
       const playlistId=String(id||'').trim(), playlistName=String(name||'').trim();
-      if(!playlistId||!playlistName||existing.has(playlistId)) continue;
+      if(!playlistId||!playlistName) continue;
       const followers=Number(rawFollowers);
       const entry=found.get(playlistId)||{id:playlistId,name:playlistName,followers:null,tracks:new Set(),first:'',last:''};
       entry.tracks.add(trackId);
@@ -1001,6 +1001,19 @@ function mergeDarkAmbientDiscoveryPlaylists(){
   }
   for(const entry of found.values()){
     if(entry.followers==null) continue;
+    const existing=existingById.get(entry.id);
+    if(existing){
+      /* Existing scanner rows can be placeholder-only. Their observed
+         Soundcharts placement makes them browseable, without claiming an
+         unobserved current tracklist or any A&R eligibility. */
+      existing[4]=entry.followers; existing[5]='ok';
+      if(entry.first&&(!existing[7]||entry.first<existing[7])) existing[7]=entry.first;
+      if(entry.last&&(!existing[8]||entry.last>existing[8])) existing[8]=entry.last;
+      existing[10]='Dark ambient';
+      if(!existing[11]) existing[11]='Soundcharts discovery';
+      existing[16]=1; existing[17]=entry.followers>=10000?1:existing[17];
+      continue;
+    }
     PLrows.push([
       entry.id,entry.name,'','unknown',entry.followers,'ok',entry.tracks.size,
       entry.first,entry.last,'','Dark ambient','Soundcharts discovery',0,'dark ambient',
@@ -4381,7 +4394,7 @@ window.addEventListener('resize',()=>requestAnimationFrame(syncSpotifyStickyCont
 document.getElementById('c-opps').textContent = fmt(R.length);
 (() => { const c=document.getElementById('c-radar'); if(c) c.textContent=SC&&Array.isArray(SC.opportunities)?fmt(SC.opportunities.length):''; })();
 document.getElementById('c-art').textContent = withTracks.length;
-(function(){ const c=document.getElementById('c-pl'); if(c && PLmeta) c.textContent = fmt(PLmeta.playlists_10k_plus); })();
+(function(){ const c=document.getElementById('c-pl'); if(c && PLmeta) c.textContent = fmt(PLrows.filter(row=>row&&row[17]).length); })();
 (function(){ const c=document.getElementById('c-lb'); if(c && LBmeta) c.textContent = fmt(LBrows.length); })();
 (function(){ arSyncListCount(); })();
 function fmtTs(ts){
