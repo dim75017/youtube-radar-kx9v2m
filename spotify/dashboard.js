@@ -2605,9 +2605,10 @@ function arPlaylistCoverUrl(playlist){
   return values.map(arSafePublicUrl).find(Boolean)||'';
 }
 function arEditorialPlaylistCoverHtml(playlist,index,slot='detail'){
-  const playlistId=String(playlist&&playlist.spotifyId||'').trim();
   const imageUrl=arPlaylistCoverUrl(playlist);
-  return `${imageUrl?`<img src="${esc(imageUrl)}" alt="" loading="lazy" onerror="this.remove()">`:''}<span class="ar-playlist-fallback" data-ar-playlist-id="${esc(playlistId)}" data-ar-playlist-slot="${esc(slot)}-${index}">♫</span>`;
+  // Les couvertures viennent uniquement du snapshot publié. Un appel oEmbed
+  // par icône dans le navigateur finit par déclencher des limites Spotify.
+  return `${imageUrl?`<img src="${esc(imageUrl)}" alt="" loading="lazy" onerror="this.remove()">`:''}<span class="ar-playlist-fallback" aria-hidden="true">▦</span>`;
 }
 function arOpenEditorialPopover(anchor){
   document.querySelectorAll('.ar-editorial-popover').forEach(node=>node.remove());
@@ -2765,7 +2766,6 @@ function arEditorialCardHtml(opportunity){
 const AR_PLAYLIST_COVER_CACHE=new Map();
 const AR_TRACK_COVER_CACHE=new Map();
 const AR_ARTIST_AVATAR_CACHE=new Map();
-let arPlaylistCoverObserver=null;
 function arTrackCoverUrl(opportunity){
   const direct=arSafePublicUrl(opportunity&&opportunity.imageUrl);
   if(direct) return direct;
@@ -2797,44 +2797,9 @@ function hydrateArTrackCovers(){
       }).catch(()=>AR_TRACK_COVER_CACHE.set(id,''));
   });
 }
-function hydrateArPlaylistCover(node){
-  if(!node||node.dataset.arPlaylistHydrated||typeof fetch!=='function') return;
-  node.dataset.arPlaylistHydrated='1';
-  const id=node.dataset.arPlaylistId;
-  const apply=imageUrl=>{
-    if(!imageUrl||!node.isConnected) return;
-    const image=document.createElement('img');
-    image.src=imageUrl; image.alt=''; image.loading='lazy';
-    image.onerror=()=>image.remove();
-    node.before(image); node.remove();
-  };
-  if(AR_PLAYLIST_COVER_CACHE.has(id)){ apply(AR_PLAYLIST_COVER_CACHE.get(id)); return; }
-  fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(spotifyPlaylistUrl(id))}`)
-    .then(response=>response.ok?response.json():null)
-    .then(payload=>{
-      const imageUrl=payload&&typeof payload.thumbnail_url==='string'?payload.thumbnail_url:'';
-      AR_PLAYLIST_COVER_CACHE.set(id,imageUrl); apply(imageUrl);
-    }).catch(()=>AR_PLAYLIST_COVER_CACHE.set(id,''));
-}
 function hydrateArPlaylistCovers(){
-  if(typeof fetch!=='function') return;
-  if(!arPlaylistCoverObserver&&typeof IntersectionObserver==='function'){
-    arPlaylistCoverObserver=new IntersectionObserver(entries=>{
-      entries.forEach(entry=>{
-        if(!entry.isIntersecting) return;
-        arPlaylistCoverObserver.unobserve(entry.target);
-        hydrateArPlaylistCover(entry.target);
-      });
-    },{rootMargin:'450px'});
-  }
-  [...document.querySelectorAll('[data-ar-playlist-id]')]
-    .filter(node=>node.dataset.arPlaylistId&&!node.dataset.arPlaylistHydrated)
-    .forEach(node=>{
-      const id=node.dataset.arPlaylistId;
-      if(AR_PLAYLIST_COVER_CACHE.has(id)) hydrateArPlaylistCover(node);
-      else if(arPlaylistCoverObserver) arPlaylistCoverObserver.observe(node);
-      else hydrateArPlaylistCover(node);
-    });
+  // Intentionnellement sans requête réseau : une vignette absente reste un
+  // repère discret jusqu'au prochain export qui fournit une URL réelle.
 }
 function arSearchText(value){
   return String(value||'').toLowerCase().normalize('NFKD').replace(/(?![\uFE00-\uFE0F])\p{M}/gu,'').replace(/\s+/g,' ').trim();
