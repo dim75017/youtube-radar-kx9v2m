@@ -2143,6 +2143,14 @@ function openTrack(tid){
   initSpotifyCenteredPlayers(box);
   hydrateArPlaylistCovers();
 }
+function openTrackFromCatalogueRow(event,tid){
+  const target=event&&event.target;
+  if(!(target instanceof Element)) return;
+  // Les actions propres à une cellule (artiste, sélection, lien ou bouton)
+  // gardent leur comportement et ne doivent pas ouvrir la fiche piste.
+  if(target.closest('a,button,input,select,option,label,.ar,.tk,[data-no-track-open]')) return;
+  openTrack(tid);
+}
 function closeTrack(){
   document.querySelectorAll('#track-modal .spotify-centered-player').forEach(player=>{
     if(player._spotifyController&&typeof player._spotifyController.destroy==='function') player._spotifyController.destroy();
@@ -3193,7 +3201,7 @@ function renderOpps(){
       </tr></thead>
       <tbody>
       ${slice.map(r=>{ const w1=trackWindow(r,1), w7=trackWindow(r,7), w30=trackWindow(r,30); return `
-        <tr data-ar-browse-track="${esc(spotifyTrackId(r[6]))}" data-basehot="${r[3]>=HOT?1:0}" class="${r[3]>=HOT||(ag&&S.sel.has(r[6]))?'hot':''}">
+        <tr data-ar-browse-track="${esc(spotifyTrackId(r[6]))}" data-basehot="${r[3]>=HOT?1:0}" class="${r[3]>=HOT||(ag&&S.sel.has(r[6]))?'hot':''}" onclick="openTrackFromCatalogueRow(event,'${r[6]}')">
           ${ag?`<td class="selc"><input type="checkbox" class="ck sel-track" data-tid="${r[6]}" ${S.sel.has(r[6])?'checked':''}></td>`:''}
           <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
           <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span></td>
