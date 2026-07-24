@@ -631,7 +631,7 @@ function mergeFullDiscoveryCatalogue(){
     const meta={
       soundchartsUuid,spotifyId,name,
       monthlyListeners:discoveryNumber(source.monthly_listeners),
-      genre:String(source.primary_genre||'other_instrumental'),
+      genre:String(source.primary_genre||''),
       subgenres:discoveryArray(source.subgenres),
       genreConfidence:discoveryNumber(source.genre_confidence),
       instrumental:String(source.instrumental_status||'unknown').toLowerCase(),
@@ -765,7 +765,7 @@ function mergeFullDiscoveryCatalogue(){
       if(meta.availabilityStatus==='verified') SC_DISCOVERY.verified++;
     }
     track.scClassification={
-      genre:String(source.primary_genre||'other_instrumental'),
+      genre:String(source.primary_genre||''),
       genre_confidence:discoveryNumber(source.genre_confidence),
       genre_source:'soundcharts_discovery_catalogue',
       instrumental:String(source.instrumental_status||'unknown').toLowerCase(),
@@ -786,8 +786,7 @@ const GENRE_TAXONOMY = Object.freeze({
   genres:Object.freeze([
     'Lofi hip-hop','Guitare / acoustic / fingerstyle','Halloween Lofi',
     'Nature / soundscapes','Christmas Lofi','Jazz / jazzhop','Classique',
-    'Ambient','Piano','Dark ambient','Phonk instrumental','DnB instrumental',
-    'Autre / à définir'
+    'Ambient','Piano','Dark ambient','Phonk instrumental','DnB instrumental'
   ])
 });
 const UNCLASSIFIED_GENRE = 'À classifier';
@@ -1186,11 +1185,14 @@ function trackStatusHtml(track){
   const availability=discoveryAvailabilityInfo(track);
   const meta=track&&track.discoveryMeta;
   const rights=String(meta&&meta.rights||'').toLowerCase();
+  const rawLabel=String(meta&&meta.label||track&&track[5]||'').trim();
+  const labelName=rawLabel&&!['label','unknown','à enrichir','a enrichir'].includes(rawLabel.toLowerCase())?rawLabel:'';
+  const labelSuffix=labelName?` (${labelName})`:'';
   const rightsLabel=rights==='self_released'?(LANG==='fr'?'Indé':'Self-released')
-    :rights==='independent_label'?(LANG==='fr'?'Label indépendant':'Independent label')
-    :['major','major_label','mixed'].includes(rights)?'Major'
+    :rights==='independent_label'?(LANG==='fr'?`Label indépendant${labelSuffix}`:`Independent label${labelSuffix}`)
+    :['major','major_label','mixed'].includes(rights)?`Major${labelSuffix}`
     :rights==='unknown'?(LANG==='fr'?'Droits à vérifier':'Rights review')
-    :(track&&track[4]===0?T('Indé'):'Label');
+    :(track&&track[4]===0?T('Indé'):`Label${labelSuffix}`);
   const rightsClass=rights==='self_released'?'self':(['major','major_label','mixed'].includes(rights)?'other':'new');
   return `${availability?`<span class="badge ${availability.cls}">${esc(availability.label)}</span> `:''}<span class="badge ${rightsClass}">${esc(rightsLabel)}</span>`;
 }
@@ -1454,13 +1456,12 @@ function enhanceSelects(root){
 function genreFilterHtml(id,selected){
   const values=[...GENRE_TAXONOMY.genres,UNCLASSIFIED_GENRE];
   const count=selected.size;
-  const label=count===0?'🎼 Genre : tous':(count===1?'🎼 '+[...selected][0]:'🎼 Genres · '+count);
+  const label=count===0?'🎵 Genre : tous':(count===1?'🎵 '+[...selected][0]:'🎵 Genres · '+count);
   return `<div class="msel" id="${id}">
     <button type="button" class="msel-btn" aria-haspopup="true" aria-expanded="false"><span class="msel-label">${esc(label)}</span><span class="msel-chevron">▾</span></button>
     <div class="msel-list">
       <label class="msel-opt"><input type="checkbox" value="" ${count===0?'checked':''}><span>Tous les genres</span></label>
       ${values.map(v=>`<label class="msel-opt"><input type="checkbox" value="${esc(v)}" ${selected.has(v)?'checked':''}><span>${esc(v)}</span></label>`).join('')}
-      <div class="msel-foot">Taxonomie ${esc(GENRE_TAXONOMY.version)} · extensible</div>
     </div>
   </div>`;
 }
@@ -1696,13 +1697,13 @@ function artistTableRows(rows){
     <tr data-basehot="${r[3]>=HOT?1:0}" class="${r[3]>=HOT||S.sel.has(r[6])?'hot':''}">
       <td class="selc"><input type="checkbox" class="ck sel-track" data-tid="${r[6]}" ${acquirable?'':'disabled title="Sous label : simulation indisponible"'} ${S.sel.has(r[6])?'checked':''}></td>
       <td class="covtd">${r[8]?`<div class="cov has" style="background-image:url('${esc(r[8])}')"></div>`:`<div class="cov" data-tid="${r[6]}"></div>`}</td>
-      <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span>${r[7]?' <span class="badge new">'+T('détectée')+' '+r[7].slice(5)+'</span>':''}</td>
+      <td><span class="tk" style="cursor:pointer" onclick="openTrack('${r[6]}')">${esc(r[1])}</span></td>
       <td class="num" title="${fmtFull(r[3])}">${streamStackHtml(r[3]>=0?r[3]:null,false,false)}</td>
       <td class="num">${streamStackHtml(w30.current,false,false)}</td>
       <td class="num">${streamStackHtml(w7.current,false,false)}</td>
       <td class="num">${streamStackHtml(w1.current,false,false)}</td>
       <td class="num"><span style="color:var(--acc2);font-weight:600">${acquirable&&perMonth(r)>=0?eur(advance(perMonth(r))):'—'}</span></td>
-      <td>${fmtDate(r[2])}</td>
+      <td class="date-cell">${fmtDate(r[2])}</td>
       <td>${trackStatusHtml(r)}</td>
     </tr>`;}).join('');
 }
@@ -1758,7 +1759,7 @@ function renderArtistModal(){
       <th class="selc"></th><th></th><th>Track</th>
       <th class="num">${streamMetricLabel(0)}</th><th class="num">${streamMetricLabel(30)}</th>
       <th class="num">${streamMetricLabel(7)}</th><th class="num">${streamMetricLabel(1)}</th><th class="num">${T('Rachat')} ${S.palier}</th>
-      <th>${T('Sortie')}</th><th>${T('Statut')}</th>
+      <th class="date-cell">${T('Sortie')}</th><th>${T('Statut')}</th>
     </tr></thead><tbody>${artistTableRows(rows)}</tbody></table>
     ${rows.length===0?'<div class="empty">'+T('Aucune track connue dans la discographie de cet artiste.')+'</div>':''}
   `;
@@ -1950,17 +1951,25 @@ function sparklineValueLabel(value,unit){
   if(unit==='listeners') return `${fmtFull(value)} auditeurs mensuels`;
   return fmtFull(value);
 }
-function showSparkTooltip(dot,event){
-  const wrap=dot.closest('.spark-wrap'); if(!wrap) return;
-  const tip=wrap.querySelector('.spark-tooltip'); if(!tip) return;
+function showNearestSparkPoint(svg,event){
+  const wrap=svg.closest('.spark-wrap'); if(!wrap) return;
+  const tip=wrap.querySelector('.spark-tooltip'),marker=svg.querySelector('.spark-hover-point');
+  const dots=[...svg.querySelectorAll('.spark-point')];
+  if(!tip||!marker||!dots.length) return;
+  const rect=svg.getBoundingClientRect();
+  const pointerX=Math.max(0,Math.min(560,(event.clientX-rect.left)/Math.max(rect.width,1)*560));
+  const dot=dots.reduce((best,item)=>Math.abs(Number(item.getAttribute('cx'))-pointerX)<Math.abs(Number(best.getAttribute('cx'))-pointerX)?item:best,dots[0]);
+  const cx=Number(dot.getAttribute('cx')),cy=Number(dot.getAttribute('cy'));
+  marker.setAttribute('cx',String(cx));marker.setAttribute('cy',String(cy));marker.style.display='block';
   tip.textContent=`${dot.dataset.date} · ${dot.dataset.value}`;
-  const rect=wrap.getBoundingClientRect();
-  tip.style.left=`${Math.max(56,Math.min(rect.width-56,event.clientX-rect.left))}px`;
-  tip.style.top=`${Math.max(4,event.clientY-rect.top-38)}px`;
+  tip.style.left=`${Math.max(56,Math.min(rect.width-56,cx/560*rect.width))}px`;
+  tip.style.top=`${Math.max(4,cy/120*rect.height-38)}px`;
   wrap.classList.add('has-tip');
 }
-function hideSparkTooltip(dot){
-  const wrap=dot.closest('.spark-wrap'); if(wrap) wrap.classList.remove('has-tip');
+function hideNearestSparkPoint(svg){
+  const wrap=svg.closest('.spark-wrap'); if(!wrap) return;
+  wrap.classList.remove('has-tip');
+  const marker=svg.querySelector('.spark-hover-point'); if(marker) marker.style.display='none';
 }
 function sparkline(pts,unit='value'){
   if (!pts || pts.length<2) return '';
@@ -1972,11 +1981,12 @@ function sparkline(pts,unit='value'){
   const d=pts.map((p,i)=>(i?'L':'M')+sx(+new Date(p[0])).toFixed(1)+' '+sy(p[1]).toFixed(1)).join(' ');
   const up = ys[ys.length-1]>=ys[0];
   const col = up?'#4ade80':'#fb7185';
-  const dots=pts.map(p=>`<circle class="spark-point" cx="${sx(+new Date(p[0])).toFixed(1)}" cy="${sy(p[1]).toFixed(1)}" r="7" fill="transparent" data-date="${fmtDate(p[0])}" data-value="${esc(sparklineValueLabel(p[1],unit))}" onmouseenter="showSparkTooltip(this,event)" onmousemove="showSparkTooltip(this,event)" onmouseleave="hideSparkTooltip(this)"/>`).join('');
-  return `<div class="spark-wrap"><svg class="spark" viewBox="0 0 ${w} ${h}" width="100%" height="120" preserveAspectRatio="none">
+  const dots=pts.map(p=>`<circle class="spark-point" cx="${sx(+new Date(p[0])).toFixed(1)}" cy="${sy(p[1]).toFixed(1)}" r="1" fill="transparent" data-date="${fmtDate(p[0])}" data-value="${esc(sparklineValueLabel(p[1],unit))}"/>`).join('');
+  return `<div class="spark-wrap"><svg class="spark" viewBox="0 0 ${w} ${h}" width="100%" height="120" preserveAspectRatio="none" onmouseenter="showNearestSparkPoint(this,event)" onmousemove="showNearestSparkPoint(this,event)" onmouseleave="hideNearestSparkPoint(this)">
     <path d="${d}" fill="none" stroke="${col}" stroke-width="2.5"/>
     <path d="${d} L ${sx(x1)} ${h-pad} L ${sx(x0)} ${h-pad} Z" fill="${col}" opacity="0.12"/>
     ${dots}
+    <circle class="spark-hover-point" cx="0" cy="0" r="4.5" fill="${col}" stroke="#07100b" stroke-width="2" style="display:none" vector-effect="non-scaling-stroke"/>
   </svg><div class="spark-tooltip" role="status"></div></div>`;
 }
 /* mini simulateur d'offre pour une track seule (pop-up track) */
@@ -2982,6 +2992,18 @@ function arSetPaybackHorizon(years){
   if(!PAYBACK_HORIZONS.includes(Number(years))) return;
   S.paybackYears=Number(years); renderArList();
 }
+function arSelectionYears(artistKey){
+  const years=Number((arArtistEntry(artistKey)||{}).offerYears);
+  return PAYBACK_HORIZONS.includes(years)?years:2;
+}
+function arSetSelectionYears(artistKey,years){
+  if(!PAYBACK_HORIZONS.includes(Number(years))) return;
+  arArtistUpdate(artistKey,{offerYears:Number(years)});renderArList();
+}
+function arSelectionHorizonHtml(artistKey){
+  const selected=arSelectionYears(artistKey);
+  return `<div class="payback-horizon" title="${T("Durée choisie pour calculer l'avance et le payback.")}"><span>${T('Horizon de projection')}</span>${PAYBACK_HORIZONS.map(year=>`<button type="button" class="${year===selected?'on':''}" onclick="arSetSelectionYears('${esc(artistKey)}',${year})">${year} ${T('ans')}</button>`).join('')}</div>`;
+}
 function arSelectionStatusHtml(artistKey){
   const entry=arArtistEntry(artistKey)||{},status=arArtistStatus(artistKey),label=AR_STATUSES[status]||AR_STATUSES.to_contact;
   let detail='Prêt à contacter';
@@ -3008,14 +3030,16 @@ function arSelectionEconomics(group){
   const monthlyStreams=monthly.reduce((sum,value)=>sum+value,0);
   const measurable=monthly.length;
   const offer=arSelectionOffer(group.artist.key);
+  const years=arSelectionYears(group.artist.key);
   const labelMonthlyValue=monthlyStreams*RATE*(1+BUY.multiPlat)*BUY.fx*(1-BUY.orchard)*(1-BUY.costs)*(1-offer.artist);
-  const advanceValue=baseRef(monthlyStreams)*offer.adv*(S.publishing?1+BUY.publishing:1);
-  return {measurable,monthlyStreams,offer,advance:measurable?advanceValue:null,labelMonthly:measurable?labelMonthlyValue:null,payback:measurable&&labelMonthlyValue>0?advanceValue/labelMonthlyValue:null};
+  const projected=monthlyStreams*(years*12)*RATE*(1+BUY.multiPlat)*BUY.fx*(1-BUY.orchard)*(1-BUY.costs)*(1-BUY.decote);
+  const advanceValue=projected*offer.adv;
+  return {measurable,monthlyStreams,offer,years,advance:measurable?advanceValue:null,labelMonthly:measurable?labelMonthlyValue:null,payback:measurable&&labelMonthlyValue>0?advanceValue/labelMonthlyValue:null};
 }
 function arSelectionEconomicsHtml(group){
   const economics=arSelectionEconomics(group);
   const value=number=>economics.measurable?number:'—';
-  return `<section class="ar-selection-economics" title="Même calcul que Pistes et Artistes. Ces estimations restent internes et ne sont jamais ajoutées au message."><div class="ar-selection-economics-top"><div class="ar-selection-economics-label">💶 Estimation interne</div><div class="ar-selection-offers">${BUY.paliers.map(offer=>`<button type="button" class="${offer.k===economics.offer.k?'on':''}" onclick="arSetSelectionOffer('${esc(group.artist.key)}','${offer.k}')">${offer.k}</button>`).join('')}</div></div>${paybackHorizonHtml(year=>`arSetPaybackHorizon(${year})`)}<div class="ar-selection-economics-grid"><div><span>Coût estimé</span><strong>${value(eur(economics.advance))}</strong></div><div><span>Revenu / mois</span><strong>${value(eur(economics.labelMonthly))}</strong></div><div><span>Payback</span><strong class="${economics.measurable?paybackClass(economics.payback):''}">${value(paybackTxt(economics.payback))}</strong></div></div></section>`;
+  return `<section class="ar-selection-economics" title="Même calcul que Pistes et Artistes. Chaque artiste conserve ses propres paramètres."><div class="ar-selection-economics-top"><div class="ar-selection-economics-label">💶 Estimation interne</div><div class="ar-selection-offers">${BUY.paliers.map(offer=>`<button type="button" class="${offer.k===economics.offer.k?'on':''}" onclick="arSetSelectionOffer('${esc(group.artist.key)}','${offer.k}')">${offer.k}</button>`).join('')}</div></div>${arSelectionHorizonHtml(group.artist.key)}<div class="ar-selection-economics-grid"><div><span>Coût estimé</span><strong>${value(eur(economics.advance))}</strong></div><div><span>Revenu / mois</span><strong>${value(eur(economics.labelMonthly))}</strong></div><div><span>Payback</span><strong class="${economics.measurable?paybackClass(economics.payback):''}">${value(paybackTxt(economics.payback))}</strong></div></div></section>`;
 }
 function renderArList(){
   const saved=arListGet(),rows=Object.keys(saved).map(id=>({opportunity:arOpportunityRows().find(item=>item.spotifyId===id),entry:saved[id]})).filter(item=>item.opportunity&&arContactEligible(item.opportunity));

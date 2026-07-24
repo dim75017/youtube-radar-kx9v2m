@@ -14,6 +14,6 @@ for(const required of [
 ]) if(!recos.includes(required))throw new Error('Missing recommendation status-tab behavior: '+required);
 for(const required of ['.reco-tabbar','.reco-tab.pending','.reco-tab.validated','.reco-tab.archive'])
   if(!css.includes(required))throw new Error('Missing status-tab style: '+required);
-if(!index.includes('dashboard-04-recommendations.js?v=20260723-reco-status-tabs-v1'))
+if(!index.includes('dashboard-04-recommendations.js?v=20260724-soft-ui-roadmap-v1'))
   throw new Error('Recommendation script cache version is stale');
 console.log('youtube recommendation status tabs: ok');

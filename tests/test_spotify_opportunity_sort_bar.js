@@ -18,10 +18,10 @@ assert.match(dashboard, /S\.radarQ=event\.target\.value/);
 assert.match(dashboard, /ar-columnbar-cover-spacer/);
 assert.match(css, /\.ar-filterbar-simple\{/);
 assert.match(css, /\.ar-radar-search input/);
-assert.match(css, /\.ar-columnbar button\.asc \.sort-triangles/);
+assert.match(css, /\.sort-triangles\{display:inline-block/);
 assert.match(css, /--ar-opportunity-columns/);
 assert.match(css, /ar-opp-metric:nth-child\(5\)\{grid-column:10\}/);
 assert.match(css, /ar-editorial-card\{grid-column:11\}/);
-assert.match(index, /dashboard\.js\?v=20260724-metric-mode-controls-v1/);
+assert.match(index, /dashboard\.js\?v=20260724-genre-density-analytics-v2/);
 
 console.log('spotify opportunity sorting bar: OK');

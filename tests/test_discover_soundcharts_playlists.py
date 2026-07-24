@@ -149,6 +149,44 @@ class PlaylistDiscoveryTests(unittest.TestCase):
         self.assertEqual([item["spotify_id"] for item in selected], ["playlist-1"])
         self.assertEqual(selected[0]["primary_genre"], "piano")
 
+    def test_independent_playlist_selection_requires_strong_background_signal(self):
+        payload = {
+            "cols": ["id", "name", "owner", "curatorCat", "followers", "tracks", "genre", "use_case", "kw"],
+            "rows": [
+                ["lofi", "Lofi hip hop beats to study", "Curator", "independent", 800_000, 200, "Ambient", "Study", "lofi beats|lofi for study"],
+                ["ambient", "Dark Ambient for Deep Focus", "Curator", "independent", 200_000, 90, "Other / multi-genre", "Focus", "dark ambient music"],
+                ["running", "RUNNING Music Hits 2026", "Curator", "independent", 1_800_000, 100, "Lofi / chillhop", "Focus", "work music"],
+                ["gym", "GYM PHONK 2026", "Curator", "independent", 1_700_000, 120, "Lofi / chillhop", "Focus", "work music"],
+                ["house", "Deep House Covers", "Curator", "independent", 400_000, 80, "Ambient", "Focus", "ambient for work"],
+            ],
+        }
+        selected = subject.select_playlists(payload, "independent")
+        self.assertEqual([item["spotify_id"] for item in selected], ["lofi", "ambient"])
+        self.assertEqual(selected[0]["source_tier"], "independent_playlist")
+        self.assertEqual(selected[1]["primary_genre"], "dark_ambient")
+
+    def test_independent_playlist_rotation_prefers_unscanned_then_oldest(self):
+        rows = [
+            {"spotify_id": "new", "name": "New", "followers": 10},
+            {"spotify_id": "old", "name": "Old", "followers": 100},
+            {"spotify_id": "recent", "name": "Recent", "followers": 1_000},
+        ]
+        ordered = subject.playlist_scan_order(
+            rows,
+            {
+                "old": {"last_scan_at": "2026-07-01T00:00:00Z"},
+                "recent": {"last_scan_at": "2026-07-23T00:00:00Z"},
+            },
+            limit=3,
+        )
+        self.assertEqual([item["spotify_id"] for item in ordered], ["new", "old", "recent"])
+
+    def test_editorial_source_remains_authoritative_over_independent(self):
+        self.assertEqual(
+            subject.preferred_source_tier("editorial_playlist", "independent_playlist"),
+            "editorial_playlist",
+        )
+
     def test_playlist_evidence_deduplicates_and_prefers_best_position(self):
         placements = [
             {

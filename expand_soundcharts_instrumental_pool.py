@@ -25,6 +25,7 @@ import json
 import math
 import re
 import threading
+import unicodedata
 import urllib.parse
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -71,6 +72,9 @@ TRACK_EXTRA_FIELDS = (
     "primary_genre",
     "subgenres",
     "genre_confidence",
+    "genre_source",
+    "soundcharts_genres",
+    "soundcharts_genres_checked_at",
     "instrumental_status",
     "instrumental_confidence",
     "ai_risk",
@@ -78,6 +82,45 @@ TRACK_EXTRA_FIELDS = (
     "expansion_status",
     "rights_confidence",
     "source_tier",
+)
+
+PLAYLIST_SOURCE_TIERS = frozenset(
+    {
+        "editorial_playlist",
+        "independent_playlist",
+        "playlist_artist_catalogue",
+    }
+)
+
+SOUNDCHARTS_GENRE_RULES = (
+    ("christmas_lofi", ("christmas lofi", "holiday lofi")),
+    ("halloween_lofi", ("halloween lofi",)),
+    ("dark_ambient", ("dark ambient",)),
+    ("lofi_hip_hop", ("lofi", "lo fi", "chillhop", "jazzhop")),
+    ("guitar", ("fingerstyle", "acoustic guitar", "classical guitar", "guitar")),
+    ("nature", ("nature sounds", "nature sound", "environmental")),
+    ("soundscape", ("soundscape", "field recording")),
+    ("jazz_jazzhop", ("bossa nova", "jazz")),
+    ("classical", ("neoclassical", "neo classical", "classical")),
+    ("piano", ("piano",)),
+    ("meditation", ("meditation", "mindfulness")),
+    ("sleep", ("sleep music", "sleep")),
+    ("ambient", ("ambient", "new age")),
+    ("synthwave", ("synthwave", "retrowave")),
+)
+
+INSTRUMENTAL_GENRE_MARKERS = (
+    "instrumental",
+    "instrumental music",
+    "instrumental hip hop",
+)
+
+VOCAL_GENRE_MARKERS = (
+    "vocal",
+    "a cappella",
+    "acapella",
+    "spoken word",
+    "singer songwriter",
 )
 
 ARTIST_EXTRA_FIELDS = (
@@ -352,12 +395,14 @@ def editorial_candidates(payload: dict[str, Any], include_review: bool = True) -
         instrumental = str(field(row, schema, "instrumental_status") or "unknown").strip().casefold()
         instrumental_confidence = finite_number(field(row, schema, "instrumental_confidence"))
         source_tier = str(field(row, schema, "source_tier") or "").strip().casefold()
-        playlist_source = source_tier in {"editorial_playlist", "playlist_artist_catalogue"}
+        playlist_source = source_tier in PLAYLIST_SOURCE_TIERS
         ai_safe = ai_risk in {"low", "faible"}
         ai_reviewable = playlist_source and ai_risk in {"", "unknown", "unclassified", "pending"}
         if not uuid or uuid in seen or genre not in TARGET_GENRES:
             continue
         if genre_confidence is None or genre_confidence < 0.5:
+            continue
+        if instrumental in {"vocal", "non_instrumental"}:
             continue
         if not ai_safe and not ai_reviewable:
             continue
@@ -379,6 +424,11 @@ def editorial_candidates(payload: dict[str, Any], include_review: bool = True) -
                 if isinstance(field(row, schema, "subgenres"), list)
                 else [],
                 "genre_confidence": float(genre_confidence),
+                "genre_source": str(field(row, schema, "genre_source") or source_tier or "playlist_evidence"),
+                "soundcharts_genres": list(field(row, schema, "soundcharts_genres") or [])
+                if isinstance(field(row, schema, "soundcharts_genres"), list)
+                else [],
+                "soundcharts_genres_checked_at": str(field(row, schema, "soundcharts_genres_checked_at") or ""),
                 "instrumental_status": instrumental,
                 "instrumental_confidence": float(instrumental_confidence or 0),
                 "ai_risk": ai_risk,
@@ -441,7 +491,7 @@ def prioritize_candidates(
     def priority(item: dict[str, Any]) -> tuple[int, float, int, int, str]:
         uuid = item["soundcharts_uuid"]
         source_tier = str(item.get("source_tier") or "")
-        playlist_source = source_tier in {"editorial_playlist", "playlist_artist_catalogue"}
+        playlist_source = source_tier in PLAYLIST_SOURCE_TIERS
         measured = uuid in measured_uuids or bool(item.get("spotify_id") and item.get("spotify_id") in performance_tracks)
         if uuid in opportunity_uuids:
             tier = 0
@@ -505,6 +555,102 @@ def infer_rights(label: Any, copyright_text: Any, artists: list[dict[str, Any]],
     return "unknown", 0.25
 
 
+def normalize_genre_label(value: Any) -> str:
+    text = unicodedata.normalize("NFKD", str(value or ""))
+    text = "".join(char for char in text if not unicodedata.combining(char)).casefold()
+    text = text.replace("&", " and ")
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", text)).strip()
+
+
+def parse_soundcharts_genres(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    out: list[dict[str, Any]] = []
+    seen: set[tuple[str, tuple[str, ...]]] = set()
+    for item in value:
+        if not isinstance(item, Mapping):
+            continue
+        root = str(item.get("root") or "").strip()
+        sub = []
+        raw_sub = item.get("sub")
+        if isinstance(raw_sub, list):
+            sub = [str(label or "").strip() for label in raw_sub if str(label or "").strip()]
+        key = (root.casefold(), tuple(label.casefold() for label in sub))
+        if not root and not sub or key in seen:
+            continue
+        seen.add(key)
+        out.append({"root": root, "sub": sub})
+    return out
+
+
+def soundcharts_genre_classification(
+    value: Any,
+    *,
+    fallback_genre: str = "",
+    fallback_subgenres: Iterable[str] = (),
+    fallback_confidence: float | None = None,
+    current_instrumental: str = "unknown",
+    current_instrumental_confidence: float | None = None,
+) -> dict[str, Any]:
+    raw = parse_soundcharts_genres(value)
+    labels: list[str] = []
+    for item in raw:
+        labels.extend([str(item.get("root") or ""), *(item.get("sub") or [])])
+    normalized = [normalize_genre_label(label) for label in labels if normalize_genre_label(label)]
+
+    def has_marker(markers: Iterable[str]) -> bool:
+        return any(marker in label for marker in markers for label in normalized)
+
+    mapped: list[str] = []
+    for internal, markers in SOUNDCHARTS_GENRE_RULES:
+        if has_marker(markers) and internal not in mapped:
+            mapped.append(internal)
+
+    explicit_instrumental = has_marker(INSTRUMENTAL_GENRE_MARKERS)
+    explicit_vocal = has_marker(VOCAL_GENRE_MARKERS)
+    if explicit_instrumental and not explicit_vocal:
+        if has_marker(("drum and bass", "drum n bass", "dnb")):
+            mapped.insert(0, "dnb_instrumental")
+        elif has_marker(("phonk",)):
+            mapped.insert(0, "phonk_instrumental")
+        elif not mapped:
+            mapped.append("other_instrumental")
+
+    genre = mapped[0] if mapped else str(fallback_genre or "")
+    subgenres: list[str] = []
+    for candidate in [*mapped[1:], *[str(item or "") for item in fallback_subgenres]]:
+        if candidate and candidate != genre and candidate not in subgenres:
+            subgenres.append(candidate)
+    genre_confidence = 0.95 if mapped else fallback_confidence
+    genre_source = "soundcharts_song" if mapped else "playlist_evidence"
+
+    instrumental = str(current_instrumental or "unknown").casefold()
+    instrumental_confidence = current_instrumental_confidence
+    if explicit_instrumental and explicit_vocal:
+        instrumental = "unknown"
+        instrumental_confidence = None
+    elif explicit_vocal:
+        instrumental = "vocal"
+        instrumental_confidence = 0.95
+    elif explicit_instrumental:
+        instrumental = "instrumental"
+        instrumental_confidence = 0.95
+
+    checked_at = utc_now()
+    return {
+        "primary_genre": genre,
+        "subgenres": subgenres,
+        "genre_confidence": genre_confidence,
+        "genre_source": genre_source,
+        "soundcharts_genres": raw,
+        "instrumental_status": instrumental,
+        "instrumental_confidence": instrumental_confidence,
+        "has_exact_genre": bool(mapped),
+        "has_instrumental_evidence": explicit_instrumental and not explicit_vocal,
+        "has_vocal_evidence": explicit_vocal and not explicit_instrumental,
+    }
+
+
 def parse_song_detail(response: Any, editorial: dict[str, Any]) -> dict[str, Any] | None:
     obj = response.get("object") if isinstance(response, dict) else None
     if not isinstance(obj, dict):
@@ -537,6 +683,15 @@ def parse_song_detail(response: Any, editorial: dict[str, Any]) -> dict[str, Any
     isrc = obj.get("isrc")
     if isinstance(isrc, dict):
         isrc = isrc.get("value")
+    classification = soundcharts_genre_classification(
+        obj.get("genres"),
+        fallback_genre=str(editorial.get("primary_genre") or ""),
+        fallback_subgenres=editorial.get("subgenres") or [],
+        fallback_confidence=finite_number(editorial.get("genre_confidence")),
+        current_instrumental=str(editorial.get("instrumental_status") or "unknown"),
+        current_instrumental_confidence=finite_number(editorial.get("instrumental_confidence")),
+    )
+    checked_at = utc_now()
     return {
         "soundcharts_uuid": str(obj.get("uuid") or editorial.get("soundcharts_uuid") or ""),
         "title": str(obj.get("name") or editorial.get("title") or ""),
@@ -551,8 +706,191 @@ def parse_song_detail(response: Any, editorial: dict[str, Any]) -> dict[str, Any
         "explicit": bool(obj.get("explicit")) if obj.get("explicit") is not None else None,
         "rights_status": rights,
         "rights_confidence": confidence,
-        "fetched_at": utc_now(),
+        **classification,
+        "soundcharts_genres_checked_at": checked_at,
+        "fetched_at": checked_at,
     }
+
+
+def ensure_editorial_classification_fields(payload: dict[str, Any]) -> tuple[list[str], list[list[Any]]]:
+    editorial = payload.setdefault("editorial", {})
+    if not isinstance(editorial, dict):
+        raise InstrumentalPoolError("Soundcharts editorial group must be an object")
+    schema = editorial.setdefault("track_schema", [])
+    rows = editorial.setdefault("tracks", [])
+    if not isinstance(schema, list) or not isinstance(rows, list):
+        raise InstrumentalPoolError("Invalid editorial tracks export")
+    for name in ("genre_source", "soundcharts_genres", "soundcharts_genres_checked_at"):
+        if name in schema:
+            continue
+        schema.append(name)
+        for row in rows:
+            if isinstance(row, list):
+                row.append(None)
+    return schema, rows
+
+
+def update_editorial_classification(
+    payload: dict[str, Any],
+    soundcharts_uuid: str,
+    detail: Mapping[str, Any],
+) -> bool:
+    schema, rows = ensure_editorial_classification_fields(payload)
+    row = next(
+        (
+            item
+            for item in rows
+            if isinstance(item, list) and str(field(item, schema, "soundcharts_uuid") or "") == soundcharts_uuid
+        ),
+        None,
+    )
+    if row is None:
+        return False
+
+    if detail.get("has_exact_genre") and detail.get("primary_genre"):
+        set_field(row, schema, "primary_genre", detail["primary_genre"])
+        set_field(row, schema, "subgenres", list(detail.get("subgenres") or []))
+        set_field(row, schema, "genre_confidence", detail.get("genre_confidence"))
+        set_field(row, schema, "genre_source", "soundcharts_song")
+    elif not field(row, schema, "genre_source"):
+        set_field(row, schema, "genre_source", "playlist_evidence")
+
+    status = str(detail.get("instrumental_status") or "unknown")
+    if status in {"instrumental", "vocal"}:
+        set_field(row, schema, "instrumental_status", status)
+        set_field(row, schema, "instrumental_confidence", detail.get("instrumental_confidence"))
+
+    set_field(row, schema, "soundcharts_genres", list(detail.get("soundcharts_genres") or []))
+    set_field(row, schema, "soundcharts_genres_checked_at", detail.get("soundcharts_genres_checked_at"))
+
+    reasons = field(row, schema, "review_reasons")
+    clean_reasons = [str(item) for item in reasons] if isinstance(reasons, list) else []
+    if status == "instrumental":
+        clean_reasons = [item for item in clean_reasons if item != "instrumental_check_required"]
+        if "soundcharts_instrumental_genre" not in clean_reasons:
+            clean_reasons.append("soundcharts_instrumental_genre")
+    elif status == "vocal" and "soundcharts_vocal_genre" not in clean_reasons:
+        clean_reasons.append("soundcharts_vocal_genre")
+    if detail.get("has_exact_genre") and "soundcharts_genre_exact" not in clean_reasons:
+        clean_reasons.append("soundcharts_genre_exact")
+    if "review_reasons" in schema:
+        set_field(row, schema, "review_reasons", clean_reasons)
+    return True
+
+
+def _editorial_row_context(row: list[Any], schema: list[str]) -> dict[str, Any]:
+    return {
+        "soundcharts_uuid": str(field(row, schema, "soundcharts_uuid") or ""),
+        "title": str(field(row, schema, "name") or ""),
+        "credit_name": str(field(row, schema, "artist") or ""),
+        "release_date": str(field(row, schema, "release_date") or ""),
+        "primary_genre": str(field(row, schema, "primary_genre") or ""),
+        "subgenres": list(field(row, schema, "subgenres") or [])
+        if isinstance(field(row, schema, "subgenres"), list)
+        else [],
+        "genre_confidence": finite_number(field(row, schema, "genre_confidence")),
+        "instrumental_status": str(field(row, schema, "instrumental_status") or "unknown"),
+        "instrumental_confidence": finite_number(field(row, schema, "instrumental_confidence")),
+    }
+
+
+def classify_soundcharts_genres(
+    soundcharts: dict[str, Any],
+    cache: dict[str, Any],
+    client: Any,
+    *,
+    workers: int = 24,
+    max_requests: int = 8_230,
+    limit: int | None = None,
+) -> dict[str, Any]:
+    schema, rows = ensure_editorial_classification_fields(soundcharts)
+    cache_tracks = cache.setdefault("tracks", {})
+    if not isinstance(cache_tracks, dict):
+        raise InstrumentalPoolError("Instrumental cache tracks must be an object")
+
+    pending: list[tuple[str, dict[str, Any]]] = []
+    for row in rows:
+        if not isinstance(row, list):
+            continue
+        uuid = str(field(row, schema, "soundcharts_uuid") or "").strip()
+        source_tier = str(field(row, schema, "source_tier") or "").casefold()
+        ai_risk = str(field(row, schema, "ai_risk") or "unknown").casefold()
+        instrumental = str(field(row, schema, "instrumental_status") or "unknown").casefold()
+        instrumental_confidence = finite_number(field(row, schema, "instrumental_confidence")) or 0
+        verified = ai_risk in {"low", "faible"} and instrumental == "instrumental" and instrumental_confidence >= 0.5
+        cached = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
+        checked_at = field(row, schema, "soundcharts_genres_checked_at") or cached.get("soundcharts_genres_checked_at")
+        if not uuid or source_tier not in PLAYLIST_SOURCE_TIERS or verified or checked_at:
+            continue
+        pending.append((uuid, _editorial_row_context(row, schema)))
+
+    cap = min(max(0, max_requests), max(0, limit) if limit is not None else max(0, max_requests))
+    selected = pending[:cap]
+    budget = RequestBudget(max_requests)
+    tasks = [(uuid, f"/api/v2/song/{urllib.parse.quote(uuid)}") for uuid, _ in selected]
+    responses, failures = parallel_requests(client, tasks, budget, workers)
+    contexts = dict(selected)
+    updated = 0
+    exact_genres = 0
+    instrumental = 0
+    vocal = 0
+    with_genres = 0
+    for uuid, response in responses.items():
+        parsed = parse_song_detail(response, contexts[uuid])
+        if not parsed:
+            continue
+        existing = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
+        cache_tracks[uuid] = {**existing, **parsed}
+        updated += int(update_editorial_classification(soundcharts, uuid, parsed))
+        with_genres += int(bool(parsed.get("soundcharts_genres")))
+        exact_genres += int(bool(parsed.get("has_exact_genre")))
+        instrumental += int(bool(parsed.get("has_instrumental_evidence")))
+        vocal += int(bool(parsed.get("has_vocal_evidence")))
+
+    refreshed_schema, refreshed_rows = ensure_editorial_classification_fields(soundcharts)
+    remaining = 0
+    for row in refreshed_rows:
+        if not isinstance(row, list):
+            continue
+        uuid = str(field(row, refreshed_schema, "soundcharts_uuid") or "").strip()
+        source_tier = str(field(row, refreshed_schema, "source_tier") or "").casefold()
+        ai_risk = str(field(row, refreshed_schema, "ai_risk") or "unknown").casefold()
+        status = str(field(row, refreshed_schema, "instrumental_status") or "unknown").casefold()
+        confidence = finite_number(field(row, refreshed_schema, "instrumental_confidence")) or 0
+        verified = ai_risk in {"low", "faible"} and status == "instrumental" and confidence >= 0.5
+        cached = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
+        checked_at = field(row, refreshed_schema, "soundcharts_genres_checked_at") or cached.get("soundcharts_genres_checked_at")
+        if uuid and source_tier in PLAYLIST_SOURCE_TIERS and not verified and not checked_at:
+            remaining += 1
+
+    now = utc_now()
+    summary = {
+        "status": "success",
+        "finished_at": now,
+        "pending_before": len(pending),
+        "selected": len(selected),
+        "updated": updated,
+        "responses_with_genres": with_genres,
+        "exact_target_genres": exact_genres,
+        "instrumental_genre_evidence": instrumental,
+        "vocal_genre_evidence": vocal,
+        "remaining": remaining,
+        "requests": budget.used,
+        "quota_remaining": getattr(client, "quota_remaining", None),
+        "failures": failures,
+        "rules": {
+            "genre_source": "soundcharts_song_metadata",
+            "instrumental_requires_explicit_tag": True,
+            "ai_risk_never_inferred": True,
+        },
+    }
+    soundcharts["classification_backfill"] = summary
+    freshness = soundcharts.setdefault("freshness", {})
+    if isinstance(freshness, dict):
+        freshness["classification_backfill_at"] = now
+    cache["version"] = CACHE_VERSION
+    cache["updated_at"] = now
+    return summary
 
 
 def parse_artist_identifiers(response: Any) -> dict[str, Any]:
@@ -824,7 +1162,11 @@ def expand_instrumental_pool(
     for item in candidates:
         uuid = item["soundcharts_uuid"]
         cached = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
-        if not cached or is_stale(cached.get("fetched_at"), metadata_refresh_days):
+        if (
+            not cached
+            or not cached.get("soundcharts_genres_checked_at")
+            or is_stale(cached.get("fetched_at"), metadata_refresh_days)
+        ):
             metadata_tasks.append((uuid, f"/api/v2/song/{urllib.parse.quote(uuid)}"))
     metadata_responses, metadata_failures = parallel_requests(client, metadata_tasks, budget, workers)
     for uuid, response in metadata_responses.items():
@@ -832,6 +1174,27 @@ def expand_instrumental_pool(
         if parsed:
             existing = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
             cache_tracks[uuid] = {**existing, **parsed}
+            update_editorial_classification(soundcharts, uuid, parsed)
+            item = candidate_by_uuid[uuid]
+            if parsed.get("has_exact_genre"):
+                item["primary_genre"] = parsed["primary_genre"]
+                item["subgenres"] = list(parsed.get("subgenres") or [])
+                item["genre_confidence"] = float(parsed.get("genre_confidence") or item.get("genre_confidence") or 0)
+                item["genre_source"] = "soundcharts_song"
+            item["soundcharts_genres"] = list(parsed.get("soundcharts_genres") or [])
+            item["soundcharts_genres_checked_at"] = str(parsed.get("soundcharts_genres_checked_at") or "")
+            status = str(parsed.get("instrumental_status") or item.get("instrumental_status") or "unknown").casefold()
+            if status in {"instrumental", "vocal"}:
+                item["instrumental_status"] = status
+                item["instrumental_confidence"] = float(parsed.get("instrumental_confidence") or 0)
+            if status == "vocal":
+                item["classification_status"] = "excluded"
+            elif (
+                str(item.get("ai_risk") or "unknown").casefold() in {"low", "faible"}
+                and status == "instrumental"
+                and float(item.get("instrumental_confidence") or 0) >= 0.5
+            ):
+                item["classification_status"] = "verified"
 
     unique_artists: dict[str, str] = {}
     for item in candidates:
@@ -880,10 +1243,7 @@ def expand_instrumental_pool(
     daily_ready = 0
     verified_measured = 0
     review_measured = 0
-    playlist_selected = sum(
-        str(item.get("source_tier") or "") in {"editorial_playlist", "playlist_artist_catalogue"}
-        for item in candidates
-    )
+    playlist_selected = sum(str(item.get("source_tier") or "") in PLAYLIST_SOURCE_TIERS for item in candidates)
     playlist_measured = 0
     rights_counts: dict[str, int] = {}
     latest_source_date: str | None = None
@@ -891,6 +1251,8 @@ def expand_instrumental_pool(
 
     for item in candidates:
         uuid = item["soundcharts_uuid"]
+        if item.get("classification_status") == "excluded":
+            continue
         audience = audiences.get(uuid)
         if not audience:
             continue
@@ -956,6 +1318,9 @@ def expand_instrumental_pool(
             "primary_genre": item["primary_genre"],
             "subgenres": item["subgenres"],
             "genre_confidence": item["genre_confidence"],
+            "genre_source": item.get("genre_source") or item.get("source_tier") or "playlist_evidence",
+            "soundcharts_genres": item.get("soundcharts_genres") or [],
+            "soundcharts_genres_checked_at": item.get("soundcharts_genres_checked_at") or track_meta.get("soundcharts_genres_checked_at"),
             "instrumental_status": item["instrumental_status"],
             "instrumental_confidence": item["instrumental_confidence"],
             "ai_risk": item["ai_risk"],
@@ -984,7 +1349,8 @@ def expand_instrumental_pool(
                     "genre": item["primary_genre"],
                     "subgenres": item["subgenres"],
                     "genre_confidence": item["genre_confidence"],
-                    "genre_source": item.get("source_tier") or "soundcharts_editorial",
+                    "genre_source": item.get("genre_source") or item.get("source_tier") or "playlist_evidence",
+                    "soundcharts_genres": item.get("soundcharts_genres") or [],
                     "instrumental": item["instrumental_status"],
                     "instrumental_confidence": item["instrumental_confidence"],
                     "ai_risk": item["ai_risk"],
@@ -999,9 +1365,7 @@ def expand_instrumental_pool(
         daily_ready += int(audience["delta_24h"] is not None)
         verified_measured += int(item["classification_status"] == "verified")
         review_measured += int(item["classification_status"] == "needs_listen")
-        playlist_measured += int(
-            str(item.get("source_tier") or "") in {"editorial_playlist", "playlist_artist_catalogue"}
-        )
+        playlist_measured += int(str(item.get("source_tier") or "") in PLAYLIST_SOURCE_TIERS)
         rights_counts[rights_status] = rights_counts.get(rights_status, 0) + 1
         if latest_source_date is None or latest_day > latest_source_date:
             latest_source_date = latest_day
@@ -1055,6 +1419,22 @@ def expand_instrumental_pool(
     editorial_all = editorial_candidates(soundcharts, include_review=True)
     verified_total = sum(item["classification_status"] == "verified" for item in editorial_all)
     review_total = len(editorial_all) - verified_total
+    editorial_schema, editorial_rows = ensure_editorial_classification_fields(soundcharts)
+    genre_checked_total = sum(
+        bool(field(row, editorial_schema, "soundcharts_genres_checked_at"))
+        for row in editorial_rows
+        if isinstance(row, list)
+    )
+    genre_exact_total = sum(
+        str(field(row, editorial_schema, "genre_source") or "") == "soundcharts_song"
+        for row in editorial_rows
+        if isinstance(row, list)
+    )
+    vocal_excluded_total = sum(
+        str(field(row, editorial_schema, "instrumental_status") or "").casefold() == "vocal"
+        for row in editorial_rows
+        if isinstance(row, list)
+    )
     discography = soundcharts.get("coverage", {}).get("discography", {}) if isinstance(soundcharts.get("coverage"), dict) else {}
     summary = {
         "status": "success",
@@ -1063,6 +1443,9 @@ def expand_instrumental_pool(
         "target_editorial_total": len(editorial_all),
         "target_verified_total": verified_total,
         "target_needs_listen_total": review_total,
+        "soundcharts_genres_checked_total": genre_checked_total,
+        "soundcharts_exact_genres_total": genre_exact_total,
+        "soundcharts_vocal_excluded_total": vocal_excluded_total,
         "selected": len(candidates),
         "measured": measured,
         "daily_delta_ready": daily_ready,
@@ -1109,6 +1492,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--artist-refresh-days", type=int, default=7)
     parser.add_argument("--limit", type=int)
     parser.add_argument("--verified-only", action="store_true")
+    parser.add_argument(
+        "--classification-only",
+        action="store_true",
+        help="Backfill exact Soundcharts song genres without collecting stream histories",
+    )
     return parser.parse_args()
 
 
@@ -1125,21 +1513,32 @@ def main() -> int:
     )
     client.authenticate()
     client.require_quota_reserve()
-    summary = expand_instrumental_pool(
-        soundcharts,
-        performance,
-        cache,
-        client,
-        workers=args.workers,
-        max_requests=args.max_requests,
-        history_days=args.history_days,
-        metadata_refresh_days=args.metadata_refresh_days,
-        artist_refresh_days=args.artist_refresh_days,
-        limit=args.limit,
-        include_review=not args.verified_only,
-    )
+    if args.classification_only:
+        summary = classify_soundcharts_genres(
+            soundcharts,
+            cache,
+            client,
+            workers=args.workers,
+            max_requests=args.max_requests,
+            limit=args.limit,
+        )
+    else:
+        summary = expand_instrumental_pool(
+            soundcharts,
+            performance,
+            cache,
+            client,
+            workers=args.workers,
+            max_requests=args.max_requests,
+            history_days=args.history_days,
+            metadata_refresh_days=args.metadata_refresh_days,
+            artist_refresh_days=args.artist_refresh_days,
+            limit=args.limit,
+            include_review=not args.verified_only,
+        )
     write_js_payload(args.soundcharts, soundcharts, SOUNDCHARTS_PREFIX)
-    write_js_payload(args.performance, performance, PERFORMANCE_PREFIX)
+    if not args.classification_only:
+        write_js_payload(args.performance, performance, PERFORMANCE_PREFIX)
     write_cache(args.cache, cache)
     print(json.dumps(summary, ensure_ascii=False))
     return 0

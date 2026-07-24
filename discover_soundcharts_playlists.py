@@ -22,6 +22,8 @@ import datetime as dt
 import json
 import math
 import os
+import re
+import unicodedata
 import urllib.parse
 from pathlib import Path
 from typing import Any, Iterable, Mapping
@@ -47,6 +49,38 @@ PLAYLIST_GENRE_MAP = {
     "ambient": "ambient",
     "nature": "nature",
     "jazz / bossa": "jazz_jazzhop",
+    "classical": "classical",
+    "guitar": "guitar",
+    "synthwave / retro": "synthwave",
+}
+
+INDEPENDENT_GENRE_RULES = (
+    ("christmas_lofi", (r"\bchristmas\s+(?:lofi|lo fi)\b", r"\b(?:lofi|lo fi)\s+christmas\b")),
+    ("halloween_lofi", (r"\bhalloween\s+(?:lofi|lo fi)\b", r"\b(?:lofi|lo fi)\s+halloween\b")),
+    ("dark_ambient", (r"\bdark\s+ambient\b",)),
+    ("dnb_instrumental", (r"\b(?:instrumental\s+(?:dnb|drum\s*(?:and|&)\s*bass)|(?:dnb|drum\s*(?:and|&)\s*bass)\s+instrumental)\b",)),
+    ("phonk_instrumental", (r"\binstrumental\s+phonk\b", r"\bphonk\s+instrumental\b")),
+    ("lofi_hip_hop", (r"\b(?:lofi|lo fi|chillhop|jazzhop)\b",)),
+    ("guitar", (r"\b(?:fingerstyle|acoustic\s+guitar|classical\s+guitar)\b",)),
+    ("nature", (r"\b(?:nature\s+sounds?|rain\s+sounds?|forest\s+ambience|ocean\s+sounds?|white\s+noise|brown\s+noise)\b",)),
+    ("jazz_jazzhop", (r"\b(?:jazz|bossa\s+nova)\b",)),
+    ("classical", (r"\b(?:classical|neoclassical|neo classical)\b",)),
+    ("piano", (r"\bpiano\b",)),
+    ("ambient", (r"\b(?:ambient|soundscape|meditation\s+music)\b",)),
+    ("synthwave", (r"\b(?:synthwave|retrowave)\b",)),
+)
+
+INDEPENDENT_EXCLUSION_RE = re.compile(
+    r"\b(?:workout|gym|running|sport\s+motivation|music\s+hits?|top\s+hits?|pop\s+hits?|rnb|r&b|"
+    r"deep\s+house|techno|edm|dance\s+hits?|vocal|with\s+lyrics|popular\s+songs?|rock\s+songs?)\b",
+    re.IGNORECASE,
+)
+
+SOURCE_TIER_PRIORITY = {
+    "instrumental_editorial_daily": 0,
+    "editorial_playlist": 1,
+    "independent_playlist": 2,
+    "playlist_artist_catalogue": 3,
 }
 
 TRACK_FIELDS = (
@@ -64,6 +98,9 @@ TRACK_FIELDS = (
     "primary_genre",
     "subgenres",
     "genre_confidence",
+    "genre_source",
+    "soundcharts_genres",
+    "soundcharts_genres_checked_at",
     "instrumental_status",
     "instrumental_confidence",
     "ai_risk",
@@ -259,7 +296,27 @@ def _latest_day(*values: Any) -> str | None:
     return days[-1] if days else None
 
 
-def select_editorial_playlists(payload: dict[str, Any]) -> list[dict[str, Any]]:
+def _normalise_text(value: Any) -> str:
+    text = unicodedata.normalize("NFKD", str(value or ""))
+    text = "".join(char for char in text if not unicodedata.combining(char)).casefold()
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def classify_independent_playlist(name: Any, keywords: Any, use_case: Any = "") -> str | None:
+    title = _normalise_text(name)
+    keyword_text = _normalise_text(str(keywords or "").replace("|", " "))
+    context = " ".join(part for part in (title, keyword_text, _normalise_text(use_case)) if part)
+    if not context or INDEPENDENT_EXCLUSION_RE.search(context):
+        return None
+    for genre, patterns in INDEPENDENT_GENRE_RULES:
+        if any(re.search(pattern, context, re.IGNORECASE) for pattern in patterns):
+            return genre
+    return None
+
+
+def select_playlists(payload: dict[str, Any], playlist_scope: str = "editorial") -> list[dict[str, Any]]:
+    if playlist_scope not in {"editorial", "independent", "all"}:
+        raise PlaylistDiscoveryError(f"Unsupported playlist scope: {playlist_scope}")
     columns = payload.get("cols") if isinstance(payload.get("cols"), list) else []
     rows = payload.get("rows") if isinstance(payload.get("rows"), list) else []
     positions = {name: index for index, name in enumerate(columns)}
@@ -273,8 +330,19 @@ def select_editorial_playlists(payload: dict[str, Any]) -> list[dict[str, Any]]:
             continue
         curator = str(row[positions["curatorCat"]] if positions["curatorCat"] < len(row) else "").casefold()
         display_genre = str(row[positions["genre"]] if positions["genre"] < len(row) else "").strip()
-        internal_genre = PLAYLIST_GENRE_MAP.get(display_genre.casefold())
-        if curator != "editorial" or not internal_genre:
+        name = str(row[positions["name"]] if positions["name"] < len(row) else "").strip()
+        keywords = row[positions["kw"]] if "kw" in positions and positions["kw"] < len(row) else ""
+        use_case = row[positions["use_case"]] if "use_case" in positions and positions["use_case"] < len(row) else ""
+        if curator == "editorial":
+            internal_genre = PLAYLIST_GENRE_MAP.get(display_genre.casefold())
+            source_tier = "editorial_playlist"
+        elif curator == "independent":
+            internal_genre = classify_independent_playlist(name, keywords, use_case)
+            source_tier = "independent_playlist"
+        else:
+            internal_genre = None
+            source_tier = ""
+        if curator not in ({playlist_scope} if playlist_scope != "all" else {"editorial", "independent"}) or not internal_genre:
             continue
         spotify_id = str(row[positions["id"]] if positions["id"] < len(row) else "").strip()
         if not spotify_id:
@@ -284,15 +352,53 @@ def select_editorial_playlists(payload: dict[str, Any]) -> list[dict[str, Any]]:
         selected.append(
             {
                 "spotify_id": spotify_id,
-                "name": str(row[positions["name"]] if positions["name"] < len(row) else spotify_id).strip(),
+                "name": name or spotify_id,
                 "display_genre": display_genre,
                 "primary_genre": internal_genre,
                 "followers": int(followers) if followers is not None and followers >= 0 else 0,
                 "expected_tracks": int(tracks) if tracks is not None and tracks >= 0 else 0,
+                "source_tier": source_tier,
             }
         )
     selected.sort(key=lambda item: (-item["followers"], item["name"].casefold(), item["spotify_id"]))
     return selected
+
+
+def select_editorial_playlists(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    return select_playlists(payload, "editorial")
+
+
+def playlist_scan_order(
+    playlists: Iterable[dict[str, Any]],
+    playlist_state: Mapping[str, Any],
+    *,
+    limit: int | None = None,
+) -> list[dict[str, Any]]:
+    ordered = list(playlists)
+    ordered.sort(
+        key=lambda item: (
+            1
+            if isinstance(playlist_state.get(str(item.get("spotify_id") or "")), Mapping)
+            and playlist_state[str(item.get("spotify_id") or "")].get("last_scan_at")
+            else 0,
+            str(
+                (playlist_state.get(str(item.get("spotify_id") or "")) or {}).get("last_scan_at")
+                if isinstance(playlist_state.get(str(item.get("spotify_id") or "")), Mapping)
+                else ""
+            ),
+            -int(item.get("followers") or 0),
+            str(item.get("name") or "").casefold(),
+            str(item.get("spotify_id") or ""),
+        )
+    )
+    return ordered if limit is None else ordered[: max(0, limit)]
+
+
+def preferred_source_tier(current: Any, incoming: str) -> str:
+    existing = str(current or "").strip()
+    if not existing:
+        return incoming
+    return min((existing, incoming), key=lambda value: SOURCE_TIER_PRIORITY.get(value, 99))
 
 
 def parallel_get(
@@ -366,6 +472,7 @@ def parse_playlist_track_page(response: Any, playlist: Mapping[str, Any]) -> tup
                 "playlist_uuid": str(playlist.get("soundcharts_uuid") or ""),
                 "playlist_name": str(playlist.get("name") or ""),
                 "primary_genre": str(playlist.get("primary_genre") or ""),
+                "source_tier": str(playlist.get("source_tier") or "editorial_playlist"),
                 "playlist_followers": int(_finite_number(playlist.get("followers")) or 0),
                 "position": int(position) if position is not None and position > 0 else None,
                 "entry_date": _day(item.get("entryDate")),
@@ -418,6 +525,7 @@ def aggregate_track_evidence(placements: Iterable[dict[str, Any]], observed_day:
                 "first_seen_at": _first_day(item.get("entry_date"), observed_day),
                 "last_seen_at": observed_day,
                 "exit_date": item.get("exit_date"),
+                "source_tier": str(item.get("source_tier") or ""),
             }
             for item in unique
         ]
@@ -427,7 +535,12 @@ def aggregate_track_evidence(placements: Iterable[dict[str, Any]], observed_day:
         for item in unique:
             genre = str(item.get("primary_genre") or "")
             genre_weight[genre] = genre_weight.get(genre, 0) + max(1, int(item.get("playlist_followers") or 0))
-        primary_genre = max(genre_weight, key=lambda genre: (genre_weight[genre], genre)) if genre_weight else "other_instrumental"
+        primary_genre = max(genre_weight, key=lambda genre: (genre_weight[genre], genre)) if genre_weight else ""
+        source_tier = min(
+            (str(item.get("source_tier") or "") for item in unique if item.get("source_tier")),
+            key=lambda value: SOURCE_TIER_PRIORITY.get(value, 99),
+            default="",
+        )
         entry.update(
             {
                 "playlist_ids": [str(item.get("playlist_id") or "") for item in unique if item.get("playlist_id")],
@@ -441,6 +554,7 @@ def aggregate_track_evidence(placements: Iterable[dict[str, Any]], observed_day:
                 "primary_genre": primary_genre,
                 "subgenres": sorted(genre for genre in genre_weight if genre and genre != primary_genre),
                 "top_playlist": unique[0] if unique else None,
+                "source_tier": source_tier,
             }
         )
     return grouped
@@ -547,9 +661,9 @@ def cache_track_discovery_evidence(
             "soundcharts_uuid": uuid,
             "title": str(current.get("title") or evidence.get("name") or "Titre non renseigné"),
             "credit_name": str(current.get("credit_name") or evidence.get("credit_name") or "Artiste non renseigné"),
-            "primary_genre": str(current.get("primary_genre") or evidence.get("primary_genre") or "other_instrumental"),
+            "primary_genre": str(current.get("primary_genre") or evidence.get("primary_genre") or ""),
             "subgenres": _merge_unique(current.get("subgenres"), evidence.get("subgenres")),
-            "source_tier": str(current.get("source_tier") or source_tier),
+            "source_tier": preferred_source_tier(current.get("source_tier"), source_tier),
             "metadata_status": str(current.get("metadata_status") or "playlist_only"),
             "playlist_ids": playlist_ids,
             "playlist_names": playlist_names,
@@ -616,9 +730,11 @@ def upsert_editorial_track(
             if isinstance(artist, Mapping)
         ],
     )
-    genre = str(field(row, schema, "primary_genre") or evidence.get("primary_genre") or "other_instrumental")
+    detail_genre = str((detail or {}).get("primary_genre") or "") if (detail or {}).get("has_exact_genre") else ""
+    genre = detail_genre or str(field(row, schema, "primary_genre") or evidence.get("primary_genre") or "")
     existing_confidence = _finite_number(field(row, schema, "genre_confidence"))
-    current_instrumental = str(field(row, schema, "instrumental_status") or "unknown")
+    detail_instrumental = str((detail or {}).get("instrumental_status") or "unknown")
+    current_instrumental = detail_instrumental if detail_instrumental in {"instrumental", "vocal"} else str(field(row, schema, "instrumental_status") or "unknown")
     current_ai = str(field(row, schema, "ai_risk") or "unknown")
     current_expansion = str(field(row, schema, "expansion_status") or "review")
 
@@ -637,20 +753,23 @@ def upsert_editorial_track(
         or _finite_number(field(row, schema, "rights_confidence"))
         or 0.25,
         "primary_genre": genre,
-        "subgenres": _merge_unique(field(row, schema, "subgenres"), evidence.get("subgenres")),
-        "genre_confidence": max(float(existing_confidence or 0), _genre_confidence(evidence)),
+        "subgenres": _merge_unique((detail or {}).get("subgenres"), field(row, schema, "subgenres"), evidence.get("subgenres")),
+        "genre_confidence": float((detail or {}).get("genre_confidence") or 0.0) if detail_genre else max(float(existing_confidence or 0), _genre_confidence(evidence)),
+        "genre_source": "soundcharts_song" if detail_genre else str(field(row, schema, "genre_source") or source_tier),
+        "soundcharts_genres": list((detail or {}).get("soundcharts_genres") or field(row, schema, "soundcharts_genres") or []),
+        "soundcharts_genres_checked_at": str((detail or {}).get("soundcharts_genres_checked_at") or field(row, schema, "soundcharts_genres_checked_at") or ""),
         "instrumental_status": current_instrumental,
-        "instrumental_confidence": field(row, schema, "instrumental_confidence"),
+        "instrumental_confidence": (detail or {}).get("instrumental_confidence") if current_instrumental in {"instrumental", "vocal"} else field(row, schema, "instrumental_confidence"),
         "ai_risk": current_ai,
         "ai_risk_score": field(row, schema, "ai_risk_score"),
         "expansion_status": current_expansion if current_expansion in {"eligible", "review"} else "review",
         "review_reasons": _merge_unique(
             field(row, schema, "review_reasons"),
-            ["playlist_editorial_discovery", "instrumental_check_required", "ai_check_required"],
+            [f"{source_tier}_discovery", "instrumental_check_required", "ai_check_required"],
         ),
         "metadata_status": "complete" if detail else str(field(row, schema, "metadata_status") or "playlist_only"),
         "updated_at": now,
-        "source_tier": current_source or source_tier,
+        "source_tier": preferred_source_tier(current_source, source_tier),
         "playlist_ids": playlist_ids,
         "playlist_names": playlist_names,
         "playlist_count": len(playlist_ids),
@@ -713,7 +832,7 @@ def upsert_editorial_artist(
         "name": str(artist.get("name") or field(row, schema, "name") or "Artiste non renseigné"),
         "monthly_listeners": field(row, schema, "monthly_listeners"),
         "qualifies": field(row, schema, "qualifies"),
-        "primary_genre": str(field(row, schema, "primary_genre") or evidence.get("primary_genre") or "other_instrumental"),
+        "primary_genre": str(field(row, schema, "primary_genre") or evidence.get("primary_genre") or ""),
         "subgenres": _merge_unique(field(row, schema, "subgenres"), evidence.get("subgenres")),
         "genre_confidence": max(float(_finite_number(field(row, schema, "genre_confidence")) or 0), _genre_confidence(evidence)),
         "instrumental_status": str(field(row, schema, "instrumental_status") or "unknown"),
@@ -723,10 +842,10 @@ def upsert_editorial_artist(
         "expansion_status": str(field(row, schema, "expansion_status") or "review"),
         "review_reasons": _merge_unique(
             field(row, schema, "review_reasons"),
-            ["playlist_editorial_artist", "catalogue_discovery"],
+            [f"{source_tier}_artist", "catalogue_discovery"],
         ),
         "updated_at": now,
-        "source_tier": str(field(row, schema, "source_tier") or source_tier),
+        "source_tier": preferred_source_tier(field(row, schema, "source_tier"), source_tier),
         "playlist_ids": playlist_ids,
         "playlist_names": playlist_names,
         "playlist_count": len(playlist_ids),
@@ -808,6 +927,8 @@ def discover_from_playlists(
     catalog_page_size: int = 25,
     max_new_catalog_tracks: int = 1_200,
     baseline: Mapping[str, Any] | None = None,
+    playlist_scope: str = "editorial",
+    summary_key: str | None = None,
 ) -> dict[str, Any]:
     now = utc_now()
     observed_day = utc_today().isoformat()
@@ -821,8 +942,9 @@ def discover_from_playlists(
 
     cache_tracks = cache.setdefault("tracks", {})
     cache_artists = cache.setdefault("artists", {})
+    summary_key = summary_key or ("playlist_discovery" if playlist_scope == "editorial" else f"{playlist_scope}_playlist_discovery")
     discovery = cache.setdefault(
-        "playlist_discovery",
+        summary_key,
         {"version": DISCOVERY_VERSION, "playlists": {}, "artists": {}},
     )
     if not isinstance(cache_tracks, dict) or not isinstance(cache_artists, dict) or not isinstance(discovery, dict):
@@ -839,9 +961,11 @@ def discover_from_playlists(
     }
     baseline_playlist_artist_uuids: set[str] = set()
 
-    playlists = select_editorial_playlists(playlists_payload)
-    if playlist_limit is not None:
-        playlists = playlists[: max(0, playlist_limit)]
+    playlists = playlist_scan_order(
+        select_playlists(playlists_payload, playlist_scope),
+        playlist_state,
+        limit=playlist_limit,
+    )
     metadata_tasks: list[tuple[str, str]] = []
     playlist_by_id = {item["spotify_id"]: item for item in playlists}
     for item in playlists:
@@ -872,6 +996,7 @@ def discover_from_playlists(
             **parsed,
             "spotify_id": spotify_id,
             "primary_genre": item["primary_genre"],
+            "source_tier": item["source_tier"],
             "resolved_at": now,
         }
 
@@ -904,6 +1029,7 @@ def discover_from_playlists(
                 "soundcharts_uuid": item["soundcharts_uuid"],
                 "name": item["name"],
                 "primary_genre": item["primary_genre"],
+                "source_tier": item["source_tier"],
                 "followers": item["followers"],
                 "latest_track_count": total,
                 "last_scan_at": now,
@@ -941,7 +1067,7 @@ def discover_from_playlists(
                 artists_by_uuid,
                 artist,
                 evidence,
-                source_tier="editorial_playlist",
+                source_tier=str(evidence.get("source_tier") or "editorial_playlist"),
                 now=now,
             )
             if inserted_artist:
@@ -949,7 +1075,9 @@ def discover_from_playlists(
             cached_artist = cache_artists.setdefault(artist_uuid, {})
             if isinstance(cached_artist, dict):
                 cached_artist.setdefault("name", str(artist.get("name") or ""))
-                cached_artist.setdefault("source_tier", "editorial_playlist")
+                cached_artist["source_tier"] = preferred_source_tier(
+                    cached_artist.get("source_tier"), str(evidence.get("source_tier") or "editorial_playlist")
+                )
 
     known_track_uuids = set(tracks_by_uuid)
     unseen = [evidence for uuid, evidence in evidence_by_uuid.items() if uuid not in known_track_uuids]
@@ -961,7 +1089,7 @@ def discover_from_playlists(
     new_playlist_tracks = 0
     for evidence in evidence_by_uuid.values():
         cached_detail = cache_track_discovery_evidence(
-            cache_tracks, evidence, source_tier="editorial_playlist", now=now
+            cache_tracks, evidence, source_tier=str(evidence.get("source_tier") or "editorial_playlist"), now=now
         )
         _, inserted = upsert_editorial_track(
             track_rows,
@@ -969,7 +1097,7 @@ def discover_from_playlists(
             tracks_by_uuid,
             evidence,
             detail=cached_detail if cached_detail.get("artists") else None,
-            source_tier="editorial_playlist",
+            source_tier=str(evidence.get("source_tier") or "editorial_playlist"),
             now=now,
         )
         new_playlist_tracks += int(inserted)
@@ -991,7 +1119,7 @@ def discover_from_playlists(
             existing = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
             cache_tracks[uuid] = {**existing, **parsed_detail}
             cache_track_discovery_evidence(
-                cache_tracks, evidence, source_tier="editorial_playlist", now=now
+                cache_tracks, evidence, source_tier=str(evidence.get("source_tier") or "editorial_playlist"), now=now
             )
             playlist_tracks_detailed += 1
         upsert_editorial_track(
@@ -1000,7 +1128,7 @@ def discover_from_playlists(
             tracks_by_uuid,
             evidence,
             detail=parsed_detail,
-            source_tier="editorial_playlist",
+            source_tier=str(evidence.get("source_tier") or "editorial_playlist"),
             now=now,
         )
         register_detail_artists(parsed_detail, evidence)
@@ -1009,12 +1137,12 @@ def discover_from_playlists(
     # when every playlist song is already known.
     for artist_uuid, row in artists_by_uuid.items():
         source_tier = str(field(row, artist_schema, "source_tier") or "")
-        if source_tier in {"editorial_playlist", "playlist_artist_catalogue"}:
+        if source_tier in {"editorial_playlist", "independent_playlist", "playlist_artist_catalogue"}:
             all_playlist_artist_uuids.add(artist_uuid)
             evidence_by_artist.setdefault(
                 artist_uuid,
                 {
-                    "primary_genre": str(field(row, artist_schema, "primary_genre") or "other_instrumental"),
+                    "primary_genre": str(field(row, artist_schema, "primary_genre") or ""),
                     "subgenres": field(row, artist_schema, "subgenres") or [],
                     "playlist_ids": field(row, artist_schema, "playlist_ids") or [],
                     "playlist_names": field(row, artist_schema, "playlist_names") or [],
@@ -1055,7 +1183,7 @@ def discover_from_playlists(
         artist_row = artists_by_uuid.get(artist_uuid)
         artist_name = str(field(artist_row, artist_schema, "name") or cache_artists.get(artist_uuid, {}).get("name") or "Artiste non renseigné") if artist_row is not None else str((cache_artists.get(artist_uuid) or {}).get("name") or "Artiste non renseigné")
         evidence = evidence_by_artist.get(artist_uuid, {})
-        genre = str(evidence.get("primary_genre") or "other_instrumental")
+        genre = str(evidence.get("primary_genre") or "")
         songs, total, next_offset = parse_catalogue_page(response, artist_uuid, artist_name, genre)
         # Never advance an artist cursor past a page that could not be fully
         # integrated because of the per-run track cap.  A later cycle must
@@ -1127,6 +1255,7 @@ def discover_from_playlists(
     summary = {
         "status": "success",
         "finished_at": now,
+        "playlist_scope": playlist_scope,
         "playlists_targeted": len(playlists),
         "playlists_resolved": len(resolved_playlists),
         "playlists_scanned": scanned_playlists,
@@ -1153,17 +1282,17 @@ def discover_from_playlists(
         "quota_remaining": getattr(client, "quota_remaining", None),
         "failures": failures,
         "cadence": {
-            "playlist_tracklists": "daily_all_target_editorial",
+            "playlist_tracklists": f"daily_rotating_target_{playlist_scope}",
             "artist_catalogues": "daily_rotating_page",
             "no_instrumental_or_ai_assumption": True,
         },
     }
     if scanned_playlists == 0 or not evidence_by_uuid:
-        raise PlaylistDiscoveryError("No target editorial playlist returned a usable tracklist")
-    soundcharts["playlist_discovery"] = summary
+        raise PlaylistDiscoveryError(f"No target {playlist_scope} playlist returned a usable tracklist")
+    soundcharts[summary_key] = summary
     freshness = soundcharts.setdefault("freshness", {})
     if isinstance(freshness, dict):
-        freshness["playlist_discovery_at"] = now
+        freshness[f"{summary_key}_at"] = now
     return summary
 
 
@@ -1177,6 +1306,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-requests", type=int, default=1_400)
     parser.add_argument("--page-size", type=int, default=100)
     parser.add_argument("--playlist-limit", type=int)
+    parser.add_argument("--playlist-scope", choices=("editorial", "independent", "all"), default="editorial")
+    parser.add_argument("--summary-key")
     parser.add_argument("--max-new-playlist-tracks", type=int, default=450)
     parser.add_argument("--max-catalog-artists", type=int, default=250)
     parser.add_argument("--catalog-page-size", type=int, default=25)
@@ -1211,6 +1342,8 @@ def main() -> int:
         catalog_page_size=max(5, min(100, args.catalog_page_size)),
         max_new_catalog_tracks=max(0, args.max_new_catalog_tracks),
         baseline=baseline,
+        playlist_scope=args.playlist_scope,
+        summary_key=args.summary_key,
     )
     write_js_payload(args.soundcharts, soundcharts, SOUNDCHARTS_PREFIX)
     write_cache(args.cache, cache)

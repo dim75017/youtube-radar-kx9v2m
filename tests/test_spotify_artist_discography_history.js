@@ -13,7 +13,9 @@ for(const required of [
   'function artistFlowWindowControls()',
   '[7,30,90,180,360]',
   "setArtistFlowWindow('all')",
-  'function showSparkTooltip(dot,event)',
+  'function showNearestSparkPoint(svg,event)',
+  'function hideNearestSparkPoint(svg)',
+  'class="spark-hover-point"',
   'data-value="${esc(sparklineValueLabel(p[1],unit))}"'
 ]) if(!dashboard.includes(required)) throw new Error('Missing artist discography/history behaviour: '+required);
 
@@ -31,7 +33,7 @@ if(dashboard.includes('function artistRows(i){ return R.filter(r=>r[0]===i && r[
   throw new Error('Artist modal still limits the discography to primary self-release rows');
 for(const required of ['.spark-tooltip','.analytics-window','.ck:disabled'])
   if(!css.includes(required)) throw new Error('Missing chart or acquisition control styling: '+required);
-if(!index.includes('dashboard.js?v=20260724-metric-mode-controls-v1'))
+if(!index.includes('dashboard.js?v=20260724-genre-density-analytics-v2'))
   throw new Error('Dashboard cache version is stale');
 
 console.log('spotify artist full discography and history controls: ok');

@@ -8,5 +8,5 @@ for(const required of [
   "item.key==='channels'&&item.when",
   "return 'var(--green)';"
 ]) if(!helpers.includes(required)) throw new Error('YouTube channel healthy-state handling missing: '+required);
-if(!index.includes('dashboard-02-helpers.js?v=20260724-soft-ui-roadmap-v1')) throw new Error('YouTube status cache version is stale');
+if(!index.includes('dashboard-02-helpers.js?v=20260724-youtube-analysis-title-v2')) throw new Error('YouTube status cache version is stale');
 console.log('youtube channel update status: ok');

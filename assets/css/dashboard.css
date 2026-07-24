@@ -115,7 +115,7 @@ input,select{font-family:inherit;color:var(--text)}
 #view{min-width:0;max-width:100%}
 .topbar{
   position:sticky;top:0;z-index:30;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;
-  padding:26px 0 16px;margin-bottom:8px;
+  padding:26px 116px 16px 0;margin-bottom:8px;
   background:linear-gradient(180deg, var(--bg) 62%, transparent);
 }
 .topbar h2{font-family:'Sora';font-size:24px;font-weight:700;letter-spacing:-.2px;display:flex;align-items:center;gap:11px}

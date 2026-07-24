@@ -738,7 +738,7 @@ function viewMarkupForRoute(currentRoute){
   if(currentRoute==='mix')return {title:'Videos <span class="pill">DAILY SCAN</span>',html:videosHTML('mix')};
   if(currentRoute==='recos')return {title:'Recommendations',html:recosHTML()};
   if(currentRoute==='roadmap')return {title:'Roadmap',html:roadmapHTML()};
-  if(currentRoute==='ana')return {title:'',html:anaHTML()};
+  if(currentRoute==='ana')return {title:'Analysis',html:anaHTML()};
   if(currentRoute==='live')return {title:'Livestreams <span class="pill">HOURLY SCAN</span>',html:livesHTML()};
   if(currentRoute==='chan')return {title:'Channels <span class="pill">MONTHLY SCAN</span>',html:chanHTML()};
   if(currentRoute==='kw')return {title:'Keywords',html:kwHTML()};
@@ -780,7 +780,7 @@ function render(options){
     const output=viewMarkupForRoute(route);t.innerHTML=output.title;el.innerHTML=output.html;i18nView();
     VIEW_CACHE.set(key,{title:t.innerHTML,html:el.innerHTML});
   }
-  if(topbar)topbar.classList.toggle('no-view-title',route==='ana');
+  if(topbar)topbar.classList.remove('no-view-title');
   armAutoLoad();fillLikes();if(route==='ana')fillAnaLikes();
 }
 

@@ -206,6 +206,57 @@ class InstrumentalPoolTests(unittest.TestCase):
         self.assertGreaterEqual(parsed["rights_confidence"], 0.9)
         self.assertEqual(parsed["artists"][0]["role"], "main")
 
+    def test_song_metadata_uses_exact_soundcharts_genres(self):
+        detail = song_detail()
+        detail["object"]["genres"] = [
+            {"root": "Hip-Hop/Rap", "sub": ["Lo-Fi", "Instrumental Hip Hop"]},
+            {"root": "Ambient", "sub": ["Dark Ambient"]},
+        ]
+        parsed = subject.parse_song_detail(detail, subject.editorial_candidates(payload())[0])
+        self.assertEqual(parsed["primary_genre"], "dark_ambient")
+        self.assertIn("lofi_hip_hop", parsed["subgenres"])
+        self.assertEqual(parsed["genre_source"], "soundcharts_song")
+        self.assertEqual(parsed["instrumental_status"], "instrumental")
+        self.assertEqual(parsed["instrumental_confidence"], 0.95)
+        self.assertEqual(parsed["soundcharts_genres"][0]["root"], "Hip-Hop/Rap")
+
+    def test_explicit_vocal_genre_never_becomes_instrumental(self):
+        detail = song_detail()
+        detail["object"]["genres"] = [{"root": "Vocal Jazz", "sub": ["Singer Songwriter"]}]
+        editorial = subject.editorial_candidates(payload())[0]
+        parsed = subject.parse_song_detail(detail, editorial)
+        self.assertEqual(parsed["instrumental_status"], "vocal")
+        self.assertEqual(parsed["instrumental_confidence"], 0.95)
+
+    def test_classification_backfill_updates_genre_without_inventing_ai_risk(self):
+        current = payload()
+        schema = current["editorial"]["track_schema"]
+        for name in ("source_tier",):
+            schema.append(name)
+            current["editorial"]["tracks"][0].append(None)
+        row = current["editorial"]["tracks"][0]
+        row[schema.index("source_tier")] = "independent_playlist"
+        row[schema.index("instrumental_status")] = "unknown"
+        row[schema.index("instrumental_confidence")] = None
+        row[schema.index("ai_risk")] = "unknown"
+        detail = song_detail()
+        detail["object"]["genres"] = [{"root": "Ambient", "sub": ["Instrumental"]}]
+        cache = {"version": 1, "tracks": {}, "artists": {}}
+        summary = subject.classify_soundcharts_genres(
+            current,
+            cache,
+            FakeClient({"/api/v2/song/song-uuid": detail}),
+            workers=1,
+            max_requests=1,
+        )
+        refreshed_schema = current["editorial"]["track_schema"]
+        self.assertEqual(summary["updated"], 1)
+        self.assertEqual(subject.field(row, refreshed_schema, "primary_genre"), "ambient")
+        self.assertEqual(subject.field(row, refreshed_schema, "genre_source"), "soundcharts_song")
+        self.assertEqual(subject.field(row, refreshed_schema, "instrumental_status"), "instrumental")
+        self.assertEqual(subject.field(row, refreshed_schema, "ai_risk"), "unknown")
+        self.assertTrue(subject.field(row, refreshed_schema, "soundcharts_genres_checked_at"))
+
     def test_expansion_inserts_track_history_artist_and_contact(self):
         client = FakeClient(
             {

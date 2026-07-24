@@ -14,9 +14,11 @@ assert.match(helpers, /render\(\{preferCache:true\}\)/,
   'Sidebar navigation must prefer the already-rendered view');
 assert.match(helpers, /i18nView\(\{skipContent:true\}\)/,
   'Cached French views must avoid reprocessing the full page HTML');
-assert.match(helpers, /if\(topbar\)topbar\.classList\.toggle\('no-view-title',route==='ana'\)/,
-  'The redundant Analysis page title must be removed without disabling its tab');
-assert.match(css, /\.topbar\.no-view-title\{display:none\}/,
-  'The empty Analysis header must not reserve vertical space');
+assert.match(helpers, /if\(currentRoute==='ana'\)return \{title:'Analysis',html:anaHTML\(\)\}/,
+  'The Analysis view must keep its explicit page title');
+assert.match(helpers, /if\(topbar\)topbar\.classList\.remove\('no-view-title'\)/,
+  'The Analysis title bar must remain visible');
+assert.match(css, /padding:26px 116px 16px 0/,
+  'The desktop title bar must reserve room for the language controls');
 
 console.log('YouTube instant navigation guardrails: OK');

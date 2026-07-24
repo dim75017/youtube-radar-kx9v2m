@@ -5,8 +5,8 @@ const fs = require('node:fs');
 
 const source = fs.readFileSync('assets/js/dashboard-04-recommendations.js', 'utf8');
 
-assert.match(source, /function recosHTML\(\)\{return recoArchiveControlHTML\(\)\+'<div id="reco-list">'/,
-  'the daily selection has a compact archive control but no verbose header');
+assert.match(source, /function recosHTML\(\)\{return recoTabControlHTML\(\)\+'<div id="reco-list">'/,
+  'the daily selection has compact status controls but no verbose header');
 assert.doesNotMatch(source.slice(source.indexOf('function recoCardHTML'), source.indexOf('function recoInfoRows')),
   /_dailyReasons/, 'selection-reason chips are absent from recommendation cards');
 assert.doesNotMatch(source, /function validateRecommendationNow\(/,
@@ -38,8 +38,8 @@ assert.doesNotMatch(source, /schedNearbyReleases/,
   'nearby releases must be replaced by the compact exact-day popover');
 assert.match(source, /recoN:reco\.n/,
   'roadmap entries preserve their recommendation identity');
-assert.match(source, /toggleRecoArchive\(\)/,
-  'the recommendation view exposes an archive toggle');
+assert.match(source, /function setRecoTab\(tab\)/,
+  'the recommendation view exposes status tabs including the archive');
 assert.match(source, /refusedRecommendationRows\(\)/,
   'refused recommendations are retained in the archive');
 assert.match(source, /activeTodayIds=todayIds\.slice\(0,RECO_DAILY_LIMIT\)/,

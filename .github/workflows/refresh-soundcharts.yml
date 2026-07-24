@@ -70,11 +70,11 @@ on:
         required: true
         default: 'strict_rebaseline'
         type: choice
-        options: [strict_rebaseline, artists, smoke]
+        options: [strict_rebaseline, classification, artists, smoke]
       max_requests:
-        description: 'Expansion data-call cap (1-8230; total workflow cap stays <=10000 including auth)'
+        description: 'Data-call cap (strict: 1-6000; classification: 1-8230)'
         required: true
-        default: '8230'
+        default: '6000'
         type: string
 
 permissions:
@@ -140,7 +140,9 @@ jobs:
         run: |
           artist_data_cap="350"
           playlist_data_cap="1400"
-          expansion_data_cap="8230"
+          independent_playlist_data_cap="2500"
+          expansion_data_cap="6000"
+          classification_data_cap="8230"
           if [[ "${{ github.event_name }}" == "pull_request" || "${{ github.event_name }}" == "push" ]]; then
             scope="ci_smoke"
             expansion_limit=""
@@ -150,11 +152,14 @@ jobs:
             scope="$REQUESTED_SCOPE"
             case "$scope" in
               strict_rebaseline) expansion_limit="2500" ;;
+              classification) expansion_limit="" ;;
               artists|smoke) expansion_limit="" ;;
               *) echo "Unsupported scope: $scope" >&2; exit 1 ;;
             esac
-            if [[ ! "$REQUESTED_MAX_REQUESTS" =~ ^[1-9][0-9]{0,3}$ ]] || (( 10#$REQUESTED_MAX_REQUESTS > expansion_data_cap )); then
-              echo "max_requests must be an integer between 1 and $expansion_data_cap" >&2
+            request_cap="$expansion_data_cap"
+            if [[ "$scope" == "classification" ]]; then request_cap="$classification_data_cap"; fi
+            if [[ ! "$REQUESTED_MAX_REQUESTS" =~ ^[1-9][0-9]{0,3}$ ]] || (( 10#$REQUESTED_MAX_REQUESTS > request_cap )); then
+              echo "max_requests must be an integer between 1 and $request_cap for $scope" >&2
               exit 1
             fi
             expansion_requests="$REQUESTED_MAX_REQUESTS"
@@ -173,12 +178,13 @@ jobs:
           echo "expansion_requests=$expansion_requests" >> "$GITHUB_OUTPUT"
           echo "artist_requests=$artist_data_cap" >> "$GITHUB_OUTPUT"
           echo "playlist_requests=$playlist_data_cap" >> "$GITHUB_OUTPUT"
+          echo "independent_playlist_requests=$independent_playlist_data_cap" >> "$GITHUB_OUTPUT"
           echo "publish=$publish" >> "$GITHUB_OUTPUT"
           echo "Selected scope=$scope, expansion_requests=$expansion_requests, publish=$publish"
 
       - name: Create an isolated Soundcharts candidate
         id: snapshot
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         shell: bash
         run: |
           old_snapshot="$(python prepare_soundcharts_snapshot.py current --index spotify/index.html)"
@@ -237,6 +243,29 @@ jobs:
           --catalog-page-size 25
           --max-new-catalog-tracks 2500
 
+      - name: Discover a rotating batch of independent background playlists
+        if: steps.plan.outputs.scope == 'strict_rebaseline'
+        env:
+          PYTHONUNBUFFERED: '1'
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        run: >-
+          python discover_soundcharts_playlists.py
+          --soundcharts "${{ steps.snapshot.outputs.candidate }}"
+          --playlists Spotify_Playlists_data.js
+          --baseline spotify-catalogue-baseline.json
+          --cache soundcharts-instrumental-cache.json
+          --workers 10
+          --max-requests "${{ steps.plan.outputs.independent_playlist_requests }}"
+          --playlist-scope independent
+          --summary-key independent_playlist_discovery
+          --playlist-limit 250
+          --page-size 100
+          --max-new-playlist-tracks 600
+          --max-catalog-artists 0
+          --max-new-catalog-tracks 0
+
       - name: Expand and measure the target instrumental pool
         if: steps.plan.outputs.scope == 'strict_rebaseline'
         env:
@@ -258,8 +287,23 @@ jobs:
             --soundcharts "${{ steps.snapshot.outputs.candidate }}" \
             "${args[@]}"
 
+      - name: Classify pending playlist tracks from exact Soundcharts song genres
+        if: steps.plan.outputs.scope == 'classification'
+        env:
+          PYTHONUNBUFFERED: '1'
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        run: >-
+          python expand_soundcharts_instrumental_pool.py
+          --soundcharts "${{ steps.snapshot.outputs.candidate }}"
+          --cache soundcharts-instrumental-cache.json
+          --workers 16
+          --max-requests "${{ steps.plan.outputs.expansion_requests }}"
+          --classification-only
+
       - name: Enrich public professional contacts progressively
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         run: >-
           python enrich_public_artist_contacts.py
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
@@ -268,7 +312,7 @@ jobs:
           --max-profiles-per-artist 4
 
       - name: Recalculate actionable A&R opportunities
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         run: >-
           python sync_soundcharts_opportunities.py
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
@@ -279,7 +323,7 @@ jobs:
 
       - name: Prepare public-safe dated snapshot
         id: prepared
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         shell: bash
         run: |
           result="$RUNNER_TEMP/soundcharts-snapshot-result.json"
@@ -291,7 +335,7 @@ jobs:
           echo "name=$snapshot" >> "$GITHUB_OUTPUT"
 
       - name: Validate generated business outputs
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         env:
           SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
           RUN_SCOPE: ${{ steps.plan.outputs.scope }}
@@ -310,6 +354,8 @@ jobs:
           performance = load('Spotify_Performance_data.js', 'window.SPOTIFY_PERFORMANCE=')
           pool = soundcharts.get('instrumental_pool') or {}
           discovery = soundcharts.get('playlist_discovery') or {}
+          independent_discovery = soundcharts.get('independent_playlist_discovery') or {}
+          classification = soundcharts.get('classification_backfill') or {}
           catalogue = soundcharts.get('discovery_catalogue') or {}
           scoring = soundcharts.get('opportunity_scoring') or {}
           opportunities = soundcharts.get('opportunities') or []
@@ -319,9 +365,17 @@ jobs:
               unique_playlist_tracks = int(discovery.get('unique_playlist_tracks') or 0)
               if unique_playlist_tracks < 1:
                   raise SystemExit('Editorial playlist discovery returned no tracks')
+              if int(independent_discovery.get('playlists_scanned') or 0) < 1:
+                  raise SystemExit('Independent playlist discovery scanned no playlist')
+              if int(independent_discovery.get('unique_playlist_tracks') or 0) < 1:
+                  raise SystemExit('Independent playlist discovery returned no tracks')
               public_discovery_tracks = catalogue.get('tracks') if isinstance(catalogue, dict) else []
               if not isinstance(public_discovery_tracks, list) or len(public_discovery_tracks) < unique_playlist_tracks:
                   raise SystemExit('Full discovery catalogue did not publish every playlist track')
+          if os.environ.get('RUN_SCOPE') == 'classification':
+              pending_before = int(classification.get('pending_before') or 0)
+              if pending_before > 0 and int(classification.get('updated') or 0) < 1:
+                  raise SystemExit('Soundcharts genre classification updated no pending track')
           if int(pool.get('measured') or 0) < 1:
               raise SystemExit('Instrumental pool produced no real Spotify counter')
           if not opportunities:
@@ -334,6 +388,10 @@ jobs:
               'playlist_tracks': discovery.get('unique_playlist_tracks'),
               'new_playlist_tracks': discovery.get('new_playlist_tracks'),
               'new_catalogue_tracks': discovery.get('new_catalogue_tracks'),
+              'independent_playlists_scanned': independent_discovery.get('playlists_scanned'),
+              'independent_playlist_tracks': independent_discovery.get('unique_playlist_tracks'),
+              'classified_tracks': classification.get('updated'),
+              'classification_remaining': classification.get('remaining'),
               'target_tracks': pool.get('target_tracks'),
               'published_discovery_tracks': len(catalogue.get('tracks') or []),
               'published_discovery_artists': len(catalogue.get('artists') or []),
