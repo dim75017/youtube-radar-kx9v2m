@@ -8,12 +8,12 @@ function requireText(text,needle,label){
   if(!text.includes(needle)) throw new Error(label+': missing '+needle);
 }
 
-requireText(index,'dashboard-02-helpers.js?v=20260724-youtube-analysis-title-v2','cache version');
+requireText(index,'dashboard-02-helpers.js?v=20260724-youtube-zero-baseline-v1','cache version');
 requireText(helpers,"if(currentRoute==='ana')return {title:'Analysis',html:anaHTML()};",'analysis title');
 requireText(helpers,"topbar.classList.remove('no-view-title')",'visible analysis header');
 for(const text of [helpers,legacy]){
-  requireText(text,'const actualMin=Math.min.apply(null,ys),actualMax=Math.max.apply(null,ys);','observed range');
-  requireText(text,'const y0=flatRange?actualMin-1:actualMin,y1=flatRange?actualMax+1:actualMax;','bounded y scale');
-  requireText(text,'(best[1]-o.y0)/(o.y1-o.y0)','hover scale');
+  requireText(text,'const y0=0,y1=Math.max(Math.max.apply(null,ys),1);','zero baseline');
+  requireText(text,"'<div class=\"hist-axis\"><span>0</span><span>'+fmtN(y1)+'</span></div>'",'axis starts at zero');
+  requireText(text,'(best[1]/o.y1)','hover scale');
 }
-console.log('youtube analytics scale cache guard: ok');
+console.log('youtube analytics zero-baseline cache guard: ok');

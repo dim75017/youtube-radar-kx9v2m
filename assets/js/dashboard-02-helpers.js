@@ -243,12 +243,8 @@ function histChart(pts,unit,showMeta){
   const W=560,H=150,P=10;
   const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);
   const x0=Math.min.apply(null,xs),x1=Math.max.apply(null,xs);
-  // Each analytics curve uses its own observed range: the lowest point sits
-  // at the bottom and the highest point at the top, making small changes
-  // readable for both video views and concurrent livestream viewers.
-  const actualMin=Math.min.apply(null,ys),actualMax=Math.max.apply(null,ys);
-  const flatRange=actualMin===actualMax;
-  const y0=flatRange?actualMin-1:actualMin,y1=flatRange?actualMax+1:actualMax;
+  // Keep zero at the baseline so the curve preserves the real magnitude.
+  const y0=0,y1=Math.max(Math.max.apply(null,ys),1);
   const X=t=>P+(W-2*P)*(x1===x0?0.5:(t-x0)/(x1-x0));
   const Y=v=>H-P-(H-2*P)*((v-y0)/(y1-y0));
   const line=pts.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[1]).toFixed(1)).join(' ');
@@ -262,7 +258,7 @@ function histChart(pts,unit,showMeta){
       ? '<b>'+fmtN(ys.reduce((sum,value)=>sum+value,0))+'</b> views gained · '+pts.length+' measured days · '+fmtDateFull(x0)+' → '+fmtDateFull(x1)
       : '<b>+'+fmtN(perDay)+'</b> '+u+'/day measured · '+pts.length+' scans · '+fmtDateFull(x0)+' → '+fmtDateFull(x1);
   const hid='h'+(++HIST_SEQ);
-  HIST_REG[hid]={pts,unit:dailyViews?'views gained':u,W,H,P,x0,x1,y0,y1};
+  HIST_REG[hid]={pts,unit:dailyViews?'views gained':u,W,H,P,x0,x1,y1};
   return (showMeta===false?'':'<div class="hist-meta">'+meta+'</div>')+
     '<div class="hist-wrap" data-hid="'+hid+'">'+
     '<svg class="hist-svg" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+
@@ -272,7 +268,7 @@ function histChart(pts,unit,showMeta){
     '</svg>'+
     '<div class="hist-guide"></div><div class="hist-dot"></div><div class="hist-tip"></div>'+
     '</div>'+
-    '<div class="hist-axis"><span>'+fmtN(actualMin)+'</span><span>'+fmtN(actualMax)+'</span></div>';
+    '<div class="hist-axis"><span>0</span><span>'+fmtN(y1)+'</span></div>';
 }
 let HIST_SEQ=0;const HIST_REG={};
 document.addEventListener('mousemove',e=>{
@@ -285,7 +281,7 @@ document.addEventListener('mousemove',e=>{
   const t=o.x0+(o.x1-o.x0)*Math.min(1,Math.max(0,(fx*o.W-o.P)/(o.W-2*o.P)));
   let best=o.pts[0];for(const p of o.pts)if(Math.abs(p[0]-t)<Math.abs(best[0]-t))best=p;
   const px=(o.P+(o.W-2*o.P)*(o.x1===o.x0?0.5:(best[0]-o.x0)/(o.x1-o.x0)))/o.W*r.width;
-  const py=(o.H-o.P-(o.H-2*o.P)*((best[1]-o.y0)/(o.y1-o.y0)))/o.H*r.height;
+  const py=(o.H-o.P-(o.H-2*o.P)*(best[1]/o.y1))/o.H*r.height;
   w.classList.add('hov');
   const tip=w.querySelector('.hist-tip'),gd=w.querySelector('.hist-guide'),dt=w.querySelector('.hist-dot');
   tip.innerHTML='<b>'+fmtInt(best[1])+'</b> '+esc(o.unit)+'<br><span>'+(o.unit==='viewers'?fmtDT(best[0]):fmtDateFull(best[0]))+'</span>';
