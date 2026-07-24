@@ -205,7 +205,7 @@ const GENERAL_VIEW_QUARANTINED_ARTISTS = new Set([
   'powfu','metallica','michael jackson','justin bieber','bruno mars','shakira','lady gaga',
   'pitbull','david guetta','calvin harris','dua lipa','kendrick lamar','black eyed peas',
   'sean paul','jennifer lopez','ellie goulding','bring me the horizon','a$ap rocky','asap rocky',
-  'sarcastic sounds','rxseboy','sody'
+  'sarcastic sounds','rxseboy','sody','corbon amodio'
 ]);
 function generalArtistKey(value){ return String(value||'').trim().toLowerCase(); }
 /* A display credit is not an artist identity. Separators used by providers for
@@ -221,6 +221,11 @@ function isGeneralArtistQuarantined(value,structuredComplete=false){
     || GENERAL_VIEW_QUARANTINED_ARTISTS.has(key)
     || (isCompositeArtistCredit(value)&&!structuredComplete);
 }
+/* Keep the historical array indexed for legacy rows, but blank explicitly
+   quarantined profiles so they cannot be rendered through an old payload. */
+A.forEach((artist,index)=>{
+  if(artist&&isGeneralArtistQuarantined(artist[0])) A[index]=null;
+});
 /* Historical rows remain browseable inventory, but never become A&R seeds,
    contacts or offers. Explicit retired, mainstream and composite identities
    stay quarantined from the public inventory. */
@@ -590,8 +595,8 @@ const DISCOVERY_CATALOGUE = (() => {
     artists:catalogues.flatMap(source=>Array.isArray(source.artists)?source.artists:[])
   });
 })();
-const DISCOVERY_TRACKS = Array.isArray(DISCOVERY_CATALOGUE.tracks)?DISCOVERY_CATALOGUE.tracks:[];
-const DISCOVERY_ARTISTS = Array.isArray(DISCOVERY_CATALOGUE.artists)?DISCOVERY_CATALOGUE.artists:[];
+const RAW_DISCOVERY_TRACKS = Array.isArray(DISCOVERY_CATALOGUE.tracks)?DISCOVERY_CATALOGUE.tracks:[];
+const RAW_DISCOVERY_ARTISTS = Array.isArray(DISCOVERY_CATALOGUE.artists)?DISCOVERY_CATALOGUE.artists:[];
 const DISCOVERY_TRACK_SCHEMA = Array.isArray(DISCOVERY_CATALOGUE.track_schema)?DISCOVERY_CATALOGUE.track_schema:[];
 const DISCOVERY_ARTIST_SCHEMA = Array.isArray(DISCOVERY_CATALOGUE.artist_schema)?DISCOVERY_CATALOGUE.artist_schema:[];
 const DISCOVERY_PLAYLIST_SCHEMA = Array.isArray(DISCOVERY_CATALOGUE.playlist_schema)?DISCOVERY_CATALOGUE.playlist_schema:[];
@@ -604,6 +609,20 @@ function discoveryRecord(row,schema){
   schema.forEach((name,index)=>{out[name]=index<row.length?row[index]:null;});
   return out;
 }
+function discoveryHasQuarantinedArtist(row,schema,artistRecord=false){
+  const record=discoveryRecord(row,schema);
+  const names=[record.artist,record.credit_name,artistRecord&&record.name];
+  discoveryArray(record.artists).forEach(person=>{
+    if(person&&typeof person==='object') names.push(person.name||person.artist||person.credit_name);
+  });
+  return names.filter(Boolean).some(name=>isGeneralArtistQuarantined(name,true));
+}
+const DISCOVERY_TRACKS = RAW_DISCOVERY_TRACKS.filter(row=>
+  !discoveryHasQuarantinedArtist(row,DISCOVERY_TRACK_SCHEMA)
+);
+const DISCOVERY_ARTISTS = RAW_DISCOVERY_ARTISTS.filter(row=>
+  !discoveryHasQuarantinedArtist(row,DISCOVERY_ARTIST_SCHEMA,true)
+);
 function discoveryPlacement(row){ return discoveryRecord(row,DISCOVERY_PLAYLIST_SCHEMA); }
 function discoveryNumber(value){
   if(value==null||value==='') return null;
@@ -2504,7 +2523,10 @@ function arOpportunityRows(){
       selectionTier:String(scValue(row,schema,'selection_tier')||'review'),
       sourceTier:String(scValue(row,schema,'source_tier')||'soundcharts_measured'),
     };
-  }).filter(item=>item.spotifyId&&item.title&&arHasCompleteStructuredArtists(item.artists));
+  }).filter(item=>item.spotifyId&&item.title
+    && arHasCompleteStructuredArtists(item.artists)
+    && !isGeneralArtistQuarantined(item.credit,true)
+    && !item.artists.some(artist=>isGeneralArtistQuarantined(artist&&artist.name,true)));
   return AR_OPPORTUNITY_CACHE;
 }
 function arGenreLabel(genre){

@@ -460,6 +460,10 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
         self.assertNotIn("Corbon Amodio", [row[1] for row in sanitized["artists"]])
         self.assertNotIn("track-corbon", [row[0] for row in sanitized["tracks"]])
         self.assertNotIn("opp-corbon", [row[1] for row in sanitized["opportunities"]])
+        self.assertNotIn(
+            "corbon amodio",
+            json.dumps(sanitized["discovery_catalogue"]).casefold(),
+        )
         self.assertGreater(report["track_removal_reasons"]["blacklisted_identity"], 0)
         subject.validate_payload(sanitized)
 

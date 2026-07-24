@@ -69,12 +69,15 @@ assert.match(source, /if\(S\.radarFilter==='contactable'\) return arIsContactabl
 // The contactable filter is enforced in arOpportunityFiltered above. Do not
 // couple this policy check to a removed UI-only aggregate variable.
 assert.match(source, /if\(!arContactEligible\(opportunity\)\) return/);
-assert.match(source, /filter\(item=>item\.spotifyId&&item\.title&&arHasCompleteStructuredArtists\(item\.artists\)\)/);
+assert.match(source, /arHasCompleteStructuredArtists\(item\.artists\)/);
+assert.match(source, /!isGeneralArtistQuarantined\(item\.credit,true\)/);
+assert.match(source, /!item\.artists\.some\(artist=>isGeneralArtistQuarantined/);
 for (const quarantined of [
   'bruno mars', 'justin bieber', 'michael jackson', 'shakira', 'lady gaga',
   'pitbull', 'david guetta', 'calvin harris', 'dua lipa', 'kendrick lamar',
   'black eyed peas', 'sean paul', 'jennifer lopez', 'ellie goulding',
   'metallica', 'a$ap rocky', 'powfu', 'sarcastic sounds', 'rxseboy',
+  'corbon amodio',
 ]) {
   assert.ok(source.includes(`'${quarantined}'`), `${quarantined} must remain quarantined`);
 }

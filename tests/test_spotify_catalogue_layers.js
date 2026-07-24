@@ -8,6 +8,12 @@ const dashboard = fs.readFileSync('spotify/dashboard.js', 'utf8');
 const coverage = fs.readFileSync('spotify/coverage.js', 'utf8');
 const policy = fs.readFileSync('SPOTIFY_RADAR_POLICY.md', 'utf8');
 
+const activeSnapshotMatch = index.match(/\.\.\/(Spotify_Soundcharts_data_[^?'"\\]+\.js)\?payload=/);
+assert.ok(activeSnapshotMatch, 'the active Soundcharts snapshot must be explicit in the page shell');
+const activeSnapshot = fs.readFileSync(activeSnapshotMatch[1], 'utf8').toLowerCase();
+assert.equal(activeSnapshot.includes('corbon amodio'), false,
+  'a manually quarantined vocal artist must never remain in the active public snapshot');
+
 assert.match(index, /Spotify_Browse_Catalogue_data\.js\?payload=/,
   'the broad catalogue must load independently from the strict Soundcharts snapshot');
 assert.ok(index.indexOf('Spotify_Browse_Catalogue_data.js') < index.indexOf('dashboard.js'),

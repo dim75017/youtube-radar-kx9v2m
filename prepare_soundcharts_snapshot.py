@@ -1367,6 +1367,10 @@ def sanitize_payload(payload: Mapping[str, Any]) -> tuple[dict[str, Any], dict[s
     sanitized["opportunities"] = retained_opportunities
     removed["opportunities"] = sum(opportunity_reasons.values())
 
+    # The browse layer is derived data.  Rebuild it only after every public
+    # collection has passed quarantine, otherwise a removed identity can leak
+    # through a stale pre-sanitization discovery catalogue.
+    sanitized["discovery_catalogue"] = _build_discovery_catalogue(sanitized)
     _refresh_counts(sanitized, before_counts)
     validate_payload(sanitized)
 
