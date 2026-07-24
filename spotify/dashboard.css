@@ -362,10 +362,11 @@ td.selc,th.selc{width:44px;padding-left:14px}
 .tmbox .tg .l{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);font-weight:600}
 .tmbox .tg .v{font-family:'Sora';font-weight:700;font-size:16px;margin-top:4px}
 .spark-wrap{position:relative;margin-top:6px}
-.spark{display:block;cursor:crosshair}
+.spark{display:block;cursor:default}
 .spark-point{pointer-events:none}
-.spark-hover-point{pointer-events:none;filter:drop-shadow(0 0 4px rgba(74,222,128,.55))}
+.spark-hover-point{position:absolute;z-index:3;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;box-sizing:border-box;border:2px solid #07100b;border-radius:50%;pointer-events:none;filter:drop-shadow(0 0 4px rgba(74,222,128,.55))}
 .spark-tooltip{position:absolute;z-index:4;top:0;transform:translate(-50%,-100%);padding:5px 7px;border:1px solid rgba(150,214,170,.35);border-radius:7px;background:#111b16;color:var(--text);font:600 10px Inter,system-ui;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .12s}
+.spark-reporting-note{margin-top:7px;font-size:9px;line-height:1.4}
 .spark-wrap.has-tip .spark-tooltip{opacity:1}
 .analytics-window{display:inline-flex;align-items:center;gap:3px;margin-left:auto;border:1px solid var(--border);border-radius:8px;padding:3px;background:rgba(150,214,170,.04)}
 .analytics-window button{border:0;border-radius:5px;background:transparent;color:var(--muted);font:700 10px Inter,system-ui;padding:4px 7px;cursor:pointer}

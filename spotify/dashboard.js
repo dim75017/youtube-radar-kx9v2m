@@ -85,7 +85,7 @@ const EN_MAP = {
   "Revenus":"Revenue","Vue streams":"Streams view","Vue revenus":"Revenue view","Revenus total":"Total revenue","Revenus 30 jours":"Revenue 30 days","Revenus 7 jours":"Revenue 7 days","Revenus 24 heures":"Revenue 24 hours","Revenu lifetime estimé":"Estimated lifetime revenue","streams mensuels est.":"est. monthly streams","Revenu estimé / jour":"Estimated revenue / day","Courbe quotidienne des revenus estimés":"Daily estimated revenue chart","Revenu quotidien estimé d’après les streams":"Daily revenue estimated from streams",
   "Streams 24 h":"Streams 24h","Streams 7 j":"Streams 7d","Streams 24 heures":"Streams 24 hours","Streams 7 jours":"Streams 7 days","Streams 30 jours":"Streams 30 days","Flux de streams":"Stream flow","Flux réel sur la période":"Actual flow over the period",
   "24 h précédentes":"previous 24h","7 j précédents":"previous 7d","30 j précédents":"previous 30d","vs période précédente":"vs previous period",
-  "Données partielles":"Partial data","Historique insuffisant":"Not enough history","Aucune extrapolation":"No extrapolation","tracks couvertes":"tracks covered",
+  "Données partielles":"Partial data","Historique insuffisant":"Not enough history","Aucune extrapolation":"No extrapolation","Jours Soundcharts incomplets masqués sur la courbe, sans répartition artificielle du rattrapage.":"Incomplete Soundcharts reporting days are hidden on the chart; delayed values are not redistributed.","tracks couvertes":"tracks covered",
   "Fiche Analytics":"Analytics profile","Performance comparée":"Compared performance","Courbe quotidienne":"Daily chart","Streams quotidiens":"Daily streams",
   "Monthly listeners":"Monthly listeners","Évolution des monthly listeners":"Monthly listener trend","Principales contributions":"Top contributors",
   "Signal":"Signal","Rising":"Rising","Hot":"Hot","Non disponible":"Unavailable","Vélocité 7 j":"7-day velocity","Cadence de collecte":"Collection cadence",
@@ -798,6 +798,26 @@ const HIST = Object.assign({}, D.hist || {}); // tid -> [[dateISO, compteur cumu
 for (const [tid,entry] of Object.entries(PERF_TRACKS)){
   const pts = perfHistory(entry); if (pts.length) HIST[tid] = pts;
 }
+/* Soundcharts renvoie parfois une valeur reconduite sur une même date pour une part
+   significative du catalogue, puis un rattrapage le lendemain. On ne répartit jamais
+   ce rattrapage artificiellement : les deux jours incomplets sont simplement exclus
+   de la courbe quotidienne, tandis que les totaux de période restent inchangés. */
+function buildStreamReportingGaps(histories){
+  const byDay=new Map();
+  for(const raw of Object.values(histories||{})){
+    const points=normalizeCounterHistory(raw);
+    for(let i=1;i<points.length;i++){
+      const previous=points[i-1], current=points[i];
+      if(dayGap(previous[0],current[0])!==1) continue;
+      const stat=byDay.get(current[0])||{samples:0,flat:0};
+      stat.samples++;
+      if(current[1]===previous[1]) stat.flat++;
+      byDay.set(current[0],stat);
+    }
+  }
+  return new Map([...byDay].filter(([,stat])=>stat.samples>=100 && stat.flat/stat.samples>=.2));
+}
+const STREAM_REPORTING_GAPS=buildStreamReportingGaps(HIST);
 const AG = A.map((a,i)=>({i, name:a[0], lofi:a[1], flag:a[2], done:a[3], disco:a[4],
   origin:a[5], seedSrc:a[6], id:a[7]||'', img:a[8]||'', email:a[9]||'', link:a[10]||'', sc:a.sc||null, discovery:a.discoveryMeta||null,
   source:a.discovery?'soundcharts_discovery':(a.sc?'soundcharts_staging':'catalogue'),
@@ -929,7 +949,12 @@ function trackWindow(r,days){
 }
 function dailyFlowSeries(raw){
   const pts=normalizeCounterHistory(raw), out=[];
-  for(let i=1;i<pts.length;i++) if(dayGap(pts[i-1][0],pts[i][0])===1) out.push([pts[i][0],pts[i][1]-pts[i-1][1]]);
+  for(let i=1;i<pts.length;i++){
+    const previous=pts[i-1], current=pts[i];
+    if(dayGap(previous[0],current[0])!==1) continue;
+    if(STREAM_REPORTING_GAPS.has(previous[0]) || STREAM_REPORTING_GAPS.has(current[0])) continue;
+    out.push([current[0],current[1]-previous[1]]);
+  }
   return out;
 }
 function aggregateDailyFlow(rows){
@@ -1110,7 +1135,9 @@ function performanceSignal(perf,entry){
   return '—';
 }
 function dailyChartHtml(points,emptyText,unit='value'){
-  return points&&points.length>=2?sparkline(points,unit):`<div class="analytics-note" style="padding:18px 2px">${emptyText||T('Historique insuffisant')} · ${T('Aucune extrapolation')}</div>`;
+  const reportingNote=(unit==='streams'||unit==='revenue')&&STREAM_REPORTING_GAPS.size
+    ?`<div class="analytics-note spark-reporting-note">${T('Jours Soundcharts incomplets masqués sur la courbe, sans répartition artificielle du rattrapage.')}</div>`:'';
+  return points&&points.length>=2?sparkline(points,unit)+reportingNote:`<div class="analytics-note" style="padding:18px 2px">${emptyText||T('Historique insuffisant')} · ${T('Aucune extrapolation')}</div>${reportingNote}`;
 }
 function recentDailyPoints(points,days){
   if(!Array.isArray(points)||!points.length) return [];
@@ -2022,7 +2049,7 @@ function showNearestSparkPoint(svg,event){
   const pointerX=Math.max(0,Math.min(560,(event.clientX-rect.left)/Math.max(rect.width,1)*560));
   const dot=dots.reduce((best,item)=>Math.abs(Number(item.getAttribute('cx'))-pointerX)<Math.abs(Number(best.getAttribute('cx'))-pointerX)?item:best,dots[0]);
   const cx=Number(dot.getAttribute('cx')),cy=Number(dot.getAttribute('cy'));
-  marker.setAttribute('cx',String(cx));marker.setAttribute('cy',String(cy));marker.style.display='block';
+  marker.style.left=`${cx/560*rect.width}px`;marker.style.top=`${cy/120*rect.height}px`;marker.style.display='block';
   tip.textContent=`${dot.dataset.date} · ${dot.dataset.value}`;
   tip.style.left=`${Math.max(56,Math.min(rect.width-56,cx/560*rect.width))}px`;
   tip.style.top=`${Math.max(4,cy/120*rect.height-38)}px`;
@@ -2048,8 +2075,7 @@ function sparkline(pts,unit='value'){
     <path d="${d}" fill="none" stroke="${col}" stroke-width="2.5"/>
     <path d="${d} L ${sx(x1)} ${h-pad} L ${sx(x0)} ${h-pad} Z" fill="${col}" opacity="0.12"/>
     ${dots}
-    <circle class="spark-hover-point" cx="0" cy="0" r="4.5" fill="${col}" stroke="#07100b" stroke-width="2" style="display:none" vector-effect="non-scaling-stroke"/>
-  </svg><div class="spark-tooltip" role="status"></div></div>`;
+  </svg><span class="spark-hover-point" style="display:none;background:${col}"></span><div class="spark-tooltip" role="status"></div></div>`;
 }
 /* mini simulateur d'offre pour une track seule (pop-up track) */
 function trackOfferHtml(r){
