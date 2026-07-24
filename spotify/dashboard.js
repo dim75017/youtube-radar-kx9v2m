@@ -839,6 +839,7 @@ const PL = window.SPOTIFY_PLAYLISTS || null;
 const PLmeta = (PL && PL.meta) || null;
 const PLcols = (PL && PL.cols) || [];
 const PLrows = (PL && PL.rows) || [];
+const PLAYLIST_COVERS = (window.SPOTIFY_PLAYLIST_COVERS && window.SPOTIFY_PLAYLIST_COVERS.covers) || {};
 const PLhist = Object.assign({}, (PL && PL.hist) || {});
 for (const [pid,entry] of Object.entries(PERF_PLAYLISTS)){
   const pts = perfHistory(entry); if (pts.length) PLhist[pid] = pts;
@@ -2608,7 +2609,8 @@ function arPlaylistCoverUrl(playlist){
     playlist&&playlist.imageUrl,playlist&&playlist.image_url,
     playlist&&playlist.coverUrl,playlist&&playlist.cover_url,
     playlist&&playlist.thumbnailUrl,playlist&&playlist.thumbnail_url,
-    arPlaylistSnapshotValue(playlist&&playlist.spotifyId,'image_url')
+    arPlaylistSnapshotValue(playlist&&playlist.spotifyId,'image_url'),
+    PLAYLIST_COVERS[String(playlist&&playlist.spotifyId||'')]
   ];
   return values.map(arSafePublicUrl).find(Boolean)||'';
 }
