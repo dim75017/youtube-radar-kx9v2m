@@ -328,9 +328,9 @@ jobs:
           --playlist-limit 250
           --page-size 100
           --max-new-playlist-tracks 2500
-          --max-catalog-artists 500
+          --max-catalog-artists 1800
           --catalog-page-size 100
-          --max-new-catalog-tracks 12000
+          --max-new-catalog-tracks 60000
 
       - name: Continue every discovered Dark Ambient artist catalogue
         # This deliberately avoids re-reading the same playlist tracklists.
