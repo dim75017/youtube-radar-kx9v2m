@@ -411,6 +411,29 @@ def fetch_owned_api_rows(now_ms: int, api_key: str) -> dict[str, dict]:
     return rows
 
 
+def fetch_owned_ydl_rows(now_ms: int) -> dict[str, dict]:
+    """Fallback when the repository has no YouTube API secret configured."""
+    info = search_ydl().extract_info("https://www.youtube.com/@LofiGirl/videos", download=False) or {}
+    ids = [
+        str(item.get("id") or "")
+        for item in info.get("entries") or []
+        if item and VIDEO_ID.match(str(item.get("id") or ""))
+    ]
+    if not ids:
+        raise RuntimeError("Official Lofi Girl channel returned no recent uploads")
+    rows: dict[str, dict] = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=TRACK_WORKERS) as pool:
+        future_to_id = {pool.submit(fetch_one_video, video_id, now_ms): video_id for video_id in ids}
+        for future in concurrent.futures.as_completed(future_to_id):
+            row = future.result()
+            if row:
+                row["source"] = "Official Lofi Girl daily scan"
+                rows[row["vid"]] = row
+    if not rows:
+        raise RuntimeError("Official Lofi Girl upload scan returned no usable videos")
+    return rows
+
+
 def query_specs(payload: dict) -> list[dict]:
     votes: dict[str, dict[str, Counter]] = defaultdict(lambda: {"genre": Counter(), "cluster": Counter()})
     for bucket in ("all", "trends", "news"):
@@ -498,9 +521,7 @@ def run_shard(snapshot: Path, output: Path, shard: int, shards: int) -> dict:
     # runs after every shard passes, so a failed Lofi Girl lookup cannot
     # silently publish a snapshot that misses a new release.
     if shard == 0:
-        if not api_key:
-            raise RuntimeError("Official Lofi Girl upload scan requires YOUTUBE_API_KEY")
-        owned_fresh = fetch_owned_api_rows(now_ms, api_key)
+        owned_fresh = fetch_owned_api_rows(now_ms, api_key) if api_key else fetch_owned_ydl_rows(now_ms)
         fresh.update(owned_fresh)
     if api_key:
         try:

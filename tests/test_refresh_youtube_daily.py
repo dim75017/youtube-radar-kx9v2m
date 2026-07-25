@@ -128,6 +128,22 @@ class DailyHistoryTests(unittest.TestCase):
         self.assertEqual(api.call_args_list[0].args[0], "channels")
         self.assertEqual(api.call_args_list[1].args[0], "playlistItems")
 
+    def test_official_upload_fallback_uses_the_public_channel_videos_page(self):
+        now = int(datetime(2026, 7, 20, 8, tzinfo=timezone.utc).timestamp() * 1000)
+
+        class Channel:
+            def extract_info(self, url, download=False):
+                self.url = url
+                return {"entries": [{"id": "abcdefghijk"}]}
+
+        channel = Channel()
+        with patch.object(radar, "search_ydl", return_value=channel), patch.object(
+            radar, "fetch_one_video", return_value={"vid": "abcdefghijk", "views": 100}
+        ):
+            rows = radar.fetch_owned_ydl_rows(now)
+        self.assertEqual(channel.url, "https://www.youtube.com/@LofiGirl/videos")
+        self.assertEqual(rows["abcdefghijk"]["source"], "Official Lofi Girl daily scan")
+
     def test_merge_inserts_official_upload_into_analysis_and_history(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
