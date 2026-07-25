@@ -61,9 +61,15 @@ const reloadContext = {
 vm.runInNewContext(`${source.slice(scheduleStart, scheduleEnd)}; this.scheduled=scheduledRows;`, reloadContext);
 assert.deepEqual(
   Array.from(reloadContext.scheduled()).map(row => row.title),
-  ['Archived after reload', 'Still scheduled'],
-  'a Validated-card archive must not filter a fresh Monday roadmap source'
+  ['Still scheduled'],
+  'a Validated-card archive must keep filtering a fresh Monday roadmap source after reload'
 );
+
+saved.delete('lofi_radar_validated_archive_v1');
+context.isArchivedRoadmapEntry = row => row.title === 'Monday project';
+rows = Array.from(context.rows());
+assert.ok(!rows.some(row => row.__kind === 'roadmap' && row.title === 'Monday project'),
+  'archiving directly from Roadmap must also hide the linked card from Validated');
 
 assert.match(source, /rbtn-archive/, 'validated cards expose a visible archive action');
 console.log('Recommendation validated/archive checks passed.');

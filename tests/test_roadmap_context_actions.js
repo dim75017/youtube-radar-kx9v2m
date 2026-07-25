@@ -16,10 +16,14 @@ assert.match(source, /archiveRoadmapEntry\(i,ev\);return;/,
   'the legacy remove action now resolves to a reversible archive');
 assert.match(source, /function restoreRoadmapEntry\(i\)/,
   'archived roadmap entries can be restored');
-assert.match(source, /oncontextmenu="openRoadmapContextMenu/,
-  'the roadmap list opens the menu at the right-click location');
-assert.match(source, /target\.closest\('\.cal-pill'\)/,
-  'calendar releases support the same right-click action');
+assert.match(source, /data-roadmap-index="'\+i\+'" onclick="openRoad/,
+  'roadmap list rows expose their exact project index to the context menu');
+assert.match(source, /class="cal-pill" data-roadmap-index="'\+r\._ri\+'"/,
+  'monthly calendar releases expose their exact project index');
+assert.match(source, /class="year-cell[\s\S]*data-roadmap-index="'\+evs\[0\]\._ri\+'"/,
+  'annual calendar circles expose their exact project index');
+assert.match(source, /target\.closest\('\[data-roadmap-index\]'\)/,
+  'all roadmap representations share the same delegated right-click action');
 assert.match(css, /\.roadmap-context-menu\{position:fixed/,
   'the context menu is positioned beside the pointer');
 

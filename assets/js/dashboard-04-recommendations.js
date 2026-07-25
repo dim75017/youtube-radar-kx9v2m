@@ -262,12 +262,24 @@ const RECO_VALIDATED_ARCHIVE_KEY='lofi_radar_validated_archive_v1';
 function normalizedRecommendationTitle(value){return String(value||'').trim().toLocaleLowerCase().replace(/\s+/g,' ');}
 function validatedArchiveRows(){try{const rows=JSON.parse(localStorage.getItem(RECO_VALIDATED_ARCHIVE_KEY)||'[]');return Array.isArray(rows)?rows:[];}catch(e){return [];}}
 function saveValidatedArchive(rows){try{localStorage.setItem(RECO_VALIDATED_ARCHIVE_KEY,JSON.stringify(rows));}catch(e){}}
+function invalidateRoadmapDerivedViews(){
+  if(typeof VIEW_WARMUP_TOKEN!=='undefined')VIEW_WARMUP_TOKEN++;
+  if(typeof VIEW_CACHE!=='undefined'&&VIEW_CACHE&&typeof VIEW_CACHE.keys==='function'){
+    [...VIEW_CACHE.keys()].forEach(key=>{
+      if(/^(roadmap|dashboard|recos)\|/.test(String(key)))VIEW_CACHE.delete(key);
+    });
+  }
+  if(typeof renderNav==='function')renderNav();
+}
 function validatedRowKey(row){
   return row&&row.__kind==='roadmap'
     ?'roadmap:'+String(row.date||'')+'|'+normalizedRecommendationTitle(row.title)
     :'reco:'+String(row&&row.n||'');
 }
-function isValidatedRowArchived(row){return validatedArchiveRows().some(item=>item.key===validatedRowKey(row));}
+function isValidatedRowArchived(row){
+  if(validatedArchiveRows().some(item=>item.key===validatedRowKey(row)))return true;
+  return !!(row&&row.__kind==='roadmap'&&typeof isArchivedRoadmapEntry==='function'&&isArchivedRoadmapEntry(row));
+}
 function roadmapValidatedRows(){
   return (DATA.roadmap||[]).filter(row=>row&&row.title).map(row=>Object.assign({},row,{__kind:'roadmap',valid:'X',planned:true}));
 }
@@ -278,40 +290,17 @@ function validatedRecommendationRows(){
   const recos=(DATA.recos||[]).filter(row=>isValidated(row.valid)&&!plannedTitles.has(normalizedRecommendationTitle(row.title)));
   return recos.concat(planned).filter(row=>!isValidatedRowArchived(row));
 }
-function roadmapMatchesValidatedRecommendation(roadmapRow,row){
-  if(!roadmapRow||!row)return false;
-  return normalizedRecommendationTitle(roadmapRow.title)===normalizedRecommendationTitle(row.title)&&
-    String(roadmapRow.date||'')===String(row.date||'');
-}
-function archiveLinkedRoadmapRecommendation(row){
-  if(!row||row.__kind!=='roadmap')return;
-  const linked=(DATA.roadmap||[]).filter(entry=>roadmapMatchesValidatedRecommendation(entry,row));
-  if(!linked.length)return;
-  if(typeof ROADMAP_ARCHIVE_LOCAL!=='undefined'&&Array.isArray(ROADMAP_ARCHIVE_LOCAL)){
-    linked.forEach(entry=>{
-      if(!ROADMAP_ARCHIVE_LOCAL.some(saved=>roadmapMatchesValidatedRecommendation(saved,entry))){
-        ROADMAP_ARCHIVE_LOCAL.push(Object.assign({},entry,{archivedAt:Date.now()}));
-      }
-    });
-    if(typeof roadmapArchiveSave==='function')roadmapArchiveSave();
-  }
-  if(typeof SCHED_LOCAL!=='undefined'&&Array.isArray(SCHED_LOCAL)){
-    SCHED_LOCAL=SCHED_LOCAL.filter(entry=>!roadmapMatchesValidatedRecommendation(entry,row));
-    if(typeof schedSaveLocal==='function')schedSaveLocal();
-  }
-  DATA.roadmap=(DATA.roadmap||[]).filter(entry=>!roadmapMatchesValidatedRecommendation(entry,row));
-  if(typeof saveCache==='function')saveCache(DATA);
-}
 function archiveValidatedRecommendation(i,ev){
   if(ev)ev.stopPropagation();
   const row=(window._pageRecos||[])[i];if(!row)return;
   const key=validatedRowKey(row),archive=validatedArchiveRows();
   if(!archive.some(item=>item.key===key)){archive.push({key,archivedAt:Date.now(),row:Object.assign({},row)});saveValidatedArchive(archive);}
+  invalidateRoadmapDerivedViews();
   closeDrawer();rerenderRecos();
 }
 function restoreValidatedRecommendation(key,ev){
   if(ev)ev.stopPropagation();
-  saveValidatedArchive(validatedArchiveRows().filter(item=>item.key!==key));rerenderRecos();
+  saveValidatedArchive(validatedArchiveRows().filter(item=>item.key!==key));invalidateRoadmapDerivedViews();rerenderRecos();
 }
 function recoTabControlHTML(){
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
@@ -567,7 +556,7 @@ function roadmapTableHTML(rows){
     rows.map((r,i)=>{
       const d=new Date(r.date);
       const srcClass=/Monday/.test(r.src)?'src-monday':/Nouveau/.test(r.src)?'src-new':'src-rot';
-      return '<tr class="row" onclick="openRoad('+i+')" oncontextmenu="openRoadmapContextMenu('+i+',event);return false">'+
+      return '<tr class="row" data-roadmap-index="'+i+'" onclick="openRoad('+i+')">'+
         '<td style="white-space:nowrap">'+d.getDate()+' '+MONTHS[d.getMonth()]+' '+d.getFullYear()+'</td>'+
         '<td class="ttitle">'+esc(r.title)+'</td>'+
         '<td>'+gtag(r.genre)+'</td>'+
@@ -641,11 +630,10 @@ function openRoadmapContextMenu(i,ev){
   setTimeout(()=>document.addEventListener('click',closeRoadmapContextMenu,{once:true}),0);
 }
 document.addEventListener('contextmenu',ev=>{
-  const pill=ev.target&&ev.target.closest?ev.target.closest('.cal-pill'):null;
-  if(!pill)return;
-  const title=pill.textContent.trim();
-  const i=(window._rm_rows||[]).findIndex(row=>String(row.title||'').trim()===title);
-  if(i>=0)openRoadmapContextMenu(i,ev);
+  const target=ev.target&&ev.target.closest?ev.target.closest('[data-roadmap-index]'):null;
+  if(!target)return;
+  const i=Number(target.dataset.roadmapIndex);
+  if(Number.isInteger(i)&&i>=0)openRoadmapContextMenu(i,ev);
 });
 function archiveRoadmapEntry(i,ev){
   if(ev)ev.stopPropagation();
@@ -654,11 +642,12 @@ function archiveRoadmapEntry(i,ev){
   if(!ROADMAP_ARCHIVE_LOCAL.some(x=>roadmapEntryMatches(x,r)))ROADMAP_ARCHIVE_LOCAL.push({...r,archivedAt:Date.now()});
   roadmapArchiveSave();
   // DATA is the fresh Monday feed.  Keep it intact; only this browser hides the entry.
+  invalidateRoadmapDerivedViews();
   closeDrawer();render();
 }
 function restoreRoadmapEntry(i){
   const r=ROADMAP_ARCHIVE_LOCAL[i];if(!r)return;
-  ROADMAP_ARCHIVE_LOCAL.splice(i,1);roadmapArchiveSave();render();
+  ROADMAP_ARCHIVE_LOCAL.splice(i,1);roadmapArchiveSave();invalidateRoadmapDerivedViews();render();
 }
 function deleteRoadmapEntry(i,ev){
   archiveRoadmapEntry(i,ev);return;
@@ -722,7 +711,7 @@ function calHTML(rows,vt){
     h+='<div class="cal-cell'+(d.getMonth()!==m?' out':'')+(d.getTime()===today.getTime()?' today':'')+'">'+
       '<span class="d">'+String(d.getDate()).padStart(2,'0')+'</span><div class="pills">'+
       evs.map(r=>{const c=gcolor(r.genre);
-        return '<div class="cal-pill" style="background:'+c+';cursor:pointer" onclick="openRoad('+r._ri+')" title="'+esc(r.title+' — '+(r.genre||'?')+' · '+(r.perso||'')+' · '+(r.src||''))+'">'+esc(r.title)+'</div>';}).join('')+
+        return '<div class="cal-pill" data-roadmap-index="'+r._ri+'" style="background:'+c+';cursor:pointer" onclick="openRoad('+r._ri+')" title="'+esc(r.title+' — '+(r.genre||'?')+' · '+(r.perso||'')+' · '+(r.src||''))+'">'+esc(r.title)+'</div>';}).join('')+
       '</div></div>';
   }
   h+='</div></div>';
@@ -755,7 +744,7 @@ function yearCalHTML(rows,y,toggle,vt){
       const isToday=d.getTime()===today.getTime();
       const evStyle=evs.length?' style="background:'+gcolor(evs[0].genre)+';box-shadow:0 0 12px '+gcolor(evs[0].genre)+'66"':'';
       h+='<div class="year-cell'+(d.getMonth()!==m?' out':'')+(evs.length?' has-event':'')+(isToday?' today':'')+'"'+evStyle+
-        (evs.length?' onclick="openRoad('+evs[0]._ri+')" title="'+esc(evs.map(e=>e.title).join(' · '))+'"':'')+'>'+
+        (evs.length?' data-roadmap-index="'+evs[0]._ri+'" onclick="openRoad('+evs[0]._ri+')" title="'+esc(evs.map(e=>e.title).join(' · '))+'"':'')+'>'+
         d.getDate()+
       '</div>';
     }
@@ -788,7 +777,13 @@ function roadmapArchiveKey(row){
 function archivedRoadmapKeys(){
   const keys=new Set(),add=row=>{if(row&&row.title)keys.add(roadmapArchiveKey(row));};
   if(typeof ROADMAP_ARCHIVE_LOCAL!=='undefined'&&Array.isArray(ROADMAP_ARCHIVE_LOCAL))ROADMAP_ARCHIVE_LOCAL.forEach(add);
-  // Recommendation-card archives are separate from the Monday roadmap.
+  // A planned project archived from Validated must stay out of the Monday-fed
+  // roadmap after reload.  Accept both the saved row and its persisted key so
+  // archives created by earlier dashboard versions are recovered as well.
+  if(typeof validatedArchiveRows==='function')validatedArchiveRows().forEach(item=>{
+    if(item&&item.row&&item.row.__kind==='roadmap')add(item.row);
+    if(item&&typeof item.key==='string'&&item.key.indexOf('roadmap:')===0)keys.add(item.key);
+  });
   return keys;
 }
 function isArchivedRoadmapEntry(row){return archivedRoadmapKeys().has(roadmapArchiveKey(row));}
