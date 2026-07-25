@@ -537,6 +537,7 @@ jobs:
           result="$RUNNER_TEMP/soundcharts-snapshot-result.json"
           python prepare_soundcharts_snapshot.py prepare \
             --source "${{ steps.snapshot.outputs.candidate }}" \
+            --previous "${{ steps.snapshot.outputs.old }}" \
             --output-dir . > "$result"
           cat "$result"
           snapshot="$(python -c 'import json, pathlib, sys; print(pathlib.Path(json.load(open(sys.argv[1], encoding="utf-8"))["output"]).name)' "$result")"

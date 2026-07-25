@@ -257,6 +257,7 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
             result = subject.prepare_snapshot(
                 source,
                 output_dir=root,
+                previous=source,
                 now=dt.datetime(2026, 7, 21, 17, 31, 46, tzinfo=dt.timezone.utc),
             )
 
@@ -272,6 +273,7 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
                     subject.SOUNDCHARTS_PREFIX
                 )
             )
+            self.assertIn("transition_quarantine", result.report)
 
     def test_purge_cascades_blacklisted_identity_and_keeps_valid_instrumental(self):
         payload = minimal_payload()
@@ -739,6 +741,128 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
                     index, expected_old=old_name, new=new_name
                 )
             self.assertEqual(index.read_bytes(), before)
+
+    def test_transition_rejects_a_truncated_strict_catalogue(self):
+        previous = minimal_payload()
+        candidate = minimal_payload()
+        valid_artist = collaborator("Quiet Keys", "artist-valid", "uuid-valid")
+        for index in range(2, 12):
+            spotify_id = f"track-{index}"
+            previous["tracks"].append(
+                track(spotify_id, "Quiet Keys", [valid_artist])
+            )
+            previous["opportunities"].append(
+                opportunity(spotify_id, "Quiet Keys", [valid_artist])
+            )
+
+        with self.assertRaisesRegex(
+            subject.SnapshotValidationError, "retained only"
+        ):
+            subject.validate_snapshot_transition(previous, candidate)
+
+    def test_transition_rejects_unclassified_high_stream_addition(self):
+        previous = minimal_payload()
+        candidate = minimal_payload()
+        schema = [
+            "soundcharts_uuid",
+            "spotify_id",
+            "streams",
+            "instrumental_status",
+            "instrumental_confidence",
+        ]
+        previous["discovery_catalogue"] = {
+            "track_schema": schema,
+            "tracks": [["old-song", "old-track", 1_000_000, "unknown", None]],
+        }
+        candidate["discovery_catalogue"] = {
+            "track_schema": schema,
+            "tracks": [
+                ["old-song", "old-track", 1_000_000, "unknown", None],
+                ["new-song", "new-track", 500_000_000, "unknown", None],
+            ],
+        }
+
+        with self.assertRaisesRegex(
+            subject.SnapshotValidationError,
+            "lacks verified instrumental evidence",
+        ):
+            subject.validate_snapshot_transition(previous, candidate)
+
+    def test_unclassified_discovery_additions_stay_outside_public_catalogue(self):
+        schema = [
+            "soundcharts_uuid",
+            "spotify_id",
+            "artists",
+            "artist_soundcharts_uuids",
+            "streams",
+            "instrumental_status",
+            "instrumental_confidence",
+            "playlist_count",
+            "source_tier",
+            "availability_status",
+        ]
+        artist_schema = ["soundcharts_uuid", "spotify_id", "name"]
+        previous = {
+            "discovery_catalogue": {
+                "track_schema": schema,
+                "artist_schema": artist_schema,
+                "tracks": [["old-song", "old-track", [], ["old-artist"], 1_000, "unknown", None, 1, "independent_playlist", "needs_listen"]],
+                "artists": [["old-artist", "old-artist-spotify", "Old Artist"]],
+            }
+        }
+        candidate = {
+            "discovery_catalogue": {
+                "track_schema": schema,
+                "artist_schema": artist_schema,
+                "tracks": [
+                    *copy.deepcopy(previous["discovery_catalogue"]["tracks"]),
+                    ["unsafe-song", "unsafe-track", [], ["unsafe-artist"], 500_000_000, "unknown", None, 1, "independent_playlist", "needs_listen"],
+                    ["safe-song", "safe-track", [], ["safe-artist"], 2_000, "instrumental", 0.9, 1, "editorial_playlist", "verified"],
+                ],
+                "artists": [
+                    *copy.deepcopy(previous["discovery_catalogue"]["artists"]),
+                    ["unsafe-artist", "unsafe-artist-spotify", "Unsafe Artist"],
+                    ["safe-artist", "safe-artist-spotify", "Safe Artist"],
+                ],
+            }
+        }
+
+        removed = subject.quarantine_unapproved_discovery_additions(
+            previous, candidate
+        )
+        retained_track_ids = {
+            row[1] for row in candidate["discovery_catalogue"]["tracks"]
+        }
+        retained_artist_ids = {
+            row[1] for row in candidate["discovery_catalogue"]["artists"]
+        }
+
+        self.assertEqual(removed, {"tracks": 1, "artists": 1})
+        self.assertEqual(retained_track_ids, {"old-track", "safe-track"})
+        self.assertEqual(
+            retained_artist_ids, {"old-artist-spotify", "safe-artist-spotify"}
+        )
+
+    def test_transition_rejects_discovery_catalogue_collapse(self):
+        previous = minimal_payload()
+        candidate = minimal_payload()
+        schema = ["soundcharts_uuid", "spotify_id"]
+        previous["discovery_catalogue"] = {
+            "track_schema": schema,
+            "tracks": [
+                [f"song-{index}", f"track-{index}"] for index in range(10)
+            ],
+        }
+        candidate["discovery_catalogue"] = {
+            "track_schema": schema,
+            "tracks": [["song-0", "track-0"]],
+        }
+
+        with self.assertRaisesRegex(
+            subject.SnapshotValidationError,
+            "discovery_catalogue retained only",
+        ):
+            subject.validate_snapshot_transition(previous, candidate)
 
 
 if __name__ == "__main__":

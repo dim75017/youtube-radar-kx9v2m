@@ -107,6 +107,15 @@ PUBLIC_MIN_ARTIST_MONTHLY_LISTENERS = 1_000
 PUBLIC_MAX_ARTIST_MONTHLY_LISTENERS = 5_000_000
 PUBLIC_MAX_TRACK_STREAMS = 250_000_000
 
+# Automatic publication is intentionally conservative.  Discovery/classifier
+# jobs may grow staging freely, but a materially smaller strict catalogue or a
+# very large browse-layer jump must be reviewed instead of silently replacing
+# the currently approved snapshot.
+MIN_AUTO_RETENTION_RATIO = 0.80
+MAX_AUTO_DISCOVERY_GROWTH_RATIO = 1.35
+MAX_AUTO_DISCOVERY_GROWTH_ROWS = 5_000
+HIGH_STREAM_UNCLASSIFIED_THRESHOLD = 50_000_000
+
 
 class SnapshotError(RuntimeError):
     """Base error for snapshot preparation and activation."""
@@ -678,18 +687,13 @@ def _refresh_counts(
 
     coverage = payload.get("coverage")
     if isinstance(coverage, dict):
-        _update_if_direct_count(
-            coverage.get("artists"),
-            "exported",
-            before_counts["artists"],
-            len(artists),
-        )
-        _update_if_direct_count(
-            coverage.get("tracks"),
-            "exported",
-            before_counts["tracks"],
-            len(tracks),
-        )
+        # ``exported`` describes the public arrays after sanitisation.  It must
+        # never retain a stale pre-filter count: that exact mismatch allowed a
+        # 230-track payload to claim 2,063 exported tracks and pass activation.
+        for collection, rows in (("artists", artists), ("tracks", tracks)):
+            collection_coverage = coverage.get(collection)
+            if isinstance(collection_coverage, dict):
+                collection_coverage["exported"] = len(rows)
         fal_coverage = coverage.get("fal")
         for key in ("candidates", "exported"):
             _update_if_direct_count(
@@ -1513,6 +1517,19 @@ def validate_payload(payload: Mapping[str, Any]) -> None:
             raise SnapshotValidationError(
                 f"SC.{collection} must be present and non-empty"
             )
+        coverage = payload.get("coverage")
+        collection_coverage = (
+            coverage.get(collection) if isinstance(coverage, Mapping) else None
+        )
+        exported = (
+            collection_coverage.get("exported")
+            if isinstance(collection_coverage, Mapping)
+            else None
+        )
+        if exported is not None and int(exported) != len(rows):
+            raise SnapshotValidationError(
+                f"SC.coverage.{collection}.exported does not match the actual array"
+            )
     editorial = payload.get("editorial")
     if not isinstance(editorial, Mapping):
         raise SnapshotValidationError("SC.editorial must be present")
@@ -1794,10 +1811,137 @@ def snapshot_filename(value: dt.datetime | None = None) -> str:
     return f"Spotify_Soundcharts_data_{_utc_now(value):%Y%m%dT%H%M%SZ}.js"
 
 
+def _discovery_identity(record: Mapping[str, Any]) -> str:
+    spotify_id = str(record.get("spotify_id") or "").strip()
+    soundcharts_uuid = str(record.get("soundcharts_uuid") or "").strip()
+    return spotify_id or (f"soundcharts:{soundcharts_uuid}" if soundcharts_uuid else "")
+
+
+def _discovery_identity_aliases(record: Mapping[str, Any]) -> set[str]:
+    spotify_id = str(record.get("spotify_id") or "").strip()
+    soundcharts_uuid = str(record.get("soundcharts_uuid") or "").strip()
+    return {
+        identity
+        for identity in (
+            spotify_id,
+            f"soundcharts:{soundcharts_uuid}" if soundcharts_uuid else "",
+        )
+        if identity
+    }
+
+
+def quarantine_unapproved_discovery_additions(
+    previous: Mapping[str, Any], candidate: dict[str, Any]
+) -> dict[str, int]:
+    """Keep new unclassified discoveries in staging, outside the public browse UI.
+
+    Rows already present in the reviewed predecessor are grandfathered.  A new
+    row is public only after Soundcharts explicitly identifies it as
+    instrumental with sufficient confidence.  The collector cache remains the
+    source for later classification, so quarantine does not discard scan work.
+    """
+
+    catalogue = candidate.get("discovery_catalogue")
+    if not isinstance(catalogue, dict):
+        return {"tracks": 0, "artists": 0}
+    previous_catalogue = previous.get("discovery_catalogue")
+    previous_catalogue = (
+        previous_catalogue if isinstance(previous_catalogue, Mapping) else {}
+    )
+    track_schema = catalogue.get("track_schema")
+    track_schema = list(track_schema) if isinstance(track_schema, list) else []
+    artist_schema = catalogue.get("artist_schema")
+    artist_schema = list(artist_schema) if isinstance(artist_schema, list) else []
+
+    previous_tracks = _discovery_track_records(previous)
+    previous_track_aliases = {
+        alias
+        for record in previous_tracks.values()
+        for alias in _discovery_identity_aliases(record)
+    }
+    retained_tracks: list[Any] = []
+    referenced_artist_ids: set[str] = set()
+    track_rows = catalogue.get("tracks")
+    track_rows = track_rows if isinstance(track_rows, list) else []
+    for row in track_rows:
+        record = _mapping_from_row(row, track_schema)
+        instrumental = _normalise_text(record.get("instrumental_status"))
+        confidence = _finite_number(record.get("instrumental_confidence")) or 0
+        was_previously_approved = bool(
+            _discovery_identity_aliases(record).intersection(
+                previous_track_aliases
+            )
+        )
+        if not was_previously_approved and not (
+            instrumental == "instrumental"
+            and confidence >= PUBLIC_MIN_CONFIDENCE
+        ):
+            continue
+        retained_tracks.append(row)
+        for collaborator in record.get("artists") or []:
+            if isinstance(collaborator, Mapping):
+                referenced_artist_ids.update(
+                    _discovery_identity_aliases(collaborator)
+                )
+        for soundcharts_uuid in record.get("artist_soundcharts_uuids") or []:
+            soundcharts_uuid = str(soundcharts_uuid or "").strip()
+            if soundcharts_uuid:
+                referenced_artist_ids.add(f"soundcharts:{soundcharts_uuid}")
+
+    previous_artist_schema = previous_catalogue.get("artist_schema")
+    previous_artist_schema = (
+        list(previous_artist_schema)
+        if isinstance(previous_artist_schema, list)
+        else []
+    )
+    previous_artist_rows = previous_catalogue.get("artists")
+    previous_artist_rows = (
+        previous_artist_rows if isinstance(previous_artist_rows, list) else []
+    )
+    previous_artist_ids: set[str] = set()
+    for row in previous_artist_rows:
+        previous_artist_ids.update(
+            _discovery_identity_aliases(
+                _mapping_from_row(row, previous_artist_schema)
+            )
+        )
+    artist_rows = catalogue.get("artists")
+    artist_rows = artist_rows if isinstance(artist_rows, list) else []
+    retained_artists = []
+    for row in artist_rows:
+        identities = _discovery_identity_aliases(
+            _mapping_from_row(row, artist_schema)
+        )
+        if identities.intersection(previous_artist_ids | referenced_artist_ids):
+            retained_artists.append(row)
+
+    removed_tracks = len(track_rows) - len(retained_tracks)
+    removed_artists = len(artist_rows) - len(retained_artists)
+    catalogue["tracks"] = retained_tracks
+    catalogue["artists"] = retained_artists
+    track_records = [_mapping_from_row(row, track_schema) for row in retained_tracks]
+    catalogue["counts"] = {
+        "tracks": len(retained_tracks),
+        "artists": len(retained_artists),
+        "measured_tracks": sum(record.get("streams") is not None for record in track_records),
+        "playlist_tracks": sum(bool(record.get("playlist_count")) for record in track_records),
+        "catalogue_tracks": sum(
+            record.get("source_tier") == "playlist_artist_catalogue"
+            for record in track_records
+        ),
+        "verified_tracks": sum(
+            record.get("availability_status") == "verified"
+            for record in track_records
+        ),
+    }
+    return {"tracks": removed_tracks, "artists": removed_artists}
+
+
 def prepare_snapshot(
     source: Path | str,
     *,
     output_dir: Path | str | None = None,
+    previous: Path | str | None = None,
     now: dt.datetime | None = None,
 ) -> PreparationResult:
     source_path = Path(source).resolve()
@@ -1813,6 +1957,12 @@ def prepare_snapshot(
         raise SnapshotError(f"snapshot already exists; refusing overwrite: {output}")
 
     sanitized, report = sanitize_payload(load_payload(source_path))
+    if previous is not None:
+        report = dict(report)
+        report["transition_quarantine"] = quarantine_unapproved_discovery_additions(
+            load_payload(previous), sanitized
+        )
+        validate_payload(sanitized)
     serialized = (
         SOUNDCHARTS_PREFIX
         + json.dumps(sanitized, ensure_ascii=False, separators=(",", ":"))
@@ -1868,6 +2018,123 @@ def current_snapshot_name(index_path: Path | str) -> str:
     return current_name
 
 
+def _collection_identity_set(
+    payload: Mapping[str, Any], collection: str
+) -> set[str]:
+    rows = payload.get(collection)
+    rows = rows if isinstance(rows, list) else []
+    schema = _schema(payload, collection)
+    identities: set[str] = set()
+    for row in rows:
+        spotify_id = str(_row_value(row, schema, "spotify_id") or "").strip()
+        soundcharts_uuid = str(
+            _row_value(row, schema, "soundcharts_uuid") or ""
+        ).strip()
+        identity = spotify_id or (f"soundcharts:{soundcharts_uuid}" if soundcharts_uuid else "")
+        if identity:
+            identities.add(identity)
+    return identities
+
+
+def _discovery_track_records(payload: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
+    catalogue = payload.get("discovery_catalogue")
+    if not isinstance(catalogue, Mapping):
+        return {}
+    schema = catalogue.get("track_schema")
+    schema = list(schema) if isinstance(schema, list) else []
+    rows = catalogue.get("tracks")
+    rows = rows if isinstance(rows, list) else []
+    records: dict[str, Mapping[str, Any]] = {}
+    for row in rows:
+        record = _mapping_from_row(row, schema)
+        spotify_id = str(record.get("spotify_id") or "").strip()
+        soundcharts_uuid = str(record.get("soundcharts_uuid") or "").strip()
+        identity = spotify_id or (f"soundcharts:{soundcharts_uuid}" if soundcharts_uuid else "")
+        if identity:
+            records[identity] = record
+    return records
+
+
+def validate_snapshot_transition(
+    previous: Mapping[str, Any], candidate: Mapping[str, Any]
+) -> None:
+    """Reject an unsafe automatic replacement of the approved snapshot.
+
+    This is deliberately a transition check rather than a single-file schema
+    check.  A non-empty but truncated payload is structurally valid; only the
+    approved predecessor reveals that most tracks or opportunities vanished.
+    """
+
+    for collection in ("tracks", "opportunities"):
+        previous_ids = _collection_identity_set(previous, collection)
+        candidate_ids = _collection_identity_set(candidate, collection)
+        if not previous_ids:
+            continue
+        retained = len(previous_ids.intersection(candidate_ids)) / len(previous_ids)
+        if retained < MIN_AUTO_RETENTION_RATIO:
+            raise SnapshotValidationError(
+                f"SC.{collection} retained only {retained:.1%} of the approved snapshot"
+            )
+
+    previous_discovery = _discovery_track_records(previous)
+    candidate_discovery = _discovery_track_records(candidate)
+    if previous_discovery:
+        candidate_discovery_aliases = {
+            alias
+            for record in candidate_discovery.values()
+            for alias in _discovery_identity_aliases(record)
+        }
+        retained_discovery_rows = sum(
+            bool(
+                _discovery_identity_aliases(record).intersection(
+                    candidate_discovery_aliases
+                )
+            )
+            for record in previous_discovery.values()
+        )
+        discovery_retained = retained_discovery_rows / len(previous_discovery)
+        if discovery_retained < MIN_AUTO_RETENTION_RATIO:
+            raise SnapshotValidationError(
+                "SC.discovery_catalogue retained only "
+                f"{discovery_retained:.1%} of the approved snapshot"
+            )
+        growth_limit = max(
+            int(len(previous_discovery) * MAX_AUTO_DISCOVERY_GROWTH_RATIO),
+            len(previous_discovery) + MAX_AUTO_DISCOVERY_GROWTH_ROWS,
+        )
+        if len(candidate_discovery) > growth_limit:
+            raise SnapshotValidationError(
+                "SC.discovery_catalogue grew too quickly for automatic activation "
+                f"({len(previous_discovery)} -> {len(candidate_discovery)})"
+            )
+
+    previous_discovery_aliases = {
+        alias
+        for record in previous_discovery.values()
+        for alias in _discovery_identity_aliases(record)
+    }
+    for record in candidate_discovery.values():
+        if _discovery_identity_aliases(record).intersection(
+            previous_discovery_aliases
+        ):
+            continue
+        instrumental = _normalise_text(record.get("instrumental_status"))
+        confidence = _finite_number(record.get("instrumental_confidence")) or 0
+        if instrumental in {"vocal", "non_instrumental"}:
+            raise SnapshotValidationError(
+                "new vocal/non-instrumental discovery row cannot be auto-activated"
+            )
+        streams = _finite_number(record.get("streams"))
+        if (
+            streams is not None
+            and streams >= HIGH_STREAM_UNCLASSIFIED_THRESHOLD
+            and not (instrumental == "instrumental" and confidence >= PUBLIC_MIN_CONFIDENCE)
+        ):
+            raise SnapshotValidationError(
+                "high-stream discovery row lacks verified instrumental evidence"
+            )
+
+
 def activate_snapshot(
     index_path: Path | str,
     *,
@@ -1909,6 +2176,10 @@ def activate_snapshot(
         raise CompareAndSwapError(f"expected old export is missing: {current_export}")
     if not new_export.is_file():
         raise CompareAndSwapError(f"new export is missing: {new_export}")
+
+    candidate_payload = load_payload(new_export)
+    validate_payload(candidate_payload)
+    validate_snapshot_transition(load_payload(current_export), candidate_payload)
 
     replacement = (
         match.group("quote") + new_value + match.group("quote")
@@ -1967,6 +2238,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="repository root (defaults to the source file's directory)",
     )
     prepare.add_argument(
+        "--previous",
+        type=Path,
+        help="currently approved snapshot used to quarantine new unclassified rows",
+    )
+    prepare.add_argument(
         "--timestamp",
         type=_parse_timestamp,
         help="deterministic ISO timestamp for tests/recovery; defaults to now UTC",
@@ -1993,6 +2269,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             result = prepare_snapshot(
                 args.source,
                 output_dir=args.output_dir,
+                previous=args.previous,
                 now=args.timestamp,
             )
             print(

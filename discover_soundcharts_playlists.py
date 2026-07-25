@@ -361,8 +361,15 @@ def classify_independent_playlist(name: Any, keywords: Any, use_case: Any = "") 
     context = " ".join(part for part in (title, keyword_text, _normalise_text(use_case)) if part)
     if not context or INDEPENDENT_EXCLUSION_RE.search(context):
         return None
+    # Search keywords and use-case tags describe why a playlist was returned;
+    # they are not evidence that its actual contents belong to that genre.  A
+    # previous collector treated e.g. a ``piano`` search tag as proof for
+    # playlists titled "Lecture Romance" or "rainy drive", then imported every
+    # vocal track they contained.  Independent playlists must therefore carry
+    # the target signal in their own public title.  The auxiliary context stays
+    # useful only for rejecting explicitly vocal/mainstream collections above.
     for genre, patterns in INDEPENDENT_GENRE_RULES:
-        if any(re.search(pattern, context, re.IGNORECASE) for pattern in patterns):
+        if any(re.search(pattern, title, re.IGNORECASE) for pattern in patterns):
             return genre
     return None
 

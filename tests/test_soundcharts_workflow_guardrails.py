@@ -41,6 +41,12 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertLess(wait, hash_check)
         self.assertLess(hash_check, activate)
 
+    def test_public_snapshot_is_compared_with_the_current_approved_snapshot(self):
+        prepare = self.workflow.index("Prepare public-safe dated snapshot")
+        validate = self.workflow.index("Validate generated business outputs")
+        section = self.workflow[prepare:validate]
+        self.assertIn('--previous "${{ steps.snapshot.outputs.old }}"', section)
+
     def test_bootstrap_runs_every_five_minutes_without_cancelling_a_live_run(self):
         self.assertIn("- cron: '2-57/5 * * * *'", self.workflow)
         self.assertIn("cancel-in-progress: false", self.workflow)

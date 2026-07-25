@@ -250,6 +250,18 @@ class PlaylistDiscoveryTests(unittest.TestCase):
         self.assertEqual(selected[0]["source_tier"], "independent_playlist")
         self.assertEqual(selected[1]["primary_genre"], "dark_ambient")
 
+    def test_independent_search_tags_cannot_relabel_a_vocal_mood_playlist(self):
+        payload = {
+            "cols": ["id", "name", "owner", "curatorCat", "followers", "tracks", "genre", "use_case", "kw"],
+            "rows": [
+                ["romance", "Lecture Romance", "Curator", "independent", 900_000, 100, "Piano", "Study", "piano|ambient"],
+                ["rainy", "rainy drive", "Curator", "independent", 800_000, 100, "Ambient", "Focus", "lofi|piano"],
+                ["sunset", "sunset house", "Curator", "independent", 700_000, 100, "Lofi / chillhop", "Focus", "lofi beats"],
+            ],
+        }
+
+        self.assertEqual(subject.select_playlists(payload, "independent"), [])
+
     def test_targeted_dark_ambient_scope_and_follower_floor(self):
         payload = {
             "cols": ["id", "name", "owner", "curatorCat", "followers", "tracks", "genre", "use_case", "kw"],
