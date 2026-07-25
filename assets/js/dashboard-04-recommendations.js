@@ -163,19 +163,40 @@ function recoRotationHistory(){try{return JSON.parse(localStorage.getItem(RECO_R
 function saveRecoRotation(h){try{localStorage.setItem(RECO_ROTATION_KEY,JSON.stringify(h));}catch(e){}}
 function recoAddSignal(map,key,value){if(key)map[key]=(map[key]||0)+value;}
 function recoSignal(map,key){return Number(map[key]||0);}
+function recoPerformanceSignal(o){
+  const relative=Number.isFinite(Number(o.pctCh))?Number(o.pctCh)-50:0;
+  const ctr=Number(o.st&&o.st.ctr),awp=Number(o.st&&o.st.awp);
+  return Math.max(-18,Math.min(18,relative*.22+(Number.isFinite(ctr)?Math.max(-3,Math.min(3,(ctr-4)*.7)):0)+(Number.isFinite(awp)?Math.max(-3,Math.min(3,(awp-35)*.08)):0)));
+}
+function recoHorizonWeight(ageMonths){
+  // The newest releases stay decisive, while 6- and 12-month results refine
+  // the model without letting old packaging/topic choices dominate.
+  if(ageMonths<=3)return {id:'3m',weight:1};
+  if(ageMonths<=6)return {id:'6m',weight:.55};
+  if(ageMonths<=12)return {id:'12m',weight:.28};
+  return null;
+}
+function recoVideoFields(o){
+  // A recommendation link is useful when it exists, but every owned video in
+  // Analyse can teach the model from its own tagged metadata.
+  return o.reco||o||{};
+}
 function recoProfile(){
-  const p={genre:{},persona:{},token:{},recentGenre:{},feedbackPersona:{},feedbackToken:{},recentVideos:0,feedback:0};
+  const p={genre:{},persona:{},token:{},recentGenre:{},feedbackPersona:{},feedbackToken:{},recentVideos:0,windows:{'3m':0,'6m':0,'12m':0},feedback:0};
   (DATA.recos||[]).forEach(r=>{
     const feedback=isValidated(r.valid)?3:isRefused(r.valid)?-3:0;if(!feedback)return;
     p.feedback++;recoAddSignal(p.genre,String(r.genre||''),feedback);recoAddSignal(p.persona,persoCategory(r.perso),feedback);
     recoAddSignal(p.feedbackPersona,persoCategory(r.perso),feedback);recoTokens(r).forEach(t=>{recoAddSignal(p.token,t,feedback*.35);recoAddSignal(p.feedbackToken,t,feedback*.35);});
   });
-  try{(anaRows()||[]).filter(o=>Number(o.ageM)<=3&&o.reco).forEach(o=>{
-    const relative=Number.isFinite(Number(o.pctCh))?Number(o.pctCh)-50:0;
-    const ctr=Number(o.st&&o.st.ctr),awp=Number(o.st&&o.st.awp);
-    const signal=Math.max(-18,Math.min(18,relative*.22+(Number.isFinite(ctr)?Math.max(-3,Math.min(3,(ctr-4)*.7)):0)+(Number.isFinite(awp)?Math.max(-3,Math.min(3,(awp-35)*.08)):0)));
-    if(!signal)return;p.recentVideos++;recoAddSignal(p.genre,String(o.reco.genre||''),signal);recoAddSignal(p.recentGenre,String(o.reco.genre||''),signal);recoAddSignal(p.persona,persoCategory(o.reco.perso),signal*.65);
-    recoTokens(o.reco).forEach(t=>recoAddSignal(p.token,t,signal*.18));
+  try{(anaRows()||[]).forEach(o=>{
+    const horizon=recoHorizonWeight(Number(o.ageM));if(!horizon)return;
+    const signal=recoPerformanceSignal(o);if(!signal)return;
+    const fields=recoVideoFields(o),weighted=signal*horizon.weight;
+    p.recentVideos++;p.windows[horizon.id]++;
+    recoAddSignal(p.genre,String(fields.genre||''),weighted);
+    if(horizon.id==='3m')recoAddSignal(p.recentGenre,String(fields.genre||''),weighted);
+    recoAddSignal(p.persona,persoCategory(fields.perso),weighted*.65);
+    recoTokens(fields).forEach(t=>recoAddSignal(p.token,t,weighted*.18));
   });}catch(e){}
   return p;
 }
@@ -228,9 +249,9 @@ function legacyDailyRecoBrief(rows){
 function dailyRecoBrief(rows){
   const fr=typeof LANG!=='undefined'&&LANG==='fr',p=rows[0]&&rows[0]._dailyProfile||{recentVideos:0};
   const text=p.recentVideos
-    ?(fr?'Classement basé sur les 90 derniers jours de la chaîne, les performances comparées à l’âge des vidéos, puis tes validations et refus. Les idées déjà proposées sont mises en rotation.':'Ranking uses the channel’s last 90 days, age-normalized video performance, then your validations and refusals. Previously shown ideas are rotated out.')
-    :(fr?'Les données de performance récentes arriveront avec le prochain import YouTube. En attendant, la sélection utilise le score catalogue, tes validations/refus et la rotation anti-répétition.':'Recent performance data will be used after the next YouTube import. Until then, the selection uses the catalogue score, your feedback and anti-repeat rotation.');
-  return '<div class="reco-daily-brief"><div><div class="reco-daily-kicker">'+(fr?'SÉLECTION DU JOUR':'DAILY SELECTION')+' · '+recoDayKey()+'</div><p>'+text+'</p></div><div class="reco-daily-stats"><b>'+rows.length+' / '+RECO_DAILY_LIMIT+'</b><span>'+(fr?'idées actives':'active ideas')+'</span><b>'+p.recentVideos+'</b><span>'+(fr?'vidéos récentes analysées':'recent videos analysed')+'</span></div></div>';
+    ?(fr?'Classement fondé sur les validations/refus de l’équipe et les performances de la chaîne sur 3, 6 et 12 mois, comparées à l’âge des vidéos. Les données les plus récentes pèsent davantage et la rotation évite les répétitions.':'Ranking uses team approvals/refusals and channel performance across 3, 6 and 12 months, normalized by video age. The newest data carries more weight and rotation prevents repeats.')
+    :(fr?'Les performances de la chaîne arriveront avec le prochain import YouTube. En attendant, la sélection utilise le score catalogue, les validations/refus de l’équipe et la rotation anti-répétition.':'Channel performance will be used after the next YouTube import. Until then, the selection uses the catalogue score, team feedback and anti-repeat rotation.');
+  return '<div class="reco-daily-brief"><div><div class="reco-daily-kicker">'+(fr?'SÉLECTION DU JOUR':'DAILY SELECTION')+' · '+recoDayKey()+'</div><p>'+text+'</p></div><div class="reco-daily-stats"><b>'+rows.length+' / '+RECO_DAILY_LIMIT+'</b><span>'+(fr?'idées actives':'active ideas')+'</span><b>'+p.recentVideos+'</b><span>'+(fr?'vidéos analysées':'videos analysed')+'</span></div></div>';
 }
 function dailyRecoListHTML(rows){
   if(!rows.length)return '<div class="empty">'+((typeof LANG!=='undefined'&&LANG==='fr')?'Aucune proposition en attente.':'No proposal awaiting review.')+'</div>';

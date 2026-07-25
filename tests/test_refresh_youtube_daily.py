@@ -117,6 +117,35 @@ class DailyHistoryTests(unittest.TestCase):
         )
         self.assertEqual(row["channelId"], "UC1234567890123456789012")
 
+    def test_official_upload_lookup_uses_the_channel_uploads_playlist(self):
+        responses = iter([
+            {"items": [{"contentDetails": {"relatedPlaylists": {"uploads": "UUofficial"}}}]},
+            {"items": [{"contentDetails": {"videoId": "abcdefghijk"}}]},
+        ])
+        with patch.object(radar, "youtube_api_payload", side_effect=lambda *args: next(responses)) as api:
+            ids = radar.fetch_owned_upload_ids("test-key")
+        self.assertEqual(ids, ["abcdefghijk"])
+        self.assertEqual(api.call_args_list[0].args[0], "channels")
+        self.assertEqual(api.call_args_list[1].args[0], "playlistItems")
+
+    def test_merge_inserts_official_upload_into_analysis_and_history(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "Lofi_Radar_data.js"
+            avatars = root / "avatars.js"
+            shards = root / "shards"
+            shards.mkdir()
+            radar.write_snapshot(snapshot, {"t": 1, "d": {"all": [{"vid": "abcdefghijk", "views": 100, "pub": 1700000000000}], "trends": [], "news": [], "ours": [], "recos": [], "roadmap": []}})
+            generated = int(datetime(2026, 7, 20, 8, tzinfo=timezone.utc).timestamp() * 1000)
+            owned = {"vid": "zyxwvutsrqp", "title": "New Lofi Girl upload", "views": 200, "pub": generated, "durH": 1.0, "source": "Official Lofi Girl daily scan"}
+            artifact = {"version": 1, "generated_ms": generated, "shard": 0, "shards": 1, "tracked_total": 1, "tracked_ok": 1, "tracked_ids": ["abcdefghijk"], "queries_total": 1, "queries_ok": 1, "queries_raw": 1, "queries_enriched": 1, "fresh": [owned], "owned_fresh": [owned], "candidates": []}
+            (shards / "youtube-shard-0.json").write_text(json.dumps(artifact), encoding="utf-8")
+            radar.merge_artifacts(snapshot, avatars, shards, 1)
+            merged = radar.read_snapshot(snapshot)
+            self.assertEqual(merged["d"]["ours"][0]["vid"], "zyxwvutsrqp")
+            history = json.loads((root / "video_history" / "7a.json").read_text(encoding="utf-8"))
+            self.assertEqual(history["d"]["zyxwvutsrqp"], [[generated, 200]])
+
     def test_avatar_overlay_links_handle_to_channel_id_without_overwriting_atlas(self):
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "avatars.js"

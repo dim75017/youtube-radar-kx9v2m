@@ -38,9 +38,12 @@ const context = {
   persoCategory: value => value || 'Unknown',
   isValidated: value => /^X/.test(value || ''),
   isRefused: value => /^-/.test(value || ''),
-  anaRows: () => [{ageM: 1, pctCh: 92, reco: recos[29], st: {ctr: 6.5, awp: 48}}]
+  anaRows: () => [
+    {ageM: 1, pctCh: 92, reco: recos[29], st: {ctr: 6.5, awp: 48}},
+    {ageM: 7, pctCh: 85, genre: 'Ambient', perso: 'Girl', title: 'Forest focus', st: {ctr: 5.5, awp: 44}}
+  ]
 };
-vm.runInNewContext(`${source.slice(start, end)}; this.dailyRecommendationSet = dailyRecommendationSet;`, context);
+vm.runInNewContext(`${source.slice(start, end)}; this.dailyRecommendationSet = dailyRecommendationSet; this.recoProfile = recoProfile;`, context);
 
 const daily = context.dailyRecommendationSet();
 assert.equal(daily.length, 50, 'the active list is limited to 50 concepts');
@@ -48,7 +51,9 @@ assert.ok(daily.every(r => !/^X|^-/.test(r.valid || '')), 'validated and refused
 assert.ok(daily.every(r => r.n > 10), 'concepts shown in the prior rotation are not repeated when enough candidates remain');
 assert.ok(daily.every(r => Array.isArray(r._dailyReasons) && r._dailyReasons.length >= 2), 'every concept exposes selection reasons');
 assert.ok(daily.some(r => r._dailyReasons.some(reason => /Signal chaîne récent/.test(reason))), 'recent channel performance contributes an explainable signal');
-assert.match(source, /anaRows\(\).*ageM.*<=3/, 'the ranking uses videos from the last 90 days');
+assert.equal(context.recoProfile().windows['12m'], 1,
+  'an owned video without a linked recommendation contributes over the 12-month horizon');
+assert.match(source, /ageMonths<=12/, 'the ranking keeps an explicit 12-month learning horizon');
 assert.match(source, /RECO_DAILY_LIMIT=50/, 'the 50-item cap remains explicit');
 
 // A validation is removed from the same fixed daily queue. It must not be

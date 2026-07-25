@@ -45,6 +45,8 @@ SEARCH_WORKERS = int(os.environ.get("RADAR_SEARCH_WORKERS", "4"))
 MIN_TRACK_RATIO = 0.90
 MIN_QUERY_RATIO = 0.90
 HISTORY_RETENTION_DAYS = 400
+OWN_CHANNEL_HANDLES = ("@LofiGirl",)
+OWN_UPLOADS_PER_CHANNEL = 50
 THREAD = threading.local()
 
 # Genre words such as "hip hop" are intentionally not rejected: this is an
@@ -355,6 +357,60 @@ def fetch_api_rows(video_ids: list[str], now_ms: int, key: str) -> dict[str, dic
     return out
 
 
+def youtube_api_payload(path: str, params: dict[str, object]) -> dict:
+    """Load one YouTube Data API response without exposing the API key in logs."""
+    query = urllib.parse.urlencode(params)
+    with urllib.request.urlopen(
+        "https://www.googleapis.com/youtube/v3/" + path + "?" + query,
+        timeout=30,
+    ) as response:
+        return json.load(response)
+
+
+def fetch_owned_upload_ids(api_key: str) -> list[str]:
+    """Return recent public uploads from the official Lofi Girl channel(s)."""
+    ids: list[str] = []
+    for handle in OWN_CHANNEL_HANDLES:
+        channels = youtube_api_payload(
+            "channels",
+            {"part": "contentDetails", "forHandle": handle, "key": api_key},
+        ).get("items") or []
+        if not channels:
+            raise RuntimeError(f"Official channel lookup returned no channel for {handle}")
+        uploads = ((channels[0].get("contentDetails") or {}).get("relatedPlaylists") or {}).get("uploads")
+        if not uploads:
+            raise RuntimeError(f"Official channel {handle} has no uploads playlist")
+        page_token = ""
+        while len(ids) < OWN_UPLOADS_PER_CHANNEL:
+            params: dict[str, object] = {
+                "part": "contentDetails",
+                "playlistId": uploads,
+                "maxResults": min(50, OWN_UPLOADS_PER_CHANNEL - len(ids)),
+                "key": api_key,
+            }
+            if page_token:
+                params["pageToken"] = page_token
+            payload = youtube_api_payload("playlistItems", params)
+            ids.extend(
+                str((item.get("contentDetails") or {}).get("videoId") or "")
+                for item in payload.get("items") or []
+            )
+            page_token = str(payload.get("nextPageToken") or "")
+            if not page_token:
+                break
+    return list(dict.fromkeys(video_id for video_id in ids if VIDEO_ID.match(video_id)))
+
+
+def fetch_owned_api_rows(now_ms: int, api_key: str) -> dict[str, dict]:
+    """Refresh recent official uploads so Analyse cannot miss a new release."""
+    rows = fetch_api_rows(fetch_owned_upload_ids(api_key), now_ms, api_key)
+    if not rows:
+        raise RuntimeError("Official Lofi Girl upload scan returned no usable videos")
+    for row in rows.values():
+        row["source"] = "Official Lofi Girl daily scan"
+    return rows
+
+
 def query_specs(payload: dict) -> list[dict]:
     votes: dict[str, dict[str, Counter]] = defaultdict(lambda: {"genre": Counter(), "cluster": Counter()})
     for bucket in ("all", "trends", "news"):
@@ -398,7 +454,7 @@ def sheet_video_ids() -> set[str]:
 def tracked_ids(payload: dict) -> list[str]:
     ids = {
         str(row.get("vid"))
-        for bucket in ("all", "trends", "news")
+        for bucket in ("all", "trends", "news", "ours")
         for row in payload.get("d", {}).get(bucket, [])
         if not is_deferred_row(row)
         if VIDEO_ID.match(str(row.get("vid") or ""))
@@ -437,6 +493,15 @@ def run_shard(snapshot: Path, output: Path, shard: int, shards: int) -> dict:
     fresh: dict[str, dict] = {}
     track_failed = 0
     api_key = os.environ.get("YOUTUBE_API_KEY", "").strip()
+    owned_fresh: dict[str, dict] = {}
+    # One deterministic shard discovers the official uploads. The merge only
+    # runs after every shard passes, so a failed Lofi Girl lookup cannot
+    # silently publish a snapshot that misses a new release.
+    if shard == 0:
+        if not api_key:
+            raise RuntimeError("Official Lofi Girl upload scan requires YOUTUBE_API_KEY")
+        owned_fresh = fetch_owned_api_rows(now_ms, api_key)
+        fresh.update(owned_fresh)
     if api_key:
         try:
             fresh.update(fetch_api_rows(ids, now_ms, api_key))
@@ -501,6 +566,7 @@ def run_shard(snapshot: Path, output: Path, shard: int, shards: int) -> dict:
         "queries_enriched": query_enriched,
         "tracked_ids": ids,
         "tracked_fresh_ids": tracked_fresh_ids,
+        "owned_fresh": list(owned_fresh.values()),
         "fresh": list(fresh.values()),
         "candidates": merge_keyword_rows(candidates),
     }
@@ -676,6 +742,7 @@ def merge_artifacts(
     legacy_history = data.pop("hist", {})
     now_ms = max(int(a.get("generated_ms", 0)) for a in artifacts) or utc_now_ms()
     fresh: dict[str, dict] = {}
+    owned_fresh: dict[str, dict] = {}
     candidates: list[dict] = []
     for artifact in artifacts:
         candidates.extend(artifact.get("candidates") or [])
@@ -686,12 +753,30 @@ def merge_artifacts(
             previous = fresh.get(video_id)
             if not previous or int(row.get("views") or 0) >= int(previous.get("views") or 0):
                 fresh[video_id] = row
+        for row in artifact.get("owned_fresh") or []:
+            video_id = row.get("vid")
+            if VIDEO_ID.match(str(video_id or "")):
+                owned_fresh[video_id] = row
 
     for bucket in ("all", "trends", "news"):
         for row in data.setdefault(bucket, []):
             current = fresh.get(row.get("vid"))
             if current:
                 update_row(row, current, now_ms)
+
+    by_ours = {row.get("vid"): row for row in data.setdefault("ours", [])}
+    inserted_ours = 0
+    for row in owned_fresh.values():
+        current = by_ours.get(row["vid"])
+        if current:
+            update_row(current, row, now_ms)
+            current["source"] = row.get("source") or current.get("source")
+        else:
+            added = dict(row)
+            data["ours"].append(added)
+            by_ours[added["vid"]] = added
+            inserted_ours += 1
+    data["ours"].sort(key=lambda row: row.get("pub") or 0, reverse=True)
 
     by_all = {row.get("vid"): row for row in data["all"]}
     by_trends = {row.get("vid"): row for row in data["trends"]}
@@ -766,7 +851,7 @@ def merge_artifacts(
     }
     desired_ids.update(
         str(row.get("vid"))
-        for bucket in ("all", "trends", "news")
+        for bucket in ("all", "trends", "news", "ours")
         for row in data[bucket]
         if VIDEO_ID.match(str(row.get("vid") or ""))
     )
@@ -805,6 +890,7 @@ def merge_artifacts(
         "all_added": inserted_all,
         "trends_added": inserted_trends,
         "news_added": inserted_news,
+        "ours_added": inserted_ours,
         "avatars": avatar_count,
         "timestamp": datetime.fromtimestamp(now_ms / 1000, timezone.utc).isoformat(),
     }

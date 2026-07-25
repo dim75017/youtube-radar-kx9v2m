@@ -421,14 +421,14 @@ async function fetchData(){
    points. Merge both sources by video ID without touching livestream data. */
 function mergeExtensionSnapshot(d){
   const snap=window.LOFI_DATA&&window.LOFI_DATA.d;if(!snap)return;
-  ['all','trends','news'].forEach(key=>{
+  ['all','trends','news','ours'].forEach(key=>{
     const into=d[key]||(d[key]=[]),byId=new Map(into.map(r=>[r.vid,r]));
     (snap[key]||[]).forEach(row=>{
       const current=byId.get(row.vid);
       if(current)Object.assign(current,row);
       else{const added=Object.assign({},row);into.push(added);byId.set(row.vid,added);}
     });
-    into.sort((a,b)=>(b.vpm||0)-(a.vpm||0));
+    into.sort((a,b)=>key==='ours'?(b.pub||0)-(a.pub||0):(b.vpm||0)-(a.vpm||0));
   });
   const hist=d.hist||(d.hist={});
   Object.entries(snap.hist||{}).forEach(([vid,points])=>{
