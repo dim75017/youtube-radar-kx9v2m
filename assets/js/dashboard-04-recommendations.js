@@ -258,10 +258,48 @@ function dailyRecoListHTML(rows){
   window._pageRecos=rows;return '<div class="rgrid2">'+rows.map((r,i)=>recoCardHTML(r,i)).join('')+'</div>';
 }
 let RECO_TAB='pending';
-const RECO_VALIDATED_ARCHIVE_KEY='lofi_radar_validated_archive_v1';
+const PROJECT_ARCHIVE_KEY='lofi_radar_project_archive_v1';
+const LEGACY_RECO_ARCHIVE_STORAGE_KEY='lofi_radar_validated_archive_v1';
+const LEGACY_ROADMAP_ARCHIVE_STORAGE_KEY='radar_roadmap_archive_v2';
 function normalizedRecommendationTitle(value){return String(value||'').trim().toLocaleLowerCase().replace(/\s+/g,' ');}
-function validatedArchiveRows(){try{const rows=JSON.parse(localStorage.getItem(RECO_VALIDATED_ARCHIVE_KEY)||'[]');return Array.isArray(rows)?rows:[];}catch(e){return [];}}
-function saveValidatedArchive(rows){try{localStorage.setItem(RECO_VALIDATED_ARCHIVE_KEY,JSON.stringify(rows));}catch(e){}}
+function storedArchiveRows(key){try{const rows=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(rows)?rows:[];}catch(e){return [];}}
+function validatedArchiveRows(){return storedArchiveRows(PROJECT_ARCHIVE_KEY);}
+function saveValidatedArchive(rows){try{localStorage.setItem(PROJECT_ARCHIVE_KEY,JSON.stringify(rows));}catch(e){}}
+function recoverLegacyPlannedArchive(item){
+  const row=item&&(item.row||item),recoId=row&&(row.recoN!=null?row.recoN:(row.__kind==='roadmap'?row.n:null));
+  if(!row||!row.date||recoId==null)return null;
+  return {key:'reco:'+String(recoId),archivedAt:Number(item.archivedAt||row.archivedAt)||Date.now(),row:Object.assign({},row,{__kind:'roadmap',valid:'X',planned:true})};
+}
+function initializeUnifiedProjectArchive(){
+  try{
+    if(localStorage.getItem(PROJECT_ARCHIVE_KEY)!==null)return;
+    // Monday is the accepted baseline.  Start the shared archive with only the
+    // recommendation decisions. Recover previously archived planned recos by
+    // their stable recoN, but deliberately discard old date/title Monday hides.
+    // Both legacy stores remain untouched as recoverable backups.
+    const legacyReco=storedArchiveRows(LEGACY_RECO_ARCHIVE_STORAGE_KEY);
+    const kept=legacyReco.filter(item=>item&&typeof item.key==='string'&&item.key.indexOf('reco:')===0);
+    legacyReco.concat(storedArchiveRows(LEGACY_ROADMAP_ARCHIVE_STORAGE_KEY)).map(recoverLegacyPlannedArchive).filter(Boolean).forEach(item=>{
+      const at=kept.findIndex(current=>current.key===item.key);
+      if(at<0)kept.push(item);else kept[at]=item;
+    });
+    localStorage.setItem(PROJECT_ARCHIVE_KEY,JSON.stringify(kept));
+    const written=JSON.parse(localStorage.getItem(PROJECT_ARCHIVE_KEY)||'[]');
+    if(!Array.isArray(written)||written.length!==kept.length)return;
+  }catch(e){}
+}
+initializeUnifiedProjectArchive();
+function isRoadmapArchiveItem(item){return !!(item&&item.row&&item.row.__kind==='roadmap');}
+function roadmapArchiveItems(){
+  const rows=typeof acceptedRoadmapRows==='function'?acceptedRoadmapRows():[];
+  const plannedByReco=new Map(rows.filter(row=>row&&(row.recoN!=null||row.n!=null)).map(row=>[String(row.recoN!=null?row.recoN:row.n),row]));
+  return validatedArchiveRows().map(item=>{
+    if(isRoadmapArchiveItem(item))return item;
+    const match=item&&typeof item.key==='string'?item.key.match(/^reco:(.+)$/):null;
+    const row=match&&plannedByReco.get(match[1]);
+    return row?Object.assign({},item,{row:Object.assign({},row,{__kind:'roadmap',valid:'X',planned:true})}):null;
+  }).filter(Boolean);
+}
 function invalidateRoadmapDerivedViews(){
   if(typeof VIEW_WARMUP_TOKEN!=='undefined')VIEW_WARMUP_TOKEN++;
   if(typeof VIEW_CACHE!=='undefined'&&VIEW_CACHE&&typeof VIEW_CACHE.keys==='function'){
@@ -272,16 +310,47 @@ function invalidateRoadmapDerivedViews(){
   if(typeof renderNav==='function')renderNav();
 }
 function validatedRowKey(row){
-  return row&&row.__kind==='roadmap'
-    ?'roadmap:'+String(row.date||'')+'|'+normalizedRecommendationTitle(row.title)
-    :'reco:'+String(row&&row.n||'');
+  const recoId=row&&(row.recoN!=null?row.recoN:row.n);
+  return recoId!=null&&recoId!==''
+    ?'reco:'+String(recoId)
+    :'roadmap:'+String(row&&row.date||'')+'|'+normalizedRecommendationTitle(row&&row.title);
 }
-function isValidatedRowArchived(row){
-  if(validatedArchiveRows().some(item=>item.key===validatedRowKey(row)))return true;
-  return !!(row&&row.__kind==='roadmap'&&typeof isArchivedRoadmapEntry==='function'&&isArchivedRoadmapEntry(row));
+function archiveProjectRow(row){
+  if(!row)return null;
+  const key=validatedRowKey(row),archive=validatedArchiveRows();
+  const existing=archive.find(item=>item.key===key);
+  if(!existing){
+    archive.push({key,archivedAt:Date.now(),row:Object.assign({},row)});saveValidatedArchive(archive);
+  }else if(row.__kind==='roadmap'&&(!existing.row||existing.row.__kind!=='roadmap')){
+    existing.row=Object.assign({},row);saveValidatedArchive(archive);
+  }
+  return key;
+}
+function restoreProjectArchive(key){saveValidatedArchive(validatedArchiveRows().filter(item=>item.key!==key));}
+function isValidatedRowArchived(row){return validatedArchiveRows().some(item=>item.key===validatedRowKey(row));}
+function isMondayRoadmapProject(row){return !!(row&&/Monday/i.test(String(row.src||'')));}
+function acceptedRoadmapRows(){
+  const monday=(DATA.roadmap||[]).filter(row=>row&&row.date&&isMondayRoadmapProject(row));
+  const confirmed=typeof SCHED_LOCAL!=='undefined'&&Array.isArray(SCHED_LOCAL)?SCHED_LOCAL:[];
+  const bySlot=new Map(),keyFor=row=>{
+    if(!row||!row.date||!row.title)return '';
+    const key=String(row.date)+'|'+normalizedRecommendationTitle(row.title);
+    return key;
+  };
+  monday.forEach(row=>{const key=keyFor(row);if(key&&!bySlot.has(key))bySlot.set(key,row);});
+  confirmed.forEach(row=>{
+    const key=keyFor(row);if(!key)return;
+    const current=bySlot.get(key);
+    if(!current){bySlot.set(key,row);return;}
+    const merged=Object.assign({},row,current);
+    if(row.recoN!=null)merged.recoN=row.recoN;
+    else if(row.n!=null)merged.n=row.n;
+    bySlot.set(key,merged);
+  });
+  return Array.from(bySlot.values());
 }
 function roadmapValidatedRows(){
-  return (DATA.roadmap||[]).filter(row=>row&&row.title).map(row=>Object.assign({},row,{__kind:'roadmap',valid:'X',planned:true}));
+  return acceptedRoadmapRows().map(row=>Object.assign({},row,{__kind:'roadmap',valid:'X',planned:true}));
 }
 function refusedRecommendationRows(){return (DATA.recos||[]).filter(r=>isRefused(r.valid));}
 function validatedRecommendationRows(){
@@ -293,14 +362,13 @@ function validatedRecommendationRows(){
 function archiveValidatedRecommendation(i,ev){
   if(ev)ev.stopPropagation();
   const row=(window._pageRecos||[])[i];if(!row)return;
-  const key=validatedRowKey(row),archive=validatedArchiveRows();
-  if(!archive.some(item=>item.key===key)){archive.push({key,archivedAt:Date.now(),row:Object.assign({},row)});saveValidatedArchive(archive);}
+  archiveProjectRow(row);
   invalidateRoadmapDerivedViews();
   closeDrawer();rerenderRecos();
 }
 function restoreValidatedRecommendation(key,ev){
   if(ev)ev.stopPropagation();
-  saveValidatedArchive(validatedArchiveRows().filter(item=>item.key!==key));invalidateRoadmapDerivedViews();rerenderRecos();
+  restoreProjectArchive(key);invalidateRoadmapDerivedViews();rerenderRecos();
 }
 function recoTabControlHTML(){
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
@@ -329,7 +397,7 @@ function recoArchiveCardHTML(r,i){
 function recoArchiveHTML(){
   const archived=validatedArchiveRows();
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
-  const archivedHTML=archived.length?('<div class="reco-group-h"><span>🗃️</span><span>'+ (fr?'Archivées depuis Validées':'Archived from Validated')+'</span><span class="cnt">'+archived.length+'</span></div><div class="rgrid2">'+archived.map(item=>{
+  const archivedHTML=archived.length?('<div class="reco-group-h"><span>🗃️</span><span>'+ (fr?'Projets archivés':'Archived projects')+'</span><span class="cnt">'+archived.length+'</span></div><div class="rgrid2">'+archived.map(item=>{
       const row=item.row||{},when=new Date(item.archivedAt).toLocaleDateString();
       return '<div class="rtile reco-archived" style="--gc:'+gcolor(row.genre)+'">'+
         '<div class="rt-head"><div class="rt-title">'+esc(row.title)+'</div></div>'+
@@ -533,6 +601,7 @@ function copyTxt(btn,i,field){
 function roadmapHTML(){
   let rows=scheduledRows();
   rows.sort((a,b)=>a.date-b.date);
+  const archiveCount=roadmapArchiveItems().length;
   const vt='<div class="viewtoggle">'+
       '<button class="'+(RM.mode!=='cal'?'on':'')+'" onclick="RM.mode=\'table\';render()" title="List">'+ICONS.rows+'</button>'+
       '<button class="'+(RM.mode==='cal'?'on':'')+'" onclick="RM.mode=\'cal\';render()" title="Calendar">'+ICONS.roadmap+'</button></div>';
@@ -543,7 +612,7 @@ function roadmapHTML(){
   if(ROADMAP_ARCHIVE_VIEW)return roadmapArchiveHTML(vt);
   if(RM.mode==='cal')return calHTML(rows,vt);
   return '<div class="toolbar" style="justify-content:flex-end">'+
-    (ROADMAP_ARCHIVE_LOCAL.length?'<button class="rm-archive-toggle" onclick="toggleRoadmapArchive()">&#128230; Archives ('+ROADMAP_ARCHIVE_LOCAL.length+')</button>':'')+vt+'</div>'+roadmapTableHTML(rows);
+    (archiveCount?'<button class="rm-archive-toggle" onclick="toggleRoadmapArchive()">&#128230; Archives ('+archiveCount+')</button>':'')+vt+'</div>'+roadmapTableHTML(rows);
 }
 function roadmapUpcomingRows(rows,now=Date.now()){
   const today=new Date(now);today.setHours(0,0,0,0);
@@ -566,13 +635,13 @@ function roadmapTableHTML(rows){
     }).join('')+'</tbody></table>';
 }
 function roadmapArchiveHTML(vt){
-  const rows=[...ROADMAP_ARCHIVE_LOCAL].sort((a,b)=>b.archivedAt-a.archivedAt);
-  if(!rows.length){ROADMAP_ARCHIVE_VIEW=false;return roadmapHTML();}
+  const items=roadmapArchiveItems().sort((a,b)=>(b.archivedAt||0)-(a.archivedAt||0));
+  window._roadmap_archive_items=items;
+  if(!items.length){ROADMAP_ARCHIVE_VIEW=false;return roadmapHTML();}
   return '<div class="toolbar" style="justify-content:flex-end"><button class="rm-archive-toggle" onclick="toggleRoadmapArchive()">&#8592; Back to roadmap</button>'+vt+'</div>'+
-    '<table class="vtable"><thead><tr><th>Title</th><th>Genre</th><th>Archived</th><th></th></tr></thead><tbody>'+rows.map((r,i)=>
-      '<tr class="row"><td class="ttitle">'+esc(r.title)+'</td><td>'+gtag(r.genre)+'</td><td class="num">'+new Date(r.archivedAt).toLocaleDateString()+'</td>'+
+    '<table class="vtable"><thead><tr><th>Title</th><th>Genre</th><th>Archived</th><th></th></tr></thead><tbody>'+items.map((item,i)=>{const r=item.row||{};return '<tr class="row"><td class="ttitle">'+esc(r.title)+'</td><td>'+gtag(r.genre)+'</td><td class="num">'+new Date(item.archivedAt).toLocaleDateString()+'</td>'+
       '<td><button class="rm-restore-btn" onclick="restoreRoadmapEntry('+i+')">&#8617; Restore</button></td></tr>'
-    ).join('')+'</tbody></table>';
+    }).join('')+'</tbody></table>';
 }
 function toggleRoadmapArchive(){ROADMAP_ARCHIVE_VIEW=!ROADMAP_ARCHIVE_VIEW;render();}
 function openRoad(i){
@@ -605,12 +674,6 @@ function openRoad(i){
 }
 let ROADMAP_ARCHIVE_VIEW=false;
 let ROADMAP_CONTEXT_MENU=null;
-// Archive state is intentionally local to this browser.  v2 starts clean so
-// previous one-way "remove from roadmap" actions cannot hide Monday projects.
-const ROADMAP_ARCHIVE_STORAGE_KEY='radar_roadmap_archive_v2';
-let ROADMAP_ARCHIVE_LOCAL=(()=>{try{return JSON.parse(localStorage.getItem(ROADMAP_ARCHIVE_STORAGE_KEY)||'[]');}catch(e){return [];}})();
-function roadmapArchiveSave(){try{localStorage.setItem(ROADMAP_ARCHIVE_STORAGE_KEY,JSON.stringify(ROADMAP_ARCHIVE_LOCAL));}catch(e){}}
-function roadmapEntryMatches(a,b){return a&&b&&a.date===b.date&&a.title===b.title;}
 function closeRoadmapContextMenu(){
   if(ROADMAP_CONTEXT_MENU){ROADMAP_CONTEXT_MENU.remove();ROADMAP_CONTEXT_MENU=null;}
 }
@@ -639,15 +702,17 @@ function archiveRoadmapEntry(i,ev){
   if(ev)ev.stopPropagation();
   const r=(window._rm_rows||[])[i];if(!r)return;
   closeRoadmapContextMenu();
-  if(!ROADMAP_ARCHIVE_LOCAL.some(x=>roadmapEntryMatches(x,r)))ROADMAP_ARCHIVE_LOCAL.push({...r,archivedAt:Date.now()});
-  roadmapArchiveSave();
-  // DATA is the fresh Monday feed.  Keep it intact; only this browser hides the entry.
+  const row=Object.assign({},r,{__kind:'roadmap',valid:'X',planned:true});
+  archiveProjectRow(row);
+  // DATA remains the accepted Monday feed.  The shared Recommendations archive
+  // is the only reversible state that can hide a project from either view.
   invalidateRoadmapDerivedViews();
   closeDrawer();render();
 }
 function restoreRoadmapEntry(i){
-  const r=ROADMAP_ARCHIVE_LOCAL[i];if(!r)return;
-  ROADMAP_ARCHIVE_LOCAL.splice(i,1);roadmapArchiveSave();invalidateRoadmapDerivedViews();render();
+  const item=(window._roadmap_archive_items||roadmapArchiveItems())[i];if(!item)return;
+  restoreProjectArchive(item.key);
+  invalidateRoadmapDerivedViews();render();
 }
 function deleteRoadmapEntry(i,ev){
   archiveRoadmapEntry(i,ev);return;
@@ -776,20 +841,23 @@ function roadmapArchiveKey(row){
 }
 function archivedRoadmapKeys(){
   const keys=new Set(),add=row=>{if(row&&row.title)keys.add(roadmapArchiveKey(row));};
-  if(typeof ROADMAP_ARCHIVE_LOCAL!=='undefined'&&Array.isArray(ROADMAP_ARCHIVE_LOCAL))ROADMAP_ARCHIVE_LOCAL.forEach(add);
-  // A planned project archived from Validated must stay out of the Monday-fed
-  // roadmap after reload.  Accept both the saved row and its persisted key so
-  // archives created by earlier dashboard versions are recovered as well.
+  // Recommendations and Roadmap now share this one canonical archive.
   if(typeof validatedArchiveRows==='function')validatedArchiveRows().forEach(item=>{
     if(item&&item.row&&item.row.__kind==='roadmap')add(item.row);
     if(item&&typeof item.key==='string'&&item.key.indexOf('roadmap:')===0)keys.add(item.key);
   });
   return keys;
 }
-function isArchivedRoadmapEntry(row){return archivedRoadmapKeys().has(roadmapArchiveKey(row));}
+function isArchivedRoadmapEntry(row){
+  if(typeof validatedRowKey==='function'&&typeof validatedArchiveRows==='function'){
+    const canonicalKey=validatedRowKey(Object.assign({},row,{__kind:'roadmap'}));
+    if(validatedArchiveRows().some(item=>item&&item.key===canonicalKey))return true;
+  }
+  return archivedRoadmapKeys().has(roadmapArchiveKey(row));
+}
 function scheduledRows(){
   const seen=new Set();
-  return (DATA.roadmap||[]).filter(r=>r.date&&!isArchivedRoadmapEntry(r)).concat(SCHED_LOCAL||[]).filter(r=>{
+  return acceptedRoadmapRows().filter(r=>{
     if(isArchivedRoadmapEntry(r))return false;
     const key=(r.recoN!=null?'reco:'+r.recoN:'title:'+String(r.title||'').toLowerCase())+'|'+r.date;
     if(seen.has(key))return false;seen.add(key);return true;

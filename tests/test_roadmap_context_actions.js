@@ -10,8 +10,18 @@ assert.match(source, /function openRoadmapContextMenu\(i,ev\)/,
   'roadmap entries expose a dedicated context menu');
 assert.match(source, /onclick="archiveRoadmapEntry\('/,
   'the context menu provides the archive action');
-assert.match(source, /ROADMAP_ARCHIVE_STORAGE_KEY='radar_roadmap_archive_v2'/,
-  'old destructive archive state is not replayed against the Monday feed');
+assert.match(source, /PROJECT_ARCHIVE_KEY='lofi_radar_project_archive_v1'/,
+  'Recommendations and Roadmap use one canonical archive');
+assert.match(source, /LEGACY_RECO_ARCHIVE_STORAGE_KEY='lofi_radar_validated_archive_v1'/,
+  'the old Recommendations archive is retained only as a migration backup');
+assert.match(source, /LEGACY_ROADMAP_ARCHIVE_STORAGE_KEY='radar_roadmap_archive_v2'/,
+  'the old Roadmap archive is retained only as a migration backup');
+assert.doesNotMatch(source, /\bROADMAP_ARCHIVE_LOCAL\b/,
+  'Roadmap no longer owns a separate archive collection');
+assert.match(source, /function archiveProjectRow\(row\)/,
+  'Recommendations and Roadmap share one archive writer');
+assert.match(source, /const row=Object\.assign\(\{\},r,\{__kind:'roadmap'[\s\S]*archiveProjectRow\(row\)/,
+  'right-click Roadmap uses the shared Recommendations archive writer');
 assert.match(source, /archiveRoadmapEntry\(i,ev\);return;/,
   'the legacy remove action now resolves to a reversible archive');
 assert.match(source, /function restoreRoadmapEntry\(i\)/,

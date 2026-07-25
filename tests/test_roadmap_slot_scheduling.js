@@ -27,7 +27,8 @@ for (let offset = 0; offset <= 420; offset += 1) {
   if (date.getDay() !== 0 && date.getDay() !== 6) roadmap.push({ date: +date, genre: 'Other' });
 }
 
-const context = { DATA: { roadmap }, SCHED_LOCAL: [], Date: FixedDate };
+const acceptedRoadmapRows = () => roadmap;
+const context = { DATA: { roadmap }, SCHED_LOCAL: [], Date: FixedDate, acceptedRoadmapRows };
 vm.runInNewContext(
   `${source.slice(start, end)}; this.suggestRoadmapDate=suggestRoadmapDate;`,
   context,
