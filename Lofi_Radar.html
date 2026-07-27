@@ -839,6 +839,7 @@ const VS={
 // Phonk is paused in the current YouTube roadmap. Hide it even when a browser
 // still holds an older cache or snapshot, then keep it out on every live sync.
 const DEFERRED_YOUTUBE_GENRE=/\bphonk\b/i;
+const MIN_NEW_VIDEO_TOTAL_VIEWS=100000;
 function isDeferredYoutubeRow(row){
   return DEFERRED_YOUTUBE_GENRE.test([
     row&&row.genre,row&&row.title,row&&row.kw,row&&row.disc,row&&row.niche,
@@ -847,6 +848,9 @@ function isDeferredYoutubeRow(row){
 }
 function pruneDeferredYoutubeData(data){
   if(!data)return data;
+  if(Array.isArray(data.news)){
+    data.news=data.news.filter(row=>Number(row&&row.views||0)>=MIN_NEW_VIDEO_TOTAL_VIEWS);
+  }
   const dropped=new Set();
   for(const bucket of ['all','trends','news','ours']){
     if(!Array.isArray(data[bucket]))continue;

@@ -381,7 +381,12 @@ document.addEventListener('click',event=>{
 let DATA=null, SYNCED=null, route='dashboard';
 const VIEW_CACHE=new Map();
 let VIEW_WARMUP_TOKEN=0;
+const MIN_NEW_VIDEO_TOTAL_VIEWS=100000;
+function eligibleNewVideoRows(rows){
+  return (rows||[]).filter(row=>Number(row&&row.views||0)>=MIN_NEW_VIDEO_TOTAL_VIEWS);
+}
 function setRadarData(d){
+  if(d)d.news=eligibleNewVideoRows(d.news);
   DATA=d;mergeLoadedVideoHistoryIntoData(DATA);
   VIEW_CACHE.clear();VIEW_WARMUP_TOKEN++;
   if(typeof _anaCache!=='undefined'){_anaCache=null;_anaT=0;}

@@ -35,7 +35,7 @@ MIN_SECONDS = 20 * 60
 MIN_ALL_VIEWS = 1_000_000
 MIN_TREND_VIEWS = 500_000
 MAX_TREND_AGE_MONTHS = 12
-MIN_NEWS_VIEWS = 1_000
+MIN_NEWS_VIEWS = 100_000
 MIN_NEWS_VPM = 10_000
 MAX_NEWS_AGE_MONTHS = 3
 MAX_NEWS_ROWS = 1_000
@@ -95,6 +95,15 @@ def prune_deferred_rows(data: dict) -> set[str]:
             for video_id in dropped:
                 history.pop(video_id, None)
     return dropped
+
+
+def prune_news_below_view_floor(data: dict) -> int:
+    """Keep daily discoveries only once they reach the public view floor."""
+    rows = list(data.get("news") or [])
+    data["news"] = [
+        row for row in rows if int(row.get("views") or 0) >= MIN_NEWS_VIEWS
+    ]
+    return len(rows) - len(data["news"])
 
 
 def utc_now_ms() -> int:
@@ -784,6 +793,7 @@ def merge_artifacts(
             current = fresh.get(row.get("vid"))
             if current:
                 update_row(row, current, now_ms)
+    removed_low_view_news = prune_news_below_view_floor(data)
 
     by_ours = {row.get("vid"): row for row in data.setdefault("ours", [])}
     inserted_ours = 0
@@ -911,6 +921,7 @@ def merge_artifacts(
         "all_added": inserted_all,
         "trends_added": inserted_trends,
         "news_added": inserted_news,
+        "news_removed_below_view_floor": removed_low_view_news,
         "ours_added": inserted_ours,
         "avatars": avatar_count,
         "timestamp": datetime.fromtimestamp(now_ms / 1000, timezone.utc).isoformat(),

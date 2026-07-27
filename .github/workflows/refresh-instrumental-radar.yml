@@ -23,8 +23,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate:
+    name: Validate discovery eligibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Test the 100k new-video view floor
+        run: |
+          python -m unittest tests.test_refresh_youtube_daily tests.test_youtube_workflow_guardrails
+          node tests/test_youtube_new_video_view_floor.js
+
   scan:
     name: Scan shard ${{ matrix.shard }}
+    needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:

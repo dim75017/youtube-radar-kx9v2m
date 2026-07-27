@@ -216,6 +216,88 @@ class DailyHistoryTests(unittest.TestCase):
         self.assertEqual(rows[0]["rank"], 1)
         self.assertEqual(rows[0]["added"], now)
 
+    def test_news_view_floor_is_100k_and_prunes_legacy_rows(self):
+        data = {
+            "news": [
+                {"vid": "abcdefghijk", "views": 99_999},
+                {"vid": "zyxwvutsrqp", "views": 100_000},
+                {"vid": "mnopqrstuvw", "views": 250_000},
+            ]
+        }
+        removed = radar.prune_news_below_view_floor(data)
+        self.assertEqual(radar.MIN_NEWS_VIEWS, 100_000)
+        self.assertEqual(removed, 1)
+        self.assertEqual(
+            [row["vid"] for row in data["news"]],
+            ["zyxwvutsrqp", "mnopqrstuvw"],
+        )
+
+    def test_merge_rejects_99999_views_and_accepts_100000(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "Lofi_Radar_data.js"
+            avatars = root / "avatars.js"
+            shards = root / "shards"
+            shards.mkdir()
+            generated = int(
+                datetime(2026, 7, 20, 8, tzinfo=timezone.utc).timestamp() * 1000
+            )
+            radar.write_snapshot(
+                snapshot,
+                {
+                    "t": 1,
+                    "d": {
+                        "all": [{"vid": "abcdefghijk", "views": 1_000_000}],
+                        "trends": [],
+                        "news": [],
+                        "ours": [],
+                        "recos": [],
+                        "roadmap": [],
+                    },
+                },
+            )
+            artifact = {
+                "version": 1,
+                "generated_ms": generated,
+                "shard": 0,
+                "shards": 1,
+                "tracked_total": 1,
+                "tracked_ok": 1,
+                "tracked_ids": ["abcdefghijk"],
+                "queries_total": 1,
+                "queries_ok": 1,
+                "queries_raw": 2,
+                "queries_enriched": 2,
+                "fresh": [{"vid": "abcdefghijk", "views": 1_000_001}],
+                "candidates": [
+                    {
+                        "vid": "zyxwvutsrqp",
+                        "title": "Below floor",
+                        "views": 99_999,
+                        "ageM": 1,
+                        "vpm": 99_999,
+                        "kw": "focus music",
+                    },
+                    {
+                        "vid": "mnopqrstuvw",
+                        "title": "At floor",
+                        "views": 100_000,
+                        "ageM": 1,
+                        "vpm": 100_000,
+                        "kw": "focus music",
+                    },
+                ],
+            }
+            (shards / "youtube-shard-0.json").write_text(
+                json.dumps(artifact), encoding="utf-8"
+            )
+            radar.merge_artifacts(snapshot, avatars, shards, 1)
+            merged = radar.read_snapshot(snapshot)
+        self.assertEqual(
+            [row["vid"] for row in merged["d"]["news"]],
+            ["mnopqrstuvw"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
