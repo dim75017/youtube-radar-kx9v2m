@@ -85,6 +85,32 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertLess(editorial, classify)
         self.assertLess(independent, classify)
 
+    def test_manual_full_sync_rediscovers_editorial_and_independent_catalogues(self):
+        full_sync_discovery_condition = (
+            "if: steps.plan.outputs.scope == 'strict_rebaseline' || "
+            "steps.plan.outputs.scope == 'classification' || "
+            "steps.plan.outputs.scope == 'full_sync'"
+        )
+        editorial = self.workflow.index(
+            "Discover tracks and artist catalogues from editorial playlists"
+        )
+        independent = self.workflow.index(
+            "Discover a rotating batch of independent background playlists"
+        )
+        classify = self.workflow.index(
+            "Classify pending direct and playlist tracks before a full synchronization"
+        )
+        self.assertIn(
+            full_sync_discovery_condition, self.workflow[editorial:independent]
+        )
+        self.assertIn(
+            full_sync_discovery_condition, self.workflow[independent:classify]
+        )
+        self.assertIn(
+            "if os.environ.get('RUN_SCOPE') in {'strict_rebaseline', 'full_sync'}:",
+            self.workflow,
+        )
+
     def test_full_sync_refreshes_each_dashboard_source_and_daily_playlist_followers(self):
         self.assertIn("full_sync", self.workflow)
         self.assertIn("Refresh the complete performance track catalogue every 24 hours", self.workflow)

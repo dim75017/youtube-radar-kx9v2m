@@ -380,7 +380,7 @@ jobs:
         # Public snapshots intentionally retain only strict, publishable rows.
         # Rebuild the wider playlist pool before a classification-only pass so
         # the pending tracks are actually present in the isolated candidate.
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'classification'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'full_sync'
         env:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
@@ -401,7 +401,7 @@ jobs:
           --max-new-catalog-tracks 2500
 
       - name: Discover a rotating batch of independent background playlists
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'classification'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'full_sync'
         env:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
@@ -657,7 +657,7 @@ jobs:
           catalogue = soundcharts.get('discovery_catalogue') or {}
           scoring = soundcharts.get('opportunity_scoring') or {}
           opportunities = soundcharts.get('opportunities') or []
-          if os.environ.get('RUN_SCOPE') == 'strict_rebaseline':
+          if os.environ.get('RUN_SCOPE') in {'strict_rebaseline', 'full_sync'}:
               if int(discovery.get('playlists_scanned') or 0) < 1:
                   raise SystemExit('Editorial playlist discovery scanned no playlist')
               unique_playlist_tracks = int(discovery.get('unique_playlist_tracks') or 0)
