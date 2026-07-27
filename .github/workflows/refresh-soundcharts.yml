@@ -154,6 +154,9 @@ jobs:
           node tests/test_dashboard_ar_ui_guardrails.js
           node tests/test_dashboard_genre_filter.js
           node tests/test_spotify_full_catalogue.js
+          node tests/test_spotify_catalogue_layers.js
+          node tests/test_spotify_performance_lifetime.js
+          node tests/test_spotify_update_status.js
           git diff --check
 
       - name: Select safe execution plan
@@ -164,8 +167,11 @@ jobs:
           REQUESTED_MAX_REQUESTS: ${{ inputs.max_requests }}
         run: |
           artist_data_cap="350"
-          full_sync_artist_data_cap="15000"
-          full_sync_track_data_cap="60000"
+          # Existing performance histories have their own daily budget. These
+          # caps are deliberately independent from the 6k discovery/expansion
+          # pass and currently cover the full ~3.4k artist / ~26.9k track set.
+          performance_artist_data_cap="15000"
+          performance_track_data_cap="60000"
           # Enough for the entire public dashboard playlist set, while the
           # collector itself prioritizes those visible rows over backlog-only
           # discovery records.
@@ -189,7 +195,7 @@ jobs:
               *) echo "Unsupported scope: $scope" >&2; exit 1 ;;
             esac
             request_cap="$expansion_data_cap"
-            if [[ "$scope" == "full_sync" ]]; then request_cap="$full_sync_track_data_cap"; fi
+            if [[ "$scope" == "full_sync" ]]; then request_cap="$performance_track_data_cap"; fi
             if [[ "$scope" == "classification" ]]; then request_cap="$classification_data_cap"; fi
             if [[ "$scope" == "playlist_covers" ]]; then request_cap="$playlist_data_cap"; fi
             if [[ ! "$REQUESTED_MAX_REQUESTS" =~ ^[1-9][0-9]{0,4}$ ]] || (( 10#$REQUESTED_MAX_REQUESTS > request_cap )); then
@@ -197,9 +203,6 @@ jobs:
               exit 1
             fi
             expansion_requests="$REQUESTED_MAX_REQUESTS"
-            if [[ "$scope" == "full_sync" ]]; then
-              artist_data_cap="$full_sync_artist_data_cap"
-            fi
             if [[ "$GITHUB_REF" == "refs/heads/main" && "$scope" != "smoke" ]]; then publish="true"; else publish="false"; fi
           elif [[ "${{ github.event_name }}" == "schedule" ]]; then
             scope="strict_rebaseline"
@@ -211,12 +214,18 @@ jobs:
             exit 1
           fi
           playlist_followers_due="false"
+          performance_catalogue_due="false"
+          performance_tracks_due="false"
+          performance_artists_due="false"
           pool_requests="$expansion_requests"
           if [[ "$scope" == "full_sync" ]]; then
             # The all-track refresh has its own 60k cap.  Keep the guarded
             # opportunity-pool expansion bounded so this maintenance run does
             # not repeatedly consume the same API budget for a second pass.
             pool_requests="$expansion_data_cap"
+            performance_catalogue_due="true"
+            performance_tracks_due="true"
+            performance_artists_due="true"
           fi
           if [[ "$scope" == "full_sync" ]]; then
             playlist_followers_due="true"
@@ -242,16 +251,57 @@ jobs:
           PY
             )"
           fi
+          if [[ "$scope" == "strict_rebaseline" ]]; then
+            read -r performance_tracks_due performance_artists_due < <(python - <<'PY'
+          import datetime as dt
+          import json
+          from pathlib import Path
+
+          path = Path('Spotify_Performance_data.js')
+          prefix = 'window.SPOTIFY_PERFORMANCE='
+          try:
+              raw = path.read_text(encoding='utf-8')
+              payload = json.loads(raw[len(prefix):].strip().removesuffix(';'))
+              freshness = payload.get('freshness') if isinstance(payload.get('freshness'), dict) else {}
+          except Exception:
+              freshness = {}
+
+          now = dt.datetime.now(dt.timezone.utc)
+
+          def is_due(key):
+              try:
+                  observed = dt.datetime.fromisoformat(str(freshness.get(key)).replace('Z', '+00:00'))
+                  if observed.tzinfo is None:
+                      observed = observed.replace(tzinfo=dt.timezone.utc)
+                  return now - observed.astimezone(dt.timezone.utc) >= dt.timedelta(hours=24)
+              except Exception:
+                  return True
+
+          print(
+              str(is_due('tracks_catalogue_at')).lower(),
+              str(is_due('artists_catalogue_at')).lower(),
+          )
+          PY
+            )
+            if [[ "$performance_tracks_due" == "true" || "$performance_artists_due" == "true" ]]; then
+              performance_catalogue_due="true"
+            fi
+          fi
           echo "scope=$scope" >> "$GITHUB_OUTPUT"
           echo "expansion_limit=$expansion_limit" >> "$GITHUB_OUTPUT"
           echo "expansion_requests=$expansion_requests" >> "$GITHUB_OUTPUT"
           echo "pool_requests=$pool_requests" >> "$GITHUB_OUTPUT"
           echo "artist_requests=$artist_data_cap" >> "$GITHUB_OUTPUT"
+          echo "performance_artist_requests=$performance_artist_data_cap" >> "$GITHUB_OUTPUT"
+          echo "performance_track_requests=$performance_track_data_cap" >> "$GITHUB_OUTPUT"
           echo "playlist_requests=$playlist_data_cap" >> "$GITHUB_OUTPUT"
           echo "independent_playlist_requests=$independent_playlist_data_cap" >> "$GITHUB_OUTPUT"
           echo "playlist_followers_due=$playlist_followers_due" >> "$GITHUB_OUTPUT"
+          echo "performance_catalogue_due=$performance_catalogue_due" >> "$GITHUB_OUTPUT"
+          echo "performance_tracks_due=$performance_tracks_due" >> "$GITHUB_OUTPUT"
+          echo "performance_artists_due=$performance_artists_due" >> "$GITHUB_OUTPUT"
           echo "publish=$publish" >> "$GITHUB_OUTPUT"
-          echo "Selected scope=$scope, expansion_requests=$expansion_requests, playlist_followers_due=$playlist_followers_due, publish=$publish"
+          echo "Selected scope=$scope, expansion_requests=$expansion_requests, playlist_followers_due=$playlist_followers_due, performance_catalogue_due=$performance_catalogue_due, publish=$publish"
 
       - name: Create an isolated Soundcharts candidate
         id: snapshot
@@ -279,7 +329,7 @@ jobs:
           --history-days 14
 
       - name: Refresh mapped artist audience only when explicitly requested
-        if: steps.plan.outputs.scope == 'artists' || steps.plan.outputs.scope == 'full_sync'
+        if: steps.plan.outputs.scope == 'artists'
         env:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
@@ -480,8 +530,26 @@ jobs:
             --soundcharts "${{ steps.snapshot.outputs.candidate }}" \
             "${args[@]}"
 
-      - name: Refresh all measured track stream histories for a full synchronization
-        if: steps.plan.outputs.scope == 'full_sync'
+      - name: Refresh the complete performance artist catalogue every 24 hours
+        # Run after discovery and pool expansion so artists added during this
+        # very synchronization receive their first real metric immediately.
+        if: steps.plan.outputs.scope == 'full_sync' || (steps.plan.outputs.scope == 'strict_rebaseline' && steps.plan.outputs.performance_artists_due == 'true')
+        env:
+          PYTHONUNBUFFERED: '1'
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        run: >-
+          python refresh_soundcharts_daily.py
+          --mode artists
+          --workers 10
+          --max-requests "${{ steps.plan.outputs.performance_artist_requests }}"
+          --history-days 90
+          --include-performance-catalogue
+          --soundcharts "${{ steps.snapshot.outputs.candidate }}"
+
+      - name: Refresh the complete performance track catalogue every 24 hours
+        if: steps.plan.outputs.scope == 'full_sync' || (steps.plan.outputs.scope == 'strict_rebaseline' && steps.plan.outputs.performance_tracks_due == 'true')
         env:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
@@ -491,8 +559,9 @@ jobs:
           python refresh_soundcharts_daily.py
           --mode tracks
           --workers 10
-          --max-requests "${{ steps.plan.outputs.expansion_requests }}"
+          --max-requests "${{ steps.plan.outputs.performance_track_requests }}"
           --history-days 90
+          --include-performance-catalogue
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
 
       - name: Classify pending playlist tracks from exact Soundcharts song genres

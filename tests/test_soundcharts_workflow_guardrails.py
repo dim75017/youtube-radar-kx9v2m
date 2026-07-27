@@ -72,10 +72,38 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
 
     def test_full_sync_refreshes_each_dashboard_source_and_daily_playlist_followers(self):
         self.assertIn("full_sync", self.workflow)
-        self.assertIn("Refresh all measured track stream histories for a full synchronization", self.workflow)
+        self.assertIn("Refresh the complete performance track catalogue every 24 hours", self.workflow)
+        self.assertIn("Refresh the complete performance artist catalogue every 24 hours", self.workflow)
         self.assertIn("Refresh playlist follower history every 24 hours", self.workflow)
         self.assertIn("playlist_followers_due", self.workflow)
         self.assertIn("Spotify_Playlists_data.js", self.workflow[self.workflow.index("Activate snapshot only after remote validation"):])
+
+    def test_scheduled_rebaseline_refreshes_complete_performance_catalogue_once_due(self):
+        self.assertIn('performance_catalogue_due="false"', self.workflow)
+        self.assertIn("is_due('tracks_catalogue_at')", self.workflow)
+        self.assertIn("is_due('artists_catalogue_at')", self.workflow)
+        self.assertIn("dt.timedelta(hours=24)", self.workflow)
+        self.assertIn('performance_artist_data_cap="15000"', self.workflow)
+        self.assertIn('performance_track_data_cap="60000"', self.workflow)
+        self.assertIn(
+            "steps.plan.outputs.scope == 'strict_rebaseline' && "
+            "steps.plan.outputs.performance_artists_due == 'true'",
+            self.workflow,
+        )
+        self.assertIn(
+            "steps.plan.outputs.scope == 'strict_rebaseline' && "
+            "steps.plan.outputs.performance_tracks_due == 'true'",
+            self.workflow,
+        )
+        self.assertEqual(self.workflow.count("--include-performance-catalogue"), 2)
+        self.assertIn(
+            '--max-requests "${{ steps.plan.outputs.performance_artist_requests }}"',
+            self.workflow,
+        )
+        self.assertIn(
+            '--max-requests "${{ steps.plan.outputs.performance_track_requests }}"',
+            self.workflow,
+        )
 
     def test_public_catalogue_validation_respects_sanitization_and_quarantine(self):
         self.assertNotIn(

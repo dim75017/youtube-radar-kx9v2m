@@ -557,6 +557,8 @@ def refresh_tracks(
     workers: int,
     budget: int,
     history_days: int,
+    *,
+    include_performance_catalogue: bool = False,
 ) -> Outcome:
     schema, rows = ensure_schema_fields(
         payload,
@@ -566,11 +568,16 @@ def refresh_tracks(
     period_days = min(90, max(65, history_days))
     start = (utc_today() - dt.timedelta(days=period_days - 1)).isoformat()
     end = utc_today().isoformat()
+    store = performance.setdefault("tracks", {})
+    if not isinstance(store, dict):
+        raise SoundchartsError("Performance tracks must be an object")
     tasks = []
+    strict_uuids: set[str] = set()
     for row in rows:
         uuid = field(row, schema, "soundcharts_uuid")
         if not uuid:
             continue
+        strict_uuids.add(str(uuid))
         spotify_id = str(field(row, schema, "spotify_id") or "")
         query = urllib.parse.urlencode({"startDate": start, "endDate": end, "limit": max(100, history_days + 5)})
         tasks.append(
@@ -581,19 +588,40 @@ def refresh_tracks(
                 "path": f"/api/v2/song/{urllib.parse.quote(str(uuid))}/audience/spotify?{query}",
             }
         )
+    if include_performance_catalogue:
+        for spotify_id, entry in store.items():
+            if not isinstance(entry, dict):
+                continue
+            uuid = str(entry.get("soundcharts_uuid") or "").strip()
+            spotify_id = str(spotify_id or "").strip()
+            if not uuid or not spotify_id or uuid in strict_uuids:
+                continue
+            # A Spotify export can retain historical aliases that point to the
+            # same Soundcharts UUID. Count the remote entity only once so an
+            # alias never wastes the daily request budget.
+            strict_uuids.add(uuid)
+            query = urllib.parse.urlencode({"startDate": start, "endDate": end, "limit": max(100, history_days + 5)})
+            tasks.append(
+                {
+                    "row": None,
+                    "uuid": uuid,
+                    "spotify_id": spotify_id,
+                    "path": f"/api/v2/song/{urllib.parse.quote(uuid)}/audience/spotify?{query}",
+                    "performance_only": True,
+                }
+            )
 
     outcome = Outcome("tracks")
     results, outcome.requests, outcome.failures, outcome.available, outcome.selected = parallel_collect(
         client, tasks, workers=workers, max_requests=budget
     )
-    store = performance.setdefault("tracks", {})
     now = utc_now()
     for task, response in results:
         points = extract_song_audience_points(response, task["spotify_id"])
         if not points:
             outcome.items.append({"entity": "track", "id": task["uuid"], "ok": response is not None, "usable": False})
             continue
-        row = task["row"]
+        row = task.get("row")
         latest_day, latest_value = points[-1]
         by_day = {day: value for day, value in points}
         prior_day = previous_day(latest_day)
@@ -601,17 +629,21 @@ def refresh_tracks(
         delta = latest_value - prior_value if prior_value is not None else None
         key = task["spotify_id"] or f"soundcharts:{task['uuid']}"
         entry = store.setdefault(key, {})
+        if not isinstance(entry, dict):
+            entry = {}
+            store[key] = entry
         entry["history"] = merge_history(entry.get("history"), points)
         entry["soundcharts_uuid"] = task["uuid"]
         entry["observed_at"] = now
         entry["cadence_days"] = 1
         entry["source"] = "soundcharts_song_audience_spotify"
 
-        set_field(row, schema, "streams", latest_value)
-        set_field(row, schema, "delta", delta)
-        set_field(row, schema, "source_date", latest_day)
-        set_field(row, schema, "previous_source_date", prior_day if prior_value is not None else None)
-        set_field(row, schema, "observed_at", now)
+        if isinstance(row, list):
+            set_field(row, schema, "streams", latest_value)
+            set_field(row, schema, "delta", delta)
+            set_field(row, schema, "source_date", latest_day)
+            set_field(row, schema, "previous_source_date", prior_day if prior_value is not None else None)
+            set_field(row, schema, "observed_at", now)
         outcome.usable += 1
         outcome.items.append(
             {
@@ -623,6 +655,7 @@ def refresh_tracks(
                 "points": len(points),
                 "ok": True,
                 "usable": True,
+                "performance_only": bool(task.get("performance_only")),
             }
         )
     return outcome
@@ -634,13 +667,20 @@ def refresh_artists(
     client: SoundchartsClient,
     workers: int,
     budget: int,
+    *,
+    include_performance_catalogue: bool = False,
 ) -> Outcome:
     schema, rows = ensure_schema_fields(payload, "artists", ["monthly_listeners", "delta", "observed_at"])
+    store = performance.setdefault("artists", {})
+    if not isinstance(store, dict):
+        raise SoundchartsError("Performance artists must be an object")
     tasks = []
+    strict_uuids: set[str] = set()
     for row in rows:
         uuid = field(row, schema, "soundcharts_uuid")
         if not uuid:
             continue
+        strict_uuids.add(str(uuid))
         tasks.append(
             {
                 "row": row,
@@ -650,25 +690,49 @@ def refresh_artists(
                 "path": f"/api/v2/artist/{urllib.parse.quote(str(uuid))}/current/stats",
             }
         )
+    if include_performance_catalogue:
+        for spotify_id, entry in store.items():
+            if not isinstance(entry, dict):
+                continue
+            uuid = str(entry.get("soundcharts_uuid") or "").strip()
+            spotify_id = str(spotify_id or "").strip()
+            if not uuid or not spotify_id or uuid in strict_uuids:
+                continue
+            strict_uuids.add(uuid)
+            tasks.append(
+                {
+                    "row": None,
+                    "uuid": uuid,
+                    "spotify_id": spotify_id,
+                    "name": "",
+                    "path": f"/api/v2/artist/{urllib.parse.quote(uuid)}/current/stats",
+                    "performance_only": True,
+                }
+            )
 
     outcome = Outcome("artists")
     results, outcome.requests, outcome.failures, outcome.available, outcome.selected = parallel_collect(
         client, tasks, workers=workers, max_requests=budget
     )
-    store = performance.setdefault("artists", {})
     now = utc_now()
     for task, response in results:
         metric = extract_artist_spotify_metric(response)
         if not metric:
             outcome.items.append({"entity": "artist", "id": task["uuid"], "ok": response is not None, "usable": False})
             continue
-        row = task["row"]
+        row = task.get("row")
         value = int(metric["value"])
-        previous = field(row, schema, "monthly_listeners")
-        delta = value - int(previous) if isinstance(previous, (int, float)) else metric.get("evolution")
-        day = metric.get("date") or utc_today().isoformat()
         key = task["spotify_id"] or task["name"] or task["uuid"]
         entry = store.setdefault(key, {})
+        if not isinstance(entry, dict):
+            entry = {}
+            store[key] = entry
+        previous = field(row, schema, "monthly_listeners") if isinstance(row, list) else None
+        if not isinstance(previous, (int, float)):
+            history = normalize_history(entry.get("history") or entry.get("monthly_listeners_history"))
+            previous = history[-1][1] if history else None
+        delta = value - int(previous) if isinstance(previous, (int, float)) else metric.get("evolution")
+        day = metric.get("date") or utc_today().isoformat()
         merged = merge_history(entry.get("history") or entry.get("monthly_listeners_history"), [[day, value]])
         entry["history"] = merged
         entry["monthly_listeners_history"] = merged
@@ -676,9 +740,10 @@ def refresh_artists(
         entry["observed_at"] = now
         entry["source"] = "soundcharts_artist_current_stats"
 
-        set_field(row, schema, "monthly_listeners", value)
-        set_field(row, schema, "delta", delta)
-        set_field(row, schema, "observed_at", now)
+        if isinstance(row, list):
+            set_field(row, schema, "monthly_listeners", value)
+            set_field(row, schema, "delta", delta)
+            set_field(row, schema, "observed_at", now)
         outcome.usable += 1
         outcome.items.append(
             {
@@ -689,6 +754,7 @@ def refresh_artists(
                 "delta": delta,
                 "ok": True,
                 "usable": True,
+                "performance_only": bool(task.get("performance_only")),
             }
         )
     return outcome
@@ -862,16 +928,34 @@ def merge_performance_freshness(
     payload_freshness: Mapping[str, Any] | None,
     outcomes: Mapping[str, Outcome],
     now: str,
+    *,
+    include_performance_catalogue: bool = False,
 ) -> dict[str, Any]:
     """Preserve metric timestamps not touched by a focused refresh mode."""
 
     old = previous if isinstance(previous, Mapping) else {}
     current = payload_freshness if isinstance(payload_freshness, Mapping) else {}
-    return {
+    merged = {
         "tracks_at": now if outcomes.get("tracks") and outcomes["tracks"].usable else current.get("tracks_at") or old.get("tracks_at"),
         "artists_at": now if outcomes.get("artists") and outcomes["artists"].usable else current.get("artists_at") or old.get("artists_at"),
         "playlists_at": now if outcomes.get("playlists") and outcomes["playlists"].usable else old.get("playlists_at"),
+        # These dedicated timestamps prove that the complete existing
+        # performance catalogue was selected. A focused strict-row refresh
+        # must not postpone the next daily catalogue pass.
+        "tracks_catalogue_at": old.get("tracks_catalogue_at"),
+        "artists_catalogue_at": old.get("artists_catalogue_at"),
     }
+    if include_performance_catalogue:
+        for mode in ("tracks", "artists"):
+            outcome = outcomes.get(mode)
+            if (
+                outcome
+                and outcome.usable > 0
+                and outcome.available > 0
+                and outcome.selected >= outcome.available
+            ):
+                merged[f"{mode}_catalogue_at"] = now
+    return merged
 
 
 def smoke_test(payload: dict[str, Any], client: SoundchartsClient, history_days: int) -> dict[str, Any]:
@@ -929,6 +1013,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workers", type=int, default=16)
     parser.add_argument("--max-requests", type=int, default=100000)
     parser.add_argument("--history-days", type=int, default=95)
+    parser.add_argument(
+        "--include-performance-catalogue",
+        action="store_true",
+        help="Refresh existing performance-only UUIDs without promoting them into the public Soundcharts export",
+    )
     parser.add_argument("--soundcharts", type=Path, default=Path("Spotify_Soundcharts_data.js"))
     parser.add_argument("--performance", type=Path, default=Path("Spotify_Performance_data.js"))
     parser.add_argument("--playlists", type=Path, default=Path("Spotify_Playlists_data.js"))
@@ -962,9 +1051,24 @@ def main() -> int:
         if remaining <= 0:
             break
         if mode == "tracks":
-            outcome = refresh_tracks(payload, performance, client, args.workers, remaining, args.history_days)
+            outcome = refresh_tracks(
+                payload,
+                performance,
+                client,
+                args.workers,
+                remaining,
+                args.history_days,
+                include_performance_catalogue=args.include_performance_catalogue,
+            )
         elif mode == "artists":
-            outcome = refresh_artists(payload, performance, client, args.workers, remaining)
+            outcome = refresh_artists(
+                payload,
+                performance,
+                client,
+                args.workers,
+                remaining,
+                include_performance_catalogue=args.include_performance_catalogue,
+            )
         elif mode == "playlists":
             outcome = refresh_playlists(args.playlists, performance, client, args.workers, remaining)
         elif mode == "fal":
@@ -1021,6 +1125,7 @@ def main() -> int:
         freshness,
         outcomes,
         now,
+        include_performance_catalogue=args.include_performance_catalogue,
     )
     performance["run"] = run_summary
 

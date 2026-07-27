@@ -2,6 +2,7 @@
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const vm = require('node:vm');
 
 const index = fs.readFileSync('spotify/index.html', 'utf8');
 const dashboard = fs.readFileSync('spotify/dashboard.js', 'utf8');
@@ -28,6 +29,64 @@ assert.match(dashboard, /BROWSE\.discovery_catalogue/,
 assert.doesNotMatch(dashboard, /const A = \[\];/);
 assert.doesNotMatch(dashboard, /const LEGACY_R = \[\];/);
 assert.doesNotMatch(dashboard, /const DISCOVERY_CATALOGUE = \{tracks:\[\],artists:\[\],counts:\{\}\};/);
+assert.match(dashboard, /catalogues\.map\(normalizeDiscoveryCatalogue\)/,
+  'each discovery source must be decoded before concatenation');
+assert.doesNotMatch(dashboard, /tracks:catalogues\.flatMap\(source=>Array\.isArray\(source\.tracks\)/,
+  'raw compact rows must never inherit another source schema');
+
+const helpersStart = dashboard.indexOf('function discoveryArray');
+const helpersEnd = dashboard.indexOf('const BROWSE_DISCOVERY', helpersStart);
+assert.ok(helpersStart >= 0 && helpersEnd > helpersStart,
+  'discovery schema normalizers must remain independently testable');
+const mixedCatalogues = [
+  {
+    track_schema: ['spotify_id','soundcharts_uuid','streams','primary_genre','instrumental_status','playlist_placements'],
+    artist_schema: ['name','spotify_id','soundcharts_uuid'],
+    playlist_schema: ['spotify_id','name'],
+    tracks: [['spotify-a','soundcharts-a',123,'ambient','instrumental',[['playlist-a','Ambient Focus']]]],
+    artists: [['Artist A','artist-spotify-a','artist-soundcharts-a']],
+  },
+  {
+    track_schema: ['soundcharts_uuid','spotify_id','primary_genre','streams','instrumental_status','playlist_placements'],
+    artist_schema: ['soundcharts_uuid','spotify_id','name'],
+    playlist_schema: ['name','spotify_id'],
+    tracks: [['soundcharts-b','spotify-b','dark_ambient',456,'instrumental',[['Dark Focus','playlist-b']]]],
+    artists: [['artist-soundcharts-b','artist-spotify-b','Artist B']],
+  },
+];
+const schemaContext = {mixedCatalogues, result: null};
+vm.runInNewContext(
+  `${dashboard.slice(helpersStart, helpersEnd)}
+   result=mixedCatalogues.map(normalizeDiscoveryCatalogue);`,
+  schemaContext,
+);
+const normalizedTracks = schemaContext.result.flatMap(source => source.tracks);
+const normalizedArtists = schemaContext.result.flatMap(source => source.artists);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(normalizedTracks.map(track => ({
+    spotify_id: track.spotify_id,
+    soundcharts_uuid: track.soundcharts_uuid,
+    streams: track.streams,
+    primary_genre: track.primary_genre,
+    instrumental_status: track.instrumental_status,
+    playlist_id: track.playlist_placements[0].spotify_id,
+  })))),
+  [
+    {spotify_id:'spotify-a',soundcharts_uuid:'soundcharts-a',streams:123,primary_genre:'ambient',instrumental_status:'instrumental',playlist_id:'playlist-a'},
+    {spotify_id:'spotify-b',soundcharts_uuid:'soundcharts-b',streams:456,primary_genre:'dark_ambient',instrumental_status:'instrumental',playlist_id:'playlist-b'},
+  ],
+);
+assert.deepEqual(
+  JSON.parse(JSON.stringify(normalizedArtists.map(artist => ({
+    name: artist.name,
+    spotify_id: artist.spotify_id,
+    soundcharts_uuid: artist.soundcharts_uuid,
+  })))),
+  [
+    {name:'Artist A',spotify_id:'artist-spotify-a',soundcharts_uuid:'artist-soundcharts-a'},
+    {name:'Artist B',spotify_id:'artist-spotify-b',soundcharts_uuid:'artist-soundcharts-b'},
+  ],
+);
 
 const arStart = dashboard.indexOf('function arOpportunityRows');
 const arEnd = dashboard.indexOf('function arGenreLabel', arStart);

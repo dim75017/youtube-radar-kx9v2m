@@ -153,7 +153,11 @@ class RefreshSoundchartsTests(unittest.TestCase):
         outcome = subject.Outcome('tracks')
         outcome.usable = 1
         freshness = subject.merge_performance_freshness(
-            {'playlists_at': '2026-07-24T19:00:45Z', 'artists_at': '2026-07-24T18:52:28Z'},
+            {
+                'playlists_at': '2026-07-24T19:00:45Z',
+                'artists_at': '2026-07-24T18:52:28Z',
+                'tracks_catalogue_at': '2026-07-23T17:00:00Z',
+            },
             {'tracks_at': '2026-07-23T18:00:00Z'},
             {'tracks': outcome},
             '2026-07-24T19:01:00Z',
@@ -161,6 +165,29 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertEqual(freshness['tracks_at'], '2026-07-24T19:01:00Z')
         self.assertEqual(freshness['playlists_at'], '2026-07-24T19:00:45Z')
         self.assertEqual(freshness['artists_at'], '2026-07-24T18:52:28Z')
+        self.assertEqual(freshness['tracks_catalogue_at'], '2026-07-23T17:00:00Z')
+
+    def test_complete_performance_selection_records_a_dedicated_real_timestamp(self):
+        tracks = subject.Outcome('tracks')
+        tracks.available = 26880
+        tracks.selected = 26880
+        tracks.usable = 26800
+        artists = subject.Outcome('artists')
+        artists.available = 3348
+        artists.selected = 3348
+        artists.usable = 3330
+        now = '2026-07-27T20:15:00Z'
+
+        freshness = subject.merge_performance_freshness(
+            {},
+            {},
+            {'tracks': tracks, 'artists': artists},
+            now,
+            include_performance_catalogue=True,
+        )
+
+        self.assertEqual(freshness['tracks_catalogue_at'], now)
+        self.assertEqual(freshness['artists_catalogue_at'], now)
 
     def test_refresh_tracks_updates_export_and_browser_history(self):
         payload = {
@@ -182,6 +209,156 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertEqual(subject.field(row, schema, 'delta'), 35)
         self.assertEqual(subject.field(row, schema, 'source_date'), '2026-07-21')
         self.assertEqual(performance['tracks']['track-1']['history'], [['2026-07-20', 100], ['2026-07-21', 135]])
+
+    def test_full_track_refresh_updates_performance_only_uuid_without_promoting_it(self):
+        payload = {
+            'schemas': {'tracks': ['soundcharts_uuid', 'spotify_id', 'title']},
+            'tracks': [['strict-uuid', 'strict-track', 'Strict Track']],
+        }
+        performance = {
+            'tracks': {
+                'strict-track': {'soundcharts_uuid': 'strict-uuid', 'history': []},
+                'history-track': {
+                    'soundcharts_uuid': 'history-only-uuid',
+                    'history': [['2026-07-19', 190]],
+                },
+            },
+            'artists': {},
+            'playlists': {},
+        }
+        response = {
+            'items': [
+                {
+                    'date': '2026-07-20',
+                    'plots': [
+                        {'identifier': 'strict-track', 'value': 100},
+                        {'identifier': 'history-track', 'value': 200},
+                    ],
+                },
+                {
+                    'date': '2026-07-21',
+                    'plots': [
+                        {'identifier': 'strict-track', 'value': 135},
+                        {'identifier': 'history-track', 'value': 240},
+                    ],
+                },
+            ]
+        }
+        client = FakeClient(response)
+
+        outcome = subject.refresh_tracks(
+            payload,
+            performance,
+            client,
+            1,
+            10,
+            95,
+            include_performance_catalogue=True,
+        )
+
+        self.assertEqual(outcome.usable, 2)
+        self.assertEqual(len(payload['tracks']), 1)
+        self.assertNotIn(
+            'history-only-uuid',
+            [subject.field(row, payload['schemas']['tracks'], 'soundcharts_uuid') for row in payload['tracks']],
+        )
+        self.assertEqual(
+            performance['tracks']['history-track']['history'],
+            [['2026-07-19', 190], ['2026-07-20', 200], ['2026-07-21', 240]],
+        )
+        self.assertTrue(any(item.get('performance_only') for item in outcome.items))
+        self.assertIn('/api/v2/song/strict-uuid/audience/spotify?', client.paths[0])
+        self.assertIn('/api/v2/song/history-only-uuid/audience/spotify?', client.paths[1])
+
+    def test_full_track_refresh_prioritizes_strict_rows_before_performance_only_history(self):
+        payload = {
+            'schemas': {'tracks': ['soundcharts_uuid', 'spotify_id']},
+            'tracks': [['strict-uuid', 'strict-track']],
+        }
+        performance = {
+            'tracks': {
+                'history-track': {
+                    'soundcharts_uuid': 'history-only-uuid',
+                    'history': [['2026-07-19', 190]],
+                },
+            }
+        }
+        response = {
+            'items': [
+                {'date': '2026-07-21', 'plots': [{'identifier': 'strict-track', 'value': 135}]},
+            ]
+        }
+        client = FakeClient(response)
+
+        outcome = subject.refresh_tracks(
+            payload,
+            performance,
+            client,
+            1,
+            1,
+            95,
+            include_performance_catalogue=True,
+        )
+
+        self.assertEqual(outcome.requests, 1)
+        self.assertIn('/api/v2/song/strict-uuid/audience/spotify?', client.paths[0])
+        self.assertEqual(
+            performance['tracks']['history-track']['history'],
+            [['2026-07-19', 190]],
+        )
+
+    def test_full_artist_refresh_updates_performance_only_uuid_without_promoting_it(self):
+        payload = {
+            'schemas': {'artists': ['soundcharts_uuid', 'spotify_id', 'name']},
+            'artists': [['strict-artist-uuid', 'strict-artist', 'Strict Artist']],
+        }
+        performance = {
+            'tracks': {},
+            'artists': {
+                'strict-artist': {'soundcharts_uuid': 'strict-artist-uuid', 'history': []},
+                'history-artist': {
+                    'soundcharts_uuid': 'history-only-artist-uuid',
+                    'history': [['2026-07-20', 90]],
+                },
+            },
+            'playlists': {},
+        }
+        response = {
+            'object': {
+                'streaming': [
+                    {'platform': 'spotify', 'value': 125, 'date': '2026-07-21'}
+                ]
+            }
+        }
+        client = FakeClient(response)
+
+        outcome = subject.refresh_artists(
+            payload,
+            performance,
+            client,
+            1,
+            10,
+            include_performance_catalogue=True,
+        )
+
+        self.assertEqual(outcome.usable, 2)
+        self.assertEqual(len(payload['artists']), 1)
+        self.assertNotIn(
+            'history-only-artist-uuid',
+            [subject.field(row, payload['schemas']['artists'], 'soundcharts_uuid') for row in payload['artists']],
+        )
+        self.assertEqual(
+            performance['artists']['history-artist']['history'],
+            [['2026-07-20', 90], ['2026-07-21', 125]],
+        )
+        self.assertTrue(any(item.get('performance_only') for item in outcome.items))
+        self.assertEqual(
+            client.paths,
+            [
+                '/api/v2/artist/strict-artist-uuid/current/stats',
+                '/api/v2/artist/history-only-artist-uuid/current/stats',
+            ],
+        )
 
     def test_refresh_playlists_preserves_the_soundcharts_cover_url(self):
         playlists = {
@@ -290,6 +467,8 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertIn("&& 'ci' || 'collection'", workflow)
         self.assertIn("default: '6000'", workflow)
         self.assertIn('artist_data_cap="350"', workflow)
+        self.assertIn('performance_artist_data_cap="15000"', workflow)
+        self.assertIn('performance_track_data_cap="60000"', workflow)
         self.assertIn('playlist_data_cap="1400"', workflow)
         self.assertIn('independent_playlist_data_cap="2500"', workflow)
         self.assertIn('expansion_data_cap="6000"', workflow)
@@ -297,17 +476,23 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertIn('10#$REQUESTED_MAX_REQUESTS > request_cap', workflow)
         self.assertIn('expansion_limit="2500"', workflow)
         self.assertIn('--max-requests "${{ steps.plan.outputs.artist_requests }}"', workflow)
+        self.assertIn('--max-requests "${{ steps.plan.outputs.performance_artist_requests }}"', workflow)
+        self.assertIn('--max-requests "${{ steps.plan.outputs.performance_track_requests }}"', workflow)
         self.assertIn('--max-requests "${{ steps.plan.outputs.playlist_requests }}"', workflow)
         self.assertIn('--max-requests "${{ steps.plan.outputs.independent_playlist_requests }}"', workflow)
         self.assertIn('--playlist-scope independent', workflow)
         self.assertIn("steps.plan.outputs.scope == 'playlist_covers'", workflow)
         self.assertIn('--mode playlists', workflow)
         self.assertIn('--classification-only', workflow)
+        self.assertEqual(workflow.count('--include-performance-catalogue'), 2)
+        self.assertIn('performance_catalogue_due', workflow)
+        self.assertIn("is_due('tracks_catalogue_at')", workflow)
+        self.assertIn("is_due('artists_catalogue_at')", workflow)
+        self.assertIn('dt.timedelta(hours=24)', workflow)
         self.assertIn('python discover_soundcharts_playlists.py', workflow)
         self.assertGreaterEqual(workflow.count('--workers 10'), 3)
         self.assertIn("default: 'strict_rebaseline'", workflow)
         self.assertIn("options: [strict_rebaseline, full_sync, dark_ambient, dark_ambient_catalogues, explicit_artists, classification, artists, playlist_covers, smoke]", workflow)
-        self.assertIn('full_sync_track_data_cap="60000"', workflow)
         self.assertIn("Discover every Dark Ambient playlist and their artist catalogues", workflow)
         self.assertIn("--playlist-scope dark_ambient", workflow)
         self.assertIn("Scan explicitly requested Spotify artists and their tracks", workflow)

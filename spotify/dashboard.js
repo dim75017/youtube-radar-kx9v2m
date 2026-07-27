@@ -587,6 +587,35 @@ function mergeSoundchartsStaging(){
 mergeSoundchartsStaging();
 
 /* ---------- catalogue de navigation : large, explicite, non contactable ---------- */
+function discoveryArray(value){ return Array.isArray(value)?value:[]; }
+function discoveryRecord(row,schema){
+  if(row&&typeof row==='object'&&!Array.isArray(row)) return Object.assign({},row);
+  const out={};
+  if(!Array.isArray(row)) return out;
+  schema.forEach((name,index)=>{out[name]=index<row.length?row[index]:null;});
+  return out;
+}
+/* The broad browsing export and the strict rotating snapshot deliberately use
+   independent compact schemas. Decode every source before concatenating it:
+   applying the strict schema to browse rows swaps Spotify/Soundcharts IDs and
+   shifts streams, genres and classifications into unrelated fields. */
+function normalizeDiscoveryCatalogue(source){
+  const catalogue=source&&typeof source==='object'?source:{};
+  const trackSchema=discoveryArray(catalogue.track_schema);
+  const artistSchema=discoveryArray(catalogue.artist_schema);
+  const playlistSchema=discoveryArray(catalogue.playlist_schema);
+  const tracks=discoveryArray(catalogue.tracks).map(row=>{
+    const record=discoveryRecord(row,trackSchema);
+    if(Array.isArray(record.playlist_placements)){
+      record.playlist_placements=record.playlist_placements.map(placement=>
+        discoveryRecord(placement,playlistSchema)
+      );
+    }
+    return record;
+  });
+  const artists=discoveryArray(catalogue.artists).map(row=>discoveryRecord(row,artistSchema));
+  return {tracks,artists};
+}
 const BROWSE_DISCOVERY = BROWSE&&BROWSE.discovery_catalogue&&typeof BROWSE.discovery_catalogue==='object'
   ? BROWSE.discovery_catalogue : null;
 const STRICT_DISCOVERY = SC&&SC.discovery_catalogue&&typeof SC.discovery_catalogue==='object'
@@ -599,14 +628,17 @@ const DISCOVERY_CATALOGUE = (() => {
     )
   );
   if(!catalogues.length) return {tracks:[],artists:[],counts:{}};
-  if(catalogues.length===1) return catalogues[0];
   const primary=catalogues.find(source=>source===STRICT_DISCOVERY)||catalogues[0];
+  const normalized=catalogues.map(normalizeDiscoveryCatalogue);
   // The browse catalogue is the internal baseline and Soundcharts is the
   // rotating discovery delta.  Both must be merged: choosing one source
   // silently hid every newly discovered track as soon as the baseline existed.
   return Object.assign({},primary,{
-    tracks:catalogues.flatMap(source=>Array.isArray(source.tracks)?source.tracks:[]),
-    artists:catalogues.flatMap(source=>Array.isArray(source.artists)?source.artists:[])
+    tracks:normalized.flatMap(source=>source.tracks),
+    artists:normalized.flatMap(source=>source.artists),
+    track_schema:[],
+    artist_schema:[],
+    playlist_schema:[]
   });
 })();
 const RAW_DISCOVERY_TRACKS = Array.isArray(DISCOVERY_CATALOGUE.tracks)?DISCOVERY_CATALOGUE.tracks:[];
@@ -615,14 +647,6 @@ const DISCOVERY_TRACK_SCHEMA = Array.isArray(DISCOVERY_CATALOGUE.track_schema)?D
 const DISCOVERY_ARTIST_SCHEMA = Array.isArray(DISCOVERY_CATALOGUE.artist_schema)?DISCOVERY_CATALOGUE.artist_schema:[];
 const DISCOVERY_PLAYLIST_SCHEMA = Array.isArray(DISCOVERY_CATALOGUE.playlist_schema)?DISCOVERY_CATALOGUE.playlist_schema:[];
 const SC_DISCOVERY = {tracks:0,artists:0,unmeasured:0,review:0,verified:0};
-function discoveryArray(value){ return Array.isArray(value)?value:[]; }
-function discoveryRecord(row,schema){
-  if(row&&typeof row==='object'&&!Array.isArray(row)) return row;
-  const out={};
-  if(!Array.isArray(row)) return out;
-  schema.forEach((name,index)=>{out[name]=index<row.length?row[index]:null;});
-  return out;
-}
 function discoveryHasQuarantinedArtist(row,schema,artistRecord=false){
   const record=discoveryRecord(row,schema);
   const names=[record.artist,record.credit_name,artistRecord&&record.name];
@@ -897,6 +921,25 @@ const HIST = Object.assign({}, D.hist || {}); // tid -> [[dateISO, compteur cumu
 for (const [tid,entry] of Object.entries(PERF_TRACKS)){
   const pts = perfHistory(entry); if (pts.length) HIST[tid] = pts;
 }
+/* Lifetime streams must follow the newest observed cumulative counter. This
+   only updates tracks that already belong to the rendered catalogue: an entry
+   present solely in the performance export is never promoted into R. */
+function latestPerformanceTrackCounter(entry){
+  const points=normalizeCounterHistory(perfHistory(entry));
+  if(!points.length) return null;
+  const value=Number(points[points.length-1][1]);
+  return Number.isFinite(value)&&value>=0?value:null;
+}
+function applyLatestPerformanceCounters(rows,performanceTracks){
+  for(const row of (rows||[])){
+    if(!Array.isArray(row)) continue;
+    const id=String(row[6]||'').trim();
+    if(!id) continue;
+    const latest=latestPerformanceTrackCounter(performanceTracks&&performanceTracks[id]);
+    if(latest!==null) row[3]=latest;
+  }
+}
+applyLatestPerformanceCounters(R,PERF_TRACKS);
 /* Soundcharts renvoie parfois une valeur reconduite sur une même date pour une part
    significative du catalogue, puis un rattrapage le lendemain. On ne répartit jamais
    ce rattrapage artificiellement : les deux jours incomplets sont simplement exclus
@@ -4276,7 +4319,6 @@ function rebuildActiveLabelIndex(){
     return [key,entry.name,entry.tracks,entry.streams,Math.round(entry.streams*RATE),entry.since,entry.artists.size,curated[7]||'',curated[8]||''];
   });
   LBmeta=Object.assign({},LBmeta||{}, {
-    generated_ts:new Date().toISOString(),
     source:'active_instrumental_catalogue',
     labels_count:LBrows.length,
     tracks_covered:[...grouped.values()].reduce((sum,entry)=>sum+entry.tracks,0),
@@ -4536,6 +4578,15 @@ function spotifyUpdateTimestamp(...values){
   if(dated.length) return dated.sort((a,b)=>b.time-a.time)[0].value;
   return candidates[0]||null;
 }
+function spotifyOldestUpdateTimestamp(...values){
+  const candidates=values.filter(value=>value!=null&&String(value).trim()&&String(value).trim()!=='?');
+  const dated=candidates.map(value=>({
+    value,
+    time:Date.parse(String(value).replace(' ','T'))
+  })).filter(item=>Number.isFinite(item.time));
+  if(dated.length) return dated.sort((a,b)=>a.time-b.time)[0].value;
+  return candidates[0]||null;
+}
 function spotifyUpdateAge(when){
   if(!when) return null;
   const millis=Date.parse(String(when).replace(' ','T'));
@@ -4552,19 +4603,37 @@ function spotifyUpdateRows(){
   const freshness=(SC&&SC.freshness)||{};
   const snapshot=SC&&SC.generated_at;
   const browse=BROWSE.generated_at;
-  const performance=PERF.generated_at;
-  // Every sidebar row describes the same published radar snapshot.  Do not
-  // surface an older per-source enrichment date as if that category were stale.
-  const publishedAt=spotifyUpdateTimestamp(
-    performance,snapshot,browse,D.ts,D.t,
-    freshness.tracks_at,freshness.artists_at,freshness.playlists_at,freshness.labels_at,
-    PLmeta&&PLmeta.generated_ts,PLmeta&&PLmeta.snapshot_ts,
-    LBmeta&&LBmeta.generated_ts,LBmeta&&LBmeta.source_ts
+  const performanceFreshness=(PERF&&PERF.freshness)||{};
+  /* Each page combines several exports. Its status follows the oldest required
+     source rather than the newest unrelated file, so a fresh playlist bridge
+     can never make stale track/artist data appear green. Build time and browser
+     time are deliberately excluded: only observed source timestamps count. */
+  const strictTracksAt=spotifyOldestUpdateTimestamp(
+    freshness.tracks_at,
+    freshness.instrumental_pool_at,
+    freshness.playlist_discovery_at,
+    freshness.independent_playlist_discovery_at
   );
-  const tracksAt=publishedAt;
-  const artistsAt=publishedAt;
-  const playlistsAt=publishedAt;
-  const labelsAt=publishedAt;
+  const strictArtistsAt=spotifyOldestUpdateTimestamp(
+    freshness.artists_at,
+    freshness.playlist_discovery_at,
+    freshness.independent_playlist_discovery_at
+  );
+  const tracksAt=spotifyOldestUpdateTimestamp(
+    performanceFreshness.tracks_catalogue_at||performanceFreshness.tracks_at,
+    strictTracksAt||snapshot,
+    browse
+  );
+  const artistsAt=spotifyOldestUpdateTimestamp(
+    performanceFreshness.artists_catalogue_at||performanceFreshness.artists_at,
+    strictArtistsAt||snapshot,
+    browse
+  );
+  const playlistsAt=spotifyOldestUpdateTimestamp(
+    performanceFreshness.playlists_at,
+    PLmeta&&PLmeta.snapshot_ts
+  );
+  const labelsAt=tracksAt;
   const fr=LANG==='fr';
   const row=(when,label,detail)=>({when,label,detail});
   return [
