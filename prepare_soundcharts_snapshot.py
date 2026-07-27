@@ -149,7 +149,11 @@ NORMALISED_PUBLIC_ARTIST_BLACKLIST = frozenset(
 
 
 def _nonempty(value: Any) -> bool:
-    return value is not None and bool(str(value).strip())
+    if value is None:
+        return False
+    if isinstance(value, (list, tuple, dict, set, frozenset)):
+        return bool(value)
+    return bool(str(value).strip())
 
 
 def _schema(payload: Mapping[str, Any], name: str) -> list[str]:

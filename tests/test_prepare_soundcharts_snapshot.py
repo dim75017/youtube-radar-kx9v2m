@@ -684,6 +684,42 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
         )
         subject.validate_payload(sanitized)
 
+    def test_empty_public_contacts_do_not_quarantine_a_scrubbed_opportunity(self):
+        payload = minimal_payload()
+        review_artist = collaborator(
+            "Review Artist", "review-artist", "review-artist-uuid"
+        )
+        review_artist["public_contacts"] = [
+            {"platform": "instagram", "url": "https://example.test/review"}
+        ]
+        payload["opportunities"].append(
+            opportunity(
+                "review-track",
+                "Review Artist",
+                [review_artist],
+                rights="unknown",
+                status="needs_listen",
+                contact_status="ready",
+                contact_url="https://example.test/review",
+            )
+        )
+
+        sanitized, report = subject.sanitize_payload(payload)
+
+        by_id = {row[1]: row for row in sanitized["opportunities"]}
+        self.assertIn("review-track", by_id)
+        review = by_id["review-track"]
+        self.assertEqual(
+            review[OPPORTUNITY_SCHEMA.index("contact_status")], "blocked"
+        )
+        self.assertFalse(review[OPPORTUNITY_SCHEMA.index("contact_url")])
+        self.assertEqual(review[OPPORTUNITY_SCHEMA.index("artists")][0]["public_contacts"], [])
+        self.assertEqual(
+            report["opportunity_removal_reasons"].get("unscrubbable_contact", 0),
+            0,
+        )
+        subject.validate_payload(sanitized)
+
     def test_activate_is_strict_cas_and_preserves_old_export(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
