@@ -206,6 +206,48 @@ def wrapped(payload):
 
 
 class PrepareSoundchartsSnapshotTests(unittest.TestCase):
+    def test_sanitize_preserves_a_more_complete_existing_discovery_catalogue(self):
+        payload = minimal_payload()
+        first_pass, _ = subject.sanitize_payload(payload)
+        existing = copy.deepcopy(first_pass["discovery_catalogue"])
+        track_schema = existing["track_schema"]
+        artist_schema = existing["artist_schema"]
+        extra_track = {field: None for field in track_schema}
+        extra_track.update(
+            {
+                "soundcharts_uuid": "existing-song-uuid",
+                "spotify_id": "existing-track",
+                "title": "Existing discovery",
+                "credit_name": "Existing Artist",
+                "availability_status": "playlist_discovered",
+            }
+        )
+        extra_artist = {field: None for field in artist_schema}
+        extra_artist.update(
+            {
+                "soundcharts_uuid": "existing-artist-uuid",
+                "spotify_id": "existing-artist",
+                "name": "Existing Artist",
+                "availability_status": "discovered",
+            }
+        )
+        existing["tracks"].append(
+            [extra_track.get(field) for field in track_schema]
+        )
+        existing["artists"].append(
+            [extra_artist.get(field) for field in artist_schema]
+        )
+        payload["discovery_catalogue"] = existing
+
+        sanitized, _ = subject.sanitize_payload(payload)
+
+        catalogue = sanitized["discovery_catalogue"]
+        spotify_index = catalogue["track_schema"].index("spotify_id")
+        self.assertIn(
+            "existing-track", [row[spotify_index] for row in catalogue["tracks"]]
+        )
+        self.assertEqual(catalogue["counts"]["tracks"], 2)
+
     def test_discovery_catalogue_keeps_unclassified_editorial_rows(self):
         payload = minimal_payload()
         payload["editorial"]["artists"].append([
@@ -274,6 +316,39 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
                 )
             )
             self.assertIn("transition_quarantine", result.report)
+
+    def test_prepare_rejects_an_unsafe_transition_before_writing(self):
+        previous = minimal_payload()
+        candidate = minimal_payload()
+        valid_artist = collaborator("Quiet Keys", "artist-valid", "uuid-valid")
+        for index in range(2, 12):
+            spotify_id = f"track-{index}"
+            previous["tracks"].append(
+                track(spotify_id, "Quiet Keys", [valid_artist])
+            )
+            previous["opportunities"].append(
+                opportunity(spotify_id, "Quiet Keys", [valid_artist])
+            )
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "candidate.js"
+            old = root / "previous.js"
+            source.write_text(wrapped(candidate), encoding="utf-8")
+            old.write_text(wrapped(previous), encoding="utf-8")
+            timestamp = dt.datetime(2026, 7, 27, 18, 30, tzinfo=dt.timezone.utc)
+
+            with self.assertRaisesRegex(
+                subject.SnapshotValidationError, "retained only"
+            ):
+                subject.prepare_snapshot(
+                    source,
+                    output_dir=root,
+                    previous=old,
+                    now=timestamp,
+                )
+
+            self.assertFalse((root / subject.snapshot_filename(timestamp)).exists())
 
     def test_purge_cascades_blacklisted_identity_and_keeps_valid_instrumental(self):
         payload = minimal_payload()

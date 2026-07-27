@@ -1087,6 +1087,44 @@ def _build_discovery_catalogue(payload: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
+def _preserve_more_complete_discovery_catalogue(
+    payload: Mapping[str, Any], rebuilt: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Keep the cumulative browse catalogue during non-discovery refreshes.
+
+    A ``full_sync`` refreshes measurements but deliberately skips playlist
+    discovery. Rebuilding the browse layer from that run's small strict
+    editorial subset would otherwise erase tens of thousands of previously
+    discovered rows. A real discovery run produces the larger projection and
+    naturally replaces the older one.
+    """
+
+    existing = payload.get("discovery_catalogue")
+    if not isinstance(existing, Mapping):
+        return copy.deepcopy(dict(rebuilt))
+
+    existing_tracks = existing.get("tracks")
+    rebuilt_tracks = rebuilt.get("tracks")
+    existing_artists = existing.get("artists")
+    rebuilt_artists = rebuilt.get("artists")
+    existing_size = (
+        len(existing_tracks) if isinstance(existing_tracks, list) else 0,
+        len(existing_artists) if isinstance(existing_artists, list) else 0,
+    )
+    rebuilt_size = (
+        len(rebuilt_tracks) if isinstance(rebuilt_tracks, list) else 0,
+        len(rebuilt_artists) if isinstance(rebuilt_artists, list) else 0,
+    )
+    if existing_size <= rebuilt_size:
+        return copy.deepcopy(dict(rebuilt))
+
+    preserved = copy.deepcopy(dict(existing))
+    preserved["generated_at"] = str(
+        payload.get("generated_at") or preserved.get("generated_at") or ""
+    )
+    return preserved
+
+
 def _filter_discovery_catalogue_for_publication(
     catalogue: Mapping[str, Any],
     banned_names: set[str],
@@ -1170,7 +1208,10 @@ def sanitize_payload(payload: Mapping[str, Any]) -> tuple[dict[str, Any], dict[s
     # Build this before strict public pruning.  The browse layer is allowed to
     # expose an honest “À classifier” track; it must not be reduced to the
     # small contactable/fully classified subset.
-    full_discovery_catalogue = _build_discovery_catalogue(sanitized)
+    full_discovery_catalogue = _preserve_more_complete_discovery_catalogue(
+        sanitized,
+        _build_discovery_catalogue(sanitized),
+    )
     sanitized["discovery_catalogue"] = full_discovery_catalogue
     before_counts = {
         "artists": len(sanitized.get("artists", []))
@@ -1962,11 +2003,13 @@ def prepare_snapshot(
 
     sanitized, report = sanitize_payload(load_payload(source_path))
     if previous is not None:
+        previous_payload = load_payload(previous)
         report = dict(report)
         report["transition_quarantine"] = quarantine_unapproved_discovery_additions(
-            load_payload(previous), sanitized
+            previous_payload, sanitized
         )
         validate_payload(sanitized)
+        validate_snapshot_transition(previous_payload, sanitized)
     serialized = (
         SOUNDCHARTS_PREFIX
         + json.dumps(sanitized, ensure_ascii=False, separators=(",", ":"))
