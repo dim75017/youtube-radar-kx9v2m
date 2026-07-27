@@ -602,6 +602,21 @@ jobs:
           --max-opportunities 10000
           --minimum-score 20
 
+      - name: Preserve completed collection before publication guards
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundcharts-refresh-checkpoint-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ steps.snapshot.outputs.candidate }}
+            Spotify_Performance_data.js
+            Spotify_Playlists_data.js
+            soundcharts-history
+            soundcharts-instrumental-cache.json
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 9
+
       - name: Prepare public-safe dated snapshot
         id: prepared
         if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'

@@ -1090,39 +1090,236 @@ def _build_discovery_catalogue(payload: Mapping[str, Any]) -> dict[str, Any]:
 def _preserve_more_complete_discovery_catalogue(
     payload: Mapping[str, Any], rebuilt: Mapping[str, Any]
 ) -> dict[str, Any]:
-    """Keep the cumulative browse catalogue during non-discovery refreshes.
+    """Merge a rebuilt browse catalogue into the cumulative approved one.
 
-    A ``full_sync`` refreshes measurements but deliberately skips playlist
-    discovery. Rebuilding the browse layer from that run's small strict
-    editorial subset would otherwise erase tens of thousands of previously
-    discovered rows. A real discovery run produces the larger projection and
-    naturally replaces the older one.
+    Refreshes do not all scan the same discovery surface.  Replacing the
+    existing catalogue merely because a rebuilt projection is larger can
+    therefore retain very few of the approved identities.  Existing rows are
+    the base, stable Spotify/Soundcharts identifiers enrich matches, and new
+    rows remain subject to quarantine and the explicit transition-growth
+    guard before publication.
     """
 
     existing = payload.get("discovery_catalogue")
     if not isinstance(existing, Mapping):
         return copy.deepcopy(dict(rebuilt))
 
-    existing_tracks = existing.get("tracks")
-    rebuilt_tracks = rebuilt.get("tracks")
-    existing_artists = existing.get("artists")
-    rebuilt_artists = rebuilt.get("artists")
-    existing_size = (
-        len(existing_tracks) if isinstance(existing_tracks, list) else 0,
-        len(existing_artists) if isinstance(existing_artists, list) else 0,
-    )
-    rebuilt_size = (
-        len(rebuilt_tracks) if isinstance(rebuilt_tracks, list) else 0,
-        len(rebuilt_artists) if isinstance(rebuilt_artists, list) else 0,
-    )
-    if existing_size <= rebuilt_size:
-        return copy.deepcopy(dict(rebuilt))
+    def merged_schema(preferred: Any, legacy: Any) -> list[str]:
+        fields: list[str] = []
+        for raw_schema in (preferred, legacy):
+            if not isinstance(raw_schema, list):
+                continue
+            for field in raw_schema:
+                if isinstance(field, str) and field not in fields:
+                    fields.append(field)
+        return fields
 
-    preserved = copy.deepcopy(dict(existing))
-    preserved["generated_at"] = str(
-        payload.get("generated_at") or preserved.get("generated_at") or ""
+    existing_track_schema = (
+        list(existing.get("track_schema"))
+        if isinstance(existing.get("track_schema"), list)
+        else []
     )
-    return preserved
+    rebuilt_track_schema = (
+        list(rebuilt.get("track_schema"))
+        if isinstance(rebuilt.get("track_schema"), list)
+        else []
+    )
+    existing_artist_schema = (
+        list(existing.get("artist_schema"))
+        if isinstance(existing.get("artist_schema"), list)
+        else []
+    )
+    rebuilt_artist_schema = (
+        list(rebuilt.get("artist_schema"))
+        if isinstance(rebuilt.get("artist_schema"), list)
+        else []
+    )
+    existing_playlist_schema = (
+        list(existing.get("playlist_schema"))
+        if isinstance(existing.get("playlist_schema"), list)
+        else []
+    )
+    rebuilt_playlist_schema = (
+        list(rebuilt.get("playlist_schema"))
+        if isinstance(rebuilt.get("playlist_schema"), list)
+        else []
+    )
+    track_schema = merged_schema(rebuilt_track_schema, existing_track_schema)
+    artist_schema = merged_schema(rebuilt_artist_schema, existing_artist_schema)
+    playlist_schema = merged_schema(
+        rebuilt_playlist_schema, existing_playlist_schema
+    )
+
+    def track_record(row: Any, schema: Sequence[str], placement_schema: Sequence[str]) -> dict[str, Any]:
+        record = _mapping_from_row(row, schema)
+        placements = record.get("playlist_placements")
+        if isinstance(placements, list):
+            record["playlist_placements"] = [
+                _mapping_from_row(placement, placement_schema)
+                for placement in placements
+                if isinstance(placement, (Mapping, list, tuple))
+            ]
+        return record
+
+    def merge_record(current: Mapping[str, Any], incoming: Mapping[str, Any]) -> dict[str, Any]:
+        merged_record = copy.deepcopy(dict(current))
+        for field, value in incoming.items():
+            if field in {"spotify_id", "soundcharts_uuid"} and _nonempty(
+                merged_record.get(field)
+            ):
+                continue
+            if not _nonempty(value):
+                continue
+            current_value = merged_record.get(field)
+            incoming_label = _normalise_text(value)
+            current_label = _normalise_text(current_value)
+            if (
+                field == "instrumental_status"
+                and current_label == "instrumental"
+                and incoming_label
+                in {
+                    "unknown",
+                    "a verifier",
+                    "à vérifier",
+                    "a classifier",
+                    "à classifier",
+                    "review",
+                }
+            ):
+                continue
+            if (
+                field == "primary_genre"
+                and current_label
+                not in {
+                    "",
+                    "unknown",
+                    "other_instrumental",
+                    "autre",
+                    "autre / à définir",
+                    "a classifier",
+                    "à classifier",
+                }
+                and incoming_label
+                in {
+                    "unknown",
+                    "other_instrumental",
+                    "autre",
+                    "autre / à définir",
+                    "a classifier",
+                    "à classifier",
+                }
+            ):
+                continue
+            if (
+                field == "expansion_status"
+                and current_label in {"eligible", "verified"}
+                and incoming_label in {"review", "unknown", "needs_listen"}
+            ):
+                continue
+            if isinstance(value, list) and isinstance(merged_record.get(field), list):
+                combined = copy.deepcopy(merged_record[field])
+                for item in value:
+                    if item not in combined:
+                        combined.append(copy.deepcopy(item))
+                merged_record[field] = combined
+            else:
+                merged_record[field] = copy.deepcopy(value)
+        return merged_record
+
+    def merge_rows(
+        existing_rows: Any,
+        existing_schema: Sequence[str],
+        rebuilt_rows: Any,
+        rebuilt_schema: Sequence[str],
+        *,
+        is_track: bool = False,
+    ) -> list[dict[str, Any]]:
+        def decode(row: Any, schema: Sequence[str], placement_schema: Sequence[str]) -> dict[str, Any]:
+            if is_track:
+                return track_record(row, schema, placement_schema)
+            return _mapping_from_row(row, schema)
+
+        records = [
+            decode(row, existing_schema, existing_playlist_schema)
+            for row in existing_rows
+        ] if isinstance(existing_rows, list) else []
+        alias_index: dict[str, int] = {}
+        for index, record in enumerate(records):
+            for alias in _discovery_identity_aliases(record):
+                alias_index.setdefault(alias, index)
+
+        for row in rebuilt_rows if isinstance(rebuilt_rows, list) else []:
+            incoming = decode(row, rebuilt_schema, rebuilt_playlist_schema)
+            matches = {
+                alias_index[alias]
+                for alias in _discovery_identity_aliases(incoming)
+                if alias in alias_index
+            }
+            if matches:
+                index = min(matches)
+                records[index] = merge_record(records[index], incoming)
+                for alias in _discovery_identity_aliases(records[index]):
+                    alias_index.setdefault(alias, index)
+                continue
+            index = len(records)
+            records.append(copy.deepcopy(incoming))
+            for alias in _discovery_identity_aliases(incoming):
+                alias_index.setdefault(alias, index)
+        return records
+
+    existing_tracks = existing.get("tracks")
+    tracks = merge_rows(
+        existing_tracks,
+        existing_track_schema,
+        rebuilt.get("tracks"),
+        rebuilt_track_schema,
+        is_track=True,
+    )
+    artists = merge_rows(
+        existing.get("artists"),
+        existing_artist_schema,
+        rebuilt.get("artists"),
+        rebuilt_artist_schema,
+    )
+
+    result = copy.deepcopy(dict(existing))
+    for field, value in rebuilt.items():
+        if field not in {"tracks", "artists", "track_schema", "artist_schema", "playlist_schema", "counts"} and _nonempty(value):
+            result[field] = copy.deepcopy(value)
+    result["generated_at"] = str(
+        payload.get("generated_at") or result.get("generated_at") or ""
+    )
+    result["track_schema"] = track_schema
+    result["artist_schema"] = artist_schema
+    result["playlist_schema"] = playlist_schema
+    result["tracks"] = []
+    for record in tracks:
+        encoded = copy.deepcopy(record)
+        placements = encoded.get("playlist_placements")
+        if isinstance(placements, list):
+            encoded["playlist_placements"] = [
+                [placement.get(field) for field in playlist_schema]
+                for placement in placements
+                if isinstance(placement, Mapping)
+            ]
+        result["tracks"].append([encoded.get(field) for field in track_schema])
+    result["artists"] = [
+        [record.get(field) for field in artist_schema] for record in artists
+    ]
+    result["counts"] = {
+        "tracks": len(tracks),
+        "artists": len(artists),
+        "measured_tracks": sum(record.get("streams") is not None for record in tracks),
+        "playlist_tracks": sum(bool(record.get("playlist_count")) for record in tracks),
+        "catalogue_tracks": sum(
+            record.get("source_tier") == "playlist_artist_catalogue"
+            for record in tracks
+        ),
+        "verified_tracks": sum(
+            record.get("availability_status") == "verified" for record in tracks
+        ),
+    }
+    return result
 
 
 def _filter_discovery_catalogue_for_publication(
@@ -1912,11 +2109,19 @@ def quarantine_unapproved_discovery_additions(
         record = _mapping_from_row(row, track_schema)
         instrumental = _normalise_text(record.get("instrumental_status"))
         confidence = _finite_number(record.get("instrumental_confidence")) or 0
+        explicitly_non_instrumental = instrumental in {
+            "vocal",
+            "non_instrumental",
+            "non-instrumental",
+            "non instrumental",
+        }
         was_previously_approved = bool(
             _discovery_identity_aliases(record).intersection(
                 previous_track_aliases
             )
         )
+        if explicitly_non_instrumental:
+            continue
         if not was_previously_approved and not (
             instrumental == "instrumental"
             and confidence >= PUBLIC_MIN_CONFIDENCE

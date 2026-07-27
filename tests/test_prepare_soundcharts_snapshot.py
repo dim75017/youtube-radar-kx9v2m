@@ -4,6 +4,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import prepare_soundcharts_snapshot as subject
 
@@ -247,6 +248,201 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
             "existing-track", [row[spotify_index] for row in catalogue["tracks"]]
         )
         self.assertEqual(catalogue["counts"]["tracks"], 2)
+
+    def test_discovery_merge_preserves_existing_rows_and_enriches_stable_matches(self):
+        existing = {
+            "version": 1,
+            "generated_at": "2026-07-25T00:00:00Z",
+            "track_schema": [
+                "soundcharts_uuid",
+                "spotify_id",
+                "title",
+                "legacy_note",
+                "streams",
+                "primary_genre",
+                "instrumental_status",
+                "expansion_status",
+            ],
+            "artist_schema": [
+                "soundcharts_uuid",
+                "spotify_id",
+                "name",
+                "legacy_note",
+            ],
+            "playlist_schema": ["spotify_id", "name"],
+            "tracks": [
+                [
+                    "song-one",
+                    "track-one",
+                    "Old title",
+                    "keep-one",
+                    100,
+                    "ambient",
+                    "instrumental",
+                    "eligible",
+                ],
+                [
+                    "song-two",
+                    "",
+                    "Second title",
+                    "keep-two",
+                    200,
+                    "piano",
+                    "instrumental",
+                    "eligible",
+                ],
+            ],
+            "artists": [
+                ["artist-one", "spotify-artist-one", "Old artist", "keep-artist"],
+                ["artist-two", "spotify-artist-two", "Preserved artist", "keep-two"],
+            ],
+        }
+        rebuilt = {
+            "version": 2,
+            "generated_at": "2026-07-27T00:00:00Z",
+            "track_schema": [
+                "spotify_id",
+                "soundcharts_uuid",
+                "title",
+                "streams",
+                "primary_genre",
+                "instrumental_status",
+                "expansion_status",
+            ],
+            "artist_schema": [
+                "spotify_id",
+                "soundcharts_uuid",
+                "name",
+                "monthly_listeners",
+            ],
+            "playlist_schema": ["name", "spotify_id", "followers"],
+            "tracks": [
+                [
+                    "track-one",
+                    "song-one",
+                    "Fresh title",
+                    150,
+                    "other_instrumental",
+                    "unknown",
+                    "review",
+                ],
+                [
+                    "track-two",
+                    "song-two",
+                    "Second fresh title",
+                    250,
+                    "dark_ambient",
+                    "instrumental",
+                    "verified",
+                ],
+                [
+                    "track-three",
+                    "song-three",
+                    "New title",
+                    300,
+                    "ambient",
+                    "instrumental",
+                    "eligible",
+                ],
+            ],
+            "artists": [
+                ["spotify-artist-one", "artist-one", "Fresh artist", 12_000],
+                ["spotify-artist-three", "artist-three", "New artist", 8_000],
+            ],
+        }
+
+        merged = subject._preserve_more_complete_discovery_catalogue(
+            {
+                "generated_at": "2026-07-27T00:00:00Z",
+                "discovery_catalogue": existing,
+            },
+            rebuilt,
+        )
+
+        tracks = [
+            subject._mapping_from_row(row, merged["track_schema"])
+            for row in merged["tracks"]
+        ]
+        artists = [
+            subject._mapping_from_row(row, merged["artist_schema"])
+            for row in merged["artists"]
+        ]
+        by_uuid = {record["soundcharts_uuid"]: record for record in tracks}
+        artist_by_uuid = {
+            record["soundcharts_uuid"]: record for record in artists
+        }
+
+        self.assertEqual(len(tracks), 3)
+        self.assertEqual(by_uuid["song-one"]["title"], "Fresh title")
+        self.assertEqual(by_uuid["song-one"]["legacy_note"], "keep-one")
+        self.assertEqual(by_uuid["song-one"]["primary_genre"], "ambient")
+        self.assertEqual(
+            by_uuid["song-one"]["instrumental_status"], "instrumental"
+        )
+        self.assertEqual(by_uuid["song-one"]["expansion_status"], "eligible")
+        self.assertEqual(by_uuid["song-two"]["spotify_id"], "track-two")
+        self.assertEqual(by_uuid["song-two"]["legacy_note"], "keep-two")
+        self.assertEqual(len(artists), 3)
+        self.assertEqual(artist_by_uuid["artist-one"]["name"], "Fresh artist")
+        self.assertEqual(
+            artist_by_uuid["artist-one"]["legacy_note"], "keep-artist"
+        )
+        self.assertIn("artist-two", artist_by_uuid)
+        self.assertEqual(merged["counts"]["tracks"], 3)
+        self.assertEqual(merged["counts"]["artists"], 3)
+
+    def test_discovery_merge_keeps_new_rows_for_explicit_growth_validation(self):
+        track_schema = ["soundcharts_uuid", "spotify_id", "title"]
+        existing = {
+            "track_schema": track_schema,
+            "artist_schema": ["soundcharts_uuid", "spotify_id", "name"],
+            "playlist_schema": [],
+            "tracks": [
+                [f"old-song-{index}", f"old-track-{index}", f"Old {index}"]
+                for index in range(4)
+            ],
+            "artists": [],
+        }
+        rebuilt = {
+            "track_schema": track_schema,
+            "artist_schema": existing["artist_schema"],
+            "playlist_schema": [],
+            "tracks": [
+                ["old-song-0", "old-track-0", "Refreshed old"],
+                *[
+                    [f"new-song-{index}", f"new-track-{index}", f"New {index}"]
+                    for index in range(4)
+                ],
+            ],
+            "artists": [],
+        }
+
+        with patch.object(subject, "MAX_AUTO_DISCOVERY_GROWTH_RATIO", 1.25), patch.object(
+            subject, "MAX_AUTO_DISCOVERY_GROWTH_ROWS", 1
+        ):
+            merged = subject._preserve_more_complete_discovery_catalogue(
+                {"discovery_catalogue": existing}, rebuilt
+            )
+
+        spotify_index = merged["track_schema"].index("spotify_id")
+        track_ids = [row[spotify_index] for row in merged["tracks"]]
+        self.assertEqual(len(track_ids), 8)
+        self.assertTrue(
+            {f"old-track-{index}" for index in range(4)}.issubset(track_ids)
+        )
+        self.assertEqual(
+            [track_id for track_id in track_ids if track_id.startswith("new-track-")],
+            [f"new-track-{index}" for index in range(4)],
+        )
+        with patch.object(subject, "MAX_AUTO_DISCOVERY_GROWTH_RATIO", 1.25), patch.object(
+            subject, "MAX_AUTO_DISCOVERY_GROWTH_ROWS", 1
+        ), self.assertRaisesRegex(
+            subject.SnapshotValidationError, "grew too quickly"
+        ):
+            subject.validate_snapshot_transition(
+                {"discovery_catalogue": existing},
+                {"discovery_catalogue": merged},
+            )
 
     def test_discovery_catalogue_keeps_unclassified_editorial_rows(self):
         payload = minimal_payload()
@@ -953,6 +1149,32 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
         self.assertEqual(
             retained_artist_ids, {"old-artist-spotify", "safe-artist-spotify"}
         )
+
+    def test_previously_approved_track_reclassified_as_vocal_is_quarantined(self):
+        schema = [
+            "soundcharts_uuid",
+            "spotify_id",
+            "instrumental_status",
+            "instrumental_confidence",
+        ]
+        previous = {
+            "discovery_catalogue": {
+                "track_schema": schema,
+                "artist_schema": ["soundcharts_uuid", "spotify_id", "name"],
+                "tracks": [["old-song", "old-track", "instrumental", 0.9]],
+                "artists": [],
+            }
+        }
+        candidate = copy.deepcopy(previous)
+        candidate["discovery_catalogue"]["tracks"][0][2] = "vocal"
+
+        removed = subject.quarantine_unapproved_discovery_additions(
+            previous, candidate
+        )
+
+        self.assertEqual(removed, {"tracks": 1, "artists": 0})
+        self.assertEqual(candidate["discovery_catalogue"]["tracks"], [])
+        self.assertEqual(candidate["discovery_catalogue"]["counts"]["tracks"], 0)
 
     def test_transition_rejects_discovery_catalogue_collapse(self):
         previous = minimal_payload()

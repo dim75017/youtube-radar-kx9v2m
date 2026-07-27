@@ -47,6 +47,20 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         section = self.workflow[prepare:validate]
         self.assertIn('--previous "${{ steps.snapshot.outputs.old }}"', section)
 
+    def test_completed_collection_is_checkpointed_before_snapshot_guards(self):
+        checkpoint = self.workflow.index(
+            "Preserve completed collection before publication guards"
+        )
+        prepare = self.workflow.index("Prepare public-safe dated snapshot")
+        self.assertLess(checkpoint, prepare)
+        section = self.workflow[checkpoint:prepare]
+        self.assertIn("actions/upload-artifact@v4", section)
+        self.assertIn("${{ steps.snapshot.outputs.candidate }}", section)
+        self.assertIn("Spotify_Performance_data.js", section)
+        self.assertIn("soundcharts-history", section)
+        self.assertIn("soundcharts-instrumental-cache.json", section)
+        self.assertIn("retention-days: 3", section)
+
     def test_complete_sync_runs_daily_without_cancelling_a_live_run(self):
         self.assertIn("- cron: '17 4 * * *'", self.workflow)
         self.assertNotIn("2-57/5", self.workflow)
