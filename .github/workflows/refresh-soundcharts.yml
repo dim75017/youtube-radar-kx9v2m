@@ -902,8 +902,17 @@ jobs:
             --index spotify/index.html \
             --expected-old "$OLD_SNAPSHOT" \
             --new "$SNAPSHOT_NAME"
+          python build_spotify_browse_catalogue.py \
+            --source "$SNAPSHOT_NAME" \
+            --existing Spotify_Browse_Catalogue_data.js \
+            --output Spotify_Browse_Catalogue_data.js \
+            --minimum-tracks 1 \
+            --strict-rebased \
+            --trusted-catalogue spotify-catalogue-baseline.csv \
+            --trusted-artist-seeds spotify-catalogue-baseline.json
           git add \
             spotify/index.html \
+            Spotify_Browse_Catalogue_data.js \
             Spotify_Playlists_data.js \
             Spotify_Performance_data.js \
             soundcharts-history

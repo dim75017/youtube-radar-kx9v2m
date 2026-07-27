@@ -119,6 +119,15 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("playlist_followers_due", self.workflow)
         self.assertIn("Spotify_Playlists_data.js", self.workflow[self.workflow.index("Activate snapshot only after remote validation"):])
 
+    def test_activation_rebuilds_the_visible_catalogue_in_the_same_commit(self):
+        activation = self.workflow.index("Activate snapshot only after remote validation")
+        section = self.workflow[activation:]
+        rebuild = section.index("python build_spotify_browse_catalogue.py")
+        stage = section.index("git add")
+        self.assertLess(rebuild, stage)
+        self.assertIn('--source "$SNAPSHOT_NAME"', section[rebuild:stage])
+        self.assertIn("Spotify_Browse_Catalogue_data.js", section[stage:])
+
     def test_scheduled_rebaseline_refreshes_complete_performance_catalogue_once_due(self):
         self.assertIn('performance_catalogue_due="false"', self.workflow)
         self.assertIn("is_due('tracks_catalogue_at')", self.workflow)
