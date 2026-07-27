@@ -580,8 +580,14 @@ jobs:
               if int(independent_discovery.get('unique_playlist_tracks') or 0) < 1:
                   raise SystemExit('Independent playlist discovery returned no tracks')
               public_discovery_tracks = catalogue.get('tracks') if isinstance(catalogue, dict) else []
-              if not isinstance(public_discovery_tracks, list) or len(public_discovery_tracks) < unique_playlist_tracks:
-                  raise SystemExit('Full discovery catalogue did not publish every playlist track')
+              public_counts = catalogue.get('counts') if isinstance(catalogue, dict) else {}
+              if not isinstance(public_discovery_tracks, list) or not public_discovery_tracks:
+                  raise SystemExit('Sanitized public discovery catalogue is empty')
+              if int((public_counts or {}).get('tracks') or 0) != len(public_discovery_tracks):
+                  raise SystemExit('Public discovery track count is inconsistent')
+              published_playlist_tracks = int((public_counts or {}).get('playlist_tracks') or 0)
+              if published_playlist_tracks < 1 or published_playlist_tracks > unique_playlist_tracks:
+                  raise SystemExit('Sanitized playlist track count is invalid')
           if os.environ.get('RUN_SCOPE') == 'dark_ambient':
               dark_ambient = soundcharts.get('dark_ambient_playlist_discovery') or {}
               if int(dark_ambient.get('playlists_scanned') or 0) < 1:

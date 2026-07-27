@@ -77,6 +77,20 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("playlist_followers_due", self.workflow)
         self.assertIn("Spotify_Playlists_data.js", self.workflow[self.workflow.index("Activate snapshot only after remote validation"):])
 
+    def test_public_catalogue_validation_respects_sanitization_and_quarantine(self):
+        self.assertNotIn(
+            "len(public_discovery_tracks) < unique_playlist_tracks",
+            self.workflow,
+        )
+        self.assertIn(
+            "int((public_counts or {}).get('tracks') or 0) != len(public_discovery_tracks)",
+            self.workflow,
+        )
+        self.assertIn(
+            "published_playlist_tracks > unique_playlist_tracks",
+            self.workflow,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

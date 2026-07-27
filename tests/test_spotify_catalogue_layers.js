@@ -19,7 +19,7 @@ assert.match(index, /Spotify_Browse_Catalogue_data\.js\?payload=/,
 assert.ok(index.indexOf('Spotify_Browse_Catalogue_data.js') < index.indexOf('dashboard.js'),
   'the broad catalogue must load before the dashboard bundle');
 assert.match(dashboard, /const BROWSE = window\.SPOTIFY_BROWSE_CATALOGUE \|\| \{\};/);
-assert.match(dashboard, /const A = \(D\.artists \|\| \[\]\)\.map/,
+assert.match(dashboard, /const A = Array\.from\(D\.artists \|\| \[\],/,
   'historical artists remain a browsing source');
 assert.match(dashboard, /const LEGACY_R = \(D\.rows \|\| \[\]\)\.filter/,
   'historical tracks remain a browsing source');
