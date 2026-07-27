@@ -307,6 +307,46 @@ class RefreshSoundchartsTests(unittest.TestCase):
             [['2026-07-19', 190]],
         )
 
+    def test_full_track_refresh_keeps_spotify_aliases_that_share_a_soundcharts_uuid(self):
+        payload = {
+            'schemas': {'tracks': ['soundcharts_uuid', 'spotify_id']},
+            'tracks': [],
+        }
+        performance = {
+            'tracks': {
+                'alias-a': {'soundcharts_uuid': 'shared-uuid', 'history': []},
+                'alias-b': {'soundcharts_uuid': 'shared-uuid', 'history': []},
+            }
+        }
+        response = {
+            'items': [
+                {
+                    'date': '2026-07-27',
+                    'plots': [
+                        {'identifier': 'alias-a', 'value': 110},
+                        {'identifier': 'alias-b', 'value': 220},
+                    ],
+                },
+            ]
+        }
+        client = FakeClient(response)
+
+        outcome = subject.refresh_tracks(
+            payload,
+            performance,
+            client,
+            1,
+            10,
+            95,
+            include_performance_catalogue=True,
+        )
+
+        self.assertEqual(outcome.available, 2)
+        self.assertEqual(outcome.usable, 2)
+        self.assertEqual(len(client.paths), 2)
+        self.assertEqual(performance['tracks']['alias-a']['history'], [['2026-07-27', 110]])
+        self.assertEqual(performance['tracks']['alias-b']['history'], [['2026-07-27', 220]])
+
     def test_full_artist_refresh_updates_performance_only_uuid_without_promoting_it(self):
         payload = {
             'schemas': {'artists': ['soundcharts_uuid', 'spotify_id', 'name']},

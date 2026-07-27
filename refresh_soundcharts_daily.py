@@ -596,10 +596,6 @@ def refresh_tracks(
             spotify_id = str(spotify_id or "").strip()
             if not uuid or not spotify_id or uuid in strict_uuids:
                 continue
-            # A Spotify export can retain historical aliases that point to the
-            # same Soundcharts UUID. Count the remote entity only once so an
-            # alias never wastes the daily request budget.
-            strict_uuids.add(uuid)
             query = urllib.parse.urlencode({"startDate": start, "endDate": end, "limit": max(100, history_days + 5)})
             tasks.append(
                 {
@@ -698,7 +694,6 @@ def refresh_artists(
             spotify_id = str(spotify_id or "").strip()
             if not uuid or not spotify_id or uuid in strict_uuids:
                 continue
-            strict_uuids.add(uuid)
             tasks.append(
                 {
                     "row": None,
