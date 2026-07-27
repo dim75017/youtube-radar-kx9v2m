@@ -546,7 +546,7 @@ jobs:
         run: >-
           python refresh_soundcharts_daily.py
           --mode artists
-          --workers 8
+          --workers 10
           --max-requests "${{ steps.plan.outputs.performance_artist_requests }}"
           --history-days 90
           --include-performance-catalogue
@@ -562,7 +562,7 @@ jobs:
         run: >-
           python refresh_soundcharts_daily.py
           --mode tracks
-          --workers 8
+          --workers 10
           --max-requests "${{ steps.plan.outputs.performance_track_requests }}"
           --history-days 90
           --include-performance-catalogue

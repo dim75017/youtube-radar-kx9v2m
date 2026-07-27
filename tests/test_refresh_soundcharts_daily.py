@@ -28,9 +28,97 @@ class RefreshSoundchartsTests(unittest.TestCase):
         with patch.object(subject, 'request_json', return_value=({'ok': True}, {'x-quota-remaining': '3999999'})) as request:
             client.authenticate()
         self.assertEqual(client.auth_mode, 'api_headers')
+        self.assertEqual(client._auth_generation, 1)
         self.assertEqual(client.quota_remaining, 3999999)
         self.assertEqual(request.call_args.args[1]['x-app-id'], 'app')
         self.assertEqual(request.call_args.args[1]['x-api-key'], 'key')
+
+    def test_expired_oauth_is_renewed_once_and_data_request_is_replayed_with_quota_claim(self):
+        client = subject.SoundchartsClient('app', 'key', request_limit=2)
+        client.headers = {'Authorization': 'Bearer expired', 'Accept': 'application/json'}
+        client.auth_mode = 'oauth_bearer'
+        client._auth_generation = 7
+        client.quota_remaining = 4_000_000
+        data_headers = []
+
+        def fake_request(url, headers, *, before_attempt=None, **_kwargs):
+            if url == subject.API_BASE + '/data':
+                before_attempt()
+                data_headers.append(dict(headers))
+                if headers.get('Authorization') == 'Bearer expired':
+                    raise subject.SoundchartsHttpError(401)
+                return {'ok': True}, {'x-quota-remaining': '3999989'}
+            if url == subject.API_BASE + subject.AUTH_PROBE:
+                if headers.get('x-app-id'):
+                    raise subject.SoundchartsHttpError(401)
+                return {'probe': True}, {'x-quota-remaining': '3999990'}
+            if url == subject.TOKEN_URL:
+                return {'access_token': 'fresh'}, {}
+            raise AssertionError(f'unexpected URL: {url}')
+
+        with patch.object(subject, 'request_json', side_effect=fake_request):
+            self.assertEqual(client.get('/data'), {'ok': True})
+
+        self.assertEqual(
+            [headers.get('Authorization') for headers in data_headers],
+            ['Bearer expired', 'Bearer fresh'],
+        )
+        self.assertEqual(client.requests_claimed, 2)
+        self.assertEqual(client._auth_generation, 8)
+        self.assertEqual(client.auth_mode, 'oauth_bearer')
+
+    def test_http_403_is_not_reauthenticated_or_replayed(self):
+        client = subject.SoundchartsClient('app', 'key', request_limit=2)
+        client.headers = {'Authorization': 'Bearer current'}
+        client._auth_generation = 1
+        client.quota_remaining = 4_000_000
+
+        def forbidden(_url, _headers, *, before_attempt=None, **_kwargs):
+            before_attempt()
+            raise subject.SoundchartsHttpError(403)
+
+        with (
+            patch.object(subject, 'request_json', side_effect=forbidden),
+            patch.object(client, '_renew_after_unauthorized') as renew,
+        ):
+            with self.assertRaises(subject.SoundchartsHttpError) as raised:
+                client.get('/forbidden')
+
+        self.assertEqual(raised.exception.status, 403)
+        self.assertEqual(client.requests_claimed, 1)
+        renew.assert_not_called()
+
+    def test_concurrent_401_responses_trigger_a_single_oauth_renewal(self):
+        client = subject.SoundchartsClient('app', 'key', request_limit=4)
+        client.headers = {'Authorization': 'Bearer expired'}
+        client.auth_mode = 'oauth_bearer'
+        client._auth_generation = 3
+        client.quota_remaining = 4_000_000
+        expired_barrier = subject.threading.Barrier(2)
+
+        def fake_request(url, headers, *, before_attempt=None, **_kwargs):
+            before_attempt()
+            if headers.get('Authorization') == 'Bearer expired':
+                expired_barrier.wait(timeout=2)
+                raise subject.SoundchartsHttpError(401)
+            return {'path': url}, {}
+
+        def fake_renew_locked():
+            client.headers = {'Authorization': 'Bearer fresh'}
+            client.auth_mode = 'oauth_bearer'
+            client._auth_generation += 1
+
+        with (
+            patch.object(subject, 'request_json', side_effect=fake_request),
+            patch.object(client, '_authenticate_locked', side_effect=fake_renew_locked) as renew,
+        ):
+            with subject.concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+                results = list(pool.map(client.get, ['/one', '/two']))
+
+        self.assertEqual(len(results), 2)
+        self.assertEqual(renew.call_count, 1)
+        self.assertEqual(client._auth_generation, 4)
+        self.assertEqual(client.requests_claimed, 4)
 
     def test_each_http_attempt_is_counted_before_retrying(self):
         class FakeResponse:

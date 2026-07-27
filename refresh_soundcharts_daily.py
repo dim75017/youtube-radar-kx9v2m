@@ -228,6 +228,8 @@ class SoundchartsClient:
         self.request_limit = None if request_limit is None else max(0, request_limit)
         self.requests_claimed = 0
         self._quota_lock = threading.Lock()
+        self._auth_lock = threading.RLock()
+        self._auth_generation = 0
 
     def _record_headers(self, headers: Mapping[str, str], *, reset: bool = False) -> None:
         raw = headers.get("x-quota-remaining") or headers.get("X-Quota-Remaining")
@@ -276,13 +278,16 @@ class SoundchartsClient:
             self.requests_claimed += 1
             self.quota_remaining = remaining - 1
 
-    def authenticate(self) -> None:
+    def _authenticate_locked(self) -> None:
+        """Replace authentication headers while ``_auth_lock`` is held."""
+
         direct = {"x-app-id": self.app_id, "x-api-key": self.api_key, "Accept": "application/json"}
         try:
             _, response_headers = request_json(API_BASE + AUTH_PROBE, direct, retries=1)
             self.headers = direct
             self.auth_mode = "api_headers"
             self._record_headers(response_headers, reset=True)
+            self._auth_generation += 1
             return
         except SoundchartsHttpError:
             pass
@@ -293,15 +298,48 @@ class SoundchartsClient:
         self.headers = bearer
         self.auth_mode = "oauth_bearer"
         self._record_headers(response_headers, reset=True)
+        self._auth_generation += 1
+
+    def authenticate(self) -> None:
+        with self._auth_lock:
+            self._authenticate_locked()
+
+    def _authentication_snapshot(self) -> tuple[int, dict[str, str]]:
+        with self._auth_lock:
+            if not self.headers:
+                raise SoundchartsError("Soundcharts client is not authenticated")
+            return self._auth_generation, dict(self.headers)
+
+    def _renew_after_unauthorized(self, observed_generation: int) -> dict[str, str]:
+        """Renew once per expired auth generation and return current headers."""
+
+        with self._auth_lock:
+            if self._auth_generation == observed_generation:
+                self._authenticate_locked()
+            if not self.headers:
+                raise SoundchartsError("Soundcharts client authentication renewal failed")
+            return dict(self.headers)
 
     def get(self, path: str) -> Any:
-        if not self.headers:
-            raise SoundchartsError("Soundcharts client is not authenticated")
-        payload, response_headers = request_json(
-            API_BASE + path,
-            self.headers,
-            before_attempt=self._claim_quota_request,
-        )
+        generation, headers = self._authentication_snapshot()
+        try:
+            payload, response_headers = request_json(
+                API_BASE + path,
+                headers,
+                before_attempt=self._claim_quota_request,
+            )
+        except SoundchartsHttpError as exc:
+            if exc.status != 401:
+                raise
+            renewed_headers = self._renew_after_unauthorized(generation)
+            # This is a new data request, so it goes through the same quota and
+            # per-run request-limit claim as every other HTTP attempt. A second
+            # 401 is deliberately not retried again.
+            payload, response_headers = request_json(
+                API_BASE + path,
+                renewed_headers,
+                before_attempt=self._claim_quota_request,
+            )
         self._record_headers(response_headers)
         return payload
 
