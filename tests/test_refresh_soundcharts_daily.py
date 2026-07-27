@@ -3,6 +3,7 @@ from pathlib import Path
 import tempfile
 import unittest
 import urllib.parse
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import refresh_soundcharts_daily as subject
@@ -57,6 +58,17 @@ class RefreshSoundchartsTests(unittest.TestCase):
                 before_attempt=lambda: claims.append(True),
             )
         self.assertEqual(len(claims), 2)
+
+    def test_resource_level_http_statuses_are_non_blocking_unavailable_data(self):
+        for status in (400, 404, 410, 422):
+            with self.subTest(status=status):
+                error = subject.urllib.error.HTTPError(
+                    'https://example.invalid/song', status, 'unavailable', {}, None
+                )
+                with patch.object(subject.urllib.request, 'urlopen', side_effect=error):
+                    with self.assertRaises(subject.SoundchartsDataUnavailableError) as raised:
+                        subject.request_json('https://example.invalid/song', {}, retries=1)
+                self.assertEqual(raised.exception.status, status)
 
     def test_client_stops_before_consuming_server_quota_reserve(self):
         client = subject.SoundchartsClient('app', 'key')
@@ -172,10 +184,12 @@ class RefreshSoundchartsTests(unittest.TestCase):
         tracks.available = 26880
         tracks.selected = 26880
         tracks.usable = 26800
+        tracks.unavailable = 80
         artists = subject.Outcome('artists')
         artists.available = 3348
         artists.selected = 3348
         artists.usable = 3330
+        artists.unavailable = 18
         now = '2026-07-27T20:15:00Z'
 
         freshness = subject.merge_performance_freshness(
@@ -188,6 +202,98 @@ class RefreshSoundchartsTests(unittest.TestCase):
 
         self.assertEqual(freshness['tracks_catalogue_at'], now)
         self.assertEqual(freshness['artists_catalogue_at'], now)
+
+    def test_failed_complete_selection_does_not_advance_catalogue_freshness(self):
+        tracks = subject.Outcome('tracks')
+        tracks.available = 26880
+        tracks.selected = 26880
+        tracks.usable = 26799
+        tracks.failures = 1
+
+        freshness = subject.merge_performance_freshness(
+            {'tracks_catalogue_at': '2026-07-26T20:15:00Z'},
+            {},
+            {'tracks': tracks},
+            '2026-07-27T20:15:00Z',
+            include_performance_catalogue=True,
+        )
+
+        self.assertEqual(freshness['tracks_catalogue_at'], '2026-07-26T20:15:00Z')
+
+    def test_unavailable_resources_are_reported_separately_from_blocking_errors(self):
+        class MixedClient:
+            def get(self, path):
+                if path.endswith('/unavailable'):
+                    raise subject.SoundchartsDataUnavailableError(404)
+                if path.endswith('/failed'):
+                    raise subject.SoundchartsHttpError(503)
+                return {'ok': True}
+
+        tasks = [
+            {'path': '/ok'},
+            {'path': '/unavailable'},
+            {'path': '/failed'},
+        ]
+        (
+            results,
+            requests,
+            failures,
+            unavailable,
+            available,
+            selected,
+            failure_diagnostics,
+            unavailable_diagnostics,
+        ) = subject.parallel_collect(MixedClient(), tasks, workers=1, max_requests=10)
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual((requests, failures, unavailable, available, selected), (3, 1, 1, 3, 3))
+        self.assertEqual(
+            failure_diagnostics,
+            [{'type': 'SoundchartsHttpError', 'status': 503, 'count': 1}],
+        )
+        self.assertEqual(
+            unavailable_diagnostics,
+            [{'type': 'SoundchartsDataUnavailableError', 'status': 404, 'count': 1}],
+        )
+
+    def test_complete_catalogue_request_error_aborts_before_export_write(self):
+        args = SimpleNamespace(
+            mode='tracks',
+            max_requests=10,
+            workers=1,
+            history_days=90,
+            include_performance_catalogue=True,
+            soundcharts=Path('unused-soundcharts.js'),
+            performance=Path('unused-performance.js'),
+            playlists=Path('unused-playlists.js'),
+            history_dir=Path('unused-history'),
+        )
+        client = SimpleNamespace(
+            auth_mode='api_headers',
+            quota_remaining=4_000_000,
+            authenticate=lambda: None,
+            require_quota_reserve=lambda: None,
+        )
+        failed = subject.Outcome('tracks')
+        failed.requests = failed.available = failed.selected = 2
+        failed.usable = 1
+        failed.failures = 1
+        failed.failure_diagnostics = [
+            {'type': 'SoundchartsHttpError', 'status': 503, 'count': 1}
+        ]
+
+        with (
+            patch.object(subject, 'parse_args', return_value=args),
+            patch.object(subject, 'SoundchartsClient', return_value=client),
+            patch.object(subject, 'read_js_payload', return_value={}),
+            patch.object(subject, 'read_performance_payload', return_value={'tracks': {}, 'artists': {}, 'playlists': {}}),
+            patch.object(subject, 'refresh_tracks', return_value=failed),
+            patch.object(subject, 'write_js_payload') as write_export,
+        ):
+            with self.assertRaisesRegex(subject.SoundchartsError, 'previous public exports were kept'):
+                subject.main()
+
+        write_export.assert_not_called()
 
     def test_refresh_tracks_updates_export_and_browser_history(self):
         payload = {
@@ -342,10 +448,55 @@ class RefreshSoundchartsTests(unittest.TestCase):
         )
 
         self.assertEqual(outcome.available, 2)
+        self.assertEqual(outcome.selected, 2)
+        self.assertEqual(outcome.requests, 1)
         self.assertEqual(outcome.usable, 2)
-        self.assertEqual(len(client.paths), 2)
+        self.assertEqual(len(client.paths), 1)
         self.assertEqual(performance['tracks']['alias-a']['history'], [['2026-07-27', 110]])
         self.assertEqual(performance['tracks']['alias-b']['history'], [['2026-07-27', 220]])
+
+    def test_strict_spotify_id_wins_over_stale_performance_uuid(self):
+        payload = {
+            'schemas': {'tracks': ['soundcharts_uuid', 'spotify_id']},
+            'tracks': [['approved-uuid', 'same-spotify-id']],
+        }
+        performance = {
+            'tracks': {
+                'same-spotify-id': {
+                    'soundcharts_uuid': 'stale-uuid',
+                    'history': [['2026-07-20', 100]],
+                },
+            }
+        }
+        response = {
+            'items': [
+                {
+                    'date': '2026-07-21',
+                    'plots': [{'identifier': 'same-spotify-id', 'value': 135}],
+                },
+            ]
+        }
+        client = FakeClient(response)
+
+        outcome = subject.refresh_tracks(
+            payload,
+            performance,
+            client,
+            1,
+            10,
+            95,
+            include_performance_catalogue=True,
+        )
+
+        self.assertEqual((outcome.available, outcome.selected, outcome.requests, outcome.usable), (1, 1, 1, 1))
+        self.assertEqual(len(client.paths), 1)
+        self.assertIn('/api/v2/song/approved-uuid/audience/spotify?', client.paths[0])
+        self.assertNotIn('stale-uuid', client.paths[0])
+        self.assertEqual(performance['tracks']['same-spotify-id']['soundcharts_uuid'], 'approved-uuid')
+        self.assertEqual(
+            performance['tracks']['same-spotify-id']['history'],
+            [['2026-07-20', 100], ['2026-07-21', 135]],
+        )
 
     def test_full_artist_refresh_updates_performance_only_uuid_without_promoting_it(self):
         payload = {
@@ -509,7 +660,7 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertIn('artist_data_cap="350"', workflow)
         self.assertIn('performance_artist_data_cap="15000"', workflow)
         self.assertIn('performance_track_data_cap="60000"', workflow)
-        self.assertIn('playlist_data_cap="1400"', workflow)
+        self.assertIn('playlist_data_cap="3000"', workflow)
         self.assertIn('independent_playlist_data_cap="2500"', workflow)
         self.assertIn('expansion_data_cap="6000"', workflow)
         self.assertIn('classification_data_cap="8230"', workflow)

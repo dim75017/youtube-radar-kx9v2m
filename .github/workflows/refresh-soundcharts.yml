@@ -57,14 +57,9 @@ on:
       - 'spotify/discovery.css'
       - 'spotify/coverage.js'
   schedule:
-    # Bootstrap: run as soon as the single protected collector becomes free.
-    # The concurrency group below serializes 5-minute schedule ticks, so this
-    # never overlaps collection or a Pages validation.
-    # The preflight in the collector remains authoritative for quota, OAuth and
-    # active-lock safety; this schedule never bypasses those checks.
-    # Offset the five-minute cadence to avoid GitHub Actions' congested
-    # top-of-hour scheduling window (minutes 2, 7, 12, ..., 57 UTC).
-    - cron: '2-57/5 * * * *'
+    # One complete synchronization per day. The odd minute avoids GitHub
+    # Actions' congested top-of-hour scheduling window (04:17 UTC).
+    - cron: '17 4 * * *'
   workflow_dispatch:
     inputs:
       scope:
@@ -175,7 +170,9 @@ jobs:
           # Enough for the entire public dashboard playlist set, while the
           # collector itself prioritizes those visible rows over backlog-only
           # discovery records.
-          playlist_data_cap="1400"
+          # Leave enough HTTP-attempt headroom for bounded retries while still
+          # selecting every published playlist entity.
+          playlist_data_cap="3000"
           independent_playlist_data_cap="2500"
           expansion_data_cap="6000"
           classification_data_cap="8230"
@@ -227,7 +224,14 @@ jobs:
             performance_tracks_due="true"
             performance_artists_due="true"
           fi
-          if [[ "$scope" == "full_sync" ]]; then
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            # A scheduled run is the authoritative daily pass: scan followers,
+            # every known artist and every known track exactly once per day.
+            playlist_followers_due="true"
+            performance_catalogue_due="true"
+            performance_tracks_due="true"
+            performance_artists_due="true"
+          elif [[ "$scope" == "full_sync" ]]; then
             playlist_followers_due="true"
           elif [[ "$scope" == "strict_rebaseline" ]]; then
             playlist_followers_due="$(python - <<'PY'
@@ -251,7 +255,7 @@ jobs:
           PY
             )"
           fi
-          if [[ "$scope" == "strict_rebaseline" ]]; then
+          if [[ "$scope" == "strict_rebaseline" && "${{ github.event_name }}" != "schedule" ]]; then
             read -r performance_tracks_due performance_artists_due < <(python - <<'PY'
           import datetime as dt
           import json
@@ -353,7 +357,7 @@ jobs:
         run: >-
           python refresh_soundcharts_daily.py
           --mode playlists
-          --workers 10
+          --workers 6
           --max-requests "${{ steps.plan.outputs.playlist_requests }}"
           --history-days 90
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
@@ -542,7 +546,7 @@ jobs:
         run: >-
           python refresh_soundcharts_daily.py
           --mode artists
-          --workers 10
+          --workers 8
           --max-requests "${{ steps.plan.outputs.performance_artist_requests }}"
           --history-days 90
           --include-performance-catalogue
@@ -558,7 +562,7 @@ jobs:
         run: >-
           python refresh_soundcharts_daily.py
           --mode tracks
-          --workers 10
+          --workers 8
           --max-requests "${{ steps.plan.outputs.performance_track_requests }}"
           --history-days 90
           --include-performance-catalogue

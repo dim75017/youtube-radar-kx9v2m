@@ -84,6 +84,29 @@ TRACK_EXTRA_FIELDS = (
     "source_tier",
 )
 
+# A previously published SC.tracks row has already passed the strict public
+# gate. A weaker playlist/editorial candidate may refresh its measurements and
+# metadata, but must never erase the evidence that made it eligible.
+STRICT_TRACK_EVIDENCE_FIELDS = (
+    "spotify_id",
+    "artists",
+    "rights_status",
+    "rights_confidence",
+    "status_source",
+    "primary_genre",
+    "subgenres",
+    "genre_confidence",
+    "genre_source",
+    "soundcharts_genres",
+    "soundcharts_genres_checked_at",
+    "instrumental_status",
+    "instrumental_confidence",
+    "ai_risk",
+    "ai_risk_score",
+    "expansion_status",
+    "source_tier",
+)
+
 PLAYLIST_SOURCE_TIERS = frozenset(
     {
         "editorial_playlist",
@@ -1099,6 +1122,29 @@ def _new_row(schema: list[str]) -> list[Any]:
     return [None] * len(schema)
 
 
+def has_strict_track_evidence(row: list[Any], schema: list[str]) -> bool:
+    artists = field(row, schema, "artists")
+    return (
+        str(field(row, schema, "primary_genre") or "") in TARGET_GENRES
+        and (finite_number(field(row, schema, "genre_confidence")) or 0) >= 0.5
+        and str(field(row, schema, "instrumental_status") or "").casefold() == "instrumental"
+        and (finite_number(field(row, schema, "instrumental_confidence")) or 0) >= 0.5
+        and str(field(row, schema, "ai_risk") or "").casefold() in {"low", "faible"}
+        and str(field(row, schema, "expansion_status") or "").casefold() == "eligible"
+        and str(field(row, schema, "rights_status") or "").casefold()
+        in {"self_released", "independent_label", "indie"}
+        and (finite_number(field(row, schema, "rights_confidence")) or 0) >= 0.5
+        and isinstance(artists, list)
+        and bool(artists)
+        and all(
+            isinstance(artist, dict)
+            and str(artist.get("spotify_id") or "").strip()
+            and str(artist.get("soundcharts_uuid") or "").strip()
+            for artist in artists
+        )
+    )
+
+
 def expand_instrumental_pool(
     soundcharts: dict[str, Any],
     performance: dict[str, Any],
@@ -1319,6 +1365,16 @@ def expand_instrumental_pool(
         track_meta = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
         spotify_id = audience["spotify_id"]
         row = tracks_by_uuid.get(uuid) or tracks_by_spotify.get(spotify_id)
+        preserved_strict_evidence: dict[str, Any] = {}
+        if (
+            row is not None
+            and item.get("classification_status") != "verified"
+            and has_strict_track_evidence(row, track_schema)
+        ):
+            preserved_strict_evidence = {
+                name: field(row, track_schema, name)
+                for name in STRICT_TRACK_EVIDENCE_FIELDS
+            }
         if row is None:
             row = _new_row(track_schema)
             track_rows.append(row)
@@ -1390,6 +1446,8 @@ def expand_instrumental_pool(
             "source_tier": item.get("source_tier") or "instrumental_editorial_daily",
         }
         for name, value in values.items():
+            set_field(row, track_schema, name, value)
+        for name, value in preserved_strict_evidence.items():
             set_field(row, track_schema, name, value)
         tracks_by_uuid[uuid] = row
         tracks_by_spotify[spotify_id] = row

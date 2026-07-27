@@ -44,6 +44,10 @@ class SoundchartsHttpError(SoundchartsError):
         super().__init__(f"Soundcharts HTTP error ({status})")
 
 
+class SoundchartsDataUnavailableError(SoundchartsHttpError):
+    """The requested platform resource is not available from Soundcharts."""
+
+
 class SoundchartsQuotaReserveError(SoundchartsError):
     """Raised before a request could consume the protected server reserve."""
 
@@ -116,7 +120,7 @@ def request_json(
     headers: Mapping[str, str],
     *,
     data: bytes | None = None,
-    retries: int = 3,
+    retries: int = 5,
     timeout: int = 40,
     before_attempt: Callable[[], None] | None = None,
 ) -> tuple[Any, Mapping[str, str]]:
@@ -137,8 +141,8 @@ def request_json(
                 body = response.read().decode("utf-8")
                 return json.loads(body), dict(response.headers)
         except urllib.error.HTTPError as exc:
-            if exc.code == 404:
-                return None, dict(exc.headers)
+            if exc.code in {400, 404, 410, 422}:
+                raise SoundchartsDataUnavailableError(exc.code) from exc
             if exc.code in {401, 403}:
                 raise SoundchartsHttpError(exc.code) from exc
             last_error = exc
@@ -150,6 +154,8 @@ def request_json(
             last_error = exc
             if attempt + 1 < retries:
                 time.sleep(_retry_delay(attempt))
+    if isinstance(last_error, urllib.error.HTTPError):
+        raise SoundchartsHttpError(last_error.code) from last_error
     raise SoundchartsError("Soundcharts request failed after retries") from last_error
 
 
@@ -396,7 +402,12 @@ def _identifier_matches(identifier: str, spotify_id: str) -> bool:
     return identifier == spotify_id or identifier.endswith(spotify_id)
 
 
-def extract_song_audience_points(response: Any, spotify_id: str = "") -> list[list[Any]]:
+def extract_song_audience_points(
+    response: Any,
+    spotify_id: str = "",
+    *,
+    require_identifier_match: bool = False,
+) -> list[list[Any]]:
     """Return `[YYYY-MM-DD, cumulative Spotify streams]` points from SongPlot."""
 
     daily: dict[str, tuple[int, bool]] = {}
@@ -414,9 +425,9 @@ def extract_song_audience_points(response: Any, spotify_id: str = "") -> list[li
             continue
         exact = [(identifier, value) for identifier, value in numeric if _identifier_matches(identifier, spotify_id)]
         chosen: tuple[str, int] | None = exact[-1] if exact else None
-        if chosen is None and len(numeric) == 1:
+        if chosen is None and not require_identifier_match and len(numeric) == 1:
             chosen = numeric[0]
-        if chosen is None:
+        if chosen is None and not require_identifier_match:
             spotify_named = [(identifier, value) for identifier, value in numeric if identifier.lower() == "spotify"]
             chosen = spotify_named[-1] if spotify_named else None
         if chosen is None:
@@ -505,18 +516,38 @@ class Outcome:
     items: list[dict[str, Any]] = dataclass_field(default_factory=list)
     requests: int = 0
     failures: int = 0
+    unavailable: int = 0
     usable: int = 0
     available: int = 0
     selected: int = 0
+    failure_diagnostics: list[dict[str, Any]] = dataclass_field(default_factory=list)
+    unavailable_diagnostics: list[dict[str, Any]] = dataclass_field(default_factory=list)
 
     def summary(self) -> dict[str, Any]:
         return {
             "requests": self.requests,
             "failures": self.failures,
+            "unavailable": self.unavailable,
             "usable": self.usable,
             "available": self.available,
             "selected": self.selected,
+            "failure_diagnostics": self.failure_diagnostics,
+            "unavailable_diagnostics": self.unavailable_diagnostics,
         }
+
+
+def safe_failure_diagnostic(exc: SoundchartsError) -> dict[str, Any]:
+    """Return an aggregateable error signature without URLs or credentials."""
+
+    if isinstance(exc, SoundchartsHttpError):
+        status: int | str = exc.status
+    elif isinstance(exc, SoundchartsQuotaReserveError):
+        status = "quota_reserve"
+    elif isinstance(exc, SoundchartsRequestLimitError):
+        status = "request_limit"
+    else:
+        status = "request_failed"
+    return {"type": type(exc).__name__, "status": status}
 
 
 def parallel_collect(
@@ -525,11 +556,23 @@ def parallel_collect(
     *,
     workers: int,
     max_requests: int,
-) -> tuple[list[tuple[dict[str, Any], Any]], int, int, int, int]:
+) -> tuple[
+    list[tuple[dict[str, Any], Any]],
+    int,
+    int,
+    int,
+    int,
+    int,
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+]:
     all_tasks = list(tasks)
     selected = all_tasks[: max(0, max_requests)]
     results: list[tuple[dict[str, Any], Any]] = []
     failures = 0
+    unavailable = 0
+    diagnostic_counts: dict[tuple[str, str], dict[str, Any]] = {}
+    unavailable_counts: dict[tuple[str, str], dict[str, Any]] = {}
 
     def collect(task: dict[str, Any]) -> tuple[dict[str, Any], Any]:
         return task, client.get(str(task["path"]))
@@ -540,14 +583,39 @@ def parallel_collect(
         for future in concurrent.futures.as_completed(futures):
             try:
                 results.append(future.result())
+            except SoundchartsDataUnavailableError as exc:
+                unavailable += 1
+                diagnostic = safe_failure_diagnostic(exc)
+                key = (str(diagnostic["type"]), str(diagnostic["status"]))
+                unavailable_counts.setdefault(key, dict(diagnostic, count=0))["count"] += 1
             except (SoundchartsQuotaReserveError, SoundchartsRequestLimitError) as exc:
                 stop_error = exc
                 failures += 1
-            except SoundchartsError:
+                diagnostic = safe_failure_diagnostic(exc)
+                key = (str(diagnostic["type"]), str(diagnostic["status"]))
+                diagnostic_counts.setdefault(key, dict(diagnostic, count=0))["count"] += 1
+            except SoundchartsError as exc:
                 failures += 1
+                diagnostic = safe_failure_diagnostic(exc)
+                key = (str(diagnostic["type"]), str(diagnostic["status"]))
+                diagnostic_counts.setdefault(key, dict(diagnostic, count=0))["count"] += 1
+    diagnostics = sorted(diagnostic_counts.values(), key=lambda item: (str(item["type"]), str(item["status"])))
+    unavailable_diagnostics = sorted(
+        unavailable_counts.values(), key=lambda item: (str(item["type"]), str(item["status"]))
+    )
     if stop_error is not None:
+        print(json.dumps({"collection_failure": diagnostics}, ensure_ascii=False))
         raise stop_error
-    return results, len(selected), failures, len(all_tasks), len(selected)
+    return (
+        results,
+        len(selected),
+        failures,
+        unavailable,
+        len(all_tasks),
+        len(selected),
+        diagnostics,
+        unavailable_diagnostics,
+    )
 
 
 def refresh_tracks(
@@ -571,89 +639,128 @@ def refresh_tracks(
     store = performance.setdefault("tracks", {})
     if not isinstance(store, dict):
         raise SoundchartsError("Performance tracks must be an object")
-    tasks = []
-    strict_uuids: set[str] = set()
-    for row in rows:
-        uuid = field(row, schema, "soundcharts_uuid")
-        if not uuid:
-            continue
-        strict_uuids.add(str(uuid))
-        spotify_id = str(field(row, schema, "spotify_id") or "")
-        query = urllib.parse.urlencode({"startDate": start, "endDate": end, "limit": max(100, history_days + 5)})
-        tasks.append(
+    query = urllib.parse.urlencode({"startDate": start, "endDate": end, "limit": max(100, history_days + 5)})
+    tasks_by_uuid: dict[str, dict[str, Any]] = {}
+    strict_spotify_ids: set[str] = set()
+
+    def add_target(
+        uuid: str,
+        spotify_id: str,
+        row: list[Any] | None,
+        *,
+        performance_only: bool,
+    ) -> None:
+        task = tasks_by_uuid.setdefault(
+            uuid,
+            {
+                "uuid": uuid,
+                "path": f"/api/v2/song/{urllib.parse.quote(uuid)}/audience/spotify?{query}",
+                "targets": [],
+            },
+        )
+        task["targets"].append(
             {
                 "row": row,
-                "uuid": str(uuid),
                 "spotify_id": spotify_id,
-                "path": f"/api/v2/song/{urllib.parse.quote(str(uuid))}/audience/spotify?{query}",
+                "performance_only": performance_only,
             }
         )
+
+    for row in rows:
+        uuid = str(field(row, schema, "soundcharts_uuid") or "").strip()
+        if not uuid:
+            continue
+        spotify_id = str(field(row, schema, "spotify_id") or "").strip()
+        if spotify_id:
+            strict_spotify_ids.add(spotify_id)
+        add_target(uuid, spotify_id, row, performance_only=False)
     if include_performance_catalogue:
         for spotify_id, entry in store.items():
             if not isinstance(entry, dict):
                 continue
             uuid = str(entry.get("soundcharts_uuid") or "").strip()
             spotify_id = str(spotify_id or "").strip()
-            if not uuid or not spotify_id or uuid in strict_uuids:
+            # The approved row is authoritative for a Spotify identity. A
+            # stale performance entry for that same ID must never schedule a
+            # concurrent request against its former Soundcharts UUID.
+            if not uuid or not spotify_id or spotify_id in strict_spotify_ids:
                 continue
-            query = urllib.parse.urlencode({"startDate": start, "endDate": end, "limit": max(100, history_days + 5)})
-            tasks.append(
-                {
-                    "row": None,
-                    "uuid": uuid,
-                    "spotify_id": spotify_id,
-                    "path": f"/api/v2/song/{urllib.parse.quote(uuid)}/audience/spotify?{query}",
-                    "performance_only": True,
-                }
-            )
+            add_target(uuid, spotify_id, None, performance_only=True)
+
+    # One Soundcharts song request contains every Spotify plot/alias. Keep
+    # strict UUID groups first, but count catalogue coverage by Spotify entity.
+    tasks = list(tasks_by_uuid.values())
+    available_entities = sum(len(task["targets"]) for task in tasks)
+    selected_entities = sum(len(task["targets"]) for task in tasks[: max(0, budget)])
 
     outcome = Outcome("tracks")
-    results, outcome.requests, outcome.failures, outcome.available, outcome.selected = parallel_collect(
+    (
+        results,
+        outcome.requests,
+        outcome.failures,
+        outcome.unavailable,
+        outcome.available,
+        outcome.selected,
+        outcome.failure_diagnostics,
+        outcome.unavailable_diagnostics,
+    ) = parallel_collect(
         client, tasks, workers=workers, max_requests=budget
     )
+    outcome.available = available_entities
+    outcome.selected = selected_entities
     now = utc_now()
     for task, response in results:
-        points = extract_song_audience_points(response, task["spotify_id"])
-        if not points:
-            outcome.items.append({"entity": "track", "id": task["uuid"], "ok": response is not None, "usable": False})
-            continue
-        row = task.get("row")
-        latest_day, latest_value = points[-1]
-        by_day = {day: value for day, value in points}
-        prior_day = previous_day(latest_day)
-        prior_value = by_day.get(prior_day)
-        delta = latest_value - prior_value if prior_value is not None else None
-        key = task["spotify_id"] or f"soundcharts:{task['uuid']}"
-        entry = store.setdefault(key, {})
-        if not isinstance(entry, dict):
-            entry = {}
-            store[key] = entry
-        entry["history"] = merge_history(entry.get("history"), points)
-        entry["soundcharts_uuid"] = task["uuid"]
-        entry["observed_at"] = now
-        entry["cadence_days"] = 1
-        entry["source"] = "soundcharts_song_audience_spotify"
+        targets = task.get("targets") if isinstance(task.get("targets"), list) else []
+        require_identifier_match = len(targets) > 1
+        for target in targets:
+            spotify_id = str(target.get("spotify_id") or "")
+            points = extract_song_audience_points(
+                response,
+                spotify_id,
+                require_identifier_match=require_identifier_match,
+            )
+            key = spotify_id or f"soundcharts:{task['uuid']}"
+            if not points:
+                outcome.items.append(
+                    {"entity": "track", "id": key, "ok": response is not None, "usable": False}
+                )
+                continue
+            row = target.get("row")
+            latest_day, latest_value = points[-1]
+            by_day = {day: value for day, value in points}
+            prior_day = previous_day(latest_day)
+            prior_value = by_day.get(prior_day)
+            delta = latest_value - prior_value if prior_value is not None else None
+            entry = store.setdefault(key, {})
+            if not isinstance(entry, dict):
+                entry = {}
+                store[key] = entry
+            entry["history"] = merge_history(entry.get("history"), points)
+            entry["soundcharts_uuid"] = task["uuid"]
+            entry["observed_at"] = now
+            entry["cadence_days"] = 1
+            entry["source"] = "soundcharts_song_audience_spotify"
 
-        if isinstance(row, list):
-            set_field(row, schema, "streams", latest_value)
-            set_field(row, schema, "delta", delta)
-            set_field(row, schema, "source_date", latest_day)
-            set_field(row, schema, "previous_source_date", prior_day if prior_value is not None else None)
-            set_field(row, schema, "observed_at", now)
-        outcome.usable += 1
-        outcome.items.append(
-            {
-                "entity": "track",
-                "id": key,
-                "value": latest_value,
-                "date": latest_day,
-                "delta_24h": delta,
-                "points": len(points),
-                "ok": True,
-                "usable": True,
-                "performance_only": bool(task.get("performance_only")),
-            }
-        )
+            if isinstance(row, list):
+                set_field(row, schema, "streams", latest_value)
+                set_field(row, schema, "delta", delta)
+                set_field(row, schema, "source_date", latest_day)
+                set_field(row, schema, "previous_source_date", prior_day if prior_value is not None else None)
+                set_field(row, schema, "observed_at", now)
+            outcome.usable += 1
+            outcome.items.append(
+                {
+                    "entity": "track",
+                    "id": key,
+                    "value": latest_value,
+                    "date": latest_day,
+                    "delta_24h": delta,
+                    "points": len(points),
+                    "ok": True,
+                    "usable": True,
+                    "performance_only": bool(target.get("performance_only")),
+                }
+            )
     return outcome
 
 
@@ -706,7 +813,16 @@ def refresh_artists(
             )
 
     outcome = Outcome("artists")
-    results, outcome.requests, outcome.failures, outcome.available, outcome.selected = parallel_collect(
+    (
+        results,
+        outcome.requests,
+        outcome.failures,
+        outcome.unavailable,
+        outcome.available,
+        outcome.selected,
+        outcome.failure_diagnostics,
+        outcome.unavailable_diagnostics,
+    ) = parallel_collect(
         client, tasks, workers=workers, max_requests=budget
     )
     now = utc_now()
@@ -815,7 +931,16 @@ def refresh_playlists(
     tasks = [task for _, _, task in sorted(tasks_with_priority, key=lambda item: (item[0], item[1]))]
 
     outcome = Outcome("playlists")
-    results, outcome.requests, outcome.failures, outcome.available, outcome.selected = parallel_collect(
+    (
+        results,
+        outcome.requests,
+        outcome.failures,
+        outcome.unavailable,
+        outcome.available,
+        outcome.selected,
+        outcome.failure_diagnostics,
+        outcome.unavailable_diagnostics,
+    ) = parallel_collect(
         client, tasks, workers=workers, max_requests=budget
     )
     store = performance.setdefault("playlists", {})
@@ -897,7 +1022,16 @@ def refresh_fal(
             )
 
     outcome = Outcome("fal")
-    results, outcome.requests, outcome.failures, outcome.available, outcome.selected = parallel_collect(
+    (
+        results,
+        outcome.requests,
+        outcome.failures,
+        outcome.unavailable,
+        outcome.available,
+        outcome.selected,
+        outcome.failure_diagnostics,
+        outcome.unavailable_diagnostics,
+    ) = parallel_collect(
         client, tasks, workers=workers, max_requests=budget
     )
     for task, response in results:
@@ -946,8 +1080,9 @@ def merge_performance_freshness(
             if (
                 outcome
                 and outcome.usable > 0
+                and outcome.failures == 0
                 and outcome.available > 0
-                and outcome.selected >= outcome.available
+                and outcome.selected == outcome.available
             ):
                 merged[f"{mode}_catalogue_at"] = now
     return merged
@@ -1073,6 +1208,30 @@ def main() -> int:
         outcomes[mode] = outcome
         remaining = max(0, remaining - outcome.requests)
         print(json.dumps({mode: outcome.summary(), "remaining_budget": remaining}))
+        if args.include_performance_catalogue and mode in {"tracks", "artists"}:
+            incomplete = outcome.selected < outcome.available
+            if outcome.failures > 0 or incomplete:
+                # Fail before either export is written. The diagnostic is
+                # deliberately aggregate-only: no request URL, entity ID,
+                # credential or response body can reach the Actions log.
+                print(
+                    json.dumps(
+                        {
+                            "performance_catalogue_refresh": {
+                                "mode": mode,
+                                "status": "request_errors" if outcome.failures else "request_cap_incomplete",
+                                "available": outcome.available,
+                                "selected": outcome.selected,
+                                "failures": outcome.failures,
+                                "failure_diagnostics": outcome.failure_diagnostics,
+                            }
+                        },
+                        ensure_ascii=False,
+                    )
+                )
+                raise SoundchartsError(
+                    f"Complete {mode} performance refresh failed; previous public exports were kept"
+                )
 
     if args.mode in {"full", "tracks"} and ("tracks" not in outcomes or outcomes["tracks"].usable == 0):
         raise SoundchartsError("No usable Spotify track stream point was returned; previous public exports were kept")

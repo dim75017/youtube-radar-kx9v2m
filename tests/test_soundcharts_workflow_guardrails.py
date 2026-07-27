@@ -47,8 +47,9 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         section = self.workflow[prepare:validate]
         self.assertIn('--previous "${{ steps.snapshot.outputs.old }}"', section)
 
-    def test_bootstrap_runs_every_five_minutes_without_cancelling_a_live_run(self):
-        self.assertIn("- cron: '2-57/5 * * * *'", self.workflow)
+    def test_complete_sync_runs_daily_without_cancelling_a_live_run(self):
+        self.assertIn("- cron: '17 4 * * *'", self.workflow)
+        self.assertNotIn("2-57/5", self.workflow)
         self.assertIn("cancel-in-progress: false", self.workflow)
 
     def test_classification_rebuilds_the_non_public_playlist_pool_first(self):
@@ -85,6 +86,11 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("dt.timedelta(hours=24)", self.workflow)
         self.assertIn('performance_artist_data_cap="15000"', self.workflow)
         self.assertIn('performance_track_data_cap="60000"', self.workflow)
+        self.assertIn('playlist_data_cap="3000"', self.workflow)
+        self.assertIn('if [[ "${{ github.event_name }}" == "schedule" ]]; then', self.workflow)
+        self.assertIn('performance_tracks_due="true"', self.workflow)
+        self.assertIn('performance_artists_due="true"', self.workflow)
+        self.assertIn('playlist_followers_due="true"', self.workflow)
         self.assertIn(
             "steps.plan.outputs.scope == 'strict_rebaseline' && "
             "steps.plan.outputs.performance_artists_due == 'true'",

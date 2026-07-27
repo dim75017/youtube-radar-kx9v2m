@@ -329,6 +329,97 @@ class InstrumentalPoolTests(unittest.TestCase):
             [{"platform": "instagram", "url": "https://instagram.com/novaissue"}],
         )
 
+    def test_weak_candidate_refresh_preserves_existing_strict_track_evidence(self):
+        current = payload()
+        editorial_schema = current["editorial"]["track_schema"]
+        editorial_schema.append("source_tier")
+        editorial_row = current["editorial"]["tracks"][0]
+        editorial_row.append("editorial_playlist")
+        editorial_row[editorial_schema.index("instrumental_status")] = "unknown"
+        editorial_row[editorial_schema.index("instrumental_confidence")] = None
+        editorial_row[editorial_schema.index("ai_risk")] = "unknown"
+        editorial_row[editorial_schema.index("expansion_status")] = "review"
+
+        track_schema, track_rows = subject.ensure_schema_fields(
+            current,
+            "tracks",
+            subject.TRACK_EXTRA_FIELDS,
+        )
+        strict_artists = [
+            {
+                "soundcharts_uuid": "strict-artist-uuid",
+                "spotify_id": "strict-artist-spotify",
+                "name": "Strict Artist",
+                "role": "main",
+            }
+        ]
+        strict_values = {
+            "spotify_id": "4vFL08pP0H9RDUVj05qXyL",
+            "artist": "Strict Artist",
+            "title": "Approved title",
+            "streams": 120,
+            "rights_status": "self_released",
+            "rights_confidence": 0.95,
+            "status_source": "soundcharts_strict",
+            "soundcharts_uuid": "song-uuid",
+            "artists": strict_artists,
+            "primary_genre": "dark_ambient",
+            "subgenres": ["drone"],
+            "genre_confidence": 0.93,
+            "genre_source": "soundcharts_strict",
+            "soundcharts_genres": [{"root": "Ambient", "sub": ["Dark Ambient"]}],
+            "soundcharts_genres_checked_at": "2026-07-20T00:00:00Z",
+            "instrumental_status": "instrumental",
+            "instrumental_confidence": 0.97,
+            "ai_risk": "low",
+            "ai_risk_score": 0.02,
+            "expansion_status": "eligible",
+            "source_tier": "instrumental_editorial",
+        }
+        strict_row = subject._new_row(track_schema)
+        for name, value in strict_values.items():
+            subject.set_field(strict_row, track_schema, name, value)
+        track_rows.append(strict_row)
+
+        detail = song_detail()
+        detail["object"]["name"] = "Fresh metadata title"
+        detail["object"]["label"] = "Fresh metadata label"
+        detail["object"]["artists"] = []
+        detail["object"]["mainArtists"] = []
+        client = FakeClient(
+            {
+                "/audience/spotify?": audience_response(),
+                "/api/v2/song/song-uuid": detail,
+            }
+        )
+        performance = {"tracks": {}, "artists": {}, "playlists": {}}
+        cache = {"version": 1, "tracks": {}, "artists": {}}
+        with patch.object(subject, "utc_today", return_value=dt.date(2026, 7, 21)):
+            summary = subject.expand_instrumental_pool(
+                current,
+                performance,
+                cache,
+                client,
+                workers=1,
+                max_requests=5,
+                limit=1,
+            )
+
+        self.assertEqual(summary["updated_tracks"], 1)
+        self.assertEqual(summary["needs_listen_measured"], 1)
+        self.assertEqual(subject.field(strict_row, track_schema, "streams"), 155)
+        self.assertEqual(subject.field(strict_row, track_schema, "delta"), 35)
+        self.assertEqual(subject.field(strict_row, track_schema, "title"), "Fresh metadata title")
+        self.assertEqual(subject.field(strict_row, track_schema, "label"), "Fresh metadata label")
+        self.assertEqual(
+            subject.field(strict_row, track_schema, "spotify_aliases"),
+            ["4vFL08pP0H9RDUVj05qXyL"],
+        )
+        for name, value in strict_values.items():
+            if name in {"artist", "title", "streams"}:
+                continue
+            self.assertEqual(subject.field(strict_row, track_schema, name), value, name)
+
     def test_parallel_expansion_propagates_quota_reserve_stop(self):
         class ReserveClient:
             def get(self, _path):
