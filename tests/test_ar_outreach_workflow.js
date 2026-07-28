@@ -35,13 +35,19 @@ assert.match(spotify, /function arCatalogueSelectionOpportunity\(spotifyId\)/, '
 assert.match(spotify, /filter\(id=>arSelectionEligible\(id\)\)/, 'Bulk selection accepts every visible catalogue track');
 assert.match(spotify, /arSelectionOpportunityById\(id\)/, 'The selection renders catalogue rows even when outreach is not approved');
 assert.match(spotify, /mailto:\$\{encodeURIComponent\(currentEmail\)\}/, 'The mail client handoff must remain user initiated');
-assert.match(spotify, /Aucun message n(?:’|')est envoyé automatiquement/i, 'The UI must not imply automatic sending');
+assert.doesNotMatch(spotify, /Le message reste sous votre contrôle|Aucun message n(?:’|')est envoyé automatiquement/i, 'The removed composer disclaimer must stay removed');
 assert.match(spotify, /cdn\.simpleicons\.org/, 'Detail contacts must use platform logos rather than emoji');
 assert.match(spotify, /function arPromptArtistCompanions\(spotifyId\)/, 'Adding a track must offer other eligible tracks from the same structured artist');
 assert.match(spotify, /function arOutreachDrafts\(opportunity\)/, 'Message preparation exposes multiple draft proposals');
 assert.match(spotify, /Préparer le message/, 'Selection cards expose a message-preparation action');
 assert.match(spotify, /function arSelectionArtistGroups\(/, 'A&R selection must group retained tracks by structured artist');
 assert.match(spotify, /function arSelectionArtistCardHtml\(/, 'A&R selection must render an artist-level section');
+const outreachStart=spotify.indexOf('function openArOutreach(spotifyId){');
+const outreachEnd=spotify.indexOf('\nfunction arSelectionPrimaryArtist(opportunity){',outreachStart);
+const outreachSource=spotify.slice(outreachStart,outreachEnd);
+assert.match(outreachSource, /const opportunity=arSelectionOpportunityById\(spotifyId\)/, 'Message preparation must open for catalogue-only Selection tracks');
+assert.doesNotMatch(outreachSource, /const opportunity=arOpportunityRows\(\)\.find/, 'Message preparation must not use the restricted Opportunities-only lookup');
+assert.match(outreachSource, /id="ar-composer-economics"/, 'Message preparation must expose the individualized internal estimate');
 for (const stage of ['to_contact', 'contacted', 'negotiating', 'validated', 'refused']) {
   assert.match(spotify, new RegExp(`key:'${stage}'`), `Selection must expose the ${stage} negotiation tab`);
 }
@@ -76,7 +82,7 @@ assert.doesNotMatch(spotifyNav, /Ma liste A&R/, 'The previous A&R list naming mu
 assert.doesNotMatch(spotifyNav, /Sélection A&R/, 'The sidebar must not retain the old A&R selection label');
 assert.doesNotMatch(youtubeNav, /id:'watch'/, 'YouTube watchlist navigation must be removed');
 const contactPayloadIndex=spotifyNav.indexOf('../Spotify_Selection_Contacts_data.js?payload=');
-const dashboardScriptIndex=spotifyNav.indexOf('dashboard.js?v=20260728-selection-no-self-release-v1');
+const dashboardScriptIndex=spotifyNav.indexOf('dashboard.js?v=20260728-outreach-composer-v1');
 assert.ok(contactPayloadIndex>=0&&dashboardScriptIndex>contactPayloadIndex, 'The Selection contact directory must load before the dashboard logic.');
 assert.match(spotify, /window\.SPOTIFY_SELECTION_CONTACTS/, 'Selection must consume its dedicated public-contact directory.');
 

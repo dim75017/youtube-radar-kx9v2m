@@ -2945,26 +2945,40 @@ function arPlatformLogo(platform){
 function arPlatformLabel(platform){
   return ({email:'E-mail professionnel',website:'Site officiel',instagram:'Instagram',bandcamp:'Bandcamp',soundcloud:'SoundCloud',youtube:'YouTube',tiktok:'TikTok',facebook:'Facebook',twitter:'X / Twitter',x:'X / Twitter',spotify:'Spotify',contact:'Formulaire de contact'})[platform]||'Profil public';
 }
+function arContactChannelKey(type,value){
+  const normalizedType=String(type||'').trim().toLowerCase(),clean=String(value||'').trim();
+  if(normalizedType==='instagram'){
+    try{
+      const url=new URL(clean),host=url.hostname.toLowerCase().replace(/^(?:www\.|m\.)/,'');
+      const profile=(url.pathname.split('/').filter(Boolean)[0]||'').replace(/^@/,'').toLowerCase();
+      const reserved=new Set(['accounts','direct','explore','p','reel','reels','stories']);
+      if(host==='instagram.com'&&profile&&!reserved.has(profile)&&/^[a-z0-9._]+$/i.test(profile))return `instagram:${profile}`;
+    }catch(_){}
+  }
+  return `${normalizedType}:${clean.toLowerCase().replace(/\/+$/,'')}`;
+}
 function arPublicContactChannels(opportunity){
   if(!arContactEligible(opportunity)) return [];
   const channels=[], seen=new Set();
-  const add=(platform,url,email='')=>{
+  const add=(platform,url,email='',owner='')=>{
     const value=email?String(email).trim():arSafePublicUrl(url);
     if(!value) return;
     const type=email?'email':arPlatformFromUrl(platform,value);
-    const key=`${type}:${value.toLowerCase()}`;
+    const key=arContactChannelKey(type,value);
     if(seen.has(key)) return;
-    seen.add(key); channels.push({type,value});
+    seen.add(key); channels.push({type,value,owner:String(owner||'').trim()});
   };
-  add('email','',opportunity.contactEmail);
+  const primaryName=(Array.isArray(opportunity.artists)?opportunity.artists:[]).map(artist=>String(artist&&artist.name||'').trim()).find(Boolean)||String(opportunity.credit||'').trim();
+  add('email','',opportunity.contactEmail,primaryName);
   (Array.isArray(opportunity.artists)?opportunity.artists:[]).forEach(artist=>{
-    add('email','',artist&&artist.email);
-    (Array.isArray(artist&&artist.public_contacts)?artist.public_contacts:[]).forEach(channel=>add(channel&&channel.platform,channel&&channel.url));
-    add(artist&&artist.contact_platform,artist&&artist.url);
+    const owner=String(artist&&artist.name||'').trim();
+    add('email','',artist&&artist.email,owner);
+    (Array.isArray(artist&&artist.public_contacts)?artist.public_contacts:[]).forEach(channel=>add(channel&&channel.platform,channel&&channel.url,'',owner));
+    add(artist&&artist.contact_platform,artist&&artist.url,'',owner);
     const spotifyId=String(artist&&artist.spotify_id||'').trim();
-    if(spotifyId) add('spotify',spotifyArtistUrl(spotifyId));
+    if(spotifyId) add('spotify',spotifyArtistUrl(spotifyId),'',owner);
   });
-  add(opportunity.contactPlatform,opportunity.contactUrl);
+  add(opportunity.contactPlatform,opportunity.contactUrl,'',primaryName);
   return channels;
 }
 function arContactHtml(opportunity,compact=false){
@@ -2985,22 +2999,23 @@ function arSelectionContactRecord(opportunity){
 }
 function arSelectionContactChannels(opportunity){
   const record=arSelectionContactRecord(opportunity),channels=[],seen=new Set();
-  const add=(type,value)=>{
+  const primaryName=arSelectionPrimaryArtist(opportunity).name;
+  const add=(type,value,owner='')=>{
     const normalizedType=String(type||'').trim().toLowerCase();
     const clean=normalizedType==='email'?String(value||'').trim():arSafePublicUrl(value);
     const finalType=normalizedType==='email'?'email':arPlatformFromUrl(normalizedType,clean);
     if(!clean||finalType==='spotify')return;
-    const key=`${finalType}:${clean.toLowerCase()}`;if(seen.has(key))return;
-    seen.add(key);channels.push({type:finalType,value:clean});
+    const key=arContactChannelKey(finalType,clean);if(seen.has(key))return;
+    seen.add(key);channels.push({type:finalType,value:clean,owner:String(owner||'').trim()});
   };
   /* Une correction humaine « aucun contact » est prioritaire sur un ancien
-     profil Soundcharts ambigu. Les sources restent visibles dans le panneau. */
+     profil Soundcharts ambigu. */
   if(record&&record.scan_status==='no_public_contact_found')return [];
   if(record){
-    add('email',record.email);
-    (Array.isArray(record.channels)?record.channels:[]).forEach(channel=>add(channel&&channel.platform,channel&&channel.url));
+    add('email',record.email,primaryName);
+    (Array.isArray(record.channels)?record.channels:[]).forEach(channel=>add(channel&&channel.platform,channel&&channel.url,primaryName));
   }
-  if(arContactEligible(opportunity))arPublicContactChannels(opportunity).forEach(channel=>add(channel.type,channel.value));
+  if(arContactEligible(opportunity))arPublicContactChannels(opportunity).forEach(channel=>add(channel.type,channel.value,channel.owner));
   return channels;
 }
 function arSelectionContactState(opportunity){
@@ -3016,26 +3031,18 @@ function arSelectionContactSummaryHtml(opportunity){
   const style=state==='email_found'||state==='public_channel_found'?'has-contact':state==='no_public_contact_found'?'no-contact':'is-searching';
   return `<div class="ar-contact-scan-summary ${style}"><span aria-hidden="true">${state==='email_found'?'✉':state==='public_channel_found'?'↗':state==='no_public_contact_found'?'—':'◌'}</span>${esc(copy[state])}</div>`;
 }
-function arContactSourceLabel(url,index){
-  try{const parsed=new URL(url);return `${parsed.hostname.replace(/^www\./,'')} · source ${index+1}`;}catch(_){return `Source ${index+1}`;}
-}
 function arSelectionContactPanelHtml(opportunity){
-  const record=arSelectionContactRecord(opportunity),state=arSelectionContactState(opportunity),channels=arSelectionContactChannels(opportunity);
-  const artist=arSelectionPrimaryArtist(opportunity),spotify=artist.spotifyId?spotifyArtistUrl(artist.spotifyId):'';
-  const sources=[];const seen=new Set();
-  const addSource=value=>{const clean=arSafePublicUrl(value);if(!clean||seen.has(clean.toLowerCase()))return;seen.add(clean.toLowerCase());sources.push(clean);};
-  addSource(spotify);(Array.isArray(record&&record.sources_checked)?record.sources_checked:[]).forEach(addSource);
+  const state=arSelectionContactState(opportunity),channels=arSelectionContactChannels(opportunity);
+  const instagramCount=channels.filter(channel=>channel.type==='instagram').length;
   const methods=channels.map(channel=>channel.type==='email'
     ?`<a class="ar-contact-method" href="mailto:${esc(channel.value)}"><span class="ar-contact-method-icon">✉</span><span class="ar-contact-method-copy"><span>${esc(arPlatformLabel(channel.type))}</span><strong>${esc(channel.value)}</strong></span></a>`
-    :`<a class="ar-contact-method" href="${esc(channel.value)}" target="_blank" rel="noopener"><span class="ar-contact-method-icon">${arPlatformLogo(channel.type)||'↗'}</span><span class="ar-contact-method-copy"><span>${esc(arPlatformLabel(channel.type))}</span><strong>Ouvrir le profil</strong></span></a>`).join('');
+    :`<a class="ar-contact-method" href="${esc(channel.value)}" target="_blank" rel="noopener"><span class="ar-contact-method-icon">${arPlatformLogo(channel.type)||'↗'}</span><span class="ar-contact-method-copy"><span>${esc(arPlatformLabel(channel.type))}</span><strong>Ouvrir le profil${channel.type==='instagram'&&instagramCount>1&&channel.owner?` · ${esc(channel.owner)}`:''}</strong></span></a>`).join('');
   const empty=state==='no_public_contact_found'
-    ?'<div class="ar-contact-empty"><strong>Aucun moyen de contact public trouvé</strong><span>Spotify, les profils publics et les sources disponibles ont été vérifiés sans adresse ni canal fiable. Aucun contact n’est inventé.</span></div>'
+    ?'<div class="ar-contact-empty"><strong>Aucun moyen de contact public trouvé</strong><span>Aucune adresse ni aucun canal public fiable n’est disponible pour cet artiste.</span></div>'
     :'<div class="ar-contact-empty"><strong>Recherche en cours</strong><span>Le répertoire quotidien n’a pas encore fourni de moyen de contact public fiable pour cet artiste.</span></div>';
-  const checked=record&&String(record.checked_at||'').slice(0,10);
-  const sourceLinks=sources.map((url,index)=>`<a href="${esc(url)}" target="_blank" rel="noopener">${esc(arContactSourceLabel(url,index))}</a>`).join('');
   const warning=!arContactEligible(opportunity)?'<div class="ar-contact-panel-warning">Sélection manuelle : l’artiste reste hors prospection automatique tant que les garde-fous instrumental, IA, droits et identité ne sont pas tous validés.</div>':'';
   const stateLabel={email_found:'E-mail trouvé',public_channel_found:'Profil trouvé',no_public_contact_found:'Aucun contact',pending:'En cours'}[state];
-  return `<section class="ar-contact-panel"><div class="ar-contact-panel-head"><div><h4>Profils et moyens de contact publics</h4><small>SCAN CONTACT${checked?` · vérifié le ${esc(fmtDate(checked))}`:''}</small></div><span class="ar-contact-panel-status">${esc(stateLabel)}</span></div>${warning}${methods?`<div class="ar-contact-methods">${methods}</div>`:empty}${sourceLinks?`<div class="ar-contact-source-links"><span>Sources vérifiées</span>${sourceLinks}</div>`:''}</section>`;
+  return `<section class="ar-contact-panel"><div class="ar-contact-panel-head"><h4>Profils et moyens de contact publics</h4><span class="ar-contact-panel-status">${esc(stateLabel)}</span></div>${warning}${methods?`<div class="ar-contact-methods">${methods}</div>`:empty}</section>`;
 }
 function arConfidenceLabel(value){
   if(value==null) return 'preuve en construction';
@@ -3571,15 +3578,16 @@ function arCopyText(value){
   else prompt('Copiez ce brouillon :',value);
 }
 function openArOutreach(spotifyId){
-  const opportunity=arOpportunityRows().find(item=>item.spotifyId===spotifyId);let entry=arListEntry(spotifyId);if(!opportunity)return;
+  const opportunity=arSelectionOpportunityById(spotifyId);let entry=arListEntry(spotifyId);if(!opportunity)return;
   if(!entry){arAddManyToList([spotifyId]);entry=arListEntry(spotifyId);}
   if(!entry)return;
   const artist=arSelectionPrimaryArtist(opportunity),artistKey=artist.key,artistEntry=arArtistEntry(artistKey)||{};
+  const group=arSelectionGroupByArtistKey(artistKey);
   const drafts=arOutreachDrafts(opportunity);const email=arPublicEmail(opportunity);let selectedIndex=Math.max(0,Math.min(drafts.length-1,Number(artistEntry.draftVariant??entry.draftVariant)||0));
   const initial=drafts[selectedIndex];const subject=artistEntry.subject||entry.subject||initial.subject;const body=artistEntry.body||entry.body||initial.body;
   const box=document.getElementById('ar-body');box.className='tmbox ambox ar-composer';
   box.innerHTML=`<header class="ar-composer-head"><div class="ar-composer-icon">✉</div><div><div class="ar-composer-kicker">PRÉPARER LE CONTACT</div><h3>${esc(artist.name)}</h3><p>À propos de “${esc(opportunity.title)}”</p></div><button class="tclose" onclick="closeArModal()">✕</button></header>
-    <div class="ar-composer-content"><aside class="ar-composer-side"><div class="ar-outreach-note">Le message reste sous votre contrôle : ouvre le canal choisi puis confirme l’envoi ici. Aucun message n’est envoyé automatiquement.</div>${arSelectionContactPanelHtml(opportunity)}<div class="ar-draft-heading">Choisir un angle</div><div class="ar-draft-choices">${drafts.map((draft,index)=>`<button class="${index===selectedIndex?'on':''}" type="button" data-ar-draft="${index}">${esc(draft.label)}</button>`).join('')}</div></aside><section class="ar-composer-form">${email?`<label class="ar-form-label">Destinataire public<input id="ar-outreach-email" value="${esc(email)}" readonly></label>`:''}<label class="ar-form-label">Objet<input id="ar-outreach-subject" value="${esc(subject)}"></label><label class="ar-form-label ar-message-field">Message<textarea id="ar-outreach-body">${esc(body)}</textarea></label><div class="ar-actions"><button class="chip" id="ar-copy-draft">Copier le message</button>${email?`<button class="btn-back" id="ar-open-mail">Ouvrir dans ma messagerie</button>`:''}<button class="chip" id="ar-mark-contacted">✓ Message envoyé</button></div></section></div>`;
+    <div class="ar-composer-content"><aside class="ar-composer-side">${arSelectionContactPanelHtml(opportunity)}<div class="ar-draft-heading">Choisir un angle</div><div class="ar-draft-choices">${drafts.map((draft,index)=>`<button class="${index===selectedIndex?'on':''}" type="button" data-ar-draft="${index}">${esc(draft.label)}</button>`).join('')}</div></aside><section class="ar-composer-form">${email?`<label class="ar-form-label">Destinataire public<input id="ar-outreach-email" value="${esc(email)}" readonly></label>`:''}<label class="ar-form-label">Objet<input id="ar-outreach-subject" value="${esc(subject)}"></label><label class="ar-form-label ar-message-field">Message<textarea id="ar-outreach-body">${esc(body)}</textarea></label><div class="ar-composer-economics" id="ar-composer-economics" data-artist-key="${esc(artistKey)}">${group?arSelectionEconomicsHtml(group):''}</div><div class="ar-actions"><button class="chip" id="ar-copy-draft">Copier le message</button>${email?`<button class="btn-back" id="ar-open-mail">Ouvrir dans ma messagerie</button>`:''}<button class="chip" id="ar-mark-contacted">✓ Message envoyé</button></div></section></div>`;
   const save=(patch={})=>arArtistUpdate(artistKey,Object.assign({subject:document.getElementById('ar-outreach-subject').value,body:document.getElementById('ar-outreach-body').value,draftVariant:selectedIndex},patch));
   box.querySelectorAll('[data-ar-draft]').forEach(button=>button.addEventListener('click',()=>{selectedIndex=Number(button.dataset.arDraft);const draft=drafts[selectedIndex];document.getElementById('ar-outreach-subject').value=draft.subject;document.getElementById('ar-outreach-body').value=draft.body;box.querySelectorAll('[data-ar-draft]').forEach(item=>item.classList.toggle('on',item===button));save();}));
   document.getElementById('ar-copy-draft').addEventListener('click',()=>{save();arCopyText(`Subject: ${document.getElementById('ar-outreach-subject').value}\n\n${document.getElementById('ar-outreach-body').value}`);});
@@ -3625,10 +3633,17 @@ function arSelectionOffer(artistKey){
   const split=(arArtistEntry(artistKey)||{}).offerSplit;
   return BUY.paliers.find(item=>item.k===split)||BUY.paliers.find(item=>item.k==='60/40')||BUY.paliers[0];
 }
+function arRefreshComposerEconomics(artistKey){
+  const container=document.getElementById('ar-composer-economics');
+  if(!container||container.dataset.artistKey!==artistKey)return;
+  const group=arSelectionGroupByArtistKey(artistKey);
+  container.innerHTML=group?arSelectionEconomicsHtml(group):'';
+}
 function arSetSelectionOffer(artistKey,split){
   if(!BUY.paliers.some(item=>item.k===split))return;
   arArtistUpdate(artistKey,{offerSplit:split});renderArList();
   if(document.getElementById('estimate-modal')?.style.display==='flex') openArSelectionEstimate(artistKey);
+  arRefreshComposerEconomics(artistKey);
 }
 function arSetPaybackHorizon(years){
   if(!PAYBACK_HORIZONS.includes(Number(years))) return;
@@ -3642,6 +3657,7 @@ function arSetSelectionYears(artistKey,years){
   if(!PAYBACK_HORIZONS.includes(Number(years))) return;
   arArtistUpdate(artistKey,{offerYears:Number(years)});renderArList();
   if(document.getElementById('estimate-modal')?.style.display==='flex') openArSelectionEstimate(artistKey);
+  arRefreshComposerEconomics(artistKey);
 }
 function arSelectionHorizonHtml(artistKey){
   const selected=arSelectionYears(artistKey);

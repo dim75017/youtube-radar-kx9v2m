@@ -108,9 +108,29 @@ assertArtistAndTracks('refused');
 vm.runInContext("arResetArtistStatus('artist:one')", context);
 assertArtistAndTracks('to_contact');
 
-const summarySource = sourceBetween('function arSelectionContactSummaryHtml(opportunity){', 'function arContactSourceLabel(');
+const channelKeySource = sourceBetween('function arContactChannelKey(type,value){', 'function arPublicContactChannels(opportunity){');
+const channelKeyContext = {URL, Set, String};
+vm.createContext(channelKeyContext);
+vm.runInContext(channelKeySource, channelKeyContext);
+assert.equal(
+  vm.runInContext("arContactChannelKey('instagram','https://www.instagram.com/Artist.Name/?utm_source=test')", channelKeyContext),
+  vm.runInContext("arContactChannelKey('instagram','https://instagram.com/artist.name')", channelKeyContext),
+  'Equivalent Instagram profile URLs must collapse to one canonical identity.'
+);
+assert.notEqual(
+  vm.runInContext("arContactChannelKey('instagram','https://instagram.com/artist.one')", channelKeyContext),
+  vm.runInContext("arContactChannelKey('instagram','https://instagram.com/artist.two')", channelKeyContext),
+  'Distinct credited-artist Instagram profiles must remain distinct.'
+);
+
+const summarySource = sourceBetween('function arSelectionContactSummaryHtml(opportunity){', 'function arSelectionContactPanelHtml(opportunity){');
 assert.doesNotMatch(summarySource, /href=|mailto:|ar-contact-method/,
   'Selection cards must contain only a discreet contact-research summary.');
+const contactPanelSource = sourceBetween('function arSelectionContactPanelHtml(opportunity){', 'function arConfidenceLabel(value){');
+assert.doesNotMatch(contactPanelSource, /Sources vérifiées|ar-contact-source-links|sources_checked|SCAN CONTACT/,
+  'The message composer must not show source-verification metadata.');
+assert.match(contactPanelSource, /instagramCount>1&&channel\.owner/,
+  'Distinct Instagram profiles must identify the credited artist instead of looking like duplicates.');
 const cardSource = sourceBetween('function arSelectionArtistCardHtml(group){', 'function arSelectionEconomics(group){');
 assert.match(cardSource, /arSelectionContactSummaryHtml\(contactOpportunity\)/,
   'Selection cards must show the compact research state.');
@@ -136,8 +156,18 @@ assert.doesNotMatch(workflowSource, />Refuser<\/button>/,
   'Artist refusal must not retain a visible text label.');
 
 const composerSource = sourceBetween('function openArOutreach(spotifyId){', 'function arSelectionPrimaryArtist(opportunity){');
+assert.match(composerSource, /const opportunity=arSelectionOpportunityById\(spotifyId\)/,
+  'Préparer le message must resolve catalogue-only Selection tracks as well as strict opportunities.');
+assert.doesNotMatch(composerSource, /const opportunity=arOpportunityRows\(\)\.find/,
+  'The composer must not silently reject catalogue-only Selection tracks.');
 assert.match(composerSource, /arSelectionContactPanelHtml\(opportunity\)/,
   'Full public contact coordinates must live inside Préparer le message.');
+assert.doesNotMatch(composerSource, /Le message reste sous votre contrôle|ar-outreach-note/,
+  'The removed composer disclaimer must stay removed.');
+assert.match(composerSource, /id="ar-composer-economics"[^>]*>\$\{group\?arSelectionEconomicsHtml\(group\):''\}/,
+  'The individualized internal estimate must be visible while preparing the message.');
+assert.ok(composerSource.indexOf('id="ar-composer-economics"') < composerSource.indexOf('class="ar-actions"'),
+  'The internal estimate must appear directly above the message actions.');
 assert.match(composerSource, /id="ar-mark-contacted">✓ Message envoyé/,
   'The composer must require an explicit Message envoyé confirmation.');
 
