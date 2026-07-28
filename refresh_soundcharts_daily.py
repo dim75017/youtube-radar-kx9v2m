@@ -23,6 +23,7 @@ import urllib.request
 from dataclasses import dataclass, field as dataclass_field
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
+from zoneinfo import ZoneInfo
 
 
 API_BASE = "https://customer.api.soundcharts.com"
@@ -32,6 +33,7 @@ PERFORMANCE_PREFIX = "window.SPOTIFY_PERFORMANCE="
 PLAYLISTS_PREFIX = "window.SPOTIFY_PLAYLISTS="
 AUTH_PROBE = "/api/v2/referential/platforms/streaming"
 MIN_SERVER_QUOTA_RESERVE = 500_000
+PARIS_TIMEZONE = ZoneInfo("Europe/Paris")
 
 
 class SoundchartsError(RuntimeError):
@@ -62,6 +64,12 @@ def utc_now() -> str:
 
 def utc_today() -> dt.date:
     return dt.datetime.now(dt.timezone.utc).date()
+
+
+def paris_today() -> dt.date:
+    """Return the dashboard business day, including the UTC/Paris boundary."""
+
+    return dt.datetime.now(PARIS_TIMEZONE).date()
 
 
 def clean_credential(value: str) -> str:
@@ -556,13 +564,14 @@ class Outcome:
     failures: int = 0
     unavailable: int = 0
     usable: int = 0
+    follower_usable: int | None = None
     available: int = 0
     selected: int = 0
     failure_diagnostics: list[dict[str, Any]] = dataclass_field(default_factory=list)
     unavailable_diagnostics: list[dict[str, Any]] = dataclass_field(default_factory=list)
 
     def summary(self) -> dict[str, Any]:
-        return {
+        summary = {
             "requests": self.requests,
             "failures": self.failures,
             "unavailable": self.unavailable,
@@ -572,6 +581,9 @@ class Outcome:
             "failure_diagnostics": self.failure_diagnostics,
             "unavailable_diagnostics": self.unavailable_diagnostics,
         }
+        if self.follower_usable is not None:
+            summary["follower_usable"] = self.follower_usable
+        return summary
 
 
 def safe_failure_diagnostic(exc: SoundchartsError) -> dict[str, Any]:
@@ -915,6 +927,8 @@ def refresh_playlists(
     client: SoundchartsClient,
     workers: int,
     budget: int,
+    *,
+    dashboard_only: bool = False,
 ) -> Outcome:
     playlists = read_js_payload(path, PLAYLISTS_PREFIX)
     columns = list(playlists.get("cols", []))
@@ -952,6 +966,8 @@ def refresh_playlists(
         playlist_id = row[id_index] if id_index < len(row) else None
         if playlist_id:
             visible = bool(row[dashboard_index]) if dashboard_index is not None and dashboard_index < len(row) else False
+            if dashboard_only and not visible:
+                continue
             tasks_with_priority.append(
                 (
                     0 if visible else 1,
@@ -969,6 +985,7 @@ def refresh_playlists(
     tasks = [task for _, _, task in sorted(tasks_with_priority, key=lambda item: (item[0], item[1]))]
 
     outcome = Outcome("playlists")
+    outcome.follower_usable = 0
     (
         results,
         outcome.requests,
@@ -982,7 +999,7 @@ def refresh_playlists(
         client, tasks, workers=workers, max_requests=budget
     )
     store = performance.setdefault("playlists", {})
-    day = utc_today().isoformat()
+    day = paris_today().isoformat()
     now = utc_now()
     history_points_added = 0
     for task, response in results:
@@ -1016,7 +1033,11 @@ def refresh_playlists(
             entry["history"] = history
             entry["observed_at"] = now
             entry["source"] = "soundcharts_playlist_spotify"
+        # A cover-only response is useful for artwork, but it is not a
+        # follower observation and must never mark the daily pass as fresh.
+        follower_usable = followers is not None
         outcome.usable += 1
+        outcome.follower_usable += int(follower_usable)
         outcome.items.append(
             {
                 "entity": "playlist",
@@ -1025,7 +1046,7 @@ def refresh_playlists(
                 "image_url": image_url or None,
                 "date": day,
                 "ok": True,
-                "usable": True,
+                "usable": follower_usable,
             }
         )
 
@@ -1035,6 +1056,32 @@ def refresh_playlists(
         meta["snapshot_ts"] = stamp
         meta["generated_ts"] = stamp
         meta["history_points_added_this_run"] = history_points_added
+        target_ids = [task["id"] for task in tasks]
+        updated = sum(
+            1
+            for playlist_id in target_ids
+            if any(
+                point[0] == day and isinstance(point[1], (int, float)) and not isinstance(point[1], bool)
+                for point in normalize_history(history_store.get(playlist_id))
+            )
+        )
+        tracking_status = {
+            "day": day,
+            "scope": "dashboard" if dashboard_only else "all",
+            "expected": len(target_ids),
+            "selected": outcome.selected,
+            "updated": updated,
+            "missing": max(0, len(target_ids) - updated),
+            "complete": bool(
+                target_ids
+                and outcome.failures == 0
+                and outcome.selected == outcome.available
+                and updated == len(target_ids)
+            ),
+            "observed_at": now,
+        }
+        meta["playlist_followers_status"] = tracking_status
+        performance["playlist_followers_status"] = tracking_status
         write_js_payload(path, playlists, PLAYLISTS_PREFIX)
     return outcome
 
@@ -1102,10 +1149,23 @@ def merge_performance_freshness(
 
     old = previous if isinstance(previous, Mapping) else {}
     current = payload_freshness if isinstance(payload_freshness, Mapping) else {}
+    playlist_outcome = outcomes.get("playlists")
+    playlist_usable = (
+        playlist_outcome.follower_usable
+        if playlist_outcome and playlist_outcome.follower_usable is not None
+        else playlist_outcome.usable if playlist_outcome else 0
+    )
+    playlist_complete = bool(
+        playlist_outcome
+        and playlist_outcome.available > 0
+        and playlist_outcome.failures == 0
+        and playlist_outcome.selected == playlist_outcome.available
+        and playlist_usable == playlist_outcome.selected
+    )
     merged = {
         "tracks_at": now if outcomes.get("tracks") and outcomes["tracks"].usable else current.get("tracks_at") or old.get("tracks_at"),
         "artists_at": now if outcomes.get("artists") and outcomes["artists"].usable else current.get("artists_at") or old.get("artists_at"),
-        "playlists_at": now if outcomes.get("playlists") and outcomes["playlists"].usable else old.get("playlists_at"),
+        "playlists_at": now if playlist_complete else old.get("playlists_at"),
         # These dedicated timestamps prove that the complete existing
         # performance catalogue was selected. A focused strict-row refresh
         # must not postpone the next daily catalogue pass.
@@ -1182,6 +1242,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-requests", type=int, default=100000)
     parser.add_argument("--history-days", type=int, default=95)
     parser.add_argument(
+        "--playlist-scope",
+        choices=["all", "dashboard"],
+        default="all",
+        help="Refresh every discovered playlist or only the playlists published in the dashboard",
+    )
+    parser.add_argument(
         "--include-performance-catalogue",
         action="store_true",
         help="Refresh existing performance-only UUIDs without promoting them into the public Soundcharts export",
@@ -1238,7 +1304,14 @@ def main() -> int:
                 include_performance_catalogue=args.include_performance_catalogue,
             )
         elif mode == "playlists":
-            outcome = refresh_playlists(args.playlists, performance, client, args.workers, remaining)
+            outcome = refresh_playlists(
+                args.playlists,
+                performance,
+                client,
+                args.workers,
+                remaining,
+                dashboard_only=args.playlist_scope == "dashboard",
+            )
         elif mode == "fal":
             outcome = refresh_fal(payload, client, args.workers, remaining)
         else:  # pragma: no cover - argparse constrains the value
@@ -1338,7 +1411,10 @@ def main() -> int:
         "fal": outcomes.get("fal", Outcome("fal")).items,
         "playlists": outcomes.get("playlists", Outcome("playlists")).items,
     }
-    history_path = args.history_dir / f"{utc_today().isoformat()}.json"
+    history_day = paris_today() if args.mode == "playlists" else utc_today()
+    # Separate files prevent later artist/track passes from erasing the
+    # playlist audit trail collected earlier on the same calendar day.
+    history_path = args.history_dir / f"{history_day.isoformat()}-{args.mode}.json"
     history_path.write_text(json.dumps(history, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
     print(json.dumps(run_summary))
     return 0

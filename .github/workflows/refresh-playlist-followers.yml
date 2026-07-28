@@ -1,0 +1,129 @@
+name: Refresh Spotify playlist followers daily
+
+on:
+  schedule:
+    # Primary cloud pass after the large A&R workflow, plus an independent
+    # same-day catch-up. Neither requires Dim's computer to be awake.
+    - cron: '47 6 * * *'
+    - cron: '47 18 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Refresh again even when today is already complete'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+# This exact group is shared with the main Soundcharts collector. It prevents
+# an older long-running snapshot from overwriting a newer follower history.
+concurrency:
+  group: refresh-soundcharts-ar-collection-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  followers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Sync latest published history
+        run: git pull --ff-only origin main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate follower collector regressions
+        run: |
+          python -m unittest tests.test_playlist_follower_daily_integrity
+          node tests/test_spotify_playlist_follower_windows.js
+
+      - name: Measure today's visible playlist coverage
+        id: coverage_before
+        shell: bash
+        run: |
+          # The guard reads the big10k cohort and its hist points. The day is
+          # explicitly Europe/Paris so a late retry never lands on UTC D-1.
+          day="$(python -c "import datetime as dt; from zoneinfo import ZoneInfo; print(dt.datetime.now(ZoneInfo('Europe/Paris')).date().isoformat())")"
+          python playlist_follower_daily_status.py \
+            --day "$day" \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Create isolated read-only Soundcharts candidate
+        id: candidate
+        if: steps.coverage_before.outputs.complete != 'true' || inputs.force == true
+        shell: bash
+        run: |
+          active="$(python prepare_soundcharts_snapshot.py current --index spotify/index.html)"
+          candidate="$RUNNER_TEMP/Spotify_Soundcharts_playlist_candidate.js"
+          cp -- "$active" "$candidate"
+          echo "path=$candidate" >> "$GITHUB_OUTPUT"
+
+      - name: Size the request budget from the published cohort
+        id: budget
+        if: steps.coverage_before.outputs.complete != 'true' || inputs.force == true
+        shell: bash
+        run: |
+          expected="${{ steps.coverage_before.outputs.expected }}"
+          budget="$(( expected + (expected / 2 > 100 ? expected / 2 : 100) ))"
+          echo "requests=$budget" >> "$GITHUB_OUTPUT"
+
+      - name: Refresh every playlist published in the dashboard
+        if: steps.coverage_before.outputs.complete != 'true' || inputs.force == true
+        env:
+          PYTHONUNBUFFERED: '1'
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        run: >-
+          python refresh_soundcharts_daily.py
+          --mode playlists
+          --playlist-scope dashboard
+          --workers 10
+          --max-requests "${{ steps.budget.outputs.requests }}"
+          --history-days 90
+          --soundcharts "${{ steps.candidate.outputs.path }}"
+
+      - name: Measure coverage after collection
+        id: coverage_after
+        if: steps.coverage_before.outputs.complete != 'true' || inputs.force == true
+        shell: bash
+        run: |
+          day="$(python -c "import datetime as dt; from zoneinfo import ZoneInfo; print(dt.datetime.now(ZoneInfo('Europe/Paris')).date().isoformat())")"
+          python playlist_follower_daily_status.py --day "$day" --github-output "$GITHUB_OUTPUT"
+
+      - name: Publish follower history independently
+        if: steps.coverage_before.outputs.complete != 'true' || inputs.force == true
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Spotify_Playlists_data.js Spotify_Performance_data.js soundcharts-history
+          git diff --cached --quiet && exit 0
+          git commit -m "data: refresh daily playlist followers"
+          for attempt in 1 2 3; do
+            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+            sleep 5
+          done
+          exit 1
+
+      - name: Require 100 percent daily follower coverage
+        if: steps.coverage_before.outputs.complete != 'true' || inputs.force == true
+        shell: bash
+        run: |
+          day="$(python -c "import datetime as dt; from zoneinfo import ZoneInfo; print(dt.datetime.now(ZoneInfo('Europe/Paris')).date().isoformat())")"
+          python playlist_follower_daily_status.py --day "$day" --require-complete
+
+      - name: Report a healthy no-op
+        if: steps.coverage_before.outputs.complete == 'true' && inputs.force != true
+        run: >-
+          echo "Playlist followers already complete for
+          ${{ steps.coverage_before.outputs.day }}:
+          ${{ steps.coverage_before.outputs.updated }}/${{ steps.coverage_before.outputs.expected }}"

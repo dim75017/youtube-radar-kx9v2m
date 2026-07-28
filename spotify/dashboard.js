@@ -1164,7 +1164,9 @@ function normalizeCounterHistory(raw){
   const daily = new Map();
   for (const p of (raw||[])){
     const d = Array.isArray(p) ? p[0] : (p&&p.date);
-    const v = Number(Array.isArray(p) ? p[1] : (p&&p.value));
+    const rawValue = Array.isArray(p) ? p[1] : (p&&p.value);
+    if(rawValue==null || (typeof rawValue==='string' && rawValue.trim()==='')) continue;
+    const v = Number(rawValue);
     const day = (d||'').toString().slice(0,10);
     if (/^\d{4}-\d{2}-\d{2}$/.test(day) && Number.isFinite(v)) daily.set(day,v);
   }
@@ -4225,14 +4227,15 @@ function plGrowthCell(r){
 }
 
 function plHistory(r){
-  const pts = (PLhist[r[0]] || []).map(p=>[p[0],+p[1]]).filter(p=>p[0] && Number.isFinite(p[1]));
+  const pts = normalizeCounterHistory(PLhist[r[0]] || []);
   const rowDate = ((r[8] || '')+'').slice(0,10);
-  const snapshotDate = (((PLmeta&&PLmeta.snapshot_ts) || '')+'').slice(0,10);
-  const currentDate = [rowDate,snapshotDate].filter(Boolean).sort().pop() || '';
-  const currentFollowers = +r[4];
+  // A global file timestamp does not prove that this individual playlist was
+  // observed. Only its own last_seen day may complete its history.
+  const currentDate = rowDate;
+  const rawFollowers=r[4];
+  const currentFollowers = rawFollowers==null || (typeof rawFollowers==='string' && rawFollowers.trim()==='') ? NaN : Number(rawFollowers);
   if (r[5]==='ok' && currentDate && Number.isFinite(currentFollowers) && !pts.some(p=>p[0]===currentDate)) pts.push([currentDate,currentFollowers]);
-  pts.sort((a,b)=>a[0].localeCompare(b[0]));
-  return pts;
+  return normalizeCounterHistory(pts);
 }
 function playlistWindow(r,days){
   const w=counterWindow(plHistory(r),days);
