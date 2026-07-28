@@ -61,9 +61,10 @@ for (const required of [
   'linear-gradient(135deg,rgba(30,215,96,.13),rgba(34,211,238,.07)',
   'min-height:52px',
   '.ar-artist-selection-head{padding:15px 16px}',
-  'background:rgba(190,24,93,.82)',
+  'background:rgba(251,113,133,.035)',
   '.ar-trash-action:focus-visible',
 ]) assert.ok(css.includes(required), `Missing refined artist-selection header style: ${required}`);
+assert.ok(!css.includes('background:rgba(190,24,93,.82)'), 'Selection trash actions must not use the aggressive solid red background.');
 const cardStart = dashboard.indexOf('function arSelectionArtistCardHtml(group){');
 const cardEnd = dashboard.indexOf('\nfunction arSelectionEconomics(group){', cardStart);
 const card = dashboard.slice(cardStart, cardEnd);
