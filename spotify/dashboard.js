@@ -185,6 +185,14 @@ function paybackTxt(months){
   const y = months/12;
   return y<1 ? Math.round(months)+' '+T('mois') : y.toFixed(1)+' '+T('ans');
 }
+function selectionPaybackTxt(months){
+  if(months==null) return '—';
+  if(months>=120) return '>10 '+T('ans');
+  const y=months/12;
+  if(y<1) return Math.round(months)+' '+T('mois');
+  const years=Math.round(y);
+  return years+' '+T(years===1?'an':'ans');
+}
 function paybackClass(months){
   if (months==null) return '';
   if (months<=24) return 'pb-good';
@@ -3456,7 +3464,7 @@ function arSelectionArtistCardHtml(group){
   const avatar=artist.spotifyId?`<div class="ar-selection-artist-avatar" data-ar-artist-avatar-id="${esc(artist.spotifyId)}"><span>${esc(initials)}</span></div>`:`<div class="ar-selection-artist-avatar"><span>${esc(initials)}</span></div>`;
   const dealAction=(status==='contacted'||status==='follow_up')?`<button class="ar-artist-deal" onclick="arCloseArtistDeal('${esc(artist.key)}');renderArList()">✓ Deal conclu</button>`:'';
   const canContact=arContactEligible(contactOpportunity);
-  return `<article class="ar-artist-selection"><header class="ar-artist-selection-head">${canContact?arSelectionStatusHtml(artist.key):''}${avatar}<div class="ar-selection-artist-main"><h3>${artistName}</h3><div class="ar-selection-artist-meta">${esc(genres||'—')}${listeners?` · ${fmt(listeners)} auditeurs/mois`:''}</div><div class="ar-selection-artist-contact">${canContact?arContactHtml(contactOpportunity,true):'À vérifier avant contact'}</div></div><div class="ar-artist-actions"><button class="ar-artist-estimate" onclick="openArSelectionEstimate('${esc(artist.key)}')">💶 Estimation interne</button>${canContact?`<button class="ar-artist-message" onclick="openArOutreach('${esc(contactOpportunity.spotifyId)}')">📨 Préparer le message</button>${dealAction}`:''}</div></header>${arSelectionEconomicsHtml(group)}<div class="ar-selection-track-list">${rows.map(arSelectionTrackHtml).join('')}</div></article>`;
+  return `<article class="ar-artist-selection"><header class="ar-artist-selection-head">${canContact?arSelectionStatusHtml(artist.key):''}${avatar}<div class="ar-selection-artist-main"><h3>${artistName}</h3><div class="ar-selection-artist-meta">${esc(genres||'—')}${listeners?` · ${fmt(listeners)} auditeurs/mois`:''}</div><div class="ar-selection-artist-contact">${canContact?arContactHtml(contactOpportunity,true):'À vérifier avant contact'}</div></div><div class="ar-artist-actions"><button class="ar-artist-estimate" onclick="openArSelectionEstimate('${esc(artist.key)}')">💶 Estimation interne</button>${canContact?`<button class="ar-artist-message" onclick="openArOutreach('${esc(contactOpportunity.spotifyId)}')">📨 Préparer le message</button>${dealAction}`:''}</div></header><div class="ar-selection-track-list">${rows.map(arSelectionTrackHtml).join('')}</div></article>`;
 }
 function arSelectionEconomics(group){
   const ids=new Set(group.rows.map(row=>String(row.opportunity&&row.opportunity.spotifyId||'').trim()).filter(Boolean));
@@ -3474,7 +3482,7 @@ function arSelectionEconomics(group){
 function arSelectionEconomicsHtml(group){
   const economics=arSelectionEconomics(group);
   const value=number=>economics.measurable?number:'—';
-  return `<section class="ar-selection-economics"><div class="ar-selection-economics-top"><div class="ar-selection-economics-label">💶 Estimation interne</div><div class="ar-selection-offers">${BUY.paliers.map(offer=>`<button type="button" class="${offer.k===economics.offer.k?'on':''}" onclick="arSetSelectionOffer('${esc(group.artist.key)}','${offer.k}')">${offer.k}</button>`).join('')}</div></div>${arSelectionHorizonHtml(group.artist.key)}<div class="ar-selection-economics-grid"><div><span>Coût estimé</span><strong>${value(eur(economics.advance))}</strong></div><div><span>Revenu / mois</span><strong>${value(eur(economics.labelMonthly))}</strong></div><div><span>Payback</span><strong class="${economics.measurable?paybackClass(economics.payback):''}">${value(paybackTxt(economics.payback))}</strong></div></div></section>`;
+  return `<section class="ar-selection-economics"><div class="ar-selection-economics-top"><div class="ar-selection-economics-label">💶 Estimation interne</div><div class="ar-selection-offers">${BUY.paliers.map(offer=>`<button type="button" class="${offer.k===economics.offer.k?'on':''}" onclick="arSetSelectionOffer('${esc(group.artist.key)}','${offer.k}')">${offer.k}</button>`).join('')}</div></div>${arSelectionHorizonHtml(group.artist.key)}<div class="ar-selection-economics-grid"><div><span>Coût estimé</span><strong>${value(eur(economics.advance))}</strong></div><div><span>Revenu / mois</span><strong>${value(eur(economics.labelMonthly))}</strong></div><div><span>Payback</span><strong class="${economics.measurable?paybackClass(economics.payback):''}">${value(selectionPaybackTxt(economics.payback))}</strong></div></div></section>`;
 }
 function arSelectionGroupByArtistKey(artistKey){
   const saved=arListGet();

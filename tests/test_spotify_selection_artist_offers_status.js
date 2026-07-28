@@ -2,6 +2,7 @@
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const vm = require('node:vm');
 
 const dashboard = fs.readFileSync('spotify/dashboard.js', 'utf8');
 const css = fs.readFileSync('spotify/dashboard.css', 'utf8');
@@ -52,7 +53,23 @@ for (const required of [
 const cardStart = dashboard.indexOf('function arSelectionArtistCardHtml(group){');
 const cardEnd = dashboard.indexOf('\nfunction arSelectionEconomics(group){', cardStart);
 const card = dashboard.slice(cardStart, cardEnd);
-assert.ok(card.includes('arSelectionEconomicsHtml(group)'), 'Each artist card must render its own economics section.');
-assert.match(index, /dashboard\.js\?v=20260728-indie-label-v1/);
+assert.ok(card.includes('openArSelectionEstimate'), 'Each artist card must expose the estimate button.');
+assert.ok(!card.includes('arSelectionEconomicsHtml(group)'), 'Financial estimates must not render inline in Selection.');
+const modalStart = dashboard.indexOf('function openArSelectionEstimate(artistKey){');
+const modalEnd = dashboard.indexOf('\nfunction renderArList(){', modalStart);
+const modal = dashboard.slice(modalStart, modalEnd);
+assert.ok(modal.includes('arSelectionEconomicsHtml(group)'), 'Financial estimates must render in the dedicated modal.');
+assert.ok(modal.includes("document.getElementById('estimate-body')"), 'The estimate modal must target its dedicated body.');
+assert.ok(modal.includes("style.display='flex'"), 'The estimate modal must open from the button.');
+assert.match(index, /id="estimate-modal"/);
+assert.match(index, /id="estimate-body"/);
+const paybackStart = dashboard.indexOf('function selectionPaybackTxt(months){');
+const paybackEnd = dashboard.indexOf('\nfunction paybackClass(months){', paybackStart);
+const context = {T:value=>value};
+vm.runInNewContext(dashboard.slice(paybackStart, paybackEnd), context);
+assert.equal(context.selectionPaybackTxt(1.9*12), '2 ans', '1.9 years must display as 2 whole years in Selection.');
+assert.equal(context.selectionPaybackTxt(2.8*12), '3 ans', '2.8 years must display as 3 whole years in Selection.');
+assert.ok(dashboard.slice(dashboard.indexOf('function arSelectionEconomicsHtml(group){'), modalStart).includes('selectionPaybackTxt(economics.payback)'), 'Selection must use the whole-year formatter.');
+assert.match(index, /dashboard\.js\?v=20260728-selection-estimates-v1/);
 
 console.log('spotify selection artist offers/status: OK');
