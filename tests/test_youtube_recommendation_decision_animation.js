@@ -62,7 +62,8 @@ for (const [mode,expectedClass] of [['X','is-accepted'],['-','is-refused']]){
   assert.deepEqual(test.counts(),{saves:1,renders:0,writes:1},
     'a repeated click cannot enqueue a second decision while the card is leaving');
   assert.equal(test.timers.length,1);
-  assert.equal(test.timers[0].delay,320);
+  assert.equal(test.timers[0].delay,560,
+    'the fade-in, short hold and fade-out stay visible without slowing the workflow beyond 600 ms');
   test.timers[0].callback();
   assert.equal(test.counts().renders,1,
     'the current recommendation tab rerenders after the animation');
@@ -82,6 +83,14 @@ assert.match(css,/\.rtile\.reco-decision\{[^}]*pointer-events:none/,
 assert.match(css,/\.rtile\.reco-decision\.is-refused\{[^}]*--reco-decision-rgb:251,113,133/,
   'refusal uses a red decision treatment');
 assert.match(css,/@keyframes reco-decision-out/);
+assert.match(css,/animation:reco-decision-out \.56s/,
+  'the card exit duration must stay synchronized with the JavaScript rerender delay');
+assert.match(css,/animation:reco-decision-flash \.56s/,
+  'the decision overlay must use the same perceptible but fast duration');
+assert.match(css,/@keyframes reco-decision-flash\{0%\{opacity:0;[^}]+\}18%\{opacity:1;[^}]+\}58%\{opacity:1;[^}]+\}100%\{opacity:0;/,
+  'the overlay must fade in, remain visible briefly, then fade out');
+assert.match(css,/@keyframes reco-decision-out\{[^}]+\}18%\{[^}]*opacity:1[^}]+\}58%\{[^}]*opacity:1[^}]+\}100%\{[^}]*opacity:0/,
+  'the card must remain readable during the hold before its fade-out');
 assert.match(css,/@media\(prefers-reduced-motion:reduce\)\{\.rtile\.reco-decision,\.rtile\.reco-decision::after\{animation:none!important\}\}/,
   'CSS also disables the decorative animation for reduced-motion users');
 

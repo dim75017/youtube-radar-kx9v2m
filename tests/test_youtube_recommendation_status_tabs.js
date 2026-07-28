@@ -81,7 +81,7 @@ assert.doesNotMatch(css, /\.reco-tab\.archive(?:\.|\{|,)/,
   'the old archive-tab styling must not return');
 assert.match(css, /\.reco-tab\{display:grid;grid-template-columns:minmax\(0,1fr\) auto minmax\(0,1fr\)/,
   'status labels remain geometrically centered even with a count badge');
-assert.ok(index.includes('dashboard-04-recommendations.js?v=20260728-recommendations-fluid-v7'),
+assert.ok(index.includes('dashboard-04-recommendations.js?v=20260728-recommendation-fade-v1'),
   'Recommendation script cache version is stale');
 
 console.log('youtube recommendation status tabs: ok');

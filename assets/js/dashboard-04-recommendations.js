@@ -47,7 +47,7 @@ function setValid(n,mode,btn,ev){
   if(rec._generated)saveGeneratedRecommendationDecision(rec.n,val,rec);
   else writeValid(n,val,btn);
 }
-const RECO_DECISION_ANIMATION_MS=320;
+const RECO_DECISION_ANIMATION_MS=560;
 function animateRecommendationDecision(btn,mode,done){
   const card=btn&&typeof btn.closest==='function'?btn.closest('.rtile'):null;
   if(!card||!['X','-'].includes(mode))return false;
