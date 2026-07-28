@@ -35,8 +35,14 @@ for (const required of [
   'function arReleaseTypeLabel(opportunity)',
   "return 'Self-release';",
   "return 'Label';",
-  'class="ar-selection-release-type"',
-]) assert.ok(dashboard.includes(required), `Missing concise release-type token: ${required}`);
+]) assert.ok(dashboard.includes(required), `Missing concise release-type token outside Selection: ${required}`);
+const selectionTrackStart = dashboard.indexOf('function arSelectionTrackHtml(');
+const selectionTrackEnd = dashboard.indexOf('\nfunction arOpenSelectionArtistProfile', selectionTrackStart);
+const selectionTrack = dashboard.slice(selectionTrackStart, selectionTrackEnd);
+assert.ok(selectionTrackStart >= 0 && selectionTrackEnd > selectionTrackStart, 'Selection track renderer must remain defined.');
+assert.ok(!selectionTrack.includes('arReleaseTypeLabel('), 'Selection must not repeat the release type when the workflow already contains only self-releases.');
+assert.ok(!selectionTrack.includes('ar-selection-release-type'), 'Selection must not render a redundant Self-release badge.');
+assert.ok(!css.includes('.ar-selection-release-type'), 'Removed Selection release-type badge styles must not remain.');
 assert.ok(!dashboard.includes('arRightsShortLabel('), 'Legacy verbose release label helper must be removed');
 
 assert.ok(!dashboard.includes("draft_ready:'Brouillon prêt'"), 'Draft ready must not remain an artist status');
@@ -89,6 +95,6 @@ vm.runInNewContext(dashboard.slice(paybackStart, paybackEnd), context);
 assert.equal(context.selectionPaybackTxt(1.9*12), '2 ans', '1.9 years must display as 2 whole years in Selection.');
 assert.equal(context.selectionPaybackTxt(2.8*12), '3 ans', '2.8 years must display as 3 whole years in Selection.');
 assert.ok(dashboard.slice(dashboard.indexOf('function arSelectionEconomicsHtml(group){'), modalStart).includes('selectionPaybackTxt(economics.payback)'), 'Selection must use the whole-year formatter.');
-assert.match(index, /dashboard\.js\?v=20260728-self-release-rights-v1/);
+assert.match(index, /dashboard\.js\?v=20260728-selection-no-self-release-v1/);
 
 console.log('spotify selection artist offers/status: OK');
