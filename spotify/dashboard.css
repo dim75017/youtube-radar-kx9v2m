@@ -374,13 +374,22 @@ td.selc,th.selc{width:44px;padding-left:14px}
 .tmbox .tg{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:11px 13px}
 .tmbox .tg .l{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);font-weight:600}
 .tmbox .tg .v{font-family:'Sora';font-weight:700;font-size:16px;margin-top:4px}
-.spark-wrap{position:relative;margin-top:6px}
-.spark{display:block;cursor:default}
+.spark-wrap{position:relative;margin-top:6px;min-width:0}
+.spark-chart{display:grid;grid-template-columns:max-content minmax(0,1fr);grid-template-rows:120px auto;column-gap:8px;row-gap:6px;min-width:0}
+.spark-plot{position:relative;grid-column:2;grid-row:1;min-width:0;height:120px}
+.spark{display:block;width:100%;height:120px;cursor:default;overflow:visible}
+.spark-grid line{stroke:rgba(148,163,184,.13);stroke-width:1;vector-effect:non-scaling-stroke;shape-rendering:geometricPrecision}
+.spark-line{shape-rendering:geometricPrecision}
+.spark-y-axis{grid-column:1;grid-row:1;display:flex;min-width:46px;padding:1px 0;box-sizing:border-box;flex-direction:column;align-items:flex-end;justify-content:space-between;color:#8fa29a;font:700 9px/1 Inter,system-ui;white-space:nowrap}
+.spark-x-axis{grid-column:2;grid-row:2;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));color:#8fa29a;font:700 9px/1 Inter,system-ui}
+.spark-x-axis span{min-width:0;white-space:nowrap}.spark-x-axis span:nth-child(2){text-align:center}.spark-x-axis span:last-child{text-align:right}
 .spark-point{pointer-events:none}
+.spark-hover-guide{position:absolute;z-index:2;top:0;bottom:0;width:0;border-left:1px dashed rgba(167,243,197,.42);pointer-events:none}
 .spark-hover-point{position:absolute;z-index:3;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;box-sizing:border-box;border:2px solid #07100b;border-radius:50%;pointer-events:none;filter:drop-shadow(0 0 4px rgba(74,222,128,.55))}
 .spark-tooltip{position:absolute;z-index:4;top:0;transform:translate(-50%,-100%);padding:5px 7px;border:1px solid rgba(150,214,170,.35);border-radius:7px;background:#111b16;color:var(--text);font:600 10px Inter,system-ui;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .12s}
 .spark-reporting-note{margin-top:7px;font-size:9px;line-height:1.4}
 .spark-wrap.has-tip .spark-tooltip{opacity:1}
+@media(max-width:560px){.spark-chart{grid-template-columns:42px minmax(0,1fr);column-gap:6px}.spark-y-axis,.spark-x-axis{font-size:8px}}
 .analytics-window{display:inline-flex;align-items:center;gap:3px;margin-left:auto;border:1px solid var(--border);border-radius:8px;padding:3px;background:rgba(150,214,170,.04)}
 .analytics-window button{border:0;border-radius:5px;background:transparent;color:var(--muted);font:700 10px Inter,system-ui;padding:4px 7px;cursor:pointer}
 .analytics-window button:hover{color:var(--text);background:rgba(150,214,170,.1)}

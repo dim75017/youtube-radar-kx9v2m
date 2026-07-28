@@ -12,8 +12,12 @@ for(const required of [
   'class="spark-hover-point" style="display:none;background:${col}"'
 ]) assert.ok(dashboard.includes(required),`Missing daily-chart integrity guard: ${required}`);
 
-assert.match(css,/\.spark\{display:block;cursor:default\}/,'the chart must keep the normal cursor');
+assert.match(css,/\.spark\{[^}]*display:block[^}]*cursor:default/,'the chart must keep the normal cursor');
 assert.match(css,/\.spark-hover-point\{[^}]*border-radius:50%/,'the hover marker must be a true circle');
 assert.ok(!css.includes('cursor:crosshair'),'the crosshair cursor must not remain on the stream chart');
+assert.match(dashboard,/class="spark-line"[^>]+vector-effect="non-scaling-stroke"[^>]+stroke-linecap="round"[^>]+stroke-linejoin="round"/,
+  'the responsive chart line must retain one uniform rounded stroke');
+assert.match(css,/\.spark-chart\{[^}]*grid-template-columns:max-content minmax\(0,1fr\)/,
+  'the axes and plot must stay responsive without horizontal scrolling');
 
 console.log('spotify daily chart integrity: ok');

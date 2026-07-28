@@ -2098,7 +2098,7 @@ function renderArtistModal(){
         <div class="analytics-kpi"><div class="l">${T('Dernière variation')}</div><div class="v">${signedFull(audience.delta)}</div></div>
         <div class="analytics-kpi"><div class="l">${T('Dernière observation')}</div><div class="v">${audience.date?fmtDate(audience.date):'—'}</div></div>
       </div>
-      ${dailyChartHtml(audience.history,T("Historique de monthly listeners non raccordé."))}
+      ${dailyChartHtml(audience.history,T("Historique de monthly listeners non raccordé."),'listeners')}
     </div>
     ${offerHtml(g, selM, selN, acquisitionRows.length)}
     <label class="selall" style="margin:2px 0 8px"><input type="checkbox" class="ck" id="am-sel-all" ${acquisitionRows.length&&acquisitionRows.every(r=>S.sel.has(r[6]))?'checked':''}> ${T('Tout sélectionner les self-release')}</label>
@@ -2400,29 +2400,42 @@ function fmtDate(iso){ const m=(''+iso).match(/^(\d{4})-(\d{2})-(\d{2})/); retur
 /* ---------- Fiche track (analytics) ---------- */
 function sparklineValueLabel(value,unit){
   if(unit==='revenue') return revenueEstimate(value);
-  if(unit==='streams') return `+${fmtFull(value)} streams`;
+  if(unit==='streams') return `${Number(value)>0?'+':''}${fmtFull(value)} streams`;
   if(unit==='listeners') return `${fmtFull(value)} auditeurs mensuels`;
+  if(unit==='followers') return `${fmtFull(value)} followers`;
   return fmtFull(value);
+}
+function sparklineAxisValueLabel(value,unit){
+  const n=Number(value);
+  if(!Number.isFinite(n)) return '—';
+  if(unit==='revenue') return revenueEstimate(n);
+  return fmt(Math.round(n));
+}
+function sparklineAxisDateLabel(value){
+  return fmtDate(value);
 }
 function showNearestSparkPoint(svg,event){
   const wrap=svg.closest('.spark-wrap'); if(!wrap) return;
-  const tip=wrap.querySelector('.spark-tooltip'),marker=wrap.querySelector('.spark-hover-point');
+  const tip=wrap.querySelector('.spark-tooltip'),marker=wrap.querySelector('.spark-hover-point'),guide=wrap.querySelector('.spark-hover-guide');
   const dots=[...svg.querySelectorAll('.spark-point')];
   if(!tip||!marker||!dots.length) return;
   const rect=svg.getBoundingClientRect();
   const pointerX=Math.max(0,Math.min(560,(event.clientX-rect.left)/Math.max(rect.width,1)*560));
   const dot=dots.reduce((best,item)=>Math.abs(Number(item.getAttribute('cx'))-pointerX)<Math.abs(Number(best.getAttribute('cx'))-pointerX)?item:best,dots[0]);
   const cx=Number(dot.getAttribute('cx')),cy=Number(dot.getAttribute('cy'));
-  marker.style.left=`${cx/560*rect.width}px`;marker.style.top=`${cy/120*rect.height}px`;marker.style.display='block';
+  const left=cx/560*rect.width;
+  marker.style.left=`${left}px`;marker.style.top=`${cy/120*rect.height}px`;marker.style.display='block';
+  if(guide){guide.style.left=`${left}px`;guide.style.display='block';}
   tip.textContent=`${dot.dataset.date} · ${dot.dataset.value}`;
   tip.style.left=`${Math.max(56,Math.min(rect.width-56,cx/560*rect.width))}px`;
-  tip.style.top=`${Math.max(4,cy/120*rect.height-38)}px`;
+  tip.style.top=`${Math.max(26,cy/120*rect.height-10)}px`;
   wrap.classList.add('has-tip');
 }
 function hideNearestSparkPoint(svg){
   const wrap=svg.closest('.spark-wrap'); if(!wrap) return;
   wrap.classList.remove('has-tip');
   const marker=wrap.querySelector('.spark-hover-point'); if(marker) marker.style.display='none';
+  const guide=wrap.querySelector('.spark-hover-guide'); if(guide) guide.style.display='none';
 }
 function bindSparklineHover(root){
   (root||document).querySelectorAll('.spark:not([data-spark-hover-bound])').forEach(svg=>{
@@ -2442,12 +2455,22 @@ function sparkline(pts,unit='value'){
   const d=pts.map((p,i)=>(i?'L':'M')+sx(+new Date(p[0])).toFixed(1)+' '+sy(p[1]).toFixed(1)).join(' ');
   const up = ys[ys.length-1]>=ys[0];
   const col = up?'#4ade80':'#fb7185';
+  const middleIndex=Math.floor((pts.length-1)/2), yMiddle=y0+(y1-y0)/2;
+  const yMinLabel=sparklineAxisValueLabel(y0,unit), yMaxLabel=sparklineAxisValueLabel(y1,unit);
+  const yLabels=y1===y0?['',yMaxLabel,'']:[yMaxLabel,sparklineAxisValueLabel(yMiddle,unit),yMinLabel];
+  const xLabels=[pts[0][0],pts[middleIndex][0],pts[pts.length-1][0]].map(sparklineAxisDateLabel);
+  const ariaLabel=`Historique du ${xLabels[0]} au ${xLabels[2]}, minimum ${yMinLabel}, maximum ${yMaxLabel}`;
   const dots=pts.map(p=>`<circle class="spark-point" cx="${sx(+new Date(p[0])).toFixed(1)}" cy="${sy(p[1]).toFixed(1)}" r="1" fill="transparent" data-date="${fmtDate(p[0])}" data-value="${esc(sparklineValueLabel(p[1],unit))}"/>`).join('');
-  return `<div class="spark-wrap"><svg class="spark" viewBox="0 0 ${w} ${h}" width="100%" height="120" preserveAspectRatio="none">
-    <path d="${d}" fill="none" stroke="${col}" stroke-width="2.5"/>
-    <path d="${d} L ${sx(x1)} ${h-pad} L ${sx(x0)} ${h-pad} Z" fill="${col}" opacity="0.12"/>
-    ${dots}
-  </svg><span class="spark-hover-point" style="display:none;background:${col}"></span><div class="spark-tooltip" role="status"></div></div>`;
+  return `<div class="spark-wrap"><div class="spark-chart" role="img" aria-label="${esc(ariaLabel)}">
+    <div class="spark-y-axis" aria-hidden="true"><span>${esc(yLabels[0])}</span><span>${esc(yLabels[1])}</span><span>${esc(yLabels[2])}</span></div>
+    <div class="spark-plot"><svg class="spark" viewBox="0 0 ${w} ${h}" width="100%" height="120" preserveAspectRatio="none">
+      <g class="spark-grid" aria-hidden="true"><line x1="${pad}" y1="${pad}" x2="${w-pad}" y2="${pad}"/><line x1="${pad}" y1="${h/2}" x2="${w-pad}" y2="${h/2}"/><line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}"/><line x1="${pad}" y1="${pad}" x2="${pad}" y2="${h-pad}"/><line x1="${w/2}" y1="${pad}" x2="${w/2}" y2="${h-pad}"/><line x1="${w-pad}" y1="${pad}" x2="${w-pad}" y2="${h-pad}"/></g>
+      <path class="spark-area" d="${d} L ${sx(x1)} ${h-pad} L ${sx(x0)} ${h-pad} Z" fill="${col}" opacity="0.1"/>
+      <path class="spark-line" d="${d}" fill="none" stroke="${col}" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"/>
+      ${dots}
+    </svg><span class="spark-hover-guide" style="display:none"></span><span class="spark-hover-point" style="display:none;background:${col}"></span><div class="spark-tooltip" role="status" aria-live="polite"></div></div>
+    <div class="spark-x-axis" aria-hidden="true"><span>${esc(xLabels[0])}</span><span>${esc(xLabels[1])}</span><span>${esc(xLabels[2])}</span></div>
+  </div></div>`;
 }
 /* mini simulateur d'offre pour une track seule (pop-up track) */
 function trackOfferHtml(r){
@@ -3420,6 +3443,7 @@ function openArOpportunity(spotifyId){
     ${selectable?`<div class="ar-detail-actions"><button class="btn-back" onclick="${isListed?`arRemoveFromList('${esc(spotifyId)}',event);openArOpportunity('${esc(spotifyId)}')`:`arAddToList('${esc(spotifyId)}',event);openArOpportunity('${esc(spotifyId)}')`}">${isListed?'Retirer de la sélection':'⭐ Ajouter à la sélection'}</button></div>`:''}`;
   const artistLine=box.querySelector('.ar-detail-artists');
   if(artistLine) artistLine.innerHTML=arArtistLinksHtml(opportunity);
+  bindSparklineHover(box);
   document.getElementById('ar-modal').style.display='flex';
   hydrateArPlaylistCovers();
 }
@@ -4296,7 +4320,7 @@ function openPlaylist(pid){
     ${perfGridHtml(perf,'Followers',r[5]==='ok'?r[4]:null,false)}
     <div class="analytics-section">
       <h4>${T('Courbe historique des followers')} <span class="analytics-note">${T('Compteur followers')}</span></h4>
-      ${dailyChartHtml(hist,T('Historique quotidien insuffisant pour tracer la courbe.'))}
+      ${dailyChartHtml(hist,T('Historique quotidien insuffisant pour tracer la courbe.'),'followers')}
     </div>
     <div class="analytics-section">
       <h4>${T('Placements et rangs connus')}</h4>
