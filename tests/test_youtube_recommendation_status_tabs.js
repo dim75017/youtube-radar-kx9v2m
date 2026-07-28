@@ -37,7 +37,7 @@ for (const required of [
 }
 assert.doesNotMatch(css, /\.reco-tab\.archive(?:\.|\{|,)/,
   'the old archive-tab styling must not return');
-assert.ok(index.includes('dashboard-04-recommendations.js?v=20260728-recommendations-workspace-v1'),
+assert.ok(index.includes('dashboard-04-recommendations.js?v=20260728-recommendations-learning-v2'),
   'Recommendation script cache version is stale');
 
 console.log('youtube recommendation status tabs: ok');

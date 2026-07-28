@@ -394,6 +394,7 @@ function eligibleNewVideoRows(rows){
 }
 function setRadarData(d){
   if(d)d.news=eligibleNewVideoRows(d.news);
+  if(typeof mergeGeneratedRecommendationPool==='function')mergeGeneratedRecommendationPool(d);
   if(typeof applyRecommendationEdits==='function')applyRecommendationEdits(d);
   DATA=d;mergeLoadedVideoHistoryIntoData(DATA);
   VIEW_CACHE.clear();VIEW_WARMUP_TOKEN++;
@@ -698,7 +699,9 @@ async function boot(){
   const hs=(location.hash||'').slice(1);
   if(hs&&VIEWS.some(v=>v.id===hs))route=hs;
   loadChan();
-  if(window.__radarDataReady){try{await window.__radarDataReady;}catch(e){}}
+  if(window.__radarDataReady||window.__radarRecommendationPoolReady){
+    try{await Promise.all([window.__radarDataReady,window.__radarRecommendationPoolReady].filter(Boolean));}catch(e){}
+  }
   const cache=loadCache();
   const snap=(window.LOFI_DATA&&window.LOFI_DATA.d)?window.LOFI_DATA:null;
   let best=null,src='';

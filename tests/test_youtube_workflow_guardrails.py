@@ -24,12 +24,17 @@ class YoutubeWorkflowGuardrailTests(unittest.TestCase):
             'test_youtube_recommendation_actions.js',
             'test_youtube_recommendation_edits.js',
             'test_youtube_recommendation_status_tabs.js',
+            'test_youtube_recommendation_continuous_pool.js',
+            'test_youtube_recommendation_decision_animation.js',
             'test_recommendation_validated_archive.js',
             'test_roadmap_context_actions.js',
             'test_roadmap_slot_scheduling.js',
         ):
             self.assertIn(test, validate)
         self.assertIn("'assets/js/dashboard-04-recommendations.js'", workflow)
+        self.assertIn('tests.test_generate_youtube_recommendation_pool', validate)
+        self.assertIn('--recommendation-pool Lofi_Radar_recommendation_pool.js', workflow)
+        self.assertIn('git add Lofi_Radar_data.js Lofi_Radar_recommendation_pool.js', workflow)
 
     def test_daily_watchdog_retries_only_when_the_paris_snapshot_is_stale(self):
         workflow = Path('.github/workflows/refresh-instrumental-radar.yml').read_text(encoding='utf-8')

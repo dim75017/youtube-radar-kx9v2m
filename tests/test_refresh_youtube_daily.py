@@ -379,6 +379,11 @@ class DailyHistoryTests(unittest.TestCase):
             history_dir.mkdir()
             stamp = int(datetime(2026, 7, 28, 8, tzinfo=timezone.utc).timestamp() * 1000)
             radar.write_snapshot(snapshot, {"videoMetricsT": stamp, "d": {}})
+            pool = root / "Lofi_Radar_recommendation_pool.js"
+            pool.write_text(
+                radar.POOL_PREFIX + json.dumps({"sourceT": stamp, "items": [{}] * 1001}) + ";\n",
+                encoding="utf-8",
+            )
             (history_dir / "61.json").write_text(
                 json.dumps({"version": 1, "updated": stamp, "d": {}}),
                 encoding="utf-8",
@@ -397,6 +402,7 @@ class DailyHistoryTests(unittest.TestCase):
 
             responses = iter([
                 Response(snapshot.read_bytes()),
+                Response(pool.read_bytes()),
                 Response((history_dir / "61.json").read_bytes()),
                 Response((history_dir / "62.json").read_bytes()),
             ])
@@ -409,6 +415,7 @@ class DailyHistoryTests(unittest.TestCase):
                     interval_seconds=1,
                 )
         self.assertTrue(result["published"])
+        self.assertEqual(result["recommendations"], 1001)
         self.assertEqual(result["snapshot"], stamp)
         self.assertEqual(result["history_min"], stamp)
         self.assertEqual(result["history_shards"], 2)

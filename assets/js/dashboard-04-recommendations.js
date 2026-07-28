@@ -12,8 +12,13 @@ function isValidated(v){return ['x','xnote'].includes(validState(v));}
 function isRefused(v){return ['no','nonote'].includes(validState(v));}
 function setValid(n,mode,btn,ev){
   if(ev)ev.stopPropagation();
+  const decisionCard=btn&&typeof btn.closest==='function'?btn.closest('.rtile'):null;
+  if(decisionCard&&typeof decisionCard.getAttribute==='function'&&decisionCard.getAttribute('aria-busy')==='true')return;
   clearTimeout(_cmtTimer);
   const rec=DATA.recos.find(x=>x.n===n);if(!rec)return;
+  // A Roadmap placement is a terminal hand-off. It can be archived from the
+  // Roadmap itself, but must never also become a refused recommendation.
+  if(mode==='-'&&typeof recommendationRoadmapEntry==='function'&&recommendationRoadmapEntry(rec))return;
   const ta=document.getElementById('cta-dw');
   const note=(window._drawerRecoN===n&&ta)?ta.value.trim():noteOf(rec.valid);
   let val;
@@ -24,11 +29,25 @@ function setValid(n,mode,btn,ev){
   // Keep the optimistic state update while the Google Sheet write completes.
   rec.valid=val;
   saveCache(DATA);
-  rerenderRecos();
-  if(window._drawerRecoN===n&&document.getElementById('drawer').classList.contains('show')&&window._drawerReopen){
-    window._drawerReopen();
-  }
-  writeValid(n,val,btn);
+  const finishDecision=()=>{
+    rerenderRecos();
+    const drawer=document.getElementById('drawer');
+    if(window._drawerRecoN===n&&drawer&&drawer.classList.contains('show')&&window._drawerReopen)window._drawerReopen();
+  };
+  if(!animateRecommendationDecision(btn,mode,finishDecision))finishDecision();
+  if(rec._generated)saveGeneratedRecommendationDecision(rec.n,val);
+  else writeValid(n,val,btn);
+}
+const RECO_DECISION_ANIMATION_MS=320;
+function animateRecommendationDecision(btn,mode,done){
+  const card=btn&&typeof btn.closest==='function'?btn.closest('.rtile'):null;
+  if(!card||!['X','-'].includes(mode))return false;
+  const reduced=typeof window.matchMedia==='function'&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduced)return false;
+  card.classList.add('reco-decision',mode==='X'?'is-accepted':'is-refused');
+  card.setAttribute('aria-busy','true');
+  setTimeout(done,RECO_DECISION_ANIMATION_MS);
+  return true;
 }
 const WRITE_URL='https://script.google.com/macros/s/AKfycbynEewHZzfecwty-E5TV4Otgsxi3ieGy_N5PPYiM7GpPeMVz_5ka1rxY-Y67H3eknto4w/exec';
 const WRITE_KEY='lofiradar2026kx';
@@ -85,6 +104,29 @@ function autoSaveComment(n){
   },700);
 }
 const RECO_EDIT_STORAGE_KEY='lofi_radar_recommendation_edits_v1';
+const GENERATED_RECO_DECISIONS_KEY='lofi_radar_generated_reco_decisions_v1';
+function generatedRecommendationDecisions(){
+  try{const value=JSON.parse(localStorage.getItem(GENERATED_RECO_DECISIONS_KEY)||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch(e){return {};}
+}
+function saveGeneratedRecommendationDecision(n,value){
+  try{const decisions=generatedRecommendationDecisions();decisions[String(n)]={value:String(value||''),updatedAt:Date.now()};localStorage.setItem(GENERATED_RECO_DECISIONS_KEY,JSON.stringify(decisions));}catch(e){}
+}
+function mergeGeneratedRecommendationPool(data){
+  if(!data)return data;
+  const source=(window.LOFI_RECOMMENDATION_POOL&&window.LOFI_RECOMMENDATION_POOL.items)||data.recoGenerated||[];
+  if(!Array.isArray(source)||!source.length)return data;
+  const recos=data.recos||(data.recos=[]),decisions=generatedRecommendationDecisions();
+  const ids=new Set(recos.map(row=>String(row&&row.n))),titles=new Set(recos.map(row=>normalizedRecommendationTitle(row&&row.title)).filter(Boolean));
+  source.forEach(raw=>{
+    if(!raw||raw.n==null||!raw.title)return;
+    const id=String(raw.n),title=normalizedRecommendationTitle(raw.title);
+    if(ids.has(id)||titles.has(title))return;
+    const row=Object.assign({},raw,{_generated:true});
+    const decision=decisions[id];if(decision&&typeof decision.value==='string')row.valid=decision.value;
+    recos.push(row);ids.add(id);titles.add(title);
+  });
+  return data;
+}
 function recommendationEdits(){
   try{const value=JSON.parse(localStorage.getItem(RECO_EDIT_STORAGE_KEY)||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch(e){return {};}
 }
@@ -176,6 +218,15 @@ function recoTokens(r){
 }
 function recoRotationHistory(){try{return JSON.parse(localStorage.getItem(RECO_ROTATION_KEY)||'{}')||{};}catch(e){return {};}}
 function saveRecoRotation(h){try{localStorage.setItem(RECO_ROTATION_KEY,JSON.stringify(h));}catch(e){}}
+function recoSeenIds(history){
+  const seen=new Set(Array.isArray(history&&history._seen)?history._seen.map(Number).filter(Number.isFinite):[]);
+  Object.entries(history||{}).forEach(([key,ids])=>{if(!key.startsWith('_')&&Array.isArray(ids))ids.forEach(id=>{id=Number(id);if(Number.isFinite(id))seen.add(id);});});
+  return seen;
+}
+function rememberRecoIds(history,ids){
+  const seen=recoSeenIds(history);(ids||[]).forEach(id=>{id=Number(id);if(Number.isFinite(id))seen.add(id);});
+  history._seen=[...seen].slice(-25000);return history;
+}
 function recoAddSignal(map,key,value){if(key)map[key]=(map[key]||0)+value;}
 function recoSignal(map,key){return Number(map[key]||0);}
 function recoPerformanceSignal(o){
@@ -205,8 +256,12 @@ function recoVideoFields(o){
 }
 function recoProfile(){
   const p={genre:{},persona:{},token:{},recentGenre:{},feedbackPersona:{},feedbackToken:{},recentVideos:0,windows:{'3m':0,'6m':0,'12m':0},feedback:0};
+  const activeRoadmap=typeof scheduledRows==='function'?scheduledRows():[];
+  const activeRoadmapIds=new Set(activeRoadmap.filter(row=>row&&row.recoN!=null).map(row=>Number(row.recoN)));
+  const activeRoadmapTitles=new Set(activeRoadmap.map(row=>normalizedRecommendationTitle(row&&row.title)).filter(Boolean));
   (DATA.recos||[]).forEach(r=>{
-    const feedback=isValidated(r.valid)?3:isRefused(r.valid)?-3:0;if(!feedback)return;
+    const placedActive=activeRoadmapIds.has(Number(r.n))||activeRoadmapTitles.has(normalizedRecommendationTitle(r.title));
+    const feedback=isRefused(r.valid)?-3:(isValidated(r.valid)?(placedActive?4:3):0);if(!feedback)return;
     p.feedback++;recoAddSignal(p.genre,String(r.genre||''),feedback);recoAddSignal(p.persona,persoCategory(r.perso),feedback);
     recoAddSignal(p.feedbackPersona,persoCategory(r.perso),feedback);recoTokens(r).forEach(t=>{recoAddSignal(p.token,t,feedback*.35);recoAddSignal(p.feedbackToken,t,feedback*.35);});
   });
@@ -254,21 +309,22 @@ function dailyRecommendationSet(){
     const byId=new Map(candidates.map(r=>[Number(r.n),r]));
     return decorate(activeTodayIds.map(n=>byId.get(Number(n))).filter(Boolean));
   }
-  const previous=Object.keys(history).filter(k=>k!==day).sort().slice(-14).flatMap(k=>history[k]||[]);
-  let pool=candidates.filter(r=>!new Set(previous).has(r.n));if(pool.length<RECO_DAILY_LIMIT)pool=candidates;
+  const seen=recoSeenIds(history);
+  const pool=candidates.filter(r=>!seen.has(Number(r.n)));
   const picked=[],genres={},personas={};
   while(picked.length<RECO_DAILY_LIMIT&&pool.length){
     const ranked=pool.filter(r=>!picked.includes(r)).map(r=>{const g=String(r.genre||''),p=persoCategory(r.perso);return {r,value:recoDailyScore(r,profile,day)-(genres[g]||0)*3-(personas[p]||0)*1.35};}).sort((a,b)=>b.value-a.value||a.r.n-b.r.n);
     if(!ranked.length)break;const r=ranked[0].r;picked.push(r);const g=String(r.genre||''),p=persoCategory(r.perso);genres[g]=(genres[g]||0)+1;personas[p]=(personas[p]||0)+1;
   }
-  history[day]=[...new Set([...(history[day]||[]),...picked.map(r=>r.n)])].slice(-200);Object.keys(history).sort().slice(0,-21).forEach(k=>delete history[k]);saveRecoRotation(history);
+  history[day]=[...new Set(picked.map(r=>r.n))].slice(0,RECO_DAILY_LIMIT);rememberRecoIds(history,history[day]);
+  Object.keys(history).filter(key=>!key.startsWith('_')).sort().slice(0,-14).forEach(k=>delete history[k]);saveRecoRotation(history);
   return decorate(picked);
 }
 function activeDailyRecommendationCount(){return dailyRecommendationSet().length;}
 function refreshDailyRecommendations(ev){
   if(ev)ev.stopPropagation();
   const day=recoDayKey(),history=recoRotationHistory(),current=Array.isArray(history[day])?history[day].slice(0,RECO_DAILY_LIMIT):[];
-  if(current.length)history[day+'#'+Date.now()]=current;
+  rememberRecoIds(history,current);
   delete history[day];
   saveRecoRotation(history);
   if(typeof VIEW_CACHE!=='undefined')VIEW_CACHE.delete(viewCacheKey('recos'));
@@ -290,7 +346,7 @@ function dailyRecoBrief(rows){
   const text=p.recentVideos
     ?(fr?'Classement fondé sur les validations/refus de l’équipe et les résultats des vidéos publiées depuis 0–3, 3–6 et 6–12 mois. Les 3 derniers mois pèsent le plus ; la vitesse quotidienne récente est utilisée dès que l’historique est disponible.':'Ranking uses team approvals/refusals and results from videos published 0–3, 3–6 and 6–12 months ago. The latest 3 months carry the most weight; recent daily velocity is used as soon as history is available.')
     :(fr?'Les performances de la chaîne arriveront avec le prochain import YouTube. En attendant, la sélection utilise le score catalogue, les validations/refus de l’équipe et la rotation anti-répétition.':'Channel performance will be used after the next YouTube import. Until then, the selection uses the catalogue score, team feedback and anti-repeat rotation.');
-  return '<div class="reco-daily-brief"><div><div class="reco-daily-kicker">'+(fr?'SÉLECTION DU JOUR':'DAILY SELECTION')+' · '+recoDayKey()+'</div><p>'+text+'</p></div><div class="reco-daily-stats"><b>'+rows.length+' / '+RECO_DAILY_LIMIT+'</b><span>'+(fr?'idées actives':'active ideas')+'</span><b>'+p.recentVideos+'</b><span>'+(fr?'vidéos analysées':'videos analysed')+'</span></div></div>';
+  return '<div class="reco-daily-brief"><div><div class="reco-daily-kicker">'+(fr?'SÉLECTION DU JOUR':'DAILY SELECTION')+' · '+recoDayKey()+'</div><p>'+text+'</p></div><div class="reco-daily-stats"><b>'+rows.length+'</b><span>'+(fr?'idées actives':'active ideas')+'</span><b>'+p.recentVideos+'</b><span>'+(fr?'vidéos analysées':'videos analysed')+'</span></div></div>';
 }
 function dailyRecoListHTML(rows){
   if(!rows.length)return '<div class="empty">'+((typeof LANG!=='undefined'&&LANG==='fr')?'Aucune proposition en attente.':'No proposal awaiting review.')+'</div>';
@@ -349,12 +405,14 @@ function acceptedRoadmapRows(){
 }
 function refusedRecommendationRows(){return (DATA.recos||[]).filter(r=>isRefused(r.valid));}
 function validatedRecommendationRows(){
-  return (DATA.recos||[]).filter(row=>isValidated(row.valid));
+  return (DATA.recos||[]).filter(row=>isValidated(row.valid)&&!recommendationRoadmapEntry(row));
 }
 function recommendationRoadmapEntry(reco){
   if(!reco)return null;
   const title=normalizedRecommendationTitle(reco.title);
-  return scheduledRows().find(row=>Number(row.recoN)===Number(reco.n)||normalizedRecommendationTitle(row.title)===title)||null;
+  // Once an accepted idea has entered Roadmap it no longer belongs in the
+  // Validated inbox, even if that Roadmap row is later archived locally.
+  return acceptedRoadmapRows().find(row=>Number(row.recoN)===Number(reco.n)||normalizedRecommendationTitle(row.title)===title)||null;
 }
 function placeValidatedRecommendation(n,ev){
   if(ev)ev.stopPropagation();
@@ -378,7 +436,7 @@ function recoTabControlHTML(){
   ];
   return '<div class="reco-controlbar"><div class="reco-tabbar">'+tabs.map(([key,label])=>
     '<button class="reco-tab '+key+(RECO_TAB===key?' on':'')+'" onclick="setRecoTab('+jsq(key)+')"><span>'+label+'</span><b>'+counts[key]+'</b></button>'
-  ).join('')+'</div>'+(RECO_TAB==='pending'?'<button class="reco-refresh-btn" type="button" title="'+(fr?'Charger le prochain lot classé parmi les concepts disponibles':'Load the next ranked batch from the available concepts')+'" onclick="refreshDailyRecommendations(event)">↻ '+(fr?'Nouvelles idées':'New ideas')+'</button>':'')+'</div>';
+  ).join('')+'</div>'+(RECO_TAB==='pending'?'<button class="reco-refresh-btn" type="button" title="'+(fr?'Charger un nouveau lot classé depuis la réserve évolutive et les dernières performances':'Load a fresh ranked batch from the evolving reservoir and latest performance data')+'" onclick="refreshDailyRecommendations(event)">↻ '+(fr?'Nouvelles idées':'New ideas')+'</button>':'')+'</div>';
 }
 function recoRefusedCardHTML(r,i){
   const note=noteOf(r.valid),tierL=r.pot?r.pot[0].toUpperCase():null;
@@ -520,9 +578,10 @@ function saveRecoEditor(n,ev){
 }
 function recoActions(r,i){
   const isVal=isValidated(r.valid), isRef=isRefused(r.valid);
+  const inRoadmap=isVal&&!!recommendationRoadmapEntry(r);
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
   const actions=isVal
-    ?'<span class="rst-done rst-ok" style="flex:1;text-align:center">✅ '+(fr?'Validée':'Validated')+'</span><button class="rbtn reco-edit-btn" onclick="openRecoEditor('+r.n+',event)">✎ '+(fr?'Modifier':'Edit')+'</button>'+recommendationRoadmapActionHTML(r)+'<button class="rbtn rbtn-ko reco-refuse-small" title="'+(fr?'Refuser cette idée':'Refuse this idea')+'" onclick="setValid('+r.n+',\'-\',this,event)">✕</button>'
+    ?'<span class="rst-done rst-ok" style="flex:1;text-align:center">✅ '+(fr?'Validée':'Validated')+'</span><button class="rbtn reco-edit-btn" onclick="openRecoEditor('+r.n+',event)">✎ '+(fr?'Modifier':'Edit')+'</button>'+recommendationRoadmapActionHTML(r)+(inRoadmap?'':'<button class="rbtn rbtn-ko reco-refuse-small" title="'+(fr?'Refuser cette idée':'Refuse this idea')+'" onclick="setValid('+r.n+',\'-\',this,event)">✕</button>')
     :isRef
     ?'<span class="rst-done rst-ko" style="flex:1;text-align:center">❌ '+(fr?'Refusée':'Refused')+'</span><button class="rbtn reco-edit-btn" onclick="openRecoEditor('+r.n+',event)">✎ '+(fr?'Modifier':'Edit')+'</button><button class="rst-x" title="'+(fr?'Remettre à valider':'Reset to pending')+'" onclick="setValid('+r.n+',\'\',this,event)">✕</button>'
     :'<button class="rbtn reco-edit-btn" onclick="openRecoEditor('+r.n+',event)">✎ '+(fr?'Modifier':'Edit')+'</button><button class="rbtn rbtn-ko" style="flex:1" onclick="setValid('+r.n+',\'-\',this,event)">✕ '+(fr?'Refuser':'Refuse')+'</button><button class="rbtn rbtn-ok" style="flex:1" onclick="setValid('+r.n+',\'X\',this,event)">✓ '+(fr?'Valider':'Validate')+'</button>';
@@ -1058,6 +1117,7 @@ function confirmSchedDate(){
   const entry=scheduleRecommendation(reco,sug);if(!entry)return;
   invalidateRoadmapDerivedViews();
   if(route==='recos')rerenderRecos();
+  if(window._drawerRecoN===reco.n&&typeof closeDrawer==='function')closeDrawer();
   const el=document.getElementById('sched-modal');
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
   const MFULL=fr?['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre']

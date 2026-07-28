@@ -23,10 +23,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from generate_youtube_recommendation_pool import POOL_PREFIX, write_recommendation_pool
+
 ROOT = Path(__file__).resolve().parent
 DEFAULT_SNAPSHOT = ROOT / "Lofi_Radar_data.js"
 DEFAULT_AVATARS = ROOT / "Lofi_Radar_new_channel_avatars.js"
 DEFAULT_HISTORY_DIR = ROOT / "video_history"
+DEFAULT_RECOMMENDATION_POOL = ROOT / "Lofi_Radar_recommendation_pool.js"
 RADAR_TIMEZONE_NAME = "Europe/Paris"
 RADAR_TIMEZONE = ZoneInfo(RADAR_TIMEZONE_NAME)
 DAILY_VIEW_HISTORY_START_MS = int(datetime(2026, 7, 20, tzinfo=RADAR_TIMEZONE).timestamp() * 1000)
@@ -854,6 +857,7 @@ def merge_artifacts(
     merge_dir: Path,
     expected_shards: int,
     history_dir: Path | None = None,
+    recommendation_pool: Path | None = None,
 ) -> dict:
     files = sorted(merge_dir.rglob("youtube-shard-*.json"))
     artifacts = [json.loads(path.read_text(encoding="utf-8")) for path in files]
@@ -1049,6 +1053,13 @@ def merge_artifacts(
     }
     avatar_count = write_avatar_overlay(payload, avatars)
     write_snapshot(snapshot, payload)
+    pool_data = dict(data)
+    pool_data["videoMetricsT"] = now_ms
+    pool_payload = write_recommendation_pool(
+        pool_data,
+        recommendation_pool or snapshot.parent / DEFAULT_RECOMMENDATION_POOL.name,
+        generated_ms=now_ms,
+    )
     summary = {
         "tracked": tracked_total,
         "updated": tracked_ok,
@@ -1064,6 +1075,7 @@ def merge_artifacts(
         "news_removed_below_view_floor": removed_low_view_news,
         "ours_added": inserted_ours,
         "avatars": avatar_count,
+        "recommendations_generated": len(pool_payload["items"]),
         "timestamp": datetime.fromtimestamp(now_ms / 1000, timezone.utc).isoformat(),
     }
     print(json.dumps(summary, ensure_ascii=False))
@@ -1111,8 +1123,9 @@ def verify_publication(
     history_dir: Path,
     timeout_seconds: int = 900,
     interval_seconds: int = 15,
+    recommendation_pool: Path | None = None,
 ) -> dict:
-    """Wait until GitHub Pages serves both the new snapshot and its history."""
+    """Wait until Pages serves the snapshot, renewable ideas and history."""
     local = read_snapshot(snapshot)
     expected = int(local.get("videoMetricsT") or 0)
     if not expected:
@@ -1120,6 +1133,9 @@ def verify_publication(
     shards = sorted(history_dir.glob("*.json"))
     if not shards:
         raise RuntimeError("Local history directory has no shards")
+    local_pool_path = recommendation_pool or snapshot.parent / DEFAULT_RECOMMENDATION_POOL.name
+    if not local_pool_path.exists():
+        raise RuntimeError("Local renewable recommendation pool is missing")
     root = base_url.rstrip("/") + "/"
     deadline = time.monotonic() + max(timeout_seconds, 1)
     last_error = "not attempted"
@@ -1131,6 +1147,20 @@ def verify_publication(
             remote_stamp = int(remote.get("videoMetricsT") or 0)
             if remote_stamp < expected:
                 last_error = f"served snapshot={remote_stamp}, expected={expected}"
+                time.sleep(max(interval_seconds, 1))
+                continue
+            with urllib.request.urlopen(
+                root + DEFAULT_RECOMMENDATION_POOL.name + "?" + cache_buster,
+                timeout=30,
+            ) as response:
+                pool_raw = response.read().decode("utf-8").strip()
+            if not pool_raw.startswith(POOL_PREFIX):
+                raise RuntimeError("served recommendation pool is malformed")
+            remote_pool = json.loads(pool_raw[len(POOL_PREFIX):].rstrip(";\n "))
+            pool_stamp = int(remote_pool.get("sourceT") or 0)
+            pool_count = len(remote_pool.get("items") or [])
+            if pool_stamp < expected or pool_count <= 1_000:
+                last_error = f"served recommendation pool={pool_count}@{pool_stamp}, expected >1000@{expected}"
                 time.sleep(max(interval_seconds, 1))
                 continue
             stale_shards: list[str] = []
@@ -1151,6 +1181,7 @@ def verify_publication(
                     "snapshot": remote_stamp,
                     "history_min": min(history_stamps),
                     "history_shards": len(history_stamps),
+                    "recommendations": pool_count,
                 }
                 print(json.dumps(result))
                 return result
@@ -1166,6 +1197,7 @@ def main() -> None:
     parser.add_argument("--snapshot", type=Path, default=DEFAULT_SNAPSHOT)
     parser.add_argument("--avatars", type=Path, default=DEFAULT_AVATARS)
     parser.add_argument("--history-dir", type=Path, default=DEFAULT_HISTORY_DIR)
+    parser.add_argument("--recommendation-pool", type=Path, default=DEFAULT_RECOMMENDATION_POOL)
     parser.add_argument("--shard", type=int)
     parser.add_argument("--shards", type=int, default=10)
     parser.add_argument("--output", type=Path)
@@ -1191,10 +1223,18 @@ def main() -> None:
             args.history_dir,
             args.verify_timeout,
             args.verify_interval,
+            args.recommendation_pool,
         )
         return
     if args.merge_dir:
-        merge_artifacts(args.snapshot, args.avatars, args.merge_dir, args.shards, args.history_dir)
+        merge_artifacts(
+            args.snapshot,
+            args.avatars,
+            args.merge_dir,
+            args.shards,
+            args.history_dir,
+            args.recommendation_pool,
+        )
         return
     if args.shard is None or args.output is None:
         parser.error("collector mode requires --shard and --output")

@@ -18,6 +18,8 @@ const scheduleStart = source.indexOf('function roadmapArchiveKey');
 const scheduleEnd = source.indexOf('function schedBucket', scheduleStart);
 const roadmapActionStart = source.indexOf('function archiveRoadmapEntry');
 const roadmapActionEnd = source.indexOf('function deleteRoadmapEntry', roadmapActionStart);
+const recoActionsStart = source.indexOf('function recoActions(');
+const recoActionsEnd = source.indexOf('function recoCommentBox(', recoActionsStart);
 
 assert.ok(decisionStart >= 0 && decisionEnd > decisionStart,
   'recommendation decision helpers must remain available');
@@ -119,6 +121,7 @@ const context = {
     },
   },
   window: {_pageRecos: [], _rm_rows: []},
+  LANG: 'en',
 };
 
 vm.runInNewContext(
@@ -147,6 +150,11 @@ vm.runInNewContext(
    this.setValidForTest=setValid;`,
   context,
 );
+vm.runInNewContext(
+  `${source.slice(recoActionsStart, recoActionsEnd)}
+   this.recoActionsForTest=recoActions;`,
+  context,
+);
 
 const migratedRoadmapArchive = JSON.parse(saved.get('lofi_radar_roadmap_archive_v3'));
 assert.equal(migratedRoadmapArchive.length, 1,
@@ -171,8 +179,8 @@ assert.ok(accepted.some(row => row.title === visibleMonday.title),
   'non-archived Monday projects remain accepted Roadmap rows');
 
 const validated = Array.from(context.validatedRowsForTest());
-assert.deepEqual(validated.map(row => row.n), [1, 7],
-  'Validated contains only recommendations explicitly accepted in the recommendation source');
+assert.deepEqual(validated.map(row => row.n), [1],
+  'Validated contains only accepted recommendations that have not already entered Roadmap');
 assert.ok(validated.every(row => !/Monday/i.test(String(row.src || ''))),
   'Monday projects never appear in Validated');
 assert.deepEqual(Array.from(context.refusedRowsForTest()).map(row => row.n), [2],
@@ -201,14 +209,30 @@ assert.equal(sheetWriteCount, 1,
 context.placeValidatedForTest(3);
 assert.equal(schedulePopupCount, popupBeforeValidation + 1,
   'placing a validated recommendation is an explicit second action');
+assert.match(context.roadmapActionForTest(context.DATA.recos.find(row => row.n === 3)), /Place in roadmap|Placer dans la roadmap/,
+  'a validated unscheduled recommendation exposes the explicit Roadmap action');
+context.SCHED_LOCAL.push({
+  title: 'Pending recommendation',
+  date: 9,
+  src: 'Recommandation validée (placement manuel)',
+  recoN: 3,
+});
+assert.deepEqual(Array.from(context.validatedRowsForTest()).map(row => row.n), [1],
+  'a recommendation disappears from Validated as soon as its Roadmap placement is confirmed');
 context.placeValidatedForTest(2);
 context.placeValidatedForTest(7);
 assert.equal(schedulePopupCount, popupBeforeValidation + 1,
   'a refused or already placed recommendation cannot open another placement');
-assert.match(context.roadmapActionForTest(context.DATA.recos.find(row => row.n === 3)), /Place in roadmap|Placer dans la roadmap/,
-  'a validated unscheduled recommendation exposes the explicit Roadmap action');
+assert.match(context.roadmapActionForTest(context.DATA.recos.find(row => row.n === 3)), /disabled/,
+  'a confirmed placement immediately exposes its Roadmap state');
 assert.match(context.roadmapActionForTest(context.DATA.recos.find(row => row.n === 7)), /disabled/,
   'an already placed recommendation exposes a disabled Roadmap state');
+assert.doesNotMatch(context.recoActionsForTest(context.DATA.recos.find(row => row.n === 7), 0), /setValid\(7,'-'/,
+  'a recommendation already handed to Roadmap cannot be refused from a stale detail drawer');
+const placedDecisionBefore=context.DATA.recos.find(row => row.n === 7).valid;
+context.setValidForTest(7, '-', null, null);
+assert.equal(context.DATA.recos.find(row => row.n === 7).valid, placedDecisionBefore,
+  'the decision handler also rejects a stale refusal action after Roadmap placement');
 
 const decisionsBeforeRoadmapArchive = context.DATA.recos.map(row => row.valid);
 const legacyStoreBeforeRoadmapArchive = saved.get('lofi_radar_project_archive_v1');
@@ -223,7 +247,7 @@ assert.equal(saved.get('lofi_radar_project_archive_v1'), legacyStoreBeforeRoadma
   'Roadmap archiving never writes to the previous Recommendations archive');
 assert.ok(!Array.from(context.scheduledRowsForTest()).some(row => row.title === visibleMonday.title),
   'the separate Roadmap archive hides the project only from Roadmap');
-assert.deepEqual(Array.from(context.validatedRowsForTest()).map(row => row.n), [1, 3, 7],
+assert.deepEqual(Array.from(context.validatedRowsForTest()).map(row => row.n), [1],
   'Roadmap archiving leaves Validated unchanged');
 assert.deepEqual(Array.from(context.refusedRowsForTest()).map(row => row.n), [2],
   'Roadmap archiving leaves Refused unchanged');
