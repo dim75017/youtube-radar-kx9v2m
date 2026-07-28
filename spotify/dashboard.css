@@ -986,3 +986,31 @@ td.selc,th.selc{width:44px;padding-left:14px}
   .ar-contact-panel{padding:11px}
   .ar-contact-panel-head{display:block}.ar-contact-panel-status{display:inline-flex;margin-top:7px}
 }
+
+/* Sélection : étapes explicites, cartes allégées et actions destructives compactes. */
+.ar-artist-selection-head{padding:15px 16px}
+.ar-stage-label{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-width:0}
+.ar-stage-emoji{flex:none;font-size:14px;line-height:1}
+.ar-trash-action,
+.ar-workflow-action.ar-trash-action,
+.ar-selection-track .ar-remove.ar-trash-action{
+  display:inline-grid;place-items:center;flex:0 0 38px;width:38px;height:38px;min-height:38px;
+  padding:0;border:1px solid rgba(251,113,133,.86);border-radius:10px;
+  background:rgba(190,24,93,.82);color:#fff;font-size:14px;line-height:1;cursor:pointer;
+  box-shadow:0 5px 14px rgba(159,18,57,.22);
+  transition:background .15s,border-color .15s,transform .13s,box-shadow .15s;
+}
+.ar-trash-action:hover,
+.ar-workflow-action.ar-trash-action:hover,
+.ar-selection-track .ar-remove.ar-trash-action:hover{
+  border-color:#fda4af;background:#e11d48;color:#fff;box-shadow:0 7px 18px rgba(225,29,72,.3);
+}
+.ar-trash-action:active{transform:scale(.96)}
+.ar-trash-action:focus-visible{outline:2px solid #fecdd3;outline-offset:2px}
+@media(max-width:620px){
+  .ar-selection-track .ar-remove.ar-trash-action{grid-column:1/-1!important;grid-row:auto;justify-self:end}
+}
+@media(max-width:560px){
+  .ar-workflow-action.ar-trash-action,.ar-selection-track .ar-remove.ar-trash-action{width:38px;justify-self:end}
+  .ar-stage-label{justify-content:flex-start}
+}

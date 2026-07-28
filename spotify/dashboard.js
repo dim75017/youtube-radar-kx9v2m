@@ -2135,13 +2135,12 @@ function renderArtistModal(){
 /* ---------- Liste A&R (locale au navigateur, aucun e-mail n'est envoyé) ---------- */
 const AR_LIST_STORAGE='spotify_ar_outreach_list_v1';
 const AR_ARTIST_STORAGE='spotify_ar_outreach_artists_v1';
-const AR_STATUSES={to_contact:'À contacter',contacted:'Contacté',follow_up:'Relance à faire',negotiating:'En négociation',validated:'Validé',refused:'Refusé'};
 const AR_STAGE_TABS=[
-  {key:'to_contact',label:'À contacter'},
-  {key:'contacted',label:'Contacté'},
-  {key:'negotiating',label:'En négociation'},
-  {key:'validated',label:'Validé'},
-  {key:'refused',label:'Refusé'},
+  {key:'to_contact',label:'À contacter',emoji:'📭'},
+  {key:'contacted',label:'Contacté',emoji:'📨'},
+  {key:'negotiating',label:'En négociation',emoji:'🤝'},
+  {key:'validated',label:'Validé',emoji:'✅'},
+  {key:'refused',label:'Refusé',emoji:'❌'},
 ];
 function arListGet(){try{const raw=JSON.parse(localStorage.getItem(AR_LIST_STORAGE)||'{}');return raw&&typeof raw==='object'?raw:{};}catch(e){return {};}}
 function arListSet(items){try{localStorage.setItem(AR_LIST_STORAGE,JSON.stringify(items));}catch(e){}}
@@ -3531,7 +3530,7 @@ function arSelectionTrackHtml({opportunity,entry}){
   const genreVisual=arGenreVisual(opportunity.genre),genre=arGenreLabel(opportunity.genre);
   const total=arOpportunityTotal(opportunity),d30=arOpportunityMetric(opportunity,30),d7=arOpportunityMetric(opportunity,7),d1=arOpportunityMetric(opportunity,1);
   const release=opportunity.releaseDate?fmtDate(opportunity.releaseDate.slice(0,10)):'—';
-  return `<div class="ar-selection-track"><div class="ar-track-cover ${coverUrl?'has':''}"><span>♫</span>${coverUrl?`<img src="${esc(coverUrl)}" alt="" loading="lazy">`:''}</div><div class="ar-selection-track-main"><button class="ar-selection-track-title" onclick="openArOpportunity('${esc(opportunity.spotifyId)}')">${esc(opportunity.title)}</button><span class="ar-selection-release-type">${esc(releaseType)}</span></div><div class="ar-selection-track-facts"><div class="ar-selection-track-fact genre"><span>Genre</span><strong>${genreVisual.emoji} ${esc(genre)}</strong></div><div class="ar-selection-track-fact"><span>Sortie</span><strong>${esc(release)}</strong></div><div class="ar-selection-track-fact"><span>Streams total</span><strong>${arMetricCompact(total)}</strong></div><div class="ar-selection-track-fact"><span>Streams 30 jours</span><strong>${arMetricCompact(d30)}</strong></div><div class="ar-selection-track-fact"><span>Streams 7 jours</span><strong>${arMetricCompact(d7)}</strong></div><div class="ar-selection-track-fact"><span>Streams 24 heures</span><strong class="${d1!=null&&d1>0?'up':''}">${arMetricCompact(d1,true)}</strong></div></div><button class="ar-remove" onclick="arRemoveFromList('${esc(opportunity.spotifyId)}',event)">Retirer</button></div>`;
+  return `<div class="ar-selection-track"><div class="ar-track-cover ${coverUrl?'has':''}"><span>♫</span>${coverUrl?`<img src="${esc(coverUrl)}" alt="" loading="lazy">`:''}</div><div class="ar-selection-track-main"><button class="ar-selection-track-title" onclick="openArOpportunity('${esc(opportunity.spotifyId)}')">${esc(opportunity.title)}</button><span class="ar-selection-release-type">${esc(releaseType)}</span></div><div class="ar-selection-track-facts"><div class="ar-selection-track-fact genre"><span>Genre</span><strong>${genreVisual.emoji} ${esc(genre)}</strong></div><div class="ar-selection-track-fact"><span>Sortie</span><strong>${esc(release)}</strong></div><div class="ar-selection-track-fact"><span>Streams total</span><strong>${arMetricCompact(total)}</strong></div><div class="ar-selection-track-fact"><span>Streams 30 jours</span><strong>${arMetricCompact(d30)}</strong></div><div class="ar-selection-track-fact"><span>Streams 7 jours</span><strong>${arMetricCompact(d7)}</strong></div><div class="ar-selection-track-fact"><span>Streams 24 heures</span><strong class="${d1!=null&&d1>0?'up':''}">${arMetricCompact(d1,true)}</strong></div></div><button type="button" class="ar-remove ar-trash-action" title="Retirer ${esc(opportunity.title)} de la sélection" aria-label="Retirer ${esc(opportunity.title)} de la sélection" onclick="arRemoveFromList('${esc(opportunity.spotifyId)}',event)"><span aria-hidden="true">🗑️</span></button></div>`;
 }
 function arOpenSelectionArtistProfile(artistSpotifyId,fallbackTrackId){
   const track=R.find(item=>String(item&&item[6]||'')===String(fallbackTrackId||''));
@@ -3567,20 +3566,18 @@ function arSelectionHorizonHtml(artistKey){
   const selected=arSelectionYears(artistKey);
   return `<div class="payback-horizon"><span>${T('Horizon de projection')}</span>${PAYBACK_HORIZONS.map(year=>`<button type="button" class="${year===selected?'on':''}" onclick="arSetSelectionYears('${esc(artistKey)}',${year})">${year} ${T('ans')}</button>`).join('')}</div>`;
 }
-function arSelectionStatusHtml(artistKey){
-  const status=arArtistStatus(artistKey),label=AR_STATUSES[status]||AR_STATUSES.to_contact;
-  return `<div class="ar-artist-status"><strong class="ar-status-${esc(status)}">${esc(label)}</strong></div>`;
-}
-function arSelectionWorkflowActionsHtml(artistKey,status){
+function arSelectionWorkflowActionsHtml(artistKey,status,artistName){
   const stage=arArtistStage(status),buttons=[];
-  if(stage==='to_contact')buttons.push(`<button class="ar-workflow-action is-refuse" data-action="refuse" onclick="arRefuseArtist('${esc(artistKey)}');S.arListStage='refused';renderArList()">Refuser</button>`);
+  const refuseLabel=`Refuser ${artistName||'cet artiste'}`;
+  const refuse=`<button type="button" class="ar-workflow-action is-refuse ar-trash-action" data-action="refuse" title="${esc(refuseLabel)}" aria-label="${esc(refuseLabel)}" onclick="arRefuseArtist('${esc(artistKey)}');S.arListStage='refused';renderArList()"><span aria-hidden="true">🗑️</span></button>`;
+  if(stage==='to_contact')buttons.push(refuse);
   if(stage==='contacted'){
     buttons.push(`<button class="ar-workflow-action is-negotiate" data-action="negotiate" onclick="arStartArtistNegotiation('${esc(artistKey)}');S.arListStage='negotiating';renderArList()">Passer en négociation</button>`);
-    buttons.push(`<button class="ar-workflow-action is-refuse" data-action="refuse" onclick="arRefuseArtist('${esc(artistKey)}');S.arListStage='refused';renderArList()">Refuser</button>`);
+    buttons.push(refuse);
   }
   if(stage==='negotiating'){
     buttons.push(`<button class="ar-workflow-action is-validate" data-action="validate" onclick="arValidateArtist('${esc(artistKey)}');S.arListStage='validated';renderArList()">✓ Valider</button>`);
-    buttons.push(`<button class="ar-workflow-action is-refuse" data-action="refuse" onclick="arRefuseArtist('${esc(artistKey)}');S.arListStage='refused';renderArList()">Refuser</button>`);
+    buttons.push(refuse);
   }
   if(stage==='validated')buttons.push(`<button class="ar-workflow-action is-negotiate" data-action="negotiate" onclick="arStartArtistNegotiation('${esc(artistKey)}');S.arListStage='negotiating';renderArList()">Remettre en négociation</button>`);
   if(stage==='refused')buttons.push(`<button class="ar-workflow-action" onclick="arResetArtistStatus('${esc(artistKey)}');S.arListStage='to_contact';renderArList()">Réouvrir</button>`);
@@ -3594,7 +3591,7 @@ function arSelectionArtistCardHtml(group){
   const initials=artist.name.split(/\s+/).map(part=>part[0]).join('').slice(0,2).toUpperCase()||'A';
   const status=arArtistStatus(artist.key);
   const avatar=artist.spotifyId?`<div class="ar-selection-artist-avatar" data-ar-artist-avatar-id="${esc(artist.spotifyId)}"><span>${esc(initials)}</span></div>`:`<div class="ar-selection-artist-avatar"><span>${esc(initials)}</span></div>`;
-  return `<article class="ar-artist-selection"><header class="ar-artist-selection-head">${arSelectionStatusHtml(artist.key)}${avatar}<div class="ar-selection-artist-main"><h3>${artistName}</h3><div class="ar-selection-artist-meta">${esc(genres||'—')}${listeners?` · ${fmt(listeners)} auditeurs/mois`:''}</div>${arSelectionContactSummaryHtml(contactOpportunity)}</div><div class="ar-artist-actions"><button class="ar-artist-estimate" onclick="openArSelectionEstimate('${esc(artist.key)}')">💶 Estimation interne</button><button class="ar-artist-message" onclick="openArOutreach('${esc(contactOpportunity.spotifyId)}')">📨 Préparer le message</button>${arSelectionWorkflowActionsHtml(artist.key,status)}</div></header><div class="ar-selection-track-list">${rows.map(arSelectionTrackHtml).join('')}</div></article>`;
+  return `<article class="ar-artist-selection"><header class="ar-artist-selection-head">${avatar}<div class="ar-selection-artist-main"><h3>${artistName}</h3><div class="ar-selection-artist-meta">${esc(genres||'—')}${listeners?` · ${fmt(listeners)} auditeurs/mois`:''}</div>${arSelectionContactSummaryHtml(contactOpportunity)}</div><div class="ar-artist-actions"><button class="ar-artist-estimate" onclick="openArSelectionEstimate('${esc(artist.key)}')">💶 Estimation interne</button><button class="ar-artist-message" onclick="openArOutreach('${esc(contactOpportunity.spotifyId)}')">📨 Préparer le message</button>${arSelectionWorkflowActionsHtml(artist.key,status,artist.name)}</div></header><div class="ar-selection-track-list">${rows.map(arSelectionTrackHtml).join('')}</div></article>`;
 }
 function arSelectionEconomics(group){
   const ids=new Set(group.rows.map(row=>String(row.opportunity&&row.opportunity.spotifyId||'').trim()).filter(Boolean));
@@ -3637,11 +3634,11 @@ function renderArList(){
   groups.forEach(group=>{const stage=arArtistStage(arArtistStatus(group.artist.key));if(counts[stage]!=null)counts[stage]+=1;});
   if(!AR_STAGE_TABS.some(tab=>tab.key===S.arListStage))S.arListStage='to_contact';
   const visible=groups.filter(group=>arArtistStage(arArtistStatus(group.artist.key))===S.arListStage);
-  const tabs=`<div class="ar-selection-stage-tabs" role="tablist" aria-label="Étape de négociation">${AR_STAGE_TABS.map(tab=>`<button type="button" role="tab" class="ar-selection-stage-tab ${S.arListStage===tab.key?'on':''}" aria-selected="${S.arListStage===tab.key?'true':'false'}" onclick="arSetListStage('${tab.key}')"><span>${esc(tab.label)}</span><strong class="ar-stage-count">${counts[tab.key]}</strong></button>`).join('')}</div>`;
+  const tabs=`<div class="ar-selection-stage-tabs" role="tablist" aria-label="Étape de négociation">${AR_STAGE_TABS.map(tab=>`<button type="button" role="tab" class="ar-selection-stage-tab ${S.arListStage===tab.key?'on':''}" aria-selected="${S.arListStage===tab.key?'true':'false'}" onclick="arSetListStage('${tab.key}')"><span class="ar-stage-label"><span class="ar-stage-emoji" aria-hidden="true">${tab.emoji}</span>${esc(tab.label)}</span><strong class="ar-stage-count">${counts[tab.key]}</strong></button>`).join('')}</div>`;
   const empty=groups.length===0
     ?'Aucune track sélectionnée. Dans les opportunités, coche les tracks puis ajoute-les à ta sélection.'
     :`Aucun artiste dans « ${esc((AR_STAGE_TABS.find(tab=>tab.key===S.arListStage)||AR_STAGE_TABS[0]).label)} ».`;
-  V.innerHTML=`<div class="page-head"><div><h2>⭐ Sélection</h2><p class="ar-workflow-stage-note">Suivi de la prise de contact et de la négociation, par artiste.</p></div></div>${tabs}${visible.length?`<div class="ar-artist-selection-list">${visible.map(arSelectionArtistCardHtml).join('')}</div>`:`<div class="ar-empty-state">${empty}</div>`}`;
+  V.innerHTML=`<div class="page-head"><div><h2>⭐ Sélection</h2></div></div>${tabs}${visible.length?`<div class="ar-artist-selection-list">${visible.map(arSelectionArtistCardHtml).join('')}</div>`:`<div class="ar-empty-state">${empty}</div>`}`;
   hydrateArTrackCovers();
   hydrateArArtistAvatars();
 }

@@ -76,7 +76,7 @@ assert.doesNotMatch(spotifyNav, /Ma liste A&R/, 'The previous A&R list naming mu
 assert.doesNotMatch(spotifyNav, /Sélection A&R/, 'The sidebar must not retain the old A&R selection label');
 assert.doesNotMatch(youtubeNav, /id:'watch'/, 'YouTube watchlist navigation must be removed');
 const contactPayloadIndex=spotifyNav.indexOf('../Spotify_Selection_Contacts_data.js?payload=');
-const dashboardScriptIndex=spotifyNav.indexOf('dashboard.js?v=20260728-selection-crm-v1');
+const dashboardScriptIndex=spotifyNav.indexOf('dashboard.js?v=20260728-selection-cleanup-v1');
 assert.ok(contactPayloadIndex>=0&&dashboardScriptIndex>contactPayloadIndex, 'The Selection contact directory must load before the dashboard logic.');
 assert.match(spotify, /window\.SPOTIFY_SELECTION_CONTACTS/, 'Selection must consume its dedicated public-contact directory.');
 
@@ -85,9 +85,11 @@ assert.match(spotify, /arOpenSelectionArtistProfile\('\$\{esc\(artist\.spotifyId
 assert.match(spotify, /document\.getElementById\('ar-outreach-body'\)\?\.focus\(\)/, 'The prepared message text must receive focus');
 assert.match(spotify, /AR_ARTIST_STORAGE/, 'Artist-level outreach state must be stored separately from tracks');
 assert.match(spotify, /function arArtistStatus\(/, 'Artist-level status must default from artist state');
-assert.match(spotify, /function arSelectionStatusHtml\(artistKey\)/, 'Selection must expose one compact status per artist');
-assert.doesNotMatch(spotify.slice(spotify.indexOf('function arSelectionStatusHtml'), spotify.indexOf('function arSelectionArtistCardHtml')), /Statut artiste|Prêt à contacter/, 'The compact status must not repeat legacy helper copy');
+const artistCardStart=spotify.indexOf('function arSelectionArtistCardHtml(group){');
+const artistCardEnd=spotify.indexOf('\nfunction arSelectionEconomics(group){',artistCardStart);
+assert.doesNotMatch(spotify.slice(artistCardStart,artistCardEnd), /arSelectionStatusHtml|ar-artist-status/, 'Selection cards must not repeat the active top-level stage.');
 assert.doesNotMatch(spotify.slice(spotify.indexOf('function arSelectionTrackHtml'),spotify.indexOf('function arOpenSelectionArtistProfile')), /<label class="ar-selection-track-field">Statut/, 'Track rows must not duplicate the artist status');
+assert.match(spotify, /class="ar-remove ar-trash-action"[^>]+aria-label="Retirer /, 'Track removal must use an accessible trash button.');
 assert.match(spotify, /label:'Personnalisé'/, 'Message preparation must offer the expanded set of personalised templates');
 
 console.log('A&R outreach workflow and watchlist removal: OK');

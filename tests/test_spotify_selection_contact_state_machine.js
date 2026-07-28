@@ -18,9 +18,16 @@ const tabsSource = sourceBetween('const AR_STAGE_TABS=[', 'function arListGet(')
 const stages = [...tabsSource.matchAll(/\{key:'([^']+)'/g)].map(match => match[1]);
 assert.deepEqual(stages, ['to_contact', 'contacted', 'negotiating', 'validated', 'refused'],
   'Selection must expose the five negotiation tabs in workflow order.');
+const stageEmojis = [...tabsSource.matchAll(/emoji:'([^']+)'/g)].map(match => match[1]);
+assert.equal(stageEmojis.length, 5, 'Every negotiation stage must expose an emoji.');
+assert.ok(stageEmojis.every(Boolean), 'Negotiation-stage emojis must never be empty.');
 
 const renderSource = sourceBetween('function renderArList(){', 'function renderWatch(){');
 assert.match(renderSource, /role="tablist"/, 'The five stages must render as top-level tabs.');
+assert.match(renderSource, /class="ar-stage-emoji" aria-hidden="true">\$\{tab\.emoji\}/,
+  'Stage emojis must render without polluting the accessible label.');
+assert.doesNotMatch(renderSource, /Suivi de la prise de contact et de la négociation, par artiste\.|ar-workflow-stage-note/,
+  'Selection must not repeat the workflow explanation below its title.');
 assert.match(renderSource, /arArtistStage\(arArtistStatus\(group\.artist\.key\)\)/,
   'Derived follow-ups must be counted and filtered through their parent stage.');
 
@@ -107,8 +114,26 @@ assert.doesNotMatch(summarySource, /href=|mailto:|ar-contact-method/,
 const cardSource = sourceBetween('function arSelectionArtistCardHtml(group){', 'function arSelectionEconomics(group){');
 assert.match(cardSource, /arSelectionContactSummaryHtml\(contactOpportunity\)/,
   'Selection cards must show the compact research state.');
+assert.doesNotMatch(cardSource, /arSelectionStatusHtml|ar-artist-status/,
+  'Selection cards must rely on the active top-level stage instead of a duplicate badge.');
 assert.doesNotMatch(cardSource, /arSelectionContactPanelHtml|mailto:|ar-contact-method/,
   'Contact coordinates must not pollute Selection cards.');
+
+const trackSource = sourceBetween('function arSelectionTrackHtml(', 'function arOpenSelectionArtistProfile(');
+assert.match(trackSource, /class="ar-remove ar-trash-action"[^>]+aria-label="Retirer /,
+  'Track removal must use an accessible trash button.');
+assert.doesNotMatch(trackSource, />Retirer<\/button>/,
+  'Track removal must not retain a visible text label.');
+
+const workflowSource = sourceBetween('function arSelectionWorkflowActionsHtml(', 'function arSelectionArtistCardHtml(');
+assert.match(workflowSource, /const refuseLabel=`Refuser \$\{artistName\|\|'cet artiste'\}`/,
+  'Artist refusal must build an explicit label with the artist name.');
+assert.match(workflowSource, /aria-label="\$\{esc\(refuseLabel\)\}"/,
+  'Artist refusal must keep an escaped accessible label.');
+assert.match(workflowSource, /arRefuseArtist\('\$\{esc\(artistKey\)\}'\)/,
+  'The trash action must preserve the artist-refusal handler.');
+assert.doesNotMatch(workflowSource, />Refuser<\/button>/,
+  'Artist refusal must not retain a visible text label.');
 
 const composerSource = sourceBetween('function openArOutreach(spotifyId){', 'function arSelectionPrimaryArtist(opportunity){');
 assert.match(composerSource, /arSelectionContactPanelHtml\(opportunity\)/,

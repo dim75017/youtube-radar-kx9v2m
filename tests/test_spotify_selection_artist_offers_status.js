@@ -27,7 +27,8 @@ for (const required of [
   '✓ Message envoyé',
   'Passer en négociation',
   '✓ Valider',
-  'Refuser',
+  'aria-label="${esc(refuseLabel)}"',
+  'aria-label="Retirer ${esc(opportunity.title)} de la sélection"',
 ]) assert.ok(dashboard.includes(required), `Missing artist-selection workflow token: ${required}`);
 
 for (const required of [
@@ -44,28 +45,34 @@ assert.match(dashboard, /if\(stored==='closed'\)return 'validated'/, 'Legacy clo
 for (const stage of ['to_contact', 'contacted', 'negotiating', 'validated', 'refused']) {
   assert.match(dashboard, new RegExp(`key:'${stage}'`), `Missing negotiation stage ${stage}`);
 }
+for (const emoji of ['📭', '📨', '🤝', '✅', '❌']) {
+  assert.ok(dashboard.includes(`emoji:'${emoji}'`), `Missing stage emoji ${emoji}`);
+}
 assert.match(dashboard, /ar-selection-offers/);
 assert.match(dashboard, /const PAYBACK_HORIZONS = \[1,2,3,4,5\]/, 'The estimation horizon must offer 1 to 5 years');
 assert.match(dashboard, /paybackYears:2/, 'The default estimation horizon must stay at two years');
 assert.match(dashboard, /function setPaybackHorizon\(years\)/, 'Tracks and artists must be able to change the estimation horizon');
 assert.match(dashboard, /function arSetSelectionYears\(artistKey,years\)/, 'Each A&R artist must retain an independent estimation horizon');
 assert.match(dashboard, /arArtistUpdate\(artistKey,\{offerYears:Number\(years\)\}\)/, 'The A&R horizon must be stored on the artist record');
-for (const required of ['.ar-selection-offers', '.ar-status-follow_up', '.ar-status-negotiating', '.ar-status-validated', '.ar-status-refused', '.ar-selection-stage-tabs', '.ar-workflow-action', '.ar-selection-artist-avatar img']) {
+for (const required of ['.ar-selection-offers', '.ar-selection-stage-tabs', '.ar-stage-emoji', '.ar-workflow-action', '.ar-trash-action', '.ar-selection-artist-avatar img']) {
   assert.ok(css.includes(required), `Missing selection workflow style: ${required}`);
 }
 for (const required of [
   'linear-gradient(135deg,rgba(30,215,96,.13),rgba(34,211,238,.07)',
   'min-height:52px',
-  'position:absolute;top:10px;left:16px',
-  'strong.ar-status-to_contact',
-  'grid-template-columns:48px minmax(180px,1fr) minmax(330px,430px) auto',
-  'grid-column:3!important;grid-row:1!important',
+  '.ar-artist-selection-head{padding:15px 16px}',
+  'background:rgba(190,24,93,.82)',
+  '.ar-trash-action:focus-visible',
 ]) assert.ok(css.includes(required), `Missing refined artist-selection header style: ${required}`);
 const cardStart = dashboard.indexOf('function arSelectionArtistCardHtml(group){');
 const cardEnd = dashboard.indexOf('\nfunction arSelectionEconomics(group){', cardStart);
 const card = dashboard.slice(cardStart, cardEnd);
 assert.ok(card.includes('openArSelectionEstimate'), 'Each artist card must expose the estimate button.');
+assert.ok(card.includes('arSelectionWorkflowActionsHtml(artist.key,status,artist.name)'), 'Artist actions must receive the artist name for an explicit accessible label.');
 assert.ok(!card.includes('arSelectionEconomicsHtml(group)'), 'Financial estimates must not render inline in Selection.');
+assert.ok(!card.includes('arSelectionStatusHtml'), 'Artist cards must not repeat the top-level workflow status.');
+assert.ok(!dashboard.includes('function arSelectionStatusHtml'), 'The redundant per-card status renderer must be removed.');
+assert.ok(!dashboard.includes('Suivi de la prise de contact et de la négociation, par artiste.'), 'The redundant Selection subtitle must be removed.');
 const modalStart = dashboard.indexOf('function openArSelectionEstimate(artistKey){');
 const modalEnd = dashboard.indexOf('\nfunction renderArList(){', modalStart);
 const modal = dashboard.slice(modalStart, modalEnd);
@@ -81,6 +88,6 @@ vm.runInNewContext(dashboard.slice(paybackStart, paybackEnd), context);
 assert.equal(context.selectionPaybackTxt(1.9*12), '2 ans', '1.9 years must display as 2 whole years in Selection.');
 assert.equal(context.selectionPaybackTxt(2.8*12), '3 ans', '2.8 years must display as 3 whole years in Selection.');
 assert.ok(dashboard.slice(dashboard.indexOf('function arSelectionEconomicsHtml(group){'), modalStart).includes('selectionPaybackTxt(economics.payback)'), 'Selection must use the whole-year formatter.');
-assert.match(index, /dashboard\.js\?v=20260728-selection-crm-v1/);
+assert.match(index, /dashboard\.js\?v=20260728-selection-cleanup-v1/);
 
 console.log('spotify selection artist offers/status: OK');
