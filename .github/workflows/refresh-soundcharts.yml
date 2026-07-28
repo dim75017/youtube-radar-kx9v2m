@@ -12,12 +12,20 @@ on:
       - 'expand_soundcharts_instrumental_pool.py'
       - 'spotify_rights.py'
       - 'build_spotify_browse_catalogue.py'
+      - 'build_spotify_selection_contacts.py'
+      - 'enrich_public_artist_contacts.py'
       - 'sync_soundcharts_opportunities.py'
       - 'prepare_soundcharts_snapshot.py'
+      - 'spotify-selection-artist-seeds.json'
+      - 'spotify-selection-contact-overrides.json'
+      - 'Spotify_Selection_Contacts_data.js'
+      - 'SPOTIFY_RADAR_POLICY.md'
       - 'tests/test_refresh_soundcharts_daily.py'
       - 'tests/test_discover_soundcharts_playlists.py'
       - 'tests/test_expand_soundcharts_instrumental_pool.py'
       - 'tests/test_build_spotify_browse_catalogue.py'
+      - 'tests/test_build_spotify_selection_contacts.py'
+      - 'tests/test_enrich_public_artist_contacts.py'
       - 'tests/test_sync_soundcharts_opportunities.py'
       - 'tests/test_prepare_soundcharts_snapshot.py'
       - 'tests/test_full_discovery_catalogue.py'
@@ -25,6 +33,8 @@ on:
       - 'tests/test_spotify_full_catalogue.js'
       - 'tests/test_spotify_binary_ownership_status.js'
       - 'tests/test_spotify_selection_artist_offers_status.js'
+      - 'tests/test_spotify_selection_contact_state_machine.js'
+      - 'tests/test_ar_outreach_workflow.js'
       - 'tests/test_dashboard_opportunity_guardrails.js'
       - 'tests/test_dashboard_general_view_guardrails.js'
       - 'tests/test_dashboard_ar_ui_guardrails.js'
@@ -44,12 +54,20 @@ on:
       - 'expand_soundcharts_instrumental_pool.py'
       - 'spotify_rights.py'
       - 'build_spotify_browse_catalogue.py'
+      - 'build_spotify_selection_contacts.py'
+      - 'enrich_public_artist_contacts.py'
       - 'sync_soundcharts_opportunities.py'
       - 'prepare_soundcharts_snapshot.py'
+      - 'spotify-selection-artist-seeds.json'
+      - 'spotify-selection-contact-overrides.json'
+      - 'Spotify_Selection_Contacts_data.js'
+      - 'SPOTIFY_RADAR_POLICY.md'
       - 'tests/test_refresh_soundcharts_daily.py'
       - 'tests/test_discover_soundcharts_playlists.py'
       - 'tests/test_expand_soundcharts_instrumental_pool.py'
       - 'tests/test_build_spotify_browse_catalogue.py'
+      - 'tests/test_build_spotify_selection_contacts.py'
+      - 'tests/test_enrich_public_artist_contacts.py'
       - 'tests/test_sync_soundcharts_opportunities.py'
       - 'tests/test_prepare_soundcharts_snapshot.py'
       - 'tests/test_full_discovery_catalogue.py'
@@ -57,6 +75,8 @@ on:
       - 'tests/test_spotify_full_catalogue.js'
       - 'tests/test_spotify_binary_ownership_status.js'
       - 'tests/test_spotify_selection_artist_offers_status.js'
+      - 'tests/test_spotify_selection_contact_state_machine.js'
+      - 'tests/test_ar_outreach_workflow.js'
       - 'tests/test_dashboard_opportunity_guardrails.js'
       - 'tests/test_dashboard_general_view_guardrails.js'
       - 'tests/test_dashboard_ar_ui_guardrails.js'
@@ -144,6 +164,8 @@ jobs:
           tests/test_discover_soundcharts_playlists.py
           tests/test_expand_soundcharts_instrumental_pool.py
           tests/test_build_spotify_browse_catalogue.py
+          tests/test_build_spotify_selection_contacts.py
+          tests/test_enrich_public_artist_contacts.py
           tests/test_sync_soundcharts_opportunities.py
           tests/test_prepare_soundcharts_snapshot.py
           tests/test_full_discovery_catalogue.py
@@ -152,16 +174,17 @@ jobs:
 
       - name: Validate production source syntax
         run: |
-          python -m py_compile refresh_soundcharts_daily.py discover_soundcharts_playlists.py expand_soundcharts_instrumental_pool.py spotify_rights.py build_spotify_browse_catalogue.py enrich_public_artist_contacts.py sync_soundcharts_opportunities.py prepare_soundcharts_snapshot.py
-          python -m unittest tests.test_enrich_public_artist_contacts
+          python -m py_compile refresh_soundcharts_daily.py discover_soundcharts_playlists.py expand_soundcharts_instrumental_pool.py spotify_rights.py build_spotify_browse_catalogue.py build_spotify_selection_contacts.py enrich_public_artist_contacts.py sync_soundcharts_opportunities.py prepare_soundcharts_snapshot.py
           node --check spotify/dashboard.js
           node tests/test_dashboard_opportunity_guardrails.js
           node tests/test_dashboard_general_view_guardrails.js
           node tests/test_dashboard_ar_ui_guardrails.js
+          node tests/test_ar_outreach_workflow.js
           node tests/test_dashboard_genre_filter.js
           node tests/test_spotify_full_catalogue.js
           node tests/test_spotify_binary_ownership_status.js
           node tests/test_spotify_selection_artist_offers_status.js
+          node tests/test_spotify_selection_contact_state_machine.js
           node tests/test_spotify_catalogue_layers.js
           node tests/test_spotify_performance_lifetime.js
           node tests/test_spotify_update_status.js
@@ -602,8 +625,18 @@ jobs:
           python enrich_public_artist_contacts.py
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
           --cache soundcharts-instrumental-cache.json
-          --max-artists 10
+          --priority-artists spotify-selection-artist-seeds.json
+          --max-artists 100
           --max-profiles-per-artist 4
+
+      - name: Build Selection-only public contact directory
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        run: >-
+          python build_spotify_selection_contacts.py
+          --cache soundcharts-instrumental-cache.json
+          --priority-artists spotify-selection-artist-seeds.json
+          --overrides spotify-selection-contact-overrides.json
+          --output Spotify_Selection_Contacts_data.js
 
       - name: Recalculate actionable A&R opportunities
         if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
@@ -624,6 +657,7 @@ jobs:
             ${{ steps.snapshot.outputs.candidate }}
             Spotify_Performance_data.js
             Spotify_Playlists_data.js
+            Spotify_Selection_Contacts_data.js
             soundcharts-history
             soundcharts-instrumental-cache.json
           if-no-files-found: error
@@ -928,6 +962,7 @@ jobs:
             Spotify_Browse_Catalogue_data.js \
             Spotify_Playlists_data.js \
             Spotify_Performance_data.js \
+            Spotify_Selection_Contacts_data.js \
             soundcharts-history
           git commit -m "data: activate validated Soundcharts snapshot"
           for attempt in 1 2 3; do

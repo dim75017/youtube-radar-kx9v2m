@@ -1,0 +1,139 @@
+{
+  "version": 1,
+  "updated_at": "2026-07-28",
+  "artists": [
+    {
+      "name": "Aurelian Juno",
+      "spotify_id": "0clWZsJkYSrFdmUkQygfiQ",
+      "exclude_urls": ["https://www.youtube.com/channel/UCVnCV435IMTkPv075BFB2sA"],
+      "scan_status": "no_public_contact_found",
+      "checked_at": "2026-07-28",
+      "sources_checked": [
+        "https://open.spotify.com/artist/0clWZsJkYSrFdmUkQygfiQ",
+        "https://music.apple.com/ca/artist/aurelian-juno/1825867801",
+        "https://www.youtube.com/channel/UCVnCV435IMTkPv075BFB2sA",
+        "https://www.youtube.com/watch?v=B92H0pevv-0"
+      ]
+    },
+    {
+      "name": "Anton Vega",
+      "spotify_id": "7H15xwuYNLQKF74GgsYfw7",
+      "exclude_urls": ["https://www.youtube.com/channel/UCuXcfCllwMUhbWNR2TPO_gg"],
+      "scan_status": "no_public_contact_found",
+      "checked_at": "2026-07-28",
+      "sources_checked": [
+        "https://open.spotify.com/artist/7H15xwuYNLQKF74GgsYfw7",
+        "https://music.apple.com/mx/artist/anton-vega/1643854007",
+        "https://www.youtube.com/channel/UCuXcfCllwMUhbWNR2TPO_gg",
+        "https://www.youtube.com/watch?v=BmTL4Kl5wVQ"
+      ]
+    },
+    {
+      "name": "Eternalistic",
+      "spotify_id": "77efGNIP8xtX0iCb5RCHCG",
+      "exclude_urls": [
+        "https://www.youtube.com/channel/UCdZJosUu8r7vfTsAwM-q5dw",
+        "https://www.youtube.com/channel/UCMwxAS-2qPo9PRco1h3xtTw",
+        "https://www.eternalistic.com/"
+      ],
+      "scan_status": "no_public_contact_found",
+      "checked_at": "2026-07-28",
+      "sources_checked": [
+        "https://open.spotify.com/artist/77efGNIP8xtX0iCb5RCHCG",
+        "https://music.apple.com/us/artist/eternalistic/1671776987",
+        "https://www.youtube.com/channel/UCMwxAS-2qPo9PRco1h3xtTw",
+        "https://www.youtube.com/watch?v=kpUQDI3bfXM"
+      ]
+    },
+    {
+      "name": "Rosalie Andersdotter",
+      "spotify_id": "4s5tfHvAPebz3Ue4DP6KTb",
+      "channels": [{"platform": "soundcloud", "url": "https://soundcloud.com/rosalieandersdotter"}],
+      "checked_at": "2026-07-28",
+      "sources_checked": [
+        "https://open.spotify.com/artist/4s5tfHvAPebz3Ue4DP6KTb",
+        "https://soundcloud.com/rosalieandersdotter",
+        "https://soundcloud.com/rosalieandersdotter/here-for-you",
+        "https://www.youtube.com/channel/UCNwDcG5rSXSRzmiQuK_cIyw",
+        "https://www.youtube.com/watch?v=jocs_gyRNxI"
+      ]
+    },
+    {
+      "name": "Dalby",
+      "spotify_id": "5ai5w9rMxwvqSY4rrDof73",
+      "channels": [{"platform": "instagram", "url": "https://www.instagram.com/dalbypianomusic/"}],
+      "checked_at": "2026-07-28",
+      "sources_checked": [
+        "https://open.spotify.com/artist/5ai5w9rMxwvqSY4rrDof73",
+        "https://www.instagram.com/dalbypianomusic/"
+      ]
+    },
+    {
+      "name": "Monte Aria",
+      "spotify_id": "7mVQk6J9GM0K0sf1H9ueXZ",
+      "channels": [{"platform": "instagram", "url": "https://www.instagram.com/montearia_music/"}],
+      "checked_at": "2026-07-28",
+      "sources_checked": [
+        "https://open.spotify.com/artist/7mVQk6J9GM0K0sf1H9ueXZ",
+        "https://www.instagram.com/montearia_music/"
+      ]
+    },
+    {
+      "name": "Floyd Nova",
+      "spotify_id": "4aPhtYq4FqnbM02GHtZHhz",
+      "channels": [{"platform": "soundcloud", "url": "https://soundcloud.com/floydnova"}],
+      "checked_at": "2026-07-28",
+      "sources_checked": [
+        "https://open.spotify.com/artist/4aPhtYq4FqnbM02GHtZHhz",
+        "https://soundcloud.com/floydnova"
+      ]
+    },
+    {
+      "name": "Anthony Jacobus",
+      "spotify_id": "6qxdmY3SMyvfVadKXWTZQi",
+      "email": "info@andantepiano.nl",
+      "channels": [
+        {"platform": "website", "url": "https://www.andantepiano.nl/artists/anthony-jacobus"},
+        {"platform": "instagram", "url": "https://www.instagram.com/anthony_jacobus_piano/"}
+      ],
+      "checked_at": "2026-07-28",
+      "sources_checked": [
+        "https://www.andantepiano.nl/artists/anthony-jacobus",
+        "https://www.instagram.com/anthony_jacobus_piano/",
+        "https://open.spotify.com/artist/6qxdmY3SMyvfVadKXWTZQi"
+      ]
+    },
+    {
+      "name": "Martes Fiore",
+      "spotify_id": "4iyGWBpdODMrJp3DRotA9W",
+      "channels": [{"platform": "instagram", "url": "https://www.instagram.com/martesfiore/"}],
+      "checked_at": "2026-07-28",
+      "sources_checked": [
+        "https://www.instagram.com/martesfiore/",
+        "https://open.spotify.com/artist/4iyGWBpdODMrJp3DRotA9W"
+      ]
+    },
+    {
+      "name": "Henry Flower",
+      "spotify_id": "297mB3xOXz7lxYcIY6Ur5E",
+      "exclude_urls": ["https://www.youtube.com/channel/UC9Xn6S_aBtyp-V6nneqac6w"],
+      "scan_status": "no_public_contact_found",
+      "checked_at": "2026-07-28",
+      "sources_checked": [
+        "https://www.youtube.com/channel/UC9Xn6S_aBtyp-V6nneqac6w",
+        "https://open.spotify.com/artist/297mB3xOXz7lxYcIY6Ur5E"
+      ]
+    },
+    {
+      "name": "Goratie",
+      "spotify_id": "3WuT8leyL0ikW55vAra4rD",
+      "exclude_urls": ["https://soundcloud.com/goratie"],
+      "scan_status": "no_public_contact_found",
+      "checked_at": "2026-07-28",
+      "sources_checked": [
+        "https://open.spotify.com/artist/3WuT8leyL0ikW55vAra4rD",
+        "https://music.apple.com/fr/artist/goratie/1259686685"
+      ]
+    }
+  ]
+}

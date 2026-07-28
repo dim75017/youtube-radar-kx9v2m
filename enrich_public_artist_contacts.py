@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Find explicitly published professional e-mails on known official artist pages.
 
-This is deliberately a narrow enrichment pass.  It never discovers profiles,
-never guesses an address and never contacts anyone.  It follows only public
-HTTP(S) URLs already returned by Soundcharts for strict, verified A&R artists.
+This is deliberately a narrow enrichment pass. It never discovers profiles,
+never guesses an address and never contacts anyone. It follows only public
+HTTP(S) URLs already returned by Soundcharts for strict, verified A&R artists,
+plus artists explicitly placed in the manually curated Selection workflow. That
+Selection exception does not promote an artist into automatic A&R results.
 """
 
 from __future__ import annotations
@@ -155,27 +157,70 @@ def profile_urls(value: Any, fallback: Any, limit: int) -> list[str]:
     return urls[:max(0, limit)]
 
 
-def enrich(payload: dict[str, Any], cache: dict[str, Any], max_artists: int, max_profiles: int) -> dict[str, int]:
+def selected_artist_ids(path: Path | None) -> tuple[set[str], set[str]]:
+    if path is None or not path.exists():
+        return set(), set()
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    rows = payload.get("artists") if isinstance(payload, Mapping) else payload
+    if not isinstance(rows, list):
+        return set(), set()
+    spotify_ids = {
+        str(row.get("spotify_id") or "").strip()
+        for row in rows if isinstance(row, Mapping)
+        if str(row.get("spotify_id") or "").strip()
+    }
+    soundcharts_ids = {
+        str(row.get("soundcharts_uuid") or "").strip()
+        for row in rows if isinstance(row, Mapping)
+        if str(row.get("soundcharts_uuid") or "").strip()
+    }
+    return spotify_ids, soundcharts_ids
+
+
+def selected_spotify_ids(path: Path | None) -> set[str]:
+    return selected_artist_ids(path)[0]
+
+
+def enrich(
+    payload: dict[str, Any],
+    cache: dict[str, Any],
+    max_artists: int,
+    max_profiles: int,
+    priority_spotify_ids: set[str] | None = None,
+    priority_soundcharts_ids: set[str] | None = None,
+) -> dict[str, int]:
     global _artist_rows
     schemas = payload.setdefault("schemas", {})
     artist_schema = schemas.get("artists") if isinstance(schemas.get("artists"), list) else []
     schemas["artists"] = artist_schema
     raw_rows = payload.get("artists") if isinstance(payload.get("artists"), list) else []
     _artist_rows = [row for row in raw_rows if isinstance(row, list)]
-    allowed = strict_artist_ids(payload)
+    priority_spotify_ids = priority_spotify_ids or set()
+    priority_uuids = set(priority_soundcharts_ids or set()) | {
+        str(field(row, artist_schema, "soundcharts_uuid") or "")
+        for row in _artist_rows
+        if str(field(row, artist_schema, "spotify_id") or "") in priority_spotify_ids
+    }
+    allowed = strict_artist_ids(payload) | priority_uuids
     cache_artists = cache.setdefault("artists", {}) if isinstance(cache, dict) else {}
     processed = found = 0
-    for row in _artist_rows:
+    ordered_rows = sorted(
+        _artist_rows,
+        key=lambda row: 0 if str(field(row, artist_schema, "soundcharts_uuid") or "") in priority_uuids else 1,
+    )
+    for row in ordered_rows:
         uuid = str(field(row, artist_schema, "soundcharts_uuid") or "")
         if not uuid or uuid not in allowed or processed >= max_artists:
             continue
         existing = str(field(row, artist_schema, "email") or "").strip()
         research = field(row, artist_schema, "contact_research")
-        if existing or (isinstance(research, Mapping) and research.get("checked_at")):
+        if existing or (
+            uuid not in priority_uuids
+            and isinstance(research, Mapping)
+            and research.get("checked_at")
+        ):
             continue
         urls = profile_urls(field(row, artist_schema, "public_contacts"), field(row, artist_schema, "contact_url"), max_profiles)
-        if not urls:
-            continue
         processed += 1
         email = ""
         checked: list[str] = []
@@ -185,7 +230,13 @@ def enrich(payload: dict[str, Any], cache: dict[str, Any], max_artists: int, max
             if emails:
                 email = emails[0]
                 break
-        record = {"checked_at": now(), "sources_checked": checked, "result": "email_found" if email else "no_public_business_email"}
+        if email:
+            result = "email_found"
+        elif checked:
+            result = "no_public_business_email"
+        else:
+            result = "no_known_public_profile"
+        record = {"checked_at": now(), "sources_checked": checked, "result": result}
         set_field(row, artist_schema, "contact_research", record)
         cached = cache_artists.setdefault(uuid, {}) if isinstance(cache_artists, dict) else {}
         if isinstance(cached, dict):
@@ -204,10 +255,19 @@ def main() -> int:
     parser.add_argument("--cache", type=Path, required=True)
     parser.add_argument("--max-artists", type=int, default=10)
     parser.add_argument("--max-profiles-per-artist", type=int, default=4)
+    parser.add_argument("--priority-artists", type=Path)
     args = parser.parse_args()
     payload = read_payload(args.soundcharts)
     cache = json.loads(args.cache.read_text(encoding="utf-8")) if args.cache.exists() else {}
-    result = enrich(payload, cache, max(0, args.max_artists), max(0, args.max_profiles_per_artist))
+    priority_spotify_ids, priority_soundcharts_ids = selected_artist_ids(args.priority_artists)
+    result = enrich(
+        payload,
+        cache,
+        max(0, args.max_artists),
+        max(0, args.max_profiles_per_artist),
+        priority_spotify_ids,
+        priority_soundcharts_ids,
+    )
     write_payload(args.soundcharts, payload)
     args.cache.write_text(json.dumps(cache, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print(json.dumps(result, ensure_ascii=False))

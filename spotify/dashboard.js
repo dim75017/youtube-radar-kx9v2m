@@ -275,6 +275,9 @@ const PERF_TRACKS = PERF.tracks || {};
 const PERF_ARTISTS = PERF.artists || {};
 const PERF_PLAYLISTS = PERF.playlists || {};
 const SC = window.SPOTIFY_SOUNDCHARTS || null;
+/* Répertoire public réservé à Sélection. Il contient uniquement les profils
+   publics exportés par le scan quotidien ou des corrections sourcées. */
+const SELECTION_CONTACTS = window.SPOTIFY_SELECTION_CONTACTS || {artists:{}};
 /* Le staging Soundcharts est volontairement injecté dans les vues globales sans
    modifier le catalogue historique : chaque ligne garde son marqueur `sc`. */
 const SC_STAGING = {artists:0, tracks:0};
@@ -1671,7 +1674,7 @@ const S = {
   newDays:90, shownN:100,
   plq:'', plcur:'all', plgenre:'all', plsort:'followers', pldir:-1, plonly:false, shownPL:80, plview:'qualified',
   lbq:'', lbsort:'streams', lbdir:-1, shownLB:80, labelKey:null, lbModalArtist:null,
-  radarFilter:'all', radarLimit:100, radarShown:100, radarTrackId:'', radarGenre:'all', radarSort:'score', radarSortDir:-1, radarQ:'', arSelected:{},
+  radarFilter:'all', radarLimit:100, radarShown:100, radarTrackId:'', radarGenre:'all', radarSort:'score', radarSortDir:-1, radarQ:'', arSelected:{}, arListStage:'to_contact',
   artistFlowDays:7, trackFlowDays:30,
 };
 
@@ -2130,25 +2133,73 @@ function renderArtistModal(){
 /* ---------- Liste A&R (locale au navigateur, aucun e-mail n'est envoyé) ---------- */
 const AR_LIST_STORAGE='spotify_ar_outreach_list_v1';
 const AR_ARTIST_STORAGE='spotify_ar_outreach_artists_v1';
-const AR_STATUSES={to_contact:'À contacter',contacted:'Contacté',follow_up:'Relance à faire',closed:'Terminé'};
+const AR_STATUSES={to_contact:'À contacter',contacted:'Contacté',follow_up:'Relance à faire',negotiating:'En négociation',validated:'Validé',refused:'Refusé'};
+const AR_STAGE_TABS=[
+  {key:'to_contact',label:'À contacter'},
+  {key:'contacted',label:'Contacté'},
+  {key:'negotiating',label:'En négociation'},
+  {key:'validated',label:'Validé'},
+  {key:'refused',label:'Refusé'},
+];
 function arListGet(){try{const raw=JSON.parse(localStorage.getItem(AR_LIST_STORAGE)||'{}');return raw&&typeof raw==='object'?raw:{};}catch(e){return {};}}
 function arListSet(items){try{localStorage.setItem(AR_LIST_STORAGE,JSON.stringify(items));}catch(e){}}
 function arArtistGet(){try{const raw=JSON.parse(localStorage.getItem(AR_ARTIST_STORAGE)||'{}');return raw&&typeof raw==='object'?raw:{};}catch(e){return {};}}
 function arArtistSet(items){try{localStorage.setItem(AR_ARTIST_STORAGE,JSON.stringify(items));}catch(e){}}
 function arArtistEntry(artistKey){return arArtistGet()[artistKey]||null;}
 function arArtistUpdate(artistKey,patch){const items=arArtistGet();items[artistKey]=Object.assign({status:'to_contact'},items[artistKey]||{},patch);arArtistSet(items);}
-function arArtistStatus(artistKey){
+function arArtistStatusAt(artistKey,nowMs){
   const entry=arArtistEntry(artistKey)||{};
-  if(entry.status==='closed'||entry.dealClosedAt)return 'closed';
-  if(entry.contactedAt){
-    const elapsed=Date.now()-new Date(entry.contactedAt).getTime();
+  const stored=String(entry.status||'').trim().toLowerCase();
+  if(stored==='closed')return 'validated';
+  if(['validated','refused','negotiating','to_contact'].includes(stored))return stored;
+  if(entry.dealClosedAt)return 'validated';
+  if(stored==='contacted'||stored==='follow_up'||entry.contactedAt){
+    const elapsed=Number(nowMs)-new Date(entry.contactedAt).getTime();
     if(Number.isFinite(elapsed)&&elapsed>=7*24*60*60*1000)return 'follow_up';
+    if(stored==='follow_up'&&!Number.isFinite(elapsed))return 'follow_up';
     return 'contacted';
   }
   return 'to_contact';
 }
-function arMarkArtistContacted(artistKey){arArtistUpdate(artistKey,{status:'contacted',contactedAt:new Date().toISOString(),nextFollowUp:arFollowUpDate()});}
-function arCloseArtistDeal(artistKey){arArtistUpdate(artistKey,{status:'closed',dealClosedAt:new Date().toISOString(),nextFollowUp:''});}
+function arArtistStatus(artistKey){return arArtistStatusAt(artistKey,Date.now());}
+function arArtistStage(status){return status==='follow_up'?'contacted':status==='closed'?'validated':status;}
+function arStoredArtistStage(entry){
+  const stored=String(entry&&entry.status||'').trim().toLowerCase();
+  if(stored==='closed'||!stored&&entry&&entry.dealClosedAt)return 'validated';
+  if(['to_contact','contacted','follow_up','negotiating','validated','refused'].includes(stored))return arArtistStage(stored);
+  return entry&&entry.contactedAt?'contacted':'to_contact';
+}
+function arSyncArtistTrackStatus(artistKey,status,patch={}){
+  const items=arListGet();
+  Object.keys(items).forEach(spotifyId=>{
+    const opportunity=arSelectionOpportunityById(spotifyId);
+    if(opportunity&&arSelectionPrimaryArtist(opportunity).key===artistKey){
+      items[spotifyId]=Object.assign({},items[spotifyId],patch,{status});
+    }
+  });
+  arListSet(items);
+}
+function arSetArtistStatus(artistKey,status){
+  const next=arArtistStage(status);
+  if(!['to_contact','contacted','negotiating','validated','refused'].includes(next))return;
+  const current=arArtistEntry(artistKey)||{},now=new Date().toISOString();
+  const patch={status:next,statusChangedAt:now,nextFollowUp:''};
+  if(next==='to_contact')patch.reopenedAt=now;
+  if(next==='contacted')Object.assign(patch,{contactedAt:current.contactedAt||now,nextFollowUp:arFollowUpDate()});
+  if(next==='negotiating')patch.negotiationStartedAt=current.negotiationStartedAt||now;
+  if(next==='validated')Object.assign(patch,{validatedAt:now,dealClosedAt:now});
+  if(next==='refused')patch.refusedAt=now;
+  arArtistUpdate(artistKey,patch);
+  arSyncArtistTrackStatus(artistKey,next,patch);
+  arSyncListCount();
+}
+function arMarkArtistContacted(artistKey){arSetArtistStatus(artistKey,'contacted');}
+function arStartArtistNegotiation(artistKey){arSetArtistStatus(artistKey,'negotiating');}
+function arValidateArtist(artistKey){arSetArtistStatus(artistKey,'validated');}
+function arRefuseArtist(artistKey){arSetArtistStatus(artistKey,'refused');}
+function arResetArtistStatus(artistKey){arSetArtistStatus(artistKey,'to_contact');}
+function arCloseArtistDeal(artistKey){arValidateArtist(artistKey);}
+function arSetListStage(stage){if(!AR_STAGE_TABS.some(item=>item.key===stage))return;S.arListStage=stage;renderArList();}
 function arListEntry(spotifyId){return arListGet()[spotifyId]||null;}
 function arSelectionEligible(spotifyId){
   return Boolean(arSelectionOpportunityById(spotifyId));
@@ -2166,9 +2217,15 @@ function arToggleSelection(spotifyId,selected){if(!S.arSelected)S.arSelected={};
 function arSelectVisible(spotifyIds,selected){if(!S.arSelected)S.arSelected={};spotifyIds.forEach(id=>{if(selected&&arSelectionEligible(id))S.arSelected[id]=true;else delete S.arSelected[id];});arRefreshSelection();}
 function arAddManyToList(spotifyIds){
   const valid=[...new Set(spotifyIds||[])].filter(id=>arSelectionEligible(id));if(!valid.length)return;
-  const items=arListGet(),addedAt=new Date().toISOString();
-  valid.forEach(id=>{if(!items[id])items[id]={addedAt,status:'to_contact',note:'',nextFollowUp:'',contactedAt:'',subject:'',body:''};});
-  S.arSelected={};arListSet(items);arSyncListCount();
+  const items=arListGet(),artists=arArtistGet(),addedAt=new Date().toISOString();
+  valid.forEach(id=>{
+    const opportunity=arSelectionOpportunityById(id);if(!opportunity)return;
+    const artist=arSelectionPrimaryArtist(opportunity);
+    const inheritedStatus=arStoredArtistStage(artists[artist.key]);
+    if(!items[id])items[id]={addedAt,status:inheritedStatus,note:'',nextFollowUp:'',contactedAt:'',subject:'',body:''};
+    artists[artist.key]=Object.assign({status:'to_contact',selectionAddedAt:addedAt},artists[artist.key]||{});
+  });
+  S.arSelected={};arListSet(items);arArtistSet(artists);arSyncListCount();
   if(S.view==='ar-list')renderArList();
   else if(S.view==='radar')renderRadar();
   else render();
@@ -2310,7 +2367,7 @@ function arOpenSelectionContextMenu(spotifyIds,clientX,clientY,options={}){
 function arRemoveFromList(spotifyId,event){if(event)event.stopPropagation();const items=arListGet();delete items[spotifyId];arListSet(items);arSyncListCount();render();}
 function arUpdateList(spotifyId,patch){const items=arListGet();if(!items[spotifyId])return;items[spotifyId]=Object.assign({},items[spotifyId],patch);arListSet(items);arSyncListCount();}
 function arFollowUpDate(days=7){const date=new Date();date.setDate(date.getDate()+days);return date.toISOString().slice(0,10);}
-function arPublicEmail(opportunity){const candidate=arPublicContactChannels(opportunity).find(item=>item.type==='email'&&item.value);return candidate?String(candidate.value):'';}
+function arPublicEmail(opportunity){const candidate=arSelectionContactChannels(opportunity).find(item=>item.type==='email'&&item.value);return candidate?String(candidate.value):'';}
 function arOutreachDrafts(opportunity){
   const artist=(Array.isArray(opportunity.artists)?opportunity.artists.map(item=>item&&item.name).filter(Boolean)[0]:null)||opportunity.credit||'there';
   const playlist=(arEditorialPlaylists(opportunity)[0]||{}).name||'our independent instrumental research';
@@ -2892,6 +2949,65 @@ function arContactHtml(opportunity,compact=false){
   const links=platforms.map(channel=>`<a class="ar-platform-link ${arPlatformLogo(channel.type)?'has-logo':'text-link'}" href="${esc(channel.value)}" target="_blank" rel="noopener" title="${esc(arPlatformLabel(channel.type))}" aria-label="${esc(arPlatformLabel(channel.type))}" onclick="event.stopPropagation()">${arPlatformLogo(channel.type)||esc(arPlatformLabel(channel.type))}</a>`).join('');
   return emailHtml||links?`<span class="ar-contact-set">${emailHtml}${links?`<span class="ar-platform-links">${links}</span>`:''}</span>`:'<span class="ar-contact-missing">Profils publics indisponibles</span>';
 }
+function arSelectionContactRecord(opportunity){
+  const artist=arSelectionPrimaryArtist(opportunity);
+  const records=SELECTION_CONTACTS&&SELECTION_CONTACTS.artists&&typeof SELECTION_CONTACTS.artists==='object'?SELECTION_CONTACTS.artists:{};
+  return artist.spotifyId&&records[artist.spotifyId]&&typeof records[artist.spotifyId]==='object'?records[artist.spotifyId]:null;
+}
+function arSelectionContactChannels(opportunity){
+  const record=arSelectionContactRecord(opportunity),channels=[],seen=new Set();
+  const add=(type,value)=>{
+    const normalizedType=String(type||'').trim().toLowerCase();
+    const clean=normalizedType==='email'?String(value||'').trim():arSafePublicUrl(value);
+    const finalType=normalizedType==='email'?'email':arPlatformFromUrl(normalizedType,clean);
+    if(!clean||finalType==='spotify')return;
+    const key=`${finalType}:${clean.toLowerCase()}`;if(seen.has(key))return;
+    seen.add(key);channels.push({type:finalType,value:clean});
+  };
+  /* Une correction humaine « aucun contact » est prioritaire sur un ancien
+     profil Soundcharts ambigu. Les sources restent visibles dans le panneau. */
+  if(record&&record.scan_status==='no_public_contact_found')return [];
+  if(record){
+    add('email',record.email);
+    (Array.isArray(record.channels)?record.channels:[]).forEach(channel=>add(channel&&channel.platform,channel&&channel.url));
+  }
+  if(arContactEligible(opportunity))arPublicContactChannels(opportunity).forEach(channel=>add(channel.type,channel.value));
+  return channels;
+}
+function arSelectionContactState(opportunity){
+  const record=arSelectionContactRecord(opportunity),channels=arSelectionContactChannels(opportunity);
+  if(channels.some(channel=>channel.type==='email'))return 'email_found';
+  if(channels.length)return 'public_channel_found';
+  if(record&&record.scan_status==='no_public_contact_found')return 'no_public_contact_found';
+  return 'pending';
+}
+function arSelectionContactSummaryHtml(opportunity){
+  const state=arSelectionContactState(opportunity);
+  const copy={email_found:'E-mail professionnel trouvé',public_channel_found:'Profil public trouvé',no_public_contact_found:'Aucun moyen de contact public trouvé',pending:'Recherche de contact en cours'};
+  const style=state==='email_found'||state==='public_channel_found'?'has-contact':state==='no_public_contact_found'?'no-contact':'is-searching';
+  return `<div class="ar-contact-scan-summary ${style}"><span aria-hidden="true">${state==='email_found'?'✉':state==='public_channel_found'?'↗':state==='no_public_contact_found'?'—':'◌'}</span>${esc(copy[state])}</div>`;
+}
+function arContactSourceLabel(url,index){
+  try{const parsed=new URL(url);return `${parsed.hostname.replace(/^www\./,'')} · source ${index+1}`;}catch(_){return `Source ${index+1}`;}
+}
+function arSelectionContactPanelHtml(opportunity){
+  const record=arSelectionContactRecord(opportunity),state=arSelectionContactState(opportunity),channels=arSelectionContactChannels(opportunity);
+  const artist=arSelectionPrimaryArtist(opportunity),spotify=artist.spotifyId?spotifyArtistUrl(artist.spotifyId):'';
+  const sources=[];const seen=new Set();
+  const addSource=value=>{const clean=arSafePublicUrl(value);if(!clean||seen.has(clean.toLowerCase()))return;seen.add(clean.toLowerCase());sources.push(clean);};
+  addSource(spotify);(Array.isArray(record&&record.sources_checked)?record.sources_checked:[]).forEach(addSource);
+  const methods=channels.map(channel=>channel.type==='email'
+    ?`<a class="ar-contact-method" href="mailto:${esc(channel.value)}"><span class="ar-contact-method-icon">✉</span><span class="ar-contact-method-copy"><span>${esc(arPlatformLabel(channel.type))}</span><strong>${esc(channel.value)}</strong></span></a>`
+    :`<a class="ar-contact-method" href="${esc(channel.value)}" target="_blank" rel="noopener"><span class="ar-contact-method-icon">${arPlatformLogo(channel.type)||'↗'}</span><span class="ar-contact-method-copy"><span>${esc(arPlatformLabel(channel.type))}</span><strong>Ouvrir le profil</strong></span></a>`).join('');
+  const empty=state==='no_public_contact_found'
+    ?'<div class="ar-contact-empty"><strong>Aucun moyen de contact public trouvé</strong><span>Spotify, les profils publics et les sources disponibles ont été vérifiés sans adresse ni canal fiable. Aucun contact n’est inventé.</span></div>'
+    :'<div class="ar-contact-empty"><strong>Recherche en cours</strong><span>Le répertoire quotidien n’a pas encore fourni de moyen de contact public fiable pour cet artiste.</span></div>';
+  const checked=record&&String(record.checked_at||'').slice(0,10);
+  const sourceLinks=sources.map((url,index)=>`<a href="${esc(url)}" target="_blank" rel="noopener">${esc(arContactSourceLabel(url,index))}</a>`).join('');
+  const warning=!arContactEligible(opportunity)?'<div class="ar-contact-panel-warning">Sélection manuelle : l’artiste reste hors prospection automatique tant que les garde-fous instrumental, IA, droits et identité ne sont pas tous validés.</div>':'';
+  const stateLabel={email_found:'E-mail trouvé',public_channel_found:'Profil trouvé',no_public_contact_found:'Aucun contact',pending:'En cours'}[state];
+  return `<section class="ar-contact-panel"><div class="ar-contact-panel-head"><div><h4>Profils et moyens de contact publics</h4><small>SCAN CONTACT${checked?` · vérifié le ${esc(fmtDate(checked))}`:''}</small></div><span class="ar-contact-panel-status">${esc(stateLabel)}</span></div>${warning}${methods?`<div class="ar-contact-methods">${methods}</div>`:empty}${sourceLinks?`<div class="ar-contact-source-links"><span>Sources vérifiées</span>${sourceLinks}</div>`:''}</section>`;
+}
 function arConfidenceLabel(value){
   if(value==null) return 'preuve en construction';
   if(value>=.8) return 'confiance haute';
@@ -3376,18 +3492,17 @@ function openArOutreach(spotifyId){
   const opportunity=arOpportunityRows().find(item=>item.spotifyId===spotifyId);let entry=arListEntry(spotifyId);if(!opportunity)return;
   if(!entry){arAddManyToList([spotifyId]);entry=arListEntry(spotifyId);}
   if(!entry)return;
-  if(!arContactEligible(opportunity)){alert('Ce titre ne peut pas être contacté : les garde-fous instrumental, IA, droits ou identité ne sont pas tous validés.');return;}
   const artist=arSelectionPrimaryArtist(opportunity),artistKey=artist.key,artistEntry=arArtistEntry(artistKey)||{};
   const drafts=arOutreachDrafts(opportunity);const email=arPublicEmail(opportunity);let selectedIndex=Math.max(0,Math.min(drafts.length-1,Number(artistEntry.draftVariant??entry.draftVariant)||0));
   const initial=drafts[selectedIndex];const subject=artistEntry.subject||entry.subject||initial.subject;const body=artistEntry.body||entry.body||initial.body;
   const box=document.getElementById('ar-body');box.className='tmbox ambox ar-composer';
-  box.innerHTML=`<header class="ar-composer-head"><div class="ar-composer-icon">✉</div><div><div class="ar-composer-kicker">CONTACT ARTISTE</div><h3>${esc(artist.name)}</h3><p>À propos de “${esc(opportunity.title)}”</p></div><button class="tclose" onclick="closeArModal()">✕</button></header>
-    <div class="ar-composer-content"><aside class="ar-composer-side"><div class="ar-outreach-note">Le message reste sous votre contrôle : ouvrez votre messagerie puis confirmez l’envoi ici. Aucun e-mail n’est envoyé automatiquement.</div><div class="ar-draft-heading">Choisir un angle</div><div class="ar-draft-choices">${drafts.map((draft,index)=>`<button class="${index===selectedIndex?'on':''}" type="button" data-ar-draft="${index}">${esc(draft.label)}</button>`).join('')}</div></aside><section class="ar-composer-form">${email?`<label class="ar-form-label">Destinataire public<input id="ar-outreach-email" value="${esc(email)}" readonly></label>`:''}<label class="ar-form-label">Objet<input id="ar-outreach-subject" value="${esc(subject)}"></label><label class="ar-form-label ar-message-field">Message<textarea id="ar-outreach-body">${esc(body)}</textarea></label><div class="ar-actions"><button class="chip" id="ar-copy-draft">Copier le message</button>${email?`<button class="btn-back" id="ar-open-mail">Ouvrir dans ma messagerie</button><button class="chip" id="ar-mark-contacted">✓ Message envoyé</button>`:''}</div></section></div>`;
+  box.innerHTML=`<header class="ar-composer-head"><div class="ar-composer-icon">✉</div><div><div class="ar-composer-kicker">PRÉPARER LE CONTACT</div><h3>${esc(artist.name)}</h3><p>À propos de “${esc(opportunity.title)}”</p></div><button class="tclose" onclick="closeArModal()">✕</button></header>
+    <div class="ar-composer-content"><aside class="ar-composer-side"><div class="ar-outreach-note">Le message reste sous votre contrôle : ouvre le canal choisi puis confirme l’envoi ici. Aucun message n’est envoyé automatiquement.</div>${arSelectionContactPanelHtml(opportunity)}<div class="ar-draft-heading">Choisir un angle</div><div class="ar-draft-choices">${drafts.map((draft,index)=>`<button class="${index===selectedIndex?'on':''}" type="button" data-ar-draft="${index}">${esc(draft.label)}</button>`).join('')}</div></aside><section class="ar-composer-form">${email?`<label class="ar-form-label">Destinataire public<input id="ar-outreach-email" value="${esc(email)}" readonly></label>`:''}<label class="ar-form-label">Objet<input id="ar-outreach-subject" value="${esc(subject)}"></label><label class="ar-form-label ar-message-field">Message<textarea id="ar-outreach-body">${esc(body)}</textarea></label><div class="ar-actions"><button class="chip" id="ar-copy-draft">Copier le message</button>${email?`<button class="btn-back" id="ar-open-mail">Ouvrir dans ma messagerie</button>`:''}<button class="chip" id="ar-mark-contacted">✓ Message envoyé</button></div></section></div>`;
   const save=(patch={})=>arArtistUpdate(artistKey,Object.assign({subject:document.getElementById('ar-outreach-subject').value,body:document.getElementById('ar-outreach-body').value,draftVariant:selectedIndex},patch));
   box.querySelectorAll('[data-ar-draft]').forEach(button=>button.addEventListener('click',()=>{selectedIndex=Number(button.dataset.arDraft);const draft=drafts[selectedIndex];document.getElementById('ar-outreach-subject').value=draft.subject;document.getElementById('ar-outreach-body').value=draft.body;box.querySelectorAll('[data-ar-draft]').forEach(item=>item.classList.toggle('on',item===button));save();}));
   document.getElementById('ar-copy-draft').addEventListener('click',()=>{save();arCopyText(`Subject: ${document.getElementById('ar-outreach-subject').value}\n\n${document.getElementById('ar-outreach-body').value}`);});
   const openMail=document.getElementById('ar-open-mail');if(openMail)openMail.addEventListener('click',()=>{save();const currentEmail=document.getElementById('ar-outreach-email').value.trim();window.location.href=`mailto:${encodeURIComponent(currentEmail)}?subject=${encodeURIComponent(document.getElementById('ar-outreach-subject').value)}&body=${encodeURIComponent(document.getElementById('ar-outreach-body').value)}`;});
-  const mark=document.getElementById('ar-mark-contacted');if(mark)mark.addEventListener('click',()=>{save();arMarkArtistContacted(artistKey);arUpdateList(spotifyId,{status:'contacted',contactedAt:new Date().toISOString(),nextFollowUp:arFollowUpDate()});closeArModal();renderArList();});
+  const mark=document.getElementById('ar-mark-contacted');if(mark)mark.addEventListener('click',()=>{save();arMarkArtistContacted(artistKey);S.arListStage='contacted';closeArModal();renderArList();});
   document.getElementById('ar-modal').style.display='flex';
   window.setTimeout(()=>document.getElementById('ar-outreach-body')?.focus(),0);
 }
@@ -3405,7 +3520,7 @@ function arSelectionArtistGroups(rows){
   });
   return [...groups.values()].map(group=>{
     group.rows.sort((a,b)=>(b.opportunity.score||0)-(a.opportunity.score||0)||a.opportunity.title.localeCompare(b.opportunity.title));
-    group.priority=group.rows.find(row=>arPublicContactChannels(row.opportunity).length)||group.rows[0];
+    group.priority=group.rows.find(row=>arSelectionContactChannels(row.opportunity).length)||group.rows[0];
     return group;
   }).sort((a,b)=>(b.priority.opportunity.score||0)-(a.priority.opportunity.score||0));
 }
@@ -3454,6 +3569,21 @@ function arSelectionStatusHtml(artistKey){
   const status=arArtistStatus(artistKey),label=AR_STATUSES[status]||AR_STATUSES.to_contact;
   return `<div class="ar-artist-status"><strong class="ar-status-${esc(status)}">${esc(label)}</strong></div>`;
 }
+function arSelectionWorkflowActionsHtml(artistKey,status){
+  const stage=arArtistStage(status),buttons=[];
+  if(stage==='to_contact')buttons.push(`<button class="ar-workflow-action is-refuse" data-action="refuse" onclick="arRefuseArtist('${esc(artistKey)}');S.arListStage='refused';renderArList()">Refuser</button>`);
+  if(stage==='contacted'){
+    buttons.push(`<button class="ar-workflow-action is-negotiate" data-action="negotiate" onclick="arStartArtistNegotiation('${esc(artistKey)}');S.arListStage='negotiating';renderArList()">Passer en négociation</button>`);
+    buttons.push(`<button class="ar-workflow-action is-refuse" data-action="refuse" onclick="arRefuseArtist('${esc(artistKey)}');S.arListStage='refused';renderArList()">Refuser</button>`);
+  }
+  if(stage==='negotiating'){
+    buttons.push(`<button class="ar-workflow-action is-validate" data-action="validate" onclick="arValidateArtist('${esc(artistKey)}');S.arListStage='validated';renderArList()">✓ Valider</button>`);
+    buttons.push(`<button class="ar-workflow-action is-refuse" data-action="refuse" onclick="arRefuseArtist('${esc(artistKey)}');S.arListStage='refused';renderArList()">Refuser</button>`);
+  }
+  if(stage==='validated')buttons.push(`<button class="ar-workflow-action is-negotiate" data-action="negotiate" onclick="arStartArtistNegotiation('${esc(artistKey)}');S.arListStage='negotiating';renderArList()">Remettre en négociation</button>`);
+  if(stage==='refused')buttons.push(`<button class="ar-workflow-action" onclick="arResetArtistStatus('${esc(artistKey)}');S.arListStage='to_contact';renderArList()">Réouvrir</button>`);
+  return buttons.length?`<div class="ar-workflow-actions">${buttons.join('')}</div>`:'';
+}
 function arSelectionArtistCardHtml(group){
   const {artist,rows,priority}=group,contactOpportunity=priority.opportunity;
   const listeners=Math.max(...rows.map(row=>Number(row.opportunity.artistMonthlyListeners)||0));
@@ -3462,9 +3592,7 @@ function arSelectionArtistCardHtml(group){
   const initials=artist.name.split(/\s+/).map(part=>part[0]).join('').slice(0,2).toUpperCase()||'A';
   const status=arArtistStatus(artist.key);
   const avatar=artist.spotifyId?`<div class="ar-selection-artist-avatar" data-ar-artist-avatar-id="${esc(artist.spotifyId)}"><span>${esc(initials)}</span></div>`:`<div class="ar-selection-artist-avatar"><span>${esc(initials)}</span></div>`;
-  const dealAction=(status==='contacted'||status==='follow_up')?`<button class="ar-artist-deal" onclick="arCloseArtistDeal('${esc(artist.key)}');renderArList()">✓ Deal conclu</button>`:'';
-  const canContact=arContactEligible(contactOpportunity);
-  return `<article class="ar-artist-selection"><header class="ar-artist-selection-head">${canContact?arSelectionStatusHtml(artist.key):''}${avatar}<div class="ar-selection-artist-main"><h3>${artistName}</h3><div class="ar-selection-artist-meta">${esc(genres||'—')}${listeners?` · ${fmt(listeners)} auditeurs/mois`:''}</div><div class="ar-selection-artist-contact">${canContact?arContactHtml(contactOpportunity,true):'À vérifier avant contact'}</div></div><div class="ar-artist-actions"><button class="ar-artist-estimate" onclick="openArSelectionEstimate('${esc(artist.key)}')">💶 Estimation interne</button>${canContact?`<button class="ar-artist-message" onclick="openArOutreach('${esc(contactOpportunity.spotifyId)}')">📨 Préparer le message</button>${dealAction}`:''}</div></header><div class="ar-selection-track-list">${rows.map(arSelectionTrackHtml).join('')}</div></article>`;
+  return `<article class="ar-artist-selection"><header class="ar-artist-selection-head">${arSelectionStatusHtml(artist.key)}${avatar}<div class="ar-selection-artist-main"><h3>${artistName}</h3><div class="ar-selection-artist-meta">${esc(genres||'—')}${listeners?` · ${fmt(listeners)} auditeurs/mois`:''}</div>${arSelectionContactSummaryHtml(contactOpportunity)}</div><div class="ar-artist-actions"><button class="ar-artist-estimate" onclick="openArSelectionEstimate('${esc(artist.key)}')">💶 Estimation interne</button><button class="ar-artist-message" onclick="openArOutreach('${esc(contactOpportunity.spotifyId)}')">📨 Préparer le message</button>${arSelectionWorkflowActionsHtml(artist.key,status)}</div></header><div class="ar-selection-track-list">${rows.map(arSelectionTrackHtml).join('')}</div></article>`;
 }
 function arSelectionEconomics(group){
   const ids=new Set(group.rows.map(row=>String(row.opportunity&&row.opportunity.spotifyId||'').trim()).filter(Boolean));
@@ -3503,7 +3631,15 @@ function openArSelectionEstimate(artistKey){
 function renderArList(){
   const saved=arListGet(),rows=Object.keys(saved).map(id=>({opportunity:arSelectionOpportunityById(id),entry:saved[id]})).filter(item=>item.opportunity);
   const groups=arSelectionArtistGroups(rows);
-  V.innerHTML=`<div class="page-head"><div><h2>⭐ Sélection</h2></div></div>${groups.length?`<div class="ar-artist-selection-list">${groups.map(arSelectionArtistCardHtml).join('')}</div>`:`<div class="ar-empty-state">Aucune track sélectionnée. Dans les opportunités, coche les tracks puis ajoute-les à ta sélection.</div>`}`;
+  const counts=Object.fromEntries(AR_STAGE_TABS.map(tab=>[tab.key,0]));
+  groups.forEach(group=>{const stage=arArtistStage(arArtistStatus(group.artist.key));if(counts[stage]!=null)counts[stage]+=1;});
+  if(!AR_STAGE_TABS.some(tab=>tab.key===S.arListStage))S.arListStage='to_contact';
+  const visible=groups.filter(group=>arArtistStage(arArtistStatus(group.artist.key))===S.arListStage);
+  const tabs=`<div class="ar-selection-stage-tabs" role="tablist" aria-label="Étape de négociation">${AR_STAGE_TABS.map(tab=>`<button type="button" role="tab" class="ar-selection-stage-tab ${S.arListStage===tab.key?'on':''}" aria-selected="${S.arListStage===tab.key?'true':'false'}" onclick="arSetListStage('${tab.key}')"><span>${esc(tab.label)}</span><strong class="ar-stage-count">${counts[tab.key]}</strong></button>`).join('')}</div>`;
+  const empty=groups.length===0
+    ?'Aucune track sélectionnée. Dans les opportunités, coche les tracks puis ajoute-les à ta sélection.'
+    :`Aucun artiste dans « ${esc((AR_STAGE_TABS.find(tab=>tab.key===S.arListStage)||AR_STAGE_TABS[0]).label)} ».`;
+  V.innerHTML=`<div class="page-head"><div><h2>⭐ Sélection</h2><p class="ar-workflow-stage-note">Suivi de la prise de contact et de la négociation, par artiste.</p></div></div>${tabs}${visible.length?`<div class="ar-artist-selection-list">${visible.map(arSelectionArtistCardHtml).join('')}</div>`:`<div class="ar-empty-state">${empty}</div>`}`;
   hydrateArTrackCovers();
   hydrateArArtistAvatars();
 }

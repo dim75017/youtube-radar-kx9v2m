@@ -35,6 +35,36 @@ deviné : l’enrichissement ne peut utiliser que des pages et profils officiels
 accessibles publiquement et reste bloqué tant que les garde-fous A&R ne passent
 pas.
 
+### Exception contrôlée pour `Sélection`
+
+Un artiste ajouté manuellement à `Sélection` peut faire l’objet d’une recherche
+de contact sans attendre qu’il passe tous les garde-fous de promotion A&R. Cette
+exception sert uniquement à instruire un dossier déjà choisi par l’équipe : elle
+ne rend pas la piste éligible aux `Opportunités`, ne change aucune classification
+instrumentale, de droits ou de risque IA et ne crée aucun seed d’expansion.
+
+Le répertoire `Spotify_Selection_Contacts_data.js`, utilisé uniquement par cette
+vue, peut contenir :
+
+- les profils publics explicitement retournés par Soundcharts ;
+- un e-mail professionnel explicitement publié sur une source vérifiée ;
+- des corrections manuelles sourcées qui excluent un profil homonyme ou un canal
+  sans moyen de contact.
+
+Spotify, Apple Music et les chaînes YouTube Topic peuvent prouver une identité,
+mais ne sont pas présentés comme des moyens de contact. Aucun profil ni e-mail
+n’est deviné, aucun message n’est envoyé automatiquement et l’absence de source
+fiable est affichée comme telle.
+
+Le pipeline quotidien priorise les artistes inscrits dans
+`spotify-selection-artist-seeds.json`, recontrôle leurs profils publics connus
+et reconstruit le répertoire. Une sélection qui existe seulement dans le stockage
+local du navigateur reste `en attente` tant qu’elle n’a pas rejoint cette file
+serveur ; le site statique ne doit jamais prétendre qu’un scan serveur a eu lieu.
+
+Cette exception ne modifie pas la règle fail-closed appliquée partout hors de
+`Sélection`.
+
 ## Règle de maintenance
 
 Ne jamais sécuriser A&R en vidant le catalogue de navigation. Les formes suivantes constituent une régression :

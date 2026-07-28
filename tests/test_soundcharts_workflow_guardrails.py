@@ -128,6 +128,27 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn('--source "$SNAPSHOT_NAME"', section[rebuild:stage])
         self.assertIn("Spotify_Browse_Catalogue_data.js", section[stage:])
 
+    def test_selection_contacts_are_prioritised_built_and_published(self):
+        self.assertIn("node tests/test_ar_outreach_workflow.js", self.workflow)
+        self.assertIn("node tests/test_spotify_selection_contact_state_machine.js", self.workflow)
+        enrich = self.workflow.index("Enrich public professional contacts progressively")
+        build = self.workflow.index("Build Selection-only public contact directory")
+        recalculate = self.workflow.index("Recalculate actionable A&R opportunities")
+        self.assertLess(enrich, build)
+        self.assertLess(build, recalculate)
+        enrich_section = self.workflow[enrich:build]
+        self.assertIn("--priority-artists spotify-selection-artist-seeds.json", enrich_section)
+        self.assertIn("--max-artists 100", enrich_section)
+        build_section = self.workflow[build:recalculate]
+        self.assertIn("python build_spotify_selection_contacts.py", build_section)
+        self.assertIn("--overrides spotify-selection-contact-overrides.json", build_section)
+        self.assertIn("--output Spotify_Selection_Contacts_data.js", build_section)
+        checkpoint = self.workflow.index("Preserve completed collection before publication guards")
+        prepare = self.workflow.index("Prepare public-safe dated snapshot")
+        self.assertIn("Spotify_Selection_Contacts_data.js", self.workflow[checkpoint:prepare])
+        activation = self.workflow.index("Activate snapshot only after remote validation")
+        self.assertIn("Spotify_Selection_Contacts_data.js", self.workflow[activation:])
+
     def test_scheduled_rebaseline_refreshes_complete_performance_catalogue_once_due(self):
         self.assertIn('performance_catalogue_due="false"', self.workflow)
         self.assertIn("is_due('tracks_catalogue_at')", self.workflow)

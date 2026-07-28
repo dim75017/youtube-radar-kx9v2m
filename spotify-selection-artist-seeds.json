@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "updated_at": "2026-07-28",
+  "artists": [
+    {"name": "Aurelian Juno", "spotify_id": "0clWZsJkYSrFdmUkQygfiQ", "soundcharts_uuid": "bb6c05d1-ea9c-4da8-90a3-ba85e1253c11", "reference_track": "As It Is"},
+    {"name": "Anton Vega", "spotify_id": "7H15xwuYNLQKF74GgsYfw7", "soundcharts_uuid": "fa09db30-9f8e-4c43-b2f8-d738b1e8d2ee", "reference_track": "Soft Wildflower"},
+    {"name": "Eternalistic", "spotify_id": "77efGNIP8xtX0iCb5RCHCG", "soundcharts_uuid": "edf37d21-2e61-418a-9dc2-33b21df96851", "reference_track": "Still Unbroken"},
+    {"name": "Rosalie Andersdotter", "spotify_id": "4s5tfHvAPebz3Ue4DP6KTb", "soundcharts_uuid": "af95b4af-14be-4700-9899-c3dd75eba3a7", "reference_track": "Here for You"},
+    {"name": "Dalby", "spotify_id": "5ai5w9rMxwvqSY4rrDof73", "soundcharts_uuid": "782107b6-3187-4576-8710-68cfa6792db2", "reference_track": "New Light"},
+    {"name": "Monte Aria", "spotify_id": "7mVQk6J9GM0K0sf1H9ueXZ", "soundcharts_uuid": "7c632fc0-f521-47f8-8cbc-09d0884ef633", "reference_track": "Saffron Dusk"},
+    {"name": "Floyd Nova", "spotify_id": "4aPhtYq4FqnbM02GHtZHhz", "soundcharts_uuid": "4630b962-d005-45bd-8146-480a1ed49bf7", "reference_track": "Éveil"},
+    {"name": "Anthony Jacobus", "spotify_id": "6qxdmY3SMyvfVadKXWTZQi", "soundcharts_uuid": "196c74a6-0f75-4dc3-b9ec-79f9b37b9dca", "reference_track": "Candles"},
+    {"name": "Martes Fiore", "spotify_id": "4iyGWBpdODMrJp3DRotA9W", "soundcharts_uuid": "005686f1-5210-4549-85e9-97bfa717d176", "reference_track": "After Behind"},
+    {"name": "Henry Flower", "spotify_id": "297mB3xOXz7lxYcIY6Ur5E", "soundcharts_uuid": "09ca992f-6458-4cbb-a7fd-7ff557284ad9", "reference_track": "This Moment"},
+    {"name": "Goratie", "spotify_id": "3WuT8leyL0ikW55vAra4rD", "soundcharts_uuid": "11e83fe9-008b-d130-8630-aa1c026db3d8", "reference_track": "Love of My Life"}
+  ]
+}
