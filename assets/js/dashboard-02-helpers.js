@@ -394,6 +394,7 @@ function eligibleNewVideoRows(rows){
 }
 function setRadarData(d){
   if(d)d.news=eligibleNewVideoRows(d.news);
+  if(typeof applyRecommendationEdits==='function')applyRecommendationEdits(d);
   DATA=d;mergeLoadedVideoHistoryIntoData(DATA);
   VIEW_CACHE.clear();VIEW_WARMUP_TOKEN++;
   if(typeof _anaCache!=='undefined'){_anaCache=null;_anaT=0;}

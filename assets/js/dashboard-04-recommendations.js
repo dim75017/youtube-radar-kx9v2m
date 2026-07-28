@@ -10,7 +10,7 @@ function validState(v){
 function noteOf(v){const m=String(v||'').match(/^[x-]\s*·\s*([\s\S]*)$/i);if(m)return m[1];const s=validState(v);return (s==='note')?String(v):'';}
 function isValidated(v){return ['x','xnote'].includes(validState(v));}
 function isRefused(v){return ['no','nonote'].includes(validState(v));}
-function setValid(n,mode,btn,ev,opts){
+function setValid(n,mode,btn,ev){
   if(ev)ev.stopPropagation();
   clearTimeout(_cmtTimer);
   const rec=DATA.recos.find(x=>x.n===n);if(!rec)return;
@@ -20,16 +20,14 @@ function setValid(n,mode,btn,ev,opts){
   if(mode==='X') val=note?('X · '+note):'X';
   else if(mode==='-') val=note?('- · '+note):'-';
   else val=note||'';
-  // UI optimiste : appliquer l'état + ouvrir le popup de placement tout de suite,
-  // sans attendre le round-trip Google Apps Script (souvent 3-6s).
-  const wasVal=isValidated(rec.valid);
+  // Validation and Roadmap placement are deliberately separate decisions.
+  // Keep the optimistic state update while the Google Sheet write completes.
   rec.valid=val;
   saveCache(DATA);
   rerenderRecos();
   if(window._drawerRecoN===n&&document.getElementById('drawer').classList.contains('show')&&window._drawerReopen){
     window._drawerReopen();
   }
-  if(!wasVal&&isValidated(val)&&!(opts&&opts.skipSchedulePopup))openSchedulePopup(rec);
   writeValid(n,val,btn);
 }
 const WRITE_URL='https://script.google.com/macros/s/AKfycbynEewHZzfecwty-E5TV4Otgsxi3ieGy_N5PPYiM7GpPeMVz_5ka1rxY-Y67H3eknto4w/exec';
@@ -85,6 +83,22 @@ function autoSaveComment(n){
         if(s){s.textContent=okTxt;s.style.color='var(--green)';setTimeout(()=>{if(s&&s.textContent===okTxt)s.textContent='';},1600);}
       }).catch(e=>{const fr=typeof LANG!=='undefined'&&LANG==='fr';const s=document.getElementById('cstat-dw');if(s){s.textContent=fr?'⚠ Non enregistré':'⚠ Not saved';s.style.color='var(--red)';}console.error(e);});
   },700);
+}
+const RECO_EDIT_STORAGE_KEY='lofi_radar_recommendation_edits_v1';
+function recommendationEdits(){
+  try{const value=JSON.parse(localStorage.getItem(RECO_EDIT_STORAGE_KEY)||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch(e){return {};}
+}
+function saveRecommendationEdits(edits){try{localStorage.setItem(RECO_EDIT_STORAGE_KEY,JSON.stringify(edits||{}));}catch(e){}}
+function applyRecommendationEdits(data){
+  const edits=recommendationEdits();
+  ((data&&data.recos)||[]).forEach(row=>{
+    const edit=edits[String(row.n)];if(!edit)return;
+    if(typeof edit.title==='string'&&edit.title.trim())row.title=edit.title.trim();
+    if(typeof edit.concept==='string')row.concept=edit.concept.trim();
+    if(typeof edit.desc==='string')row.desc=edit.desc.trim();
+    row._locallyEdited=true;
+  });
+  return data;
 }
 function legacyFilterRecos(){
   let rows=DATA.recos;
@@ -148,6 +162,7 @@ function legacyRerenderRecos(){
 /* Daily recommendation rotation: the large source catalogue stays intact; this view exposes 50 actionable ideas. */
 const RECO_DAILY_LIMIT=50;
 const RECO_ROTATION_KEY='lofi_radar_reco_rotation_v1';
+let RECO_HISTORY_PROMISE=null;
 function recoDayKey(){
   const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
   const get=t=>p.find(x=>x.type===t).value;
@@ -164,14 +179,21 @@ function saveRecoRotation(h){try{localStorage.setItem(RECO_ROTATION_KEY,JSON.str
 function recoAddSignal(map,key,value){if(key)map[key]=(map[key]||0)+value;}
 function recoSignal(map,key){return Number(map[key]||0);}
 function recoPerformanceSignal(o){
-  const relative=Number.isFinite(Number(o.pctCh))?Number(o.pctCh)-50:0;
-  const ctr=Number(o.st&&o.st.ctr),awp=Number(o.st&&o.st.awp);
+  // Prefer the observed recent daily velocity when history is available;
+  // lifetime velocity remains an age-normalized fallback.
+  const recent=o.pctNow!=null&&o.pctNow!==''?Number(o.pctNow):null;
+  const lifetime=o.pctCh!=null&&o.pctCh!==''?Number(o.pctCh):null;
+  const percentile=Number.isFinite(recent)?recent:lifetime;
+  const relative=Number.isFinite(percentile)?percentile-50:0;
+  const ctr=o.st&&o.st.ctr!=null?Number(o.st.ctr):null;
+  const awp=o.st&&o.st.awp!=null?Number(o.st.awp):null;
   return Math.max(-18,Math.min(18,relative*.22+(Number.isFinite(ctr)?Math.max(-3,Math.min(3,(ctr-4)*.7)):0)+(Number.isFinite(awp)?Math.max(-3,Math.min(3,(awp-35)*.08)):0)));
 }
 function recoHorizonWeight(ageMonths){
   // The newest releases stay decisive, while 6- and 12-month results refine
   // the model without letting old packaging/topic choices dominate.
-  if(ageMonths<=3)return {id:'3m',weight:1};
+  if(!Number.isFinite(ageMonths)||ageMonths<0)return null;
+  if(ageMonths<=3)return {id:'3m',weight:1.25};
   if(ageMonths<=6)return {id:'6m',weight:.55};
   if(ageMonths<=12)return {id:'12m',weight:.28};
   return null;
@@ -189,7 +211,8 @@ function recoProfile(){
     recoAddSignal(p.feedbackPersona,persoCategory(r.perso),feedback);recoTokens(r).forEach(t=>{recoAddSignal(p.token,t,feedback*.35);recoAddSignal(p.feedbackToken,t,feedback*.35);});
   });
   try{(anaRows()||[]).forEach(o=>{
-    const horizon=recoHorizonWeight(Number(o.ageM));if(!horizon)return;
+    const ageMonths=o.ageM!=null&&o.ageM!==''?Number(o.ageM):null;
+    const horizon=recoHorizonWeight(ageMonths);if(!horizon)return;
     const signal=recoPerformanceSignal(o);if(!signal)return;
     const fields=recoVideoFields(o),weighted=signal*horizon.weight;
     p.recentVideos++;p.windows[horizon.id]++;
@@ -242,14 +265,30 @@ function dailyRecommendationSet(){
   return decorate(picked);
 }
 function activeDailyRecommendationCount(){return dailyRecommendationSet().length;}
-function legacyDailyRecoBrief(rows){
-  const fr=typeof LANG!=='undefined'&&LANG==='fr',p=rows[0]&&rows[0]._dailyProfile||{recentVideos:0};
-  return '<div class="reco-daily-brief"><div><div class="reco-daily-kicker">'+(fr?'SÉLECTION DU JOUR':'DAILY SELECTION')+' · '+recoDayKey()+'</div><p>'+(fr?'Classement basé sur les 90 derniers jours de la chaîne, les performances comparées à l’âge des vidéos, puis tes validations et refus. Les idées déjà proposées sont mises en rotation.':'Ranking uses the channel’s last 90 days, age-normalized video performance, then your validations and refusals. Previously shown ideas are rotated out.')+'</p></div><div class="reco-daily-stats"><b>'+rows.length+' / '+RECO_DAILY_LIMIT+'</b><span>'+(fr?'idées actives':'active ideas')+'</span><b>'+p.recentVideos+'</b><span>'+(fr?'vidéos récentes analysées':'recent videos analysed')+'</span></div></div>';
+function refreshDailyRecommendations(ev){
+  if(ev)ev.stopPropagation();
+  const day=recoDayKey(),history=recoRotationHistory(),current=Array.isArray(history[day])?history[day].slice(0,RECO_DAILY_LIMIT):[];
+  if(current.length)history[day+'#'+Date.now()]=current;
+  delete history[day];
+  saveRecoRotation(history);
+  if(typeof VIEW_CACHE!=='undefined')VIEW_CACHE.delete(viewCacheKey('recos'));
+  rerenderRecos();
+}
+function ensureRecommendationPerformanceHistory(){
+  if(!DATA||RECO_HISTORY_PROMISE||typeof ensureVideoHistory!=='function')return;
+  const ids=[...new Set((DATA.ours||[]).map(row=>row&&row.vid).filter(Boolean))];
+  const missing=ids.filter(vid=>!videoHistoryReady(vid)&&!videoHistoryError(vid));
+  if(!missing.length)return;
+  RECO_HISTORY_PROMISE=Promise.all(missing.map(ensureVideoHistory)).finally(()=>{
+    RECO_HISTORY_PROMISE=null;
+    if(typeof _anaCache!=='undefined'){_anaCache=null;_anaT=0;}
+    if(route==='recos')rerenderRecos();
+  });
 }
 function dailyRecoBrief(rows){
   const fr=typeof LANG!=='undefined'&&LANG==='fr',p=rows[0]&&rows[0]._dailyProfile||{recentVideos:0};
   const text=p.recentVideos
-    ?(fr?'Classement fondé sur les validations/refus de l’équipe et les performances de la chaîne sur 3, 6 et 12 mois, comparées à l’âge des vidéos. Les données les plus récentes pèsent davantage et la rotation évite les répétitions.':'Ranking uses team approvals/refusals and channel performance across 3, 6 and 12 months, normalized by video age. The newest data carries more weight and rotation prevents repeats.')
+    ?(fr?'Classement fondé sur les validations/refus de l’équipe et les résultats des vidéos publiées depuis 0–3, 3–6 et 6–12 mois. Les 3 derniers mois pèsent le plus ; la vitesse quotidienne récente est utilisée dès que l’historique est disponible.':'Ranking uses team approvals/refusals and results from videos published 0–3, 3–6 and 6–12 months ago. The latest 3 months carry the most weight; recent daily velocity is used as soon as history is available.')
     :(fr?'Les performances de la chaîne arriveront avec le prochain import YouTube. En attendant, la sélection utilise le score catalogue, les validations/refus de l’équipe et la rotation anti-répétition.':'Channel performance will be used after the next YouTube import. Until then, the selection uses the catalogue score, team feedback and anti-repeat rotation.');
   return '<div class="reco-daily-brief"><div><div class="reco-daily-kicker">'+(fr?'SÉLECTION DU JOUR':'DAILY SELECTION')+' · '+recoDayKey()+'</div><p>'+text+'</p></div><div class="reco-daily-stats"><b>'+rows.length+' / '+RECO_DAILY_LIMIT+'</b><span>'+(fr?'idées actives':'active ideas')+'</span><b>'+p.recentVideos+'</b><span>'+(fr?'vidéos analysées':'videos analysed')+'</span></div></div>';
 }
@@ -258,48 +297,26 @@ function dailyRecoListHTML(rows){
   window._pageRecos=rows;return '<div class="rgrid2">'+rows.map((r,i)=>recoCardHTML(r,i)).join('')+'</div>';
 }
 let RECO_TAB='pending';
-const PROJECT_ARCHIVE_KEY='lofi_radar_project_archive_v1';
-const LEGACY_RECO_ARCHIVE_STORAGE_KEY='lofi_radar_validated_archive_v1';
-const LEGACY_ROADMAP_ARCHIVE_STORAGE_KEY='radar_roadmap_archive_v2';
+const LEGACY_PROJECT_ARCHIVE_KEY='lofi_radar_project_archive_v1';
+const ROADMAP_ARCHIVE_STORAGE_KEY='lofi_radar_roadmap_archive_v3';
 function normalizedRecommendationTitle(value){return String(value||'').trim().toLocaleLowerCase().replace(/\s+/g,' ');}
 function storedArchiveRows(key){try{const rows=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(rows)?rows:[];}catch(e){return [];}}
-function validatedArchiveRows(){return storedArchiveRows(PROJECT_ARCHIVE_KEY);}
-function saveValidatedArchive(rows){try{localStorage.setItem(PROJECT_ARCHIVE_KEY,JSON.stringify(rows));}catch(e){}}
-function recoverLegacyPlannedArchive(item){
-  const row=item&&(item.row||item),recoId=row&&(row.recoN!=null?row.recoN:(row.__kind==='roadmap'?row.n:null));
-  if(!row||!row.date||recoId==null)return null;
-  return {key:'reco:'+String(recoId),archivedAt:Number(item.archivedAt||row.archivedAt)||Date.now(),row:Object.assign({},row,{__kind:'roadmap',valid:'X',planned:true})};
-}
-function initializeUnifiedProjectArchive(){
+function roadmapArchiveRows(){return storedArchiveRows(ROADMAP_ARCHIVE_STORAGE_KEY);}
+function saveRoadmapArchiveRows(rows){try{localStorage.setItem(ROADMAP_ARCHIVE_STORAGE_KEY,JSON.stringify(rows||[]));}catch(e){}}
+function initializeRoadmapArchive(){
   try{
-    if(localStorage.getItem(PROJECT_ARCHIVE_KEY)!==null)return;
-    // Monday is the accepted baseline.  Start the shared archive with only the
-    // recommendation decisions. Recover previously archived planned recos by
-    // their stable recoN, but deliberately discard old date/title Monday hides.
-    // Both legacy stores remain untouched as recoverable backups.
-    const legacyReco=storedArchiveRows(LEGACY_RECO_ARCHIVE_STORAGE_KEY);
-    const kept=legacyReco.filter(item=>item&&typeof item.key==='string'&&item.key.indexOf('reco:')===0);
-    legacyReco.concat(storedArchiveRows(LEGACY_ROADMAP_ARCHIVE_STORAGE_KEY)).map(recoverLegacyPlannedArchive).filter(Boolean).forEach(item=>{
-      const at=kept.findIndex(current=>current.key===item.key);
-      if(at<0)kept.push(item);else kept[at]=item;
-    });
-    localStorage.setItem(PROJECT_ARCHIVE_KEY,JSON.stringify(kept));
-    const written=JSON.parse(localStorage.getItem(PROJECT_ARCHIVE_KEY)||'[]');
-    if(!Array.isArray(written)||written.length!==kept.length)return;
+    if(localStorage.getItem(ROADMAP_ARCHIVE_STORAGE_KEY)!==null)return;
+    // Migrate only entries explicitly archived from Roadmap. Recommendation
+    // decisions remain in the Sheet and never hide or restore a roadmap row.
+    const migrated=storedArchiveRows(LEGACY_PROJECT_ARCHIVE_KEY)
+      .filter(item=>item&&item.row&&item.row.__kind==='roadmap')
+      .map(item=>({key:roadmapArchiveKey(item.row),archivedAt:Number(item.archivedAt)||Date.now(),row:Object.assign({},item.row)}));
+    const unique=[];migrated.forEach(item=>{if(!unique.some(current=>current.key===item.key))unique.push(item);});
+    saveRoadmapArchiveRows(unique);
   }catch(e){}
 }
-initializeUnifiedProjectArchive();
-function isRoadmapArchiveItem(item){return !!(item&&item.row&&item.row.__kind==='roadmap');}
-function roadmapArchiveItems(){
-  const rows=typeof acceptedRoadmapRows==='function'?acceptedRoadmapRows():[];
-  const plannedByReco=new Map(rows.filter(row=>row&&(row.recoN!=null||row.n!=null)).map(row=>[String(row.recoN!=null?row.recoN:row.n),row]));
-  return validatedArchiveRows().map(item=>{
-    if(isRoadmapArchiveItem(item))return item;
-    const match=item&&typeof item.key==='string'?item.key.match(/^reco:(.+)$/):null;
-    const row=match&&plannedByReco.get(match[1]);
-    return row?Object.assign({},item,{row:Object.assign({},row,{__kind:'roadmap',valid:'X',planned:true})}):null;
-  }).filter(Boolean);
-}
+initializeRoadmapArchive();
+function roadmapArchiveItems(){return roadmapArchiveRows();}
 function invalidateRoadmapDerivedViews(){
   if(typeof VIEW_WARMUP_TOKEN!=='undefined')VIEW_WARMUP_TOKEN++;
   if(typeof VIEW_CACHE!=='undefined'&&VIEW_CACHE&&typeof VIEW_CACHE.keys==='function'){
@@ -309,25 +326,6 @@ function invalidateRoadmapDerivedViews(){
   }
   if(typeof renderNav==='function')renderNav();
 }
-function validatedRowKey(row){
-  const recoId=row&&(row.recoN!=null?row.recoN:row.n);
-  return recoId!=null&&recoId!==''
-    ?'reco:'+String(recoId)
-    :'roadmap:'+String(row&&row.date||'')+'|'+normalizedRecommendationTitle(row&&row.title);
-}
-function archiveProjectRow(row){
-  if(!row)return null;
-  const key=validatedRowKey(row),archive=validatedArchiveRows();
-  const existing=archive.find(item=>item.key===key);
-  if(!existing){
-    archive.push({key,archivedAt:Date.now(),row:Object.assign({},row)});saveValidatedArchive(archive);
-  }else if(row.__kind==='roadmap'&&(!existing.row||existing.row.__kind!=='roadmap')){
-    existing.row=Object.assign({},row);saveValidatedArchive(archive);
-  }
-  return key;
-}
-function restoreProjectArchive(key){saveValidatedArchive(validatedArchiveRows().filter(item=>item.key!==key));}
-function isValidatedRowArchived(row){return validatedArchiveRows().some(item=>item.key===validatedRowKey(row));}
 function isMondayRoadmapProject(row){return !!(row&&/Monday/i.test(String(row.src||'')));}
 function acceptedRoadmapRows(){
   const monday=(DATA.roadmap||[]).filter(row=>row&&row.date&&isMondayRoadmapProject(row));
@@ -349,80 +347,67 @@ function acceptedRoadmapRows(){
   });
   return Array.from(bySlot.values());
 }
-function roadmapValidatedRows(){
-  return acceptedRoadmapRows().map(row=>Object.assign({},row,{__kind:'roadmap',valid:'X',planned:true}));
-}
 function refusedRecommendationRows(){return (DATA.recos||[]).filter(r=>isRefused(r.valid));}
 function validatedRecommendationRows(){
-  const planned=roadmapValidatedRows();
-  const plannedTitles=new Set(planned.map(row=>normalizedRecommendationTitle(row.title)));
-  const recos=(DATA.recos||[]).filter(row=>isValidated(row.valid)&&!plannedTitles.has(normalizedRecommendationTitle(row.title)));
-  return recos.concat(planned).filter(row=>!isValidatedRowArchived(row));
+  return (DATA.recos||[]).filter(row=>isValidated(row.valid));
 }
-function archiveValidatedRecommendation(i,ev){
-  if(ev)ev.stopPropagation();
-  const row=(window._pageRecos||[])[i];if(!row)return;
-  archiveProjectRow(row);
-  invalidateRoadmapDerivedViews();
-  closeDrawer();rerenderRecos();
+function recommendationRoadmapEntry(reco){
+  if(!reco)return null;
+  const title=normalizedRecommendationTitle(reco.title);
+  return scheduledRows().find(row=>Number(row.recoN)===Number(reco.n)||normalizedRecommendationTitle(row.title)===title)||null;
 }
-function restoreValidatedRecommendation(key,ev){
+function placeValidatedRecommendation(n,ev){
   if(ev)ev.stopPropagation();
-  restoreProjectArchive(key);invalidateRoadmapDerivedViews();rerenderRecos();
+  const reco=(DATA.recos||[]).find(row=>Number(row.n)===Number(n));
+  if(!reco||!isValidated(reco.valid)||recommendationRoadmapEntry(reco))return;
+  openSchedulePopup(reco);
+}
+function recommendationRoadmapActionHTML(reco){
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
+  return recommendationRoadmapEntry(reco)
+    ?'<button class="rbtn reco-roadmap-btn is-placed" type="button" disabled>✓ '+(fr?'Dans la roadmap':'In roadmap')+'</button>'
+    :'<button class="rbtn reco-roadmap-btn" type="button" onclick="placeValidatedRecommendation('+reco.n+',event)">🗓️ '+(fr?'Placer dans la roadmap':'Place in roadmap')+'</button>';
 }
 function recoTabControlHTML(){
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
-  const counts={pending:dailyRecommendationSet().length,validated:validatedRecommendationRows().length,archive:refusedRecommendationRows().length+validatedArchiveRows().length};
+  const counts={pending:dailyRecommendationSet().length,validated:validatedRecommendationRows().length,refused:refusedRecommendationRows().length};
   const tabs=[
     ['pending','🟡 '+(fr?'À valider':'To review')],
     ['validated','✓ '+(fr?'Validées':'Validated')],
-    ['archive','🗄️ '+(fr?'Archives':'Archive')]
+    ['refused','✕ '+(fr?'Refusées':'Refused')]
   ];
   return '<div class="reco-controlbar"><div class="reco-tabbar">'+tabs.map(([key,label])=>
     '<button class="reco-tab '+key+(RECO_TAB===key?' on':'')+'" onclick="setRecoTab('+jsq(key)+')"><span>'+label+'</span><b>'+counts[key]+'</b></button>'
-  ).join('')+'</div></div>';
+  ).join('')+'</div>'+(RECO_TAB==='pending'?'<button class="reco-refresh-btn" type="button" title="'+(fr?'Charger le prochain lot classé parmi les concepts disponibles':'Load the next ranked batch from the available concepts')+'" onclick="refreshDailyRecommendations(event)">↻ '+(fr?'Nouvelles idées':'New ideas')+'</button>':'')+'</div>';
 }
-function recoArchiveControlHTML(){return recoTabControlHTML();}
-function recoArchiveCardHTML(r,i){
+function recoRefusedCardHTML(r,i){
   const note=noteOf(r.valid),tierL=r.pot?r.pot[0].toUpperCase():null;
   const tier=tierL?('<span class="rtier tier-'+tierL+'" title="Tier '+tierL+'">'+tierL+'</span>'):'<span class="rtier" style="opacity:.35">-</span>';
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
   return '<div class="rtile reco-archived" style="--gc:'+gcolor(r.genre)+'" onclick="openRecoIdx('+i+')">'+
     '<div class="rt-head">'+tier+'<div class="rt-title">'+esc(r.title)+'</div></div>'+
     '<div class="rt-tags">'+gtag(r.genre)+(r.dur?ghosttag(r.dur):'')+'</div>'+
     (r.concept?'<div class="rt-desc">'+esc(String(r.concept).slice(0,130))+(String(r.concept).length>130?'...':'')+'</div>':'')+
     (note?'<div class="rt-note">Note: '+esc(note.slice(0,60))+(note.length>60?'...':'')+'</div>':'')+
-    '<div class="reco-quick-actions" onclick="event.stopPropagation()"><button class="rbtn reco-restore" onclick="setValid('+r.n+',\'\',this,event)">↩ Restore</button></div>'+
+    '<div class="reco-quick-actions" onclick="event.stopPropagation()"><button class="rbtn reco-edit-btn" onclick="openRecoEditor('+r.n+',event)">✎ '+(fr?'Modifier':'Edit')+'</button><button class="rbtn reco-restore" onclick="setValid('+r.n+',\'\',this,event)">↩ '+(fr?'Restaurer':'Restore')+'</button></div>'+
   '</div>';
 }
-function recoArchiveHTML(){
-  const archived=validatedArchiveRows();
+function recoRefusedHTML(){
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
-  const archivedHTML=archived.length?('<div class="reco-group-h"><span>🗃️</span><span>'+ (fr?'Projets archivés':'Archived projects')+'</span><span class="cnt">'+archived.length+'</span></div><div class="rgrid2">'+archived.map(item=>{
-      const row=item.row||{},when=new Date(item.archivedAt).toLocaleDateString();
-      return '<div class="rtile reco-archived" style="--gc:'+gcolor(row.genre)+'">'+
-        '<div class="rt-head"><div class="rt-title">'+esc(row.title)+'</div></div>'+
-        '<div class="rt-tags">'+gtag(row.genre)+(row.dur?ghosttag(row.dur):'')+'</div>'+
-        '<div class="rt-note">'+(fr?'Archivée le ':'Archived on ')+esc(when)+'</div>'+
-        '<div class="reco-quick-actions"><button class="rbtn reco-restore" onclick="restoreValidatedRecommendation('+jsq(item.key)+',event)">↩ '+(fr?'Restaurer':'Restore')+'</button></div>'+
-      '</div>';
-    }).join('')+'</div>'):'';
   const rows=refusedRecommendationRows();window._pageRecos=rows;
-  if(!archived.length&&!rows.length)return '<div class="empty">'+(fr?'Aucune recommandation archivée.':'No archived recommendations.')+'</div>';
-  const refusedHTML=rows.length?((archived.length?'<div class="reco-group-h"><span>—</span><span>'+ (fr?'Refusées':'Refused')+'</span><span class="cnt">'+rows.length+'</span></div>':'')+'<div class="rgrid2">'+rows.map((r,i)=>recoArchiveCardHTML(r,i)).join('')+'</div>'):'';
-  return archivedHTML+refusedHTML;
+  if(!rows.length)return '<div class="empty">'+(fr?'Aucune recommandation refusée.':'No refused recommendation.')+'</div>';
+  return '<div class="rgrid2">'+rows.map((r,i)=>recoRefusedCardHTML(r,i)).join('')+'</div>';
 }
 function recoValidatedCardHTML(r,i){
   const note=noteOf(r.valid),tierL=r.pot?r.pot[0].toUpperCase():null;
   const tier=tierL?('<span class="rtier tier-'+tierL+'" title="Tier '+tierL+'">'+tierL+'</span>'):'<span class="rtier" style="opacity:.35">-</span>';
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
-  const planned=r.__kind==='roadmap';
-  const plannedDate=planned&&r.date?new Date(r.date).toLocaleDateString(fr?'fr-FR':'en-GB',{day:'2-digit',month:'short',year:'numeric'}):'';
   return '<div class="rtile reco-validated" style="--gc:'+gcolor(r.genre)+'" onclick="openValidatedReco('+i+')">'+
     '<div class="rt-head">'+tier+'<div class="rt-title">'+esc(r.title)+'</div></div>'+
-    '<div class="rt-tags">'+gtag(r.genre)+(r.dur?ghosttag(r.dur):'')+(planned?ghosttag((fr?'Planning':'Roadmap')+(plannedDate?' · '+plannedDate:'')):'')+'</div>'+
+    '<div class="rt-tags">'+gtag(r.genre)+(r.dur?ghosttag(r.dur):'')+'</div>'+
     (r.concept?'<div class="rt-desc">'+esc(String(r.concept).slice(0,130))+(String(r.concept).length>130?'...':'')+'</div>':'')+
     (note?'<div class="rt-note">Note: '+esc(note.slice(0,60))+(note.length>60?'...':'')+'</div>':'')+
-    '<div class="reco-quick-actions" onclick="event.stopPropagation()"><span class="reco-validated-state">✓ '+(planned?(fr?'Planning synchronisé':'Synced roadmap'):(fr?'Validée':'Validated'))+'</span><button class="rbtn rbtn-archive" title="'+(fr?'Archiver cette fiche':'Archive this card')+'" onclick="archiveValidatedRecommendation('+i+',event)">🗑️</button></div>'+
+    '<div class="reco-quick-actions reco-validated-actions" onclick="event.stopPropagation()"><span class="reco-validated-state">✓ '+(fr?'Validée':'Validated')+'</span><button class="rbtn reco-edit-btn" onclick="openRecoEditor('+r.n+',event)">✎ '+(fr?'Modifier':'Edit')+'</button>'+recommendationRoadmapActionHTML(r)+'<button class="rbtn rbtn-ko reco-refuse-small" title="'+(fr?'Refuser cette idée':'Refuse this idea')+'" onclick="setValid('+r.n+',\'-\',this,event)">✕</button></div>'+
   '</div>';
 }
 function recoValidatedHTML(){
@@ -432,27 +417,15 @@ function recoValidatedHTML(){
 }
 function openValidatedReco(i){
   const row=(window._pageRecos||[])[i];if(!row)return;
-  if(row.__kind!=='roadmap'){openRecoIdx(i);return;}
-  const fr=typeof LANG!=='undefined'&&LANG==='fr';
-  window._drawerRecoN=null;window._drawerReopen=null;
-  document.getElementById('drawer').innerHTML=
-    '<button class="dw-close" onclick="closeDrawer()">✕</button>'+
-    '<div class="dw-body" style="padding-top:26px">'+
-      '<div class="dw-title">'+esc(row.title)+'</div>'+
-      '<div class="dw-sub">'+gtag(row.genre)+(row.dur?ghosttag(row.dur):'')+ghosttag(fr?'Planning synchronisé':'Synced roadmap')+'</div>'+
-      '<div class="dw-stats"><div class="dw-stat hl"><b>'+esc(row.date?new Date(row.date).toLocaleDateString(fr?'fr-FR':'en-GB'):'—')+'</b><span>'+ (fr?'date prévue':'planned date')+'</span></div><div class="dw-stat"><b>'+esc(row.src||'—')+'</b><span>'+ (fr?'source':'source')+'</span></div></div>'+
-      recoRow(fr?'Concept':'Concept',row.concept)+recoRow(fr?'Note':'Note',row.note)+
-      '<div class="rt-actions"><button class="rbtn rbtn-archive" onclick="archiveValidatedRecommendation('+i+',event)">🗑️ '+(fr?'Archiver cette fiche':'Archive this card')+'</button></div>'+
-    '</div>';
-  document.getElementById('drawer').classList.add('show');document.getElementById('backdrop').classList.add('show');document.getElementById('drawer').scrollTop=0;
+  openRecoIdx(i);
 }
 function recoVisibleHTML(){
-  if(RECO_TAB==='archive')return recoArchiveHTML();
+  if(RECO_TAB==='refused')return recoRefusedHTML();
   if(RECO_TAB==='validated')return recoValidatedHTML();
   return dailyRecoListHTML(dailyRecommendationSet());
 }
-function recosHTML(){return recoTabControlHTML()+'<div id="reco-list">'+recoVisibleHTML()+'</div>';}
-function setRecoTab(tab){if(!['pending','validated','archive'].includes(tab))return;RECO_TAB=tab;rerenderRecos();}
+function recosHTML(){ensureRecommendationPerformanceHistory();return recoTabControlHTML()+'<div id="reco-list">'+recoVisibleHTML()+'</div>';}
+function setRecoTab(tab){if(!['pending','validated','refused'].includes(tab))return;RECO_TAB=tab;rerenderRecos();}
 function rerenderRecos(){
   const el=document.getElementById('reco-list'),controls=document.querySelector('.reco-controlbar');
   if(el){el.innerHTML=recoVisibleHTML();i18nZone(el);}
@@ -476,6 +449,7 @@ function legacyRecoCardHTML(r,i){
 function recoCardHTML(r,i){
   const note=noteOf(r.valid),tierL=r.pot?r.pot[0].toUpperCase():null;
   const tier=tierL?('<span class="rtier tier-'+tierL+'" title="Tier '+tierL+'">'+tierL+'</span>'):'<span class="rtier" style="opacity:.35">-</span>';
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
   return '<div class="rtile" style="--gc:'+gcolor(r.genre)+'" onclick="openRecoIdx('+i+')">'+
     '<div class="rt-head">'+tier+'<div class="rt-title">'+esc(r.title)+'</div></div>'+
     '<div class="rt-tags">'+gtag(r.genre)+(r.dur?ghosttag(r.dur):'')+'</div>'+
@@ -483,8 +457,9 @@ function recoCardHTML(r,i){
     (r.scene?'<div class="rt-scene">Scene: '+esc(String(r.scene).slice(0,100))+(String(r.scene).length>100?'...':'')+'</div>':'')+
     (note?'<div class="rt-note">Note: '+esc(note.slice(0,60))+(note.length>60?'...':'')+'</div>':'')+
     '<div class="reco-quick-actions" onclick="event.stopPropagation()">'+
-      '<button class="rbtn rbtn-ko" onclick="setValid('+r.n+',\'-\',this,event)">✕ Refuse</button>'+
-      '<button class="rbtn rbtn-ok" onclick="setValid('+r.n+',\'X\',this,event)">✓ Validate</button>'+
+      '<button class="rbtn reco-edit-btn" onclick="openRecoEditor('+r.n+',event)">✎ '+(fr?'Modifier':'Edit')+'</button>'+
+      '<button class="rbtn rbtn-ko" onclick="setValid('+r.n+',\'-\',this,event)">✕ '+(fr?'Refuser':'Refuse')+'</button>'+
+      '<button class="rbtn rbtn-ok" onclick="setValid('+r.n+',\'X\',this,event)">✓ '+(fr?'Valider':'Validate')+'</button>'+
     '</div>'+
   '</div>';
 }
@@ -509,19 +484,55 @@ function copyTxtN(btn,n,field){
     setTimeout(()=>{btn.textContent=old;btn.classList.remove('done');},1400);
   });
 }
+function recommendationByNumber(n){return (DATA.recos||[]).find(row=>Number(row.n)===Number(n))||null;}
+function openRecoByNumber(n){
+  const i=(window._pageRecos||[]).findIndex(row=>Number(row.n)===Number(n));
+  if(i>=0)openRecoIdx(i);else closeDrawer();
+}
+function openRecoEditor(n,ev){
+  if(ev)ev.stopPropagation();
+  const r=recommendationByNumber(n);if(!r)return;
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
+  window._drawerRecoN=r.n;window._drawerReopen=()=>openRecoEditor(r.n);
+  document.getElementById('drawer').innerHTML=
+    '<button class="dw-close" onclick="closeDrawer()">✕</button>'+
+    '<div class="dw-body reco-editor" style="padding-top:26px">'+
+      '<div class="dw-title">'+(fr?'Modifier la recommandation':'Edit recommendation')+'</div>'+
+      '<div class="dw-sub">'+gtag(r.genre)+(r.dur?ghosttag(r.dur):'')+'</div>'+
+      '<label><span>'+(fr?'Titre':'Title')+'</span><input id="reco-edit-title" maxlength="180" value="'+esc(r.title||'')+'"></label>'+
+      '<label><span>'+(fr?'Description de l’idée':'Idea description')+'</span><textarea id="reco-edit-concept" maxlength="1200">'+esc(r.concept||'')+'</textarea></label>'+
+      '<label><span>'+(fr?'Description YouTube':'YouTube description')+'</span><textarea id="reco-edit-desc" maxlength="5000">'+esc(r.desc||'')+'</textarea></label>'+
+      '<p class="reco-editor-note">'+(fr?'La retouche est conservée sur cet appareil et utilisée par le classement après validation.':'The edit is kept on this device and used by the ranking after validation.')+'</p>'+
+      '<div class="reco-editor-actions"><button class="rbtn reco-edit-cancel" onclick="openRecoByNumber('+r.n+')">'+(fr?'Annuler':'Cancel')+'</button><button class="rbtn rbtn-ok" onclick="saveRecoEditor('+r.n+',event)">✓ '+(fr?'Enregistrer':'Save')+'</button></div>'+
+    '</div>';
+  document.getElementById('drawer').classList.add('show');document.getElementById('backdrop').classList.add('show');document.getElementById('drawer').scrollTop=0;
+  const input=document.getElementById('reco-edit-title');if(input){input.focus();input.setSelectionRange(input.value.length,input.value.length);}
+}
+function saveRecoEditor(n,ev){
+  if(ev)ev.stopPropagation();
+  const r=recommendationByNumber(n),title=document.getElementById('reco-edit-title'),concept=document.getElementById('reco-edit-concept'),desc=document.getElementById('reco-edit-desc');if(!r||!title||!concept||!desc)return;
+  const nextTitle=title.value.trim();if(!nextTitle){title.focus();return;}
+  const edits=recommendationEdits();edits[String(r.n)]={title:nextTitle,concept:concept.value.trim(),desc:desc.value.trim(),updatedAt:Date.now()};saveRecommendationEdits(edits);
+  r.title=nextTitle;r.concept=concept.value.trim();r.desc=desc.value.trim();r._locallyEdited=true;
+  saveCache(DATA);
+  if(typeof VIEW_CACHE!=='undefined')VIEW_CACHE.delete(viewCacheKey('recos'));
+  rerenderRecos();openRecoByNumber(r.n);
+}
 function recoActions(r,i){
   const isVal=isValidated(r.valid), isRef=isRefused(r.valid);
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
   const actions=isVal
-    ?'<span class="rst-done rst-ok" style="flex:1;text-align:center">✅ Validated</span><button class="rbtn rbtn-archive" title="Archive this card" onclick="archiveValidatedRecommendation('+i+',event)">🗑️</button><button class="rst-x" title="Reset to pending" onclick="setValid('+r.n+',\'\',this,event)">✕</button>'
+    ?'<span class="rst-done rst-ok" style="flex:1;text-align:center">✅ '+(fr?'Validée':'Validated')+'</span><button class="rbtn reco-edit-btn" onclick="openRecoEditor('+r.n+',event)">✎ '+(fr?'Modifier':'Edit')+'</button>'+recommendationRoadmapActionHTML(r)+'<button class="rbtn rbtn-ko reco-refuse-small" title="'+(fr?'Refuser cette idée':'Refuse this idea')+'" onclick="setValid('+r.n+',\'-\',this,event)">✕</button>'
     :isRef
-    ?'<span class="rst-done rst-ko" style="flex:1;text-align:center">❌ Refused</span><button class="rst-x" title="Reset to pending" onclick="setValid('+r.n+',\'\',this,event)">✕</button>'
-    :'<button class="rbtn rbtn-ko" style="flex:1" onclick="setValid('+r.n+',\'-\',this,event)">✕ Refuse</button><button class="rbtn rbtn-ok" style="flex:1" onclick="setValid('+r.n+',\'X\',this,event)">✓ Validate</button>';
+    ?'<span class="rst-done rst-ko" style="flex:1;text-align:center">❌ '+(fr?'Refusée':'Refused')+'</span><button class="rbtn reco-edit-btn" onclick="openRecoEditor('+r.n+',event)">✎ '+(fr?'Modifier':'Edit')+'</button><button class="rst-x" title="'+(fr?'Remettre à valider':'Reset to pending')+'" onclick="setValid('+r.n+',\'\',this,event)">✕</button>'
+    :'<button class="rbtn reco-edit-btn" onclick="openRecoEditor('+r.n+',event)">✎ '+(fr?'Modifier':'Edit')+'</button><button class="rbtn rbtn-ko" style="flex:1" onclick="setValid('+r.n+',\'-\',this,event)">✕ '+(fr?'Refuser':'Refuse')+'</button><button class="rbtn rbtn-ok" style="flex:1" onclick="setValid('+r.n+',\'X\',this,event)">✓ '+(fr?'Valider':'Validate')+'</button>';
   return '<div class="rt-actions" style="margin:16px 0 12px;gap:12px" onclick="event.stopPropagation()">'+actions+'</div>';
 }
 function recoCommentBox(r){
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
   return '<div class="cmt-box" onclick="event.stopPropagation()">'+
     '<div class="k" style="font-size:10.5px;text-transform:uppercase;letter-spacing:1.3px;color:var(--acc2);font-weight:700;margin-bottom:7px">💬 Commentaire</div>'+
-    '<textarea id="cta-dw" oninput="autoSaveComment('+r.n+')" placeholder="Your note — ChatGPT reads it at the next scan to recalibrate…">'+esc(noteOf(r.valid))+'</textarea>'+
+    '<textarea id="cta-dw" oninput="autoSaveComment('+r.n+')" placeholder="'+(fr?'Note interne pour l’équipe…':'Internal note for the team…')+'">'+esc(noteOf(r.valid))+'</textarea>'+
     '<span id="cstat-dw" style="font-size:11px;color:var(--dim);margin-top:5px;display:inline-block;min-height:14px"></span>'+
   '</div>';
 }
@@ -534,7 +545,7 @@ function openRecoIdx(i){
   const r=(window._pageRecos||[])[i];if(!r)return;
   const tierL=r.pot?r.pot[0].toUpperCase():null;
   window._drawerRecoN=r.n;
-  window._drawerReopen=()=>openRecoIdx(i);
+  window._drawerReopen=()=>openRecoByNumber(r.n);
   document.getElementById('drawer').innerHTML=
     '<button class="dw-close" onclick="closeDrawer()">✕</button>'+
     '<div class="dw-body" style="padding-top:26px">'+
@@ -702,16 +713,16 @@ function archiveRoadmapEntry(i,ev){
   if(ev)ev.stopPropagation();
   const r=(window._rm_rows||[])[i];if(!r)return;
   closeRoadmapContextMenu();
-  const row=Object.assign({},r,{__kind:'roadmap',valid:'X',planned:true});
-  archiveProjectRow(row);
-  // DATA remains the accepted Monday feed.  The shared Recommendations archive
-  // is the only reversible state that can hide a project from either view.
+  const row=Object.assign({},r,{__kind:'roadmap'}),key=roadmapArchiveKey(row),archive=roadmapArchiveRows();
+  if(!archive.some(item=>item.key===key)){archive.push({key,archivedAt:Date.now(),row});saveRoadmapArchiveRows(archive);}
+  // DATA remains the accepted Monday feed. Roadmap has its own reversible
+  // archive and never changes a recommendation decision.
   invalidateRoadmapDerivedViews();
   closeDrawer();render();
 }
 function restoreRoadmapEntry(i){
   const item=(window._roadmap_archive_items||roadmapArchiveItems())[i];if(!item)return;
-  restoreProjectArchive(item.key);
+  saveRoadmapArchiveRows(roadmapArchiveRows().filter(current=>current.key!==item.key));
   invalidateRoadmapDerivedViews();render();
 }
 function deleteRoadmapEntry(i,ev){
@@ -820,7 +831,7 @@ function yearCalHTML(rows,y,toggle,vt){
   return h;
 }
 
-/* ================= SMART SCHEDULING (validate → roadmap proposal) ================= */
+/* ============== ROADMAP PLACEMENT (explicit action on a validated idea) ============== */
 const SCHED_RULES={
   lofi:{minGapDays:14,label:'Lofi · 2×/mois'},
   pianoclassic:{minGapDays:63,label:'Piano + Classique · 1×/8–10 semaines'},
@@ -841,18 +852,14 @@ function roadmapArchiveKey(row){
 }
 function archivedRoadmapKeys(){
   const keys=new Set(),add=row=>{if(row&&row.title)keys.add(roadmapArchiveKey(row));};
-  // Recommendations and Roadmap now share this one canonical archive.
-  if(typeof validatedArchiveRows==='function')validatedArchiveRows().forEach(item=>{
-    if(item&&item.row&&item.row.__kind==='roadmap')add(item.row);
-    if(item&&typeof item.key==='string'&&item.key.indexOf('roadmap:')===0)keys.add(item.key);
+  const archive=typeof roadmapArchiveRows==='function'?roadmapArchiveRows():[];
+  archive.forEach(item=>{
+    if(item&&item.row)add(item.row);
+    if(item&&typeof item.key==='string')keys.add(item.key);
   });
   return keys;
 }
 function isArchivedRoadmapEntry(row){
-  if(typeof validatedRowKey==='function'&&typeof validatedArchiveRows==='function'){
-    const canonicalKey=validatedRowKey(Object.assign({},row,{__kind:'roadmap'}));
-    if(validatedArchiveRows().some(item=>item&&item.key===canonicalKey))return true;
-  }
   return archivedRoadmapKeys().has(roadmapArchiveKey(row));
 }
 function scheduledRows(){
@@ -930,8 +937,8 @@ function scheduleRecommendation(reco,sug){
   if(!placement)return null;
   const d=placement.date;
   const entry={date:+d,jour:['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'][d.getDay()],
-    src:'Proposition rotation (à valider)',recoN:reco.n,title:reco.title,genre:reco.genre,perso:reco.perso,dur:reco.dur,
-    concept:reco.concept,scene:reco.scene,style:reco.style,niche:reco.niche,cadence:placement.rule.label||'',note:'Ajouté depuis la rotation quotidienne'};
+    src:'Recommandation validée (placement manuel)',recoN:reco.n,title:reco.title,genre:reco.genre,perso:reco.perso,dur:reco.dur,
+    concept:reco.concept,scene:reco.scene,style:reco.style,niche:reco.niche,cadence:placement.rule.label||'',note:'Placé manuellement depuis Recommandations'};
   SCHED_LOCAL.push(entry);
   schedSaveLocal();
   DATA.roadmap=(DATA.roadmap||[]).concat([entry]);
@@ -1048,19 +1055,16 @@ function positionSchedDayPopover(){
 function confirmSchedDate(){
   if(!SCHED_CUR)return;
   const {reco,sug}=SCHED_CUR;
-  const entry={date:+sug.date,jour:['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'][sug.date.getDay()],
-    src:'Proposition rotation (à valider)',recoN:reco.n,title:reco.title,genre:reco.genre,perso:reco.perso,dur:reco.dur,
-    concept:reco.concept,scene:reco.scene,style:reco.style,niche:reco.niche,cadence:sug.rule.label||'',note:'Placé automatiquement via le popup de validation'};
-  SCHED_LOCAL.push(entry);
-  schedSaveLocal();
-  DATA.roadmap=(DATA.roadmap||[]).concat([entry]);
+  const entry=scheduleRecommendation(reco,sug);if(!entry)return;
+  invalidateRoadmapDerivedViews();
+  if(route==='recos')rerenderRecos();
   const el=document.getElementById('sched-modal');
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
   const MFULL=fr?['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre']
     :['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const d=sug.date;
+  const d=new Date(entry.date);
   let h='<div class="sched-h">✓ Date confirmed</div>'+
-    '<div class="sched-confirmed">« '+esc(reco.title)+' » is added on '+d.getDate()+' '+MFULL[d.getMonth()]+' '+d.getFullYear()+' (visible in Roadmap, tagged “to validate”).<br><br>Remember to also report this date in the Google Sheet Roadmap so it persists for the whole team.</div>'+
+    '<div class="sched-confirmed">« '+esc(reco.title)+' » is added on '+d.getDate()+' '+MFULL[d.getMonth()]+' '+d.getFullYear()+' and is now visible in Roadmap.<br><br>Remember to also report this date in the Google Sheet Roadmap so it persists for the whole team.</div>'+
     '<div class="sched-actions" style="margin-top:14px">'+
       '<button class="sched-btn-ok" onclick="closeSchedPopup();go(\'roadmap\')">Open roadmap</button>'+
       '<button class="sched-btn-cancel" onclick="closeSchedPopup()">Close</button>'+
@@ -1165,6 +1169,7 @@ function anaRows(){
     const peers=anaAgeComparable(out.filter(x=>x.vid!==o.vid),o.ageDays,2);
     const comparable=peers.sufficient?peers.rows:[];
     const velocityPeers=comparable.filter(x=>x.vpm!=null);
+    const recentVelocityPeers=comparable.filter(x=>x.vNow!=null);
     o.chAgeLabel=peers.label;o.chAgeExact=peers.exact;o.chN=velocityPeers.length;
     o.chMed=median(velocityPeers.map(x=>x.vpm));
     o.ctrMed=median(comparable.map(x=>x.st?x.st.ctr:null));
@@ -1173,6 +1178,7 @@ function anaRows(){
     o.medViews=median(comparable.map(x=>x.views));
     o.medCmt=median(comparable.map(x=>CM[x.vid]!=null?CM[x.vid]:null));
     o.pctCh=(o.vpm!=null&&velocityPeers.length>=2)?Math.round(velocityPeers.filter(x=>x.vpm<o.vpm).length/velocityPeers.length*100):null;
+    o.pctNow=(o.vNow!=null&&recentVelocityPeers.length>=2)?Math.round(recentVelocityPeers.filter(x=>x.vNow<o.vNow).length/recentVelocityPeers.length*100):null;
     o.diags=anaDiags(o);
   });
   _anaCache=out;_anaT=SYNCED;
@@ -2115,7 +2121,7 @@ const FR_LIT=[
 ['Market benchmark (radar) × YouTube Studio private data (impressions, CTR, retention · 365 days, refreshed on demand)','Benchmark marché (radar) × données privées YouTube Studio (impressions, CTR, rétention · 365 jours, rafraîchies à la demande)'],
 ['📋 All releases','📋 Toutes les sorties'],[' releases<',' sorties<'],[' release<',' sortie<'],['>Today<','>Aujourd’hui<'],
 ['📈 View history','📈 Historique des vues'],['📡 Concurrent viewers','📡 Spectateurs simultanés'],['🔬 Diagnosis','🔬 Diagnostic'],['💡 Linked recommendation','💡 Recommandation liée'],['⚖️ Cohort','⚖️ Cohorte'],['📚 Catalog','📚 Catalogue'],['📈 Subscribers','📈 Abonnés'],['📈 Total views','📈 Vues totales'],['🔥 Why trending / notable','🔥 Pourquoi ça tourne'],['🔥 Why trending','🔥 Pourquoi en tendance'],['📌 Why notable','📌 Pourquoi notable'],['💡 Lofi Girl suggestion','💡 Suggestion Lofi Girl'],['💡 Lofi Girl angle','💡 Angle Lofi Girl'],['🎯 What to copy','🎯 À copier'],['🎼 Musical direction','🎼 Direction musicale'],['🎨 Visual direction','🎨 Direction visuelle'],['🔎 Discovery keywords','🔎 Mots-clés de découverte'],['🏁 Best search rank','🏁 Meilleur rang de recherche'],['🗓️ First seen by the scan','🗓️ Première détection'],['🔎 Found via search keywords','🔎 Trouvée via ces recherches'],['✏️ Title pattern','✏️ Structure du titre'],['🎬 Concept','🎬 Concept'],['🖼️ Thumbnail scene','🖼️ Scène de miniature'],['🎼 Music style','🎼 Style musical'],['🔁 Cadence','🔁 Cadence'],['🍂 Seasonal note','🍂 Note saisonnière'],
-['✓ Validated · click to undo','✓ Validée · cliquer pour annuler'],['✓ Validate','✓ Valider'],['💾 Save to Sheet','💾 Enregistrer dans le Sheet'],['Your note — ChatGPT reads it at the next scan to recalibrate…','Ta note — ChatGPT la lit au prochain scan pour recalibrer…'],
+['✓ Validated · click to undo','✓ Validée · cliquer pour annuler'],['✓ Validate','✓ Valider'],['💾 Save to Sheet','💾 Enregistrer dans le Sheet'],
 ['>✅ Validated</div>','>✅ Validées</div>'],['>📝 With Dim note</option>','>📝 Avec note Dim</option>'],['>✅ Validated or noted</option>','>✅ Validées ou notées</option>'],['>⏳ Pending review</div>','>⏳ À trier</div>'],['>🎯 All niches</div>','>🎯 Toutes les niches</div>'],
 ['Nothing matches — try clearing filters.','Aucun résultat, essaie de retirer des filtres.'],['Nothing matches — try clearing the search.','Aucun résultat, essaie de vider la recherche.'],
 ['Tracking just started — the curve appears from the 2nd scan. 📡','Suivi tout juste lancé, la courbe apparaît dès le 2e scan. 📡'],[' scans · ',' scans · '],['/day measured','/jour mesuré'],['concurrent viewers · ','spectateurs simultanés · '],['>latest<','>dernier<'],
@@ -2137,7 +2143,7 @@ const FR_LIT=[
 ['General cadence (~1 release/week, free week)','Cadence générale (~1 sortie/semaine, semaine libre)'],['relaxed constraint (few open slots)','contrainte assouplie (peu de créneaux libres)'],
 ['Spaced out from the last rain/storm concept (≥3 weeks)','Espacé du dernier concept pluie/orage (≥3 semaines)'],
 ['Suggested release date — click a day to see nearby planned releases.','Date de sortie proposée — clique sur un jour pour voir les sorties proches.'],['✓ Confirm date','✓ Confirmer la date'],['Date suivante','Date suivante'],['Nearby releases','Sorties proches'],['No releases planned within 7 days of this date.','Aucune sortie planifiée dans les 7 jours autour de cette date.'],['>Not now<','>Plus tard<'],
-['✓ Placed in the schedule','✓ Placé au planning'],['» is added on ','» est ajouté au '],[' (visible in Roadmap, tagged “to validate”).',' (visible dans Roadmap, tag « à valider »).'],
+['✓ Placed in the schedule','✓ Placé au planning'],['» is added on ','» est ajouté au '],[' and is now visible in Roadmap.',' et est maintenant visible dans la Roadmap.'],
 ['Remember to also report this date in the Google Sheet Roadmap so it persists for the whole team.','Pense à reporter cette date dans le Google Sheet Roadmap pour que ça persiste pour toute l’équipe.'],
 ['See in the schedule','Voir dans le planning'],
 ['>Thumbnail scene<','>Scène de miniature<'],['>Music style<','>Style musical<'],['>Launch format<','>Format de lancement<'],

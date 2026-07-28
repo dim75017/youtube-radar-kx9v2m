@@ -5,7 +5,7 @@ const fs = require('node:fs');
 
 const source = fs.readFileSync('assets/js/dashboard-04-recommendations.js', 'utf8');
 
-assert.match(source, /function recosHTML\(\)\{return recoTabControlHTML\(\)\+'<div id="reco-list">'/,
+assert.match(source, /function recosHTML\(\)\{(?:ensureRecommendationPerformanceHistory\(\);)?return recoTabControlHTML\(\)\+'<div id="reco-list">'/,
   'the daily selection has compact status controls but no verbose header');
 assert.doesNotMatch(source.slice(source.indexOf('function recoCardHTML'), source.indexOf('function recoInfoRows')),
   /_dailyReasons/, 'selection-reason chips are absent from recommendation cards');
@@ -13,8 +13,30 @@ assert.doesNotMatch(source, /function validateRecommendationNow\(/,
   'validation must not silently add a recommendation to the roadmap');
 assert.doesNotMatch(source, /Validate &amp; schedule/,
   'the action must remain a plain validation');
-assert.match(source, /openSchedulePopup\(rec\)/,
-  'a newly validated recommendation opens its date proposal');
+const validation = source.slice(source.indexOf('function setValid('), source.indexOf('const WRITE_URL=', source.indexOf('function setValid(')));
+assert.doesNotMatch(validation, /openSchedulePopup/,
+  'validation and roadmap placement must remain two separate decisions');
+assert.match(source, /function placeValidatedRecommendation\(n,ev\)/,
+  'validated recommendations expose a dedicated roadmap-placement action');
+const placement = source.slice(source.indexOf('function placeValidatedRecommendation('), source.indexOf('function recommendationRoadmapActionHTML('));
+assert.match(placement, /openSchedulePopup\(reco\)/,
+  'the explicit roadmap action opens the existing date picker');
+assert.match(source, /onclick="placeValidatedRecommendation\('\+reco\.n\+',event\)"/,
+  'validated cards expose the explicit roadmap-placement button');
+assert.match(source, /function refreshDailyRecommendations\(ev\)/,
+  'the pending queue exposes an explicit refresh action');
+assert.match(source, /reco-refresh-btn/,
+  'the pending status controls render the new-ideas button');
+assert.match(source, /function openRecoEditor\(n,ev\)/,
+  'recommendation cards expose a title and description editor');
+for (const [name, startMarker, endMarker] of [
+  ['pending', 'function recoCardHTML(', 'function recoInfoRows('],
+  ['validated', 'function recoValidatedCardHTML(', 'function recoValidatedHTML('],
+  ['refused', 'function recoRefusedCardHTML(', 'function recoRefusedHTML('],
+]) {
+  const section = source.slice(source.indexOf(startMarker), source.indexOf(endMarker));
+  assert.match(section, /openRecoEditor\(/, `${name} recommendation cards expose the edit action`);
+}
 assert.match(source, /function previewSchedDay\(timestamp\)/,
   'each date circle can reveal releases on that day');
 assert.match(source, /function schedDayPopoverHtml\(date,rows\)/,
@@ -39,9 +61,9 @@ assert.doesNotMatch(source, /schedNearbyReleases/,
 assert.match(source, /recoN:reco\.n/,
   'roadmap entries preserve their recommendation identity');
 assert.match(source, /function setRecoTab\(tab\)/,
-  'the recommendation view exposes status tabs including the archive');
+  'the recommendation view exposes its three decision-status tabs');
 assert.match(source, /refusedRecommendationRows\(\)/,
-  'refused recommendations are retained in the archive');
+  'refused recommendations remain available in their dedicated tab');
 assert.match(source, /activeTodayIds=todayIds\.slice\(0,RECO_DAILY_LIMIT\)/,
   'a legacy queue cannot exceed the daily cap');
 assert.match(source, /renderNav\(\)/,

@@ -15,6 +15,22 @@ class YoutubeWorkflowGuardrailTests(unittest.TestCase):
         self.assertIn('needs: prepare', scan)
         self.assertIn('--tracked-manifest artifacts/youtube-tracked-ids.json', scan)
 
+    def test_recommendation_learning_is_guarded_before_each_scan(self):
+        workflow = Path('.github/workflows/refresh-instrumental-radar.yml').read_text(encoding='utf-8')
+        validate = workflow.split('  validate:\n', 1)[1].split('  prepare:\n', 1)[0]
+        for test in (
+            'test_youtube_age_normalized_analysis.js',
+            'test_youtube_daily_recommendations.js',
+            'test_youtube_recommendation_actions.js',
+            'test_youtube_recommendation_edits.js',
+            'test_youtube_recommendation_status_tabs.js',
+            'test_recommendation_validated_archive.js',
+            'test_roadmap_context_actions.js',
+            'test_roadmap_slot_scheduling.js',
+        ):
+            self.assertIn(test, validate)
+        self.assertIn("'assets/js/dashboard-04-recommendations.js'", workflow)
+
     def test_daily_watchdog_retries_only_when_the_paris_snapshot_is_stale(self):
         workflow = Path('.github/workflows/refresh-instrumental-radar.yml').read_text(encoding='utf-8')
         gate = workflow.split('  gate:\n', 1)[1].split('  validate:\n', 1)[0]

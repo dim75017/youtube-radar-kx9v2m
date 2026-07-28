@@ -14,6 +14,13 @@ on:
       - 'assets/js/dashboard-01-config.js'
       - 'assets/js/dashboard-02-helpers.js'
       - 'assets/js/dashboard-03-keywords.js'
+      - 'assets/js/dashboard-04-recommendations.js'
+      - 'tests/test_youtube_daily_recommendations.js'
+      - 'tests/test_youtube_recommendation_actions.js'
+      - 'tests/test_youtube_recommendation_edits.js'
+      - 'tests/test_youtube_recommendation_status_tabs.js'
+      - 'tests/test_recommendation_validated_archive.js'
+      - 'tests/test_roadmap_context_actions.js'
       - 'refresh_instrumental_extensions.py'
       - 'refresh_youtube_daily.py'
   workflow_dispatch:
@@ -64,12 +71,20 @@ jobs:
           node-version: '20'
       - name: Install validation dependencies
         run: pip install --disable-pip-version-check openpyxl
-      - name: Test the 100k new-video view floor
+      - name: Test discovery and recommendation intelligence
         run: |
           python -m unittest tests.test_refresh_youtube_daily tests.test_youtube_workflow_guardrails
           node tests/test_youtube_new_video_view_floor.js
           node tests/test_youtube_daily_view_deltas.js
           node tests/test_youtube_channel_update_status.js
+          node tests/test_youtube_age_normalized_analysis.js
+          node tests/test_youtube_daily_recommendations.js
+          node tests/test_youtube_recommendation_actions.js
+          node tests/test_youtube_recommendation_edits.js
+          node tests/test_youtube_recommendation_status_tabs.js
+          node tests/test_recommendation_validated_archive.js
+          node tests/test_roadmap_context_actions.js
+          node tests/test_roadmap_slot_scheduling.js
 
   prepare:
     name: Resolve one canonical tracked-video manifest
