@@ -43,6 +43,7 @@ const context = {
   isValidated: value => /^X/.test(value || ''),
   isRefused: value => /^-/.test(value || ''),
   recommendationRoadmapEntry: () => null,
+  setActiveContinuousRecommendationVariants: () => {},
   rerenderRecos: () => { rerenders += 1; },
   anaRows: () => [
     {ageM: 1, pctCh: 92, reco: recos[29], st: {ctr: 6.5, awp: 48}},

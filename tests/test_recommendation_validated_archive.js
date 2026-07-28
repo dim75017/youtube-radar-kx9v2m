@@ -43,8 +43,18 @@ const visibleMonday = {
 const placedRecommendation = {
   title: 'Already placed recommendation',
   date: 7,
-  src: 'Proposition rotation (à valider)',
+  src: 'Recommandation validée (placement manuel)',
   recoN: 7,
+};
+const producedRecommendation = {
+  title: 'Produced recommendation',
+  date: 8,
+  src: 'Nouveau mix (a produire)',
+};
+const unconfirmedProposal = {
+  title: 'Unconfirmed recommendation',
+  date: 9,
+  src: 'Proposition rotation (a valider)',
 };
 const recommendationOnlyArchive = {
   key: 'reco:1',
@@ -86,9 +96,11 @@ const context = {
       {n: 1, title: 'Validated recommendation', valid: 'X'},
       {n: 2, title: 'Refused recommendation', valid: '-'},
       {n: 3, title: 'Pending recommendation', valid: ''},
-      {n: 7, title: 'Already placed recommendation', valid: 'X'},
+      {n: 7, title: 'Already placed recommendation', valid: '-'},
+      {n: 8, title: 'Produced recommendation', valid: 'X'},
+      {n: 9, title: 'Unconfirmed recommendation', valid: 'X'},
     ],
-    roadmap: [archivedMonday, visibleMonday],
+    roadmap: [archivedMonday, visibleMonday, producedRecommendation, unconfirmedProposal],
   },
   SCHED_LOCAL: [placedRecommendation],
   VIEW_CACHE: new Map([['roadmap|fr', {}], ['dashboard|fr', {}], ['recos|fr', {}]]),
@@ -177,14 +189,18 @@ assert.ok(accepted.some(row => row.title === archivedMonday.title),
   'Monday remains a source for Roadmap before its separate archive filter is applied');
 assert.ok(accepted.some(row => row.title === visibleMonday.title),
   'non-archived Monday projects remain accepted Roadmap rows');
+assert.ok(accepted.some(row => row.title === producedRecommendation.title),
+  'a produced mix is already an accepted Roadmap project');
+assert.ok(!accepted.some(row => row.title === unconfirmedProposal.title),
+  'an unconfirmed rotation proposal never enters the accepted Roadmap set');
 
 const validated = Array.from(context.validatedRowsForTest());
-assert.deepEqual(validated.map(row => row.n), [1],
-  'Validated contains only accepted recommendations that have not already entered Roadmap');
+assert.deepEqual(validated.map(row => row.n), [1, 9],
+  'Validated excludes produced or manually placed projects but keeps an unconfirmed proposal');
 assert.ok(validated.every(row => !/Monday/i.test(String(row.src || ''))),
   'Monday projects never appear in Validated');
 assert.deepEqual(Array.from(context.refusedRowsForTest()).map(row => row.n), [2],
-  'Refused remains the recommendation decision state and is not an archive');
+  'a stale refusal already placed in Roadmap is hidden and cannot teach a negative signal');
 
 const scheduledAfterMigration = Array.from(context.scheduledRowsForTest());
 assert.ok(!scheduledAfterMigration.some(row => row.title === archivedMonday.title),
@@ -217,7 +233,7 @@ context.SCHED_LOCAL.push({
   src: 'Recommandation validée (placement manuel)',
   recoN: 3,
 });
-assert.deepEqual(Array.from(context.validatedRowsForTest()).map(row => row.n), [1],
+assert.deepEqual(Array.from(context.validatedRowsForTest()).map(row => row.n), [1, 9],
   'a recommendation disappears from Validated as soon as its Roadmap placement is confirmed');
 context.placeValidatedForTest(2);
 context.placeValidatedForTest(7);
@@ -247,7 +263,7 @@ assert.equal(saved.get('lofi_radar_project_archive_v1'), legacyStoreBeforeRoadma
   'Roadmap archiving never writes to the previous Recommendations archive');
 assert.ok(!Array.from(context.scheduledRowsForTest()).some(row => row.title === visibleMonday.title),
   'the separate Roadmap archive hides the project only from Roadmap');
-assert.deepEqual(Array.from(context.validatedRowsForTest()).map(row => row.n), [1],
+assert.deepEqual(Array.from(context.validatedRowsForTest()).map(row => row.n), [1, 9],
   'Roadmap archiving leaves Validated unchanged');
 assert.deepEqual(Array.from(context.refusedRowsForTest()).map(row => row.n), [2],
   'Roadmap archiving leaves Refused unchanged');

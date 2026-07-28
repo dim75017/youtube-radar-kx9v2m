@@ -1,5 +1,11 @@
 /* ================= RECOMMENDATIONS ================= */
+function acceptedDecisionNote(v){
+  const value=String(v||'').trim();
+  const match=value.match(/^x(?=$|\s|[,;:\-]|\u00c2?\u00b7)([\s\S]*)$/i);if(!match)return null;
+  return match[1].trim().replace(/^(?:[,;:\-]|\u00c2?\u00b7)\s*/,'').trim();
+}
 function validState(v){
+  const accepted=acceptedDecisionNote(v);if(accepted!==null)return accepted?'xnote':'x';
   if(!v||v==='')return '';
   if(/^-\s*$/.test(v))return 'no';
   if(/^-\s*·/.test(v))return 'nonote';
@@ -8,6 +14,8 @@ function validState(v){
   return 'note';
 }
 function noteOf(v){const m=String(v||'').match(/^[x-]\s*·\s*([\s\S]*)$/i);if(m)return m[1];const s=validState(v);return (s==='note')?String(v):'';}
+const legacyRecommendationNoteOf=noteOf;
+noteOf=function(v){const accepted=acceptedDecisionNote(v);return accepted!==null?accepted:legacyRecommendationNoteOf(v);};
 function isValidated(v){return ['x','xnote'].includes(validState(v));}
 function isRefused(v){return ['no','nonote'].includes(validState(v));}
 function setValid(n,mode,btn,ev){
@@ -35,7 +43,7 @@ function setValid(n,mode,btn,ev){
     if(window._drawerRecoN===n&&drawer&&drawer.classList.contains('show')&&window._drawerReopen)window._drawerReopen();
   };
   if(!animateRecommendationDecision(btn,mode,finishDecision))finishDecision();
-  if(rec._generated)saveGeneratedRecommendationDecision(rec.n,val);
+  if(rec._generated)saveGeneratedRecommendationDecision(rec.n,val,rec);
   else writeValid(n,val,btn);
 }
 const RECO_DECISION_ANIMATION_MS=320;
@@ -92,8 +100,10 @@ function autoSaveComment(n){
     if(cur==='x'||cur==='xnote') val=txt?('X · '+txt):'X';
     else if(cur==='no'||cur==='nonote') val=txt?('- · '+txt):'-';
     else val=txt;
-    fetch(WRITE_URL+'?k='+WRITE_KEY+'&n='+encodeURIComponent(n)+'&val='+encodeURIComponent(val))
-      .then(r=>r.json()).then(j=>{
+    const persistence=rec._generated
+      ?(saveGeneratedRecommendationDecision(rec.n,val,rec),Promise.resolve({ok:true}))
+      :fetch(WRITE_URL+'?k='+WRITE_KEY+'&n='+encodeURIComponent(n)+'&val='+encodeURIComponent(val)).then(r=>r.json());
+    persistence.then(j=>{
         if(!j.ok)throw new Error(j.err||'write failed');
         rec.valid=val;saveCache(DATA);rerenderRecos();
         const fr=typeof LANG!=='undefined'&&LANG==='fr';
@@ -105,26 +115,70 @@ function autoSaveComment(n){
 }
 const RECO_EDIT_STORAGE_KEY='lofi_radar_recommendation_edits_v1';
 const GENERATED_RECO_DECISIONS_KEY='lofi_radar_generated_reco_decisions_v1';
+const CONTINUOUS_RECO_VARIANTS_KEY='lofi_radar_reco_variants_v1';
+const CONTINUOUS_RECO_VARIANT_VERSION=1;
+const CONTINUOUS_RECO_VARIANT_ID_BASE=2000000000000;
 function generatedRecommendationDecisions(){
   try{const value=JSON.parse(localStorage.getItem(GENERATED_RECO_DECISIONS_KEY)||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch(e){return {};}
 }
-function saveGeneratedRecommendationDecision(n,value){
+function continuousRecommendationVariantState(){
+  try{
+    const raw=JSON.parse(localStorage.getItem(CONTINUOUS_RECO_VARIANTS_KEY)||'{}');
+    if(!raw||typeof raw!=='object'||Array.isArray(raw))return {version:CONTINUOUS_RECO_VARIANT_VERSION,cursor:0,active:[],decided:{}};
+    return {
+      version:CONTINUOUS_RECO_VARIANT_VERSION,
+      cursor:Math.max(0,Math.floor(Number(raw.cursor)||0)),
+      active:Array.isArray(raw.active)?raw.active.filter(row=>row&&row._continuousVariant&&Number.isFinite(Number(row.n))&&row.title):[],
+      decided:raw.decided&&typeof raw.decided==='object'&&!Array.isArray(raw.decided)?raw.decided:{},
+    };
+  }catch(e){return {version:CONTINUOUS_RECO_VARIANT_VERSION,cursor:0,active:[],decided:{}};}
+}
+function saveContinuousRecommendationVariantState(state){
+  try{localStorage.setItem(CONTINUOUS_RECO_VARIANTS_KEY,JSON.stringify(state));}catch(e){console.warn('Continuous recommendation state could not be saved',e);}
+}
+function continuousRecommendationStorageRow(row){
+  const stored=Object.assign({},row);
+  delete stored._dailyScore;delete stored._dailyReasons;delete stored._dailyProfile;
+  return stored;
+}
+function storedContinuousRecommendationRows(){
+  const state=continuousRecommendationVariantState(),rows=[],seen=new Set();
+  state.active.concat(Object.values(state.decided||{})).forEach(row=>{
+    const id=String(row&&row.n);if(!row||seen.has(id))return;seen.add(id);rows.push(row);
+  });
+  return rows;
+}
+function setActiveContinuousRecommendationVariants(rows){
+  const state=continuousRecommendationVariantState();
+  state.active=(rows||[]).filter(row=>row&&row._continuousVariant).map(continuousRecommendationStorageRow);
+  saveContinuousRecommendationVariantState(state);
+}
+function saveGeneratedRecommendationDecision(n,value,row){
   try{const decisions=generatedRecommendationDecisions();decisions[String(n)]={value:String(value||''),updatedAt:Date.now()};localStorage.setItem(GENERATED_RECO_DECISIONS_KEY,JSON.stringify(decisions));}catch(e){}
+  if(row&&row._continuousVariant){
+    const state=continuousRecommendationVariantState(),id=String(n),stored=continuousRecommendationStorageRow(Object.assign({},row,{valid:String(value||'')}));
+    state.active=state.active.map(current=>String(current&&current.n)===id?stored:current);
+    state.decided[id]=stored;
+    saveContinuousRecommendationVariantState(state);
+  }
 }
 function mergeGeneratedRecommendationPool(data){
   if(!data)return data;
   const source=(window.LOFI_RECOMMENDATION_POOL&&window.LOFI_RECOMMENDATION_POOL.items)||data.recoGenerated||[];
-  if(!Array.isArray(source)||!source.length)return data;
+  const storedVariants=storedContinuousRecommendationRows();
+  if((!Array.isArray(source)||!source.length)&&!storedVariants.length)return data;
   const recos=data.recos||(data.recos=[]),decisions=generatedRecommendationDecisions();
   const ids=new Set(recos.map(row=>String(row&&row.n))),titles=new Set(recos.map(row=>normalizedRecommendationTitle(row&&row.title)).filter(Boolean));
-  source.forEach(raw=>{
+  const append=(raw,guardTitle)=>{
     if(!raw||raw.n==null||!raw.title)return;
     const id=String(raw.n),title=normalizedRecommendationTitle(raw.title);
-    if(ids.has(id)||titles.has(title))return;
+    if(ids.has(id)||(guardTitle&&titles.has(title)))return;
     const row=Object.assign({},raw,{_generated:true});
     const decision=decisions[id];if(decision&&typeof decision.value==='string')row.valid=decision.value;
     recos.push(row);ids.add(id);titles.add(title);
-  });
+  };
+  (Array.isArray(source)?source:[]).forEach(raw=>append(raw,true));
+  storedVariants.forEach(raw=>append(raw,false));
   return data;
 }
 function recommendationEdits(){
@@ -201,7 +255,7 @@ function legacyRerenderRecos(){
   const rc=document.querySelector('.result-count');if(rc)rc.innerHTML='<b>'+fmtInt(rows.length)+'</b> concepts';
   armAutoLoad();
 }
-/* Daily recommendation rotation: the large source catalogue stays intact; this view exposes 50 actionable ideas. */
+/* Daily recommendation rotation: measured seeds stay intact and can yield new deterministic variants on demand. */
 const RECO_DAILY_LIMIT=50;
 const RECO_ROTATION_KEY='lofi_radar_reco_rotation_v1';
 let RECO_HISTORY_PROMISE=null;
@@ -211,6 +265,96 @@ function recoDayKey(){
   return get('year')+'-'+get('month')+'-'+get('day');
 }
 function recoHash(v){let h=2166136261;const s=String(v);for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+const RECO_VARIANT_MOMENTS=[
+  'After Rain','At First Light','Blue Hour','Before Sunrise','Late Night','Golden Hour','Quiet Sunday','Midnight',
+  'Soft Winter','Warm Autumn','Distant Summer','Early Spring','Under City Lights','By the Window','Beyond the Clouds','Near the Water',
+  'After Midnight','At Dawn','During the Storm','Under Moonlight','On the Last Train','Across the Rooftops','Inside the Library','Beside the Fireplace'
+];
+const RECO_VARIANT_TREATMENTS=[
+  'Deep Focus','Slow Session','Quiet Study','Night Rest','Reading Flow','Calm Background','Gentle Escape','Longform Journey',
+  'Peaceful Work','Dream Sequence','Soft Reset','Nocturnal Focus','Morning Routine','Creative Flow','Silent Hours','Cozy Session',
+  'Rainy Focus','Sleep Journey','Late Study','Mindful Pause','Background Loop','Unwind Session','Calm Work','Slow Living'
+];
+const RECO_VARIANT_PALETTES=[
+  'bleu nuit et ambre','vert mousse et brume','violet doux et indigo','gris pluie et cuivre','rose aube et bleu froid','ocre et brun chaud',
+  'cyan profond et noir','ivoire et bleu ardoise','orange coucher de soleil et marine','vert sapin et lumière dorée','lilas et argent','sépia et bleu pétrole'
+];
+function measuredRecommendationVariantSeeds(){
+  const fromPool=typeof window!=='undefined'&&window.LOFI_RECOMMENDATION_POOL&&Array.isArray(window.LOFI_RECOMMENDATION_POOL.items)?window.LOFI_RECOMMENDATION_POOL.items:[];
+  const source=fromPool.length?fromPool:((DATA&&DATA.recos)||[]);
+  const out=[],seen=new Set();
+  source.forEach(row=>{
+    const id=String(row&&row.n);
+    if(!row||row._continuousVariant||!row._generated||!row._sourceVideoId||!String(row.noteData||'').trim()||seen.has(id))return;
+    seen.add(id);out.push(row);
+  });
+  return out;
+}
+function continuousRecommendationVariantId(serial){return -(CONTINUOUS_RECO_VARIANT_ID_BASE+serial);}
+function buildContinuousRecommendationVariant(seed,serial,usedTitles){
+  const hash=recoHash(String(seed.n)+'|'+serial+'|'+CONTINUOUS_RECO_VARIANT_VERSION);
+  const combinations=RECO_VARIANT_MOMENTS.length*RECO_VARIANT_TREATMENTS.length;
+  const combinationIndex=(serial-1)%combinations;
+  const moment=RECO_VARIANT_MOMENTS[combinationIndex%RECO_VARIANT_MOMENTS.length];
+  const treatment=RECO_VARIANT_TREATMENTS[Math.floor(combinationIndex/RECO_VARIANT_MOMENTS.length)%RECO_VARIANT_TREATMENTS.length];
+  const palette=RECO_VARIANT_PALETTES[Math.floor(hash/997)%RECO_VARIANT_PALETTES.length];
+  const edition=Math.floor((serial-1)/combinations)+1;
+  const parts=String(seed.title||'').split(/\s*[·|]\s*/).filter(Boolean);
+  const anchor=(parts[0]||String(seed.title||'Concept')).trim();
+  let title=moment+' '+anchor+' · '+treatment+(edition>1?' '+edition:'');
+  if(usedTitles.has(normalizedRecommendationTitle(title)))title+=' · '+serial.toString(36).toUpperCase();
+  usedTitles.add(normalizedRecommendationTitle(title));
+  const concept=String(seed.concept||'').trim();
+  const scene=String(seed.scene||'').trim();
+  return Object.assign({},seed,{
+    n:continuousRecommendationVariantId(serial),
+    valid:'',
+    title,
+    concept:(concept?concept+' ':'')+'Nouvelle variation : '+treatment.toLocaleLowerCase()+', pensée comme un format distinct avant validation éditoriale.',
+    scene:(scene?scene+' ':'')+'Variation visuelle '+moment.toLocaleLowerCase()+', palette '+palette+'.',
+    launch:'Réserve continue',
+    recoClaude:'Variante déterministe issue du radar quotidien',
+    recal:'Seed classée avec les performances récentes et les décisions de l’équipe',
+    _generated:true,
+    _continuousVariant:true,
+    _variantSeedN:seed.n,
+    _variantIndex:serial,
+    _continuousGeneratorVersion:CONTINUOUS_RECO_VARIANT_VERSION,
+    // noteData, source video ID and measured source score are copied verbatim
+    // from the seed. The browser never manufactures a performance proof.
+    noteData:seed.noteData,
+    _sourceVideoId:seed._sourceVideoId,
+    _sourceMarketScore:seed._sourceMarketScore,
+  });
+}
+function generateContinuousRecommendationVariants(limit,profile,day,genreCounts,personaCounts){
+  if(limit<=0)return [];
+  const seeds=measuredRecommendationVariantSeeds();if(!seeds.length)return [];
+  const state=continuousRecommendationVariantState();
+  const rankedSeeds=seeds.map(seed=>({seed,value:recoDailyScore(seed,profile,day)})).sort((a,b)=>b.value-a.value||Number(a.seed.n)-Number(b.seed.n));
+  const bandSize=Math.min(rankedSeeds.length,Math.max(limit*12,600));
+  const candidateCount=Math.max(limit*6,300),candidates=[],usedTitles=new Set(((DATA&&DATA.recos)||[]).map(row=>normalizedRecommendationTitle(row&&row.title)).filter(Boolean));
+  const startCursor=state.cursor;
+  for(let offset=0;offset<candidateCount;offset++){
+    const serial=startCursor+offset+1;
+    const seedIndex=(offset*37+Math.floor(startCursor/Math.max(1,candidateCount))*53)%bandSize;
+    candidates.push(buildContinuousRecommendationVariant(rankedSeeds[seedIndex].seed,serial,usedTitles));
+  }
+  state.cursor=startCursor+candidateCount;
+  saveContinuousRecommendationVariantState(state);
+  const picked=[],available=candidates.slice(),genres=genreCounts||{},personas=personaCounts||{};
+  while(picked.length<limit&&available.length){
+    const ranked=available.map(row=>{
+      const genre=String(row.genre||''),persona=persoCategory(row.perso);
+      return {row,value:recoDailyScore(row,profile,day)-(genres[genre]||0)*3-(personas[persona]||0)*1.35};
+    }).sort((a,b)=>b.value-a.value||a.row.n-b.row.n);
+    const selected=ranked[0].row,index=available.indexOf(selected);if(index>=0)available.splice(index,1);
+    picked.push(selected);
+    const genre=String(selected.genre||''),persona=persoCategory(selected.perso);genres[genre]=(genres[genre]||0)+1;personas[persona]=(personas[persona]||0)+1;
+  }
+  if(DATA&&Array.isArray(DATA.recos))DATA.recos.push(...picked);
+  return picked;
+}
 function recoTokens(r){
   const stop=new Set(['avec','dans','pour','the','and','from','lofi','music','radio','mix','video','youtube','ambient','chill']);
   return [...new Set((String(r.title||'')+' '+String(r.concept||'')+' '+String(r.niche||'')+' '+String(r.kw||''))
@@ -261,7 +405,7 @@ function recoProfile(){
   const activeRoadmapTitles=new Set(activeRoadmap.map(row=>normalizedRecommendationTitle(row&&row.title)).filter(Boolean));
   (DATA.recos||[]).forEach(r=>{
     const placedActive=activeRoadmapIds.has(Number(r.n))||activeRoadmapTitles.has(normalizedRecommendationTitle(r.title));
-    const feedback=isRefused(r.valid)?-3:(isValidated(r.valid)?(placedActive?4:3):0);if(!feedback)return;
+    const feedback=placedActive?4:(isRefused(r.valid)?-3:(isValidated(r.valid)?3:0));if(!feedback)return;
     p.feedback++;recoAddSignal(p.genre,String(r.genre||''),feedback);recoAddSignal(p.persona,persoCategory(r.perso),feedback);
     recoAddSignal(p.feedbackPersona,persoCategory(r.perso),feedback);recoTokens(r).forEach(t=>{recoAddSignal(p.token,t,feedback*.35);recoAddSignal(p.feedbackToken,t,feedback*.35);});
   });
@@ -295,7 +439,7 @@ function recoReasons(r,p,day){
 }
 function dailyRecommendationSet(){
   const day=recoDayKey(),history=recoRotationHistory(),profile=recoProfile();
-  const candidates=(DATA.recos||[]).filter(r=>!isValidated(r.valid)&&!isRefused(r.valid));
+  const candidates=(DATA.recos||[]).filter(r=>!isValidated(r.valid)&&!isRefused(r.valid)&&!recommendationRoadmapEntry(r));
   const decorate=rows=>rows.map(r=>Object.assign({},r,{_dailyScore:recoDailyScore(r,profile,day),_dailyReasons:recoReasons(r,profile,day),_dailyProfile:profile}));
   const todayIds=Array.isArray(history[day])?history[day]:[];
   // A previous version could preserve a larger queue after the daily target
@@ -316,7 +460,9 @@ function dailyRecommendationSet(){
     const ranked=pool.filter(r=>!picked.includes(r)).map(r=>{const g=String(r.genre||''),p=persoCategory(r.perso);return {r,value:recoDailyScore(r,profile,day)-(genres[g]||0)*3-(personas[p]||0)*1.35};}).sort((a,b)=>b.value-a.value||a.r.n-b.r.n);
     if(!ranked.length)break;const r=ranked[0].r;picked.push(r);const g=String(r.genre||''),p=persoCategory(r.perso);genres[g]=(genres[g]||0)+1;personas[p]=(personas[p]||0)+1;
   }
+  if(picked.length<RECO_DAILY_LIMIT)picked.push(...generateContinuousRecommendationVariants(RECO_DAILY_LIMIT-picked.length,profile,day,genres,personas));
   history[day]=[...new Set(picked.map(r=>r.n))].slice(0,RECO_DAILY_LIMIT);rememberRecoIds(history,history[day]);
+  setActiveContinuousRecommendationVariants(picked);
   Object.keys(history).filter(key=>!key.startsWith('_')).sort().slice(0,-14).forEach(k=>delete history[k]);saveRecoRotation(history);
   return decorate(picked);
 }
@@ -327,6 +473,7 @@ function refreshDailyRecommendations(ev){
   rememberRecoIds(history,current);
   delete history[day];
   saveRecoRotation(history);
+  setActiveContinuousRecommendationVariants([]);
   if(typeof VIEW_CACHE!=='undefined')VIEW_CACHE.delete(viewCacheKey('recos'));
   rerenderRecos();
 }
@@ -383,15 +530,17 @@ function invalidateRoadmapDerivedViews(){
   if(typeof renderNav==='function')renderNav();
 }
 function isMondayRoadmapProject(row){return !!(row&&/Monday/i.test(String(row.src||'')));}
+function isProducedRoadmapProject(row){return !!(row&&/^Nouveau mix\s*\(/i.test(String(row.src||'').trim()));}
+function isUnconfirmedRoadmapProposal(row){return !!(row&&/^Proposition rotation\s*\(/i.test(String(row.src||'').trim()));}
 function acceptedRoadmapRows(){
-  const monday=(DATA.roadmap||[]).filter(row=>row&&row.date&&isMondayRoadmapProject(row));
-  const confirmed=typeof SCHED_LOCAL!=='undefined'&&Array.isArray(SCHED_LOCAL)?SCHED_LOCAL:[];
+  const roadmap=(DATA.roadmap||[]).filter(row=>row&&row.date&&!isUnconfirmedRoadmapProposal(row)&&(isMondayRoadmapProject(row)||isProducedRoadmapProject(row)));
+  const confirmed=typeof SCHED_LOCAL!=='undefined'&&Array.isArray(SCHED_LOCAL)?SCHED_LOCAL.filter(row=>row&&row.date&&!isUnconfirmedRoadmapProposal(row)):[];
   const bySlot=new Map(),keyFor=row=>{
     if(!row||!row.date||!row.title)return '';
     const key=String(row.date)+'|'+normalizedRecommendationTitle(row.title);
     return key;
   };
-  monday.forEach(row=>{const key=keyFor(row);if(key&&!bySlot.has(key))bySlot.set(key,row);});
+  roadmap.forEach(row=>{const key=keyFor(row);if(key&&!bySlot.has(key))bySlot.set(key,row);});
   confirmed.forEach(row=>{
     const key=keyFor(row);if(!key)return;
     const current=bySlot.get(key);
@@ -403,7 +552,7 @@ function acceptedRoadmapRows(){
   });
   return Array.from(bySlot.values());
 }
-function refusedRecommendationRows(){return (DATA.recos||[]).filter(r=>isRefused(r.valid));}
+function refusedRecommendationRows(){return (DATA.recos||[]).filter(r=>isRefused(r.valid)&&!recommendationRoadmapEntry(r));}
 function validatedRecommendationRows(){
   return (DATA.recos||[]).filter(row=>isValidated(row.valid)&&!recommendationRoadmapEntry(row));
 }

@@ -21,6 +21,8 @@ on:
       - 'tests/test_youtube_recommendation_edits.js'
       - 'tests/test_youtube_recommendation_status_tabs.js'
       - 'tests/test_youtube_recommendation_continuous_pool.js'
+      - 'tests/test_youtube_recommendation_historical_acceptance_snapshot.js'
+      - 'tests/test_youtube_recommendation_roadmap_precedence.js'
       - 'tests/test_generate_youtube_recommendation_pool.py'
       - 'tests/test_recommendation_validated_archive.js'
       - 'tests/test_roadmap_context_actions.js'
@@ -86,6 +88,8 @@ jobs:
           node tests/test_youtube_recommendation_edits.js
           node tests/test_youtube_recommendation_status_tabs.js
           node tests/test_youtube_recommendation_continuous_pool.js
+          node tests/test_youtube_recommendation_historical_acceptance_snapshot.js
+          node tests/test_youtube_recommendation_roadmap_precedence.js
           node tests/test_youtube_recommendation_decision_animation.js
           node tests/test_recommendation_validated_archive.js
           node tests/test_roadmap_context_actions.js

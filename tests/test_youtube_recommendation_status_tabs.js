@@ -2,11 +2,43 @@
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const vm = require('node:vm');
 
 const root = process.cwd();
 const recos = fs.readFileSync(root + '/assets/js/dashboard-04-recommendations.js', 'utf8');
 const css = fs.readFileSync(root + '/assets/css/dashboard.css', 'utf8');
 const index = fs.readFileSync(root + '/index.html', 'utf8');
+
+const decisionStart = recos.indexOf('function acceptedDecisionNote(');
+const decisionEnd = recos.indexOf('function setValid(', decisionStart);
+assert.ok(decisionStart >= 0 && decisionEnd > decisionStart,
+  'recommendation decision parsing helpers must remain available');
+const decisionContext = {String};
+vm.runInNewContext(`${recos.slice(decisionStart, decisionEnd)}
+  this.validStateForTest=validState;
+  this.noteOfForTest=noteOf;`, decisionContext);
+
+const acceptedFixtures = new Map([
+  ['X', ''],
+  ['x avec une autre miniature', 'avec une autre miniature'],
+  ['x, raccourcir le titre', 'raccourcir le titre'],
+  ['x mais revoir la description', 'mais revoir la description'],
+  ['x: garder le concept', 'garder le concept'],
+  ['x - changer la durée', 'changer la durée'],
+  ['x · tester en automne', 'tester en automne'],
+  ['x Â· forme historique', 'forme historique'],
+  ['x commentaire libre', 'commentaire libre'],
+]);
+for (const [value, note] of acceptedFixtures) {
+  assert.match(decisionContext.validStateForTest(value), /^x(?:note)?$/,
+    `historical accepted value must remain accepted: ${value}`);
+  assert.equal(decisionContext.noteOfForTest(value), note,
+    `the accepted suffix must be exposed as its note: ${value}`);
+}
+for (const value of ['xylophone', 'Xmas playlist', 'excellent concept']) {
+  assert.equal(decisionContext.validStateForTest(value), 'note',
+    `a free note must not be mistaken for an acceptance: ${value}`);
+}
 
 for (const required of [
   "let RECO_TAB='pending';",
@@ -37,7 +69,7 @@ for (const required of [
 }
 assert.doesNotMatch(css, /\.reco-tab\.archive(?:\.|\{|,)/,
   'the old archive-tab styling must not return');
-assert.ok(index.includes('dashboard-04-recommendations.js?v=20260728-recommendations-learning-v2'),
+assert.ok(index.includes('dashboard-04-recommendations.js?v=20260728-recommendations-continuous-v3'),
   'Recommendation script cache version is stale');
 
 console.log('youtube recommendation status tabs: ok');
