@@ -5,7 +5,7 @@ const fs = require('node:fs');
 
 const source = fs.readFileSync('assets/js/dashboard-04-recommendations.js', 'utf8');
 
-assert.match(source, /function recosHTML\(\)\{(?:ensureRecommendationPerformanceHistory\(\);)?return recoTabControlHTML\(\)\+'<div id="reco-list">'/,
+assert.match(source, /function recosHTML\(\)\{ensureRecommendationPerformanceHistory\(\);const html=recoTabControlHTML\(\)\+'<div id="reco-list">'/,
   'the daily selection has compact status controls but no verbose header');
 assert.doesNotMatch(source.slice(source.indexOf('function recoCardHTML'), source.indexOf('function recoInfoRows')),
   /_dailyReasons/, 'selection-reason chips are absent from recommendation cards');
@@ -32,11 +32,20 @@ assert.match(source, /function openRecoEditor\(n,ev\)/,
 for (const [name, startMarker, endMarker] of [
   ['pending', 'function recoCardHTML(', 'function recoInfoRows('],
   ['validated', 'function recoValidatedCardHTML(', 'function recoValidatedHTML('],
-  ['refused', 'function recoRefusedCardHTML(', 'function recoRefusedHTML('],
 ]) {
   const section = source.slice(source.indexOf(startMarker), source.indexOf(endMarker));
   assert.match(section, /openRecoEditor\(/, `${name} recommendation cards expose the edit action`);
 }
+const refusedCard = source.slice(source.indexOf('function recoRefusedCardHTML('), source.indexOf('function recoRefusedHTML('));
+assert.doesNotMatch(refusedCard, /openRecoEditor\(/,
+  'refused recommendation cards expose only restoration, not editing');
+assert.match(refusedCard, /reco-restore/,
+  'refused recommendation cards keep a clear restore action');
+const validatedCard = source.slice(source.indexOf('function recoValidatedCardHTML('), source.indexOf('function recoValidatedHTML('));
+assert.doesNotMatch(validatedCard, /reco-validated-state/,
+  'the validated tab does not repeat a redundant validated-state badge');
+assert.match(validatedCard, /reco-refuse-btn[^>]*>✕ /,
+  'validated cards expose a full labelled refusal button');
 assert.match(source, /function previewSchedDay\(timestamp\)/,
   'each date circle can reveal releases on that day');
 assert.match(source, /function schedDayPopoverHtml\(date,rows\)/,
@@ -76,9 +85,15 @@ assert.ok(card.indexOf('rbtn-ko') < card.indexOf('rbtn-ok'),
 const detail = source.slice(source.indexOf('function recoActions'), source.indexOf('function recoCommentBox'));
 assert.ok(detail.indexOf('rbtn-ko') < detail.indexOf('rbtn-ok'),
   'detail refusal must sit left of validation');
+assert.doesNotMatch(detail, /rst-done rst-(?:ok|ko)/,
+  'detail actions do not repeat the status already communicated by the active tab');
+assert.match(detail, /:isRef\s*\?'<button class="rbtn reco-restore"/,
+  'a refused recommendation detail exposes only restoration');
 const css = fs.readFileSync('assets/css/dashboard.css', 'utf8');
 assert.match(css, /\.rbtn-ok\{background:rgba\(74,222,128,\.1\);color:var\(--green\);border:1\.5px solid rgba\(74,222,128,\.5\)\}/,
   'validation uses the same transparent treatment as refusal');
+assert.match(css, /\.reco-roadmap-btn\{background:rgba\(74,222,128,\.12\)/,
+  'Roadmap placement is the green primary action on validated cards');
 assert.match(css, /\.rtile:hover\{[^}]*border-color:color-mix\(in srgb,var\(--gc\) 58%,var\(--border\)\)/,
   'recommendation hover follows the card genre accent instead of a fixed red border');
 assert.match(css, /\.sched-cell\{appearance:none;border:1px solid transparent;background:rgba\(150,163,214,\.06\);width:34px;height:34px/,

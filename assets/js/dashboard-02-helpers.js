@@ -397,6 +397,7 @@ function setRadarData(d){
   if(typeof mergeGeneratedRecommendationPool==='function')mergeGeneratedRecommendationPool(d);
   if(typeof applyRecommendationEdits==='function')applyRecommendationEdits(d);
   DATA=d;mergeLoadedVideoHistoryIntoData(DATA);
+  if(typeof invalidateRecommendationDerivedData==='function')invalidateRecommendationDerivedData();
   VIEW_CACHE.clear();VIEW_WARMUP_TOKEN++;
   if(typeof _anaCache!=='undefined'){_anaCache=null;_anaT=0;}
   if(typeof scheduleViewWarmup==='function')scheduleViewWarmup();
@@ -741,11 +742,15 @@ function renderNav(){
   const _frnav=v=>(typeof LANG!=='undefined'&&LANG==='fr'&&typeof FR_NAV!=='undefined'&&FR_NAV[v])?FR_NAV[v]:v;
   document.getElementById('nav').innerHTML=
     '<div class="nav-label">Workspace</div>'+
-    VIEWS.map(v=>'<button class="'+(route===v.id?'active':'')+(v.small?' nsmall':'')+'" onclick="go(\''+v.id+'\')"><span class="emo">'+v.emo+'</span><span class="lbl">'+_frnav(v.label)+'</span><span class="count">'+v.cnt()+'</span></button>').join('');
+    VIEWS.map(v=>'<button data-route="'+v.id+'" class="'+(route===v.id?'active':'')+(v.small?' nsmall':'')+'" onclick="go(\''+v.id+'\')"><span class="emo">'+v.emo+'</span><span class="lbl">'+_frnav(v.label)+'</span><span class="count">'+v.cnt()+'</span></button>').join('');
 }
-function go(r){route=r;try{history.replaceState(null,'','#'+r);}catch(e){}renderNav();render({preferCache:true});window.scrollTo({top:0});
+function updateActiveNavRoute(){document.querySelectorAll('#nav [data-route]').forEach(button=>button.classList.toggle('active',button.dataset.route===route));}
+function go(r){
+  const startedAt=Date.now();
+  route=r;try{history.replaceState(null,'','#'+r);}catch(e){}updateActiveNavRoute();render({preferCache:true});window.scrollTo({top:0});
   const sb=document.getElementById('sidebar'),vl=document.getElementById('side-veil');
   if(sb)sb.classList.remove('open');if(vl)vl.classList.remove('show');
+  if(document.documentElement)document.documentElement.dataset.radarNavigationMs=String(Date.now()-startedAt);
 }
 function viewMarkupForRoute(currentRoute){
   if(currentRoute==='dashboard')return {title:(typeof LANG!=='undefined'&&LANG==='fr')?'Tableau de bord':'Dashboard',html:dashHTML()};

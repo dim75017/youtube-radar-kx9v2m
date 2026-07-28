@@ -12,6 +12,13 @@ assert.match(helpers, /function scheduleViewWarmup\(\)/,
   'YouTube should prewarm common navigation views while idle');
 assert.match(helpers, /render\(\{preferCache:true\}\)/,
   'Sidebar navigation must prefer the already-rendered view');
+assert.match(helpers, /data-route=/,
+  'sidebar buttons identify their route for a lightweight active-state update');
+assert.match(helpers, /function updateActiveNavRoute\(\)/,
+  'route switches update only the active sidebar state instead of rebuilding all counters');
+const goHandler = helpers.slice(helpers.indexOf('function go('), helpers.indexOf('function viewMarkupForRoute('));
+assert.doesNotMatch(goHandler, /renderNav\(\)/,
+  'ordinary page navigation must not recompute every sidebar counter');
 assert.match(helpers, /i18nView\(\{skipContent:true\}\)/,
   'Cached French views must avoid reprocessing the full page HTML');
 assert.match(helpers, /if\(currentRoute==='ana'\)return \{title:'Analysis',html:anaHTML\(\)\}/,

@@ -36,6 +36,7 @@ function setValid(n,mode,btn,ev){
   // Validation and Roadmap placement are deliberately separate decisions.
   // Keep the optimistic state update while the Google Sheet write completes.
   rec.valid=val;
+  if(typeof invalidateRecommendationDerivedData==='function')invalidateRecommendationDerivedData();
   saveCache(DATA);
   const finishDecision=()=>{
     rerenderRecos();
@@ -105,7 +106,7 @@ function autoSaveComment(n){
       :fetch(WRITE_URL+'?k='+WRITE_KEY+'&n='+encodeURIComponent(n)+'&val='+encodeURIComponent(val)).then(r=>r.json());
     persistence.then(j=>{
         if(!j.ok)throw new Error(j.err||'write failed');
-        rec.valid=val;saveCache(DATA);rerenderRecos();
+        rec.valid=val;if(typeof invalidateRecommendationDerivedData==='function')invalidateRecommendationDerivedData();saveCache(DATA);rerenderRecos();
         const fr=typeof LANG!=='undefined'&&LANG==='fr';
         const s=document.getElementById('cstat-dw');
         const okTxt=fr?'✓ Enregistré':'✓ Saved';
@@ -259,6 +260,17 @@ function legacyRerenderRecos(){
 const RECO_DAILY_LIMIT=50;
 const RECO_ROTATION_KEY='lofi_radar_reco_rotation_v1';
 let RECO_HISTORY_PROMISE=null;
+let RECO_DERIVED_REVISION=0;
+let RECO_DAILY_CACHE=null;
+const RECO_TAB_MARKUP_CACHE=new Map();
+let RECO_TAB_WARMUP_TOKEN=0;
+function invalidateRecommendationDerivedData(){
+  RECO_DERIVED_REVISION++;
+  if(typeof recommendationStatusSnapshot==='function')recommendationStatusSnapshot._cache=null;
+  RECO_DAILY_CACHE=null;
+  RECO_TAB_MARKUP_CACHE.clear();
+  RECO_TAB_WARMUP_TOKEN++;
+}
 function recoDayKey(){
   const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
   const get=t=>p.find(x=>x.type===t).value;
@@ -438,8 +450,13 @@ function recoReasons(r,p,day){
   out.push(fr?'Rotation quotidienne':'Daily rotation');return out.slice(0,4);
 }
 function dailyRecommendationSet(){
-  const day=recoDayKey(),history=recoRotationHistory(),profile=recoProfile();
-  const candidates=(DATA.recos||[]).filter(r=>!isValidated(r.valid)&&!isRefused(r.valid)&&!recommendationRoadmapEntry(r));
+  const day=recoDayKey(),lang=typeof LANG!=='undefined'?LANG:'en',revision=typeof RECO_DERIVED_REVISION!=='undefined'?RECO_DERIVED_REVISION:0;
+  const cached=typeof RECO_DAILY_CACHE!=='undefined'?RECO_DAILY_CACHE:null;
+  if(cached&&cached.data===DATA&&cached.revision===revision&&cached.day===day&&cached.lang===lang&&cached.sources.every(row=>!isValidated(row.valid)&&!isRefused(row.valid)))return cached.rows;
+  const history=recoRotationHistory(),profile=recoProfile();
+  const hasSnapshot=typeof recommendationStatusSnapshot==='function';
+  const candidateSource=hasSnapshot?recommendationStatusSnapshot().pending:(DATA.recos||[]);
+  const candidates=candidateSource.filter(r=>!isValidated(r.valid)&&!isRefused(r.valid)&&(hasSnapshot||typeof recommendationRoadmapEntry!=='function'||!recommendationRoadmapEntry(r)));
   const decorate=rows=>rows.map(r=>Object.assign({},r,{_dailyScore:recoDailyScore(r,profile,day),_dailyReasons:recoReasons(r,profile,day),_dailyProfile:profile}));
   const todayIds=Array.isArray(history[day])?history[day]:[];
   // A previous version could preserve a larger queue after the daily target
@@ -451,7 +468,9 @@ function dailyRecommendationSet(){
   // idea from this queue instead of instantly filling its place with a new one.
   if(activeTodayIds.length){
     const byId=new Map(candidates.map(r=>[Number(r.n),r]));
-    return decorate(activeTodayIds.map(n=>byId.get(Number(n))).filter(Boolean));
+    const sources=activeTodayIds.map(n=>byId.get(Number(n))).filter(Boolean),rows=decorate(sources);
+    if(typeof RECO_DAILY_CACHE!=='undefined')RECO_DAILY_CACHE={data:DATA,revision,day,lang,rows,sources};
+    return rows;
   }
   const seen=recoSeenIds(history);
   const pool=candidates.filter(r=>!seen.has(Number(r.n)));
@@ -464,9 +483,19 @@ function dailyRecommendationSet(){
   history[day]=[...new Set(picked.map(r=>r.n))].slice(0,RECO_DAILY_LIMIT);rememberRecoIds(history,history[day]);
   setActiveContinuousRecommendationVariants(picked);
   Object.keys(history).filter(key=>!key.startsWith('_')).sort().slice(0,-14).forEach(k=>delete history[k]);saveRecoRotation(history);
-  return decorate(picked);
+  const rows=decorate(picked);
+  if(typeof RECO_DAILY_CACHE!=='undefined')RECO_DAILY_CACHE={data:DATA,revision,day,lang,rows,sources:picked};
+  return rows;
 }
-function activeDailyRecommendationCount(){return dailyRecommendationSet().length;}
+function activeDailyRecommendationCount(){
+  const revision=typeof RECO_DERIVED_REVISION!=='undefined'?RECO_DERIVED_REVISION:0,cached=typeof RECO_DAILY_CACHE!=='undefined'?RECO_DAILY_CACHE:null;
+  if(cached&&cached.data===DATA&&cached.revision===revision&&cached.day===recoDayKey()&&cached.sources.every(row=>!isValidated(row.valid)&&!isRefused(row.valid)))return cached.rows.length;
+  const pending=recommendationStatusSnapshot().pending;
+  const todayIds=(recoRotationHistory()[recoDayKey()]||[]).slice(0,RECO_DAILY_LIMIT);
+  if(!todayIds.length)return Math.min(RECO_DAILY_LIMIT,pending.length);
+  const pendingIds=new Set(pending.map(row=>Number(row.n)));
+  return todayIds.reduce((count,id)=>count+(pendingIds.has(Number(id))?1:0),0);
+}
 function refreshDailyRecommendations(ev){
   if(ev)ev.stopPropagation();
   const day=recoDayKey(),history=recoRotationHistory(),current=Array.isArray(history[day])?history[day].slice(0,RECO_DAILY_LIMIT):[];
@@ -474,6 +503,7 @@ function refreshDailyRecommendations(ev){
   delete history[day];
   saveRecoRotation(history);
   setActiveContinuousRecommendationVariants([]);
+  invalidateRecommendationDerivedData();
   if(typeof VIEW_CACHE!=='undefined')VIEW_CACHE.delete(viewCacheKey('recos'));
   rerenderRecos();
 }
@@ -485,6 +515,7 @@ function ensureRecommendationPerformanceHistory(){
   RECO_HISTORY_PROMISE=Promise.all(missing.map(ensureVideoHistory)).finally(()=>{
     RECO_HISTORY_PROMISE=null;
     if(typeof _anaCache!=='undefined'){_anaCache=null;_anaT=0;}
+    invalidateRecommendationDerivedData();
     if(route==='recos')rerenderRecos();
   });
 }
@@ -497,7 +528,7 @@ function dailyRecoBrief(rows){
 }
 function dailyRecoListHTML(rows){
   if(!rows.length)return '<div class="empty">'+((typeof LANG!=='undefined'&&LANG==='fr')?'Aucune proposition en attente.':'No proposal awaiting review.')+'</div>';
-  window._pageRecos=rows;return '<div class="rgrid2">'+rows.map((r,i)=>recoCardHTML(r,i)).join('')+'</div>';
+  return '<div class="rgrid2">'+rows.map((r,i)=>recoCardHTML(r,i)).join('')+'</div>';
 }
 let RECO_TAB='pending';
 const LEGACY_PROJECT_ARCHIVE_KEY='lofi_radar_project_archive_v1';
@@ -521,6 +552,7 @@ function initializeRoadmapArchive(){
 initializeRoadmapArchive();
 function roadmapArchiveItems(){return roadmapArchiveRows();}
 function invalidateRoadmapDerivedViews(){
+  if(typeof invalidateRecommendationDerivedData==='function')invalidateRecommendationDerivedData();
   if(typeof VIEW_WARMUP_TOKEN!=='undefined')VIEW_WARMUP_TOKEN++;
   if(typeof VIEW_CACHE!=='undefined'&&VIEW_CACHE&&typeof VIEW_CACHE.keys==='function'){
     [...VIEW_CACHE.keys()].forEach(key=>{
@@ -552,16 +584,40 @@ function acceptedRoadmapRows(){
   });
   return Array.from(bySlot.values());
 }
-function refusedRecommendationRows(){return (DATA.recos||[]).filter(r=>isRefused(r.valid)&&!recommendationRoadmapEntry(r));}
-function validatedRecommendationRows(){
-  return (DATA.recos||[]).filter(row=>isValidated(row.valid)&&!recommendationRoadmapEntry(row));
+function recommendationRoadmapIndex(){
+  const rows=acceptedRoadmapRows(),byNumber=new Map(),byTitle=new Map();
+  rows.forEach(row=>{
+    if(row&&row.recoN!=null&&!byNumber.has(Number(row.recoN)))byNumber.set(Number(row.recoN),row);
+    const title=normalizedRecommendationTitle(row&&row.title);if(title&&!byTitle.has(title))byTitle.set(title,row);
+  });
+  return {rows,byNumber,byTitle};
 }
+function recommendationRoadmapEntryFromIndex(reco,index){
+  if(!reco||!index)return null;
+  return index.byNumber.get(Number(reco.n))||index.byTitle.get(normalizedRecommendationTitle(reco.title))||null;
+}
+function recommendationStatusSnapshot(){
+  const recos=DATA&&Array.isArray(DATA.recos)?DATA.recos:[];
+  const revision=typeof RECO_DERIVED_REVISION!=='undefined'?RECO_DERIVED_REVISION:0;
+  const cached=recommendationStatusSnapshot._cache;
+  if(cached&&cached.data===DATA&&cached.revision===revision&&cached.length===recos.length)return cached.snapshot;
+  const roadmap=recommendationRoadmapIndex(),pending=[],validated=[],refused=[];
+  recos.forEach(row=>{
+    if(!row||recommendationRoadmapEntryFromIndex(row,roadmap))return;
+    if(isValidated(row.valid))validated.push(row);
+    else if(isRefused(row.valid))refused.push(row);
+    else pending.push(row);
+  });
+  const snapshot={pending,validated,refused,roadmap};
+  recommendationStatusSnapshot._cache={data:DATA,revision,length:recos.length,snapshot};
+  return snapshot;
+}
+function refusedRecommendationRows(){return recommendationStatusSnapshot().refused;}
+function validatedRecommendationRows(){return recommendationStatusSnapshot().validated;}
 function recommendationRoadmapEntry(reco){
-  if(!reco)return null;
-  const title=normalizedRecommendationTitle(reco.title);
-  // Once an accepted idea has entered Roadmap it no longer belongs in the
-  // Validated inbox, even if that Roadmap row is later archived locally.
-  return acceptedRoadmapRows().find(row=>Number(row.recoN)===Number(reco.n)||normalizedRecommendationTitle(row.title)===title)||null;
+  // Keep this one-off lookup fresh for detail drawers and scheduling actions.
+  // Bulk list classification uses the indexed snapshot above.
+  return recommendationRoadmapEntryFromIndex(reco,recommendationRoadmapIndex());
 }
 function placeValidatedRecommendation(n,ev){
   if(ev)ev.stopPropagation();
@@ -569,22 +625,24 @@ function placeValidatedRecommendation(n,ev){
   if(!reco||!isValidated(reco.valid)||recommendationRoadmapEntry(reco))return;
   openSchedulePopup(reco);
 }
-function recommendationRoadmapActionHTML(reco){
+function recommendationRoadmapActionHTML(reco,knownEntry){
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
-  return recommendationRoadmapEntry(reco)
+  const entry=arguments.length>1?knownEntry:recommendationRoadmapEntry(reco);
+  return entry
     ?'<button class="rbtn reco-roadmap-btn is-placed" type="button" disabled>✓ '+(fr?'Dans la roadmap':'In roadmap')+'</button>'
     :'<button class="rbtn reco-roadmap-btn" type="button" onclick="placeValidatedRecommendation('+reco.n+',event)">🗓️ '+(fr?'Placer dans la roadmap':'Place in roadmap')+'</button>';
 }
 function recoTabControlHTML(){
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
-  const counts={pending:dailyRecommendationSet().length,validated:validatedRecommendationRows().length,refused:refusedRecommendationRows().length};
+  const status=recommendationStatusSnapshot();
+  const counts={pending:activeDailyRecommendationCount(),validated:status.validated.length,refused:status.refused.length};
   const tabs=[
     ['pending','🟡 '+(fr?'À valider':'To review')],
     ['validated','✓ '+(fr?'Validées':'Validated')],
     ['refused','✕ '+(fr?'Refusées':'Refused')]
   ];
-  return '<div class="reco-controlbar"><div class="reco-tabbar">'+tabs.map(([key,label])=>
-    '<button class="reco-tab '+key+(RECO_TAB===key?' on':'')+'" onclick="setRecoTab('+jsq(key)+')"><span>'+label+'</span><b>'+counts[key]+'</b></button>'
+  return '<div class="reco-controlbar"><div class="reco-tabbar" role="tablist" aria-label="'+(fr?'Statut des recommandations':'Recommendation status')+'">'+tabs.map(([key,label])=>
+    '<button type="button" role="tab" aria-selected="'+String(RECO_TAB===key)+'" class="reco-tab '+key+(RECO_TAB===key?' on':'')+'" onclick="setRecoTab('+jsq(key)+')"><span>'+label+'</span><b>'+counts[key]+'</b></button>'
   ).join('')+'</div>'+(RECO_TAB==='pending'?'<button class="reco-refresh-btn" type="button" title="'+(fr?'Charger un nouveau lot classé depuis la réserve évolutive et les dernières performances':'Load a fresh ranked batch from the evolving reservoir and latest performance data')+'" onclick="refreshDailyRecommendations(event)">↻ '+(fr?'Nouvelles idées':'New ideas')+'</button>':'')+'</div>';
 }
 function recoRefusedCardHTML(r,i){
@@ -596,12 +654,12 @@ function recoRefusedCardHTML(r,i){
     '<div class="rt-tags">'+gtag(r.genre)+(r.dur?ghosttag(r.dur):'')+'</div>'+
     (r.concept?'<div class="rt-desc">'+esc(String(r.concept).slice(0,130))+(String(r.concept).length>130?'...':'')+'</div>':'')+
     (note?'<div class="rt-note">Note: '+esc(note.slice(0,60))+(note.length>60?'...':'')+'</div>':'')+
-    '<div class="reco-quick-actions" onclick="event.stopPropagation()"><button class="rbtn reco-edit-btn" onclick="openRecoEditor('+r.n+',event)">✎ '+(fr?'Modifier':'Edit')+'</button><button class="rbtn reco-restore" onclick="setValid('+r.n+',\'\',this,event)">↩ '+(fr?'Restaurer':'Restore')+'</button></div>'+
+    '<div class="reco-quick-actions reco-refused-actions" onclick="event.stopPropagation()"><button class="rbtn reco-restore" onclick="setValid('+r.n+',\'\',this,event)">↩ '+(fr?'Restaurer':'Restore')+'</button></div>'+
   '</div>';
 }
-function recoRefusedHTML(){
+function recoRefusedHTML(rows){
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
-  const rows=refusedRecommendationRows();window._pageRecos=rows;
+  rows=rows||refusedRecommendationRows();
   if(!rows.length)return '<div class="empty">'+(fr?'Aucune recommandation refusée.':'No refused recommendation.')+'</div>';
   return '<div class="rgrid2">'+rows.map((r,i)=>recoRefusedCardHTML(r,i)).join('')+'</div>';
 }
@@ -614,11 +672,11 @@ function recoValidatedCardHTML(r,i){
     '<div class="rt-tags">'+gtag(r.genre)+(r.dur?ghosttag(r.dur):'')+'</div>'+
     (r.concept?'<div class="rt-desc">'+esc(String(r.concept).slice(0,130))+(String(r.concept).length>130?'...':'')+'</div>':'')+
     (note?'<div class="rt-note">Note: '+esc(note.slice(0,60))+(note.length>60?'...':'')+'</div>':'')+
-    '<div class="reco-quick-actions reco-validated-actions" onclick="event.stopPropagation()"><span class="reco-validated-state">✓ '+(fr?'Validée':'Validated')+'</span><button class="rbtn reco-edit-btn" onclick="openRecoEditor('+r.n+',event)">✎ '+(fr?'Modifier':'Edit')+'</button>'+recommendationRoadmapActionHTML(r)+'<button class="rbtn rbtn-ko reco-refuse-small" title="'+(fr?'Refuser cette idée':'Refuse this idea')+'" onclick="setValid('+r.n+',\'-\',this,event)">✕</button></div>'+
+    '<div class="reco-quick-actions reco-validated-actions" onclick="event.stopPropagation()">'+recommendationRoadmapActionHTML(r,null)+'<button class="rbtn reco-edit-btn" onclick="openRecoEditor('+r.n+',event)">✎ '+(fr?'Modifier':'Edit')+'</button><button class="rbtn rbtn-ko reco-refuse-btn" onclick="setValid('+r.n+',\'-\',this,event)">✕ '+(fr?'Refuser':'Refuse')+'</button></div>'+
   '</div>';
 }
-function recoValidatedHTML(){
-  const rows=validatedRecommendationRows();window._pageRecos=rows;
+function recoValidatedHTML(rows){
+  rows=rows||validatedRecommendationRows();
   if(!rows.length)return '<div class="empty">'+((typeof LANG!=='undefined'&&LANG==='fr')?'Aucune recommandation validée pour le moment.':'No validated recommendation yet.')+'</div>';
   return '<div class="rgrid2">'+rows.map((r,i)=>recoValidatedCardHTML(r,i)).join('')+'</div>';
 }
@@ -626,19 +684,54 @@ function openValidatedReco(i){
   const row=(window._pageRecos||[])[i];if(!row)return;
   openRecoIdx(i);
 }
-function recoVisibleHTML(){
-  if(RECO_TAB==='refused')return recoRefusedHTML();
-  if(RECO_TAB==='validated')return recoValidatedHTML();
-  return dailyRecoListHTML(dailyRecommendationSet());
+function recommendationTabView(tab){
+  const active=['pending','validated','refused'].includes(tab)?tab:'pending';
+  const rows=active==='refused'?refusedRecommendationRows():(active==='validated'?validatedRecommendationRows():dailyRecommendationSet());
+  const lang=typeof LANG!=='undefined'?LANG:'en',key=[RECO_DERIVED_REVISION,recoDayKey(),lang,active,(DATA.recos||[]).length,rows.length].join('|');
+  let html=RECO_TAB_MARKUP_CACHE.get(key);
+  if(html==null){
+    html=active==='refused'?recoRefusedHTML(rows):(active==='validated'?recoValidatedHTML(rows):dailyRecoListHTML(rows));
+    RECO_TAB_MARKUP_CACHE.set(key,html);
+  }
+  return {rows,html};
 }
-function recosHTML(){ensureRecommendationPerformanceHistory();return recoTabControlHTML()+'<div id="reco-list">'+recoVisibleHTML()+'</div>';}
-function setRecoTab(tab){if(!['pending','validated','refused'].includes(tab))return;RECO_TAB=tab;rerenderRecos();}
-function rerenderRecos(){
-  const el=document.getElementById('reco-list'),controls=document.querySelector('.reco-controlbar');
-  if(el){el.innerHTML=recoVisibleHTML();i18nZone(el);}
+function recoVisibleHTML(){const view=recommendationTabView(RECO_TAB);window._pageRecos=view.rows;return view.html;}
+function scheduleRecommendationTabWarmup(){
+  const token=RECO_TAB_WARMUP_TOKEN,tabs=['pending','validated','refused'].filter(tab=>tab!==RECO_TAB);let cursor=0;
+  const run=()=>{
+    if(token!==RECO_TAB_WARMUP_TOKEN||cursor>=tabs.length)return;
+    recommendationTabView(tabs[cursor++]);
+    if(cursor<tabs.length){
+      if(typeof window!=='undefined'&&typeof window.requestIdleCallback==='function')window.requestIdleCallback(run,{timeout:220});
+      else setTimeout(run,0);
+    }
+  };
+  if(typeof window!=='undefined'&&typeof window.requestIdleCallback==='function')window.requestIdleCallback(run,{timeout:220});
+  else setTimeout(run,0);
+}
+function recosHTML(){ensureRecommendationPerformanceHistory();const html=recoTabControlHTML()+'<div id="reco-list">'+recoVisibleHTML()+'</div>';scheduleRecommendationTabWarmup();return html;}
+function setRecoTab(tab){
+  if(!['pending','validated','refused'].includes(tab)||RECO_TAB===tab)return;
+  const startedAt=Date.now();
+  RECO_TAB=tab;
+  const controls=document.querySelector('.reco-controlbar');
   if(controls){const holder=document.createElement('div');holder.innerHTML=recoTabControlHTML();controls.replaceWith(holder.firstChild);}
-  if(typeof VIEW_CACHE!=='undefined')VIEW_CACHE.delete(viewCacheKey('recos'));
-  if(typeof renderNav==='function')renderNav();
+  rerenderRecos({controls:false,nav:false});
+  const elapsed=Date.now()-startedAt;
+  if(typeof window!=='undefined')window.__lofiRadarLastRecoTabSwitchMs=elapsed;
+  if(document.documentElement)document.documentElement.dataset.recoTabSwitchMs=String(elapsed);
+}
+function rerenderRecos(options){
+  const opts=options||{},el=document.getElementById('reco-list'),controls=document.querySelector('.reco-controlbar');
+  if(el){const html=recoVisibleHTML();el.innerHTML=(typeof LANG!=='undefined'&&LANG==='fr'&&typeof frz==='function')?frz(html):html;}
+  if(opts.controls!==false&&controls){const holder=document.createElement('div');holder.innerHTML=recoTabControlHTML();controls.replaceWith(holder.firstChild);}
+  if(typeof VIEW_CACHE!=='undefined'){
+    const page=document.getElementById('view'),title=document.getElementById('view-title');
+    if(page&&title&&typeof route!=='undefined'&&route==='recos')VIEW_CACHE.set(viewCacheKey('recos'),{title:title.innerHTML,html:page.innerHTML});
+    else VIEW_CACHE.delete(viewCacheKey('recos'));
+  }
+  if(opts.nav!==false&&typeof renderNav==='function')renderNav();
+  scheduleRecommendationTabWarmup();
 }
 
 function legacyRecoCardHTML(r,i){
@@ -721,20 +814,22 @@ function saveRecoEditor(n,ev){
   const nextTitle=title.value.trim();if(!nextTitle){title.focus();return;}
   const edits=recommendationEdits();edits[String(r.n)]={title:nextTitle,concept:concept.value.trim(),desc:desc.value.trim(),updatedAt:Date.now()};saveRecommendationEdits(edits);
   r.title=nextTitle;r.concept=concept.value.trim();r.desc=desc.value.trim();r._locallyEdited=true;
+  invalidateRecommendationDerivedData();
   saveCache(DATA);
   if(typeof VIEW_CACHE!=='undefined')VIEW_CACHE.delete(viewCacheKey('recos'));
   rerenderRecos();openRecoByNumber(r.n);
 }
 function recoActions(r,i){
   const isVal=isValidated(r.valid), isRef=isRefused(r.valid);
-  const inRoadmap=isVal&&!!recommendationRoadmapEntry(r);
+  const roadmapEntry=isVal?recommendationRoadmapEntry(r):null,inRoadmap=!!roadmapEntry;
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
   const actions=isVal
-    ?'<span class="rst-done rst-ok" style="flex:1;text-align:center">✅ '+(fr?'Validée':'Validated')+'</span><button class="rbtn reco-edit-btn" onclick="openRecoEditor('+r.n+',event)">✎ '+(fr?'Modifier':'Edit')+'</button>'+recommendationRoadmapActionHTML(r)+(inRoadmap?'':'<button class="rbtn rbtn-ko reco-refuse-small" title="'+(fr?'Refuser cette idée':'Refuse this idea')+'" onclick="setValid('+r.n+',\'-\',this,event)">✕</button>')
+    ?recommendationRoadmapActionHTML(r,roadmapEntry)+'<button class="rbtn reco-edit-btn" onclick="openRecoEditor('+r.n+',event)">✎ '+(fr?'Modifier':'Edit')+'</button>'+(inRoadmap?'':'<button class="rbtn rbtn-ko reco-refuse-btn" onclick="setValid('+r.n+',\'-\',this,event)">✕ '+(fr?'Refuser':'Refuse')+'</button>')
     :isRef
-    ?'<span class="rst-done rst-ko" style="flex:1;text-align:center">❌ '+(fr?'Refusée':'Refused')+'</span><button class="rbtn reco-edit-btn" onclick="openRecoEditor('+r.n+',event)">✎ '+(fr?'Modifier':'Edit')+'</button><button class="rst-x" title="'+(fr?'Remettre à valider':'Reset to pending')+'" onclick="setValid('+r.n+',\'\',this,event)">✕</button>'
+    ?'<button class="rbtn reco-restore" onclick="setValid('+r.n+',\'\',this,event)">↩ '+(fr?'Restaurer':'Restore')+'</button>'
     :'<button class="rbtn reco-edit-btn" onclick="openRecoEditor('+r.n+',event)">✎ '+(fr?'Modifier':'Edit')+'</button><button class="rbtn rbtn-ko" style="flex:1" onclick="setValid('+r.n+',\'-\',this,event)">✕ '+(fr?'Refuser':'Refuse')+'</button><button class="rbtn rbtn-ok" style="flex:1" onclick="setValid('+r.n+',\'X\',this,event)">✓ '+(fr?'Valider':'Validate')+'</button>';
-  return '<div class="rt-actions" style="margin:16px 0 12px;gap:12px" onclick="event.stopPropagation()">'+actions+'</div>';
+  const actionClass=isVal?' reco-validated-actions':(isRef?' reco-refused-actions':'');
+  return '<div class="rt-actions'+actionClass+'" style="margin:16px 0 12px;gap:12px" onclick="event.stopPropagation()">'+actions+'</div>';
 }
 function recoCommentBox(r){
   const fr=typeof LANG!=='undefined'&&LANG==='fr';

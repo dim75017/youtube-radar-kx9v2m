@@ -57,6 +57,16 @@ assert.match(tabs, /\['pending',/, 'the pending tab remains available');
 assert.match(tabs, /\['validated',/, 'the validated tab remains available');
 assert.match(tabs, /\['refused',/, 'the refused tab replaces the mixed archive tab');
 assert.doesNotMatch(tabs, /\['archive',/, 'the old mixed archive tab must not return');
+assert.match(recos, /function recommendationRoadmapIndex\(\)/,
+  'Roadmap membership is indexed once instead of rebuilt for every recommendation');
+assert.match(recos, /function recommendationStatusSnapshot\(\)/,
+  'the three status lists share one cached classification snapshot');
+const tabSwitch = recos.slice(recos.indexOf('function setRecoTab('), recos.indexOf('function rerenderRecos('));
+assert.match(tabSwitch, /rerenderRecos\(\{controls:false,nav:false\}\)/,
+  'switching a status tab avoids rebuilding the navigation and controls twice');
+const rerender = recos.slice(recos.indexOf('function rerenderRecos('), recos.indexOf('function legacyRecoCardHTML('));
+assert.doesNotMatch(rerender, /i18nZone\(/,
+  'a tab switch localizes markup before its single DOM insertion');
 
 for (const required of [
   '.reco-tabbar',
@@ -69,7 +79,9 @@ for (const required of [
 }
 assert.doesNotMatch(css, /\.reco-tab\.archive(?:\.|\{|,)/,
   'the old archive-tab styling must not return');
-assert.ok(index.includes('dashboard-04-recommendations.js?v=20260728-recommendations-continuous-v3'),
+assert.match(css, /\.reco-tab\{display:grid;grid-template-columns:minmax\(0,1fr\) auto minmax\(0,1fr\)/,
+  'status labels remain geometrically centered even with a count badge');
+assert.ok(index.includes('dashboard-04-recommendations.js?v=20260728-recommendations-fluid-v7'),
   'Recommendation script cache version is stale');
 
 console.log('youtube recommendation status tabs: ok');
