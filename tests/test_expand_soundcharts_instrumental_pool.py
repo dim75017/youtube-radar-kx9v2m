@@ -514,12 +514,61 @@ class InstrumentalPoolTests(unittest.TestCase):
         self.assertEqual(rights, "major")
         self.assertGreater(confidence, 0.9)
 
+    def test_exclusive_license_overrides_oneheart_artist_owned_label(self):
+        for spelling in ("license", "licence"):
+            with self.subTest(spelling=spelling):
+                rights, confidence = subject.infer_rights(
+                    "Øneheart",
+                    f"℗ 2026 Øneheart, under exclusive {spelling} to Dreamscape Records",
+                    [{"name": "Øneheart"}],
+                    "Øneheart",
+                )
+                self.assertEqual(rights, "independent_label")
+                self.assertGreaterEqual(confidence, 0.98)
+
+    def test_exclusive_license_from_also_identifies_the_label(self):
+        rights, confidence = subject.infer_rights(
+            "Amen Worldwide",
+            "\u00a9 2022 Amen Worldwide (under exclusive license from John Lee)",
+            [{"name": "John Lee"}],
+            "John Lee",
+        )
+        self.assertEqual(rights, "independent_label")
+        self.assertGreaterEqual(confidence, 0.98)
+
     def test_cache_round_trip(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "cache.json"
             payload = {"version": 1, "tracks": {"a": {"spotify_id": "x"}}, "artists": {}}
             subject.write_cache(path, payload)
             self.assertEqual(subject.read_cache(path)["tracks"], payload["tracks"])
+
+    def test_cache_read_reconciles_exclusive_licence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "cache.json"
+            subject.write_cache(
+                path,
+                {
+                    "version": 1,
+                    "tracks": {
+                        "oneheart-song": {
+                            "spotify_id": "oneheart-track",
+                            "label": "Øneheart",
+                            "copyright": (
+                                "℗ 2026 Øneheart, under exclusive licence "
+                                "to Dreamscape Records"
+                            ),
+                            "rights_status": "self_released",
+                            "rights_confidence": 0.9,
+                        }
+                    },
+                    "artists": {},
+                },
+            )
+            cached = subject.read_cache(path)["tracks"]["oneheart-song"]
+            self.assertEqual(cached["rights_status"], "independent_label")
+            self.assertEqual(cached["label"], "Dreamscape Records")
+            self.assertGreaterEqual(cached["rights_confidence"], 0.98)
 
     def test_cache_drops_snapshot_only_track_duplicates(self):
         payload = {

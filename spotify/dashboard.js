@@ -507,6 +507,10 @@ function mergeSoundchartsStaging(){
     const existingTrack=trackById.has(id);
     const opportunity=SC_VERIFIED_OPPORTUNITIES.get(String(id))||null;
     const directGenre=String(scField(row,trackSchema,'primary_genre')||'');
+    const rights=String(scField(row,trackSchema,'rights_status')||'').toLowerCase();
+    const rightsLabel=String(scField(row,trackSchema,'label')||'').trim();
+    const rightsCopyright=String(scField(row,trackSchema,'copyright')||'').trim();
+    const rightsMeta={rights_status:rights,label:rightsLabel,copyright:rightsCopyright};
     const directClassification=directGenre?{
       genre:directGenre,
       genreConfidence:Number(scField(row,trackSchema,'genre_confidence')),
@@ -522,6 +526,7 @@ function mergeSoundchartsStaging(){
         instrumental:directClassification.instrumental,instrumental_confidence:directClassification.instrumentalConfidence,
         ai_risk:directClassification.ai,ai_risk_source:directClassification.source
       };
+      existing.scRightsMeta=Object.assign({},existing.scRightsMeta||{},rightsMeta);
       const image=String(scField(row,trackSchema,'image_url')||''); if(image&&!existing[8]) existing[8]=image;
       const delta24=Number(scField(row,trackSchema,'delta'));
       const previousSourceDate=String(scField(row,trackSchema,'previous_source_date')||'').slice(0,10);
@@ -532,7 +537,6 @@ function mergeSoundchartsStaging(){
         && Number.isFinite(delta24) ? delta24 : null;
       continue;
     }
-    const rights=String(scField(row,trackSchema,'rights_status')||'').toLowerCase();
     /* `artist` is a display credit and may contain "A & B". Identity comes
        exclusively from the structured Soundcharts/Spotify artist links. */
     const structured=Array.isArray(scField(row,trackSchema,'artists'))
@@ -565,7 +569,7 @@ function mergeSoundchartsStaging(){
     }
     linked.sort((a,b)=>(a.role==='main'?-1:1)-(b.role==='main'?-1:1)||a.index-b.index);
     const ai=linked[0]&&linked[0].index; if(ai==null||ai<0) continue;
-    const label=scField(row,trackSchema,'label')||scField(row,trackSchema,'copyright')||'Soundcharts staging';
+    const label=rightsLabel||rightsCopyright||'Soundcharts staging';
     const rawStreams=scField(row,trackSchema,'streams'), parsedStreams=Number(rawStreams);
     const streams=rawStreams==null||rawStreams===''||!Number.isFinite(parsedStreams)?-1:parsedStreams;
     const delta24=Number(scField(row,trackSchema,'delta'));
@@ -577,6 +581,7 @@ function mergeSoundchartsStaging(){
     const track=[ai,scField(row,trackSchema,'title')||'Titre non renseigné',scField(row,trackSchema,'release_date')||'',streams,
       rights==='self_released'?0:1,label,id,scField(row,trackSchema,'observed_at')||'',scField(row,trackSchema,'image_url')||''];
     track.sc=true;
+    track.scRightsMeta=rightsMeta;
     track.scArtistIndexes=linked.map(item=>item.index);
     track.scCredit=scField(row,trackSchema,'artist')||'';
     if(trackClassificationMeta) track.scClassification={genre:trackClassificationMeta.genre,genre_confidence:trackClassificationMeta.genreConfidence,genre_source:trackClassificationMeta.source,instrumental:trackClassificationMeta.instrumental,instrumental_confidence:trackClassificationMeta.instrumentalConfidence,ai_risk:trackClassificationMeta.ai,ai_risk_source:trackClassificationMeta.source};
@@ -676,6 +681,52 @@ function discoveryTrackKey(track){
   const spotify=String(track&&track.spotify_id||'').trim();
   const soundcharts=String(track&&track.soundcharts_uuid||'').trim();
   return spotify||('soundcharts:'+soundcharts);
+}
+const SELF_RELEASE_RIGHTS=new Set(['self_released','self-released','indie']);
+function hasExclusiveLicenseText(...values){
+  return values.some(value=>/\b(?:under\s+(?:an?\s+)?exclusive\s+licen[cs]e\s+(?:to|from)|exclusively\s+licen[cs]ed\s+to|licen[cs]ed\s+exclusively\s+to)\b/i.test(String(value||'')));
+}
+function exclusiveLicensee(...values){
+  for(const value of values){
+    const match=String(value||'').match(/\b(?:under\s+(?:an?\s+)?exclusive\s+licen[cs]e\s+to|exclusively\s+licen[cs]ed\s+to|licen[cs]ed\s+exclusively\s+to)\s+(.+?)(?=\s*(?:[;|]|,?\s*(?:Â)?[©℗]|,?\s*\((?:C|P)\)\s*\d{4}|$))/i);
+    if(match&&match[1]) return match[1].trim().replace(/[.,]+$/,'').slice(0,80);
+  }
+  for(const value of values){
+    const text=String(value||'');
+    const match=text.match(/\bunder\s+(?:an?\s+)?exclusive\s+licen[cs]e\s+from\b/i);
+    if(!match) continue;
+    const prefix=text.slice(0,match.index).split(';').pop()
+      .replace(/^(?:\u00c2)?(?:[\u00a9\u2117]\s*|\(?(?:C|P)\)?\s*)?\d{4}\s*/i,'')
+      .replace(/^[\s,.()\-]+|[\s,.()\-]+$/g,'').trim();
+    if(prefix) return prefix.slice(0,80);
+  }
+  return '';
+}
+function trackOwnershipInfo(track,source=null){
+  const meta=source&&typeof source==='object'
+    ?source:Object.assign({},track&&track.scRightsMeta||{},track&&track.discoveryMeta||{});
+  const scMeta=track&&track.scRightsMeta||{};
+  const rawRights=String(meta.rights_status||meta.rights||scMeta.rights_status||scMeta.rights||'').trim().toLowerCase();
+  const rawLabel=String(meta.label||scMeta.label||'').trim();
+  const copyright=String(meta.copyright||scMeta.copyright||'').trim();
+  const fallback=String(track&&track[5]||'').trim();
+  const exclusive=hasExclusiveLicenseText(rawLabel,copyright,fallback);
+  const rights=exclusive&&!['major','major_label','mixed'].includes(rawRights)
+    ?'independent_label':rawRights;
+  const rightsUnknown=!rights||rights==='unknown';
+  const indie=!exclusive&&(SELF_RELEASE_RIGHTS.has(rights)||(rightsUnknown&&track&&track[4]===0));
+  const labelCandidate=exclusiveLicensee(copyright,fallback,rawLabel)||rawLabel;
+  const labelName=!indie&&labelCandidate
+    &&!['label','unknown','à enrichir','a enrichir'].includes(labelCandidate.toLowerCase())
+    ?labelCandidate:'';
+  return {kind:indie?'indie':'label',rights,labelName,exclusive};
+}
+function syncTrackOwnershipFlag(track,source=null){
+  if(!track) return {kind:'label',rights:'',labelName:'',exclusive:false};
+  const ownership=trackOwnershipInfo(track,source);
+  track[4]=ownership.kind==='indie'?0:1;
+  if(track.discoveryMeta&&ownership.rights) track.discoveryMeta.rights=ownership.rights;
+  return ownership;
 }
 function mergeFullDiscoveryCatalogue(){
   if(!DISCOVERY_TRACKS.length&&!DISCOVERY_ARTISTS.length) return;
@@ -786,7 +837,8 @@ function mergeFullDiscoveryCatalogue(){
       source_tier:source.source_tier,
       availability_status:source.availability_status
     }));
-    const rights=String(source.rights_status||'unknown').toLowerCase();
+    const ownership=trackOwnershipInfo(null,source);
+    const rights=ownership.rights||String(source.rights_status||'unknown').toLowerCase();
     const streams=discoveryNumber(source.streams);
     const meta={
       soundchartsUuid,spotifyId,
@@ -818,6 +870,7 @@ function mergeFullDiscoveryCatalogue(){
     if(track){
       track.discovery=true;
       track.discoveryMeta=Object.assign({},track.discoveryMeta||{},meta);
+      syncTrackOwnershipFlag(track,meta);
       if(!track[8]&&source.image_url) track[8]=source.image_url;
       if(Number(track[3])<0&&streams!=null) track[3]=streams;
       if(!track[2]&&source.release_date) track[2]=String(source.release_date).slice(0,10);
@@ -830,6 +883,7 @@ function mergeFullDiscoveryCatalogue(){
       track.discovery=true;
       track.discoveryMeta=meta;
       track.scArtistIndexes=[...new Set(linked)];
+      syncTrackOwnershipFlag(track,meta);
       R.push(track);
       SC_DISCOVERY.tracks++;
       if(streams==null) SC_DISCOVERY.unmeasured++;
@@ -862,6 +916,7 @@ function mergeFullDiscoveryCatalogue(){
   }
 }
 mergeFullDiscoveryCatalogue();
+R.forEach(track=>syncTrackOwnershipFlag(track));
 const GENRE_TAXONOMY = Object.freeze({
   version:'2026-07-v1',
   genres:Object.freeze([
@@ -1462,34 +1517,11 @@ function trackUrl(id,row=null){
   const query=[artist,track&&track[1]].filter(Boolean).join(' ');
   return spotifySearchUrl(query||raw);
 }
-function discoveryAvailabilityInfo(track){
-  const meta=track&&track.discoveryMeta;
-  if(!meta) return null;
-  const status=String(meta.availabilityStatus||'discovered').toLowerCase();
-  const map={
-    verified:{label:LANG==='fr'?'Vérifiée':'Verified',cls:'self'},
-    needs_listen:{label:LANG==='fr'?'À écouter':'Needs listening',cls:'new'},
-    measured:{label:LANG==='fr'?'Mesurée':'Measured',cls:'self'},
-    playlist_discovered:{label:LANG==='fr'?'Playlist éditoriale':'Editorial playlist',cls:'new'},
-    catalogue_discovered:{label:LANG==='fr'?'Catalogue artiste':'Artist catalogue',cls:'new'},
-    discovered:{label:LANG==='fr'?'Découverte':'Discovered',cls:'new'}
-  };
-  return map[status]||map.discovered;
-}
 function trackStatusHtml(track){
-  const availability=discoveryAvailabilityInfo(track);
-  const meta=track&&track.discoveryMeta;
-  const rights=String(meta&&meta.rights||'').toLowerCase();
-  const rawLabel=String(meta&&meta.label||track&&track[5]||'').trim();
-  const labelName=rawLabel&&!['label','unknown','à enrichir','a enrichir'].includes(rawLabel.toLowerCase())?rawLabel:'';
-  const labelSuffix=labelName?` (${labelName})`:'';
-  const rightsLabel=rights==='self_released'?(LANG==='fr'?'Indé':'Self-released')
-    :rights==='independent_label'?(LANG==='fr'?`Label indépendant${labelSuffix}`:`Independent label${labelSuffix}`)
-    :['major','major_label','mixed'].includes(rights)?`Major${labelSuffix}`
-    :rights==='unknown'?(LANG==='fr'?'Droits à vérifier':'Rights review')
-    :(track&&track[4]===0?T('Indé'):`Label${labelSuffix}`);
-  const rightsClass=rights==='self_released'?'self':(['major','major_label','mixed'].includes(rights)?'other':'new');
-  return `${availability?`<span class="badge ${availability.cls}">${esc(availability.label)}</span> `:''}<span class="badge ${rightsClass}">${esc(rightsLabel)}</span>`;
+  const ownership=trackOwnershipInfo(track);
+  const labelSuffix=ownership.labelName?` (${ownership.labelName})`:'';
+  const label=ownership.kind==='indie'?'Indie':`Label${labelSuffix}`;
+  return `<span class="badge ${ownership.kind==='indie'?'self':'other'}">${esc(label)}</span>`;
 }
 function discoveryStatusMatches(track,status){
   const meta=track&&track.discoveryMeta;
@@ -1824,14 +1856,14 @@ function artistCoverHtml(g){
   return `<div class="cov"></div>`;
 }
 
-/* relation au label, 4 paliers par nb de sorties chez Lofi (vert>jaune>orange>rouge) */
+/* Relation historique au catalogue Lofi, conservée pour les statistiques internes. */
 function seg(g){ return g.lofi>50 ? 'top' : (g.lofi>=25 ? 'reg' : (g.lofi>0 ? 'occ' : 'ext')); }
+function artistOwnershipKey(g){
+  return g&&g.n>0&&g.self===g.n?'indie':'label';
+}
 function segBadge(g){
-  const s = seg(g);
-  if (s==='top') return '<span class="badge seg-top">★ '+T('fidèle')+'</span>';
-  if (s==='reg') return '<span class="badge seg-reg">'+T('régulier')+'</span>';
-  if (s==='occ') return '<span class="badge seg-occ">'+T('occasionnel')+'</span>';
-  return '<span class="badge seg-ext">'+T('hors label')+'</span>';
+  const indie=artistOwnershipKey(g)==='indie';
+  return `<span class="badge ${indie?'self':'other'}">${indie?'Indie':'Label'}</span>`;
 }
 
 function renderOverview(){
@@ -3601,8 +3633,8 @@ function renderOpps(){
     </select>
     <select id="f-st">
       <option value="all" ${S.statut==='all'?'selected':''}>🌍 ${LANG==='fr'?'Tout le catalogue':'Full catalogue'}</option>
-      <option value="self" ${S.statut==='self'?'selected':''}>🎛️ Self-release</option>
-      <option value="other" ${S.statut==='other'?'selected':''}>🏷️ ${T('Autre label')}</option>
+      <option value="self" ${S.statut==='self'?'selected':''}>🎛️ Indie</option>
+      <option value="other" ${S.statut==='other'?'selected':''}>🏷️ Label</option>
     </select>
     <select id="f-min">
       <option value="0" ${S.min===0?'selected':''}>📊 ${T('Streams : tous')}</option>
@@ -3685,13 +3717,13 @@ function renderArtists(){
     const classification=artistClassification(g);
     return !catalogueIsArchived('artists',g.id||g.name) &&
       (!q || g.name.toLowerCase().includes(q)) &&
-      (S.aseg==='all' || seg(g)===S.aseg) &&
+      (S.aseg==='all' || artistOwnershipKey(g)===S.aseg) &&
       (!S.agenres.size || S.agenres.has(canonicalGenreKey(classification.genre)));
   });
   const aSorters = {
     name:(a,b)=>a.name.localeCompare(b.name),
     genre:(a,b)=>artistClassification(a).genre.localeCompare(artistClassification(b).genre),
-    status:(a,b)=>({ext:0,occ:1,reg:2,top:3}[seg(a)]-({ext:0,occ:1,reg:2,top:3}[seg(b)])),
+    status:(a,b)=>({indie:0,label:1}[artistOwnershipKey(a)]-({indie:0,label:1}[artistOwnershipKey(b)])),
     streams:(a,b)=>a.streams-b.streams,
     revenue:(a,b)=>a.streams-b.streams,
     streams24:(a,b)=>(a.streams24==null?(S.adir===-1?-Infinity:Infinity):a.streams24)-(b.streams24==null?(S.adir===-1?-Infinity:Infinity):b.streams24),
@@ -3745,7 +3777,7 @@ function renderArtists(){
         <tr data-ar-browse-artist="${g.i}" onclick="goArtist(${g.i})" style="cursor:pointer">
           <td class="covtd">${artistCoverHtml(g)}</td>
           <td>${esc(g.name)}</td>
-          <td><span class="catalogue-status">${segBadge(g)}<small>${g.lofi||0} ${T('tracks chez Lofi')}</small></span></td>
+          <td><span class="catalogue-status">${segBadge(g)}</span></td>
           <td class="num">${streamStackHtml(g.streams,false,false)}</td>
           <td class="num">${streamStackHtml(g.streams30,false,false)}</td>
           <td class="num">${streamStackHtml(g.streams7,false,false)}</td>
@@ -3772,10 +3804,8 @@ function renderArtists(){
     ${genreFilterHtml('a-genres',S.agenres)}
     <select id="a-seg">
       <option value="all" ${S.aseg==='all'?'selected':''}>🌍 ${T('Tous')}</option>
-      <option value="top" ${S.aseg==='top'?'selected':''}>🏆 Top artists</option>
-      <option value="reg" ${S.aseg==='reg'?'selected':''}>🔁 Regulars</option>
-      <option value="occ" ${S.aseg==='occ'?'selected':''}>🎲 ${T('Occasionnels')}</option>
-      <option value="ext" ${S.aseg==='ext'?'selected':''}>🚫 ${T('Jamais')}</option>
+      <option value="indie" ${S.aseg==='indie'?'selected':''}>🎛️ Indie</option>
+      <option value="label" ${S.aseg==='label'?'selected':''}>🏷️ Label</option>
     </select>
     <span class="spacer"></span>
     ${catalogueArchiveToolbar()}

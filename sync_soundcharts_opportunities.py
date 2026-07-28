@@ -26,6 +26,8 @@ import re
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from spotify_rights import reconciled_label, reconcile_rights
+
 
 SOUNDCHARTS_PREFIX = "window.SPOTIFY_SOUNDCHARTS="
 PERFORMANCE_PREFIX = "window.SPOTIFY_PERFORMANCE="
@@ -902,8 +904,16 @@ def generate_opportunities(
             continue
         measured_target_tracks += 1
 
-        rights = str(track.get("rights_status") or preserved.get("rights_status") or "unknown").casefold()
-        rights_confidence = float(finite_number(track.get("rights_confidence")) or 0.25)
+        raw_label = str(track.get("label") or preserved.get("label") or "")
+        copyright_text = str(track.get("copyright") or preserved.get("copyright") or "")
+        rights, reconciled_confidence, _ = reconcile_rights(
+            track.get("rights_status") or preserved.get("rights_status") or "unknown",
+            raw_label,
+            copyright_text,
+            track.get("rights_confidence") or preserved.get("rights_confidence"),
+        )
+        rights_confidence = float(finite_number(reconciled_confidence) or 0.25)
+        release_label = reconciled_label(raw_label, copyright_text)
         if rights in {"major", "mixed", "other_label"}:
             excluded["major_or_mixed"] += 1
             continue
@@ -1012,7 +1022,7 @@ def generate_opportunities(
             "ai_risk": classification["ai_risk"],
             "ai_risk_score": classification["ai_risk_score"],
             "rights_status": rights,
-            "label": str(track.get("label") or preserved.get("label") or ""),
+            "label": release_label,
             "labels": preserved.get("labels") if isinstance(preserved.get("labels"), list) else [],
             "copyright": str(track.get("copyright") or preserved.get("copyright") or ""),
             "distributor": str(track.get("distributor") or preserved.get("distributor") or ""),

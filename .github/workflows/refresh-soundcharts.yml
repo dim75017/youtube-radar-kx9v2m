@@ -10,16 +10,20 @@ on:
       - 'spotify-catalogue-baseline.csv'
       - 'spotify-explicit-artist-seeds.json'
       - 'expand_soundcharts_instrumental_pool.py'
+      - 'spotify_rights.py'
+      - 'build_spotify_browse_catalogue.py'
       - 'sync_soundcharts_opportunities.py'
       - 'prepare_soundcharts_snapshot.py'
       - 'tests/test_refresh_soundcharts_daily.py'
       - 'tests/test_discover_soundcharts_playlists.py'
       - 'tests/test_expand_soundcharts_instrumental_pool.py'
+      - 'tests/test_build_spotify_browse_catalogue.py'
       - 'tests/test_sync_soundcharts_opportunities.py'
       - 'tests/test_prepare_soundcharts_snapshot.py'
       - 'tests/test_full_discovery_catalogue.py'
       - 'tests/test_soundcharts_workflow_guardrails.py'
       - 'tests/test_spotify_full_catalogue.js'
+      - 'tests/test_spotify_binary_ownership_status.js'
       - 'tests/test_dashboard_opportunity_guardrails.js'
       - 'tests/test_dashboard_general_view_guardrails.js'
       - 'tests/test_dashboard_ar_ui_guardrails.js'
@@ -37,16 +41,20 @@ on:
       - 'spotify-catalogue-baseline.csv'
       - 'spotify-explicit-artist-seeds.json'
       - 'expand_soundcharts_instrumental_pool.py'
+      - 'spotify_rights.py'
+      - 'build_spotify_browse_catalogue.py'
       - 'sync_soundcharts_opportunities.py'
       - 'prepare_soundcharts_snapshot.py'
       - 'tests/test_refresh_soundcharts_daily.py'
       - 'tests/test_discover_soundcharts_playlists.py'
       - 'tests/test_expand_soundcharts_instrumental_pool.py'
+      - 'tests/test_build_spotify_browse_catalogue.py'
       - 'tests/test_sync_soundcharts_opportunities.py'
       - 'tests/test_prepare_soundcharts_snapshot.py'
       - 'tests/test_full_discovery_catalogue.py'
       - 'tests/test_soundcharts_workflow_guardrails.py'
       - 'tests/test_spotify_full_catalogue.js'
+      - 'tests/test_spotify_binary_ownership_status.js'
       - 'tests/test_dashboard_opportunity_guardrails.js'
       - 'tests/test_dashboard_general_view_guardrails.js'
       - 'tests/test_dashboard_ar_ui_guardrails.js'
@@ -133,6 +141,7 @@ jobs:
           tests/test_refresh_soundcharts_daily.py
           tests/test_discover_soundcharts_playlists.py
           tests/test_expand_soundcharts_instrumental_pool.py
+          tests/test_build_spotify_browse_catalogue.py
           tests/test_sync_soundcharts_opportunities.py
           tests/test_prepare_soundcharts_snapshot.py
           tests/test_full_discovery_catalogue.py
@@ -141,7 +150,7 @@ jobs:
 
       - name: Validate production source syntax
         run: |
-          python -m py_compile refresh_soundcharts_daily.py discover_soundcharts_playlists.py expand_soundcharts_instrumental_pool.py enrich_public_artist_contacts.py sync_soundcharts_opportunities.py prepare_soundcharts_snapshot.py
+          python -m py_compile refresh_soundcharts_daily.py discover_soundcharts_playlists.py expand_soundcharts_instrumental_pool.py spotify_rights.py build_spotify_browse_catalogue.py enrich_public_artist_contacts.py sync_soundcharts_opportunities.py prepare_soundcharts_snapshot.py
           python -m unittest tests.test_enrich_public_artist_contacts
           node --check spotify/dashboard.js
           node tests/test_dashboard_opportunity_guardrails.js
@@ -149,6 +158,7 @@ jobs:
           node tests/test_dashboard_ar_ui_guardrails.js
           node tests/test_dashboard_genre_filter.js
           node tests/test_spotify_full_catalogue.js
+          node tests/test_spotify_binary_ownership_status.js
           node tests/test_spotify_catalogue_layers.js
           node tests/test_spotify_performance_lifetime.js
           node tests/test_spotify_update_status.js

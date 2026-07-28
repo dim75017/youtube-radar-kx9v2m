@@ -36,6 +36,7 @@ from refresh_soundcharts_daily import (
     SoundchartsQuotaReserveError,
     SoundchartsRequestLimitError,
 )
+from spotify_rights import reconciled_label, reconcile_rights
 
 
 SOUNDCHARTS_PREFIX = "window.SPOTIFY_SOUNDCHARTS="
@@ -274,6 +275,26 @@ def read_cache(path: Path) -> dict[str, Any]:
     payload.setdefault("version", CACHE_VERSION)
     payload.setdefault("tracks", {})
     payload.setdefault("artists", {})
+    tracks = payload.get("tracks")
+    if isinstance(tracks, dict):
+        for item in tracks.values():
+            if not isinstance(item, dict):
+                continue
+            rights_status, rights_confidence, licensee = reconcile_rights(
+                item.get("rights_status"),
+                item.get("label"),
+                item.get("copyright"),
+                item.get("rights_confidence"),
+            )
+            if not licensee:
+                continue
+            item["rights_status"] = rights_status
+            if rights_confidence is not None:
+                item["rights_confidence"] = rights_confidence
+            item["label"] = reconciled_label(
+                item.get("label"),
+                item.get("copyright"),
+            )
     return payload
 
 
@@ -620,6 +641,12 @@ def infer_rights(label: Any, copyright_text: Any, artists: list[dict[str, Any]],
     if any(marker in combined for marker in MAJOR_MARKERS):
         return "major", 0.98
 
+    licensed_rights, licensed_confidence, licensee = reconcile_rights(
+        "unknown", label_text, copyright_value
+    )
+    if licensee:
+        return licensed_rights, float(licensed_confidence or 0.98)
+
     artist_names = [str(artist.get("name") or "").strip() for artist in artists if isinstance(artist, dict)]
     if credit_name:
         artist_names.append(credit_name)
@@ -781,7 +808,7 @@ def parse_song_detail(response: Any, editorial: dict[str, Any]) -> dict[str, Any
         "credit_name": credit,
         "artists": artists,
         "release_date": str(obj.get("releaseDate") or editorial.get("release_date") or ""),
-        "label": str(obj.get("label") or ""),
+        "label": reconciled_label(obj.get("label"), obj.get("copyright")),
         "copyright": str(obj.get("copyright") or ""),
         "isrc": str(isrc or ""),
         "image_url": str(obj.get("imageUrl") or ""),

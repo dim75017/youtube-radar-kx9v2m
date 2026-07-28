@@ -14,8 +14,8 @@ const artists = source.slice(artistsStart, playlistsStart);
 assert.ok(tracksStart >= 0 && artistsStart > tracksStart, 'Tracks renderer must exist');
 assert.match(tracks, /streamStackHtml\(w1\.current,false,true\)/, 'Tracks 24h must use a signed momentum value');
 assert.match(tracks, /class="num stream-24h"/, 'Tracks 24h table cell must be highlighted');
-assert.match(tracks, /Self-release/);
-assert.match(tracks, /Autre label/);
+assert.match(tracks, />🎛️ Indie</);
+assert.match(tracks, />🏷️ Label</);
 for (const removed of ['Mesurées', 'À mesurer', 'À vérifier / écouter', 'Présentes en playlist éditoriale', 'Découvertes via catalogue artiste']) {
   assert.doesNotMatch(tracks, new RegExp(removed), `Obsolete browse filter still rendered: ${removed}`);
 }
@@ -23,6 +23,6 @@ assert.match(artists, /streamStackHtml\(g\.streams24,false,true\)/, 'Artists 24h
 assert.match(artists, /class="num stream-24h"/, 'Artists 24h table cell must be highlighted');
 assert.match(css, /\.stream-24h \.stream-number\{color:var\(--acc2\)\}/);
 assert.match(css, /\.buyout-estimate\{font-weight:600;color:var\(--text\)\}/);
-assert.match(index, /dashboard\.css\?v=20260724-spotify-rate-limit-fix-v1/);
+assert.match(index, /dashboard\.css\?v=20260724-selection-estimate-modal-v1/);
 
 console.log('spotify 24h momentum UI: OK');

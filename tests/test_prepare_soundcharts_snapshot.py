@@ -207,6 +207,68 @@ def wrapped(payload):
 
 
 class PrepareSoundchartsSnapshotTests(unittest.TestCase):
+    def test_sanitize_reconciles_exclusive_license_across_public_collections(self):
+        payload = minimal_payload()
+        license_text = (
+            "℗ 2026 Øneheart, under exclusive license "
+            "to Dreamscape Records"
+        )
+
+        track_schema = list(payload["schemas"]["tracks"])
+        payload["schemas"]["tracks"] = track_schema
+        track_schema.extend(["label", "copyright"])
+        payload["tracks"][0].extend(["Øneheart", license_text])
+
+        opportunity_schema = list(payload["schemas"]["opportunities"])
+        payload["schemas"]["opportunities"] = opportunity_schema
+        opportunity_schema.extend(["rights_confidence", "label", "copyright"])
+        payload["opportunities"][0].extend([0.9, "Øneheart", license_text])
+
+        editorial_schema = list(payload["editorial"]["track_schema"])
+        payload["editorial"]["track_schema"] = editorial_schema
+        editorial_schema.extend(
+            ["rights_status", "rights_confidence", "label", "copyright"]
+        )
+        payload["editorial"]["tracks"][0].extend(
+            ["self_released", 0.9, "Øneheart", license_text]
+        )
+
+        payload["discovery_catalogue"] = subject._build_discovery_catalogue(
+            payload
+        )
+        sanitized, report = subject.sanitize_payload(payload)
+
+        collections = [
+            (sanitized["tracks"], sanitized["schemas"]["tracks"]),
+            (
+                sanitized["opportunities"],
+                sanitized["schemas"]["opportunities"],
+            ),
+            (
+                sanitized["editorial"]["tracks"],
+                sanitized["editorial"]["track_schema"],
+            ),
+            (
+                sanitized["discovery_catalogue"]["tracks"],
+                sanitized["discovery_catalogue"]["track_schema"],
+            ),
+        ]
+        for rows, schema in collections:
+            with self.subTest(schema=schema):
+                self.assertEqual(
+                    rows[0][schema.index("rights_status")],
+                    "independent_label",
+                )
+                self.assertEqual(
+                    rows[0][schema.index("label")],
+                    "Dreamscape Records",
+                )
+                self.assertGreaterEqual(
+                    rows[0][schema.index("rights_confidence")],
+                    0.98,
+                )
+        self.assertGreaterEqual(report["rights_rows_reconciled"], 4)
+
     def test_sanitize_preserves_a_more_complete_existing_discovery_catalogue(self):
         payload = minimal_payload()
         first_pass, _ = subject.sanitize_payload(payload)

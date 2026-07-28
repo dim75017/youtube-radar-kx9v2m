@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 from prepare_soundcharts_snapshot import PUBLIC_ARTIST_BLACKLIST
+from spotify_rights import reconciled_label, reconcile_rights
 
 SOUNDCHARTS_PREFIX = "window.SPOTIFY_SOUNDCHARTS="
 BROWSE_PREFIX = "window.SPOTIFY_BROWSE_CATALOGUE="
@@ -177,7 +178,11 @@ def _trusted_catalogue_from_csv(path: Path, artist_seeds_path: Path | None) -> d
             seen_tracks.add(spotify_id)
             artist_spotify_id = artist_ids.get(artist_name.casefold(), "")
             status = str(raw.get("Statut") or "").strip().casefold()
-            rights_status = "self_released" if status == "self-released" else "catalogue_trusted"
+            raw_rights = "self_released" if status == "self-released" else "catalogue_trusted"
+            raw_label = str(raw.get("Label / Copyright") or "").strip()
+            rights_status, rights_confidence, _ = reconcile_rights(
+                raw_rights, raw_label, raw_label
+            )
             artist = {
                 "name": artist_name, "spotify_id": artist_spotify_id, "soundcharts_uuid": "",
                 "monthly_listeners": None, "primary_genre": "trusted_catalogue", "subgenres": [],
@@ -193,9 +198,9 @@ def _trusted_catalogue_from_csv(path: Path, artist_seeds_path: Path | None) -> d
                 "artists": [{"name": artist_name, "spotify_id": artist_spotify_id, "soundcharts_uuid": "", "role": "primary", "image_url": ""}],
                 "artist_soundcharts_uuids": [], "release_date": str(raw.get("Date") or "").strip(),
                 "streams": _finite_number(raw.get("Streams")), "streams_delta_24h": None,
-                "rights_status": rights_status, "rights_confidence": None,
-                "label": str(raw.get("Label / Copyright") or "").strip(),
-                "copyright": str(raw.get("Label / Copyright") or "").strip(),
+                "rights_status": rights_status, "rights_confidence": rights_confidence,
+                "label": reconciled_label(raw_label, raw_label),
+                "copyright": raw_label,
                 "primary_genre": "trusted_catalogue", "subgenres": [], "genre_confidence": None,
                 "instrumental_status": "trusted_catalogue", "instrumental_confidence": None,
                 "ai_risk": "unknown", "availability_status": TRUSTED_CATALOGUE_AVAILABILITY,
@@ -264,6 +269,28 @@ def _row_key(record: Mapping[str, Any], fields: Sequence[str]) -> str:
         if value:
             return f"{field}:{value.casefold() if field == 'name' else value}"
     return ""
+
+
+def _reconcile_track_rights(record: Mapping[str, Any]) -> dict[str, Any]:
+    reconciled = dict(record)
+    previous_status = reconciled.get("rights_status")
+    rights_status, rights_confidence, licensee = reconcile_rights(
+        previous_status,
+        reconciled.get("label"),
+        reconciled.get("copyright"),
+        reconciled.get("rights_confidence"),
+    )
+    if licensee:
+        reconciled["rights_status"] = rights_status
+        if rights_confidence is not None:
+            reconciled["rights_confidence"] = rights_confidence
+        reconciled["label"] = reconciled_label(
+            reconciled.get("label"),
+            reconciled.get("copyright"),
+        )
+    elif _meaningful(previous_status):
+        reconciled["rights_status"] = rights_status
+    return reconciled
 
 
 def _merge_record(previous: Mapping[str, Any], incoming: Mapping[str, Any]) -> dict[str, Any]:
@@ -416,16 +443,19 @@ def merge_catalogues(catalogues: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     artist_by_name: dict[str, int] = {}
 
     def upsert_track(row: Mapping[str, Any]) -> None:
-        spotify = str(row.get("spotify_id") or "").strip()
-        soundcharts = str(row.get("soundcharts_uuid") or "").strip()
+        reconciled_row = _reconcile_track_rights(row)
+        spotify = str(reconciled_row.get("spotify_id") or "").strip()
+        soundcharts = str(reconciled_row.get("soundcharts_uuid") or "").strip()
         index = track_by_spotify.get(spotify) if spotify else None
         if index is None and soundcharts:
             index = track_by_soundcharts.get(soundcharts)
         if index is None:
             index = len(tracks)
-            tracks.append(dict(row))
+            tracks.append(reconciled_row)
         else:
-            tracks[index] = _merge_record(tracks[index], row)
+            tracks[index] = _reconcile_track_rights(
+                _merge_record(tracks[index], reconciled_row)
+            )
         merged = tracks[index]
         spotify = str(merged.get("spotify_id") or "").strip()
         soundcharts = str(merged.get("soundcharts_uuid") or "").strip()

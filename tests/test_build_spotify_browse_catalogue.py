@@ -83,6 +83,54 @@ class BrowseCatalogueTests(unittest.TestCase):
         merged = subject.merge_catalogues([unsafe])
         self.assertNotIn("contact_email", merged["artist_schema"])
 
+    def test_merge_reconciles_exclusive_licence_for_oneheart(self):
+        rights_schema = [
+            *TRACK_SCHEMA,
+            "rights_status",
+            "rights_confidence",
+            "label",
+            "copyright",
+        ]
+        raw = {
+            "soundcharts_uuid": "oneheart-song",
+            "spotify_id": "oneheart-track",
+            "title": "Snowfall",
+            "artists": [{"name": "Øneheart"}],
+            "availability_status": "measured",
+            "rights_status": "self_released",
+            "rights_confidence": 0.9,
+            "label": "Øneheart",
+            "copyright": (
+                "℗ 2026 Øneheart, under exclusive licence "
+                "to Dreamscape Records"
+            ),
+        }
+        source = {
+            "version": 1,
+            "generated_at": "2026-07-28T10:00:00Z",
+            "track_schema": rights_schema,
+            "artist_schema": ARTIST_SCHEMA,
+            "playlist_schema": [],
+            "tracks": [[raw.get(field) for field in rights_schema]],
+            "artists": [],
+        }
+        partial = copy.deepcopy(source)
+        partial["generated_at"] = "2026-07-28T11:00:00Z"
+        partial_record = {
+            "soundcharts_uuid": "oneheart-song",
+            "spotify_id": "oneheart-track",
+            "title": "Snowfall refreshed",
+            "availability_status": "measured",
+        }
+        partial["tracks"] = [
+            [partial_record.get(field) for field in rights_schema]
+        ]
+        merged = subject.merge_catalogues([source, partial])
+        record = subject._record(merged["tracks"][0], merged["track_schema"])
+        self.assertEqual(record["rights_status"], "independent_label")
+        self.assertEqual(record["label"], "Dreamscape Records")
+        self.assertGreaterEqual(record["rights_confidence"], 0.98)
+
     def test_strict_rebaseline_keeps_only_evidenced_instrumental_editorial_rows(self):
         strict_schema = [
             "soundcharts_uuid", "spotify_id", "title", "credit_name", "artists",

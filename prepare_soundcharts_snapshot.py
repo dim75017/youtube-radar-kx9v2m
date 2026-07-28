@@ -25,6 +25,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
+from spotify_rights import reconciled_label, reconcile_rights
+
 
 SOUNDCHARTS_PREFIX = "window.SPOTIFY_SOUNDCHARTS="
 SNAPSHOT_BASENAME_RE = re.compile(
@@ -188,6 +190,67 @@ def _set_row_value(row: Any, schema: Sequence[str], field: str, value: Any) -> N
         return
     if index < len(row):
         row[index] = value
+
+
+def _reconcile_rights_rows(rows: Any, schema: Sequence[str]) -> int:
+    if not isinstance(rows, list):
+        return 0
+    reconciled_count = 0
+    for row in rows:
+        previous_status = _row_value(row, schema, "rights_status")
+        previous_label = _row_value(row, schema, "label")
+        rights_status, rights_confidence, licensee = reconcile_rights(
+            previous_status,
+            previous_label,
+            _row_value(row, schema, "copyright"),
+            _row_value(row, schema, "rights_confidence"),
+        )
+        if not licensee:
+            continue
+        label = reconciled_label(
+            previous_label,
+            _row_value(row, schema, "copyright"),
+        )
+        _set_row_value(row, schema, "rights_status", rights_status)
+        if rights_confidence is not None:
+            _set_row_value(
+                row,
+                schema,
+                "rights_confidence",
+                rights_confidence,
+            )
+        _set_row_value(row, schema, "label", label)
+        reconciled_count += int(
+            str(previous_status or "").casefold() != rights_status
+            or str(previous_label or "").strip() != label
+        )
+    return reconciled_count
+
+
+def _reconcile_publication_rights(payload: dict[str, Any]) -> int:
+    reconciled_count = 0
+    for collection in ("tracks", "opportunities"):
+        reconciled_count += _reconcile_rights_rows(
+            payload.get(collection),
+            _schema(payload, collection),
+        )
+
+    editorial = payload.get("editorial")
+    if isinstance(editorial, Mapping):
+        editorial_schema = editorial.get("track_schema")
+        reconciled_count += _reconcile_rights_rows(
+            editorial.get("tracks"),
+            list(editorial_schema) if isinstance(editorial_schema, list) else [],
+        )
+
+    discovery = payload.get("discovery_catalogue")
+    if isinstance(discovery, Mapping):
+        discovery_schema = discovery.get("track_schema")
+        reconciled_count += _reconcile_rights_rows(
+            discovery.get("tracks"),
+            list(discovery_schema) if isinstance(discovery_schema, list) else [],
+        )
+    return reconciled_count
 
 
 def _number_at_least(value: Any, minimum: float) -> bool:
@@ -1401,6 +1464,7 @@ def sanitize_payload(payload: Mapping[str, Any]) -> tuple[dict[str, Any], dict[s
     if not isinstance(sanitized.get("opportunities"), list):
         raise SnapshotValidationError("SC.opportunities must be present and be a list")
 
+    rights_reconciled = _reconcile_publication_rights(sanitized)
     editorial = sanitized.get("editorial")
     # Build this before strict public pruning.  The browse layer is allowed to
     # expose an honest “À classifier” track; it must not be reduced to the
@@ -1408,6 +1472,11 @@ def sanitize_payload(payload: Mapping[str, Any]) -> tuple[dict[str, Any], dict[s
     full_discovery_catalogue = _preserve_more_complete_discovery_catalogue(
         sanitized,
         _build_discovery_catalogue(sanitized),
+    )
+    discovery_schema = full_discovery_catalogue.get("track_schema")
+    rights_reconciled += _reconcile_rights_rows(
+        full_discovery_catalogue.get("tracks"),
+        list(discovery_schema) if isinstance(discovery_schema, list) else [],
     )
     sanitized["discovery_catalogue"] = full_discovery_catalogue
     before_counts = {
@@ -1720,6 +1789,7 @@ def sanitize_payload(payload: Mapping[str, Any]) -> tuple[dict[str, Any], dict[s
         "editorial_artist_removal_reasons": dict(editorial_artist_reasons),
         "editorial_track_removal_reasons": dict(editorial_track_reasons),
         "editorial_track_spotify_ids_completed": editorial_track_ids_completed,
+        "rights_rows_reconciled": rights_reconciled,
         "opportunity_removal_reasons": dict(opportunity_reasons),
         "opportunity_contacts_scrubbed": contacts_scrubbed,
         "opportunities_downgraded_to_needs_listen": opportunities_downgraded,
