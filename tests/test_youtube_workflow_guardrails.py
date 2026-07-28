@@ -25,6 +25,8 @@ class YoutubeWorkflowGuardrailTests(unittest.TestCase):
             'test_youtube_recommendation_edits.js',
             'test_youtube_recommendation_status_tabs.js',
             'test_youtube_recommendation_continuous_pool.js',
+            'test_youtube_recommendation_quality.js',
+            'test_youtube_recommendation_real_snapshot.js',
             'test_youtube_recommendation_historical_acceptance_snapshot.js',
             'test_youtube_recommendation_roadmap_precedence.js',
             'test_youtube_recommendation_decision_animation.js',

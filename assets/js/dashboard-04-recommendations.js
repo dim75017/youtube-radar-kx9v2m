@@ -117,7 +117,9 @@ function autoSaveComment(n){
 const RECO_EDIT_STORAGE_KEY='lofi_radar_recommendation_edits_v1';
 const GENERATED_RECO_DECISIONS_KEY='lofi_radar_generated_reco_decisions_v1';
 const CONTINUOUS_RECO_VARIANTS_KEY='lofi_radar_reco_variants_v1';
-const CONTINUOUS_RECO_VARIANT_VERSION=1;
+// V1 fabricated an unlimited stream of generic title combinations. Keep the
+// storage key for a safe migration, but invalidate every pending V1 variant.
+const CONTINUOUS_RECO_VARIANT_VERSION=2;
 const CONTINUOUS_RECO_VARIANT_ID_BASE=2000000000000;
 function generatedRecommendationDecisions(){
   try{const value=JSON.parse(localStorage.getItem(GENERATED_RECO_DECISIONS_KEY)||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch(e){return {};}
@@ -125,7 +127,7 @@ function generatedRecommendationDecisions(){
 function continuousRecommendationVariantState(){
   try{
     const raw=JSON.parse(localStorage.getItem(CONTINUOUS_RECO_VARIANTS_KEY)||'{}');
-    if(!raw||typeof raw!=='object'||Array.isArray(raw))return {version:CONTINUOUS_RECO_VARIANT_VERSION,cursor:0,active:[],decided:{}};
+    if(!raw||typeof raw!=='object'||Array.isArray(raw)||Number(raw.version)!==CONTINUOUS_RECO_VARIANT_VERSION)return {version:CONTINUOUS_RECO_VARIANT_VERSION,cursor:0,active:[],decided:{}};
     return {
       version:CONTINUOUS_RECO_VARIANT_VERSION,
       cursor:Math.max(0,Math.floor(Number(raw.cursor)||0)),
@@ -168,18 +170,23 @@ function mergeGeneratedRecommendationPool(data){
   const source=(window.LOFI_RECOMMENDATION_POOL&&window.LOFI_RECOMMENDATION_POOL.items)||data.recoGenerated||[];
   const storedVariants=storedContinuousRecommendationRows();
   if((!Array.isArray(source)||!source.length)&&!storedVariants.length)return data;
-  const recos=data.recos||(data.recos=[]),decisions=generatedRecommendationDecisions();
+  const recos=data.recos||(data.recos=[]),decisions=generatedRecommendationDecisions();let migratedDecisions=false;
   const ids=new Set(recos.map(row=>String(row&&row.n))),titles=new Set(recos.map(row=>normalizedRecommendationTitle(row&&row.title)).filter(Boolean));
   const append=(raw,guardTitle)=>{
     if(!raw||raw.n==null||!raw.title)return;
     const id=String(raw.n),title=normalizedRecommendationTitle(raw.title);
     if(ids.has(id)||(guardTitle&&titles.has(title)))return;
     const row=Object.assign({},raw,{_generated:true});
-    const decision=decisions[id];if(decision&&typeof decision.value==='string')row.valid=decision.value;
+    const legacyId=raw._legacyN!=null?String(raw._legacyN):'',decision=decisions[id]||(legacyId&&decisions[legacyId]);
+    if(decision&&typeof decision.value==='string'){
+      row.valid=decision.value;
+      if(!decisions[id]){decisions[id]=Object.assign({},decision,{migratedFrom:legacyId});migratedDecisions=true;}
+    }
     recos.push(row);ids.add(id);titles.add(title);
   };
   (Array.isArray(source)?source:[]).forEach(raw=>append(raw,true));
   storedVariants.forEach(raw=>append(raw,false));
+  if(migratedDecisions)try{localStorage.setItem(GENERATED_RECO_DECISIONS_KEY,JSON.stringify(decisions));}catch(e){}
   return data;
 }
 function recommendationEdits(){
@@ -256,9 +263,10 @@ function legacyRerenderRecos(){
   const rc=document.querySelector('.result-count');if(rc)rc.innerHTML='<b>'+fmtInt(rows.length)+'</b> concepts';
   armAutoLoad();
 }
-/* Daily recommendation rotation: measured seeds stay intact and can yield new deterministic variants on demand. */
+/* Daily recommendation rotation: only measured, quality-gated concepts enter a batch. */
 const RECO_DAILY_LIMIT=50;
-const RECO_ROTATION_KEY='lofi_radar_reco_rotation_v1';
+const RECO_MIN_DAILY_SCORE=72;
+const RECO_ROTATION_KEY='lofi_radar_reco_rotation_v2';
 let RECO_HISTORY_PROMISE=null;
 let RECO_DERIVED_REVISION=0;
 let RECO_DAILY_CACHE=null;
@@ -339,7 +347,7 @@ function buildContinuousRecommendationVariant(seed,serial,usedTitles){
     _sourceMarketScore:seed._sourceMarketScore,
   });
 }
-function generateContinuousRecommendationVariants(limit,profile,day,genreCounts,personaCounts){
+function legacyContinuousRecommendationVariants(limit,profile,day,genreCounts,personaCounts){
   if(limit<=0)return [];
   const seeds=measuredRecommendationVariantSeeds();if(!seeds.length)return [];
   const state=continuousRecommendationVariantState();
@@ -367,24 +375,88 @@ function generateContinuousRecommendationVariants(limit,profile,day,genreCounts,
   if(DATA&&Array.isArray(DATA.recos))DATA.recos.push(...picked);
   return picked;
 }
+// Never manufacture filler concepts in the browser. A refresh may return
+// fewer than 50 cards when the measured reservoir is exhausted.
+function generateContinuousRecommendationVariants(){return [];}
 function recoTokens(r){
-  const stop=new Set(['avec','dans','pour','the','and','from','lofi','music','radio','mix','video','youtube','ambient','chill']);
-  return [...new Set((String(r.title||'')+' '+String(r.concept||'')+' '+String(r.niche||'')+' '+String(r.kw||''))
+  // Remove generator boilerplate and generic media words: feedback must learn
+  // the actual theme/use, not penalise the whole catalogue at once.
+  const stop=new Set(['avec','dans','pour','the','and','from','music','radio','mix','video','youtube','direction','autour','pensee','concept','cree','depuis','corpus','instrumental','quotidien','affiner','avant','validation','editoriale','format','session','background']);
+  return [...new Set((String(r.title||'')+' '+String(r.niche||'')+' '+String(r.kw||''))
     .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').match(/[a-z0-9]{4,}/g)||[])].filter(x=>!stop.has(x)).slice(0,18);
 }
 function recoRotationHistory(){try{return JSON.parse(localStorage.getItem(RECO_ROTATION_KEY)||'{}')||{};}catch(e){return {};}}
 function saveRecoRotation(h){try{localStorage.setItem(RECO_ROTATION_KEY,JSON.stringify(h));}catch(e){}}
 function recoSeenIds(history){
-  const seen=new Set(Array.isArray(history&&history._seen)?history._seen.map(Number).filter(Number.isFinite):[]);
+  const seen=new Set(),day=recoDayKey(),recent=history&&history._recent;
+  if(recent&&recent.day===day&&Array.isArray(recent.ids))recent.ids.forEach(id=>{id=Number(id);if(Number.isFinite(id))seen.add(id);});
   Object.entries(history||{}).forEach(([key,ids])=>{if(!key.startsWith('_')&&Array.isArray(ids))ids.forEach(id=>{id=Number(id);if(Number.isFinite(id))seen.add(id);});});
   return seen;
 }
 function rememberRecoIds(history,ids){
-  const seen=recoSeenIds(history);(ids||[]).forEach(id=>{id=Number(id);if(Number.isFinite(id))seen.add(id);});
-  history._seen=[...seen].slice(-25000);return history;
+  const day=recoDayKey(),previous=history&&history._recent&&history._recent.day===day?history._recent.ids:[];
+  const seen=new Set((previous||[]).map(Number).filter(Number.isFinite));
+  (ids||[]).forEach(id=>{id=Number(id);if(Number.isFinite(id))seen.add(id);});
+  // Same-day cooldown prevents immediate repeats without pushing the engine
+  // permanently down into lower-quality stock.
+  history._recent={day,ids:[...seen].slice(-1000)};delete history._seen;return history;
 }
 function recoAddSignal(map,key,value){if(key)map[key]=(map[key]||0)+value;}
 function recoSignal(map,key){return Number(map[key]||0);}
+function recoFeatureText(value){return String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();}
+function recoGenreKey(value,row){
+  if(row&&row._genreKey)return recoFeatureText(row._genreKey).replace(/\s+/g,'_');
+  const explicit=recoFeatureText(value);
+  const classify=text=>{
+    if(/\b(dnb|drum bass|drum and bass|liquid jungle)\b/.test(text))return 'dnb';
+    if(/\b(chill house|lofi house|deep house|melodic house)\b/.test(text))return 'house';
+    if(/\b(synthwave|retrowave|chillwave|outrun)\b/.test(text))return 'synthwave';
+    if(/\b(christmas|xmas|noel)\b/.test(text))return 'christmas';
+    if(/\b(halloween)\b/.test(text))return 'halloween';
+    // Lofi must win over rain/piano/jazz words when the source is explicitly
+    // presented as lofi (the previous order caused the genre corruption).
+    if(/\b(lofi|lo fi|chillhop|hip hop)\b/.test(text))return 'lofi';
+    if(/\b(classical|classique|baroque|orchestra|chamber)\b/.test(text))return 'classical';
+    if(/\b(guitar|acoustic|fingerstyle)\b/.test(text))return 'guitar';
+    if(/\b(jazz|jazzhop|bossa)\b/.test(text))return 'jazz';
+    if(/\b(piano)\b/.test(text))return 'piano';
+    if(/\b(nature|rain|forest|ocean|river|thunder|fireplace|white noise|bird sounds|waves)\b/.test(text))return 'nature';
+    if(/\b(ambient|soundscape|meditation|deep focus|sleep music)\b/.test(text))return 'ambient';
+    return '';
+  };
+  if(explicit&&explicit!=='unknown'&&explicit!=='unset'&&explicit!=='a classifier'){
+    const direct=classify(explicit);if(direct)return direct;
+  }
+  const text=recoFeatureText([row&&row.title,row&&row.cluster,row&&row.niche,row&&row.kw].filter(Boolean).join(' '));
+  return classify(text);
+}
+function recoPurposeKey(row){
+  if(row&&row._purposeKey)return recoFeatureText(row._purposeKey).replace(/\s+/g,'_');
+  const text=recoFeatureText([row&&row.title,row&&row.cluster,row&&row.niche,row&&row.kw,row&&row.concept].filter(Boolean).join(' '));
+  if(/\b(sleep|night rest|bedtime|nap|insomnia)\b/.test(text))return 'sleep';
+  if(/\b(study|focus|work|coding|program\w*|concentr\w*|productiv\w*)\b/.test(text))return 'study';
+  if(/\b(read\w*|writ\w*|book|library|pages)\b/.test(text))return 'reading';
+  if(/\b(winter|summer|autumn|fall|spring|christmas|halloween|snow)\b/.test(text))return 'season';
+  if(/\b(fantasy|medieval|worldbuild\w*|adventure|game|dream\w*)\b/.test(text))return 'fantasy';
+  if(/\b(relax\w*|calm|unwind|slow|peace\w*|cozy|chill)\b/.test(text))return 'relax';
+  return '';
+}
+function recoSourceKey(row){
+  if(!row)return '';
+  if(row._sourceVideoId)return 'video:'+String(row._sourceVideoId);
+  if(row._variantSeedN!=null)return 'seed:'+String(row._variantSeedN);
+  return '';
+}
+function recoClamp(value,min,max){return Math.max(min,Math.min(max,Number(value)||0));}
+function recoSourceRecencyBoost(row){
+  const windowKey=String(row&&row._sourceWindow||'');
+  if(windowKey==='3m'||windowKey==='0-3m')return 9;
+  if(windowKey==='6m'||windowKey==='3-6m')return 5;
+  if(windowKey==='12m'||windowKey==='6-12m')return 2;
+  const age=Number(row&&row._sourceAgeM);
+  if(Number.isFinite(age)){if(age<=3)return 9;if(age<=6)return 5;if(age<=12)return 2;return -8;}
+  return 0;
+}
 function recoPerformanceSignal(o){
   // Prefer the observed recent daily velocity when history is available;
   // lifetime velocity remains an age-normalized fallback.
@@ -411,43 +483,70 @@ function recoVideoFields(o){
   return o.reco||o||{};
 }
 function recoProfile(){
-  const p={genre:{},persona:{},token:{},recentGenre:{},feedbackPersona:{},feedbackToken:{},recentVideos:0,windows:{'3m':0,'6m':0,'12m':0},feedback:0};
+  const p={
+    feedbackGenre:{},feedbackPurpose:{},feedbackPersona:{},feedbackToken:{},feedbackSource:{},
+    performanceGenre:{},performancePurpose:{},performanceToken:{},recentGenre:{},recentPurpose:{},
+    recentVideos:0,signaledVideos:0,windows:{'3m':0,'6m':0,'12m':0},feedback:0
+  };
   const activeRoadmap=typeof scheduledRows==='function'?scheduledRows():[];
   const activeRoadmapIds=new Set(activeRoadmap.filter(row=>row&&row.recoN!=null).map(row=>Number(row.recoN)));
   const activeRoadmapTitles=new Set(activeRoadmap.map(row=>normalizedRecommendationTitle(row&&row.title)).filter(Boolean));
   (DATA.recos||[]).forEach(r=>{
     const placedActive=activeRoadmapIds.has(Number(r.n))||activeRoadmapTitles.has(normalizedRecommendationTitle(r.title));
-    const feedback=placedActive?4:(isRefused(r.valid)?-3:(isValidated(r.valid)?3:0));if(!feedback)return;
-    p.feedback++;recoAddSignal(p.genre,String(r.genre||''),feedback);recoAddSignal(p.persona,persoCategory(r.perso),feedback);
-    recoAddSignal(p.feedbackPersona,persoCategory(r.perso),feedback);recoTokens(r).forEach(t=>{recoAddSignal(p.token,t,feedback*.35);recoAddSignal(p.feedbackToken,t,feedback*.35);});
+    const feedback=placedActive?8:(isRefused(r.valid)?-8:(isValidated(r.valid)?6:0));if(!feedback)return;
+    p.feedback++;
+    recoAddSignal(p.feedbackGenre,recoGenreKey(r.genre,r),feedback);
+    recoAddSignal(p.feedbackPurpose,recoPurposeKey(r),feedback);
+    recoAddSignal(p.feedbackPersona,persoCategory(r.perso),feedback*.08);
+    recoAddSignal(p.feedbackSource,recoSourceKey(r),feedback);
+    recoTokens(r).forEach(t=>recoAddSignal(p.feedbackToken,t,feedback*.32));
   });
   try{(anaRows()||[]).forEach(o=>{
     const ageMonths=o.ageM!=null&&o.ageM!==''?Number(o.ageM):null;
     const horizon=recoHorizonWeight(ageMonths);if(!horizon)return;
+    p.recentVideos++;p.windows[horizon.id]++;
     const signal=recoPerformanceSignal(o);if(!signal)return;
     const fields=recoVideoFields(o),weighted=signal*horizon.weight;
-    p.recentVideos++;p.windows[horizon.id]++;
-    recoAddSignal(p.genre,String(fields.genre||''),weighted);
-    if(horizon.id==='3m')recoAddSignal(p.recentGenre,String(fields.genre||''),weighted);
-    recoAddSignal(p.persona,persoCategory(fields.perso),weighted*.65);
-    recoTokens(fields).forEach(t=>recoAddSignal(p.token,t,weighted*.18));
+    const genre=recoGenreKey(fields.genre,fields),purpose=recoPurposeKey(fields);
+    p.signaledVideos++;
+    recoAddSignal(p.performanceGenre,genre,weighted);
+    recoAddSignal(p.performancePurpose,purpose,weighted);
+    if(horizon.id==='3m'){
+      recoAddSignal(p.recentGenre,genre,weighted);
+      recoAddSignal(p.recentPurpose,purpose,weighted);
+    }
+    recoTokens(fields).forEach(t=>recoAddSignal(p.performanceToken,t,weighted*.2));
   });}catch(e){}
   return p;
 }
 function recoDailyScore(r,p,day){
   const base=Number(r.scoreAdj!=null?r.scoreAdj:r.score)||0;
-  const genre=recoSignal(p.genre,String(r.genre||''));const persona=recoSignal(p.persona,persoCategory(r.perso));
-  const terms=recoTokens(r).reduce((sum,t)=>sum+recoSignal(p.token,t),0);const rotation=(recoHash(day+'|'+r.n)%1000)/1000*2.4;
-  return base+genre*.9+persona*.55+Math.max(-6,Math.min(6,terms))*.45+rotation;
+  const genre=recoGenreKey(r.genre,r),purpose=recoPurposeKey(r),tokens=recoTokens(r);
+  const feedbackSource=recoClamp(recoSignal(p.feedbackSource,recoSourceKey(r))*3,-30,24);
+  const feedbackGenre=recoClamp(recoSignal(p.feedbackGenre,genre)*.75,-18,18);
+  const feedbackPurpose=recoClamp(recoSignal(p.feedbackPurpose,purpose)*.8,-14,14);
+  const feedbackPersona=recoClamp(recoSignal(p.feedbackPersona,persoCategory(r.perso)),-.7,.7);
+  const feedbackTerms=recoClamp(tokens.reduce((sum,t)=>sum+recoSignal(p.feedbackToken,t),0)*.45,-12,12);
+  const performanceGenre=recoClamp(recoSignal(p.performanceGenre,genre)*.72,-20,20);
+  const performancePurpose=recoClamp(recoSignal(p.performancePurpose,purpose)*.58,-12,12);
+  const performanceTerms=recoClamp(tokens.reduce((sum,t)=>sum+recoSignal(p.performanceToken,t),0)*.35,-10,10);
+  const rotation=(recoHash(day+'|'+r.n)%1000)/1000*.8;
+  return base+recoSourceRecencyBoost(r)+feedbackSource+feedbackGenre+feedbackPurpose+feedbackPersona+feedbackTerms+performanceGenre+performancePurpose+performanceTerms+rotation;
 }
 function recoReasons(r,p,day){
   const fr=typeof LANG!=='undefined'&&LANG==='fr',out=[];const base=Math.round(Number(r.scoreAdj!=null?r.scoreAdj:r.score)||0);
   out.push(fr?'Score catalogue '+base:'Catalogue score '+base);
-  const genre=recoSignal(p.recentGenre,String(r.genre||''));
+  const genreKey=recoGenreKey(r.genre,r),purposeKey=recoPurposeKey(r);
+  const genre=recoSignal(p.recentGenre,genreKey)+recoSignal(p.recentPurpose,purposeKey);
   if(Math.abs(genre)>=1.5)out.push((genre>0?(fr?'Signal chaîne récent : ':'Recent channel signal: '):(fr?'Signal à surveiller : ':'Signal to watch: '))+String(r.genre||'—'));
-  const feedback=recoTokens(r).reduce((sum,t)=>sum+recoSignal(p.feedbackToken,t),0)+recoSignal(p.feedbackPersona,persoCategory(r.perso));
+  const feedback=recoSignal(p.feedbackSource,recoSourceKey(r))*2+recoSignal(p.feedbackGenre,genreKey)+recoSignal(p.feedbackPurpose,purposeKey)+recoTokens(r).reduce((sum,t)=>sum+recoSignal(p.feedbackToken,t),0);
   if(Math.abs(feedback)>=1.5)out.push(feedback>0?(fr?'Format proche de validations passées':'Close to past validations'):(fr?'Format moins retenu par le passé':'Format less retained in the past'));
   out.push(fr?'Rotation quotidienne':'Daily rotation');return out.slice(0,4);
+}
+function recommendationPerformanceHistoryReady(){
+  if(typeof videoHistoryReady!=='function')return true;
+  return [...new Set((DATA&&DATA.ours||[]).map(row=>row&&row.vid).filter(Boolean))]
+    .every(vid=>videoHistoryReady(vid)||(typeof videoHistoryError==='function'&&videoHistoryError(vid)));
 }
 function dailyRecommendationSet(){
   const day=recoDayKey(),lang=typeof LANG!=='undefined'?LANG:'en',revision=typeof RECO_DERIVED_REVISION!=='undefined'?RECO_DERIVED_REVISION:0;
@@ -473,15 +572,27 @@ function dailyRecommendationSet(){
     return rows;
   }
   const seen=recoSeenIds(history);
-  const pool=candidates.filter(r=>!seen.has(Number(r.n)));
-  const picked=[],genres={},personas={};
-  while(picked.length<RECO_DAILY_LIMIT&&pool.length){
-    const ranked=pool.filter(r=>!picked.includes(r)).map(r=>{const g=String(r.genre||''),p=persoCategory(r.perso);return {r,value:recoDailyScore(r,profile,day)-(genres[g]||0)*3-(personas[p]||0)*1.35};}).sort((a,b)=>b.value-a.value||a.r.n-b.r.n);
-    if(!ranked.length)break;const r=ranked[0].r;picked.push(r);const g=String(r.genre||''),p=persoCategory(r.perso);genres[g]=(genres[g]||0)+1;personas[p]=(personas[p]||0)+1;
+  const available=candidates.filter(r=>!seen.has(Number(r.n)))
+    .map(r=>({r,score:recoDailyScore(r,profile,day)}))
+    .filter(item=>item.score>=RECO_MIN_DAILY_SCORE);
+  const picked=[],genres={},purposes={},sources={},combos={},settings={};
+  while(picked.length<RECO_DAILY_LIMIT&&available.length){
+    const ranked=available.map(item=>{
+      const g=recoGenreKey(item.r.genre,item.r),purpose=recoPurposeKey(item.r),source=recoSourceKey(item.r),combo=g+'|'+purpose,setting=String(item.r._settingKey||'');
+      // Exploit the learned winner first, then prevent a whole batch from
+      // becoming fifty near-identical takes on the same use or scenery.
+      const comboCount=combos[combo]||0,genreCount=genres[g]||0;
+      const diversity=(sources[source]||0)*10+(settings[setting]||0)*4+Math.max(0,comboCount-8)*2.5+Math.max(0,genreCount-24)*1.5+Math.max(0,(purposes[purpose]||0)-30)*.5;
+      return {item,value:item.score-diversity};
+    }).sort((a,b)=>b.value-a.value||a.item.r.n-b.item.r.n);
+    if(!ranked.length)break;
+    const selected=ranked[0].item,index=available.indexOf(selected);if(index>=0)available.splice(index,1);
+    const r=selected.r,g=recoGenreKey(r.genre,r),purpose=recoPurposeKey(r),source=recoSourceKey(r),combo=g+'|'+purpose,setting=String(r._settingKey||'');
+    picked.push(r);genres[g]=(genres[g]||0)+1;purposes[purpose]=(purposes[purpose]||0)+1;combos[combo]=(combos[combo]||0)+1;if(source)sources[source]=(sources[source]||0)+1;if(setting)settings[setting]=(settings[setting]||0)+1;
   }
-  if(picked.length<RECO_DAILY_LIMIT)picked.push(...generateContinuousRecommendationVariants(RECO_DAILY_LIMIT-picked.length,profile,day,genres,personas));
-  history[day]=[...new Set(picked.map(r=>r.n))].slice(0,RECO_DAILY_LIMIT);rememberRecoIds(history,history[day]);
-  setActiveContinuousRecommendationVariants(picked);
+  history[day]=[...new Set(picked.map(r=>r.n))].slice(0,RECO_DAILY_LIMIT);
+  if(recommendationPerformanceHistoryReady())history._profileReadyDay=day;else delete history._profileReadyDay;
+  setActiveContinuousRecommendationVariants([]);
   Object.keys(history).filter(key=>!key.startsWith('_')).sort().slice(0,-14).forEach(k=>delete history[k]);saveRecoRotation(history);
   const rows=decorate(picked);
   if(typeof RECO_DAILY_CACHE!=='undefined')RECO_DAILY_CACHE={data:DATA,revision,day,lang,rows,sources:picked};
@@ -515,6 +626,10 @@ function ensureRecommendationPerformanceHistory(){
   RECO_HISTORY_PROMISE=Promise.all(missing.map(ensureVideoHistory)).finally(()=>{
     RECO_HISTORY_PROMISE=null;
     if(typeof _anaCache!=='undefined'){_anaCache=null;_anaT=0;}
+    const day=recoDayKey(),history=recoRotationHistory();
+    // The first paint can happen before the lazy history shards arrive. Rebuild
+    // that provisional queue once so the visible batch truly uses velocity.
+    if(history[day]&&history._profileReadyDay!==day){delete history[day];history._profileReadyDay=day;saveRecoRotation(history);}
     invalidateRecommendationDerivedData();
     if(route==='recos')rerenderRecos();
   });
@@ -524,10 +639,11 @@ function dailyRecoBrief(rows){
   const text=p.recentVideos
     ?(fr?'Classement fondé sur les validations/refus de l’équipe et les résultats des vidéos publiées depuis 0–3, 3–6 et 6–12 mois. Les 3 derniers mois pèsent le plus ; la vitesse quotidienne récente est utilisée dès que l’historique est disponible.':'Ranking uses team approvals/refusals and results from videos published 0–3, 3–6 and 6–12 months ago. The latest 3 months carry the most weight; recent daily velocity is used as soon as history is available.')
     :(fr?'Les performances de la chaîne arriveront avec le prochain import YouTube. En attendant, la sélection utilise le score catalogue, les validations/refus de l’équipe et la rotation anti-répétition.':'Channel performance will be used after the next YouTube import. Until then, the selection uses the catalogue score, team feedback and anti-repeat rotation.');
-  return '<div class="reco-daily-brief"><div><div class="reco-daily-kicker">'+(fr?'SÉLECTION DU JOUR':'DAILY SELECTION')+' · '+recoDayKey()+'</div><p>'+text+'</p></div><div class="reco-daily-stats"><b>'+rows.length+'</b><span>'+(fr?'idées actives':'active ideas')+'</span><b>'+p.recentVideos+'</b><span>'+(fr?'vidéos analysées':'videos analysed')+'</span></div></div>';
+  const qualityNote=rows.length<RECO_DAILY_LIMIT?(fr?' Le moteur s’arrête au seuil de pertinence au lieu de compléter avec des idées faibles.':' The engine stops at the relevance threshold instead of filling the batch with weak ideas.'):'';
+  return '<div class="reco-daily-brief"><div><div class="reco-daily-kicker">'+(fr?'SÉLECTION DU JOUR':'DAILY SELECTION')+' · '+recoDayKey()+'</div><p>'+text+qualityNote+'</p></div><div class="reco-daily-stats"><b>'+rows.length+'</b><span>'+(fr?'idées actives':'active ideas')+'</span><b>'+p.recentVideos+'</b><span>'+(fr?'vidéos analysées':'videos analysed')+'</span></div></div>';
 }
 function dailyRecoListHTML(rows){
-  if(!rows.length)return '<div class="empty">'+((typeof LANG!=='undefined'&&LANG==='fr')?'Aucune proposition en attente.':'No proposal awaiting review.')+'</div>';
+  if(!rows.length)return '<div class="empty">'+((typeof LANG!=='undefined'&&LANG==='fr')?'Aucune nouvelle idée ne passe le seuil de pertinence pour ce lot.':'No new idea passes the relevance threshold for this batch.')+'</div>';
   return '<div class="rgrid2">'+rows.map((r,i)=>recoCardHTML(r,i)).join('')+'</div>';
 }
 let RECO_TAB='pending';
