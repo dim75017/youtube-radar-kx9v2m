@@ -3,6 +3,9 @@ name: Refresh YouTube radar
 on:
   schedule:
     - cron: '17 7 * * *'
+    # Lightweight watchdog: the gate below skips this run when today's Paris
+    # snapshot is already healthy, and retries the collection when it is not.
+    - cron: '47 19 * * *'
   push:
     paths:
       - '.github/radar-heartbeat.txt'
@@ -23,8 +26,33 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  gate:
+    name: Check daily YouTube freshness
+    runs-on: ubuntu-latest
+    outputs:
+      run_scan: ${{ steps.freshness.outputs.run_scan }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - id: freshness
+        name: Skip only a healthy scheduled duplicate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" != "schedule" ]; then
+            echo "run_scan=true" >> "$GITHUB_OUTPUT"
+          elif python refresh_youtube_daily.py --snapshot Lofi_Radar_data.js --check-fresh-today; then
+            echo "run_scan=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_scan=true" >> "$GITHUB_OUTPUT"
+          fi
+
   validate:
     name: Validate discovery eligibility
+    needs: gate
+    if: needs.gate.outputs.run_scan == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,14 +62,41 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Install validation dependencies
+        run: pip install --disable-pip-version-check openpyxl
       - name: Test the 100k new-video view floor
         run: |
           python -m unittest tests.test_refresh_youtube_daily tests.test_youtube_workflow_guardrails
           node tests/test_youtube_new_video_view_floor.js
+          node tests/test_youtube_daily_view_deltas.js
+          node tests/test_youtube_channel_update_status.js
+
+  prepare:
+    name: Resolve one canonical tracked-video manifest
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install manifest dependency
+        run: pip install --disable-pip-version-check openpyxl
+      - name: Load the canonical Our Videos list once
+        run: >-
+          python refresh_youtube_daily.py
+          --snapshot Lofi_Radar_data.js
+          --write-tracked-manifest artifacts/youtube-tracked-ids.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: youtube-tracked-manifest
+          path: artifacts/youtube-tracked-ids.json
+          if-no-files-found: error
+          retention-days: 2
 
   scan:
     name: Scan shard ${{ matrix.shard }}
-    needs: validate
+    needs: prepare
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -54,6 +109,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: youtube-tracked-manifest
+          path: artifacts
       - name: Install collector dependencies
         run: pip install --disable-pip-version-check --upgrade yt-dlp openpyxl
       - name: Scan keywords and refresh tracked videos
@@ -64,6 +123,7 @@ jobs:
           python refresh_youtube_daily.py
           --shard ${{ matrix.shard }}
           --shards 20
+          --tracked-manifest artifacts/youtube-tracked-ids.json
           --output artifacts/youtube-shard-${{ matrix.shard }}.json
       - uses: actions/upload-artifact@v4
         with:
@@ -80,7 +140,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     needs: scan
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - name: Sync latest main
@@ -113,3 +173,11 @@ jobs:
             sleep 5
           done
           exit 1
+      - name: Verify GitHub Pages serves the new snapshot and history
+        run: >-
+          python refresh_youtube_daily.py
+          --snapshot Lofi_Radar_data.js
+          --history-dir video_history
+          --verify-base-url https://dim75017.github.io/youtube-radar-kx9v2m/
+          --verify-timeout 900
+          --verify-interval 15

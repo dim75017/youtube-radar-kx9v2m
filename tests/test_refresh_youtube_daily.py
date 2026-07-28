@@ -1,3 +1,4 @@
+import io
 import json
 import tempfile
 import unittest
@@ -71,7 +72,7 @@ class DailyHistoryTests(unittest.TestCase):
             self.assertEqual(merged["videoMetrics"]["search_results_enriched"], 10)
             self.assertEqual(summary["updated"], 1)
 
-    def test_daily_history_keeps_latest_point_per_utc_day(self):
+    def test_daily_history_keeps_latest_point_per_paris_day(self):
         morning = int(datetime(2026, 7, 20, 8, tzinfo=timezone.utc).timestamp() * 1000)
         evening = morning + 10 * 3600000
         next_day = morning + 24 * 3600000
@@ -80,12 +81,54 @@ class DailyHistoryTests(unittest.TestCase):
         )
         self.assertEqual(points, [[evening, 125], [next_day, 140]])
 
+    def test_scans_on_both_sides_of_paris_midnight_are_not_deduplicated(self):
+        july_27_paris = int(datetime(2026, 7, 27, 16, 7, tzinfo=timezone.utc).timestamp() * 1000)
+        july_28_paris = int(datetime(2026, 7, 27, 23, 49, tzinfo=timezone.utc).timestamp() * 1000)
+        points = radar.normalize_daily_points(
+            [[july_27_paris, 100], [july_28_paris, 125]],
+            july_28_paris,
+        )
+        self.assertEqual(points, [[july_27_paris, 100], [july_28_paris, 125]])
+        self.assertEqual(radar.history_day_key(july_27_paris), "2026-07-27")
+        self.assertEqual(radar.history_day_key(july_28_paris), "2026-07-28")
+
     def test_daily_history_drops_points_before_20_july_2026(self):
         before = int(datetime(2026, 7, 19, 20, tzinfo=timezone.utc).timestamp() * 1000)
         start = int(datetime(2026, 7, 20, 20, tzinfo=timezone.utc).timestamp() * 1000)
         next_day = start + 86400000
         points = radar.normalize_daily_points([[before, 100], [start, 120], [next_day, 150]], next_day)
         self.assertEqual(points, [[start, 120], [next_day, 150]])
+
+    def test_history_is_not_erased_when_a_source_temporarily_omits_an_id(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            history_dir = Path(tmp)
+            stamp = int(datetime(2026, 7, 27, 16, tzinfo=timezone.utc).timestamp() * 1000)
+            path = history_dir / "61.json"
+            path.write_text(
+                json.dumps({"version": 1, "updated": stamp, "d": {"abcdefghijk": [[stamp, 100]]}}),
+                encoding="utf-8",
+            )
+            radar.update_history_shards(history_dir, set(), {}, {}, stamp + 3600000)
+            history = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(history["d"]["abcdefghijk"], [[stamp, 100]])
+
+    def test_canonical_owned_video_sheet_fails_closed(self):
+        with patch.object(radar.urllib.request, "urlopen", side_effect=OSError("offline")):
+            with self.assertRaisesRegex(RuntimeError, "canonical Our Videos"):
+                radar.sheet_video_ids()
+
+    def test_one_canonical_manifest_is_reused_by_all_shards(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "snapshot.js"
+            manifest_path = root / "artifacts" / "tracked.json"
+            radar.write_snapshot(snapshot, {"videoMetricsT": 123, "d": {}})
+            with patch.object(radar, "tracked_ids", return_value=["abcdefghijk", "zyxwvutsrqp"]) as tracked:
+                manifest = radar.write_tracked_manifest(snapshot, manifest_path)
+            loaded = radar.read_tracked_manifest(manifest_path)
+        tracked.assert_called_once()
+        self.assertEqual(manifest["ids"], ["abcdefghijk", "zyxwvutsrqp"])
+        self.assertEqual(loaded, ["abcdefghijk", "zyxwvutsrqp"])
 
     def test_missing_subscriber_count_does_not_become_zero(self):
         now = int(datetime(2026, 7, 20, 8, tzinfo=timezone.utc).timestamp() * 1000)
@@ -137,7 +180,7 @@ class DailyHistoryTests(unittest.TestCase):
                 return {"entries": [{"id": "abcdefghijk"}]}
 
         channel = Channel()
-        with patch.object(radar, "search_ydl", return_value=channel), patch.object(
+        with patch.object(radar, "owned_ydl", return_value=channel), patch.object(
             radar, "fetch_one_video", return_value={"vid": "abcdefghijk", "views": 100}
         ):
             rows = radar.fetch_owned_ydl_rows(now)
@@ -153,8 +196,9 @@ class DailyHistoryTests(unittest.TestCase):
             shards.mkdir()
             radar.write_snapshot(snapshot, {"t": 1, "d": {"all": [{"vid": "abcdefghijk", "views": 100, "pub": 1700000000000}], "trends": [], "news": [], "ours": [], "recos": [], "roadmap": []}})
             generated = int(datetime(2026, 7, 20, 8, tzinfo=timezone.utc).timestamp() * 1000)
+            tracked = {"vid": "abcdefghijk", "title": "Tracked", "views": 101, "pub": 1700000000000}
             owned = {"vid": "zyxwvutsrqp", "title": "New Lofi Girl upload", "views": 200, "pub": generated, "durH": 1.0, "source": "Official Lofi Girl daily scan"}
-            artifact = {"version": 1, "generated_ms": generated, "shard": 0, "shards": 1, "tracked_total": 1, "tracked_ok": 1, "tracked_ids": ["abcdefghijk"], "queries_total": 1, "queries_ok": 1, "queries_raw": 1, "queries_enriched": 1, "fresh": [owned], "owned_fresh": [owned], "candidates": []}
+            artifact = {"version": 1, "generated_ms": generated, "shard": 0, "shards": 1, "tracked_total": 1, "tracked_ok": 1, "tracked_ids": ["abcdefghijk"], "tracked_fresh_ids": ["abcdefghijk"], "queries_total": 1, "queries_ok": 1, "queries_raw": 1, "queries_enriched": 1, "fresh": [tracked, owned], "owned_fresh": [owned], "candidates": []}
             (shards / "youtube-shard-0.json").write_text(json.dumps(artifact), encoding="utf-8")
             radar.merge_artifacts(snapshot, avatars, shards, 1)
             merged = radar.read_snapshot(snapshot)
@@ -264,6 +308,7 @@ class DailyHistoryTests(unittest.TestCase):
                 "tracked_total": 1,
                 "tracked_ok": 1,
                 "tracked_ids": ["abcdefghijk"],
+                "tracked_fresh_ids": ["abcdefghijk"],
                 "queries_total": 1,
                 "queries_ok": 1,
                 "queries_raw": 2,
@@ -297,6 +342,76 @@ class DailyHistoryTests(unittest.TestCase):
             [row["vid"] for row in merged["d"]["news"]],
             ["mnopqrstuvw"],
         )
+
+    def test_watchdog_requires_today_history_and_publish_thresholds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            snapshot = Path(tmp) / "snapshot.js"
+            stamp = int(datetime(2026, 7, 28, 8, tzinfo=timezone.utc).timestamp() * 1000)
+            radar.write_snapshot(snapshot, {
+                "videoMetricsT": stamp,
+                "videoMetrics": {
+                    "tracked": 1000,
+                    "updated": 1000,
+                    "keywords": 100,
+                    "keywords_ok": 100,
+                    "history_updated": 1000,
+                    "history_day": "2026-07-28",
+                    "day_timezone": "Europe/Paris",
+                    "partial": False,
+                },
+                "d": {},
+            })
+            healthy = radar.snapshot_freshness(snapshot, stamp + 3600000)
+            stale = radar.snapshot_freshness(snapshot, stamp + 24 * 3600000)
+            partial_payload = radar.read_snapshot(snapshot)
+            partial_payload["videoMetrics"].update({"updated": 999, "history_updated": 999, "partial": True})
+            radar.write_snapshot(snapshot, partial_payload)
+            partial = radar.snapshot_freshness(snapshot, stamp + 3600000)
+        self.assertTrue(healthy["fresh"])
+        self.assertFalse(stale["fresh"])
+        self.assertFalse(partial["fresh"])
+
+    def test_pages_verifier_requires_both_snapshot_and_history(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "snapshot.js"
+            history_dir = root / "video_history"
+            history_dir.mkdir()
+            stamp = int(datetime(2026, 7, 28, 8, tzinfo=timezone.utc).timestamp() * 1000)
+            radar.write_snapshot(snapshot, {"videoMetricsT": stamp, "d": {}})
+            (history_dir / "61.json").write_text(
+                json.dumps({"version": 1, "updated": stamp, "d": {}}),
+                encoding="utf-8",
+            )
+            (history_dir / "62.json").write_text(
+                json.dumps({"version": 1, "updated": stamp, "d": {}}),
+                encoding="utf-8",
+            )
+
+            class Response(io.BytesIO):
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *args):
+                    self.close()
+
+            responses = iter([
+                Response(snapshot.read_bytes()),
+                Response((history_dir / "61.json").read_bytes()),
+                Response((history_dir / "62.json").read_bytes()),
+            ])
+            with patch.object(radar.urllib.request, "urlopen", side_effect=lambda *args, **kwargs: next(responses)):
+                result = radar.verify_publication(
+                    "https://example.test/radar/",
+                    snapshot,
+                    history_dir,
+                    timeout_seconds=1,
+                    interval_seconds=1,
+                )
+        self.assertTrue(result["published"])
+        self.assertEqual(result["snapshot"], stamp)
+        self.assertEqual(result["history_min"], stamp)
+        self.assertEqual(result["history_shards"], 2)
 
 
 if __name__ == "__main__":

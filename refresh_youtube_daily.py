@@ -15,17 +15,21 @@ import os
 import re
 import sys
 import threading
+import time
 import urllib.parse
 import urllib.request
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_SNAPSHOT = ROOT / "Lofi_Radar_data.js"
 DEFAULT_AVATARS = ROOT / "Lofi_Radar_new_channel_avatars.js"
 DEFAULT_HISTORY_DIR = ROOT / "video_history"
-DAILY_VIEW_HISTORY_START_MS = int(datetime(2026, 7, 20, tzinfo=timezone.utc).timestamp() * 1000)
+RADAR_TIMEZONE_NAME = "Europe/Paris"
+RADAR_TIMEZONE = ZoneInfo(RADAR_TIMEZONE_NAME)
+DAILY_VIEW_HISTORY_START_MS = int(datetime(2026, 7, 20, tzinfo=RADAR_TIMEZONE).timestamp() * 1000)
 SHEET_EXPORT = (
     "https://docs.google.com/spreadsheets/d/"
     "1XE_M9pQWn8w2Qu83vV_tv9sEFDFQ13fTePseG6mh1vI/export?format=xlsx"
@@ -44,6 +48,8 @@ TRACK_WORKERS = int(os.environ.get("RADAR_TRACK_WORKERS", "12"))
 SEARCH_WORKERS = int(os.environ.get("RADAR_SEARCH_WORKERS", "4"))
 MIN_TRACK_RATIO = 0.90
 MIN_QUERY_RATIO = 0.90
+MIN_PUBLISH_TRACK_RATIO = 0.99
+MIN_PUBLISH_QUERY_RATIO = 0.99
 HISTORY_RETENTION_DAYS = 400
 OWN_CHANNEL_HANDLES = ("@LofiGirl",)
 OWN_UPLOADS_PER_CHANNEL = 50
@@ -116,9 +122,12 @@ def atomic_write_text(path: Path, content: str) -> None:
     tmp.replace(path)
 
 
-def read_snapshot(path: Path) -> dict:
-    raw = path.read_text(encoding="utf-8")
+def parse_snapshot_text(raw: str) -> dict:
     return json.loads(re.sub(r"^window\.LOFI_DATA=", "", raw).rstrip(";\n"))
+
+
+def read_snapshot(path: Path) -> dict:
+    return parse_snapshot_text(path.read_text(encoding="utf-8"))
 
 
 def write_snapshot(path: Path, payload: dict) -> None:
@@ -230,6 +239,30 @@ def search_ydl():
             }
         )
     return THREAD.search_ydl
+
+
+def owned_ydl():
+    """Use a dedicated playlist reader so the official channel is not capped at 10 uploads."""
+    if not hasattr(THREAD, "owned_ydl"):
+        import yt_dlp
+
+        THREAD.owned_ydl = yt_dlp.YoutubeDL(
+            {
+                "quiet": True,
+                "no_warnings": True,
+                "skip_download": True,
+                "extract_flat": True,
+                "playlistend": OWN_UPLOADS_PER_CHANNEL,
+                "socket_timeout": 15,
+                "retries": 1,
+                "extractor_retries": 1,
+                "ignoreerrors": True,
+                "cachedir": False,
+                "geo_bypass_country": "FR",
+                "extractor_args": {"youtube": {"lang": ["en"], "player_client": ["web"]}},
+            }
+        )
+    return THREAD.owned_ydl
 
 
 def info_to_row(info: dict, now_ms: int, *, genre: str = "", cluster: str = "", query: str = "") -> dict | None:
@@ -422,7 +455,7 @@ def fetch_owned_api_rows(now_ms: int, api_key: str) -> dict[str, dict]:
 
 def fetch_owned_ydl_rows(now_ms: int) -> dict[str, dict]:
     """Fallback when the repository has no YouTube API secret configured."""
-    info = search_ydl().extract_info("https://www.youtube.com/@LofiGirl/videos", download=False) or {}
+    info = owned_ydl().extract_info("https://www.youtube.com/@LofiGirl/videos", download=False) or {}
     ids = [
         str(item.get("id") or "")
         for item in info.get("entries") or []
@@ -471,7 +504,7 @@ def sheet_video_ids() -> set[str]:
             workbook = load_workbook(io.BytesIO(response.read()), read_only=True, data_only=True)
         title = next((name for name in workbook.sheetnames if "Our Videos" in name), None)
         if not title:
-            return set()
+            raise RuntimeError("Our Videos tab is missing from the radar Sheet")
         ids = set()
         for (value,) in workbook[title].iter_rows(min_row=2, max_col=1, values_only=True):
             video_id = str(value or "").strip()
@@ -479,8 +512,9 @@ def sheet_video_ids() -> set[str]:
                 ids.add(video_id)
         return ids
     except Exception as exc:
-        print(f"WARN: could not load Our Videos: {type(exc).__name__}: {exc}", file=sys.stderr)
-        return set()
+        raise RuntimeError(
+            f"Could not load the canonical Our Videos list: {type(exc).__name__}: {exc}"
+        ) from exc
 
 
 def tracked_ids(payload: dict) -> list[str]:
@@ -492,6 +526,34 @@ def tracked_ids(payload: dict) -> list[str]:
         if VIDEO_ID.match(str(row.get("vid") or ""))
     }
     ids.update(sheet_video_ids())
+    return sorted(ids)
+
+
+def write_tracked_manifest(snapshot: Path, output: Path) -> dict:
+    """Resolve the canonical tracked set once for every parallel scan shard."""
+    payload = read_snapshot(snapshot)
+    ids = tracked_ids(payload)
+    if not ids:
+        raise RuntimeError("Canonical tracked-video manifest is empty")
+    manifest = {
+        "version": 1,
+        "generated_ms": utc_now_ms(),
+        "snapshot_metrics_ms": int(payload.get("videoMetricsT") or 0),
+        "ids": ids,
+    }
+    output.parent.mkdir(parents=True, exist_ok=True)
+    atomic_write_text(output, json.dumps(manifest, ensure_ascii=False, separators=(",", ":")))
+    print(json.dumps({"tracked_manifest": len(ids), "output": str(output)}))
+    return manifest
+
+
+def read_tracked_manifest(path: Path) -> list[str]:
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    ids = [str(video_id) for video_id in (manifest.get("ids") or []) if VIDEO_ID.match(str(video_id or ""))]
+    if int(manifest.get("version") or 0) != 1 or not ids:
+        raise RuntimeError(f"Invalid or empty tracked-video manifest: {path}")
+    if len(ids) != len(set(ids)):
+        raise RuntimeError(f"Duplicate IDs in tracked-video manifest: {path}")
     return sorted(ids)
 
 
@@ -516,10 +578,17 @@ def merge_keyword_rows(rows: list[dict]) -> list[dict]:
     return list(by_id.values())
 
 
-def run_shard(snapshot: Path, output: Path, shard: int, shards: int) -> dict:
+def run_shard(
+    snapshot: Path,
+    output: Path,
+    shard: int,
+    shards: int,
+    tracked_manifest: Path | None = None,
+) -> dict:
     payload = read_snapshot(snapshot)
     now_ms = utc_now_ms()
-    ids = [video_id for video_id in tracked_ids(payload) if stable_shard(video_id, shards) == shard]
+    all_tracked_ids = read_tracked_manifest(tracked_manifest) if tracked_manifest else tracked_ids(payload)
+    ids = [video_id for video_id in all_tracked_ids if stable_shard(video_id, shards) == shard]
     specs = [spec for spec in query_specs(payload) if stable_shard(spec["query"], shards) == shard]
 
     fresh: dict[str, dict] = {}
@@ -552,7 +621,7 @@ def run_shard(snapshot: Path, output: Path, shard: int, shards: int) -> dict:
                     track_failed += 1
                     print(f"WARN tracked {video_id}: {type(exc).__name__}: {exc}", file=sys.stderr)
 
-    tracked_fresh_ids = sorted(fresh)
+    tracked_fresh_ids = sorted(set(ids) & set(fresh))
 
     candidates: list[dict] = []
     query_failed = 0
@@ -575,7 +644,7 @@ def run_shard(snapshot: Path, output: Path, shard: int, shards: int) -> dict:
                 query_failed += 1
                 print(f"WARN query {spec['query']}: {type(exc).__name__}: {exc}", file=sys.stderr)
 
-    track_ok = len(ids) - track_failed if not api_key else len(fresh.keys() & set(ids))
+    track_ok = len(tracked_fresh_ids)
     query_ok = len(specs) - query_failed
     if ids and track_ok / len(ids) < MIN_TRACK_RATIO:
         raise RuntimeError(f"Shard {shard}: only {track_ok}/{len(ids)} tracked videos refreshed")
@@ -633,13 +702,18 @@ def merge_discovery_fields(existing: dict, discovered: dict) -> None:
         existing["rank"] = min(ranks)
 
 
+def history_day_key(timestamp_ms: int) -> str:
+    """Return the dashboard's business day for a UTC timestamp."""
+    return datetime.fromtimestamp(timestamp_ms / 1000, timezone.utc).astimezone(RADAR_TIMEZONE).date().isoformat()
+
+
 def normalize_daily_points(points: list, now_ms: int) -> list[list[int]]:
     by_day: dict[object, list[int]] = {}
     for point in points or []:
         if isinstance(point, list) and len(point) >= 2:
             try:
                 parsed = [int(point[0]), int(point[1])]
-                day = datetime.fromtimestamp(parsed[0] / 1000, timezone.utc).date()
+                day = history_day_key(parsed[0])
                 if day not in by_day or parsed[0] >= by_day[day][0]:
                     by_day[day] = parsed
             except (TypeError, ValueError):
@@ -686,11 +760,13 @@ def update_history_shards(
             video_id for video_id in desired_ids if history_shard_name(video_id) == name
         }
         for video_id in candidate_ids:
-            if video_id not in desired_ids:
-                continue
-            points = list(current.get(video_id) or []) + list(legacy.get(video_id) or [])
+            # Never erase a measured history merely because a transient source
+            # stopped returning its ID. Only desired IDs receive a new point.
+            points = list(current.get(video_id) or [])
+            if video_id in desired_ids:
+                points += list(legacy.get(video_id) or [])
             row = fresh.get(video_id)
-            if row and isinstance(row.get("views"), (int, float)):
+            if video_id in desired_ids and row and isinstance(row.get("views"), (int, float)):
                 points.append([now_ms, int(row["views"])])
             clean = normalize_daily_points(points, now_ms)
             if clean:
@@ -706,6 +782,38 @@ def update_history_shards(
             atomic_write_text(path, rendered)
             written += 1
     return total_ids, written
+
+
+def validate_history_refresh(
+    history_dir: Path,
+    expected_views: dict[str, int],
+    now_ms: int,
+) -> int:
+    """Fail the publication if a refreshed counter did not reach daily history."""
+    expected_day = history_day_key(now_ms)
+    missing: list[str] = []
+    for video_id, views in sorted(expected_views.items()):
+        path = history_dir / history_shard_name(video_id)
+        try:
+            points = (json.loads(path.read_text(encoding="utf-8")).get("d") or {}).get(video_id) or []
+        except (OSError, ValueError, AttributeError):
+            points = []
+        day_points = [
+            point
+            for point in points
+            if isinstance(point, list)
+            and len(point) >= 2
+            and history_day_key(int(point[0])) == expected_day
+        ]
+        if not day_points or int(day_points[-1][1]) != int(views):
+            missing.append(video_id)
+    if missing:
+        sample = ", ".join(missing[:8])
+        raise RuntimeError(
+            f"History refresh rejected for {len(missing)}/{len(expected_views)} videos "
+            f"on {expected_day} ({sample})"
+        )
+    return len(expected_views)
 
 
 def write_avatar_overlay(payload: dict, path: Path) -> int:
@@ -761,10 +869,21 @@ def merge_artifacts(
     queries_ok = sum(int(a.get("queries_ok", 0)) for a in artifacts)
     queries_raw = sum(int(a.get("queries_raw", 0)) for a in artifacts)
     queries_enriched = sum(int(a.get("queries_enriched", 0)) for a in artifacts)
-    if not tracked_total or tracked_ok / tracked_total < MIN_TRACK_RATIO:
+    if not tracked_total or tracked_ok / tracked_total < MIN_PUBLISH_TRACK_RATIO:
         raise RuntimeError(f"Merge rejected: {tracked_ok}/{tracked_total} tracked videos refreshed")
-    if not queries_total or queries_ok / queries_total < MIN_QUERY_RATIO:
+    if not queries_total or queries_ok / queries_total < MIN_PUBLISH_QUERY_RATIO:
         raise RuntimeError(f"Merge rejected: {queries_ok}/{queries_total} keyword searches succeeded")
+    tracked_fresh_ids = {
+        str(video_id)
+        for artifact in artifacts
+        for video_id in (artifact.get("tracked_fresh_ids") or [])
+        if VIDEO_ID.match(str(video_id or ""))
+    }
+    if len(tracked_fresh_ids) != tracked_ok:
+        raise RuntimeError(
+            f"Merge rejected: {tracked_ok} refreshed counters but "
+            f"{len(tracked_fresh_ids)} traceable refreshed IDs"
+        )
 
     payload = read_snapshot(snapshot)
     data = payload.setdefault("d", {})
@@ -886,13 +1005,26 @@ def merge_artifacts(
         for row in data[bucket]
         if VIDEO_ID.match(str(row.get("vid") or ""))
     )
+    resolved_history_dir = history_dir or snapshot.parent / "video_history"
     history_ids, history_files = update_history_shards(
-        history_dir or snapshot.parent / "video_history",
+        resolved_history_dir,
         desired_ids,
         fresh,
         legacy_history,
         now_ms,
     )
+    expected_history_views = {
+        video_id: int(fresh[video_id]["views"])
+        for video_id in tracked_fresh_ids
+        if video_id in fresh and isinstance(fresh[video_id].get("views"), (int, float))
+    }
+    if len(expected_history_views) != tracked_ok:
+        raise RuntimeError(
+            f"Merge rejected: {tracked_ok} refreshed videos but "
+            f"{len(expected_history_views)} usable history values"
+        )
+    history_updated = validate_history_refresh(resolved_history_dir, expected_history_views, now_ms)
+    history_day = history_day_key(now_ms)
 
     payload["t"] = now_ms
     payload["videoMetricsT"] = now_ms
@@ -903,11 +1035,17 @@ def merge_artifacts(
         "keywords_ok": queries_ok,
         "search_results": queries_raw,
         "search_results_enriched": queries_enriched,
+        "history_updated": history_updated,
+        "history_day": history_day,
+        "day_timezone": RADAR_TIMEZONE_NAME,
+        "partial": tracked_ok < tracked_total or queries_ok < queries_total,
     }
     payload["videoHistory"] = {
         "layout": "video_history/{first_char_hex}.json",
         "retention_days": HISTORY_RETENTION_DAYS,
         "updated": now_ms,
+        "day": history_day,
+        "day_timezone": RADAR_TIMEZONE_NAME,
     }
     avatar_count = write_avatar_overlay(payload, avatars)
     write_snapshot(snapshot, payload)
@@ -918,6 +1056,8 @@ def merge_artifacts(
         "keywords_ok": queries_ok,
         "history_ids": history_ids,
         "history_files": history_files,
+        "history_updated": history_updated,
+        "history_day": history_day,
         "all_added": inserted_all,
         "trends_added": inserted_trends,
         "news_added": inserted_news,
@@ -930,6 +1070,97 @@ def merge_artifacts(
     return summary
 
 
+def snapshot_freshness(snapshot: Path, now_ms: int | None = None) -> dict:
+    """Return a machine-readable daily health decision for the watchdog cron."""
+    payload = read_snapshot(snapshot)
+    metrics = payload.get("videoMetrics") or {}
+    stamp = int(payload.get("videoMetricsT") or 0)
+    now_ms = int(now_ms or utc_now_ms())
+    tracked = int(metrics.get("tracked") or 0)
+    updated = int(metrics.get("updated") or 0)
+    keywords = int(metrics.get("keywords") or 0)
+    keywords_ok = int(metrics.get("keywords_ok") or 0)
+    history_updated = int(metrics.get("history_updated") or 0)
+    same_day = bool(stamp) and history_day_key(stamp) == history_day_key(now_ms)
+    fresh = (
+        same_day
+        and tracked > 0
+        and updated == tracked
+        and keywords > 0
+        and keywords_ok == keywords
+        and history_updated == updated
+        and not bool(metrics.get("partial"))
+        and metrics.get("history_day") == history_day_key(stamp)
+        and metrics.get("day_timezone") == RADAR_TIMEZONE_NAME
+    )
+    return {
+        "fresh": fresh,
+        "today": history_day_key(now_ms),
+        "snapshot_day": history_day_key(stamp) if stamp else None,
+        "tracked": tracked,
+        "updated": updated,
+        "keywords": keywords,
+        "keywords_ok": keywords_ok,
+        "history_updated": history_updated,
+    }
+
+
+def verify_publication(
+    base_url: str,
+    snapshot: Path,
+    history_dir: Path,
+    timeout_seconds: int = 900,
+    interval_seconds: int = 15,
+) -> dict:
+    """Wait until GitHub Pages serves both the new snapshot and its history."""
+    local = read_snapshot(snapshot)
+    expected = int(local.get("videoMetricsT") or 0)
+    if not expected:
+        raise RuntimeError("Local snapshot has no validated videoMetricsT")
+    shards = sorted(history_dir.glob("*.json"))
+    if not shards:
+        raise RuntimeError("Local history directory has no shards")
+    root = base_url.rstrip("/") + "/"
+    deadline = time.monotonic() + max(timeout_seconds, 1)
+    last_error = "not attempted"
+    while time.monotonic() < deadline:
+        cache_buster = urllib.parse.urlencode({"expected": expected, "attempt": int(time.time())})
+        try:
+            with urllib.request.urlopen(root + "Lofi_Radar_data.js?" + cache_buster, timeout=30) as response:
+                remote = parse_snapshot_text(response.read().decode("utf-8"))
+            remote_stamp = int(remote.get("videoMetricsT") or 0)
+            if remote_stamp < expected:
+                last_error = f"served snapshot={remote_stamp}, expected={expected}"
+                time.sleep(max(interval_seconds, 1))
+                continue
+            stale_shards: list[str] = []
+            history_stamps: list[int] = []
+            for shard in shards:
+                with urllib.request.urlopen(
+                    root + "video_history/" + shard.name + "?" + cache_buster,
+                    timeout=30,
+                ) as response:
+                    history_stamp = int((json.load(response) or {}).get("updated") or 0)
+                history_stamps.append(history_stamp)
+                if history_stamp < expected:
+                    stale_shards.append(shard.name)
+            if not stale_shards:
+                result = {
+                    "published": True,
+                    "expected": expected,
+                    "snapshot": remote_stamp,
+                    "history_min": min(history_stamps),
+                    "history_shards": len(history_stamps),
+                }
+                print(json.dumps(result))
+                return result
+            last_error = f"{len(stale_shards)}/{len(shards)} stale history shards: {', '.join(stale_shards[:8])}"
+        except Exception as exc:
+            last_error = f"{type(exc).__name__}: {exc}"
+        time.sleep(max(interval_seconds, 1))
+    raise RuntimeError(f"GitHub Pages did not publish the validated YouTube refresh: {last_error}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--snapshot", type=Path, default=DEFAULT_SNAPSHOT)
@@ -939,7 +1170,29 @@ def main() -> None:
     parser.add_argument("--shards", type=int, default=10)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--merge-dir", type=Path)
+    parser.add_argument("--tracked-manifest", type=Path)
+    parser.add_argument("--write-tracked-manifest", type=Path)
+    parser.add_argument("--check-fresh-today", action="store_true")
+    parser.add_argument("--verify-base-url")
+    parser.add_argument("--verify-timeout", type=int, default=900)
+    parser.add_argument("--verify-interval", type=int, default=15)
     args = parser.parse_args()
+    if args.write_tracked_manifest:
+        write_tracked_manifest(args.snapshot, args.write_tracked_manifest)
+        return
+    if args.check_fresh_today:
+        health = snapshot_freshness(args.snapshot)
+        print(json.dumps(health))
+        raise SystemExit(0 if health["fresh"] else 1)
+    if args.verify_base_url:
+        verify_publication(
+            args.verify_base_url,
+            args.snapshot,
+            args.history_dir,
+            args.verify_timeout,
+            args.verify_interval,
+        )
+        return
     if args.merge_dir:
         merge_artifacts(args.snapshot, args.avatars, args.merge_dir, args.shards, args.history_dir)
         return
@@ -948,7 +1201,7 @@ def main() -> None:
     if args.shard < 0 or args.shard >= args.shards:
         parser.error("--shard must be in [0, --shards)")
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    run_shard(args.snapshot, args.output, args.shard, args.shards)
+    run_shard(args.snapshot, args.output, args.shard, args.shards, args.tracked_manifest)
 
 
 if __name__ == "__main__":

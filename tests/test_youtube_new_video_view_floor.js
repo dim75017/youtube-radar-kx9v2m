@@ -29,7 +29,7 @@ assert.deepEqual(
 
 const index = fs.readFileSync('index.html', 'utf8');
 assert.ok(
-  index.includes('dashboard-02-helpers.js?v=20260728-news-100k-v1'),
+  index.includes('dashboard-02-helpers.js?v=20260728-youtube-daily-health-v1'),
   'the browser cache key must change with the new eligibility rule'
 );
 

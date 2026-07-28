@@ -26,11 +26,9 @@ assert.deepEqual(Array.from(deltas, point => Array.from(point)), [at(21, 35), at
 assert.match(source, /dailyViewDeltas\(active\)/,
   'video drawers chart daily view gains instead of cumulative views');
 assert.match(source, /dailyChart/, 'the drawer names the new daily metric');
-assert.match(source, /const actualMin=Math\.min\.apply\(null,ys\),actualMax=Math\.max\.apply\(null,ys\);/,
-  'each curve must use its own observed minimum and maximum');
-assert.match(source, /const y0=flatRange\?actualMin-1:actualMin,y1=flatRange\?actualMax\+1:actualMax;/,
-  'the chart bounds must place observed extrema at the vertical edges');
-assert.match(source, /\(best\[1\]-o\.y0\)\/\(o\.y1-o\.y0\)/,
-  'the hover marker must use the same adaptive vertical scale');
+assert.match(source, /const y0=0,y1=Math\.max\(Math\.max\.apply\(null,ys\),1\);/,
+  'the daily curve keeps the intentional zero baseline');
+assert.match(source, /best\[1\]\/o\.y1/,
+  'the hover marker must use the same zero-based scale');
 
 console.log('YouTube daily view deltas: OK');

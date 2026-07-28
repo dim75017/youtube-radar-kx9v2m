@@ -338,15 +338,22 @@ function updateStatusLines(){
   const videoT=Math.max(maxHistTime(DATA&&DATA.hist)||0,Number(window.LOFI_DATA&&window.LOFI_DATA.videoMetricsT)||0)||null;
   const liveT=maxHistTime(DATA&&DATA.liveHourly)||maxHistTime(DATA&&DATA.liveHist)||null;
   const channelT=Number(window.CHX&&window.CHX.t)||maxHistTime(CHAN&&CHAN.hist)||null;
-  const row=(when,labelEn,labelFr,detailEn,detailFr,key)=>({when,label:fr?labelFr:labelEn,detail:fr?detailFr:detailEn,key});
+  const studioT=Number(window.STUDIO_DATA&&window.STUDIO_DATA.t)||null;
+  const vm=(window.LOFI_DATA&&window.LOFI_DATA.videoMetrics)||{};
+  const tracked=Number(vm.tracked)||0,updated=Number(vm.updated)||0;
+  const partial=!!(tracked&&updated<tracked);
+  const coverage=tracked?' ('+fmtInt(updated)+' / '+fmtInt(tracked)+')':'';
+  const row=(when,labelEn,labelFr,detailEn,detailFr,key,isPartial)=>({when,label:fr?labelFr:labelEn,detail:(fr?detailFr:detailEn)+(isPartial?coverage:''),key,partial:!!isPartial});
   return [
-    row(videoT,'Radar videos','Vidéos du radar','Catalog, discoveries and viewing metrics.','Catalogue, découvertes et statistiques de vues.','radar'),
-    row(videoT,'Our videos','Nos vidéos','Performance tracking for your published videos.','Suivi des performances de vos sorties publiées.','ours'),
+    row(videoT,'Radar videos','Vidéos du radar','Catalog, discoveries and viewing metrics.','Catalogue, découvertes et statistiques de vues.','radar',partial),
+    row(videoT,'Our videos','Nos vidéos','Performance tracking for your published videos.','Suivi des performances de vos sorties publiées.','ours',partial),
+    row(studioT,'YouTube Studio','YouTube Studio','Private CTR, impressions and retention export.','Export privé du CTR, des impressions et de la rétention.','studio'),
     row(liveT,'Livestreams','Streams','Live streams and concurrent viewers.','Streams en direct et spectateurs simultanés.','lives'),
     row(channelT,'Channels','Chaînes','Channel audience and catalog monitoring.','Audience et catalogue des chaînes suivies.','channels')
   ];
 }
 function updateStatusColor(item){
+  if(item&&item.partial)return 'var(--amber)';
   // Channel monitoring runs on its own cadence. A successful timestamp means
   // the source is healthy, even if it is older than the video refresh.
   if(item&&item.key==='channels'&&item.when)return 'var(--green)';
@@ -358,7 +365,7 @@ function refreshUpdateStatus(){
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
   const labelEl=btn.querySelector('.lbl');if(labelEl)labelEl.textContent=fr?'Mises à jour':'Update status';
   btn.title=fr?'Voir le détail des mises à jour':'View update details';
-  panel.innerHTML='<div class="update-status-head"><span>'+esc(fr?'État des mises à jour':'Update status')+'</span><small>'+esc(fr?'Automatique':'Automatic')+'</small></div>'+updateStatusLines().map(item=>{
+  panel.innerHTML='<div class="update-status-head"><span>'+esc(fr?'État des mises à jour':'Update status')+'</span><small>'+esc(fr?'Surveillance automatique':'Automatic monitoring')+'</small></div>'+updateStatusLines().map(item=>{
     const color=updateStatusColor(item),time=item.when?fmtDateTimeShort(item.when):(fr?'En attente de données':'Awaiting data');
     return '<div class="update-status-line"><i class="update-status-dot" style="background:'+color+';color:'+color+'"></i><div><b>'+esc(item.label)+'</b><span>'+esc(time)+' · '+esc(item.detail)+'</span></div></div>';
   }).join('');
