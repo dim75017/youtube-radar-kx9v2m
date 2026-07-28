@@ -55,7 +55,9 @@
     playlistCatalogueTracks: firstNumber(catalogueCounts.playlist_tracks, discovery.unique_playlist_tracks),
     catalogueOnlyTracks: firstNumber(catalogueCounts.catalogue_tracks),
     verifiedCatalogueTracks: firstNumber(catalogueCounts.verified_tracks),
-    opportunities: Array.isArray(SC.opportunities)
+    opportunities: typeof arRadarOpportunityRows === 'function'
+      ? arRadarOpportunityRows().length
+      : Array.isArray(SC.opportunities)
       ? SC.opportunities.length
       : firstNumber(scoring.opportunities),
   };

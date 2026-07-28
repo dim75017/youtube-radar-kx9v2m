@@ -28,6 +28,7 @@ for (const token of forbidden) {
 
 for (const required of [
   'arGenreSelectHtml(genres)',
+  'const all=arRadarOpportunityRows();',
   'id="radar-q"',
   "getElementById('radar-q')",
   "keepFocus('radar-q')",
@@ -90,9 +91,15 @@ const detail = source.slice(detailStart, detailEnd);
 for (const required of ['<div class="l">Genre</div>', 'arOpportunityPlayerHtml(opportunity)', 'arDetailEditorialPlaylistsHtml(opportunity)', 'arReleaseTypeLabel(opportunity)', 'tgrid ar-detail-facts']) {
   if (!detail.includes(required)) throw new Error(`A&R detail fact is missing: ${required}`);
 }
+for (const required of ['perf-grid ar-detail-performance', 'monthlyListenersMetricCardHtml(opportunity.artistMonthlyListeners)', 'arRightsCreditsHtml(opportunity)', 'ar-rights-confidence']) {
+  if (!detail.includes(required)) throw new Error(`A&R detail self-release information is missing: ${required}`);
+}
 if (!source.includes("spotifyTrackEmbedHtml(spotifyId,opportunity.title,'ar-opportunity-player')")) throw new Error('A&R detail player must use the embedded Spotify player.');
-for (const removed of ['arOpportunityCoverPlayerHtml(opportunity)', 'Pourquoi cette musique est dans la liste', "reasonsSection.querySelector('h4')", 'ar-detail-facts ar-detail-reasons']) {
+for (const removed of ['arOpportunityCoverPlayerHtml(opportunity)', 'Pourquoi cette musique est dans la liste', "reasonsSection.querySelector('h4')", 'ar-detail-facts ar-detail-reasons', 'ar-detail-listeners']) {
   if (detail.includes(removed)) throw new Error(`A&R detail must not retain the old player/reasons UI: ${removed}`);
+}
+for (const required of ['.perf-grid.ar-detail-performance{grid-template-columns:repeat(5,minmax(0,1fr))}', '.ar-rights-fact{', '@media(max-width:560px){.perf-grid.ar-detail-performance{grid-template-columns:1fr}}']) {
+  if (!css.includes(required)) throw new Error(`A&R self-release detail responsive style is missing: ${required}`);
 }
 if (!source.includes('function arDetailEditorialPlaylistsHtml(opportunity)')) throw new Error('A&R detail must render editorial playlists with their own compact cards');
 for (const removed of ['Score track', 'E-mail professionnel & plateformes', 'Label / distributeur']) {

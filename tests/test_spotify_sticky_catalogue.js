@@ -14,7 +14,7 @@ assert.match(js, /function syncSpotifyStickyControls\(\)/,
   'La hauteur réelle des filtres doit être mesurée pour placer l’en-tête de tableau.');
 assert.match(js, /requestAnimationFrame\(syncSpotifyStickyControls\)/,
   'La synchronisation doit s’exécuter après chaque rendu et redimensionnement.');
-assert.match(index, /dashboard\.js\?v=20260728-chart-axes-v1/,
+assert.match(index, /dashboard\.js\?v=20260728-self-release-rights-v1/,
   'La nouvelle interface ne doit pas être servie depuis un cache périmé.');
 
 console.log('Spotify sticky catalogue tests passed');
