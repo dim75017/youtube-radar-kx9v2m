@@ -16,6 +16,7 @@ on:
       - 'assets/js/dashboard-03-keywords.js'
       - 'assets/js/dashboard-04-recommendations.js'
       - 'generate_youtube_recommendation_pool.py'
+      - 'import_youtube_studio_export.py'
       - 'tests/test_youtube_daily_recommendations.js'
       - 'tests/test_youtube_recommendation_actions.js'
       - 'tests/test_youtube_recommendation_edits.js'
@@ -24,6 +25,7 @@ on:
       - 'tests/test_youtube_recommendation_historical_acceptance_snapshot.js'
       - 'tests/test_youtube_recommendation_roadmap_precedence.js'
       - 'tests/test_generate_youtube_recommendation_pool.py'
+      - 'tests/test_import_youtube_studio_export.py'
       - 'tests/test_recommendation_validated_archive.js'
       - 'tests/test_roadmap_context_actions.js'
       - 'refresh_instrumental_extensions.py'
@@ -78,7 +80,7 @@ jobs:
         run: pip install --disable-pip-version-check openpyxl
       - name: Test discovery and recommendation intelligence
         run: |
-          python -m unittest tests.test_refresh_youtube_daily tests.test_youtube_workflow_guardrails tests.test_generate_youtube_recommendation_pool
+          python -m unittest tests.test_refresh_youtube_daily tests.test_youtube_workflow_guardrails tests.test_generate_youtube_recommendation_pool tests.test_import_youtube_studio_export
           node tests/test_youtube_new_video_view_floor.js
           node tests/test_youtube_daily_view_deltas.js
           node tests/test_youtube_channel_update_status.js
