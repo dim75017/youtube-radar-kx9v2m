@@ -160,6 +160,39 @@ class DailyHistoryTests(unittest.TestCase):
         )
         self.assertEqual(row["channelId"], "UC1234567890123456789012")
 
+    def test_public_watch_duration_uses_real_length_seconds(self):
+        self.assertEqual(
+            radar.parse_watch_duration('{"videoDetails":{"lengthSeconds":"3661"}}'),
+            3661.0,
+        )
+        self.assertIsNone(radar.parse_watch_duration('{"videoDetails":{}}'))
+
+    def test_owned_genre_is_inferred_only_from_explicit_title_words(self):
+        self.assertEqual(
+            radar.owned_genre_from_title("summer lofi - chill beats to relax to"),
+            "Lofi / chillhop",
+        )
+        self.assertEqual(radar.owned_genre_from_title("Deep Focus"), "")
+
+    def test_update_row_backfills_genre_without_overwriting_curated_genre(self):
+        now = int(datetime(2026, 7, 20, 8, tzinfo=timezone.utc).timestamp() * 1000)
+        empty = {"vid": "abcdefghijk"}
+        radar.update_row(
+            empty,
+            {"genre": "Lofi / chillhop", "genreSource": "title_explicit"},
+            now,
+        )
+        self.assertEqual(empty["genre"], "Lofi / chillhop")
+        self.assertEqual(empty["genreSource"], "title_explicit")
+
+        curated = {"vid": "abcdefghijk", "genre": "Ambient"}
+        radar.update_row(
+            curated,
+            {"genre": "Lofi / chillhop", "genreSource": "title_explicit"},
+            now,
+        )
+        self.assertEqual(curated["genre"], "Ambient")
+
     def test_official_upload_lookup_uses_the_channel_uploads_playlist(self):
         responses = iter([
             {"items": [{"contentDetails": {"relatedPlaylists": {"uploads": "UUofficial"}}}]},
@@ -181,11 +214,20 @@ class DailyHistoryTests(unittest.TestCase):
 
         channel = Channel()
         with patch.object(radar, "owned_ydl", return_value=channel), patch.object(
-            radar, "fetch_one_video", return_value={"vid": "abcdefghijk", "views": 100}
-        ):
+            radar,
+            "fetch_one_video",
+            return_value={
+                "vid": "abcdefghijk",
+                "title": "summer lofi - chill beats to relax to",
+                "views": 100,
+            },
+        ), patch.object(radar, "fetch_public_duration", return_value=3661.0) as duration:
             rows = radar.fetch_owned_ydl_rows(now)
         self.assertEqual(channel.url, "https://www.youtube.com/@LofiGirl/videos")
         self.assertEqual(rows["abcdefghijk"]["source"], "Official Lofi Girl daily scan")
+        self.assertEqual(rows["abcdefghijk"]["genre"], "Lofi / chillhop")
+        self.assertAlmostEqual(rows["abcdefghijk"]["durH"], 3661 / 3600)
+        duration.assert_called_once_with("abcdefghijk")
 
     def test_merge_inserts_official_upload_into_analysis_and_history(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -1534,6 +1534,28 @@ function anaLifetimeVpm(v,ageDays){
   const views=Number(v&&v.views);
   return Number.isFinite(views)&&days!=null&&days>0?views/days*30.44:null;
 }
+const ANA_GENRE_LABELS={
+  dnb:'Drum & Bass',house:'Chill house',synthwave:'Synthwave',christmas:'Christmas Lofi',
+  halloween:'Halloween Lofi',lofi:'Lofi / chillhop',classical:'Classical',guitar:'Guitar',
+  jazz:'Jazz',piano:'Piano',nature:'Nature',ambient:'Ambient'
+};
+function anaResolvedGenre(v){
+  const explicit=String(v&&v.genre||'').trim();
+  if(explicit)return explicit;
+  const key=recoGenreKey('',v);
+  return ANA_GENRE_LABELS[key]||'';
+}
+function anaResolvedDurationHours(v,studio){
+  const direct=Number(v&&v.durH);
+  if(Number.isFinite(direct)&&direct>0)return direct;
+  // Studio exposes average view duration and average percentage watched.
+  // Their ratio yields the real video duration when the daily collector did
+  // not receive contentDetails.duration from YouTube.
+  const averageMs=Number(studio&&studio.awtMs),averagePct=Number(studio&&studio.awp);
+  if(!Number.isFinite(averageMs)||averageMs<=0||!Number.isFinite(averagePct)||averagePct<=0||averagePct>100)return null;
+  const inferred=averageMs/(averagePct/100)/3600000;
+  return Number.isFinite(inferred)&&inferred>=0.15&&inferred<=24?inferred:null;
+}
 function anaAgeComparable(rows,ageDays,minCount){
   const target=anaAgeCohort(ageDays);
   if(!target)return {rows:[],label:'unknown age',exact:false,sufficient:false};
@@ -1552,8 +1574,15 @@ function anaAgeComparable(rows,ageDays,minCount){
 }
 function anaRows(){
   if(_anaCache&&_anaT===SYNCED)return _anaCache;
-  const out=(DATA.ours||[]).filter(v=>v.pub&&(v.durH==null||v.durH>=0.15)).map(v=>{
+  const SD=(window.STUDIO_DATA&&window.STUDIO_DATA.d)||{};
+  const out=(DATA.ours||[]).map(v=>{
     const o=Object.assign({},v);
+    o.st=SD[o.vid]||null;
+    o.genre=anaResolvedGenre(o);
+    o.durH=anaResolvedDurationHours(o,o.st);
+    return o;
+  }).filter(o=>o.pub&&(o.durH==null||o.durH>=0.15)).map(o=>{
+    const v=o;
     o.ageDays=anaAgeDays(v);
     o.ageM=o.ageDays==null?null:o.ageDays/30.44;
     o.ageCohort=anaAgeCohort(o.ageDays);
@@ -1566,7 +1595,7 @@ function anaRows(){
       const days=Math.max((end[0]-start[0])/86400000,0.5);
       o.vNow=(end[1]-start[1])/days*30.44;
     }else o.vNow=null;
-    const gk=genreKey(v.genre);
+    const gk=genreKey(o.genre);
     const market=mixRows().filter(x=>genreKey(x.genre)===gk&&anaLifetimeVpm(x)!=null);
     const ageMatched=anaAgeComparable(market,o.ageDays,8);
     const coh=ageMatched.rows;
@@ -1582,8 +1611,6 @@ function anaRows(){
     o.reco=v.recoN!=null?DATA.recos.find(r=>r.n===v.recoN):null;
     return o;
   });
-  const SD=(window.STUDIO_DATA&&window.STUDIO_DATA.d)||{};
-  out.forEach(o=>{o.st=SD[o.vid]||null;});
   const CM=window.CMT||{};
   out.forEach(o=>{
     const peers=anaAgeComparable(out.filter(x=>x.vid!==o.vid),o.ageDays,2);
@@ -2045,7 +2072,7 @@ function openAnaIdx(i,historyReload){
     '<div class="dw-embed"><iframe src="https://www.youtube.com/embed/'+o.vid+'?rel=0" title="YouTube player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>'+
     '<div class="dw-body">'+
       '<div class="dw-title"><a href="'+esc(o.url)+'" target="_blank">'+esc(o.title)+'</a></div>'+
-      '<div class="dw-sub">'+gtag(o.genre)+ghosttag(o.perso)+vBadge(o.verdict)+likeTag(o.vid)+'</div>'+
+      '<div class="dw-sub">'+gtag(o.genre)+ghosttag(o.perso)+(o.durH!=null?ghosttag(fmtDur(o.durH)):'')+vBadge(o.verdict)+likeTag(o.vid)+'</div>'+
       '<div class="dw-stats">'+
         '<div class="dw-stat hl"><b style="color:'+pcol(o.pctCh)+'">'+(o.pctCh==null?'—':o.pctCh+'th')+'</b><span>percentile · channel</span></div>'+
         '<div class="dw-stat"><b style="color:'+pcol(o.pct)+'">'+(o.pct==null?'—':o.pct+'th')+'</b><span>percentile vs market</span></div>'+

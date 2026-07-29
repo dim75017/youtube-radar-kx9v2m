@@ -71,6 +71,7 @@ CHANNEL_ID = re.compile(r"^UC[\w-]{22}$")
 ISO_DURATION = re.compile(
     r"^P(?:(?P<days>\d+)D)?(?:T(?:(?P<hours>\d+)H)?(?:(?P<minutes>\d+)M)?(?:(?P<seconds>\d+)S)?)?$"
 )
+WATCH_LENGTH_SECONDS = re.compile(r'"lengthSeconds"\s*:\s*"(?P<seconds>\d+)"')
 DEFERRED_GENRE = re.compile(r"\bphonk\b", re.I)
 
 
@@ -173,6 +174,52 @@ def parse_iso_duration(value: str | None) -> float | None:
         + parts["minutes"] * 60
         + parts["seconds"]
     )
+
+
+def parse_watch_duration(value: str) -> float | None:
+    """Read YouTube's public lengthSeconds value without guessing a duration."""
+    match = WATCH_LENGTH_SECONDS.search(value or "")
+    if not match:
+        return None
+    seconds = int(match.group("seconds"))
+    return float(seconds) if seconds > 0 else None
+
+
+def fetch_public_duration(video_id: str) -> float | None:
+    request = urllib.request.Request(
+        f"https://www.youtube.com/watch?v={video_id}",
+        headers={"User-Agent": "Mozilla/5.0", "Accept-Language": "en-US,en;q=0.8"},
+    )
+    with urllib.request.urlopen(request, timeout=20) as response:
+        return parse_watch_duration(response.read().decode("utf-8", "ignore"))
+
+
+def owned_genre_from_title(title: object) -> str:
+    """Classify only explicit genre words in an official upload title."""
+    text = re.sub(r"[-_]", " ", str(title or "").casefold())
+    if re.search(r"\b(?:halloween)\b", text) and re.search(r"\b(?:lofi|lo fi|chillhop)\b", text):
+        return "Halloween Lofi"
+    if re.search(r"\b(?:christmas|xmas)\b", text) and re.search(r"\b(?:lofi|lo fi|chillhop)\b", text):
+        return "Christmas Lofi"
+    rules = (
+        (r"\b(?:lofi|lo fi|chillhop)\b", "Lofi / chillhop"),
+        (r"\b(?:synthwave|retrowave|outrun)\b", "Synthwave"),
+        (r"\b(?:drum and bass|drum bass|dnb|liquid jungle)\b", "Drum & Bass"),
+        (r"\b(?:jazz|jazzhop|bossa)\b", "Jazz"),
+        (r"\b(?:classical|baroque)\b", "Classical"),
+        (r"\b(?:guitar|acoustic|fingerstyle)\b", "Guitar"),
+        (r"\b(?:piano)\b", "Piano"),
+        (r"\b(?:ambient|soundscape)\b", "Ambient"),
+    )
+    return next((label for pattern, label in rules if re.search(pattern, text)), "")
+
+
+def add_owned_metadata(row: dict) -> None:
+    if not row.get("genre"):
+        genre = owned_genre_from_title(row.get("title"))
+        if genre:
+            row["genre"] = genre
+            row["genreSource"] = "title_explicit"
 
 
 def age_months(published_ms: int | None, now_ms: int) -> float | None:
@@ -452,6 +499,7 @@ def fetch_owned_api_rows(now_ms: int, api_key: str) -> dict[str, dict]:
     if not rows:
         raise RuntimeError("Official Lofi Girl upload scan returned no usable videos")
     for row in rows.values():
+        add_owned_metadata(row)
         row["source"] = "Official Lofi Girl daily scan"
     return rows
 
@@ -472,10 +520,25 @@ def fetch_owned_ydl_rows(now_ms: int) -> dict[str, dict]:
         for future in concurrent.futures.as_completed(future_to_id):
             row = future.result()
             if row:
+                add_owned_metadata(row)
                 row["source"] = "Official Lofi Girl daily scan"
                 rows[row["vid"]] = row
     if not rows:
         raise RuntimeError("Official Lofi Girl upload scan returned no usable videos")
+    # yt-dlp occasionally returns a valid counter without a duration. Keep the
+    # newest upload complete by reading YouTube's public lengthSeconds field.
+    latest = next((rows[video_id] for video_id in ids if video_id in rows), None)
+    if latest and not isinstance(latest.get("durH"), (int, float)):
+        try:
+            duration = fetch_public_duration(latest["vid"])
+            if duration is not None:
+                latest["durH"] = duration / 3600
+                latest["durationSource"] = "youtube_public_length"
+        except Exception as exc:
+            print(
+                f"WARN official duration {latest['vid']}: {type(exc).__name__}: {exc}",
+                file=sys.stderr,
+            )
     return rows
 
 
@@ -678,9 +741,16 @@ def run_shard(
 
 
 def update_row(existing: dict, fresh: dict, now_ms: int) -> None:
-    for key in ("title", "url", "durH", "views", "pub", "channel", "chUrl", "channelId", "subs"):
+    for key in (
+        "title", "url", "durH", "durationSource", "views", "pub", "channel",
+        "chUrl", "channelId", "subs",
+    ):
         if fresh.get(key) not in (None, ""):
             existing[key] = fresh[key]
+    if not str(existing.get("genre") or "").strip() and fresh.get("genre"):
+        existing["genre"] = fresh["genre"]
+        if fresh.get("genreSource"):
+            existing["genreSource"] = fresh["genreSource"]
     published = existing.get("pub")
     views = existing.get("views")
     age = age_months(int(published), now_ms) if isinstance(published, (int, float)) else None
