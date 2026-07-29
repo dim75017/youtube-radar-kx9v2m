@@ -201,6 +201,13 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertEqual(len(attempts), 1)
         self.assertEqual(client.requests_claimed, 1)
 
+    def test_preflight_budget_respects_local_cap_and_server_reserve(self):
+        client = subject.SoundchartsClient('app', 'key', request_limit=100)
+        client.quota_remaining = subject.MIN_SERVER_QUOTA_RESERVE + 80
+        self.assertEqual(client.available_request_budget(200), 80)
+        client.requests_claimed = 35
+        self.assertEqual(client.available_request_budget(200), 65)
+
     def test_parallel_collection_cannot_overshoot_quota_reserve(self):
         client = subject.SoundchartsClient('app', 'key')
         client.headers = {'x-app-id': 'app', 'x-api-key': 'key'}
@@ -307,6 +314,24 @@ class RefreshSoundchartsTests(unittest.TestCase):
         )
 
         self.assertEqual(freshness['tracks_catalogue_at'], '2026-07-26T20:15:00Z')
+
+    def test_successful_adaptive_partial_pass_advances_daily_maintenance_timestamp(self):
+        tracks = subject.Outcome('tracks')
+        tracks.available = 100_000
+        tracks.selected = 60_000
+        tracks.usable = 59_900
+        tracks.policy = {'selection_mode': 'adaptive_daily'}
+        now = '2026-07-29T20:15:00Z'
+
+        freshness = subject.merge_performance_freshness(
+            {'tracks_catalogue_at': '2026-07-28T20:15:00Z'},
+            {},
+            {'tracks': tracks},
+            now,
+            include_performance_catalogue=True,
+        )
+
+        self.assertEqual(freshness['tracks_catalogue_at'], now)
 
     def test_unavailable_resources_are_reported_separately_from_blocking_errors(self):
         class MixedClient:
@@ -499,6 +524,163 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertEqual(
             performance['tracks']['history-track']['history'],
             [['2026-07-19', 190]],
+        )
+        self.assertEqual(
+            outcome.coverage(),
+            {
+                'expected': 2,
+                'scanned': 1,
+                'usable': 1,
+                'missing': 1,
+                'not_scanned': 1,
+                'scanned_without_usable_data': 0,
+            },
+        )
+        self.assertEqual(outcome.policy['selection_mode'], 'adaptive_daily')
+
+    def test_track_plan_prioritizes_server_selection_opportunities_recent_and_new(self):
+        today = dt.date(2026, 7, 29)
+        tasks = [
+            {
+                'uuid': f'uuid-{index}',
+                'targets': [{'spotify_id': f'track-{index}', 'row': None}],
+            }
+            for index in range(6)
+        ]
+        store = {
+            f'track-{index}': {
+                'history': [
+                    ['2026-07-15', 100 + index],
+                    ['2026-07-22', 200 + index],
+                    ['2026-07-29', 350 + index],
+                ],
+                'observed_at': '2026-07-29T00:00:00Z',
+            }
+            for index in range(6)
+        }
+        store['track-3']['history'] = [['2026-07-29', 100]]
+        metadata = {
+            'track-0': {
+                'artist_spotify_ids': {'selected-artist'},
+                'artist_soundcharts_uuids': set(),
+            },
+            'track-1': {
+                'artist_spotify_ids': set(),
+                'artist_soundcharts_uuids': set(),
+                'opportunity': True,
+            },
+            'track-2': {
+                'artist_spotify_ids': set(),
+                'artist_soundcharts_uuids': set(),
+                'release_date': dt.date(2026, 7, 20),
+            },
+        }
+
+        selected, policy = subject.plan_track_maintenance(
+            tasks,
+            store,
+            metadata,
+            4,
+            today=today,
+            priority_artist_ids={'selected-artist'},
+        )
+
+        self.assertEqual({task['uuid'] for task in selected}, {'uuid-0', 'uuid-1', 'uuid-2', 'uuid-3'})
+        self.assertEqual(policy['selected_requests'], 4)
+        self.assertEqual(policy['missing_requests'], 2)
+        self.assertEqual(policy['reason_coverage']['selection_or_negotiation']['missing_requests'], 0)
+        self.assertEqual(policy['reason_coverage']['opportunity']['missing_requests'], 0)
+        self.assertEqual(policy['reason_coverage']['release_90d']['missing_requests'], 0)
+        self.assertEqual(policy['reason_coverage']['needs_two_true_points']['missing_requests'], 0)
+
+    def test_track_rotation_bucket_is_stable_and_bounded(self):
+        first = subject.stable_rotation_bucket('spotify-track-id')
+        self.assertEqual(first, subject.stable_rotation_bucket('spotify-track-id'))
+        self.assertGreaterEqual(first, 0)
+        self.assertLess(first, subject.TRACK_ROTATION_BUCKETS)
+
+    def test_seven_day_rotation_covers_every_nonmandatory_profile_within_capacity(self):
+        per_day_cap = 10
+        keys_by_bucket = {bucket: [] for bucket in range(subject.TRACK_ROTATION_BUCKETS)}
+        candidate = 0
+        while any(len(keys) < per_day_cap for keys in keys_by_bucket.values()):
+            key = f'balanced-{candidate}'
+            bucket = subject.stable_rotation_bucket(key)
+            if len(keys_by_bucket[bucket]) < per_day_cap:
+                keys_by_bucket[bucket].append(key)
+            candidate += 1
+        keys = [key for bucket_keys in keys_by_bucket.values() for key in bucket_keys]
+        tasks = [
+            {'uuid': key, 'targets': [{'spotify_id': key, 'row': None}]}
+            for key in keys
+        ]
+        store = {
+            key: {
+                'history': [['2026-01-01', 100], ['2026-01-02', 110]],
+                'observed_at': '2026-01-02T00:00:00Z',
+            }
+            for key in keys
+        }
+        start = dt.date(2026, 7, 27)
+        seen = set()
+        for offset in range(subject.TRACK_ROTATION_BUCKETS):
+            selected, policy = subject.plan_track_maintenance(
+                tasks,
+                store,
+                {},
+                per_day_cap,
+                today=start + dt.timedelta(days=offset),
+            )
+            seen.update(task['uuid'] for task in selected)
+            self.assertEqual(policy['weekly_due_requests'], per_day_cap)
+            self.assertEqual(policy['weekly_missing'], 0)
+            self.assertEqual(policy['weekly_missing_requests'], 0)
+
+        self.assertEqual(seen, set(keys))
+
+    def test_overloaded_rotation_bucket_ages_missed_profiles_to_the_front(self):
+        bucket = 4
+        keys = []
+        candidate = 0
+        while len(keys) < 3:
+            key = f'overloaded-{candidate}'
+            if subject.stable_rotation_bucket(key) == bucket:
+                keys.append(key)
+            candidate += 1
+        tasks = [
+            {'uuid': key, 'targets': [{'spotify_id': key, 'row': None}]}
+            for key in keys
+        ]
+        store = {
+            key: {
+                'history': [['2026-01-01', 100], ['2026-01-02', 110]],
+                'observed_at': f'2026-01-0{index + 1}T00:00:00Z',
+            }
+            for index, key in enumerate(keys)
+        }
+        today = dt.date(2026, 7, 27)
+        while today.toordinal() % subject.TRACK_ROTATION_BUCKETS != bucket:
+            today += dt.timedelta(days=1)
+
+        first, first_policy = subject.plan_track_maintenance(
+            tasks, store, {}, 2, today=today
+        )
+        first_ids = {task['uuid'] for task in first}
+        missed = set(keys) - first_ids
+        self.assertEqual(first_policy['weekly_missing_requests'], 1)
+        for spotify_id in first_ids:
+            store[spotify_id]['maintenance_last_attempt_at'] = today.isoformat() + 'T12:00:00Z'
+
+        second, second_policy = subject.plan_track_maintenance(
+            tasks, store, {}, 2, today=today + dt.timedelta(days=7)
+        )
+        self.assertTrue(missed.issubset({task['uuid'] for task in second}))
+        self.assertEqual(second_policy['weekly_missing_requests'], 1)
+
+    def test_missing_priority_artist_file_is_a_safe_empty_cohort(self):
+        self.assertEqual(
+            subject.read_priority_artist_references(Path('does-not-exist.json')),
+            (set(), set()),
         )
 
     def test_full_track_refresh_keeps_spotify_aliases_that_share_a_soundcharts_uuid(self):
@@ -736,6 +918,64 @@ class RefreshSoundchartsTests(unittest.TestCase):
             subject.write_js_payload(path, original, subject.PERFORMANCE_PREFIX)
             self.assertEqual(subject.read_performance_payload(path)['tracks'], original['tracks'])
 
+    def test_js_payload_write_failure_preserves_previous_export(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'performance.js'
+            original = {'source': 'soundcharts_daily', 'tracks': {'track-1': {'history': [['2026-07-21', 1]]}}}
+            subject.write_js_payload(path, original, subject.PERFORMANCE_PREFIX)
+
+            with patch.object(Path, 'replace', side_effect=OSError('simulated replace failure')):
+                with self.assertRaisesRegex(subject.SoundchartsError, 'atomically persist'):
+                    subject.write_js_payload(
+                        path,
+                        {'source': 'soundcharts_daily', 'tracks': {'track-1': {'history': [['2026-07-22', 2]]}}},
+                        subject.PERFORMANCE_PREFIX,
+                    )
+
+            self.assertEqual(subject.read_performance_payload(path)['tracks'], original['tracks'])
+            self.assertFalse(path.with_name(path.name + '.tmp').exists())
+
+    def test_hot_history_pruning_archives_every_removed_point_without_duplicates(self):
+        start = dt.date(2026, 1, 1)
+        original = [[(start + dt.timedelta(days=index)).isoformat(), index] for index in range(66)]
+        performance = {'tracks': {'track-1': {'history': list(original)}}}
+
+        archived = subject.prune_track_histories_to_hot_window(performance, keep_days=61)
+        self.assertEqual(len(archived['track-1']), 5)
+        self.assertEqual(len(performance['tracks']['track-1']['history']), 61)
+
+        with tempfile.TemporaryDirectory() as directory:
+            history_dir = Path(directory)
+            first = subject.write_track_history_archive(history_dir, archived)
+            second = subject.write_track_history_archive(history_dir, archived)
+            self.assertEqual(first['status'], 'archived')
+            self.assertEqual(second['status'], 'archived')
+            restored = []
+            for path in sorted((history_dir / 'archive').glob('tracks-*.json.gz')):
+                with subject.gzip.open(path, 'rt', encoding='utf-8') as handle:
+                    restored.extend(subject.json.load(handle)['tracks'].get('track-1', []))
+
+        combined = subject.normalize_history(restored + performance['tracks']['track-1']['history'])
+        self.assertEqual(combined, original)
+
+    def test_existing_malformed_history_archive_is_never_overwritten(self):
+        with tempfile.TemporaryDirectory() as directory:
+            history_dir = Path(directory)
+            archive_dir = history_dir / 'archive'
+            archive_dir.mkdir()
+            path = archive_dir / 'tracks-2026-01.json.gz'
+            with subject.gzip.open(path, 'wt', encoding='utf-8') as handle:
+                subject.json.dump({'month': '2026-01', 'tracks': []}, handle)
+            before = path.read_bytes()
+
+            with self.assertRaisesRegex(subject.SoundchartsError, 'invalid track history archive'):
+                subject.write_track_history_archive(
+                    history_dir,
+                    {'track-1': [['2026-01-01', 1]]},
+                )
+
+            self.assertEqual(path.read_bytes(), before)
+
     def test_workflow_push_and_pull_request_use_non_publishing_smoke(self):
         workflow = (Path(__file__).parents[1] / '.github' / 'workflows' / 'refresh-soundcharts.yml').read_text(
             encoding='utf-8'
@@ -747,7 +987,7 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertIn("default: '6000'", workflow)
         self.assertIn('artist_data_cap="350"', workflow)
         self.assertIn('performance_artist_data_cap="15000"', workflow)
-        self.assertIn('performance_track_data_cap="60000"', workflow)
+        self.assertIn('performance_track_data_cap="35000"', workflow)
         self.assertIn('playlist_data_cap="3000"', workflow)
         self.assertIn('independent_playlist_data_cap="2500"', workflow)
         self.assertIn('expansion_data_cap="6000"', workflow)
@@ -757,6 +997,8 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertIn('--max-requests "${{ steps.plan.outputs.artist_requests }}"', workflow)
         self.assertIn('--max-requests "${{ steps.plan.outputs.performance_artist_requests }}"', workflow)
         self.assertIn('--max-requests "${{ steps.plan.outputs.performance_track_requests }}"', workflow)
+        self.assertIn('--priority-artists spotify-selection-artist-seeds.json', workflow)
+        self.assertIn('deterministic seven-day rotation', workflow)
         self.assertIn('--max-requests "${{ steps.plan.outputs.playlist_requests }}"', workflow)
         self.assertIn('--max-requests "${{ steps.plan.outputs.independent_playlist_requests }}"', workflow)
         self.assertIn('--playlist-scope independent', workflow)

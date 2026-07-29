@@ -6,9 +6,11 @@ from pathlib import Path
 
 from scan_soundcharts_fal_phase1 import (
     FalPhase1Error,
+    HARD_MIN_QUOTA_RESERVE,
     KnownIdentities,
     Phase1Scanner,
     SeedArtist,
+    build_inventory_profile,
     build_known_identities,
     build_report,
     evidence_decision,
@@ -16,6 +18,9 @@ from scan_soundcharts_fal_phase1 import (
     freeze_seed_cohort,
     open_state,
     parse_related_page,
+    plan_quota_budget,
+    next_quota_reset,
+    reconcile_seed_ledger,
     requeue_failed_work,
 )
 from refresh_soundcharts_daily import read_js_payload, SOUNDCHARTS_PREFIX
@@ -442,7 +447,257 @@ class FalPhase1Tests(unittest.TestCase):
             {"minimum": 50_000, "maximum": None},
         )
         self.assertEqual(report["discographies"]["mode"], "inventory_light")
+        self.assertEqual(
+            set(report["coverage"]["seed_related"]),
+            {"expected", "scanned", "usable", "missing"},
+        )
+        self.assertEqual(report["coverage"]["seed_related"]["expected"], 1)
+        self.assertEqual(report["coverage"]["seed_related"]["missing"], 1)
+        self.assertEqual(report["inventory_profile"]["release_date_distribution"]["total"], 0)
         self.assertNotIn("seed-uuid", str(report))
+
+    def test_inventory_profile_is_exhaustive_and_reports_only_aggregates(self):
+        connection = self.state()
+        self.insert_candidate(connection, "candidate-a", status="review_inventory_complete")
+        rows = [
+            ("track-recent", "2026-07-01"),
+            ("track-year", "2026-01-01"),
+            ("track-three", "2024-01-01"),
+            ("track-old", "2020-01-01"),
+            ("track-unknown", ""),
+        ]
+        for track_uuid, release_date in rows:
+            connection.execute(
+                """INSERT INTO tracks(
+                     soundcharts_uuid,candidate_uuid,release_date,status,reason,evidence_json,
+                     first_seen_at,updated_at)
+                   VALUES(?,?,?,'review_metadata_pending','phase2_metadata_classification_required','{}',?,?)""",
+                (track_uuid, "candidate-a", release_date, "2026-07-29T00:00:00Z", "2026-07-29T00:00:00Z"),
+            )
+            connection.execute(
+                "INSERT INTO candidate_tracks(candidate_uuid,track_uuid,first_seen_at) VALUES(?,?,?)",
+                ("candidate-a", track_uuid, "2026-07-29T00:00:00Z"),
+            )
+        connection.execute("UPDATE candidates SET catalog_total=5,catalog_offset=5 WHERE soundcharts_uuid='candidate-a'")
+        connection.commit()
+
+        profile = build_inventory_profile(connection, as_of=dt.date(2026, 7, 29))
+        releases = profile["release_date_distribution"]
+        self.assertEqual(releases["total"], 5)
+        self.assertEqual(releases["age_lte_90_days"], 1)
+        self.assertEqual(releases["age_91_days_to_1_year"], 1)
+        self.assertEqual(releases["age_1_to_3_years"], 1)
+        self.assertEqual(releases["age_over_3_years"], 1)
+        self.assertEqual(releases["unknown_date"], 1)
+        catalogues = profile["candidate_catalogue_distribution"]
+        self.assertEqual(catalogues["size_1_20"], 1)
+        self.assertEqual(catalogues["max_reported_catalogue"], 5)
+        self.assertEqual(catalogues["max_observed_track_links"], 5)
+        self.assertNotIn("candidate-a", str(profile))
+        self.assertNotIn("track-recent", str(profile))
+
+    def test_dynamic_quota_budget_protects_maintenance_and_rolls_after_reset(self):
+        before = plan_quota_budget(
+            quota_remaining=3_000_000,
+            requested=40_000,
+            maintenance_daily_requests=60_000,
+            maintenance_through=None,
+            as_of="2026-07-29T00:00:00Z",
+        )
+        self.assertEqual(before.maintenance_through, "2026-08-18")
+        self.assertEqual(before.maintenance_days, 21)
+        self.assertEqual(before.maintenance_reserve, 1_260_000)
+        self.assertEqual(before.protected_floor, HARD_MIN_QUOTA_RESERVE + 1_260_000)
+        self.assertEqual(before.allowed, 40_000)
+
+        constrained = plan_quota_budget(
+            quota_remaining=before.protected_floor + 7_500,
+            requested=40_000,
+            maintenance_daily_requests=60_000,
+            maintenance_through=None,
+            as_of="2026-07-29T00:00:00Z",
+        )
+        self.assertEqual(constrained.allowed, 7_500)
+
+        self.assertEqual(
+            next_quota_reset("2026-08-18T19:10:00Z").isoformat(),
+            "2026-08-18T19:11:00+00:00",
+        )
+        after = plan_quota_budget(
+            quota_remaining=3_000_000,
+            requested=40_000,
+            maintenance_daily_requests=60_000,
+            maintenance_through=None,
+            as_of="2026-08-18T19:12:00Z",
+        )
+        self.assertEqual(after.maintenance_through, "2026-09-18")
+        self.assertEqual(after.maintenance_days, 32)
+        self.assertGreater(after.maintenance_reserve, 0)
+
+        reset_day_override = plan_quota_budget(
+            quota_remaining=3_000_000,
+            requested=40_000,
+            maintenance_daily_requests=60_000,
+            maintenance_through="2026-08-18",
+            as_of="2026-08-18T19:12:00Z",
+        )
+        self.assertEqual(reset_day_override.maintenance_through, "2026-09-18")
+        self.assertGreater(reset_day_override.maintenance_reserve, 0)
+
+        stale_override = plan_quota_budget(
+            quota_remaining=3_000_000,
+            requested=40_000,
+            maintenance_daily_requests=60_000,
+            maintenance_through="2026-08-18",
+            as_of="2026-08-19T00:00:00Z",
+        )
+        self.assertEqual(stale_override.maintenance_through, "2026-09-18")
+        self.assertGreaterEqual(stale_override.hard_reserve, 500_000)
+
+    def test_v1_checkpoint_migrates_and_ledger_extension_is_append_only(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        path = Path(tmp.name) / "phase1.sqlite3"
+        connection = open_state(path)
+        freeze_seed_cohort(
+            connection,
+            [SeedArtist("old-seed", "old-spotify", "Old", 100_000, True)],
+            source_eligible=1,
+            snapshot_name="historical.js",
+            snapshot_generated_at="2026-07-21T00:00:00Z",
+        )
+        connection.execute(
+            "UPDATE seeds SET status='complete',related_offset=50,related_total=50 WHERE soundcharts_uuid='old-seed'"
+        )
+        self.insert_candidate(connection, "candidate-preserved", status="review_inventory_complete")
+        connection.execute(
+            """INSERT INTO tracks(
+                 soundcharts_uuid,candidate_uuid,spotify_id,isrc,title,credit_name,release_date,
+                 status,reason,evidence_json,first_seen_at,updated_at)
+               VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                "track-preserved",
+                "candidate-preserved",
+                "track-spotify",
+                "FRABC2600001",
+                "Track",
+                "Artist",
+                "2026-01-01",
+                "review_metadata_pending",
+                "phase2_metadata_classification_required",
+                "{}",
+                "2026-07-29T00:00:00Z",
+                "2026-07-29T00:00:00Z",
+            ),
+        )
+        connection.execute("UPDATE meta SET value='1' WHERE key='state_version'")
+        connection.commit()
+        connection.close()
+
+        migrated = open_state(path)
+        self.addCleanup(migrated.close)
+        ledger = {
+            "cohort_hash": "ledger-hash",
+            "generated_at": "2026-07-29T00:00:00Z",
+            "coverage": {"expected_displayed": 2},
+        }
+        result = reconcile_seed_ledger(
+            migrated,
+            [
+                SeedArtist("old-seed", "old-spotify", "Old", 0, True),
+                SeedArtist("new-seed", "new-spotify", "New", 0, True),
+            ],
+            [{"spotify_id": "pending-spotify", "name": "Pending", "sources": ["performance_artist"]}],
+            ledger,
+        )
+        self.assertEqual(result["state_seeds_before"], 1)
+        self.assertEqual(result["appended"], 1)
+        self.assertEqual(result["state_seeds_after"], 2)
+        self.assertEqual(result["resolution_pending"], 1)
+        self.assertEqual(
+            tuple(
+                migrated.execute(
+                    "SELECT status,related_offset,related_total FROM seeds WHERE soundcharts_uuid='old-seed'"
+                ).fetchone()
+            ),
+            ("complete", 50, 50),
+        )
+        self.assertEqual(migrated.execute("SELECT COUNT(*) FROM candidates").fetchone()[0], 1)
+        self.assertEqual(migrated.execute("SELECT COUNT(*) FROM tracks").fetchone()[0], 1)
+        self.assertEqual(migrated.execute("SELECT value FROM meta WHERE key='state_version'").fetchone()[0], "2")
+        self.assertEqual(
+            migrated.execute("SELECT status FROM seed_resolution_pending").fetchone()[0],
+            "resolution_pending",
+        )
+
+    def test_seed_alias_reconciliation_keeps_rows_but_suppresses_duplicate_calls(self):
+        connection = self.state()
+        freeze_seed_cohort(
+            connection,
+            [SeedArtist("old-alias", "spotify-one", "Old alias", 100_000, True)],
+            source_eligible=1,
+            snapshot_name="historical.js",
+            snapshot_generated_at="2026-07-21T00:00:00Z",
+        )
+        ledger = {
+            "cohort_hash": "ledger-hash",
+            "generated_at": "2026-07-29T00:00:00Z",
+            "coverage": {"expected_displayed": 1},
+            "artists": [
+                {
+                    "soundcharts_uuid": "canonical",
+                    "spotify_id": "spotify-one",
+                    "soundcharts_uuid_aliases": ["canonical", "old-alias"],
+                    "spotify_id_aliases": ["spotify-one"],
+                }
+            ],
+        }
+        result = reconcile_seed_ledger(
+            connection,
+            [SeedArtist("canonical", "spotify-one", "Canonical", 100_000, True)],
+            [],
+            ledger,
+        )
+        self.assertEqual(result["appended"], 1)
+        self.assertEqual(result["uuid_aliases"], 1)
+        self.assertEqual(result["historical_alias_rows"], 1)
+        self.assertEqual(result["suppressed_pending_alias_rows"], 1)
+        self.assertEqual(connection.execute("SELECT COUNT(*) FROM seeds").fetchone()[0], 2)
+        self.assertEqual(
+            connection.execute("SELECT status FROM seeds WHERE soundcharts_uuid='old-alias'").fetchone()[0],
+            "alias_superseded",
+        )
+        self.assertEqual(
+            connection.execute("SELECT canonical_uuid FROM seed_aliases WHERE alias_uuid='old-alias'").fetchone()[0],
+            "canonical",
+        )
+        coverage = build_report(
+            connection,
+            source_eligible=1,
+            source_snapshot=Path("ledger.json"),
+            source_generated_at="2026-07-29T00:00:00Z",
+            seed_ledger=ledger,
+        )["coverage"]["seed_related"]
+        self.assertEqual(coverage["expected"], 1)
+        self.assertEqual(coverage["missing"], 1)
+        flipped = {
+            **ledger,
+            "artists": [
+                {
+                    "soundcharts_uuid": "old-alias",
+                    "spotify_id": "spotify-one",
+                    "soundcharts_uuid_aliases": ["canonical", "old-alias"],
+                    "spotify_id_aliases": ["spotify-one"],
+                }
+            ],
+        }
+        with self.assertRaises(FalPhase1Error):
+            reconcile_seed_ledger(
+                connection,
+                [SeedArtist("old-alias", "spotify-one", "Old alias", 100_000, True)],
+                [],
+                flipped,
+            )
 
     def test_phase_one_stops_before_per_track_detail_enrichment(self):
         source = inspect.getsource(Phase1Scanner.run)

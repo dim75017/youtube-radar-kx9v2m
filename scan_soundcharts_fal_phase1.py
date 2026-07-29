@@ -40,8 +40,15 @@ from refresh_soundcharts_daily import (
 from prepare_soundcharts_snapshot import NORMALISED_PUBLIC_ARTIST_BLACKLIST
 
 
-STATE_VERSION = 1
-REPORT_VERSION = 1
+STATE_VERSION = 2
+REPORT_VERSION = 2
+HARD_MIN_QUOTA_RESERVE = 500_000
+# Current maintenance is roughly 46.6k calls/day at the protected track cap.
+# Keep retry/variance headroom without immobilising the separate FAL budget.
+DEFAULT_MAINTENANCE_DAILY_REQUESTS = 60_000
+QUOTA_RESET_DAY = 18
+QUOTA_RESET_HOUR_UTC = 19
+QUOTA_RESET_MINUTE_UTC = 11
 DEFAULT_STATE = Path("soundcharts-fal-phase1-staging.sqlite3")
 DEFAULT_REPORT = Path("soundcharts-fal-phase1-report.json")
 DEFAULT_SEED_SNAPSHOT = Path("Spotify_Soundcharts_data_20260721T181420Z.js")
@@ -111,6 +118,19 @@ class KnownIdentities:
     track_isrcs: set[str]
 
 
+@dataclass(frozen=True)
+class QuotaBudgetPlan:
+    requested: int
+    allowed: int
+    quota_remaining: int
+    hard_reserve: int
+    maintenance_daily_requests: int
+    maintenance_days: int
+    maintenance_reserve: int
+    protected_floor: int
+    maintenance_through: str
+
+
 def utc_now() -> str:
     return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
@@ -128,6 +148,106 @@ def finite_int(value: Any) -> int | None:
     except (TypeError, ValueError):
         return None
     return int(number) if math.isfinite(number) else None
+
+
+def parse_iso_date(value: str | dt.date) -> dt.date:
+    if isinstance(value, dt.date):
+        return value
+    try:
+        return dt.date.fromisoformat(str(value).strip())
+    except ValueError as exc:
+        raise FalPhase1Error(f"Invalid ISO date: {value!r}") from exc
+
+
+def parse_as_of(value: str | dt.date | dt.datetime | None) -> dt.datetime:
+    if value is None:
+        return dt.datetime.now(dt.timezone.utc)
+    if isinstance(value, dt.datetime):
+        return value if value.tzinfo is not None else value.replace(tzinfo=dt.timezone.utc)
+    if isinstance(value, dt.date):
+        return dt.datetime.combine(value, dt.time.min, tzinfo=dt.timezone.utc)
+    raw = str(value).strip().replace("Z", "+00:00")
+    try:
+        parsed = dt.datetime.fromisoformat(raw)
+    except ValueError:
+        parsed = dt.datetime.combine(parse_iso_date(raw), dt.time.min, tzinfo=dt.timezone.utc)
+    return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=dt.timezone.utc)
+
+
+def next_quota_reset(as_of: str | dt.date | dt.datetime | None = None) -> dt.datetime:
+    """Return the next monthly Soundcharts reset anchor, never a past date."""
+
+    now = parse_as_of(as_of).astimezone(dt.timezone.utc)
+    candidate = dt.datetime(
+        now.year,
+        now.month,
+        QUOTA_RESET_DAY,
+        QUOTA_RESET_HOUR_UTC,
+        QUOTA_RESET_MINUTE_UTC,
+        tzinfo=dt.timezone.utc,
+    )
+    if now < candidate:
+        return candidate
+    if now.month == 12:
+        year, month = now.year + 1, 1
+    else:
+        year, month = now.year, now.month + 1
+    return dt.datetime(
+        year,
+        month,
+        QUOTA_RESET_DAY,
+        QUOTA_RESET_HOUR_UTC,
+        QUOTA_RESET_MINUTE_UTC,
+        tzinfo=dt.timezone.utc,
+    )
+
+
+def plan_quota_budget(
+    *,
+    quota_remaining: int | None,
+    requested: int,
+    maintenance_daily_requests: int,
+    maintenance_through: str | dt.date | None,
+    as_of: str | dt.date | dt.datetime | None = None,
+    hard_reserve: int = HARD_MIN_QUOTA_RESERVE,
+) -> QuotaBudgetPlan:
+    """Return the only request budget FAL may safely consume.
+
+    The maintenance allowance is inclusive of ``as_of`` and the reset/cutoff
+    day.  A stale cutoff automatically rolls to the next monthly anchor, so
+    maintenance protection never falls to zero after a reset; the hard 500k
+    reserve also remains protected forever.  A missing server quota fails
+    closed instead of guessing.
+    """
+
+    if quota_remaining is None:
+        raise FalPhase1Error("Soundcharts did not expose quota remaining for FAL preflight")
+    now = parse_as_of(as_of).astimezone(dt.timezone.utc)
+    today = now.date()
+    automatic_reset = next_quota_reset(now).date()
+    through = parse_iso_date(maintenance_through) if maintenance_through else automatic_reset
+    # A stale manual override must never collapse maintenance protection after
+    # the reset.  Roll forward to the next monthly anchor automatically.
+    if through < today or (through == today and through < automatic_reset):
+        through = automatic_reset
+    days = max(0, (through - today).days + 1)
+    daily = max(0, int(maintenance_daily_requests))
+    hard = max(HARD_MIN_QUOTA_RESERVE, int(hard_reserve))
+    maintenance = days * daily
+    protected_floor = hard + maintenance
+    available = max(0, int(quota_remaining) - protected_floor)
+    requested_safe = max(0, min(40_000, int(requested)))
+    return QuotaBudgetPlan(
+        requested=requested_safe,
+        allowed=min(requested_safe, available),
+        quota_remaining=int(quota_remaining),
+        hard_reserve=hard,
+        maintenance_daily_requests=daily,
+        maintenance_days=days,
+        maintenance_reserve=maintenance,
+        protected_floor=protected_floor,
+        maintenance_through=through.isoformat(),
+    )
 
 
 def row_record(row: Any, schema: Sequence[str]) -> dict[str, Any]:
@@ -350,6 +470,21 @@ CREATE TABLE IF NOT EXISTS seeds (
   error_code TEXT,
   updated_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS seed_resolution_pending (
+  spotify_id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  sources_json TEXT NOT NULL DEFAULT '[]',
+  status TEXT NOT NULL DEFAULT 'resolution_pending',
+  first_seen_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS seed_aliases (
+  alias_uuid TEXT PRIMARY KEY,
+  canonical_uuid TEXT NOT NULL,
+  spotify_ids_json TEXT NOT NULL DEFAULT '[]',
+  observed_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_seed_aliases_canonical ON seed_aliases(canonical_uuid);
 CREATE TABLE IF NOT EXISTS related_edges (
   seed_uuid TEXT NOT NULL,
   candidate_uuid TEXT NOT NULL,
@@ -440,9 +575,19 @@ def open_state(path: Path) -> sqlite3.Connection:
         connection.execute("ALTER TABLE tracks ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0")
     if "error_code" not in track_columns:
         connection.execute("ALTER TABLE tracks ADD COLUMN error_code TEXT")
+    connection.commit()
     stored_version = meta_get(connection, "state_version")
     if stored_version is None:
         connection.execute("INSERT INTO meta(key,value) VALUES('state_version',?)", (str(STATE_VERSION),))
+    elif stored_version == "1" and STATE_VERSION == 2:
+        # Explicit in-place schema migration.  The workflow first copies the
+        # newest v1 artifact to a separately named v2 checkpoint, so the v1
+        # artifact remains immutable and recoverable.
+        connection.execute("BEGIN IMMEDIATE")
+        meta_set(connection, "migrated_from_state_version", stored_version)
+        meta_set(connection, "state_version", STATE_VERSION)
+        meta_set(connection, "state_migrated_at", utc_now())
+        connection.commit()
     elif stored_version != str(STATE_VERSION):
         connection.close()
         raise FalPhase1Error(
@@ -511,6 +656,194 @@ def freeze_seed_cohort(
     meta_set(connection, "cohort_snapshot_generated_at", snapshot_generated_at)
     connection.commit()
     return len(seeds)
+
+
+def read_seed_ledger(
+    path: Path,
+    *,
+    min_resolved: int,
+    max_resolved: int,
+) -> tuple[list[SeedArtist], list[dict[str, Any]], dict[str, Any]]:
+    try:
+        ledger = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise FalPhase1Error(f"Invalid FAL seed ledger: {path}") from exc
+    if not isinstance(ledger, dict):
+        raise FalPhase1Error("FAL seed ledger must contain an object")
+    # Reuse the builder's canonical hash validation.  The builder has no
+    # dependency on this scanner, so importing it here cannot form a cycle.
+    from build_soundcharts_fal_seed_ledger import SeedLedgerError, validate_ledger
+
+    try:
+        validate_ledger(ledger, min_resolved=min_resolved, max_resolved=max_resolved)
+    except SeedLedgerError as exc:
+        raise FalPhase1Error(str(exc)) from exc
+
+    seeds: list[SeedArtist] = []
+    for item in ledger.get("artists", []):
+        if not isinstance(item, Mapping):
+            raise FalPhase1Error("FAL seed ledger artist row is malformed")
+        uuid = str(item.get("soundcharts_uuid") or "").strip()
+        spotify = str(item.get("spotify_id") or "").strip()
+        name = str(item.get("name") or spotify or f"soundcharts:{uuid[:8]}").strip()
+        seeds.append(
+            SeedArtist(
+                soundcharts_uuid=uuid,
+                spotify_id=spotify,
+                name=name,
+                monthly_listeners=finite_int(item.get("monthly_listeners")) or 0,
+                qualifies=True,
+            )
+        )
+    seeds.sort(key=lambda item: (item.soundcharts_uuid, item.spotify_id, normalize_text(item.name)))
+    pending = [dict(item) for item in ledger.get("resolution_pending", []) if isinstance(item, Mapping)]
+    return seeds, pending, ledger
+
+
+def reconcile_seed_ledger(
+    connection: sqlite3.Connection,
+    seeds: Sequence[SeedArtist],
+    resolution_pending: Sequence[Mapping[str, Any]],
+    ledger: Mapping[str, Any],
+) -> dict[str, int]:
+    """Transactionally extend v1/v2 state without restarting completed work."""
+
+    ledger_uuids = {seed.soundcharts_uuid for seed in seeds}
+    if len(ledger_uuids) != len(seeds) or "" in ledger_uuids:
+        raise FalPhase1Error("FAL seed ledger contains duplicate or empty UUIDs")
+    before = {
+        "seeds": int(connection.execute("SELECT COUNT(*) FROM seeds").fetchone()[0]),
+        "candidates": int(connection.execute("SELECT COUNT(*) FROM candidates").fetchone()[0]),
+        "tracks": int(connection.execute("SELECT COUNT(*) FROM tracks").fetchone()[0]),
+    }
+    existing_rows = connection.execute("SELECT soundcharts_uuid FROM seeds").fetchall()
+    existing_uuids = {str(row[0]) for row in existing_rows}
+    now = utc_now()
+    appended = 0
+    alias_rows: list[tuple[str, str, str, str]] = []
+    for item in ledger.get("artists", []):
+        if not isinstance(item, Mapping):
+            continue
+        canonical_uuid = str(item.get("soundcharts_uuid") or "").strip()
+        spotify_ids = [str(value or "").strip() for value in item.get("spotify_id_aliases") or []]
+        spotify_json = json.dumps(sorted(value for value in spotify_ids if value), ensure_ascii=False)
+        for raw_alias in item.get("soundcharts_uuid_aliases") or []:
+            alias_uuid = str(raw_alias or "").strip()
+            if alias_uuid and alias_uuid != canonical_uuid:
+                alias_rows.append((alias_uuid, canonical_uuid, spotify_json, now))
+    alias_keys = [row[0] for row in alias_rows]
+    if len(alias_keys) != len(set(alias_keys)):
+        raise FalPhase1Error("FAL seed ledger maps one UUID alias to several canonical seeds")
+    existing_aliases = {
+        str(row[0]): str(row[1])
+        for row in connection.execute("SELECT alias_uuid,canonical_uuid FROM seed_aliases")
+    }
+    canonical_was_alias = sorted(ledger_uuids & set(existing_aliases))
+    conflicting_aliases = sorted(
+        alias_uuid
+        for alias_uuid, canonical_uuid, _, _ in alias_rows
+        if alias_uuid in existing_aliases and existing_aliases[alias_uuid] != canonical_uuid
+    )
+    if canonical_was_alias or conflicting_aliases:
+        raise FalPhase1Error(
+            "FAL alias canonicalization changed across ledgers; refusing a destructive remap "
+            f"(canonical_was_alias={canonical_was_alias[:5]}, conflicts={conflicting_aliases[:5]})"
+        )
+    suppressed_pending = 0
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        next_rank = int(connection.execute("SELECT COALESCE(MAX(source_rank),-1)+1 FROM seeds").fetchone()[0])
+        for seed in seeds:
+            if seed.soundcharts_uuid in existing_uuids:
+                continue
+            connection.execute(
+                """INSERT INTO seeds(soundcharts_uuid,spotify_id,name,monthly_listeners,source_rank,updated_at)
+                   VALUES(?,?,?,?,?,?)""",
+                (
+                    seed.soundcharts_uuid,
+                    seed.spotify_id,
+                    seed.name,
+                    seed.monthly_listeners,
+                    next_rank,
+                    now,
+                ),
+            )
+            next_rank += 1
+            appended += 1
+
+        connection.executemany(
+            """INSERT INTO seed_aliases(alias_uuid,canonical_uuid,spotify_ids_json,observed_at)
+               VALUES(?,?,?,?) ON CONFLICT(alias_uuid) DO NOTHING""",
+            alias_rows,
+        )
+        # Preserve every historical row and all of its graph edges, but do not
+        # spend calls scanning a superseded UUID after its canonical alias has
+        # joined the current ledger.
+        for alias_uuid in alias_keys:
+            suppressed_pending += connection.execute(
+                """UPDATE seeds SET status='alias_superseded',error_code=NULL,updated_at=?
+                   WHERE soundcharts_uuid=? AND status NOT IN ('complete','alias_superseded')""",
+                (now, alias_uuid),
+            ).rowcount
+
+        resolved_spotify = {seed.spotify_id for seed in seeds if seed.spotify_id}
+        for spotify_id in resolved_spotify:
+            connection.execute("DELETE FROM seed_resolution_pending WHERE spotify_id=?", (spotify_id,))
+        for item in resolution_pending:
+            spotify_id = str(item.get("spotify_id") or "").strip()
+            if not spotify_id or spotify_id in resolved_spotify:
+                continue
+            name = str(item.get("name") or spotify_id).strip()
+            sources = item.get("sources") if isinstance(item.get("sources"), list) else []
+            connection.execute(
+                """INSERT INTO seed_resolution_pending(
+                     spotify_id,name,sources_json,status,first_seen_at,updated_at)
+                   VALUES(?,?,?,'resolution_pending',?,?)
+                   ON CONFLICT(spotify_id) DO UPDATE SET
+                     name=excluded.name,sources_json=excluded.sources_json,
+                     status='resolution_pending',updated_at=excluded.updated_at""",
+                (spotify_id, name, json.dumps(sources, ensure_ascii=False, sort_keys=True), now, now),
+            )
+
+        meta_set(connection, "cohort_mode", "canonical-accepted-v2")
+        meta_set(connection, "seed_ledger_hash", ledger.get("cohort_hash") or "")
+        meta_set(connection, "seed_ledger_generated_at", ledger.get("generated_at") or "")
+        coverage = ledger.get("coverage") if isinstance(ledger.get("coverage"), Mapping) else {}
+        meta_set(connection, "seed_ledger_expected_displayed", finite_int(coverage.get("expected_displayed")) or 0)
+        meta_set(connection, "seed_ledger_resolved_uuid", len(seeds))
+        meta_set(connection, "seed_ledger_unresolved", len(resolution_pending))
+        meta_set(connection, "seed_ledger_reconciled_at", now)
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+
+    after = {
+        "seeds": int(connection.execute("SELECT COUNT(*) FROM seeds").fetchone()[0]),
+        "candidates": int(connection.execute("SELECT COUNT(*) FROM candidates").fetchone()[0]),
+        "tracks": int(connection.execute("SELECT COUNT(*) FROM tracks").fetchone()[0]),
+    }
+    if after["seeds"] != before["seeds"] + appended:
+        raise FalPhase1Error("Append-only seed reconciliation changed the cohort unexpectedly")
+    if after["candidates"] != before["candidates"] or after["tracks"] != before["tracks"]:
+        raise FalPhase1Error("Seed reconciliation modified candidate or track staging rows")
+    return {
+        "state_seeds_before": before["seeds"],
+        "matched_existing": len(existing_uuids & ledger_uuids),
+        "appended": appended,
+        "state_seeds_after": after["seeds"],
+        "carried_forward_historical_seeds": len(existing_uuids - ledger_uuids),
+        "resolution_pending": int(
+            connection.execute("SELECT COUNT(*) FROM seed_resolution_pending WHERE status='resolution_pending'").fetchone()[0]
+        ),
+        "uuid_aliases": len(alias_rows),
+        "historical_alias_rows": int(
+            connection.execute(
+                "SELECT COUNT(*) FROM seeds WHERE soundcharts_uuid IN (SELECT alias_uuid FROM seed_aliases)"
+            ).fetchone()[0]
+        ),
+        "suppressed_pending_alias_rows": suppressed_pending,
+    }
 
 
 def requeue_failed_work(connection: sqlite3.Connection) -> dict[str, int]:
@@ -1350,6 +1683,158 @@ def _counts(connection: sqlite3.Connection, table: str, field: str = "status") -
     }
 
 
+def _coverage(expected: int, scanned: int, usable: int) -> dict[str, int]:
+    expected = max(0, int(expected))
+    scanned = max(0, min(expected, int(scanned)))
+    usable = max(0, min(expected, int(usable)))
+    return {
+        "expected": expected,
+        "scanned": scanned,
+        "usable": usable,
+        "missing": max(0, expected - usable),
+    }
+
+
+def build_coverage_report(connection: sqlite3.Connection) -> dict[str, dict[str, int]]:
+    active_seed_where = "soundcharts_uuid NOT IN (SELECT alias_uuid FROM seed_aliases)"
+    seed_expected = int(
+        connection.execute(f"SELECT COUNT(*) FROM seeds WHERE {active_seed_where}").fetchone()[0]
+    )
+    seed_scanned = int(
+        connection.execute(
+            f"""SELECT COUNT(*) FROM seeds WHERE {active_seed_where}
+                  AND (status<>'pending' OR related_offset>0 OR attempts>0)"""
+        ).fetchone()[0]
+    )
+    seed_usable = int(
+        connection.execute(
+            f"SELECT COUNT(*) FROM seeds WHERE {active_seed_where} AND status='complete'"
+        ).fetchone()[0]
+    )
+
+    candidate_expected = int(connection.execute("SELECT COUNT(*) FROM candidates").fetchone()[0])
+    terminal_placeholders = ",".join("?" for _ in TERMINAL_CANDIDATE_STATUSES)
+    terminal_values = tuple(sorted(TERMINAL_CANDIDATE_STATUSES))
+    candidate_scanned = int(
+        connection.execute(
+            f"SELECT COUNT(*) FROM candidates WHERE status IN ({terminal_placeholders}) OR attempts>0",
+            terminal_values,
+        ).fetchone()[0]
+    )
+    candidate_usable = int(
+        connection.execute(
+            f"SELECT COUNT(*) FROM candidates WHERE status IN ({terminal_placeholders}) AND status<>'failed'",
+            terminal_values,
+        ).fetchone()[0]
+    )
+
+    catalogue = connection.execute(
+        """SELECT COALESCE(SUM(catalog_total),0),
+                  COALESCE(SUM(MIN(catalog_offset,catalog_total)),0)
+           FROM candidates WHERE catalog_total IS NOT NULL"""
+    ).fetchone()
+    catalogue_expected = int(catalogue[0] or 0)
+    catalogue_scanned = int(catalogue[1] or 0)
+    catalogue_usable = int(
+        connection.execute(
+            """SELECT COUNT(*) FROM candidate_tracks ct
+               JOIN candidates c ON c.soundcharts_uuid=ct.candidate_uuid
+               WHERE c.catalog_total IS NOT NULL"""
+        ).fetchone()[0]
+    )
+    resolution_pending = int(
+        connection.execute(
+            "SELECT COUNT(*) FROM seed_resolution_pending WHERE status='resolution_pending'"
+        ).fetchone()[0]
+    )
+    return {
+        "seed_related": _coverage(seed_expected, seed_scanned, seed_usable),
+        "candidate_assessment": _coverage(candidate_expected, candidate_scanned, candidate_usable),
+        "discography_items": _coverage(catalogue_expected, catalogue_scanned, catalogue_usable),
+        "seed_identity_resolution": _coverage(
+            seed_expected + resolution_pending,
+            seed_expected,
+            seed_expected,
+        ),
+    }
+
+
+def build_inventory_profile(
+    connection: sqlite3.Connection,
+    *,
+    as_of: dt.date | None = None,
+) -> dict[str, Any]:
+    """Aggregate the large staging inventory without any external requests."""
+
+    today = as_of or dt.datetime.now(dt.timezone.utc).date()
+    cutoff_90 = (today - dt.timedelta(days=90)).isoformat()
+    cutoff_1y = (today - dt.timedelta(days=365)).isoformat()
+    cutoff_3y = (today - dt.timedelta(days=365 * 3)).isoformat()
+    releases = connection.execute(
+        """SELECT
+             COUNT(*) AS total,
+             SUM(CASE WHEN date(release_date) IS NULL THEN 1 ELSE 0 END) AS unknown_date,
+             SUM(CASE WHEN date(release_date)>=date(?) THEN 1 ELSE 0 END) AS age_lte_90_days,
+             SUM(CASE WHEN date(release_date)>=date(?) AND date(release_date)<date(?) THEN 1 ELSE 0 END) AS age_91_days_to_1_year,
+             SUM(CASE WHEN date(release_date)>=date(?) AND date(release_date)<date(?) THEN 1 ELSE 0 END) AS age_1_to_3_years,
+             SUM(CASE WHEN date(release_date)<date(?) THEN 1 ELSE 0 END) AS age_over_3_years
+           FROM tracks""",
+        (cutoff_90, cutoff_1y, cutoff_90, cutoff_3y, cutoff_1y, cutoff_3y),
+    ).fetchone()
+    catalogues = connection.execute(
+        """SELECT
+             COUNT(*) AS total,
+             SUM(CASE WHEN catalog_total IS NULL THEN 1 ELSE 0 END) AS unknown,
+             SUM(CASE WHEN catalog_total=0 THEN 1 ELSE 0 END) AS empty,
+             SUM(CASE WHEN catalog_total BETWEEN 1 AND 20 THEN 1 ELSE 0 END) AS size_1_20,
+             SUM(CASE WHEN catalog_total BETWEEN 21 AND 50 THEN 1 ELSE 0 END) AS size_21_50,
+             SUM(CASE WHEN catalog_total BETWEEN 51 AND 100 THEN 1 ELSE 0 END) AS size_51_100,
+             SUM(CASE WHEN catalog_total BETWEEN 101 AND 500 THEN 1 ELSE 0 END) AS size_101_500,
+             SUM(CASE WHEN catalog_total BETWEEN 501 AND 1000 THEN 1 ELSE 0 END) AS size_501_1000,
+             SUM(CASE WHEN catalog_total>1000 THEN 1 ELSE 0 END) AS size_over_1000,
+             MAX(catalog_total) AS max_reported_catalogue
+           FROM candidates"""
+    ).fetchone()
+    max_links = int(
+        connection.execute(
+            """SELECT COALESCE(MAX(track_count),0) FROM (
+                 SELECT COUNT(*) AS track_count FROM candidate_tracks GROUP BY candidate_uuid
+               )"""
+        ).fetchone()[0]
+    )
+
+    release_counts = {key: int(releases[key] or 0) for key in releases.keys()}
+    catalogue_counts = {key: int(catalogues[key] or 0) for key in catalogues.keys()}
+    classified_release_total = sum(
+        release_counts[key]
+        for key in (
+            "unknown_date",
+            "age_lte_90_days",
+            "age_91_days_to_1_year",
+            "age_1_to_3_years",
+            "age_over_3_years",
+        )
+    )
+    if classified_release_total != release_counts["total"]:
+        raise FalPhase1Error("Staging release-date distribution is not exhaustive")
+    return {
+        "release_date_distribution": {
+            **release_counts,
+            "as_of": today.isoformat(),
+            "cutoffs": {
+                "90_days": cutoff_90,
+                "1_year": cutoff_1y,
+                "3_years": cutoff_3y,
+            },
+            "future_dates_are_in_lte_90_days": True,
+        },
+        "candidate_catalogue_distribution": {
+            **catalogue_counts,
+            "max_observed_track_links": max_links,
+        },
+    }
+
+
 def build_report(
     connection: sqlite3.Connection,
     *,
@@ -1359,6 +1844,9 @@ def build_report(
     requests_claimed: int = 0,
     quota_remaining: int | None = None,
     halt_reason: str | None = None,
+    budget_plan: QuotaBudgetPlan | None = None,
+    seed_ledger: Mapping[str, Any] | None = None,
+    reconciliation: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     seed_counts = _counts(connection, "seeds")
     candidate_counts = _counts(connection, "candidates")
@@ -1370,11 +1858,24 @@ def build_report(
         count for status, count in candidate_counts.items() if status not in TERMINAL_CANDIDATE_STATUSES
     )
     deferred = 0
-    complete = seed_pending == 0 and candidate_pending == 0 and seed_failures == 0 and candidate_failures == 0
+    resolution_pending = int(
+        connection.execute(
+            "SELECT COUNT(*) FROM seed_resolution_pending WHERE status='resolution_pending'"
+        ).fetchone()[0]
+    )
+    complete = (
+        seed_pending == 0
+        and candidate_pending == 0
+        and seed_failures == 0
+        and candidate_failures == 0
+        and resolution_pending == 0
+    )
     if complete:
         status = "complete"
     elif seed_failures or candidate_failures:
         status = "blocked"
+    elif resolution_pending and seed_pending == 0 and candidate_pending == 0:
+        status = "awaiting_resolution"
     elif requests_claimed or halt_reason:
         status = "partial"
     else:
@@ -1386,6 +1887,8 @@ def build_report(
     no_external_id = int(
         connection.execute("SELECT COUNT(*) FROM tracks WHERE COALESCE(spotify_id,'')='' AND COALESCE(isrc,'')=''").fetchone()[0]
     )
+    ledger_coverage = seed_ledger.get("coverage") if isinstance(seed_ledger, Mapping) and isinstance(seed_ledger.get("coverage"), Mapping) else {}
+    ledger_alias = seed_ledger.get("alias_dedup") if isinstance(seed_ledger, Mapping) and isinstance(seed_ledger.get("alias_dedup"), Mapping) else {}
     return {
         "version": REPORT_VERSION,
         "generated_at": utc_now(),
@@ -1404,10 +1907,42 @@ def build_report(
             "frozen_seeds": int(connection.execute("SELECT COUNT(*) FROM seeds").fetchone()[0]),
             "status_counts": seed_counts,
         },
+        "seed_ledger": {
+            "mode": meta_get(connection, "cohort_mode") or "audited-historical-v1",
+            "expected_displayed": finite_int(ledger_coverage.get("expected_displayed")),
+            "expected_identity_components": finite_int(ledger_coverage.get("expected_identity_components")),
+            "unique_spotify_identities": finite_int(ledger_coverage.get("unique_spotify_identities")),
+            "resolved_uuid": finite_int(ledger_coverage.get("resolved_uuid")),
+            "resolved_source_uuids": finite_int(ledger_coverage.get("resolved_source_uuids")),
+            "resolved_seed_uuids": finite_int(ledger_coverage.get("resolved_seed_uuids")),
+            "unresolved": finite_int(ledger_coverage.get("unresolved")),
+            "unresolved_display_identities": finite_int(ledger_coverage.get("unresolved_display_identities")),
+            "resolution_pending": resolution_pending,
+            "cohort_hash": seed_ledger.get("cohort_hash") if isinstance(seed_ledger, Mapping) else None,
+            "alias_dedup": dict(ledger_alias),
+            "state_uuid_aliases": int(connection.execute("SELECT COUNT(*) FROM seed_aliases").fetchone()[0]),
+            "reconciliation": dict(reconciliation or {}),
+        },
+        "coverage": build_coverage_report(connection),
+        "inventory_profile": build_inventory_profile(connection),
         "requests": {
             "claimed_this_run": requests_claimed,
             "quota_remaining": quota_remaining,
             "halt_reason": halt_reason,
+            "preflight": (
+                {
+                    "requested": budget_plan.requested,
+                    "allowed": budget_plan.allowed,
+                    "hard_reserve": budget_plan.hard_reserve,
+                    "maintenance_daily_requests": budget_plan.maintenance_daily_requests,
+                    "maintenance_days": budget_plan.maintenance_days,
+                    "maintenance_reserve": budget_plan.maintenance_reserve,
+                    "protected_floor": budget_plan.protected_floor,
+                    "maintenance_through": budget_plan.maintenance_through,
+                }
+                if budget_plan is not None
+                else None
+            ),
         },
         "related_graph": {
             "edges": int(connection.execute("SELECT COUNT(*) FROM related_edges").fetchone()[0]),
@@ -1455,6 +1990,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed-snapshot", type=Path, default=DEFAULT_SEED_SNAPSHOT)
     parser.add_argument(
+        "--seed-ledger",
+        type=Path,
+        help="versioned canonical/accepted seed ledger; extends an existing checkpoint append-only",
+    )
+    parser.add_argument(
         "--active-snapshot",
         type=Path,
         help="currently active strict Soundcharts snapshot, used only for duplicate detection",
@@ -1476,6 +2016,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-related-artists", type=int)
     parser.add_argument("--max-requests", type=int, default=1_400)
     parser.add_argument("--quota-reserve", type=int, default=500_000)
+    parser.add_argument(
+        "--maintenance-through",
+        help=(
+            "inclusive maintenance protection cutoff/reset date (YYYY-MM-DD); "
+            "defaults to the next monthly 18th at 19:11 UTC"
+        ),
+    )
+    parser.add_argument(
+        "--maintenance-daily-requests",
+        type=int,
+        default=DEFAULT_MAINTENANCE_DAILY_REQUESTS,
+    )
+    parser.add_argument("--budget-as-of", help=argparse.SUPPRESS)
     parser.add_argument("--workers", type=int, default=10)
     parser.add_argument("--retry-limit", type=int, default=3)
     parser.add_argument("--dry-run", action="store_true", help="inspect/sync state and report without Soundcharts auth")
@@ -1490,11 +2043,25 @@ def main() -> int:
     performance = read_generic_js(args.performance) if args.performance.exists() else None
     legacy = read_js_payload(args.legacy_snapshot, SOUNDCHARTS_PREFIX) if args.legacy_snapshot.exists() else None
     radar = read_generic_js(args.radar_snapshot) if args.radar_snapshot.exists() else None
-    seeds, source_eligible = extract_seed_cohort(
-        soundcharts,
-        max_seeds=max(0, args.max_seeds),
-        min_audience=max(0, args.seed_min_audience),
-    )
+    ledger: dict[str, Any] | None = None
+    resolution_pending: list[dict[str, Any]] = []
+    if args.seed_ledger:
+        seeds, resolution_pending, ledger = read_seed_ledger(
+            args.seed_ledger,
+            min_resolved=max(0, args.min_seed_guard),
+            max_resolved=max(args.min_seed_guard, args.max_seed_guard),
+        )
+        source_eligible = len(seeds)
+        source_path = args.seed_ledger
+        source_generated_at = str(ledger.get("generated_at") or "")
+    else:
+        seeds, source_eligible = extract_seed_cohort(
+            soundcharts,
+            max_seeds=max(0, args.max_seeds),
+            min_audience=max(0, args.seed_min_audience),
+        )
+        source_path = args.seed_snapshot
+        source_generated_at = str(soundcharts.get("generated_at") or "")
     if source_eligible < max(0, args.min_seed_guard) or source_eligible > max(args.min_seed_guard, args.max_seed_guard):
         raise FalPhase1Error(
             f"Active seed cohort failed the truncation guard ({source_eligible}; expected {args.min_seed_guard}-{args.max_seed_guard})"
@@ -1508,34 +2075,69 @@ def main() -> int:
             build_known_identities(active, browse, radar, performance, legacy),
         )
     connection = open_state(args.state)
-    source_generated_at = str(soundcharts.get("generated_at") or "")
-    freeze_seed_cohort(
-        connection,
-        seeds,
-        source_eligible=source_eligible,
-        snapshot_name=args.seed_snapshot.name,
-        snapshot_generated_at=source_generated_at,
-    )
+    reconciliation: dict[str, Any] | None = None
+    if ledger is not None:
+        reconciliation = reconcile_seed_ledger(connection, seeds, resolution_pending, ledger)
+    else:
+        freeze_seed_cohort(
+            connection,
+            seeds,
+            source_eligible=source_eligible,
+            snapshot_name=args.seed_snapshot.name,
+            snapshot_generated_at=source_generated_at,
+        )
     if args.dry_run:
         report = build_report(
             connection,
             source_eligible=source_eligible,
-            source_snapshot=args.seed_snapshot,
+            source_snapshot=source_path,
             source_generated_at=source_generated_at,
+            seed_ledger=ledger,
+            reconciliation=reconciliation,
         )
         write_report(args.report, report)
         print(json.dumps(report, ensure_ascii=False, separators=(",", ":")))
         connection.close()
         return 0
 
+    hard_reserve = max(HARD_MIN_QUOTA_RESERVE, int(args.quota_reserve))
     client = SoundchartsClient(
         __import__("os").environ.get("SOUNDCHARTS_CLIENT_ID", ""),
         __import__("os").environ.get("SOUNDCHARTS_CLIENT_SECRET", ""),
         __import__("os").environ.get("SOUNDCHARTS_TEAM_ID", ""),
-        quota_reserve=max(0, args.quota_reserve),
-        request_limit=max(1, args.max_requests),
+        quota_reserve=hard_reserve,
+        request_limit=None,
     )
     client.authenticate()
+    client.require_quota_reserve()
+    budget_plan = plan_quota_budget(
+        quota_remaining=getattr(client, "quota_remaining", None),
+        requested=max(0, args.max_requests),
+        maintenance_daily_requests=max(0, args.maintenance_daily_requests),
+        maintenance_through=args.maintenance_through,
+        as_of=args.budget_as_of,
+        hard_reserve=hard_reserve,
+    )
+    client.request_limit = budget_plan.allowed
+    # Enforce the dynamic floor on every concurrent request, not just during
+    # preflight, in case server-side quota changes unexpectedly during a run.
+    client.quota_reserve = budget_plan.protected_floor
+    if budget_plan.allowed <= 0:
+        report = build_report(
+            connection,
+            source_eligible=source_eligible,
+            source_snapshot=source_path,
+            source_generated_at=source_generated_at,
+            quota_remaining=getattr(client, "quota_remaining", None),
+            halt_reason="maintenance_quota_protected",
+            budget_plan=budget_plan,
+            seed_ledger=ledger,
+            reconciliation=reconciliation,
+        )
+        write_report(args.report, report)
+        print(json.dumps(report, ensure_ascii=False, separators=(",", ":")))
+        connection.close()
+        return 0
     client.require_quota_reserve()
     requeue_failed_work(connection)
     scanner = Phase1Scanner(
@@ -1554,11 +2156,14 @@ def main() -> int:
     report = build_report(
         connection,
         source_eligible=source_eligible,
-        source_snapshot=args.seed_snapshot,
+        source_snapshot=source_path,
         source_generated_at=source_generated_at,
         requests_claimed=int(getattr(client, "requests_claimed", 0)),
         quota_remaining=getattr(client, "quota_remaining", None),
         halt_reason=None if halt_reason == "idle" else halt_reason,
+        budget_plan=budget_plan,
+        seed_ledger=ledger,
+        reconciliation=reconciliation,
     )
     write_report(args.report, report)
     print(json.dumps(report, ensure_ascii=False, separators=(",", ":")))

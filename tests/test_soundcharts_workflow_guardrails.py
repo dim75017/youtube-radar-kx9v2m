@@ -113,7 +113,7 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
 
     def test_full_sync_refreshes_each_dashboard_source_and_daily_playlist_followers(self):
         self.assertIn("full_sync", self.workflow)
-        self.assertIn("Refresh the complete performance track catalogue every 24 hours", self.workflow)
+        self.assertIn("Refresh adaptive performance track coverage every 24 hours", self.workflow)
         self.assertIn("Refresh the complete performance artist catalogue every 24 hours", self.workflow)
         self.assertIn("Refresh playlist follower history every 24 hours", self.workflow)
         self.assertIn("playlist_followers_due", self.workflow)
@@ -158,7 +158,7 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("is_due('artists_catalogue_at')", self.workflow)
         self.assertIn("dt.timedelta(hours=24)", self.workflow)
         self.assertIn('performance_artist_data_cap="15000"', self.workflow)
-        self.assertIn('performance_track_data_cap="60000"', self.workflow)
+        self.assertIn('performance_track_data_cap="35000"', self.workflow)
         self.assertIn('playlist_data_cap="3000"', self.workflow)
         self.assertIn('"$FRESHNESS_GATE" == "true"', self.workflow)
         self.assertIn('performance_tracks_due="true"', self.workflow)

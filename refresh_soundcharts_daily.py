@@ -13,8 +13,11 @@ import argparse
 import base64
 import concurrent.futures
 import datetime as dt
+import gzip
+import hashlib
 import json
 import os
+import statistics
 import threading
 import time
 import urllib.error
@@ -33,6 +36,13 @@ PERFORMANCE_PREFIX = "window.SPOTIFY_PERFORMANCE="
 PLAYLISTS_PREFIX = "window.SPOTIFY_PLAYLISTS="
 AUTH_PROBE = "/api/v2/referential/platforms/streaming"
 MIN_SERVER_QUOTA_RESERVE = 500_000
+TRACK_ROTATION_BUCKETS = 7
+RECENT_RELEASE_DAYS = 90
+TRACK_MAINTENANCE_POLICY_VERSION = 1
+HOT_TRACK_HISTORY_DAYS = 95
+PERFORMANCE_BLOB_SOFT_LIMIT_BYTES = 95_000_000
+ESTIMATED_NEW_TRACK_ENTRY_BYTES = 4_096
+ESTIMATED_DAILY_POINT_BYTES = 128
 PARIS_TIMEZONE = ZoneInfo("Europe/Paris")
 
 
@@ -93,7 +103,15 @@ def read_js_payload(path: Path, prefix: str = SOUNDCHARTS_PREFIX) -> dict[str, A
 
 
 def write_js_payload(path: Path, payload: dict[str, Any], prefix: str = SOUNDCHARTS_PREFIX) -> None:
-    path.write_text(prefix + json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + ";\n", encoding="utf-8")
+    serialized = prefix + json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + ";\n"
+    temporary = path.with_name(path.name + ".tmp")
+    try:
+        temporary.write_text(serialized, encoding="utf-8")
+        temporary.replace(path)
+    except OSError as exc:
+        if temporary.exists():
+            temporary.unlink()
+        raise SoundchartsError(f"Could not atomically persist {path}") from exc
 
 
 def read_performance_payload(path: Path) -> dict[str, Any]:
@@ -111,6 +129,143 @@ def read_performance_payload(path: Path) -> dict[str, Any]:
     payload.setdefault("artists", {})
     payload.setdefault("playlists", {})
     return payload
+
+
+def prune_track_histories_to_hot_window(
+    performance: dict[str, Any],
+    keep_days: int = HOT_TRACK_HISTORY_DAYS,
+) -> dict[str, list[list[Any]]]:
+    """Keep the analytics hot window and return every older point for archival."""
+
+    tracks = performance.get("tracks")
+    if not isinstance(tracks, dict):
+        raise SoundchartsError("Performance tracks must be an object")
+    retained_days = max(61, keep_days)
+    archived: dict[str, list[list[Any]]] = {}
+    for spotify_id, entry in tracks.items():
+        if not isinstance(entry, dict):
+            continue
+        history = normalize_history(entry.get("history"))
+        if not history:
+            continue
+        latest = dt.date.fromisoformat(history[-1][0])
+        cutoff = latest - dt.timedelta(days=retained_days - 1)
+        old_points = [point for point in history if dt.date.fromisoformat(point[0]) < cutoff]
+        if not old_points:
+            continue
+        kept_points = [point for point in history if dt.date.fromisoformat(point[0]) >= cutoff]
+        entry["history"] = kept_points
+        archived[str(spotify_id)] = old_points
+    return archived
+
+
+def write_track_history_archive(history_dir: Path, archived: Mapping[str, list[list[Any]]]) -> dict[str, Any]:
+    """Merge pruned points into monthly gzip archives before the hot file is written."""
+
+    by_month: dict[str, dict[str, list[list[Any]]]] = {}
+    for spotify_id, points in archived.items():
+        for day, value in normalize_history(points):
+            by_month.setdefault(day[:7], {}).setdefault(str(spotify_id), []).append([day, value])
+    if not by_month:
+        return {"status": "not_needed", "points": 0, "tracks": 0, "files": []}
+
+    archive_dir = history_dir / "archive"
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    written: list[str] = []
+    point_count = 0
+    track_ids: set[str] = set()
+    for month, incoming_tracks in sorted(by_month.items()):
+        path = archive_dir / f"tracks-{month}.json.gz"
+        existing: dict[str, Any] = {}
+        if path.exists():
+            try:
+                with gzip.open(path, "rt", encoding="utf-8") as handle:
+                    loaded = json.load(handle)
+                if (
+                    not isinstance(loaded, dict)
+                    or loaded.get("month") != month
+                    or not isinstance(loaded.get("tracks"), dict)
+                ):
+                    raise SoundchartsError(f"{path} contains an invalid track history archive")
+                existing = loaded
+            except (OSError, json.JSONDecodeError) as exc:
+                raise SoundchartsError(f"{path} contains an unreadable track history archive") from exc
+        tracks = existing.get("tracks") if isinstance(existing.get("tracks"), dict) else {}
+        for spotify_id, points in incoming_tracks.items():
+            merged = {day: value for day, value in normalize_history(tracks.get(spotify_id))}
+            merged.update({day: value for day, value in normalize_history(points)})
+            tracks[spotify_id] = [[day, merged[day]] for day in sorted(merged)]
+            point_count += len(points)
+            track_ids.add(spotify_id)
+        archive_payload = {
+            "version": 1,
+            "source": "soundcharts_track_history_archive",
+            "month": month,
+            "tracks": tracks,
+        }
+        temporary = path.with_name(path.name + ".tmp")
+        try:
+            with gzip.open(temporary, "wt", encoding="utf-8", compresslevel=9) as handle:
+                json.dump(archive_payload, handle, ensure_ascii=False, separators=(",", ":"))
+                handle.write("\n")
+            temporary.replace(path)
+        except OSError as exc:
+            if temporary.exists():
+                temporary.unlink()
+            raise SoundchartsError(f"Could not persist {path} before pruning the hot history") from exc
+        written.append(str(path))
+    return {
+        "status": "archived",
+        "points": point_count,
+        "tracks": len(track_ids),
+        "files": written,
+    }
+
+
+def performance_storage_preflight(
+    performance: Mapping[str, Any],
+    payload: Mapping[str, Any],
+    path: Path,
+) -> dict[str, Any]:
+    """Fail before paid track calls when the monolithic hot export is unsafe."""
+
+    serialized = PERFORMANCE_PREFIX + json.dumps(performance, ensure_ascii=False, separators=(",", ":")) + ";\n"
+    hot_bytes = len(serialized.encode("utf-8"))
+    tracks = performance.get("tracks") if isinstance(performance.get("tracks"), Mapping) else {}
+    known_ids = {str(spotify_id) for spotify_id in tracks}
+    schemas = payload.get("schemas") if isinstance(payload.get("schemas"), Mapping) else {}
+    schema = schemas.get("tracks") if isinstance(schemas.get("tracks"), list) else []
+    rows = payload.get("tracks") if isinstance(payload.get("tracks"), list) else []
+    new_track_entries = 0
+    for row in rows:
+        if not isinstance(row, list) or not field(row, schema, "soundcharts_uuid"):
+            continue
+        uuid = str(field(row, schema, "soundcharts_uuid") or "").strip()
+        spotify_id = str(field(row, schema, "spotify_id") or "").strip()
+        storage_key = spotify_id or f"soundcharts:{uuid}"
+        if storage_key not in known_ids:
+            new_track_entries += 1
+    projected_bytes = (
+        hot_bytes
+        + len(tracks) * ESTIMATED_DAILY_POINT_BYTES
+        + new_track_entries * ESTIMATED_NEW_TRACK_ENTRY_BYTES
+    )
+    summary = {
+        "status": "safe" if projected_bytes <= PERFORMANCE_BLOB_SOFT_LIMIT_BYTES else "sharding_required",
+        "current_file_bytes": path.stat().st_size if path.exists() else 0,
+        "hot_window_days": HOT_TRACK_HISTORY_DAYS,
+        "hot_serialized_bytes": hot_bytes,
+        "projected_next_write_bytes": projected_bytes,
+        "soft_limit_bytes": PERFORMANCE_BLOB_SOFT_LIMIT_BYTES,
+        "tracks": len(tracks),
+        "new_track_entries": new_track_entries,
+    }
+    if projected_bytes > PERFORMANCE_BLOB_SOFT_LIMIT_BYTES:
+        print(json.dumps({"performance_storage_preflight": summary}, ensure_ascii=False))
+        raise SoundchartsError(
+            "Spotify_Performance_data.js requires sharding before another paid track refresh"
+        )
+    return summary
 
 
 def _retry_delay(attempt: int, headers: Mapping[str, str] | None = None) -> float:
@@ -265,6 +420,23 @@ class SoundchartsClient:
             raise SoundchartsQuotaReserveError(
                 f"Soundcharts quota reserve reached ({remaining} remaining; {self.quota_reserve} protected)"
             )
+
+    def available_request_budget(self, requested: int) -> int:
+        """Return the safe data-call budget before any collection request starts."""
+
+        with self._quota_lock:
+            remaining = self.quota_remaining
+            claimed = self.requests_claimed
+            request_limit = self.request_limit
+        if remaining is None:
+            raise SoundchartsQuotaReserveError(
+                "Soundcharts did not report x-quota-remaining; collection is blocked"
+            )
+        server_budget = max(0, remaining - self.quota_reserve)
+        local_budget = server_budget
+        if request_limit is not None:
+            local_budget = max(0, request_limit - claimed)
+        return max(0, min(max(0, requested), server_budget, local_budget))
 
     def _claim_quota_request(self) -> None:
         """Reserve one server call before every HTTP attempt, including retries."""
@@ -567,8 +739,19 @@ class Outcome:
     follower_usable: int | None = None
     available: int = 0
     selected: int = 0
+    policy: dict[str, Any] = dataclass_field(default_factory=dict)
     failure_diagnostics: list[dict[str, Any]] = dataclass_field(default_factory=list)
     unavailable_diagnostics: list[dict[str, Any]] = dataclass_field(default_factory=list)
+
+    def coverage(self) -> dict[str, int]:
+        return {
+            "expected": self.available,
+            "scanned": self.selected,
+            "usable": self.usable,
+            "missing": max(0, self.available - self.usable),
+            "not_scanned": max(0, self.available - self.selected),
+            "scanned_without_usable_data": max(0, self.selected - self.usable),
+        }
 
     def summary(self) -> dict[str, Any]:
         summary = {
@@ -578,9 +761,12 @@ class Outcome:
             "usable": self.usable,
             "available": self.available,
             "selected": self.selected,
+            "coverage": self.coverage(),
             "failure_diagnostics": self.failure_diagnostics,
             "unavailable_diagnostics": self.unavailable_diagnostics,
         }
+        if self.policy:
+            summary["policy"] = self.policy
         if self.follower_usable is not None:
             summary["follower_usable"] = self.follower_usable
         return summary
@@ -668,6 +854,401 @@ def parallel_collect(
     )
 
 
+def parse_source_date(value: Any) -> dt.date | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return dt.date.fromisoformat(text[:10])
+    except ValueError:
+        return None
+
+
+def stable_rotation_bucket(value: str, buckets: int = TRACK_ROTATION_BUCKETS) -> int:
+    bucket_count = max(1, buckets)
+    digest = hashlib.sha256(value.encode("utf-8")).digest()
+    return int.from_bytes(digest[:8], "big") % bucket_count
+
+
+def read_priority_artist_references(path: Path | None) -> tuple[set[str], set[str]]:
+    """Read the server-known Selection cohort without inferring browser-only CRM state."""
+
+    if path is None or not path.exists():
+        return set(), set()
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SoundchartsError(f"{path} contains invalid priority artist data") from exc
+    rows = payload.get("artists") if isinstance(payload, dict) else None
+    if not isinstance(rows, list):
+        raise SoundchartsError(f"{path} does not contain an artists list")
+    spotify_ids: set[str] = set()
+    soundcharts_uuids: set[str] = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        spotify_id = str(row.get("spotify_id") or "").strip()
+        soundcharts_uuid = str(row.get("soundcharts_uuid") or "").strip()
+        if spotify_id:
+            spotify_ids.add(spotify_id)
+        if soundcharts_uuid:
+            soundcharts_uuids.add(soundcharts_uuid)
+    return spotify_ids, soundcharts_uuids
+
+
+def _artist_references(value: Any) -> tuple[set[str], set[str]]:
+    spotify_ids: set[str] = set()
+    soundcharts_uuids: set[str] = set()
+    if not isinstance(value, list):
+        return spotify_ids, soundcharts_uuids
+    for artist in value:
+        if not isinstance(artist, dict):
+            continue
+        spotify_id = str(artist.get("spotify_id") or "").strip()
+        soundcharts_uuid = str(artist.get("soundcharts_uuid") or "").strip()
+        if spotify_id:
+            spotify_ids.add(spotify_id)
+        if soundcharts_uuid:
+            soundcharts_uuids.add(soundcharts_uuid)
+    return spotify_ids, soundcharts_uuids
+
+
+def build_track_maintenance_metadata(payload: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+    """Index only source-backed fields that are useful to the maintenance scheduler."""
+
+    metadata: dict[str, dict[str, Any]] = {}
+
+    def merge_row(row: list[Any], schema: list[str], *, strict: bool = False, opportunity: bool = False) -> None:
+        spotify_id = str(field(row, schema, "spotify_id") or "").strip()
+        if not spotify_id:
+            return
+        target = metadata.setdefault(
+            spotify_id,
+            {
+                "artist_spotify_ids": set(),
+                "artist_soundcharts_uuids": set(),
+            },
+        )
+        release_date = parse_source_date(field(row, schema, "release_date"))
+        if release_date is not None:
+            target["release_date"] = release_date
+        artist_ids, artist_uuids = _artist_references(field(row, schema, "artists"))
+        artist_spotify_id = str(field(row, schema, "artist_spotify_id") or "").strip()
+        artist_soundcharts_uuid = str(field(row, schema, "artist_soundcharts_uuid") or "").strip()
+        if artist_spotify_id:
+            artist_ids.add(artist_spotify_id)
+        if artist_soundcharts_uuid:
+            artist_uuids.add(artist_soundcharts_uuid)
+        target["artist_spotify_ids"].update(artist_ids)
+        target["artist_soundcharts_uuids"].update(artist_uuids)
+        target["strict"] = bool(target.get("strict") or strict)
+        target["opportunity"] = bool(target.get("opportunity") or opportunity)
+
+    discovery = payload.get("discovery_catalogue")
+    if isinstance(discovery, Mapping):
+        schema = discovery.get("track_schema")
+        rows = discovery.get("tracks")
+        if isinstance(schema, list) and isinstance(rows, list):
+            for row in rows:
+                if isinstance(row, list):
+                    merge_row(row, schema)
+
+    schemas = payload.get("schemas") if isinstance(payload.get("schemas"), Mapping) else {}
+    track_schema = schemas.get("tracks") if isinstance(schemas.get("tracks"), list) else []
+    tracks = payload.get("tracks") if isinstance(payload.get("tracks"), list) else []
+    for row in tracks:
+        if isinstance(row, list):
+            merge_row(row, track_schema, strict=True)
+
+    opportunity_schema = schemas.get("opportunities") if isinstance(schemas.get("opportunities"), list) else []
+    opportunities = payload.get("opportunities") if isinstance(payload.get("opportunities"), list) else []
+    for row in opportunities:
+        if isinstance(row, list):
+            merge_row(row, opportunity_schema, opportunity=True)
+    return metadata
+
+
+def track_history_signals(entry: Mapping[str, Any], today: dt.date) -> dict[str, Any]:
+    history = normalize_history(entry.get("history"))
+    if not history:
+        return {
+            "true_points": 0,
+            "latest_total": None,
+            "velocity_7d": None,
+            "acceleration_7d": None,
+            "anomaly_or_acceleration": False,
+            "observed_at": str(entry.get("maintenance_last_attempt_at") or entry.get("observed_at") or ""),
+        }
+    by_day = {dt.date.fromisoformat(day): int(value) for day, value in history}
+    latest_day = max(by_day)
+    latest_total = by_day[latest_day]
+
+    def delta(days: int) -> int | None:
+        prior = by_day.get(latest_day - dt.timedelta(days=days))
+        return latest_total - prior if prior is not None else None
+
+    velocity_7d = delta(7)
+    previous_7d = None
+    previous_start = by_day.get(latest_day - dt.timedelta(days=14))
+    previous_end = by_day.get(latest_day - dt.timedelta(days=7))
+    if previous_start is not None and previous_end is not None:
+        previous_7d = previous_end - previous_start
+    acceleration_7d = velocity_7d - previous_7d if velocity_7d is not None and previous_7d is not None else None
+
+    latest_1d = delta(1)
+    prior_daily: list[int] = []
+    for offset in range(2, 9):
+        end_value = by_day.get(latest_day - dt.timedelta(days=offset - 1))
+        start_value = by_day.get(latest_day - dt.timedelta(days=offset))
+        if end_value is not None and start_value is not None:
+            prior_daily.append(end_value - start_value)
+    spike = False
+    if latest_1d is not None and prior_daily:
+        median_prior = statistics.median(abs(value) for value in prior_daily)
+        spike = latest_1d < 0 or (
+            latest_1d >= 1_000 and latest_1d > max(1, median_prior) * 3
+        )
+    accelerating = bool(
+        acceleration_7d is not None
+        and acceleration_7d > 0
+        and (previous_7d is None or acceleration_7d >= max(1_000, abs(previous_7d) * 0.25))
+    )
+    return {
+        "true_points": len(history),
+        "latest_total": latest_total,
+        "velocity_7d": velocity_7d,
+        "acceleration_7d": acceleration_7d,
+        "anomaly_or_acceleration": bool(
+            (spike or accelerating) and latest_day >= today - dt.timedelta(days=8)
+        ),
+        "observed_at": str(entry.get("maintenance_last_attempt_at") or entry.get("observed_at") or ""),
+        "latest_day": latest_day,
+        "history_is_current": latest_day >= today - dt.timedelta(days=8),
+    }
+
+
+def plan_track_maintenance(
+    tasks: list[dict[str, Any]],
+    store: Mapping[str, Any],
+    metadata: Mapping[str, Mapping[str, Any]],
+    budget: int,
+    *,
+    today: dt.date,
+    priority_artist_ids: set[str] | None = None,
+    priority_artist_uuids: set[str] | None = None,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Build a bounded, deterministic daily plan before any track API call."""
+
+    priority_artist_ids = priority_artist_ids or set()
+    priority_artist_uuids = priority_artist_uuids or set()
+    daily_bucket = today.toordinal() % TRACK_ROTATION_BUCKETS
+    profiles: list[dict[str, Any]] = []
+    reason_names = (
+        "selection_or_negotiation",
+        "opportunity",
+        "published_strict",
+        "needs_two_true_points",
+        "release_90d",
+        "anomaly_or_acceleration",
+        "velocity_or_recency",
+        "weekly_rotation",
+        "capacity_fill",
+    )
+
+    for task in tasks:
+        reasons: set[str] = set()
+        task_velocity: int | None = None
+        task_total: int | None = None
+        task_release: dt.date | None = None
+        oldest_observed = ""
+        stable_key = str(task.get("uuid") or "")
+        for target in task.get("targets", []):
+            spotify_id = str(target.get("spotify_id") or "").strip()
+            key = spotify_id or f"soundcharts:{stable_key}"
+            entry = store.get(key) if isinstance(store.get(key), Mapping) else {}
+            signals = track_history_signals(entry, today)
+            info = metadata.get(spotify_id) if spotify_id else None
+            info = info if isinstance(info, Mapping) else {}
+            artist_ids = info.get("artist_spotify_ids") if isinstance(info.get("artist_spotify_ids"), set) else set()
+            artist_uuids = info.get("artist_soundcharts_uuids") if isinstance(info.get("artist_soundcharts_uuids"), set) else set()
+            if artist_ids.intersection(priority_artist_ids) or artist_uuids.intersection(priority_artist_uuids):
+                reasons.add("selection_or_negotiation")
+            if info.get("opportunity"):
+                reasons.add("opportunity")
+            if info.get("strict") or isinstance(target.get("row"), list):
+                reasons.add("published_strict")
+            if int(signals.get("true_points") or 0) < 2:
+                reasons.add("needs_two_true_points")
+            release_date = info.get("release_date") if isinstance(info.get("release_date"), dt.date) else None
+            if release_date is not None:
+                age_days = (today - release_date).days
+                if 0 <= age_days <= RECENT_RELEASE_DAYS:
+                    reasons.add("release_90d")
+                if task_release is None or release_date > task_release:
+                    task_release = release_date
+            if signals.get("anomaly_or_acceleration"):
+                reasons.add("anomaly_or_acceleration")
+            velocity = signals.get("velocity_7d")
+            if isinstance(velocity, int) and (task_velocity is None or velocity > task_velocity):
+                task_velocity = velocity
+            total = signals.get("latest_total")
+            if isinstance(total, int) and (task_total is None or total > task_total):
+                task_total = total
+            observed = str(signals.get("observed_at") or "")
+            if not oldest_observed or observed < oldest_observed:
+                oldest_observed = observed
+
+        bucket = stable_rotation_bucket(stable_key)
+        mandatory = bool(
+            reasons.intersection(
+                {
+                    "selection_or_negotiation",
+                    "opportunity",
+                    "published_strict",
+                    "needs_two_true_points",
+                    "release_90d",
+                    "anomaly_or_acceleration",
+                }
+            )
+        )
+        profiles.append(
+            {
+                "task": task,
+                "stable_key": stable_key,
+                "reasons": reasons,
+                "mandatory": mandatory,
+                "velocity_7d": task_velocity,
+                "latest_total": task_total,
+                "release_date": task_release,
+                "observed_at": oldest_observed,
+                "bucket": bucket,
+            }
+        )
+
+    def mandatory_key(profile: Mapping[str, Any]) -> tuple[Any, ...]:
+        reasons = profile["reasons"]
+        return (
+            0 if "selection_or_negotiation" in reasons else 1,
+            0 if "opportunity" in reasons else 1,
+            0 if "published_strict" in reasons else 1,
+            0 if "needs_two_true_points" in reasons else 1,
+            0 if "release_90d" in reasons else 1,
+            0 if "anomaly_or_acceleration" in reasons else 1,
+            profile["observed_at"],
+            profile["stable_key"],
+        )
+
+    def velocity_key(profile: Mapping[str, Any]) -> tuple[Any, ...]:
+        release = profile["release_date"]
+        return (
+            -(profile["velocity_7d"] if isinstance(profile["velocity_7d"], int) else -1),
+            -(release.toordinal() if isinstance(release, dt.date) else -1),
+            -(profile["latest_total"] if isinstance(profile["latest_total"], int) else -1),
+            profile["stable_key"],
+        )
+
+    def rotation_key(profile: Mapping[str, Any]) -> tuple[Any, ...]:
+        return (
+            profile["observed_at"],
+            -(profile["velocity_7d"] if isinstance(profile["velocity_7d"], int) else -1),
+            profile["stable_key"],
+        )
+
+    cap = max(0, min(budget, len(profiles)))
+    mandatory = sorted((profile for profile in profiles if profile["mandatory"]), key=mandatory_key)
+    selected: list[dict[str, Any]] = mandatory[:cap]
+    selected_keys = {profile["stable_key"] for profile in selected}
+    remaining_slots = cap - len(selected)
+
+    nonmandatory = [profile for profile in profiles if profile["stable_key"] not in selected_keys]
+    due_rotation = sorted(
+        (profile for profile in nonmandatory if profile["bucket"] == daily_bucket),
+        key=rotation_key,
+    )
+    for profile in due_rotation:
+        profile["reasons"].add("weekly_rotation")
+
+    # Weekly coverage wins over opportunistic hot-track refreshes. When a due
+    # bucket is overloaded, oldest observed_at values win; successful rows are
+    # timestamped by the collector, so missed rows age to the front next time.
+    rotation_selected = due_rotation[:remaining_slots]
+    selected.extend(rotation_selected)
+    selected_keys.update(profile["stable_key"] for profile in rotation_selected)
+
+    remaining_slots = cap - len(selected)
+    velocity_candidates = sorted(
+        (
+            profile
+            for profile in nonmandatory
+            if profile["stable_key"] not in selected_keys
+            if isinstance(profile["velocity_7d"], int) or isinstance(profile["release_date"], dt.date)
+        ),
+        key=velocity_key,
+    )
+    for profile in velocity_candidates:
+        profile["reasons"].add("velocity_or_recency")
+    velocity_selected = velocity_candidates[:remaining_slots]
+    selected.extend(velocity_selected)
+    selected_keys.update(profile["stable_key"] for profile in velocity_selected)
+
+    remaining_slots = cap - len(selected)
+    if remaining_slots:
+        capacity_selected = sorted(
+            (profile for profile in nonmandatory if profile["stable_key"] not in selected_keys),
+            key=rotation_key,
+        )[:remaining_slots]
+        for profile in capacity_selected:
+            profile["reasons"].add("capacity_fill")
+        selected.extend(capacity_selected)
+        selected_keys.update(profile["stable_key"] for profile in capacity_selected)
+
+    selected_reason_counts = {
+        reason: sum(reason in profile["reasons"] for profile in selected) for reason in reason_names
+    }
+    expected_reason_counts = {
+        reason: sum(reason in profile["reasons"] for profile in profiles) for reason in reason_names
+    }
+    bucket_coverage = {
+        str(bucket): {
+            "expected_requests": sum(profile["bucket"] == bucket for profile in profiles),
+            "selected_requests": sum(profile["bucket"] == bucket for profile in selected),
+        }
+        for bucket in range(TRACK_ROTATION_BUCKETS)
+    }
+    selected_velocities = [
+        profile["velocity_7d"]
+        for profile in selected
+        if "velocity_or_recency" in profile["reasons"] and isinstance(profile["velocity_7d"], int)
+    ]
+    policy = {
+        "version": TRACK_MAINTENANCE_POLICY_VERSION,
+        "selection_mode": "adaptive_daily",
+        "request_cap": budget,
+        "expected_requests": len(profiles),
+        "selected_requests": len(selected),
+        "missing_requests": max(0, len(profiles) - len(selected)),
+        "mandatory_requests": len(mandatory),
+        "mandatory_selected": sum(profile["mandatory"] for profile in selected),
+        "daily_rotation_bucket": daily_bucket,
+        "rotation_bucket_count": TRACK_ROTATION_BUCKETS,
+        "weekly_due_requests": len(due_rotation),
+        "weekly_selected_requests": len(rotation_selected),
+        "weekly_missing": max(0, len(due_rotation) - len(rotation_selected)),
+        "weekly_missing_requests": max(0, len(due_rotation) - len(rotation_selected)),
+        "velocity_cutoff_7d": min(selected_velocities) if selected_velocities else None,
+        "reason_coverage": {
+            reason: {
+                "expected_requests": expected_reason_counts[reason],
+                "selected_requests": selected_reason_counts[reason],
+                "missing_requests": max(0, expected_reason_counts[reason] - selected_reason_counts[reason]),
+            }
+            for reason in reason_names
+        },
+        "rotation_coverage": bucket_coverage,
+    }
+    return [profile["task"] for profile in selected], policy
+
+
 def refresh_tracks(
     payload: dict[str, Any],
     performance: dict[str, Any],
@@ -677,6 +1258,8 @@ def refresh_tracks(
     history_days: int,
     *,
     include_performance_catalogue: bool = False,
+    priority_artist_ids: set[str] | None = None,
+    priority_artist_uuids: set[str] | None = None,
 ) -> Outcome:
     schema, rows = ensure_schema_fields(
         payload,
@@ -737,13 +1320,52 @@ def refresh_tracks(
                 continue
             add_target(uuid, spotify_id, None, performance_only=True)
 
-    # One Soundcharts song request contains every Spotify plot/alias. Keep
-    # strict UUID groups first, but count catalogue coverage by Spotify entity.
+    # One Soundcharts song request contains every Spotify plot/alias. Plan the
+    # complete request set before the first data call, then select an explicit
+    # daily cohort under the local and server-side quota caps.
     tasks = list(tasks_by_uuid.values())
     available_entities = sum(len(task["targets"]) for task in tasks)
-    selected_entities = sum(len(task["targets"]) for task in tasks[: max(0, budget)])
+    safe_budget = max(0, budget)
+    available_budget = getattr(client, "available_request_budget", None)
+    if callable(available_budget):
+        safe_budget = available_budget(safe_budget)
+    planning_budget = safe_budget
+    if len(tasks) >= safe_budget > 0:
+        # The hard cap counts real HTTP attempts, including retries. Keep a
+        # small bounded margin so one transient 429/5xx cannot invalidate an
+        # otherwise useful 35k maintenance pass at the very last request.
+        retry_headroom = max(1, safe_budget // 50)
+        planning_budget = max(1, safe_budget - retry_headroom)
+    metadata = build_track_maintenance_metadata(payload)
+    selected_tasks, policy = plan_track_maintenance(
+        tasks,
+        store,
+        metadata,
+        planning_budget,
+        today=utc_today(),
+        priority_artist_ids=priority_artist_ids,
+        priority_artist_uuids=priority_artist_uuids,
+    )
+    selected_entities = sum(len(task["targets"]) for task in selected_tasks)
+    policy["requested_cap"] = max(0, budget)
+    policy["safe_preflight_cap"] = safe_budget
+    policy["planned_data_call_cap"] = planning_budget
+    policy["retry_headroom_requests"] = max(0, safe_budget - planning_budget)
+    policy["expected_entities"] = available_entities
+    policy["selected_entities"] = selected_entities
+    policy["missing_entities_before_collection"] = max(0, available_entities - selected_entities)
+    print(json.dumps({"track_maintenance_preflight": policy}, ensure_ascii=False))
 
     outcome = Outcome("tracks")
+    outcome.policy = policy
+    attempted_at = utc_now()
+    for task in selected_tasks:
+        for target in task.get("targets", []):
+            spotify_id = str(target.get("spotify_id") or "").strip()
+            key = spotify_id or f"soundcharts:{task['uuid']}"
+            entry = store.get(key)
+            if isinstance(entry, dict):
+                entry["maintenance_last_attempt_at"] = attempted_at
     (
         results,
         outcome.requests,
@@ -754,7 +1376,7 @@ def refresh_tracks(
         outcome.failure_diagnostics,
         outcome.unavailable_diagnostics,
     ) = parallel_collect(
-        client, tasks, workers=workers, max_requests=budget
+        client, selected_tasks, workers=workers, max_requests=len(selected_tasks)
     )
     outcome.available = available_entities
     outcome.selected = selected_entities
@@ -788,6 +1410,7 @@ def refresh_tracks(
             entry["history"] = merge_history(entry.get("history"), points)
             entry["soundcharts_uuid"] = task["uuid"]
             entry["observed_at"] = now
+            entry["maintenance_last_attempt_at"] = attempted_at
             entry["cadence_days"] = 1
             entry["source"] = "soundcharts_song_audience_spotify"
 
@@ -1166,21 +1789,27 @@ def merge_performance_freshness(
         "tracks_at": now if outcomes.get("tracks") and outcomes["tracks"].usable else current.get("tracks_at") or old.get("tracks_at"),
         "artists_at": now if outcomes.get("artists") and outcomes["artists"].usable else current.get("artists_at") or old.get("artists_at"),
         "playlists_at": now if playlist_complete else old.get("playlists_at"),
-        # These dedicated timestamps prove that the complete existing
-        # performance catalogue was selected. A focused strict-row refresh
-        # must not postpone the next daily catalogue pass.
+        # These dedicated timestamps prove that the scheduled catalogue
+        # maintenance pass ran. Artists remain complete; tracks may use the
+        # explicit adaptive coverage recorded in maintenance_coverage.
         "tracks_catalogue_at": old.get("tracks_catalogue_at"),
         "artists_catalogue_at": old.get("artists_catalogue_at"),
     }
     if include_performance_catalogue:
         for mode in ("tracks", "artists"):
             outcome = outcomes.get(mode)
+            adaptive_track_pass = bool(
+                mode == "tracks"
+                and outcome
+                and outcome.policy.get("selection_mode") == "adaptive_daily"
+                and outcome.selected > 0
+            )
             if (
                 outcome
                 and outcome.usable > 0
                 and outcome.failures == 0
                 and outcome.available > 0
-                and outcome.selected == outcome.available
+                and (outcome.selected == outcome.available or adaptive_track_pass)
             ):
                 merged[f"{mode}_catalogue_at"] = now
     return merged
@@ -1252,6 +1881,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Refresh existing performance-only UUIDs without promoting them into the public Soundcharts export",
     )
+    parser.add_argument(
+        "--priority-artists",
+        type=Path,
+        default=Path("spotify-selection-artist-seeds.json"),
+        help="Server-known Selection artists that must win over routine catalogue rotation",
+    )
     parser.add_argument("--soundcharts", type=Path, default=Path("Spotify_Soundcharts_data.js"))
     parser.add_argument("--performance", type=Path, default=Path("Spotify_Performance_data.js"))
     parser.add_argument(
@@ -1281,6 +1916,15 @@ def main() -> int:
         return 0
 
     performance = read_performance_payload(args.performance)
+    archived_track_history: dict[str, list[list[Any]]] = {}
+    storage_preflight: dict[str, Any] | None = None
+    if args.mode in {"full", "tracks"}:
+        archived_track_history = prune_track_histories_to_hot_window(performance)
+        storage_preflight = performance_storage_preflight(performance, payload, args.performance)
+        print(json.dumps({"performance_storage_preflight": storage_preflight}, ensure_ascii=False))
+    priority_artist_ids, priority_artist_uuids = read_priority_artist_references(
+        getattr(args, "priority_artists", Path("spotify-selection-artist-seeds.json"))
+    )
     remaining = max(1, args.max_requests)
     modes = [args.mode] if args.mode != "full" else ["tracks", "artists", "playlists", "fal"]
     outcomes: dict[str, Outcome] = {}
@@ -1297,6 +1941,8 @@ def main() -> int:
                 remaining,
                 args.history_days,
                 include_performance_catalogue=args.include_performance_catalogue,
+                priority_artist_ids=priority_artist_ids,
+                priority_artist_uuids=priority_artist_uuids,
             )
         elif mode == "artists":
             outcome = refresh_artists(
@@ -1325,7 +1971,10 @@ def main() -> int:
         print(json.dumps({mode: outcome.summary(), "remaining_budget": remaining}))
         if args.include_performance_catalogue and mode in {"tracks", "artists"}:
             incomplete = outcome.selected < outcome.available
-            if outcome.failures > 0 or incomplete:
+            adaptive_track_pass = bool(
+                mode == "tracks" and outcome.policy.get("selection_mode") == "adaptive_daily"
+            )
+            if outcome.failures > 0 or (incomplete and not adaptive_track_pass):
                 # Fail before either export is written. The diagnostic is
                 # deliberately aggregate-only: no request URL, entity ID,
                 # credential or response body can reach the Actions log.
@@ -1384,6 +2033,8 @@ def main() -> int:
         "auth_mode": client.auth_mode,
         "modes": {mode: outcome.summary() for mode, outcome in outcomes.items()},
     }
+    if storage_preflight is not None:
+        run_summary["storage_preflight"] = storage_preflight
     freshness["run"] = run_summary
 
     previous_performance_freshness = performance.get("freshness")
@@ -1397,7 +2048,25 @@ def main() -> int:
         include_performance_catalogue=args.include_performance_catalogue,
     )
     performance["run"] = run_summary
+    maintenance_coverage = performance.setdefault("maintenance_coverage", {})
+    if not isinstance(maintenance_coverage, dict):
+        maintenance_coverage = {}
+        performance["maintenance_coverage"] = maintenance_coverage
+    for mode in ("tracks", "artists", "playlists"):
+        outcome = outcomes.get(mode)
+        if outcome is None:
+            continue
+        maintenance_coverage[mode] = {
+            "observed_at": now,
+            **outcome.coverage(),
+            "policy": outcome.policy or None,
+        }
 
+    history_archive = write_track_history_archive(args.history_dir, archived_track_history)
+    if args.mode in {"full", "tracks"}:
+        run_summary["track_history_archive"] = history_archive
+        performance["run"] = run_summary
+        freshness["run"] = run_summary
     write_js_payload(args.soundcharts, payload, SOUNDCHARTS_PREFIX)
     write_js_payload(args.performance, performance, PERFORMANCE_PREFIX)
 

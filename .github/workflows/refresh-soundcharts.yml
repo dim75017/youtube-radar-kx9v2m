@@ -125,7 +125,7 @@ on:
         type: choice
         options: [strict_rebaseline, full_sync, dark_ambient, dark_ambient_catalogues, explicit_artists, classification, artists, playlist_covers, smoke]
       max_requests:
-        description: 'Data-call cap (full sync: 1-60000; classification: 1-8230; other scopes: 1-6000)'
+        description: 'Data-call cap (full sync: 1-35000; classification: 1-8230; other scopes: 1-6000)'
         required: true
         default: '6000'
         type: string
@@ -275,11 +275,13 @@ jobs:
           FRESHNESS_GATE: ${{ inputs.freshness_gate }}
         run: |
           artist_data_cap="350"
-          # Existing performance histories have their own daily budget. These
-          # caps are deliberately independent from the 6k discovery/expansion
-          # pass and currently cover the full ~3.4k artist / ~26.9k track set.
+          # Existing performance histories have their own daily budget. Track
+          # maintenance preflights the complete catalogue, then applies a
+          # deterministic adaptive priority/weekly rotation under this cap.
           performance_artist_data_cap="15000"
-          performance_track_data_cap="60000"
+          # 35k/day preserves the maintenance envelope through the next quota
+          # reset while the separate FAL scan consumes only its scan budget.
+          performance_track_data_cap="35000"
           # Enough for the entire public dashboard playlist set, while the
           # collector itself prioritizes those visible rows over backlog-only
           # discovery records.
@@ -329,7 +331,7 @@ jobs:
           performance_artists_due="false"
           pool_requests="$expansion_requests"
           if [[ "$scope" == "full_sync" ]]; then
-            # The all-track refresh has its own 60k cap.  Keep the guarded
+            # The adaptive track refresh has its own 35k cap. Keep the guarded
             # opportunity-pool expansion bounded so this maintenance run does
             # not repeatedly consume the same API budget for a second pass.
             pool_requests="$expansion_data_cap"
@@ -338,9 +340,10 @@ jobs:
             performance_artists_due="true"
           fi
           if [[ "${{ github.event_name }}" == "schedule" || ( "${{ github.event_name }}" == "workflow_dispatch" && "$FRESHNESS_GATE" == "true" && "$scope" == "strict_rebaseline" ) ]]; then
-            # A scheduled/watchdog repair is the authoritative daily pass for
-            # every known artist and track. Followers run only if their full
-            # Paris-day cohort is not already complete.
+            # A scheduled/watchdog repair is the authoritative daily maintenance
+            # pass. Tracks above the cap are covered by explicit priorities and
+            # a deterministic seven-day rotation. Followers run only if their
+            # full Paris-day cohort is not already complete.
             follower_schedule_arg=""
             if [[ "${{ github.event_name }}" == "schedule" ]]; then follower_schedule_arg="--scheduled-check"; fi
             playlist_followers_due="$(python data_freshness_watchdog.py --target spotify_followers $follower_schedule_arg --print-due)"
@@ -652,7 +655,7 @@ jobs:
           --include-performance-catalogue
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
 
-      - name: Refresh the complete performance track catalogue every 24 hours
+      - name: Refresh adaptive performance track coverage every 24 hours
         if: steps.plan.outputs.scope == 'full_sync' || (steps.plan.outputs.scope == 'strict_rebaseline' && steps.plan.outputs.performance_tracks_due == 'true')
         env:
           PYTHONUNBUFFERED: '1'
@@ -666,6 +669,7 @@ jobs:
           --max-requests "${{ steps.plan.outputs.performance_track_requests }}"
           --history-days 90
           --include-performance-catalogue
+          --priority-artists spotify-selection-artist-seeds.json
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
 
       - name: Classify pending playlist tracks from exact Soundcharts song genres

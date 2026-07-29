@@ -2,9 +2,10 @@ name: Scan Soundcharts Fans Also Like phase 1
 
 on:
   schedule:
-    # Resume the large staging scan four times a day. The odd minute avoids
-    # GitHub Actions' congested top-of-hour scheduling window.
-    - cron: '23 */6 * * *'
+    # Four accelerated windows avoid the 04:17 daily refresh and the 06:47 /
+    # 18:47 playlist collectors. A 2-hour cron is unsafe: GitHub concurrency
+    # keeps only one pending job, so a new FAL batch could replace maintenance.
+    - cron: '23 0,10,14,20 * * *'
   workflow_dispatch:
     inputs:
       max_requests:
@@ -30,14 +31,18 @@ jobs:
   phase1:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 310
+    # The 2.9M-track v1 state took about 2h45 including compression/upload.
+    # Keep enough time for a bounded scan plus a recoverable private checkpoint.
+    timeout-minutes: 360
     env:
-      STATE_ARTIFACT: soundcharts-fal-phase1-state
+      STATE_ARTIFACT: soundcharts-fal-phase1-state-v2
+      CONTROL_ARTIFACT: soundcharts-fal-phase1-control-v2
+      LEGACY_STATE_ARTIFACT: soundcharts-fal-phase1-state
       COHORT_SNAPSHOT: Spotify_Soundcharts_data_20260721T181420Z.js
       QUOTA_RESERVE: '500000'
-      EXPECTED_SEEDS: '4186'
-      MIN_SEEDS: '4186'
-      MAX_SEEDS: '4186'
+      MAINTENANCE_DAILY_REQUESTS: '60000'
+      MIN_RESOLVED_SEEDS: '4500'
+      MAX_RESOLVED_SEEDS: '7000'
       WORKERS: '10'
 
     steps:
@@ -54,13 +59,15 @@ jobs:
         shell: bash
         run: |
           echo "STATE_DIR=$RUNNER_TEMP/soundcharts-fal-phase1" >> "$GITHUB_ENV"
-          echo "STATE_DB=$RUNNER_TEMP/soundcharts-fal-phase1/soundcharts-fal-phase1-staging.sqlite3" >> "$GITHUB_ENV"
-          echo "REPORT_JSON=$RUNNER_TEMP/soundcharts-fal-phase1/soundcharts-fal-phase1-report.json" >> "$GITHUB_ENV"
+          echo "STATE_DB=$RUNNER_TEMP/soundcharts-fal-phase1/soundcharts-fal-phase1-staging-v2.sqlite3" >> "$GITHUB_ENV"
+          echo "REPORT_JSON=$RUNNER_TEMP/soundcharts-fal-phase1/soundcharts-fal-phase1-report-v2.json" >> "$GITHUB_ENV"
+          echo "SEED_LEDGER=$RUNNER_TEMP/soundcharts-fal-phase1/soundcharts-fal-seed-ledger-v2.json" >> "$GITHUB_ENV"
 
       - name: Validate FAL scanner and workflow guardrails
         run: |
-          python -m py_compile scan_soundcharts_fal_phase1.py
+          python -m py_compile build_soundcharts_fal_seed_ledger.py scan_soundcharts_fal_phase1.py
           python -m unittest \
+            tests/test_build_soundcharts_fal_seed_ledger.py \
             tests/test_scan_soundcharts_fal_phase1.py \
             tests/test_soundcharts_fal_workflow_guardrails.py \
             -v
@@ -78,28 +85,163 @@ jobs:
           fi
           echo "max_requests=$max_requests" >> "$GITHUB_OUTPUT"
 
-      - name: Restore the latest private FAL staging checkpoint
+      - name: Resolve the current strict snapshot without replacing historical state
+        id: active_snapshot
+        shell: bash
+        run: |
+          test -s "$COHORT_SNAPSHOT"
+          active_snapshot="$(python prepare_soundcharts_snapshot.py current --index spotify/index.html)"
+          test -s "$active_snapshot"
+          echo "path=$active_snapshot" >> "$GITHUB_OUTPUT"
+          echo "Using historical snapshot $COHORT_SNAPSHOT for dedup and current strict snapshot $active_snapshot for ledger input"
+
+      - name: Build the deterministic canonical accepted seed ledger
+        shell: bash
+        run: |
+          python build_soundcharts_fal_seed_ledger.py \
+            --active-snapshot "${{ steps.active_snapshot.outputs.path }}" \
+            --browse-catalogue Spotify_Browse_Catalogue_data.js \
+            --performance Spotify_Performance_data.js \
+            --output "$SEED_LEDGER" \
+            --min-resolved "$MIN_RESOLVED_SEEDS" \
+            --max-resolved "$MAX_RESOLVED_SEEDS"
+          test -s "$SEED_LEDGER"
+
+      - name: Skip the huge checkpoint when completed coverage is unchanged
+        id: completion_control
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          echo "no_op=false" >> "$GITHUB_OUTPUT"
+          control_api="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${CONTROL_ARTIFACT}&per_page=100"
+          listing="$RUNNER_TEMP/soundcharts-fal-phase1-control-artifacts.json"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "$control_api" --output "$listing"
+          control_selected="$(jq -c \
+            '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last // empty' \
+            "$listing")"
+          control_url="$(jq -r '.archive_download_url // empty' <<<"$control_selected")"
+          if [[ -z "$control_url" ]]; then
+            echo "No v2 completion control yet; the resumable state must be restored"
+            exit 0
+          fi
+          control_created="$(jq -r '.created_at // ""' <<<"$control_selected")"
+          legacy_listing="$RUNNER_TEMP/soundcharts-fal-phase1-legacy-control-check.json"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${LEGACY_STATE_ARTIFACT}&per_page=100" \
+            --output "$legacy_listing"
+          latest_legacy_created="$(jq -r \
+            '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .created_at // empty' \
+            "$legacy_listing")"
+          if [[ -n "$latest_legacy_created" && "$latest_legacy_created" > "$control_created" ]]; then
+            echo "A legacy v1 checkpoint is newer than completion control; refusing a no-op"
+            exit 0
+          fi
+          control_dir="$RUNNER_TEMP/soundcharts-fal-phase1-control"
+          control_zip="$RUNNER_TEMP/soundcharts-fal-phase1-control.zip"
+          mkdir -p "$control_dir"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "$control_url" --output "$control_zip"
+          unzip -o -q "$control_zip" -d "$control_dir"
+          previous_report="$(find "$control_dir" -type f -name 'soundcharts-fal-phase1-report-v2.json' -print -quit)"
+          previous_ledger="$(find "$control_dir" -type f -name 'soundcharts-fal-seed-ledger-v2.json' -print -quit)"
+          if [[ -z "$previous_report" || -z "$previous_ledger" ]]; then
+            echo "Completion control is incomplete; the resumable state must be restored"
+            exit 0
+          fi
+          python - "$SEED_LEDGER" "$previous_ledger" "$previous_report" "$REPORT_JSON" "$GITHUB_OUTPUT" <<'PY'
+          import json
+          import shutil
+          import sys
+          from pathlib import Path
+
+          current = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          previous = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+          report = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
+          unchanged = bool(
+              current.get("cohort_hash")
+              and current.get("cohort_hash") == previous.get("cohort_hash")
+              and report.get("complete") is True
+              and report.get("status") == "complete"
+              and report.get("staging_only") is True
+              and report.get("canonical_written") is False
+          )
+          if unchanged:
+              shutil.copy2(sys.argv[3], sys.argv[4])
+              with Path(sys.argv[5]).open("a", encoding="utf-8") as output:
+                  output.write("no_op=true\n")
+              print("Completed FAL coverage and seed ledger are unchanged; skipped the multi-GB state download")
+          else:
+              print("FAL coverage or seed ledger changed; restoring the resumable state")
+          PY
+
+      - name: Restore v2 or migrate the newest private v1 FAL checkpoint
+        id: restore_state
+        if: steps.completion_control.outputs.no_op != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           mkdir -p "$STATE_DIR"
-          state_api="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${STATE_ARTIFACT}&per_page=100"
-          state_url="$(curl --fail --silent --show-error --location \
-            --header "Authorization: Bearer $GH_TOKEN" \
-            --header "X-GitHub-Api-Version: 2022-11-28" \
-            "$state_api" | jq -r \
-            '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .archive_download_url // empty')"
-          if [[ -z "$state_url" ]]; then
-            echo "No prior FAL phase-1 checkpoint; initializing a separate staging database"
-            exit 0
+          latest_artifact() {
+            local artifact_name="$1"
+            local listing="$RUNNER_TEMP/${artifact_name}-artifacts.json"
+            curl --fail --silent --show-error --location \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${artifact_name}&per_page=100" \
+              --output "$listing"
+            jq -c '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last // empty' "$listing"
+          }
+
+          latest_v2="$(latest_artifact "$STATE_ARTIFACT")"
+          latest_v1="$(latest_artifact "$LEGACY_STATE_ARTIFACT")"
+          selected="$latest_v2"
+          bootstrap="v2"
+          if [[ -z "$latest_v2" || "$latest_v2" == "null" ]]; then
+            selected="$latest_v1"
+            bootstrap="v1"
+          elif [[ -n "$latest_v1" && "$latest_v1" != "null" ]]; then
+            v2_created="$(jq -r '.created_at // ""' <<<"$latest_v2")"
+            v1_created="$(jq -r '.created_at // ""' <<<"$latest_v1")"
+            if [[ "$v1_created" > "$v2_created" ]]; then
+              echo "A newer legacy v1 checkpoint exists; refusing to ignore or overwrite it" >&2
+              exit 1
+            fi
           fi
-          archive="$RUNNER_TEMP/soundcharts-fal-phase1-state.zip"
+          if [[ -z "$selected" || "$selected" == "null" ]]; then
+            echo "No non-expired v2 or v1 FAL checkpoint; refusing a silent reset" >&2
+            exit 1
+          fi
+          state_url="$(jq -r '.archive_download_url // empty' <<<"$selected")"
+          selected_run_id="$(jq -r '.workflow_run.id // "unknown"' <<<"$selected")"
+          selected_created_at="$(jq -r '.created_at // "unknown"' <<<"$selected")"
+          test -n "$state_url"
+          echo "Selected newest non-expired $bootstrap checkpoint from run $selected_run_id ($selected_created_at)"
+
+          archive="$RUNNER_TEMP/soundcharts-fal-phase1-${bootstrap}-state.zip"
           curl --fail --silent --show-error --location \
             --header "Authorization: Bearer $GH_TOKEN" \
             --header "X-GitHub-Api-Version: 2022-11-28" \
             "$state_url" --output "$archive"
-          unzip -o -q "$archive" -d "$STATE_DIR"
+          if [[ "$bootstrap" == "v2" ]]; then
+            unzip -o -q "$archive" -d "$STATE_DIR"
+          else
+            legacy_dir="$RUNNER_TEMP/soundcharts-fal-phase1-v1-bootstrap"
+            mkdir -p "$legacy_dir"
+            unzip -o -q "$archive" -d "$legacy_dir"
+            legacy_db="$(find "$legacy_dir" -type f -name 'soundcharts-fal-phase1-staging.sqlite3' -print -quit)"
+            test -n "$legacy_db"
+            test -s "$legacy_db"
+            cp "$legacy_db" "$STATE_DB"
+          fi
           test -s "$STATE_DB"
           python - "$STATE_DB" <<'PY'
           import sqlite3
@@ -109,24 +251,22 @@ jobs:
               result = database.execute("PRAGMA quick_check").fetchone()
           if not result or result[0] != "ok":
               raise SystemExit(f"Invalid restored FAL staging database: {result!r}")
+          counts = {
+              table: database.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+              for table in ("seeds", "candidates", "tracks")
+          }
+          print(f"Restored FAL staging rows without reset: {counts}")
           PY
-          echo "Restored the latest valid FAL phase-1 staging checkpoint"
-
-      - name: Validate the audited cohort and resolve current known identities
-        id: active_snapshot
-        shell: bash
-        run: |
-          test -s "$COHORT_SNAPSHOT"
-          active_snapshot="$(python prepare_soundcharts_snapshot.py current --index spotify/index.html)"
-          test -s "$active_snapshot"
-          echo "path=$active_snapshot" >> "$GITHUB_OUTPUT"
-          echo "Using audited cohort $COHORT_SNAPSHOT and current known-identity snapshot $active_snapshot"
+          echo "STATE_BOOTSTRAP_SOURCE=$bootstrap" >> "$GITHUB_ENV"
+          echo "STATE_BOOTSTRAP_RUN_ID=$selected_run_id" >> "$GITHUB_ENV"
 
       - name: Inspect or initialize staging without Soundcharts authentication
+        if: steps.completion_control.outputs.no_op != 'true'
         shell: bash
         run: >-
           python scan_soundcharts_fal_phase1.py
           --seed-snapshot "$COHORT_SNAPSHOT"
+          --seed-ledger "$SEED_LEDGER"
           --active-snapshot "${{ steps.active_snapshot.outputs.path }}"
           --browse-catalogue Spotify_Browse_Catalogue_data.js
           --performance Spotify_Performance_data.js
@@ -135,10 +275,10 @@ jobs:
           --report "$REPORT_JSON"
           --max-requests "${{ steps.plan.outputs.max_requests }}"
           --quota-reserve "$QUOTA_RESERVE"
-          --max-seeds "$MAX_SEEDS"
-          --min-seed-guard "$MIN_SEEDS"
-          --max-seed-guard "$MAX_SEEDS"
-          --seed-min-audience 50000
+          --maintenance-daily-requests "$MAINTENANCE_DAILY_REQUESTS"
+          --max-seeds "$MAX_RESOLVED_SEEDS"
+          --min-seed-guard "$MIN_RESOLVED_SEEDS"
+          --max-seed-guard "$MAX_RESOLVED_SEEDS"
           --candidate-min-audience 50000
           --workers "$WORKERS"
           --dry-run
@@ -156,28 +296,30 @@ jobs:
           report_path = Path(sys.argv[1])
           report = json.loads(report_path.read_text(encoding="utf-8"))
           cohort_size = int((report.get("cohort") or {}).get("frozen_seeds") or 0)
-          minimum = int(os.environ["MIN_SEEDS"])
-          maximum = int(os.environ["MAX_SEEDS"])
-          expected = int(os.environ["EXPECTED_SEEDS"])
-          if minimum != expected or maximum != expected:
-              raise SystemExit("FAL workflow cohort guard is not locked to the audited total")
-          if not minimum <= cohort_size <= maximum:
+          ledger = report.get("seed_ledger") or {}
+          resolved = int(ledger.get("resolved_uuid") or 0)
+          minimum = int(os.environ["MIN_RESOLVED_SEEDS"])
+          maximum = int(os.environ["MAX_RESOLVED_SEEDS"])
+          if not minimum <= resolved <= maximum:
               raise SystemExit(
-                  f"FAL seed cohort outside protected bounds: {cohort_size} not in [{minimum}, {maximum}]"
+                  f"FAL resolved ledger outside protected bounds: {resolved} not in [{minimum}, {maximum}]"
               )
+          if cohort_size < resolved:
+              raise SystemExit("Append-only FAL state contains fewer seeds than the current resolved ledger")
           complete = report.get("complete") is True
           if complete and report.get("status") != "complete":
               raise SystemExit("FAL report has an inconsistent completion status")
           with Path(sys.argv[2]).open("a", encoding="utf-8") as output:
               output.write(f"complete={'true' if complete else 'false'}\n")
               output.write(f"cohort_size={cohort_size}\n")
+              output.write(f"resolved_seeds={resolved}\n")
           print("FAL phase 1 is complete; no Soundcharts authentication is needed" if complete else "FAL phase 1 remains incomplete; starting the next bounded batch")
           PY
 
       - name: Resume Fans Also Like and discovered discographies in staging
         id: fal_scan
         if: steps.completion.outputs.complete != 'true'
-        timeout-minutes: 290
+        timeout-minutes: 270
         env:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
@@ -185,9 +327,11 @@ jobs:
           SOUNDCHARTS_TEAM_ID: dsomoguy-api
         shell: bash
         run: |
+          cp "$REPORT_JSON" "${REPORT_JSON}.preflight"
           rm -f "$REPORT_JSON"
           python scan_soundcharts_fal_phase1.py \
             --seed-snapshot "$COHORT_SNAPSHOT" \
+            --seed-ledger "$SEED_LEDGER" \
             --active-snapshot "${{ steps.active_snapshot.outputs.path }}" \
             --browse-catalogue Spotify_Browse_Catalogue_data.js \
             --performance Spotify_Performance_data.js \
@@ -196,10 +340,10 @@ jobs:
             --report "$REPORT_JSON" \
             --max-requests "${{ steps.plan.outputs.max_requests }}" \
             --quota-reserve "$QUOTA_RESERVE" \
-            --max-seeds "$MAX_SEEDS" \
-            --min-seed-guard "$MIN_SEEDS" \
-            --max-seed-guard "$MAX_SEEDS" \
-            --seed-min-audience 50000 \
+            --maintenance-daily-requests "$MAINTENANCE_DAILY_REQUESTS" \
+            --max-seeds "$MAX_RESOLVED_SEEDS" \
+            --min-seed-guard "$MIN_RESOLVED_SEEDS" \
+            --max-seed-guard "$MAX_RESOLVED_SEEDS" \
             --candidate-min-audience 50000 \
             --workers "$WORKERS"
 
@@ -207,40 +351,70 @@ jobs:
         if: always()
         env:
           SCAN_OUTCOME: ${{ steps.fal_scan.outcome }}
+          CHECKPOINT_NO_OP: ${{ steps.completion_control.outputs.no_op }}
         shell: bash
         run: |
+          report_missing=false
           if [[ ! -s "$REPORT_JSON" ]]; then
-            python - "$REPORT_JSON" "$SCAN_OUTCOME" <<'PY'
+            report_missing=true
+            if [[ -s "${REPORT_JSON}.preflight" ]]; then
+              cp "${REPORT_JSON}.preflight" "$REPORT_JSON"
+            fi
+          fi
+          python - "$REPORT_JSON" "$SCAN_OUTCOME" "$report_missing" <<'PY'
           import datetime as dt
           import json
+          import os
           import sys
           from pathlib import Path
 
-          Path(sys.argv[1]).write_text(
-              json.dumps(
-                  {
-                      "status": "runner_error",
-                      "complete": False,
-                      "runner_outcome": sys.argv[2] or "unknown",
-                      "observed_at": dt.datetime.now(dt.timezone.utc).isoformat(),
-                  },
-                  indent=2,
-                  sort_keys=True,
-              ) + "\n",
-              encoding="utf-8",
-          )
+          report_path = Path(sys.argv[1])
+          report = json.loads(report_path.read_text(encoding="utf-8")) if report_path.exists() else {}
+          if sys.argv[3] == "true":
+              report.update({
+                  "status": "runner_error",
+                  "complete": False,
+                  "runner_outcome": sys.argv[2] or "unknown",
+                  "observed_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+              })
+          no_op = os.environ.get("CHECKPOINT_NO_OP") == "true"
+          report["checkpoint"] = {
+              "source": "completion_control" if no_op else os.environ.get("STATE_BOOTSTRAP_SOURCE", "unavailable"),
+              "source_run_id": os.environ.get("STATE_BOOTSTRAP_RUN_ID") or None,
+              "large_state_download_skipped": no_op,
+          }
+          report_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
-          fi
 
       - name: Persist the private resumable FAL staging state
         id: state_upload
-        if: always()
+        if: >-
+          always() &&
+          steps.completion_control.outputs.no_op != 'true' &&
+          steps.restore_state.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: soundcharts-fal-phase1-state
+          name: soundcharts-fal-phase1-state-v2
           path: |
             ${{ env.STATE_DB }}
             ${{ env.REPORT_JSON }}
+            ${{ env.SEED_LEDGER }}
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 6
+
+      - name: Persist the small FAL completion control
+        id: control_upload
+        if: >-
+          always() &&
+          (steps.completion_control.outputs.no_op == 'true' ||
+           steps.state_upload.outcome == 'success')
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundcharts-fal-phase1-control-v2
+          path: |
+            ${{ env.REPORT_JSON }}
+            ${{ env.SEED_LEDGER }}
           if-no-files-found: error
           retention-days: 90
           compression-level: 9
@@ -267,6 +441,29 @@ jobs:
             --header "Authorization: Bearer $GH_TOKEN" \
             --header "X-GitHub-Api-Version: 2022-11-28" \
             "$state_api" --output "$artifacts"
+          mapfile -t stale_ids < <(jq -r \
+            '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[2:][] | .id' \
+            "$artifacts")
+          for artifact_id in "${stale_ids[@]}"; do
+            curl --fail --silent --show-error --location \
+              --request DELETE \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}"
+          done
+
+      - name: Keep only the two newest small FAL control artifacts
+        if: always() && steps.control_upload.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          control_api="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${CONTROL_ARTIFACT}&per_page=100"
+          artifacts="$RUNNER_TEMP/soundcharts-fal-phase1-control-cleanup.json"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "$control_api" --output "$artifacts"
           mapfile -t stale_ids < <(jq -r \
             '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[2:][] | .id' \
             "$artifacts")
