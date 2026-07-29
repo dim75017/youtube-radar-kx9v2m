@@ -851,7 +851,7 @@ function dashHTML(){
       hot.map(v=>mini(v,'<b>'+fmtN(v.vpm)+'/mo</b><span>'+esc(v.channel)+'</span>','trends')).join('')+'</div></div>'+
     '<div class="panel"><h3>📰 Latest discoveries<span class="link" onclick="VS.mix.age=\'3m\';VS.mix.sort=\'added\';go(\'mix\')">View all →</span></h3><div class="psub">New videos the YouTube algorithm just started pushing · daily scan</div><div class="mini-list">'+
       (latest.length?latest.map(v=>mini(v,'<b>'+fmtN(v.views)+' views</b><span>'+fmtAge(v.ageM)+' old</span>','news')).join(''):'<div class="empty">No discoveries yet</div>')+'</div></div>'+
-    '<div class="panel"><h3>🗓️ Coming up<span class="link" onclick="go(\'roadmap\')">Full roadmap →</span></h3><div class="psub">Next planned releases · synced with Monday & rotation proposals</div>'+
+    '<div class="panel"><h3>🗓️ Coming up<span class="link" onclick="go(\'roadmap\')">Full roadmap →</span></h3><div class="psub">Next planned releases · synced with Monday</div>'+
       coming.map(r=>{const d=new Date(r.date);return '<div class="rm-mini" style="--gc:'+gcolor(r.genre)+'"><div class="d">'+d.getDate()+' '+MONTHS[d.getMonth()]+'</div><div class="t">'+esc(r.title)+'</div>'+gtag(r.genre,1)+'</div>';}).join('')+'</div>'+
   '</div>';
   const topLives=[...L].sort((a,b)=>(liveNow(b.vid)||0)-(liveNow(a.vid)||0)).slice(0,5);

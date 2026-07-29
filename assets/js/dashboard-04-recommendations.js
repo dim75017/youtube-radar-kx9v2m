@@ -666,7 +666,9 @@ function initializeRoadmapArchive(){
   }catch(e){}
 }
 initializeRoadmapArchive();
-function roadmapArchiveItems(){return roadmapArchiveRows();}
+function roadmapArchiveItems(){
+  return roadmapArchiveRows().filter(item=>item&&item.row&&(isMondayRoadmapProject(item.row)||isExplicitManualRoadmapPlacement(item.row)));
+}
 function invalidateRoadmapDerivedViews(){
   if(typeof invalidateRecommendationDerivedData==='function')invalidateRecommendationDerivedData();
   if(typeof VIEW_WARMUP_TOKEN!=='undefined')VIEW_WARMUP_TOKEN++;
@@ -677,12 +679,17 @@ function invalidateRoadmapDerivedViews(){
   }
   if(typeof renderNav==='function')renderNav();
 }
-function isMondayRoadmapProject(row){return !!(row&&/Monday/i.test(String(row.src||'')));}
-function isProducedRoadmapProject(row){return !!(row&&/^Nouveau mix\s*\(/i.test(String(row.src||'').trim()));}
+function isMondayRoadmapProject(row){return !!(row&&/^Existant\s*\(Monday\)$/i.test(String(row.src||'').trim()));}
+function isExplicitManualRoadmapPlacement(row){return !!(row&&row.recoN!=null&&/^Recommandation valid/i.test(String(row.src||'').trim()));}
 function isUnconfirmedRoadmapProposal(row){return !!(row&&/^Proposition rotation\s*\(/i.test(String(row.src||'').trim()));}
 function acceptedRoadmapRows(){
-  const roadmap=(DATA.roadmap||[]).filter(row=>row&&row.date&&!isUnconfirmedRoadmapProposal(row)&&(isMondayRoadmapProject(row)||isProducedRoadmapProject(row)));
-  const confirmed=typeof SCHED_LOCAL!=='undefined'&&Array.isArray(SCHED_LOCAL)?SCHED_LOCAL.filter(row=>row&&row.date&&!isUnconfirmedRoadmapProposal(row)):[];
+  // Monday is the shared source of truth. Historical "Nouveau mix" rows stay
+  // in the raw snapshot for traceability, but validated recommendations only
+  // enter Roadmap after a new explicit manual placement by the team.
+  const roadmap=(DATA.roadmap||[]).filter(row=>row&&row.date&&isMondayRoadmapProject(row));
+  const confirmed=typeof SCHED_LOCAL!=='undefined'&&Array.isArray(SCHED_LOCAL)
+    ?SCHED_LOCAL.filter(row=>row&&row.date&&isExplicitManualRoadmapPlacement(row))
+    :[];
   const bySlot=new Map(),keyFor=row=>{
     if(!row||!row.date||!row.title)return '';
     const key=String(row.date)+'|'+normalizedRecommendationTitle(row.title);
@@ -1346,8 +1353,9 @@ function suggestRoadmapDate(reco,avoidKeys){
     }
   }
 }
-let SCHED_LOCAL=(()=>{try{return JSON.parse(localStorage.getItem('radar_sched_local')||'[]').map(x=>({...x,date:+x.date}));}catch(e){return [];}})();
-function schedSaveLocal(){try{localStorage.setItem('radar_sched_local',JSON.stringify(SCHED_LOCAL));}catch(e){}}
+const SCHED_STORAGE_KEY='radar_sched_local_v2';
+let SCHED_LOCAL=(()=>{try{return JSON.parse(localStorage.getItem(SCHED_STORAGE_KEY)||'[]').map(x=>({...x,date:+x.date}));}catch(e){return [];}})();
+function schedSaveLocal(){try{localStorage.setItem(SCHED_STORAGE_KEY,JSON.stringify(SCHED_LOCAL));}catch(e){}}
 function scheduleRecommendation(reco,sug){
   if(!reco)return null;
   const existing=scheduledRows().find(r=>Number(r.recoN)===Number(reco.n));
@@ -2547,7 +2555,7 @@ const FR_LIT=[
 ['>Velocity by genre<','>Vélocité par genre<'],['Median views/month per genre · videos from the last 12 months','Vues/mois médianes par genre · vidéos des 12 derniers mois'],
 ['🔥 Hot right now','🔥 Ça monte'],['Fastest-growing videos published in the last 12 months','Vidéos à la plus forte croissance publiées ces 12 derniers mois'],
 ['📰 Latest discoveries','📰 Dernières découvertes'],['New videos the YouTube algorithm just started pushing · daily scan','Nouvelles vidéos que l’algorithme YouTube commence à pousser · scan quotidien'],
-['🗓️ Coming up','🗓️ À venir'],['Next planned releases · synced with Monday & rotation proposals','Prochaines sorties prévues · synchro Monday et propositions de rotation'],
+['🗓️ Coming up','🗓️ À venir'],['Next planned releases · synced with Monday','Prochaines sorties prévues · synchro Monday'],
 ['📡 Top livestreams','📡 Top livestreams'],['Most-watched 24/7 streams on the scan keywords · viewers at last scan','Streams 24/7 les plus regardés sur les mots-clés du scan · spectateurs au dernier scan'],
 ['📺 Top channels','📺 Top chaînes'],['Biggest channels in the competitive audit','Plus grosses chaînes de l’audit concurrentiel'],
 ['View all →','Tout voir →'],['Full roadmap →','Roadmap complète →'],

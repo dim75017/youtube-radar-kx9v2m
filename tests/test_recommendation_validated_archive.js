@@ -29,6 +29,8 @@ assert.ok(scheduleStart >= 0 && scheduleEnd > scheduleStart,
   'Roadmap archive filtering helpers must remain available');
 assert.ok(roadmapActionStart >= 0 && roadmapActionEnd > roadmapActionStart,
   'Roadmap archive actions must remain available');
+assert.match(source, /const SCHED_STORAGE_KEY='radar_sched_local_v2'/,
+  'old local placements must not be replayed into the cleaned Monday Roadmap');
 
 const archivedMonday = {
   title: 'Archived Monday project',
@@ -189,14 +191,14 @@ assert.ok(accepted.some(row => row.title === archivedMonday.title),
   'Monday remains a source for Roadmap before its separate archive filter is applied');
 assert.ok(accepted.some(row => row.title === visibleMonday.title),
   'non-archived Monday projects remain accepted Roadmap rows');
-assert.ok(accepted.some(row => row.title === producedRecommendation.title),
-  'a produced mix is already an accepted Roadmap project');
+assert.ok(!accepted.some(row => row.title === producedRecommendation.title),
+  'a historical produced mix stays outside Roadmap until a new explicit placement');
 assert.ok(!accepted.some(row => row.title === unconfirmedProposal.title),
   'an unconfirmed rotation proposal never enters the accepted Roadmap set');
 
 const validated = Array.from(context.validatedRowsForTest());
-assert.deepEqual(validated.map(row => row.n), [1, 9],
-  'Validated excludes produced or manually placed projects but keeps an unconfirmed proposal');
+assert.deepEqual(validated.map(row => row.n), [1, 8, 9],
+  'Validated keeps historical produced ideas and excludes only explicitly placed projects');
 assert.ok(validated.every(row => !/Monday/i.test(String(row.src || ''))),
   'Monday projects never appear in Validated');
 assert.deepEqual(Array.from(context.refusedRowsForTest()).map(row => row.n), [2],
@@ -233,7 +235,7 @@ context.SCHED_LOCAL.push({
   src: 'Recommandation validée (placement manuel)',
   recoN: 3,
 });
-assert.deepEqual(Array.from(context.validatedRowsForTest()).map(row => row.n), [1, 9],
+assert.deepEqual(Array.from(context.validatedRowsForTest()).map(row => row.n), [1, 8, 9],
   'a recommendation disappears from Validated as soon as its Roadmap placement is confirmed');
 context.placeValidatedForTest(2);
 context.placeValidatedForTest(7);
@@ -263,7 +265,7 @@ assert.equal(saved.get('lofi_radar_project_archive_v1'), legacyStoreBeforeRoadma
   'Roadmap archiving never writes to the previous Recommendations archive');
 assert.ok(!Array.from(context.scheduledRowsForTest()).some(row => row.title === visibleMonday.title),
   'the separate Roadmap archive hides the project only from Roadmap');
-assert.deepEqual(Array.from(context.validatedRowsForTest()).map(row => row.n), [1, 9],
+assert.deepEqual(Array.from(context.validatedRowsForTest()).map(row => row.n), [1, 8, 9],
   'Roadmap archiving leaves Validated unchanged');
 assert.deepEqual(Array.from(context.refusedRowsForTest()).map(row => row.n), [2],
   'Roadmap archiving leaves Refused unchanged');

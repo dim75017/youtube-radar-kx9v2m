@@ -98,6 +98,9 @@ const producedRows = snapshot.roadmap.filter(
 const proposalRows = snapshot.roadmap.filter(
   row => String(row && row.src || '').trim() === 'Proposition rotation (\u00e0 valider)',
 );
+const mondayRows = snapshot.roadmap.filter(
+  row => String(row && row.src || '').trim() === 'Existant (Monday)',
+);
 assert.equal(producedRows.length, 53,
   'the real snapshot must retain its 53 produced-mix Roadmap rows');
 assert.ok(proposalRows.length > 0,
@@ -106,12 +109,20 @@ assert.ok(proposalRows.length > 0,
 const acceptedRows = Array.from(roadmapContext.acceptedRoadmapRowsForTest());
 const acceptedKeys = new Set(acceptedRows.map(row => `${Number(row.date)}|${row.title}`));
 for (const row of producedRows) {
-  assert.ok(acceptedKeys.has(`${Number(row.date)}|${row.title}`),
-    `produced mix must be included in Roadmap: ${row.title}`);
+  assert.ok(!acceptedKeys.has(`${Number(row.date)}|${row.title}`),
+    `historical produced mix must stay outside Roadmap: ${row.title}`);
 }
 for (const row of proposalRows) {
   assert.ok(!acceptedKeys.has(`${Number(row.date)}|${row.title}`),
     `unconfirmed rotation proposal must be excluded from Roadmap: ${row.title}`);
+}
+assert.equal(mondayRows.length, 88,
+  'the real snapshot must retain the 88 projects synchronized from Monday');
+assert.equal(acceptedRows.length, mondayRows.length,
+  'without a new local placement, Roadmap must contain only Monday projects');
+for (const row of mondayRows) {
+  assert.ok(acceptedKeys.has(`${Number(row.date)}|${row.title}`),
+    `Monday project must remain in Roadmap: ${row.title}`);
 }
 
 console.log('historical recommendation acceptances and real Roadmap snapshot: ok');

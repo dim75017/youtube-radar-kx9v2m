@@ -166,8 +166,8 @@ assert.equal(context.isRefused(malformedInArchivedRoadmap.valid), false,
 
 assert.equal(
   acceptedNewMixRows.filter(row => acceptedTitles.has(row.title)).length,
-  53,
-  'all 53 “Nouveau mix (à produire)” titles must count as accepted Roadmap projects',
+  0,
+  'historical “Nouveau mix (à produire)” rows must not pre-fill Roadmap',
 );
 assert.ok(!acceptedTitles.has(rotationProposal.title),
   '“Proposition rotation (à valider)” must not count as an accepted Roadmap project');
@@ -179,29 +179,29 @@ assert.ok(acceptedTitles.has(locallyPlacedValidated.title),
 const validatedIds = Array.from(context.validatedRecommendationRowsForTest()).map(row => row.n);
 assert.equal(
   acceptedValidatedRecos.filter(row => validatedIds.includes(row.n)).length,
-  0,
-  'the 53 matching validated ideas must all disappear from Validated',
+  53,
+  'the 53 validated ideas must remain available for a future team placement',
 );
 assert.ok(!validatedIds.includes(mondayValidated.n),
   'a validated Monday project must not remain in Validated');
 assert.ok(!validatedIds.includes(locallyPlacedValidated.n),
   'a locally placed idea must not remain in Validated');
-assert.deepEqual(validatedIds, [rotationProposal.n, ordinaryValidated.n],
-  'only a non-accepted rotation proposal and an ordinary validated idea remain in Validated');
+assert.deepEqual(validatedIds, [...acceptedValidatedRecos.map(row => row.n), rotationProposal.n, ordinaryValidated.n],
+  'validated recommendations stay in Validated until an explicit placement');
 
 const refusedIds = Array.from(context.refusedRecommendationRowsForTest()).map(row => row.n);
-assert.deepEqual(refusedIds, [ordinaryRefused.n],
-  'Roadmap has priority over Refused while an ordinary refused idea remains visible');
+assert.deepEqual(refusedIds, [refusedInRoadmap.n, ordinaryRefused.n],
+  'an obsolete produced-mix row must not hide a refused recommendation');
 
-assert.ok(context.recommendationRoadmapEntryForTest(malformedInArchivedRoadmap),
-  'an archived Roadmap row remains a terminal Roadmap hand-off');
+assert.ok(!context.recommendationRoadmapEntryForTest(malformedInArchivedRoadmap),
+  'an archived historical produced-mix row is not a Roadmap hand-off');
 assert.ok(!Array.from(context.scheduledRows()).some(row => row.title === malformedInArchivedRoadmap.title),
-  'the archived Roadmap row is hidden from the active Roadmap');
-assert.ok(!validatedIds.includes(acceptedValidatedRecos[52].n),
-  'an archived Roadmap project never reappears in Validated');
+  'historical produced-mix rows stay outside the active Roadmap');
+assert.ok(validatedIds.includes(acceptedValidatedRecos[52].n),
+  'an old Roadmap archive cannot hide a still-validated recommendation');
 
 const pendingIds = Array.from(context.dailyRecommendationSetForTest()).map(row => row.n);
-assert.deepEqual(pendingIds, [ordinaryPending.n],
-  'Roadmap has priority over a malformed legacy status in the pending queue');
+assert.deepEqual(pendingIds, [malformedInArchivedRoadmap.n, ordinaryPending.n],
+  'an obsolete produced-mix row no longer hides a pending recommendation');
 
 console.log('Roadmap has priority over Pending, Validated and Refused recommendation queues.');
