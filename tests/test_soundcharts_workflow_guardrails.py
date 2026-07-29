@@ -117,7 +117,10 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("Refresh the complete performance artist catalogue every 24 hours", self.workflow)
         self.assertIn("Refresh playlist follower history every 24 hours", self.workflow)
         self.assertIn("playlist_followers_due", self.workflow)
-        self.assertIn("Spotify_Playlists_data.js", self.workflow[self.workflow.index("Activate snapshot only after remote validation"):])
+        self.assertIn(
+            "Spotify_Playlists_canonical_data.js",
+            self.workflow[self.workflow.index("Activate snapshot only after remote validation"):],
+        )
 
     def test_activation_rebuilds_the_visible_catalogue_in_the_same_commit(self):
         activation = self.workflow.index("Activate snapshot only after remote validation")

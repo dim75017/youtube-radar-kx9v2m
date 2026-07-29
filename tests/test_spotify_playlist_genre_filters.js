@@ -6,7 +6,7 @@ const path = require('path');
 
 const root = path.resolve(__dirname, '..');
 const dashboard = fs.readFileSync(path.join(root, 'spotify', 'dashboard.js'), 'utf8');
-const playlists = fs.readFileSync(path.join(root, 'Spotify_Playlists_data.js'), 'utf8');
+const playlists = fs.readFileSync(path.join(root, 'Spotify_Playlists_canonical_data.js'), 'utf8');
 
 assert.match(dashboard, /plgenre:'all'/, 'Playlist filter state must include a genre selection.');
 assert.match(dashboard, /function playlistGenreSignals\(r\)/, 'Playlist genre aliases must be normalized in one helper.');

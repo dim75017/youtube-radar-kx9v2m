@@ -53,8 +53,18 @@ jobs:
           # explicitly Europe/Paris so a late retry never lands on UTC D-1.
           day="$(python -c "import datetime as dt; from zoneinfo import ZoneInfo; print(dt.datetime.now(ZoneInfo('Europe/Paris')).date().isoformat())")"
           python playlist_follower_daily_status.py \
+            --playlists Spotify_Playlists_canonical_data.js \
             --day "$day" \
             --github-output "$GITHUB_OUTPUT"
+
+      - name: Preserve canonical playlist baseline
+        id: playlist_baseline
+        if: steps.coverage_before.outputs.complete != 'true' || inputs.force == true
+        shell: bash
+        run: |
+          baseline="$RUNNER_TEMP/Spotify_Playlists_canonical_previous.js"
+          cp -- Spotify_Playlists_canonical_data.js "$baseline"
+          echo "path=$baseline" >> "$GITHUB_OUTPUT"
 
       - name: Create isolated read-only Soundcharts candidate
         id: candidate
@@ -89,6 +99,7 @@ jobs:
           --workers 10
           --max-requests "${{ steps.budget.outputs.requests }}"
           --history-days 90
+          --playlists Spotify_Playlists_canonical_data.js
           --soundcharts "${{ steps.candidate.outputs.path }}"
 
       - name: Measure coverage after collection
@@ -97,7 +108,17 @@ jobs:
         shell: bash
         run: |
           day="$(python -c "import datetime as dt; from zoneinfo import ZoneInfo; print(dt.datetime.now(ZoneInfo('Europe/Paris')).date().isoformat())")"
-          python playlist_follower_daily_status.py --day "$day" --github-output "$GITHUB_OUTPUT"
+          python playlist_follower_daily_status.py \
+            --playlists Spotify_Playlists_canonical_data.js \
+            --day "$day" \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Reject an older or poorer playlist snapshot
+        if: steps.coverage_before.outputs.complete != 'true' || inputs.force == true
+        run: >-
+          python validate_playlist_snapshot_transition.py
+          --previous "${{ steps.playlist_baseline.outputs.path }}"
+          --candidate Spotify_Playlists_canonical_data.js
 
       - name: Publish follower history independently
         if: steps.coverage_before.outputs.complete != 'true' || inputs.force == true
@@ -105,7 +126,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Spotify_Playlists_data.js Spotify_Performance_data.js soundcharts-history
+          git add Spotify_Playlists_canonical_data.js Spotify_Performance_data.js soundcharts-history
           git diff --cached --quiet && exit 0
           git commit -m "data: refresh daily playlist followers"
           for attempt in 1 2 3; do
@@ -119,7 +140,10 @@ jobs:
         shell: bash
         run: |
           day="$(python -c "import datetime as dt; from zoneinfo import ZoneInfo; print(dt.datetime.now(ZoneInfo('Europe/Paris')).date().isoformat())")"
-          python playlist_follower_daily_status.py --day "$day" --require-complete
+          python playlist_follower_daily_status.py \
+            --playlists Spotify_Playlists_canonical_data.js \
+            --day "$day" \
+            --require-complete
 
       - name: Report a healthy no-op
         if: steps.coverage_before.outputs.complete == 'true' && inputs.force != true

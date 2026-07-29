@@ -36,7 +36,7 @@ class PlaylistFollowerWorkflowGuardrailsTests(unittest.TestCase):
 
     def test_skip_gate_uses_real_visible_history_for_the_paris_day(self):
         self.assertRegex(self.workflow, r"ZoneInfo\(['\"]Europe/Paris['\"]\)")
-        self.assertIn("Spotify_Playlists_data.js", self.workflow)
+        self.assertIn("Spotify_Playlists_canonical_data.js", self.workflow)
         self.assertIn("big10k", self.workflow)
         self.assertRegex(self.workflow, r"\bhist\b")
 
@@ -63,11 +63,20 @@ class PlaylistFollowerWorkflowGuardrailsTests(unittest.TestCase):
         ):
             self.assertNotIn(unrelated_gate, self.workflow)
 
-        self.assertIn("Spotify_Playlists_data.js", self.workflow)
+        self.assertIn("Spotify_Playlists_canonical_data.js", self.workflow)
         self.assertIn("Spotify_Performance_data.js", self.workflow)
-        self.assertRegex(self.workflow, r"git\s+add[\s\S]{0,300}Spotify_Playlists_data\.js")
+        self.assertRegex(
+            self.workflow,
+            r"git\s+add[\s\S]{0,300}Spotify_Playlists_canonical_data\.js",
+        )
         self.assertRegex(self.workflow, r"git\s+add[\s\S]{0,300}Spotify_Performance_data\.js")
         self.assertIn("git push", self.workflow)
+
+    def test_canonical_transition_is_validated_before_publication(self):
+        validation = self.workflow.index("validate_playlist_snapshot_transition.py")
+        publication = self.workflow.index("Publish follower history independently")
+        self.assertLess(validation, publication)
+        self.assertNotIn("git add Spotify_Playlists_data.js", self.workflow)
 
     def test_partial_real_points_are_published_before_incomplete_coverage_alerts(self):
         publish = self.workflow.index("Publish follower history independently")

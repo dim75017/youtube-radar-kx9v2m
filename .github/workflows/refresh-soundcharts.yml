@@ -6,6 +6,7 @@ on:
     paths:
       - 'refresh_soundcharts_daily.py'
       - 'playlist_follower_daily_status.py'
+      - 'validate_playlist_snapshot_transition.py'
       - 'discover_soundcharts_playlists.py'
       - 'spotify-catalogue-baseline.json'
       - 'spotify-catalogue-baseline.csv'
@@ -24,6 +25,7 @@ on:
       - 'tests/test_refresh_soundcharts_daily.py'
       - 'tests/test_playlist_follower_daily_integrity.py'
       - 'tests/test_playlist_follower_workflow_guardrails.py'
+      - 'tests/test_validate_playlist_snapshot_transition.py'
       - 'tests/test_discover_soundcharts_playlists.py'
       - 'tests/test_expand_soundcharts_instrumental_pool.py'
       - 'tests/test_build_spotify_browse_catalogue.py'
@@ -53,6 +55,7 @@ on:
     paths:
       - 'refresh_soundcharts_daily.py'
       - 'playlist_follower_daily_status.py'
+      - 'validate_playlist_snapshot_transition.py'
       - 'discover_soundcharts_playlists.py'
       - 'spotify-catalogue-baseline.json'
       - 'spotify-catalogue-baseline.csv'
@@ -71,6 +74,7 @@ on:
       - 'tests/test_refresh_soundcharts_daily.py'
       - 'tests/test_playlist_follower_daily_integrity.py'
       - 'tests/test_playlist_follower_workflow_guardrails.py'
+      - 'tests/test_validate_playlist_snapshot_transition.py'
       - 'tests/test_discover_soundcharts_playlists.py'
       - 'tests/test_expand_soundcharts_instrumental_pool.py'
       - 'tests/test_build_spotify_browse_catalogue.py'
@@ -145,6 +149,14 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Preserve canonical playlist baseline
+        id: playlist_baseline
+        shell: bash
+        run: |
+          baseline="$RUNNER_TEMP/Spotify_Playlists_canonical_previous.js"
+          cp -- Spotify_Playlists_canonical_data.js "$baseline"
+          echo "path=$baseline" >> "$GITHUB_OUTPUT"
+
       - name: Restore Soundcharts bootstrap state
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
@@ -173,6 +185,7 @@ jobs:
           tests/test_refresh_soundcharts_daily.py
           tests/test_playlist_follower_daily_integrity.py
           tests/test_playlist_follower_workflow_guardrails.py
+          tests/test_validate_playlist_snapshot_transition.py
           tests/test_discover_soundcharts_playlists.py
           tests/test_expand_soundcharts_instrumental_pool.py
           tests/test_build_spotify_browse_catalogue.py
@@ -186,7 +199,7 @@ jobs:
 
       - name: Validate production source syntax
         run: |
-          python -m py_compile refresh_soundcharts_daily.py playlist_follower_daily_status.py discover_soundcharts_playlists.py expand_soundcharts_instrumental_pool.py spotify_rights.py build_spotify_browse_catalogue.py build_spotify_selection_contacts.py enrich_public_artist_contacts.py sync_soundcharts_opportunities.py prepare_soundcharts_snapshot.py
+          python -m py_compile refresh_soundcharts_daily.py playlist_follower_daily_status.py validate_playlist_snapshot_transition.py discover_soundcharts_playlists.py expand_soundcharts_instrumental_pool.py spotify_rights.py build_spotify_browse_catalogue.py build_spotify_selection_contacts.py enrich_public_artist_contacts.py sync_soundcharts_opportunities.py prepare_soundcharts_snapshot.py
           node --check spotify/dashboard.js
           node tests/test_dashboard_opportunity_guardrails.js
           node tests/test_dashboard_general_view_guardrails.js
@@ -410,6 +423,7 @@ jobs:
           --workers 6
           --max-requests "${{ steps.plan.outputs.playlist_requests }}"
           --history-days 90
+          --playlists Spotify_Playlists_canonical_data.js
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
 
       - name: Refresh published playlist covers from Soundcharts
@@ -425,6 +439,7 @@ jobs:
           --workers 10
           --max-requests "${{ steps.plan.outputs.expansion_requests }}"
           --history-days 90
+          --playlists Spotify_Playlists_canonical_data.js
 
       - name: Discover tracks and artist catalogues from editorial playlists
         # Public snapshots intentionally retain only strict, publishable rows.
@@ -439,7 +454,7 @@ jobs:
         run: >-
           python discover_soundcharts_playlists.py
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
-          --playlists Spotify_Playlists_data.js
+          --playlists Spotify_Playlists_canonical_data.js
           --baseline spotify-catalogue-baseline.json
           --cache soundcharts-instrumental-cache.json
           --workers 10
@@ -460,7 +475,7 @@ jobs:
         run: >-
           python discover_soundcharts_playlists.py
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
-          --playlists Spotify_Playlists_data.js
+          --playlists Spotify_Playlists_canonical_data.js
           --baseline spotify-catalogue-baseline.json
           --cache soundcharts-instrumental-cache.json
           --workers 10
@@ -483,7 +498,7 @@ jobs:
         run: >-
           python discover_soundcharts_playlists.py
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
-          --playlists Spotify_Playlists_data.js
+          --playlists Spotify_Playlists_canonical_data.js
           --baseline spotify-catalogue-baseline.json
           --cache soundcharts-instrumental-cache.json
           --workers 10
@@ -510,7 +525,7 @@ jobs:
         run: >-
           python discover_soundcharts_playlists.py
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
-          --playlists Spotify_Playlists_data.js
+          --playlists Spotify_Playlists_canonical_data.js
           --baseline spotify-catalogue-baseline.json
           --cache soundcharts-instrumental-cache.json
           --workers 10
@@ -534,7 +549,7 @@ jobs:
         run: >-
           python discover_soundcharts_playlists.py
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
-          --playlists Spotify_Playlists_data.js
+          --playlists Spotify_Playlists_canonical_data.js
           --baseline spotify-catalogue-baseline.json
           --artist-seeds spotify-explicit-artist-seeds.json
           --cache soundcharts-instrumental-cache.json
@@ -662,6 +677,12 @@ jobs:
           --max-opportunities 10000
           --minimum-score 20
 
+      - name: Reject an older or poorer playlist snapshot
+        run: >-
+          python validate_playlist_snapshot_transition.py
+          --previous "${{ steps.playlist_baseline.outputs.path }}"
+          --candidate Spotify_Playlists_canonical_data.js
+
       - name: Preserve completed collection before publication guards
         if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         uses: actions/upload-artifact@v4
@@ -670,7 +691,7 @@ jobs:
           path: |
             ${{ steps.snapshot.outputs.candidate }}
             Spotify_Performance_data.js
-            Spotify_Playlists_data.js
+            Spotify_Playlists_canonical_data.js
             Spotify_Selection_Contacts_data.js
             soundcharts-history
             soundcharts-instrumental-cache.json
@@ -831,7 +852,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Spotify_Playlists_data.js Spotify_Performance_data.js soundcharts-history
+          git add Spotify_Playlists_canonical_data.js Spotify_Performance_data.js soundcharts-history
           git diff --cached --quiet && exit 0
           git commit -m "data: refresh Soundcharts playlist covers"
           for attempt in 1 2 3; do
@@ -985,10 +1006,13 @@ jobs:
             --strict-rebased \
             --trusted-catalogue spotify-catalogue-baseline.csv \
             --trusted-artist-seeds spotify-catalogue-baseline.json
+          python validate_playlist_snapshot_transition.py \
+            --previous "${{ steps.playlist_baseline.outputs.path }}" \
+            --candidate Spotify_Playlists_canonical_data.js
           git add \
             spotify/index.html \
             Spotify_Browse_Catalogue_data.js \
-            Spotify_Playlists_data.js \
+            Spotify_Playlists_canonical_data.js \
             Spotify_Performance_data.js \
             Spotify_Selection_Contacts_data.js \
             soundcharts-history

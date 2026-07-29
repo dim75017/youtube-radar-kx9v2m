@@ -1491,7 +1491,11 @@ def discover_from_playlists(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--soundcharts", type=Path, default=Path("Spotify_Soundcharts_data.js"))
-    parser.add_argument("--playlists", type=Path, default=Path("Spotify_Playlists_data.js"))
+    parser.add_argument(
+        "--playlists",
+        type=Path,
+        default=Path("Spotify_Playlists_canonical_data.js"),
+    )
     parser.add_argument("--cache", type=Path, default=Path("soundcharts-instrumental-cache.json"))
     parser.add_argument("--baseline", type=Path, default=Path("spotify-catalogue-baseline.json"))
     parser.add_argument("--artist-seeds", type=Path)

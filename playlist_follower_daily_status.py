@@ -104,7 +104,11 @@ def coverage(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--playlists", type=Path, default=Path("Spotify_Playlists_data.js"))
+    parser.add_argument(
+        "--playlists",
+        type=Path,
+        default=Path("Spotify_Playlists_canonical_data.js"),
+    )
     parser.add_argument("--performance", type=Path, default=Path("Spotify_Performance_data.js"))
     parser.add_argument("--day", default="")
     parser.add_argument("--github-output", type=Path)

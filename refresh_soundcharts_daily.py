@@ -1254,7 +1254,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--soundcharts", type=Path, default=Path("Spotify_Soundcharts_data.js"))
     parser.add_argument("--performance", type=Path, default=Path("Spotify_Performance_data.js"))
-    parser.add_argument("--playlists", type=Path, default=Path("Spotify_Playlists_data.js"))
+    parser.add_argument(
+        "--playlists",
+        type=Path,
+        default=Path("Spotify_Playlists_canonical_data.js"),
+    )
     parser.add_argument("--history-dir", type=Path, default=Path("soundcharts-history"))
     return parser.parse_args()
 

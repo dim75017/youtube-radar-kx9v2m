@@ -13,7 +13,7 @@
 (()=>{
   window.__RADAR_WAS_PRERENDERED=!!document.prerendering;
   if(!(HTMLScriptElement.supports&&HTMLScriptElement.supports('speculationrules'))){
-    ['spotify/','Spotify_Radar_data.js','Spotify_Playlists_data.js','Spotify_Labels_data.js','Spotify_Soundcharts_data_20260720T0217_editorial_strict.js?v=0217editorialstrict'].forEach(href=>{
+    ['spotify/','Spotify_Radar_data.js','Spotify_Playlists_canonical_data.js','Spotify_Labels_data.js','Spotify_Soundcharts_data_20260720T0217_editorial_strict.js?v=0217editorialstrict'].forEach(href=>{
       const hint=document.createElement('link');
       hint.rel='prefetch';hint.href=href;if(/\.js(?:\?|$)/.test(href))hint.as='script';
       document.head.appendChild(hint);
