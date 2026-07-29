@@ -32,9 +32,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 310
     env:
-      STATE_DIR: ${{ runner.temp }}/soundcharts-fal-phase1
-      STATE_DB: ${{ runner.temp }}/soundcharts-fal-phase1/soundcharts-fal-phase1-staging.sqlite3
-      REPORT_JSON: ${{ runner.temp }}/soundcharts-fal-phase1/soundcharts-fal-phase1-report.json
       STATE_ARTIFACT: soundcharts-fal-phase1-state
       COHORT_SNAPSHOT: Spotify_Soundcharts_data_20260721T181420Z.js
       QUOTA_RESERVE: '500000'
@@ -52,6 +49,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      - name: Initialize private staging paths
+        shell: bash
+        run: |
+          echo "STATE_DIR=$RUNNER_TEMP/soundcharts-fal-phase1" >> "$GITHUB_ENV"
+          echo "STATE_DB=$RUNNER_TEMP/soundcharts-fal-phase1/soundcharts-fal-phase1-staging.sqlite3" >> "$GITHUB_ENV"
+          echo "REPORT_JSON=$RUNNER_TEMP/soundcharts-fal-phase1/soundcharts-fal-phase1-report.json" >> "$GITHUB_ENV"
 
       - name: Validate FAL scanner and workflow guardrails
         run: |

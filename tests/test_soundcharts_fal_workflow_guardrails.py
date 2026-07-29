@@ -31,6 +31,19 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("actions: write", self.workflow)
         self.assertIn("contents: read", self.workflow)
         self.assertNotIn("contents: write", self.workflow)
+        self.assertNotIn("${{ runner.temp }}", self.workflow)
+        self.assertIn(
+            'echo "STATE_DIR=$RUNNER_TEMP/soundcharts-fal-phase1" >> "$GITHUB_ENV"',
+            self.workflow,
+        )
+        self.assertIn(
+            'echo "STATE_DB=$RUNNER_TEMP/soundcharts-fal-phase1/soundcharts-fal-phase1-staging.sqlite3" >> "$GITHUB_ENV"',
+            self.workflow,
+        )
+        self.assertIn(
+            'echo "REPORT_JSON=$RUNNER_TEMP/soundcharts-fal-phase1/soundcharts-fal-phase1-report.json" >> "$GITHUB_ENV"',
+            self.workflow,
+        )
         self.assertIn("soundcharts-fal-phase1-staging.sqlite3", self.workflow)
         self.assertIn("soundcharts-fal-phase1-state", self.workflow)
         self.assertIn("Restore the latest private FAL staging checkpoint", self.workflow)
