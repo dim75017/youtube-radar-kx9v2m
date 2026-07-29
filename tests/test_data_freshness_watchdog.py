@@ -1,0 +1,202 @@
+import json
+import tempfile
+import unittest
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+import data_freshness_watchdog as subject
+
+
+def write(path: Path, value: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(value, encoding="utf-8")
+
+
+class DataFreshnessWatchdogTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        write(
+            self.root / "spotify/index.html",
+            '<script src="../Spotify_Soundcharts_data_20260729T060000Z.js"></script>',
+        )
+        write(
+            self.root / "Spotify_Browse_Catalogue_data.js",
+            'window.SPOTIFY_BROWSE_CATALOGUE={"generated_at":"2026-07-29T06:00:00Z",'
+            '"source_snapshot":"Spotify_Soundcharts_data_20260729T060000Z.js"};',
+        )
+        write(
+            self.root / "Spotify_Performance_data.js",
+            'window.SPOTIFY_PERFORMANCE={"freshness":{"tracks_catalogue_at":"2026-07-29T06:00:00Z",'
+            '"artists_catalogue_at":"2026-07-29T06:00:00Z","playlists_at":"2026-07-29T06:00:00Z"}};',
+        )
+        write(
+            self.root / "Spotify_Playlists_canonical_data.js",
+            'window.SPOTIFY_PLAYLISTS={"meta":{"playlist_followers_status":{"day":"2026-07-29",'
+            '"expected":554,"updated":554,"complete":true,"observed_at":"2026-07-29T06:00:00Z"}}};',
+        )
+        stamp = int(datetime(2026, 7, 29, 6, tzinfo=timezone.utc).timestamp() * 1000)
+        write(
+            self.root / "Lofi_Radar_data.js",
+            f'window.LOFI_DATA={{"videoMetricsT":{stamp},"videoMetrics":{{"tracked":3273,"updated":3267,'
+            '"history_day":"2026-07-29","day_timezone":"Europe/Paris"}}};',
+        )
+        write(self.root / "Lofi_Radar_chx.js", f'window.CHX={{"t":{stamp},"lg":{{}}}};')
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def test_all_current_sources_are_healthy_after_their_paris_deadlines(self):
+        now = datetime(2026, 7, 29, 11, tzinfo=timezone.utc)
+        rows = subject.assess(self.root, now)
+        self.assertTrue(all(not row.due for row in rows), [(row.target, row.reason) for row in rows])
+
+    def test_youtube_and_spotify_become_due_by_paris_day_not_runner_timezone(self):
+        write(
+            self.root / "Lofi_Radar_data.js",
+            'window.LOFI_DATA={"videoMetricsT":1785196800000,"videoMetrics":{"tracked":100,"updated":100,'
+            '"history_day":"2026-07-28","day_timezone":"Europe/Paris"}};',
+        )
+        write(
+            self.root / "Spotify_Performance_data.js",
+            'window.SPOTIFY_PERFORMANCE={"freshness":{"tracks_catalogue_at":"2026-07-28T21:00:00Z",'
+            '"artists_catalogue_at":"2026-07-28T21:00:00Z","playlists_at":"2026-07-28T21:00:00Z"}};',
+        )
+        write(
+            self.root / "Spotify_Browse_Catalogue_data.js",
+            'window.SPOTIFY_BROWSE_CATALOGUE={"generated_at":"2026-07-28T21:00:00Z",'
+            '"source_snapshot":"Spotify_Soundcharts_data_20260729T060000Z.js"};',
+        )
+        now = datetime(2026, 7, 29, 9, tzinfo=timezone.utc)  # 11:00 Paris
+        rows = {row.target: row for row in subject.assess(self.root, now)}
+        self.assertTrue(rows["youtube_radar"].due)
+        self.assertTrue(rows["spotify_core"].due)
+
+    def test_collector_cron_requires_today_even_before_the_watchdog_grace_deadline(self):
+        write(
+            self.root / "Lofi_Radar_data.js",
+            'window.LOFI_DATA={"videoMetricsT":1785240000000,"videoMetrics":{"tracked":100,"updated":100,'
+            '"history_day":"2026-07-28","day_timezone":"Europe/Paris"}};',
+        )
+        now = datetime(2026, 7, 29, 7, 17, tzinfo=timezone.utc)  # 09:17 Paris
+        normal = subject.assess(self.root, now, ["youtube_radar"])[0]
+        scheduled = subject.assess(self.root, now, ["youtube_radar"], ignore_deadline=True)[0]
+        self.assertFalse(normal.due)
+        self.assertTrue(scheduled.due)
+
+    def test_playlist_followers_require_the_complete_visible_cohort(self):
+        write(
+            self.root / "Spotify_Playlists_canonical_data.js",
+            'window.SPOTIFY_PLAYLISTS={"meta":{"playlist_followers_status":{"day":"2026-07-29",'
+            '"expected":554,"updated":553,"complete":false,"observed_at":"2026-07-29T06:00:00Z"}}};',
+        )
+        row = subject.assess(self.root, datetime(2026, 7, 29, 9, tzinfo=timezone.utc), ["spotify_followers"])[0]
+        self.assertTrue(row.due)
+        self.assertIn("553/554", row.reason)
+
+    def test_browse_catalogue_is_due_when_it_does_not_match_the_active_snapshot(self):
+        write(
+            self.root / "Spotify_Browse_Catalogue_data.js",
+            'window.SPOTIFY_BROWSE_CATALOGUE={"generated_at":"2026-07-29T06:00:00Z",'
+            '"source_snapshot":"Spotify_Soundcharts_data_20260728T060000Z.js"};',
+        )
+        row = subject.assess(self.root, datetime(2026, 7, 29, 9, tzinfo=timezone.utc), ["spotify_browse"])[0]
+        self.assertTrue(row.due)
+        self.assertIn("active snapshot", row.reason)
+
+    def test_stale_browse_does_not_trigger_the_expensive_spotify_core_collector(self):
+        write(
+            self.root / "Spotify_Browse_Catalogue_data.js",
+            'window.SPOTIFY_BROWSE_CATALOGUE={"generated_at":"2026-07-20T06:00:00Z",'
+            '"source_snapshot":"Spotify_Soundcharts_data_20260720T060000Z.js"};',
+        )
+        now = datetime(2026, 7, 29, 11, tzinfo=timezone.utc)
+        core = subject.assess(self.root, now, ["spotify_core"])[0]
+        browse = subject.assess(self.root, now, ["spotify_browse"])[0]
+        self.assertFalse(core.due)
+        self.assertTrue(browse.due)
+
+    def test_playlist_follower_freshness_uses_only_the_canonical_file(self):
+        write(
+            self.root / "Spotify_Playlists_data.js",
+            'window.SPOTIFY_PLAYLISTS={"meta":{"playlist_followers_status":{"day":"2026-07-20",'
+            '"expected":554,"updated":0,"complete":false}}};',
+        )
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["spotify_followers"],
+        )[0]
+        self.assertFalse(row.due)
+        self.assertIn("554/554", row.reason)
+
+    def test_active_run_and_cooldown_prevent_duplicate_dispatches(self):
+        status = subject.Freshness(
+            target="youtube_radar",
+            workflow="refresh-instrumental-radar.yml",
+            due=True,
+            reason="stale",
+            observed_at=None,
+            cooldown_minutes=45,
+            inputs={"force": "false"},
+        )
+        now = datetime(2026, 7, 29, 12, tzinfo=timezone.utc)
+        active = [{"event": "workflow_dispatch", "status": "in_progress", "created_at": "2026-07-29T11:50:00Z"}]
+        self.assertEqual(subject.dispatch_decision(status, active, now)[1], "active run already exists")
+        recent = [{"event": "schedule", "status": "completed", "created_at": "2026-07-29T11:40:00Z"}]
+        self.assertIn("cooldown", subject.dispatch_decision(status, recent, now)[1])
+        old = [{"event": "schedule", "status": "completed", "created_at": "2026-07-29T10:00:00Z"}]
+        self.assertTrue(subject.dispatch_decision(status, old, now)[0])
+
+    def test_three_collection_attempts_in_six_hours_stop_a_retry_storm(self):
+        status = subject.Freshness(
+            target="spotify_followers",
+            workflow="refresh-playlist-followers.yml",
+            due=True,
+            reason="stale",
+            observed_at=None,
+            cooldown_minutes=30,
+            inputs={},
+        )
+        now = datetime(2026, 7, 29, 12, tzinfo=timezone.utc)
+        runs = [
+            {"event": "workflow_dispatch", "status": "completed", "created_at": f"2026-07-29T0{hour}:00:00Z"}
+            for hour in (7, 8, 9)
+        ]
+        allowed, reason = subject.dispatch_decision(status, runs, now)
+        self.assertFalse(allowed)
+        self.assertIn("retry ceiling", reason)
+
+
+class DataFreshnessWorkflowGuardrailTests(unittest.TestCase):
+    def test_watchdog_has_stable_redundant_triggers_and_write_scope_only_for_actions(self):
+        workflow = Path(".github/workflows/data-freshness-watchdog.yml").read_text(encoding="utf-8")
+        self.assertIn("cron: '23,53 * * * *'", workflow)
+        self.assertIn("workflow_run:", workflow)
+        self.assertIn("repository_dispatch:", workflow)
+        self.assertIn("workflow_dispatch:", workflow)
+        self.assertIn("actions: write", workflow)
+        self.assertIn("contents: read", workflow)
+        self.assertNotIn("SOUNDCHARTS_CLIENT_SECRET", workflow)
+        self.assertIn("data_freshness_watchdog.py --dispatch", workflow)
+
+    def test_collectors_recheck_freshness_before_expensive_work(self):
+        expected = {
+            "refresh-instrumental-radar.yml": "--target youtube_radar",
+            "refresh-soundcharts.yml": "--target spotify_core",
+            "refresh-spotify-browse-catalogue.yml": "--target spotify_browse",
+            "refresh-channel-radar.yml": "--target youtube_channels",
+        }
+        for name, target in expected.items():
+            workflow = Path(".github/workflows", name).read_text(encoding="utf-8")
+            self.assertIn(target, workflow, name)
+            self.assertRegex(workflow, r"needs: gate[\s\S]{0,100}if: needs\.gate\.outputs\.", name)
+            if name != "refresh-spotify-browse-catalogue.yml":
+                self.assertIn("--scheduled-check", workflow, name)
+        followers = Path(".github/workflows/refresh-playlist-followers.yml").read_text(encoding="utf-8")
+        self.assertIn("Measure today's visible playlist coverage", followers)
+        self.assertIn("steps.coverage_before.outputs.complete != 'true'", followers)
+
+
+if __name__ == "__main__":
+    unittest.main()

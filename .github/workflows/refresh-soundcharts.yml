@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'refresh_soundcharts_daily.py'
+      - 'data_freshness_watchdog.py'
       - 'playlist_follower_daily_status.py'
       - 'validate_playlist_snapshot_transition.py'
       - 'discover_soundcharts_playlists.py'
@@ -23,6 +24,7 @@ on:
       - 'Spotify_Selection_Contacts_data.js'
       - 'SPOTIFY_RADAR_POLICY.md'
       - 'tests/test_refresh_soundcharts_daily.py'
+      - 'tests/test_data_freshness_watchdog.py'
       - 'tests/test_playlist_follower_daily_integrity.py'
       - 'tests/test_playlist_follower_workflow_guardrails.py'
       - 'tests/test_validate_playlist_snapshot_transition.py'
@@ -54,6 +56,7 @@ on:
   pull_request:
     paths:
       - 'refresh_soundcharts_daily.py'
+      - 'data_freshness_watchdog.py'
       - 'playlist_follower_daily_status.py'
       - 'validate_playlist_snapshot_transition.py'
       - 'discover_soundcharts_playlists.py'
@@ -72,6 +75,7 @@ on:
       - 'Spotify_Selection_Contacts_data.js'
       - 'SPOTIFY_RADAR_POLICY.md'
       - 'tests/test_refresh_soundcharts_daily.py'
+      - 'tests/test_data_freshness_watchdog.py'
       - 'tests/test_playlist_follower_daily_integrity.py'
       - 'tests/test_playlist_follower_workflow_guardrails.py'
       - 'tests/test_validate_playlist_snapshot_transition.py'
@@ -117,6 +121,11 @@ on:
         required: true
         default: '6000'
         type: string
+      freshness_gate:
+        description: 'Skip strict rebaseline when the published Paris-day data is already healthy'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   actions: read
@@ -132,7 +141,38 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  gate:
+    name: Check complete Spotify catalogue freshness
+    runs-on: ubuntu-latest
+    outputs:
+      run_collection: ${{ steps.freshness.outputs.due }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - id: freshness
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          FRESHNESS_GATE: ${{ inputs.freshness_gate }}
+        shell: bash
+        run: |
+          if [[ "$EVENT_NAME" == "push" || "$EVENT_NAME" == "pull_request" ]]; then
+            echo "due=true" >> "$GITHUB_OUTPUT"
+          elif [[ "$EVENT_NAME" == "workflow_dispatch" && "$FRESHNESS_GATE" != "true" ]]; then
+            echo "due=true" >> "$GITHUB_OUTPUT"
+          else
+            schedule_arg=""
+            if [[ "$EVENT_NAME" == "schedule" ]]; then schedule_arg="--scheduled-check"; fi
+            python data_freshness_watchdog.py \
+              --target spotify_core \
+              $schedule_arg \
+              --github-output "$GITHUB_OUTPUT"
+          fi
+
   refresh:
+    needs: gate
+    if: needs.gate.outputs.run_collection == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 240
     steps:
@@ -222,6 +262,7 @@ jobs:
         env:
           REQUESTED_SCOPE: ${{ inputs.scope }}
           REQUESTED_MAX_REQUESTS: ${{ inputs.max_requests }}
+          FRESHNESS_GATE: ${{ inputs.freshness_gate }}
         run: |
           artist_data_cap="350"
           # Existing performance histories have their own daily budget. These
@@ -286,38 +327,22 @@ jobs:
             performance_tracks_due="true"
             performance_artists_due="true"
           fi
-          if [[ "${{ github.event_name }}" == "schedule" ]]; then
-            # A scheduled run is the authoritative daily pass: scan followers,
-            # every known artist and every known track exactly once per day.
-            playlist_followers_due="true"
+          if [[ "${{ github.event_name }}" == "schedule" || ( "${{ github.event_name }}" == "workflow_dispatch" && "$FRESHNESS_GATE" == "true" && "$scope" == "strict_rebaseline" ) ]]; then
+            # A scheduled/watchdog repair is the authoritative daily pass for
+            # every known artist and track. Followers run only if their full
+            # Paris-day cohort is not already complete.
+            follower_schedule_arg=""
+            if [[ "${{ github.event_name }}" == "schedule" ]]; then follower_schedule_arg="--scheduled-check"; fi
+            playlist_followers_due="$(python data_freshness_watchdog.py --target spotify_followers $follower_schedule_arg --print-due)"
             performance_catalogue_due="true"
             performance_tracks_due="true"
             performance_artists_due="true"
           elif [[ "$scope" == "full_sync" ]]; then
             playlist_followers_due="true"
           elif [[ "$scope" == "strict_rebaseline" ]]; then
-            playlist_followers_due="$(python - <<'PY'
-          import datetime as dt
-          import json
-          from pathlib import Path
-
-          path = Path('Spotify_Performance_data.js')
-          prefix = 'window.SPOTIFY_PERFORMANCE='
-          try:
-              raw = path.read_text(encoding='utf-8')
-              payload = json.loads(raw[len(prefix):].strip().removesuffix(';'))
-              value = (payload.get('freshness') or {}).get('playlists_at')
-              observed = dt.datetime.fromisoformat(str(value).replace('Z', '+00:00'))
-              if observed.tzinfo is None:
-                  observed = observed.replace(tzinfo=dt.timezone.utc)
-              due = dt.datetime.now(dt.timezone.utc) - observed.astimezone(dt.timezone.utc) >= dt.timedelta(hours=23)
-          except Exception:
-              due = True
-          print(str(due).lower())
-          PY
-            )"
+            playlist_followers_due="$(python data_freshness_watchdog.py --target spotify_followers --print-due)"
           fi
-          if [[ "$scope" == "strict_rebaseline" && "${{ github.event_name }}" != "schedule" ]]; then
+          if [[ "$scope" == "strict_rebaseline" && "${{ github.event_name }}" != "schedule" && "$FRESHNESS_GATE" != "true" ]]; then
             read -r performance_tracks_due performance_artists_due < <(python - <<'PY'
           import datetime as dt
           import json

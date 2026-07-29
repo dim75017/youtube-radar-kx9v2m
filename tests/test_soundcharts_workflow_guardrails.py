@@ -160,10 +160,10 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn('performance_artist_data_cap="15000"', self.workflow)
         self.assertIn('performance_track_data_cap="60000"', self.workflow)
         self.assertIn('playlist_data_cap="3000"', self.workflow)
-        self.assertIn('if [[ "${{ github.event_name }}" == "schedule" ]]; then', self.workflow)
+        self.assertIn('"$FRESHNESS_GATE" == "true"', self.workflow)
         self.assertIn('performance_tracks_due="true"', self.workflow)
         self.assertIn('performance_artists_due="true"', self.workflow)
-        self.assertIn('playlist_followers_due="true"', self.workflow)
+        self.assertIn('--target spotify_followers --print-due', self.workflow)
         self.assertIn(
             "steps.plan.outputs.scope == 'strict_rebaseline' && "
             "steps.plan.outputs.performance_artists_due == 'true'",

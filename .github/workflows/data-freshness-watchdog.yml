@@ -1,0 +1,71 @@
+name: Repair stale radar data
+
+on:
+  schedule:
+    # Reliability heartbeat. Keep this cron stable: changing it repeatedly
+    # makes GitHub rebuild scheduler state and defeats the watchdog itself.
+    - cron: '23,53 * * * *'
+  workflow_run:
+    workflows:
+      - 'Refresh YouTube radar'
+      - 'Refresh channel radar'
+      - 'Refresh Soundcharts A&R engine'
+      - 'Refresh Spotify playlist followers daily'
+      - 'Refresh Spotify browsing catalogue'
+    types: [completed]
+  repository_dispatch:
+    types: [radar-data-heartbeat]
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'data_freshness_watchdog.py'
+      - 'tests/test_data_freshness_watchdog.py'
+      - '.github/workflows/data-freshness-watchdog.yml'
+      - '.github/workflows/refresh-instrumental-radar.yml'
+      - '.github/workflows/refresh-channel-radar.yml'
+      - '.github/workflows/refresh-soundcharts.yml'
+      - '.github/workflows/refresh-playlist-followers.yml'
+      - '.github/workflows/refresh-spotify-browse-catalogue.yml'
+      - 'Lofi_Radar_data.js'
+      - 'Lofi_Radar_chx.js'
+      - 'Spotify_Performance_data.js'
+      - 'Spotify_Playlists_data.js'
+      - 'Spotify_Playlists_canonical_data.js'
+      - 'Spotify_Browse_Catalogue_data.js'
+      - 'Spotify_Soundcharts_data_*.js'
+      - 'spotify/index.html'
+  pull_request:
+    paths:
+      - 'data_freshness_watchdog.py'
+      - 'tests/test_data_freshness_watchdog.py'
+      - '.github/workflows/data-freshness-watchdog.yml'
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: radar-data-freshness-watchdog
+  cancel-in-progress: true
+
+jobs:
+  watchdog:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ (github.event_name == 'push' || github.event_name == 'pull_request') && github.sha || 'main' }}
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test Paris freshness and dispatch guardrails
+        run: python -m unittest tests.test_data_freshness_watchdog -v
+      - name: Validate freshness and repair only stale targets
+        if: github.event_name != 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python data_freshness_watchdog.py --dispatch

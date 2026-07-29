@@ -45,8 +45,10 @@ class YoutubeWorkflowGuardrailTests(unittest.TestCase):
         gate = workflow.split('  gate:\n', 1)[1].split('  validate:\n', 1)[0]
         self.assertIn("cron: '17 7 * * *'", workflow)
         self.assertIn("cron: '47 19 * * *'", workflow)
-        self.assertIn('--check-fresh-today', gate)
-        self.assertIn('run_scan=false', gate)
+        self.assertIn('data_freshness_watchdog.py', gate)
+        self.assertIn('--target youtube_radar', gate)
+        self.assertIn('steps.freshness.outputs.due', gate)
+        self.assertIn('FORCE: ${{ inputs.force }}', gate)
 
     def test_publication_is_verified_on_pages_after_the_push(self):
         workflow = Path('.github/workflows/refresh-instrumental-radar.yml').read_text(encoding='utf-8')

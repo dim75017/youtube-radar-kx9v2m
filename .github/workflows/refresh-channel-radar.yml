@@ -8,6 +8,12 @@ on:
       - 'refresh_channels_monthly.py'
       - '.github/workflows/refresh-channel-radar.yml'
   workflow_dispatch:
+    inputs:
+      force:
+        description: 'Run even when the current month is already healthy'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -17,7 +23,36 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  gate:
+    name: Check monthly channel freshness
+    runs-on: ubuntu-latest
+    outputs:
+      run_refresh: ${{ steps.freshness.outputs.due }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - id: freshness
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          FORCE: ${{ inputs.force }}
+        shell: bash
+        run: |
+          if [[ "$EVENT_NAME" == "push" || "$FORCE" == "true" ]]; then
+            echo "due=true" >> "$GITHUB_OUTPUT"
+          else
+            schedule_arg=""
+            if [[ "$EVENT_NAME" == "schedule" ]]; then schedule_arg="--scheduled-check"; fi
+            python data_freshness_watchdog.py \
+              --target youtube_channels \
+              $schedule_arg \
+              --github-output "$GITHUB_OUTPUT"
+          fi
+
   refresh:
+    needs: gate
+    if: needs.gate.outputs.run_refresh == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
