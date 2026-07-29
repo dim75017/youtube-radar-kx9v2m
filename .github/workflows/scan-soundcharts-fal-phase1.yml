@@ -1,0 +1,285 @@
+name: Scan Soundcharts Fans Also Like phase 1
+
+on:
+  schedule:
+    # Resume the large staging scan four times a day. The odd minute avoids
+    # GitHub Actions' congested top-of-hour scheduling window.
+    - cron: '23 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      max_requests:
+        description: 'Maximum Soundcharts data calls for this resumable batch (1-40000)'
+        required: true
+        default: '40000'
+        type: string
+
+# This phase only reads the repository and Soundcharts. Its SQLite checkpoint
+# and reports live exclusively in private Actions artifacts until Dim reviews
+# the complete staging inventory.
+permissions:
+  actions: write
+  contents: read
+
+# This exact group is shared with refresh-soundcharts.yml and the playlist
+# follower collector. No two Soundcharts collectors can spend quota together.
+concurrency:
+  group: refresh-soundcharts-ar-collection-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  phase1:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 310
+    env:
+      STATE_DIR: ${{ runner.temp }}/soundcharts-fal-phase1
+      STATE_DB: ${{ runner.temp }}/soundcharts-fal-phase1/soundcharts-fal-phase1-staging.sqlite3
+      REPORT_JSON: ${{ runner.temp }}/soundcharts-fal-phase1/soundcharts-fal-phase1-report.json
+      STATE_ARTIFACT: soundcharts-fal-phase1-state
+      COHORT_SNAPSHOT: Spotify_Soundcharts_data_20260721T181420Z.js
+      QUOTA_RESERVE: '500000'
+      EXPECTED_SEEDS: '4186'
+      MIN_SEEDS: '4186'
+      MAX_SEEDS: '4186'
+      WORKERS: '10'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate FAL scanner and workflow guardrails
+        run: |
+          python -m py_compile scan_soundcharts_fal_phase1.py
+          python -m unittest \
+            tests/test_scan_soundcharts_fal_phase1.py \
+            tests/test_soundcharts_fal_workflow_guardrails.py \
+            -v
+
+      - name: Validate bounded request plan
+        id: plan
+        env:
+          REQUESTED_MAX_REQUESTS: ${{ inputs.max_requests }}
+        shell: bash
+        run: |
+          max_requests="${REQUESTED_MAX_REQUESTS:-40000}"
+          if [[ ! "$max_requests" =~ ^[1-9][0-9]{0,4}$ ]] || (( 10#$max_requests > 40000 )); then
+            echo "max_requests must be an integer between 1 and 40000" >&2
+            exit 1
+          fi
+          echo "max_requests=$max_requests" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the latest private FAL staging checkpoint
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mkdir -p "$STATE_DIR"
+          state_api="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${STATE_ARTIFACT}&per_page=100"
+          state_url="$(curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "$state_api" | jq -r \
+            '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .archive_download_url // empty')"
+          if [[ -z "$state_url" ]]; then
+            echo "No prior FAL phase-1 checkpoint; initializing a separate staging database"
+            exit 0
+          fi
+          archive="$RUNNER_TEMP/soundcharts-fal-phase1-state.zip"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "$state_url" --output "$archive"
+          unzip -o -q "$archive" -d "$STATE_DIR"
+          test -s "$STATE_DB"
+          python - "$STATE_DB" <<'PY'
+          import sqlite3
+          import sys
+
+          with sqlite3.connect(sys.argv[1]) as database:
+              result = database.execute("PRAGMA quick_check").fetchone()
+          if not result or result[0] != "ok":
+              raise SystemExit(f"Invalid restored FAL staging database: {result!r}")
+          PY
+          echo "Restored the latest valid FAL phase-1 staging checkpoint"
+
+      - name: Validate the audited cohort and resolve current known identities
+        id: active_snapshot
+        shell: bash
+        run: |
+          test -s "$COHORT_SNAPSHOT"
+          active_snapshot="$(python prepare_soundcharts_snapshot.py current --index spotify/index.html)"
+          test -s "$active_snapshot"
+          echo "path=$active_snapshot" >> "$GITHUB_OUTPUT"
+          echo "Using audited cohort $COHORT_SNAPSHOT and current known-identity snapshot $active_snapshot"
+
+      - name: Inspect or initialize staging without Soundcharts authentication
+        shell: bash
+        run: >-
+          python scan_soundcharts_fal_phase1.py
+          --seed-snapshot "$COHORT_SNAPSHOT"
+          --active-snapshot "${{ steps.active_snapshot.outputs.path }}"
+          --browse-catalogue Spotify_Browse_Catalogue_data.js
+          --performance Spotify_Performance_data.js
+          --legacy-snapshot Spotify_Soundcharts_data.js
+          --state "$STATE_DB"
+          --report "$REPORT_JSON"
+          --max-requests "${{ steps.plan.outputs.max_requests }}"
+          --quota-reserve "$QUOTA_RESERVE"
+          --max-seeds "$MAX_SEEDS"
+          --min-seed-guard "$MIN_SEEDS"
+          --max-seed-guard "$MAX_SEEDS"
+          --seed-min-audience 50000
+          --candidate-min-audience 50000
+          --workers "$WORKERS"
+          --dry-run
+
+      - name: Stop when phase 1 is already complete
+        id: completion
+        shell: bash
+        run: |
+          python - "$REPORT_JSON" "$GITHUB_OUTPUT" <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          report_path = Path(sys.argv[1])
+          report = json.loads(report_path.read_text(encoding="utf-8"))
+          cohort_size = int((report.get("cohort") or {}).get("frozen_seeds") or 0)
+          minimum = int(os.environ["MIN_SEEDS"])
+          maximum = int(os.environ["MAX_SEEDS"])
+          expected = int(os.environ["EXPECTED_SEEDS"])
+          if minimum != expected or maximum != expected:
+              raise SystemExit("FAL workflow cohort guard is not locked to the audited total")
+          if not minimum <= cohort_size <= maximum:
+              raise SystemExit(
+                  f"FAL seed cohort outside protected bounds: {cohort_size} not in [{minimum}, {maximum}]"
+              )
+          complete = report.get("complete") is True
+          if complete and report.get("status") != "complete":
+              raise SystemExit("FAL report has an inconsistent completion status")
+          with Path(sys.argv[2]).open("a", encoding="utf-8") as output:
+              output.write(f"complete={'true' if complete else 'false'}\n")
+              output.write(f"cohort_size={cohort_size}\n")
+          print("FAL phase 1 is complete; no Soundcharts authentication is needed" if complete else "FAL phase 1 remains incomplete; starting the next bounded batch")
+          PY
+
+      - name: Resume Fans Also Like and discovered discographies in staging
+        id: fal_scan
+        if: steps.completion.outputs.complete != 'true'
+        timeout-minutes: 290
+        env:
+          PYTHONUNBUFFERED: '1'
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        shell: bash
+        run: |
+          rm -f "$REPORT_JSON"
+          python scan_soundcharts_fal_phase1.py \
+            --seed-snapshot "$COHORT_SNAPSHOT" \
+            --active-snapshot "${{ steps.active_snapshot.outputs.path }}" \
+            --browse-catalogue Spotify_Browse_Catalogue_data.js \
+            --performance Spotify_Performance_data.js \
+            --legacy-snapshot Spotify_Soundcharts_data.js \
+            --state "$STATE_DB" \
+            --report "$REPORT_JSON" \
+            --max-requests "${{ steps.plan.outputs.max_requests }}" \
+            --quota-reserve "$QUOTA_RESERVE" \
+            --max-seeds "$MAX_SEEDS" \
+            --min-seed-guard "$MIN_SEEDS" \
+            --max-seed-guard "$MAX_SEEDS" \
+            --seed-min-audience 50000 \
+            --candidate-min-audience 50000 \
+            --workers "$WORKERS"
+
+      - name: Preserve an honest report when a runner interrupts the batch
+        if: always()
+        env:
+          SCAN_OUTCOME: ${{ steps.fal_scan.outcome }}
+        shell: bash
+        run: |
+          if [[ ! -s "$REPORT_JSON" ]]; then
+            python - "$REPORT_JSON" "$SCAN_OUTCOME" <<'PY'
+          import datetime as dt
+          import json
+          import sys
+          from pathlib import Path
+
+          Path(sys.argv[1]).write_text(
+              json.dumps(
+                  {
+                      "status": "runner_error",
+                      "complete": False,
+                      "runner_outcome": sys.argv[2] or "unknown",
+                      "observed_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+                  },
+                  indent=2,
+                  sort_keys=True,
+              ) + "\n",
+              encoding="utf-8",
+          )
+          PY
+          fi
+
+      - name: Persist the private resumable FAL staging state
+        id: state_upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundcharts-fal-phase1-state
+          path: |
+            ${{ env.STATE_DB }}
+            ${{ env.REPORT_JSON }}
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 9
+
+      - name: Preserve the immutable FAL phase-1 run report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundcharts-fal-phase1-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.REPORT_JSON }}
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 9
+
+      - name: Keep only the two newest mutable FAL state artifacts
+        if: always() && steps.state_upload.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          state_api="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${STATE_ARTIFACT}&per_page=100"
+          artifacts="$RUNNER_TEMP/soundcharts-fal-phase1-state-artifacts.json"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "$state_api" --output "$artifacts"
+          mapfile -t stale_ids < <(jq -r \
+            '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[2:][] | .id' \
+            "$artifacts")
+          for artifact_id in "${stale_ids[@]}"; do
+            curl --fail --silent --show-error --location \
+              --request DELETE \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}"
+          done
+
+      - name: Verify the scan remained staging-only
+        if: always()
+        shell: bash
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "The FAL staging scan modified the repository; canonical promotion is forbidden" >&2
+            git status --short
+            exit 1
+          fi

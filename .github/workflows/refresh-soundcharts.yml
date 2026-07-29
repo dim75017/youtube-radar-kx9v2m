@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'refresh_soundcharts_daily.py'
+      - 'scan_soundcharts_fal_phase1.py'
       - 'data_freshness_watchdog.py'
       - 'playlist_follower_daily_status.py'
       - 'validate_playlist_snapshot_transition.py'
@@ -24,6 +25,8 @@ on:
       - 'Spotify_Selection_Contacts_data.js'
       - 'SPOTIFY_RADAR_POLICY.md'
       - 'tests/test_refresh_soundcharts_daily.py'
+      - 'tests/test_scan_soundcharts_fal_phase1.py'
+      - 'tests/test_soundcharts_fal_workflow_guardrails.py'
       - 'tests/test_data_freshness_watchdog.py'
       - 'tests/test_playlist_follower_daily_integrity.py'
       - 'tests/test_playlist_follower_workflow_guardrails.py'
@@ -48,6 +51,7 @@ on:
       - 'tests/test_dashboard_ar_ui_guardrails.js'
       - '.github/workflows/refresh-soundcharts.yml'
       - '.github/workflows/refresh-playlist-followers.yml'
+      - '.github/workflows/scan-soundcharts-fal-phase1.yml'
       - 'spotify/index.html'
       - 'spotify/dashboard.js'
       - 'spotify/dashboard.css'
@@ -56,6 +60,7 @@ on:
   pull_request:
     paths:
       - 'refresh_soundcharts_daily.py'
+      - 'scan_soundcharts_fal_phase1.py'
       - 'data_freshness_watchdog.py'
       - 'playlist_follower_daily_status.py'
       - 'validate_playlist_snapshot_transition.py'
@@ -75,6 +80,8 @@ on:
       - 'Spotify_Selection_Contacts_data.js'
       - 'SPOTIFY_RADAR_POLICY.md'
       - 'tests/test_refresh_soundcharts_daily.py'
+      - 'tests/test_scan_soundcharts_fal_phase1.py'
+      - 'tests/test_soundcharts_fal_workflow_guardrails.py'
       - 'tests/test_data_freshness_watchdog.py'
       - 'tests/test_playlist_follower_daily_integrity.py'
       - 'tests/test_playlist_follower_workflow_guardrails.py'
@@ -99,6 +106,7 @@ on:
       - 'tests/test_dashboard_ar_ui_guardrails.js'
       - '.github/workflows/refresh-soundcharts.yml'
       - '.github/workflows/refresh-playlist-followers.yml'
+      - '.github/workflows/scan-soundcharts-fal-phase1.yml'
       - 'spotify/index.html'
       - 'spotify/dashboard.js'
       - 'spotify/dashboard.css'
@@ -223,6 +231,8 @@ jobs:
         run: >-
           python -m unittest
           tests/test_refresh_soundcharts_daily.py
+          tests/test_scan_soundcharts_fal_phase1.py
+          tests/test_soundcharts_fal_workflow_guardrails.py
           tests/test_playlist_follower_daily_integrity.py
           tests/test_playlist_follower_workflow_guardrails.py
           tests/test_validate_playlist_snapshot_transition.py
@@ -239,7 +249,7 @@ jobs:
 
       - name: Validate production source syntax
         run: |
-          python -m py_compile refresh_soundcharts_daily.py playlist_follower_daily_status.py validate_playlist_snapshot_transition.py discover_soundcharts_playlists.py expand_soundcharts_instrumental_pool.py spotify_rights.py build_spotify_browse_catalogue.py build_spotify_selection_contacts.py enrich_public_artist_contacts.py sync_soundcharts_opportunities.py prepare_soundcharts_snapshot.py
+          python -m py_compile refresh_soundcharts_daily.py scan_soundcharts_fal_phase1.py playlist_follower_daily_status.py validate_playlist_snapshot_transition.py discover_soundcharts_playlists.py expand_soundcharts_instrumental_pool.py spotify_rights.py build_spotify_browse_catalogue.py build_spotify_selection_contacts.py enrich_public_artist_contacts.py sync_soundcharts_opportunities.py prepare_soundcharts_snapshot.py
           node --check spotify/dashboard.js
           node tests/test_dashboard_opportunity_guardrails.js
           node tests/test_dashboard_general_view_guardrails.js

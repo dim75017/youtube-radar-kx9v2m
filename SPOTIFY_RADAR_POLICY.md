@@ -65,6 +65,35 @@ serveur ; le site statique ne doit jamais prétendre qu’un scan serveur a eu l
 Cette exception ne modifie pas la règle fail-closed appliquée partout hors de
 `Sélection`.
 
+## 3. Expansion Fans Also Like — phase 1
+
+Le crawl Soundcharts « Fans Also Like » est une source de découverte brute et
+non une preuve de compatibilité éditoriale. Sa première phase reste dans un
+état SQLite séparé et ne modifie aucun fichier chargé par le dashboard.
+
+- La cohorte source est figée et dédupliquée par identifiants Spotify et
+  Soundcharts avant le premier appel. Seuls les artistes actuels avec au moins
+  50 000 auditeurs mensuels servent de sources à cette phase ; aucun plafond
+  d'audience n'est appliqué.
+- Un artiste déjà connu est enregistré comme doublon, jamais réintroduit comme
+  nouvelle découverte.
+- Les relations FAL sont conservées avant qualification afin de pouvoir
+  recalibrer les seuils sans refaire le crawl.
+- Une nouvelle discographie n'est approfondie que si l'audience est connue et
+  atteint au moins 50 000 auditeurs mensuels, sans plafond, et si l'artiste a
+  publié au moins un titre durant les 1 095 derniers jours.
+- Les artistes explicitement vocaux, hors taxonomie ou blacklistés sont
+  rejetés. Une information absente n'est jamais transformée en preuve.
+- `ai_risk=unknown` et `instrumental_status=unknown` restent en revue. Une
+  proximité FAL, un nom de playlist ou un genre large ne suffit jamais à les
+  convertir en `low` ou `instrumental`.
+- Les titres sont dédupliqués par UUID Soundcharts, identifiant Spotify et ISRC
+  lorsqu'ils sont disponibles. Les identités encore incomplètes restent en
+  staging.
+- La phase 1 ne récursive pas sur les nouveaux artistes, ne crée aucune
+  Opportunité et n'effectue aucune promotion canonique. Un état des lieux et
+  une validation explicite de Dim sont requis avant toute exposition publique.
+
 ## Règle de maintenance
 
 Ne jamais sécuriser A&R en vidant le catalogue de navigation. Les formes suivantes constituent une régression :
