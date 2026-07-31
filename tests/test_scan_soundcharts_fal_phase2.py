@@ -523,7 +523,173 @@ class FalPhase2Tests(unittest.TestCase):
             recent_days=1095,
             as_of=dt.date(2026, 7, 31),
         )
-        reconciliatio…1852 tokens truncated…est_failed", 2, "request_failed"),
+        reconciliation = report["source_checkpoint"]["reconciliation"]
+        self.assertEqual(reconciliation["orphan_queue_rows_removed_last"], 1)
+        self.assertEqual(reconciliation["orphan_details_rows_removed_last"], 1)
+        self.assertEqual(reconciliation["orphan_queue_rows_removed_total"], 1)
+        self.assertEqual(reconciliation["orphan_details_rows_removed_total"], 1)
+        self.assertEqual(report["queue"]["status_counts"], {"review_metadata_unknown": 1})
+        self.assertEqual(report["details"]["enriched"], 1)
+
+    def test_unknown_detail_stays_review_and_is_never_accepted(self):
+        self.add_track("track-unknown")
+        self.migrate()
+        client = FakeClient(lambda path: {"object": {"name": "Unknown", "releaseDate": "2026-07-01"}})
+        scanner = self.scanner(client)
+        self.assertTrue(scanner.scan_batch())
+        row = self.phase2.execute(
+            "SELECT * FROM fal_phase2_details WHERE track_uuid='track-unknown'"
+        ).fetchone()
+        self.assertEqual(row["decision"], "review_metadata_unknown")
+        self.assertEqual(row["instrumental_status"], "unknown")
+        self.assertEqual(row["ai_risk"], "unknown")
+        self.assertEqual(row["genre_status"], "unknown")
+        self.assertEqual(client.requests_claimed, 1)
+
+    def test_real_v225_instrumental_signal_stays_in_human_review_while_ai_is_unknown(self):
+        self.add_track("track-ready")
+        self.migrate()
+        client = FakeClient(
+            lambda path: {
+                "type": "song",
+                "object": {
+                    "name": "Ready",
+                    "genres": [
+                        {"root": "Ambient", "sub": ["Dark Ambient", "Instrumental"]}
+                    ],
+                    "audio": {
+                        "instrumentalness": 0.94,
+                        "speechiness": 0.02,
+                    },
+                }
+            }
+        )
+        self.scanner(client).scan_batch()
+        row = self.phase2.execute(
+            "SELECT * FROM fal_phase2_details WHERE track_uuid='track-ready'"
+        ).fetchone()
+        evidence = json.loads(row["evidence_json"])
+
+        self.assertEqual(client.paths, ["/api/v2.25/song/track-ready"])
+        self.assertEqual(row["instrumental_status"], "instrumental")
+        self.assertEqual(row["genre_status"], "in_scope")
+        self.assertEqual(row["ai_risk"], "unknown")
+        self.assertTrue(row["decision"].startswith("review_"))
+        self.assertNotEqual(row["decision"], "eligible")
+        self.assertAlmostEqual(evidence["instrumentalness"], 0.94)
+        self.assertAlmostEqual(evidence["speechiness"], 0.02)
+        self.assertEqual(evidence["ai_risk"], "unknown")
+        stream_gate = self.phase2.execute(
+            """SELECT gate_status,streams_total FROM fal_phase2_stream_gate
+                 WHERE track_uuid='track-ready'"""
+        ).fetchone()
+        self.assertEqual(tuple(stream_gate), ("pending", None))
+        stats = evidence_yield(self.phase2)
+        self.assertEqual(stats["useful_signal"], 1)
+        self.assertEqual(stats["evidence_ready"], 0)
+        self.assertFalse(canary_zero_yield(self.phase2, 1))
+
+    def test_stream_gate_uses_an_inclusive_100000_lifetime_threshold(self):
+        self.assertEqual(DEFAULT_MIN_TRACK_STREAMS, 100_000)
+        self.add_detail("track-at-threshold", spotify_id="spotify-at-threshold")
+        self.add_detail("track-below-threshold", spotify_id="spotify-below-threshold")
+        self.assertEqual(seed_stream_gate(self.phase2), 2)
+
+        def respond(path):
+            if "/track-at-threshold/" in path:
+                return self.stream_history("spotify-at-threshold", 100_000)
+            if "/track-below-threshold/" in path:
+                return self.stream_history("spotify-below-threshold", 99_999)
+            raise AssertionError(f"unexpected stream path: {path}")
+
+        scanner = self.stream_scanner(FakeClient(respond), workers=2)
+        self.assertTrue(scanner.scan_batch(max_items=2))
+        rows = {
+            row["track_uuid"]: row
+            for row in self.phase2.execute(
+                """SELECT track_uuid,gate_status,reason,streams_total
+                     FROM fal_phase2_stream_gate ORDER BY track_uuid"""
+            ).fetchall()
+        }
+        self.assertEqual(
+            (
+                rows["track-at-threshold"]["gate_status"],
+                rows["track-at-threshold"]["streams_total"],
+            ),
+            ("eligible", 100_000),
+        )
+        self.assertEqual(
+            (
+                rows["track-below-threshold"]["gate_status"],
+                rows["track-below-threshold"]["streams_total"],
+            ),
+            ("blocked_streams_below_threshold", 99_999),
+        )
+
+    def test_stream_gate_missing_metric_stays_in_review(self):
+        self.add_detail("track-streams-unknown", spotify_id="spotify-unknown")
+        seed_stream_gate(self.phase2)
+        client = FakeClient(
+            lambda _path: {
+                "items": [{"date": "2026-07-31", "plots": []}]
+            }
+        )
+        self.assertTrue(self.stream_scanner(client).scan_batch())
+        row = self.phase2.execute(
+            """SELECT gate_status,reason,streams_total,history_json
+                 FROM fal_phase2_stream_gate
+                WHERE track_uuid='track-streams-unknown'"""
+        ).fetchone()
+        self.assertEqual(row["gate_status"], "review_streams_unknown")
+        self.assertEqual(row["reason"], "spotify_stream_history_missing_or_ambiguous")
+        self.assertIsNone(row["streams_total"])
+        self.assertEqual(json.loads(row["history_json"]), [])
+
+    def test_stream_gate_404_is_review_and_transient_errors_are_bounded(self):
+        self.add_detail("stream-404", spotify_id="spotify-404")
+        self.add_detail("stream-retry", spotify_id="spotify-retry")
+        seed_stream_gate(self.phase2)
+
+        def respond(path):
+            if "/stream-404/" in path:
+                raise SoundchartsDataUnavailableError(404)
+            if "/stream-retry/" in path:
+                raise SoundchartsError("temporary")
+            raise AssertionError(f"unexpected stream path: {path}")
+
+        scanner = self.stream_scanner(FakeClient(respond), workers=2)
+        self.assertTrue(scanner.scan_batch(max_items=2))
+        first = {
+            row["track_uuid"]: row
+            for row in self.phase2.execute(
+                """SELECT track_uuid,gate_status,attempts,error_code
+                     FROM fal_phase2_stream_gate ORDER BY track_uuid"""
+            ).fetchall()
+        }
+        self.assertEqual(
+            (
+                first["stream-404"]["gate_status"],
+                first["stream-404"]["attempts"],
+                first["stream-404"]["error_code"],
+            ),
+            ("review_streams_unavailable", 0, "unavailable"),
+        )
+        self.assertEqual(
+            (
+                first["stream-retry"]["gate_status"],
+                first["stream-retry"]["attempts"],
+            ),
+            ("retry", 1),
+        )
+
+        self.assertTrue(scanner.scan_batch())
+        retry = self.phase2.execute(
+            """SELECT gate_status,attempts,error_code
+                 FROM fal_phase2_stream_gate WHERE track_uuid='stream-retry'"""
+        ).fetchone()
+        self.assertEqual(
+            (retry["gate_status"], retry["attempts"], retry["error_code"]),
+            ("review_request_failed", 2, "request_failed"),
         )
 
     def test_stream_gate_seeds_preexisting_detail_rows_without_duplicates(self):
