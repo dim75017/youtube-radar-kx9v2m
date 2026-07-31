@@ -57,9 +57,26 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("actions/upload-artifact@v4", section)
         self.assertIn("${{ steps.snapshot.outputs.candidate }}", section)
         self.assertIn("Spotify_Performance_data.js", section)
+        self.assertIn("Spotify_Performance_tracks", section)
         self.assertIn("soundcharts-history", section)
         self.assertIn("soundcharts-instrumental-cache.json", section)
         self.assertIn("retention-days: 3", section)
+
+    def test_performance_store_is_validated_before_any_paid_collection(self):
+        storage = self.workflow.index("Validate and shard performance storage before paid collection")
+        first_paid = min(
+            self.workflow.index("Verify Soundcharts authentication and response contracts"),
+            self.workflow.index("Refresh mapped artist audience only when explicitly requested"),
+            self.workflow.index("Refresh playlist follower history every 24 hours"),
+        )
+        self.assertLess(storage, first_paid)
+        section = self.workflow[storage:first_paid]
+        self.assertIn("--mode storage", section)
+        self.assertIn("Spotify_Performance_data.js", section)
+
+    def test_performance_shard_creations_and_deletions_are_published(self):
+        self.assertIn("git add -A --", self.workflow)
+        self.assertIn("Spotify_Performance_tracks", self.workflow)
 
     def test_complete_sync_runs_daily_without_cancelling_a_live_run(self):
         self.assertIn("- cron: '17 4 * * *'", self.workflow)
