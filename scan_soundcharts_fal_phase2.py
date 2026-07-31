@@ -58,8 +58,8 @@ from soundcharts_fal_artist_gate import (
 )
 
 
-PHASE2_STATE_VERSION = 2
-PHASE2_REPORT_VERSION = 2
+PHASE2_STATE_VERSION = 3
+PHASE2_REPORT_VERSION = 3
 DEFAULT_STATE = Path("soundcharts-fal-phase2-staging.sqlite3")
 DEFAULT_REPORT = Path("soundcharts-fal-phase2-report.json")
 DEFAULT_MAX_REQUESTS = 500
@@ -293,8 +293,9 @@ def initialize_artist_gate(
     """Materialise one resumable metadata gate per completed new artist.
 
     This deliberately happens before any song-detail bulk work.  It costs at
-    most one artist metadata request per candidate and prevents a superstar's
-    whole discography from monopolising the paid song queue.
+    most one complete artist metadata request per candidate and keeps explicit
+    vocal or out-of-scope catalogues out of the paid song queue.  Audience size
+    alone is never a rejection criterion.
     """
 
     rows = phase1.execute(
@@ -673,7 +674,7 @@ class ArtistGateScanner:
 
         def fetch(row: sqlite3.Row) -> tuple[str, Any]:
             uuid = str(row["candidate_uuid"])
-            return uuid, self.client.get(f"/api/v2/artist/{urllib.parse.quote(uuid)}")
+            return uuid, self.client.get(f"/api/v2.9/artist/{urllib.parse.quote(uuid)}")
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.workers) as executor:
             futures = {executor.submit(fetch, row): str(row["candidate_uuid"]) for row in rows}
@@ -1288,11 +1289,11 @@ def build_report(
             "instrumental_or_ai_unknown": "review",
         },
         "artist_gate": {
-            "endpoint": "/api/v2/artist/{uuid}",
+            "endpoint": "/api/v2.9/artist/{uuid}",
             "status_counts": artist_gate_counts,
             "active": artist_gate_active,
             "eligible_bulk_remaining": eligible_bulk_remaining,
-            "superstars_blocked_by_career_stage": True,
+            "audience_size_is_not_a_rejection_criterion": True,
             "unknown_genre_stays_in_review": True,
             "ai_risk_is_never_inferred": True,
         },
