@@ -493,7 +493,7 @@ def _evidence_labels(evidence: Mapping[str, Any]) -> tuple[str, str, str]:
     ai_raw = normalize_text(evidence.get("ai_risk"))
     if ai_raw in {"low", "faible"}:
         ai_risk = "low"
-    elif ai_raw in {"high", "elevated", "eleve", "elevÃ©"}:
+    elif ai_raw in {"high", "elevated", "eleve", "elevé"}:
         ai_risk = "high"
     else:
         ai_risk = "unknown"

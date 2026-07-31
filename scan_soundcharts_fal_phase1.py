@@ -87,7 +87,7 @@ VOCAL_RE = re.compile(
     r"(?:^|\b)(?:vocal(?:s|ist)?|with lyrics?|singer(?: songwriter)?|rapper|rap vocals?)(?:\b|$)",
     re.IGNORECASE,
 )
-AI_HIGH_RE = re.compile(r"(?:^|\b)(?:high|elevated|eleve|elevÃ©)(?:\b|$)", re.IGNORECASE)
+AI_HIGH_RE = re.compile(r"(?:^|\b)(?:high|elevated|eleve|elevé)(?:\b|$)", re.IGNORECASE)
 SPOTIFY_ID_RE = re.compile(r"^[A-Za-z0-9]{15,32}$")
 ISRC_RE = re.compile(r"^[A-Z]{2}[A-Z0-9]{3}\d{7}$", re.IGNORECASE)
 
