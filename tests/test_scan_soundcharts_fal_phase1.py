@@ -1,10 +1,13 @@
 import datetime as dt
 import inspect
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
 
 from scan_soundcharts_fal_phase1 import (
+    CATALOG_SCOPE_META_KEY,
+    CATALOG_SCOPE_VERSION,
     FalPhase1Error,
     HARD_MIN_QUOTA_RESERVE,
     KnownIdentities,
@@ -20,6 +23,7 @@ from scan_soundcharts_fal_phase1 import (
     open_state,
     parse_related_page,
     plan_quota_budget,
+    prepare_runtime_state,
     next_quota_reset,
     reconcile_seed_ledger,
     requeue_failed_work,
@@ -344,9 +348,245 @@ class FalPhase1Tests(unittest.TestCase):
         self.assertEqual(tracks["track-ambient"]["status"], "review_metadata_pending")
         self.assertEqual(tracks["track-ambient"]["isrc"], "")
         self.assertEqual(connection.execute("SELECT COUNT(*) FROM tracks").fetchone()[0], 2)
-        self.assertTrue(any("offset=1" in path for path in client.paths))
-        self.assertTrue(all("isMain" not in path for path in client.paths))
+        self.assertEqual(
+            client.paths,
+            [
+                "/api/v2.21/artist/artist-uuid/songs?mainPerformer=1&sortBy=releaseDate&sortOrder=desc&offset=0&limit=1",
+                "/api/v2.21/artist/artist-uuid/songs?mainPerformer=1&sortBy=releaseDate&sortOrder=desc&offset=1&limit=1",
+            ],
+        )
         self.assertFalse(any("/api/v2/song/" in path for path in client.paths))
+
+    def test_main_performer_v1_migration_keeps_graph_identity_and_audience_only(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        path = Path(tmp.name) / "phase1.sqlite3"
+        connection = open_state(path)
+        freeze_seed_cohort(
+            connection,
+            [SeedArtist("seed-uuid", "seed-spotify", "Seed", 100_000, True)],
+            source_eligible=1,
+            snapshot_name="seed.js",
+            snapshot_generated_at="2026-07-21T00:00:00Z",
+        )
+        self.insert_candidate(connection, "candidate-complete", status="review_inventory_complete", spotify_id="spotify-complete")
+        self.insert_candidate(connection, "candidate-empty", status="review_inventory_complete", spotify_id="spotify-empty")
+        self.insert_candidate(connection, "candidate-inactive", status="blocked_inactive", spotify_id="spotify-inactive")
+        self.insert_candidate(connection, "candidate-unaffected", status="blocked_audience_low", spotify_id="spotify-low")
+        connection.execute(
+            """UPDATE candidates SET monthly_listeners=75000,source_count=3,best_rank=2,
+                      latest_release_date='2026-07-01',catalog_offset=2,catalog_total=2
+               WHERE soundcharts_uuid='candidate-complete'"""
+        )
+        connection.execute(
+            """UPDATE candidates SET monthly_listeners=80000,source_count=2,best_rank=4,
+                      latest_release_date='2026-06-01',catalog_offset=0,catalog_total=0
+               WHERE soundcharts_uuid='candidate-empty'"""
+        )
+        connection.execute(
+            """UPDATE candidates SET monthly_listeners=90000,latest_release_date='2020-01-01',
+                      catalog_offset=1,catalog_total=1
+               WHERE soundcharts_uuid='candidate-inactive'"""
+        )
+        connection.execute(
+            "INSERT INTO related_edges(seed_uuid,candidate_uuid,rank,observed_at) VALUES(?,?,?,?)",
+            ("seed-uuid", "candidate-complete", 1, "2026-07-29T00:00:00Z"),
+        )
+        connection.execute(
+            "INSERT INTO candidate_sources(candidate_uuid,seed_uuid,rank) VALUES(?,?,?)",
+            ("candidate-complete", "seed-uuid", 1),
+        )
+        for track_uuid, candidate_uuid in (
+            ("legacy-track-complete", "candidate-complete"),
+            ("legacy-track-inactive", "candidate-inactive"),
+        ):
+            connection.execute(
+                """INSERT INTO tracks(
+                     soundcharts_uuid,candidate_uuid,status,reason,evidence_json,first_seen_at,updated_at)
+                   VALUES(?,?,'review_metadata_pending','phase2_metadata_classification_required','{}',?,?)""",
+                (track_uuid, candidate_uuid, "2026-07-29T00:00:00Z", "2026-07-29T00:00:00Z"),
+            )
+            connection.execute(
+                "INSERT INTO candidate_tracks(candidate_uuid,track_uuid,first_seen_at) VALUES(?,?,?)",
+                (candidate_uuid, track_uuid, "2026-07-29T00:00:00Z"),
+            )
+        connection.execute("DELETE FROM meta WHERE key=?", (CATALOG_SCOPE_META_KEY,))
+        connection.commit()
+        connection.close()
+
+        migrated = open_state(path)
+        self.addCleanup(migrated.close)
+        self.assertEqual(migrated.execute("SELECT COUNT(*) FROM tracks").fetchone()[0], 0)
+        self.assertEqual(migrated.execute("SELECT COUNT(*) FROM candidate_tracks").fetchone()[0], 0)
+        self.assertEqual(migrated.execute("SELECT COUNT(*) FROM seeds").fetchone()[0], 1)
+        self.assertEqual(migrated.execute("SELECT COUNT(*) FROM related_edges").fetchone()[0], 1)
+        self.assertEqual(migrated.execute("SELECT COUNT(*) FROM candidate_sources").fetchone()[0], 1)
+        complete = migrated.execute(
+            """SELECT spotify_id,monthly_listeners,source_count,best_rank,status,reason,
+                      catalog_offset,catalog_total,latest_release_date
+               FROM candidates WHERE soundcharts_uuid='candidate-complete'"""
+        ).fetchone()
+        self.assertEqual(
+            tuple(complete),
+            (
+                "spotify-complete",
+                75_000,
+                3,
+                2,
+                "activity_pending",
+                "main_performer_v1_rescan_required",
+                0,
+                None,
+                None,
+            ),
+        )
+        empty = migrated.execute(
+            "SELECT status,catalog_offset,catalog_total FROM candidates WHERE soundcharts_uuid='candidate-empty'"
+        ).fetchone()
+        self.assertEqual(tuple(empty), ("activity_pending", 0, None))
+        inactive = migrated.execute(
+            "SELECT status,catalog_offset,catalog_total FROM candidates WHERE soundcharts_uuid='candidate-inactive'"
+        ).fetchone()
+        self.assertEqual(tuple(inactive), ("activity_pending", 0, None))
+        unaffected = migrated.execute(
+            "SELECT status,spotify_id FROM candidates WHERE soundcharts_uuid='candidate-unaffected'"
+        ).fetchone()
+        self.assertEqual(tuple(unaffected), ("blocked_audience_low", "spotify-low"))
+        self.assertEqual(
+            migrated.execute("SELECT value FROM meta WHERE key=?", (CATALOG_SCOPE_META_KEY,)).fetchone()[0],
+            CATALOG_SCOPE_VERSION,
+        )
+        self.assertEqual(
+            migrated.execute("SELECT value FROM meta WHERE key='main_performer_v1_tracks_deleted'").fetchone()[0],
+            "2",
+        )
+
+    def test_main_performer_v1_migration_resumes_at_zero_and_second_open_is_noop(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        path = Path(tmp.name) / "phase1.sqlite3"
+        connection = open_state(path)
+        self.insert_candidate(connection, "candidate-resume", status="review_inventory_complete")
+        connection.execute(
+            """UPDATE candidates SET catalog_offset=7,catalog_total=7,latest_release_date='2026-01-01'
+               WHERE soundcharts_uuid='candidate-resume'"""
+        )
+        connection.execute(
+            """INSERT INTO tracks(
+                 soundcharts_uuid,candidate_uuid,status,reason,evidence_json,first_seen_at,updated_at)
+               VALUES('legacy-track','candidate-resume','review_metadata_pending',
+                      'phase2_metadata_classification_required','{}',?,?)""",
+            ("2026-07-29T00:00:00Z", "2026-07-29T00:00:00Z"),
+        )
+        connection.execute(
+            "INSERT INTO candidate_tracks(candidate_uuid,track_uuid,first_seen_at) VALUES(?,?,?)",
+            ("candidate-resume", "legacy-track", "2026-07-29T00:00:00Z"),
+        )
+        connection.execute("DELETE FROM meta WHERE key=?", (CATALOG_SCOPE_META_KEY,))
+        connection.commit()
+        connection.close()
+
+        migrated = open_state(path)
+        client = FakeClient(
+            lambda path: (
+                {
+                    "page": {"total": 2, "offset": 0, "limit": 1},
+                    "items": [{"uuid": "main-track-one", "name": "Main One", "releaseDate": "2026-07-01"}],
+                }
+                if "offset=0" in path
+                else {
+                    "page": {"total": 2, "offset": 1, "limit": 1},
+                    "items": [{"uuid": "main-track-two", "name": "Main Two", "releaseDate": "2026-06-01"}],
+                }
+            )
+        )
+        scanner = self.scanner(migrated, client)
+        self.assertTrue(scanner.scan_activity_batch())
+        self.assertTrue(scanner.scan_catalog_batch())
+        self.assertEqual(
+            client.paths,
+            [
+                "/api/v2.21/artist/candidate-resume/songs?mainPerformer=1&sortBy=releaseDate&sortOrder=desc&offset=0&limit=1",
+                "/api/v2.21/artist/candidate-resume/songs?mainPerformer=1&sortBy=releaseDate&sortOrder=desc&offset=1&limit=1",
+            ],
+        )
+        self.assertEqual(
+            tuple(
+                migrated.execute(
+                    "SELECT status,catalog_offset,catalog_total FROM candidates WHERE soundcharts_uuid='candidate-resume'"
+                ).fetchone()
+            ),
+            ("review_inventory_complete", 2, 2),
+        )
+        applied_at = migrated.execute(
+            "SELECT value FROM meta WHERE key='main_performer_v1_applied_at'"
+        ).fetchone()[0]
+        migrated.close()
+
+        reopened = open_state(path)
+        self.addCleanup(reopened.close)
+        self.assertEqual(
+            [row[0] for row in reopened.execute("SELECT soundcharts_uuid FROM tracks ORDER BY soundcharts_uuid")],
+            ["main-track-one", "main-track-two"],
+        )
+        self.assertEqual(
+            reopened.execute("SELECT value FROM meta WHERE key='main_performer_v1_applied_at'").fetchone()[0],
+            applied_at,
+        )
+
+    def test_dry_run_state_copy_absorbs_scope_migration_without_touching_checkpoint(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        path = Path(tmp.name) / "phase1.sqlite3"
+        connection = open_state(path)
+        self.insert_candidate(connection, "candidate-dry-run", status="review_inventory_complete")
+        connection.execute(
+            """UPDATE candidates SET catalog_offset=1,catalog_total=1
+               WHERE soundcharts_uuid='candidate-dry-run'"""
+        )
+        connection.execute(
+            """INSERT INTO tracks(
+                 soundcharts_uuid,candidate_uuid,status,reason,evidence_json,first_seen_at,updated_at)
+               VALUES('legacy-dry-run-track','candidate-dry-run','review_metadata_pending',
+                      'phase2_metadata_classification_required','{}',?,?)""",
+            ("2026-07-29T00:00:00Z", "2026-07-29T00:00:00Z"),
+        )
+        connection.execute(
+            "INSERT INTO candidate_tracks(candidate_uuid,track_uuid,first_seen_at) VALUES(?,?,?)",
+            ("candidate-dry-run", "legacy-dry-run-track", "2026-07-29T00:00:00Z"),
+        )
+        connection.execute("DELETE FROM meta WHERE key=?", (CATALOG_SCOPE_META_KEY,))
+        connection.commit()
+        connection.close()
+
+        dry_run_dir, runtime_path = prepare_runtime_state(path, dry_run=True)
+        self.assertIsNotNone(dry_run_dir)
+        self.assertNotEqual(runtime_path, path)
+        simulated = open_state(runtime_path)
+        self.assertEqual(simulated.execute("SELECT COUNT(*) FROM tracks").fetchone()[0], 0)
+        self.assertEqual(
+            simulated.execute("SELECT value FROM meta WHERE key=?", (CATALOG_SCOPE_META_KEY,)).fetchone()[0],
+            CATALOG_SCOPE_VERSION,
+        )
+        simulated.close()
+        dry_run_dir.cleanup()
+
+        original = sqlite3.connect(path)
+        try:
+            self.assertEqual(original.execute("SELECT COUNT(*) FROM tracks").fetchone()[0], 1)
+            self.assertIsNone(
+                original.execute("SELECT value FROM meta WHERE key=?", (CATALOG_SCOPE_META_KEY,)).fetchone()
+            )
+            self.assertEqual(
+                tuple(
+                    original.execute(
+                        "SELECT status,catalog_offset,catalog_total FROM candidates WHERE soundcharts_uuid='candidate-dry-run'"
+                    ).fetchone()
+                ),
+                ("review_inventory_complete", 1, 1),
+            )
+        finally:
+            original.close()
 
     def test_page_cursor_accepts_confirmed_empty_end_and_rejects_partial_page(self):
         rows, total, next_offset = parse_related_page(
@@ -491,6 +731,7 @@ class FalPhase1Tests(unittest.TestCase):
             {"minimum": 50_000, "maximum": None},
         )
         self.assertEqual(report["discographies"]["mode"], "inventory_light")
+        self.assertEqual(report["discographies"]["scope_version"], "main_performer_v1")
         self.assertEqual(
             set(report["coverage"]["seed_related"]),
             {"expected", "scanned", "usable", "missing"},
