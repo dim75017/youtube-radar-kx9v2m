@@ -489,6 +489,46 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertIn('/api/v2/song/strict-uuid/audience/spotify?', client.paths[0])
         self.assertIn('/api/v2/song/history-only-uuid/audience/spotify?', client.paths[1])
 
+
+    def test_full_track_refresh_enrols_source_backed_discovery_candidate(self):
+        payload = {
+            'schemas': {'tracks': ['soundcharts_uuid', 'spotify_id']},
+            'tracks': [],
+            'discovery_catalogue': {
+                'track_schema': ['soundcharts_uuid', 'spotify_id'],
+                'tracks': [['waiting-uuid', 'waiting-track']],
+            },
+        }
+        performance = {'tracks': {}, 'artists': {}, 'playlists': {}}
+        response = {
+            'items': [
+                {
+                    'date': '2026-08-01',
+                    'plots': [{'identifier': 'waiting-track', 'value': 99_900}],
+                },
+            ]
+        }
+        client = FakeClient(response)
+
+        outcome = subject.refresh_tracks(
+            payload,
+            performance,
+            client,
+            1,
+            10,
+            95,
+            include_performance_catalogue=True,
+        )
+
+        self.assertEqual((outcome.available, outcome.usable), (1, 1))
+        self.assertEqual(payload['tracks'], [])
+        self.assertEqual(
+            performance['tracks']['waiting-track']['history'],
+            [['2026-08-01', 99_900]],
+        )
+        self.assertTrue(outcome.items[0]['performance_only'])
+        self.assertIn('/api/v2/song/waiting-uuid/audience/spotify?', client.paths[0])
+
     def test_full_track_refresh_prioritizes_strict_rows_before_performance_only_history(self):
         payload = {
             'schemas': {'tracks': ['soundcharts_uuid', 'spotify_id']},
@@ -592,6 +632,38 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertEqual(policy['reason_coverage']['opportunity']['missing_requests'], 0)
         self.assertEqual(policy['reason_coverage']['release_90d']['missing_requests'], 0)
         self.assertEqual(policy['reason_coverage']['needs_two_true_points']['missing_requests'], 0)
+
+
+    def test_track_plan_prioritizes_candidates_approaching_public_threshold(self):
+        today = dt.date(2026, 8, 1)
+        tasks = [
+            {'uuid': 'near-uuid', 'targets': [{'spotify_id': 'near-track', 'row': None}]},
+            {'uuid': 'far-uuid', 'targets': [{'spotify_id': 'far-track', 'row': None}]},
+        ]
+        store = {
+            'near-track': {
+                'history': [['2026-07-25', 98_500], ['2026-08-01', 99_000]],
+                'observed_at': '2026-08-01T00:00:00Z',
+            },
+            'far-track': {
+                'history': [['2026-07-25', 49_500], ['2026-08-01', 50_000]],
+                'observed_at': '2026-08-01T00:00:00Z',
+            },
+        }
+
+        selected, policy = subject.plan_track_maintenance(
+            tasks,
+            store,
+            {},
+            1,
+            today=today,
+        )
+
+        self.assertEqual([task['uuid'] for task in selected], ['near-uuid'])
+        self.assertEqual(
+            policy['reason_coverage']['threshold_promotion_watch']['selected_requests'],
+            1,
+        )
 
     def test_track_rotation_bucket_is_stable_and_bounded(self):
         first = subject.stable_rotation_bucket('spotify-track-id')
