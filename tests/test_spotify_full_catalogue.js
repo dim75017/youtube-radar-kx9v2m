@@ -48,4 +48,3 @@ assert.match(dashboard, /function artistTrackClassification\(g\)/);
 assert.match(dashboard, /genreSource:'tracks_catalogue'/);
 assert.match(index, /coverage\.js\?v=20260801-track-floor-100k-v1/);
 console.log('spotify unified catalogue guardrails: OK');
-
