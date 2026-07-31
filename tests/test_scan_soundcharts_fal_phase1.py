@@ -14,6 +14,7 @@ from scan_soundcharts_fal_phase1 import (
     build_known_identities,
     build_report,
     evidence_decision,
+    extract_evidence,
     extract_seed_cohort,
     freeze_seed_cohort,
     open_state,
@@ -224,6 +225,49 @@ class FalPhase1Tests(unittest.TestCase):
             "blocked_out_of_scope",
         )
         self.assertIsNone(evidence_decision({"genres": ["Lofi Hip Hop"]})[0])
+
+    def test_v225_song_evidence_reads_nested_genres_and_audio_without_inventing_ai(self):
+        evidence = extract_evidence(
+            {
+                "type": "song",
+                "object": {
+                    "uuid": "track-v225",
+                    "genres": [
+                        {"root": "Ambient", "sub": ["Dark Ambient", "Instrumental"]},
+                        {"root": "Electronic", "sub": ["Downtempo"]},
+                    ],
+                    "audio": {
+                        "instrumentalness": 0.93,
+                        "speechiness": 0.04,
+                    },
+                },
+            }
+        )
+
+        self.assertEqual(
+            set(evidence["genres"]),
+            {"Ambient", "Dark Ambient", "Instrumental", "Electronic", "Downtempo"},
+        )
+        self.assertIs(evidence["instrumental"], True)
+        self.assertIsNone(evidence["vocal"])
+        self.assertAlmostEqual(evidence["instrumentalness"], 0.93)
+        self.assertAlmostEqual(evidence["speechiness"], 0.04)
+        self.assertEqual(evidence["ai_risk"], "unknown")
+
+    def test_v225_low_instrumentalness_is_not_promoted_to_explicit_vocal_evidence(self):
+        evidence = extract_evidence(
+            {
+                "object": {
+                    "genres": [{"root": "Ambient", "sub": []}],
+                    "audio": {"instrumentalness": 0.2, "speechiness": 0.03},
+                }
+            }
+        )
+
+        self.assertIsNone(evidence["instrumental"])
+        self.assertIsNone(evidence["vocal"])
+        self.assertEqual(evidence["ai_risk"], "unknown")
+        self.assertIsNone(evidence_decision(evidence)[0])
 
     def test_audience_uses_current_stats_value_and_50k_floor(self):
         connection = self.state()
