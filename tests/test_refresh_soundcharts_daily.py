@@ -845,15 +845,18 @@ class RefreshSoundchartsTests(unittest.TestCase):
         }
         performance = {'playlists': {'playlist-1': {'history': [['2026-07-23', 120]]}}}
         response = {'object': {'latestSubscriberCount': 125}}
-        with tempfile.TemporaryDirectory() as directory:
+        fixed_day = dt.date(2026, 7, 31)
+        with tempfile.TemporaryDirectory() as directory, patch.object(
+            subject, 'paris_today', return_value=fixed_day
+        ):
             path = Path(directory) / 'playlists.js'
             subject.write_js_payload(path, playlists, subject.PLAYLISTS_PREFIX)
             outcome = subject.refresh_playlists(path, performance, FakeClient(response), 1, 10)
             refreshed = subject.read_js_payload(path, subject.PLAYLISTS_PREFIX)
-        expected = [['2026-07-17', 100], ['2026-07-23', 120], [subject.paris_today().isoformat(), 125]]
+        expected = [['2026-07-17', 100], ['2026-07-23', 120], [fixed_day.isoformat(), 125]]
         self.assertEqual(performance['playlists']['playlist-1']['history'], expected)
         self.assertEqual(refreshed['hist']['playlist-1'], expected)
-        self.assertEqual(subject.field(refreshed['rows'][0], refreshed['cols'], 'last_seen'), subject.paris_today().isoformat())
+        self.assertEqual(subject.field(refreshed['rows'][0], refreshed['cols'], 'last_seen'), fixed_day.isoformat())
         self.assertEqual(refreshed['meta']['history_points_added_this_run'], 1)
         self.assertEqual(outcome.usable, 1)
 
