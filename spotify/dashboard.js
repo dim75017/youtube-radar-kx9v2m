@@ -4875,6 +4875,7 @@ function spotifyUpdateRows(){
   const snapshot=SC&&SC.generated_at;
   const browse=BROWSE.generated_at;
   const performanceFreshness=(PERF&&PERF.freshness)||{};
+  const performanceStoreBroken=window.SPOTIFY_PERFORMANCE_STORE_READY===false;
   /* Each page combines several exports. Its status follows the oldest required
      source rather than the newest unrelated file, so a fresh playlist bridge
      can never make stale track/artist data appear green. Build time and browser
@@ -4890,12 +4891,12 @@ function spotifyUpdateRows(){
     freshness.playlist_discovery_at,
     freshness.independent_playlist_discovery_at
   );
-  const tracksAt=spotifyOldestUpdateTimestamp(
+  const tracksAt=performanceStoreBroken?null:spotifyOldestUpdateTimestamp(
     performanceFreshness.tracks_catalogue_at||performanceFreshness.tracks_at,
     strictTracksAt||snapshot,
     browse
   );
-  const artistsAt=spotifyOldestUpdateTimestamp(
+  const artistsAt=performanceStoreBroken?null:spotifyOldestUpdateTimestamp(
     performanceFreshness.artists_catalogue_at||performanceFreshness.artists_at,
     strictArtistsAt||snapshot,
     browse
@@ -4906,12 +4907,13 @@ function spotifyUpdateRows(){
   );
   const labelsAt=tracksAt;
   const fr=LANG==='fr';
-  const row=(when,label,detail)=>({when,label,detail});
+  const storeErrorDetail=fr?'Historique streams incomplet · nouvelle synchronisation requise':'Incomplete stream history · synchronization required';
+  const row=(when,label,detail,error=false)=>({when,label,detail,error});
   return [
-    row(tracksAt,T('Pistes'),fr?`${fmtFull(R.length)} pistes · streams et catalogue`:`${fmtFull(R.length)} tracks · streams and catalogue`),
-    row(artistsAt,T('Artistes'),fr?`${fmtFull(withTracks.length)} artistes · profils et métriques`:`${fmtFull(withTracks.length)} artists · profiles and metrics`),
+    row(tracksAt,T('Pistes'),performanceStoreBroken?storeErrorDetail:(fr?`${fmtFull(R.length)} pistes · streams et catalogue`:`${fmtFull(R.length)} tracks · streams and catalogue`),performanceStoreBroken),
+    row(artistsAt,T('Artistes'),performanceStoreBroken?storeErrorDetail:(fr?`${fmtFull(withTracks.length)} artistes · profils et métriques`:`${fmtFull(withTracks.length)} artists · profiles and metrics`),performanceStoreBroken),
     row(playlistsAt,T('Playlists'),fr?`${fmtFull(PLrows.length)} playlists · audiences et placements`:`${fmtFull(PLrows.length)} playlists · audiences and placements`),
-    row(labelsAt,T('Labels'),fr?`${fmtFull(LBrows.length)} labels · index de catalogue`:`${fmtFull(LBrows.length)} labels · catalogue index`)
+    row(labelsAt,T('Labels'),performanceStoreBroken?storeErrorDetail:(fr?`${fmtFull(LBrows.length)} labels · index de catalogue`:`${fmtFull(LBrows.length)} labels · catalogue index`),performanceStoreBroken)
   ];
 }
 function refreshSpotifyUpdateStatus(){
@@ -4923,7 +4925,7 @@ function refreshSpotifyUpdateStatus(){
   btn.title=fr?'Voir le détail des mises à jour':'View update details';
   panel.innerHTML=`<div class="spotify-update-status-head"><span>${fr?'État des mises à jour':'Update status'}</span><small>${fr?'Automatique':'Automatic'}</small></div>${spotifyUpdateRows().map(item=>{
     const timestamp=item.when?fmtTs(item.when):(fr?'En attente de données':'Awaiting data');
-    const color=spotifyUpdateColor(item.when);
+    const color=item.error?'var(--red)':spotifyUpdateColor(item.when);
     return `<div class="spotify-update-status-line"><i class="spotify-update-status-dot" style="background:${color};color:${color}"></i><div><b>${esc(item.label)}</b><span>${esc(timestamp)} · ${esc(item.detail)}</span></div></div>`;
   }).join('')}`;
 }
