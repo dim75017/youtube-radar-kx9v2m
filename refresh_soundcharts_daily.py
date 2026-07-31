@@ -47,7 +47,9 @@ AUTH_PROBE = "/api/v2/referential/platforms/streaming"
 MIN_SERVER_QUOTA_RESERVE = 500_000
 TRACK_ROTATION_BUCKETS = 7
 RECENT_RELEASE_DAYS = 90
-TRACK_MAINTENANCE_POLICY_VERSION = 1
+TRACK_MAINTENANCE_POLICY_VERSION = 2
+TRACK_PUBLIC_STREAM_FLOOR = 100_000
+TRACK_PROMOTION_WATCH_FLOOR = 75_000
 ESTIMATED_NEW_TRACK_ENTRY_BYTES = 4_096
 ESTIMATED_DAILY_POINT_BYTES = 128
 PARIS_TIMEZONE = ZoneInfo("Europe/Paris")
@@ -1043,6 +1045,7 @@ def plan_track_maintenance(
         "selection_or_negotiation",
         "opportunity",
         "published_strict",
+        "threshold_promotion_watch",
         "needs_two_true_points",
         "release_90d",
         "anomaly_or_acceleration",
@@ -1090,6 +1093,15 @@ def plan_track_maintenance(
             total = signals.get("latest_total")
             if isinstance(total, int) and (task_total is None or total > task_total):
                 task_total = total
+            if isinstance(total, int) and total < TRACK_PUBLIC_STREAM_FLOOR:
+                approaching_floor = total >= TRACK_PROMOTION_WATCH_FLOOR
+                projected_crossing = (
+                    isinstance(velocity, int)
+                    and velocity > 0
+                    and total + velocity >= TRACK_PUBLIC_STREAM_FLOOR
+                )
+                if approaching_floor or projected_crossing:
+                    reasons.add("threshold_promotion_watch")
             observed = str(signals.get("observed_at") or "")
             if not oldest_observed or observed < oldest_observed:
                 oldest_observed = observed
@@ -1101,6 +1113,7 @@ def plan_track_maintenance(
                     "selection_or_negotiation",
                     "opportunity",
                     "published_strict",
+                    "threshold_promotion_watch",
                     "needs_two_true_points",
                     "release_90d",
                     "anomaly_or_acceleration",
@@ -1127,6 +1140,7 @@ def plan_track_maintenance(
             0 if "selection_or_negotiation" in reasons else 1,
             0 if "opportunity" in reasons else 1,
             0 if "published_strict" in reasons else 1,
+            0 if "threshold_promotion_watch" in reasons else 1,
             0 if "needs_two_true_points" in reasons else 1,
             0 if "release_90d" in reasons else 1,
             0 if "anomaly_or_acceleration" in reasons else 1,
@@ -1287,6 +1301,14 @@ def refresh_tracks(
                 "targets": [],
             },
         )
+        for existing_target in task["targets"]:
+            if spotify_id and str(existing_target.get("spotify_id") or "") == spotify_id:
+                if row is not None:
+                    existing_target["row"] = row
+                    existing_target["performance_only"] = False
+                return
+            if not spotify_id and not existing_target.get("spotify_id"):
+                return
         task["targets"].append(
             {
                 "row": row,
@@ -1304,11 +1326,30 @@ def refresh_tracks(
             strict_spotify_ids.add(spotify_id)
         add_target(uuid, spotify_id, row, performance_only=False)
     if include_performance_catalogue:
-        for spotify_id, entry in store.items():
+        # The cumulative discovery catalogue is the source-backed waiting
+        # room for tracks below the public 100k floor.  Enrol every resolvable
+        # row so crossing the threshold can be detected without first being
+        # visible in the dashboard.
+        discovery = payload.get("discovery_catalogue")
+        if isinstance(discovery, Mapping):
+            discovery_schema = discovery.get("track_schema")
+            discovery_rows = discovery.get("tracks")
+            if isinstance(discovery_schema, list) and isinstance(discovery_rows, list):
+                for discovery_row in discovery_rows:
+                    if not isinstance(discovery_row, list):
+                        continue
+                    uuid = str(field(discovery_row, discovery_schema, "soundcharts_uuid") or "").strip()
+                    spotify_id = str(field(discovery_row, discovery_schema, "spotify_id") or "").strip()
+                    if not uuid or spotify_id in strict_spotify_ids:
+                        continue
+                    add_target(uuid, spotify_id, None, performance_only=True)
+
+        for raw_key, entry in store.items():
             if not isinstance(entry, dict):
                 continue
             uuid = str(entry.get("soundcharts_uuid") or "").strip()
-            spotify_id = str(spotify_id or "").strip()
+            raw_key = str(raw_key or "").strip()
+            spotify_id = "" if raw_key.startswith("soundcharts:") else raw_key
             # The approved row is authoritative for a Spotify identity. A
             # stale performance entry for that same ID must never schedule a
             # concurrent request against its former Soundcharts UUID.

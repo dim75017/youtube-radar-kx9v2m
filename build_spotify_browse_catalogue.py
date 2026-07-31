@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import datetime as dt
 import json
 import math
 import re
@@ -124,6 +125,78 @@ def _finite_number(value: Any) -> float | None:
     except (TypeError, ValueError):
         return None
     return parsed if math.isfinite(parsed) else None
+
+
+def _latest_performance_point(entry: Any) -> tuple[str, float] | None:
+    """Return the newest factual cumulative stream point from Performance."""
+
+    if not isinstance(entry, Mapping):
+        return None
+    latest: tuple[dt.date, float] | None = None
+    history = entry.get("history")
+    for point in history if isinstance(history, list) else []:
+        if not isinstance(point, (list, tuple)) or len(point) < 2:
+            continue
+        try:
+            day = dt.date.fromisoformat(str(point[0])[:10])
+        except ValueError:
+            continue
+        total = _finite_number(point[1])
+        if total is None or total < 0:
+            continue
+        if latest is None or day > latest[0]:
+            latest = (day, total)
+    if latest is None:
+        return None
+    return latest[0].isoformat(), latest[1]
+
+
+def _overlay_latest_performance_streams(
+    track_records: Sequence[dict[str, Any]],
+    performance_tracks: Mapping[str, Any] | None,
+) -> int:
+    """Refresh candidate counters before the 100k active-catalogue gate.
+
+    Performance may update only a source-backed catalogue row.  An orphan
+    Performance identity is never promoted on its own because it lacks the
+    classification, rights and artist evidence required by the catalogue.
+    """
+
+    if not isinstance(performance_tracks, Mapping):
+        return 0
+    by_soundcharts: dict[str, list[Any]] = {}
+    for spotify_id, entry in performance_tracks.items():
+        if not isinstance(entry, Mapping):
+            continue
+        soundcharts_uuid = str(entry.get("soundcharts_uuid") or "").strip()
+        if soundcharts_uuid:
+            by_soundcharts.setdefault(soundcharts_uuid, []).append(entry)
+
+    applied = 0
+    for row in track_records:
+        spotify_id = str(row.get("spotify_id") or "").strip()
+        soundcharts_uuid = str(row.get("soundcharts_uuid") or "").strip()
+        entry = performance_tracks.get(spotify_id) if spotify_id else None
+        if not isinstance(entry, Mapping) and soundcharts_uuid:
+            uuid_matches = by_soundcharts.get(soundcharts_uuid, [])
+            if len(uuid_matches) == 1:
+                entry = uuid_matches[0]
+        latest = _latest_performance_point(entry)
+        if latest is None:
+            continue
+        latest_day, latest_total = latest
+        source_day = str(
+            row.get("streams_source_date") or row.get("source_date") or ""
+        )[:10]
+        # A newer source snapshot wins.  On the same day Performance is the
+        # authoritative history used by every Analytics surface.
+        if source_day and source_day > latest_day:
+            continue
+        row["streams"] = int(latest_total) if latest_total.is_integer() else latest_total
+        if "streams_source_date" in row:
+            row["streams_source_date"] = latest_day
+        applied += 1
+    return applied
 
 
 def _spotify_id_from_url(value: Any) -> str:
@@ -588,6 +661,7 @@ def _strict_rebaseline_reason(
 def strict_rebase_catalogue(
     catalogues: Sequence[Mapping[str, Any]],
     minimum_streams: int = MIN_TRACK_LIFETIME_STREAMS,
+    performance_tracks: Mapping[str, Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, int], list[str]]:
     """Project only fully evidenced instrumental rows into the active catalogue.
 
@@ -596,6 +670,9 @@ def strict_rebase_catalogue(
     """
     merged = merge_catalogues(catalogues)
     normalised = _normalise_catalogue(merged)
+    _overlay_latest_performance_streams(
+        normalised["track_records"], performance_tracks
+    )
     quarantine_counts: dict[str, int] = {}
     accepted_tracks: list[dict[str, Any]] = []
     active_artist_keys: set[str] = set()
@@ -645,6 +722,7 @@ def build_payload(
     strict_rebased: bool = False,
     trusted_catalogue: Mapping[str, Any] | None = None,
     minimum_streams: int = MIN_TRACK_LIFETIME_STREAMS,
+    performance: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     catalogues: list[Mapping[str, Any]] = []
     if isinstance(existing, Mapping):
@@ -662,8 +740,16 @@ def build_payload(
     quarantine_counts: dict[str, int] = {}
     active_legacy_spotify_ids: list[str] = []
     if strict_rebased:
+        performance_tracks = (
+            performance.get("tracks")
+            if isinstance(performance, Mapping)
+            and isinstance(performance.get("tracks"), Mapping)
+            else None
+        )
         merged, quarantine_counts, active_legacy_spotify_ids = strict_rebase_catalogue(
-            catalogues, minimum_streams
+            catalogues,
+            minimum_streams,
+            performance_tracks=performance_tracks,
         )
     else:
         merged = merge_catalogues(catalogues)
@@ -723,6 +809,14 @@ def parse_args() -> argparse.Namespace:
         help="Inclusive lifetime Spotify stream floor for the active strict catalogue.",
     )
     parser.add_argument(
+        "--performance",
+        type=Path,
+        help=(
+            "Spotify Performance export whose newest factual stream point is "
+            "applied before the active-catalogue threshold."
+        ),
+    )
+    parser.add_argument(
         "--strict-rebased",
         action="store_true",
         help="Build trusted internal catalogue plus fully evidenced Soundcharts discoveries; do not merge the prior browse file.",
@@ -757,6 +851,15 @@ def main() -> int:
         if not args.trusted_catalogue.exists():
             raise BrowseCatalogueError(f"Trusted catalogue does not exist: {args.trusted_catalogue}")
         trusted_catalogue = _trusted_catalogue_from_csv(args.trusted_catalogue, args.trusted_artist_seeds)
+    performance = None
+    if args.performance:
+        from spotify_performance_store import read_performance_payload
+
+        if not args.performance.exists():
+            raise BrowseCatalogueError(
+                f"Performance catalogue does not exist: {args.performance}"
+            )
+        performance = read_performance_payload(args.performance)
     payload = build_payload(
         sources,
         existing,
@@ -764,6 +867,7 @@ def main() -> int:
         strict_rebased=args.strict_rebased,
         trusted_catalogue=trusted_catalogue,
         minimum_streams=max(0, args.minimum_streams),
+        performance=performance,
     )
     _write_payload(args.output, payload)
     print(
