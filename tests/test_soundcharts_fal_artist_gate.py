@@ -59,11 +59,16 @@ class SoundchartsFalArtistGateTests(unittest.TestCase):
         self.assertEqual(evidence["genres"]["sub"], ["Dark Ambient"])
         self.assertEqual(decide_artist_gate(evidence), (ELIGIBLE, "target_genre_evidence"))
 
-    def test_superstar_is_blocked_even_with_a_target_genre(self):
-        evidence = parse_artist_gate_response(
+    def test_superstar_is_judged_by_genre_not_audience_size(self):
+        target = parse_artist_gate_response(
             {"object": {"name": "Large Artist", "careerStage": "Superstar", "genres": ["Ambient"]}}
         )
-        self.assertEqual(decide_artist_gate(evidence), (BLOCKED, "career_stage_superstar"))
+        unknown = parse_artist_gate_response(
+            {"object": {"name": "Large Unknown", "careerStage": "Superstar"}}
+        )
+
+        self.assertEqual(decide_artist_gate(target), (ELIGIBLE, "target_genre_evidence"))
+        self.assertEqual(decide_artist_gate(unknown), (REVIEW, "genre_unknown"))
 
     def test_vocal_and_out_of_scope_evidence_are_blocked(self):
         vocal = parse_artist_gate_response(

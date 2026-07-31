@@ -164,7 +164,7 @@ class FalPhase2Tests(unittest.TestCase):
         self.assertNotIn("too-old", statuses)
         self.assertNotIn("date-unknown", statuses)
 
-    def test_artist_gate_blocks_superstar_before_any_track_detail_call(self):
+    def test_artist_gate_does_not_block_target_genre_superstar(self):
         self.add_track("superstar-track")
         inserted, total = initialize_artist_gate(self.phase1, self.phase2)
         self.assertEqual(total, 1)
@@ -182,7 +182,7 @@ class FalPhase2Tests(unittest.TestCase):
         gate = self.phase2.execute(
             "SELECT gate_status,reason FROM fal_phase2_artist_gate WHERE candidate_uuid='candidate-1'"
         ).fetchone()
-        self.assertEqual(tuple(gate), ("blocked", "career_stage_superstar"))
+        self.assertEqual(tuple(gate), ("eligible", "target_genre_evidence"))
         migration = migrate_gated_track_queue(
             self.phase1,
             self.phase2,
@@ -191,8 +191,8 @@ class FalPhase2Tests(unittest.TestCase):
             recent_days=1095,
             as_of=dt.date(2026, 7, 31),
         )
-        self.assertEqual(migration.selected, 0)
-        self.assertEqual(client.paths, ["/api/v2/artist/candidate-1"])
+        self.assertEqual(migration.selected, 1)
+        self.assertEqual(client.paths, ["/api/v2.9/artist/candidate-1"])
 
     def test_artist_gate_opens_track_queue_only_for_target_genre(self):
         self.add_track("ambient-track")
@@ -207,6 +207,7 @@ class FalPhase2Tests(unittest.TestCase):
             }
         )
         ArtistGateScanner(self.phase2, client, workers=1, retry_limit=2).scan_batch()
+        self.assertEqual(client.paths, ["/api/v2.9/artist/candidate-1"])
         migration = migrate_gated_track_queue(
             self.phase1,
             self.phase2,
@@ -260,7 +261,7 @@ class FalPhase2Tests(unittest.TestCase):
         self.phase2.commit()
 
         def respond(path):
-            if path == "/api/v2/artist/candidate-1":
+            if path == "/api/v2.9/artist/candidate-1":
                 return {
                     "object": {
                         "name": "Candidate",
@@ -268,7 +269,7 @@ class FalPhase2Tests(unittest.TestCase):
                         "genres": ["Ambient"],
                     }
                 }
-            if path.startswith("/api/v2/artist/"):
+            if path.startswith("/api/v2.9/artist/"):
                 return {"object": {"name": "Unknown", "genres": ["Electronic"]}}
             if path == "/api/v2.25/song/ambient-track":
                 return {
@@ -523,6 +524,11 @@ class FalPhase2Tests(unittest.TestCase):
         self.assertTrue(report["staging_only"])
         self.assertFalse(report["canonical_written"])
         self.assertFalse(report["dashboard_written"])
+        self.assertEqual(report["artist_gate"]["endpoint"], "/api/v2.9/artist/{uuid}")
+        self.assertTrue(
+            report["artist_gate"]["audience_size_is_not_a_rejection_criterion"]
+        )
+        self.assertNotIn("superstars_blocked_by_career_stage", report["artist_gate"])
         self.assertEqual(report["queue"]["active_cap"], 5000)
         self.assertTrue(report["details"]["unknowns_are_never_accepted"])
         self.assertEqual(report["version"], PHASE2_REPORT_VERSION)
@@ -648,14 +654,14 @@ class FalPhase2Tests(unittest.TestCase):
             1,
         )
 
-    def test_phase2_uses_a_fresh_v2_private_state(self):
-        self.assertEqual(PHASE2_STATE_VERSION, 2)
-        self.assertEqual(PHASE2_REPORT_VERSION, 2)
+    def test_phase2_uses_a_fresh_v3_private_state(self):
+        self.assertEqual(PHASE2_STATE_VERSION, 3)
+        self.assertEqual(PHASE2_REPORT_VERSION, 3)
         self.assertEqual(
             self.phase2.execute(
                 "SELECT value FROM meta WHERE key='fal_phase2_state_version'"
             ).fetchone()[0],
-            "2",
+            "3",
         )
 
     def test_cli_defaults_to_a_500_call_canary(self):
