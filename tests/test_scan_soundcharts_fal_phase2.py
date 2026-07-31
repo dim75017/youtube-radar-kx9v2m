@@ -7,13 +7,18 @@ from pathlib import Path
 from refresh_soundcharts_daily import SoundchartsDataUnavailableError, SoundchartsError
 from scan_soundcharts_fal_phase1 import open_state
 from scan_soundcharts_fal_phase2 import (
+    ArtistGateScanner,
     FalPhase2Error,
+    PHASE2_REPORT_VERSION,
+    PHASE2_STATE_VERSION,
     Phase2Scanner,
     QueueMigration,
     assert_phase1_complete,
     build_report,
     canary_zero_yield,
     evidence_yield,
+    initialize_artist_gate,
+    migrate_gated_track_queue,
     migrate_recent_queue,
     open_phase1_state,
     open_phase2_state,
@@ -87,6 +92,13 @@ class FalPhase2Tests(unittest.TestCase):
                 "2026-07-31T00:00:00Z",
             ),
         )
+        writable.execute(
+            "INSERT OR IGNORE INTO candidate_tracks(candidate_uuid,track_uuid,first_seen_at) VALUES('candidate-1',?,'2026-07-31T00:00:00Z')",
+            (uuid,),
+        )
+        writable.execute(
+            "UPDATE candidates SET catalog_total=(SELECT COUNT(*) FROM candidate_tracks WHERE candidate_uuid='candidate-1') WHERE soundcharts_uuid='candidate-1'"
+        )
         writable.commit()
         writable.close()
         self.phase1 = open_phase1_state(self.phase1_path)
@@ -147,6 +159,63 @@ class FalPhase2Tests(unittest.TestCase):
         self.assertNotIn("too-old", statuses)
         self.assertNotIn("date-unknown", statuses)
 
+    def test_artist_gate_blocks_superstar_before_any_track_detail_call(self):
+        self.add_track("superstar-track")
+        inserted, total = initialize_artist_gate(self.phase1, self.phase2)
+        self.assertEqual(total, 1)
+        client = FakeClient(
+            lambda path: {
+                "object": {
+                    "name": "Candidate",
+                    "careerStage": "superstar",
+                    "genres": ["Ambient"],
+                }
+            }
+        )
+        scanner = ArtistGateScanner(self.phase2, client, workers=1, retry_limit=2)
+        self.assertTrue(scanner.scan_batch())
+        gate = self.phase2.execute(
+            "SELECT gate_status,reason FROM fal_phase2_artist_gate WHERE candidate_uuid='candidate-1'"
+        ).fetchone()
+        self.assertEqual(tuple(gate), ("blocked", "career_stage_superstar"))
+        migration = migrate_gated_track_queue(
+            self.phase1,
+            self.phase2,
+            max_new_queue=10,
+            active_queue_cap=10,
+            recent_days=1095,
+            as_of=dt.date(2026, 7, 31),
+        )
+        self.assertEqual(migration.selected, 0)
+        self.assertEqual(client.paths, ["/api/v2/artist/candidate-1"])
+
+    def test_artist_gate_opens_track_queue_only_for_target_genre(self):
+        self.add_track("ambient-track")
+        initialize_artist_gate(self.phase1, self.phase2)
+        client = FakeClient(
+            lambda path: {
+                "object": {
+                    "name": "Candidate",
+                    "careerStage": "mid_level",
+                    "genres": [{"root": "Electronic", "sub": ["Dark Ambient"]}],
+                }
+            }
+        )
+        ArtistGateScanner(self.phase2, client, workers=1, retry_limit=2).scan_batch()
+        migration = migrate_gated_track_queue(
+            self.phase1,
+            self.phase2,
+            max_new_queue=10,
+            active_queue_cap=10,
+            recent_days=1095,
+            as_of=dt.date(2026, 7, 31),
+        )
+        self.assertEqual(migration.selected, 1)
+        row = self.phase2.execute(
+            "SELECT candidate_uuid,queue_status FROM fal_phase2_queue WHERE track_uuid='ambient-track'"
+        ).fetchone()
+        self.assertEqual(tuple(row), ("candidate-1", "pending"))
+
     def test_unknown_detail_stays_review_and_is_never_accepted(self):
         self.add_track("track-unknown")
         self.migrate()
@@ -162,25 +231,43 @@ class FalPhase2Tests(unittest.TestCase):
         self.assertEqual(row["genre_status"], "unknown")
         self.assertEqual(client.requests_claimed, 1)
 
-    def test_explicit_positive_evidence_is_still_human_review(self):
+    def test_real_v225_instrumental_signal_stays_in_human_review_while_ai_is_unknown(self):
         self.add_track("track-ready")
         self.migrate()
         client = FakeClient(
             lambda path: {
+                "type": "song",
                 "object": {
                     "name": "Ready",
-                    "instrumental": True,
-                    "ai_risk": "low",
-                    "genres": ["ambient"],
+                    "genres": [
+                        {"root": "Ambient", "sub": ["Dark Ambient", "Instrumental"]}
+                    ],
+                    "audio": {
+                        "instrumentalness": 0.94,
+                        "speechiness": 0.02,
+                    },
                 }
             }
         )
         self.scanner(client).scan_batch()
-        decision = self.phase2.execute(
-            "SELECT decision FROM fal_phase2_details WHERE track_uuid='track-ready'"
-        ).fetchone()[0]
-        self.assertEqual(decision, "review_evidence_ready")
-        self.assertNotEqual(decision, "eligible")
+        row = self.phase2.execute(
+            "SELECT * FROM fal_phase2_details WHERE track_uuid='track-ready'"
+        ).fetchone()
+        evidence = json.loads(row["evidence_json"])
+
+        self.assertEqual(client.paths, ["/api/v2.25/song/track-ready"])
+        self.assertEqual(row["instrumental_status"], "instrumental")
+        self.assertEqual(row["genre_status"], "in_scope")
+        self.assertEqual(row["ai_risk"], "unknown")
+        self.assertTrue(row["decision"].startswith("review_"))
+        self.assertNotEqual(row["decision"], "eligible")
+        self.assertAlmostEqual(evidence["instrumentalness"], 0.94)
+        self.assertAlmostEqual(evidence["speechiness"], 0.02)
+        self.assertEqual(evidence["ai_risk"], "unknown")
+        stats = evidence_yield(self.phase2)
+        self.assertEqual(stats["useful_signal"], 1)
+        self.assertEqual(stats["evidence_ready"], 0)
+        self.assertFalse(canary_zero_yield(self.phase2, 1))
 
     def test_404_is_terminal_review_without_fabricated_metadata(self):
         self.add_track("track-404")
@@ -249,6 +336,17 @@ class FalPhase2Tests(unittest.TestCase):
         self.assertFalse(report["dashboard_written"])
         self.assertEqual(report["queue"]["active_cap"], 5000)
         self.assertTrue(report["details"]["unknowns_are_never_accepted"])
+        self.assertEqual(report["version"], PHASE2_REPORT_VERSION)
+
+    def test_phase2_uses_a_fresh_v2_private_state(self):
+        self.assertEqual(PHASE2_STATE_VERSION, 2)
+        self.assertEqual(PHASE2_REPORT_VERSION, 2)
+        self.assertEqual(
+            self.phase2.execute(
+                "SELECT value FROM meta WHERE key='fal_phase2_state_version'"
+            ).fetchone()[0],
+            "2",
+        )
 
     def test_cli_defaults_to_a_500_call_canary(self):
         args = parse_args(["--phase1-state", "phase1.sqlite3"])
