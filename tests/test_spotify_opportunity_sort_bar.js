@@ -25,4 +25,3 @@ assert.match(css, /ar-editorial-card\{grid-column:11\}/);
 assert.match(index, /dashboard\.js\?v=20260801-track-floor-100k-v1/);
 
 console.log('spotify opportunity sorting bar: OK');
-
