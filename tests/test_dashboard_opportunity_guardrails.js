@@ -53,11 +53,11 @@ vm.runInNewContext(
   searchContext,
 );
 const searchable = {
-  title: 'Éveil',
-  credit: 'Måns Reitz',
-  label: 'Score à Score',
-  labels: ['Score à Score'],
-  artists: [{name: 'Måns Reitz'}],
+  title: 'Ã‰veil',
+  credit: 'MÃ¥ns Reitz',
+  label: 'Score Ã  Score',
+  labels: ['Score Ã  Score'],
+  artists: [{name: 'MÃ¥ns Reitz'}],
 };
 for (const query of ['', 'eveil', 'mans reitz', 'score a score']) {
   assert.equal(searchContext.matches(searchable, query), true);
@@ -101,31 +101,31 @@ assert.equal(untyped.copyright, '');
 assert.equal(untyped.phonographic, '');
 assert.equal(untyped.raw, '2026 Artist Imprint');
 assert.equal(untyped.sourceTyped, false);
-const typed = rightsContext.creditDetails({...selfRelease, copyright: '© 2025 Writer (P) 2026 Artist'});
+const typed = rightsContext.creditDetails({...selfRelease, copyright: 'Â© 2025 Writer (P) 2026 Artist'});
 assert.equal(typed.copyright, '2025 Writer');
 assert.equal(typed.phonographic, '2026 Artist');
-const mojibakeName = rightsContext.creditDetails({...selfRelease, copyright: '2024 Milo RydÃ©n'});
+const mojibakeName = rightsContext.creditDetails({...selfRelease, copyright: '2024 Milo RydÃƒÂ©n'});
 assert.equal(mojibakeName.sourceTyped, false);
 assert.equal(mojibakeName.copyright, '');
 assert.equal(mojibakeName.phonographic, '');
-const mojibakePhonographic = rightsContext.creditDetails({...selfRelease, copyright: 'â„— 2024 Artist'});
+const mojibakePhonographic = rightsContext.creditDetails({...selfRelease, copyright: 'Ã¢â€žâ€” 2024 Artist'});
 assert.equal(mojibakePhonographic.phonographic, '2024 Artist');
-assert.match(rightsContext.rightsHtml({...selfRelease, copyright: 'â„— 2024 Artist'}), /℗ 2024 Artist/);
+assert.match(rightsContext.rightsHtml({...selfRelease, copyright: 'Ã¢â€žâ€” 2024 Artist'}), /â„— 2024 Artist/);
 const renderedRights = rightsContext.rightsHtml({...selfRelease, copyright: '<rights>', label: '<label>', credit: 'must-not-leak'});
 assert.match(renderedRights, /&lt;rights&gt;/);
 assert.match(renderedRights, /&lt;label&gt;/);
 assert.doesNotMatch(renderedRights, /must-not-leak/);
 const emptyRights = rightsContext.rightsHtml({...selfRelease, copyright: '', label: '', credit: 'must-not-leak'});
-assert.match(emptyRights, /—/);
+assert.match(emptyRights, /â€”/);
 assert.doesNotMatch(emptyRights, /must-not-leak/);
 
 const listenersStart = source.indexOf('function monthlyListenersMetricCardHtml');
 const listenersEnd = source.indexOf('function periodMetricLabel', listenersStart);
 assert.ok(listenersStart >= 0 && listenersEnd > listenersStart, 'Monthly listener performance card helper must remain defined');
-const listenersContext = {T: value => value, fmtFullMetric: value => value == null ? '—' : new Intl.NumberFormat('fr-FR').format(value)};
+const listenersContext = {T: value => value, fmtFullMetric: value => value == null ? 'â€”' : new Intl.NumberFormat('fr-FR').format(value)};
 vm.runInNewContext(`${source.slice(listenersStart, listenersEnd)}; this.listenersCard=monthlyListenersMetricCardHtml;`, listenersContext);
 assert.match(listenersContext.listenersCard(123456), /123(?:\u202f|\s)456/);
-assert.match(listenersContext.listenersCard(null), />—</);
+assert.match(listenersContext.listenersCard(null), />â€”</);
 assert.doesNotMatch(listenersContext.listenersCard(null), />0</);
 
 assert.match(source, /arOpportunityMatchesSearch\(opportunity,S\.radarQ\)/);
@@ -135,6 +135,8 @@ assert.match(source, /if\(S\.radarFilter==='contactable'\) return arIsContactabl
 // couple this policy check to a removed UI-only aggregate variable.
 assert.match(source, /if\(!arContactEligible\(opportunity\)\) return/);
 assert.match(source, /arHasCompleteStructuredArtists\(item\.artists\)/);
+assert.match(source, /arOpportunityTotal\(item\)>=MIN_TRACK_LIFETIME_STREAMS/,
+  'sub-100k tracks must not re-enter the public Opportunity view');
 assert.match(source, /!isGeneralArtistQuarantined\(item\.credit,true\)/);
 assert.match(source, /!item\.artists\.some\(artist=>isGeneralArtistQuarantined/);
 for (const quarantined of [
@@ -148,3 +150,4 @@ for (const quarantined of [
 }
 
 console.log('dashboard opportunity guardrails: OK');
+
