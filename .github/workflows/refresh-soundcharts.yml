@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'refresh_soundcharts_daily.py'
+      - 'spotify_performance_store.py'
+      - 'Spotify_Performance_loader.js'
       - 'scan_soundcharts_fal_phase1.py'
       - 'data_freshness_watchdog.py'
       - 'playlist_follower_daily_status.py'
@@ -25,6 +27,8 @@ on:
       - 'Spotify_Selection_Contacts_data.js'
       - 'SPOTIFY_RADAR_POLICY.md'
       - 'tests/test_refresh_soundcharts_daily.py'
+      - 'tests/test_spotify_performance_store.py'
+      - 'tests/test_spotify_performance_loader.js'
       - 'tests/test_scan_soundcharts_fal_phase1.py'
       - 'tests/test_soundcharts_fal_workflow_guardrails.py'
       - 'tests/test_data_freshness_watchdog.py'
@@ -60,6 +64,8 @@ on:
   pull_request:
     paths:
       - 'refresh_soundcharts_daily.py'
+      - 'spotify_performance_store.py'
+      - 'Spotify_Performance_loader.js'
       - 'scan_soundcharts_fal_phase1.py'
       - 'data_freshness_watchdog.py'
       - 'playlist_follower_daily_status.py'
@@ -80,6 +86,8 @@ on:
       - 'Spotify_Selection_Contacts_data.js'
       - 'SPOTIFY_RADAR_POLICY.md'
       - 'tests/test_refresh_soundcharts_daily.py'
+      - 'tests/test_spotify_performance_store.py'
+      - 'tests/test_spotify_performance_loader.js'
       - 'tests/test_scan_soundcharts_fal_phase1.py'
       - 'tests/test_soundcharts_fal_workflow_guardrails.py'
       - 'tests/test_data_freshness_watchdog.py'
@@ -231,6 +239,7 @@ jobs:
         run: >-
           python -m unittest
           tests/test_refresh_soundcharts_daily.py
+          tests/test_spotify_performance_store.py
           tests/test_scan_soundcharts_fal_phase1.py
           tests/test_soundcharts_fal_workflow_guardrails.py
           tests/test_playlist_follower_daily_integrity.py
@@ -249,8 +258,9 @@ jobs:
 
       - name: Validate production source syntax
         run: |
-          python -m py_compile refresh_soundcharts_daily.py scan_soundcharts_fal_phase1.py playlist_follower_daily_status.py validate_playlist_snapshot_transition.py discover_soundcharts_playlists.py expand_soundcharts_instrumental_pool.py spotify_rights.py build_spotify_browse_catalogue.py build_spotify_selection_contacts.py enrich_public_artist_contacts.py sync_soundcharts_opportunities.py prepare_soundcharts_snapshot.py
+          python -m py_compile refresh_soundcharts_daily.py spotify_performance_store.py scan_soundcharts_fal_phase1.py playlist_follower_daily_status.py validate_playlist_snapshot_transition.py discover_soundcharts_playlists.py expand_soundcharts_instrumental_pool.py spotify_rights.py build_spotify_browse_catalogue.py build_spotify_selection_contacts.py enrich_public_artist_contacts.py sync_soundcharts_opportunities.py prepare_soundcharts_snapshot.py
           node --check spotify/dashboard.js
+          node tests/test_spotify_performance_loader.js
           node tests/test_dashboard_opportunity_guardrails.js
           node tests/test_dashboard_general_view_guardrails.js
           node tests/test_dashboard_ar_ui_guardrails.js
@@ -406,6 +416,14 @@ jobs:
           echo "performance_artists_due=$performance_artists_due" >> "$GITHUB_OUTPUT"
           echo "publish=$publish" >> "$GITHUB_OUTPUT"
           echo "Selected scope=$scope, expansion_requests=$expansion_requests, playlist_followers_due=$playlist_followers_due, performance_catalogue_due=$performance_catalogue_due, publish=$publish"
+
+      - name: Validate and shard performance storage before paid collection
+        if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && steps.plan.outputs.scope != 'smoke'
+        run: >-
+          python refresh_soundcharts_daily.py
+          --mode storage
+          --performance Spotify_Performance_data.js
+          --history-dir soundcharts-history
 
       - name: Create an isolated Soundcharts candidate
         id: snapshot
@@ -730,6 +748,7 @@ jobs:
           path: |
             ${{ steps.snapshot.outputs.candidate }}
             Spotify_Performance_data.js
+            Spotify_Performance_tracks
             Spotify_Playlists_canonical_data.js
             Spotify_Selection_Contacts_data.js
             soundcharts-history
@@ -891,7 +910,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Spotify_Playlists_canonical_data.js Spotify_Performance_data.js soundcharts-history
+          git add -A -- Spotify_Playlists_canonical_data.js Spotify_Performance_data.js Spotify_Performance_tracks soundcharts-history
           git diff --cached --quiet && exit 0
           git commit -m "data: refresh Soundcharts playlist covers"
           for attempt in 1 2 3; do
@@ -1048,11 +1067,12 @@ jobs:
           python validate_playlist_snapshot_transition.py \
             --previous "${{ steps.playlist_baseline.outputs.path }}" \
             --candidate Spotify_Playlists_canonical_data.js
-          git add \
+          git add -A -- \
             spotify/index.html \
             Spotify_Browse_Catalogue_data.js \
             Spotify_Playlists_canonical_data.js \
             Spotify_Performance_data.js \
+            Spotify_Performance_tracks \
             Spotify_Selection_Contacts_data.js \
             soundcharts-history
           git commit -m "data: activate validated Soundcharts snapshot"
