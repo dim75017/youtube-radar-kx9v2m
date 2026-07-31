@@ -1,0 +1,473 @@
+name: Scan Soundcharts Fans Also Like phase 2
+
+on:
+  workflow_run:
+    workflows: ["Scan Soundcharts Fans Also Like phase 1"]
+    types: [completed]
+  schedule:
+    # Resume between the phase-1, daily A&R, and playlist follower windows.
+    - cron: '53 8,20 * * *'
+  workflow_dispatch:
+    inputs:
+      max_requests:
+        description: 'Maximum Soundcharts attempts including retries (1-40000)'
+        required: true
+        default: '500'
+        type: string
+      max_new_queue:
+        description: 'Maximum recent phase-1 tracks migrated into the private queue (1-10000)'
+        required: true
+        default: '2000'
+        type: string
+      continue_zero_yield:
+        description: 'Explicitly continue after a zero-signal 500-track canary'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  actions: write
+  contents: read
+
+# This is the exact lock used by every Soundcharts collector. Paid requests are
+# serialized even when a workflow_run and a scheduled resume arrive together.
+concurrency:
+  group: refresh-soundcharts-ar-collection-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  phase2:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      PHASE1_STATE_ARTIFACT: soundcharts-fal-phase1-state-v2
+      PHASE2_STATE_ARTIFACT: soundcharts-fal-phase2-state-v1
+      PHASE2_CONTROL_ARTIFACT: soundcharts-fal-phase2-control-v1
+      QUOTA_RESERVE: '500000'
+      MAINTENANCE_DAILY_REQUESTS: '60000'
+      MAINTENANCE_THROUGH: '2026-08-18'
+      ACTIVE_QUEUE_CAP: '5000'
+      CANARY_MIN_SAMPLE: '500'
+      RECENT_DAYS: '1095'
+      WORKERS: '5'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Initialize isolated private staging paths
+        shell: bash
+        run: |
+          echo "PHASE1_DIR=$RUNNER_TEMP/soundcharts-fal-phase1-readonly" >> "$GITHUB_ENV"
+          echo "PHASE2_DIR=$RUNNER_TEMP/soundcharts-fal-phase2" >> "$GITHUB_ENV"
+          echo "PHASE2_DB=$RUNNER_TEMP/soundcharts-fal-phase2/soundcharts-fal-phase2-state-v1.sqlite3" >> "$GITHUB_ENV"
+          echo "REPORT_JSON=$RUNNER_TEMP/soundcharts-fal-phase2/soundcharts-fal-phase2-report-v1.json" >> "$GITHUB_ENV"
+
+      - name: Validate phase-2 scanner and workflow guardrails
+        run: |
+          python -m py_compile scan_soundcharts_fal_phase2.py
+          python -m unittest \
+            tests/test_scan_soundcharts_fal_phase2.py \
+            tests/test_soundcharts_fal_phase2_workflow_guardrails.py \
+            -v
+
+      - name: Validate bounded canary plan
+        id: plan
+        env:
+          REQUESTED_MAX_REQUESTS: ${{ inputs.max_requests }}
+          REQUESTED_MAX_NEW_QUEUE: ${{ inputs.max_new_queue }}
+          REQUESTED_CONTINUE_ZERO_YIELD: ${{ inputs.continue_zero_yield }}
+        shell: bash
+        run: |
+          max_requests="${REQUESTED_MAX_REQUESTS:-500}"
+          max_new_queue="${REQUESTED_MAX_NEW_QUEUE:-2000}"
+          continue_zero_yield="${REQUESTED_CONTINUE_ZERO_YIELD:-false}"
+          if [[ ! "$max_requests" =~ ^[1-9][0-9]{0,4}$ ]] || (( 10#$max_requests > 40000 )); then
+            echo "max_requests must be an integer between 1 and 40000" >&2
+            exit 1
+          fi
+          if [[ ! "$max_new_queue" =~ ^[1-9][0-9]{0,4}$ ]] || (( 10#$max_new_queue > 10000 )); then
+            echo "max_new_queue must be an integer between 1 and 10000" >&2
+            exit 1
+          fi
+          if [[ "$continue_zero_yield" != "true" && "$continue_zero_yield" != "false" ]]; then
+            echo "continue_zero_yield must be true or false" >&2
+            exit 1
+          fi
+          echo "max_requests=$max_requests" >> "$GITHUB_OUTPUT"
+          echo "max_new_queue=$max_new_queue" >> "$GITHUB_OUTPUT"
+          echo "continue_zero_yield=$continue_zero_yield" >> "$GITHUB_OUTPUT"
+
+      - name: Check the small phase-2 control before downloading phase 1
+        id: early_control
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          echo "no_op=false" >> "$GITHUB_OUTPUT"
+          phase1_listing="$RUNNER_TEMP/soundcharts-fal-phase1-v2-artifacts-early.json"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${PHASE1_STATE_ARTIFACT}&per_page=100" \
+            --output "$phase1_listing"
+          phase1_id="$(jq -r '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .id // empty' "$phase1_listing")"
+          test -n "$phase1_id"
+          echo "phase1_artifact_id=$phase1_id" >> "$GITHUB_OUTPUT"
+          if [[ "${{ steps.plan.outputs.continue_zero_yield }}" == "true" ]]; then
+            echo "Explicit manual zero-yield override requested; continuing"
+            exit 0
+          fi
+          control_listing="$RUNNER_TEMP/soundcharts-fal-phase2-control-artifacts.json"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${PHASE2_CONTROL_ARTIFACT}&per_page=100" \
+            --output "$control_listing"
+          control="$(jq -c '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last // empty' "$control_listing")"
+          if [[ -z "$control" || "$control" == "null" ]]; then
+            exit 0
+          fi
+          control_url="$(jq -r '.archive_download_url // empty' <<<"$control")"
+          archive="$RUNNER_TEMP/soundcharts-fal-phase2-control.zip"
+          control_dir="$RUNNER_TEMP/soundcharts-fal-phase2-control"
+          mkdir -p "$control_dir"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "$control_url" --output "$archive"
+          unzip -o -q "$archive" -d "$control_dir"
+          report="$(find "$control_dir" -type f -name 'soundcharts-fal-phase2-report-v1.json' -print -quit)"
+          test -n "$report"
+          python - "$report" "$phase1_id" "$GITHUB_OUTPUT" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          checkpoint = report.get("checkpoint") or {}
+          same_phase1 = str(checkpoint.get("phase1_artifact_id") or "") == sys.argv[2]
+          paused = report.get("status") == "paused_zero_evidence_yield"
+          complete = report.get("complete") is True
+          no_op = same_phase1 and (paused or complete)
+          with Path(sys.argv[3]).open("a", encoding="utf-8") as output:
+              output.write(f"no_op={'true' if no_op else 'false'}\n")
+          print(
+              "Phase 2 remains safely paused/complete; skipped the huge phase-1 download"
+              if no_op else "Phase 2 has resumable work or a newer phase-1 source"
+          )
+          PY
+
+      - name: Restore the latest immutable private phase-1 v2 checkpoint
+        id: restore_phase1
+        if: steps.early_control.outputs.no_op != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mkdir -p "$PHASE1_DIR"
+          listing="$RUNNER_TEMP/soundcharts-fal-phase1-v2-artifacts.json"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${PHASE1_STATE_ARTIFACT}&per_page=100" \
+            --output "$listing"
+          selected="$(jq -c '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last // empty' "$listing")"
+          if [[ -z "$selected" || "$selected" == "null" ]]; then
+            echo "No non-expired phase-1 v2 checkpoint; refusing a silent phase-2 reset" >&2
+            exit 1
+          fi
+          artifact_id="$(jq -r '.id' <<<"$selected")"
+          archive_url="$(jq -r '.archive_download_url // empty' <<<"$selected")"
+          source_run_id="$(jq -r '.workflow_run.id // empty' <<<"$selected")"
+          test -n "$artifact_id"
+          test -n "$archive_url"
+          archive="$RUNNER_TEMP/soundcharts-fal-phase1-v2.zip"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "$archive_url" --output "$archive"
+          unzip -o -q "$archive" -d "$PHASE1_DIR"
+          phase1_db="$(find "$PHASE1_DIR" -type f -name 'soundcharts-fal-phase1-staging-v2.sqlite3' -print -quit)"
+          phase1_report="$(find "$PHASE1_DIR" -type f -name 'soundcharts-fal-phase1-report-v2.json' -print -quit)"
+          test -n "$phase1_db"
+          test -s "$phase1_db"
+          test -n "$phase1_report"
+          test -s "$phase1_report"
+          echo "PHASE1_DB=$phase1_db" >> "$GITHUB_ENV"
+          echo "PHASE1_REPORT=$phase1_report" >> "$GITHUB_ENV"
+          echo "PHASE1_ARTIFACT_ID=$artifact_id" >> "$GITHUB_ENV"
+          echo "PHASE1_SOURCE_RUN_ID=$source_run_id" >> "$GITHUB_ENV"
+          echo "artifact_id=$artifact_id" >> "$GITHUB_OUTPUT"
+
+      - name: Gate phase 2 on a complete, healthy, staging-only phase 1
+        id: phase1_gate
+        if: steps.early_control.outputs.no_op != 'true'
+        shell: bash
+        run: |
+          python - "$PHASE1_DB" "$PHASE1_REPORT" <<'PY'
+          import json
+          import sqlite3
+          import sys
+          from pathlib import Path
+
+          database_path = Path(sys.argv[1])
+          report = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+          if report.get("complete") is not True or report.get("status") != "complete":
+              raise SystemExit("Latest phase-1 v2 report is not complete")
+          if report.get("staging_only") is not True or report.get("canonical_written") is not False:
+              raise SystemExit("Phase-1 checkpoint is not staging-only")
+          uri = f"file:{database_path.resolve().as_posix()}?mode=ro"
+          with sqlite3.connect(uri, uri=True) as database:
+              check = database.execute("PRAGMA quick_check").fetchone()
+              state_version = database.execute("SELECT value FROM meta WHERE key='state_version'").fetchone()
+          if not check or check[0] != "ok" or not state_version or state_version[0] != "2":
+              raise SystemExit(f"Invalid phase-1 v2 SQLite checkpoint: {check!r}, {state_version!r}")
+          print("Phase-1 v2 is complete and remains read-only")
+          PY
+          sha256sum "$PHASE1_DB" | cut -d' ' -f1 > "$RUNNER_TEMP/phase1-before.sha256"
+
+      - name: Restore the latest small private phase-2 checkpoint
+        id: restore_phase2
+        if: steps.early_control.outputs.no_op != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          mkdir -p "$PHASE2_DIR"
+          listing="$RUNNER_TEMP/soundcharts-fal-phase2-artifacts.json"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${PHASE2_STATE_ARTIFACT}&per_page=100" \
+            --output "$listing"
+          selected="$(jq -c '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last // empty' "$listing")"
+          if [[ -z "$selected" || "$selected" == "null" ]]; then
+            echo "PHASE2_BOOTSTRAP_SOURCE=phase1-v2-new-private-queue" >> "$GITHUB_ENV"
+            echo "No phase-2 state exists yet; initializing a separate small checkpoint"
+            exit 0
+          fi
+          archive_url="$(jq -r '.archive_download_url // empty' <<<"$selected")"
+          source_run_id="$(jq -r '.workflow_run.id // empty' <<<"$selected")"
+          test -n "$archive_url"
+          archive="$RUNNER_TEMP/soundcharts-fal-phase2-state.zip"
+          restore_dir="$RUNNER_TEMP/soundcharts-fal-phase2-restore"
+          mkdir -p "$restore_dir"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "$archive_url" --output "$archive"
+          unzip -o -q "$archive" -d "$restore_dir"
+          restored="$(find "$restore_dir" -type f -name 'soundcharts-fal-phase2-state-v1.sqlite3' -print -quit)"
+          test -n "$restored"
+          test -s "$restored"
+          cp "$restored" "$PHASE2_DB"
+          echo "PHASE2_BOOTSTRAP_SOURCE=phase2-v1" >> "$GITHUB_ENV"
+          echo "PHASE2_BOOTSTRAP_RUN_ID=$source_run_id" >> "$GITHUB_ENV"
+
+      - name: Build the bounded recent queue without Soundcharts authentication
+        id: preflight
+        if: steps.early_control.outputs.no_op != 'true'
+        shell: bash
+        run: |
+          zero_yield_arg=()
+          if [[ "${{ steps.plan.outputs.continue_zero_yield }}" == "true" ]]; then
+            zero_yield_arg+=(--continue-zero-yield)
+          fi
+          python scan_soundcharts_fal_phase2.py \
+            --phase1-state "$PHASE1_DB" \
+            --phase1-source-id "$PHASE1_ARTIFACT_ID" \
+            --state "$PHASE2_DB" \
+            --report "$REPORT_JSON" \
+            --max-requests "${{ steps.plan.outputs.max_requests }}" \
+            --max-new-queue "${{ steps.plan.outputs.max_new_queue }}" \
+            --active-queue-cap "$ACTIVE_QUEUE_CAP" \
+            --recent-days "$RECENT_DAYS" \
+            --quota-reserve "$QUOTA_RESERVE" \
+            --maintenance-daily-requests "$MAINTENANCE_DAILY_REQUESTS" \
+            --maintenance-through "$MAINTENANCE_THROUGH" \
+            --canary-min-sample "$CANARY_MIN_SAMPLE" \
+            --workers "$WORKERS" \
+            "${zero_yield_arg[@]}" \
+            --dry-run
+
+      - name: Decide whether the canary may spend quota
+        id: should_scan
+        if: steps.early_control.outputs.no_op != 'true'
+        shell: bash
+        run: |
+          python - "$REPORT_JSON" "$GITHUB_OUTPUT" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          active = int((report.get("queue") or {}).get("active") or 0)
+          paused = bool(((report.get("details") or {}).get("zero_yield_schedule_paused")))
+          with Path(sys.argv[2]).open("a", encoding="utf-8") as output:
+              output.write(f"run={'true' if active > 0 and not paused else 'false'}\n")
+              output.write(f"active={active}\n")
+              output.write(f"paused={'true' if paused else 'false'}\n")
+          print(f"phase2 active={active}, zero-yield paused={paused}")
+          PY
+
+      - name: Enrich the bounded private phase-2 canary
+        id: phase2_scan
+        if: steps.should_scan.outputs.run == 'true'
+        timeout-minutes: 90
+        env:
+          PYTHONUNBUFFERED: '1'
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        shell: bash
+        run: |
+          cp "$REPORT_JSON" "${REPORT_JSON}.preflight"
+          zero_yield_arg=()
+          if [[ "${{ steps.plan.outputs.continue_zero_yield }}" == "true" ]]; then
+            zero_yield_arg+=(--continue-zero-yield)
+          fi
+          python scan_soundcharts_fal_phase2.py \
+            --phase1-state "$PHASE1_DB" \
+            --phase1-source-id "$PHASE1_ARTIFACT_ID" \
+            --state "$PHASE2_DB" \
+            --report "$REPORT_JSON" \
+            --max-requests "${{ steps.plan.outputs.max_requests }}" \
+            --max-new-queue 0 \
+            --active-queue-cap "$ACTIVE_QUEUE_CAP" \
+            --recent-days "$RECENT_DAYS" \
+            --quota-reserve "$QUOTA_RESERVE" \
+            --maintenance-daily-requests "$MAINTENANCE_DAILY_REQUESTS" \
+            --maintenance-through "$MAINTENANCE_THROUGH" \
+            --canary-min-sample "$CANARY_MIN_SAMPLE" \
+            --workers "$WORKERS" \
+            "${zero_yield_arg[@]}"
+
+      - name: Preserve an honest phase-2 report after runner interruption
+        if: always() && steps.early_control.outputs.no_op != 'true' && steps.preflight.outcome == 'success'
+        env:
+          SCAN_OUTCOME: ${{ steps.phase2_scan.outcome }}
+        shell: bash
+        run: |
+          if [[ ! -s "$REPORT_JSON" && -s "${REPORT_JSON}.preflight" ]]; then
+            cp "${REPORT_JSON}.preflight" "$REPORT_JSON"
+          fi
+          python - "$REPORT_JSON" <<'PY'
+          import datetime as dt
+          import json
+          import os
+          from pathlib import Path
+          import sys
+
+          path = Path(sys.argv[1])
+          report = json.loads(path.read_text(encoding="utf-8"))
+          outcome = os.environ.get("SCAN_OUTCOME") or "skipped"
+          if outcome not in {"success", "skipped"}:
+              report["status"] = "runner_error"
+              report["complete"] = False
+              report["runner_outcome"] = outcome
+              report["observed_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
+          report["checkpoint"] = {
+              "phase1_artifact_id": os.environ.get("PHASE1_ARTIFACT_ID"),
+              "phase1_source_run_id": os.environ.get("PHASE1_SOURCE_RUN_ID"),
+              "phase2_bootstrap": os.environ.get("PHASE2_BOOTSTRAP_SOURCE"),
+              "phase2_source_run_id": os.environ.get("PHASE2_BOOTSTRAP_RUN_ID"),
+          }
+          path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+
+      - name: Verify phase 1 stayed immutable and phase 2 stayed private
+        id: checkpoint_guard
+        if: always() && steps.early_control.outputs.no_op != 'true' && steps.preflight.outcome == 'success'
+        shell: bash
+        run: |
+          before="$(cat "$RUNNER_TEMP/phase1-before.sha256")"
+          after="$(sha256sum "$PHASE1_DB" | cut -d' ' -f1)"
+          test "$before" = "$after"
+          python - "$PHASE2_DB" "$REPORT_JSON" <<'PY'
+          import json
+          import sqlite3
+          import sys
+          from pathlib import Path
+
+          with sqlite3.connect(sys.argv[1]) as database:
+              check = database.execute("PRAGMA quick_check").fetchone()
+          if not check or check[0] != "ok":
+              raise SystemExit(f"Invalid phase-2 checkpoint: {check!r}")
+          report = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+          if report.get("staging_only") is not True:
+              raise SystemExit("Phase 2 must remain staging-only")
+          if report.get("canonical_written") is not False or report.get("dashboard_written") is not False:
+              raise SystemExit("Phase 2 attempted a canonical/dashboard write")
+          if ((report.get("details") or {}).get("unknowns_are_never_accepted")) is not True:
+              raise SystemExit("Unknown metadata guard is missing")
+          PY
+          test -z "$(git status --porcelain)"
+
+      - name: Persist the small private resumable phase-2 state
+        id: state_upload
+        if: always() && steps.checkpoint_guard.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundcharts-fal-phase2-state-v1
+          path: |
+            ${{ env.PHASE2_DB }}
+            ${{ env.REPORT_JSON }}
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 6
+
+      - name: Preserve the immutable FAL phase-2 run report
+        if: always() && steps.checkpoint_guard.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundcharts-fal-phase2-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.REPORT_JSON }}
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 9
+
+      - name: Persist the small phase-2 pause/completion control
+        id: control_upload
+        if: always() && steps.checkpoint_guard.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundcharts-fal-phase2-control-v1
+          path: ${{ env.REPORT_JSON }}
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 9
+
+      - name: Keep only the two newest mutable phase-2 state artifacts
+        if: always() && steps.state_upload.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          listing="$RUNNER_TEMP/soundcharts-fal-phase2-state-artifacts.json"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${PHASE2_STATE_ARTIFACT}&per_page=100" \
+            --output "$listing"
+          mapfile -t stale_ids < <(jq -r \
+            '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[2:][] | .id' \
+            "$listing")
+          for artifact_id in "${stale_ids[@]}"; do
+            curl --fail --silent --show-error --location \
+              --request DELETE \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}"
+          done
