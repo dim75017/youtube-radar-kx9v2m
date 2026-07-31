@@ -18,7 +18,9 @@ import os
 import shutil
 import sqlite3
 import tempfile
+import threading
 import urllib.parse
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -62,6 +64,8 @@ from soundcharts_fal_artist_gate import (
 
 PHASE2_STATE_VERSION = 3
 PHASE2_REPORT_VERSION = 3
+RUN_PROGRESS_VERSION = 1
+RUN_PROGRESS_META_KEY = "fal_phase2_run_progress_v1"
 DEFAULT_STATE = Path("soundcharts-fal-phase2-staging.sqlite3")
 DEFAULT_REPORT = Path("soundcharts-fal-phase2-report.json")
 DEFAULT_MAX_REQUESTS = 500
@@ -86,6 +90,10 @@ TERMINAL_REVIEW_STATUSES = (
 
 class FalPhase2Error(RuntimeError):
     """Fail-closed phase-two error which contains no credentials."""
+
+
+class RequestAttemptJournalError(FalPhase2Error):
+    """Fail closed when durable per-attempt accounting cannot be written."""
 
 
 @dataclass(frozen=True)
@@ -253,6 +261,463 @@ def open_phase2_state(path: Path) -> sqlite3.Connection:
         )
     connection.commit()
     return connection
+
+
+def _quota_remaining(client: Any) -> int | None:
+    return finite_int(getattr(client, "quota_remaining", None))
+
+
+class RequestAttemptJournal:
+    """Append one durable-enough local record before every paid HTTP attempt.
+
+    ``SoundchartsClient`` calls ``_claim_quota_request`` immediately before an
+    HTTP attempt, including retries.  Wrapping that hook lets cancellation in
+    the middle of a worker batch retain the exact claimed-attempt count without
+    sharing a SQLite connection across worker threads.  A single ``os.write``
+    under a lock is visible to the recovery step on the same runner; normal
+    completion fsyncs once before the file descriptor is closed.
+    """
+
+    def __init__(
+        self,
+        path: Path,
+        client: Any,
+        *,
+        run_token: str,
+        run_id: str,
+        run_attempt: str,
+    ) -> None:
+        flags = os.O_APPEND | os.O_CREAT | os.O_WRONLY
+        if hasattr(os, "O_BINARY"):
+            flags |= os.O_BINARY
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.path = path.resolve()
+        self.client = client
+        self.run_token = run_token
+        self.run_id = run_id
+        self.run_attempt = run_attempt
+        self._fd = os.open(self.path, flags, 0o600)
+        # Separate this run from a possible torn final line left by an older
+        # local process. The unique run token still performs the real filter.
+        os.write(self._fd, b"\n")
+        self._closed = False
+        self._lock = threading.Lock()
+        self._kind: str | None = None
+        self._error: BaseException | None = None
+        self._hook_name = (
+            "_claim_quota_request"
+            if callable(getattr(client, "_claim_quota_request", None))
+            else "get"
+        )
+        self._original_hook = getattr(client, self._hook_name)
+        self._had_instance_hook = self._hook_name in getattr(client, "__dict__", {})
+        self._instance_hook = getattr(client, "__dict__", {}).get(self._hook_name)
+        setattr(
+            client,
+            self._hook_name,
+            self._claim_and_record
+            if self._hook_name == "_claim_quota_request"
+            else self._get_and_record,
+        )
+        setattr(client, "_fal_phase2_request_journal", self)
+
+    def set_kind(self, kind: str) -> None:
+        if kind not in {"artist_gate", "track_detail"}:
+            raise RequestAttemptJournalError(f"Unsupported request journal kind: {kind}")
+        with self._lock:
+            if self._kind is not None:
+                raise RequestAttemptJournalError("Request journal kind is already active")
+            self._kind = kind
+
+    def clear_kind(self, kind: str) -> None:
+        with self._lock:
+            if self._kind == kind:
+                self._kind = None
+
+    def _kind_or_raise(self) -> str:
+        with self._lock:
+            if self._error is not None:
+                raise RequestAttemptJournalError("Request journal previously failed") from self._error
+            kind = self._kind
+        if kind is None:
+            raise RequestAttemptJournalError("Request journal kind is not set")
+        return kind
+
+    def _append(self, kind: str, quota_remaining: int | None) -> None:
+        record = {
+            "v": 1,
+            "run_token": self.run_token,
+            "run_id": self.run_id,
+            "run_attempt": self.run_attempt,
+            "kind": kind,
+            "quota_remaining": quota_remaining,
+            "claimed_at": utc_now(),
+        }
+        encoded = (json.dumps(record, ensure_ascii=True, separators=(",", ":")) + "\n").encode(
+            "utf-8"
+        )
+        try:
+            with self._lock:
+                view = memoryview(encoded)
+                while view:
+                    written = os.write(self._fd, view)
+                    if written <= 0:
+                        raise OSError("request journal write returned no bytes")
+                    view = view[written:]
+        except BaseException as exc:
+            with self._lock:
+                self._error = exc
+            raise RequestAttemptJournalError("Unable to append request attempt journal") from exc
+
+    def _claim_and_record(self) -> None:
+        kind = self._kind_or_raise()
+
+        # Claim locally first, then append before allowing the HTTP attempt.
+        # If append fails, the exception prevents the network request.
+        self._original_hook()
+        self._append(kind, _quota_remaining(self.client))
+
+    def _get_and_record(self, *args: Any, **kwargs: Any) -> Any:
+        """Test/custom-client fallback when no per-attempt claim hook exists."""
+
+        kind = self._kind_or_raise()
+        remaining = _quota_remaining(self.client)
+        conservative = remaining - 1 if remaining is not None else None
+        self._append(kind, conservative)
+        return self._original_hook(*args, **kwargs)
+
+    def raise_if_failed(self) -> None:
+        with self._lock:
+            error = self._error
+        if error is not None:
+            raise RequestAttemptJournalError("Request attempt accounting failed") from error
+
+    def close(self) -> None:
+        with self._lock:
+            if self._closed:
+                return
+            self._closed = True
+        try:
+            os.fsync(self._fd)
+        finally:
+            os.close(self._fd)
+            if self._had_instance_hook:
+                setattr(self.client, self._hook_name, self._instance_hook)
+            else:
+                try:
+                    delattr(self.client, self._hook_name)
+                except AttributeError:
+                    pass
+
+
+def _with_request_journal_kind(client: Any, kind: str, callback: Any) -> Any:
+    journal = getattr(client, "_fal_phase2_request_journal", None)
+    if not isinstance(journal, RequestAttemptJournal) or journal._closed:
+        return callback()
+    try:
+        journal.set_kind(kind)
+        try:
+            result = callback()
+        finally:
+            journal.clear_kind(kind)
+        journal.raise_if_failed()
+        return result
+    except BaseException:
+        journal.close()
+        raise
+
+
+def _read_request_attempts(
+    progress: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    accounting = dict(progress.get("request_accounting") or {})
+    if accounting.get("source") != "append_only_attempt_journal":
+        return None
+    path_value = str(accounting.get("path") or "").strip()
+    run_token = str(accounting.get("run_token") or "").strip()
+    if not path_value or not run_token:
+        return None
+    path = Path(path_value)
+    if not path.is_file():
+        return None
+
+    artist = 0
+    tracks = 0
+    quota: int | None = None
+    last_attempt_at: str | None = None
+    try:
+        with path.open("r", encoding="utf-8", errors="replace") as handle:
+            for raw in handle:
+                try:
+                    row = json.loads(raw)
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    # A terminated write cannot be mistaken for a request: the
+                    # HTTP attempt only begins after the complete append.
+                    continue
+                if not isinstance(row, dict) or row.get("run_token") != run_token:
+                    continue
+                kind = row.get("kind")
+                if kind == "artist_gate":
+                    artist += 1
+                elif kind == "track_detail":
+                    tracks += 1
+                else:
+                    continue
+                observed_quota = finite_int(row.get("quota_remaining"))
+                if observed_quota is not None:
+                    quota = observed_quota if quota is None else min(quota, observed_quota)
+                last_attempt_at = str(row.get("claimed_at") or last_attempt_at or "") or None
+    except OSError:
+        return None
+    return {
+        "claimed_total": artist + tracks,
+        "claimed_artist_gate": artist,
+        "claimed_track_detail": tracks,
+        "quota_remaining": quota,
+        "last_attempt_at": last_attempt_at,
+    }
+
+
+def _runner_identity_matches(
+    progress: Mapping[str, Any], *, run_id: str, run_attempt: str
+) -> bool:
+    expected_id = str(run_id or "").strip()
+    expected_attempt = str(run_attempt or "").strip()
+    if expected_id and str(progress.get("run_id") or "") != expected_id:
+        return False
+    if expected_attempt and str(progress.get("run_attempt") or "") != expected_attempt:
+        return False
+    return True
+
+
+def _reconcile_request_attempts(
+    connection: sqlite3.Connection,
+    progress: dict[str, Any],
+    *,
+    commit: bool,
+) -> dict[str, Any] | None:
+    attempts = _read_request_attempts(progress)
+    if attempts is None:
+        return None
+    requests = dict(progress.get("requests") or {})
+    allocation = dict(progress.get("allocation") or {})
+    for key in ("claimed_total", "claimed_artist_gate", "claimed_track_detail"):
+        requests[key] = int(attempts[key])
+    allocation["claimed_artist_gate"] = int(attempts["claimed_artist_gate"])
+    allocation["claimed_track_detail"] = int(attempts["claimed_track_detail"])
+    progress["requests"] = requests
+    progress["allocation"] = allocation
+    progress["updated_at"] = utc_now()
+    accounting = dict(progress.get("request_accounting") or {})
+    accounting["last_attempt_at"] = attempts.get("last_attempt_at")
+    accounting["reconciled_at"] = progress["updated_at"]
+    progress["request_accounting"] = accounting
+    if attempts.get("quota_remaining") is not None:
+        progress["quota_remaining"] = int(attempts["quota_remaining"])
+        progress["quota_observed_at"] = attempts.get("last_attempt_at")
+    _store_run_progress(connection, progress, commit=commit)
+    return attempts
+
+
+def load_run_progress(connection: sqlite3.Connection) -> dict[str, Any] | None:
+    """Return the durable counters for the currently executing phase-2 run."""
+
+    raw = meta_get(connection, RUN_PROGRESS_META_KEY)
+    if not raw:
+        return None
+    try:
+        progress = json.loads(raw)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
+    if not isinstance(progress, dict) or finite_int(progress.get("version")) != RUN_PROGRESS_VERSION:
+        return None
+    return progress
+
+
+def _store_run_progress(
+    connection: sqlite3.Connection,
+    progress: Mapping[str, Any],
+    *,
+    commit: bool,
+) -> None:
+    meta_set(
+        connection,
+        RUN_PROGRESS_META_KEY,
+        json.dumps(dict(progress), ensure_ascii=False, sort_keys=True),
+    )
+    if commit:
+        connection.commit()
+
+
+def _migration_payload(migration: QueueMigration) -> dict[str, int]:
+    return {
+        "requested": int(migration.requested),
+        "capacity_before": int(migration.capacity_before),
+        "selected": int(migration.selected),
+        "pending": int(migration.pending),
+        "locally_blocked": int(migration.locally_blocked),
+    }
+
+
+def _budget_plan_payload(plan: QuotaBudgetPlan | None) -> dict[str, Any] | None:
+    if plan is None:
+        return None
+    return {
+        "requested": int(plan.requested),
+        "allowed": int(plan.allowed),
+        "hard_reserve": int(plan.hard_reserve),
+        "maintenance_daily_requests": int(plan.maintenance_daily_requests),
+        "maintenance_days": int(plan.maintenance_days),
+        "maintenance_reserve": int(plan.maintenance_reserve),
+        "protected_floor": int(plan.protected_floor),
+        "maintenance_through": plan.maintenance_through,
+    }
+
+
+def begin_run_progress(
+    connection: sqlite3.Connection,
+    client: Any,
+    *,
+    budget: InterleavedBudget,
+    budget_plan: QuotaBudgetPlan | None,
+    migration: QueueMigration,
+    run_id: str = "",
+    run_attempt: str = "",
+    request_journal: Path | None = None,
+) -> RequestAttemptJournal | None:
+    """Start a new durable run ledger before the first paid data request."""
+
+    now = utc_now()
+    runner_id = str(run_id or os.environ.get("GITHUB_RUN_ID") or "").strip()
+    runner_attempt = str(
+        run_attempt or os.environ.get("GITHUB_RUN_ATTEMPT") or ""
+    ).strip()
+    run_token = f"{runner_id or 'local'}:{runner_attempt or '0'}:{uuid.uuid4().hex}"
+    journal: RequestAttemptJournal | None = None
+    accounting: dict[str, Any] = {"source": "sqlite_committed_batches"}
+    if request_journal is not None and callable(getattr(client, "get", None)):
+        journal = RequestAttemptJournal(
+            request_journal,
+            client,
+            run_token=run_token,
+            run_id=runner_id,
+            run_attempt=runner_attempt,
+        )
+        accounting = {
+            "source": "append_only_attempt_journal",
+            "path": str(journal.path),
+            "run_token": run_token,
+            "durability": "single_append_before_each_http_attempt",
+        }
+    progress = {
+        "version": RUN_PROGRESS_VERSION,
+        "run_id": runner_id,
+        "run_attempt": runner_attempt,
+        "run_token": run_token,
+        "status": "running",
+        "started_at": now,
+        "updated_at": now,
+        "last_committed_at": None,
+        "quota_remaining": _quota_remaining(client),
+        "quota_observed_at": now if _quota_remaining(client) is not None else None,
+        "halt_reason": None,
+        "requests": {
+            "claimed_total": 0,
+            "claimed_artist_gate": 0,
+            "claimed_track_detail": 0,
+        },
+        "allocation": {
+            "strategy": "weighted_artist_gate_with_track_detail_reserve",
+            "planned_allowed": int(budget.allowed),
+            "planned_artist_gate": int(budget.artist_gate),
+            "planned_track_detail": int(budget.track_detail),
+            "claimed_artist_gate": 0,
+            "claimed_track_detail": 0,
+        },
+        "preflight": _budget_plan_payload(budget_plan),
+        "migration": _migration_payload(migration),
+        "request_accounting": accounting,
+    }
+    try:
+        _store_run_progress(connection, progress, commit=True)
+    except BaseException:
+        if journal is not None:
+            journal.close()
+        raise
+    return journal
+
+
+def checkpoint_committed_requests(
+    connection: sqlite3.Connection,
+    client: Any,
+    *,
+    kind: str,
+    claimed: int,
+) -> None:
+    """Atomically checkpoint request counters with one committed result batch."""
+
+    progress = load_run_progress(connection)
+    if progress is None:
+        return
+    if kind not in {"artist_gate", "track_detail"}:
+        raise FalPhase2Error(f"Unsupported phase-2 request kind: {kind}")
+    requests = dict(progress.get("requests") or {})
+    allocation = dict(progress.get("allocation") or {})
+    increment = max(0, int(claimed))
+    key = f"claimed_{kind}"
+    requests[key] = int(requests.get(key) or 0) + increment
+    requests["claimed_total"] = int(requests.get("claimed_total") or 0) + increment
+    allocation[key] = int(allocation.get(key) or 0) + increment
+    now = utc_now()
+    progress["requests"] = requests
+    progress["allocation"] = allocation
+    progress["updated_at"] = now
+    progress["last_committed_at"] = now
+    remaining = _quota_remaining(client)
+    if remaining is not None:
+        progress["quota_remaining"] = remaining
+        progress["quota_observed_at"] = now
+    # No commit here: the scanner commits this metadata together with the
+    # corresponding artist/track rows, so neither side can get ahead.
+    _store_run_progress(connection, progress, commit=False)
+
+
+def checkpoint_run_migration(
+    connection: sqlite3.Connection,
+    migration: QueueMigration,
+) -> None:
+    progress = load_run_progress(connection)
+    if progress is None:
+        return
+    progress["migration"] = _migration_payload(migration)
+    progress["updated_at"] = utc_now()
+    _store_run_progress(connection, progress, commit=True)
+
+
+def finish_run_progress(
+    connection: sqlite3.Connection,
+    client: Any,
+    *,
+    halt_reason: str | None,
+    migration: QueueMigration,
+) -> None:
+    progress = load_run_progress(connection)
+    if progress is None:
+        return
+    attempts = _reconcile_request_attempts(connection, progress, commit=False)
+    now = utc_now()
+    progress["status"] = "finished"
+    progress["finished_at"] = now
+    progress["updated_at"] = now
+    progress["halt_reason"] = halt_reason
+    progress["migration"] = _migration_payload(migration)
+    remaining = _quota_remaining(client)
+    if remaining is not None:
+        progress["quota_remaining"] = remaining
+        progress["quota_observed_at"] = now
+    elif attempts is not None and attempts.get("quota_remaining") is not None:
+        progress["quota_remaining"] = int(attempts["quota_remaining"])
+    _store_run_progress(connection, progress, commit=True)
 
 
 def assert_phase1_complete(connection: sqlite3.Connection) -> None:
@@ -599,6 +1064,7 @@ def migrate_gated_track_queue(
     active_queue_cap: int,
     recent_days: int,
     as_of: str | dt.date | dt.datetime | None = None,
+    commit: bool = True,
 ) -> QueueMigration:
     """Queue recent tracks only for artists explicitly admitted by the gate.
 
@@ -693,7 +1159,8 @@ def migrate_gated_track_queue(
                     (now, candidate_uuid),
                 )
         meta_set(phase2, "fal_phase2_last_gated_queue_migration_at", now)
-        phase2.commit()
+        if commit:
+            phase2.commit()
     except Exception:
         phase2.rollback()
         raise
@@ -799,7 +1266,13 @@ class ArtistGateScanner:
         ).fetchall()
         if not rows:
             return False
-        results, errors = self._fetch_batch(rows)
+        claimed_before = int(getattr(self.client, "requests_claimed", 0) or 0)
+        results, errors = _with_request_journal_kind(
+            self.client,
+            "artist_gate",
+            lambda: self._fetch_batch(rows),
+        )
+        claimed_after = int(getattr(self.client, "requests_claimed", 0) or 0)
         by_uuid = {str(row["candidate_uuid"]): row for row in rows}
         now = utc_now()
         for uuid, response in results.items():
@@ -849,6 +1322,12 @@ class ArtistGateScanner:
                 (status, reason, attempts, code, now, uuid),
             )
             self._record_error(uuid, code)
+        checkpoint_committed_requests(
+            self.phase2,
+            self.client,
+            kind="artist_gate",
+            claimed=max(0, claimed_after - claimed_before),
+        )
         self.phase2.commit()
         return True
 
@@ -1083,7 +1562,13 @@ class Phase2Scanner:
         if not rows:
             return False
         by_uuid = {str(row["track_uuid"]): row for row in rows}
-        results, errors = self._fetch_batch(rows)
+        claimed_before = int(getattr(self.client, "requests_claimed", 0) or 0)
+        results, errors = _with_request_journal_kind(
+            self.client,
+            "track_detail",
+            lambda: self._fetch_batch(rows),
+        )
+        claimed_after = int(getattr(self.client, "requests_claimed", 0) or 0)
         for uuid, response in results.items():
             self._store_detail(by_uuid[uuid], response)
         for uuid, code in errors.items():
@@ -1107,6 +1592,12 @@ class Phase2Scanner:
                 (status, reason, attempts, code, utc_now(), uuid),
             )
             self._record_error(uuid, code)
+        checkpoint_committed_requests(
+            self.phase2,
+            self.client,
+            kind="track_detail",
+            claimed=max(0, claimed_after - claimed_before),
+        )
         self.phase2.commit()
         return True
 
@@ -1127,7 +1618,7 @@ class Phase2Scanner:
         return self.halt_reason or "idle"
 
 
-def run_interleaved_batches(
+def _run_interleaved_batches_impl(
     phase1: sqlite3.Connection,
     phase2: sqlite3.Connection,
     client: Any,
@@ -1143,6 +1634,10 @@ def run_interleaved_batches(
     continue_zero_yield: bool,
     track_details_paused: bool,
     initial_migration: QueueMigration | None = None,
+    budget_plan: QuotaBudgetPlan | None = None,
+    run_id: str = "",
+    run_attempt: str = "",
+    request_journal: Path | None = None,
 ) -> InterleavedRun:
     """Alternate bounded artist and track batches under one safe run budget."""
 
@@ -1160,6 +1655,17 @@ def run_interleaved_batches(
     migration = initial_migration or QueueMigration(0, 0, 0, 0, 0)
     if budget.allowed <= 0:
         return InterleavedRun(budget, migration, "idle", 0, 0)
+
+    journal = begin_run_progress(
+        phase2,
+        client,
+        budget=budget,
+        budget_plan=budget_plan,
+        migration=migration,
+        run_id=run_id,
+        run_attempt=run_attempt,
+        request_journal=request_journal,
+    )
 
     worker_count = max(1, min(10, int(workers)))
     artist_scanner = ArtistGateScanner(
@@ -1211,15 +1717,23 @@ def run_interleaved_batches(
                 halt = artist_scanner.halt_reason
 
         if not tracks_paused:
-            gated = migrate_gated_track_queue(
-                phase1,
-                phase2,
-                max_new_queue=max_new_queue,
-                active_queue_cap=active_queue_cap,
-                recent_days=recent_days,
-                as_of=as_of,
-            )
-            migration = _combine_migrations(migration, gated)
+            try:
+                gated = migrate_gated_track_queue(
+                    phase1,
+                    phase2,
+                    max_new_queue=max_new_queue,
+                    active_queue_cap=active_queue_cap,
+                    recent_days=recent_days,
+                    as_of=as_of,
+                    commit=False,
+                )
+                migration = _combine_migrations(migration, gated)
+                # This commit also makes the queue rows above durable.  The
+                # report can therefore never lag behind an advanced queue.
+                checkpoint_run_migration(phase2, migration)
+            except BaseException:
+                phase2.rollback()
+                raise
 
         actual_spent = max(
             0,
@@ -1265,6 +1779,16 @@ def run_interleaved_batches(
         if not progressed or (artist_remaining <= 0 and track_remaining <= 0):
             break
 
+    try:
+        finish_run_progress(
+            phase2,
+            client,
+            halt_reason=None if halt == "idle" else halt,
+            migration=migration,
+        )
+    finally:
+        if journal is not None:
+            journal.close()
     return InterleavedRun(
         budget=budget,
         migration=migration,
@@ -1272,6 +1796,22 @@ def run_interleaved_batches(
         artist_requests=artist_requests,
         track_requests=track_requests,
     )
+
+
+def run_interleaved_batches(
+    phase1: sqlite3.Connection,
+    phase2: sqlite3.Connection,
+    client: Any,
+    **kwargs: Any,
+) -> InterleavedRun:
+    """Run phase 2 while always restoring the client's request hook."""
+
+    try:
+        return _run_interleaved_batches_impl(phase1, phase2, client, **kwargs)
+    finally:
+        journal = getattr(client, "_fal_phase2_request_journal", None)
+        if isinstance(journal, RequestAttemptJournal):
+            journal.close()
 
 
 def build_report(
@@ -1482,9 +2022,139 @@ def build_report(
     }
 
 
+def build_interrupted_report(
+    phase1: sqlite3.Connection,
+    phase2: sqlite3.Connection,
+    *,
+    recent_days: int,
+    as_of: str | dt.date | dt.datetime | None,
+    active_queue_cap: int,
+    canary_min_sample: int,
+    runner_outcome: str,
+    run_id: str = "",
+    run_attempt: str = "",
+    request_journal: Path | None = None,
+) -> dict[str, Any]:
+    """Rebuild an interruption report from the last atomic SQLite checkpoint."""
+
+    progress = load_run_progress(phase2)
+    if progress is not None and not _runner_identity_matches(
+        progress, run_id=run_id, run_attempt=run_attempt
+    ):
+        progress = None
+    if progress is not None and request_journal is not None:
+        accounting = dict(progress.get("request_accounting") or {})
+        if accounting.get("source") == "append_only_attempt_journal":
+            accounting["path"] = str(request_journal.resolve())
+            progress["request_accounting"] = accounting
+    journal_attempts = (
+        _reconcile_request_attempts(phase2, progress, commit=True)
+        if progress is not None
+        else None
+    )
+    migration_data = dict((progress or {}).get("migration") or {})
+    migration = QueueMigration(
+        requested=int(migration_data.get("requested") or 0),
+        capacity_before=int(migration_data.get("capacity_before") or 0),
+        selected=int(migration_data.get("selected") or 0),
+        pending=int(migration_data.get("pending") or 0),
+        locally_blocked=int(migration_data.get("locally_blocked") or 0),
+    )
+    requests = dict((progress or {}).get("requests") or {})
+    accounting_source = str(
+        dict((progress or {}).get("request_accounting") or {}).get("source") or ""
+    )
+    journal_missing = (
+        progress is not None
+        and accounting_source == "append_only_attempt_journal"
+        and journal_attempts is None
+    )
+    claimed: int | None = (
+        int(requests.get("claimed_total") or 0)
+        if progress is not None and not journal_missing
+        else None
+    )
+    quota = (
+        finite_int((progress or {}).get("quota_remaining"))
+        if not journal_missing
+        else None
+    )
+    outcome = str(runner_outcome or "failure").strip().lower().replace(" ", "_")
+    halt_reason = f"runner_{outcome}"
+    report = build_report(
+        phase1,
+        phase2,
+        migration=migration,
+        recent_days=recent_days,
+        as_of=as_of,
+        requests_claimed=claimed or 0,
+        quota_remaining=quota,
+        halt_reason=halt_reason,
+        active_queue_cap=active_queue_cap,
+        canary_min_sample=canary_min_sample,
+    )
+    report["runner_outcome"] = outcome
+    report["observed_at"] = utc_now()
+    if not report.get("complete"):
+        report["status"] = "runner_interrupted" if outcome == "cancelled" else "runner_error"
+    report_requests = dict(report.get("requests") or {})
+    report_requests["claimed_this_run"] = claimed
+    report_requests["allocation"] = (
+        dict(progress.get("allocation") or {})
+        if progress is not None and not journal_missing
+        else None
+    )
+    report_requests["preflight"] = (
+        dict(progress.get("preflight") or {}) if progress is not None else None
+    )
+    checkpoint_source = "unavailable"
+    if progress is not None and not journal_missing:
+        checkpoint_source = (
+            "append_only_attempt_journal"
+            if journal_attempts is not None
+            else "sqlite_committed_batches"
+        )
+    report_requests["checkpoint"] = {
+        "source": checkpoint_source,
+        "progress_status": (progress or {}).get("status"),
+        "run_id": (progress or {}).get("run_id"),
+        "run_attempt": (progress or {}).get("run_attempt"),
+        "run_token": (progress or {}).get("run_token"),
+        "configured_source": accounting_source or None,
+        "committed_lower_bound": (
+            int(requests.get("claimed_total") or 0) if journal_missing else None
+        ),
+        "started_at": (progress or {}).get("started_at"),
+        "last_committed_at": (progress or {}).get("last_committed_at"),
+        "last_attempt_at": dict((progress or {}).get("request_accounting") or {}).get(
+            "last_attempt_at"
+        ),
+        "quota_observed_at": (progress or {}).get("quota_observed_at"),
+        "quota_semantics": (
+            (
+                "conservative_after_claims"
+                if journal_attempts is not None
+                else "last_known_after_committed_batch"
+            )
+            if quota is not None
+            else "unavailable"
+        ),
+    }
+    report["requests"] = report_requests
+    return report
+
+
 def write_report(path: Path, report: Mapping[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        temporary.write_text(
+            json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -1511,6 +2181,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--canary-min-sample", type=int, default=DEFAULT_MAX_REQUESTS)
     parser.add_argument("--continue-zero-yield", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--recover-interrupted-report", action="store_true")
+    parser.add_argument("--runner-outcome", default="failure")
+    parser.add_argument("--run-id", default=os.environ.get("GITHUB_RUN_ID", ""))
+    parser.add_argument("--run-attempt", default=os.environ.get("GITHUB_RUN_ATTEMPT", ""))
+    parser.add_argument("--request-journal", type=Path)
     return parser.parse_args(argv)
 
 
@@ -1522,6 +2197,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise FalPhase2Error(f"max_new_queue must be between 0 and {MAX_QUEUE_MIGRATION}")
     phase1 = open_phase1_state(args.phase1_state)
     dry_run_dir: tempfile.TemporaryDirectory[str] | None = None
+    client: Any | None = None
     phase2_path = args.state
     if args.dry_run:
         # Preflight must be observational.  Run the exact queue/gate planning
@@ -1534,6 +2210,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     phase2 = open_phase2_state(phase2_path)
     try:
         assert_phase1_complete(phase1)
+        if args.recover_interrupted_report:
+            report = build_interrupted_report(
+                phase1,
+                phase2,
+                recent_days=args.recent_days,
+                as_of=args.as_of,
+                active_queue_cap=args.active_queue_cap,
+                canary_min_sample=args.canary_min_sample,
+                runner_outcome=args.runner_outcome,
+                run_id=args.run_id,
+                run_attempt=args.run_attempt,
+                request_journal=args.request_journal,
+            )
+            write_report(args.report, report)
+            print(json.dumps(report, ensure_ascii=False, separators=(",", ":")))
+            return 0
         reconcile_phase1_source(phase1, phase2, args.phase1_source_id)
         initialize_artist_gate(phase1, phase2)
         paused = not args.continue_zero_yield and canary_zero_yield(
@@ -1646,6 +2338,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 continue_zero_yield=args.continue_zero_yield,
                 track_details_paused=paused,
                 initial_migration=migration,
+                budget_plan=plan,
+                run_id=args.run_id,
+                run_attempt=args.run_attempt,
+                request_journal=args.request_journal,
             )
             migration = interleaved.migration
             halt = interleaved.halt_reason
@@ -1667,6 +2363,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(report, ensure_ascii=False, separators=(",", ":")))
         return 0
     finally:
+        journal = getattr(client, "_fal_phase2_request_journal", None)
+        if isinstance(journal, RequestAttemptJournal):
+            journal.close()
         phase2.close()
         phase1.close()
         if dry_run_dir is not None:
