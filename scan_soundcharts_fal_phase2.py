@@ -15,7 +15,9 @@ import concurrent.futures
 import datetime as dt
 import json
 import os
+import shutil
 import sqlite3
+import tempfile
 import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
@@ -66,6 +68,7 @@ DEFAULT_ACTIVE_QUEUE_CAP = 5_000
 DEFAULT_MAINTENANCE_THROUGH = "2026-08-18"
 MAX_BATCH_REQUESTS = 40_000
 MAX_QUEUE_MIGRATION = 10_000
+ARTIST_GATE_BUDGET_PERCENT = 80
 
 ACTIVE_QUEUE_STATUSES = ("pending", "retry")
 ACTIVE_ARTIST_GATE_STATUSES = ("pending", "retry")
@@ -90,6 +93,62 @@ class QueueMigration:
     selected: int
     pending: int
     locally_blocked: int
+
+
+@dataclass(frozen=True)
+class InterleavedBudget:
+    """Logical request split which prevents either work queue from starving."""
+
+    allowed: int
+    artist_gate: int
+    track_detail: int
+
+
+@dataclass(frozen=True)
+class InterleavedRun:
+    budget: InterleavedBudget
+    migration: QueueMigration
+    halt_reason: str
+    artist_requests: int
+    track_requests: int
+
+
+def plan_interleaved_budget(
+    allowed: int,
+    *,
+    artist_gate_active: int,
+    track_details_paused: bool,
+) -> InterleavedBudget:
+    """Reserve track-detail capacity while the finite artist gate advances.
+
+    With both phases available, 80% of a run is assigned to artist gates and
+    20% to tracks admitted by completed gates.  A one-call run safely advances
+    the prerequisite artist gate; once gates finish, tracks receive the entire
+    budget.  A zero-yield pause never blocks the artist gate itself.
+    """
+
+    total = max(0, min(MAX_BATCH_REQUESTS, int(allowed)))
+    artists = max(0, int(artist_gate_active))
+    if total <= 0:
+        return InterleavedBudget(0, 0, 0)
+    if artists <= 0:
+        return InterleavedBudget(total, 0, 0 if track_details_paused else total)
+    if track_details_paused or total == 1:
+        return InterleavedBudget(total, min(total, artists), 0)
+
+    track_reserve = max(1, total * (100 - ARTIST_GATE_BUDGET_PERCENT) // 100)
+    artist_budget = min(artists, total - track_reserve)
+    return InterleavedBudget(total, artist_budget, total - artist_budget)
+
+
+def _combine_migrations(left: QueueMigration, right: QueueMigration) -> QueueMigration:
+    return QueueMigration(
+        requested=max(left.requested, right.requested),
+        capacity_before=max(left.capacity_before, right.capacity_before),
+        selected=left.selected + right.selected,
+        pending=left.pending + right.pending,
+        locally_blocked=left.locally_blocked + right.locally_blocked,
+    )
 
 
 PHASE2_SCHEMA_SQL = """
@@ -282,6 +341,45 @@ def initialize_artist_gate(
     return max(0, total - before), total
 
 
+def reconcile_phase1_source(
+    phase2: sqlite3.Connection,
+    phase1_source_id: str,
+) -> int:
+    """Reopen eligible artist catalogues when phase 1 publishes a new source.
+
+    A completed per-artist cursor only describes the phase-1 checkpoint that
+    produced it.  Rewinding eligible artists lets the normal queue insertion
+    discover tracks added by a later checkpoint, including UUIDs that sort
+    before the former cursor.  Existing queue rows remain the deduplication
+    ledger and are deliberately left untouched.
+    """
+
+    source_id = str(phase1_source_id or "").strip()
+    previous_source = meta_get(phase2, "fal_phase2_phase1_source_id") or ""
+    if not source_id or source_id == previous_source:
+        return 0
+
+    now = utc_now()
+    try:
+        phase2.execute("BEGIN IMMEDIATE")
+        phase2.execute(
+            "DELETE FROM meta WHERE key IN ('fal_phase2_queue_cursor_rowid','fal_phase2_queue_cursor_release_date','fal_phase2_queue_cursor_uuid')"
+        )
+        reopened = phase2.execute(
+            """UPDATE fal_phase2_artist_gate
+                  SET bulk_cursor_track_uuid='',bulk_complete=0,updated_at=?
+                WHERE gate_status='eligible'""",
+            (now,),
+        ).rowcount
+        meta_set(phase2, "fal_phase2_phase1_source_id", source_id)
+        meta_set(phase2, "fal_phase2_bulk_reopened_at", now)
+        phase2.commit()
+    except Exception:
+        phase2.rollback()
+        raise
+    return max(0, int(reopened or 0))
+
+
 def _safe_evidence(raw: Any) -> dict[str, Any]:
     if isinstance(raw, Mapping):
         return dict(raw)
@@ -302,7 +400,7 @@ def _evidence_labels(evidence: Mapping[str, Any]) -> tuple[str, str, str]:
     ai_raw = normalize_text(evidence.get("ai_risk"))
     if ai_raw in {"low", "faible"}:
         ai_risk = "low"
-    elif ai_raw in {"high", "elevated", "eleve", "elevé"}:
+    elif ai_raw in {"high", "elevated", "eleve", "elevÃ©"}:
         ai_risk = "high"
     else:
         ai_risk = "unknown"
@@ -450,465 +548,75 @@ def migrate_gated_track_queue(
                      FROM candidate_tracks ct
                      JOIN tracks t ON t.soundcharts_uuid=ct.track_uuid
                     WHERE ct.candidate_uuid=?
-                      AND t.status='review_metadata_pending'
-                      AND t.soundcharts_uuid>?
-                      AND date(substr(t.release_date,1,10)) BETWEEN date(?) AND date(?)
-                    ORDER BY t.soundcharts_uuid
-                    LIMIT ?""",
-                (
-                    candidate_uuid,
-                    cursor,
-                    cutoff.isoformat(),
-                    today.isoformat(),
-                    remaining + 1,
-                ),
-            ).fetchall()
-            selected = rows[:remaining]
-            for row in selected:
-                status, reason = local_prefilter(_safe_evidence(row["evidence_json"]))
-                result = phase2.execute(
-                    """INSERT INTO fal_phase2_queue(
-                         track_uuid,candidate_uuid,release_date,queue_status,local_reason,
-                         queued_at,updated_at)
-                       VALUES(?,?,?,?,?,?,?) ON CONFLICT(track_uuid) DO NOTHING""",
-                    (
-                        str(row["soundcharts_uuid"]),
-                        candidate_uuid,
-                        str(row["release_date"] or ""),
-                        status,
-                        reason,
-                        now,
-                        now,
-                    ),
-                )
-                if result.rowcount:
-                    inserted += 1
-                    pending += int(status == "pending")
-                    blocked += int(status != "pending")
-            if selected:
-                phase2.execute(
-                    """UPDATE fal_phase2_artist_gate SET bulk_cursor_track_uuid=?,
-                              bulk_complete=?,updated_at=? WHERE candidate_uuid=?""",
-                    (
-                        str(selected[-1]["soundcharts_uuid"]),
-                        int(len(rows) <= remaining),
-                        now,
-                        candidate_uuid,
-                    ),
-                )
-            elif not rows:
-                phase2.execute(
-                    "UPDATE fal_phase2_artist_gate SET bulk_complete=1,updated_at=? WHERE candidate_uuid=?",
-                    (now, candidate_uuid),
-                )
-        meta_set(phase2, "fal_phase2_last_gated_queue_migration_at", now)
-        phase2.commit()
-    except Exception:
-        phase2.rollback()
-        raise
-    return QueueMigration(requested, capacity, inserted, pending, blocked)
-
-
-def _count_by_status(connection: sqlite3.Connection, table: str, field: str) -> dict[str, int]:
-    return {
-        str(row[0]): int(row[1])
-        for row in connection.execute(
-            f"SELECT {field},COUNT(*) FROM {table} GROUP BY {field} ORDER BY {field}"
-        )
-    }
-
-
-def evidence_yield(connection: sqlite3.Connection) -> dict[str, int | float]:
-    row = connection.execute(
-        """SELECT COUNT(*) AS sampled,
-                  SUM(CASE WHEN instrumental_status<>'unknown'
-                                OR ai_risk<>'unknown'
-                                OR genre_status<>'unknown'
-                                OR decision IN ('blocked_explicit_vocal','blocked_out_of_scope','blocked_ai_high')
-                           THEN 1 ELSE 0 END) AS useful_signal,
-                  SUM(CASE WHEN decision='review_evidence_ready' THEN 1 ELSE 0 END) AS evidence_ready
-             FROM fal_phase2_details"""
-    ).fetchone()
-    sampled = int(row["sampled"] or 0)
-    useful = int(row["useful_signal"] or 0)
-    ready = int(row["evidence_ready"] or 0)
-    return {
-        "sampled": sampled,
-        "useful_signal": useful,
-        "evidence_ready": ready,
-        "useful_signal_rate": (useful / sampled) if sampled else 0.0,
-        "evidence_ready_rate": (ready / sampled) if sampled else 0.0,
-    }
-
-
-def canary_zero_yield(connection: sqlite3.Connection, minimum_sample: int) -> bool:
-    stats = evidence_yield(connection)
-    return int(stats["sampled"]) >= max(1, int(minimum_sample)) and int(stats["useful_signal"]) == 0
-
-
-class ArtistGateScanner:
-    """Screen candidate artists once before opening any discography bulk."""
-
-    def __init__(
-        self,
-        phase2: sqlite3.Connection,
-        client: Any,
-        *,
-        workers: int,
-        retry_limit: int,
-    ) -> None:
-        self.phase2 = phase2
-        self.client = client
-        self.workers = max(1, int(workers))
-        self.retry_limit = max(1, int(retry_limit))
-        self.halt_reason: str | None = None
-
-    def _record_error(self, uuid: str, code: str) -> None:
-        self.phase2.execute(
-            "INSERT INTO fal_phase2_errors(track_uuid,error_code,observed_at) VALUES(?,?,?)",
-            (uuid, f"artist_gate:{code}", utc_now()),
-        )
-
-    def _fetch_batch(self, rows: Sequence[sqlite3.Row]) -> tuple[dict[str, Any], dict[str, str]]:
-        results: dict[str, Any] = {}
-        errors: dict[str, str] = {}
-
-        def fetch(row: sqlite3.Row) -> tuple[str, Any]:
-            uuid = str(row["candidate_uuid"])
-            return uuid, self.client.get(f"/api/v2/artist/{urllib.parse.quote(uuid)}")
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=self.workers) as executor:
-            futures = {executor.submit(fetch, row): str(row["candidate_uuid"]) for row in rows}
-            for future in concurrent.futures.as_completed(futures):
-                uuid = futures[future]
-                try:
-                    result_uuid, payload = future.result()
-                    results[result_uuid] = payload
-                except SoundchartsRequestLimitError:
-                    errors[uuid] = "request_limit"
-                    self.halt_reason = "request_limit"
-                except SoundchartsQuotaReserveError:
-                    errors[uuid] = "quota_reserve"
-                    self.halt_reason = "quota_reserve"
-                except SoundchartsDataUnavailableError:
-                    errors[uuid] = "unavailable"
-                except (SoundchartsError, OSError, RuntimeError):
-                    errors[uuid] = "request_failed"
-        return results, errors
-
-    def scan_batch(self) -> bool:
-        rows = self.phase2.execute(
-            """SELECT * FROM fal_phase2_artist_gate
-                WHERE gate_status IN ('pending','retry')
-                ORDER BY source_count DESC,best_rank,monthly_listeners,candidate_uuid LIMIT ?""",
-            (self.workers,),
-        ).fetchall()
-        if not rows:
-            return False
-        results, errors = self._fetch_batch(rows)
-        by_uuid = {str(row["candidate_uuid"]): row for row in rows}
-        now = utc_now()
-        for uuid, response in results.items():
-            evidence = parse_artist_gate_response(response)
-            status, reason = decide_artist_gate(evidence)
-            # Keep the public constants out of the checkpoint contract while
-            # preserving their fail-closed meaning.
-            if status not in {ARTIST_ELIGIBLE, ARTIST_BLOCKED, ARTIST_REVIEW}:
-                status, reason = ARTIST_REVIEW, "invalid_gate_decision"
-            self.phase2.execute(
-                """UPDATE fal_phase2_artist_gate
-                      SET gate_status=?,reason=?,career_stage=?,evidence_json=?,
-                          attempts=0,error_code=NULL,updated_at=?
-                    WHERE candidate_uuid=?""",
-                (
-                    status,
-                    reason,
-                    str(evidence.get("careerStage") or ""),
-                    json.dumps(evidence, ensure_ascii=False, sort_keys=True),
-                    now,
-                    uuid,
-                ),
-            )
-        for uuid, code in errors.items():
-            row = by_uuid[uuid]
-            if code == "unavailable":
-                status, reason = "review_unavailable", "artist_metadata_unavailable"
-                attempts = int(row["attempts"] or 0)
-            elif code in {"request_limit", "quota_reserve"}:
-                self.phase2.execute(
-                    "UPDATE fal_phase2_artist_gate SET error_code=?,updated_at=? WHERE candidate_uuid=?",
-                    (code, now, uuid),
-                )
-                self._record_error(uuid, code)
-                continue
+                      AND t.status='revi…6078 tokens truncated…t_requests += claimed
+                progressed = True
             else:
-                attempts = int(row["attempts"] or 0) + 1
-                status = "review_request_failed" if attempts >= self.retry_limit else "retry"
-                reason = (
-                    "bounded_artist_metadata_retries_exhausted"
-                    if status == "review_request_failed"
-                    else "transient_artist_metadata_retry"
-                )
-            self.phase2.execute(
-                """UPDATE fal_phase2_artist_gate SET gate_status=?,reason=?,attempts=?,
-                          error_code=?,updated_at=? WHERE candidate_uuid=?""",
-                (status, reason, attempts, code, now, uuid),
+                artist_remaining = 0
+            if artist_scanner.halt_reason:
+                halt = artist_scanner.halt_reason
+
+        if not tracks_paused:
+            gated = migrate_gated_track_queue(
+                phase1,
+                phase2,
+                max_new_queue=max_new_queue,
+                active_queue_cap=active_queue_cap,
+                recent_days=recent_days,
+                as_of=as_of,
             )
-            self._record_error(uuid, code)
-        self.phase2.commit()
-        return True
+            migration = _combine_migrations(migration, gated)
 
-    def run(self) -> str:
-        while not self.halt_reason and self.scan_batch():
-            pass
-        return self.halt_reason or "idle"
-
-
-class Phase2Scanner:
-    def __init__(
-        self,
-        phase1: sqlite3.Connection,
-        phase2: sqlite3.Connection,
-        client: Any,
-        *,
-        workers: int,
-        retry_limit: int,
-        canary_min_sample: int,
-        continue_zero_yield: bool,
-    ) -> None:
-        self.phase1 = phase1
-        self.phase2 = phase2
-        self.client = client
-        self.workers = max(1, int(workers))
-        self.retry_limit = max(1, int(retry_limit))
-        self.canary_min_sample = max(1, int(canary_min_sample))
-        self.continue_zero_yield = bool(continue_zero_yield)
-        self.halt_reason: str | None = None
-
-    def _record_error(self, uuid: str, code: str) -> None:
-        self.phase2.execute(
-            "INSERT INTO fal_phase2_errors(track_uuid,error_code,observed_at) VALUES(?,?,?)",
-            (uuid, code, utc_now()),
+        actual_spent = max(
+            0,
+            int(getattr(client, "requests_claimed", 0) or 0) - start_claimed,
         )
-
-    def _fetch_batch(self, rows: Sequence[sqlite3.Row]) -> tuple[dict[str, Any], dict[str, str]]:
-        results: dict[str, Any] = {}
-        errors: dict[str, str] = {}
-
-        def fetch(row: sqlite3.Row) -> tuple[str, Any]:
-            uuid = str(row["track_uuid"])
-            path = f"/api/v2.25/song/{urllib.parse.quote(uuid)}"
-            return uuid, self.client.get(path)
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=self.workers) as executor:
-            futures = {executor.submit(fetch, row): str(row["track_uuid"]) for row in rows}
-            for future in concurrent.futures.as_completed(futures):
-                uuid = futures[future]
-                try:
-                    result_uuid, payload = future.result()
-                    results[result_uuid] = payload
-                except SoundchartsRequestLimitError:
-                    errors[uuid] = "request_limit"
-                    self.halt_reason = "request_limit"
-                except SoundchartsQuotaReserveError:
-                    errors[uuid] = "quota_reserve"
-                    self.halt_reason = "quota_reserve"
-                except SoundchartsDataUnavailableError:
-                    errors[uuid] = "unavailable"
-                except (SoundchartsError, OSError, RuntimeError):
-                    errors[uuid] = "request_failed"
-        return results, errors
-
-    def _is_duplicate(self, uuid: str, spotify_id: str, isrc: str) -> bool:
-        if not spotify_id and not isrc:
-            return False
-        matches: list[str] = []
-        # Keep the predicates separate so SQLite can use the phase-1 Spotify
-        # and ISRC indexes instead of scanning the 5.2M-row inventory for an OR.
-        if spotify_id:
-            base = self.phase1.execute(
-                """SELECT MIN(soundcharts_uuid) FROM tracks
-                    WHERE soundcharts_uuid<>? AND status<>'duplicate_existing' AND spotify_id=?""",
-                (uuid, spotify_id),
-            ).fetchone()
-            enriched = self.phase2.execute(
-                """SELECT MIN(track_uuid) FROM fal_phase2_details
-                    WHERE track_uuid<>? AND spotify_id=?""",
-                (uuid, spotify_id),
-            ).fetchone()
-            matches.extend(str(value) for value in (base[0], enriched[0]) if value)
-        if isrc:
-            base = self.phase1.execute(
-                """SELECT MIN(soundcharts_uuid) FROM tracks
-                    WHERE soundcharts_uuid<>? AND status<>'duplicate_existing' AND isrc=?""",
-                (uuid, isrc),
-            ).fetchone()
-            enriched = self.phase2.execute(
-                """SELECT MIN(track_uuid) FROM fal_phase2_details
-                    WHERE track_uuid<>? AND isrc=?""",
-                (uuid, isrc),
-            ).fetchone()
-            matches.extend(str(value) for value in (base[0], enriched[0]) if value)
-        return bool(matches and min(matches) < uuid)
-
-    def _store_detail(self, row: sqlite3.Row, response: Any) -> None:
-        uuid = str(row["track_uuid"])
-        source = self.phase1.execute(
-            "SELECT spotify_id,isrc,title,credit_name,release_date FROM tracks WHERE soundcharts_uuid=?",
-            (uuid,),
-        ).fetchone()
-        if source is None:
-            raise FalPhase2Error(f"Queued track disappeared from phase-1 staging: {uuid}")
-        obj = (
-            response.get("object")
-            if isinstance(response, Mapping) and isinstance(response.get("object"), Mapping)
-            else response
-        )
-        spotify_id, isrc = _identifier_values(response)
-        spotify_id = spotify_id or str(source["spotify_id"] or "")
-        isrc = (isrc or str(source["isrc"] or "")).upper()
-        evidence = extract_evidence(response)
-        blocked, reason, _, _ = evidence_decision(evidence)
-        instrumental, ai_risk, genre_status = _evidence_labels(evidence)
-
-        if self._is_duplicate(uuid, spotify_id, isrc):
-            decision, reason = "duplicate_existing", "duplicate_identifier_found_in_private_staging"
-        elif blocked:
-            decision = blocked
-        elif instrumental == "instrumental" and ai_risk == "low" and genre_status == "in_scope":
-            decision, reason = "review_evidence_ready", "source_evidence_requires_human_validation"
-        elif instrumental == "instrumental":
-            decision, reason = (
-                "review_instrumental_signal",
-                "soundcharts_instrumentalness_requires_human_validation",
+        total_remaining = budget.allowed - max(logical_spent, actual_spent)
+        fatal_halt = halt in {"request_limit", "quota_reserve"}
+        if not tracks_paused and not fatal_halt and track_remaining > 0 and total_remaining > 0:
+            active_tracks = int(
+                phase2.execute(
+                    """SELECT COUNT(*) FROM fal_phase2_queue
+                        WHERE queue_status IN ('pending','retry')"""
+                ).fetchone()[0]
             )
-        elif genre_status == "in_scope":
-            decision, reason = (
-                "review_genre_signal",
-                "target_genre_requires_instrumental_confirmation",
-            )
-        else:
-            decision, reason = "review_metadata_unknown", "instrumental_or_ai_confirmation_required"
+            if active_tracks > 0:
+                track_limit = min(track_remaining, total_remaining, worker_count)
+                before = int(getattr(client, "requests_claimed", 0) or 0)
+                did_track_work = track_scanner.scan_batch(max_items=track_limit)
+                after = int(getattr(client, "requests_claimed", 0) or 0)
+                claimed = max(0, after - before)
+                if did_track_work:
+                    spent = max(1, claimed)
+                    track_remaining = max(0, track_remaining - spent)
+                    logical_spent += spent
+                    track_requests += claimed
+                    progressed = True
+                    if not continue_zero_yield and canary_zero_yield(
+                        phase2, max(1, int(canary_min_sample))
+                    ):
+                        track_scanner.halt_reason = "canary_zero_evidence_yield"
+                        halt = track_scanner.halt_reason
+                        # The canary only pauses song-detail spend.  Reassign
+                        # the untouched slice to prerequisite artist gates so
+                        # the automatic run still advances safely.
+                        artist_remaining += track_remaining
+                        track_remaining = 0
+                        tracks_paused = True
+            if track_scanner.halt_reason:
+                halt = track_scanner.halt_reason
 
-        title = str(source["title"] or "")
-        credit = str(source["credit_name"] or "")
-        release = str(source["release_date"] or "")
-        if isinstance(obj, Mapping):
-            title = str(obj.get("name") or obj.get("title") or title)
-            credit = str(obj.get("creditName") or obj.get("artistName") or credit)
-            release = _date(obj.get("releaseDate") or obj.get("release_date")) or release
-        now = utc_now()
-        self.phase2.execute(
-            """INSERT INTO fal_phase2_details(
-                 track_uuid,spotify_id,isrc,title,credit_name,release_date,
-                 instrumental_status,ai_risk,genre_status,decision,reason,evidence_json,enriched_at)
-               VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
-               ON CONFLICT(track_uuid) DO UPDATE SET
-                 spotify_id=excluded.spotify_id,isrc=excluded.isrc,title=excluded.title,
-                 credit_name=excluded.credit_name,release_date=excluded.release_date,
-                 instrumental_status=excluded.instrumental_status,ai_risk=excluded.ai_risk,
-                 genre_status=excluded.genre_status,decision=excluded.decision,
-                 reason=excluded.reason,evidence_json=excluded.evidence_json,
-                 enriched_at=excluded.enriched_at""",
-            (
-                uuid,
-                spotify_id,
-                isrc,
-                title,
-                credit,
-                release,
-                instrumental,
-                ai_risk,
-                genre_status,
-                decision,
-                reason,
-                json.dumps(evidence, ensure_ascii=False, sort_keys=True),
-                now,
-            ),
-        )
-        self.phase2.execute(
-            """UPDATE fal_phase2_queue
-                  SET queue_status=?,local_reason=?,attempts=0,error_code=NULL,updated_at=?
-                WHERE track_uuid=?""",
-            (decision, reason, now, uuid),
-        )
+        if halt in {"request_limit", "quota_reserve"}:
+            break
+        if not progressed or (artist_remaining <= 0 and track_remaining <= 0):
+            break
 
-    def _store_unavailable(self, row: sqlite3.Row) -> None:
-        uuid = str(row["track_uuid"])
-        source = self.phase1.execute(
-            "SELECT spotify_id,isrc,title,credit_name,release_date FROM tracks WHERE soundcharts_uuid=?",
-            (uuid,),
-        ).fetchone()
-        now = utc_now()
-        self.phase2.execute(
-            """INSERT INTO fal_phase2_details(
-                 track_uuid,spotify_id,isrc,title,credit_name,release_date,
-                 instrumental_status,ai_risk,genre_status,decision,reason,evidence_json,enriched_at)
-               VALUES(?,?,?,?,?,?,'unknown','unknown','unknown',
-                      'review_metadata_unavailable','soundcharts_song_detail_unavailable','{}',?)
-               ON CONFLICT(track_uuid) DO UPDATE SET
-                 decision='review_metadata_unavailable',reason='soundcharts_song_detail_unavailable',
-                 enriched_at=excluded.enriched_at""",
-            (
-                uuid,
-                str(source["spotify_id"] or ""),
-                str(source["isrc"] or ""),
-                str(source["title"] or ""),
-                str(source["credit_name"] or ""),
-                str(source["release_date"] or ""),
-                now,
-            ),
-        )
-        self.phase2.execute(
-            """UPDATE fal_phase2_queue SET queue_status='review_metadata_unavailable',
-                      local_reason='soundcharts_song_detail_unavailable',error_code='unavailable',
-                      updated_at=? WHERE track_uuid=?""",
-            (now, uuid),
-        )
-        self._record_error(uuid, "unavailable")
-
-    def scan_batch(self) -> bool:
-        rows = self.phase2.execute(
-            """SELECT * FROM fal_phase2_queue
-                WHERE queue_status IN ('pending','retry')
-                ORDER BY release_date DESC,track_uuid LIMIT ?""",
-            (self.workers,),
-        ).fetchall()
-        if not rows:
-            return False
-        by_uuid = {str(row["track_uuid"]): row for row in rows}
-        results, errors = self._fetch_batch(rows)
-        for uuid, response in results.items():
-            self._store_detail(by_uuid[uuid], response)
-        for uuid, code in errors.items():
-            row = by_uuid[uuid]
-            if code == "unavailable":
-                self._store_unavailable(row)
-                continue
-            if code in {"request_limit", "quota_reserve"}:
-                self.phase2.execute(
-                    "UPDATE fal_phase2_queue SET error_code=?,updated_at=? WHERE track_uuid=?",
-                    (code, utc_now(), uuid),
-                )
-                self._record_error(uuid, code)
-                continue
-            attempts = int(row["attempts"] or 0) + 1
-            status = "review_request_failed" if attempts >= self.retry_limit else "retry"
-            reason = "bounded_retries_exhausted" if status == "review_request_failed" else "transient_request_retry"
-            self.phase2.execute(
-                """UPDATE fal_phase2_queue SET queue_status=?,local_reason=?,attempts=?,
-                          error_code=?,updated_at=? WHERE track_uuid=?""",
-                (status, reason, attempts, code, utc_now(), uuid),
-            )
-            self._record_error(uuid, code)
-        self.phase2.commit()
-        return True
-
-    def run(self) -> str:
-        while not self.halt_reason and self.scan_batch():
-            if not self.continue_zero_yield and canary_zero_yield(self.phase2, self.canary_min_sample):
-                self.halt_reason = "canary_zero_evidence_yield"
-        return self.halt_reason or "idle"
+    return InterleavedRun(
+        budget=budget,
+        migration=migration,
+        halt_reason=halt,
+        artist_requests=artist_requests,
+        track_requests=track_requests,
+    )
 
 
 def build_report(
@@ -922,6 +630,7 @@ def build_report(
     quota_remaining: int | None = None,
     halt_reason: str | None = None,
     budget_plan: QuotaBudgetPlan | None = None,
+    interleaved_run: InterleavedRun | None = None,
     active_queue_cap: int = DEFAULT_ACTIVE_QUEUE_CAP,
     canary_min_sample: int = DEFAULT_MAX_REQUESTS,
 ) -> dict[str, Any]:
@@ -968,7 +677,6 @@ def build_report(
             (cutoff.isoformat(), today.isoformat()),
         ).fetchone()[0]
     )
-    remaining_recent = max(0, eligible_recent - queued_recent)
     yield_stats = evidence_yield(phase2)
     complete = artist_gate_active == 0 and eligible_bulk_remaining == 0 and active == 0
     if halt_reason == "canary_zero_evidence_yield":
@@ -1003,11 +711,17 @@ def build_report(
             "release_cutoff": cutoff.isoformat(),
             "tracks_total": int(source["total"] or 0),
             "phase1_review_metadata_pending": int(source["review_pending"] or 0),
-            "eligible_recent_known_date": eligible_recent,
+            # This is the raw phase-1 review pool before the artist gate.  It
+            # must not be presented as paid-call eligible: only tracks reached
+            # through an explicitly eligible artist gate can enter phase 2.
+            "recent_review_pending_known_date_before_artist_gate": eligible_recent,
             "release_date_unknown_kept_out_of_calls": int(source["release_unknown"] or 0),
             "release_too_old_kept_out_of_calls": int(source["release_old"] or 0),
             "future_release_kept_out_of_calls": int(source["release_future"] or 0),
-            "eligible_recent_not_yet_migrated": remaining_recent,
+            "recent_tracks_present_in_phase2_queue": queued_recent,
+            "remaining_gated_work_is_tracked_by": (
+                "artist_gate.eligible_bulk_remaining_and_queue.active"
+            ),
             "explicit_vocal_out_of_scope_or_ai_high": "blocked_without_detail_call",
             "instrumental_or_ai_unknown": "review",
         },
@@ -1050,6 +764,18 @@ def build_report(
             "claimed_this_run": int(requests_claimed),
             "quota_remaining": quota_remaining,
             "halt_reason": halt_reason,
+            "allocation": (
+                {
+                    "strategy": "weighted_artist_gate_with_track_detail_reserve",
+                    "planned_allowed": interleaved_run.budget.allowed,
+                    "planned_artist_gate": interleaved_run.budget.artist_gate,
+                    "planned_track_detail": interleaved_run.budget.track_detail,
+                    "claimed_artist_gate": interleaved_run.artist_requests,
+                    "claimed_track_detail": interleaved_run.track_requests,
+                }
+                if interleaved_run is not None
+                else None
+            ),
             "preflight": (
                 {
                     "requested": budget_plan.requested,
@@ -1112,16 +838,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not 0 <= int(args.max_new_queue) <= MAX_QUEUE_MIGRATION:
         raise FalPhase2Error(f"max_new_queue must be between 0 and {MAX_QUEUE_MIGRATION}")
     phase1 = open_phase1_state(args.phase1_state)
-    phase2 = open_phase2_state(args.state)
+    dry_run_dir: tempfile.TemporaryDirectory[str] | None = None
+    phase2_path = args.state
+    if args.dry_run:
+        # Preflight must be observational.  Run the exact queue/gate planning
+        # against an isolated copy so schema initialization, source-id updates,
+        # and queue cursor advances can never alter the resumable checkpoint.
+        dry_run_dir = tempfile.TemporaryDirectory(prefix="soundcharts-fal-phase2-dry-run-")
+        phase2_path = Path(dry_run_dir.name) / args.state.name
+        if args.state.exists():
+            shutil.copy2(args.state, phase2_path)
+    phase2 = open_phase2_state(phase2_path)
     try:
         assert_phase1_complete(phase1)
-        previous_source = meta_get(phase2, "fal_phase2_phase1_source_id") or ""
-        if args.phase1_source_id and args.phase1_source_id != previous_source:
-            phase2.execute(
-                "DELETE FROM meta WHERE key IN ('fal_phase2_queue_cursor_rowid','fal_phase2_queue_cursor_release_date','fal_phase2_queue_cursor_uuid')"
-            )
-            meta_set(phase2, "fal_phase2_phase1_source_id", args.phase1_source_id)
-            phase2.commit()
+        reconcile_phase1_source(phase2, args.phase1_source_id)
         initialize_artist_gate(phase1, phase2)
         paused = not args.continue_zero_yield and canary_zero_yield(
             phase2, args.canary_min_sample
@@ -1133,7 +863,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             ).fetchone()[0]
         )
         migration = QueueMigration(0, 0, 0, 0, 0)
-        if not paused and artist_active == 0:
+        # A dry run may simulate bounded migration because it operates on the
+        # isolated copy above.  Real runs migrate between gate/detail slices so
+        # newly admitted artists can yield tracks during that same run.
+        if args.dry_run and not paused:
             migration = migrate_gated_track_queue(
                 phase1,
                 phase2,
@@ -1147,7 +880,22 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "SELECT COUNT(*) FROM fal_phase2_queue WHERE queue_status IN ('pending','retry')"
             ).fetchone()[0]
         )
-        if (paused and artist_active == 0) or args.dry_run or (artist_active <= 0 and active <= 0) or args.max_requests <= 0:
+        eligible_bulk_remaining = int(
+            phase2.execute(
+                """SELECT COUNT(*) FROM fal_phase2_artist_gate
+                    WHERE gate_status='eligible' AND bulk_complete=0"""
+            ).fetchone()[0]
+        )
+        if (
+            (paused and artist_active == 0)
+            or args.dry_run
+            or (
+                artist_active <= 0
+                and active <= 0
+                and eligible_bulk_remaining <= 0
+            )
+            or args.max_requests <= 0
+        ):
             report = build_report(
                 phase1,
                 phase2,
@@ -1200,46 +948,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         else:
             client.require_quota_reserve()
-            halt = "idle"
-            if artist_active > 0:
-                artist_scanner = ArtistGateScanner(
-                    phase2,
-                    client,
-                    workers=max(1, min(10, int(args.workers))),
-                    retry_limit=max(1, int(args.retry_limit)),
-                )
-                halt = artist_scanner.run()
-                artist_active = int(
-                    phase2.execute(
-                        """SELECT COUNT(*) FROM fal_phase2_artist_gate
-                            WHERE gate_status IN ('pending','retry')"""
-                    ).fetchone()[0]
-                )
-            if halt == "idle" and artist_active == 0 and not paused:
-                migration = migrate_gated_track_queue(
-                    phase1,
-                    phase2,
-                    max_new_queue=args.max_new_queue,
-                    active_queue_cap=args.active_queue_cap,
-                    recent_days=args.recent_days,
-                    as_of=args.as_of,
-                )
-                active = int(
-                    phase2.execute(
-                        "SELECT COUNT(*) FROM fal_phase2_queue WHERE queue_status IN ('pending','retry')"
-                    ).fetchone()[0]
-                )
-                if active > 0 and int(getattr(client, "requests_claimed", 0)) < plan.allowed:
-                    scanner = Phase2Scanner(
-                        phase1,
-                        phase2,
-                        client,
-                        workers=max(1, min(10, int(args.workers))),
-                        retry_limit=max(1, int(args.retry_limit)),
-                        canary_min_sample=max(1, int(args.canary_min_sample)),
-                        continue_zero_yield=args.continue_zero_yield,
-                    )
-                    halt = scanner.run()
+            interleaved = run_interleaved_batches(
+                phase1,
+                phase2,
+                client,
+                allowed_requests=plan.allowed,
+                max_new_queue=args.max_new_queue,
+                active_queue_cap=args.active_queue_cap,
+                recent_days=args.recent_days,
+                as_of=args.as_of,
+                workers=args.workers,
+                retry_limit=args.retry_limit,
+                canary_min_sample=args.canary_min_sample,
+                continue_zero_yield=args.continue_zero_yield,
+                track_details_paused=paused,
+                initial_migration=migration,
+            )
+            migration = interleaved.migration
+            halt = interleaved.halt_reason
             report = build_report(
                 phase1,
                 phase2,
@@ -1250,6 +976,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 quota_remaining=getattr(client, "quota_remaining", None),
                 halt_reason=None if halt == "idle" else halt,
                 budget_plan=plan,
+                interleaved_run=interleaved,
                 active_queue_cap=args.active_queue_cap,
                 canary_min_sample=args.canary_min_sample,
             )
@@ -1259,7 +986,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     finally:
         phase2.close()
         phase1.close()
+        if dry_run_dir is not None:
+            dry_run_dir.cleanup()
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
