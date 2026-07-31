@@ -16,6 +16,7 @@ from scan_soundcharts_fal_phase2 import (
     Phase2Scanner,
     QueueMigration,
     assert_phase1_complete,
+    build_interrupted_report,
     build_report,
     canary_zero_yield,
     evidence_yield,
@@ -39,9 +40,13 @@ class FakeClient:
         self.requests_claimed = 0
         self.quota_remaining = 1_000_000
 
+    def _claim_quota_request(self):
+        self.requests_claimed += 1
+        self.quota_remaining -= 1
+
     def get(self, path):
         self.paths.append(path)
-        self.requests_claimed += 1
+        self._claim_quota_request()
         return self.responder(path)
 
 
@@ -612,6 +617,225 @@ class FalPhase2Tests(unittest.TestCase):
         )
         self.assertEqual(prefilter["recent_tracks_present_in_phase2_queue"], 1)
         self.assertNotIn("eligible_recent_not_yet_migrated", prefilter)
+
+    def test_interrupted_report_uses_durable_committed_request_counters(self):
+        self.add_track("interrupted-track")
+        initialize_artist_gate(self.phase1, self.phase2)
+
+        def respond(path):
+            if path == "/api/v2.9/artist/candidate-1":
+                return {
+                    "object": {
+                        "name": "Candidate",
+                        "careerStage": "long_tail",
+                        "genres": ["Ambient"],
+                    }
+                }
+            if path == "/api/v2.25/song/interrupted-track":
+                return {
+                    "object": {
+                        "name": "Interrupted track",
+                        "genres": [{"root": "Ambient", "sub": []}],
+                        "audio": {"instrumentalness": 0.9, "speechiness": 0.01},
+                    }
+                }
+            raise AssertionError(f"unexpected call: {path}")
+
+        client = FakeClient(respond)
+        result = run_interleaved_batches(
+            self.phase1,
+            self.phase2,
+            client,
+            allowed_requests=2,
+            max_new_queue=10,
+            active_queue_cap=10,
+            recent_days=1095,
+            as_of=dt.date(2026, 7, 31),
+            workers=1,
+            retry_limit=2,
+            canary_min_sample=500,
+            continue_zero_yield=False,
+            track_details_paused=False,
+        )
+        self.assertEqual((result.artist_requests, result.track_requests), (1, 1))
+
+        report = build_interrupted_report(
+            self.phase1,
+            self.phase2,
+            recent_days=1095,
+            as_of=dt.date(2026, 7, 31),
+            active_queue_cap=10,
+            canary_min_sample=500,
+            runner_outcome="cancelled",
+        )
+        # The checkpoint itself is complete, so completion remains truthful
+        # even though the runner was cancelled before writing its final JSON.
+        self.assertEqual(report["status"], "enrichment_complete_review_required")
+        self.assertEqual(report["runner_outcome"], "cancelled")
+        self.assertEqual(report["requests"]["claimed_this_run"], 2)
+        self.assertEqual(report["requests"]["quota_remaining"], 999_998)
+        self.assertEqual(report["requests"]["halt_reason"], "runner_cancelled")
+        self.assertEqual(
+            report["requests"]["allocation"]["claimed_artist_gate"], 1
+        )
+        self.assertEqual(
+            report["requests"]["allocation"]["claimed_track_detail"], 1
+        )
+        self.assertEqual(
+            report["requests"]["checkpoint"]["source"],
+            "sqlite_committed_batches",
+        )
+        self.assertNotEqual(report["requests"]["halt_reason"], "dry_run")
+
+    def test_interrupted_report_does_not_reuse_a_prior_run_ledger(self):
+        self.add_track("prior-run-track")
+        initialize_artist_gate(self.phase1, self.phase2)
+
+        client = FakeClient(
+            lambda _path: {
+                "object": {
+                    "name": "Candidate",
+                    "careerStage": "long_tail",
+                    "genres": ["Ambient"],
+                }
+            }
+        )
+        result = run_interleaved_batches(
+            self.phase1,
+            self.phase2,
+            client,
+            allowed_requests=1,
+            max_new_queue=10,
+            active_queue_cap=10,
+            recent_days=1095,
+            as_of=dt.date(2026, 7, 31),
+            workers=1,
+            retry_limit=2,
+            canary_min_sample=500,
+            continue_zero_yield=False,
+            track_details_paused=False,
+            run_id="111",
+            run_attempt="1",
+        )
+        self.assertEqual(result.artist_requests, 1)
+
+        # A later workflow run may fail before it creates its own ledger.  Its
+        # recovery path must never attribute the previous run's committed call
+        # or quota observation to the new run.
+        with mock.patch.dict(
+            "scan_soundcharts_fal_phase2.os.environ",
+            {"GITHUB_RUN_ID": "222", "GITHUB_RUN_ATTEMPT": "1"},
+            clear=True,
+        ):
+            cli = parse_args(["--phase1-state", "phase1.sqlite3"])
+            self.assertEqual((cli.run_id, cli.run_attempt), ("222", "1"))
+            report = build_interrupted_report(
+                self.phase1,
+                self.phase2,
+                recent_days=1095,
+                as_of=dt.date(2026, 7, 31),
+                active_queue_cap=10,
+                canary_min_sample=500,
+                runner_outcome="failure",
+                run_id=cli.run_id,
+                run_attempt=cli.run_attempt,
+            )
+
+        self.assertIsNone(report["requests"]["claimed_this_run"])
+        self.assertIsNone(report["requests"]["quota_remaining"])
+        self.assertIsNone(report["requests"]["allocation"])
+        self.assertNotEqual(
+            report["requests"]["checkpoint"]["source"],
+            "sqlite_committed_batches",
+        )
+
+    def test_mid_batch_interruption_reports_only_previously_committed_calls(self):
+        self.add_track("mid-batch-track")
+        initialize_artist_gate(self.phase1, self.phase2)
+
+        def respond(path):
+            if path == "/api/v2.9/artist/candidate-1":
+                return {
+                    "object": {
+                        "name": "Candidate",
+                        "careerStage": "long_tail",
+                        "genres": ["Ambient"],
+                    }
+                }
+            if path == "/api/v2.25/song/mid-batch-track":
+                raise KeyboardInterrupt("simulated runner cancellation")
+            raise AssertionError(f"unexpected call: {path}")
+
+        client = FakeClient(respond)
+        with mock.patch.dict(
+            "scan_soundcharts_fal_phase2.os.environ",
+            {"GITHUB_RUN_ID": "333", "GITHUB_RUN_ATTEMPT": "1"},
+            clear=True,
+        ):
+            with self.assertRaises(KeyboardInterrupt):
+                run_interleaved_batches(
+                    self.phase1,
+                    self.phase2,
+                    client,
+                    allowed_requests=2,
+                    max_new_queue=10,
+                    active_queue_cap=10,
+                    recent_days=1095,
+                    as_of=dt.date(2026, 7, 31),
+                    workers=1,
+                    retry_limit=2,
+                    canary_min_sample=500,
+                    continue_zero_yield=False,
+                    track_details_paused=False,
+                    run_id="333",
+                    run_attempt="1",
+                    request_journal=Path(self.temp.name) / "phase2-attempts.jsonl",
+                )
+            request_journal = client._fal_phase2_request_journal
+            try:
+                report = build_interrupted_report(
+                    self.phase1,
+                    self.phase2,
+                    recent_days=1095,
+                    as_of=dt.date(2026, 7, 31),
+                    active_queue_cap=10,
+                    canary_min_sample=500,
+                    runner_outcome="cancelled",
+                    run_id="333",
+                    run_attempt="1",
+                )
+            finally:
+                request_journal.close()
+
+        # The interrupted song request consumed a remote call even though its
+        # result row was never committed.  The per-request journal must retain
+        # that exact spend instead of falling back to the preceding batch.
+        self.assertEqual(client.requests_claimed, 2)
+        self.assertEqual(report["requests"]["claimed_this_run"], 2)
+        self.assertEqual(report["requests"]["quota_remaining"], 999_998)
+        self.assertEqual(
+            report["requests"]["allocation"]["claimed_artist_gate"], 1
+        )
+        self.assertEqual(
+            report["requests"]["allocation"]["claimed_track_detail"], 1
+        )
+        self.assertEqual(report["queue"]["status_counts"].get("pending"), 1)
+        self.assertEqual(report["details"]["enriched"], 0)
+
+    def test_interrupted_report_never_fabricates_zero_without_a_run_ledger(self):
+        report = build_interrupted_report(
+            self.phase1,
+            self.phase2,
+            recent_days=1095,
+            as_of=dt.date(2026, 7, 31),
+            active_queue_cap=10,
+            canary_min_sample=500,
+            runner_outcome="failure",
+        )
+        self.assertIsNone(report["requests"]["claimed_this_run"])
+        self.assertIsNone(report["requests"]["quota_remaining"])
+        self.assertEqual(report["requests"]["checkpoint"]["source"], "unavailable")
+        self.assertEqual(report["requests"]["halt_reason"], "runner_failure")
 
     def test_dry_run_simulates_queue_without_mutating_resumable_state(self):
         self.add_track("dry-run-track")
