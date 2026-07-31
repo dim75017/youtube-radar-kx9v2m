@@ -1,5 +1,6 @@
 import datetime as dt
 import json
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -143,6 +144,22 @@ class FalPhase2Tests(unittest.TestCase):
         writable.close()
         self.phase1 = open_phase1_state(self.phase1_path)
         with self.assertRaises(FalPhase2Error):
+            assert_phase1_complete(self.phase1)
+
+    def test_phase1_completion_gate_rejects_legacy_broad_discography_scope(self):
+        self.add_track("track-1")
+        assert_phase1_complete(self.phase1)
+
+        self.phase1.close()
+        writable = sqlite3.connect(self.phase1_path)
+        try:
+            writable.execute("DELETE FROM meta WHERE key='discography_scope_version'")
+            writable.commit()
+        finally:
+            writable.close()
+        self.phase1 = open_phase1_state(self.phase1_path)
+
+        with self.assertRaisesRegex(FalPhase2Error, "main_performer_v1"):
             assert_phase1_complete(self.phase1)
 
     def test_bounded_local_prefilter_queues_only_recent_tracks(self):
@@ -331,7 +348,7 @@ class FalPhase2Tests(unittest.TestCase):
                 WHERE candidate_uuid='candidate-1'"""
         )
         self.phase2.commit()
-        self.assertEqual(reconcile_phase1_source(self.phase2, "phase1-source-a"), 1)
+        self.assertEqual(reconcile_phase1_source(self.phase1, self.phase2, "phase1-source-a"), 1)
 
         first = migrate_gated_track_queue(
             self.phase1,
@@ -351,7 +368,7 @@ class FalPhase2Tests(unittest.TestCase):
         # This UUID sorts before the completed cursor. It is discoverable only
         # if the new immutable phase-1 source reopens the artist bulk scan.
         self.add_track("a-new-track")
-        self.assertEqual(reconcile_phase1_source(self.phase2, "phase1-source-b"), 1)
+        self.assertEqual(reconcile_phase1_source(self.phase1, self.phase2, "phase1-source-b"), 1)
         reopened_gate = self.phase2.execute(
             """SELECT bulk_cursor_track_uuid,bulk_complete
                  FROM fal_phase2_artist_gate WHERE candidate_uuid='candidate-1'"""
@@ -390,7 +407,7 @@ class FalPhase2Tests(unittest.TestCase):
                 WHERE candidate_uuid='candidate-1'"""
         )
         self.phase2.commit()
-        self.assertEqual(reconcile_phase1_source(self.phase2, "phase1-source-a"), 1)
+        self.assertEqual(reconcile_phase1_source(self.phase1, self.phase2, "phase1-source-a"), 1)
         self.phase2.execute(
             """UPDATE fal_phase2_artist_gate
                   SET bulk_cursor_track_uuid='stable-track',bulk_complete=1
@@ -398,13 +415,70 @@ class FalPhase2Tests(unittest.TestCase):
         )
         self.phase2.commit()
 
-        self.assertEqual(reconcile_phase1_source(self.phase2, "phase1-source-a"), 0)
-        self.assertEqual(reconcile_phase1_source(self.phase2, ""), 0)
+        self.assertEqual(reconcile_phase1_source(self.phase1, self.phase2, "phase1-source-a"), 0)
+        self.assertEqual(reconcile_phase1_source(self.phase1, self.phase2, ""), 0)
         gate = self.phase2.execute(
             """SELECT bulk_cursor_track_uuid,bulk_complete
                  FROM fal_phase2_artist_gate WHERE candidate_uuid='candidate-1'"""
         ).fetchone()
         self.assertEqual(tuple(gate), ("stable-track", 1))
+
+    def test_new_phase1_source_purges_only_orphan_track_queue_and_details(self):
+        self.add_track("valid-track")
+        initialize_artist_gate(self.phase1, self.phase2)
+        self.phase2.execute(
+            """UPDATE fal_phase2_artist_gate
+                  SET gate_status='eligible',bulk_cursor_track_uuid='valid-track',bulk_complete=1
+                WHERE candidate_uuid='candidate-1'"""
+        )
+        now = "2026-07-31T00:00:00Z"
+        for track_uuid in ("valid-track", "orphan-track"):
+            self.phase2.execute(
+                """INSERT INTO fal_phase2_queue(
+                     track_uuid,candidate_uuid,release_date,queue_status,local_reason,
+                     queued_at,updated_at)
+                   VALUES(?, 'candidate-1', '2026-07-01', 'review_metadata_unknown',
+                          'metadata_unknown', ?, ?)""",
+                (track_uuid, now, now),
+            )
+            self.phase2.execute(
+                """INSERT INTO fal_phase2_details(
+                     track_uuid,decision,reason,evidence_json,enriched_at)
+                   VALUES(?, 'review_metadata_unknown','metadata_unknown','{}',?)""",
+                (track_uuid, now),
+            )
+        self.phase2.commit()
+
+        self.assertEqual(
+            reconcile_phase1_source(self.phase1, self.phase2, "phase1-source-clean"),
+            1,
+        )
+        self.assertEqual(
+            [row[0] for row in self.phase2.execute("SELECT track_uuid FROM fal_phase2_queue")],
+            ["valid-track"],
+        )
+        self.assertEqual(
+            [row[0] for row in self.phase2.execute("SELECT track_uuid FROM fal_phase2_details")],
+            ["valid-track"],
+        )
+        self.assertEqual(
+            self.phase2.execute("SELECT COUNT(*) FROM fal_phase2_artist_gate").fetchone()[0],
+            1,
+        )
+        report = build_report(
+            self.phase1,
+            self.phase2,
+            migration=QueueMigration(0, 0, 0, 0, 0),
+            recent_days=1095,
+            as_of=dt.date(2026, 7, 31),
+        )
+        reconciliation = report["source_checkpoint"]["reconciliation"]
+        self.assertEqual(reconciliation["orphan_queue_rows_removed_last"], 1)
+        self.assertEqual(reconciliation["orphan_details_rows_removed_last"], 1)
+        self.assertEqual(reconciliation["orphan_queue_rows_removed_total"], 1)
+        self.assertEqual(reconciliation["orphan_details_rows_removed_total"], 1)
+        self.assertEqual(report["queue"]["status_counts"], {"review_metadata_unknown": 1})
+        self.assertEqual(report["details"]["enriched"], 1)
 
     def test_unknown_detail_stays_review_and_is_never_accepted(self):
         self.add_track("track-unknown")
