@@ -232,12 +232,30 @@ jobs:
               raise SystemExit("Latest phase-1 v2 report is not complete")
           if report.get("staging_only") is not True or report.get("canonical_written") is not False:
               raise SystemExit("Phase-1 checkpoint is not staging-only")
+          scope_version = (report.get("discographies") or {}).get("scope_version")
+          if scope_version != "main_performer_v1":
+              raise SystemExit(
+                  "Latest phase-1 checkpoint has not completed the main-performer-only rescan"
+              )
           uri = f"file:{database_path.resolve().as_posix()}?mode=ro"
           with sqlite3.connect(uri, uri=True) as database:
               check = database.execute("PRAGMA quick_check").fetchone()
               state_version = database.execute("SELECT value FROM meta WHERE key='state_version'").fetchone()
-          if not check or check[0] != "ok" or not state_version or state_version[0] != "2":
-              raise SystemExit(f"Invalid phase-1 v2 SQLite checkpoint: {check!r}, {state_version!r}")
+              scope_marker = database.execute(
+                  "SELECT value FROM meta WHERE key='discography_scope_version'"
+              ).fetchone()
+          if (
+              not check
+              or check[0] != "ok"
+              or not state_version
+              or state_version[0] != "2"
+              or not scope_marker
+              or scope_marker[0] != "main_performer_v1"
+          ):
+              raise SystemExit(
+                  "Invalid phase-1 v2 SQLite checkpoint: "
+                  f"{check!r}, {state_version!r}, scope={scope_marker!r}"
+              )
           print("Phase-1 v2 is complete and remains read-only")
           PY
           sha256sum "$PHASE1_DB" | cut -d' ' -f1 > "$RUNNER_TEMP/phase1-before.sha256"
