@@ -196,5 +196,97 @@ class BrowseCatalogueTests(unittest.TestCase):
         self.assertEqual(result["active_legacy_spotify_ids"], ["spotify-a", "spotify-independent"])
 
 
+    def test_performance_crossing_reactivates_only_source_backed_candidate(self):
+        strict_schema = [
+            "soundcharts_uuid", "spotify_id", "title", "credit_name", "artists",
+            "primary_genre", "genre_confidence", "instrumental_status",
+            "instrumental_confidence", "ai_risk", "rights_status",
+            "rights_confidence", "source_tier", "streams", "streams_source_date",
+        ]
+        artist_schema = ["soundcharts_uuid", "spotify_id", "name"]
+        artist = {
+            "soundcharts_uuid": "artist-a",
+            "spotify_id": "artist-spotify-a",
+            "name": "Artist A",
+        }
+
+        def track(uuid, spotify_id, streams):
+            return {
+                "soundcharts_uuid": uuid,
+                "spotify_id": spotify_id,
+                "title": spotify_id,
+                "credit_name": "Artist A",
+                "artists": [artist],
+                "primary_genre": "ambient",
+                "genre_confidence": 0.9,
+                "instrumental_status": "instrumental",
+                "instrumental_confidence": 0.9,
+                "ai_risk": "low",
+                "rights_status": "self_released",
+                "rights_confidence": 0.9,
+                "source_tier": "editorial_playlist",
+                "streams": streams,
+                "streams_source_date": "2026-07-30",
+            }
+
+        candidate = track("track-candidate", "spotify-candidate", 99_999)
+        anchor = track("track-anchor", "spotify-anchor", 120_000)
+        source_catalogue = {
+            "version": 1,
+            "generated_at": "2026-07-31T10:00:00Z",
+            "track_schema": strict_schema,
+            "artist_schema": artist_schema,
+            "playlist_schema": [],
+            "tracks": [
+                [row.get(name) for name in strict_schema]
+                for row in [candidate, anchor]
+            ],
+            "artists": [["artist-a", "artist-spotify-a", "Artist A"]],
+        }
+        source = {
+            "generated_at": "2026-07-31T10:00:00Z",
+            "discovery_catalogue": source_catalogue,
+        }
+        first = subject.build_payload(
+            [(subject.Path("snapshot.js"), source)],
+            None,
+            minimum_tracks=1,
+            strict_rebased=True,
+        )
+        self.assertEqual(first["active_legacy_spotify_ids"], ["spotify-anchor"])
+
+        performance = {
+            "tracks": {
+                "spotify-candidate": {
+                    "soundcharts_uuid": "track-candidate",
+                    "history": [["2026-07-31", 99_999], ["2026-08-01", 100_000]],
+                },
+                "spotify-anchor": {
+                    "soundcharts_uuid": "track-anchor",
+                    "history": [["2026-08-01", 99_999]],
+                },
+                "spotify-orphan": {
+                    "soundcharts_uuid": "track-orphan",
+                    "history": [["2026-08-01", 200_000]],
+                },
+            }
+        }
+        second = subject.build_payload(
+            [(subject.Path("snapshot.js"), source)],
+            first,
+            minimum_tracks=1,
+            strict_rebased=True,
+            performance=performance,
+        )
+        self.assertEqual(second["active_legacy_spotify_ids"], ["spotify-candidate"])
+        self.assertNotIn("spotify-orphan", second["active_legacy_spotify_ids"])
+        schema = second["discovery_catalogue"]["track_schema"]
+        records = [
+            subject._record(row, schema)
+            for row in second["discovery_catalogue"]["tracks"]
+        ]
+        self.assertEqual(records[0]["streams"], 100_000)
+
+
 if __name__ == "__main__":
     unittest.main()
