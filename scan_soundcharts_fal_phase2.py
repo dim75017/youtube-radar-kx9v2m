@@ -31,6 +31,8 @@ from refresh_soundcharts_daily import (
     SoundchartsRequestLimitError,
 )
 from scan_soundcharts_fal_phase1 import (
+    CATALOG_SCOPE_META_KEY,
+    CATALOG_SCOPE_VERSION,
     DEFAULT_MAINTENANCE_DAILY_REQUESTS,
     DEFAULT_RECENT_DAYS,
     HARD_MIN_QUOTA_RESERVE,
@@ -256,6 +258,13 @@ def open_phase2_state(path: Path) -> sqlite3.Connection:
 def assert_phase1_complete(connection: sqlite3.Connection) -> None:
     """Refuse enrichment until the restored phase-one inventory is complete."""
 
+    scope_version = meta_get(connection, CATALOG_SCOPE_META_KEY)
+    if scope_version != CATALOG_SCOPE_VERSION:
+        raise FalPhase2Error(
+            "Phase-1 checkpoint uses an unsupported discography scope "
+            f"({scope_version or 'missing'}; expected {CATALOG_SCOPE_VERSION})"
+        )
+
     seed_total = int(connection.execute("SELECT COUNT(*) FROM seeds").fetchone()[0])
     track_total = int(connection.execute("SELECT COUNT(*) FROM tracks").fetchone()[0])
     seed_blockers = int(
@@ -342,7 +351,76 @@ def initialize_artist_gate(
     return max(0, total - before), total
 
 
+def _purge_orphan_phase2_tracks(
+    phase1: sqlite3.Connection,
+    phase2: sqlite3.Connection,
+    *,
+    batch_size: int = 500,
+) -> tuple[int, int]:
+    """Remove queue/details rows whose track disappeared from phase 1.
+
+    Phase one can contain millions of tracks, while the phase-two checkpoint is
+    intentionally much smaller.  Walk the union of phase-two UUIDs in bounded
+    batches and probe phase one's indexed primary key instead of loading the
+    whole phase-one inventory into memory.
+    """
+
+    queue_deleted = 0
+    details_deleted = 0
+    cursor = ""
+    limit = max(1, min(500, int(batch_size)))
+    while True:
+        rows = phase2.execute(
+            """SELECT track_uuid FROM (
+                   SELECT track_uuid FROM fal_phase2_queue WHERE track_uuid>?
+                   UNION
+                   SELECT track_uuid FROM fal_phase2_details WHERE track_uuid>?
+                 )
+                 ORDER BY track_uuid
+                 LIMIT ?""",
+            (cursor, cursor, limit),
+        ).fetchall()
+        if not rows:
+            break
+        track_uuids = [str(row[0]) for row in rows]
+        cursor = track_uuids[-1]
+        placeholders = ",".join("?" for _ in track_uuids)
+        present = {
+            str(row[0])
+            for row in phase1.execute(
+                f"SELECT soundcharts_uuid FROM tracks WHERE soundcharts_uuid IN ({placeholders})",
+                track_uuids,
+            ).fetchall()
+        }
+        orphaned = [track_uuid for track_uuid in track_uuids if track_uuid not in present]
+        if not orphaned:
+            continue
+        orphan_placeholders = ",".join("?" for _ in orphaned)
+        queue_deleted += max(
+            0,
+            int(
+                phase2.execute(
+                    f"DELETE FROM fal_phase2_queue WHERE track_uuid IN ({orphan_placeholders})",
+                    orphaned,
+                ).rowcount
+                or 0
+            ),
+        )
+        details_deleted += max(
+            0,
+            int(
+                phase2.execute(
+                    f"DELETE FROM fal_phase2_details WHERE track_uuid IN ({orphan_placeholders})",
+                    orphaned,
+                ).rowcount
+                or 0
+            ),
+        )
+    return queue_deleted, details_deleted
+
+
 def reconcile_phase1_source(
+    phase1: sqlite3.Connection,
     phase2: sqlite3.Connection,
     phase1_source_id: str,
 ) -> int:
@@ -351,8 +429,8 @@ def reconcile_phase1_source(
     A completed per-artist cursor only describes the phase-1 checkpoint that
     produced it.  Rewinding eligible artists lets the normal queue insertion
     discover tracks added by a later checkpoint, including UUIDs that sort
-    before the former cursor.  Existing queue rows remain the deduplication
-    ledger and are deliberately left untouched.
+    before the former cursor.  Existing queue/details rows remain valid only
+    while their track still exists in the new immutable phase-one inventory.
     """
 
     source_id = str(phase1_source_id or "").strip()
@@ -363,6 +441,7 @@ def reconcile_phase1_source(
     now = utc_now()
     try:
         phase2.execute("BEGIN IMMEDIATE")
+        queue_deleted, details_deleted = _purge_orphan_phase2_tracks(phase1, phase2)
         phase2.execute(
             "DELETE FROM meta WHERE key IN ('fal_phase2_queue_cursor_rowid','fal_phase2_queue_cursor_release_date','fal_phase2_queue_cursor_uuid')"
         )
@@ -372,8 +451,21 @@ def reconcile_phase1_source(
                 WHERE gate_status='eligible'""",
             (now,),
         ).rowcount
+        queue_deleted_total = (
+            finite_int(meta_get(phase2, "fal_phase2_orphan_queue_rows_removed_total")) or 0
+        ) + queue_deleted
+        details_deleted_total = (
+            finite_int(meta_get(phase2, "fal_phase2_orphan_details_rows_removed_total")) or 0
+        ) + details_deleted
+        meta_set(phase2, "fal_phase2_previous_phase1_source_id", previous_source)
         meta_set(phase2, "fal_phase2_phase1_source_id", source_id)
         meta_set(phase2, "fal_phase2_bulk_reopened_at", now)
+        meta_set(phase2, "fal_phase2_source_reconciled_at", now)
+        meta_set(phase2, "fal_phase2_source_reconciled_artists_reopened", reopened)
+        meta_set(phase2, "fal_phase2_orphan_queue_rows_removed_last", queue_deleted)
+        meta_set(phase2, "fal_phase2_orphan_details_rows_removed_last", details_deleted)
+        meta_set(phase2, "fal_phase2_orphan_queue_rows_removed_total", queue_deleted_total)
+        meta_set(phase2, "fal_phase2_orphan_details_rows_removed_total", details_deleted_total)
         phase2.commit()
     except Exception:
         phase2.rollback()
@@ -401,7 +493,7 @@ def _evidence_labels(evidence: Mapping[str, Any]) -> tuple[str, str, str]:
     ai_raw = normalize_text(evidence.get("ai_risk"))
     if ai_raw in {"low", "faible"}:
         ai_risk = "low"
-    elif ai_raw in {"high", "elevated", "eleve", "elevé"}:
+    elif ai_raw in {"high", "elevated", "eleve", "elevÃ©"}:
         ai_risk = "high"
     else:
         ai_risk = "unknown"
@@ -1266,7 +1358,35 @@ def build_report(
         "source_checkpoint": {
             "phase1_state_version": finite_int(meta_get(phase1, "state_version")),
             "phase2_state_version": finite_int(meta_get(phase2, "fal_phase2_state_version")),
+            "phase1_discography_scope": meta_get(phase1, CATALOG_SCOPE_META_KEY),
             "phase1_complete_required": True,
+            "phase1_source_id": meta_get(phase2, "fal_phase2_phase1_source_id"),
+            "reconciliation": {
+                "previous_phase1_source_id": meta_get(
+                    phase2, "fal_phase2_previous_phase1_source_id"
+                ),
+                "reconciled_at": meta_get(phase2, "fal_phase2_source_reconciled_at"),
+                "eligible_artist_bulks_reopened": finite_int(
+                    meta_get(phase2, "fal_phase2_source_reconciled_artists_reopened")
+                )
+                or 0,
+                "orphan_queue_rows_removed_last": finite_int(
+                    meta_get(phase2, "fal_phase2_orphan_queue_rows_removed_last")
+                )
+                or 0,
+                "orphan_details_rows_removed_last": finite_int(
+                    meta_get(phase2, "fal_phase2_orphan_details_rows_removed_last")
+                )
+                or 0,
+                "orphan_queue_rows_removed_total": finite_int(
+                    meta_get(phase2, "fal_phase2_orphan_queue_rows_removed_total")
+                )
+                or 0,
+                "orphan_details_rows_removed_total": finite_int(
+                    meta_get(phase2, "fal_phase2_orphan_details_rows_removed_total")
+                )
+                or 0,
+            },
         },
         "prefilter": {
             "as_of": today.isoformat(),
@@ -1414,7 +1534,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     phase2 = open_phase2_state(phase2_path)
     try:
         assert_phase1_complete(phase1)
-        reconcile_phase1_source(phase2, args.phase1_source_id)
+        reconcile_phase1_source(phase1, phase2, args.phase1_source_id)
         initialize_artist_gate(phase1, phase2)
         paused = not args.continue_zero_yield and canary_zero_yield(
             phase2, args.canary_min_sample
