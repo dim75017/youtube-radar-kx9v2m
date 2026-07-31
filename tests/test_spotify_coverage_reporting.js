@@ -19,11 +19,10 @@ assert.equal(elements['c-art'].title,'');
 assert.equal(elements['c-radar'].title,'');
 assert.equal(elements['c-radar'].textContent,'764');
 assert.match(elements['sync-detail-tr'].innerHTML,/catalogue actif/);
-assert.match(elements['sync-detail-tr'].innerHTML,/220 playlists scannÃ©es/);
+assert.match(elements['sync-detail-tr'].innerHTML,/220 playlists scannées/);
 assert.match(elements['sync-detail-tr'].innerHTML,/100.*000 streams lifetime/);
 assert.match(elements['sync-detail-tr'].innerHTML,/A&R strictes/);
 assert.match(index,/id="btn-spotify-update-status"/);
 assert.match(index,/id="spotify-update-status-panel"/);
 assert.doesNotMatch(index,/id="sync-row-global"/);
 console.log('Spotify unified coverage reporting: OK');
-
