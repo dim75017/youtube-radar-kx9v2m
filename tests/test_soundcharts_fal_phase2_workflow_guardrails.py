@@ -67,6 +67,26 @@ class SoundchartsFalPhase2WorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("soundcharts_fal_artist_gate.py", self.workflow)
         self.assertNotIn("detail_pending", self.workflow)
 
+    def test_automatic_resumes_use_full_safe_bounds_but_manual_defaults_stay_small(self):
+        self.assertIn('default_max_requests=500', self.workflow)
+        self.assertIn('default_max_new_queue=2000', self.workflow)
+        self.assertIn(
+            '"$GITHUB_EVENT_NAME" == "workflow_run" || "$GITHUB_EVENT_NAME" == "schedule"',
+            self.workflow,
+        )
+        self.assertIn('default_max_requests=40000', self.workflow)
+        self.assertIn('default_max_new_queue=10000', self.workflow)
+        self.assertIn('max_requests="${REQUESTED_MAX_REQUESTS:-$default_max_requests}"', self.workflow)
+        self.assertIn('max_new_queue="${REQUESTED_MAX_NEW_QUEUE:-$default_max_new_queue}"', self.workflow)
+
+    def test_interruption_report_is_rebuilt_from_sqlite_not_dry_run(self):
+        self.assertIn("exec python scan_soundcharts_fal_phase2.py", self.workflow)
+        self.assertIn("--recover-interrupted-report", self.workflow)
+        self.assertIn('--runner-outcome "$outcome"', self.workflow)
+        self.assertNotIn(
+            'cp "${REPORT_JSON}.preflight" "$REPORT_JSON"', self.workflow
+        )
+
     def test_hard_and_maintenance_reserves_are_explicit(self):
         self.assertIn("QUOTA_RESERVE: '500000'", self.workflow)
         self.assertIn("MAINTENANCE_DAILY_REQUESTS: '60000'", self.workflow)
