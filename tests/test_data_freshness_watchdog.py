@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import data_freshness_watchdog as subject
+import spotify_performance_store
 
 
 def write(path: Path, value: str) -> None:
@@ -25,10 +26,19 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
             'window.SPOTIFY_BROWSE_CATALOGUE={"generated_at":"2026-07-29T06:00:00Z",'
             '"source_snapshot":"Spotify_Soundcharts_data_20260729T060000Z.js"};',
         )
-        write(
+        spotify_performance_store.write_performance_payload(
             self.root / "Spotify_Performance_data.js",
-            'window.SPOTIFY_PERFORMANCE={"freshness":{"tracks_catalogue_at":"2026-07-29T06:00:00Z",'
-            '"artists_catalogue_at":"2026-07-29T06:00:00Z","playlists_at":"2026-07-29T06:00:00Z"}};',
+            {
+                "tracks": {},
+                "artists": {},
+                "playlists": {},
+                "freshness": {
+                    "tracks_catalogue_at": "2026-07-29T06:00:00Z",
+                    "artists_catalogue_at": "2026-07-29T06:00:00Z",
+                    "playlists_at": "2026-07-29T06:00:00Z",
+                },
+            },
+            shard_count=1,
         )
         write(
             self.root / "Spotify_Playlists_canonical_data.js",
@@ -59,7 +69,7 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         )
         write(
             self.root / "Spotify_Performance_data.js",
-            'window.SPOTIFY_PERFORMANCE={"freshness":{"tracks_catalogue_at":"2026-07-28T21:00:00Z",'
+            'window.SPOTIFY_PERFORMANCE={"tracks":{},"freshness":{"tracks_catalogue_at":"2026-07-28T21:00:00Z",'
             '"artists_catalogue_at":"2026-07-28T21:00:00Z","playlists_at":"2026-07-28T21:00:00Z"}};',
         )
         write(
@@ -71,6 +81,45 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         rows = {row.target: row for row in subject.assess(self.root, now)}
         self.assertTrue(rows["youtube_radar"].due)
         self.assertTrue(rows["spotify_core"].due)
+
+    def test_missing_performance_shard_is_never_reported_green(self):
+        performance = {
+            "tracks": {"track-1": {"history": [["2026-07-29", 100]]}},
+            "artists": {},
+            "playlists": {},
+            "freshness": {
+                "tracks_catalogue_at": "2026-07-29T06:00:00Z",
+                "artists_catalogue_at": "2026-07-29T06:00:00Z",
+                "playlists_at": "2026-07-29T06:00:00Z",
+            },
+        }
+        path = self.root / "Spotify_Performance_data.js"
+        spotify_performance_store.write_performance_payload(path, performance, shard_count=1)
+        descriptor = spotify_performance_store._read_root(path)["track_shards"]["shards"][0]
+        (self.root / descriptor["path"]).unlink()
+
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["spotify_core"],
+        )[0]
+        self.assertTrue(row.due)
+        self.assertIn("store invalid", row.reason)
+
+    def test_legacy_monolith_is_due_for_storage_migration(self):
+        write(
+            self.root / "Spotify_Performance_data.js",
+            'window.SPOTIFY_PERFORMANCE={"tracks":{},"freshness":{'
+            '"tracks_catalogue_at":"2026-07-29T06:00:00Z",'
+            '"artists_catalogue_at":"2026-07-29T06:00:00Z"}};',
+        )
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["spotify_core"],
+        )[0]
+        self.assertTrue(row.due)
+        self.assertIn("not sharded", row.reason)
 
     def test_collector_cron_requires_today_even_before_the_watchdog_grace_deadline(self):
         write(
