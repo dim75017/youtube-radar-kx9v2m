@@ -3,9 +3,9 @@
 
 The Spotify Radar has two intentionally different data contracts:
 
-* ``Toutes les pistes`` / ``Tous les artistes`` are inventory views. They may
-  expose discovered, unmeasured and review-pending records with an explicit
-  status so the catalogue stays useful and alive.
+* ``Toutes les pistes`` / ``Tous les artistes`` are inventory views. Their
+  active projection contains only tracks with at least 100,000 observed
+  lifetime Spotify streams; lower or missing counters stay archived.
 * ``Opportunités A&R`` and every contact/deal action remain fail-closed and are
   sourced exclusively from the sanitized ``window.SPOTIFY_SOUNDCHARTS`` export.
 
@@ -80,6 +80,7 @@ STRICT_GENRES = {
 }
 STRICT_RIGHTS = {"self_released", "independent_label"}
 MIN_STRICT_CONFIDENCE = 0.5
+MIN_TRACK_LIFETIME_STREAMS = 100_000
 COMPOSITE_CREDIT = re.compile(r"(?:\s(?:&|feat\.?|featuring|ft\.?|x|×)\s|,)", re.IGNORECASE)
 
 
@@ -539,13 +540,21 @@ def merge_catalogues(catalogues: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     }
 
 
-def _strict_rebaseline_reason(row: Mapping[str, Any]) -> str | None:
+def _strict_rebaseline_reason(
+    row: Mapping[str, Any],
+    minimum_streams: int = MIN_TRACK_LIFETIME_STREAMS,
+) -> str | None:
     """Return the first factual reason an active-row candidate is quarantined."""
     artists = _clean_nested_artists(row.get("artists"))
     identities = [str(row.get("credit_name") or "").strip().casefold()]
     identities.extend(str(artist.get("name") or "").strip().casefold() for artist in artists)
     if any(identity in PUBLIC_ARTIST_BLACKLIST for identity in identities if identity):
         return "blacklisted_identity"
+    streams = _finite_number(row.get("streams"))
+    if streams is None:
+        return "streams_missing"
+    if streams < max(0, minimum_streams):
+        return "streams_below_minimum"
     if str(row.get("source_tier") or "") == TRUSTED_CATALOGUE_SOURCE_TIER:
         return None
     if str(row.get("source_tier") or "") not in STRICT_SOURCE_TIERS:
@@ -576,7 +585,10 @@ def _strict_rebaseline_reason(row: Mapping[str, Any]) -> str | None:
     return None
 
 
-def strict_rebase_catalogue(catalogues: Sequence[Mapping[str, Any]]) -> tuple[dict[str, Any], dict[str, int], list[str]]:
+def strict_rebase_catalogue(
+    catalogues: Sequence[Mapping[str, Any]],
+    minimum_streams: int = MIN_TRACK_LIFETIME_STREAMS,
+) -> tuple[dict[str, Any], dict[str, int], list[str]]:
     """Project only fully evidenced instrumental rows into the active catalogue.
 
     This is intentionally a projection, never a deletion: rejected records are
@@ -588,7 +600,7 @@ def strict_rebase_catalogue(catalogues: Sequence[Mapping[str, Any]]) -> tuple[di
     accepted_tracks: list[dict[str, Any]] = []
     active_artist_keys: set[str] = set()
     for row in normalised["track_records"]:
-        reason = _strict_rebaseline_reason(row)
+        reason = _strict_rebaseline_reason(row, minimum_streams)
         if reason:
             quarantine_counts[reason] = quarantine_counts.get(reason, 0) + 1
             continue
@@ -632,6 +644,7 @@ def build_payload(
     *,
     strict_rebased: bool = False,
     trusted_catalogue: Mapping[str, Any] | None = None,
+    minimum_streams: int = MIN_TRACK_LIFETIME_STREAMS,
 ) -> dict[str, Any]:
     catalogues: list[Mapping[str, Any]] = []
     if isinstance(existing, Mapping):
@@ -649,7 +662,9 @@ def build_payload(
     quarantine_counts: dict[str, int] = {}
     active_legacy_spotify_ids: list[str] = []
     if strict_rebased:
-        merged, quarantine_counts, active_legacy_spotify_ids = strict_rebase_catalogue(catalogues)
+        merged, quarantine_counts, active_legacy_spotify_ids = strict_rebase_catalogue(
+            catalogues, minimum_streams
+        )
     else:
         merged = merge_catalogues(catalogues)
     if int(merged.get("counts", {}).get("tracks") or 0) < max(1, minimum_tracks):
@@ -683,6 +698,7 @@ def build_payload(
             "contacts": "strict_only",
             "unverified_records_contactable": False,
             "archive": "Spotify_Radar_data.js" if strict_rebased else "",
+            "minimum_lifetime_streams": minimum_streams if strict_rebased else None,
         },
         "discovery_catalogue": merged,
         "active_legacy_spotify_ids": active_legacy_spotify_ids,
@@ -700,6 +716,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--existing", type=Path)
     parser.add_argument("--output", type=Path, default=Path("Spotify_Browse_Catalogue_data.js"))
     parser.add_argument("--minimum-tracks", type=int, default=10_000)
+    parser.add_argument(
+        "--minimum-streams",
+        type=int,
+        default=MIN_TRACK_LIFETIME_STREAMS,
+        help="Inclusive lifetime Spotify stream floor for the active strict catalogue.",
+    )
     parser.add_argument(
         "--strict-rebased",
         action="store_true",
@@ -741,6 +763,7 @@ def main() -> int:
         max(1, args.minimum_tracks),
         strict_rebased=args.strict_rebased,
         trusted_catalogue=trusted_catalogue,
+        minimum_streams=max(0, args.minimum_streams),
     )
     _write_payload(args.output, payload)
     print(
