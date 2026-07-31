@@ -4,6 +4,10 @@ The gate deliberately does not infer instrumental status or AI risk from an
 artist's genre.  It only uses the artist metadata fields returned by
 Soundcharts to reject explicit hazards, prioritise target genres, or keep an
 ambiguous artist in review.
+
+Career stage is retained for audit only.  It is deliberately not a ceiling:
+large artists are judged by the same explicit genre evidence as every other
+candidate.
 """
 
 from __future__ import annotations
@@ -144,10 +148,6 @@ def decide_artist_gate(evidence: Mapping[str, Any] | None) -> tuple[str, str]:
     """Classify explicit artist evidence without inventing missing facts."""
 
     evidence = evidence if isinstance(evidence, Mapping) else {}
-    career_stage = normalize_text(evidence.get("careerStage") or evidence.get("career_stage"))
-    if career_stage == "superstar":
-        return BLOCKED, "career_stage_superstar"
-
     genres = _genre_values(evidence)
     if any(VOCAL_RE.search(genre) for genre in genres):
         return BLOCKED, "vocal_genre_evidence"
