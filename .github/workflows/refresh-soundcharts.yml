@@ -1063,6 +1063,7 @@ jobs:
             --output Spotify_Browse_Catalogue_data.js \
             --minimum-tracks 1 \
             --minimum-streams 100000 \
+            --performance Spotify_Performance_data.js \
             --strict-rebased \
             --trusted-catalogue spotify-catalogue-baseline.csv \
             --trusted-artist-seeds spotify-catalogue-baseline.json
