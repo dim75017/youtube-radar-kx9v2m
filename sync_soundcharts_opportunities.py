@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from spotify_rights import reconciled_label, reconcile_rights
+from spotify_performance_store import PerformanceStoreError, read_performance_payload
 
 
 SOUNDCHARTS_PREFIX = "window.SPOTIFY_SOUNDCHARTS="
@@ -1189,7 +1190,10 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     current = read_js_payload(args.soundcharts, SOUNDCHARTS_PREFIX)
-    performance = read_js_payload(args.performance, PERFORMANCE_PREFIX)
+    try:
+        performance = read_performance_payload(args.performance)
+    except PerformanceStoreError as exc:
+        raise OpportunitySyncError(str(exc)) from exc
     legacy = read_js_payload(args.radar, RADAR_PREFIX) if args.radar.exists() else None
     summary = generate_opportunities(
         current,
