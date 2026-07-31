@@ -38,6 +38,7 @@ from refresh_soundcharts_daily import (
     read_js_payload,
 )
 from prepare_soundcharts_snapshot import NORMALISED_PUBLIC_ARTIST_BLACKLIST
+from spotify_performance_store import PerformanceStoreError, read_performance_payload
 
 
 STATE_VERSION = 2
@@ -2040,7 +2041,10 @@ def main() -> int:
     soundcharts = read_js_payload(args.seed_snapshot, SOUNDCHARTS_PREFIX)
     active = read_js_payload(args.active_snapshot, SOUNDCHARTS_PREFIX) if args.active_snapshot and args.active_snapshot.exists() else None
     browse = read_generic_js(args.browse_catalogue) if args.browse_catalogue.exists() else None
-    performance = read_generic_js(args.performance) if args.performance.exists() else None
+    try:
+        performance = read_performance_payload(args.performance) if args.performance.exists() else None
+    except PerformanceStoreError as exc:
+        raise FalPhase1Error(str(exc)) from exc
     legacy = read_js_payload(args.legacy_snapshot, SOUNDCHARTS_PREFIX) if args.legacy_snapshot.exists() else None
     radar = read_generic_js(args.radar_snapshot) if args.radar_snapshot.exists() else None
     ledger: dict[str, Any] | None = None

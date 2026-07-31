@@ -71,6 +71,14 @@ class PlaylistFollowerWorkflowGuardrailsTests(unittest.TestCase):
         )
         self.assertRegex(self.workflow, r"git\s+add[\s\S]{0,300}Spotify_Performance_data\.js")
         self.assertIn("git push", self.workflow)
+        self.assertIn("Spotify_Performance_tracks", self.workflow)
+        self.assertIn("git add -A --", self.workflow)
+
+    def test_storage_validation_precedes_the_first_follower_api_call(self):
+        storage = self.workflow.index("Validate and shard performance storage before paid collection")
+        refresh = self.workflow.index("Refresh every playlist published in the dashboard")
+        self.assertLess(storage, refresh)
+        self.assertIn("--mode storage", self.workflow[storage:refresh])
 
     def test_canonical_transition_is_validated_before_publication(self):
         validation = self.workflow.index("validate_playlist_snapshot_transition.py")

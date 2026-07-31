@@ -27,8 +27,8 @@ assert.doesNotMatch(dashboard, /const publishedAt=spotifyUpdateTimestamp\(/,
   'an unrelated fresh file must not set every category timestamp');
 assert.doesNotMatch(dashboard, /generated_ts:new Date\(\)\.toISOString\(\)/,
   'client-side label derivation must never manufacture source freshness');
-assert.match(dashboard, /const tracksAt=spotifyOldestUpdateTimestamp\(/);
-assert.match(dashboard, /const artistsAt=spotifyOldestUpdateTimestamp\(/);
+assert.match(dashboard, /const tracksAt=performanceStoreBroken\?null:spotifyOldestUpdateTimestamp\(/);
+assert.match(dashboard, /const artistsAt=performanceStoreBroken\?null:spotifyOldestUpdateTimestamp\(/);
 assert.match(dashboard, /performanceFreshness\.tracks_catalogue_at\|\|performanceFreshness\.tracks_at/,
   'track freshness prefers the last complete catalogue pass');
 assert.match(dashboard, /performanceFreshness\.artists_catalogue_at\|\|performanceFreshness\.artists_at/,
@@ -75,6 +75,7 @@ const context = {
   LANG: 'fr',
   T: value => value,
   fmtFull: value => String(value),
+  window: {SPOTIFY_PERFORMANCE_STORE_READY: true},
   result: null,
 };
 vm.runInNewContext(
@@ -86,5 +87,20 @@ assert.equal(byLabel.Pistes, '2026-07-25T12:00:00Z');
 assert.equal(byLabel.Artistes, '2026-07-24T12:00:00Z');
 assert.equal(byLabel.Playlists, '2026-07-20 12:00');
 assert.equal(byLabel.Labels, byLabel.Pistes);
+
+context.window.SPOTIFY_PERFORMANCE_STORE_READY = false;
+vm.runInNewContext(
+  `${dashboard.slice(statusStart, statusEnd)}\nresult=spotifyUpdateRows();`,
+  context,
+);
+const brokenByLabel = Object.fromEntries(context.result.map(row => [row.label, row]));
+assert.equal(brokenByLabel.Pistes.when, null);
+assert.equal(brokenByLabel.Pistes.error, true);
+assert.equal(brokenByLabel.Artistes.when, null);
+assert.equal(brokenByLabel.Artistes.error, true);
+assert.equal(brokenByLabel.Labels.when, null);
+assert.equal(brokenByLabel.Labels.error, true);
+assert.equal(brokenByLabel.Playlists.error, false);
+assert.match(brokenByLabel.Pistes.detail, /Historique streams incomplet/);
 
 console.log('Spotify synchronized update status: OK');

@@ -102,6 +102,6 @@ vm.runInNewContext(dashboard.slice(paybackStart, paybackEnd), context);
 assert.equal(context.selectionPaybackTxt(1.9*12), '2 ans', '1.9 years must display as 2 whole years in Selection.');
 assert.equal(context.selectionPaybackTxt(2.8*12), '3 ans', '2.8 years must display as 3 whole years in Selection.');
 assert.ok(dashboard.slice(dashboard.indexOf('function arSelectionEconomicsHtml(group){'), modalStart).includes('selectionPaybackTxt(economics.payback)'), 'Selection must use the whole-year formatter.');
-assert.match(index, /dashboard\.js\?v=20260728-outreach-composer-v1/);
+assert.match(index, /dashboard\.js\?v=20260731-performance-shards-v1/);
 
 console.log('spotify selection artist offers/status: OK');

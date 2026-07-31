@@ -36,6 +36,11 @@ from refresh_soundcharts_daily import (
     SoundchartsQuotaReserveError,
     SoundchartsRequestLimitError,
 )
+from spotify_performance_store import (
+    PerformanceStoreError,
+    read_performance_payload,
+    write_performance_payload,
+)
 from spotify_rights import reconciled_label, reconcile_rights
 
 
@@ -1648,7 +1653,10 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     soundcharts = read_js_payload(args.soundcharts, SOUNDCHARTS_PREFIX)
-    performance = read_js_payload(args.performance, PERFORMANCE_PREFIX)
+    try:
+        performance = read_performance_payload(args.performance)
+    except PerformanceStoreError as exc:
+        raise InstrumentalPoolError(str(exc)) from exc
     cache = read_cache(args.cache)
     client = SoundchartsClient(
         __import__("os").environ.get("SOUNDCHARTS_CLIENT_ID", ""),
@@ -1683,7 +1691,10 @@ def main() -> int:
         )
     write_js_payload(args.soundcharts, soundcharts, SOUNDCHARTS_PREFIX)
     if not args.classification_only:
-        write_js_payload(args.performance, performance, PERFORMANCE_PREFIX)
+        try:
+            write_performance_payload(args.performance, performance)
+        except PerformanceStoreError as exc:
+            raise InstrumentalPoolError(str(exc)) from exc
     write_cache(args.cache, cache)
     print(json.dumps(summary, ensure_ascii=False))
     return 0

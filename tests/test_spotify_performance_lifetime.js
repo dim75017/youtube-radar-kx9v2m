@@ -61,7 +61,7 @@ assert.equal(rows.length, 3,
   'performance-only entries are not promoted into the rendered catalogue');
 assert.equal(rows.some(row => row[6] === 'performance-only-track'), false,
   'performance-only entries remain outside the catalogue');
-assert.match(index, /dashboard\.js\?v=20260728-outreach-composer-v1/,
+assert.match(index, /dashboard\.js\?v=20260731-performance-shards-v1/,
   'the lifetime correction must be cache-busted in production');
 
 console.log('Spotify lifetime counters follow real performance history: OK');

@@ -958,6 +958,42 @@ class RefreshSoundchartsTests(unittest.TestCase):
         combined = subject.normalize_history(restored + performance['tracks']['track-1']['history'])
         self.assertEqual(combined, original)
 
+    def test_storage_mode_migrates_legacy_history_before_authentication(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / 'Spotify_Performance_data.js'
+            subject.write_js_payload(
+                root,
+                {
+                    'tracks': {
+                        'track-1': {
+                            'soundcharts_uuid': 'uuid-1',
+                            'history': [['2026-07-30', 100], ['2026-07-31', 120]],
+                        }
+                    },
+                    'artists': {},
+                    'playlists': {},
+                },
+                subject.PERFORMANCE_PREFIX,
+            )
+            args = SimpleNamespace(
+                mode='storage',
+                performance=root,
+                history_dir=Path(directory) / 'history',
+            )
+            with (
+                patch.object(subject, 'parse_args', return_value=args),
+                patch.object(subject, 'SoundchartsClient') as client,
+            ):
+                self.assertEqual(subject.main(), 0)
+
+            client.assert_not_called()
+            hydrated = subject.read_performance_payload(root)
+            self.assertEqual(
+                hydrated['tracks']['track-1']['history'],
+                [['2026-07-30', 100], ['2026-07-31', 120]],
+            )
+            self.assertTrue((Path(directory) / 'Spotify_Performance_tracks').is_dir())
+
     def test_existing_malformed_history_archive_is_never_overwritten(self):
         with tempfile.TemporaryDirectory() as directory:
             history_dir = Path(directory)

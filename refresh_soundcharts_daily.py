@@ -28,19 +28,26 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
 from zoneinfo import ZoneInfo
 
+from spotify_performance_store import (
+    DEFAULT_TRACK_SHARD_COUNT,
+    MAX_TRACK_SHARD_BYTES,
+    PERFORMANCE_PREFIX,
+    PerformanceStoreError,
+    read_performance_payload as read_sharded_performance_payload,
+    validate_performance_store,
+    write_performance_payload,
+)
+
 
 API_BASE = "https://customer.api.soundcharts.com"
 TOKEN_URL = "https://account.soundcharts.com/oauth/token"
 SOUNDCHARTS_PREFIX = "window.SPOTIFY_SOUNDCHARTS="
-PERFORMANCE_PREFIX = "window.SPOTIFY_PERFORMANCE="
 PLAYLISTS_PREFIX = "window.SPOTIFY_PLAYLISTS="
 AUTH_PROBE = "/api/v2/referential/platforms/streaming"
 MIN_SERVER_QUOTA_RESERVE = 500_000
 TRACK_ROTATION_BUCKETS = 7
 RECENT_RELEASE_DAYS = 90
 TRACK_MAINTENANCE_POLICY_VERSION = 1
-HOT_TRACK_HISTORY_DAYS = 95
-PERFORMANCE_BLOB_SOFT_LIMIT_BYTES = 95_000_000
 ESTIMATED_NEW_TRACK_ENTRY_BYTES = 4_096
 ESTIMATED_DAILY_POINT_BYTES = 128
 PARIS_TIMEZONE = ZoneInfo("Europe/Paris")
@@ -115,25 +122,15 @@ def write_js_payload(path: Path, payload: dict[str, Any], prefix: str = SOUNDCHA
 
 
 def read_performance_payload(path: Path) -> dict[str, Any]:
-    if not path.exists():
-        return {
-            "source": "soundcharts_daily",
-            "generated_at": None,
-            "tracks": {},
-            "artists": {},
-            "playlists": {},
-        }
-    payload = read_js_payload(path, PERFORMANCE_PREFIX)
-    payload.setdefault("source", "soundcharts_daily")
-    payload.setdefault("tracks", {})
-    payload.setdefault("artists", {})
-    payload.setdefault("playlists", {})
-    return payload
+    try:
+        return read_sharded_performance_payload(path)
+    except PerformanceStoreError as exc:
+        raise SoundchartsError(str(exc)) from exc
 
 
 def prune_track_histories_to_hot_window(
     performance: dict[str, Any],
-    keep_days: int = HOT_TRACK_HISTORY_DAYS,
+    keep_days: int = 95,
 ) -> dict[str, list[list[Any]]]:
     """Keep the analytics hot window and return every older point for archival."""
 
@@ -227,7 +224,7 @@ def performance_storage_preflight(
     payload: Mapping[str, Any],
     path: Path,
 ) -> dict[str, Any]:
-    """Fail before paid track calls when the monolithic hot export is unsafe."""
+    """Size the sharded write before paid track calls without a blob ceiling."""
 
     serialized = PERFORMANCE_PREFIX + json.dumps(performance, ensure_ascii=False, separators=(",", ":")) + ";\n"
     hot_bytes = len(serialized.encode("utf-8"))
@@ -250,21 +247,20 @@ def performance_storage_preflight(
         + len(tracks) * ESTIMATED_DAILY_POINT_BYTES
         + new_track_entries * ESTIMATED_NEW_TRACK_ENTRY_BYTES
     )
+    projected_shards = max(
+        DEFAULT_TRACK_SHARD_COUNT,
+        (projected_bytes + MAX_TRACK_SHARD_BYTES - 1) // MAX_TRACK_SHARD_BYTES,
+    )
     summary = {
-        "status": "safe" if projected_bytes <= PERFORMANCE_BLOB_SOFT_LIMIT_BYTES else "sharding_required",
+        "status": "sharded_ready",
         "current_file_bytes": path.stat().st_size if path.exists() else 0,
-        "hot_window_days": HOT_TRACK_HISTORY_DAYS,
-        "hot_serialized_bytes": hot_bytes,
-        "projected_next_write_bytes": projected_bytes,
-        "soft_limit_bytes": PERFORMANCE_BLOB_SOFT_LIMIT_BYTES,
+        "full_serialized_bytes": hot_bytes,
+        "projected_full_bytes": projected_bytes,
+        "projected_shards": projected_shards,
+        "maximum_shard_bytes": MAX_TRACK_SHARD_BYTES,
         "tracks": len(tracks),
         "new_track_entries": new_track_entries,
     }
-    if projected_bytes > PERFORMANCE_BLOB_SOFT_LIMIT_BYTES:
-        print(json.dumps({"performance_storage_preflight": summary}, ensure_ascii=False))
-        raise SoundchartsError(
-            "Spotify_Performance_data.js requires sharding before another paid track refresh"
-        )
     return summary
 
 
@@ -1866,7 +1862,11 @@ def smoke_test(payload: dict[str, Any], client: SoundchartsClient, history_days:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--mode", choices=["full", "artists", "tracks", "fal", "playlists", "smoke"], default="full")
+    parser.add_argument(
+        "--mode",
+        choices=["full", "artists", "tracks", "fal", "playlists", "smoke", "storage"],
+        default="full",
+    )
     parser.add_argument("--workers", type=int, default=16)
     parser.add_argument("--max-requests", type=int, default=100000)
     parser.add_argument("--history-days", type=int, default=95)
@@ -1900,6 +1900,37 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    if args.mode == "storage":
+        performance = read_performance_payload(args.performance)
+        archived_track_history = prune_track_histories_to_hot_window(performance)
+        archive_summary = write_track_history_archive(args.history_dir, archived_track_history)
+        try:
+            written = write_performance_payload(args.performance, performance)
+            validated = validate_performance_store(args.performance)
+        except PerformanceStoreError as exc:
+            raise SoundchartsError(str(exc)) from exc
+        print(
+            json.dumps(
+                {
+                    "performance_store": {**written, "validated": validated},
+                    "track_history_archive": archive_summary,
+                },
+                ensure_ascii=False,
+            )
+        )
+        return 0
+
+    payload = read_js_payload(args.soundcharts)
+    performance = None if args.mode == "smoke" else read_performance_payload(args.performance)
+    archived_track_history: dict[str, list[list[Any]]] = {}
+    storage_preflight: dict[str, Any] | None = None
+    if args.mode in {"full", "tracks"}:
+        archived_track_history = prune_track_histories_to_hot_window(performance)
+        storage_preflight = performance_storage_preflight(performance, payload, args.performance)
+        print(json.dumps({"performance_storage_preflight": storage_preflight}, ensure_ascii=False))
+
+    # Store validation and size planning deliberately happen before auth.  A
+    # missing/corrupt shard can therefore never follow paid collection calls.
     client = SoundchartsClient(
         os.environ.get("SOUNDCHARTS_CLIENT_ID", ""),
         os.environ.get("SOUNDCHARTS_CLIENT_SECRET", ""),
@@ -1910,18 +1941,11 @@ def main() -> int:
     client.require_quota_reserve()
     print(json.dumps({"authentication": "success", "mode": client.auth_mode, "quota_remaining": client.quota_remaining}))
 
-    payload = read_js_payload(args.soundcharts)
     if args.mode == "smoke":
         print(json.dumps(smoke_test(payload, client, min(args.history_days, 14))))
         return 0
 
-    performance = read_performance_payload(args.performance)
-    archived_track_history: dict[str, list[list[Any]]] = {}
-    storage_preflight: dict[str, Any] | None = None
-    if args.mode in {"full", "tracks"}:
-        archived_track_history = prune_track_histories_to_hot_window(performance)
-        storage_preflight = performance_storage_preflight(performance, payload, args.performance)
-        print(json.dumps({"performance_storage_preflight": storage_preflight}, ensure_ascii=False))
+    assert performance is not None
     priority_artist_ids, priority_artist_uuids = read_priority_artist_references(
         getattr(args, "priority_artists", Path("spotify-selection-artist-seeds.json"))
     )
@@ -2067,8 +2091,14 @@ def main() -> int:
         run_summary["track_history_archive"] = history_archive
         performance["run"] = run_summary
         freshness["run"] = run_summary
+    try:
+        performance_store = write_performance_payload(args.performance, performance)
+    except PerformanceStoreError as exc:
+        raise SoundchartsError(str(exc)) from exc
     write_js_payload(args.soundcharts, payload, SOUNDCHARTS_PREFIX)
-    write_js_payload(args.performance, performance, PERFORMANCE_PREFIX)
+    run_summary["performance_store"] = {
+        key: value for key, value in performance_store.items() if key != "paths"
+    }
 
     args.history_dir.mkdir(parents=True, exist_ok=True)
     history = {
