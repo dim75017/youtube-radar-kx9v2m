@@ -22,6 +22,8 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 from zoneinfo import ZoneInfo
 
+from spotify_performance_store import PerformanceStoreError, validate_performance_store
+
 
 PARIS = ZoneInfo("Europe/Paris")
 ACTIVE_RUN_STATES = {"queued", "in_progress", "pending", "requested", "waiting"}
@@ -186,17 +188,24 @@ def assess_youtube_radar(root: Path, now: datetime, ignore_deadline: bool = Fals
     return freshness_row(target, False, f"public YouTube day {history_day} is healthy", observed)
 
 
-def performance_freshness(root: Path) -> dict[str, datetime | None]:
+def performance_freshness(root: Path) -> dict[str, datetime | None | str]:
     text = read_edge(root / "Spotify_Performance_data.js", tail=96_000)
-    values: dict[str, datetime | None] = {}
+    values: dict[str, datetime | None | str] = {}
     for key in ("tracks_catalogue_at", "artists_catalogue_at", "playlists_at"):
         values[key] = parse_timestamp(regex_value(text, rf'"{key}"\s*:\s*"([^"]+)"'))
+    try:
+        store = validate_performance_store(root / "Spotify_Performance_data.js")
+        values["store_error"] = None if store.get("status") == "sharded" else "legacy performance store is not sharded"
+    except PerformanceStoreError as exc:
+        values["store_error"] = str(exc)
     return values
 
 
 def assess_spotify_core(root: Path, now: datetime, ignore_deadline: bool = False) -> Freshness:
     target = TARGETS["spotify_core"]
     values = performance_freshness(root)
+    if values.get("store_error"):
+        return freshness_row(target, True, f"Spotify performance store invalid: {values['store_error']}", None)
     required = [values.get("tracks_catalogue_at"), values.get("artists_catalogue_at")]
     if any(value is None for value in required):
         return freshness_row(target, True, "missing Spotify catalogue freshness timestamp", None)
