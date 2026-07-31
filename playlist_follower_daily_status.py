@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from spotify_performance_store import read_performance_payload
+
 
 PLAYLISTS_PREFIX = "window.SPOTIFY_PLAYLISTS="
 PERFORMANCE_PREFIX = "window.SPOTIFY_PERFORMANCE="
@@ -56,7 +58,7 @@ def coverage(
     day: str,
 ) -> dict[str, Any]:
     playlists = read_payload(playlists_path, PLAYLISTS_PREFIX)
-    performance = read_payload(performance_path, PERFORMANCE_PREFIX)
+    performance = read_performance_payload(performance_path)
     columns = list(playlists.get("cols") or [])
     rows = playlists.get("rows") or []
     id_index = columns.index("id")
