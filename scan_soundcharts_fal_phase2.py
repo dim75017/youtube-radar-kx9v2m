@@ -47,10 +47,17 @@ from scan_soundcharts_fal_phase1 import (
     plan_quota_budget,
     utc_now,
 )
+from soundcharts_fal_artist_gate import (
+    BLOCKED as ARTIST_BLOCKED,
+    ELIGIBLE as ARTIST_ELIGIBLE,
+    REVIEW as ARTIST_REVIEW,
+    decide_artist_gate,
+    parse_artist_gate_response,
+)
 
 
-PHASE2_STATE_VERSION = 1
-PHASE2_REPORT_VERSION = 1
+PHASE2_STATE_VERSION = 2
+PHASE2_REPORT_VERSION = 2
 DEFAULT_STATE = Path("soundcharts-fal-phase2-staging.sqlite3")
 DEFAULT_REPORT = Path("soundcharts-fal-phase2-report.json")
 DEFAULT_MAX_REQUESTS = 500
@@ -61,8 +68,11 @@ MAX_BATCH_REQUESTS = 40_000
 MAX_QUEUE_MIGRATION = 10_000
 
 ACTIVE_QUEUE_STATUSES = ("pending", "retry")
+ACTIVE_ARTIST_GATE_STATUSES = ("pending", "retry")
 TERMINAL_REVIEW_STATUSES = (
     "review_evidence_ready",
+    "review_instrumental_signal",
+    "review_genre_signal",
     "review_metadata_unknown",
     "review_metadata_unavailable",
     "review_request_failed",
@@ -101,6 +111,25 @@ CREATE TABLE IF NOT EXISTS fal_phase2_queue (
 );
 CREATE INDEX IF NOT EXISTS idx_fal_phase2_queue_status
   ON fal_phase2_queue(queue_status, release_date DESC, track_uuid);
+CREATE TABLE IF NOT EXISTS fal_phase2_artist_gate (
+  candidate_uuid TEXT PRIMARY KEY,
+  candidate_name TEXT NOT NULL DEFAULT '',
+  monthly_listeners INTEGER,
+  source_count INTEGER NOT NULL DEFAULT 0,
+  best_rank INTEGER,
+  gate_status TEXT NOT NULL DEFAULT 'pending',
+  reason TEXT NOT NULL DEFAULT 'artist_metadata_required',
+  career_stage TEXT NOT NULL DEFAULT '',
+  evidence_json TEXT NOT NULL DEFAULT '{}',
+  attempts INTEGER NOT NULL DEFAULT 0,
+  error_code TEXT,
+  bulk_cursor_track_uuid TEXT NOT NULL DEFAULT '',
+  bulk_complete INTEGER NOT NULL DEFAULT 0,
+  first_seen_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fal_phase2_artist_gate_status
+  ON fal_phase2_artist_gate(gate_status, candidate_uuid);
 CREATE TABLE IF NOT EXISTS fal_phase2_details (
   track_uuid TEXT PRIMARY KEY,
   spotify_id TEXT,
@@ -196,6 +225,61 @@ def assert_phase1_complete(connection: sqlite3.Connection) -> None:
             f"(seeds={seed_total}, tracks={track_total}, seed_blockers={seed_blockers}, candidate_blockers={candidate_blockers}, "
             f"failed_candidates={failed_candidates}, unresolved_seeds={unresolved})"
         )
+
+
+def initialize_artist_gate(
+    phase1: sqlite3.Connection,
+    phase2: sqlite3.Connection,
+) -> tuple[int, int]:
+    """Materialise one resumable metadata gate per completed new artist.
+
+    This deliberately happens before any song-detail bulk work.  It costs at
+    most one artist metadata request per candidate and prevents a superstar's
+    whole discography from monopolising the paid song queue.
+    """
+
+    rows = phase1.execute(
+        """SELECT soundcharts_uuid,COALESCE(name,'') AS name,monthly_listeners,
+                  source_count,best_rank
+             FROM candidates
+            WHERE status IN ('review_inventory_complete','review_complete','eligible_complete')
+              AND COALESCE(catalog_total,0)>0
+            ORDER BY source_count DESC,best_rank,soundcharts_uuid"""
+    ).fetchall()
+    now = utc_now()
+    before = int(phase2.execute("SELECT COUNT(*) FROM fal_phase2_artist_gate").fetchone()[0])
+    try:
+        phase2.execute("BEGIN IMMEDIATE")
+        for row in rows:
+            result = phase2.execute(
+                """INSERT INTO fal_phase2_artist_gate(
+                     candidate_uuid,candidate_name,monthly_listeners,source_count,best_rank,
+                     first_seen_at,updated_at)
+                   VALUES(?,?,?,?,?,?,?) ON CONFLICT(candidate_uuid) DO UPDATE SET
+                     candidate_name=CASE WHEN fal_phase2_artist_gate.candidate_name=''
+                                         THEN excluded.candidate_name
+                                         ELSE fal_phase2_artist_gate.candidate_name END,
+                     monthly_listeners=COALESCE(
+                         fal_phase2_artist_gate.monthly_listeners,excluded.monthly_listeners),
+                     source_count=MAX(fal_phase2_artist_gate.source_count,excluded.source_count),
+                     best_rank=COALESCE(fal_phase2_artist_gate.best_rank,excluded.best_rank)""",
+                (
+                    str(row["soundcharts_uuid"]),
+                    str(row["name"] or ""),
+                    finite_int(row["monthly_listeners"]),
+                    finite_int(row["source_count"]) or 0,
+                    finite_int(row["best_rank"]),
+                    now,
+                    now,
+                ),
+            )
+        meta_set(phase2, "fal_phase2_artist_gate_initialized_at", now)
+        phase2.commit()
+    except Exception:
+        phase2.rollback()
+        raise
+    total = int(phase2.execute("SELECT COUNT(*) FROM fal_phase2_artist_gate").fetchone()[0])
+    return max(0, total - before), total
 
 
 def _safe_evidence(raw: Any) -> dict[str, Any]:
@@ -316,6 +400,115 @@ def migrate_recent_queue(
     return QueueMigration(requested, capacity, inserted, pending, blocked)
 
 
+def migrate_gated_track_queue(
+    phase1: sqlite3.Connection,
+    phase2: sqlite3.Connection,
+    *,
+    max_new_queue: int,
+    active_queue_cap: int,
+    recent_days: int,
+    as_of: str | dt.date | dt.datetime | None = None,
+) -> QueueMigration:
+    """Queue recent tracks only for artists explicitly admitted by the gate.
+
+    Progress is kept per artist rather than with a global track rowid.  That
+    prevents a few giant discographies from monopolising the queue and avoids
+    skipping artists whose metadata gate was completed later.
+    """
+
+    requested = max(0, min(MAX_QUEUE_MIGRATION, int(max_new_queue)))
+    cap = max(1, min(MAX_QUEUE_MIGRATION, int(active_queue_cap)))
+    active = int(
+        phase2.execute(
+            "SELECT COUNT(*) FROM fal_phase2_queue WHERE queue_status IN ('pending','retry')"
+        ).fetchone()[0]
+    )
+    capacity = max(0, cap - active)
+    target = min(requested, capacity)
+    if target <= 0:
+        return QueueMigration(requested, capacity, 0, 0, 0)
+
+    today = parse_as_of(as_of).astimezone(dt.timezone.utc).date()
+    cutoff = today - dt.timedelta(days=max(1, int(recent_days)))
+    gates = phase2.execute(
+        """SELECT candidate_uuid,bulk_cursor_track_uuid FROM fal_phase2_artist_gate
+            WHERE gate_status='eligible' AND bulk_complete=0
+            ORDER BY candidate_uuid"""
+    ).fetchall()
+    inserted = pending = blocked = 0
+    now = utc_now()
+    try:
+        phase2.execute("BEGIN IMMEDIATE")
+        for gate in gates:
+            if inserted >= target:
+                break
+            candidate_uuid = str(gate["candidate_uuid"])
+            cursor = str(gate["bulk_cursor_track_uuid"] or "")
+            remaining = target - inserted
+            rows = phase1.execute(
+                """SELECT t.soundcharts_uuid,t.candidate_uuid,t.release_date,t.evidence_json
+                     FROM candidate_tracks ct
+                     JOIN tracks t ON t.soundcharts_uuid=ct.track_uuid
+                    WHERE ct.candidate_uuid=?
+                      AND t.status='review_metadata_pending'
+                      AND t.soundcharts_uuid>?
+                      AND date(substr(t.release_date,1,10)) BETWEEN date(?) AND date(?)
+                    ORDER BY t.soundcharts_uuid
+                    LIMIT ?""",
+                (
+                    candidate_uuid,
+                    cursor,
+                    cutoff.isoformat(),
+                    today.isoformat(),
+                    remaining + 1,
+                ),
+            ).fetchall()
+            selected = rows[:remaining]
+            for row in selected:
+                status, reason = local_prefilter(_safe_evidence(row["evidence_json"]))
+                result = phase2.execute(
+                    """INSERT INTO fal_phase2_queue(
+                         track_uuid,candidate_uuid,release_date,queue_status,local_reason,
+                         queued_at,updated_at)
+                       VALUES(?,?,?,?,?,?,?) ON CONFLICT(track_uuid) DO NOTHING""",
+                    (
+                        str(row["soundcharts_uuid"]),
+                        candidate_uuid,
+                        str(row["release_date"] or ""),
+                        status,
+                        reason,
+                        now,
+                        now,
+                    ),
+                )
+                if result.rowcount:
+                    inserted += 1
+                    pending += int(status == "pending")
+                    blocked += int(status != "pending")
+            if selected:
+                phase2.execute(
+                    """UPDATE fal_phase2_artist_gate SET bulk_cursor_track_uuid=?,
+                              bulk_complete=?,updated_at=? WHERE candidate_uuid=?""",
+                    (
+                        str(selected[-1]["soundcharts_uuid"]),
+                        int(len(rows) <= remaining),
+                        now,
+                        candidate_uuid,
+                    ),
+                )
+            elif not rows:
+                phase2.execute(
+                    "UPDATE fal_phase2_artist_gate SET bulk_complete=1,updated_at=? WHERE candidate_uuid=?",
+                    (now, candidate_uuid),
+                )
+        meta_set(phase2, "fal_phase2_last_gated_queue_migration_at", now)
+        phase2.commit()
+    except Exception:
+        phase2.rollback()
+        raise
+    return QueueMigration(requested, capacity, inserted, pending, blocked)
+
+
 def _count_by_status(connection: sqlite3.Connection, table: str, field: str) -> dict[str, int]:
     return {
         str(row[0]): int(row[1])
@@ -351,6 +544,124 @@ def evidence_yield(connection: sqlite3.Connection) -> dict[str, int | float]:
 def canary_zero_yield(connection: sqlite3.Connection, minimum_sample: int) -> bool:
     stats = evidence_yield(connection)
     return int(stats["sampled"]) >= max(1, int(minimum_sample)) and int(stats["useful_signal"]) == 0
+
+
+class ArtistGateScanner:
+    """Screen candidate artists once before opening any discography bulk."""
+
+    def __init__(
+        self,
+        phase2: sqlite3.Connection,
+        client: Any,
+        *,
+        workers: int,
+        retry_limit: int,
+    ) -> None:
+        self.phase2 = phase2
+        self.client = client
+        self.workers = max(1, int(workers))
+        self.retry_limit = max(1, int(retry_limit))
+        self.halt_reason: str | None = None
+
+    def _record_error(self, uuid: str, code: str) -> None:
+        self.phase2.execute(
+            "INSERT INTO fal_phase2_errors(track_uuid,error_code,observed_at) VALUES(?,?,?)",
+            (uuid, f"artist_gate:{code}", utc_now()),
+        )
+
+    def _fetch_batch(self, rows: Sequence[sqlite3.Row]) -> tuple[dict[str, Any], dict[str, str]]:
+        results: dict[str, Any] = {}
+        errors: dict[str, str] = {}
+
+        def fetch(row: sqlite3.Row) -> tuple[str, Any]:
+            uuid = str(row["candidate_uuid"])
+            return uuid, self.client.get(f"/api/v2/artist/{urllib.parse.quote(uuid)}")
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.workers) as executor:
+            futures = {executor.submit(fetch, row): str(row["candidate_uuid"]) for row in rows}
+            for future in concurrent.futures.as_completed(futures):
+                uuid = futures[future]
+                try:
+                    result_uuid, payload = future.result()
+                    results[result_uuid] = payload
+                except SoundchartsRequestLimitError:
+                    errors[uuid] = "request_limit"
+                    self.halt_reason = "request_limit"
+                except SoundchartsQuotaReserveError:
+                    errors[uuid] = "quota_reserve"
+                    self.halt_reason = "quota_reserve"
+                except SoundchartsDataUnavailableError:
+                    errors[uuid] = "unavailable"
+                except (SoundchartsError, OSError, RuntimeError):
+                    errors[uuid] = "request_failed"
+        return results, errors
+
+    def scan_batch(self) -> bool:
+        rows = self.phase2.execute(
+            """SELECT * FROM fal_phase2_artist_gate
+                WHERE gate_status IN ('pending','retry')
+                ORDER BY source_count DESC,best_rank,monthly_listeners,candidate_uuid LIMIT ?""",
+            (self.workers,),
+        ).fetchall()
+        if not rows:
+            return False
+        results, errors = self._fetch_batch(rows)
+        by_uuid = {str(row["candidate_uuid"]): row for row in rows}
+        now = utc_now()
+        for uuid, response in results.items():
+            evidence = parse_artist_gate_response(response)
+            status, reason = decide_artist_gate(evidence)
+            # Keep the public constants out of the checkpoint contract while
+            # preserving their fail-closed meaning.
+            if status not in {ARTIST_ELIGIBLE, ARTIST_BLOCKED, ARTIST_REVIEW}:
+                status, reason = ARTIST_REVIEW, "invalid_gate_decision"
+            self.phase2.execute(
+                """UPDATE fal_phase2_artist_gate
+                      SET gate_status=?,reason=?,career_stage=?,evidence_json=?,
+                          attempts=0,error_code=NULL,updated_at=?
+                    WHERE candidate_uuid=?""",
+                (
+                    status,
+                    reason,
+                    str(evidence.get("careerStage") or ""),
+                    json.dumps(evidence, ensure_ascii=False, sort_keys=True),
+                    now,
+                    uuid,
+                ),
+            )
+        for uuid, code in errors.items():
+            row = by_uuid[uuid]
+            if code == "unavailable":
+                status, reason = "review_unavailable", "artist_metadata_unavailable"
+                attempts = int(row["attempts"] or 0)
+            elif code in {"request_limit", "quota_reserve"}:
+                self.phase2.execute(
+                    "UPDATE fal_phase2_artist_gate SET error_code=?,updated_at=? WHERE candidate_uuid=?",
+                    (code, now, uuid),
+                )
+                self._record_error(uuid, code)
+                continue
+            else:
+                attempts = int(row["attempts"] or 0) + 1
+                status = "review_request_failed" if attempts >= self.retry_limit else "retry"
+                reason = (
+                    "bounded_artist_metadata_retries_exhausted"
+                    if status == "review_request_failed"
+                    else "transient_artist_metadata_retry"
+                )
+            self.phase2.execute(
+                """UPDATE fal_phase2_artist_gate SET gate_status=?,reason=?,attempts=?,
+                          error_code=?,updated_at=? WHERE candidate_uuid=?""",
+                (status, reason, attempts, code, now, uuid),
+            )
+            self._record_error(uuid, code)
+        self.phase2.commit()
+        return True
+
+    def run(self) -> str:
+        while not self.halt_reason and self.scan_batch():
+            pass
+        return self.halt_reason or "idle"
 
 
 class Phase2Scanner:
@@ -466,6 +777,16 @@ class Phase2Scanner:
             decision = blocked
         elif instrumental == "instrumental" and ai_risk == "low" and genre_status == "in_scope":
             decision, reason = "review_evidence_ready", "source_evidence_requires_human_validation"
+        elif instrumental == "instrumental":
+            decision, reason = (
+                "review_instrumental_signal",
+                "soundcharts_instrumentalness_requires_human_validation",
+            )
+        elif genre_status == "in_scope":
+            decision, reason = (
+                "review_genre_signal",
+                "target_genre_requires_instrumental_confirmation",
+            )
         else:
             decision, reason = "review_metadata_unknown", "instrumental_or_ai_confirmation_required"
 
@@ -626,7 +947,19 @@ def build_report(
     ).fetchone()
     queue_counts = _count_by_status(phase2, "fal_phase2_queue", "queue_status")
     decision_counts = _count_by_status(phase2, "fal_phase2_details", "decision")
+    artist_gate_counts = _count_by_status(
+        phase2, "fal_phase2_artist_gate", "gate_status"
+    )
     active = sum(queue_counts.get(status, 0) for status in ACTIVE_QUEUE_STATUSES)
+    artist_gate_active = sum(
+        artist_gate_counts.get(status, 0) for status in ACTIVE_ARTIST_GATE_STATUSES
+    )
+    eligible_bulk_remaining = int(
+        phase2.execute(
+            """SELECT COUNT(*) FROM fal_phase2_artist_gate
+                WHERE gate_status='eligible' AND bulk_complete=0"""
+        ).fetchone()[0]
+    )
     eligible_recent = int(source["eligible_recent"] or 0)
     queued_recent = int(
         phase2.execute(
@@ -637,7 +970,7 @@ def build_report(
     )
     remaining_recent = max(0, eligible_recent - queued_recent)
     yield_stats = evidence_yield(phase2)
-    complete = remaining_recent == 0 and active == 0
+    complete = artist_gate_active == 0 and eligible_bulk_remaining == 0 and active == 0
     if halt_reason == "canary_zero_evidence_yield":
         status = "paused_zero_evidence_yield"
     elif halt_reason == "maintenance_quota_protected":
@@ -646,7 +979,7 @@ def build_report(
         status = "partial"
     elif complete:
         status = "enrichment_complete_review_required"
-    elif active:
+    elif active or artist_gate_active:
         status = "partial"
     else:
         status = "ready"
@@ -678,6 +1011,15 @@ def build_report(
             "explicit_vocal_out_of_scope_or_ai_high": "blocked_without_detail_call",
             "instrumental_or_ai_unknown": "review",
         },
+        "artist_gate": {
+            "endpoint": "/api/v2/artist/{uuid}",
+            "status_counts": artist_gate_counts,
+            "active": artist_gate_active,
+            "eligible_bulk_remaining": eligible_bulk_remaining,
+            "superstars_blocked_by_career_stage": True,
+            "unknown_genre_stays_in_review": True,
+            "ai_risk_is_never_inferred": True,
+        },
         "queue": {
             "active_cap": max(1, min(MAX_QUEUE_MIGRATION, int(active_queue_cap))),
             "migration_requested": migration.requested,
@@ -686,6 +1028,11 @@ def build_report(
             "locally_blocked_this_run": migration.locally_blocked,
             "status_counts": queue_counts,
             "active": active,
+        },
+        "work": {
+            "active": artist_gate_active + active,
+            "artist_gate_active": artist_gate_active,
+            "track_detail_active": active,
         },
         "details": {
             "enriched": int(phase2.execute("SELECT COUNT(*) FROM fal_phase2_details").fetchone()[0]),
@@ -775,13 +1122,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             meta_set(phase2, "fal_phase2_phase1_source_id", args.phase1_source_id)
             phase2.commit()
+        initialize_artist_gate(phase1, phase2)
         paused = not args.continue_zero_yield and canary_zero_yield(
             phase2, args.canary_min_sample
         )
-        if paused:
-            migration = QueueMigration(0, 0, 0, 0, 0)
-        else:
-            migration = migrate_recent_queue(
+        artist_active = int(
+            phase2.execute(
+                """SELECT COUNT(*) FROM fal_phase2_artist_gate
+                    WHERE gate_status IN ('pending','retry')"""
+            ).fetchone()[0]
+        )
+        migration = QueueMigration(0, 0, 0, 0, 0)
+        if not paused and artist_active == 0:
+            migration = migrate_gated_track_queue(
                 phase1,
                 phase2,
                 max_new_queue=args.max_new_queue,
@@ -794,7 +1147,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "SELECT COUNT(*) FROM fal_phase2_queue WHERE queue_status IN ('pending','retry')"
             ).fetchone()[0]
         )
-        if paused or args.dry_run or active <= 0 or args.max_requests <= 0:
+        if (paused and artist_active == 0) or args.dry_run or (artist_active <= 0 and active <= 0) or args.max_requests <= 0:
             report = build_report(
                 phase1,
                 phase2,
@@ -803,7 +1156,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 as_of=args.as_of,
                 halt_reason=(
                     "canary_zero_evidence_yield"
-                    if paused
+                    if paused and artist_active == 0
                     else ("dry_run" if args.dry_run else None)
                 ),
                 active_queue_cap=args.active_queue_cap,
@@ -847,16 +1200,46 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         else:
             client.require_quota_reserve()
-            scanner = Phase2Scanner(
-                phase1,
-                phase2,
-                client,
-                workers=max(1, min(10, int(args.workers))),
-                retry_limit=max(1, int(args.retry_limit)),
-                canary_min_sample=max(1, int(args.canary_min_sample)),
-                continue_zero_yield=args.continue_zero_yield,
-            )
-            halt = scanner.run()
+            halt = "idle"
+            if artist_active > 0:
+                artist_scanner = ArtistGateScanner(
+                    phase2,
+                    client,
+                    workers=max(1, min(10, int(args.workers))),
+                    retry_limit=max(1, int(args.retry_limit)),
+                )
+                halt = artist_scanner.run()
+                artist_active = int(
+                    phase2.execute(
+                        """SELECT COUNT(*) FROM fal_phase2_artist_gate
+                            WHERE gate_status IN ('pending','retry')"""
+                    ).fetchone()[0]
+                )
+            if halt == "idle" and artist_active == 0 and not paused:
+                migration = migrate_gated_track_queue(
+                    phase1,
+                    phase2,
+                    max_new_queue=args.max_new_queue,
+                    active_queue_cap=args.active_queue_cap,
+                    recent_days=args.recent_days,
+                    as_of=args.as_of,
+                )
+                active = int(
+                    phase2.execute(
+                        "SELECT COUNT(*) FROM fal_phase2_queue WHERE queue_status IN ('pending','retry')"
+                    ).fetchone()[0]
+                )
+                if active > 0 and int(getattr(client, "requests_claimed", 0)) < plan.allowed:
+                    scanner = Phase2Scanner(
+                        phase1,
+                        phase2,
+                        client,
+                        workers=max(1, min(10, int(args.workers))),
+                        retry_limit=max(1, int(args.retry_limit)),
+                        canary_min_sample=max(1, int(args.canary_min_sample)),
+                        continue_zero_yield=args.continue_zero_yield,
+                    )
+                    halt = scanner.run()
             report = build_report(
                 phase1,
                 phase2,
