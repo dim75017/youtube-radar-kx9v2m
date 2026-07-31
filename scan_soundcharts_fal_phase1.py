@@ -4,7 +4,7 @@
 This collector is deliberately isolated from every public/canonical Spotify
 Radar artifact. It freezes a deterministic, audited seed cohort, stores the
 complete related-artist graph in SQLite, then qualifies only *new* artists
-before walking their associated discographies, including featured tracks.
+before walking only the tracks where each artist is a main performer.
 
 Unknown instrumental or AI status is review work, never approval.  Only
 explicit vocal, out-of-taxonomy or high-AI evidence is blocked automatically.
@@ -20,7 +20,9 @@ import hashlib
 import json
 import math
 import re
+import shutil
 import sqlite3
+import tempfile
 import unicodedata
 import urllib.parse
 from dataclasses import dataclass
@@ -43,6 +45,8 @@ from spotify_performance_store import PerformanceStoreError, read_performance_pa
 
 STATE_VERSION = 2
 REPORT_VERSION = 2
+CATALOG_SCOPE_META_KEY = "discography_scope_version"
+CATALOG_SCOPE_VERSION = "main_performer_v1"
 HARD_MIN_QUOTA_RESERVE = 500_000
 # Current maintenance is roughly 46.6k calls/day at the protected track cap.
 # Keep retry/variance headroom without immobilising the separate FAL budget.
@@ -83,7 +87,7 @@ VOCAL_RE = re.compile(
     r"(?:^|\b)(?:vocal(?:s|ist)?|with lyrics?|singer(?: songwriter)?|rapper|rap vocals?)(?:\b|$)",
     re.IGNORECASE,
 )
-AI_HIGH_RE = re.compile(r"(?:^|\b)(?:high|elevated|eleve|elevé)(?:\b|$)", re.IGNORECASE)
+AI_HIGH_RE = re.compile(r"(?:^|\b)(?:high|elevated|eleve|elevÃ©)(?:\b|$)", re.IGNORECASE)
 SPOTIFY_ID_RE = re.compile(r"^[A-Za-z0-9]{15,32}$")
 ISRC_RE = re.compile(r"^[A-Z]{2}[A-Z0-9]{3}\d{7}$", re.IGNORECASE)
 
@@ -595,6 +599,7 @@ def open_state(path: Path) -> sqlite3.Connection:
             f"Unsupported staging state version ({stored_version}; expected {STATE_VERSION})"
         )
     connection.commit()
+    migrate_main_performer_v1(connection)
     return connection
 
 
@@ -608,6 +613,115 @@ def meta_set(connection: sqlite3.Connection, key: str, value: Any) -> None:
         "INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
         (key, str(value)),
     )
+
+
+def migrate_main_performer_v1(connection: sqlite3.Connection) -> dict[str, int | bool]:
+    """Discard only legacy broad-scope inventory and resume it safely.
+
+    States created before ``main_performer_v1`` cannot distinguish a main
+    performance from a feature.  Every pre-marker track/link is therefore
+    untrusted staging inventory.  The graph, artist identities and audience
+    measurements stay intact; only catalogue-derived rows/cursors are reset.
+    The scope marker is committed in the same transaction as the cleanup so a
+    retry is either a complete first migration or a true no-op.
+    """
+
+    stored_scope = meta_get(connection, CATALOG_SCOPE_META_KEY)
+    if stored_scope == CATALOG_SCOPE_VERSION:
+        return {
+            "applied": False,
+            "affected_candidates": 0,
+            "candidate_tracks_deleted": 0,
+            "tracks_deleted": 0,
+            "candidates_requeued": 0,
+        }
+    if stored_scope not in (None, ""):
+        raise FalPhase1Error(
+            f"Unsupported discography scope version ({stored_scope}; expected {CATALOG_SCOPE_VERSION})"
+        )
+
+    now = utc_now()
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        connection.execute(
+            "CREATE TEMP TABLE IF NOT EXISTS main_performer_v1_affected(candidate_uuid TEXT PRIMARY KEY)"
+        )
+        connection.execute("DELETE FROM main_performer_v1_affected")
+        connection.execute(
+            """INSERT OR IGNORE INTO main_performer_v1_affected(candidate_uuid)
+               SELECT DISTINCT candidate_uuid FROM candidate_tracks"""
+        )
+        connection.execute(
+            """INSERT OR IGNORE INTO main_performer_v1_affected(candidate_uuid)
+               SELECT DISTINCT candidate_uuid FROM tracks"""
+        )
+        # Completed empty inventories and interrupted page walks have no track
+        # row to identify them, so include catalogue-derived cursor/status data.
+        connection.execute(
+            """INSERT OR IGNORE INTO main_performer_v1_affected(candidate_uuid)
+               SELECT soundcharts_uuid FROM candidates
+               WHERE catalog_offset<>0 OR catalog_total IS NOT NULL
+                  OR status IN (
+                    'catalog_pending','review_inventory_complete','details_pending',
+                    'review_complete','eligible_complete'
+                  )"""
+        )
+        affected_candidates = int(
+            connection.execute("SELECT COUNT(*) FROM main_performer_v1_affected").fetchone()[0]
+        )
+
+        candidate_tracks_deleted = connection.execute("DELETE FROM candidate_tracks").rowcount
+        tracks_deleted = connection.execute("DELETE FROM tracks").rowcount
+
+        # The old first page also supplied latest-release/activity evidence.
+        # Resume every affected candidate at activity, never directly at a
+        # later catalogue offset, so that evidence is rebuilt in the new scope.
+        candidates_requeued = connection.execute(
+            """UPDATE candidates
+               SET status='activity_pending',reason='main_performer_v1_rescan_required',
+                   attempts=0,error_code=NULL,updated_at=?
+               WHERE soundcharts_uuid IN (SELECT candidate_uuid FROM main_performer_v1_affected)""",
+            (now,),
+        ).rowcount
+        connection.execute(
+            """UPDATE candidates
+               SET catalog_offset=0,catalog_total=NULL,latest_release_date=NULL
+               WHERE soundcharts_uuid IN (SELECT candidate_uuid FROM main_performer_v1_affected)"""
+        )
+
+        meta_set(connection, "main_performer_v1_applied_at", now)
+        meta_set(connection, "main_performer_v1_affected_candidates", affected_candidates)
+        meta_set(connection, "main_performer_v1_candidate_tracks_deleted", candidate_tracks_deleted)
+        meta_set(connection, "main_performer_v1_tracks_deleted", tracks_deleted)
+        meta_set(connection, "main_performer_v1_candidates_requeued", candidates_requeued)
+        meta_set(connection, CATALOG_SCOPE_META_KEY, CATALOG_SCOPE_VERSION)
+        connection.execute("DROP TABLE main_performer_v1_affected")
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+
+    return {
+        "applied": True,
+        "affected_candidates": affected_candidates,
+        "candidate_tracks_deleted": candidate_tracks_deleted,
+        "tracks_deleted": tracks_deleted,
+        "candidates_requeued": candidates_requeued,
+    }
+
+
+def prepare_runtime_state(
+    state_path: Path, *, dry_run: bool
+) -> tuple[tempfile.TemporaryDirectory[str] | None, Path]:
+    """Return an isolated state path for observational preflight runs."""
+
+    if not dry_run:
+        return None, state_path
+    dry_run_dir = tempfile.TemporaryDirectory(prefix="soundcharts-fal-phase1-dry-run-")
+    isolated_path = Path(dry_run_dir.name) / state_path.name
+    if state_path.exists():
+        shutil.copy2(state_path, isolated_path)
+    return dry_run_dir, isolated_path
 
 
 def freeze_seed_cohort(
@@ -1544,7 +1658,13 @@ class Phase1Scanner:
         tasks = []
         for row in rows:
             query = urllib.parse.urlencode(
-                {"sortBy": "releaseDate", "sortOrder": "desc", "offset": 0, "limit": self.catalog_page_size}
+                {
+                    "mainPerformer": 1,
+                    "sortBy": "releaseDate",
+                    "sortOrder": "desc",
+                    "offset": 0,
+                    "limit": self.catalog_page_size,
+                }
             )
             tasks.append((row["soundcharts_uuid"], f"/api/v2.21/artist/{urllib.parse.quote(row['soundcharts_uuid'])}/songs?{query}"))
         results, errors = self._fetch_batch(tasks)
@@ -1595,7 +1715,13 @@ class Phase1Scanner:
         tasks = []
         for row in rows:
             query = urllib.parse.urlencode(
-                {"sortBy": "releaseDate", "sortOrder": "desc", "offset": int(row["catalog_offset"]), "limit": self.catalog_page_size}
+                {
+                    "mainPerformer": 1,
+                    "sortBy": "releaseDate",
+                    "sortOrder": "desc",
+                    "offset": int(row["catalog_offset"]),
+                    "limit": self.catalog_page_size,
+                }
             )
             tasks.append((row["soundcharts_uuid"], f"/api/v2.21/artist/{urllib.parse.quote(row['soundcharts_uuid'])}/songs?{query}"))
         results, errors = self._fetch_batch(tasks)
@@ -2018,6 +2144,14 @@ def build_report(
         },
         "discographies": {
             "mode": "inventory_light",
+            "scope_version": meta_get(connection, CATALOG_SCOPE_META_KEY) or "unknown",
+            "scope_migration": {
+                "applied_at": meta_get(connection, "main_performer_v1_applied_at"),
+                "affected_candidates": finite_int(meta_get(connection, "main_performer_v1_affected_candidates")) or 0,
+                "candidate_tracks_deleted": finite_int(meta_get(connection, "main_performer_v1_candidate_tracks_deleted")) or 0,
+                "tracks_deleted": finite_int(meta_get(connection, "main_performer_v1_tracks_deleted")) or 0,
+                "candidates_requeued": finite_int(meta_get(connection, "main_performer_v1_candidates_requeued")) or 0,
+            },
             "tracks_staged": int(connection.execute("SELECT COUNT(*) FROM tracks").fetchone()[0]),
             "candidate_track_links": int(connection.execute("SELECT COUNT(*) FROM candidate_tracks").fetchone()[0]),
             "track_status_counts": track_counts,
@@ -2041,6 +2175,7 @@ def build_report(
                 "missing_track_identifiers": "deferred_to_phase2",
             },
             "track_metadata_enrichment": "deferred_to_phase2",
+            "artist_discography_scope": "main_performer_only",
             "lyrics_and_ai_unknown": "review_metadata_pending",
             "publication": "disabled",
         },
@@ -2144,7 +2279,8 @@ def main() -> int:
             known,
             build_known_identities(active, browse, radar, performance, legacy),
         )
-    connection = open_state(args.state)
+    dry_run_dir, runtime_state = prepare_runtime_state(args.state, dry_run=args.dry_run)
+    connection = open_state(runtime_state)
     reconciliation: dict[str, Any] | None = None
     if ledger is not None:
         reconciliation = reconcile_seed_ledger(connection, seeds, resolution_pending, ledger)
@@ -2157,18 +2293,22 @@ def main() -> int:
             snapshot_generated_at=source_generated_at,
         )
     if args.dry_run:
-        report = build_report(
-            connection,
-            source_eligible=source_eligible,
-            source_snapshot=source_path,
-            source_generated_at=source_generated_at,
-            seed_ledger=ledger,
-            reconciliation=reconciliation,
-        )
-        write_report(args.report, report)
-        print(json.dumps(report, ensure_ascii=False, separators=(",", ":")))
-        connection.close()
-        return 0
+        try:
+            report = build_report(
+                connection,
+                source_eligible=source_eligible,
+                source_snapshot=source_path,
+                source_generated_at=source_generated_at,
+                seed_ledger=ledger,
+                reconciliation=reconciliation,
+            )
+            write_report(args.report, report)
+            print(json.dumps(report, ensure_ascii=False, separators=(",", ":")))
+            return 0
+        finally:
+            connection.close()
+            if dry_run_dir is not None:
+                dry_run_dir.cleanup()
 
     hard_reserve = max(HARD_MIN_QUOTA_RESERVE, int(args.quota_reserve))
     client = SoundchartsClient(

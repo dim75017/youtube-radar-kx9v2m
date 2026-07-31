@@ -19,6 +19,18 @@ class SoundchartsFalPhase2WorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("workflow_dispatch:", self.workflow)
         self.assertIn("- cron: '53 8,20 * * *'", self.workflow)
         self.assertIn("Latest phase-1 v2 report is not complete", self.workflow)
+        self.assertIn(
+            'scope_version != "main_performer_v1"',
+            self.workflow,
+        )
+        self.assertIn(
+            "WHERE key='discography_scope_version'",
+            self.workflow,
+        )
+        self.assertIn(
+            'scope_marker[0] != "main_performer_v1"',
+            self.workflow,
+        )
 
     def test_all_soundcharts_calls_share_the_existing_serial_lock(self):
         self.assertIn(

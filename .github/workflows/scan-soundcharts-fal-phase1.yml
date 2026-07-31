@@ -172,6 +172,7 @@ jobs:
               and report.get("status") == "complete"
               and report.get("staging_only") is True
               and report.get("canonical_written") is False
+              and report.get("discographies", {}).get("scope_version") == "main_performer_v1"
           )
           if unchanged:
               shutil.copy2(sys.argv[3], sys.argv[4])
@@ -287,9 +288,10 @@ jobs:
         id: completion
         shell: bash
         run: |
-          python - "$REPORT_JSON" "$GITHUB_OUTPUT" <<'PY'
+          python - "$REPORT_JSON" "$GITHUB_OUTPUT" "$STATE_DB" <<'PY'
           import json
           import os
+          import sqlite3
           import sys
           from pathlib import Path
 
@@ -306,7 +308,15 @@ jobs:
               )
           if cohort_size < resolved:
               raise SystemExit("Append-only FAL state contains fewer seeds than the current resolved ledger")
-          complete = report.get("complete") is True
+          with sqlite3.connect(f"file:{sys.argv[3]}?mode=ro", uri=True) as state:
+              scope_row = state.execute(
+                  "SELECT value FROM meta WHERE key='discography_scope_version'"
+              ).fetchone()
+          checkpoint_scope = str(scope_row[0]) if scope_row else ""
+          complete = (
+              report.get("complete") is True
+              and checkpoint_scope == "main_performer_v1"
+          )
           if complete and report.get("status") != "complete":
               raise SystemExit("FAL report has an inconsistent completion status")
           with Path(sys.argv[2]).open("a", encoding="utf-8") as output:
