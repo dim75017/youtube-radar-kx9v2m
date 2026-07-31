@@ -234,6 +234,68 @@ def legacy_payload():
 
 
 class OpportunityEngineTests(unittest.TestCase):
+    def test_lifetime_stream_floor_is_inclusive_and_counts_rejections(self):
+        current = base_payload()
+        below = track_row(
+            "track-below-floor01",
+            "song-below-floor",
+            "Almost There",
+            "Below Floor Artist",
+            "2026-06-01",
+            "self_released",
+            "artist-below-floor01",
+            "artist-below-floor",
+        )
+        exact = track_row(
+            "track-exact-floor01",
+            "song-exact-floor",
+            "Exactly There",
+            "Exact Floor Artist",
+            "2026-06-01",
+            "self_released",
+            "artist-exact-floor01",
+            "artist-exact-floor",
+        )
+        current["tracks"].extend([below, exact])
+        current["artists"].extend([
+            artist_row(
+                "artist-below-floor01",
+                "artist-below-floor",
+                "Below Floor Artist",
+                80_000,
+            ),
+            artist_row(
+                "artist-exact-floor01",
+                "artist-exact-floor",
+                "Exact Floor Artist",
+                80_000,
+            ),
+        ])
+        performance = performance_payload()
+        performance["tracks"].update({
+            "track-below-floor01": {
+                "history": history(99_999, 1_000, 5_000, 2_500, 20_000)
+            },
+            "track-exact-floor01": {
+                "history": history(100_000, 1_000, 5_000, 2_500, 20_000)
+            },
+        })
+
+        with patch.object(subject, "utc_today", return_value=dt.date(2026, 7, 21)):
+            subject.generate_opportunities(current, performance, legacy_payload())
+
+        schema = current["schemas"]["opportunities"]
+        ids = {
+            subject.field(row, schema, "spotify_id")
+            for row in current["opportunities"]
+        }
+        self.assertNotIn("track-below-floor01", ids)
+        self.assertIn("track-exact-floor01", ids)
+        self.assertGreaterEqual(
+            current["opportunity_scoring"]["excluded"]["below_stream_floor"],
+            1,
+        )
+
     def test_dynamic_engine_creates_separate_deal_types_and_excludes_bad_targets(self):
         current = base_payload()
         with patch.object(subject, "utc_today", return_value=dt.date(2026, 7, 21)):
@@ -457,3 +519,4 @@ class OpportunityEngineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
