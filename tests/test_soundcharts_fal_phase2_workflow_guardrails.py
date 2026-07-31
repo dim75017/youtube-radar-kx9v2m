@@ -28,8 +28,13 @@ class SoundchartsFalPhase2WorkflowGuardrailsTests(unittest.TestCase):
 
     def test_phase1_is_read_only_and_phase2_uses_a_small_separate_state(self):
         self.assertIn("PHASE1_STATE_ARTIFACT: soundcharts-fal-phase1-state-v2", self.workflow)
-        self.assertIn("PHASE2_STATE_ARTIFACT: soundcharts-fal-phase2-state-v1", self.workflow)
-        self.assertIn("soundcharts-fal-phase2-state-v1.sqlite3", self.workflow)
+        self.assertIn("PHASE2_STATE_ARTIFACT: soundcharts-fal-phase2-state-v2", self.workflow)
+        self.assertIn("PHASE2_CONTROL_ARTIFACT: soundcharts-fal-phase2-control-v2", self.workflow)
+        self.assertIn("soundcharts-fal-phase2-state-v2.sqlite3", self.workflow)
+        self.assertIn("soundcharts-fal-phase2-report-v2.json", self.workflow)
+        self.assertNotIn("soundcharts-fal-phase2-state-v1", self.workflow)
+        self.assertNotIn("soundcharts-fal-phase2-control-v1", self.workflow)
+        self.assertNotIn("soundcharts-fal-phase2-report-v1", self.workflow)
         self.assertIn("mode=ro", self.workflow)
         self.assertIn("sha256sum \"$PHASE1_DB\"", self.workflow)
         self.assertIn("test \"$before\" = \"$after\"", self.workflow)
@@ -45,7 +50,9 @@ class SoundchartsFalPhase2WorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("10#$max_new_queue > 10000", self.workflow)
         self.assertIn("continue_zero_yield", self.workflow)
         self.assertIn("zero_yield_schedule_paused", self.workflow)
-        self.assertIn("--max-new-queue 0", self.workflow)
+        self.assertIn('--max-new-queue "${{ steps.plan.outputs.max_new_queue }}"', self.workflow)
+        self.assertIn("artist_gate_active", self.workflow)
+        self.assertIn("soundcharts_fal_artist_gate.py", self.workflow)
         self.assertNotIn("detail_pending", self.workflow)
 
     def test_hard_and_maintenance_reserves_are_explicit(self):
