@@ -41,9 +41,11 @@ class SoundchartsFalPhase2WorkflowGuardrailsTests(unittest.TestCase):
     def test_phase1_is_read_only_and_phase2_uses_a_small_separate_state(self):
         self.assertIn("PHASE1_STATE_ARTIFACT: soundcharts-fal-phase1-state-v2", self.workflow)
         self.assertIn("PHASE2_STATE_ARTIFACT: soundcharts-fal-phase2-state-v3", self.workflow)
-        self.assertIn("PHASE2_CONTROL_ARTIFACT: soundcharts-fal-phase2-control-v3", self.workflow)
+        self.assertIn("PHASE2_CONTROL_ARTIFACT: soundcharts-fal-phase2-control-v4", self.workflow)
         self.assertIn("soundcharts-fal-phase2-state-v3.sqlite3", self.workflow)
-        self.assertIn("soundcharts-fal-phase2-report-v3.json", self.workflow)
+        self.assertIn("soundcharts-fal-phase2-report-v4.json", self.workflow)
+        self.assertNotIn("soundcharts-fal-phase2-control-v3", self.workflow)
+        self.assertNotIn("soundcharts-fal-phase2-report-v3", self.workflow)
         self.assertNotIn("soundcharts-fal-phase2-state-v2", self.workflow)
         self.assertNotIn("soundcharts-fal-phase2-control-v2", self.workflow)
         self.assertNotIn("soundcharts-fal-phase2-report-v2", self.workflow)
@@ -64,8 +66,23 @@ class SoundchartsFalPhase2WorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("zero_yield_schedule_paused", self.workflow)
         self.assertIn('--max-new-queue "${{ steps.plan.outputs.max_new_queue }}"', self.workflow)
         self.assertIn("artist_gate_active", self.workflow)
+        self.assertIn("track_stream_active", self.workflow)
+        self.assertIn("stream_active > 0", self.workflow)
         self.assertIn("soundcharts_fal_artist_gate.py", self.workflow)
         self.assertNotIn("detail_pending", self.workflow)
+
+    def test_lifetime_stream_gate_is_fixed_at_100k_for_every_execution_path(self):
+        self.assertIn("TRACK_MIN_LIFETIME_STREAMS: '100000'", self.workflow)
+        self.assertEqual(
+            self.workflow.count('--min-lifetime-streams "$TRACK_MIN_LIFETIME_STREAMS"'),
+            3,
+        )
+        self.assertIn("PHASE2_CONTROL_ARTIFACT: soundcharts-fal-phase2-control-v4", self.workflow)
+        self.assertIn("soundcharts-fal-phase2-report-v4.json", self.workflow)
+        self.assertIn("PHASE2_STATE_ARTIFACT: soundcharts-fal-phase2-state-v3", self.workflow)
+        self.assertIn("soundcharts-fal-phase2-state-v3.sqlite3", self.workflow)
+        self.assertIn("streams_total<100000", self.workflow)
+        self.assertIn("Unknown Spotify streams must never pass", self.workflow)
 
     def test_automatic_resumes_use_full_safe_bounds_but_manual_defaults_stay_small(self):
         self.assertIn('default_max_requests=500', self.workflow)

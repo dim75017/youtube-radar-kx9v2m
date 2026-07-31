@@ -31,6 +31,7 @@ from refresh_soundcharts_daily import (
     SoundchartsError,
     SoundchartsQuotaReserveError,
     SoundchartsRequestLimitError,
+    extract_song_audience_points,
 )
 from scan_soundcharts_fal_phase1 import (
     CATALOG_SCOPE_META_KEY,
@@ -63,7 +64,7 @@ from soundcharts_fal_artist_gate import (
 
 
 PHASE2_STATE_VERSION = 3
-PHASE2_REPORT_VERSION = 3
+PHASE2_REPORT_VERSION = 4
 RUN_PROGRESS_VERSION = 1
 RUN_PROGRESS_META_KEY = "fal_phase2_run_progress_v1"
 DEFAULT_STATE = Path("soundcharts-fal-phase2-staging.sqlite3")
@@ -75,9 +76,19 @@ DEFAULT_MAINTENANCE_THROUGH = "2026-08-18"
 MAX_BATCH_REQUESTS = 40_000
 MAX_QUEUE_MIGRATION = 10_000
 ARTIST_GATE_BUDGET_PERCENT = 80
+DEFAULT_MIN_TRACK_STREAMS = 100_000
+DEFAULT_STREAM_HISTORY_DAYS = 90
+STREAM_GATE_META_VERSION = "spotify_lifetime_streams_v1"
+STREAM_GATE_SEED_DECISIONS = (
+    "review_evidence_ready",
+    "review_instrumental_signal",
+    "review_genre_signal",
+    "review_metadata_unknown",
+)
 
 ACTIVE_QUEUE_STATUSES = ("pending", "retry")
 ACTIVE_ARTIST_GATE_STATUSES = ("pending", "retry")
+ACTIVE_STREAM_GATE_STATUSES = ("pending", "retry")
 TERMINAL_REVIEW_STATUSES = (
     "review_evidence_ready",
     "review_instrumental_signal",
@@ -121,6 +132,7 @@ class InterleavedRun:
     halt_reason: str
     artist_requests: int
     track_requests: int
+    stream_requests: int = 0
 
 
 def plan_interleaved_budget(
@@ -128,6 +140,7 @@ def plan_interleaved_budget(
     *,
     artist_gate_active: int,
     track_details_paused: bool,
+    stream_gate_active: int = 0,
 ) -> InterleavedBudget:
     """Reserve track-detail capacity while the finite artist gate advances.
 
@@ -141,9 +154,11 @@ def plan_interleaved_budget(
     artists = max(0, int(artist_gate_active))
     if total <= 0:
         return InterleavedBudget(0, 0, 0)
+    streams = max(0, int(stream_gate_active))
+    track_work_paused = track_details_paused and streams <= 0
     if artists <= 0:
-        return InterleavedBudget(total, 0, 0 if track_details_paused else total)
-    if track_details_paused or total == 1:
+        return InterleavedBudget(total, 0, 0 if track_work_paused else total)
+    if track_work_paused or total == 1:
         return InterleavedBudget(total, min(total, artists), 0)
 
     track_reserve = max(1, total * (100 - ARTIST_GATE_BUDGET_PERCENT) // 100)
@@ -218,6 +233,21 @@ CREATE INDEX IF NOT EXISTS idx_fal_phase2_details_spotify
   ON fal_phase2_details(spotify_id);
 CREATE INDEX IF NOT EXISTS idx_fal_phase2_details_isrc
   ON fal_phase2_details(isrc);
+CREATE TABLE IF NOT EXISTS fal_phase2_stream_gate (
+  track_uuid TEXT PRIMARY KEY,
+  spotify_id TEXT,
+  gate_status TEXT NOT NULL DEFAULT 'pending',
+  reason TEXT NOT NULL DEFAULT 'stream_history_required',
+  streams_total INTEGER,
+  source_date TEXT,
+  history_json TEXT NOT NULL DEFAULT '[]',
+  attempts INTEGER NOT NULL DEFAULT 0,
+  error_code TEXT,
+  queued_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fal_phase2_stream_gate_status
+  ON fal_phase2_stream_gate(gate_status, track_uuid);
 CREATE TABLE IF NOT EXISTS fal_phase2_errors (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   track_uuid TEXT,
@@ -322,7 +352,7 @@ class RequestAttemptJournal:
         setattr(client, "_fal_phase2_request_journal", self)
 
     def set_kind(self, kind: str) -> None:
-        if kind not in {"artist_gate", "track_detail"}:
+        if kind not in {"artist_gate", "track_detail", "track_stream"}:
             raise RequestAttemptJournalError(f"Unsupported request journal kind: {kind}")
         with self._lock:
             if self._kind is not None:
@@ -443,6 +473,7 @@ def _read_request_attempts(
 
     artist = 0
     tracks = 0
+    streams = 0
     quota: int | None = None
     last_attempt_at: str | None = None
     try:
@@ -461,6 +492,8 @@ def _read_request_attempts(
                     artist += 1
                 elif kind == "track_detail":
                     tracks += 1
+                elif kind == "track_stream":
+                    streams += 1
                 else:
                     continue
                 observed_quota = finite_int(row.get("quota_remaining"))
@@ -470,9 +503,10 @@ def _read_request_attempts(
     except OSError:
         return None
     return {
-        "claimed_total": artist + tracks,
+        "claimed_total": artist + tracks + streams,
         "claimed_artist_gate": artist,
         "claimed_track_detail": tracks,
+        "claimed_track_stream": streams,
         "quota_remaining": quota,
         "last_attempt_at": last_attempt_at,
     }
@@ -501,10 +535,16 @@ def _reconcile_request_attempts(
         return None
     requests = dict(progress.get("requests") or {})
     allocation = dict(progress.get("allocation") or {})
-    for key in ("claimed_total", "claimed_artist_gate", "claimed_track_detail"):
+    for key in (
+        "claimed_total",
+        "claimed_artist_gate",
+        "claimed_track_detail",
+        "claimed_track_stream",
+    ):
         requests[key] = int(attempts[key])
     allocation["claimed_artist_gate"] = int(attempts["claimed_artist_gate"])
     allocation["claimed_track_detail"] = int(attempts["claimed_track_detail"])
+    allocation["claimed_track_stream"] = int(attempts["claimed_track_stream"])
     progress["requests"] = requests
     progress["allocation"] = allocation
     progress["updated_at"] = utc_now()
@@ -625,6 +665,7 @@ def begin_run_progress(
             "claimed_total": 0,
             "claimed_artist_gate": 0,
             "claimed_track_detail": 0,
+            "claimed_track_stream": 0,
         },
         "allocation": {
             "strategy": "weighted_artist_gate_with_track_detail_reserve",
@@ -633,6 +674,7 @@ def begin_run_progress(
             "planned_track_detail": int(budget.track_detail),
             "claimed_artist_gate": 0,
             "claimed_track_detail": 0,
+            "claimed_track_stream": 0,
         },
         "preflight": _budget_plan_payload(budget_plan),
         "migration": _migration_payload(migration),
@@ -659,7 +701,7 @@ def checkpoint_committed_requests(
     progress = load_run_progress(connection)
     if progress is None:
         return
-    if kind not in {"artist_gate", "track_detail"}:
+    if kind not in {"artist_gate", "track_detail", "track_stream"}:
         raise FalPhase2Error(f"Unsupported phase-2 request kind: {kind}")
     requests = dict(progress.get("requests") or {})
     allocation = dict(progress.get("allocation") or {})
@@ -840,10 +882,12 @@ def _purge_orphan_phase2_tracks(
                    SELECT track_uuid FROM fal_phase2_queue WHERE track_uuid>?
                    UNION
                    SELECT track_uuid FROM fal_phase2_details WHERE track_uuid>?
+                   UNION
+                   SELECT track_uuid FROM fal_phase2_stream_gate WHERE track_uuid>?
                  )
                  ORDER BY track_uuid
                  LIMIT ?""",
-            (cursor, cursor, limit),
+            (cursor, cursor, cursor, limit),
         ).fetchall()
         if not rows:
             break
@@ -880,6 +924,10 @@ def _purge_orphan_phase2_tracks(
                 ).rowcount
                 or 0
             ),
+        )
+        phase2.execute(
+            f"DELETE FROM fal_phase2_stream_gate WHERE track_uuid IN ({orphan_placeholders})",
+            orphaned,
         )
     return queue_deleted, details_deleted
 
@@ -1204,6 +1252,365 @@ def canary_zero_yield(connection: sqlite3.Connection, minimum_sample: int) -> bo
     return int(stats["sampled"]) >= max(1, int(minimum_sample)) and int(stats["useful_signal"]) == 0
 
 
+def seed_stream_gate(
+    phase2: sqlite3.Connection,
+    *,
+    min_track_streams: int = DEFAULT_MIN_TRACK_STREAMS,
+    history_days: int = DEFAULT_STREAM_HISTORY_DAYS,
+    commit: bool = True,
+) -> int:
+    """Add every non-blocked detail result to the lifetime-stream gate.
+
+    The phase-two state stays at v3: this is an additive staging table and the
+    threshold is versioned independently.  A threshold change re-evaluates
+    already measured rows locally, without spending another Soundcharts call.
+    Missing stream history remains an explicit review state and can never pass.
+    """
+
+    threshold = max(0, int(min_track_streams))
+    window = max(65, min(365, int(history_days)))
+    decisions = tuple(STREAM_GATE_SEED_DECISIONS)
+    placeholders = ",".join("?" for _ in decisions)
+    now = utc_now()
+    try:
+        phase2.execute("BEGIN IMMEDIATE")
+        meta_set(phase2, "fal_phase2_stream_gate_version", STREAM_GATE_META_VERSION)
+        meta_set(phase2, "fal_phase2_stream_gate_min_streams", threshold)
+        meta_set(phase2, "fal_phase2_stream_gate_history_days", window)
+        # A later metadata correction may turn a review row into an explicit
+        # block or duplicate.  Such a row must stop consuming stream calls.
+        phase2.execute(
+            f"""DELETE FROM fal_phase2_stream_gate
+                  WHERE EXISTS (
+                    SELECT 1 FROM fal_phase2_details d
+                     WHERE d.track_uuid=fal_phase2_stream_gate.track_uuid
+                       AND d.decision NOT IN ({placeholders})
+                  )""",
+            decisions,
+        )
+        inserted = phase2.execute(
+            f"""INSERT OR IGNORE INTO fal_phase2_stream_gate(
+                   track_uuid,spotify_id,gate_status,reason,queued_at,updated_at)
+                 SELECT track_uuid,NULLIF(spotify_id,''),'pending',
+                        'stream_history_required',?,?
+                   FROM fal_phase2_details
+                  WHERE decision IN ({placeholders})""",
+            (now, now, *decisions),
+        ).rowcount
+        phase2.execute(
+            """UPDATE fal_phase2_stream_gate
+                  SET spotify_id=(
+                        SELECT NULLIF(d.spotify_id,'') FROM fal_phase2_details d
+                         WHERE d.track_uuid=fal_phase2_stream_gate.track_uuid
+                      ),
+                      updated_at=CASE WHEN spotify_id IS NULL THEN ? ELSE updated_at END
+                WHERE EXISTS (
+                        SELECT 1 FROM fal_phase2_details d
+                         WHERE d.track_uuid=fal_phase2_stream_gate.track_uuid
+                           AND NULLIF(d.spotify_id,'') IS NOT NULL
+                      )
+                  AND COALESCE(spotify_id,'')<>COALESCE((
+                        SELECT NULLIF(d.spotify_id,'') FROM fal_phase2_details d
+                         WHERE d.track_uuid=fal_phase2_stream_gate.track_uuid
+                      ),'')""",
+            (now,),
+        )
+        phase2.execute(
+            """UPDATE fal_phase2_stream_gate
+                  SET gate_status=CASE WHEN streams_total>=? THEN 'eligible'
+                                       ELSE 'blocked_streams_below_threshold' END,
+                      reason=CASE WHEN streams_total>=? THEN 'lifetime_stream_threshold_met'
+                                  ELSE 'lifetime_streams_below_threshold' END,
+                      attempts=0,error_code=NULL,updated_at=?
+                WHERE streams_total IS NOT NULL""",
+            (threshold, threshold, now),
+        )
+        meta_set(phase2, "fal_phase2_stream_gate_seeded_at", now)
+        if commit:
+            phase2.commit()
+    except Exception:
+        phase2.rollback()
+        raise
+    return max(0, int(inserted or 0))
+
+
+def sync_stream_gate_detail(
+    phase2: sqlite3.Connection,
+    *,
+    track_uuid: str,
+    spotify_id: str,
+    decision: str,
+    updated_at: str,
+) -> None:
+    """Synchronize one freshly enriched detail without rescanning the table."""
+
+    if decision not in STREAM_GATE_SEED_DECISIONS:
+        phase2.execute(
+            "DELETE FROM fal_phase2_stream_gate WHERE track_uuid=?",
+            (track_uuid,),
+        )
+        return
+    current = phase2.execute(
+        "SELECT spotify_id FROM fal_phase2_stream_gate WHERE track_uuid=?",
+        (track_uuid,),
+    ).fetchone()
+    normalized_spotify_id = str(spotify_id or "").strip() or None
+    if current is None:
+        phase2.execute(
+            """INSERT INTO fal_phase2_stream_gate(
+                   track_uuid,spotify_id,gate_status,reason,queued_at,updated_at)
+                 VALUES(?,?,'pending','stream_history_required',?,?)""",
+            (track_uuid, normalized_spotify_id, updated_at, updated_at),
+        )
+        return
+    previous_spotify_id = str(current["spotify_id"] or "").strip() or None
+    if previous_spotify_id != normalized_spotify_id:
+        phase2.execute(
+            """UPDATE fal_phase2_stream_gate
+                  SET spotify_id=?,gate_status='pending',reason='spotify_identity_changed',
+                      streams_total=NULL,source_date=NULL,history_json='[]',attempts=0,
+                      error_code=NULL,updated_at=?
+                WHERE track_uuid=?""",
+            (normalized_spotify_id, updated_at, track_uuid),
+        )
+
+
+def _walk_mappings(value: Any):
+    if isinstance(value, Mapping):
+        yield value
+        for child in value.values():
+            yield from _walk_mappings(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _walk_mappings(child)
+
+
+def extract_stream_gate_points(response: Any, spotify_id: str = "") -> list[list[Any]]:
+    """Extract cumulative Spotify streams without accepting an alias guess."""
+
+    identifier = str(spotify_id or "").strip()
+    if identifier:
+        return extract_song_audience_points(
+            response,
+            identifier,
+            require_identifier_match=True,
+        )
+
+    # Without a Spotify identifier, Soundcharts may expose several aliases in
+    # one SongPlot.  Accept only the unambiguous single-numeric-plot shape.
+    found_numeric = False
+    for item in _walk_mappings(response):
+        plots = item.get("plots")
+        if not isinstance(plots, list):
+            continue
+        numeric = [
+            plot
+            for plot in plots
+            if isinstance(plot, Mapping) and isinstance(plot.get("value"), (int, float))
+        ]
+        if len(numeric) > 1:
+            return []
+        found_numeric = found_numeric or len(numeric) == 1
+    if not found_numeric:
+        return []
+    return extract_song_audience_points(response, "", require_identifier_match=False)
+
+
+class StreamGateScanner:
+    """Measure cumulative Spotify streams and apply the strict staging gate."""
+
+    def __init__(
+        self,
+        phase2: sqlite3.Connection,
+        client: Any,
+        *,
+        workers: int,
+        retry_limit: int,
+        min_track_streams: int = DEFAULT_MIN_TRACK_STREAMS,
+        history_days: int = DEFAULT_STREAM_HISTORY_DAYS,
+        as_of: str | dt.date | dt.datetime | None = None,
+    ) -> None:
+        self.phase2 = phase2
+        self.client = client
+        self.workers = max(1, int(workers))
+        self.retry_limit = max(1, int(retry_limit))
+        self.min_track_streams = max(0, int(min_track_streams))
+        self.history_days = max(65, min(365, int(history_days)))
+        today = parse_as_of(as_of).astimezone(dt.timezone.utc).date()
+        start = today - dt.timedelta(days=self.history_days - 1)
+        self.query = urllib.parse.urlencode(
+            {
+                "startDate": start.isoformat(),
+                "endDate": today.isoformat(),
+                "limit": max(100, self.history_days + 5),
+            }
+        )
+        self.halt_reason: str | None = None
+
+    def _record_error(self, uuid: str, code: str) -> None:
+        self.phase2.execute(
+            "INSERT INTO fal_phase2_errors(track_uuid,error_code,observed_at) VALUES(?,?,?)",
+            (uuid, f"track_stream:{code}", utc_now()),
+        )
+
+    def _fetch_batch(self, rows: Sequence[sqlite3.Row]) -> tuple[dict[str, Any], dict[str, str]]:
+        results: dict[str, Any] = {}
+        errors: dict[str, str] = {}
+
+        def fetch(row: sqlite3.Row) -> tuple[str, Any]:
+            uuid = str(row["track_uuid"])
+            path = (
+                f"/api/v2/song/{urllib.parse.quote(uuid)}/audience/spotify?{self.query}"
+            )
+            return uuid, self.client.get(path)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.workers) as executor:
+            futures = {executor.submit(fetch, row): str(row["track_uuid"]) for row in rows}
+            for future in concurrent.futures.as_completed(futures):
+                uuid = futures[future]
+                try:
+                    result_uuid, payload = future.result()
+                    results[result_uuid] = payload
+                except SoundchartsRequestLimitError:
+                    errors[uuid] = "request_limit"
+                    self.halt_reason = "request_limit"
+                except SoundchartsQuotaReserveError:
+                    errors[uuid] = "quota_reserve"
+                    self.halt_reason = "quota_reserve"
+                except SoundchartsDataUnavailableError:
+                    errors[uuid] = "unavailable"
+                except (SoundchartsError, OSError, RuntimeError):
+                    errors[uuid] = "request_failed"
+        return results, errors
+
+    def _store_result(self, row: sqlite3.Row, response: Any) -> None:
+        uuid = str(row["track_uuid"])
+        spotify_id = str(row["spotify_id"] or "").strip()
+        points = extract_stream_gate_points(response, spotify_id)
+        valid_points = [
+            [str(point[0]), int(point[1])]
+            for point in points
+            if isinstance(point, (list, tuple))
+            and len(point) >= 2
+            and finite_int(point[1]) is not None
+            and int(point[1]) >= 0
+        ]
+        now = utc_now()
+        if not valid_points:
+            self.phase2.execute(
+                """UPDATE fal_phase2_stream_gate
+                      SET gate_status='review_streams_unknown',
+                          reason='spotify_stream_history_missing_or_ambiguous',
+                          streams_total=NULL,source_date=NULL,history_json='[]',
+                          attempts=0,error_code=NULL,updated_at=?
+                    WHERE track_uuid=?""",
+                (now, uuid),
+            )
+            return
+        source_date, streams_total = valid_points[-1]
+        passed = streams_total >= self.min_track_streams
+        self.phase2.execute(
+            """UPDATE fal_phase2_stream_gate
+                  SET gate_status=?,reason=?,streams_total=?,source_date=?,history_json=?,
+                      attempts=0,error_code=NULL,updated_at=?
+                WHERE track_uuid=?""",
+            (
+                "eligible" if passed else "blocked_streams_below_threshold",
+                "lifetime_stream_threshold_met" if passed else "lifetime_streams_below_threshold",
+                streams_total,
+                source_date,
+                json.dumps(valid_points, ensure_ascii=False, separators=(",", ":")),
+                now,
+                uuid,
+            ),
+        )
+
+    def _store_unavailable(self, row: sqlite3.Row) -> None:
+        uuid = str(row["track_uuid"])
+        now = utc_now()
+        self.phase2.execute(
+            """UPDATE fal_phase2_stream_gate
+                  SET gate_status='review_streams_unavailable',
+                      reason='soundcharts_spotify_stream_history_unavailable',
+                      streams_total=NULL,source_date=NULL,history_json='[]',
+                      error_code='unavailable',updated_at=?
+                WHERE track_uuid=?""",
+            (now, uuid),
+        )
+        self._record_error(uuid, "unavailable")
+
+    def scan_batch(self, max_items: int | None = None) -> bool:
+        limit = self.workers if max_items is None else min(self.workers, max(0, int(max_items)))
+        if limit <= 0:
+            return False
+        rows = self.phase2.execute(
+            """SELECT * FROM fal_phase2_stream_gate
+                WHERE gate_status IN ('pending','retry')
+                ORDER BY queued_at,track_uuid LIMIT ?""",
+            (limit,),
+        ).fetchall()
+        if not rows:
+            return False
+        by_uuid = {str(row["track_uuid"]): row for row in rows}
+        claimed_before = int(getattr(self.client, "requests_claimed", 0) or 0)
+        results, errors = _with_request_journal_kind(
+            self.client,
+            "track_stream",
+            lambda: self._fetch_batch(rows),
+        )
+        claimed_after = int(getattr(self.client, "requests_claimed", 0) or 0)
+        for uuid, response in results.items():
+            self._store_result(by_uuid[uuid], response)
+        for uuid, code in errors.items():
+            row = by_uuid[uuid]
+            if code == "unavailable":
+                self._store_unavailable(row)
+                continue
+            if code in {"request_limit", "quota_reserve"}:
+                self.phase2.execute(
+                    "UPDATE fal_phase2_stream_gate SET error_code=?,updated_at=? WHERE track_uuid=?",
+                    (code, utc_now(), uuid),
+                )
+                self._record_error(uuid, code)
+                continue
+            attempts = int(row["attempts"] or 0) + 1
+            status = "review_request_failed" if attempts >= self.retry_limit else "retry"
+            reason = (
+                "bounded_stream_retries_exhausted"
+                if status == "review_request_failed"
+                else "transient_stream_request_retry"
+            )
+            self.phase2.execute(
+                """UPDATE fal_phase2_stream_gate
+                      SET gate_status=?,reason=?,attempts=?,error_code=?,updated_at=?
+                    WHERE track_uuid=?""",
+                (status, reason, attempts, code, utc_now(), uuid),
+            )
+            self._record_error(uuid, code)
+        checkpoint_committed_requests(
+            self.phase2,
+            self.client,
+            kind="track_stream",
+            claimed=max(0, claimed_after - claimed_before),
+        )
+        self.phase2.commit()
+        return True
+
+    def run(self, max_requests: int | None = None) -> str:
+        start = int(getattr(self.client, "requests_claimed", 0) or 0)
+        budget = None if max_requests is None else max(0, int(max_requests))
+        while not self.halt_reason:
+            remaining = None
+            if budget is not None:
+                used = max(0, int(getattr(self.client, "requests_claimed", 0) or 0) - start)
+                remaining = budget - used
+                if remaining <= 0:
+                    break
+            if not self.scan_batch(max_items=remaining):
+                break
+        return self.halt_reason or "idle"
+
+
 class ArtistGateScanner:
     """Screen candidate artists once before opening any discography bulk."""
 
@@ -1514,6 +1921,13 @@ class Phase2Scanner:
                 WHERE track_uuid=?""",
             (decision, reason, now, uuid),
         )
+        sync_stream_gate_detail(
+            self.phase2,
+            track_uuid=uuid,
+            spotify_id=spotify_id,
+            decision=decision,
+            updated_at=now,
+        )
 
     def _store_unavailable(self, row: sqlite3.Row) -> None:
         uuid = str(row["track_uuid"])
@@ -1633,6 +2047,8 @@ def _run_interleaved_batches_impl(
     canary_min_sample: int,
     continue_zero_yield: bool,
     track_details_paused: bool,
+    min_track_streams: int = DEFAULT_MIN_TRACK_STREAMS,
+    stream_history_days: int = DEFAULT_STREAM_HISTORY_DAYS,
     initial_migration: QueueMigration | None = None,
     budget_plan: QuotaBudgetPlan | None = None,
     run_id: str = "",
@@ -1641,9 +2057,20 @@ def _run_interleaved_batches_impl(
 ) -> InterleavedRun:
     """Alternate bounded artist and track batches under one safe run budget."""
 
+    seed_stream_gate(
+        phase2,
+        min_track_streams=min_track_streams,
+        history_days=stream_history_days,
+    )
     artist_active = int(
         phase2.execute(
             """SELECT COUNT(*) FROM fal_phase2_artist_gate
+                WHERE gate_status IN ('pending','retry')"""
+        ).fetchone()[0]
+    )
+    stream_active = int(
+        phase2.execute(
+            """SELECT COUNT(*) FROM fal_phase2_stream_gate
                 WHERE gate_status IN ('pending','retry')"""
         ).fetchone()[0]
     )
@@ -1651,6 +2078,7 @@ def _run_interleaved_batches_impl(
         allowed_requests,
         artist_gate_active=artist_active,
         track_details_paused=track_details_paused,
+        stream_gate_active=stream_active,
     )
     migration = initial_migration or QueueMigration(0, 0, 0, 0, 0)
     if budget.allowed <= 0:
@@ -1683,11 +2111,21 @@ def _run_interleaved_batches_impl(
         canary_min_sample=max(1, int(canary_min_sample)),
         continue_zero_yield=continue_zero_yield,
     )
+    stream_scanner = StreamGateScanner(
+        phase2,
+        client,
+        workers=worker_count,
+        retry_limit=max(1, int(retry_limit)),
+        min_track_streams=min_track_streams,
+        history_days=stream_history_days,
+        as_of=as_of,
+    )
     start_claimed = int(getattr(client, "requests_claimed", 0) or 0)
     artist_remaining = budget.artist_gate
     track_remaining = budget.track_detail
     artist_requests = 0
     track_requests = 0
+    stream_requests = 0
     logical_spent = 0
     halt = "idle"
     tracks_paused = track_details_paused
@@ -1741,25 +2179,46 @@ def _run_interleaved_batches_impl(
         )
         total_remaining = budget.allowed - max(logical_spent, actual_spent)
         fatal_halt = halt in {"request_limit", "quota_reserve"}
-        if not tracks_paused and not fatal_halt and track_remaining > 0 and total_remaining > 0:
-            active_tracks = int(
+        if not fatal_halt and track_remaining > 0 and total_remaining > 0:
+            active_streams = int(
                 phase2.execute(
-                    """SELECT COUNT(*) FROM fal_phase2_queue
-                        WHERE queue_status IN ('pending','retry')"""
+                    """SELECT COUNT(*) FROM fal_phase2_stream_gate
+                        WHERE gate_status IN ('pending','retry')"""
                 ).fetchone()[0]
             )
-            if active_tracks > 0:
+            if active_streams > 0:
                 track_limit = min(track_remaining, total_remaining, worker_count)
                 before = int(getattr(client, "requests_claimed", 0) or 0)
-                did_track_work = track_scanner.scan_batch(max_items=track_limit)
+                did_stream_work = stream_scanner.scan_batch(max_items=track_limit)
                 after = int(getattr(client, "requests_claimed", 0) or 0)
                 claimed = max(0, after - before)
-                if did_track_work:
+                if did_stream_work:
                     spent = max(1, claimed)
                     track_remaining = max(0, track_remaining - spent)
                     logical_spent += spent
-                    track_requests += claimed
+                    stream_requests += claimed
                     progressed = True
+                if stream_scanner.halt_reason:
+                    halt = stream_scanner.halt_reason
+            elif not tracks_paused:
+                active_tracks = int(
+                    phase2.execute(
+                        """SELECT COUNT(*) FROM fal_phase2_queue
+                            WHERE queue_status IN ('pending','retry')"""
+                    ).fetchone()[0]
+                )
+                if active_tracks > 0:
+                    track_limit = min(track_remaining, total_remaining, worker_count)
+                    before = int(getattr(client, "requests_claimed", 0) or 0)
+                    did_track_work = track_scanner.scan_batch(max_items=track_limit)
+                    after = int(getattr(client, "requests_claimed", 0) or 0)
+                    claimed = max(0, after - before)
+                    if did_track_work:
+                        spent = max(1, claimed)
+                        track_remaining = max(0, track_remaining - spent)
+                        logical_spent += spent
+                        track_requests += claimed
+                        progressed = True
                     if not continue_zero_yield and canary_zero_yield(
                         phase2, max(1, int(canary_min_sample))
                     ):
@@ -1795,6 +2254,7 @@ def _run_interleaved_batches_impl(
         halt_reason=halt,
         artist_requests=artist_requests,
         track_requests=track_requests,
+        stream_requests=stream_requests,
     )
 
 
@@ -1854,9 +2314,15 @@ def build_report(
     artist_gate_counts = _count_by_status(
         phase2, "fal_phase2_artist_gate", "gate_status"
     )
+    stream_gate_counts = _count_by_status(
+        phase2, "fal_phase2_stream_gate", "gate_status"
+    )
     active = sum(queue_counts.get(status, 0) for status in ACTIVE_QUEUE_STATUSES)
     artist_gate_active = sum(
         artist_gate_counts.get(status, 0) for status in ACTIVE_ARTIST_GATE_STATUSES
+    )
+    stream_gate_active = sum(
+        stream_gate_counts.get(status, 0) for status in ACTIVE_STREAM_GATE_STATUSES
     )
     eligible_bulk_remaining = int(
         phase2.execute(
@@ -1873,7 +2339,12 @@ def build_report(
         ).fetchone()[0]
     )
     yield_stats = evidence_yield(phase2)
-    complete = artist_gate_active == 0 and eligible_bulk_remaining == 0 and active == 0
+    complete = (
+        artist_gate_active == 0
+        and eligible_bulk_remaining == 0
+        and active == 0
+        and stream_gate_active == 0
+    )
     if halt_reason == "canary_zero_evidence_yield":
         status = "paused_zero_evidence_yield"
     elif halt_reason == "maintenance_quota_protected":
@@ -1882,7 +2353,7 @@ def build_report(
         status = "partial"
     elif complete:
         status = "enrichment_complete_review_required"
-    elif active or artist_gate_active:
+    elif active or artist_gate_active or stream_gate_active:
         status = "partial"
     else:
         status = "ready"
@@ -1957,6 +2428,22 @@ def build_report(
             "unknown_genre_stays_in_review": True,
             "ai_risk_is_never_inferred": True,
         },
+        "stream_gate": {
+            "endpoint": "/api/v2/song/{uuid}/audience/spotify",
+            "metric": "spotify_lifetime_cumulative_streams",
+            "minimum_streams": finite_int(
+                meta_get(phase2, "fal_phase2_stream_gate_min_streams")
+            )
+            or DEFAULT_MIN_TRACK_STREAMS,
+            "history_days": finite_int(
+                meta_get(phase2, "fal_phase2_stream_gate_history_days")
+            )
+            or DEFAULT_STREAM_HISTORY_DAYS,
+            "status_counts": stream_gate_counts,
+            "active": stream_gate_active,
+            "missing_or_ambiguous_never_passes": True,
+            "threshold_pass_is_not_canonical_acceptance": True,
+        },
         "queue": {
             "active_cap": max(1, min(MAX_QUEUE_MIGRATION, int(active_queue_cap))),
             "migration_requested": migration.requested,
@@ -1967,9 +2454,10 @@ def build_report(
             "active": active,
         },
         "work": {
-            "active": artist_gate_active + active,
+            "active": artist_gate_active + active + stream_gate_active,
             "artist_gate_active": artist_gate_active,
             "track_detail_active": active,
+            "track_stream_active": stream_gate_active,
         },
         "details": {
             "enriched": int(phase2.execute("SELECT COUNT(*) FROM fal_phase2_details").fetchone()[0]),
@@ -1995,6 +2483,7 @@ def build_report(
                     "planned_track_detail": interleaved_run.budget.track_detail,
                     "claimed_artist_gate": interleaved_run.artist_requests,
                     "claimed_track_detail": interleaved_run.track_requests,
+                    "claimed_track_stream": interleaved_run.stream_requests,
                 }
                 if interleaved_run is not None
                 else None
@@ -2178,6 +2667,18 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--as-of", help="UTC date/datetime used only for deterministic recent-date filtering")
     parser.add_argument("--workers", type=int, default=5)
     parser.add_argument("--retry-limit", type=int, default=3)
+    parser.add_argument(
+        "--min-lifetime-streams",
+        "--min-track-streams",
+        dest="min_track_streams",
+        type=int,
+        default=DEFAULT_MIN_TRACK_STREAMS,
+    )
+    parser.add_argument(
+        "--stream-history-days",
+        type=int,
+        default=DEFAULT_STREAM_HISTORY_DAYS,
+    )
     parser.add_argument("--canary-min-sample", type=int, default=DEFAULT_MAX_REQUESTS)
     parser.add_argument("--continue-zero-yield", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
@@ -2195,6 +2696,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise FalPhase2Error(f"max_requests must be between 0 and {MAX_BATCH_REQUESTS}")
     if not 0 <= int(args.max_new_queue) <= MAX_QUEUE_MIGRATION:
         raise FalPhase2Error(f"max_new_queue must be between 0 and {MAX_QUEUE_MIGRATION}")
+    if int(args.min_track_streams) < 0:
+        raise FalPhase2Error("min_track_streams must be non-negative")
+    if not 65 <= int(args.stream_history_days) <= 365:
+        raise FalPhase2Error("stream_history_days must be between 65 and 365")
     phase1 = open_phase1_state(args.phase1_state)
     dry_run_dir: tempfile.TemporaryDirectory[str] | None = None
     client: Any | None = None
@@ -2210,6 +2715,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     phase2 = open_phase2_state(phase2_path)
     try:
         assert_phase1_complete(phase1)
+        seed_stream_gate(
+            phase2,
+            min_track_streams=args.min_track_streams,
+            history_days=args.stream_history_days,
+        )
         if args.recover_interrupted_report:
             report = build_interrupted_report(
                 phase1,
@@ -2255,6 +2765,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "SELECT COUNT(*) FROM fal_phase2_queue WHERE queue_status IN ('pending','retry')"
             ).fetchone()[0]
         )
+        stream_active = int(
+            phase2.execute(
+                """SELECT COUNT(*) FROM fal_phase2_stream_gate
+                    WHERE gate_status IN ('pending','retry')"""
+            ).fetchone()[0]
+        )
         eligible_bulk_remaining = int(
             phase2.execute(
                 """SELECT COUNT(*) FROM fal_phase2_artist_gate
@@ -2262,11 +2778,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             ).fetchone()[0]
         )
         if (
-            (paused and artist_active == 0)
+            (paused and artist_active == 0 and stream_active == 0)
             or args.dry_run
             or (
                 artist_active <= 0
                 and active <= 0
+                and stream_active <= 0
                 and eligible_bulk_remaining <= 0
             )
             or args.max_requests <= 0
@@ -2279,7 +2796,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 as_of=args.as_of,
                 halt_reason=(
                     "canary_zero_evidence_yield"
-                    if paused and artist_active == 0
+                    if paused and artist_active == 0 and stream_active == 0
                     else ("dry_run" if args.dry_run else None)
                 ),
                 active_queue_cap=args.active_queue_cap,
@@ -2337,6 +2854,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 canary_min_sample=args.canary_min_sample,
                 continue_zero_yield=args.continue_zero_yield,
                 track_details_paused=paused,
+                min_track_streams=args.min_track_streams,
+                stream_history_days=args.stream_history_days,
                 initial_migration=migration,
                 budget_plan=plan,
                 run_id=args.run_id,
