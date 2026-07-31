@@ -116,6 +116,7 @@ const EN_MAP = {
 };
 const T = s => LANG === 'fr' ? s : (EN_MAP[s] !== undefined ? EN_MAP[s] : s);
 const HOT = 500000;                       // seuil de mise en évidence
+const MIN_TRACK_LIFETIME_STREAMS = 100000; // seuil public inclusif demandé par Dim
 const RATE = 0.0035;                      // $/stream Spotify all-in (Duetti/Loud&Clear 2025-26, fourchette 0.003-0.005)
 const TODAY = new Date(D.t + 'T00:00:00');
 function money(n){
@@ -384,7 +385,7 @@ function scGeneralTrackEligible(row,schema){
     &&Number.isFinite(rightsConfidence)&&rightsConfidence>=0.5
     &&expansion==='eligible'
     &&rawStreams!==null&&rawStreams!==''
-    &&Number.isFinite(streams)&&streams>=0&&streams<=SC_MAX_TRACK_STREAMS
+    &&Number.isFinite(streams)&&streams>=MIN_TRACK_LIFETIME_STREAMS&&streams<=SC_MAX_TRACK_STREAMS
     &&scHasEligibleSanitizedArtists(artists);
 }
 function scEditorialIndex(){
@@ -1006,6 +1007,23 @@ function applyLatestPerformanceCounters(rows,performanceTracks){
   }
 }
 applyLatestPerformanceCounters(R,PERF_TRACKS);
+function hasMinimumLifetimeStreams(track){
+  const streams=Number(track&&track[3]);
+  return Number.isFinite(streams)&&streams>=MIN_TRACK_LIFETIME_STREAMS;
+}
+function applyMinimumTrackLifetimeFloor(rows){
+  let target=0;
+  for(let index=0;index<(rows||[]).length;index++){
+    const track=rows[index];
+    if(hasMinimumLifetimeStreams(track)) rows[target++]=track;
+  }
+  rows.length=target;
+  return rows;
+}
+/* Apply the floor only after the latest cumulative Soundcharts counters have
+   replaced older catalogue values. Every downstream view (tracks, artists,
+   labels, watchlist and their counters) is then derived from the same R set. */
+applyMinimumTrackLifetimeFloor(R);
 /* Soundcharts renvoie parfois une valeur reconduite sur une même date pour une part
    significative du catalogue, puis un rattrapage le lendemain. On ne répartit jamais
    ce rattrapage artificiellement : les deux jours incomplets sont simplement exclus
@@ -2895,6 +2913,7 @@ function arOpportunityRows(){
       sourceTier:String(scValue(row,schema,'source_tier')||'soundcharts_measured'),
     };
   }).filter(item=>item.spotifyId&&item.title
+    && arOpportunityTotal(item)>=MIN_TRACK_LIFETIME_STREAMS
     && arHasCompleteStructuredArtists(item.artists)
     && !isGeneralArtistQuarantined(item.credit,true)
     && !item.artists.some(artist=>isGeneralArtistQuarantined(artist&&artist.name,true)));
@@ -3067,9 +3086,9 @@ function arOpportunityMetric(opportunity,days){
   return null;
 }
 function arOpportunityTotal(opportunity){
-  if(opportunity.streams!=null) return opportunity.streams;
   const track=arTrackRowById(opportunity.spotifyId);
-  return track&&Number(track[3])>=0?Number(track[3]):null;
+  if(track&&Number(track[3])>=0) return Number(track[3]);
+  return opportunity.streams!=null?opportunity.streams:null;
 }
 function arStrongEditorial(opportunity){
   return opportunity.playlistCount>=2 || (opportunity.bestPosition!=null&&opportunity.bestPosition<=30) || (opportunity.playlistFollowers!=null&&opportunity.playlistFollowers>=100000);
@@ -4823,7 +4842,7 @@ window.addEventListener('resize',()=>requestAnimationFrame(syncSpotifyStickyCont
 
 /* ---------- init ---------- */
 document.getElementById('c-opps').textContent = fmt(R.length);
-(() => { const c=document.getElementById('c-radar'); if(c) c.textContent=SC&&Array.isArray(SC.opportunities)?fmt(SC.opportunities.length):''; })();
+(() => { const c=document.getElementById('c-radar'); if(c) c.textContent=fmt(arRadarOpportunityRows().filter(item=>!arListHas(item.spotifyId)).length); })();
 document.getElementById('c-art').textContent = withTracks.length;
 (function(){ const c=document.getElementById('c-pl'); if(c && PLmeta) c.textContent = fmt(PLrows.filter(row=>row&&row[17]).length); })();
 (function(){ const c=document.getElementById('c-lb'); if(c && LBmeta) c.textContent = fmt(LBrows.length); })();
