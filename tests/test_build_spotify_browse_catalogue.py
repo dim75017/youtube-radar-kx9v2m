@@ -95,13 +95,13 @@ class BrowseCatalogueTests(unittest.TestCase):
             "soundcharts_uuid": "oneheart-song",
             "spotify_id": "oneheart-track",
             "title": "Snowfall",
-            "artists": [{"name": "Ã˜neheart"}],
+            "artists": [{"name": "Øneheart"}],
             "availability_status": "measured",
             "rights_status": "self_released",
             "rights_confidence": 0.9,
-            "label": "Ã˜neheart",
+            "label": "Øneheart",
             "copyright": (
-                "â„— 2026 Ã˜neheart, under exclusive licence "
+                "℗ 2026 Øneheart, under exclusive licence "
                 "to Dreamscape Records"
             ),
         }
@@ -198,4 +198,3 @@ class BrowseCatalogueTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
