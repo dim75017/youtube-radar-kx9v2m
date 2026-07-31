@@ -71,6 +71,8 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
         self.assertLess(completion, authenticated)
         self.assertIn("--dry-run", self.workflow[dry_run:completion])
         self.assertIn('report.get("complete") is True', self.workflow[completion:authenticated])
+        self.assertIn("checkpoint_scope == \"main_performer_v1\"", self.workflow[completion:authenticated])
+        self.assertIn('file:{sys.argv[3]}?mode=ro', self.workflow[completion:authenticated])
         auth_section = self.workflow[authenticated:]
         self.assertIn("if: steps.completion.outputs.complete != 'true'", auth_section)
         self.assertIn("SOUNDCHARTS_CLIENT_ID", auth_section)
@@ -118,6 +120,10 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
         self.assertLess(control, restore)
         self.assertIn("soundcharts-fal-phase1-control-v2", self.workflow)
         self.assertIn("current.get(\"cohort_hash\") == previous.get(\"cohort_hash\")", self.workflow)
+        self.assertIn(
+            'report.get("discographies", {}).get("scope_version") == "main_performer_v1"',
+            self.workflow,
+        )
         self.assertIn("skipped the multi-GB state download", self.workflow)
         self.assertIn("if: steps.completion_control.outputs.no_op != 'true'", self.workflow[restore:])
         self.assertIn("steps.completion_control.outputs.no_op != 'true'", self.workflow[upload:report])
