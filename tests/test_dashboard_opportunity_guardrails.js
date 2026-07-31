@@ -134,6 +134,8 @@ assert.match(source, /if\(S\.radarFilter==='contactable'\) return arIsContactabl
 // The contactable filter is enforced in arOpportunityFiltered above. Do not
 // couple this policy check to a removed UI-only aggregate variable.
 assert.match(source, /if\(!arContactEligible\(opportunity\)\) return/);
+assert.match(source, /arOpportunityTotal\(item\)>=MIN_TRACK_LIFETIME_STREAMS/,
+  'sub-100k tracks must not re-enter the public Opportunity view');
 assert.match(source, /arHasCompleteStructuredArtists\(item\.artists\)/);
 assert.match(source, /!isGeneralArtistQuarantined\(item\.credit,true\)/);
 assert.match(source, /!item\.artists\.some\(artist=>isGeneralArtistQuarantined/);

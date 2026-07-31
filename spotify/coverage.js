@@ -8,6 +8,7 @@
   const scoring = SC.opportunity_scoring || {};
   const catalogue = BROWSE.discovery_catalogue || SC.discovery_catalogue || {};
   const catalogueCounts = catalogue.counts || {};
+  const minimumLifetimeStreams = 100000;
 
   const firstNumber = (...values) => {
     for (const value of values) {
@@ -51,7 +52,7 @@
     catalogueArtistsScanned: firstNumber(discovery.catalogue_artists_scanned),
     discoveredTracks: firstNumber(catalogueCounts.tracks, discovery.editorial_tracks_total),
     discoveredArtistsTotal: firstNumber(catalogueCounts.artists, discovery.editorial_artists_total),
-    measuredCatalogueTracks: firstNumber(catalogueCounts.measured_tracks, scoring.measured_target_tracks, pool.measured),
+    measuredCatalogueTracks: liveTracks(),
     playlistCatalogueTracks: firstNumber(catalogueCounts.playlist_tracks, discovery.unique_playlist_tracks),
     catalogueOnlyTracks: firstNumber(catalogueCounts.catalogue_tracks),
     verifiedCatalogueTracks: firstNumber(catalogueCounts.verified_tracks),
@@ -73,9 +74,9 @@
     tracks() {
       const visible = liveTracks();
       if (isFrench()) {
-        return `Catalogue vivant : ${format(visible)} pistes disponibles, dont ${format(metrics.measuredCatalogueTracks)} déjà mesurées. Les lignes à enrichir restent consultables ; A&R reste strict et séparé.`;
+        return `Catalogue actif : ${format(visible)} pistes avec au moins ${format(minimumLifetimeStreams)} streams Spotify lifetime.`;
       }
-      return `Living catalogue: ${format(visible)} tracks available, including ${format(metrics.measuredCatalogueTracks)} already measured. Enrichment rows remain browseable; A&R stays strict and separate.`;
+      return `Active catalogue: ${format(visible)} tracks with at least ${format(minimumLifetimeStreams)} lifetime Spotify streams.`;
     },
     artists() {
       const visible = liveArtists();
@@ -86,8 +87,8 @@
     },
     trackResult() {
       return isFrench()
-        ? `${format(liveTracks())} pistes disponibles · ${format(metrics.measuredCatalogueTracks)} mesurées`
-        : `${format(liveTracks())} tracks available · ${format(metrics.measuredCatalogueTracks)} measured`;
+        ? `${format(liveTracks())} pistes · minimum ${format(minimumLifetimeStreams)} streams lifetime`
+        : `${format(liveTracks())} tracks · minimum ${format(minimumLifetimeStreams)} lifetime streams`;
     },
     artistResult() {
       return isFrench()
@@ -147,8 +148,8 @@
     if (!detail) return;
     const generated = String(SC.generated_at || (SC.freshness && SC.freshness.tracks_at) || BROWSE.generated_at || '').slice(0, 19);
     const html = isFrench()
-      ? `<b>Soundcharts · mise à jour globale du catalogue vivant + A&R strict</b><br>${format(liveTracks())} pistes disponibles · ${format(liveArtists())} artistes/crédits · ${format(metrics.playlistsScanned)} playlists scannées<br>${format(metrics.measuredCatalogueTracks)} pistes mesurées · ${format(metrics.opportunities)} opportunités A&R strictes${generated ? `<br>Snapshot ${generated.replace('T', ' ')}` : ''}`
-      : `<b>Soundcharts · global refresh</b><br>${format(liveTracks())} tracks available · ${format(liveArtists())} artists/credits · ${format(metrics.playlistsScanned)} playlists scanned<br>${format(metrics.measuredCatalogueTracks)} measured tracks · ${format(metrics.opportunities)} strict A&R opportunities${generated ? `<br>Snapshot ${generated.replace('T', ' ')}` : ''}`;
+      ? `<b>Soundcharts · mise à jour globale du catalogue actif + A&R strict</b><br>${format(liveTracks())} pistes ≥ ${format(minimumLifetimeStreams)} streams lifetime · ${format(liveArtists())} artistes/crédits · ${format(metrics.playlistsScanned)} playlists scannées<br>${format(metrics.opportunities)} opportunités A&R strictes${generated ? `<br>Snapshot ${generated.replace('T', ' ')}` : ''}`
+      : `<b>Soundcharts · global refresh</b><br>${format(liveTracks())} tracks ≥ ${format(minimumLifetimeStreams)} lifetime streams · ${format(liveArtists())} artists/credits · ${format(metrics.playlistsScanned)} playlists scanned<br>${format(metrics.opportunities)} strict A&R opportunities${generated ? `<br>Snapshot ${generated.replace('T', ' ')}` : ''}`;
     if (detail.innerHTML !== html) detail.innerHTML = html;
   }
 

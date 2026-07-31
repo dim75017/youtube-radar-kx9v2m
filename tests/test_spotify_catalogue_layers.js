@@ -100,8 +100,8 @@ assert.match(dashboard, /function arIsContactable\(/,
   'strict A&R contact guardrails remain defined');
 assert.match(policy, /Inventaire de navigation/);
 assert.match(policy, /A&R et contacts/);
-assert.match(coverage, /Catalogue vivant/);
-assert.match(coverage, /A&R reste strict/);
+assert.match(coverage, /Catalogue actif/);
+assert.match(coverage, /minimumLifetimeStreams = 100000/);
 
 const prefix = 'window.SPOTIFY_BROWSE_CATALOGUE=';
 const browseText = fs.readFileSync('Spotify_Browse_Catalogue_data.js', 'utf8');
@@ -159,3 +159,4 @@ console.log(JSON.stringify({
 assert.ok(keys.size >= 45_000, `combined browsing universe unexpectedly small: ${keys.size}`);
 
 console.log(`Spotify catalogue layers: ${keys.size} browsing keys; A&R stays strict`);
+

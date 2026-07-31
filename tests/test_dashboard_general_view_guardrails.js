@@ -109,6 +109,7 @@ const gateContext = {
   SC_ALLOWED_GENRES: taxonomyContext.allowedGenres,
   SC_MIN_LISTENERS: taxonomyContext.minListeners,
   SC_MAX_LISTENERS: taxonomyContext.maxListeners,
+  MIN_TRACK_LIFETIME_STREAMS: 100_000,
   SC_MAX_TRACK_STREAMS: 250_000_000,
   scField(row, schema, name) {
     const index = schema.indexOf(name);
@@ -137,8 +138,10 @@ const changed = (index, value) => {
   return row;
 };
 assert.equal(gateContext.isEligible(valid, schema), true);
-assert.equal(gateContext.isEligible(changed(10, 0), schema), true,
-  'zero observed streams is a valid factual value');
+assert.equal(gateContext.isEligible(changed(10, 99_999), schema), false,
+  'a track one stream below the public lifetime floor must remain private');
+assert.equal(gateContext.isEligible(changed(10, 100_000), schema), true,
+  'the 100,000-stream public lifetime floor is inclusive');
 assert.equal(gateContext.isEligible(changed(10, 250_000_000), schema), true,
   'the explicit stream ceiling is inclusive');
 for (const genre of ['acoustic', 'fingerstyle', 'soundscape']) {

@@ -136,7 +136,7 @@ class BrowseCatalogueTests(unittest.TestCase):
             "soundcharts_uuid", "spotify_id", "title", "credit_name", "artists",
             "primary_genre", "genre_confidence", "instrumental_status",
             "instrumental_confidence", "ai_risk", "rights_status",
-            "rights_confidence", "source_tier",
+            "rights_confidence", "source_tier", "streams",
         ]
         artist_schema = ["soundcharts_uuid", "spotify_id", "name"]
         valid_artist = {
@@ -147,11 +147,15 @@ class BrowseCatalogueTests(unittest.TestCase):
             "credit_name": "Artist A", "artists": [valid_artist], "primary_genre": "ambient",
             "genre_confidence": 0.9, "instrumental_status": "instrumental",
             "instrumental_confidence": 0.9, "ai_risk": "low", "rights_status": "self_released",
-            "rights_confidence": 0.9, "source_tier": "editorial_playlist",
+            "rights_confidence": 0.9, "source_tier": "editorial_playlist", "streams": 100_000,
         }
         independent = {
             **valid, "soundcharts_uuid": "track-independent", "spotify_id": "spotify-independent",
             "source_tier": "independent_playlist",
+        }
+        below_floor = {
+            **valid, "soundcharts_uuid": "track-below", "spotify_id": "spotify-below",
+            "streams": 99_999,
         }
         vocal = {**valid, "soundcharts_uuid": "track-b", "spotify_id": "spotify-b", "instrumental_status": "unknown"}
         major = {**valid, "soundcharts_uuid": "track-c", "spotify_id": "spotify-c", "rights_status": "major"}
@@ -165,7 +169,7 @@ class BrowseCatalogueTests(unittest.TestCase):
             "track_schema": strict_schema,
             "artist_schema": artist_schema,
             "playlist_schema": [],
-            "tracks": [[row.get(name) for name in strict_schema] for row in [valid, independent, vocal, major, composite]],
+            "tracks": [[row.get(name) for name in strict_schema] for row in [valid, independent, below_floor, vocal, major, composite]],
             "artists": [["artist-a", "artist-spotify-a", "Artist A"]],
         }
         strict, reasons, active_ids = subject.strict_rebase_catalogue([source_catalogue])
@@ -175,6 +179,7 @@ class BrowseCatalogueTests(unittest.TestCase):
         self.assertEqual(reasons["instrumental_unconfirmed"], 1)
         self.assertEqual(reasons["rights_unconfirmed"], 1)
         self.assertEqual(reasons["composite_credit_unresolved"], 1)
+        self.assertEqual(reasons["streams_below_minimum"], 1)
 
         blacklisted = {**valid, "soundcharts_uuid": "track-e", "spotify_id": "spotify-e", "credit_name": "Corbon Amodio", "artists": [{**valid_artist, "name": "Corbon Amodio"}]}
         _, blacklisted_reasons, _ = subject.strict_rebase_catalogue([

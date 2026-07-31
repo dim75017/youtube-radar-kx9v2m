@@ -33,6 +33,7 @@ from spotify_performance_store import PerformanceStoreError, read_performance_pa
 SOUNDCHARTS_PREFIX = "window.SPOTIFY_SOUNDCHARTS="
 PERFORMANCE_PREFIX = "window.SPOTIFY_PERFORMANCE="
 RADAR_PREFIX = "window.SPOTIFY_RADAR="
+MIN_TRACK_LIFETIME_STREAMS = 100_000
 
 TARGET_GENRES = frozenset(
     {
@@ -858,6 +859,7 @@ def generate_opportunities(
     legacy: dict[str, Any] | None = None,
     *,
     max_artist_listeners: int = 5_000_000,
+    min_track_streams: int = MIN_TRACK_LIFETIME_STREAMS,
     max_track_streams: int = 250_000_000,
     max_opportunities: int = 10_000,
     minimum_score: int = 20,
@@ -883,6 +885,7 @@ def generate_opportunities(
         "classification": 0,
         "identity": 0,
         "no_metric": 0,
+        "below_stream_floor": 0,
         "weak_signal": 0,
     }
     measured_target_tracks = 0
@@ -924,6 +927,9 @@ def generate_opportunities(
         metrics = metric_snapshot(track, performance_tracks.get(spotify_id))
         if metrics["total"] is None or not any(metrics[key] is not None for key in ("d1", "d7", "d30")):
             excluded["no_metric"] += 1
+            continue
+        if metrics["total"] < max(0, min_track_streams):
+            excluded["below_stream_floor"] += 1
             continue
 
         context = resolve_artist_context(
@@ -1145,6 +1151,7 @@ def generate_opportunities(
         "excluded": excluded,
         "thresholds": {
             "max_artist_monthly_listeners": max_artist_listeners,
+            "min_track_streams": min_track_streams,
             "max_track_streams": max_track_streams,
             "minimum_score": minimum_score,
             "allowed_rights": ["self_released", "independent_label", "unknown_review"],
@@ -1181,6 +1188,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--performance", type=Path, default=Path("Spotify_Performance_data.js"))
     parser.add_argument("--radar", type=Path, default=Path("Spotify_Radar_data.js"))
     parser.add_argument("--max-artist-listeners", type=int, default=5_000_000)
+    parser.add_argument("--min-track-streams", type=int, default=MIN_TRACK_LIFETIME_STREAMS)
     parser.add_argument("--max-track-streams", type=int, default=250_000_000)
     parser.add_argument("--max-opportunities", type=int, default=10_000)
     parser.add_argument("--minimum-score", type=int, default=20)
@@ -1200,6 +1208,7 @@ def main() -> int:
         performance,
         legacy,
         max_artist_listeners=args.max_artist_listeners,
+        min_track_streams=max(0, args.min_track_streams),
         max_track_streams=args.max_track_streams,
         max_opportunities=args.max_opportunities,
         minimum_score=args.minimum_score,
