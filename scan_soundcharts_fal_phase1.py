@@ -963,17 +963,22 @@ def _identifier_values(obj: Any) -> tuple[str, str]:
     spotify = ""
     isrc = ""
 
+    def primitive(value: Any) -> Any:
+        if not isinstance(value, Mapping):
+            return value
+        return value.get("value") or value.get("identifier") or value.get("id")
+
     def visit(value: Any, hint: str = "") -> None:
         nonlocal spotify, isrc
         if isinstance(value, Mapping):
-            direct_spotify = value.get("spotify_id") or value.get("spotifyId")
+            direct_spotify = primitive(value.get("spotify_id") or value.get("spotifyId"))
             if direct_spotify and SPOTIFY_ID_RE.fullmatch(str(direct_spotify).strip()):
                 spotify = spotify or str(direct_spotify).strip()
-            direct_isrc = value.get("isrc") or value.get("ISRC")
+            direct_isrc = primitive(value.get("isrc") or value.get("ISRC"))
             if direct_isrc and ISRC_RE.fullmatch(str(direct_isrc).replace("-", "").strip()):
                 isrc = isrc or str(direct_isrc).replace("-", "").upper().strip()
             code = normalize_text(value.get("platform") or value.get("platformCode") or value.get("type") or value.get("code"))
-            identifier = value.get("identifier") or value.get("value") or value.get("id")
+            identifier = primitive(value.get("identifier") or value.get("value") or value.get("id"))
             if identifier:
                 raw = str(identifier).strip()
                 if "spotify" in code and SPOTIFY_ID_RE.fullmatch(raw):
@@ -1043,27 +1048,69 @@ def extract_evidence(obj: Any) -> dict[str, Any]:
     vocal: bool | None = None
     instrumental: bool | None = None
     ai_risk = "unknown"
+    instrumentalness: float | None = None
+    speechiness: float | None = None
+    explicit: bool | None = None
+    language_code = ""
+
+    def probability(value: Any) -> float | None:
+        if value is None or isinstance(value, bool):
+            return None
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return None
+        return number if math.isfinite(number) and 0.0 <= number <= 1.0 else None
+
+    def collect_genres(value: Any) -> None:
+        if isinstance(value, str):
+            genres.append(value.strip())
+            return
+        if not isinstance(value, (list, tuple)):
+            return
+        for item in value:
+            if isinstance(item, (str, int)):
+                genres.append(str(item).strip())
+                continue
+            if not isinstance(item, Mapping):
+                continue
+            for key in ("name", "value", "slug", "root"):
+                label = item.get(key)
+                if isinstance(label, (str, int)) and str(label).strip():
+                    genres.append(str(label).strip())
+            subgenres = item.get("sub") or item.get("subgenres") or item.get("subGenres")
+            if isinstance(subgenres, (list, tuple)):
+                for label in subgenres:
+                    if isinstance(label, (str, int)) and str(label).strip():
+                        genres.append(str(label).strip())
+                    elif isinstance(label, Mapping):
+                        nested_label = label.get("name") or label.get("value") or label.get("slug")
+                        if nested_label:
+                            genres.append(str(nested_label).strip())
 
     def visit(value: Any, key_hint: str = "") -> None:
-        nonlocal vocal, instrumental, ai_risk
+        nonlocal vocal, instrumental, ai_risk, instrumentalness, speechiness, explicit, language_code
         if isinstance(value, Mapping):
             for key, nested in value.items():
                 hint = normalize_text(key)
                 if hint in {"genre", "genres", "subgenre", "subgenres", "primary genre", "primarygenre"}:
-                    if isinstance(nested, str):
-                        genres.append(nested.strip())
-                    elif isinstance(nested, list):
-                        for item in nested:
-                            if isinstance(item, (str, int)):
-                                genres.append(str(item).strip())
-                            elif isinstance(item, Mapping):
-                                label = item.get("name") or item.get("value") or item.get("slug")
-                                if label:
-                                    genres.append(str(label).strip())
+                    collect_genres(nested)
                 if hint in {"has lyrics", "haslyrics", "vocal", "vocals", "is vocal", "isvocal"} and isinstance(nested, bool):
                     vocal = nested
                 if hint in {"instrumental", "is instrumental", "isinstrumental"} and isinstance(nested, bool):
                     instrumental = nested
+                if hint == "instrumentalness":
+                    parsed = probability(nested)
+                    if parsed is not None:
+                        instrumentalness = parsed
+                if hint == "speechiness":
+                    parsed = probability(nested)
+                    if parsed is not None:
+                        speechiness = parsed
+                if hint == "explicit" and isinstance(nested, bool):
+                    explicit = nested
+                if hint in {"languagecode", "language code", "language_code"} and nested is not None:
+                    language_code = str(nested).strip()
                 if hint in {"ai risk", "ai_risk", "airisk", "generative ai risk"} and nested is not None:
                     ai_risk = normalize_text(nested) or "unknown"
                 visit(nested, hint)
@@ -1072,8 +1119,27 @@ def extract_evidence(obj: Any) -> dict[str, Any]:
                 visit(nested, key_hint)
 
     visit(obj)
+    # Soundcharts' song contract exposes numeric audio features, not the old
+    # boolean fields. A score above 0.5 is its documented positive
+    # instrumental signal. Lower scores stay unknown: they are not proof of
+    # lyrics. Speechiness >= 0.33 is an explicit voice/rap risk and therefore
+    # remains fail-closed for this no-lyrics catalogue.
+    if explicit is True or (speechiness is not None and speechiness >= 0.33):
+        vocal = True
+    if instrumentalness is not None and instrumentalness > 0.5 and vocal is not True:
+        instrumental = True
     clean_genres = sorted({" ".join(genre.split()) for genre in genres if genre.strip()})
-    return {"genres": clean_genres, "vocal": vocal, "instrumental": instrumental, "ai_risk": ai_risk}
+    return {
+        "schema_version": 2,
+        "genres": clean_genres,
+        "vocal": vocal,
+        "instrumental": instrumental,
+        "instrumentalness": instrumentalness,
+        "speechiness": speechiness,
+        "explicit": explicit,
+        "language_code": language_code,
+        "ai_risk": ai_risk,
+    }
 
 
 def evidence_decision(evidence: Mapping[str, Any]) -> tuple[str | None, str, str, str]:
