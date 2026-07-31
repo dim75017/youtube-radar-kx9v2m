@@ -27,7 +27,7 @@ for (const composite of [
   'Artist featuring Singer',
   'Artist ft Singer',
   'Artist x Producer',
-  'Artist Ã— Producer',
+  'Artist × Producer',
   'Artist, Producer',
 ]) {
   assert.equal(identityContext.isComposite(composite), true, `${composite} is a display credit, not an identity`);
@@ -209,4 +209,3 @@ assert.doesNotMatch(tracksSource, /<td>\$\{trackStatusHtml\(r\)\}<\/td>/,
   'the tracks table must not render a status cell');
 
 console.log('dashboard general-view guardrails: OK');
-
