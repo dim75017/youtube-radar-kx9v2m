@@ -24,11 +24,11 @@ for (const required of [
   'function arResetArtistStatus(artistKey)',
   'hydrateArArtistAvatars()',
   "data-ar-artist-avatar-id",
-  'âœ“ Message envoyÃ©',
-  'Passer en nÃ©gociation',
-  'âœ“ Valider',
+  '✓ Message envoyé',
+  'Passer en négociation',
+  '✓ Valider',
   'aria-label="${esc(refuseLabel)}"',
-  'aria-label="Retirer ${esc(opportunity.title)} de la sÃ©lection"',
+  'aria-label="Retirer ${esc(opportunity.title)} de la sélection"',
 ]) assert.ok(dashboard.includes(required), `Missing artist-selection workflow token: ${required}`);
 
 for (const required of [
@@ -45,13 +45,13 @@ assert.ok(!selectionTrack.includes('ar-selection-release-type'), 'Selection must
 assert.ok(!css.includes('.ar-selection-release-type'), 'Removed Selection release-type badge styles must not remain.');
 assert.ok(!dashboard.includes('arRightsShortLabel('), 'Legacy verbose release label helper must be removed');
 
-assert.ok(!dashboard.includes("draft_ready:'Brouillon prÃªt'"), 'Draft ready must not remain an artist status');
+assert.ok(!dashboard.includes("draft_ready:'Brouillon prêt'"), 'Draft ready must not remain an artist status');
 assert.match(dashboard, /elapsed>=7\*24\*60\*60\*1000/);
-assert.match(dashboard, /if\(stored==='closed'\)return 'validated'/, 'Legacy closed deals must migrate to ValidÃ©.');
+assert.match(dashboard, /if\(stored==='closed'\)return 'validated'/, 'Legacy closed deals must migrate to Validé.');
 for (const stage of ['to_contact', 'contacted', 'negotiating', 'validated', 'refused']) {
   assert.match(dashboard, new RegExp(`key:'${stage}'`), `Missing negotiation stage ${stage}`);
 }
-for (const emoji of ['ðŸ“­', 'ðŸ“¨', 'ðŸ¤', 'âœ…', 'âŒ']) {
+for (const emoji of ['📭', '📨', '🤝', '✅', '❌']) {
   assert.ok(dashboard.includes(`emoji:'${emoji}'`), `Missing stage emoji ${emoji}`);
 }
 assert.match(dashboard, /ar-selection-offers/);
@@ -79,7 +79,7 @@ assert.ok(card.includes('arSelectionWorkflowActionsHtml(artist.key,status,artist
 assert.ok(!card.includes('arSelectionEconomicsHtml(group)'), 'Financial estimates must not render inline in Selection.');
 assert.ok(!card.includes('arSelectionStatusHtml'), 'Artist cards must not repeat the top-level workflow status.');
 assert.ok(!dashboard.includes('function arSelectionStatusHtml'), 'The redundant per-card status renderer must be removed.');
-assert.ok(!dashboard.includes('Suivi de la prise de contact et de la nÃ©gociation, par artiste.'), 'The redundant Selection subtitle must be removed.');
+assert.ok(!dashboard.includes('Suivi de la prise de contact et de la négociation, par artiste.'), 'The redundant Selection subtitle must be removed.');
 const modalStart = dashboard.indexOf('function openArSelectionEstimate(artistKey){');
 const modalEnd = dashboard.indexOf('\nfunction renderArList(){', modalStart);
 const modal = dashboard.slice(modalStart, modalEnd);
@@ -89,7 +89,7 @@ assert.ok(modal.includes("style.display='flex'"), 'The estimate modal must open 
 const composerStart = dashboard.indexOf('function openArOutreach(spotifyId){');
 const composerEnd = dashboard.indexOf('\nfunction arSelectionPrimaryArtist(opportunity){', composerStart);
 const composer = dashboard.slice(composerStart, composerEnd);
-assert.ok(composer.includes('arSelectionEconomicsHtml(group)'), 'Financial estimates must also render inside PrÃ©parer le message.');
+assert.ok(composer.includes('arSelectionEconomicsHtml(group)'), 'Financial estimates must also render inside Préparer le message.');
 assert.ok(composer.includes('id="ar-composer-economics"'), 'The composer estimate must have a targeted refresh container.');
 assert.match(dashboard, /function arRefreshComposerEconomics\(artistKey\)/, 'Offer changes must refresh the composer estimate without rebuilding the message.');
 assert.match(dashboard, /arRefreshComposerEconomics\(artistKey\)/, 'Artist-specific offer and horizon setters must refresh the open composer.');
@@ -105,4 +105,3 @@ assert.ok(dashboard.slice(dashboard.indexOf('function arSelectionEconomicsHtml(g
 assert.match(index, /dashboard\.js\?v=20260801-track-floor-100k-v1/);
 
 console.log('spotify selection artist offers/status: OK');
-
