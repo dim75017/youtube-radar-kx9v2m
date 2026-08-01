@@ -168,19 +168,36 @@ def assess_youtube_radar(root: Path, now: datetime, ignore_deadline: bool = Fals
     history_day_raw = regex_value(text, r'"history_day"\s*:\s*"(\d{4}-\d{2}-\d{2})"')
     tracked_raw = regex_value(text, r'"videoMetrics"\s*:\s*\{[^{}]*?"tracked"\s*:\s*(\d+)')
     updated_raw = regex_value(text, r'"videoMetrics"\s*:\s*\{[^{}]*?"updated"\s*:\s*(\d+)')
+    history_updated_raw = regex_value(text, r'"videoMetrics"\s*:\s*\{[^{}]*?"history_updated"\s*:\s*(\d+)')
+    timezone_raw = regex_value(text, r'"videoMetrics"\s*:\s*\{[^{}]*?"day_timezone"\s*:\s*"([^"]+)"')
+    partial_raw = regex_value(text, r'"videoMetrics"\s*:\s*\{[^{}]*?"partial"\s*:\s*(true|false)')
     try:
         history_day = date.fromisoformat(history_day_raw) if history_day_raw else None
     except ValueError:
         history_day = None
     tracked = int(tracked_raw or 0)
     updated = int(updated_raw or 0)
-    coverage = updated / tracked if tracked else 0
+    history_updated = int(history_updated_raw or 0)
+    partial = partial_raw != "false"
     today = now.astimezone(PARIS).date()
 
     if observed is None or history_day is None:
         return freshness_row(target, True, "missing public YouTube observation", observed)
-    if tracked and coverage < 0.98:
-        return freshness_row(target, True, f"YouTube coverage is only {updated}/{tracked}", observed)
+    if tracked <= 0:
+        return freshness_row(target, True, "missing canonical YouTube tracked cohort", observed)
+    if updated != tracked:
+        return freshness_row(target, True, f"YouTube coverage is partial at {updated}/{tracked}", observed)
+    if history_updated != updated:
+        return freshness_row(
+            target,
+            True,
+            f"YouTube history coverage is only {history_updated}/{updated}",
+            observed,
+        )
+    if partial:
+        return freshness_row(target, True, "YouTube snapshot is marked partial", observed)
+    if timezone_raw != "Europe/Paris":
+        return freshness_row(target, True, "YouTube history timezone is not Europe/Paris", observed)
     if now - observed > timedelta(hours=30):
         return freshness_row(target, True, "public YouTube observation is older than 30 hours", observed)
     if history_day < today and (ignore_deadline or after_local_deadline(now, time(10, 30))):
@@ -463,3 +480,4 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+
