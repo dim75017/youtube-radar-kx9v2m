@@ -2,39 +2,39 @@
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function stripCopyLead(s){return (s||'').replace(/^\s*copy the packaging logic\s*:\s*/i,'');}
 function fmtN(x){
-  if(x==null||isNaN(x))return 'â€”';
+  if(x==null||isNaN(x))return '—';
   if(x>=1e9)return (x/1e9).toFixed(1).replace(/\.0$/,'')+'B';
   if(x>=1e6)return (x/1e6).toFixed(1).replace(/\.0$/,'')+'M';
   if(x>=1e3)return (x/1e3).toFixed(x>=1e5?0:1).replace(/\.0$/,'')+'k';
   return String(Math.round(x));
 }
-function fmtInt(x){return x==null?'â€”':Math.round(x).toLocaleString('en-US');}
+function fmtInt(x){return x==null?'—':Math.round(x).toLocaleString('en-US');}
 function fmtDur(h){
-  if(h==null)return 'â€”';
+  if(h==null)return '—';
   if(h<1)return Math.round(h*60)+' min';
   const H=Math.floor(h),M=Math.round((h-H)*60);
   return M?H+'h'+String(M).padStart(2,'0'):H+'h';
 }
 const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-function fmtDate(ms){if(!ms)return 'â€”';const d=new Date(ms);return MONTHS[d.getMonth()]+' '+d.getFullYear();}
-function fmtDT(ms){if(!ms)return 'â€”';const d=new Date(ms);return d.getDate()+' '+MONTHS[d.getMonth()]+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
-function fmtDateFull(ms){if(!ms)return 'â€”';const d=new Date(ms);return d.getDate()+' '+MONTHS[d.getMonth()]+' '+d.getFullYear();}
-function fmtDateTimeShort(ms){if(!ms)return 'â€”';const d=new Date(ms);const p=n=>String(n).padStart(2,'0');return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()+', '+p(d.getHours())+':'+p(d.getMinutes());}
-function fmtAge(m){if(m==null)return 'â€”';return m<1?'<1 mo':(m<12?m.toFixed(1).replace(/\.0$/,'')+' mo':(m/12).toFixed(1).replace(/\.0$/,'')+' yr');}
+function fmtDate(ms){if(!ms)return '—';const d=new Date(ms);return MONTHS[d.getMonth()]+' '+d.getFullYear();}
+function fmtDT(ms){if(!ms)return '—';const d=new Date(ms);return d.getDate()+' '+MONTHS[d.getMonth()]+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+function fmtDateFull(ms){if(!ms)return '—';const d=new Date(ms);return d.getDate()+' '+MONTHS[d.getMonth()]+' '+d.getFullYear();}
+function fmtDateTimeShort(ms){if(!ms)return '—';const d=new Date(ms);const p=n=>String(n).padStart(2,'0');return p(d.getDate())+'/'+p(d.getMonth()+1)+'/'+d.getFullYear()+', '+p(d.getHours())+':'+p(d.getMinutes());}
+function fmtAge(m){if(m==null)return '—';return m<1?'<1 mo':(m<12?m.toFixed(1).replace(/\.0$/,'')+' mo':(m/12).toFixed(1).replace(/\.0$/,'')+' yr');}
 function thumb(vid,q){return vid?('https://i.ytimg.com/vi/'+vid+'/'+(q||'mqdefault')+'.jpg'):'';}
 
 const GENRE_COLORS=[
-  [/m[eÃ©]ditation|fr[eÃ©]quence/i,'#5eead4'],
-  [/d[eÃ©]tente|\bspa\b/i,'#34d399'],
-  [/ambiance|cin[eÃ©]mat/i,'#67e8f9'],
-  [/b[eÃ©]b[eÃ©]|berceuse|lullab/i,'#fca5a5'],
-  [/bgm|caf[eÃ©]/i,'#fcd34d'],
+  [/m[eé]ditation|fr[eé]quence/i,'#5eead4'],
+  [/d[eé]tente|\bspa\b/i,'#34d399'],
+  [/ambiance|cin[eé]mat/i,'#67e8f9'],
+  [/b[eé]b[eé]|berceuse|lullab/i,'#fca5a5'],
+  [/bgm|caf[eé]/i,'#fcd34d'],
   [/sommeil/i,'#7dd3fc'],
-  [/[eÃ©]tude/i,'#86efac'],
+  [/[eé]tude/i,'#86efac'],
   [/drum & bass|drum and bass|dnb|jungle/i,'#60a5fa'],
   [/house/i,'#6ee7b7'],
   [/dark/i,'#818cf8'],
-  [/christmas|noÃ«l|noel/i,'#fb7185'],
+  [/christmas|noël|noel/i,'#fb7185'],
   [/halloween/i,'#f97316'],
   [/guitar|guitare/i,'#fdba74'],
   [/jazz|bossa/i,'#fbbf24'],
@@ -42,7 +42,7 @@ const GENRE_COLORS=[
   [/classi/i,'#fda4af'],
   [/synth|retro/i,'#e879f9'],
   [/meditation|wellness/i,'#5eead4'],
-  [/focus|study|Ã©tude/i,'#86efac'],
+  [/focus|study|étude/i,'#86efac'],
   [/ambient sleep/i,'#7dd3fc'],
   [/^sleep$|sleep &|sommeil/i,'#7dd3fc'],
   [/nature/i,'#6ee7b7'],
@@ -56,57 +56,57 @@ function gcolor(g){
   return '#9ca3af';
 }
 const GENRE_EMOJI=[
-  [/m[eÃ©]ditation|fr[eÃ©]quence/i,'ðŸ§˜'],
-  [/d[eÃ©]tente|\bspa\b/i,'ðŸ§–'],
-  [/ambiance|cin[eÃ©]mat/i,'ðŸŽ¬'],
-  [/b[eÃ©]b[eÃ©]|berceuse|lullab/i,'ðŸ‘¶'],
-  [/bgm|caf[eÃ©]/i,'â˜•'],
-  [/sommeil/i,'ðŸ˜´'],
-  [/[eÃ©]tude/i,'ðŸ“š'],
-  [/house/i,'ðŸª©'],
-  [/dark/i,'ðŸŒ‘'],
-  [/christmas|noÃ«l|noel/i,'ðŸŽ„'],
-  [/halloween/i,'ðŸŽƒ'],
-  [/guitar|guitare/i,'ðŸŽ¸'],
-  [/jazz|bossa/i,'ðŸŽ·'],
-  [/piano/i,'ðŸŽ¹'],
-  [/classi/i,'ðŸŽ»'],
-  [/synth|retro/i,'ðŸŒ†'],
-  [/electro/i,'ðŸŽ›ï¸'],
-  [/nature/i,'ðŸŒ¿'],
-  [/ambient/i,'ðŸ’¤'],
-  [/lofi|chillhop/i,'ðŸŽ§'],
+  [/m[eé]ditation|fr[eé]quence/i,'🧘'],
+  [/d[eé]tente|\bspa\b/i,'🧖'],
+  [/ambiance|cin[eé]mat/i,'🎬'],
+  [/b[eé]b[eé]|berceuse|lullab/i,'👶'],
+  [/bgm|caf[eé]/i,'☕'],
+  [/sommeil/i,'😴'],
+  [/[eé]tude/i,'📚'],
+  [/house/i,'🪩'],
+  [/dark/i,'🌑'],
+  [/christmas|noël|noel/i,'🎄'],
+  [/halloween/i,'🎃'],
+  [/guitar|guitare/i,'🎸'],
+  [/jazz|bossa/i,'🎷'],
+  [/piano/i,'🎹'],
+  [/classi/i,'🎻'],
+  [/synth|retro/i,'🌆'],
+  [/electro/i,'🎛️'],
+  [/nature/i,'🌿'],
+  [/ambient/i,'💤'],
+  [/lofi|chillhop/i,'🎧'],
 ];
 function genreEmoji(g){
-  if(!g)return 'ðŸŽµ';
+  if(!g)return '🎵';
   for(const [re,e] of GENRE_EMOJI){if(re.test(g))return e;}
-  return 'ðŸŽµ';
+  return '🎵';
 }
-const TIER_EMOJI={S:'ðŸ”´',A:'ðŸŸ ',B:'ðŸŸ¡',C:'ðŸŸ¢'};
-function tierEmoji(p){return p?(TIER_EMOJI[p[0].toUpperCase()]||'âšª'):'âšª';}
+const TIER_EMOJI={S:'🔴',A:'🟠',B:'🟡',C:'🟢'};
+function tierEmoji(p){return p?(TIER_EMOJI[p[0].toUpperCase()]||'⚪'):'⚪';}
 const PERSO_EMOJI=[
-  [/lofi girl/i,'ðŸ‘§'],
-  [/synthwave boy/i,'ðŸ•º'],
-  [/m[eÃ¨]re/i,'ðŸ‘©'],
-  [/p[eÃ¨]re|papa/i,'ðŸ‘¨'],
-  [/prof/i,'ðŸ‘©â€ðŸ«'],
-  [/chat/i,'ðŸ±'],
-  [/chien/i,'ðŸ¶'],
-  [/emma/i,'ðŸ™‹â€â™€ï¸'],
-  [/tiago/i,'ðŸ™‹â€â™‚ï¸'],
-  [/boy/i,'ðŸ‘¦'],
-  [/sans personnage|d[eÃ©]terminer/i,'â“'],
+  [/lofi girl/i,'👧'],
+  [/synthwave boy/i,'🕺'],
+  [/m[eè]re/i,'👩'],
+  [/p[eè]re|papa/i,'👨'],
+  [/prof/i,'👩‍🏫'],
+  [/chat/i,'🐱'],
+  [/chien/i,'🐶'],
+  [/emma/i,'🙋‍♀️'],
+  [/tiago/i,'🙋‍♂️'],
+  [/boy/i,'👦'],
+  [/sans personnage|d[eé]terminer/i,'❓'],
 ];
 function personaEmoji(p){
-  if(!p)return 'ðŸŽ­';
+  if(!p)return '🎭';
   for(const [re,e] of PERSO_EMOJI){if(re.test(p))return e;}
-  return 'ðŸŽ­';
+  return '🎭';
 }
 const PERSO_CATEGORIES=[
   [/synthwave boy/i,'Synthwave Boy'],
   [/lofi girl/i,'Lofi Girl'],
-  [/p[eÃ¨]re|papa/i,'PÃ¨re'],
-  [/m[eÃ¨]re/i,'MÃ¨re'],
+  [/p[eè]re|papa/i,'Père'],
+  [/m[eè]re/i,'Mère'],
   [/tiago/i,'Tiago'],
   [/chat|chien/i,'Chat / Chien'],
 ];
@@ -115,8 +115,8 @@ function persoCategory(p){
   for(const [re,c] of PERSO_CATEGORIES){if(re.test(p))return c;}
   return 'Sans personnage';
 }
-const PERSO_ORDER=['Lofi Girl','Synthwave Boy','MÃ¨re','PÃ¨re','Sans personnage','Tiago','Chat / Chien'];
-const PERIOD_EMOJI={'3m':'ðŸŸ¢','6m':'ðŸŸ¡','12m':'ðŸŸ ','all':'ðŸ”´'};
+const PERSO_ORDER=['Lofi Girl','Synthwave Boy','Mère','Père','Sans personnage','Tiago','Chat / Chien'];
+const PERIOD_EMOJI={'3m':'🟢','6m':'🟡','12m':'🟠','all':'🔴'};
 function gtag(g,extra,emo){
   if(!g)return '';
   const c=gcolor(g);
@@ -136,7 +136,7 @@ document.addEventListener('click',function(){document.querySelectorAll('.xdd.ope
 function xdd(btnCls,btnHtml,opts){
   const id='xdd'+(++XDD_ID);
   return '<div class="xdd" id="'+id+'">'+
-    '<button type="button" class="ctl '+btnCls+' xdd-btn" onclick="xddToggle(\''+id+'\',event)"><span class="xdd-label">'+btnHtml+'</span><span class="xdd-car">â–¾</span></button>'+
+    '<button type="button" class="ctl '+btnCls+' xdd-btn" onclick="xddToggle(\''+id+'\',event)"><span class="xdd-label">'+btnHtml+'</span><span class="xdd-car">▾</span></button>'+
     '<div class="xdd-list">'+opts.map(o=>'<div class="xdd-opt'+(o.sel?' sel':'')+'" onclick="'+o.onclick.replace(/"/g,'&quot;')+';xddToggle(\''+id+'\')">'+o.label+'</div>').join('')+'</div></div>';
 }
 function median(arr){const a=arr.filter(x=>x!=null).sort((x,y)=>x-y);if(!a.length)return null;const m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2;}
@@ -145,13 +145,13 @@ let VIDEO_HIST_PERIOD='d7';
 function videoHistCopy(){
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
   return fr?{
-    title:'ðŸ“Š Performance du scan',note:'DonnÃ©es rÃ©elles, sans extrapolation',
-    h24:'24 derniÃ¨res heures',d7:'7 derniers jours',d30:'30 derniers jours',all:'Tout',
-    gained:'vues gagnÃ©es',building:'Historique en cours',previous:'vs pÃ©riode prÃ©cÃ©dente',
-    measured:'mesurÃ© sur ',hours:' h',days:' j',perHour:'/h',perDay:'/j',
-    chart:'Historique des vues',dailyChart:'Vues gagnÃ©es par jour',dailySince:'mesurÃ©es Ã  partir du 20 juillet 2026'
+    title:'📊 Performance du scan',note:'Données réelles, sans extrapolation',
+    h24:'24 dernières heures',d7:'7 derniers jours',d30:'30 derniers jours',all:'Tout',
+    gained:'vues gagnées',building:'Historique en cours',previous:'vs période précédente',
+    measured:'mesuré sur ',hours:' h',days:' j',perHour:'/h',perDay:'/j',
+    chart:'Historique des vues',dailyChart:'Vues gagnées par jour',dailySince:'mesurées à partir du 20 juillet 2026'
   }:{
-    title:'ðŸ“Š Scan performance',note:'Measured data Â· no extrapolation',
+    title:'📊 Scan performance',note:'Measured data · no extrapolation',
     h24:'Last 24 hours',d7:'Last 7 days',d30:'Last 30 days',all:'All history',
     gained:'views gained',building:'History building up',previous:'vs previous period',
     measured:'measured over ',hours:' h',days:' d',perHour:'/h',perDay:'/day',
@@ -223,7 +223,7 @@ function videoHistSlice(pts,key){
 }
 function videoHistMetricCard(key,pts){
   const c=videoHistCopy(),m=videoHistMetric(pts,VIDEO_HIST_WINDOWS[key]);
-  if(!m)return '<div class="vha-card na"><span>'+esc(c[key])+'</span><b>â€”</b><small>'+esc(c.building)+'</small><em>'+esc(c.note)+'</em></div>';
+  if(!m)return '<div class="vha-card na"><span>'+esc(c[key])+'</span><b>—</b><small>'+esc(c.building)+'</small><em>'+esc(c.note)+'</em></div>';
   const units=key==='h24'?c.perHour:c.perDay;
   const rate=m.delta/(key==='h24'?m.covered/3600000:m.covered/86400000);
   let trend='';let klass='';
@@ -231,14 +231,14 @@ function videoHistMetricCard(key,pts){
     const sign=m.pct>0?'+':'';trend=sign+Math.round(m.pct)+'% '+c.previous;
     klass=m.pct>4?'up':m.pct<-4?'down':'flat';
   }else trend=c.measured+(key==='h24'?Math.round(m.covered/3600000)+c.hours:Math.round(m.covered/86400000)+c.days);
-  return '<div class="vha-card '+klass+'"><span>'+esc(c[key])+'</span><b>+'+fmtN(m.delta)+'</b><small>'+esc(c.gained)+' Â· '+fmtN(rate)+esc(units)+'</small><em>'+esc(trend)+'</em></div>';
+  return '<div class="vha-card '+klass+'"><span>'+esc(c[key])+'</span><b>+'+fmtN(m.delta)+'</b><small>'+esc(c.gained)+' · '+fmtN(rate)+esc(units)+'</small><em>'+esc(trend)+'</em></div>';
 }
 function videoHistoryAnalytics(pts){
   const c=videoHistCopy(),all=cleanVideoHist(pts),key=VIDEO_HIST_WINDOWS.hasOwnProperty(VIDEO_HIST_PERIOD)?VIDEO_HIST_PERIOD:'d7';
   const active=videoHistSlice(all,key);
   return '<div class="vha-grid">'+videoHistMetricCard('h24',all)+videoHistMetricCard('d7',all)+videoHistMetricCard('d30',all)+'</div>'+
     '<div class="vha-controls">'+['h24','d7','d30','all'].map(k=>'<button class="'+(key===k?'on':'')+'" onclick="setVideoHistoryPeriod(\''+k+'\')">'+esc(c[k])+'</button>').join('')+'</div>'+
-    '<div class="hist-meta">'+esc(c.dailyChart)+' Â· '+esc(c.dailySince)+'</div>'+histChart(dailyViewDeltas(active),'daily-views',false);
+    '<div class="hist-meta">'+esc(c.dailyChart)+' · '+esc(c.dailySince)+'</div>'+histChart(dailyViewDeltas(active),'daily-views',false);
 }
 function setVideoHistoryPeriod(key){
   if(!VIDEO_HIST_WINDOWS.hasOwnProperty(key))return;
@@ -248,8 +248,8 @@ function setVideoHistoryPeriod(key){
 }
 function histChart(pts,unit,showMeta){
   const u=unit||'views';
-  if(!pts||pts.length===0)return '<div class="hist-empty">Tracking just started â€” the curve appears from the 2nd scan. ðŸ“¡</div>';
-  if(pts.length===1)return '<div class="hist-empty">1 scan recorded ('+fmtDateFull(pts[0][0])+' Â· '+fmtInt(pts[0][1])+' '+u+') â€” the curve appears from the 2nd scan. ðŸ“¡</div>';
+  if(!pts||pts.length===0)return '<div class="hist-empty">Tracking just started — the curve appears from the 2nd scan. 📡</div>';
+  if(pts.length===1)return '<div class="hist-empty">1 scan recorded ('+fmtDateFull(pts[0][0])+' · '+fmtInt(pts[0][1])+' '+u+') — the curve appears from the 2nd scan. 📡</div>';
   const W=560,H=150,P=10;
   const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);
   const x0=Math.min.apply(null,xs),x1=Math.max.apply(null,xs);
@@ -266,10 +266,10 @@ function histChart(pts,unit,showMeta){
   const days=Math.max((x1-x0)/86400000,0.5);
   const perDay=(pts[pts.length-1][1]-pts[0][1])/days;
   const meta=u==='viewers'
-    ? 'Peak <b>'+fmtN(Math.max.apply(null,ys))+'</b> Â· latest <b>'+fmtN(pts[pts.length-1][1])+'</b> concurrent viewers Â· '+pts.length+' scans'
+    ? 'Peak <b>'+fmtN(Math.max.apply(null,ys))+'</b> · latest <b>'+fmtN(pts[pts.length-1][1])+'</b> concurrent viewers · '+pts.length+' scans'
     : dailyViews
-      ? '<b>'+fmtN(ys.reduce((sum,value)=>sum+value,0))+'</b> views gained Â· '+pts.length+' measured days Â· '+fmtDateFull(x0)+' â†’ '+fmtDateFull(x1)
-      : '<b>+'+fmtN(perDay)+'</b> '+u+'/day measured Â· '+pts.length+' scans Â· '+fmtDateFull(x0)+' â†’ '+fmtDateFull(x1);
+      ? '<b>'+fmtN(ys.reduce((sum,value)=>sum+value,0))+'</b> views gained · '+pts.length+' measured days · '+fmtDateFull(x0)+' → '+fmtDateFull(x1)
+      : '<b>+'+fmtN(perDay)+'</b> '+u+'/day measured · '+pts.length+' scans · '+fmtDateFull(x0)+' → '+fmtDateFull(x1);
   const hid='h'+(++HIST_SEQ);
   HIST_REG[hid]={pts,unit:dailyViews?'views gained':u,W,H,P,x0,x1,y1};
   return (showMeta===false?'':'<div class="hist-meta">'+meta+'</div>')+
@@ -335,13 +335,13 @@ function lastScanText(){
   const parts=[];
   const line=(ms,emo,labelEn,labelFr,descEn,descFr)=>{
     const title=fr?'Scan '+labelFr:labelEn+' scan';
-    const updated=fr?'DerniÃ¨re mise Ã  jour : '+fmtDateTimeShort(ms):'Last updated: '+fmtDateTimeShort(ms);
+    const updated=fr?'Dernière mise à jour : '+fmtDateTimeShort(ms):'Last updated: '+fmtDateTimeShort(ms);
     const desc=fr?descFr:descEn;
     const tip=title+'. '+updated+'. '+desc;
     return '<div class="sync-line" tabindex="0" aria-label="'+esc(tip)+'"><span class="sync-line-dot" style="background:'+scanDotColor(ms)+'"></span>'+emo+' '+fmtDateTimeShort(ms)+'<span class="sync-micro"><b>'+esc(title)+'</b>'+esc(updated)+'<br>'+esc(desc)+'</span></div>';
   };
-  if(vT!=null)parts.push(line(vT,'ðŸŽ¬','Videos','VidÃ©os','Refreshes the video catalog, views and stats.','Actualise le catalogue de vidÃ©os, leurs vues et statistiques.'));
-  if(lT!=null)parts.push(line(lT,'ðŸ“¡','Streams','Streams','Refreshes live streams and viewer counts.','Actualise les streams en direct et le nombre de spectateurs.'));
+  if(vT!=null)parts.push(line(vT,'🎬','Videos','Vidéos','Refreshes the video catalog, views and stats.','Actualise le catalogue de vidéos, leurs vues et statistiques.'));
+  if(lT!=null)parts.push(line(lT,'📡','Streams','Streams','Refreshes live streams and viewer counts.','Actualise les streams en direct et le nombre de spectateurs.'));
   return parts.join('');
 }
 function updateStatusLines(){
@@ -353,17 +353,28 @@ function updateStatusLines(){
   const studioThrough=window.STUDIO_DATA&&window.STUDIO_DATA.dataThrough;
   const studioThroughT=studioThrough?Date.parse(studioThrough+'T12:00:00Z'):null;
   const studioDetailEn='Private CTR, impressions and retention export.'+(studioThroughT?' Data through '+fmtDateFull(studioThroughT)+'.':'');
-  const studioDetailFr='Export privÃ© du CTR, des impressions et de la rÃ©tention.'+(studioThroughT?' DonnÃ©es disponibles jusquâ€™au '+fmtDateFull(studioThroughT)+'.':'');
+  const studioDetailFr='Export privé du CTR, des impressions et de la rétention.'+(studioThroughT?' Données disponibles jusqu’au '+fmtDateFull(studioThroughT)+'.':'');
   const vm=(window.LOFI_DATA&&window.LOFI_DATA.videoMetrics)||{};
   const tracked=Number(vm.tracked)||0,updated=Number(vm.updated)||0;
   const partial=!!(tracked&&updated<tracked);
-  const coverage=partial?(fr?' Â· Couverture partielle : ':' Â· Partial coverage: ')+fmtInt(updated)+' / '+fmtInt(tracked):'';
+  const coverage=partial?(fr?' · Couverture partielle : ':' · Partial coverage: ')+fmtInt(updated)+' / '+fmtInt(tracked):'';
   const row=(when,labelEn,labelFr,detailEn,detailFr,key,isPartial)=>({when,label:fr?labelFr:labelEn,detail:(fr?detailFr:detailEn)+(isPartial?coverage:''),key,partial:!!isPartial});
   return [
-    row(videoT,'Radar videos','VidÃ©os du radar','Catalog, discoveries and viewing metrics.','Catalogue, dÃ©couvertes et statistiques de vues.','radar',partial),
-    row(videoT,'Our videos','Nos vidÃ©os','Performance tracking for your published videos.','Suivi des performances de vos sorties publiÃ©es.','ours'),
+    row(videoT,'Radar videos','Vidéos du radar','Catalog, discoveries and viewing metrics.','Catalogue, découvertes et statistiques de vues.','radar',partial),
+    row(videoT,'Our videos','Nos vidéos','Performance tracking for your published videos.','Suivi des performances de vos sorties publiées.','ours'),
     row(studioT,'YouTube Studio','YouTube Studio',studioDetailEn,studioDetailFr,'studio'),
-    row(liveT,'Livestreams','Streams','L…3020 tokens truncated…message));
+    row(liveT,'Livestreams','Streams','Live streams and concurrent viewers.','Streams en direct et spectateurs simultanés.','lives'),
+    row(channelT,'Channels','Chaînes','Channel audience and catalog monitoring.','Audience et catalogue des chaînes suivies.','channels')
+  ];
+}
+function updateStatusColor(item){
+  // Channel monitoring runs on its own cadence. A successful timestamp means
+  // the source is healthy, even if it is older than the video refresh.
+  if(item&&item.key==='chan…2844 tokens truncated…tRadarData(d);SYNCED=Date.now();saveCache(d);
+    setSync('',lastScanText()||'Live · synced '+timeAgo(SYNCED));
+    renderNav();render();
+  }catch(e){
+    setSync('err','Sync failed<br>'+esc(e.message));
     if(!DATA)showError(e);
   }
   btn.classList.remove('spinning');
@@ -380,7 +391,7 @@ function parseChanWb(wb){
   const ws=sheetByName(wb,'Audit');
   if(!ws)throw new Error('Audit tab not found');
   let hr=-1;
-  for(let r=0;r<12;r++){const x=cv(ws,r,0);if(x&&/^cha[iÃ®]ne$/i.test(String(x).trim())){hr=r;break;}}
+  for(let r=0;r<12;r++){const x=cv(ws,r,0);if(x&&/^cha[iî]ne$/i.test(String(x).trim())){hr=r;break;}}
   if(hr<0)throw new Error('Audit header not found');
   const chans=[];const end=lastRow(ws);
   for(let r=hr+1;r<=end;r++){
@@ -453,7 +464,7 @@ function sbmFor(c){
   return Number.isFinite(value)&&Math.round(value)!==0?Math.round(value):null;
 }
 function fmtSubsMo(v){
-  if(v==null||!Number.isFinite(Number(v))||Math.round(Number(v))===0)return 'â€”';
+  if(v==null||!Number.isFinite(Number(v))||Math.round(Number(v))===0)return '—';
   if(v<0)return '-'+fmtN(-v);
   return '+'+fmtN(v);
 }
@@ -512,12 +523,12 @@ async function loadChan(){
   }
   VIEW_CACHE.clear();VIEW_WARMUP_TOKEN++;
   renderNav();
-  render(); // re-render la vue courante : les badges AI dÃ©pendent des donnÃ©es Channels
+  render(); // re-render la vue courante : les badges AI dépendent des données Channels
 }
 async function boot(){
   if(typeof LANG!=='undefined'){
     const lm=document.getElementById('loader-msg');
-    if(lm)lm.textContent=LANG==='fr'?'Synchronisation avec YouTube Â· Veilleâ€¦':'Synchronizing YouTube Â· Scanâ€¦';
+    if(lm)lm.textContent=LANG==='fr'?'Synchronisation avec YouTube · Veille…':'Synchronizing YouTube · Scan…';
   }
   const hs=(location.hash||'').slice(1);
   if(hs&&VIEWS.some(v=>v.id===hs))route=hs;
@@ -534,16 +545,16 @@ async function boot(){
     normalizeExpandedGenre(best.d.all);normalizeExpandedGenre(best.d.trends);normalizeExpandedGenre(best.d.news);normalizeExpandedGenre(best.d.ours);enrichRecos(best.d.recos);
     setRadarData(best.d);SYNCED=best.t;
     document.getElementById('loader').classList.add('hide');
-    setSync('load',(src==='snap'?'Daily snapshot Â· ':'Cached Â· ')+'trying live syncâ€¦');
+    setSync('load',(src==='snap'?'Daily snapshot · ':'Cached · ')+'trying live sync…');
     renderNav();render();
-    try{const d=await fetchData();setRadarData(d);SYNCED=Date.now();saveCache(d);setSync('',lastScanText()||'Live Â· synced just now');renderNav();render();}
-    catch(e){setSync('','Daily snapshot Â· '+fmtDateFull(best.t)+'<br>(live sync unavailable from a local file)');}
+    try{const d=await fetchData();setRadarData(d);SYNCED=Date.now();saveCache(d);setSync('',lastScanText()||'Live · synced just now');renderNav();render();}
+    catch(e){setSync('','Daily snapshot · '+fmtDateFull(best.t)+'<br>(live sync unavailable from a local file)');}
   }else{
-    document.getElementById('loader-msg').textContent=(typeof LANG!=='undefined'&&LANG==='fr')?'TÃ©lÃ©chargement des donnÃ©es en direct depuis Google Sheetsâ€¦':'Downloading live data from Google Sheetsâ€¦';
+    document.getElementById('loader-msg').textContent=(typeof LANG!=='undefined'&&LANG==='fr')?'Téléchargement des données en direct depuis Google Sheets…':'Downloading live data from Google Sheets…';
     try{
       const d=await fetchData();setRadarData(d);SYNCED=Date.now();saveCache(d);
       document.getElementById('loader').classList.add('hide');
-      setSync('',lastScanText()||'Live Â· synced just now');
+      setSync('',lastScanText()||'Live · synced just now');
       renderNav();render();
     }catch(e){showError(e);setSync('err','No data');}
   }
@@ -551,14 +562,14 @@ async function boot(){
 
 /* ================= NAV / ROUTER ================= */
 const VIEWS=[
-  {id:'dashboard',label:'Dashboard',emo:'ðŸ“Š',cnt:()=>''},
-  {id:'mix',label:'Videos',emo:'ðŸŽ¬',cnt:()=>DATA?fmtN(mixRows().length):''},
-  {id:'live',label:'Livestreams',emo:'ðŸ“º',cnt:()=>DATA&&DATA.lives?String(typeof activeLives==='function'?activeLives().length:DATA.lives.length):''},
-  {id:'chan',label:'Channels',emo:'ðŸ“¡',cnt:()=>CHAN?String(CHAN.channels.length):''},
-  {id:'recos',label:'Recommendations',emo:'ðŸ’¡',cnt:()=>DATA?String(activeDailyRecommendationCount()):''},
-  {id:'roadmap',label:'Roadmap',emo:'ðŸ—“ï¸',cnt:()=>DATA?String(typeof scheduledRows==='function'?scheduledRows().length:DATA.roadmap.length):''},
-  {id:'ana',label:'Analysis',emo:'ðŸ”¬',cnt:()=>DATA&&DATA.ours?String(DATA.ours.filter(v=>v.pub&&(v.durH==null||v.durH>=0.15)).length):''},
-  {id:'kw',label:'Keywords',emo:'ðŸ”Ž',small:1,cnt:()=>''}
+  {id:'dashboard',label:'Dashboard',emo:'📊',cnt:()=>''},
+  {id:'mix',label:'Videos',emo:'🎬',cnt:()=>DATA?fmtN(mixRows().length):''},
+  {id:'live',label:'Livestreams',emo:'📺',cnt:()=>DATA&&DATA.lives?String(typeof activeLives==='function'?activeLives().length:DATA.lives.length):''},
+  {id:'chan',label:'Channels',emo:'📡',cnt:()=>CHAN?String(CHAN.channels.length):''},
+  {id:'recos',label:'Recommendations',emo:'💡',cnt:()=>DATA?String(activeDailyRecommendationCount()):''},
+  {id:'roadmap',label:'Roadmap',emo:'🗓️',cnt:()=>DATA?String(typeof scheduledRows==='function'?scheduledRows().length:DATA.roadmap.length):''},
+  {id:'ana',label:'Analysis',emo:'🔬',cnt:()=>DATA&&DATA.ours?String(DATA.ours.filter(v=>v.pub&&(v.durH==null||v.durH>=0.15)).length):''},
+  {id:'kw',label:'Keywords',emo:'🔎',small:1,cnt:()=>''}
 ];
 function renderNav(){
   const _frnav=v=>(typeof LANG!=='undefined'&&LANG==='fr'&&typeof FR_NAV!=='undefined'&&FR_NAV[v])?FR_NAV[v]:v;
@@ -633,11 +644,11 @@ function dashHTML(){
   const liveTotal=L.length?L.map(v=>liveNow(v.vid)).filter(x=>x!=null).reduce((s,x)=>s+x,0):null;
   const kpi=(lbl,val,sub,c)=>'<div class="kpi" style="--kc:'+c+'"><div class="k-lbl">'+lbl+'</div><div class="k-val">'+val+'</div><div class="k-sub">'+sub+'</div></div>';
   let h='<div class="kpis">'+
-    kpi('Videos audited',fmtInt(A.length),'â‰¥1M views Â· all time','#9aa8ff')+
-    kpi('Trending now',fmtInt(T.length),'<12 months Â· â‰¥500k views','#fbbf24')+
+    kpi('Videos audited',fmtInt(A.length),'≥1M views · all time','#9aa8ff')+
+    kpi('Trending now',fmtInt(T.length),'<12 months · ≥500k views','#fbbf24')+
     kpi('Unique channels',fmtInt(channels),'competitive landscape','#f9a8d4')+
     kpi('Livestreams',fmtInt(L.length),liveTotal!=null?fmtN(liveTotal)+' watching right now':'live scan pending','#f87171')+
-    kpi('Channels audited',CHAN?fmtInt(CHAN.channels.length):'â€¦',CHAN?fmtN(CHAN.channels.reduce((s,c)=>s+(c.subs||0),0))+' combined subscribers':'loading audit Sheetâ€¦','#38bdf8')+
+    kpi('Channels audited',CHAN?fmtInt(CHAN.channels.length):'…',CHAN?fmtN(CHAN.channels.reduce((s,c)=>s+(c.subs||0),0))+' combined subscribers':'loading audit Sheet…','#38bdf8')+
   '</div>';
 
   const gcount={};A.forEach(v=>{if(v.genre)gcount[v.genre]=(gcount[v.genre]||0)+1;});
@@ -648,14 +659,14 @@ function dashHTML(){
   const vmax=vsorted.length?vsorted[0][1]:1;
   const vbars=(rows,max,colorFn,fmt)=>'<div class="vchart">'+rows.map(([k,n])=>{
     const c=colorFn(k);
-    return '<div class="vcol" title="'+esc(k)+' â€” '+fmtInt(n)+'"><span class="vval">'+(fmt?fmtN(n):fmtInt(n))+'</span>'+
+    return '<div class="vcol" title="'+esc(k)+' — '+fmtInt(n)+'"><span class="vval">'+(fmt?fmtN(n):fmtInt(n))+'</span>'+
       '<div class="vbar" style="--f:'+(n/max)+';background:linear-gradient(180deg,'+c+','+c+'99)"></div>'+
       '<span class="vlbl">'+esc(String(k).split('/')[0].trim())+'</span></div>';
   }).join('')+'</div>';
   const chartp=(t,sub,body)=>'<div class="panel chartp"><h3>'+t+'</h3><div class="psub">'+sub+'</div>'+body+'</div>';
   h+='<div class="dash-grid">'+
-    chartp('Genre distribution','Number of audited videos per genre Â· full history, â‰¥1M views',vbars(gsorted,gmax,gcolor))+
-    chartp('Velocity by genre','Median views/month per genre Â· videos from the last 12 months',vbars(vsorted,vmax,gcolor,true))+
+    chartp('Genre distribution','Number of audited videos per genre · full history, ≥1M views',vbars(gsorted,gmax,gcolor))+
+    chartp('Velocity by genre','Median views/month per genre · videos from the last 12 months',vbars(vsorted,vmax,gcolor,true))+
   '</div>';
 
   const hot=[...T].sort((a,b)=>(b.vpm||0)-(a.vpm||0)).slice(0,5);
@@ -666,11 +677,11 @@ function dashHTML(){
     '<img loading="lazy" src="'+thumb(v.vid)+'" onerror="this.style.visibility=\'hidden\'">'+
     '<div style="min-width:0"><div class="mi-t">'+esc(v.title)+'</div><div class="mi-s">'+statHTML+'</div></div></div>';
   h+='<div class="dash-3">'+
-    '<div class="panel"><h3>ðŸ”¥ Hot right now<span class="link" onclick="VS.mix.age=\'12m\';VS.mix.sort=\'vpm\';go(\'mix\')">View all â†’</span></h3><div class="psub">Fastest-growing videos published in the last 12 months</div><div class="mini-list">'+
+    '<div class="panel"><h3>🔥 Hot right now<span class="link" onclick="VS.mix.age=\'12m\';VS.mix.sort=\'vpm\';go(\'mix\')">View all →</span></h3><div class="psub">Fastest-growing videos published in the last 12 months</div><div class="mini-list">'+
       hot.map(v=>mini(v,'<b>'+fmtN(v.vpm)+'/mo</b><span>'+esc(v.channel)+'</span>','trends')).join('')+'</div></div>'+
-    '<div class="panel"><h3>ðŸ“° Latest discoveries<span class="link" onclick="VS.mix.age=\'3m\';VS.mix.sort=\'added\';go(\'mix\')">View all â†’</span></h3><div class="psub">New videos the YouTube algorithm just started pushing Â· daily scan</div><div class="mini-list">'+
+    '<div class="panel"><h3>📰 Latest discoveries<span class="link" onclick="VS.mix.age=\'3m\';VS.mix.sort=\'added\';go(\'mix\')">View all →</span></h3><div class="psub">New videos the YouTube algorithm just started pushing · daily scan</div><div class="mini-list">'+
       (latest.length?latest.map(v=>mini(v,'<b>'+fmtN(v.views)+' views</b><span>'+fmtAge(v.ageM)+' old</span>','news')).join(''):'<div class="empty">No discoveries yet</div>')+'</div></div>'+
-    '<div class="panel"><h3>ðŸ—“ï¸ Coming up<span class="link" onclick="go(\'roadmap\')">Full roadmap â†’</span></h3><div class="psub">Next planned releases Â· synced with Monday</div>'+
+    '<div class="panel"><h3>🗓️ Coming up<span class="link" onclick="go(\'roadmap\')">Full roadmap →</span></h3><div class="psub">Next planned releases · synced with Monday</div>'+
       coming.map(r=>{const d=new Date(r.date);return '<div class="rm-mini" style="--gc:'+gcolor(r.genre)+'"><div class="d">'+d.getDate()+' '+MONTHS[d.getMonth()]+'</div><div class="t">'+esc(r.title)+'</div>'+gtag(r.genre,1)+'</div>';}).join('')+'</div>'+
   '</div>';
   const topLives=[...L].sort((a,b)=>(liveNow(b.vid)||0)-(liveNow(a.vid)||0)).slice(0,5);
@@ -678,10 +689,10 @@ function dashHTML(){
   const topCh=CHAN?[...CHAN.channels].sort((a,b)=>(b.subs||0)-(a.subs||0)).slice(0,5):[];
   window._dash_chans=topCh;
   h+='<div class="dash-2">'+
-    '<div class="panel"><h3>ðŸ“¡ Top livestreams<span class="link" onclick="go(\'live\')">View all â†’</span></h3><div class="psub">Most-watched 24/7 streams on the scan keywords Â· viewers at last scan</div><div class="mini-list">'+
-      (topLives.length?topLives.map((v,i)=>'<div class="mini-item" onclick="openDashLive('+i+')"><img loading="lazy" src="'+thumb(v.vid)+'" onerror="this.style.visibility=\'hidden\'"><div style="min-width:0"><div class="mi-t">'+esc(v.title)+'</div><div class="mi-s"><b>ðŸ”´ '+fmtN(liveNow(v.vid))+' watching</b><span>'+esc(v.channel)+'</span></div></div></div>').join(''):'<div class="empty">Live scan pending</div>')+'</div></div>'+
-    '<div class="panel"><h3>ðŸ“º Top channels<span class="link" onclick="go(\'chan\')">View all â†’</span></h3><div class="psub">Biggest channels in the competitive audit'+(CHAN?' Â· '+fmtInt(CHAN.channels.length)+' tracked':'')+'</div><div class="mini-list">'+
-      (topCh.length?topCh.map((c,i)=>'<div class="mini-item" onclick="openDashChan('+i+')">'+chAva(c,48)+'<div style="min-width:0"><div class="mi-t">'+esc(c.name)+'</div><div class="mi-s"><b>'+fmtN(c.subs)+' subs</b><span>'+esc(c.niche)+'</span></div></div></div>').join(''):'<div class="empty">Loading the channel auditâ€¦</div>')+'</div></div>'+
+    '<div class="panel"><h3>📡 Top livestreams<span class="link" onclick="go(\'live\')">View all →</span></h3><div class="psub">Most-watched 24/7 streams on the scan keywords · viewers at last scan</div><div class="mini-list">'+
+      (topLives.length?topLives.map((v,i)=>'<div class="mini-item" onclick="openDashLive('+i+')"><img loading="lazy" src="'+thumb(v.vid)+'" onerror="this.style.visibility=\'hidden\'"><div style="min-width:0"><div class="mi-t">'+esc(v.title)+'</div><div class="mi-s"><b>🔴 '+fmtN(liveNow(v.vid))+' watching</b><span>'+esc(v.channel)+'</span></div></div></div>').join(''):'<div class="empty">Live scan pending</div>')+'</div></div>'+
+    '<div class="panel"><h3>📺 Top channels<span class="link" onclick="go(\'chan\')">View all →</span></h3><div class="psub">Biggest channels in the competitive audit'+(CHAN?' · '+fmtInt(CHAN.channels.length)+' tracked':'')+'</div><div class="mini-list">'+
+      (topCh.length?topCh.map((c,i)=>'<div class="mini-item" onclick="openDashChan('+i+')">'+chAva(c,48)+'<div style="min-width:0"><div class="mi-t">'+esc(c.name)+'</div><div class="mi-s"><b>'+fmtN(c.subs)+' subs</b><span>'+esc(c.niche)+'</span></div></div></div>').join(''):'<div class="empty">Loading the channel audit…</div>')+'</div></div>'+
   '</div>';
   return h;
 }
