@@ -53,6 +53,12 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
             '"partial":false}}};',
         )
         write(self.root / "Lofi_Radar_chx.js", f'window.CHX={{"t":{stamp},"lg":{{}}}};')
+        write(
+            self.root / "Lofi_Radar_studio.js",
+            'window.STUDIO_DATA={"dataThrough":"2026-07-27","windowDays":30,'
+            '"sync":{"source":"youtube-reporting-api","connected":true,"status":"healthy",'
+            '"lastSuccessAt":"2026-07-29T06:00:00Z"},"d":{}};',
+        )
 
     def tearDown(self):
         self.temp.cleanup()
@@ -168,6 +174,84 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         self.assertTrue(row.due)
         self.assertIn("99/100", row.reason)
 
+    def test_youtube_studio_freshness_uses_data_through_not_a_new_import_timestamp(self):
+        write(
+            self.root / "Lofi_Radar_studio.js",
+            'window.STUDIO_DATA={"t":1785592800000,"dataThrough":"2026-07-20",'
+            '"sync":{"source":"youtube-reporting-api","connected":true,"status":"healthy",'
+            '"lastSuccessAt":"2026-08-01T10:00:00Z"},"d":{}};',
+        )
+        row = subject.assess(
+            self.root,
+            datetime(2026, 8, 1, 12, tzinfo=timezone.utc),
+            ["youtube_studio"],
+        )[0]
+        self.assertTrue(row.due)
+        self.assertIn("12 Paris days behind", row.reason)
+
+    def test_manual_studio_export_never_counts_as_an_automatic_connection(self):
+        write(
+            self.root / "Lofi_Radar_studio.js",
+            'window.STUDIO_DATA={"t":1785592800000,"dataThrough":"2026-07-31",'
+            '"coverage":{"sourceFile":"export.csv"},"d":{}};',
+        )
+        row = subject.assess(
+            self.root,
+            datetime(2026, 8, 1, 12, tzinfo=timezone.utc),
+            ["youtube_studio"],
+        )[0]
+        self.assertTrue(row.due)
+        self.assertIn("connection is inactive", row.reason)
+
+    def test_recent_complete_studio_reporting_pair_is_healthy_during_window_warmup(self):
+        write(
+            self.root / "Lofi_Radar_studio.js",
+            'window.STUDIO_DATA={"dataThrough":"2026-07-29","windowDays":30,'
+            '"sync":{"source":"youtube-reporting-api","connected":true,"status":"healthy",'
+            '"warmup":true,"lastSuccessAt":"2026-08-01T08:00:00Z"},"d":{}};',
+        )
+        row = subject.assess(
+            self.root,
+            datetime(2026, 8, 1, 12, tzinfo=timezone.utc),
+            ["youtube_studio"],
+        )[0]
+        self.assertFalse(row.due)
+        self.assertIn("2026-07-29", row.reason)
+
+    def test_scheduled_studio_pass_checks_for_the_latest_normally_available_day(self):
+        write(
+            self.root / "Lofi_Radar_studio.js",
+            'window.STUDIO_DATA={"dataThrough":"2026-07-29","windowDays":30,'
+            '"sync":{"source":"youtube-reporting-api","connected":true,"status":"healthy",'
+            '"lastSuccessAt":"2026-08-01T08:00:00Z"},"d":{}};',
+        )
+        now = datetime(2026, 8, 1, 12, tzinfo=timezone.utc)
+        watchdog = subject.assess(self.root, now, ["youtube_studio"])[0]
+        scheduled = subject.assess(
+            self.root,
+            now,
+            ["youtube_studio"],
+            ignore_deadline=True,
+        )[0]
+        self.assertFalse(watchdog.due)
+        self.assertTrue(scheduled.due)
+        self.assertIn("2026-07-30", scheduled.reason)
+
+    def test_partial_studio_report_pair_is_retried(self):
+        write(
+            self.root / "Lofi_Radar_studio.js",
+            'window.STUDIO_DATA={"dataThrough":"2026-07-29",'
+            '"sync":{"source":"youtube-reporting-api","connected":true,"status":"partial",'
+            '"lastSuccessAt":"2026-08-01T08:00:00Z"},"d":{}};',
+        )
+        row = subject.assess(
+            self.root,
+            datetime(2026, 8, 1, 12, tzinfo=timezone.utc),
+            ["youtube_studio"],
+        )[0]
+        self.assertTrue(row.due)
+        self.assertIn("partial", row.reason)
+
     def test_playlist_followers_require_the_complete_visible_cohort(self):
         write(
             self.root / "Spotify_Playlists_canonical_data.js",
@@ -270,6 +354,7 @@ class DataFreshnessWorkflowGuardrailTests(unittest.TestCase):
             "refresh-soundcharts.yml": "--target spotify_core",
             "refresh-spotify-browse-catalogue.yml": "--target spotify_browse",
             "refresh-channel-radar.yml": "--target youtube_channels",
+            "refresh-youtube-studio.yml": "--target youtube_studio",
         }
         for name, target in expected.items():
             workflow = Path(".github/workflows", name).read_text(encoding="utf-8")
@@ -284,4 +369,3 @@ class DataFreshnessWorkflowGuardrailTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
