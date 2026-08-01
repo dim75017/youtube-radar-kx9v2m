@@ -29,6 +29,7 @@ from typing import Any, Mapping, Protocol
 
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 REPORTING_ROOT = "https://youtubereporting.googleapis.com/v1"
+REPORTING_DOWNLOAD_HOST = "youtubereporting.googleapis.com"
 OUTPUT_PREFIX = "window.STUDIO_DATA="
 STATE_VERSION = 1
 ROLLING_DAYS = 365
@@ -272,7 +273,13 @@ class ReportingClient:
 
     def download(self, url: str) -> bytes:
         parsed = urllib.parse.urlparse(url)
-        if parsed.scheme != "https" or not parsed.netloc:
+        if (
+            parsed.scheme != "https"
+            or parsed.hostname != REPORTING_DOWNLOAD_HOST
+            or parsed.port not in (None, 443)
+            or parsed.username is not None
+            or parsed.password is not None
+        ):
             raise StudioReportingError("Reporting API returned an unsafe download URL")
         return self.transport.request(
             "GET", url, headers={"Authorization": f"Bearer {self.access_token}", "Accept": "text/csv"}
