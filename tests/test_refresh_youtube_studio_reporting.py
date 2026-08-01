@@ -79,7 +79,7 @@ def report(kind, report_id, day, *, created="2026-08-01T06:00:00Z"):
         "startTime": f"{start.isoformat()}T00:00:00Z",
         "endTime": f"{end.isoformat()}T00:00:00Z",
         "createTime": created,
-        "downloadUrl": f"https://download.test/{kind}/{report_id}.csv",
+        "downloadUrl": f"https://youtubereporting.googleapis.com/download/{kind}/{report_id}.csv",
     }
 
 
@@ -139,6 +139,16 @@ class YoutubeStudioReportingTests(unittest.TestCase):
             now=NOW,
             expected_channel_id="UC-LOFI",
         )
+
+    def test_download_rejects_untrusted_host_before_sending_bearer_token(self):
+        transport = FakeTransport()
+        client = studio.ReportingClient(CREDENTIALS, transport)
+
+        with self.assertRaisesRegex(studio.StudioReportingError, "unsafe download URL"):
+            client.download("https://attacker.example/report.csv")
+
+        self.assertEqual(len(transport.calls), 1)
+        self.assertEqual(transport.calls[0][1], studio.TOKEN_URL)
 
     def test_jobs_are_created_once_and_waiting_does_not_replace_manual_snapshot(self):
         with tempfile.TemporaryDirectory() as temporary:
