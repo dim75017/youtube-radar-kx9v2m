@@ -41,6 +41,7 @@ vm.runInContext(`
     stagingLicensed: trackStatusHtml(stagingLicensed),
     licensedFrom: trackStatusHtml(licensedFrom),
     dreamscape: trackStatusHtml(dreamscape),
+    dreamscapeColumn: trackRightsColumnText(dreamscape),
     licensedFlag: (syncTrackOwnershipFlag(licensed), licensed[4])
   };
 `, context);
@@ -51,6 +52,7 @@ assert.equal(context.result.labelled, '<span class="badge other">Label (Real Lab
 assert.equal(context.result.stagingLicensed, '<span class="badge other">Label (Staging Label)</span>');
 assert.equal(context.result.licensedFrom, '<span class="badge other">Label (Amen Worldwide)</span>');
 assert.equal(context.result.dreamscape, '<span class="badge other">Label (dreamscape)</span>');
+assert.equal(context.result.dreamscapeColumn, 'dreamscape');
 assert.equal(context.result.licensedFlag, 1, 'exclusive licences must always override the self-release flag');
 
 const statusSource = dashboard.slice(statusStart, statusEnd);
@@ -58,6 +60,8 @@ for (const forbidden of ['Mesurée', 'Playlist éditoriale', 'Catalogue artiste'
   assert.doesNotMatch(statusSource, new RegExp(forbidden), `track badges must not expose ${forbidden}`);
 }
 assert.doesNotMatch(dashboard, /function discoveryAvailabilityInfo\(/, 'provenance badge helper must be removed');
+assert.equal((dashboard.match(/trackRightsColumnText\(r\)/g) || []).length, 2,
+  'both Copyright table cells must use the concise label display');
 assert.match(dashboard, /R\.forEach\(track=>syncTrackOwnershipFlag\(track\)\)/,
   'the whole in-memory catalogue must be normalised before artist aggregation');
 
