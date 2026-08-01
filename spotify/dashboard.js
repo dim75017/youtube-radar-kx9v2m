@@ -733,10 +733,16 @@ function trackOwnershipInfo(track,source=null){
   const rightsUnknown=!rights||rights==='unknown';
   const indie=!exclusive&&(SELF_RELEASE_RIGHTS.has(rights)||(rightsUnknown&&track&&track[4]===0));
   const labelCandidate=exclusiveLicensee(copyright,fallback,rawLabel)||rawLabel;
-  const labelName=!indie&&labelCandidate
-    &&!['label','unknown','à enrichir','a enrichir'].includes(labelCandidate.toLowerCase())
-    ?labelCandidate:'';
+  const conciseLabel=conciseLicenseeName(labelCandidate);
+  const labelName=!indie&&conciseLabel
+    &&!['label','unknown','à enrichir','a enrichir'].includes(conciseLabel.toLowerCase())
+    ?conciseLabel:'';
   return {kind:indie?'indie':'label',rights,labelName,exclusive};
+}
+function trackRightsColumnText(track){
+  const ownership=trackOwnershipInfo(track);
+  const raw=String(track&&track[5]||'').trim();
+  return ownership.kind==='label'&&ownership.labelName?ownership.labelName:raw;
 }
 function syncTrackOwnershipFlag(track,source=null){
   if(!track) return {kind:'label',rights:'',labelName:'',exclusive:false};
@@ -3850,7 +3856,7 @@ function renderOpps(){
           <td class="num stream-24h">${streamStackHtml(w1.current,false,true)}</td>
           <td class="num"><span class="buyout-estimate">${perMonth(r)<0?'—':eur(advance(perMonth(r)))}</span></td>
           <td style="white-space:nowrap;font-variant-numeric:tabular-nums">${fmtDate(r[2])}</td>
-          <td><span class="lb" title="${esc(r[5])}">${esc(r[5])}</span></td>
+          <td><span class="lb" title="${esc(r[5])}">${esc(trackRightsColumnText(r))}</span></td>
         </tr>`;}).join('')}
       </tbody>
     </table></div>
@@ -4135,7 +4141,7 @@ function renderNew(){
           <td class="num">${streamStackHtml(w7.current,false,false)}</td>
           <td class="num">${streamStackHtml(w1.current,false,false)}</td>
           <td>${trackStatusHtml(r)}</td>
-          <td><span class="lb" title="${esc(r[5])}">${esc(r[5])}</span></td>
+          <td><span class="lb" title="${esc(r[5])}">${esc(trackRightsColumnText(r))}</span></td>
         </tr>`;}).join('')}
       </tbody>
     </table>
