@@ -370,7 +370,230 @@ function updateStatusLines(){
 function updateStatusColor(item){
   // Channel monitoring runs on its own cadence. A successful timestamp means
   // the source is healthy, even if it is older than the video refresh.
-  if(item&&item.key==='chan…2844 tokens truncated…tRadarData(d);SYNCED=Date.now();saveCache(d);
+  if(item&&item.key==='channels'&&item.when)return 'var(--green)';
+  return scanDotColor(item&&item.when);
+}
+function refreshUpdateStatus(){
+  const btn=document.getElementById('btn-update-status'),panel=document.getElementById('update-status-panel');
+  if(!btn||!panel)return;
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
+  const labelEl=btn.querySelector('.lbl');if(labelEl)labelEl.textContent=fr?'Mises à jour':'Update status';
+  btn.title=fr?'Voir le détail des mises à jour':'View update details';
+  panel.innerHTML='<div class="update-status-head"><span>'+esc(fr?'État des mises à jour':'Update status')+'</span><small>'+esc(fr?'Surveillance automatique':'Automatic monitoring')+'</small></div>'+updateStatusLines().map(item=>{
+    const color=updateStatusColor(item),time=item.when?fmtDateTimeShort(item.when):(fr?'En attente de données':'Awaiting data');
+    return '<div class="update-status-line"><i class="update-status-dot" style="background:'+color+';color:'+color+'"></i><div><b>'+esc(item.label)+'</b><span>'+esc(time)+' · '+esc(item.detail)+'</span></div></div>';
+  }).join('');
+}
+function toggleUpdateStatus(event){
+  if(event)event.stopPropagation();
+  const btn=document.getElementById('btn-update-status'),panel=document.getElementById('update-status-panel');
+  if(!btn||!panel)return;
+  const open=panel.hidden;refreshUpdateStatus();panel.hidden=!open;btn.setAttribute('aria-expanded',String(open));
+}
+document.addEventListener('click',event=>{
+  const control=document.querySelector('.update-status-control');
+  if(control&&!control.contains(event.target)){
+    const btn=document.getElementById('btn-update-status'),panel=document.getElementById('update-status-panel');
+    if(panel){panel.hidden=true;if(btn)btn.setAttribute('aria-expanded','false');}
+  }
+});
+
+/* ================= STATE ================= */
+let DATA=null, SYNCED=null, route='dashboard';
+const VIEW_CACHE=new Map();
+let VIEW_WARMUP_TOKEN=0;
+const MIN_NEW_VIDEO_TOTAL_VIEWS=100000;
+function eligibleNewVideoRows(rows){
+  return (rows||[]).filter(row=>Number(row&&row.views||0)>=MIN_NEW_VIDEO_TOTAL_VIEWS);
+}
+function unavailableVideoIds(){
+  return new Set((((window.LOFI_DATA||{}).videoMetrics||{}).unavailable_ids||[]).map(String));
+}
+function removeUnavailableVideoRows(d){
+  if(!d)return d;
+  const unavailable=unavailableVideoIds();
+  if(!unavailable.size)return d;
+  ['all','trends','news','ours'].forEach(key=>{
+    if(Array.isArray(d[key]))d[key]=d[key].filter(row=>!unavailable.has(String(row&&row.vid||'')));
+  });
+  return d;
+}
+function setRadarData(d){
+  removeUnavailableVideoRows(d);
+  if(d)d.news=eligibleNewVideoRows(d.news);
+  if(typeof mergeGeneratedRecommendationPool==='function')mergeGeneratedRecommendationPool(d);
+  if(typeof applyRecommendationEdits==='function')applyRecommendationEdits(d);
+  DATA=d;mergeLoadedVideoHistoryIntoData(DATA);
+  if(typeof invalidateRecommendationDerivedData==='function')invalidateRecommendationDerivedData();
+  VIEW_CACHE.clear();VIEW_WARMUP_TOKEN++;
+  if(typeof _anaCache!=='undefined'){_anaCache=null;_anaT=0;}
+  if(typeof scheduleViewWarmup==='function')scheduleViewWarmup();
+  refreshUpdateStatus();
+}
+const VS={
+  all:{q:'',genre:'',sort:'vpm',mode:'grid',limit:60},
+  trends:{q:'',genre:'',sort:'vpm',mode:'grid',limit:60},
+  news:{q:'',genre:'',sort:'added',mode:'grid',limit:60},
+  mix:{q:'',genre:'',sort:'vpm',mode:'grid',limit:60,age:'3m'}
+};
+const RS={q:'',genre:'',pot:'',perso:'',val:'',sort:'scoreAdj',mode:'grid',limit:80};
+const RM={src:'',genre:'',year:'',mode:'cal',cal:null,view:'year'};
+const LS={q:'',sort:'now',mode:'grid',limit:60};
+const CS={q:'',niche:'',sort:'subs',mode:'table',limit:150};
+const CHAN_URL='https://docs.google.com/spreadsheets/d/1jDbcryjTDbRsW4Uw6OP_SYwgvbPoLQu_KcSWqC3Dfoc/export?format=xlsx';
+const CHAN_CACHE='lofiradar_chan_v1';
+let CHAN=null, CHAN_ERR=null, CHAN_T=null;
+
+/* ================= BOOT / SYNC ================= */
+function setSync(state,txt){
+  refreshUpdateStatus();
+}
+async function fetchData(){
+  const res=await fetch(XLSX_URL,{redirect:'follow'});
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const buf=await res.arrayBuffer();
+  const wb=XLSX.read(buf,{type:'array',cellDates:false});
+  const d=parseWorkbook(wb);
+  mergeExtensionSnapshot(d);
+  if(!d.all.length&&!d.trends.length)throw new Error('Parsed 0 rows — sheet structure may have changed');
+  return d;
+}
+/* The Sheet keeps the curated catalogue and older history. The validated
+   daily snapshot supplies current counters, new discoveries and new history
+   points. Merge both sources by video ID without touching livestream data. */
+function mergeExtensionSnapshot(d){
+  const snap=window.LOFI_DATA&&window.LOFI_DATA.d;if(!snap)return;
+  removeUnavailableVideoRows(d);
+  ['all','trends','news','ours'].forEach(key=>{
+    const into=d[key]||(d[key]=[]),byId=new Map(into.map(r=>[r.vid,r]));
+    const unavailable=unavailableVideoIds();
+    (snap[key]||[]).filter(row=>!unavailable.has(String(row&&row.vid||''))).forEach(row=>{
+      const current=byId.get(row.vid);
+      if(current)Object.assign(current,row);
+      else{const added=Object.assign({},row);into.push(added);byId.set(row.vid,added);}
+    });
+    into.sort((a,b)=>key==='ours'?(b.pub||0)-(a.pub||0):(b.vpm||0)-(a.vpm||0));
+  });
+  const hist=d.hist||(d.hist={});
+  Object.entries(snap.hist||{}).forEach(([vid,points])=>{
+    hist[vid]=mergeDailyVideoHistory(hist[vid],points);
+  });
+}
+function mergeDailyVideoHistory(left,right){
+  const byDay=new Map();
+  (left||[]).concat(right||[]).forEach(p=>{
+    if(!Array.isArray(p)||!isFinite(p[0])||!isFinite(p[1]))return;
+    const point=[+p[0],+p[1]],day=videoHistoryDayKey(point[0]),old=byDay.get(day);
+    if(!old||point[0]>=old[0])byDay.set(day,point);
+  });
+  return [...byDay.values()].sort((a,b)=>a[0]-b[0]);
+}
+const VIDEO_HISTORY_CACHE_TTL_MS=10*60*1000;
+const VIDEO_HISTORY_SHARDS=new Map(),VIDEO_HISTORY_PENDING=new Map(),VIDEO_HISTORY_ERRORS=new Map();
+const VIDEO_HISTORY_VALIDATED_AT=new Map(),VIDEO_HISTORY_ERROR_AT=new Map();
+function videoHistoryKey(vid){return vid&&vid.charCodeAt(0).toString(16).padStart(2,'0');}
+function mergeHistoryShardIntoData(shard,d){
+  if(!d||!shard||!shard.d)return;
+  d.hist=d.hist||{};
+  Object.entries(shard.d).forEach(([vid,points])=>{d.hist[vid]=mergeDailyVideoHistory(d.hist[vid],points);});
+}
+function mergeLoadedVideoHistoryIntoData(d){
+  VIDEO_HISTORY_SHARDS.forEach(shard=>mergeHistoryShardIntoData(shard,d));
+}
+function videoHistoryReady(vid){
+  const key=videoHistoryKey(vid),validated=VIDEO_HISTORY_VALIDATED_AT.get(key)||0;
+  return VIDEO_HISTORY_SHARDS.has(key)&&Date.now()-validated<VIDEO_HISTORY_CACHE_TTL_MS;
+}
+function videoHistoryBusy(vid){return VIDEO_HISTORY_PENDING.has(videoHistoryKey(vid));}
+function videoHistoryError(vid){
+  const key=videoHistoryKey(vid),message=VIDEO_HISTORY_ERRORS.get(key)||'';
+  if(message&&Date.now()-(VIDEO_HISTORY_ERROR_AT.get(key)||0)>=VIDEO_HISTORY_CACHE_TTL_MS){
+    VIDEO_HISTORY_ERRORS.delete(key);VIDEO_HISTORY_ERROR_AT.delete(key);return '';
+  }
+  return message;
+}
+async function loadVideoHistoryShard(key){
+  const validated=VIDEO_HISTORY_VALIDATED_AT.get(key)||0;
+  if(VIDEO_HISTORY_SHARDS.has(key)&&Date.now()-validated<VIDEO_HISTORY_CACHE_TTL_MS)return VIDEO_HISTORY_SHARDS.get(key);
+  if(VIDEO_HISTORY_PENDING.has(key))return VIDEO_HISTORY_PENDING.get(key);
+  const pending=fetch('video_history/'+key+'.json?payload='+Date.now(),{cache:'no-store'})
+    .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(shard=>{
+      if(!shard||typeof shard.d!=='object')throw new Error('Invalid history shard');
+      VIDEO_HISTORY_SHARDS.set(key,shard);VIDEO_HISTORY_VALIDATED_AT.set(key,Date.now());
+      VIDEO_HISTORY_ERRORS.delete(key);VIDEO_HISTORY_ERROR_AT.delete(key);return shard;
+    })
+    .catch(e=>{
+      VIDEO_HISTORY_ERRORS.set(key,e.message||'History unavailable');VIDEO_HISTORY_ERROR_AT.set(key,Date.now());throw e;
+    })
+    .finally(()=>VIDEO_HISTORY_PENDING.delete(key));
+  VIDEO_HISTORY_PENDING.set(key,pending);return pending;
+}
+async function ensureVideoHistory(vid){
+  if(!vid)return false;
+  const key=videoHistoryKey(vid);
+  try{
+    const shard=await loadVideoHistoryShard(key);
+    mergeHistoryShardIntoData(shard,DATA);
+    if(typeof _anaCache!=='undefined'){_anaCache=null;_anaT=0;}
+    const current=window._openVideoDrawer;
+    if(current&&current.v&&current.v.vid===vid)openDrawer(current.kind,current.v,true,true);
+    if(window._openAnaVid===vid&&route==='ana'){
+      render();const i=(window._page_ana||[]).findIndex(v=>v.vid===vid);if(i>=0)openAnaIdx(i,true);
+    }
+    return true;
+  }catch(e){
+    const current=window._openVideoDrawer;
+    if(current&&current.v&&current.v.vid===vid)openDrawer(current.kind,current.v,true,true);
+    if(window._openAnaVid===vid&&route==='ana'){
+      const i=(window._page_ana||[]).findIndex(v=>v.vid===vid);if(i>=0)openAnaIdx(i,true);
+    }
+    return false;
+  }
+}
+function retryVideoHistory(vid){
+  const key=videoHistoryKey(vid);VIDEO_HISTORY_ERRORS.delete(key);VIDEO_HISTORY_ERROR_AT.delete(key);
+  VIDEO_HISTORY_SHARDS.delete(key);VIDEO_HISTORY_VALIDATED_AT.delete(key);
+  const current=window._openVideoDrawer;
+  if(current&&current.v&&current.v.vid===vid)openDrawer(current.kind,current.v,true,true);
+  if(window._openAnaVid===vid){const i=(window._page_ana||[]).findIndex(v=>v.vid===vid);if(i>=0)openAnaIdx(i,true);}
+  ensureVideoHistory(vid);
+}
+function refreshVisibleVideoHistory(){
+  if(typeof document!=='undefined'&&document.hidden)return;
+  const drawer=window._openVideoDrawer;
+  const vid=(drawer&&drawer.v&&drawer.v.vid)||window._openAnaVid;
+  if(vid&&!videoHistoryBusy(vid)&&!videoHistoryReady(vid))ensureVideoHistory(vid);
+}
+if(typeof window!=='undefined'){
+  window.addEventListener('focus',refreshVisibleVideoHistory);
+  window.addEventListener('online',refreshVisibleVideoHistory);
+}
+if(typeof document!=='undefined')document.addEventListener('visibilitychange',refreshVisibleVideoHistory);
+function videoHistoryPanel(vid,points,label){
+  const daily=()=>dailyViewDeltas(points||null);
+  if(!vid)return label?'<div class="k">📈 '+esc(videoHistCopy().dailyChart)+'</div>'+histChart(daily(),'daily-views'):videoHistoryAnalytics(points||null);
+  if(videoHistoryError(vid))return '<div class="hist-empty">Daily history unavailable. <button class="load-more" onclick="retryVideoHistory('+jsq(vid)+')">Retry</button></div>';
+  if(!videoHistoryReady(vid))return '<div class="hist-empty">Loading daily history…</div>';
+  return label?'<div class="k">📈 '+esc(videoHistCopy().dailyChart)+'</div>'+histChart(daily(),'daily-views'):videoHistoryAnalytics(points||null);
+}
+function clearLegacyVideoCaches(){
+  try{localStorage.removeItem('lofiradar_v3');localStorage.removeItem(CACHE_KEY);}catch(e){}
+}
+function saveCache(){
+  // The static snapshot is already the fallback; do not duplicate its growing
+  // catalogue/history in the small localStorage quota.
+  clearLegacyVideoCaches();
+}
+function loadCache(){
+  clearLegacyVideoCaches();return null;
+}
+async function refresh(){
+  const btn=document.getElementById('btn-refresh');btn.classList.add('spinning');
+  setSync('load','Syncing…');
+  try{
+    const d=await fetchData();
+    setRadarData(d);SYNCED=Date.now();saveCache(d);
     setSync('',lastScanText()||'Live · synced '+timeAgo(SYNCED));
     renderNav();render();
   }catch(e){
@@ -696,4 +919,3 @@ function dashHTML(){
   '</div>';
   return h;
 }
-
