@@ -1564,6 +1564,14 @@ function anaResolvedDurationHours(v,studio){
   const inferred=averageMs/(averagePct/100)/3600000;
   return Number.isFinite(inferred)&&inferred>=0.15&&inferred<=24?inferred:null;
 }
+function anaStudioScopeCopy(){
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
+  const meta=typeof studioReportingMeta==='function'?studioReportingMeta():null;
+  const source=typeof studioReportingSourceLabel==='function'?studioReportingSourceLabel(meta,fr):(fr?'Source privée YouTube Analytics':'Private YouTube Analytics source');
+  const windowLabel=typeof studioReportingWindowLabel==='function'?studioReportingWindowLabel(meta,fr):(fr?'fenêtre non précisée':'window not specified');
+  const through=meta&&meta.throughT?((fr?'données au ':'data through ')+fmtDateFull(meta.throughT)):'';
+  return source+' · '+windowLabel+(through?' · '+through:'');
+}
 function anaAgeComparable(rows,ageDays,minCount){
   const target=anaAgeCohort(ageDays);
   if(!target)return {rows:[],label:'unknown age',exact:false,sufficient:false};
@@ -2050,6 +2058,7 @@ function anaHTML(){
     '<div class="tb-right"><div class="viewtoggle">'+
       '<button class="'+(AS.mode!=='table'?'on':'')+'" onclick="AS.mode=\'grid\';render()" title="Grid">'+ICONS.grid+'</button>'+
       '<button class="'+(AS.mode==='table'?'on':'')+'" onclick="AS.mode=\'table\';render()" title="List">'+ICONS.rows+'</button></div></div></div>';
+  h+='<div class="result-count">'+esc(anaStudioScopeCopy())+'</div>';
   window._page_ana=rows;
   if(AS.mode==='table'){
     h+=rows.map((o,i)=>{
@@ -2093,7 +2102,7 @@ function openAnaIdx(i,historyReload){
         '<div class="dw-stat"><b style="color:'+vsMed(o.st.ctr,o.ctrMed)+'">'+o.st.ctr.toFixed(1)+'%</b><span>CTR (median '+(o.ctrMed?o.ctrMed.toFixed(1):'—')+'%)</span></div>'+
         '<div class="dw-stat"><b style="color:'+vsMed(o.st.awtMs,o.awtMed)+'">'+fmtWatch(o.st.awtMs)+'</b><span>avg view duration (median '+fmtWatch(o.awtMed)+')</span></div>'+
         '<div class="dw-stat"><b style="color:'+vsMed(o.st.awp,o.awpMed)+'">'+o.st.awp.toFixed(1)+'%</b><span>avg watched (median '+(o.awpMed?o.awpMed.toFixed(0):'—')+'%)</span></div>'+
-      '</div>':'')+
+      '</div><div class="dw-sec"><div class="k">YouTube Studio</div><div class="v">'+esc(anaStudioScopeCopy())+'</div></div>':'')+
       '<div class="dw-sec">'+videoHistoryPanel(o.vid,(DATA.hist&&DATA.hist[o.vid])||null,true)+'</div>'+
       sec('Diagnosis',(o.diags||[]).map(d=>'• '+esc(d)).join('<br>'),'🔬')+
       (o.reco?sec('Linked recommendation','#'+Math.round(o.reco.n)+' · '+esc(o.reco.title)+(o.reco.pot?' · predicted '+esc(o.reco.pot):'')+(o.reco.scoreAdj!=null?' · score '+Math.round(o.reco.scoreAdj):''),'💡'):'')+
@@ -2571,9 +2580,9 @@ const FR_LIT=[
 ['age cohort · ','cohorte d’âge · '],['Same-age channel median (','Médiane chaîne à âge équivalent ('],['⚖️ Age-matched comparison','⚖️ Comparaison à âge équivalent'],['Published ','Publiée '],[' days old',' jours'],['market cohort: ','cohorte marché : '],['channel cohort: ','cohorte chaîne : '],[' videos)',' vidéos)'],['Raw totals stay visible; performance colors and percentiles only compare releases at a similar age.','Les totaux bruts restent visibles ; couleurs et percentiles ne comparent que des sorties d’âge proche.'],
 [' watching</span>',' spectateurs</span>'],[' watching<',' spectateurs<'],
 ['>Overperforming<','>Surperforme<'],['>In line<','>Dans la norme<'],['>Underperforming<','>Sous-performe<'],['>Too early<','>Trop tôt<'],
-['beating 70% of their genre cohort','au-dessus de 70 % de leur cohorte de genre'],['below 40% of their genre cohort','sous les 40 % de leur cohorte de genre'],['long-form releases · full channel history','sorties long format · historique complet de la chaîne'],['vs competing videos of the same genre','vs les vidéos concurrentes du même genre'],['median views/mo across our releases','vues/mois médianes de nos sorties'],['impressions click-through · YouTube Studio, 365 days','taux de clic des impressions · YouTube Studio, 365 jours'],
+['beating 70% of their genre cohort','au-dessus de 70 % de leur cohorte de genre'],['below 40% of their genre cohort','sous les 40 % de leur cohorte de genre'],['long-form releases · full channel history','sorties long format · historique complet de la chaîne'],['vs competing videos of the same genre','vs les vidéos concurrentes du même genre'],['median views/mo across our releases','vues/mois médianes de nos sorties'],['impressions click-through · YouTube Studio','taux de clic des impressions · YouTube Studio'],
 ['>Videos analysed<','>Vidéos analysées<'],['>Median percentile<','>Percentile médian<'],['>Channel velocity<','>Vélocité chaîne<'],['>Median CTR<','>CTR médian<'],['>Streams tracked<','>Streams suivis<'],['>Channels tracked<','>Chaînes suivies<'],['>Combined subscribers<','>Abonnés cumulés<'],['>Median views / year<','>Vues / an médianes<'],['>Active channels<','>Chaînes actives<'],
-['Market benchmark (radar) × YouTube Studio private data (impressions, CTR, retention · 365 days, refreshed on demand)','Benchmark marché (radar) × données privées YouTube Studio (impressions, CTR, rétention · 365 jours, rafraîchies à la demande)'],
+['Market benchmark (radar) × YouTube Studio private data','Benchmark marché (radar) × données privées YouTube Studio'],
 ['📋 All releases','📋 Toutes les sorties'],[' releases<',' sorties<'],[' release<',' sortie<'],['>Today<','>Aujourd’hui<'],
 ['📈 View history','📈 Historique des vues'],['📡 Concurrent viewers','📡 Spectateurs simultanés'],['🔬 Diagnosis','🔬 Diagnostic'],['💡 Linked recommendation','💡 Recommandation liée'],['⚖️ Cohort','⚖️ Cohorte'],['📚 Catalog','📚 Catalogue'],['📈 Subscribers','📈 Abonnés'],['📈 Total views','📈 Vues totales'],['🔥 Why trending / notable','🔥 Pourquoi ça tourne'],['🔥 Why trending','🔥 Pourquoi en tendance'],['📌 Why notable','📌 Pourquoi notable'],['💡 Lofi Girl suggestion','💡 Suggestion Lofi Girl'],['💡 Lofi Girl angle','💡 Angle Lofi Girl'],['🎯 What to copy','🎯 À copier'],['🎼 Musical direction','🎼 Direction musicale'],['🎨 Visual direction','🎨 Direction visuelle'],['🔎 Discovery keywords','🔎 Mots-clés de découverte'],['🏁 Best search rank','🏁 Meilleur rang de recherche'],['🗓️ First seen by the scan','🗓️ Première détection'],['🔎 Found via search keywords','🔎 Trouvée via ces recherches'],['✏️ Title pattern','✏️ Structure du titre'],['🎬 Concept','🎬 Concept'],['🖼️ Thumbnail scene','🖼️ Scène de miniature'],['🎼 Music style','🎼 Style musical'],['🔁 Cadence','🔁 Cadence'],['🍂 Seasonal note','🍂 Note saisonnière'],
 ['✓ Validated · click to undo','✓ Validée · cliquer pour annuler'],['✓ Validate','✓ Valider'],['💾 Save to Sheet','💾 Enregistrer dans le Sheet'],
