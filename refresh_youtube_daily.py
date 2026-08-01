@@ -1075,11 +1075,17 @@ def merge_artifacts(
     }
     unavailable_ids = sorted((previous_unavailable_ids | newly_unavailable_ids) - recovered_ids)
     unavailable_set = set(unavailable_ids)
+    confirmed_recovered_ids = recovered_ids & previous_unavailable_ids
     newly_quarantined_active_ids = tracked_failed_ids & unavailable_set
-    active_tracked_total = tracked_total - len(newly_quarantined_active_ids)
-    if active_tracked_total < tracked_ok:
+    active_tracked_total = (
+        tracked_total
+        - len(newly_quarantined_active_ids)
+        + len(confirmed_recovered_ids)
+    )
+    active_updated_total = len(tracked_fresh_ids | confirmed_recovered_ids)
+    if active_tracked_total < active_updated_total:
         raise RuntimeError(
-            f"Merge rejected: {tracked_ok} refreshed videos exceed "
+            f"Merge rejected: {active_updated_total} refreshed videos exceed "
             f"the {active_tracked_total} active tracked videos"
         )
     missing_ids = sorted(tracked_failed_ids - unavailable_set)
@@ -1202,6 +1208,7 @@ def merge_artifacts(
         for row in data[bucket]
         if VIDEO_ID.match(str(row.get("vid") or ""))
     )
+    desired_ids.update(confirmed_recovered_ids)
     resolved_history_dir = history_dir or snapshot.parent / "video_history"
     history_ids, history_files = update_history_shards(
         resolved_history_dir,
@@ -1210,14 +1217,15 @@ def merge_artifacts(
         legacy_history,
         now_ms,
     )
+    refreshed_history_ids = tracked_fresh_ids | confirmed_recovered_ids
     expected_history_views = {
         video_id: int(fresh[video_id]["views"])
-        for video_id in tracked_fresh_ids
+        for video_id in refreshed_history_ids
         if video_id in fresh and isinstance(fresh[video_id].get("views"), (int, float))
     }
-    if len(expected_history_views) != tracked_ok:
+    if len(expected_history_views) != active_updated_total:
         raise RuntimeError(
-            f"Merge rejected: {tracked_ok} refreshed videos but "
+            f"Merge rejected: {active_updated_total} refreshed videos but "
             f"{len(expected_history_views)} usable history values"
         )
     history_updated = validate_history_refresh(resolved_history_dir, expected_history_views, now_ms)
@@ -1227,7 +1235,7 @@ def merge_artifacts(
     payload["videoMetricsT"] = now_ms
     payload["videoMetrics"] = {
         "tracked": active_tracked_total,
-        "updated": tracked_ok,
+        "updated": active_updated_total,
         "keywords": queries_total,
         "keywords_ok": queries_ok,
         "search_results": queries_raw,
@@ -1235,7 +1243,7 @@ def merge_artifacts(
         "history_updated": history_updated,
         "history_day": history_day,
         "day_timezone": RADAR_TIMEZONE_NAME,
-        "partial": tracked_ok < active_tracked_total or queries_ok < queries_total,
+        "partial": active_updated_total < active_tracked_total or queries_ok < queries_total,
         "unavailable_ids": unavailable_ids,
         "missing_ids": missing_ids,
     }
@@ -1257,7 +1265,7 @@ def merge_artifacts(
     )
     summary = {
         "tracked": active_tracked_total,
-        "updated": tracked_ok,
+        "updated": active_updated_total,
         "keywords": queries_total,
         "keywords_ok": queries_ok,
         "history_ids": history_ids,
