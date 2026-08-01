@@ -76,6 +76,9 @@ const rightsContext = {
   hasExclusiveLicenseText(...values) {
     return values.some(value => /exclusive\s+licen[cs]e/i.test(String(value || '')));
   },
+  conciseLicenseeName(value) {
+    return String(value || '').replace(/\s*,\s*(?:an?\s+)?division\s+of\b.*$/i, '').trim();
+  },
   arOpportunityRows() { return rightsContext.rows; },
   esc(value) {
     return String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
@@ -115,6 +118,9 @@ const renderedRights = rightsContext.rightsHtml({...selfRelease, copyright: '<ri
 assert.match(renderedRights, /&lt;rights&gt;/);
 assert.match(renderedRights, /&lt;label&gt;/);
 assert.doesNotMatch(renderedRights, /must-not-leak/);
+const dreamscapeRights = rightsContext.rightsHtml({...selfRelease, label: 'dreamscape, a division of Kurate Music Ltd.'});
+assert.match(dreamscapeRights, /<strong>dreamscape<\/strong>/);
+assert.doesNotMatch(dreamscapeRights, /Kurate Music/);
 const emptyRights = rightsContext.rightsHtml({...selfRelease, copyright: '', label: '', credit: 'must-not-leak'});
 assert.match(emptyRights, /—/);
 assert.doesNotMatch(emptyRights, /must-not-leak/);
