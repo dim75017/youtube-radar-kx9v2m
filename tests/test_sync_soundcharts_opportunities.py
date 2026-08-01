@@ -269,6 +269,7 @@ class OpportunityEngineTests(unittest.TestCase):
                 "artist-exact-floor",
                 "Exact Floor Artist",
                 80_000,
+                "https://instagram.com/exact-floor",
             ),
         ])
         performance = performance_payload()
@@ -307,7 +308,7 @@ class OpportunityEngineTests(unittest.TestCase):
         self.assertEqual(summary["status"], "success")
         self.assertEqual(by_id["track-distribution-01"]["deal_type"], "distribution")
         self.assertEqual(by_id["track-catalogue-001"]["deal_type"], "catalog_acquisition")
-        self.assertEqual(by_id["track-rights-review1"]["deal_type"], "rights_review")
+        self.assertNotIn("track-rights-review1", by_id)
         self.assertNotIn("track-major-exclude01", by_id)
         self.assertNotIn("track-superstar-001", by_id)
         self.assertEqual(by_id["track-distribution-01"]["contact_email"], "quiet@example.com")
@@ -317,6 +318,7 @@ class OpportunityEngineTests(unittest.TestCase):
         self.assertEqual(current["opportunity_scoring"]["catalog_total"], 271713)
         self.assertGreaterEqual(current["opportunity_scoring"]["excluded"]["major_or_mixed"], 1)
         self.assertGreaterEqual(current["opportunity_scoring"]["excluded"]["superstar"], 1)
+        self.assertGreaterEqual(current["opportunity_scoring"]["excluded"]["no_public_contact"], 1)
 
     def test_duplicate_spotify_aliases_collapse_to_one_business_lead(self):
         current = base_payload()
@@ -349,7 +351,7 @@ class OpportunityEngineTests(unittest.TestCase):
         self.assertNotIn("track-distribution-01", ids)
         self.assertGreaterEqual(current["opportunity_scoring"]["excluded"]["identity"], 1)
 
-    def test_needs_listen_never_exposes_or_scores_a_contact(self):
+    def test_needs_listen_never_enters_actionable_opportunities(self):
         current = base_payload()
         track = subject.row_dict(current["tracks"][0], TRACK_SCHEMA)
         track["instrumental_status"] = "instrumental"
@@ -361,18 +363,11 @@ class OpportunityEngineTests(unittest.TestCase):
             subject.generate_opportunities(current, performance_payload(), legacy_payload())
 
         schema = current["schemas"]["opportunities"]
-        row = next(
-            subject.row_dict(item, schema)
-            for item in current["opportunities"]
-            if subject.field(item, schema, "spotify_id") == "track-distribution-01"
-        )
-        self.assertEqual(row["opportunity_status"], "needs_listen")
-        self.assertEqual(row["contact_status"], "blocked")
-        self.assertEqual(row["contact_email"], "")
-        self.assertEqual(row["contact_url"], "")
-        self.assertEqual(row["score_relationship"], 0)
+        ids = {subject.field(item, schema, "spotify_id") for item in current["opportunities"]}
+        self.assertNotIn("track-distribution-01", ids)
+        self.assertGreaterEqual(current["opportunity_scoring"]["excluded"]["no_public_contact"], 1)
 
-    def test_unknown_rights_never_exposes_or_scores_a_contact(self):
+    def test_unknown_rights_never_enters_actionable_opportunities(self):
         current = base_payload()
         track = subject.row_dict(current["tracks"][0], TRACK_SCHEMA)
         track["rights_status"] = "unknown"
@@ -383,19 +378,11 @@ class OpportunityEngineTests(unittest.TestCase):
             subject.generate_opportunities(current, performance_payload(), legacy_payload())
 
         schema = current["schemas"]["opportunities"]
-        row = next(
-            subject.row_dict(item, schema)
-            for item in current["opportunities"]
-            if subject.field(item, schema, "spotify_id") == "track-distribution-01"
-        )
-        self.assertEqual(row["opportunity_status"], "verified")
-        self.assertEqual(row["deal_type"], "rights_review")
-        self.assertEqual(row["contact_status"], "blocked")
-        self.assertEqual(row["contact_email"], "")
-        self.assertEqual(row["contact_url"], "")
-        self.assertEqual(row["score_relationship"], 0)
+        ids = {subject.field(item, schema, "spotify_id") for item in current["opportunities"]}
+        self.assertNotIn("track-distribution-01", ids)
+        self.assertGreaterEqual(current["opportunity_scoring"]["excluded"]["no_public_contact"], 1)
 
-    def test_playlist_discovery_unknown_ai_remains_needs_listen_and_blocks_contact(self):
+    def test_playlist_discovery_unknown_ai_never_enters_actionable_opportunities(self):
         current = base_payload()
         track = subject.row_dict(current["tracks"][0], TRACK_SCHEMA)
         track["instrumental_status"] = "unknown"
@@ -446,17 +433,9 @@ class OpportunityEngineTests(unittest.TestCase):
             subject.generate_opportunities(current, performance_payload(), legacy_payload())
 
         schema = current["schemas"]["opportunities"]
-        row = next(
-            subject.row_dict(item, schema)
-            for item in current["opportunities"]
-            if subject.field(item, schema, "spotify_id") == "track-distribution-01"
-        )
-        self.assertEqual(row["opportunity_status"], "needs_listen")
-        self.assertEqual(row["contact_status"], "blocked")
-        self.assertEqual(row["editorial_placement_count"], 1)
-        self.assertEqual(row["editorial_best_position"], 8)
-        self.assertEqual(row["editorial_top_playlist"], "Peaceful Ambient")
-        self.assertEqual(row["source_tier"], "editorial_playlist")
+        ids = {subject.field(item, schema, "spotify_id") for item in current["opportunities"]}
+        self.assertNotIn("track-distribution-01", ids)
+        self.assertGreaterEqual(current["opportunity_scoring"]["excluded"]["no_public_contact"], 1)
 
     def test_playlist_evidence_merges_with_preserved_values(self):
         merged = subject.merged_playlist_evidence(
@@ -502,12 +481,47 @@ class OpportunityEngineTests(unittest.TestCase):
                 current,
                 performance_payload(),
                 legacy_payload(),
-                max_artist_listeners=100_000,
+                max_artist_listeners=400_000,
             )
         schema = current["schemas"]["opportunities"]
         ids = {subject.field(row, schema, "spotify_id") for row in current["opportunities"]}
+        self.assertIn("track-distribution-01", ids)
+        self.assertNotIn("track-catalogue-001", ids)
+
+    def test_spotify_profile_alone_never_makes_a_track_actionable(self):
+        current = base_payload()
+        artist = current["artists"][1]
+        artist[ARTIST_SCHEMA.index("contact_url")] = "https://open.spotify.com/artist/artist-cat-spotify001"
+        artist[ARTIST_SCHEMA.index("contact_platform")] = "spotify"
+        with patch.object(subject, "utc_today", return_value=dt.date(2026, 7, 21)):
+            subject.generate_opportunities(current, performance_payload(), legacy_payload())
+        schema = current["schemas"]["opportunities"]
+        ids = {subject.field(item, schema, "spotify_id") for item in current["opportunities"]}
+        self.assertNotIn("track-catalogue-001", ids)
+
+    def test_featured_artist_contact_cannot_substitute_for_unreachable_lead(self):
+        current = base_payload()
+        track = subject.row_dict(current["tracks"][0], TRACK_SCHEMA)
+        track["artists"] = [
+            {
+                "spotify_id": "artist-dist-spotify01",
+                "soundcharts_uuid": "artist-dist",
+                "name": "Quiet Artist",
+                "role": "main",
+            },
+            {
+                "spotify_id": "artist-cat-spotify001",
+                "soundcharts_uuid": "artist-cat",
+                "name": "Catalog Artist",
+                "role": "featured",
+            },
+        ]
+        current["tracks"][0] = [track.get(name) for name in TRACK_SCHEMA]
+        with patch.object(subject, "utc_today", return_value=dt.date(2026, 7, 21)):
+            subject.generate_opportunities(current, performance_payload(), {})
+        schema = current["schemas"]["opportunities"]
+        ids = {subject.field(item, schema, "spotify_id") for item in current["opportunities"]}
         self.assertNotIn("track-distribution-01", ids)
-        self.assertIn("track-rights-review1", ids)
 
     def test_js_payload_round_trip(self):
         with tempfile.TemporaryDirectory() as directory:
