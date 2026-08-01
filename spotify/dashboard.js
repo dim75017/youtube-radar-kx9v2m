@@ -1504,46 +1504,11 @@ function spotifyTrackEmbedHtml(id,title,extraClass=''){
   if(!spotifyId) return '';
   return `<div class="ar-detail-player ${esc(extraClass)}"><iframe title="Spotify player · ${esc(title||'Track')}" src="${spotifyEmbedUrl('track',spotifyId)}" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>`;
 }
-let SPOTIFY_IFRAME_API_PROMISE=null;
-function spotifyIframeApi(){
-  if(window.__spotifyIframeApi) return Promise.resolve(window.__spotifyIframeApi);
-  if(SPOTIFY_IFRAME_API_PROMISE) return SPOTIFY_IFRAME_API_PROMISE;
-  SPOTIFY_IFRAME_API_PROMISE=new Promise(resolve=>{
-    const previous=window.onSpotifyIframeApiReady;
-    window.onSpotifyIframeApiReady=api=>{
-      window.__spotifyIframeApi=api;
-      if(typeof previous==='function') previous(api);
-      resolve(api);
-    };
-    if(!document.querySelector('script[data-spotify-iframe-api]')){
-      const script=document.createElement('script');
-      script.src='https://open.spotify.com/embed/iframe-api/v1';
-      script.async=true;
-      script.dataset.spotifyIframeApi='1';
-      document.head.appendChild(script);
-    }
-  });
-  return SPOTIFY_IFRAME_API_PROMISE;
-}
-function spotifyCenteredTrackPlayerHtml(id,title){
-  const spotifyId=spotifyTrackId(id);
-  if(!spotifyId) return '';
-  return `<div class="ar-detail-player track-modal-player spotify-centered-player" data-spotify-track="${esc(spotifyId)}"><div class="spotify-centered-host" title="Spotify player · ${esc(title||'Track')}"></div></div>`;
-}
-async function initSpotifyCenteredPlayers(root=document){
-  const wrappers=[...root.querySelectorAll('.spotify-centered-player[data-spotify-track]')].filter(node=>!node.dataset.spotifyInitialized&&!node.dataset.spotifyInitializing);
-  if(!wrappers.length) return;
-  wrappers.forEach(node=>{node.dataset.spotifyInitializing='1';});
-  const api=await spotifyIframeApi();
-  wrappers.forEach(wrapper=>{
-    if(!wrapper.isConnected) return;
-    const host=wrapper.querySelector('.spotify-centered-host');
-    if(!host) return;
-    api.createController(host,{uri:`spotify:track:${wrapper.dataset.spotifyTrack}`,width:'100%',height:152},controller=>{
-      wrapper._spotifyController=controller;
-      wrapper.dataset.spotifyInitialized='1';
-      delete wrapper.dataset.spotifyInitializing;
-    });
+function clearSpotifyEmbeds(root){
+  if(!root) return;
+  root.querySelectorAll('iframe[src*="open.spotify.com/embed/"]').forEach(player=>{
+    player.src='about:blank';
+    player.remove();
   });
 }
 function arOpportunityPlayerHtml(opportunity){
@@ -2560,6 +2525,8 @@ function openTrack(tid){
   const entry = trackPerfEntry(r);
   const label = entry.label || (r[4]===1 ? r[5] : null);
   const box = document.getElementById('tmbox');
+  clearSpotifyEmbeds(box);
+  pauseSpotifyOembed(4000);
   box.innerHTML = `
     <div class="thd">
       <div class="tcov" ${r[8]?`style="background-image:url('${esc(r[8])}')"`:''}></div>
@@ -2569,7 +2536,7 @@ function openTrack(tid){
       </div>
       <button class="tclose" onclick="closeTrack()">✕</button>
     </div>
-    ${spotifyCenteredTrackPlayerHtml(r[6],r[1])}
+    ${spotifyTrackEmbedHtml(r[6],r[1],'track-modal-player')}
     <div class="tgrid">
       <div class="tg"><div class="l">${T('Sortie')}</div><div class="v">${fmtDate(r[2])}</div></div>
       <div class="tg"><div class="l">${T('Label')}</div><div class="v" style="font-size:12px;line-height:1.4">${label?esc(label):'—'}</div></div>
@@ -2587,7 +2554,6 @@ function openTrack(tid){
   bindMetricModeToggle(()=>openTrack(tid),box);
   bindSparklineHover(box);
   document.getElementById('track-modal').style.display='flex';
-  initSpotifyCenteredPlayers(box);
   hydrateArPlaylistCovers();
 }
 function openTrackFromCatalogueRow(event,tid){
@@ -2599,10 +2565,9 @@ function openTrackFromCatalogueRow(event,tid){
   openTrack(tid);
 }
 function closeTrack(){
-  document.querySelectorAll('#track-modal .spotify-centered-player').forEach(player=>{
-    if(player._spotifyController&&typeof player._spotifyController.destroy==='function') player._spotifyController.destroy();
-  });
-  document.getElementById('track-modal').style.display='none';
+  const modal=document.getElementById('track-modal');
+  clearSpotifyEmbeds(modal);
+  modal.style.display='none';
 }
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeTrack(); });
 
@@ -3365,6 +3330,120 @@ function arEditorialCardHtml(opportunity){
 const AR_PLAYLIST_COVER_CACHE=new Map();
 const AR_TRACK_COVER_CACHE=new Map();
 const AR_ARTIST_AVATAR_CACHE=new Map();
+const SPOTIFY_OEMBED_CACHE=new Map();
+const SPOTIFY_OEMBED_INFLIGHT=new Map();
+const SPOTIFY_OEMBED_QUEUE=[];
+const SPOTIFY_OEMBED_VISIBLE_TASKS=new WeakMap();
+const SPOTIFY_OEMBED_OBSERVED=new Set();
+const SPOTIFY_OEMBED_MAX_CONCURRENCY=2;
+const SPOTIFY_OEMBED_MIN_GAP_MS=450;
+const SPOTIFY_OEMBED_TIMEOUT_MS=12000;
+let SPOTIFY_OEMBED_ACTIVE=0;
+let SPOTIFY_OEMBED_LAST_STARTED_AT=0;
+let SPOTIFY_OEMBED_COOLDOWN_UNTIL=0;
+let SPOTIFY_OEMBED_TIMER=null;
+let SPOTIFY_OEMBED_OBSERVER=null;
+function spotifyOembedSchedule(delay=0){
+  if(SPOTIFY_OEMBED_TIMER!==null) return;
+  SPOTIFY_OEMBED_TIMER=setTimeout(()=>{
+    SPOTIFY_OEMBED_TIMER=null;
+    spotifyOembedPump();
+  },Math.max(0,delay));
+}
+function spotifyOembedFinish(job,imageUrl){
+  const value=arSafePublicUrl(imageUrl)||'';
+  SPOTIFY_OEMBED_CACHE.set(job.resource,{value,expiresAt:value?Number.POSITIVE_INFINITY:Date.now()+300000});
+  SPOTIFY_OEMBED_INFLIGHT.delete(job.resource);
+  job.resolve(value);
+}
+function spotifyOembedRetryDelay(response){
+  const raw=response&&response.headers&&typeof response.headers.get==='function'?response.headers.get('Retry-After'):'';
+  const seconds=Number(raw);
+  if(Number.isFinite(seconds)&&seconds>0) return Math.min(120000,Math.max(2000,seconds*1000));
+  const retryAt=Date.parse(raw);
+  return Number.isFinite(retryAt)&&retryAt>Date.now()?Math.min(120000,Math.max(2000,retryAt-Date.now())):5000;
+}
+function spotifyOembedPump(){
+  if(SPOTIFY_OEMBED_ACTIVE>=SPOTIFY_OEMBED_MAX_CONCURRENCY||!SPOTIFY_OEMBED_QUEUE.length) return;
+  const now=Date.now();
+  const wait=Math.max(SPOTIFY_OEMBED_COOLDOWN_UNTIL-now,SPOTIFY_OEMBED_MIN_GAP_MS-(now-SPOTIFY_OEMBED_LAST_STARTED_AT),0);
+  if(wait>0){spotifyOembedSchedule(wait);return;}
+  const job=SPOTIFY_OEMBED_QUEUE.shift();
+  SPOTIFY_OEMBED_ACTIVE+=1;
+  SPOTIFY_OEMBED_LAST_STARTED_AT=Date.now();
+  const controller=typeof AbortController==='function'?new AbortController():null;
+  const timeout=setTimeout(()=>{if(controller) controller.abort();},SPOTIFY_OEMBED_TIMEOUT_MS);
+  fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(job.resource)}`,controller?{signal:controller.signal}:undefined)
+    .then(async response=>{
+      if(response.status===429){
+        SPOTIFY_OEMBED_COOLDOWN_UNTIL=Math.max(SPOTIFY_OEMBED_COOLDOWN_UNTIL,Date.now()+spotifyOembedRetryDelay(response));
+        if(job.attempt<1){
+          job.attempt+=1;
+          SPOTIFY_OEMBED_QUEUE.unshift(job);
+          return {retry:true,value:''};
+        }
+        return {retry:false,value:''};
+      }
+      if(!response.ok) return {retry:false,value:''};
+      const payload=await response.json();
+      return {retry:false,value:payload&&typeof payload.thumbnail_url==='string'?payload.thumbnail_url:''};
+    })
+    .then(result=>{if(!result.retry) spotifyOembedFinish(job,result.value);})
+    .catch(()=>spotifyOembedFinish(job,''))
+    .finally(()=>{
+      clearTimeout(timeout);
+      SPOTIFY_OEMBED_ACTIVE-=1;
+      spotifyOembedSchedule(SPOTIFY_OEMBED_MIN_GAP_MS);
+    });
+  spotifyOembedSchedule(SPOTIFY_OEMBED_MIN_GAP_MS);
+}
+function spotifyOembedThumbnail(resourceUrl){
+  const resource=String(resourceUrl||'').trim();
+  if(!/^https:\/\/open\.spotify\.com\/(?:intl-[a-z]{2}\/)?(?:track|artist|playlist)\//i.test(resource)) return Promise.resolve('');
+  const cached=SPOTIFY_OEMBED_CACHE.get(resource);
+  if(cached&&cached.expiresAt>Date.now()) return Promise.resolve(cached.value);
+  if(cached) SPOTIFY_OEMBED_CACHE.delete(resource);
+  if(SPOTIFY_OEMBED_INFLIGHT.has(resource)) return SPOTIFY_OEMBED_INFLIGHT.get(resource);
+  let settle=()=>{};
+  const request=new Promise(resolve=>{settle=resolve;});
+  SPOTIFY_OEMBED_INFLIGHT.set(resource,request);
+  SPOTIFY_OEMBED_QUEUE.push({resource,resolve:settle,attempt:0});
+  spotifyOembedPump();
+  return request;
+}
+function pauseSpotifyOembed(durationMs){
+  SPOTIFY_OEMBED_COOLDOWN_UNTIL=Math.max(SPOTIFY_OEMBED_COOLDOWN_UNTIL,Date.now()+Math.max(0,Number(durationMs)||0));
+}
+function pruneSpotifyOembedObservers(){
+  if(!SPOTIFY_OEMBED_OBSERVER) return;
+  SPOTIFY_OEMBED_OBSERVED.forEach(node=>{
+    if(node.isConnected) return;
+    SPOTIFY_OEMBED_OBSERVER.unobserve(node);
+    SPOTIFY_OEMBED_VISIBLE_TASKS.delete(node);
+    SPOTIFY_OEMBED_OBSERVED.delete(node);
+  });
+}
+function spotifyThumbnailWhenVisible(node,resourceUrl,apply){
+  if(!node||typeof apply!=='function') return;
+  pruneSpotifyOembedObservers();
+  const run=()=>spotifyOembedThumbnail(resourceUrl).then(value=>{if(node.isConnected) apply(value);});
+  if(typeof IntersectionObserver!=='function'){run();return;}
+  if(!SPOTIFY_OEMBED_OBSERVER){
+    SPOTIFY_OEMBED_OBSERVER=new IntersectionObserver(entries=>{
+      entries.forEach(entry=>{
+        if(!entry.isIntersecting) return;
+        SPOTIFY_OEMBED_OBSERVER.unobserve(entry.target);
+        SPOTIFY_OEMBED_OBSERVED.delete(entry.target);
+        const task=SPOTIFY_OEMBED_VISIBLE_TASKS.get(entry.target);
+        SPOTIFY_OEMBED_VISIBLE_TASKS.delete(entry.target);
+        if(task) task();
+      });
+    },{rootMargin:'400px'});
+  }
+  SPOTIFY_OEMBED_VISIBLE_TASKS.set(node,run);
+  SPOTIFY_OEMBED_OBSERVED.add(node);
+  SPOTIFY_OEMBED_OBSERVER.observe(node);
+}
 function arTrackCoverUrl(opportunity){
   const direct=arSafePublicUrl(opportunity&&opportunity.imageUrl);
   if(direct) return direct;
@@ -3388,12 +3467,10 @@ function hydrateArTrackCovers(){
     };
     const known=AR_TRACK_COVER_CACHE.get(id);
     if(known!==undefined){ apply(known); return; }
-    fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(spotifyTrackUrl(id))}`)
-      .then(response=>response.ok?response.json():null)
-      .then(payload=>{
-        const imageUrl=payload&&typeof payload.thumbnail_url==='string'?payload.thumbnail_url:'';
-        AR_TRACK_COVER_CACHE.set(id,imageUrl); apply(imageUrl);
-      }).catch(()=>AR_TRACK_COVER_CACHE.set(id,''));
+    spotifyThumbnailWhenVisible(node,spotifyTrackUrl(id),imageUrl=>{
+      if(imageUrl) AR_TRACK_COVER_CACHE.set(id,imageUrl);
+      apply(imageUrl);
+    });
   });
 }
 function arRetryPlaylistCover(image,playlistId){
@@ -3421,13 +3498,10 @@ function hydrateArPlaylistCovers(){
     };
     const cached=covCache.get(key);
     if(cached){ apply(cached); return; }
-    fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(spotifyPlaylistUrl(playlistId))}`)
-      .then(response=>response.ok?response.json():null)
-      .then(payload=>{
-        const imageUrl=arSafePublicUrl(payload&&payload.thumbnail_url);
-        if(!imageUrl) return;
-        covCache.set(key,imageUrl); covPersist(); apply(imageUrl);
-      }).catch(()=>{});
+    spotifyThumbnailWhenVisible(node,spotifyPlaylistUrl(playlistId),imageUrl=>{
+      if(!imageUrl) return;
+      covCache.set(key,imageUrl); covPersist(); apply(imageUrl);
+    });
   });
 }
 function arSearchText(value){
@@ -3523,6 +3597,8 @@ function openArOpportunity(spotifyId){
   const isListed=arListHas(spotifyId);
   const selectable=arContactEligible(opportunity);
   box.className='tmbox ambox';
+  clearSpotifyEmbeds(box);
+  pauseSpotifyOembed(4000);
   box.innerHTML=`<div class="thd"><div class="av-sm">♫</div><div style="min-width:0;flex:1"><h3>${esc(opportunity.title)}</h3><div class="tar ar-detail-artists">${arArtistLinksHtml(opportunity)}<span class="ar-detail-artist-separator"> · </span>opportunité de track</div></div><button class="tclose" onclick="closeArModal()">✕</button></div>
     ${arOpportunityPlayerHtml(opportunity)}
     <div class="perf-grid ar-detail-performance">${totalMetricCardHtml('Streams',total,true)}${perfCardHtml(streamMetricLabel(30),{current:d30,currentReady:d30!=null,comparisonReady:false,total:1},true)}${perfCardHtml(streamMetricLabel(7),{current:d7,currentReady:d7!=null,comparisonReady:false,total:1},true)}${perfCardHtml(streamMetricLabel(1),{current:d1,currentReady:d1!=null,comparisonReady:false,total:1},true)}${monthlyListenersMetricCardHtml(opportunity.artistMonthlyListeners)}</div>
@@ -3561,12 +3637,10 @@ function hydrateArArtistAvatars(){
         node.prepend(image);node.classList.add('has');
       };
       if(AR_ARTIST_AVATAR_CACHE.has(id)){apply(AR_ARTIST_AVATAR_CACHE.get(id));return;}
-      fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(spotifyArtistUrl(id))}`)
-        .then(response=>response.ok?response.json():null)
-        .then(payload=>{
-          const imageUrl=payload&&typeof payload.thumbnail_url==='string'?payload.thumbnail_url:'';
-          AR_ARTIST_AVATAR_CACHE.set(id,imageUrl);apply(imageUrl);
-        }).catch(()=>AR_ARTIST_AVATAR_CACHE.set(id,''));
+      spotifyThumbnailWhenVisible(node,spotifyArtistUrl(id),imageUrl=>{
+        if(imageUrl) AR_ARTIST_AVATAR_CACHE.set(id,imageUrl);
+        apply(imageUrl);
+      });
     });
 }
 function arColumnBarHtml(){
@@ -4186,51 +4260,22 @@ function covShow(el, u){
     im.src = u;
   }
 }
-const covQueue = []; let covActive = 0;
-function covPump(){
-  while (covActive < 8 && covQueue.length){
-    const {key, url, img} = covQueue.shift();
-    if (!img.isConnected) continue;
-    covActive++;
-    fetch('https://open.spotify.com/oembed?url='+url)
-      .then(r=>r.ok?r.json():null)
-      .then(j=>{
-        const u = j && j.thumbnail_url;
-        if (u){ covCache.set(key,u); covPersist(); covShow(img,u); }
-      })
-      .catch(()=>{})
-      .finally(()=>{ covActive--; setTimeout(covPump, 30); });
-  }
-}
-let covObserver = null;
 function attachCovers(){
-  // préchargement immédiat de TOUTE la liste rendue (cache d'abord, réseau ensuite),
-  // l'observer ne sert plus qu'à faire passer en tête de file ce qui approche de l'écran.
-  if (covObserver) covObserver.disconnect();
-  covQueue.length = 0;
-  // covers/avatars avec URL directe (data.js) : affichage immédiat, aucune requête
+  // Les URL déjà exportées s'affichent immédiatement. Les rares pochettes
+  // manquantes passent par la file oEmbed partagée uniquement à l'approche de l'écran.
   document.querySelectorAll('.cov[data-cover], .avp[data-img]').forEach(el=>{
     covShow(el, el.dataset.cover || el.dataset.img);
   });
   const imgs = [...document.querySelectorAll('.cov[data-tid], .cov[data-plid], img.avp[data-tid]')];
-  const pending = [];
   for (const img of imgs){
     const {key, url} = covKeyUrl(img);
     const hit = covCache.get(key);
     if (hit) covShow(img, hit);
-    else pending.push({key, url, img});
+    else spotifyThumbnailWhenVisible(img,url,imageUrl=>{
+      if(!imageUrl) return;
+      covCache.set(key,imageUrl); covPersist(); covShow(img,imageUrl);
+    });
   }
-  covObserver = new IntersectionObserver(es=>{
-    for (const e of es){
-      if (!e.isIntersecting) continue;
-      covObserver.unobserve(e.target);
-      const idx = covQueue.findIndex(q=>q.img===e.target);
-      if (idx>0) covQueue.unshift(covQueue.splice(idx,1)[0]);
-    }
-    covPump();
-  }, {rootMargin:'900px'});
-  for (const p of pending){ covQueue.push(p); covObserver.observe(p.img); }
-  covPump();
 }
 /* ---------- scroll infini ---------- */
 let endObserver = null;
