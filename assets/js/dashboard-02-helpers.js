@@ -324,6 +324,53 @@ function scanDotColor(ms){
   if(h<72)return 'var(--amber)';
   return 'var(--red)';
 }
+const STUDIO_REPORTING_GREEN_MS=3*86400000;
+const STUDIO_REPORTING_AMBER_MS=5*86400000;
+function studioReportingTimestamp(value){
+  if(value==null||value==='')return null;
+  const parsed=typeof value==='number'?value:Date.parse(String(value));
+  return Number.isFinite(parsed)?parsed:null;
+}
+function studioDataThroughTimestamp(value){
+  const raw=String(value||'').trim();
+  if(!raw)return null;
+  const parsed=/^\d{4}-\d{2}-\d{2}$/.test(raw)?Date.parse(raw+'T12:00:00Z'):Date.parse(raw);
+  return Number.isFinite(parsed)?parsed:null;
+}
+function studioReportingMeta(){
+  const data=(window.STUDIO_DATA&&typeof window.STUDIO_DATA==='object')?window.STUDIO_DATA:{};
+  const sync=(data.sync&&typeof data.sync==='object')?data.sync:{};
+  const source=String(sync.source||data.sourceType||data.collectionMode||'').toLowerCase();
+  const api=/youtube-reporting-api|youtube-analytics-api|reporting.*api|analytics.*api/.test(source);
+  const manual=!api&&!!(data.coverage&&data.coverage.sourceFile);
+  let windowDays=Number(data.windowDays);
+  if(!Number.isFinite(windowDays)||windowDays<=0){
+    const match=String(data.label||'').match(/(\d+)\s*(?:days?|jours?)/i);
+    windowDays=match?Number(match[1]):null;
+  }
+  const throughT=studioDataThroughTimestamp(data.dataThrough||data.windowEnd);
+  const lastSuccessT=studioReportingTimestamp(sync.lastSuccessAt||data.scanAt||data.syncedAt);
+  return {
+    data,sync,source,api,manual,
+    connected:api&&sync.connected===true,
+    status:String(sync.status||''),
+    windowDays:Number.isFinite(windowDays)&&windowDays>0?windowDays:null,
+    windowStart:data.windowStart||null,
+    windowEnd:data.windowEnd||data.dataThrough||null,
+    throughT,lastSuccessT,
+    when:throughT||lastSuccessT
+  };
+}
+function studioReportingWindowLabel(meta,fr){
+  if(meta&&meta.windowDays)return fr?'fenêtre glissante de '+fmtInt(meta.windowDays)+' jours':fmtInt(meta.windowDays)+'-day rolling window';
+  if(meta&&meta.windowStart&&meta.windowEnd)return fr?'fenêtre de reporting déclarée':'declared reporting window';
+  return fr?'fenêtre non précisée':'window not specified';
+}
+function studioReportingSourceLabel(meta,fr){
+  if(meta&&meta.api)return fr?'API YouTube Analytics en lecture seule':'read-only YouTube Analytics API';
+  if(meta&&meta.manual)return fr?'Export manuel YouTube Studio':'Manual YouTube Studio export';
+  return fr?'Source privée YouTube Analytics':'Private YouTube Analytics source';
+}
 function lastScanText(){
   if(!DATA)return '';
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
@@ -349,20 +396,25 @@ function updateStatusLines(){
   const videoT=Math.max(maxHistTime(DATA&&DATA.hist)||0,Number(window.LOFI_DATA&&window.LOFI_DATA.videoMetricsT)||0)||null;
   const liveT=maxHistTime(DATA&&DATA.liveHourly)||maxHistTime(DATA&&DATA.liveHist)||null;
   const channelT=Number(window.CHX&&window.CHX.t)||maxHistTime(CHAN&&CHAN.hist)||null;
-  const studioT=Number(window.STUDIO_DATA&&window.STUDIO_DATA.t)||null;
-  const studioThrough=window.STUDIO_DATA&&window.STUDIO_DATA.dataThrough;
-  const studioThroughT=studioThrough?Date.parse(studioThrough+'T12:00:00Z'):null;
-  const studioDetailEn='Private CTR, impressions and retention export.'+(studioThroughT?' Data through '+fmtDateFull(studioThroughT)+'.':'');
-  const studioDetailFr='Export privé du CTR, des impressions et de la rétention.'+(studioThroughT?' Données disponibles jusqu’au '+fmtDateFull(studioThroughT)+'.':'');
+  const studio=studioReportingMeta();
+  const studioSourceEn=studioReportingSourceLabel(studio,false),studioSourceFr=studioReportingSourceLabel(studio,true);
+  const studioWindowEn=studioReportingWindowLabel(studio,false),studioWindowFr=studioReportingWindowLabel(studio,true);
+  const studioStateEn=studio.status==='waiting_reports'?' Reports are still being prepared.':studio.status==='partial'?' Partial reporting coverage.':'';
+  const studioStateFr=studio.status==='waiting_reports'?' Les rapports sont encore en préparation.':studio.status==='partial'?' Couverture de reporting partielle.':'';
+  const studioSyncEn=studio.lastSuccessT?' Last successful sync: '+fmtDateTimeShort(studio.lastSuccessT)+'.':'';
+  const studioSyncFr=studio.lastSuccessT?' Dernière synchronisation réussie : '+fmtDateTimeShort(studio.lastSuccessT)+'.':'';
+  const studioDetailEn=studioSourceEn+': CTR, impressions and retention · '+studioWindowEn+'.'+studioStateEn+studioSyncEn;
+  const studioDetailFr=studioSourceFr+' : CTR, impressions et rétention · '+studioWindowFr+'.'+studioStateFr+studioSyncFr;
+  const studioTimeText=studio.throughT?(fr?'Données au ':'Data through ')+fmtDateFull(studio.throughT):null;
   const vm=(window.LOFI_DATA&&window.LOFI_DATA.videoMetrics)||{};
   const tracked=Number(vm.tracked)||0,updated=Number(vm.updated)||0;
   const partial=!!(tracked&&updated<tracked);
   const coverage=partial?(fr?' · Couverture partielle : ':' · Partial coverage: ')+fmtInt(updated)+' / '+fmtInt(tracked):'';
-  const row=(when,labelEn,labelFr,detailEn,detailFr,key,isPartial)=>({when,label:fr?labelFr:labelEn,detail:(fr?detailFr:detailEn)+(isPartial?coverage:''),key,partial:!!isPartial});
+  const row=(when,labelEn,labelFr,detailEn,detailFr,key,isPartial,timeText,extra)=>Object.assign({when,label:fr?labelFr:labelEn,detail:(fr?detailFr:detailEn)+(isPartial?coverage:''),key,partial:!!isPartial,timeText:timeText||null},extra||{});
   return [
     row(videoT,'Radar videos','Vidéos du radar','Catalog, discoveries and viewing metrics.','Catalogue, découvertes et statistiques de vues.','radar',partial),
     row(videoT,'Our videos','Nos vidéos','Performance tracking for your published videos.','Suivi des performances de vos sorties publiées.','ours'),
-    row(studioT,'YouTube Studio','YouTube Studio',studioDetailEn,studioDetailFr,'studio'),
+    row(studio.when,'YouTube Studio','YouTube Studio',studioDetailEn,studioDetailFr,'studio',false,studioTimeText,{api:studio.api,connected:studio.connected,status:studio.status,dataThroughT:studio.throughT,syncT:studio.lastSuccessT}),
     row(liveT,'Livestreams','Streams','Live streams and concurrent viewers.','Streams en direct et spectateurs simultanés.','lives'),
     row(channelT,'Channels','Chaînes','Channel audience and catalog monitoring.','Audience et catalogue des chaînes suivies.','channels')
   ];
@@ -371,6 +423,18 @@ function updateStatusColor(item){
   // Channel monitoring runs on its own cadence. A successful timestamp means
   // the source is healthy, even if it is older than the video refresh.
   if(item&&item.key==='channels'&&item.when)return 'var(--green)';
+  if(item&&item.key==='studio'){
+    if(item.connected===false)return 'var(--red)';
+    if(item.status==='waiting_reports')return 'var(--amber)';
+    if(item.status==='partial')return item.when&&Date.now()-item.when<=STUDIO_REPORTING_AMBER_MS?'var(--amber)':'var(--red)';
+    if(item.api&&item.status!=='healthy')return 'var(--red)';
+    if(item.api&&!item.dataThroughT)return 'var(--red)';
+    if(!item.when)return 'var(--dim)';
+    const age=Math.max(0,Date.now()-item.when);
+    if(age<=STUDIO_REPORTING_GREEN_MS)return 'var(--green)';
+    if(age<=STUDIO_REPORTING_AMBER_MS)return 'var(--amber)';
+    return 'var(--red)';
+  }
   return scanDotColor(item&&item.when);
 }
 function refreshUpdateStatus(){
@@ -380,7 +444,7 @@ function refreshUpdateStatus(){
   const labelEl=btn.querySelector('.lbl');if(labelEl)labelEl.textContent=fr?'Mises à jour':'Update status';
   btn.title=fr?'Voir le détail des mises à jour':'View update details';
   panel.innerHTML='<div class="update-status-head"><span>'+esc(fr?'État des mises à jour':'Update status')+'</span><small>'+esc(fr?'Surveillance automatique':'Automatic monitoring')+'</small></div>'+updateStatusLines().map(item=>{
-    const color=updateStatusColor(item),time=item.when?fmtDateTimeShort(item.when):(fr?'En attente de données':'Awaiting data');
+    const color=updateStatusColor(item),time=item.timeText||(item.when?fmtDateTimeShort(item.when):(fr?'En attente de données':'Awaiting data'));
     return '<div class="update-status-line"><i class="update-status-dot" style="background:'+color+';color:'+color+'"></i><div><b>'+esc(item.label)+'</b><span>'+esc(time)+' · '+esc(item.detail)+'</span></div></div>';
   }).join('');
 }
