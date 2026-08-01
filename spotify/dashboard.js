@@ -3324,7 +3324,7 @@ function arRightsDisplayText(value){
 }
 function arRightsCreditsHtml(opportunity){
   const details=arRightsCreditDetails(opportunity);
-  const label=String(opportunity&&opportunity.label||'').trim();
+  const label=conciseLicenseeName(opportunity&&opportunity.label);
   const source=details.raw
     ?`<div class="ar-rights-source"><span>${details.sourceTyped?'Crédit source':'Crédit droits fourni par Soundcharts'}</span><strong>${esc(arRightsDisplayText(details.raw))}</strong>${details.sourceTyped?'':'<small>La source ne précise pas s’il s’agit de © ou de ℗.</small>'}</div>`
     :'<div class="ar-rights-source"><span>Crédit source</span><strong>—</strong></div>';
@@ -4581,12 +4581,16 @@ function labelSortArrow(k){ return sortTriangleIndicator(S.lbsort===k,S.lbdir); 
 const LB_LICENSE_RE = /(?:under\s+(?:an?\s+)?|on\s+)?exclusive\s+licen[cs]e\s+(?:to|with|from)\s+(.+?)(?:\s*[;.]|$)/i;
 const LB_LICENSED_TO_RE = /licen[cs]ed\s+to\s+(.+?)(?:\s*[;.]|$)/i;
 const LB_YEAR_STRIP_RE = /^[©℗()pcPC\s]*\d{4}\s*/;
-function labelKeyOf(cop){
-  if (!cop) return null;
+function labelDisplayName(cop){
+  if (!cop) return '';
   const m = LB_LICENSE_RE.exec(cop) || LB_LICENSED_TO_RE.exec(cop);
   let name;
   if (m) name = m[1].trim().replace(/\.$/,'');
   else name = cop.split(';')[0].trim().replace(LB_YEAR_STRIP_RE,'').trim();
+  return String(name||'').replace(/\s*,\s*(?:an?\s+)?division\s+of\b.*$/i,'').replace(/[.,]+$/,'').trim();
+}
+function labelKeyOf(cop){
+  const name=labelDisplayName(cop);
   if (!name) return null;
   // même ordre que gen_labels_data.py : lower PUIS NFKD PUIS retrait des marques combinantes
   // (sauf sélecteurs de variation U+FE00-FE0F : classe combinante 0, Python les conserve)
@@ -4603,7 +4607,7 @@ function rebuildActiveLabelIndex(){
     if(r[4]!==1) continue;
     const key=labelKeyOf(r[5]); if(!key) continue;
     let entry=grouped.get(key);
-    if(!entry){ entry={name:String(r[5]||key),tracks:0,streams:0,since:'',artists:new Set()}; grouped.set(key,entry); }
+    if(!entry){ entry={name:labelDisplayName(r[5])||key,tracks:0,streams:0,since:'',artists:new Set()}; grouped.set(key,entry); }
     entry.tracks++;
     if(Number.isFinite(Number(r[3]))&&Number(r[3])>0) entry.streams+=Number(r[3]);
     if(r[2]&&(!entry.since||String(r[2])<entry.since)) entry.since=String(r[2]);
