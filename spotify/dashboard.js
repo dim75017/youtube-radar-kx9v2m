@@ -700,7 +700,7 @@ function hasExclusiveLicenseText(...values){
 }
 function conciseLicenseeName(value){
   return String(value||'').trim()
-    .replace(/\s*,\s*(?:an?\s+)?(?:division|imprint|subsidiary|part)\s+of\b.*$/i,'')
+    .replace(/\s*,\s*(?:an?\s+)?division\s+of\b.*$/i,'')
     .replace(/[.,]+$/,'').trim().slice(0,80);
 }
 function exclusiveLicensee(...values){
