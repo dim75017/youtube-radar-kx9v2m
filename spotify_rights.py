@@ -27,6 +27,10 @@ EXCLUSIVE_LICENSE_FROM_RE = re.compile(
     r"\bunder\s+(?:an?\s+)?exclusive\s+licen[cs]e\s+from\b",
     re.IGNORECASE,
 )
+LABEL_DIVISION_SUFFIX_RE = re.compile(
+    r"\s*,\s*(?:an?\s+)?division\s+of\b.*$",
+    re.IGNORECASE,
+)
 
 MAJOR_LABEL_MARKERS = tuple(
     marker.casefold()
@@ -59,6 +63,13 @@ MAJOR_LABEL_MARKERS = tuple(
 )
 
 
+def concise_label_name(value: Any) -> str:
+    """Remove a legal parent-company qualifier from a displayed label name."""
+
+    label = re.sub(r"\s+", " ", str(value or "")).strip(" ,.-Â")
+    return LABEL_DIVISION_SUFFIX_RE.sub("", label).strip(" ,.-Â")
+
+
 def exclusive_licensee(*values: Any) -> str:
     """Return the named exclusive licensee, or an empty string."""
 
@@ -69,7 +80,7 @@ def exclusive_licensee(*values: Any) -> str:
         match = EXCLUSIVE_LICENSE_RE.search(text)
         if not match:
             continue
-        label = re.sub(r"\s+", " ", match.group("label")).strip(" ,.-Â")
+        label = concise_label_name(match.group("label"))
         if label:
             return label
 
@@ -87,7 +98,7 @@ def exclusive_licensee(*values: Any) -> str:
             prefix,
             flags=re.IGNORECASE,
         )
-        label = re.sub(r"\s+", " ", prefix).strip(" ,.-(\u00c2")
+        label = concise_label_name(prefix).strip("(")
         if label:
             return label
     return ""
@@ -119,4 +130,4 @@ def reconcile_rights(
 def reconciled_label(label: Any, copyright_text: Any = None) -> str:
     """Prefer the explicit licensee over an artist-owned provider label."""
 
-    return exclusive_licensee(copyright_text, label) or str(label or "").strip()
+    return concise_label_name(exclusive_licensee(copyright_text, label) or label)
