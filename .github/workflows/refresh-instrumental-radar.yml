@@ -121,6 +121,9 @@ jobs:
   prepare:
     name: Resolve one canonical tracked-video manifest
     needs: validate
+    # Feature branches validate the code only. They must not consume a full
+    # 20-shard scan or delay the serialized production refresh on main.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
