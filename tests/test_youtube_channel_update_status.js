@@ -4,11 +4,11 @@ const vm=require('vm');
 const helpers=fs.readFileSync('assets/js/dashboard-02-helpers.js','utf8');
 const index=fs.readFileSync('index.html','utf8');
 for(const required of [
-  "row(channelT,'Channels','ChaÃ®nes'",
+  "row(channelT,'Channels','Chaînes'",
   "'channels')",
   "row(studioT,'YouTube Studio','YouTube Studio'",
-  "' Â· Couverture partielle : '",
-  "' Â· Partial coverage: '",
+  "' · Couverture partielle : '",
+  "' · Partial coverage: '",
   "'ours')",
   "'Automatic monitoring'",
   'function updateStatusColor(item)',
