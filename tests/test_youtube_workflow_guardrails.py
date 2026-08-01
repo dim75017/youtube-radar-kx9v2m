@@ -10,6 +10,9 @@ class YoutubeWorkflowGuardrailTests(unittest.TestCase):
         scan = workflow.split('  scan:\n', 1)[1].split('  publish:\n', 1)[0]
         self.assertIn('tests.test_refresh_youtube_daily', validate)
         self.assertIn('test_youtube_new_video_view_floor.js', validate)
+        self.assertIn('test_youtube_daily_view_deltas.js', validate)
+        self.assertIn('test_youtube_history_cache_refresh.js', validate)
+        self.assertIn('test_youtube_unavailable_quarantine.js', validate)
         self.assertIn('needs: validate', prepare)
         self.assertIn('--write-tracked-manifest artifacts/youtube-tracked-ids.json', prepare)
         self.assertIn('needs: prepare', scan)
@@ -65,3 +68,4 @@ class YoutubeWorkflowGuardrailTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
