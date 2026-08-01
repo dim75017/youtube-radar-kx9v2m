@@ -13,19 +13,23 @@ const context = {
   Set,
   String,
   Array,
-  window: { LOFI_DATA: { videoMetrics: { unavailable_ids: ['gone-video'] } } },
+  window: { LOFI_DATA: { videoMetrics: {
+    unavailable_ids: ['gone-video'],
+    missing_ids: ['pending-video'],
+  } } },
 };
 vm.runInNewContext(`${source.slice(start, end)};
   this.removeUnavailableVideoRows = removeUnavailableVideoRows;`, context);
 
 const data = {
-  all: [{vid: 'public-video'}, {vid: 'gone-video'}],
+  all: [{vid: 'public-video'}, {vid: 'pending-video'}, {vid: 'gone-video'}],
   trends: [{vid: 'gone-video'}],
   news: [{vid: 'public-video'}],
   ours: [{vid: 'public-video'}],
 };
 context.removeUnavailableVideoRows(data);
-assert.deepEqual(Array.from(data.all, row => row.vid), ['public-video']);
+assert.deepEqual(Array.from(data.all, row => row.vid), ['public-video', 'pending-video'],
+  'a first missing scan stays visible until a second consecutive miss confirms quarantine');
 assert.deepEqual(Array.from(data.trends, row => row.vid), []);
 assert.deepEqual(Array.from(data.news, row => row.vid), ['public-video']);
 assert.deepEqual(Array.from(data.ours, row => row.vid), ['public-video']);
