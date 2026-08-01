@@ -373,6 +373,96 @@ class DailyHistoryTests(unittest.TestCase):
             self.assertEqual(second_metrics["missing_ids"], [])
             self.assertEqual(second_metrics["unavailable_ids"], [missing_id])
 
+            third = second + 3600000
+            recovery_artifact = {
+                "version": 1,
+                "generated_ms": third,
+                "shard": 0,
+                "shards": 1,
+                "tracked_total": 1,
+                "tracked_ok": 1,
+                "tracked_ids": [public_id],
+                "tracked_fresh_ids": [public_id],
+                "tracked_failed_ids": [],
+                "tracked_unavailable_ids": [],
+                "tracked_recovered_ids": [missing_id],
+                "queries_total": 1,
+                "queries_ok": 1,
+                "queries_raw": 1,
+                "queries_enriched": 1,
+                "fresh": [
+                    {"vid": public_id, "views": 103},
+                    {"vid": missing_id, "views": 201},
+                ],
+                "owned_fresh": [],
+                "candidates": [],
+            }
+            (shards / "youtube-shard-0.json").write_text(
+                json.dumps(recovery_artifact), encoding="utf-8"
+            )
+            radar.merge_artifacts(snapshot, avatars, shards, 1)
+            recovery_metrics = radar.read_snapshot(snapshot)["videoMetrics"]
+            self.assertFalse(recovery_metrics["partial"])
+            self.assertEqual(recovery_metrics["tracked"], 2)
+            self.assertEqual(recovery_metrics["updated"], 2)
+            self.assertEqual(recovery_metrics["unavailable_ids"], [])
+            recovery_history = json.loads(
+                (root / "video_history" / "7a.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(recovery_history["d"][missing_id][-1], [third, 201])
+
+    def test_fallback_single_miss_then_success_never_quarantines(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "Lofi_Radar_data.js"
+            avatars = root / "avatars.js"
+            shards = root / "shards"
+            shards.mkdir()
+            public_id, intermittent_id = "abcdefghijk", "zyxwvutsrqp"
+            radar.write_snapshot(snapshot, {
+                "d": {
+                    "all": [{"vid": public_id}, {"vid": intermittent_id}],
+                    "trends": [], "news": [], "ours": [], "recos": [], "roadmap": [],
+                }
+            })
+
+            def write_artifact(generated, fresh, failed):
+                ids = [public_id, intermittent_id]
+                artifact = {
+                    "version": 1, "generated_ms": generated, "shard": 0, "shards": 1,
+                    "tracked_total": 2, "tracked_ok": len(fresh), "tracked_ids": ids,
+                    "tracked_fresh_ids": [row["vid"] for row in fresh],
+                    "tracked_failed_ids": failed, "tracked_unavailable_ids": [],
+                    "tracked_recovered_ids": [], "queries_total": 1, "queries_ok": 1,
+                    "queries_raw": 1, "queries_enriched": 1, "fresh": fresh,
+                    "owned_fresh": [], "candidates": [],
+                }
+                (shards / "youtube-shard-0.json").write_text(
+                    json.dumps(artifact), encoding="utf-8"
+                )
+
+            first = int(datetime(2026, 7, 20, 8, tzinfo=timezone.utc).timestamp() * 1000)
+            write_artifact(first, [{"vid": public_id, "views": 100}], [intermittent_id])
+            with patch.object(radar, "MIN_PUBLISH_TRACK_RATIO", 0.0):
+                radar.merge_artifacts(snapshot, avatars, shards, 1)
+            self.assertEqual(
+                radar.read_snapshot(snapshot)["videoMetrics"]["missing_ids"],
+                [intermittent_id],
+            )
+
+            second = first + 3600000
+            write_artifact(second, [
+                {"vid": public_id, "views": 101},
+                {"vid": intermittent_id, "views": 201},
+            ], [])
+            radar.merge_artifacts(snapshot, avatars, shards, 1)
+            metrics = radar.read_snapshot(snapshot)["videoMetrics"]
+            self.assertFalse(metrics["partial"])
+            self.assertEqual(metrics["tracked"], 2)
+            self.assertEqual(metrics["updated"], 2)
+            self.assertEqual(metrics["missing_ids"], [])
+            self.assertEqual(metrics["unavailable_ids"], [])
+
     def test_avatar_overlay_links_handle_to_channel_id_without_overwriting_atlas(self):
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "avatars.js"
