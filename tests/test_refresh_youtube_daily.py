@@ -302,6 +302,77 @@ class DailyHistoryTests(unittest.TestCase):
             history = json.loads((root / "video_history" / "7a.json").read_text(encoding="utf-8"))
             self.assertEqual(history["d"]["zyxwvutsrqp"], [[generated, 200]])
 
+    def test_fallback_quarantines_only_after_two_consecutive_missing_scans(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "Lofi_Radar_data.js"
+            avatars = root / "avatars.js"
+            shards = root / "shards"
+            shards.mkdir()
+            public_id = "abcdefghijk"
+            missing_id = "zyxwvutsrqp"
+            radar.write_snapshot(snapshot, {
+                "t": 1,
+                "d": {
+                    "all": [
+                        {"vid": public_id, "views": 100, "pub": 1700000000000},
+                        {"vid": missing_id, "views": 200, "pub": 1700000000000},
+                    ],
+                    "trends": [],
+                    "news": [],
+                    "ours": [],
+                    "recos": [],
+                    "roadmap": [],
+                },
+            })
+
+            def write_missing_artifact(generated, views):
+                artifact = {
+                    "version": 1,
+                    "generated_ms": generated,
+                    "shard": 0,
+                    "shards": 1,
+                    "tracked_total": 2,
+                    "tracked_ok": 1,
+                    "tracked_ids": [public_id, missing_id],
+                    "tracked_fresh_ids": [public_id],
+                    "tracked_failed_ids": [missing_id],
+                    "tracked_unavailable_ids": [],
+                    "tracked_recovered_ids": [],
+                    "queries_total": 1,
+                    "queries_ok": 1,
+                    "queries_raw": 1,
+                    "queries_enriched": 1,
+                    "fresh": [{"vid": public_id, "views": views}],
+                    "owned_fresh": [],
+                    "candidates": [],
+                }
+                (shards / "youtube-shard-0.json").write_text(
+                    json.dumps(artifact), encoding="utf-8"
+                )
+
+            first = int(datetime(2026, 7, 20, 8, tzinfo=timezone.utc).timestamp() * 1000)
+            write_missing_artifact(first, 101)
+            with patch.object(radar, "MIN_PUBLISH_TRACK_RATIO", 0.0):
+                radar.merge_artifacts(snapshot, avatars, shards, 1)
+            first_metrics = radar.read_snapshot(snapshot)["videoMetrics"]
+            self.assertTrue(first_metrics["partial"])
+            self.assertEqual(first_metrics["tracked"], 2)
+            self.assertEqual(first_metrics["updated"], 1)
+            self.assertEqual(first_metrics["missing_ids"], [missing_id])
+            self.assertEqual(first_metrics["unavailable_ids"], [])
+
+            second = first + 3600000
+            write_missing_artifact(second, 102)
+            with patch.object(radar, "MIN_PUBLISH_TRACK_RATIO", 0.0):
+                radar.merge_artifacts(snapshot, avatars, shards, 1)
+            second_metrics = radar.read_snapshot(snapshot)["videoMetrics"]
+            self.assertFalse(second_metrics["partial"])
+            self.assertEqual(second_metrics["tracked"], 1)
+            self.assertEqual(second_metrics["updated"], 1)
+            self.assertEqual(second_metrics["missing_ids"], [])
+            self.assertEqual(second_metrics["unavailable_ids"], [missing_id])
+
     def test_avatar_overlay_links_handle_to_channel_id_without_overwriting_atlas(self):
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "avatars.js"
