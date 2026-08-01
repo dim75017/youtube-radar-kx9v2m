@@ -18,6 +18,9 @@ on:
       - 'generate_youtube_recommendation_pool.py'
       - 'import_youtube_studio_export.py'
       - 'tests/test_youtube_daily_recommendations.js'
+      - 'tests/test_youtube_daily_view_deltas.js'
+      - 'tests/test_youtube_history_cache_refresh.js'
+      - 'tests/test_youtube_unavailable_quarantine.js'
       - 'tests/test_youtube_recommendation_actions.js'
       - 'tests/test_youtube_recommendation_edits.js'
       - 'tests/test_youtube_recommendation_status_tabs.js'
@@ -97,6 +100,8 @@ jobs:
           python -m unittest tests.test_refresh_youtube_daily tests.test_youtube_workflow_guardrails tests.test_generate_youtube_recommendation_pool tests.test_import_youtube_studio_export
           node tests/test_youtube_new_video_view_floor.js
           node tests/test_youtube_daily_view_deltas.js
+          node tests/test_youtube_history_cache_refresh.js
+          node tests/test_youtube_unavailable_quarantine.js
           node tests/test_youtube_channel_update_status.js
           node tests/test_youtube_age_normalized_analysis.js
           node tests/test_youtube_daily_recommendations.js
@@ -224,3 +229,4 @@ jobs:
           --verify-base-url https://dim75017.github.io/youtube-radar-kx9v2m/
           --verify-timeout 900
           --verify-interval 15
+
