@@ -1033,6 +1033,12 @@ def merge_artifacts(
         for video_id in (artifact.get("tracked_fresh_ids") or [])
         if VIDEO_ID.match(str(video_id or ""))
     }
+    tracked_failed_ids = {
+        str(video_id)
+        for artifact in artifacts
+        for video_id in (artifact.get("tracked_failed_ids") or [])
+        if VIDEO_ID.match(str(video_id or ""))
+    }
     if len(tracked_fresh_ids) != tracked_ok:
         raise RuntimeError(
             f"Merge rejected: {tracked_ok} refreshed counters but "
@@ -1045,12 +1051,22 @@ def merge_artifacts(
         for video_id in ((payload.get("videoMetrics") or {}).get("unavailable_ids") or [])
         if VIDEO_ID.match(str(video_id or ""))
     }
+    previous_missing_ids = {
+        str(video_id)
+        for video_id in ((payload.get("videoMetrics") or {}).get("missing_ids") or [])
+        if VIDEO_ID.match(str(video_id or ""))
+    }
     newly_unavailable_ids = {
         str(video_id)
         for artifact in artifacts
         for video_id in (artifact.get("tracked_unavailable_ids") or [])
         if VIDEO_ID.match(str(video_id or ""))
     }
+    # The official Data API can authoritatively quarantine an omission in one
+    # pass.  The public yt-dlp fallback is deliberately more conservative: an
+    # ID must be absent from two consecutive complete scans before it leaves
+    # the active denominator.  Quarantined IDs remain recovery probes.
+    newly_unavailable_ids.update(tracked_failed_ids & previous_missing_ids)
     recovered_ids = {
         str(video_id)
         for artifact in artifacts
@@ -1058,6 +1074,15 @@ def merge_artifacts(
         if VIDEO_ID.match(str(video_id or ""))
     }
     unavailable_ids = sorted((previous_unavailable_ids | newly_unavailable_ids) - recovered_ids)
+    unavailable_set = set(unavailable_ids)
+    newly_quarantined_active_ids = tracked_failed_ids & unavailable_set
+    active_tracked_total = tracked_total - len(newly_quarantined_active_ids)
+    if active_tracked_total < tracked_ok:
+        raise RuntimeError(
+            f"Merge rejected: {tracked_ok} refreshed videos exceed "
+            f"the {active_tracked_total} active tracked videos"
+        )
+    missing_ids = sorted(tracked_failed_ids - unavailable_set)
     data = payload.setdefault("d", {})
     prune_deferred_rows(data)
     legacy_history = data.pop("hist", {})
@@ -1201,7 +1226,7 @@ def merge_artifacts(
     payload["t"] = now_ms
     payload["videoMetricsT"] = now_ms
     payload["videoMetrics"] = {
-        "tracked": tracked_total,
+        "tracked": active_tracked_total,
         "updated": tracked_ok,
         "keywords": queries_total,
         "keywords_ok": queries_ok,
@@ -1210,8 +1235,9 @@ def merge_artifacts(
         "history_updated": history_updated,
         "history_day": history_day,
         "day_timezone": RADAR_TIMEZONE_NAME,
-        "partial": tracked_ok < tracked_total or queries_ok < queries_total,
+        "partial": tracked_ok < active_tracked_total or queries_ok < queries_total,
         "unavailable_ids": unavailable_ids,
+        "missing_ids": missing_ids,
     }
     payload["videoHistory"] = {
         "layout": "video_history/{first_char_hex}.json",
@@ -1230,7 +1256,7 @@ def merge_artifacts(
         generated_ms=now_ms,
     )
     summary = {
-        "tracked": tracked_total,
+        "tracked": active_tracked_total,
         "updated": tracked_ok,
         "keywords": queries_total,
         "keywords_ok": queries_ok,
@@ -1239,6 +1265,7 @@ def merge_artifacts(
         "history_updated": history_updated,
         "history_day": history_day,
         "unavailable": len(unavailable_ids),
+        "missing": len(missing_ids),
         "all_added": inserted_all,
         "trends_added": inserted_trends,
         "news_added": inserted_news,
