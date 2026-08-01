@@ -57,9 +57,21 @@ const livePoints = [
 ];
 const liveMerged = context.mergeDailyVideoHistory(livePoints.slice(0, 2), livePoints.slice(2));
 assert.deepEqual(
-  Array.from(context.dailyViewDeltas(liveMerged), point => [context.videoHistoryDayKey(point[0]), point[1]]),
-  [['2026-07-29', 30], ['2026-07-30', 50], ['2026-07-31', 40], ['2026-08-01', 40]],
-  'the live July sequence must reach 1 August without losing Paris-midnight observations',
+  Array.from(context.dailyViewDeltas(liveMerged), point => Array.from(point)),
+  [
+    [Date.parse('2026-07-29T12:00:00Z'), 30],
+    [Date.parse('2026-07-30T12:00:00Z'), 50],
+    [Date.parse('2026-07-31T12:00:00Z'), 40],
+    [Date.parse('2026-08-01T12:00:00Z'), 40],
+  ],
+  'daily points keep their Paris dates while using evenly spaced chart timestamps',
+);
+
+const liveSpacing = Array.from(context.dailyViewDeltas(liveMerged), point => point[0]);
+assert.deepEqual(
+  liveSpacing.slice(1).map((timestamp, index) => timestamp-liveSpacing[index]),
+  [86400000, 86400000, 86400000],
+  'irregular scan hours must never stretch the distance between consecutive daily points',
 );
 
 const zeroGain = context.dailyViewDeltas([
@@ -83,7 +95,7 @@ assert.equal(context.videoHistoryDayKey(beforeParisCutoff), '2026-07-19');
 assert.equal(context.videoHistoryDayKey(insideParisCutoff), '2026-07-20');
 assert.deepEqual(
   Array.from(context.dailyViewDeltas([[beforeParisCutoff, 80], [insideParisCutoff, 100], [nextParisDay, 125]]), point => Array.from(point)),
-  [[nextParisDay, 25]],
+  [[Date.parse('2026-07-21T12:00:00Z'), 25]],
   'the 20 July cutoff starts at Paris midnight, not UTC midnight',
 );
 
@@ -91,6 +103,8 @@ assert.match(source, /dailyViewDeltas\(active\)/,
   'video drawers chart daily view gains instead of cumulative views');
 assert.match(source, /day=videoHistoryDayKey\(point\[0\]\)/,
   'daily history merging uses the canonical Paris day key');
+assert.match(source, /out\.push\(\[videoHistoryDayTimestamp\(day\),delta\]\)/,
+  'daily charts plot one canonical timestamp per day');
 assert.doesNotMatch(source.slice(mergeStart, mergeEnd), /Math\.floor\(point\[0\]\/86400000\)/,
   'UTC-day deduplication must never return');
 assert.match(source, /dailyChart/, 'the drawer names the new daily metric');
