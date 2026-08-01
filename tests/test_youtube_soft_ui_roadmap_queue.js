@@ -16,6 +16,6 @@ assert.match(roadmap, /function roadmapUpcomingRows\(rows,now=Date\.now\(\)\)/, 
 assert.match(roadmap, /window\._rm_rows=RM\.mode==='cal'\?rows:listRows/, 'calendar retains full history while list receives only future rows');
 assert.match(roadmap, /rows=roadmapUpcomingRows\(rows\)/, 'the table applies the future-only filter');
 assert.match(index, /dashboard\.css\?v=20260728-recommendation-fade-v1/, 'stylesheet cache version is renewed');
-assert.match(index, /dashboard-04-recommendations\.js\?v=20260729-roadmap-monday-only-v1/, 'roadmap script cache version is renewed');
+assert.match(index, /dashboard-04-recommendations\.js\?v=20260801-youtube-studio-auto-v1/, 'roadmap script cache version is renewed');
 
 console.log('YouTube soft UI and roadmap queue: OK');
