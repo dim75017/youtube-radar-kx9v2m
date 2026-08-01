@@ -1044,6 +1044,12 @@ def merge_artifacts(
             f"Merge rejected: {tracked_ok} refreshed counters but "
             f"{len(tracked_fresh_ids)} traceable refreshed IDs"
         )
+    expected_failed = tracked_total - tracked_ok
+    if len(tracked_failed_ids) != expected_failed or tracked_failed_ids & tracked_fresh_ids:
+        raise RuntimeError(
+            f"Merge rejected: {expected_failed} missing counters but "
+            f"{len(tracked_failed_ids)} traceable missing IDs"
+        )
 
     payload = read_snapshot(snapshot)
     previous_unavailable_ids = {
@@ -1073,9 +1079,11 @@ def merge_artifacts(
         for video_id in (artifact.get("tracked_recovered_ids") or [])
         if VIDEO_ID.match(str(video_id or ""))
     }
-    unavailable_ids = sorted((previous_unavailable_ids | newly_unavailable_ids) - recovered_ids)
-    unavailable_set = set(unavailable_ids)
     confirmed_recovered_ids = recovered_ids & previous_unavailable_ids
+    unavailable_ids = sorted(
+        (previous_unavailable_ids | newly_unavailable_ids) - confirmed_recovered_ids
+    )
+    unavailable_set = set(unavailable_ids)
     newly_quarantined_active_ids = tracked_failed_ids & unavailable_set
     active_tracked_total = (
         tracked_total
