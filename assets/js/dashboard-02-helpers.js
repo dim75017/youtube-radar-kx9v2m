@@ -173,6 +173,9 @@ function videoHistoryDayKey(timestamp){
   });
   return parts.year+'-'+parts.month+'-'+parts.day;
 }
+function videoHistoryDayTimestamp(day){
+  return Date.parse(day+'T12:00:00Z');
+}
 function dailyViewDeltas(pts){
   const byDay=new Map();
   cleanVideoHist(pts).forEach(point=>{
@@ -187,7 +190,7 @@ function dailyViewDeltas(pts){
     const [previousDay,previous]=days[i-1], [day,current]=days[i];
     if(Date.parse(day+'T00:00:00Z')-Date.parse(previousDay+'T00:00:00Z')!==86400000)continue;
     const delta=current[1]-previous[1];
-    if(delta>=0)out.push([current[0],delta]);
+    if(delta>=0)out.push([videoHistoryDayTimestamp(day),delta]);
   }
   return out;
 }
