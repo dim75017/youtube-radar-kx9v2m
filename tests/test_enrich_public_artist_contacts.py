@@ -59,6 +59,31 @@ class PublicArtistContactEnrichmentTests(unittest.TestCase):
         row = payload['artists'][0]
         self.assertEqual(row[payload['schemas']['artists'].index('email')], 'booking@artist.test')
 
+    def test_strict_catalogue_candidate_is_scanned_before_opportunity_promotion(self):
+        artist_schema = ['soundcharts_uuid', 'spotify_id', 'contact_url', 'public_contacts']
+        track_schema = [
+            'instrumental_status', 'instrumental_confidence', 'ai_risk',
+            'rights_status', 'primary_genre', 'genre_confidence', 'artists',
+        ]
+        payload = {
+            'schemas': {'artists': artist_schema, 'tracks': track_schema, 'opportunities': []},
+            'artists': [['artist-1', 'spotify-1', 'https://artist.test/contact', []]],
+            'tracks': [[
+                'instrumental', 0.9, 'low', 'self_released', 'ambient', 0.9,
+                [{'soundcharts_uuid': 'artist-1', 'role': 'main'}],
+            ]],
+            'opportunities': [],
+        }
+        old_fetch = subject.fetch_html
+        subject.fetch_html = lambda url: '<a href="mailto:booking@artist.test">Booking</a>'
+        try:
+            summary = subject.enrich(payload, {'artists': {}}, 10, 4)
+        finally:
+            subject.fetch_html = old_fetch
+        self.assertEqual(summary, {'artists_checked': 1, 'emails_found': 1})
+        row = payload['artists'][0]
+        self.assertEqual(row[payload['schemas']['artists'].index('email')], 'booking@artist.test')
+
     def test_selected_seed_uses_soundcharts_uuid_when_snapshot_has_no_spotify_id(self):
         artist_schema = ['soundcharts_uuid', 'contact_url', 'public_contacts', 'contact_research']
         payload = {

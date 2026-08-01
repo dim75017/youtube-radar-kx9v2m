@@ -29,6 +29,13 @@ EMAIL_RE = re.compile(r"[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,63}", re.I)
 BUSINESS_RE = re.compile(r"\b(contact|booking|bookings|management|manager|press|media|business|licen[cs]|label|inquir(?:y|ies)|demo)\b", re.I)
 MAX_BYTES = 250_000
 USER_AGENT = "LofiRadarContactResearch/1.0 (+https://dim75017.github.io/youtube-radar-kx9v2m/)"
+CONTACT_RECHECK_DAYS = 14
+TARGET_GENRES = frozenset({
+    "lofi_hip_hop", "guitar", "nature", "jazz_jazzhop", "classical",
+    "ambient", "piano", "halloween_lofi", "christmas_lofi", "dark_ambient",
+    "phonk_instrumental", "dnb_instrumental", "synthwave", "sleep",
+    "meditation", "soundscape", "other_instrumental",
+})
 
 
 def now() -> str:
@@ -144,6 +151,59 @@ def strict_artist_ids(payload: dict[str, Any]) -> set[str]:
     return ids
 
 
+def candidate_artist_ids(payload: dict[str, Any]) -> set[str]:
+    """Return primary artists that can become strict opportunities.
+
+    This makes contact research run before the opportunity engine promotes a
+    newly measured track.  It is intentionally evidence-only: no artist is
+    discovered, classified or promoted by this helper.
+    """
+    schemas = payload.get("schemas") if isinstance(payload.get("schemas"), dict) else {}
+    schema = schemas.get("tracks") if isinstance(schemas.get("tracks"), list) else []
+    rows = payload.get("tracks") if isinstance(payload.get("tracks"), list) else []
+    def at_least(value: Any, minimum: float) -> bool:
+        try:
+            return float(value) >= minimum
+        except (TypeError, ValueError):
+            return False
+
+    ids: set[str] = set()
+    for row in rows:
+        if (
+            str(field(row, schema, "instrumental_status") or "").casefold() != "instrumental"
+            or not at_least(field(row, schema, "instrumental_confidence"), 0.5)
+            or str(field(row, schema, "ai_risk") or "").casefold() not in {"low", "faible"}
+            or str(field(row, schema, "rights_status") or "").casefold()
+            not in {"self_released", "independent_label"}
+            or str(field(row, schema, "primary_genre") or "").casefold() not in TARGET_GENRES
+            or not at_least(field(row, schema, "genre_confidence"), 0.5)
+        ):
+            continue
+        artists = field(row, schema, "artists")
+        if not isinstance(artists, list):
+            continue
+        primary = next(
+            (
+                artist for artist in artists
+                if isinstance(artist, Mapping) and str(artist.get("role") or "").casefold() == "main"
+            ),
+            next((artist for artist in artists if isinstance(artist, Mapping)), None),
+        )
+        if isinstance(primary, Mapping) and str(primary.get("soundcharts_uuid") or "").strip():
+            ids.add(str(primary["soundcharts_uuid"]).strip())
+    return ids
+
+
+def research_is_due(value: Any) -> bool:
+    if not isinstance(value, Mapping) or not value.get("checked_at"):
+        return True
+    try:
+        checked = dt.datetime.fromisoformat(str(value["checked_at"]).replace("Z", "+00:00"))
+    except ValueError:
+        return True
+    return checked + dt.timedelta(days=CONTACT_RECHECK_DAYS) <= dt.datetime.now(dt.timezone.utc)
+
+
 def profile_urls(value: Any, fallback: Any, limit: int) -> list[str]:
     urls: list[str] = []
     for item in value if isinstance(value, list) else []:
@@ -201,12 +261,16 @@ def enrich(
         for row in _artist_rows
         if str(field(row, artist_schema, "spotify_id") or "") in priority_spotify_ids
     }
-    allowed = strict_artist_ids(payload) | priority_uuids
+    allowed = strict_artist_ids(payload) | candidate_artist_ids(payload) | priority_uuids
     cache_artists = cache.setdefault("artists", {}) if isinstance(cache, dict) else {}
     processed = found = 0
     ordered_rows = sorted(
         _artist_rows,
-        key=lambda row: 0 if str(field(row, artist_schema, "soundcharts_uuid") or "") in priority_uuids else 1,
+        key=lambda row: (
+            0 if str(field(row, artist_schema, "soundcharts_uuid") or "") in priority_uuids else 1,
+            0 if not field(row, artist_schema, "contact_research") else 1,
+            str(field(row, artist_schema, "soundcharts_uuid") or ""),
+        ),
     )
     for row in ordered_rows:
         uuid = str(field(row, artist_schema, "soundcharts_uuid") or "")
@@ -214,11 +278,7 @@ def enrich(
             continue
         existing = str(field(row, artist_schema, "email") or "").strip()
         research = field(row, artist_schema, "contact_research")
-        if existing or (
-            uuid not in priority_uuids
-            and isinstance(research, Mapping)
-            and research.get("checked_at")
-        ):
+        if existing or (uuid not in priority_uuids and not research_is_due(research)):
             continue
         urls = profile_urls(field(row, artist_schema, "public_contacts"), field(row, artist_schema, "contact_url"), max_profiles)
         processed += 1

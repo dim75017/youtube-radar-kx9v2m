@@ -20,6 +20,7 @@ import os
 import re
 import tempfile
 import unicodedata
+import urllib.parse
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -117,6 +118,10 @@ MIN_AUTO_RETENTION_RATIO = 0.80
 MAX_AUTO_DISCOVERY_GROWTH_RATIO = 1.35
 MAX_AUTO_DISCOVERY_GROWTH_ROWS = 5_000
 HIGH_STREAM_UNCLASSIFIED_THRESHOLD = 50_000_000
+PUBLIC_CONTACT_EMAIL_RE = re.compile(
+    r"^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,63}$", re.I
+)
+NON_CONTACT_PROFILE_HOSTS = frozenset({"spotify.com", "soundcharts.com"})
 
 
 class SnapshotError(RuntimeError):
@@ -479,13 +484,30 @@ def _opportunity_contact_gate_passes(row: Any, schema: Sequence[str]) -> bool:
     )
 
 
-def _opportunity_exposes_contact(row: Any, schema: Sequence[str]) -> bool:
+def _valid_public_contact_url(value: Any, platform: Any = "") -> bool:
+    parsed = urllib.parse.urlparse(str(value or "").strip())
+    host = (parsed.hostname or "").casefold().removeprefix("www.")
+    source_platform = _normalise_text(platform)
+    if parsed.scheme not in {"https", "http"} or not host:
+        return False
+    if source_platform in {"spotify", "soundcharts"}:
+        return False
+    return not any(host == blocked or host.endswith("." + blocked) for blocked in NON_CONTACT_PROFILE_HOSTS)
+
+
+def _has_actionable_public_contact(row: Any, schema: Sequence[str]) -> bool:
+    """A public Spotify/Soundcharts identity is not a contact channel."""
     status = _normalise_text(_row_value(row, schema, "contact_status"))
-    if status in {"ready", "social"}:
+    email = str(_row_value(row, schema, "contact_email") or "").strip()
+    url = _row_value(row, schema, "contact_url")
+    platform = _row_value(row, schema, "contact_platform")
+    if status == "ready" and PUBLIC_CONTACT_EMAIL_RE.fullmatch(email):
         return True
-    if _nonempty(_row_value(row, schema, "contact_email")) or _nonempty(
-        _row_value(row, schema, "contact_url")
-    ):
+    return status == "social" and _valid_public_contact_url(url, platform)
+
+
+def _opportunity_exposes_contact(row: Any, schema: Sequence[str]) -> bool:
+    if _has_actionable_public_contact(row, schema):
         return True
     collaborators = _row_value(row, schema, "artists")
     return isinstance(collaborators, list) and any(
@@ -1724,26 +1746,15 @@ def sanitize_payload(payload: Mapping[str, Any]) -> tuple[dict[str, Any], dict[s
         if rights in FORBIDDEN_RIGHTS:
             opportunity_reasons["major_or_mixed"] += 1
             continue
-        contact_must_be_nonactionable = (
-            status == "needs_listen"
-            or rights not in CONTACTABLE_RIGHTS
-            or not _opportunity_contact_gate_passes(row, opportunity_schema)
-        )
-        if contact_must_be_nonactionable:
-            exposed_before_scrub = _opportunity_exposes_contact(
-                row, opportunity_schema
-            )
-            _scrub_opportunity_contacts(row, opportunity_schema)
-            # A snapshot must never be held hostage by a malformed legacy row,
-            # but it must also never publish a contact whose underlying track
-            # is not contactable.  Rows normally arrive as mutable JSON lists
-            # or objects.  If an unusual shape prevents the scrub from taking
-            # effect, quarantine that one opportunity instead of failing the
-            # complete collection/publish cycle.
-            if _opportunity_exposes_contact(row, opportunity_schema):
-                opportunity_reasons["unscrubbable_contact"] += 1
-                continue
-            contacts_scrubbed += int(exposed_before_scrub)
+        if not _opportunity_contact_gate_passes(row, opportunity_schema):
+            opportunity_reasons["not_actionable"] += 1
+            continue
+        # Opportunities is a working A&R queue.  Non-contactable candidates
+        # remain in the catalogue and contact-research queue, but never ship in
+        # the dashboard's Opportunities tab.
+        if not _has_actionable_public_contact(row, opportunity_schema):
+            opportunity_reasons["missing_public_contact"] += 1
+            continue
         seen_opportunity_spotify_ids.add(spotify_track_id)
         retained_opportunities.append(row)
     sanitized["opportunities"] = retained_opportunities
@@ -1821,8 +1832,6 @@ def validate_payload(payload: Mapping[str, Any]) -> None:
     opportunities = payload.get("opportunities")
     if not isinstance(opportunities, list):
         raise SnapshotValidationError("SC.opportunities must be present and be a list")
-    if not opportunities:
-        raise SnapshotValidationError("SC.opportunities must not be empty")
     for collection in ("artists", "tracks"):
         rows = payload.get(collection)
         if not isinstance(rows, list) or not rows:
@@ -2071,6 +2080,10 @@ def validate_payload(payload: Mapping[str, Any]) -> None:
         if rights in FORBIDDEN_RIGHTS:
             raise SnapshotValidationError(
                 "SC.opportunities contains major/mixed rights"
+            )
+        if not _has_actionable_public_contact(row, opportunity_schema):
+            raise SnapshotValidationError(
+                "SC.opportunities contains a candidate without a public contact channel"
             )
         contact_status = _normalise_text(
             _row_value(row, opportunity_schema, "contact_status")

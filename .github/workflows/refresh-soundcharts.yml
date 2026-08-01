@@ -853,8 +853,6 @@ jobs:
                   raise SystemExit('Playlist follower history export is empty')
           if int(pool.get('measured') or 0) < 1:
               raise SystemExit('Instrumental pool produced no real Spotify counter')
-          if not opportunities:
-              raise SystemExit('A&R engine produced no actionable opportunity')
           if not performance.get('tracks'):
               raise SystemExit('Performance history export is empty')
           print(json.dumps({

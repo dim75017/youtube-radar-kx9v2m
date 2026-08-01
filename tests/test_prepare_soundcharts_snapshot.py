@@ -839,8 +839,7 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
     def test_opportunity_validation_rejects_empty_duplicate_status_and_ai_risk(self):
         empty = minimal_payload()
         empty["opportunities"] = []
-        with self.assertRaisesRegex(subject.SnapshotValidationError, "must not be empty"):
-            subject.validate_payload(empty)
+        subject.validate_payload(empty)
 
         duplicate = minimal_payload()
         duplicate["opportunities"].append(duplicate["opportunities"][0].copy())
@@ -859,7 +858,18 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
         with self.assertRaisesRegex(subject.SnapshotValidationError, "classification"):
             subject.validate_payload(invalid_ai)
 
-    def test_invalid_verified_classification_downgrades_and_scrubs_contacts(self):
+    def test_contactless_opportunity_is_removed_and_spotify_profile_is_not_a_contact(self):
+        payload = minimal_payload()
+        row = payload["opportunities"][0]
+        row[OPPORTUNITY_SCHEMA.index("contact_url")] = "https://open.spotify.com/artist/artist-valid"
+        row[OPPORTUNITY_SCHEMA.index("contact_status")] = "social"
+        with self.assertRaisesRegex(subject.SnapshotValidationError, "public contact channel"):
+            subject.validate_payload(payload)
+        sanitized, report = subject.sanitize_payload(payload)
+        self.assertEqual(sanitized["opportunities"], [])
+        self.assertEqual(report["opportunity_removal_reasons"]["missing_public_contact"], 1)
+
+    def test_invalid_verified_classification_is_removed_from_actionable_opportunities(self):
         payload = minimal_payload()
         artist = collaborator("Review Artist", "review-artist", "review-uuid")
         invalid = [
@@ -881,18 +891,10 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
         sanitized, report = subject.sanitize_payload(payload)
         by_id = {row[1]: row for row in sanitized["opportunities"]}
         for spotify_id in ("review-genre", "review-vocal", "review-ai"):
-            row = by_id[spotify_id]
-            self.assertEqual(
-                row[OPPORTUNITY_SCHEMA.index("opportunity_status")],
-                "needs_listen",
-            )
-            self.assertEqual(
-                row[OPPORTUNITY_SCHEMA.index("contact_status")], "blocked"
-            )
-            self.assertFalse(row[OPPORTUNITY_SCHEMA.index("contact_email")])
-            self.assertFalse(row[OPPORTUNITY_SCHEMA.index("contact_url")])
+            self.assertNotIn(spotify_id, by_id)
         self.assertEqual(report["opportunities_downgraded_to_needs_listen"], 3)
-        self.assertEqual(len(sanitized["opportunities"]), 4)
+        self.assertEqual(report["opportunity_removal_reasons"]["not_actionable"], 3)
+        self.assertEqual(len(sanitized["opportunities"]), 1)
         subject.validate_payload(sanitized)
 
     def test_public_general_and_editorial_collections_must_not_be_empty(self):
@@ -955,7 +957,7 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
         ):
             subject.validate_payload(direct_mismatch)
 
-    def test_needs_listen_unknown_rights_contacts_are_scrubbed_fail_closed(self):
+    def test_needs_listen_unknown_rights_are_removed_from_actionable_queue(self):
         payload = minimal_payload()
         review_artist = collaborator("Review Artist", "review-artist", "review-uuid")
         review_artist.update(
@@ -979,18 +981,11 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
         )
 
         sanitized, report = subject.sanitize_payload(payload)
-        review = next(row for row in sanitized["opportunities"] if row[1] == "review-track")
-        self.assertEqual(
-            review[OPPORTUNITY_SCHEMA.index("contact_status")], "blocked"
-        )
-        self.assertFalse(review[OPPORTUNITY_SCHEMA.index("contact_email")])
-        self.assertFalse(review[OPPORTUNITY_SCHEMA.index("contact_url")])
-        self.assertFalse(review[OPPORTUNITY_SCHEMA.index("artists")][0]["email"])
-        self.assertFalse(review[OPPORTUNITY_SCHEMA.index("artists")][0]["url"])
-        self.assertEqual(report["opportunity_contacts_scrubbed"], 1)
+        self.assertNotIn("review-track", [row[1] for row in sanitized["opportunities"]])
+        self.assertEqual(report["opportunity_removal_reasons"]["not_actionable"], 1)
         subject.validate_payload(sanitized)
 
-    def test_unscrubbable_noncontactable_opportunity_is_quarantined(self):
+    def test_nonactionable_legacy_opportunity_is_quarantined(self):
         payload = minimal_payload()
         # A legacy immutable row cannot be rewritten in-place.  It must be
         # removed rather than making the entire dated snapshot fail or
@@ -1013,11 +1008,11 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
 
         self.assertEqual(len(sanitized["opportunities"]), 1)
         self.assertEqual(
-            report["opportunity_removal_reasons"]["unscrubbable_contact"], 1
+            report["opportunity_removal_reasons"]["not_actionable"], 1
         )
         subject.validate_payload(sanitized)
 
-    def test_empty_public_contacts_do_not_quarantine_a_scrubbed_opportunity(self):
+    def test_nonactionable_public_profiles_do_not_keep_a_review_row(self):
         payload = minimal_payload()
         review_artist = collaborator(
             "Review Artist", "review-artist", "review-artist-uuid"
@@ -1040,17 +1035,8 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
         sanitized, report = subject.sanitize_payload(payload)
 
         by_id = {row[1]: row for row in sanitized["opportunities"]}
-        self.assertIn("review-track", by_id)
-        review = by_id["review-track"]
-        self.assertEqual(
-            review[OPPORTUNITY_SCHEMA.index("contact_status")], "blocked"
-        )
-        self.assertFalse(review[OPPORTUNITY_SCHEMA.index("contact_url")])
-        self.assertEqual(review[OPPORTUNITY_SCHEMA.index("artists")][0]["public_contacts"], [])
-        self.assertEqual(
-            report["opportunity_removal_reasons"].get("unscrubbable_contact", 0),
-            0,
-        )
+        self.assertNotIn("review-track", by_id)
+        self.assertEqual(report["opportunity_removal_reasons"]["not_actionable"], 1)
         subject.validate_payload(sanitized)
 
     def test_activate_is_strict_cas_and_preserves_old_export(self):

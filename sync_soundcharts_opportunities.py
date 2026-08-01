@@ -23,6 +23,7 @@ import datetime as dt
 import json
 import math
 import re
+import urllib.parse
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
@@ -34,6 +35,12 @@ SOUNDCHARTS_PREFIX = "window.SPOTIFY_SOUNDCHARTS="
 PERFORMANCE_PREFIX = "window.SPOTIFY_PERFORMANCE="
 RADAR_PREFIX = "window.SPOTIFY_RADAR="
 MIN_TRACK_LIFETIME_STREAMS = 100_000
+PUBLIC_CONTACT_EMAIL_RE = re.compile(
+    r"^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,63}$", re.I
+)
+# Spotify and Soundcharts URLs identify an artist but do not provide a way to
+# reach them.  They must never satisfy the actionable-opportunity gate.
+NON_CONTACT_PROFILE_HOSTS = frozenset({"spotify.com", "soundcharts.com"})
 
 TARGET_GENRES = frozenset(
     {
@@ -347,6 +354,27 @@ def main_artists(track: dict[str, Any], preserved: dict[str, Any]) -> list[dict[
     return out
 
 
+def is_public_business_email(value: Any) -> bool:
+    return bool(PUBLIC_CONTACT_EMAIL_RE.fullmatch(str(value or "").strip()))
+
+
+def is_actionable_public_url(value: Any, platform: Any = "") -> bool:
+    """Accept an explicit public external profile, never a Spotify identity.
+
+    URLs originate in provider metadata or the curated public-contact cache;
+    this is deliberately a validation gate, not a discovery heuristic.
+    """
+    raw = str(value or "").strip()
+    parsed = urllib.parse.urlparse(raw)
+    host = (parsed.hostname or "").casefold().removeprefix("www.")
+    source_platform = str(platform or "").strip().casefold()
+    if parsed.scheme not in {"https", "http"} or not host:
+        return False
+    if source_platform in {"spotify", "soundcharts"}:
+        return False
+    return not any(host == blocked or host.endswith("." + blocked) for blocked in NON_CONTACT_PROFILE_HOSTS)
+
+
 def public_contact_channels(artist: Mapping[str, Any], fallback_url: str = "", fallback_platform: str = "") -> list[dict[str, str]]:
     """Return only explicit, public HTTP profile links from provider data."""
     candidates = artist.get("public_contacts")
@@ -363,7 +391,7 @@ def public_contact_channels(artist: Mapping[str, Any], fallback_url: str = "", f
             continue
         platform = str(item.get("platform") or "website").strip().casefold()
         url = str(item.get("url") or "").strip()
-        if not url.startswith(("https://", "http://")):
+        if not is_actionable_public_url(url, platform):
             continue
         pair = (platform, url)
         if pair in seen:
@@ -395,13 +423,16 @@ def resolve_artist_context(
         artist_name = str(artist.get("name") or name)
         listeners = finite_number(artist.get("monthly_listeners"))
         contact = contacts_by_spotify.get(artist_spotify) or {}
-        email = str(contact.get("email") or "")
+        email = str(contact.get("email") or artist.get("email") or "").strip()
         url = str(contact.get("url") or artist.get("contact_url") or "")
         platform = str(artist.get("contact_platform") or ("email" if email else ""))
         public_contacts = public_contact_channels(artist, url, platform)
         if public_contacts:
             url = public_contacts[0]["url"]
             platform = public_contacts[0]["platform"]
+        else:
+            url = ""
+            platform = ""
         resolved.append(
             {
                 "spotify_id": artist_spotify,
@@ -409,7 +440,7 @@ def resolve_artist_context(
                 "name": artist_name,
                 "role": str(item.get("role") or "unknown"),
                 "monthly_listeners": int(listeners) if listeners is not None else None,
-                "email": email,
+                "email": email if is_public_business_email(email) else "",
                 "url": url,
                 "contact_platform": platform,
                 "public_contacts": public_contacts,
@@ -417,9 +448,11 @@ def resolve_artist_context(
         )
     listeners_values = [item["monthly_listeners"] for item in resolved if item.get("monthly_listeners") is not None]
     primary = resolved[0] if resolved else {}
-    email = next((item["email"] for item in resolved if item.get("email")), "")
-    url = next((item["url"] for item in resolved if item.get("url")), "")
-    platform = next((item["contact_platform"] for item in resolved if item.get("contact_platform")), "")
+    # A track is actionable only through its lead artist.  A collaborator's
+    # profile must not make an otherwise unreachable lead appear contactable.
+    email = str(primary.get("email") or "")
+    url = str(primary.get("url") or "")
+    platform = str(primary.get("contact_platform") or "")
     identity_complete = bool(resolved) and all(
         str(item.get("spotify_id") or "").strip() and str(item.get("soundcharts_uuid") or "").strip()
         for item in resolved
@@ -887,6 +920,7 @@ def generate_opportunities(
         "no_metric": 0,
         "below_stream_floor": 0,
         "weak_signal": 0,
+        "no_public_contact": 0,
     }
     measured_target_tracks = 0
     independent_tracks = 0
@@ -961,6 +995,12 @@ def generate_opportunities(
         listeners = context["monthly_listeners"]
         if (listeners is not None and listeners > max_artist_listeners) or (metrics["total"] or 0) > max_track_streams:
             excluded["superstar"] += 1
+            continue
+        # OpportunitÃ©s is an operational queue: a promising track remains in
+        # the catalogue, but it cannot appear here until its primary artist has
+        # at least one explicit public professional contact channel.
+        if context["contact_status"] not in {"ready", "social"}:
+            excluded["no_public_contact"] += 1
             continue
 
         age = release_age_days(track.get("release_date") or editorial_entry.get("release_date"))
@@ -1120,8 +1160,6 @@ def generate_opportunities(
         )
     )
     selected = candidates[: max(1, max_opportunities)]
-    if not selected:
-        raise OpportunitySyncError("No actionable independent opportunity survived the configured gates")
 
     schemas["opportunities"] = list(OPPORTUNITY_SCHEMA)
     current["opportunities"] = [opportunity_row(item) for item in selected]
@@ -1154,8 +1192,9 @@ def generate_opportunities(
             "min_track_streams": min_track_streams,
             "max_track_streams": max_track_streams,
             "minimum_score": minimum_score,
-            "allowed_rights": ["self_released", "independent_label", "unknown_review"],
+            "allowed_rights": ["self_released", "independent_label"],
             "excluded_rights": ["major", "mixed", "other_label"],
+            "public_contact_required": True,
         },
         "score_components": {
             "momentum_and_acceleration": 35,
