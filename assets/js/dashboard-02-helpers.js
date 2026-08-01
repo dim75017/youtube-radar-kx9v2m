@@ -161,12 +161,23 @@ function videoHistCopy(){
 function cleanVideoHist(pts){
   return (pts||[]).filter(p=>Array.isArray(p)&&isFinite(p[0])&&isFinite(p[1])).map(p=>[+p[0],+p[1]]).sort((a,b)=>a[0]-b[0]);
 }
-const VIDEO_DAILY_VIEW_HISTORY_START=Date.UTC(2026,6,20);
+const VIDEO_HISTORY_TIME_ZONE='Europe/Paris';
+const VIDEO_HISTORY_DAY_FORMATTER=new Intl.DateTimeFormat('en-CA',{
+  timeZone:VIDEO_HISTORY_TIME_ZONE,year:'numeric',month:'2-digit',day:'2-digit'
+});
+const VIDEO_DAILY_VIEW_HISTORY_START_DAY='2026-07-20';
+function videoHistoryDayKey(timestamp){
+  const parts={};
+  VIDEO_HISTORY_DAY_FORMATTER.formatToParts(new Date(+timestamp)).forEach(part=>{
+    if(part.type!=='literal')parts[part.type]=part.value;
+  });
+  return parts.year+'-'+parts.month+'-'+parts.day;
+}
 function dailyViewDeltas(pts){
   const byDay=new Map();
   cleanVideoHist(pts).forEach(point=>{
-    if(point[0]<VIDEO_DAILY_VIEW_HISTORY_START)return;
-    const day=new Date(point[0]).toLocaleDateString('en-CA',{timeZone:'Europe/Paris'});
+    const day=videoHistoryDayKey(point[0]);
+    if(day<VIDEO_DAILY_VIEW_HISTORY_START_DAY)return;
     const previous=byDay.get(day);
     if(!previous||point[0]>=previous[0])byDay.set(day,point);
   });
@@ -395,7 +406,20 @@ const MIN_NEW_VIDEO_TOTAL_VIEWS=100000;
 function eligibleNewVideoRows(rows){
   return (rows||[]).filter(row=>Number(row&&row.views||0)>=MIN_NEW_VIDEO_TOTAL_VIEWS);
 }
+function unavailableVideoIds(){
+  return new Set((((window.LOFI_DATA||{}).videoMetrics||{}).unavailable_ids||[]).map(String));
+}
+function removeUnavailableVideoRows(d){
+  if(!d)return d;
+  const unavailable=unavailableVideoIds();
+  if(!unavailable.size)return d;
+  ['all','trends','news','ours'].forEach(key=>{
+    if(Array.isArray(d[key]))d[key]=d[key].filter(row=>!unavailable.has(String(row&&row.vid||'')));
+  });
+  return d;
+}
 function setRadarData(d){
+  removeUnavailableVideoRows(d);
   if(d)d.news=eligibleNewVideoRows(d.news);
   if(typeof mergeGeneratedRecommendationPool==='function')mergeGeneratedRecommendationPool(d);
   if(typeof applyRecommendationEdits==='function')applyRecommendationEdits(d);
@@ -439,9 +463,11 @@ async function fetchData(){
    points. Merge both sources by video ID without touching livestream data. */
 function mergeExtensionSnapshot(d){
   const snap=window.LOFI_DATA&&window.LOFI_DATA.d;if(!snap)return;
+  removeUnavailableVideoRows(d);
   ['all','trends','news','ours'].forEach(key=>{
     const into=d[key]||(d[key]=[]),byId=new Map(into.map(r=>[r.vid,r]));
-    (snap[key]||[]).forEach(row=>{
+    const unavailable=unavailableVideoIds();
+    (snap[key]||[]).filter(row=>!unavailable.has(String(row&&row.vid||''))).forEach(row=>{
       const current=byId.get(row.vid);
       if(current)Object.assign(current,row);
       else{const added=Object.assign({},row);into.push(added);byId.set(row.vid,added);}
@@ -457,12 +483,14 @@ function mergeDailyVideoHistory(left,right){
   const byDay=new Map();
   (left||[]).concat(right||[]).forEach(p=>{
     if(!Array.isArray(p)||!isFinite(p[0])||!isFinite(p[1]))return;
-    const point=[+p[0],+p[1]],day=Math.floor(point[0]/86400000),old=byDay.get(day);
+    const point=[+p[0],+p[1]],day=videoHistoryDayKey(point[0]),old=byDay.get(day);
     if(!old||point[0]>=old[0])byDay.set(day,point);
   });
   return [...byDay.values()].sort((a,b)=>a[0]-b[0]);
 }
+const VIDEO_HISTORY_CACHE_TTL_MS=10*60*1000;
 const VIDEO_HISTORY_SHARDS=new Map(),VIDEO_HISTORY_PENDING=new Map(),VIDEO_HISTORY_ERRORS=new Map();
+const VIDEO_HISTORY_VALIDATED_AT=new Map(),VIDEO_HISTORY_ERROR_AT=new Map();
 function videoHistoryKey(vid){return vid&&vid.charCodeAt(0).toString(16).padStart(2,'0');}
 function mergeHistoryShardIntoData(shard,d){
   if(!d||!shard||!shard.d)return;
@@ -472,19 +500,32 @@ function mergeHistoryShardIntoData(shard,d){
 function mergeLoadedVideoHistoryIntoData(d){
   VIDEO_HISTORY_SHARDS.forEach(shard=>mergeHistoryShardIntoData(shard,d));
 }
-function videoHistoryReady(vid){return VIDEO_HISTORY_SHARDS.has(videoHistoryKey(vid));}
+function videoHistoryReady(vid){
+  const key=videoHistoryKey(vid),validated=VIDEO_HISTORY_VALIDATED_AT.get(key)||0;
+  return VIDEO_HISTORY_SHARDS.has(key)&&Date.now()-validated<VIDEO_HISTORY_CACHE_TTL_MS;
+}
 function videoHistoryBusy(vid){return VIDEO_HISTORY_PENDING.has(videoHistoryKey(vid));}
-function videoHistoryError(vid){return VIDEO_HISTORY_ERRORS.get(videoHistoryKey(vid))||'';}
+function videoHistoryError(vid){
+  const key=videoHistoryKey(vid),message=VIDEO_HISTORY_ERRORS.get(key)||'';
+  if(message&&Date.now()-(VIDEO_HISTORY_ERROR_AT.get(key)||0)>=VIDEO_HISTORY_CACHE_TTL_MS){
+    VIDEO_HISTORY_ERRORS.delete(key);VIDEO_HISTORY_ERROR_AT.delete(key);return '';
+  }
+  return message;
+}
 async function loadVideoHistoryShard(key){
-  if(VIDEO_HISTORY_SHARDS.has(key))return VIDEO_HISTORY_SHARDS.get(key);
+  const validated=VIDEO_HISTORY_VALIDATED_AT.get(key)||0;
+  if(VIDEO_HISTORY_SHARDS.has(key)&&Date.now()-validated<VIDEO_HISTORY_CACHE_TTL_MS)return VIDEO_HISTORY_SHARDS.get(key);
   if(VIDEO_HISTORY_PENDING.has(key))return VIDEO_HISTORY_PENDING.get(key);
   const pending=fetch('video_history/'+key+'.json?payload='+Date.now(),{cache:'no-store'})
     .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
     .then(shard=>{
       if(!shard||typeof shard.d!=='object')throw new Error('Invalid history shard');
-      VIDEO_HISTORY_SHARDS.set(key,shard);VIDEO_HISTORY_ERRORS.delete(key);return shard;
+      VIDEO_HISTORY_SHARDS.set(key,shard);VIDEO_HISTORY_VALIDATED_AT.set(key,Date.now());
+      VIDEO_HISTORY_ERRORS.delete(key);VIDEO_HISTORY_ERROR_AT.delete(key);return shard;
     })
-    .catch(e=>{VIDEO_HISTORY_ERRORS.set(key,e.message||'History unavailable');throw e;})
+    .catch(e=>{
+      VIDEO_HISTORY_ERRORS.set(key,e.message||'History unavailable');VIDEO_HISTORY_ERROR_AT.set(key,Date.now());throw e;
+    })
     .finally(()=>VIDEO_HISTORY_PENDING.delete(key));
   VIDEO_HISTORY_PENDING.set(key,pending);return pending;
 }
@@ -511,12 +552,24 @@ async function ensureVideoHistory(vid){
   }
 }
 function retryVideoHistory(vid){
-  const key=videoHistoryKey(vid);VIDEO_HISTORY_ERRORS.delete(key);VIDEO_HISTORY_SHARDS.delete(key);
+  const key=videoHistoryKey(vid);VIDEO_HISTORY_ERRORS.delete(key);VIDEO_HISTORY_ERROR_AT.delete(key);
+  VIDEO_HISTORY_SHARDS.delete(key);VIDEO_HISTORY_VALIDATED_AT.delete(key);
   const current=window._openVideoDrawer;
   if(current&&current.v&&current.v.vid===vid)openDrawer(current.kind,current.v,true,true);
   if(window._openAnaVid===vid){const i=(window._page_ana||[]).findIndex(v=>v.vid===vid);if(i>=0)openAnaIdx(i,true);}
   ensureVideoHistory(vid);
 }
+function refreshVisibleVideoHistory(){
+  if(typeof document!=='undefined'&&document.hidden)return;
+  const drawer=window._openVideoDrawer;
+  const vid=(drawer&&drawer.v&&drawer.v.vid)||window._openAnaVid;
+  if(vid&&!videoHistoryBusy(vid)&&!videoHistoryReady(vid))ensureVideoHistory(vid);
+}
+if(typeof window!=='undefined'){
+  window.addEventListener('focus',refreshVisibleVideoHistory);
+  window.addEventListener('online',refreshVisibleVideoHistory);
+}
+if(typeof document!=='undefined')document.addEventListener('visibilitychange',refreshVisibleVideoHistory);
 function videoHistoryPanel(vid,points,label){
   const daily=()=>dailyViewDeltas(points||null);
   if(!vid)return label?'<div class="k">📈 '+esc(videoHistCopy().dailyChart)+'</div>'+histChart(daily(),'daily-views'):videoHistoryAnalytics(points||null);

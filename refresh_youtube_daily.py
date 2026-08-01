@@ -561,29 +561,68 @@ def query_specs(payload: dict) -> list[dict]:
     ]
 
 
+SHEET_VIDEO_TAB_FRAGMENTS = ("All Videos", "Trends", "News", "Our Videos")
+SHEET_VIDEO_URL = re.compile(
+    r"(?:watch\?v=|/vi/|youtu\.be/|/embed/|/shorts/)([\w-]{11})",
+    re.I,
+)
+
+
+def sheet_cell_video_id(cell: object) -> str | None:
+    """Read a YouTube ID from a raw ID, hyperlink target or HYPERLINK formula."""
+    hyperlink = getattr(cell, "hyperlink", None)
+    candidates = (
+        getattr(cell, "value", None),
+        getattr(hyperlink, "target", None) if hyperlink else None,
+    )
+    for candidate in candidates:
+        text = str(candidate or "").strip()
+        if VIDEO_ID.fullmatch(text):
+            return text
+        match = SHEET_VIDEO_URL.search(text)
+        if match:
+            return match.group(1)
+    return None
+
+
 def sheet_video_ids() -> set[str]:
-    """Load the public Our Videos tab so owned videos also get daily history."""
+    """Load every video ID that the live dashboard can display from the Sheet."""
     try:
         from openpyxl import load_workbook
 
         with urllib.request.urlopen(SHEET_EXPORT, timeout=45) as response:
-            workbook = load_workbook(io.BytesIO(response.read()), read_only=True, data_only=True)
-        title = next((name for name in workbook.sheetnames if "Our Videos" in name), None)
-        if not title:
+            workbook = load_workbook(io.BytesIO(response.read()), read_only=True, data_only=False)
+        titles = [
+            name
+            for name in workbook.sheetnames
+            if any(fragment in name for fragment in SHEET_VIDEO_TAB_FRAGMENTS)
+        ]
+        if not any("Our Videos" in name for name in titles):
             raise RuntimeError("Our Videos tab is missing from the radar Sheet")
-        ids = set()
-        for (value,) in workbook[title].iter_rows(min_row=2, max_col=1, values_only=True):
-            video_id = str(value or "").strip()
-            if VIDEO_ID.match(video_id):
-                ids.add(video_id)
+        ids: set[str] = set()
+        for title in titles:
+            max_col = 1 if "Our Videos" in title else 2
+            for row in workbook[title].iter_rows(min_row=1, max_col=max_col):
+                for cell in row:
+                    video_id = sheet_cell_video_id(cell)
+                    if video_id:
+                        ids.add(video_id)
+                        break
+        if not ids:
+            raise RuntimeError("No dashboard video ID found in the radar Sheet")
         return ids
     except Exception as exc:
         raise RuntimeError(
-            f"Could not load the canonical Our Videos list: {type(exc).__name__}: {exc}"
+            f"Could not load the canonical dashboard video list: {type(exc).__name__}: {exc}"
         ) from exc
 
 
 def tracked_ids(payload: dict) -> list[str]:
+    unavailable = {
+        str(video_id)
+        for video_id in ((payload.get("videoMetrics") or {}).get("unavailable_ids") or [])
+        if VIDEO_ID.match(str(video_id or ""))
+    }
     ids = {
         str(row.get("vid"))
         for bucket in ("all", "trends", "news", "ours")
@@ -592,7 +631,7 @@ def tracked_ids(payload: dict) -> list[str]:
         if VIDEO_ID.match(str(row.get("vid") or ""))
     }
     ids.update(sheet_video_ids())
-    return sorted(ids)
+    return sorted(ids - unavailable)
 
 
 def write_tracked_manifest(snapshot: Path, output: Path) -> dict:
@@ -606,6 +645,11 @@ def write_tracked_manifest(snapshot: Path, output: Path) -> dict:
         "generated_ms": utc_now_ms(),
         "snapshot_metrics_ms": int(payload.get("videoMetricsT") or 0),
         "ids": ids,
+        "quarantine_ids": sorted({
+            str(video_id)
+            for video_id in ((payload.get("videoMetrics") or {}).get("unavailable_ids") or [])
+            if VIDEO_ID.match(str(video_id or ""))
+        }),
     }
     output.parent.mkdir(parents=True, exist_ok=True)
     atomic_write_text(output, json.dumps(manifest, ensure_ascii=False, separators=(",", ":")))
@@ -621,6 +665,15 @@ def read_tracked_manifest(path: Path) -> list[str]:
     if len(ids) != len(set(ids)):
         raise RuntimeError(f"Duplicate IDs in tracked-video manifest: {path}")
     return sorted(ids)
+
+
+def read_quarantine_manifest(path: Path) -> list[str]:
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    return sorted({
+        str(video_id)
+        for video_id in (manifest.get("quarantine_ids") or [])
+        if VIDEO_ID.match(str(video_id or ""))
+    })
 
 
 def merge_keyword_rows(rows: list[dict]) -> list[dict]:
@@ -654,7 +707,20 @@ def run_shard(
     payload = read_snapshot(snapshot)
     now_ms = utc_now_ms()
     all_tracked_ids = read_tracked_manifest(tracked_manifest) if tracked_manifest else tracked_ids(payload)
+    all_quarantine_ids = (
+        read_quarantine_manifest(tracked_manifest)
+        if tracked_manifest
+        else [
+            str(video_id)
+            for video_id in ((payload.get("videoMetrics") or {}).get("unavailable_ids") or [])
+            if VIDEO_ID.match(str(video_id or ""))
+        ]
+    )
     ids = [video_id for video_id in all_tracked_ids if stable_shard(video_id, shards) == shard]
+    quarantine_ids = [
+        video_id for video_id in all_quarantine_ids if stable_shard(video_id, shards) == shard
+    ]
+    lookup_ids = sorted(set(ids) | set(quarantine_ids))
     specs = [spec for spec in query_specs(payload) if stable_shard(spec["query"], shards) == shard]
 
     fresh: dict[str, dict] = {}
@@ -669,12 +735,14 @@ def run_shard(
         fresh.update(owned_fresh)
     if api_key:
         try:
-            fresh.update(fetch_api_rows(ids, now_ms, api_key))
+            fresh.update(fetch_api_rows(lookup_ids, now_ms, api_key))
         except Exception as exc:
             raise RuntimeError(f"YouTube Data API metrics failed closed: {type(exc).__name__}: {exc}") from exc
     else:
         with concurrent.futures.ThreadPoolExecutor(max_workers=TRACK_WORKERS) as pool:
-            future_to_id = {pool.submit(fetch_one_video, video_id, now_ms): video_id for video_id in ids}
+            future_to_id = {
+                pool.submit(fetch_one_video, video_id, now_ms): video_id for video_id in lookup_ids
+            }
             for future in concurrent.futures.as_completed(future_to_id):
                 video_id = future_to_id[future]
                 try:
@@ -688,6 +756,15 @@ def run_shard(
                     print(f"WARN tracked {video_id}: {type(exc).__name__}: {exc}", file=sys.stderr)
 
     tracked_fresh_ids = sorted(set(ids) & set(fresh))
+    tracked_failed_ids = sorted(set(ids) - set(tracked_fresh_ids))
+    tracked_unavailable_ids = tracked_failed_ids if api_key else []
+    tracked_recovered_ids = sorted(set(quarantine_ids) & set(fresh))
+    if tracked_failed_ids:
+        print(
+            f"WARN shard {shard}: {len(tracked_failed_ids)} tracked IDs missing: "
+            + ", ".join(tracked_failed_ids[:24]),
+            file=sys.stderr,
+        )
 
     candidates: list[dict] = []
     query_failed = 0
@@ -731,6 +808,9 @@ def run_shard(
         "queries_enriched": query_enriched,
         "tracked_ids": ids,
         "tracked_fresh_ids": tracked_fresh_ids,
+        "tracked_failed_ids": tracked_failed_ids,
+        "tracked_unavailable_ids": tracked_unavailable_ids,
+        "tracked_recovered_ids": tracked_recovered_ids,
         "owned_fresh": list(owned_fresh.values()),
         "fresh": list(fresh.values()),
         "candidates": merge_keyword_rows(candidates),
@@ -960,6 +1040,24 @@ def merge_artifacts(
         )
 
     payload = read_snapshot(snapshot)
+    previous_unavailable_ids = {
+        str(video_id)
+        for video_id in ((payload.get("videoMetrics") or {}).get("unavailable_ids") or [])
+        if VIDEO_ID.match(str(video_id or ""))
+    }
+    newly_unavailable_ids = {
+        str(video_id)
+        for artifact in artifacts
+        for video_id in (artifact.get("tracked_unavailable_ids") or [])
+        if VIDEO_ID.match(str(video_id or ""))
+    }
+    recovered_ids = {
+        str(video_id)
+        for artifact in artifacts
+        for video_id in (artifact.get("tracked_recovered_ids") or [])
+        if VIDEO_ID.match(str(video_id or ""))
+    }
+    unavailable_ids = sorted((previous_unavailable_ids | newly_unavailable_ids) - recovered_ids)
     data = payload.setdefault("d", {})
     prune_deferred_rows(data)
     legacy_history = data.pop("hist", {})
@@ -1113,6 +1211,7 @@ def merge_artifacts(
         "history_day": history_day,
         "day_timezone": RADAR_TIMEZONE_NAME,
         "partial": tracked_ok < tracked_total or queries_ok < queries_total,
+        "unavailable_ids": unavailable_ids,
     }
     payload["videoHistory"] = {
         "layout": "video_history/{first_char_hex}.json",
@@ -1139,6 +1238,7 @@ def merge_artifacts(
         "history_files": history_files,
         "history_updated": history_updated,
         "history_day": history_day,
+        "unavailable": len(unavailable_ids),
         "all_added": inserted_all,
         "trends_added": inserted_trends,
         "news_added": inserted_news,

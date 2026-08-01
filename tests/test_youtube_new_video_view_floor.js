@@ -29,8 +29,8 @@ assert.deepEqual(
 
 const index = fs.readFileSync('index.html', 'utf8');
 assert.ok(
-  index.includes('dashboard-02-helpers.js?v=20260729-roadmap-monday-only-v1'),
-  'the browser cache key must change with the new eligibility rule'
+  index.includes('dashboard-02-helpers.js?v=20260801-youtube-history-paris-v1'),
+  'the browser cache key must include the current helper revision'
 );
 
 const legacy = fs.readFileSync('Lofi_Radar.html', 'utf8');
@@ -50,3 +50,4 @@ assert.ok(
 );
 
 console.log('YouTube new-video 100k view floor: OK');
+

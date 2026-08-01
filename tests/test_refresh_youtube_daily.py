@@ -114,8 +114,39 @@ class DailyHistoryTests(unittest.TestCase):
 
     def test_canonical_owned_video_sheet_fails_closed(self):
         with patch.object(radar.urllib.request, "urlopen", side_effect=OSError("offline")):
-            with self.assertRaisesRegex(RuntimeError, "canonical Our Videos"):
+            with self.assertRaisesRegex(RuntimeError, "canonical dashboard video list"):
                 radar.sheet_video_ids()
+
+    def test_sheet_manifest_includes_every_video_tab_visible_in_the_dashboard(self):
+        from openpyxl import Workbook
+
+        workbook = Workbook()
+        all_videos = workbook.active
+        all_videos.title = "All Videos"
+        all_videos["A2"] = '=IMAGE("https://i.ytimg.com/vi/abcdefghijk/mqdefault.jpg")'
+        trends = workbook.create_sheet("Trends")
+        trends["A2"] = '=HYPERLINK("https://youtu.be/zyxwvutsrqp","Thumb")'
+        news = workbook.create_sheet("News")
+        news["B2"] = '=HYPERLINK("https://www.youtube.com/shorts/mnopqrstuvw","News")'
+        ours = workbook.create_sheet("Our Videos")
+        ours["A2"] = "12345678901"
+        payload = io.BytesIO()
+        workbook.save(payload)
+        payload.seek(0)
+
+        class Response(io.BytesIO):
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                self.close()
+
+        with patch.object(radar.urllib.request, "urlopen", return_value=Response(payload.read())):
+            ids = radar.sheet_video_ids()
+        self.assertEqual(
+            ids,
+            {"abcdefghijk", "zyxwvutsrqp", "mnopqrstuvw", "12345678901"},
+        )
 
     def test_one_canonical_manifest_is_reused_by_all_shards(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -129,6 +160,29 @@ class DailyHistoryTests(unittest.TestCase):
         tracked.assert_called_once()
         self.assertEqual(manifest["ids"], ["abcdefghijk", "zyxwvutsrqp"])
         self.assertEqual(loaded, ["abcdefghijk", "zyxwvutsrqp"])
+
+    def test_publicly_unavailable_ids_are_quarantined_but_kept_as_recovery_probes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "snapshot.js"
+            manifest_path = root / "artifacts" / "tracked.json"
+            radar.write_snapshot(snapshot, {
+                "videoMetricsT": 123,
+                "videoMetrics": {"unavailable_ids": ["abcdefghijk"]},
+                "d": {
+                    "all": [
+                        {"vid": "abcdefghijk", "title": "Unavailable"},
+                        {"vid": "zyxwvutsrqp", "title": "Public"},
+                    ],
+                },
+            })
+            with patch.object(radar, "sheet_video_ids", return_value={"abcdefghijk", "zyxwvutsrqp"}):
+                manifest = radar.write_tracked_manifest(snapshot, manifest_path)
+            active = radar.read_tracked_manifest(manifest_path)
+            probes = radar.read_quarantine_manifest(manifest_path)
+        self.assertEqual(manifest["ids"], ["zyxwvutsrqp"])
+        self.assertEqual(active, ["zyxwvutsrqp"])
+        self.assertEqual(probes, ["abcdefghijk"])
 
     def test_missing_subscriber_count_does_not_become_zero(self):
         now = int(datetime(2026, 7, 20, 8, tzinfo=timezone.utc).timestamp() * 1000)
@@ -465,3 +519,4 @@ class DailyHistoryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
