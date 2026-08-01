@@ -1,0 +1,350 @@
+name: Refresh YouTube Studio analytics
+
+on:
+  schedule:
+    # Two independent server-side passes. The second one catches delayed
+    # YouTube Reporting API deliveries without depending on Dim's computer.
+    - cron: '11 8 * * *'
+    - cron: '41 20 * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/refresh-youtube-studio.yml'
+      - 'authorize_youtube_studio.py'
+      - 'data_freshness_watchdog.py'
+      - 'refresh_youtube_studio_reporting.py'
+      - 'tests/test_authorize_youtube_studio.py'
+      - 'tests/test_data_freshness_watchdog.py'
+      - 'tests/test_refresh_youtube_studio_reporting.py'
+      - 'tests/test_youtube_studio_workflow_guardrails.py'
+  pull_request:
+    paths:
+      - '.github/workflows/refresh-youtube-studio.yml'
+      - 'authorize_youtube_studio.py'
+      - 'data_freshness_watchdog.py'
+      - 'refresh_youtube_studio_reporting.py'
+      - 'tests/test_authorize_youtube_studio.py'
+      - 'tests/test_data_freshness_watchdog.py'
+      - 'tests/test_refresh_youtube_studio_reporting.py'
+      - 'tests/test_youtube_studio_workflow_guardrails.py'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Refresh even when the latest complete Studio day is already healthy'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+env:
+  # Lofi Girl official channel. Keeping this explicit prevents a valid OAuth
+  # token for another channel from ever replacing the Studio snapshot.
+  YOUTUBE_CHANNEL_ID: 'UCSJ4gkVC6NrvII8umztf0Ow'
+
+concurrency:
+  group: refresh-youtube-studio-analytics
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate Studio collector
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test Studio collector and workflow guardrails
+        run: >-
+          python -m unittest
+          tests.test_authorize_youtube_studio
+          tests.test_import_youtube_studio_export
+          tests.test_refresh_youtube_studio_reporting
+          tests.test_youtube_studio_workflow_guardrails
+          tests.test_data_freshness_watchdog
+          -v
+
+  gate:
+    name: Check Studio reporting freshness
+    needs: validate
+    runs-on: ubuntu-latest
+    outputs:
+      run_refresh: ${{ steps.freshness.outputs.due }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - id: freshness
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          FORCE: ${{ inputs.force }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "push" || "$EVENT_NAME" == "pull_request" ]]; then
+            echo "due=false" >> "$GITHUB_OUTPUT"
+          elif [[ "$FORCE" == "true" ]]; then
+            echo "due=true" >> "$GITHUB_OUTPUT"
+          else
+            schedule_arg=""
+            if [[ "$EVENT_NAME" == "schedule" ]]; then schedule_arg="--scheduled-check"; fi
+            python data_freshness_watchdog.py \
+              --target youtube_studio \
+              $schedule_arg \
+              --github-output "$GITHUB_OUTPUT"
+          fi
+
+  refresh:
+    name: Refresh private Studio metrics
+    needs: gate
+    if: needs.gate.outputs.run_refresh == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Sync latest main
+        run: git pull --ff-only origin main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Require durable OAuth and state-encryption secrets
+        env:
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          YOUTUBE_ANALYTICS_REFRESH_TOKEN: ${{ secrets.YOUTUBE_ANALYTICS_REFRESH_TOKEN }}
+          YOUTUBE_STUDIO_STATE_KEY: ${{ secrets.YOUTUBE_STUDIO_STATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          for required in \
+            GOOGLE_OAUTH_CLIENT_ID \
+            GOOGLE_OAUTH_CLIENT_SECRET \
+            YOUTUBE_ANALYTICS_REFRESH_TOKEN \
+            YOUTUBE_STUDIO_STATE_KEY
+          do
+            if [[ -z "${!required:-}" ]]; then missing+=("$required"); fi
+          done
+          if (( ${#missing[@]} )); then
+            joined=$(IFS=', '; echo "${missing[*]}")
+            echo "::error title=YouTube Studio authentication unavailable::Missing required GitHub Actions secrets: $joined"
+            exit 1
+          fi
+
+      - name: Restore encrypted reporting state
+        env:
+          YOUTUBE_STUDIO_STATE_KEY: ${{ secrets.YOUTUBE_STUDIO_STATE_KEY }}
+          STUDIO_STATE_JSON: ${{ runner.temp }}/youtube_studio_reporting_state.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f youtube_studio_reporting_state.enc ]]; then
+            openssl enc -d -aes-256-cbc -pbkdf2 \
+              -in youtube_studio_reporting_state.enc \
+              -out "$STUDIO_STATE_JSON" \
+              -pass env:YOUTUBE_STUDIO_STATE_KEY
+          else
+            echo "No encrypted Studio state yet; the collector will create the reporting jobs."
+          fi
+
+      - name: Refresh Studio reporting snapshot
+        env:
+          PYTHONUNBUFFERED: '1'
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          YOUTUBE_ANALYTICS_REFRESH_TOKEN: ${{ secrets.YOUTUBE_ANALYTICS_REFRESH_TOKEN }}
+          STUDIO_STATE_JSON: ${{ runner.temp }}/youtube_studio_reporting_state.json
+        run: >-
+          python refresh_youtube_studio_reporting.py
+          --output Lofi_Radar_studio.js
+          --state "$STUDIO_STATE_JSON"
+          --expected-channel-id "$YOUTUBE_CHANNEL_ID"
+
+      - name: Encrypt and verify reporting state
+        env:
+          YOUTUBE_STUDIO_STATE_KEY: ${{ secrets.YOUTUBE_STUDIO_STATE_KEY }}
+          STUDIO_STATE_JSON: ${{ runner.temp }}/youtube_studio_reporting_state.json
+          STUDIO_STATE_CHECK: ${{ runner.temp }}/youtube_studio_reporting_state.check.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -s "$STUDIO_STATE_JSON" ]]; then
+            echo "::error title=YouTube Studio state missing::Collector did not produce its private reporting state."
+            exit 1
+          fi
+          openssl enc -aes-256-cbc -salt -pbkdf2 \
+            -in "$STUDIO_STATE_JSON" \
+            -out youtube_studio_reporting_state.enc.tmp \
+            -pass env:YOUTUBE_STUDIO_STATE_KEY
+          openssl enc -d -aes-256-cbc -pbkdf2 \
+            -in youtube_studio_reporting_state.enc.tmp \
+            -out "$STUDIO_STATE_CHECK" \
+            -pass env:YOUTUBE_STUDIO_STATE_KEY
+          cmp --silent "$STUDIO_STATE_JSON" "$STUDIO_STATE_CHECK"
+          mv youtube_studio_reporting_state.enc.tmp youtube_studio_reporting_state.enc
+
+      - id: result
+        name: Classify refreshed snapshot
+        env:
+          STUDIO_STATE_JSON: ${{ runner.temp }}/youtube_studio_reporting_state.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          state_status="$(python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          state = json.loads(Path(os.environ["STUDIO_STATE_JSON"]).read_text(encoding="utf-8"))
+          sync = state.get("sync") or {}
+          status = sync.get("status")
+          expected_channel = os.environ["YOUTUBE_CHANNEL_ID"]
+          if sync.get("connected") is not True:
+              raise SystemExit("Reporting state is not connected")
+          if status not in {"healthy", "waiting_reports"}:
+              raise SystemExit("Unexpected reporting state: " + str(status))
+          if state.get("channelId") != expected_channel:
+              raise SystemExit("Reporting state does not belong to the expected Lofi Girl channel")
+          if not sync.get("lastAttemptAt"):
+              raise SystemExit("Reporting state has no lastAttemptAt timestamp")
+          if sync.get("partial") is not (status == "waiting_reports"):
+              raise SystemExit("Reporting state partial/status fields disagree")
+          if status == "healthy" and not sync.get("lastSuccessAt"):
+              raise SystemExit("Healthy reporting state has no lastSuccessAt timestamp")
+          print(status)
+          PY
+          )"
+          echo "state_status=$state_status" >> "$GITHUB_OUTPUT"
+          if git diff --quiet -- Lofi_Radar_studio.js; then
+            echo "snapshot_changed=false" >> "$GITHUB_OUTPUT"
+            if [[ "$state_status" == "waiting_reports" ]]; then
+              echo "::notice title=YouTube Studio reports pending::OAuth and Reporting API are connected, but no newer common complete day is available yet. The encrypted state was preserved for the next scheduled retry."
+              {
+                echo "### ⏳ YouTube Studio reports pending"
+                echo "OAuth/API access succeeded, but YouTube has not delivered a newer common complete day yet. The manual snapshot was intentionally left untouched."
+              } >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::notice title=YouTube Studio already current::The API is healthy and no newer complete day needs publication."
+              echo "### ✅ YouTube Studio already current" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          else
+            if [[ "$state_status" != "healthy" ]]; then
+              echo "::error title=Unsafe Studio publication::The snapshot changed while reporting state is $state_status."
+              exit 1
+            fi
+            echo "snapshot_changed=true" >> "$GITHUB_OUTPUT"
+            python - <<'PY'
+          import json
+          from pathlib import Path
+
+          prefix = "window.STUDIO_DATA="
+          raw = Path("Lofi_Radar_studio.js").read_text(encoding="utf-8").strip()
+          if not raw.startswith(prefix):
+              raise SystemExit("Generated Studio snapshot has an invalid prefix")
+          payload = json.loads(raw[len(prefix):].rstrip(";"))
+          sync = payload.get("sync") or {}
+          checks = {
+              "source": sync.get("source") == "youtube-reporting-api",
+              "connected": sync.get("connected") is True,
+              "healthy": sync.get("status") == "healthy",
+              "complete": sync.get("partial") is False,
+              "dataThrough": bool(payload.get("dataThrough")),
+          }
+          failed = [name for name, valid in checks.items() if not valid]
+          if failed:
+              raise SystemExit("Generated Studio snapshot is not publishable: " + ", ".join(failed))
+          print(json.dumps({"publishable": True, "dataThrough": payload["dataThrough"]}))
+          PY
+          fi
+
+      - id: commit
+        name: Commit only the snapshot and encrypted state
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- Lofi_Radar_studio.js youtube_studio_reporting_state.enc
+          staged=$(git diff --cached --name-only)
+          unexpected=$(printf '%s\n' "$staged" | grep -Ev '^(Lofi_Radar_studio\.js|youtube_studio_reporting_state\.enc)$' || true)
+          if [[ -n "$unexpected" ]]; then
+            echo "::error title=Unsafe Studio commit::Unexpected staged path(s): $unexpected"
+            exit 1
+          fi
+          if git diff --cached --quiet; then
+            echo "commit_created=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git commit -m "Refresh YouTube Studio analytics"
+          for attempt in 1 2 3; do
+            if git pull --rebase origin main && git push origin HEAD:main; then
+              echo "commit_created=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
+
+      - name: Verify the healthy snapshot on GitHub Pages
+        if: steps.result.outputs.snapshot_changed == 'true' && steps.commit.outputs.commit_created == 'true'
+        env:
+          RUN_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import time
+          import urllib.parse
+          import urllib.request
+          from pathlib import Path
+
+          prefix = "window.STUDIO_DATA="
+
+          def decode(raw: str) -> dict:
+              text = raw.strip()
+              if not text.startswith(prefix):
+                  raise RuntimeError("invalid STUDIO_DATA prefix")
+              return json.loads(text[len(prefix):].rstrip(";"))
+
+          local = decode(Path("Lofi_Radar_studio.js").read_text(encoding="utf-8"))
+          expected_day = local.get("dataThrough")
+          deadline = time.monotonic() + 900
+          last_error = "not attempted"
+          while time.monotonic() < deadline:
+              query = urllib.parse.urlencode({"run": os.environ["RUN_SHA"], "attempt": int(time.time())})
+              request = urllib.request.Request(
+                  "https://dim75017.github.io/youtube-radar-kx9v2m/Lofi_Radar_studio.js?" + query,
+                  headers={"Cache-Control": "no-cache"},
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      remote = decode(response.read().decode("utf-8"))
+                  sync = remote.get("sync") or {}
+                  checks = {
+                      "source API": sync.get("source") == "youtube-reporting-api",
+                      "connected": sync.get("connected") is True,
+                      "healthy": sync.get("status") == "healthy",
+                      "complete": sync.get("partial") is False,
+                      "dataThrough": remote.get("dataThrough") == expected_day,
+                  }
+                  failed = [name for name, valid in checks.items() if not valid]
+                  if not failed:
+                      print(json.dumps({"published": True, "dataThrough": expected_day}))
+                      raise SystemExit(0)
+                  last_error = "invalid fields: " + ", ".join(failed)
+              except Exception as exc:
+                  last_error = f"{type(exc).__name__}: {exc}"
+              time.sleep(15)
+          raise SystemExit("GitHub Pages did not publish the healthy Studio snapshot: " + last_error)
+          PY

@@ -69,6 +69,12 @@ TARGETS: dict[str, Target] = {
         120,
         {"force": "false"},
     ),
+    "youtube_studio": Target(
+        "youtube_studio",
+        "refresh-youtube-studio.yml",
+        180,
+        {"force": "false"},
+    ),
 }
 
 
@@ -303,12 +309,58 @@ def assess_youtube_channels(root: Path, now: datetime, ignore_deadline: bool = F
     return freshness_row(target, False, f"YouTube channel radar month {observed_local:%Y-%m} is healthy", observed)
 
 
+def assess_youtube_studio(root: Path, now: datetime, ignore_deadline: bool = False) -> Freshness:
+    """Require a recent, complete pair of official private Reporting API reports.
+
+    YouTube Reporting is intentionally delayed, usually by roughly 48 hours.
+    Freshness therefore follows ``dataThrough`` rather than the import/attempt
+    timestamp, with a three-Paris-day allowance.  A freshly re-imported stale
+    export can never turn this target green.
+    """
+
+    target = TARGETS["youtube_studio"]
+    text = read_edge(root / "Lofi_Radar_studio.js", head=96_000)
+    source = regex_value(text, r'"source"\s*:\s*"([^"]+)"')
+    connected = regex_value(text, r'"connected"\s*:\s*(true|false)') == "true"
+    status = regex_value(text, r'"status"\s*:\s*"([^"]+)"')
+    through_raw = regex_value(text, r'"dataThrough"\s*:\s*"(\d{4}-\d{2}-\d{2})"')
+    success_raw = regex_value(text, r'"lastSuccessAt"\s*:\s*"([^"]+)"')
+    observed = parse_timestamp(success_raw)
+    try:
+        through = date.fromisoformat(through_raw) if through_raw else None
+    except ValueError:
+        through = None
+
+    if source != "youtube-reporting-api" or not connected:
+        return freshness_row(target, True, "YouTube Studio automatic Reporting API connection is inactive", observed)
+    if status != "healthy":
+        return freshness_row(target, True, f"YouTube Studio snapshot status is {status or 'missing'}", observed)
+    if through is None:
+        return freshness_row(target, True, "missing YouTube Studio dataThrough", observed)
+    lag_days = (now.astimezone(PARIS).date() - through).days
+    if ignore_deadline and lag_days > 2:
+        return freshness_row(
+            target,
+            True,
+            f"scheduled YouTube Studio pass requires reports through Paris day {now.astimezone(PARIS).date() - timedelta(days=2)}",
+            observed,
+        )
+    if lag_days > 3:
+        return freshness_row(target, True, f"YouTube Studio reports are {lag_days} Paris days behind", observed)
+    if lag_days < 0:
+        return freshness_row(target, True, "YouTube Studio dataThrough is in the future", observed)
+    if observed is None:
+        return freshness_row(target, True, "missing YouTube Studio successful collection timestamp", observed)
+    return freshness_row(target, False, f"YouTube Studio data through {through} is healthy", observed)
+
+
 ASSESSORS = {
     "spotify_core": assess_spotify_core,
     "spotify_followers": assess_spotify_followers,
     "spotify_browse": assess_spotify_browse,
     "youtube_radar": assess_youtube_radar,
     "youtube_channels": assess_youtube_channels,
+    "youtube_studio": assess_youtube_studio,
 }
 
 
@@ -480,4 +532,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-

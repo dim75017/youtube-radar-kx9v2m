@@ -8,6 +8,7 @@ on:
   workflow_run:
     workflows:
       - 'Refresh YouTube radar'
+      - 'Refresh YouTube Studio analytics'
       - 'Refresh channel radar'
       - 'Refresh Soundcharts A&R engine'
       - 'Refresh Spotify playlist followers daily'
@@ -23,11 +24,13 @@ on:
       - 'tests/test_data_freshness_watchdog.py'
       - '.github/workflows/data-freshness-watchdog.yml'
       - '.github/workflows/refresh-instrumental-radar.yml'
+      - '.github/workflows/refresh-youtube-studio.yml'
       - '.github/workflows/refresh-channel-radar.yml'
       - '.github/workflows/refresh-soundcharts.yml'
       - '.github/workflows/refresh-playlist-followers.yml'
       - '.github/workflows/refresh-spotify-browse-catalogue.yml'
       - 'Lofi_Radar_data.js'
+      - 'Lofi_Radar_studio.js'
       - 'Lofi_Radar_chx.js'
       - 'Spotify_Performance_data.js'
       - 'Spotify_Playlists_data.js'
