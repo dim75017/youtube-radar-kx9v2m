@@ -76,6 +76,7 @@ const hookContext = {
   Map,
   hookCalls: 0,
   eligibleNewVideoRows: rows => rows || [],
+  removeUnavailableVideoRows: loaded => loaded,
   applyRecommendationEdits: loaded => {
     hookContext.hookCalls += 1;
     loaded.recos[0].title = 'Applied by setRadarData';
