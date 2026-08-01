@@ -48,8 +48,9 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         stamp = int(datetime(2026, 7, 29, 6, tzinfo=timezone.utc).timestamp() * 1000)
         write(
             self.root / "Lofi_Radar_data.js",
-            f'window.LOFI_DATA={{"videoMetricsT":{stamp},"videoMetrics":{{"tracked":3273,"updated":3267,'
-            '"history_day":"2026-07-29","day_timezone":"Europe/Paris"}}};',
+            f'window.LOFI_DATA={{"videoMetricsT":{stamp},"videoMetrics":{{"tracked":3273,"updated":3273,'
+            '"history_updated":3273,"history_day":"2026-07-29","day_timezone":"Europe/Paris",'
+            '"partial":false}}};',
         )
         write(self.root / "Lofi_Radar_chx.js", f'window.CHX={{"t":{stamp},"lg":{{}}}};')
 
@@ -65,7 +66,8 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         write(
             self.root / "Lofi_Radar_data.js",
             'window.LOFI_DATA={"videoMetricsT":1785196800000,"videoMetrics":{"tracked":100,"updated":100,'
-            '"history_day":"2026-07-28","day_timezone":"Europe/Paris"}};',
+            '"history_updated":100,"history_day":"2026-07-28","day_timezone":"Europe/Paris",'
+            '"partial":false}};',
         )
         write(
             self.root / "Spotify_Performance_data.js",
@@ -125,13 +127,46 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         write(
             self.root / "Lofi_Radar_data.js",
             'window.LOFI_DATA={"videoMetricsT":1785240000000,"videoMetrics":{"tracked":100,"updated":100,'
-            '"history_day":"2026-07-28","day_timezone":"Europe/Paris"}};',
+            '"history_updated":100,"history_day":"2026-07-28","day_timezone":"Europe/Paris",'
+            '"partial":false}};',
         )
         now = datetime(2026, 7, 29, 7, 17, tzinfo=timezone.utc)  # 09:17 Paris
         normal = subject.assess(self.root, now, ["youtube_radar"])[0]
         scheduled = subject.assess(self.root, now, ["youtube_radar"], ignore_deadline=True)[0]
         self.assertFalse(normal.due)
         self.assertTrue(scheduled.due)
+
+    def test_partial_youtube_coverage_is_retried_even_above_ninety_nine_percent(self):
+        stamp = int(datetime(2026, 7, 29, 6, tzinfo=timezone.utc).timestamp() * 1000)
+        write(
+            self.root / "Lofi_Radar_data.js",
+            f'window.LOFI_DATA={{"videoMetricsT":{stamp},"videoMetrics":{{"tracked":3271,"updated":3264,'
+            '"history_updated":3264,"history_day":"2026-07-29","day_timezone":"Europe/Paris",'
+            '"partial":true}}};',
+        )
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["youtube_radar"],
+        )[0]
+        self.assertTrue(row.due)
+        self.assertIn("3264/3271", row.reason)
+
+    def test_youtube_history_count_and_timezone_must_match_the_complete_scan(self):
+        stamp = int(datetime(2026, 7, 29, 6, tzinfo=timezone.utc).timestamp() * 1000)
+        write(
+            self.root / "Lofi_Radar_data.js",
+            f'window.LOFI_DATA={{"videoMetricsT":{stamp},"videoMetrics":{{"tracked":100,"updated":100,'
+            '"history_updated":99,"history_day":"2026-07-29","day_timezone":"UTC",'
+            '"partial":false}}};',
+        )
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["youtube_radar"],
+        )[0]
+        self.assertTrue(row.due)
+        self.assertIn("99/100", row.reason)
 
     def test_playlist_followers_require_the_complete_visible_cohort(self):
         write(
@@ -249,3 +284,4 @@ class DataFreshnessWorkflowGuardrailTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
