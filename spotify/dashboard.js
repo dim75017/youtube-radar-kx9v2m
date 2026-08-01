@@ -698,10 +698,15 @@ const SELF_RELEASE_RIGHTS=new Set(['self_released','self-released','indie']);
 function hasExclusiveLicenseText(...values){
   return values.some(value=>/\b(?:under\s+(?:an?\s+)?exclusive\s+licen[cs]e\s+(?:to|from)|exclusively\s+licen[cs]ed\s+to|licen[cs]ed\s+exclusively\s+to)\b/i.test(String(value||'')));
 }
+function conciseLicenseeName(value){
+  return String(value||'').trim()
+    .replace(/\s*,\s*(?:an?\s+)?(?:division|imprint|subsidiary|part)\s+of\b.*$/i,'')
+    .replace(/[.,]+$/,'').trim().slice(0,80);
+}
 function exclusiveLicensee(...values){
   for(const value of values){
     const match=String(value||'').match(/\b(?:under\s+(?:an?\s+)?exclusive\s+licen[cs]e\s+to|exclusively\s+licen[cs]ed\s+to|licen[cs]ed\s+exclusively\s+to)\s+(.+?)(?=\s*(?:[;|]|,?\s*(?:Â)?[©℗]|,?\s*\((?:C|P)\)\s*\d{4}|$))/i);
-    if(match&&match[1]) return match[1].trim().replace(/[.,]+$/,'').slice(0,80);
+    if(match&&match[1]) return conciseLicenseeName(match[1]);
   }
   for(const value of values){
     const text=String(value||'');
