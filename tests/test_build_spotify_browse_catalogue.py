@@ -2,6 +2,7 @@ import copy
 import unittest
 
 import build_spotify_browse_catalogue as subject
+import spotify_rights
 
 
 TRACK_SCHEMA = [
@@ -32,6 +33,25 @@ def catalogue(track_rows, artist_rows):
 
 
 class BrowseCatalogueTests(unittest.TestCase):
+    def test_dreamscape_division_suffix_is_not_part_of_the_label_name(self):
+        copyright_text = (
+            "C 2024 Harris Cole & Aso, under exclusive license to dreamscape, "
+            "a division of Kurate Music Ltd. ; P 2024 Harris Cole & Aso, "
+            "under exclusive license to dreamscape, a division of Kurate Music Ltd."
+        )
+
+        status, confidence, licensee = spotify_rights.reconcile_rights(
+            "self_released",
+            "Harris Cole & Aso",
+            copyright_text,
+            0.9,
+        )
+
+        self.assertEqual(licensee, "dreamscape")
+        self.assertEqual(spotify_rights.reconciled_label("Harris Cole & Aso", copyright_text), "dreamscape")
+        self.assertEqual(status, "independent_label")
+        self.assertGreaterEqual(confidence, 0.98)
+
     def test_merge_preserves_old_rows_and_enriches_matching_rows(self):
         old = catalogue(
             [["track-a", "", "Old title", [{"soundcharts_uuid": "artist-a", "name": "Artist A", "contact_url": "hidden"}], None, 1, "2026-07-01", "2026-07-10", "playlist_discovered"]],

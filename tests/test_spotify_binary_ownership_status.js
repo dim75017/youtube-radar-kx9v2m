@@ -31,6 +31,8 @@ vm.runInContext(`
   stagingLicensed.scRightsMeta = {rights_status:'self_released',label:'Artist',copyright:'exclusively licensed to Staging Label'};
   const licensedFrom = [0,'Track','',0,0,'John Lee','track-license-from'];
   licensedFrom.scRightsMeta = {rights_status:'self_released',label:'',copyright:'\u00a9 2022 Amen Worldwide (under exclusive license from John Lee)'};
+  const dreamscape = [0,'Track','',0,0,'Harris Cole & Aso','track-dreamscape'];
+  dreamscape.scRightsMeta = {rights_status:'self_released',label:'Harris Cole & Aso',copyright:'C 2024 Harris Cole & Aso, under exclusive license to dreamscape, a division of Kurate Music Ltd. ; P 2024 Harris Cole & Aso, under exclusive license to dreamscape, a division of Kurate Music Ltd.'};
   labelled.discoveryMeta = {rights:'independent_label',label:'Real Label',copyright:'℗ Real Label'};
   result = {
     indie: trackStatusHtml(indie),
@@ -38,6 +40,7 @@ vm.runInContext(`
     labelled: trackStatusHtml(labelled),
     stagingLicensed: trackStatusHtml(stagingLicensed),
     licensedFrom: trackStatusHtml(licensedFrom),
+    dreamscape: trackStatusHtml(dreamscape),
     licensedFlag: (syncTrackOwnershipFlag(licensed), licensed[4])
   };
 `, context);
@@ -47,6 +50,7 @@ assert.equal(context.result.licensed, '<span class="badge other">Label (Real Lab
 assert.equal(context.result.labelled, '<span class="badge other">Label (Real Label)</span>');
 assert.equal(context.result.stagingLicensed, '<span class="badge other">Label (Staging Label)</span>');
 assert.equal(context.result.licensedFrom, '<span class="badge other">Label (Amen Worldwide)</span>');
+assert.equal(context.result.dreamscape, '<span class="badge other">Label (dreamscape)</span>');
 assert.equal(context.result.licensedFlag, 1, 'exclusive licences must always override the self-release flag');
 
 const statusSource = dashboard.slice(statusStart, statusEnd);

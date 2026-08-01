@@ -159,10 +159,12 @@ const labelContext = {
 vm.runInNewContext(
   `${dashboard.slice(labelsStart, labelsEnd)};
    this.activeLabels=LBrows;
-   this.activeLabelMeta=LBmeta;`,
+   this.activeLabelMeta=LBmeta;
+   this.dreamscapeLabel=labelDisplayName('dreamscape, a division of Kurate Music Ltd.');`,
   labelContext,
 );
 const labels = Array.from(labelContext.activeLabels, row => Array.from(row));
+assert.equal(labelContext.dreamscapeLabel, 'dreamscape');
 assert.deepEqual(
   labels.map(row => [row[0], row[2], row[3], row[6]]).sort((a, b) => a[0].localeCompare(b[0])),
   [
