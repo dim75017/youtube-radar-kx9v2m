@@ -148,7 +148,7 @@ class SoundchartsFalSeedLedgerTests(unittest.TestCase):
         )
         validate_ledger(stabilized, min_resolved=1, max_resolved=1)
 
-    def test_canonical_stability_refuses_missing_or_ambiguous_previous_components(self):
+    def test_canonical_stability_carries_history_but_refuses_ambiguous_components(self):
         previous = build_ledger(
             [
                 ArtistObservation("uuid-a", "spotify-a", "Artist A", None, "strict_artist"),
@@ -158,8 +158,15 @@ class SoundchartsFalSeedLedgerTests(unittest.TestCase):
         missing_canonical = build_ledger(
             [ArtistObservation("uuid-new", "spotify-a", "Artist A", None, "strict_artist")]
         )
-        with self.assertRaises(SeedLedgerError):
-            stabilize_canonical_uuids(missing_canonical, previous)
+        carried = stabilize_canonical_uuids(missing_canonical, previous)
+        self.assertEqual(carried["artists"][0]["soundcharts_uuid"], "uuid-a")
+        self.assertEqual(
+            carried["artists"][0]["soundcharts_uuid_aliases"],
+            ["uuid-a", "uuid-new"],
+        )
+        self.assertEqual(carried["coverage"]["historical_canonical_uuids"], 1)
+        self.assertEqual(carried["canonical_stability"]["historical_canonicals_carried_forward"], 1)
+        validate_ledger(carried, min_resolved=1, max_resolved=1)
 
         merged_components = build_ledger(
             [

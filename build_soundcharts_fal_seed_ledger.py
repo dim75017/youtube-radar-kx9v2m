@@ -508,6 +508,7 @@ def stabilize_canonical_uuids(
 
     matched_components = 0
     changed_canonicals = 0
+    historical_canonicals_carried_forward = 0
     reused_previous: set[str] = set()
     for item in current_artists:
         if not isinstance(item, dict):
@@ -532,9 +533,13 @@ def stabilize_canonical_uuids(
             )
         stable = next(iter(matches))
         if stable not in uuid_aliases:
-            raise SeedLedgerError(
-                "Previously accepted canonical UUID disappeared from its current identity component"
-            )
+            # Soundcharts may stop returning the old UUID while the same
+            # Spotify identity remains. Keep that already-audited UUID as the
+            # canonical seed and record it as a historical alias; replacing it
+            # would orphan the resumable graph and its completed work.
+            uuid_aliases.add(stable)
+            item["soundcharts_uuid_aliases"] = sorted(uuid_aliases)
+            historical_canonicals_carried_forward += 1
         if stable in reused_previous:
             raise SeedLedgerError(
                 "A previously accepted canonical UUID appears in several current identity components"
@@ -564,6 +569,20 @@ def stabilize_canonical_uuids(
             )
     rejected_uuid_aliases.sort(key=lambda item: str(item["canonical_uuid"]))
     pending = stabilized.get("resolution_pending") if isinstance(stabilized.get("resolution_pending"), list) else []
+    all_uuid_aliases = {
+        str(value)
+        for item in current_artists
+        for value in item.get("soundcharts_uuid_aliases") or []
+    }
+    coverage = stabilized.get("coverage") if isinstance(stabilized.get("coverage"), dict) else {}
+    coverage["resolved_source_uuids"] = len(all_uuid_aliases)
+    coverage["historical_canonical_uuids"] = historical_canonicals_carried_forward
+    stabilized["coverage"] = coverage
+    alias_dedup = stabilized.get("alias_dedup") if isinstance(stabilized.get("alias_dedup"), dict) else {}
+    alias_dedup["rejected_uuid_alias_count"] = sum(
+        len(item["rejected_uuids"]) for item in rejected_uuid_aliases
+    )
+    stabilized["alias_dedup"] = alias_dedup
     stabilized["rejected_uuid_aliases"] = rejected_uuid_aliases
     stabilized["cohort_hash"] = _canonical_hash(current_artists, pending)
     stabilized["content_hash"] = _content_hash(current_artists, pending)
@@ -571,6 +590,7 @@ def stabilize_canonical_uuids(
         "previous_cohort_hash": str(previous.get("cohort_hash") or ""),
         "matched_components": matched_components,
         "changed_canonicals": changed_canonicals,
+        "historical_canonicals_carried_forward": historical_canonicals_carried_forward,
         "new_components": len(current_artists) - matched_components,
         "policy": "preserve_previous_canonical_when_identity_matches",
     }
