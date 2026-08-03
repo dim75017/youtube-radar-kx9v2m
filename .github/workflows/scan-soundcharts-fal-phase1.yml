@@ -123,8 +123,7 @@ jobs:
             --header "X-GitHub-Api-Version: 2022-11-28" \
             "$control_api" --output "$listing"
           mapfile -t control_candidates < <(jq -r \
-            '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[] | \
-             [.id, .created_at, .archive_download_url] | @tsv' \
+            '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[] | [.id, .created_at, .archive_download_url] | @tsv' \
             "$listing")
           if (( ${#control_candidates[@]} == 0 )); then
             echo "No previous v2 completion control; refusing to establish a silent seed baseline" >&2
