@@ -122,15 +122,62 @@ jobs:
             --header "Authorization: Bearer $GH_TOKEN" \
             --header "X-GitHub-Api-Version: 2022-11-28" \
             "$control_api" --output "$listing"
-          control_selected="$(jq -c \
-            '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last // empty' \
-            "$listing")"
-          control_url="$(jq -r '.archive_download_url // empty' <<<"$control_selected")"
-          if [[ -z "$control_url" ]]; then
+          mapfile -t control_candidates < <(jq -r \
+            '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[] | \
+             [.id, .created_at, .archive_download_url] | @tsv' \
+            "$listing")
+          if (( ${#control_candidates[@]} == 0 )); then
             echo "No previous v2 completion control; refusing to establish a silent seed baseline" >&2
             exit 1
           fi
-          control_created="$(jq -r '.created_at // ""' <<<"$control_selected")"
+          control_dir="$RUNNER_TEMP/soundcharts-fal-phase1-control"
+          control_zip="$RUNNER_TEMP/soundcharts-fal-phase1-control.zip"
+          control_created=""
+          previous_report=""
+          previous_ledger=""
+          for candidate in "${control_candidates[@]}"; do
+            IFS=$'\t' read -r candidate_id candidate_created candidate_url <<<"$candidate"
+            rm -rf "$control_dir"
+            mkdir -p "$control_dir"
+            curl --fail --silent --show-error --location \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "$candidate_url" --output "$control_zip"
+            unzip -o -q "$control_zip" -d "$control_dir"
+            candidate_report="$(find "$control_dir" -type f -name 'soundcharts-fal-phase1-report-v2.json' -print -quit)"
+            candidate_ledger="$(find "$control_dir" -type f -name 'soundcharts-fal-seed-ledger-v2.json' -print -quit)"
+            if [[ -z "$candidate_report" || -z "$candidate_ledger" ]]; then
+              echo "Ignoring incomplete FAL completion control artifact $candidate_id" >&2
+              continue
+            fi
+            if python - "$candidate_report" "$candidate_ledger" "$HARD_MAX_RESOLVED_SEEDS" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          from build_soundcharts_fal_seed_ledger import validate_ledger
+          from scan_soundcharts_fal_phase1 import validate_report_seed_ledger
+
+          report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          ledger = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+          validate_ledger(ledger, min_resolved=1, max_resolved=int(sys.argv[3]))
+          validate_report_seed_ledger(report, ledger, require_generation_match=True)
+          if report.get("staging_only") is not True or report.get("canonical_written") is not False:
+              raise SystemExit("FAL completion control is not staging-only")
+          PY
+            then
+              previous_report="$candidate_report"
+              previous_ledger="$candidate_ledger"
+              control_created="$candidate_created"
+              echo "Using validated FAL completion control artifact $candidate_id ($candidate_created)"
+              break
+            fi
+            echo "Ignoring inconsistent FAL completion control artifact $candidate_id" >&2
+          done
+          if [[ -z "$previous_report" || -z "$previous_ledger" || -z "$control_created" ]]; then
+            echo "No internally consistent FAL completion control remains; refusing an unaudited ledger transition" >&2
+            exit 1
+          fi
           legacy_listing="$RUNNER_TEMP/soundcharts-fal-phase1-legacy-control-check.json"
           curl --fail --silent --show-error --location \
             --header "Authorization: Bearer $GH_TOKEN" \
@@ -142,20 +189,6 @@ jobs:
             "$legacy_listing")"
           if [[ -n "$latest_legacy_created" && "$latest_legacy_created" > "$control_created" ]]; then
             echo "A legacy v1 checkpoint is newer than completion control; refusing an unaudited ledger transition" >&2
-            exit 1
-          fi
-          control_dir="$RUNNER_TEMP/soundcharts-fal-phase1-control"
-          control_zip="$RUNNER_TEMP/soundcharts-fal-phase1-control.zip"
-          mkdir -p "$control_dir"
-          curl --fail --silent --show-error --location \
-            --header "Authorization: Bearer $GH_TOKEN" \
-            --header "X-GitHub-Api-Version: 2022-11-28" \
-            "$control_url" --output "$control_zip"
-          unzip -o -q "$control_zip" -d "$control_dir"
-          previous_report="$(find "$control_dir" -type f -name 'soundcharts-fal-phase1-report-v2.json' -print -quit)"
-          previous_ledger="$(find "$control_dir" -type f -name 'soundcharts-fal-seed-ledger-v2.json' -print -quit)"
-          if [[ -z "$previous_report" || -z "$previous_ledger" ]]; then
-            echo "Previous completion control is incomplete; refusing an unaudited ledger transition" >&2
             exit 1
           fi
           test -s "$previous_report"
@@ -470,6 +503,7 @@ jobs:
         id: state_upload
         if: >-
           always() &&
+          steps.completion.outcome == 'success' &&
           steps.completion_control.outputs.no_op != 'true' &&
           steps.restore_state.outcome == 'success'
         uses: actions/upload-artifact@v4
@@ -486,6 +520,7 @@ jobs:
         id: control_upload
         if: >-
           always() &&
+          steps.completion.outcome == 'success' &&
           (steps.completion_control.outputs.no_op == 'true' ||
            steps.state_upload.outcome == 'success')
         uses: actions/upload-artifact@v4

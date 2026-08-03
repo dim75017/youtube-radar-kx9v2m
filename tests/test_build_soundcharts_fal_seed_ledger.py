@@ -5,6 +5,7 @@ from build_soundcharts_fal_seed_ledger import (
     ArtistObservation,
     SeedLedgerError,
     build_ledger,
+    stabilize_canonical_uuids,
     transition_bounds,
     validate_ledger,
     validate_ledger_transition,
@@ -113,6 +114,62 @@ class SoundchartsFalSeedLedgerTests(unittest.TestCase):
         self.assertEqual((allowed_min, allowed_max), (4_500, 7_582))
         self.assertTrue(allowed_min <= 7_241 <= allowed_max)
         self.assertFalse(allowed_min <= 7_583 <= allowed_max)
+
+    def test_previous_canonical_uuid_wins_when_source_priority_flips(self):
+        previous = build_ledger(
+            [
+                ArtistObservation("uuid-stable", "spotify-one", "Artist", None, "strict_artist"),
+                ArtistObservation("uuid-alias", "spotify-one", "Artist", None, "performance_artist"),
+            ]
+        )
+        current = build_ledger(
+            [
+                ArtistObservation("uuid-stable", "spotify-one", "Artist", None, "performance_artist"),
+                ArtistObservation("uuid-alias", "spotify-one", "Artist", None, "strict_artist"),
+            ]
+        )
+        self.assertEqual(previous["artists"][0]["soundcharts_uuid"], "uuid-stable")
+        self.assertEqual(current["artists"][0]["soundcharts_uuid"], "uuid-alias")
+
+        stabilized = stabilize_canonical_uuids(current, previous)
+
+        self.assertEqual(stabilized["artists"][0]["soundcharts_uuid"], "uuid-stable")
+        self.assertEqual(stabilized["canonical_stability"]["matched_components"], 1)
+        self.assertEqual(stabilized["canonical_stability"]["changed_canonicals"], 1)
+        self.assertEqual(
+            stabilized["rejected_uuid_aliases"],
+            [
+                {
+                    "spotify_ids": ["spotify-one"],
+                    "canonical_uuid": "uuid-stable",
+                    "rejected_uuids": ["uuid-alias"],
+                }
+            ],
+        )
+        validate_ledger(stabilized, min_resolved=1, max_resolved=1)
+
+    def test_canonical_stability_refuses_missing_or_ambiguous_previous_components(self):
+        previous = build_ledger(
+            [
+                ArtistObservation("uuid-a", "spotify-a", "Artist A", None, "strict_artist"),
+                ArtistObservation("uuid-b", "spotify-b", "Artist B", None, "strict_artist"),
+            ]
+        )
+        missing_canonical = build_ledger(
+            [ArtistObservation("uuid-new", "spotify-a", "Artist A", None, "strict_artist")]
+        )
+        with self.assertRaises(SeedLedgerError):
+            stabilize_canonical_uuids(missing_canonical, previous)
+
+        merged_components = build_ledger(
+            [
+                ArtistObservation("uuid-a", "spotify-a", "Artist AB", None, "strict_artist"),
+                ArtistObservation("uuid-a", "spotify-b", "Artist AB", None, "strict_artist"),
+                ArtistObservation("uuid-b", "spotify-b", "Artist AB", None, "strict_artist"),
+            ]
+        )
+        with self.assertRaises(SeedLedgerError):
+            stabilize_canonical_uuids(merged_components, previous)
 
     def test_transition_validation_is_audited_and_fail_closed(self):
         previous = build_ledger(

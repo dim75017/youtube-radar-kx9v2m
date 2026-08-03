@@ -14,6 +14,7 @@ Spotify identities which still lack a UUID are reported as
 from __future__ import annotations
 
 import argparse
+import copy
 import datetime as dt
 import hashlib
 import json
@@ -477,6 +478,105 @@ def validate_ledger(ledger: Mapping[str, Any], *, min_resolved: int, max_resolve
         raise SeedLedgerError("FAL seed ledger content hash does not match its deterministic contents")
 
 
+def stabilize_canonical_uuids(
+    current: Mapping[str, Any],
+    previous: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Preserve canonical UUIDs already accepted for matching identity components."""
+
+    stabilized = copy.deepcopy(dict(current))
+    current_artists = stabilized.get("artists") if isinstance(stabilized.get("artists"), list) else []
+    previous_artists = previous.get("artists") if isinstance(previous.get("artists"), list) else []
+    previous_by_uuid: dict[str, str] = {}
+    previous_by_spotify: dict[str, str] = {}
+    for item in previous_artists:
+        if not isinstance(item, Mapping):
+            raise SeedLedgerError("Previous FAL seed ledger contains a malformed artist row")
+        canonical = str(item.get("soundcharts_uuid") or "").strip()
+        if not canonical:
+            raise SeedLedgerError("Previous FAL seed ledger contains an empty canonical UUID")
+        for raw_alias in item.get("soundcharts_uuid_aliases") or []:
+            alias = str(raw_alias or "").strip()
+            existing = previous_by_uuid.setdefault(alias, canonical)
+            if not alias or existing != canonical:
+                raise SeedLedgerError("Previous FAL seed ledger has conflicting UUID aliases")
+        for raw_spotify in item.get("spotify_id_aliases") or []:
+            spotify = str(raw_spotify or "").strip()
+            existing = previous_by_spotify.setdefault(spotify, canonical)
+            if not spotify or existing != canonical:
+                raise SeedLedgerError("Previous FAL seed ledger has conflicting Spotify aliases")
+
+    matched_components = 0
+    changed_canonicals = 0
+    reused_previous: set[str] = set()
+    for item in current_artists:
+        if not isinstance(item, dict):
+            raise SeedLedgerError("Current FAL seed ledger contains a malformed artist row")
+        uuid_aliases = {str(value or "").strip() for value in item.get("soundcharts_uuid_aliases") or []}
+        spotify_aliases = {str(value or "").strip() for value in item.get("spotify_id_aliases") or []}
+        matches = {
+            canonical
+            for alias in uuid_aliases
+            if alias and (canonical := previous_by_uuid.get(alias))
+        }
+        matches.update(
+            canonical
+            for spotify in spotify_aliases
+            if spotify and (canonical := previous_by_spotify.get(spotify))
+        )
+        if not matches:
+            continue
+        if len(matches) != 1:
+            raise SeedLedgerError(
+                "Current FAL identity component merges several previously accepted canonical UUIDs"
+            )
+        stable = next(iter(matches))
+        if stable not in uuid_aliases:
+            raise SeedLedgerError(
+                "Previously accepted canonical UUID disappeared from its current identity component"
+            )
+        if stable in reused_previous:
+            raise SeedLedgerError(
+                "A previously accepted canonical UUID appears in several current identity components"
+            )
+        reused_previous.add(stable)
+        matched_components += 1
+        if str(item.get("soundcharts_uuid") or "") != stable:
+            item["soundcharts_uuid"] = stable
+            changed_canonicals += 1
+
+    current_artists.sort(key=lambda item: (str(item["soundcharts_uuid"]), str(item.get("spotify_id") or "")))
+    rejected_uuid_aliases = []
+    for item in current_artists:
+        canonical = str(item.get("soundcharts_uuid") or "")
+        rejected = sorted(
+            str(value)
+            for value in item.get("soundcharts_uuid_aliases") or []
+            if str(value) != canonical
+        )
+        if rejected:
+            rejected_uuid_aliases.append(
+                {
+                    "spotify_ids": list(item.get("spotify_id_aliases") or []),
+                    "canonical_uuid": canonical,
+                    "rejected_uuids": rejected,
+                }
+            )
+    rejected_uuid_aliases.sort(key=lambda item: str(item["canonical_uuid"]))
+    pending = stabilized.get("resolution_pending") if isinstance(stabilized.get("resolution_pending"), list) else []
+    stabilized["rejected_uuid_aliases"] = rejected_uuid_aliases
+    stabilized["cohort_hash"] = _canonical_hash(current_artists, pending)
+    stabilized["content_hash"] = _content_hash(current_artists, pending)
+    stabilized["canonical_stability"] = {
+        "previous_cohort_hash": str(previous.get("cohort_hash") or ""),
+        "matched_components": matched_components,
+        "changed_canonicals": changed_canonicals,
+        "new_components": len(current_artists) - matched_components,
+        "policy": "preserve_previous_canonical_when_identity_matches",
+    }
+    return stabilized
+
+
 def transition_bounds(
     previous_resolved: int,
     *,
@@ -625,6 +725,8 @@ def main() -> int:
     )
     if args.previous_ledger is not None:
         previous = read_ledger_json(args.previous_ledger)
+        validate_ledger(previous, min_resolved=1, max_resolved=args.max_resolved)
+        ledger = stabilize_canonical_uuids(ledger, previous)
         ledger["transition"] = validate_ledger_transition(
             previous,
             ledger,
