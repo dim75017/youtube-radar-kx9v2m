@@ -5,7 +5,9 @@ from build_soundcharts_fal_seed_ledger import (
     ArtistObservation,
     SeedLedgerError,
     build_ledger,
+    transition_bounds,
     validate_ledger,
+    validate_ledger_transition,
 )
 
 
@@ -97,6 +99,88 @@ class SoundchartsFalSeedLedgerTests(unittest.TestCase):
         duplicate["coverage"]["resolved_uuid"] += 1
         with self.assertRaises(SeedLedgerError):
             validate_ledger(duplicate, min_resolved=1, max_resolved=10)
+
+    def test_transition_bounds_accept_the_observed_growth_without_removing_the_hard_cap(self):
+        allowed_min, allowed_max = transition_bounds(
+            5_616,
+            min_resolved=4_500,
+            hard_max_resolved=10_000,
+            max_growth_percent=35,
+            max_growth_absolute=2_000,
+            max_shrink_percent=20,
+        )
+
+        self.assertEqual((allowed_min, allowed_max), (4_500, 7_582))
+        self.assertTrue(allowed_min <= 7_241 <= allowed_max)
+        self.assertFalse(allowed_min <= 7_583 <= allowed_max)
+
+    def test_transition_validation_is_audited_and_fail_closed(self):
+        previous = build_ledger(
+            [
+                ArtistObservation(f"uuid-{index:02d}", f"spotify-{index:02d}", f"Artist {index}", None, "strict_artist")
+                for index in range(10)
+            ]
+        )
+        accepted = build_ledger(
+            [
+                ArtistObservation(f"uuid-{index:02d}", f"spotify-{index:02d}", f"Artist {index}", None, "strict_artist")
+                for index in range(13)
+            ]
+        )
+
+        transition = validate_ledger_transition(
+            previous,
+            accepted,
+            min_resolved=1,
+            hard_max_resolved=100,
+            max_growth_percent=35,
+            max_growth_absolute=100,
+            max_shrink_percent=20,
+            max_unresolved=0,
+        )
+        self.assertEqual(transition["previous_resolved"], 10)
+        self.assertEqual(transition["current_resolved"], 13)
+        self.assertEqual(transition["delta"], 3)
+        self.assertEqual(transition["allowed_min"], 8)
+        self.assertEqual(transition["allowed_max"], 14)
+        self.assertEqual(transition["previous_cohort_hash"], previous["cohort_hash"])
+
+        too_large = build_ledger(
+            [
+                ArtistObservation(f"uuid-{index:02d}", f"spotify-{index:02d}", f"Artist {index}", None, "strict_artist")
+                for index in range(15)
+            ]
+        )
+        with self.assertRaises(SeedLedgerError):
+            validate_ledger_transition(
+                previous,
+                too_large,
+                min_resolved=1,
+                hard_max_resolved=100,
+                max_growth_percent=35,
+                max_growth_absolute=100,
+                max_shrink_percent=20,
+                max_unresolved=0,
+            )
+
+        unresolved = build_ledger(
+            [
+                ArtistObservation(f"uuid-{index:02d}", f"spotify-{index:02d}", f"Artist {index}", None, "strict_artist")
+                for index in range(10)
+            ]
+            + [ArtistObservation("", "spotify-pending", "Pending", None, "strict_artist")]
+        )
+        with self.assertRaises(SeedLedgerError):
+            validate_ledger_transition(
+                previous,
+                unresolved,
+                min_resolved=1,
+                hard_max_resolved=100,
+                max_growth_percent=35,
+                max_growth_absolute=100,
+                max_shrink_percent=20,
+                max_unresolved=0,
+            )
 
 
 if __name__ == "__main__":

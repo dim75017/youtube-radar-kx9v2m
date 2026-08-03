@@ -79,10 +79,32 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
             'window.SPOTIFY_BROWSE_CATALOGUE={"generated_at":"2026-07-28T21:00:00Z",'
             '"source_snapshot":"Spotify_Soundcharts_data_20260729T060000Z.js"};',
         )
-        now = datetime(2026, 7, 29, 9, tzinfo=timezone.utc)  # 11:00 Paris
+        now = datetime(2026, 7, 29, 12, 30, tzinfo=timezone.utc)  # 14:30 Paris
         rows = {row.target: row for row in subject.assess(self.root, now)}
         self.assertTrue(rows["youtube_radar"].due)
         self.assertTrue(rows["spotify_core"].due)
+
+    def test_spotify_core_waits_for_the_late_source_day_before_alerting(self):
+        spotify_performance_store.write_performance_payload(
+            self.root / "Spotify_Performance_data.js",
+            {
+                "tracks": {},
+                "artists": {},
+                "playlists": {},
+                "freshness": {
+                    "tracks_catalogue_at": "2026-07-28T21:00:00Z",
+                    "artists_catalogue_at": "2026-07-28T21:00:00Z",
+                    "playlists_at": "2026-07-28T21:00:00Z",
+                },
+            },
+            shard_count=1,
+        )
+        before_deadline = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, 30, tzinfo=timezone.utc),  # 13:30 Paris
+            ["spotify_core"],
+        )[0]
+        self.assertFalse(before_deadline.due)
 
     def test_missing_performance_shard_is_never_reported_green(self):
         performance = {

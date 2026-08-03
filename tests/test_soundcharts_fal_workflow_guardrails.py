@@ -16,7 +16,9 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
 
     def test_manual_start_and_cloud_resume_are_enabled(self):
         self.assertIn("workflow_dispatch:", self.workflow)
-        self.assertIn("- cron: '23 0,10,14,20 * * *'", self.workflow)
+        self.assertIn("- cron: '23 13,20 * * *'", self.workflow)
+        self.assertIn("branches: [main]", self.workflow)
+        self.assertIn("'build_soundcharts_fal_seed_ledger.py'", self.workflow)
         self.assertNotIn("*/2", self.workflow)
         self.assertIn("default: '40000'", self.workflow)
         self.assertIn('max_requests="${REQUESTED_MAX_REQUESTS:-40000}"', self.workflow)
@@ -39,6 +41,7 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
             'echo "STATE_DIR=$RUNNER_TEMP/soundcharts-fal-phase1" >> "$GITHUB_ENV"',
             self.workflow,
         )
+        self.assertIn('mkdir -p "$RUNNER_TEMP/soundcharts-fal-phase1"', self.workflow)
         self.assertIn(
             'echo "STATE_DB=$RUNNER_TEMP/soundcharts-fal-phase1/soundcharts-fal-phase1-staging-v2.sqlite3" >> "$GITHUB_ENV"',
             self.workflow,
@@ -80,12 +83,22 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
 
     def test_full_seed_cohort_and_protected_quota_reserve_are_explicit(self):
         self.assertIn("MIN_RESOLVED_SEEDS: '4500'", self.workflow)
-        self.assertIn("MAX_RESOLVED_SEEDS: '7000'", self.workflow)
+        self.assertIn("HARD_MAX_RESOLVED_SEEDS: '10000'", self.workflow)
+        self.assertIn("MAX_SEED_GROWTH_PERCENT: '35'", self.workflow)
+        self.assertIn("MAX_SEED_GROWTH_ABSOLUTE: '2000'", self.workflow)
+        self.assertIn("MAX_SEED_SHRINK_PERCENT: '20'", self.workflow)
+        self.assertIn("MAX_UNRESOLVED_SEEDS: '0'", self.workflow)
         self.assertIn("QUOTA_RESERVE: '500000'", self.workflow)
         self.assertIn("MAINTENANCE_DAILY_REQUESTS: '60000'", self.workflow)
-        self.assertRegex(self.workflow, r"--max-seeds\s+[\"']?\$MAX_RESOLVED_SEEDS")
-        self.assertRegex(self.workflow, r"--min-seed-guard\s+[\"']?\$MIN_RESOLVED_SEEDS")
-        self.assertRegex(self.workflow, r"--max-seed-guard\s+[\"']?\$MAX_RESOLVED_SEEDS")
+        self.assertRegex(self.workflow, r"--max-seeds\s+[\"']?\$HARD_MAX_RESOLVED_SEEDS")
+        self.assertEqual(
+            self.workflow.count('--min-seed-guard "${{ steps.seed_transition.outputs.min_resolved }}"'),
+            2,
+        )
+        self.assertEqual(
+            self.workflow.count('--max-seed-guard "${{ steps.seed_transition.outputs.max_resolved }}"'),
+            2,
+        )
         self.assertRegex(self.workflow, r"--quota-reserve\s+[\"']?\$QUOTA_RESERVE")
         self.assertRegex(self.workflow, r"--maintenance-daily-requests\s+[\"']?\$MAINTENANCE_DAILY_REQUESTS")
         self.assertIn("COHORT_SNAPSHOT: Spotify_Soundcharts_data_20260721T181420Z.js", self.workflow)
@@ -94,6 +107,12 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn('--seed-ledger "$SEED_LEDGER"', self.workflow)
         self.assertIn("build_soundcharts_fal_seed_ledger.py", self.workflow)
         self.assertIn('--active-snapshot "${{ steps.active_snapshot.outputs.path }}"', self.workflow)
+        self.assertIn('--previous-ledger "$PREVIOUS_SEED_LEDGER"', self.workflow)
+        self.assertIn('--max-resolved "$HARD_MAX_RESOLVED_SEEDS"', self.workflow)
+        self.assertIn('--max-growth-percent "$MAX_SEED_GROWTH_PERCENT"', self.workflow)
+        self.assertIn('--max-growth-absolute "$MAX_SEED_GROWTH_ABSOLUTE"', self.workflow)
+        self.assertIn('--max-shrink-percent "$MAX_SEED_SHRINK_PERCENT"', self.workflow)
+        self.assertIn('--max-unresolved "$MAX_UNRESOLVED_SEEDS"', self.workflow)
         self.assertNotIn("--seed-snapshot Spotify_Soundcharts_data.js", self.workflow)
         self.assertIn("--browse-catalogue Spotify_Browse_Catalogue_data.js", self.workflow)
         self.assertIn("--performance Spotify_Performance_data.js", self.workflow)
@@ -111,11 +130,13 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("compression-level: 6", self.workflow[state:report])
 
     def test_completed_unchanged_scan_skips_large_restore_and_upload(self):
+        previous_control = self.workflow.index("Restore the previous small FAL completion control")
         build = self.workflow.index("Build the deterministic canonical accepted seed ledger")
         control = self.workflow.index("Skip the huge checkpoint when completed coverage is unchanged")
         restore = self.workflow.index("Restore v2 or migrate the newest private v1 FAL checkpoint")
         upload = self.workflow.index("Persist the private resumable FAL staging state")
         report = self.workflow.index("Preserve the immutable FAL phase-1 run report")
+        self.assertLess(previous_control, build)
         self.assertLess(build, control)
         self.assertLess(control, restore)
         self.assertIn("soundcharts-fal-phase1-control-v2", self.workflow)
@@ -128,7 +149,29 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("if: steps.completion_control.outputs.no_op != 'true'", self.workflow[restore:])
         self.assertIn("steps.completion_control.outputs.no_op != 'true'", self.workflow[upload:report])
         self.assertIn("steps.completion_control.outputs.no_op == 'true'", self.workflow[upload:report])
+        completion = self.workflow.index("Stop when phase 1 is already complete")
+        authenticated = self.workflow.index("Resume Fans Also Like and discovered discographies in staging")
+        completion_section = self.workflow[completion:authenticated]
+        self.assertIn("CHECKPOINT_NO_OP: ${{ steps.completion_control.outputs.no_op }}", completion_section)
+        self.assertIn('if checkpoint_no_op:', completion_section)
+        self.assertIn('report.get("discographies")', completion_section)
         self.assertNotIn("queue: max", self.workflow)
+
+    def test_seed_transition_is_validated_before_state_restore_or_authentication(self):
+        previous_control = self.workflow.index("Restore the previous small FAL completion control")
+        build = self.workflow.index("Build the deterministic canonical accepted seed ledger")
+        restore = self.workflow.index("Restore v2 or migrate the newest private v1 FAL checkpoint")
+        authenticated = self.workflow.index("Resume Fans Also Like and discovered discographies in staging")
+        self.assertLess(previous_control, build)
+        self.assertLess(build, restore)
+        self.assertLess(build, authenticated)
+        transition = self.workflow[build:restore]
+        self.assertIn('transition = ledger.get("transition") or {}', transition)
+        self.assertIn('output.write(f"min_resolved={minimum}\\n")', transition)
+        self.assertIn('output.write(f"max_resolved={maximum}\\n")', transition)
+        previous = self.workflow[previous_control:build]
+        self.assertIn("refusing to establish a silent seed baseline", previous)
+        self.assertIn("refusing an unaudited ledger transition", previous)
 
     def test_no_canonical_publication_or_repository_write_is_possible(self):
         forbidden = (

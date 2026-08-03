@@ -121,9 +121,9 @@ on:
       - 'spotify/discovery.css'
       - 'spotify/coverage.js'
   schedule:
-    # One complete synchronization per day. The odd minute avoids GitHub
-    # Actions' congested top-of-hour scheduling window (04:17 UTC).
-    - cron: '17 4 * * *'
+    # Run after Soundcharts has normally published the current source day.
+    # Bulk FAL work is scheduled around this maintenance-first window.
+    - cron: '17 10 * * *'
   workflow_dispatch:
     inputs:
       scope:

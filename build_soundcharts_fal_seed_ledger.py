@@ -477,14 +477,139 @@ def validate_ledger(ledger: Mapping[str, Any], *, min_resolved: int, max_resolve
         raise SeedLedgerError("FAL seed ledger content hash does not match its deterministic contents")
 
 
+def transition_bounds(
+    previous_resolved: int,
+    *,
+    min_resolved: int,
+    hard_max_resolved: int,
+    max_growth_percent: float,
+    max_growth_absolute: int,
+    max_shrink_percent: float,
+) -> tuple[int, int]:
+    """Return fail-closed bounds derived from the last accepted seed ledger."""
+
+    values = {
+        "previous_resolved": previous_resolved,
+        "min_resolved": min_resolved,
+        "hard_max_resolved": hard_max_resolved,
+        "max_growth_absolute": max_growth_absolute,
+    }
+    if any(isinstance(value, bool) or not isinstance(value, int) for value in values.values()):
+        raise SeedLedgerError("FAL seed transition count limits must be integers")
+    if previous_resolved < 1:
+        raise SeedLedgerError("Previous accepted FAL seed ledger must contain at least one resolved seed")
+    if min_resolved < 0 or hard_max_resolved < min_resolved or max_growth_absolute < 0:
+        raise SeedLedgerError("Invalid FAL seed transition count limits")
+    percentages = {
+        "max_growth_percent": max_growth_percent,
+        "max_shrink_percent": max_shrink_percent,
+    }
+    for name, value in percentages.items():
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(float(value)):
+            raise SeedLedgerError(f"{name} must be a finite percentage")
+        if float(value) < 0 or (name == "max_shrink_percent" and float(value) > 100):
+            raise SeedLedgerError(f"Invalid {name} policy")
+
+    percentage_growth = math.ceil(previous_resolved * float(max_growth_percent) / 100)
+    allowed_growth = min(max_growth_absolute, percentage_growth)
+    allowed_min = max(
+        min_resolved,
+        math.floor(previous_resolved * (1 - float(max_shrink_percent) / 100)),
+    )
+    allowed_max = min(hard_max_resolved, previous_resolved + allowed_growth)
+    if allowed_min > allowed_max:
+        raise SeedLedgerError(
+            "FAL seed transition policy has no valid range "
+            f"({allowed_min}-{allowed_max}; previous={previous_resolved})"
+        )
+    return allowed_min, allowed_max
+
+
+def validate_ledger_transition(
+    previous: Mapping[str, Any],
+    current: Mapping[str, Any],
+    *,
+    min_resolved: int,
+    hard_max_resolved: int,
+    max_growth_percent: float,
+    max_growth_absolute: int,
+    max_shrink_percent: float,
+    max_unresolved: int,
+) -> dict[str, Any]:
+    """Validate a new ledger against the last accepted control artifact."""
+
+    if isinstance(max_unresolved, bool) or not isinstance(max_unresolved, int) or max_unresolved < 0:
+        raise SeedLedgerError("max_unresolved must be a non-negative integer")
+    validate_ledger(previous, min_resolved=1, max_resolved=hard_max_resolved)
+    previous_coverage = previous.get("coverage") if isinstance(previous.get("coverage"), Mapping) else {}
+    previous_resolved = finite_int(previous_coverage.get("resolved_uuid"))
+    if previous_resolved is None:
+        raise SeedLedgerError("Previous accepted FAL seed ledger has no resolved coverage")
+    allowed_min, allowed_max = transition_bounds(
+        previous_resolved,
+        min_resolved=min_resolved,
+        hard_max_resolved=hard_max_resolved,
+        max_growth_percent=max_growth_percent,
+        max_growth_absolute=max_growth_absolute,
+        max_shrink_percent=max_shrink_percent,
+    )
+    validate_ledger(current, min_resolved=allowed_min, max_resolved=allowed_max)
+    current_coverage = current.get("coverage") if isinstance(current.get("coverage"), Mapping) else {}
+    current_resolved = finite_int(current_coverage.get("resolved_uuid"))
+    pending = current.get("resolution_pending") if isinstance(current.get("resolution_pending"), list) else []
+    unresolved = len(pending)
+    reported_unresolved = finite_int(current_coverage.get("unresolved"))
+    if reported_unresolved != unresolved:
+        raise SeedLedgerError("FAL seed ledger unresolved coverage does not match its pending rows")
+    if unresolved > max_unresolved:
+        raise SeedLedgerError(
+            f"FAL seed ledger has unresolved identities ({unresolved}; maximum {max_unresolved})"
+        )
+    assert current_resolved is not None
+    delta = current_resolved - previous_resolved
+    return {
+        "previous_resolved": previous_resolved,
+        "current_resolved": current_resolved,
+        "delta": delta,
+        "delta_percent": round(delta * 100 / previous_resolved, 4),
+        "allowed_min": allowed_min,
+        "allowed_max": allowed_max,
+        "unresolved": unresolved,
+        "previous_cohort_hash": str(previous.get("cohort_hash") or ""),
+        "policy": {
+            "minimum_resolved": min_resolved,
+            "hard_maximum_resolved": hard_max_resolved,
+            "maximum_growth_percent": max_growth_percent,
+            "maximum_growth_absolute": max_growth_absolute,
+            "maximum_shrink_percent": max_shrink_percent,
+            "maximum_unresolved": max_unresolved,
+        },
+    }
+
+
+def read_ledger_json(path: Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SeedLedgerError(f"Invalid previous FAL seed ledger: {path}") from exc
+    if not isinstance(payload, dict):
+        raise SeedLedgerError(f"Previous FAL seed ledger must contain an object: {path}")
+    return payload
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--active-snapshot", type=Path, required=True)
     parser.add_argument("--browse-catalogue", type=Path, required=True)
     parser.add_argument("--performance", type=Path, required=True)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--previous-ledger", type=Path)
     parser.add_argument("--min-resolved", type=int, default=1)
     parser.add_argument("--max-resolved", type=int, default=10_000)
+    parser.add_argument("--max-growth-percent", type=float, default=35)
+    parser.add_argument("--max-growth-absolute", type=int, default=2_000)
+    parser.add_argument("--max-shrink-percent", type=float, default=20)
+    parser.add_argument("--max-unresolved", type=int, default=0)
     return parser.parse_args()
 
 
@@ -498,7 +623,20 @@ def main() -> int:
         observations,
         source_files=[args.active_snapshot.name, args.browse_catalogue.name, args.performance.name],
     )
-    validate_ledger(ledger, min_resolved=args.min_resolved, max_resolved=args.max_resolved)
+    if args.previous_ledger is not None:
+        previous = read_ledger_json(args.previous_ledger)
+        ledger["transition"] = validate_ledger_transition(
+            previous,
+            ledger,
+            min_resolved=args.min_resolved,
+            hard_max_resolved=args.max_resolved,
+            max_growth_percent=args.max_growth_percent,
+            max_growth_absolute=args.max_growth_absolute,
+            max_shrink_percent=args.max_shrink_percent,
+            max_unresolved=args.max_unresolved,
+        )
+    else:
+        validate_ledger(ledger, min_resolved=args.min_resolved, max_resolved=args.max_resolved)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(ledger, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps({"seed_ledger": ledger["coverage"], "alias_dedup": ledger["alias_dedup"]}, ensure_ascii=False))
