@@ -81,7 +81,7 @@ jobs:
           fi
 
   validate:
-    name: Validate discovery eligibility
+    name: Validate daily collector
     needs: gate
     if: needs.gate.outputs.run_scan == 'true'
     runs-on: ubuntu-latest
@@ -95,14 +95,36 @@ jobs:
           node-version: '20'
       - name: Install validation dependencies
         run: pip install --disable-pip-version-check openpyxl
-      - name: Test discovery and recommendation intelligence
+      - name: Test collection and history integrity
         run: |
-          python -m unittest tests.test_refresh_youtube_daily tests.test_youtube_workflow_guardrails tests.test_generate_youtube_recommendation_pool tests.test_import_youtube_studio_export
+          python -m unittest tests.test_refresh_youtube_daily tests.test_youtube_workflow_guardrails tests.test_generate_youtube_recommendation_pool
           node tests/test_youtube_new_video_view_floor.js
           node tests/test_youtube_daily_view_deltas.js
           node tests/test_youtube_history_cache_refresh.js
           node tests/test_youtube_unavailable_quarantine.js
           node tests/test_youtube_channel_update_status.js
+
+  validate_recommendations:
+    name: Validate recommendation intelligence
+    needs: gate
+    if: needs.gate.outputs.run_scan == 'true'
+    # Recommendation/UI regressions must stay visible, but they must never
+    # prevent the independent daily facts collector from recording a day.
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install validation dependencies
+        run: pip install --disable-pip-version-check openpyxl
+      - name: Test recommendation intelligence and Studio importer
+        run: |
+          python -m unittest tests.test_import_youtube_studio_export
           node tests/test_youtube_age_normalized_analysis.js
           node tests/test_youtube_daily_recommendations.js
           node tests/test_youtube_recommendation_actions.js

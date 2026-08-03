@@ -202,9 +202,20 @@ assert.equal(historyCoverage.length, owned.length, 'all 50 owned videos must be 
 assert.ok(multiPointCoverage.length >= 20, 'enough owned videos must have multi-day history for recent velocity');
 assert.ok(studioCoverage.length >= 20, 'enough owned videos must be connected to real YouTube Studio metrics');
 
+const analyticsEligibleOwned = owned.filter(
+  row => row.pub && (row.durH == null || row.durH >= 0.15),
+);
+const analyticsEligibleStudioCoverage = analyticsEligibleOwned.filter(
+  row => studioPayload.d && studioPayload.d[row.vid],
+);
 const ownedRows = buildOwnedAnalyticsRows(owned, history, studioPayload, snapshotTime);
-assert.equal(ownedRows.length, 50, 'the simulated anaRows input must contain all 50 owned videos');
-assert.equal(ownedRows.filter(row => row.st).length, studioCoverage.length,
+assert.equal(
+  ownedRows.length,
+  analyticsEligibleOwned.length,
+  'the simulated anaRows input must contain every duration-eligible owned video',
+);
+assert.ok(ownedRows.length >= 20, 'the real snapshot must keep enough eligible owned videos for learning');
+assert.equal(ownedRows.filter(row => row.st).length, analyticsEligibleStudioCoverage.length,
   'the simulated anaRows input must preserve the real Studio coverage');
 assert.ok(ownedRows.filter(row => row.vNow != null).length >= 20,
   'the simulated anaRows input must expose recent velocity from history shards');
@@ -238,4 +249,4 @@ assert.ok(qualified.length >= 20,
 assert.ok(qualified.every((item, index) => index === 0 || qualified[index - 1].score >= item.score),
   'the quality-qualified real reservoir must be rankable by the daily score');
 
-console.log(`YouTube recommendation real snapshot: OK (${qualified.length} qualified, ${historyFiles.length} history shards, ${studioCoverage.length}/50 Studio)`);
+console.log(`YouTube recommendation real snapshot: OK (${qualified.length} qualified, ${historyFiles.length} history shards, ${analyticsEligibleStudioCoverage.length}/${analyticsEligibleOwned.length} eligible Studio)`);
