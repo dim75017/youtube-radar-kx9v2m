@@ -192,7 +192,8 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("refusing an unaudited ledger transition", previous)
         self.assertIn("Using validated FAL completion control artifact", previous)
         self.assertIn("Ignoring inconsistent FAL completion control artifact", previous)
-        self.assertIn("validate_report_seed_ledger(report, ledger, require_generation_match=True)", previous)
+        self.assertIn("find \"$control_dir\" -type f -name '*seed-ledger-v2.json'", previous)
+        self.assertIn("validate_report_seed_ledger(report, ledger, require_generation_match=False)", previous)
         self.assertIn("reverse | .[] | [.id, .created_at, .archive_download_url]", previous)
 
     def test_no_canonical_publication_or_repository_write_is_possible(self):
