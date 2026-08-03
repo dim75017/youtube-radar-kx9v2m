@@ -1,3 +1,4 @@
+import copy
 import datetime as dt
 import inspect
 import sqlite3
@@ -27,6 +28,7 @@ from scan_soundcharts_fal_phase1 import (
     next_quota_reset,
     reconcile_seed_ledger,
     requeue_failed_work,
+    validate_report_seed_ledger,
 )
 from refresh_soundcharts_daily import read_js_payload, SOUNDCHARTS_PREFIX
 
@@ -740,6 +742,53 @@ class FalPhase1Tests(unittest.TestCase):
         self.assertEqual(report["coverage"]["seed_related"]["missing"], 1)
         self.assertEqual(report["inventory_profile"]["release_date_distribution"]["total"], 0)
         self.assertNotIn("seed-uuid", str(report))
+
+    def test_report_must_match_the_current_seed_ledger_exactly(self):
+        connection = self.state()
+        ledger = {
+            "generated_at": "2026-08-04T08:00:00Z",
+            "cohort_hash": "current-ledger-hash",
+            "coverage": {
+                "resolved_uuid": 7_241,
+                "resolved_seed_uuids": 7_241,
+                "unresolved": 0,
+            },
+            "transition": {"previous_resolved": 5_616, "current_resolved": 7_241},
+        }
+        report = build_report(
+            connection,
+            source_eligible=7_241,
+            source_snapshot=Path("current-ledger.json"),
+            source_generated_at=ledger["generated_at"],
+            seed_ledger=ledger,
+        )
+
+        validate_report_seed_ledger(report, ledger)
+        self.assertEqual(report["seed_ledger"]["resolved_uuid"], 7_241)
+        self.assertEqual(report["seed_ledger"]["cohort_hash"], "current-ledger-hash")
+        self.assertEqual(report["seed_ledger"]["generated_at"], ledger["generated_at"])
+        self.assertEqual(report["seed_ledger"]["transition"], ledger["transition"])
+
+        stale_values = {
+            "resolved_uuid": 5_616,
+            "cohort_hash": "previous-ledger-hash",
+        }
+        for field, stale_value in stale_values.items():
+            with self.subTest(field=field):
+                stale = copy.deepcopy(report)
+                stale["seed_ledger"][field] = stale_value
+                with self.assertRaises(FalPhase1Error):
+                    validate_report_seed_ledger(stale, ledger)
+
+        stale_generation = copy.deepcopy(report)
+        stale_generation["seed_ledger"]["generated_at"] = "2026-07-30T08:00:00Z"
+        validate_report_seed_ledger(stale_generation, ledger)
+        with self.assertRaises(FalPhase1Error):
+            validate_report_seed_ledger(
+                stale_generation,
+                ledger,
+                require_generation_match=True,
+            )
 
     def test_inventory_profile_is_exhaustive_and_reports_only_aggregates(self):
         connection = self.state()

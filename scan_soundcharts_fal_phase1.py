@@ -2082,6 +2082,7 @@ def build_report(
     )
     ledger_coverage = seed_ledger.get("coverage") if isinstance(seed_ledger, Mapping) and isinstance(seed_ledger.get("coverage"), Mapping) else {}
     ledger_alias = seed_ledger.get("alias_dedup") if isinstance(seed_ledger, Mapping) and isinstance(seed_ledger.get("alias_dedup"), Mapping) else {}
+    ledger_transition = seed_ledger.get("transition") if isinstance(seed_ledger, Mapping) and isinstance(seed_ledger.get("transition"), Mapping) else {}
     return {
         "version": REPORT_VERSION,
         "generated_at": utc_now(),
@@ -2102,6 +2103,7 @@ def build_report(
         },
         "seed_ledger": {
             "mode": meta_get(connection, "cohort_mode") or "audited-historical-v1",
+            "generated_at": seed_ledger.get("generated_at") if isinstance(seed_ledger, Mapping) else None,
             "expected_displayed": finite_int(ledger_coverage.get("expected_displayed")),
             "expected_identity_components": finite_int(ledger_coverage.get("expected_identity_components")),
             "unique_spotify_identities": finite_int(ledger_coverage.get("unique_spotify_identities")),
@@ -2112,6 +2114,7 @@ def build_report(
             "unresolved_display_identities": finite_int(ledger_coverage.get("unresolved_display_identities")),
             "resolution_pending": resolution_pending,
             "cohort_hash": seed_ledger.get("cohort_hash") if isinstance(seed_ledger, Mapping) else None,
+            "transition": dict(ledger_transition),
             "alias_dedup": dict(ledger_alias),
             "state_uuid_aliases": int(connection.execute("SELECT COUNT(*) FROM seed_aliases").fetchone()[0]),
             "reconciliation": dict(reconciliation or {}),
@@ -2181,6 +2184,37 @@ def build_report(
         },
         "errors": error_counts,
     }
+
+
+def validate_report_seed_ledger(
+    report: Mapping[str, Any],
+    seed_ledger: Mapping[str, Any],
+    *,
+    require_generation_match: bool = False,
+) -> None:
+    """Refuse a stale report that does not describe the ledger used by this run."""
+
+    report_ledger = report.get("seed_ledger") if isinstance(report.get("seed_ledger"), Mapping) else {}
+    ledger_coverage = seed_ledger.get("coverage") if isinstance(seed_ledger.get("coverage"), Mapping) else {}
+    expected_resolved = finite_int(ledger_coverage.get("resolved_uuid"))
+    reported_resolved = finite_int(report_ledger.get("resolved_uuid"))
+    expected_hash = str(seed_ledger.get("cohort_hash") or "")
+    reported_hash = str(report_ledger.get("cohort_hash") or "")
+    expected_generated_at = str(seed_ledger.get("generated_at") or "")
+    reported_generated_at = str(report_ledger.get("generated_at") or "")
+    mismatches: list[str] = []
+    if expected_resolved is None or reported_resolved != expected_resolved:
+        mismatches.append(f"resolved_uuid={reported_resolved!r}, expected={expected_resolved!r}")
+    if not expected_hash or reported_hash != expected_hash:
+        mismatches.append(f"cohort_hash={reported_hash!r}, expected={expected_hash!r}")
+    if require_generation_match and (
+        not expected_generated_at or reported_generated_at != expected_generated_at
+    ):
+        mismatches.append(
+            f"generated_at={reported_generated_at!r}, expected={expected_generated_at!r}"
+        )
+    if mismatches:
+        raise FalPhase1Error("FAL report does not match the current seed ledger: " + "; ".join(mismatches))
 
 
 def write_report(path: Path, report: Mapping[str, Any]) -> None:
@@ -2302,6 +2336,8 @@ def main() -> int:
                 seed_ledger=ledger,
                 reconciliation=reconciliation,
             )
+            if ledger is not None:
+                validate_report_seed_ledger(report, ledger, require_generation_match=True)
             write_report(args.report, report)
             print(json.dumps(report, ensure_ascii=False, separators=(",", ":")))
             return 0
@@ -2344,6 +2380,8 @@ def main() -> int:
             seed_ledger=ledger,
             reconciliation=reconciliation,
         )
+        if ledger is not None:
+            validate_report_seed_ledger(report, ledger, require_generation_match=True)
         write_report(args.report, report)
         print(json.dumps(report, ensure_ascii=False, separators=(",", ":")))
         connection.close()
@@ -2375,6 +2413,8 @@ def main() -> int:
         seed_ledger=ledger,
         reconciliation=reconciliation,
     )
+    if ledger is not None:
+        validate_report_seed_ledger(report, ledger, require_generation_match=True)
     write_report(args.report, report)
     print(json.dumps(report, ensure_ascii=False, separators=(",", ":")))
     connection.close()
