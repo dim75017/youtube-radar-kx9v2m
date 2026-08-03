@@ -75,6 +75,7 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("${{ env.SEED_LEDGER }}", control_section)
         self.assertIn("always() &&", upload_section)
         self.assertIn("steps.restore_state.outcome == 'success'", upload_section)
+        self.assertEqual(upload_section.count("steps.completion.outcome == 'success'"), 2)
         self.assertIn("retention-days: 90", self.workflow[state_upload:])
         self.assertIn("Keep only the two newest mutable FAL state artifacts", self.workflow)
         self.assertIn("| .[2:][] | .id", self.workflow)
@@ -189,6 +190,9 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
         previous = self.workflow[previous_control:build]
         self.assertIn("refusing to establish a silent seed baseline", previous)
         self.assertIn("refusing an unaudited ledger transition", previous)
+        self.assertIn("Using validated FAL completion control artifact", previous)
+        self.assertIn("Ignoring inconsistent FAL completion control artifact", previous)
+        self.assertIn("validate_report_seed_ledger(report, ledger, require_generation_match=True)", previous)
 
     def test_no_canonical_publication_or_repository_write_is_possible(self):
         forbidden = (
