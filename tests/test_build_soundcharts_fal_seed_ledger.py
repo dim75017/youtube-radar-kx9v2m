@@ -5,6 +5,7 @@ from build_soundcharts_fal_seed_ledger import (
     ArtistObservation,
     SeedLedgerError,
     build_ledger,
+    previous_identity_observations,
     stabilize_canonical_uuids,
     transition_bounds,
     validate_ledger,
@@ -177,6 +178,31 @@ class SoundchartsFalSeedLedgerTests(unittest.TestCase):
         )
         with self.assertRaises(SeedLedgerError):
             stabilize_canonical_uuids(merged_components, previous)
+
+    def test_previous_identity_edges_prevent_an_accepted_component_from_splitting(self):
+        previous = build_ledger(
+            [
+                ArtistObservation("uuid-a", "spotify-a", "Artist", None, "strict_artist"),
+                ArtistObservation("uuid-a", "spotify-b", "Artist", None, "strict_artist"),
+                ArtistObservation("uuid-b", "spotify-b", "Artist", None, "strict_artist"),
+            ]
+        )
+        current = [
+            ArtistObservation("uuid-a", "spotify-a", "Artist", 90_000, "strict_artist"),
+            ArtistObservation("uuid-b", "spotify-b", "Artist", 80_000, "performance_artist"),
+        ]
+        split = build_ledger(current)
+        self.assertEqual(len(split["artists"]), 2)
+
+        joined = build_ledger(current + previous_identity_observations(previous))
+        stabilized = stabilize_canonical_uuids(joined, previous)
+
+        self.assertEqual(len(stabilized["artists"]), 1)
+        self.assertEqual(stabilized["artists"][0]["soundcharts_uuid"], "uuid-a")
+        self.assertEqual(stabilized["artists"][0]["soundcharts_uuid_aliases"], ["uuid-a", "uuid-b"])
+        self.assertEqual(stabilized["artists"][0]["spotify_id_aliases"], ["spotify-a", "spotify-b"])
+        self.assertIn("previous_accepted_identity", stabilized["policy"]["sources"])
+        validate_ledger(stabilized, min_resolved=1, max_resolved=1)
 
     def test_transition_validation_is_audited_and_fail_closed(self):
         previous = build_ledger(
