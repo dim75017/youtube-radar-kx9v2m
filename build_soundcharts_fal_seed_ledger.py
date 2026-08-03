@@ -35,6 +35,7 @@ SOURCE_PRIORITY = {
     "browse_artist": 3,
     "browse_track_artist": 4,
     "performance_artist": 5,
+    "historical_identity": 6,
 }
 
 
@@ -192,6 +193,42 @@ def collect_observations(
                 "performance_artist",
             )
     return found
+
+
+def previous_identity_observations(previous: Mapping[str, Any]) -> list[ArtistObservation]:
+    """Recreate only accepted alias edges so a prior identity cannot split."""
+
+    observations: list[ArtistObservation] = []
+    artists = previous.get("artists") if isinstance(previous.get("artists"), list) else []
+    for item in artists:
+        if not isinstance(item, Mapping):
+            raise SeedLedgerError("Previous FAL seed ledger contains a malformed artist row")
+        canonical_uuid = str(item.get("soundcharts_uuid") or "").strip()
+        uuid_aliases = sorted({str(value or "").strip() for value in item.get("soundcharts_uuid_aliases") or []})
+        spotify_aliases = sorted({str(value or "").strip() for value in item.get("spotify_id_aliases") or []})
+        if not canonical_uuid or canonical_uuid not in uuid_aliases or any(not value for value in uuid_aliases):
+            raise SeedLedgerError("Previous FAL seed ledger has an invalid canonical UUID component")
+        if any(not value for value in spotify_aliases):
+            raise SeedLedgerError("Previous FAL seed ledger has an invalid Spotify alias component")
+        name = str(item.get("name") or canonical_uuid).strip()
+        if spotify_aliases:
+            canonical_spotify = str(item.get("spotify_id") or "").strip()
+            anchor_spotify = canonical_spotify if canonical_spotify in spotify_aliases else spotify_aliases[0]
+            # One Spotify anchor connects every historical UUID, while the
+            # accepted canonical UUID connects every historical Spotify alias.
+            for uuid in uuid_aliases:
+                observations.append(
+                    ArtistObservation(uuid, anchor_spotify, name, None, "historical_identity")
+                )
+            for spotify in spotify_aliases:
+                observations.append(
+                    ArtistObservation(canonical_uuid, spotify, name, None, "historical_identity")
+                )
+        else:
+            observations.append(
+                ArtistObservation(canonical_uuid, "", name, None, "historical_identity")
+            )
+    return observations
 
 
 def _canonical_hash(artists: Sequence[Mapping[str, Any]], pending: Sequence[Mapping[str, Any]]) -> str:
@@ -395,7 +432,8 @@ def build_ledger(
         "staging_only": True,
         "canonical_written": False,
         "policy": {
-            "sources": ["performance", "browse_discovery", "active_strict_discovery"],
+            "sources": ["performance", "browse_discovery", "active_strict_discovery"]
+            + (["previous_accepted_identity"] if any(item.source == "historical_identity" for item in observations) else []),
             "fal_candidates_are_seeds": False,
             "minimum_monthly_listeners": None,
             "deduplication": "soundcharts_uuid_with_spotify_alias_audit",
@@ -739,13 +777,16 @@ def main() -> int:
     browse = read_generic_js(args.browse_catalogue)
     performance = read_generic_js(args.performance)
     observations = collect_observations(active=active, browse=browse, performance=performance)
+    previous: dict[str, Any] | None = None
+    if args.previous_ledger is not None:
+        previous = read_ledger_json(args.previous_ledger)
+        validate_ledger(previous, min_resolved=1, max_resolved=args.max_resolved)
+        observations.extend(previous_identity_observations(previous))
     ledger = build_ledger(
         observations,
         source_files=[args.active_snapshot.name, args.browse_catalogue.name, args.performance.name],
     )
-    if args.previous_ledger is not None:
-        previous = read_ledger_json(args.previous_ledger)
-        validate_ledger(previous, min_resolved=1, max_resolved=args.max_resolved)
+    if previous is not None:
         ledger = stabilize_canonical_uuids(ledger, previous)
         ledger["transition"] = validate_ledger_transition(
             previous,
