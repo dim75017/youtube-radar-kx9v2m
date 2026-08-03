@@ -2,10 +2,18 @@ name: Scan Soundcharts Fans Also Like phase 1
 
 on:
   schedule:
-    # Four accelerated windows avoid the 04:17 daily refresh and the 06:47 /
-    # 18:47 playlist collectors. A 2-hour cron is unsafe: GitHub concurrency
-    # keeps only one pending job, so a new FAL batch could replace maintenance.
-    - cron: '23 0,10,14,20 * * *'
+    # Two bounded bulk windows leave the daily core and follower collectors
+    # uncontested. New catalogue facts always take priority over FAL expansion.
+    - cron: '23 13,20 * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/scan-soundcharts-fal-phase1.yml'
+      - 'build_soundcharts_fal_seed_ledger.py'
+      - 'scan_soundcharts_fal_phase1.py'
+      - 'tests/test_build_soundcharts_fal_seed_ledger.py'
+      - 'tests/test_scan_soundcharts_fal_phase1.py'
+      - 'tests/test_soundcharts_fal_workflow_guardrails.py'
   workflow_dispatch:
     inputs:
       max_requests:
@@ -42,7 +50,11 @@ jobs:
       QUOTA_RESERVE: '500000'
       MAINTENANCE_DAILY_REQUESTS: '60000'
       MIN_RESOLVED_SEEDS: '4500'
-      MAX_RESOLVED_SEEDS: '7000'
+      HARD_MAX_RESOLVED_SEEDS: '10000'
+      MAX_SEED_GROWTH_PERCENT: '35'
+      MAX_SEED_GROWTH_ABSOLUTE: '2000'
+      MAX_SEED_SHRINK_PERCENT: '20'
+      MAX_UNRESOLVED_SEEDS: '0'
       WORKERS: '10'
 
     steps:
@@ -58,6 +70,7 @@ jobs:
       - name: Initialize private staging paths
         shell: bash
         run: |
+          mkdir -p "$RUNNER_TEMP/soundcharts-fal-phase1"
           echo "STATE_DIR=$RUNNER_TEMP/soundcharts-fal-phase1" >> "$GITHUB_ENV"
           echo "STATE_DB=$RUNNER_TEMP/soundcharts-fal-phase1/soundcharts-fal-phase1-staging-v2.sqlite3" >> "$GITHUB_ENV"
           echo "REPORT_JSON=$RUNNER_TEMP/soundcharts-fal-phase1/soundcharts-fal-phase1-report-v2.json" >> "$GITHUB_ENV"
@@ -95,25 +108,12 @@ jobs:
           echo "path=$active_snapshot" >> "$GITHUB_OUTPUT"
           echo "Using historical snapshot $COHORT_SNAPSHOT for dedup and current strict snapshot $active_snapshot for ledger input"
 
-      - name: Build the deterministic canonical accepted seed ledger
-        shell: bash
-        run: |
-          python build_soundcharts_fal_seed_ledger.py \
-            --active-snapshot "${{ steps.active_snapshot.outputs.path }}" \
-            --browse-catalogue Spotify_Browse_Catalogue_data.js \
-            --performance Spotify_Performance_data.js \
-            --output "$SEED_LEDGER" \
-            --min-resolved "$MIN_RESOLVED_SEEDS" \
-            --max-resolved "$MAX_RESOLVED_SEEDS"
-          test -s "$SEED_LEDGER"
-
-      - name: Skip the huge checkpoint when completed coverage is unchanged
-        id: completion_control
+      - name: Restore the previous small FAL completion control
+        id: previous_control
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          echo "no_op=false" >> "$GITHUB_OUTPUT"
           control_api="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${CONTROL_ARTIFACT}&per_page=100"
           listing="$RUNNER_TEMP/soundcharts-fal-phase1-control-artifacts.json"
           curl --fail --silent --show-error --location \
@@ -125,8 +125,8 @@ jobs:
             "$listing")"
           control_url="$(jq -r '.archive_download_url // empty' <<<"$control_selected")"
           if [[ -z "$control_url" ]]; then
-            echo "No v2 completion control yet; the resumable state must be restored"
-            exit 0
+            echo "No previous v2 completion control; refusing to establish a silent seed baseline" >&2
+            exit 1
           fi
           control_created="$(jq -r '.created_at // ""' <<<"$control_selected")"
           legacy_listing="$RUNNER_TEMP/soundcharts-fal-phase1-legacy-control-check.json"
@@ -139,8 +139,8 @@ jobs:
             '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .created_at // empty' \
             "$legacy_listing")"
           if [[ -n "$latest_legacy_created" && "$latest_legacy_created" > "$control_created" ]]; then
-            echo "A legacy v1 checkpoint is newer than completion control; refusing a no-op"
-            exit 0
+            echo "A legacy v1 checkpoint is newer than completion control; refusing an unaudited ledger transition" >&2
+            exit 1
           fi
           control_dir="$RUNNER_TEMP/soundcharts-fal-phase1-control"
           control_zip="$RUNNER_TEMP/soundcharts-fal-phase1-control.zip"
@@ -153,10 +153,53 @@ jobs:
           previous_report="$(find "$control_dir" -type f -name 'soundcharts-fal-phase1-report-v2.json' -print -quit)"
           previous_ledger="$(find "$control_dir" -type f -name 'soundcharts-fal-seed-ledger-v2.json' -print -quit)"
           if [[ -z "$previous_report" || -z "$previous_ledger" ]]; then
-            echo "Completion control is incomplete; the resumable state must be restored"
-            exit 0
+            echo "Previous completion control is incomplete; refusing an unaudited ledger transition" >&2
+            exit 1
           fi
-          python - "$SEED_LEDGER" "$previous_ledger" "$previous_report" "$REPORT_JSON" "$GITHUB_OUTPUT" <<'PY'
+          test -s "$previous_report"
+          test -s "$previous_ledger"
+          echo "PREVIOUS_REPORT=$previous_report" >> "$GITHUB_ENV"
+          echo "PREVIOUS_SEED_LEDGER=$previous_ledger" >> "$GITHUB_ENV"
+          echo "available=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build the deterministic canonical accepted seed ledger
+        id: seed_transition
+        shell: bash
+        run: |
+          python build_soundcharts_fal_seed_ledger.py \
+            --active-snapshot "${{ steps.active_snapshot.outputs.path }}" \
+            --browse-catalogue Spotify_Browse_Catalogue_data.js \
+            --performance Spotify_Performance_data.js \
+            --output "$SEED_LEDGER" \
+            --previous-ledger "$PREVIOUS_SEED_LEDGER" \
+            --min-resolved "$MIN_RESOLVED_SEEDS" \
+            --max-resolved "$HARD_MAX_RESOLVED_SEEDS" \
+            --max-growth-percent "$MAX_SEED_GROWTH_PERCENT" \
+            --max-growth-absolute "$MAX_SEED_GROWTH_ABSOLUTE" \
+            --max-shrink-percent "$MAX_SEED_SHRINK_PERCENT" \
+            --max-unresolved "$MAX_UNRESOLVED_SEEDS"
+          test -s "$SEED_LEDGER"
+          python - "$SEED_LEDGER" "$GITHUB_OUTPUT" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          ledger = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          transition = ledger.get("transition") or {}
+          minimum = int(transition["allowed_min"])
+          maximum = int(transition["allowed_max"])
+          with Path(sys.argv[2]).open("a", encoding="utf-8") as output:
+              output.write(f"min_resolved={minimum}\n")
+              output.write(f"max_resolved={maximum}\n")
+          print(f"Accepted audited FAL seed transition in dynamic range [{minimum}, {maximum}]")
+          PY
+
+      - name: Skip the huge checkpoint when completed coverage is unchanged
+        id: completion_control
+        shell: bash
+        run: |
+          echo "no_op=false" >> "$GITHUB_OUTPUT"
+          python - "$SEED_LEDGER" "$PREVIOUS_SEED_LEDGER" "$PREVIOUS_REPORT" "$REPORT_JSON" "$GITHUB_OUTPUT" <<'PY'
           import json
           import shutil
           import sys
@@ -277,15 +320,19 @@ jobs:
           --max-requests "${{ steps.plan.outputs.max_requests }}"
           --quota-reserve "$QUOTA_RESERVE"
           --maintenance-daily-requests "$MAINTENANCE_DAILY_REQUESTS"
-          --max-seeds "$MAX_RESOLVED_SEEDS"
-          --min-seed-guard "$MIN_RESOLVED_SEEDS"
-          --max-seed-guard "$MAX_RESOLVED_SEEDS"
+          --max-seeds "$HARD_MAX_RESOLVED_SEEDS"
+          --min-seed-guard "${{ steps.seed_transition.outputs.min_resolved }}"
+          --max-seed-guard "${{ steps.seed_transition.outputs.max_resolved }}"
           --candidate-min-audience 50000
           --workers "$WORKERS"
           --dry-run
 
       - name: Stop when phase 1 is already complete
         id: completion
+        env:
+          TRANSITION_MIN_RESOLVED: ${{ steps.seed_transition.outputs.min_resolved }}
+          TRANSITION_MAX_RESOLVED: ${{ steps.seed_transition.outputs.max_resolved }}
+          CHECKPOINT_NO_OP: ${{ steps.completion_control.outputs.no_op }}
         shell: bash
         run: |
           python - "$REPORT_JSON" "$GITHUB_OUTPUT" "$STATE_DB" <<'PY'
@@ -300,19 +347,23 @@ jobs:
           cohort_size = int((report.get("cohort") or {}).get("frozen_seeds") or 0)
           ledger = report.get("seed_ledger") or {}
           resolved = int(ledger.get("resolved_uuid") or 0)
-          minimum = int(os.environ["MIN_RESOLVED_SEEDS"])
-          maximum = int(os.environ["MAX_RESOLVED_SEEDS"])
+          minimum = int(os.environ["TRANSITION_MIN_RESOLVED"])
+          maximum = int(os.environ["TRANSITION_MAX_RESOLVED"])
           if not minimum <= resolved <= maximum:
               raise SystemExit(
                   f"FAL resolved ledger outside protected bounds: {resolved} not in [{minimum}, {maximum}]"
               )
           if cohort_size < resolved:
               raise SystemExit("Append-only FAL state contains fewer seeds than the current resolved ledger")
-          with sqlite3.connect(f"file:{sys.argv[3]}?mode=ro", uri=True) as state:
-              scope_row = state.execute(
-                  "SELECT value FROM meta WHERE key='discography_scope_version'"
-              ).fetchone()
-          checkpoint_scope = str(scope_row[0]) if scope_row else ""
+          checkpoint_no_op = os.environ.get("CHECKPOINT_NO_OP") == "true"
+          if checkpoint_no_op:
+              checkpoint_scope = str((report.get("discographies") or {}).get("scope_version") or "")
+          else:
+              with sqlite3.connect(f"file:{sys.argv[3]}?mode=ro", uri=True) as state:
+                  scope_row = state.execute(
+                      "SELECT value FROM meta WHERE key='discography_scope_version'"
+                  ).fetchone()
+              checkpoint_scope = str(scope_row[0]) if scope_row else ""
           complete = (
               report.get("complete") is True
               and checkpoint_scope == "main_performer_v1"
@@ -351,9 +402,9 @@ jobs:
             --max-requests "${{ steps.plan.outputs.max_requests }}" \
             --quota-reserve "$QUOTA_RESERVE" \
             --maintenance-daily-requests "$MAINTENANCE_DAILY_REQUESTS" \
-            --max-seeds "$MAX_RESOLVED_SEEDS" \
-            --min-seed-guard "$MIN_RESOLVED_SEEDS" \
-            --max-seed-guard "$MAX_RESOLVED_SEEDS" \
+            --max-seeds "$HARD_MAX_RESOLVED_SEEDS" \
+            --min-seed-guard "${{ steps.seed_transition.outputs.min_resolved }}" \
+            --max-seed-guard "${{ steps.seed_transition.outputs.max_resolved }}" \
             --candidate-min-audience 50000 \
             --workers "$WORKERS"
 

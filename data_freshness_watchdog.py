@@ -230,7 +230,7 @@ def assess_spotify_core(root: Path, now: datetime, ignore_deadline: bool = False
     today = now.astimezone(PARIS).date()
     if now - oldest > timedelta(hours=36):
         return freshness_row(target, True, "Spotify catalogue is older than 36 hours", oldest)
-    if local_day(oldest) < today and (ignore_deadline or after_local_deadline(now, time(9, 0))):
+    if local_day(oldest) < today and (ignore_deadline or after_local_deadline(now, time(14, 0))):
         return freshness_row(target, True, f"no complete Spotify catalogue pass for Paris day {today}", oldest)
     return freshness_row(target, False, f"Spotify catalogue day {local_day(oldest)} is healthy", oldest)
 
