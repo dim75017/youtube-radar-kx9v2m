@@ -74,7 +74,9 @@ jobs:
           echo "STATE_DIR=$RUNNER_TEMP/soundcharts-fal-phase1" >> "$GITHUB_ENV"
           echo "STATE_DB=$RUNNER_TEMP/soundcharts-fal-phase1/soundcharts-fal-phase1-staging-v2.sqlite3" >> "$GITHUB_ENV"
           echo "REPORT_JSON=$RUNNER_TEMP/soundcharts-fal-phase1/soundcharts-fal-phase1-report-v2.json" >> "$GITHUB_ENV"
-          echo "SEED_LEDGER=$RUNNER_TEMP/soundcharts-fal-phase1/soundcharts-fal-seed-ledger-v2.json" >> "$GITHUB_ENV"
+          # Keep the freshly built ledger outside STATE_DIR: restoring the
+          # multi-GB checkpoint must never overwrite the current cohort.
+          echo "SEED_LEDGER=$RUNNER_TEMP/soundcharts-fal-current-seed-ledger-v2.json" >> "$GITHUB_ENV"
 
       - name: Validate FAL scanner and workflow guardrails
         run: |
@@ -205,11 +207,20 @@ jobs:
           import sys
           from pathlib import Path
 
+          from scan_soundcharts_fal_phase1 import FalPhase1Error, validate_report_seed_ledger
+
           current = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
           previous = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
           report = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
+          report_matches_current = True
+          try:
+              validate_report_seed_ledger(report, current)
+          except FalPhase1Error as exc:
+              report_matches_current = False
+              print(f"Completion control report is stale: {exc}")
           unchanged = bool(
-              current.get("cohort_hash")
+              report_matches_current
+              and current.get("cohort_hash")
               and current.get("cohort_hash") == previous.get("cohort_hash")
               and report.get("complete") is True
               and report.get("status") == "complete"
@@ -335,15 +346,24 @@ jobs:
           CHECKPOINT_NO_OP: ${{ steps.completion_control.outputs.no_op }}
         shell: bash
         run: |
-          python - "$REPORT_JSON" "$GITHUB_OUTPUT" "$STATE_DB" <<'PY'
+          python - "$REPORT_JSON" "$GITHUB_OUTPUT" "$STATE_DB" "$SEED_LEDGER" <<'PY'
           import json
           import os
           import sqlite3
           import sys
           from pathlib import Path
 
+          from scan_soundcharts_fal_phase1 import validate_report_seed_ledger
+
           report_path = Path(sys.argv[1])
           report = json.loads(report_path.read_text(encoding="utf-8"))
+          current_ledger = json.loads(Path(sys.argv[4]).read_text(encoding="utf-8"))
+          checkpoint_no_op = os.environ.get("CHECKPOINT_NO_OP") == "true"
+          validate_report_seed_ledger(
+              report,
+              current_ledger,
+              require_generation_match=not checkpoint_no_op,
+          )
           cohort_size = int((report.get("cohort") or {}).get("frozen_seeds") or 0)
           ledger = report.get("seed_ledger") or {}
           resolved = int(ledger.get("resolved_uuid") or 0)
@@ -355,7 +375,6 @@ jobs:
               )
           if cohort_size < resolved:
               raise SystemExit("Append-only FAL state contains fewer seeds than the current resolved ledger")
-          checkpoint_no_op = os.environ.get("CHECKPOINT_NO_OP") == "true"
           if checkpoint_no_op:
               checkpoint_scope = str((report.get("discographies") or {}).get("scope_version") or "")
           else:
@@ -459,7 +478,6 @@ jobs:
           path: |
             ${{ env.STATE_DB }}
             ${{ env.REPORT_JSON }}
-            ${{ env.SEED_LEDGER }}
           if-no-files-found: error
           retention-days: 90
           compression-level: 6

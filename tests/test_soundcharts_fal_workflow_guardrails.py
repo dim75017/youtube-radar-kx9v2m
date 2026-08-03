@@ -50,6 +50,14 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
             'echo "REPORT_JSON=$RUNNER_TEMP/soundcharts-fal-phase1/soundcharts-fal-phase1-report-v2.json" >> "$GITHUB_ENV"',
             self.workflow,
         )
+        self.assertIn(
+            'echo "SEED_LEDGER=$RUNNER_TEMP/soundcharts-fal-current-seed-ledger-v2.json" >> "$GITHUB_ENV"',
+            self.workflow,
+        )
+        self.assertNotIn(
+            'SEED_LEDGER=$RUNNER_TEMP/soundcharts-fal-phase1/',
+            self.workflow,
+        )
         self.assertIn("soundcharts-fal-phase1-staging-v2.sqlite3", self.workflow)
         self.assertIn("STATE_ARTIFACT: soundcharts-fal-phase1-state-v2", self.workflow)
         self.assertIn("LEGACY_STATE_ARTIFACT: soundcharts-fal-phase1-state", self.workflow)
@@ -58,8 +66,13 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("A newer legacy v1 checkpoint exists", self.workflow)
         self.assertIn("PRAGMA quick_check", self.workflow)
         state_upload = self.workflow.index("Persist the private resumable FAL staging state")
+        control_upload = self.workflow.index("Persist the small FAL completion control")
         report_upload = self.workflow.index("Preserve the immutable FAL phase-1 run report")
         upload_section = self.workflow[state_upload:report_upload]
+        state_section = self.workflow[state_upload:control_upload]
+        control_section = self.workflow[control_upload:report_upload]
+        self.assertNotIn("${{ env.SEED_LEDGER }}", state_section)
+        self.assertIn("${{ env.SEED_LEDGER }}", control_section)
         self.assertIn("always() &&", upload_section)
         self.assertIn("steps.restore_state.outcome == 'success'", upload_section)
         self.assertIn("retention-days: 90", self.workflow[state_upload:])
@@ -146,6 +159,8 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
             self.workflow,
         )
         self.assertIn("skipped the multi-GB state download", self.workflow)
+        self.assertIn("validate_report_seed_ledger(report, current)", self.workflow[control:restore])
+        self.assertIn("Completion control report is stale", self.workflow[control:restore])
         self.assertIn("if: steps.completion_control.outputs.no_op != 'true'", self.workflow[restore:])
         self.assertIn("steps.completion_control.outputs.no_op != 'true'", self.workflow[upload:report])
         self.assertIn("steps.completion_control.outputs.no_op == 'true'", self.workflow[upload:report])
@@ -155,6 +170,8 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("CHECKPOINT_NO_OP: ${{ steps.completion_control.outputs.no_op }}", completion_section)
         self.assertIn('if checkpoint_no_op:', completion_section)
         self.assertIn('report.get("discographies")', completion_section)
+        self.assertIn('current_ledger = json.loads(Path(sys.argv[4])', completion_section)
+        self.assertIn("require_generation_match=not checkpoint_no_op", completion_section)
         self.assertNotIn("queue: max", self.workflow)
 
     def test_seed_transition_is_validated_before_state_restore_or_authentication(self):
