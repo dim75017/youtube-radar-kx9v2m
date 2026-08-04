@@ -585,10 +585,11 @@ function dailyRecommendationSet(){
     // learning still controls rank through dailyScore, but it must not relabel
     // an objectively measured S as A merely because a broad topic was refused.
     const evidenceScore=Number(r.score!=null?r.score:r.scoreAdj);
-    const visibleScore=Math.round(Number.isFinite(evidenceScore)?evidenceScore:dailyScore);
-    const evidencePotential=Number(r._scoringVersion)>=4
-      ?recoPotentialForScore(visibleScore)
-      :(String(r.pot||'').trim()||recoPotentialForScore(visibleScore));
+    const calibratedEvidence=Number(r._scoringVersion)>=4&&Number.isFinite(evidenceScore);
+    // Legacy tiers predate objective V4 calibration. They keep the adaptive
+    // score/grade instead of reviving old, inflated S labels.
+    const visibleScore=Math.round(calibratedEvidence?evidenceScore:dailyScore);
+    const evidencePotential=recoPotentialForScore(visibleScore);
     return Object.assign({},r,{scoreAdj:visibleScore,pot:evidencePotential,_dailyScore:dailyScore,_dailyPotential:recoPotentialForScore(dailyScore),_dailyReasons:recoReasons(r,profile,day),_dailyProfile:profile});
   });
   const todayIds=Array.isArray(history[day])?history[day]:[];

@@ -148,6 +148,18 @@ assert.ok(String(tierBatch[0].pot).startsWith('S'),
 assert.equal(tierBatch[0].scoreAdj, 95,
   'the visible score remains consistent with the objective S tier');
 
+const legacyS = Object.assign({}, objectiveS, {n: 9001, _scoringVersion: undefined});
+const legacyTierStored = new Map([
+  ['lofi_radar_reco_rotation_v3', JSON.stringify({[tierDayKey]: [legacyS.n]})],
+]);
+const legacyTierContext = makeContext([legacyS, ...negativePeers], legacyTierStored, []);
+const legacyTierBatch = legacyTierContext.dailyRecommendationSet();
+assert.ok(legacyTierBatch[0]._dailyScore < 95, 'the same negative feedback demotes the legacy idea');
+assert.ok(!String(legacyTierBatch[0].pot).startsWith('S'),
+  'an uncalibrated legacy S label cannot return after V4 launches');
+assert.equal(legacyTierBatch[0].scoreAdj, Math.round(legacyTierBatch[0]._dailyScore),
+  'legacy visible score and tier stay aligned with adaptive evidence');
+
 const previousIds = new Set(daily.map(row => row.n));
 context.refreshDailyRecommendations({stopPropagation() {}});
 const refreshed = context.dailyRecommendationSet();
