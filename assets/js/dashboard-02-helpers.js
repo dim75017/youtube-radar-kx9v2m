@@ -488,6 +488,10 @@ function setSync(state,txt){
   refreshUpdateStatus();
 }
 async function fetchData(){
+  // The shared helper hydrates its local cache synchronously, then refreshes the
+  // central state in the background. Never hold up the live catalogue fetch on
+  // Apps Script availability.
+  if(typeof loadSharedRecommendationState==='function')Promise.resolve(loadSharedRecommendationState()).catch(()=>{});
   const res=await fetch(XLSX_URL,{redirect:'follow'});
   if(!res.ok)throw new Error('HTTP '+res.status);
   const buf=await res.arrayBuffer();
@@ -799,6 +803,9 @@ async function boot(){
   if(window.__radarDataReady||window.__radarRecommendationPoolReady){
     try{await Promise.all([window.__radarDataReady,window.__radarRecommendationPoolReady].filter(Boolean));}catch(e){}
   }
+  // Apply the cached team state before the recommendation pool is merged, but
+  // keep the network refresh non-blocking so first paint stays immediate.
+  if(typeof loadSharedRecommendationState==='function')Promise.resolve(loadSharedRecommendationState()).catch(()=>{});
   const cache=loadCache();
   const snap=(window.LOFI_DATA&&window.LOFI_DATA.d)?window.LOFI_DATA:null;
   let best=null,src='';

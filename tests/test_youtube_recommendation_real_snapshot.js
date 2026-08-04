@@ -171,8 +171,15 @@ const snapshotTime = Number(dataPayload.videoMetricsT || dataPayload.t || poolPa
 const owned = dataPayload.d.ours || [];
 const generated = poolPayload.items || [];
 
-assert.equal(poolPayload.version, 2, 'the checked-in recommendation reservoir must be V2');
-assert.ok(generated.length >= 20, 'the real V2 reservoir must contain at least 20 ideas');
+assert.equal(poolPayload.schema, 3, 'the checked-in recommendation browser projection must use schema V3');
+assert.equal(poolPayload.version, 3, 'the checked-in recommendation reservoir must use generator V3');
+assert.equal(generated.length, 2500, 'the bounded real browser projection must contain 2,500 ideas');
+assert.ok(poolPayload.ledger && Number(poolPayload.ledger.total) >= generated.length,
+  'the append-only ledger must be larger than or equal to the bounded browser projection');
+assert.match(String(poolPayload.buildId || ''), /^[a-f0-9]{24}$/,
+  'the V3 projection must expose its deterministic build id');
+assert.match(String(poolPayload.ledgerRevision || ''), /^[a-f0-9]{64}$/,
+  'the V3 projection must expose its exact ledger revision');
 assert.equal(owned.length, 50, 'the real owned-channel snapshot must still expose all 50 videos');
 assert.ok(Number.isFinite(snapshotTime), 'the real snapshot must expose a stable measurement timestamp');
 assert.ok(historyFiles.length >= 1, 'at least one real history shard must be loaded');
@@ -183,7 +190,14 @@ const allowedGenres = new Set([
 ]);
 for (const row of generated) {
   assert.equal(row._generated, true, `pool row ${row.n} must be identified as generated`);
-  assert.equal(row._generatorVersion, 2, `pool row ${row.n} must come from generator V2`);
+  assert.ok(row._generatorVersion === 2 || row._generatorVersion === 3,
+    `pool row ${row.n} must be a losslessly bootstrapped V2 item or a source-backed V3 item`);
+  if (row._generatorVersion === 3) {
+    assert.match(String(row._ideaKey || ''), /^g3\|r1\|/,
+      `V3 pool row ${row.n} must expose its stable recipe key`);
+    assert.equal(row._recipeVersion, 1, `V3 pool row ${row.n} must use recipe schema 1`);
+    assert.ok(Number.isSafeInteger(Number(row.n)), `V3 pool row ${row.n} must use a JS-safe stable id`);
+  }
   assert.equal(row._scoringVersion, 4, `pool row ${row.n} must use evidence-calibrated scoring V4`);
   assert.ok(Number.isFinite(Number(row._sourceAgeM)), `pool row ${row.n} must expose a measured source age`);
   assert.ok(Number(row._sourceAgeM) >= 0 && Number(row._sourceAgeM) <= 12,
@@ -193,8 +207,12 @@ for (const row of generated) {
   assert.equal(Object.prototype.hasOwnProperty.call(row, '_continuousVariant'), false,
     `pool row ${row.n} must not be a browser-fabricated continuous variant`);
 }
+assert.ok(generated.some(row => row._generatorVersion === 2),
+  'the V3 projection must preserve the existing V2 recommendation identities');
+assert.ok(generated.some(row => row._generatorVersion === 3),
+  'the V3 projection must expose newly generated ledger-backed ideas');
 assert.deepEqual(new Set(generated.map(row => row._sourceWindow)), allowedWindows,
-  'the real V2 reservoir must cover 0-3m, 3-6m and 6-12m');
+  'the real mixed V2/V3 reservoir must cover 0-3m, 3-6m and 6-12m');
 const generatedTiers = new Set(generated.map(row => String(row.pot || '')[0]));
 assert.ok(generatedTiers.has('S'), 'the real measured reservoir must expose evidence-backed S ideas');
 assert.ok(generatedTiers.has('A') && generatedTiers.has('B'),

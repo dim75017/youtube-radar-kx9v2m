@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "generatorVersion": 3,
+  "updatedAt": 1785858709654,
+  "sourceT": 1785835113086,
+  "count": 2981,
+  "shards": [
+    {
+      "path": "shards/2026-08.jsonl",
+      "count": 2981,
+      "bytes": 5436626,
+      "sha256": "74a2d3a63f49cc5152aa5f5c89a49d71f84f4a5cb6acc0f472e3842a0b221ccf"
+    }
+  ],
+  "revision": "57a8b0d80aaed86229b7776e9ad442924141647d03e1a1815d5faf02447521bf"
+}

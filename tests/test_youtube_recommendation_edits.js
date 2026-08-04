@@ -35,7 +35,8 @@ const editContext = {
 vm.runInNewContext(`${recommendationSource.slice(editStart, editEnd)};
   this.readEdits = recommendationEdits;
   this.saveEdits = saveRecommendationEdits;
-  this.applyEdits = applyRecommendationEdits;`, editContext);
+  this.applyEdits = applyRecommendationEdits;
+  this.replaceSharedState = replaceSharedRecommendationState;`, editContext);
 
 const data = {
   recos: [
@@ -60,6 +61,21 @@ assert.deepEqual(
   'the persisted overlay restores title and both description fields after a reload',
 );
 assert.equal(data.recos[1].title, 'Untouched title', 'recommendations without an edit remain unchanged');
+
+editContext.replaceSharedState({version: 2, updatedAt: 500, items: [{
+  n: 7,
+  editedTitle: 'Team title',
+  editedConcept: 'Team concept',
+  editedDesc: 'Team description',
+  updatedAt: 500,
+}]}, true);
+const sharedData = {recos: [{n: 7, title: 'Original title', concept: 'Original concept', desc: 'Original description'}]};
+editContext.applyEdits(sharedData);
+assert.deepEqual(
+  {title: sharedData.recos[0].title, concept: sharedData.recos[0].concept, desc: sharedData.recos[0].desc, shared: sharedData.recos[0]._sharedEdited},
+  {title: 'Team title', concept: 'Team concept', desc: 'Team description', shared: true},
+  'the central team edit overrides the stale local fallback after synchronization',
+);
 
 editContext.saveEdits({9: {title: 'Another title', concept: '', desc: 'Another description'}});
 assert.deepEqual(
@@ -112,6 +128,7 @@ for (const required of [
   'reco-edit-desc',
   'function saveRecoEditor(',
   'saveRecommendationEdits(edits)',
+  'saveSharedRecommendationEdit(r,edit)',
 ]) {
   assert.ok(editor.includes(required), 'Missing recommendation editor behavior: ' + required);
 }

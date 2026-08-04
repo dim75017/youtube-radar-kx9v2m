@@ -200,8 +200,8 @@ assert.equal(new Set(repairedQueue.map(row => row.n)).size, 50,
 const persistedRegression = JSON.parse(regressionStored.get('lofi_radar_reco_rotation_v3'));
 assert.deepEqual(persistedRegression[todayKey], repairedQueue.map(row => row.n),
   'the replenished 50-card order is persisted for the rest of the day');
-assert.ok(originalQueue.slice(0, 29).every(id => persistedRegression._recent.ids.includes(id)),
-  'all 29 removed IDs remain in the same-day anti-repeat history');
+assert.ok(originalQueue.slice(0, 29).every(id => persistedRegression._consumed.includes(id)),
+  'all 29 removed IDs remain in the durable anti-repeat history');
 assert.equal(regressionStored.get('lofi_radar_generated_reco_decisions_v1'), decisionSentinel,
   'replenishment never rewrites the generated-decision store');
 

@@ -52,6 +52,26 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
             '"history_updated":3273,"history_day":"2026-07-29","day_timezone":"Europe/Paris",'
             '"partial":false}}};',
         )
+        write(
+            self.root / "Lofi_Radar_recommendation_pool.js",
+            'window.LOFI_RECOMMENDATION_POOL={"schema":3,"version":3,'
+            f'"sourceT":{stamp},"feedbackT":{stamp},"buildId":"build-current",'
+            '"ledgerRevision":"ledger-current","ledger":{"total":0,"pending":0,"appended":0},"items":[]};',
+        )
+        write(
+            self.root / "youtube_recommendation_ledger/manifest.json",
+            json.dumps(
+                {
+                    "schema": 1,
+                    "generatorVersion": 3,
+                    "sourceT": stamp,
+                    "updatedAt": "2026-07-29T06:00:00Z",
+                    "count": 0,
+                    "revision": "ledger-current",
+                    "shards": [],
+                }
+            ),
+        )
         write(self.root / "Lofi_Radar_chx.js", f'window.CHX={{"t":{stamp},"lg":{{}}}};')
 
     def tearDown(self):
@@ -174,6 +194,57 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         self.assertTrue(row.due)
         self.assertIn("3264/3271", row.reason)
 
+    def test_recommendations_follow_the_exact_factual_source_without_a_size_floor(self):
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["youtube_recommendations"],
+        )[0]
+        self.assertFalse(row.due)
+        self.assertIn("build-current", row.reason)
+
+    def test_recommendations_are_due_when_the_factual_source_moves(self):
+        stamp = int(datetime(2026, 7, 29, 7, tzinfo=timezone.utc).timestamp() * 1000)
+        write(
+            self.root / "Lofi_Radar_data.js",
+            f'window.LOFI_DATA={{"videoMetricsT":{stamp},"videoMetrics":{{"tracked":100,"updated":100,'
+            '"history_updated":100,"history_day":"2026-07-29","day_timezone":"Europe/Paris",'
+            '"partial":false}}};',
+        )
+        row = subject.assess(self.root, datetime(2026, 7, 29, 11, tzinfo=timezone.utc), ["youtube_recommendations"])[0]
+        self.assertTrue(row.due)
+        self.assertIn("factual source", row.reason)
+
+    def test_recommendations_are_due_on_generator_or_ledger_mismatch(self):
+        pool = self.root / "Lofi_Radar_recommendation_pool.js"
+        raw = pool.read_text(encoding="utf-8")
+        pool.write_text(raw.replace('"version":3', '"version":2'), encoding="utf-8")
+        version = subject.assess(self.root, datetime(2026, 7, 29, 11, tzinfo=timezone.utc), ["youtube_recommendations"])[0]
+        self.assertTrue(version.due)
+        self.assertIn("generator version", version.reason)
+
+        pool.write_text(raw.replace('"ledgerRevision":"ledger-current"', '"ledgerRevision":"ledger-old"'), encoding="utf-8")
+        revision = subject.assess(self.root, datetime(2026, 7, 29, 11, tzinfo=timezone.utc), ["youtube_recommendations"])[0]
+        self.assertTrue(revision.due)
+        self.assertIn("revisions differ", revision.reason)
+
+    def test_malformed_recommendation_metadata_is_due_instead_of_crashing(self):
+        pool = self.root / "Lofi_Radar_recommendation_pool.js"
+        raw = pool.read_text(encoding="utf-8")
+        pool.write_text(raw.replace('"version":3', '"version":"broken"'), encoding="utf-8")
+        row = subject.assess(self.root, datetime(2026, 7, 29, 11, tzinfo=timezone.utc), ["youtube_recommendations"])[0]
+        self.assertTrue(row.due)
+        self.assertIn("invalid recommendation state", row.reason)
+
+    def test_recommendations_are_due_when_the_six_hour_refresh_stops(self):
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 16, tzinfo=timezone.utc),
+            ["youtube_recommendations"],
+        )[0]
+        self.assertTrue(row.due)
+        self.assertIn("older than nine hours", row.reason)
+
     def test_youtube_history_count_and_timezone_must_match_the_complete_scan(self):
         stamp = int(datetime(2026, 7, 29, 6, tzinfo=timezone.utc).timestamp() * 1000)
         write(
@@ -249,6 +320,10 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         now = datetime(2026, 7, 29, 12, tzinfo=timezone.utc)
         active = [{"event": "workflow_dispatch", "status": "in_progress", "created_at": "2026-07-29T11:50:00Z"}]
         self.assertEqual(subject.dispatch_decision(status, active, now)[1], "active run already exists")
+        push = [{"event": "push", "status": "queued", "created_at": "2026-07-29T11:55:00Z"}]
+        self.assertEqual(subject.dispatch_decision(status, push, now)[1], "active run already exists")
+        chained = [{"event": "workflow_run", "status": "in_progress", "created_at": "2026-07-29T11:55:00Z"}]
+        self.assertEqual(subject.dispatch_decision(status, chained, now)[1], "active run already exists")
         recent = [{"event": "schedule", "status": "completed", "created_at": "2026-07-29T11:40:00Z"}]
         self.assertIn("cooldown", subject.dispatch_decision(status, recent, now)[1])
         old = [{"event": "schedule", "status": "completed", "created_at": "2026-07-29T10:00:00Z"}]
@@ -285,6 +360,11 @@ class DataFreshnessWorkflowGuardrailTests(unittest.TestCase):
         self.assertIn("contents: read", workflow)
         self.assertNotIn("SOUNDCHARTS_CLIENT_SECRET", workflow)
         self.assertIn("data_freshness_watchdog.py --dispatch", workflow)
+        self.assertIn("Refresh YouTube recommendations", workflow)
+        self.assertIn("youtube_recommendation_ledger/manifest.json", workflow)
+        source = Path("data_freshness_watchdog.py").read_text(encoding="utf-8")
+        self.assertIn('"youtube_recommendations": Target(', source)
+        self.assertIn('"refresh-youtube-recommendations.yml"', source)
 
     def test_collectors_recheck_freshness_before_expensive_work(self):
         expected = {
