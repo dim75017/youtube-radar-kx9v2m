@@ -9,6 +9,7 @@ from the daily instrumental discovery corpus; it never replaces Sheet rows.
 from __future__ import annotations
 
 import argparse
+import bisect
 from collections import Counter, defaultdict
 import hashlib
 import json
@@ -25,12 +26,13 @@ VARIANTS_PER_SOURCE = 3
 DEFAULT_MAX_ITEMS = 3_000
 CURRENT_SOURCE_MAX_AGE_MONTHS = 12.0
 SOURCE_WINDOW_ORDER = {"0-3m": 0, "3-6m": 1, "6-12m": 2}
-SOURCE_WINDOW_SCORE_BANDS = {
-    "0-3m": (89, 96),
-    "3-6m": (81, 88),
-    "6-12m": (72, 80),
-}
 FEEDBACK_MARKET_WEIGHT = 18.0
+SCORING_VERSION = 4
+MIN_SOURCE_VIEWS = 100_000
+MIN_SOURCE_VPM = 30_000
+SOURCE_SCORE_FLOOR = 68
+SOURCE_SCORE_SPAN = 27
+SOURCE_WINDOW_RECENCY_BONUS = {"0-3m": 2, "3-6m": 1, "6-12m": 0}
 
 
 PROFILES = {
@@ -359,7 +361,16 @@ def _source_rows(data: dict, feedback_profile: dict) -> list[dict]:
     for bucket in ("all", "trends", "news"):
         for row in data.get(bucket) or []:
             video_id = str(row.get("vid") or "").strip()
-            if not video_id or not row.get("title") or _profile_key(row) is None or _source_window(row) is None:
+            views = max(0.0, float(row.get("views") or 0))
+            vpm = max(0.0, float(row.get("vpm") or 0))
+            if (
+                not video_id
+                or not row.get("title")
+                or _profile_key(row) is None
+                or _source_window(row) is None
+                or views < MIN_SOURCE_VIEWS
+                or vpm < MIN_SOURCE_VPM
+            ):
                 continue
             current = by_video.get(video_id)
             if current is None or _source_rank_value(row, feedback_profile) > _source_rank_value(current, feedback_profile):
@@ -390,10 +401,71 @@ def _coherent_title(profile: dict, purpose_key: str, setting: str, atmosphere: s
     return pattern.format(setting=setting, atmosphere=atmosphere, format=profile["format"])
 
 
-def _window_score(window: str, rank: int, count: int) -> tuple[int, float]:
-    low, high = SOURCE_WINDOW_SCORE_BANDS[window]
-    percentile = 1.0 if count <= 1 else 1.0 - rank / (count - 1)
-    return round(low + percentile * (high - low)), percentile
+def _percentile(sorted_values: list[float], value: float) -> float:
+    if len(sorted_values) <= 1:
+        return 0.5
+    rank = bisect.bisect_right(sorted_values, value) - 1
+    raw = max(0.0, min(1.0, rank / (len(sorted_values) - 1)))
+    # A tiny niche must not manufacture an elite percentile. Pull small
+    # cohorts toward neutral until they contain enough comparable evidence.
+    support = min(1.0, (len(sorted_values) - 1) / 19.0)
+    return 0.5 + (raw - 0.5) * support
+
+
+def _source_score_context(sources: list[dict]) -> dict:
+    values = {
+        str(source.get("vid") or ""): _market_value(source)
+        for source in sources
+    }
+    by_genre: dict[str, list[float]] = defaultdict(list)
+    for source in sources:
+        genre_key = _profile_key(source)
+        if genre_key is not None:
+            by_genre[genre_key].append(values[str(source.get("vid") or "")])
+    return {
+        "values": values,
+        "global": sorted(values.values()),
+        "by_genre": {genre: sorted(rows) for genre, rows in by_genre.items()},
+    }
+
+
+def _absolute_source_strength(source: dict) -> float:
+    views = max(1.0, float(source.get("views") or 0))
+    vpm = max(1.0, float(source.get("vpm") or 0))
+    views_strength = (math.log10(views) - math.log10(MIN_SOURCE_VIEWS)) / (
+        math.log10(10_000_000) - math.log10(MIN_SOURCE_VIEWS)
+    )
+    velocity_strength = (math.log10(vpm) - math.log10(MIN_SOURCE_VPM)) / (
+        math.log10(1_000_000) - math.log10(MIN_SOURCE_VPM)
+    )
+    views_strength = max(0.0, min(1.0, views_strength))
+    velocity_strength = max(0.0, min(1.0, velocity_strength))
+    return views_strength * 0.35 + velocity_strength * 0.65
+
+
+def _source_score(source: dict, context: dict) -> tuple[int, float]:
+    video_id = str(source.get("vid") or "")
+    value = float(context["values"][video_id])
+    global_percentile = _percentile(context["global"], value)
+    genre_values = context["by_genre"].get(_profile_key(source)) or context["global"]
+    genre_percentile = _percentile(genre_values, value)
+    relative_strength = global_percentile * 0.70 + genre_percentile * 0.30
+    # Absolute views and velocity remain authoritative. Relative rank refines
+    # comparisons across the catalogue but can never turn a tiny cohort into S.
+    strength = _absolute_source_strength(source) * 0.65 + relative_strength * 0.35
+    recency_bonus = SOURCE_WINDOW_RECENCY_BONUS[_source_window(source)]
+    score = round(SOURCE_SCORE_FLOOR + strength * SOURCE_SCORE_SPAN + recency_bonus)
+    return max(SOURCE_SCORE_FLOOR, min(99, score)), strength
+
+
+def _potential_for_score(score: int) -> str:
+    if score >= 95:
+        return "S - Rente potentielle"
+    if score >= 88:
+        return "A - Fort"
+    if score >= 78:
+        return "B - Solide"
+    return "C - À tester"
 
 
 def _legacy_recommendation_id(source_video_id: object, variant: int) -> int:
@@ -412,8 +484,7 @@ def generate_recommendation_pool(data: dict, *, max_items: int | None = None) ->
     rows: list[dict] = []
     used_titles: set[str] = set()
     used_ids: set[int] = set()
-    window_counts = Counter(_source_window(source) for source in sources)
-    window_ranks: Counter = Counter()
+    score_context = _source_score_context(sources)
     for source in sources:
         profile_key = _profile_key(source)
         if profile_key is None:
@@ -424,9 +495,7 @@ def generate_recommendation_pool(data: dict, *, max_items: int | None = None) ->
         source_age = _source_age_months(source)
         if source_window is None or source_age is None:
             continue
-        window_rank = window_ranks[source_window]
-        window_ranks[source_window] += 1
-        score, percentile = _window_score(source_window, window_rank, window_counts[source_window])
+        score, percentile = _source_score(source, score_context)
         evidence = _market_value(source)
         feedback_affinity = _feedback_affinity(feedback_profile, profile_key, purpose_key)
         for variant in range(VARIANTS_PER_SOURCE):
@@ -455,7 +524,7 @@ def generate_recommendation_pool(data: dict, *, max_items: int | None = None) ->
             rows.append({
                 "n": reco_id,
                 "valid": "",
-                "pot": "A - Fort" if score >= 88 else "B - Solide" if score >= 78 else "C - À tester",
+                "pot": _potential_for_score(score),
                 "score": score,
                 "scoreAdj": score,
                 "genre": profile["genre"],
@@ -483,6 +552,7 @@ def generate_recommendation_pool(data: dict, *, max_items: int | None = None) ->
                 "_purposeKey": purpose_key,
                 "_settingKey": _normal(setting),
                 "_feedbackAffinity": round(feedback_affinity, 4),
+                "_scoringVersion": SCORING_VERSION,
                 **({"_legacyN": _legacy_recommendation_id(source.get("vid"), variant)} if variant < 2 else {}),
                 "_generatorVersion": GENERATOR_VERSION,
             })
