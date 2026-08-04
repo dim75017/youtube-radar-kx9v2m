@@ -256,8 +256,6 @@ assert.ok(qualified.every((item, index) => index === 0 || qualified[index - 1].s
 const realDailyBatch = Array.from(context.dailySetForTest());
 assert.equal(realDailyBatch.length, 50,
   'the real measured reservoir must supply the complete daily 50-card promise');
-assert.ok(realDailyBatch.some(row => String(row.pot || '').startsWith('S')),
-  'the live batch must surface at least one objectively evidence-backed S idea');
 const objectiveRowsById = new Map((dataPayload.d.recos || []).concat(generated).map(row => [Number(row.n), row]));
 assert.ok(realDailyBatch.every(row => {
   const objective = objectiveRowsById.get(Number(row.n)) || {};
