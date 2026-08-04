@@ -15,6 +15,7 @@ import concurrent.futures
 import datetime as dt
 import json
 import os
+import re
 import shutil
 import sqlite3
 import tempfile
@@ -78,6 +79,7 @@ MAX_QUEUE_MIGRATION = 10_000
 ARTIST_GATE_BUDGET_PERCENT = 80
 DEFAULT_MIN_TRACK_STREAMS = 100_000
 DEFAULT_STREAM_HISTORY_DAYS = 90
+SPOTIFY_TRACK_ID_RE = re.compile(r"^[0-9A-Za-z]{22}$")
 STREAM_GATE_META_VERSION = "spotify_lifetime_streams_v1"
 STREAM_GATE_SEED_DECISIONS = (
     "review_evidence_ready",
@@ -1385,35 +1387,81 @@ def _walk_mappings(value: Any):
             yield from _walk_mappings(child)
 
 
-def extract_stream_gate_points(response: Any, spotify_id: str = "") -> list[list[Any]]:
-    """Extract cumulative Spotify streams without accepting an alias guess."""
+@dataclass(frozen=True)
+class StreamGateMeasurement:
+    """A cumulative stream series bound to a verified Spotify identifier."""
 
-    identifier = str(spotify_id or "").strip()
-    if identifier:
-        return extract_song_audience_points(
-            response,
-            identifier,
-            require_identifier_match=True,
-        )
+    spotify_id: str
+    aliases: tuple[str, ...]
+    points: list[list[Any]]
+    ambiguous: bool = False
 
-    # Without a Spotify identifier, Soundcharts may expose several aliases in
-    # one SongPlot.  Accept only the unambiguous single-numeric-plot shape.
-    found_numeric = False
+
+def extract_stream_gate_measurement(
+    response: Any,
+    spotify_id: str = "",
+) -> StreamGateMeasurement:
+    """Extract one exact Spotify series and retain its platform identifier.
+
+    The audience endpoint returns Spotify identifiers on each numeric plot.  A
+    missing local identifier may therefore be completed without a second API
+    endpoint, but only when the response exposes exactly one valid Spotify
+    track ID.  Multiple aliases remain in review instead of being guessed.
+    """
+
+    raw_preferred = str(spotify_id or "").strip()
+    preferred = raw_preferred if SPOTIFY_TRACK_ID_RE.fullmatch(raw_preferred) else ""
+    aliases: set[str] = set()
     for item in _walk_mappings(response):
         plots = item.get("plots")
         if not isinstance(plots, list):
             continue
-        numeric = [
-            plot
-            for plot in plots
-            if isinstance(plot, Mapping) and isinstance(plot.get("value"), (int, float))
-        ]
-        if len(numeric) > 1:
-            return []
-        found_numeric = found_numeric or len(numeric) == 1
-    if not found_numeric:
-        return []
-    return extract_song_audience_points(response, "", require_identifier_match=False)
+        for plot in plots:
+            if not isinstance(plot, Mapping):
+                continue
+            identifier = str(plot.get("identifier") or "").strip()
+            if (
+                SPOTIFY_TRACK_ID_RE.fullmatch(identifier)
+                and isinstance(plot.get("value"), (int, float))
+            ):
+                aliases.add(identifier)
+
+    if preferred:
+        points = extract_song_audience_points(
+            response,
+            preferred,
+            require_identifier_match=True,
+        )
+        return StreamGateMeasurement(
+            spotify_id=preferred,
+            aliases=tuple(sorted(aliases)),
+            points=points,
+            ambiguous=False,
+        )
+    if len(aliases) != 1:
+        return StreamGateMeasurement(
+            spotify_id="",
+            aliases=tuple(sorted(aliases)),
+            points=[],
+            ambiguous=len(aliases) > 1,
+        )
+    discovered = next(iter(aliases))
+    return StreamGateMeasurement(
+        spotify_id=discovered,
+        aliases=(discovered,),
+        points=extract_song_audience_points(
+            response,
+            discovered,
+            require_identifier_match=True,
+        ),
+        ambiguous=False,
+    )
+
+
+def extract_stream_gate_points(response: Any, spotify_id: str = "") -> list[list[Any]]:
+    """Compatibility wrapper returning the exact cumulative Spotify points."""
+
+    return extract_stream_gate_measurement(response, spotify_id).points
 
 
 class StreamGateScanner:
@@ -1486,7 +1534,20 @@ class StreamGateScanner:
     def _store_result(self, row: sqlite3.Row, response: Any) -> None:
         uuid = str(row["track_uuid"])
         spotify_id = str(row["spotify_id"] or "").strip()
-        points = extract_stream_gate_points(response, spotify_id)
+        if spotify_id and not SPOTIFY_TRACK_ID_RE.fullmatch(spotify_id):
+            self.phase2.execute(
+                "UPDATE fal_phase2_stream_gate SET spotify_id=NULL WHERE track_uuid=?",
+                (uuid,),
+            )
+            self.phase2.execute(
+                """UPDATE fal_phase2_details SET spotify_id=NULL
+                     WHERE track_uuid=? AND spotify_id=?""",
+                (uuid, spotify_id),
+            )
+            spotify_id = ""
+        measurement = extract_stream_gate_measurement(response, spotify_id)
+        resolved_spotify_id = measurement.spotify_id
+        points = measurement.points
         valid_points = [
             [str(point[0]), int(point[1])]
             for point in points
@@ -1496,25 +1557,66 @@ class StreamGateScanner:
             and int(point[1]) >= 0
         ]
         now = utc_now()
+        if resolved_spotify_id and resolved_spotify_id != spotify_id:
+            duplicate = self.phase2.execute(
+                """SELECT track_uuid FROM fal_phase2_details
+                     WHERE track_uuid<>? AND spotify_id=?
+                     UNION
+                   SELECT track_uuid FROM fal_phase2_stream_gate
+                     WHERE track_uuid<>? AND spotify_id=?
+                     LIMIT 1""",
+                (uuid, resolved_spotify_id, uuid, resolved_spotify_id),
+            ).fetchone()
+            if duplicate:
+                self.phase2.execute(
+                    """UPDATE fal_phase2_stream_gate
+                          SET spotify_id=?,gate_status='review_spotify_identity_duplicate',
+                              reason='spotify_identifier_already_bound_to_another_track',
+                              streams_total=NULL,source_date=NULL,history_json='[]',
+                              attempts=0,error_code=NULL,updated_at=?
+                        WHERE track_uuid=?""",
+                    (resolved_spotify_id, now, uuid),
+                )
+                return
+            self.phase2.execute(
+                """UPDATE fal_phase2_details
+                      SET spotify_id=?
+                    WHERE track_uuid=?""",
+                (resolved_spotify_id, uuid),
+            )
+            self.phase2.execute(
+                """UPDATE fal_phase2_stream_gate
+                      SET spotify_id=?
+                    WHERE track_uuid=?""",
+                (resolved_spotify_id, uuid),
+            )
         if not valid_points:
             self.phase2.execute(
                 """UPDATE fal_phase2_stream_gate
                       SET gate_status='review_streams_unknown',
-                          reason='spotify_stream_history_missing_or_ambiguous',
+                          reason=?,
                           streams_total=NULL,source_date=NULL,history_json='[]',
                           attempts=0,error_code=NULL,updated_at=?
                     WHERE track_uuid=?""",
-                (now, uuid),
+                (
+                    "spotify_identifiers_ambiguous"
+                    if measurement.ambiguous
+                    else "spotify_stream_history_missing_or_ambiguous",
+                    now,
+                    uuid,
+                ),
             )
             return
         source_date, streams_total = valid_points[-1]
         passed = streams_total >= self.min_track_streams
         self.phase2.execute(
             """UPDATE fal_phase2_stream_gate
-                  SET gate_status=?,reason=?,streams_total=?,source_date=?,history_json=?,
+                  SET spotify_id=COALESCE(NULLIF(?,''),spotify_id),
+                      gate_status=?,reason=?,streams_total=?,source_date=?,history_json=?,
                       attempts=0,error_code=NULL,updated_at=?
                 WHERE track_uuid=?""",
             (
+                resolved_spotify_id,
                 "eligible" if passed else "blocked_streams_below_threshold",
                 "lifetime_stream_threshold_met" if passed else "lifetime_streams_below_threshold",
                 streams_total,
