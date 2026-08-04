@@ -149,13 +149,15 @@ function videoHistCopy(){
     h24:'24 dernières heures',d7:'7 derniers jours',d30:'30 derniers jours',all:'Tout',
     gained:'vues gagnées',building:'Historique en cours',previous:'vs période précédente',
     measured:'mesuré sur ',hours:' h',days:' j',perHour:'/h',perDay:'/j',
-    chart:'Historique des vues',dailyChart:'Vues gagnées par jour',dailySince:'mesurées à partir du 20 juillet 2026'
+    chart:'Historique des vues',dailyChart:'Vues gagnées par jour',dailySince:'mesurées à partir du 20 juillet 2026',
+    missingScans:'relevés quotidiens manquants',lastExact:'dernier compteur total exact',noInterpolation:'aucune interpolation'
   }:{
     title:'📊 Scan performance',note:'Measured data · no extrapolation',
     h24:'Last 24 hours',d7:'Last 7 days',d30:'Last 30 days',all:'All history',
     gained:'views gained',building:'History building up',previous:'vs previous period',
     measured:'measured over ',hours:' h',days:' d',perHour:'/h',perDay:'/day',
-    chart:'View history',dailyChart:'Views gained per day',dailySince:'measured from 20 July 2026'
+    chart:'View history',dailyChart:'Views gained per day',dailySince:'measured from 20 July 2026',
+    missingScans:'missing daily observations',lastExact:'latest exact total counter',noInterpolation:'no interpolation'
   };
 }
 function cleanVideoHist(pts){
@@ -176,7 +178,7 @@ function videoHistoryDayKey(timestamp){
 function videoHistoryDayTimestamp(day){
   return Date.parse(day+'T12:00:00Z');
 }
-function dailyViewDeltas(pts){
+function dailyViewSeries(pts){
   const byDay=new Map();
   cleanVideoHist(pts).forEach(point=>{
     const day=videoHistoryDayKey(point[0]);
@@ -185,14 +187,34 @@ function dailyViewDeltas(pts){
     if(!previous||point[0]>=previous[0])byDay.set(day,point);
   });
   const days=[...byDay.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
-  const out=[];
+  const out=[],missingObservations=[];
+  if(days.length<2)return {
+    points:out,missingObservations,start:null,
+    end:days.length?videoHistoryDayTimestamp(days[0][0]):null,
+    latestTotal:days.length?days[0][1][1]:null
+  };
+  const firstDay=days[0][0],lastDay=days[days.length-1][0];
+  const firstMs=Date.parse(firstDay+'T00:00:00Z'),lastMs=Date.parse(lastDay+'T00:00:00Z');
+  for(let cursor=firstMs+86400000;cursor<lastMs;cursor+=86400000){
+    const day=new Date(cursor).toISOString().slice(0,10);
+    if(!byDay.has(day))missingObservations.push(videoHistoryDayTimestamp(day));
+  }
   for(let i=1;i<days.length;i++){
     const [previousDay,previous]=days[i-1], [day,current]=days[i];
     if(Date.parse(day+'T00:00:00Z')-Date.parse(previousDay+'T00:00:00Z')!==86400000)continue;
     const delta=current[1]-previous[1];
     if(delta>=0)out.push([videoHistoryDayTimestamp(day),delta]);
   }
-  return out;
+  return {
+    points:out,
+    missingObservations,
+    start:videoHistoryDayTimestamp(new Date(firstMs+86400000).toISOString().slice(0,10)),
+    end:videoHistoryDayTimestamp(lastDay),
+    latestTotal:days[days.length-1][1][1]
+  };
+}
+function dailyViewDeltas(pts){
+  return dailyViewSeries(pts).points;
 }
 function histPointAtOrBefore(pts,t){
   let found=null;
@@ -239,9 +261,10 @@ function videoHistMetricCard(key,pts){
 function videoHistoryAnalytics(pts){
   const c=videoHistCopy(),all=cleanVideoHist(pts),key=VIDEO_HIST_WINDOWS.hasOwnProperty(VIDEO_HIST_PERIOD)?VIDEO_HIST_PERIOD:'d7';
   const active=videoHistSlice(all,key);
+  const daily=dailyViewSeries(active);
   return '<div class="vha-grid">'+videoHistMetricCard('h24',all)+videoHistMetricCard('d7',all)+videoHistMetricCard('d30',all)+'</div>'+
     '<div class="vha-controls">'+['h24','d7','d30','all'].map(k=>'<button class="'+(key===k?'on':'')+'" onclick="setVideoHistoryPeriod(\''+k+'\')">'+esc(c[k])+'</button>').join('')+'</div>'+
-    '<div class="hist-meta">'+esc(c.dailyChart)+' · '+esc(c.dailySince)+'</div>'+histChart(dailyViewDeltas(active),'daily-views',false);
+    '<div class="hist-meta">'+esc(c.dailyChart)+' · '+esc(c.dailySince)+'</div>'+histChart(daily.points,'daily-views',false,daily);
 }
 function setVideoHistoryPeriod(key){
   if(!VIDEO_HIST_WINDOWS.hasOwnProperty(key))return;
@@ -249,25 +272,35 @@ function setVideoHistoryPeriod(key){
   const current=window._openVideoDrawer;
   if(current)openDrawer(current.kind,current.v,true);
 }
-function histChart(pts,unit,showMeta){
+function histChart(pts,unit,showMeta,coverage){
   const u=unit||'views';
-  if(!pts||pts.length===0)return '<div class="hist-empty">Tracking just started — the curve appears from the 2nd scan. 📡</div>';
-  if(pts.length===1)return '<div class="hist-empty">1 scan recorded ('+fmtDateFull(pts[0][0])+' · '+fmtInt(pts[0][1])+' '+u+') — the curve appears from the 2nd scan. 📡</div>';
+  const dailyViews=u==='daily-views';
+  const missing=dailyViews&&coverage&&Array.isArray(coverage.missingObservations)?coverage.missingObservations:[];
+  const hasCoverage=!!(dailyViews&&coverage&&isFinite(coverage.start)&&isFinite(coverage.end));
+  if((!pts||pts.length===0)&&!hasCoverage)return '<div class="hist-empty">Tracking just started — the curve appears from the 2nd scan. 📡</div>';
+  if(pts&&pts.length===1&&!hasCoverage)return '<div class="hist-empty">1 scan recorded ('+fmtDateFull(pts[0][0])+' · '+fmtInt(pts[0][1])+' '+u+') — the curve appears from the 2nd scan. 📡</div>';
+  pts=pts||[];
   const W=560,H=150,P=10;
   const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);
-  const x0=Math.min.apply(null,xs),x1=Math.max.apply(null,xs);
+  const x0=hasCoverage?coverage.start:Math.min.apply(null,xs),x1=hasCoverage?coverage.end:Math.max.apply(null,xs);
   // Keep zero at the baseline so the curve preserves the real magnitude.
   const y0=0,y1=Math.max(Math.max.apply(null,ys),1);
   const X=t=>P+(W-2*P)*(x1===x0?0.5:(t-x0)/(x1-x0));
   const Y=v=>H-P-(H-2*P)*((v-y0)/(y1-y0));
-  const line=pts.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[1]).toFixed(1)).join(' ');
-  const area=line+' L'+X(x1).toFixed(1)+' '+(H-P)+' L'+X(x0).toFixed(1)+' '+(H-P)+' Z';
-  const dailyViews=u==='daily-views';
+  const segments=[];let segment=[];
+  pts.forEach(p=>{
+    if(dailyViews&&segment.length&&p[0]-segment[segment.length-1][0]!==86400000){segments.push(segment);segment=[];}
+    segment.push(p);
+  });
+  if(segment.length)segments.push(segment);
+  const pathFor=part=>part.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[1]).toFixed(1)).join(' ');
+  const line=segments.map(pathFor).join(' ');
+  const area=segments.filter(part=>part.length>1).map(part=>pathFor(part)+' L'+X(part[part.length-1][0]).toFixed(1)+' '+(H-P)+' L'+X(part[0][0]).toFixed(1)+' '+(H-P)+' Z').join(' ');
   const liveViewers=u==='viewers';
   const chartFill=liveViewers?'rgba(167,139,250,.18)':'rgba(154,168,255,.16)';
   const chartStroke=liveViewers?'#a78bfa':'#9aa8ff';
   const days=Math.max((x1-x0)/86400000,0.5);
-  const perDay=(pts[pts.length-1][1]-pts[0][1])/days;
+  const perDay=pts.length>1?(pts[pts.length-1][1]-pts[0][1])/days:0;
   const meta=u==='viewers'
     ? 'Peak <b>'+fmtN(Math.max.apply(null,ys))+'</b> · latest <b>'+fmtN(pts[pts.length-1][1])+'</b> concurrent viewers · '+pts.length+' scans'
     : dailyViews
@@ -275,7 +308,9 @@ function histChart(pts,unit,showMeta){
       : '<b>+'+fmtN(perDay)+'</b> '+u+'/day measured · '+pts.length+' scans · '+fmtDateFull(x0)+' → '+fmtDateFull(x1);
   const hid='h'+(++HIST_SEQ);
   HIST_REG[hid]={pts,unit:dailyViews?'views gained':u,W,H,P,x0,x1,y1};
-  return (showMeta===false?'':'<div class="hist-meta">'+meta+'</div>')+
+  const c=videoHistCopy();
+  const gapMeta=missing.length?'<div class="hist-gap">'+missing.length+' '+esc(c.missingScans)+' · '+esc(c.lastExact)+' : '+fmtDateFull(coverage.end)+' ('+fmtN(coverage.latestTotal)+') · '+esc(c.noInterpolation)+'</div>':'';
+  return (showMeta===false?'':'<div class="hist-meta">'+meta+'</div>')+gapMeta+
     '<div class="hist-wrap'+(liveViewers?' hist-live':'')+'" data-hid="'+hid+'">'+
     '<svg class="hist-svg" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+
     '<path d="'+area+'" fill="'+chartFill+'"/>'+
@@ -284,14 +319,15 @@ function histChart(pts,unit,showMeta){
     '</svg>'+
     '<div class="hist-guide"></div><div class="hist-dot"></div><div class="hist-tip"></div>'+
     '</div>'+
-    '<div class="hist-axis"><span>0</span><span>'+fmtN(y1)+'</span></div>';
+    '<div class="hist-axis"><span>0</span><span>'+fmtN(y1)+'</span></div>'+
+    '<div class="hist-axis hist-axis-dates"><span>'+fmtDateFull(x0)+'</span><span>'+fmtDateFull(x1)+'</span></div>';
 }
 let HIST_SEQ=0;const HIST_REG={};
 document.addEventListener('mousemove',e=>{
   const w=e.target.closest?e.target.closest('.hist-wrap'):null;
   document.querySelectorAll('.hist-wrap.hov').forEach(x=>{if(x!==w)x.classList.remove('hov');});
   if(!w)return;
-  const o=HIST_REG[w.dataset.hid];if(!o)return;
+  const o=HIST_REG[w.dataset.hid];if(!o||!o.pts.length)return;
   const r=w.getBoundingClientRect();
   const fx=(e.clientX-r.left)/r.width;                       // 0..1 across
   const t=o.x0+(o.x1-o.x0)*Math.min(1,Math.max(0,(fx*o.W-o.P)/(o.W-2*o.P)));
@@ -574,11 +610,12 @@ if(typeof window!=='undefined'){
 }
 if(typeof document!=='undefined')document.addEventListener('visibilitychange',refreshVisibleVideoHistory);
 function videoHistoryPanel(vid,points,label){
-  const daily=()=>dailyViewDeltas(points||null);
-  if(!vid)return label?'<div class="k">📈 '+esc(videoHistCopy().dailyChart)+'</div>'+histChart(daily(),'daily-views'):videoHistoryAnalytics(points||null);
+  const daily=()=>dailyViewSeries(points||null);
+  if(!vid){const series=daily();return label?'<div class="k">📈 '+esc(videoHistCopy().dailyChart)+'</div>'+histChart(series.points,'daily-views',undefined,series):videoHistoryAnalytics(points||null);}
   if(videoHistoryError(vid))return '<div class="hist-empty">Daily history unavailable. <button class="load-more" onclick="retryVideoHistory('+jsq(vid)+')">Retry</button></div>';
   if(!videoHistoryReady(vid))return '<div class="hist-empty">Loading daily history…</div>';
-  return label?'<div class="k">📈 '+esc(videoHistCopy().dailyChart)+'</div>'+histChart(daily(),'daily-views'):videoHistoryAnalytics(points||null);
+  if(label){const series=daily();return '<div class="k">📈 '+esc(videoHistCopy().dailyChart)+'</div>'+histChart(series.points,'daily-views',undefined,series);}
+  return videoHistoryAnalytics(points||null);
 }
 function clearLegacyVideoCaches(){
   try{localStorage.removeItem('lofiradar_v3');localStorage.removeItem(CACHE_KEY);}catch(e){}

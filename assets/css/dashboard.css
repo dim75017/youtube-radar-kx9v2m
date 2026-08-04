@@ -607,7 +607,9 @@ select.ctl.c-status:hover{border-color:rgba(248,113,113,.7)}
 .hist-wrap.hov .hist-guide,.hist-wrap.hov .hist-dot,.hist-wrap.hov .hist-tip{opacity:1}
 .hist-meta{font-size:12px;color:var(--muted);margin-bottom:8px}
 .hist-meta b{color:var(--acc2)}
+.hist-gap{font-size:11px;color:var(--muted);margin:-2px 0 8px;line-height:1.45}
 .hist-axis{display:flex;justify-content:space-between;font-size:10px;color:var(--dim);margin-top:4px}
+.hist-axis-dates{margin-top:1px;color:var(--muted)}
 .hist-empty{font-size:12px;color:var(--dim);padding:8px 0;line-height:1.5}
 .vha-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:9px}
 .vha-head .k{margin-bottom:0}

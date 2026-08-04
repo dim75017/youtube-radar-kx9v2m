@@ -7,36 +7,34 @@ on:
     # snapshot is already healthy, and retries the collection when it is not.
     - cron: '47 19 * * *'
   push:
+    branches: [main]
     paths:
       - '.github/radar-heartbeat.txt'
       - '.github/workflows/refresh-instrumental-radar.yml'
-      - 'Lofi_Radar.html'
-      - 'assets/js/dashboard-01-config.js'
-      - 'assets/js/dashboard-02-helpers.js'
-      - 'assets/js/dashboard-03-keywords.js'
-      - 'assets/js/dashboard-04-recommendations.js'
-      - 'generate_youtube_recommendation_pool.py'
-      - 'import_youtube_studio_export.py'
-      - 'tests/test_youtube_daily_recommendations.js'
-      - 'tests/test_youtube_daily_view_deltas.js'
-      - 'tests/test_youtube_history_cache_refresh.js'
-      - 'tests/test_youtube_unavailable_quarantine.js'
-      - 'tests/test_youtube_recommendation_actions.js'
-      - 'tests/test_youtube_recommendation_edits.js'
-      - 'tests/test_youtube_recommendation_status_tabs.js'
-      - 'tests/test_youtube_recommendation_continuous_pool.js'
-      - 'tests/test_youtube_recommendation_quality.js'
-      - 'tests/test_youtube_recommendation_real_snapshot.js'
-      - 'tests/test_youtube_recommendation_historical_acceptance_snapshot.js'
-      - 'tests/test_youtube_recommendation_roadmap_precedence.js'
-      - 'tests/test_generate_youtube_recommendation_pool.py'
-      - 'tests/test_import_youtube_studio_export.py'
-      - 'tests/test_recommendation_validated_archive.js'
-      - 'tests/test_roadmap_context_actions.js'
-      - 'refresh_instrumental_extensions.py'
       - 'refresh_youtube_daily.py'
       - 'data_freshness_watchdog.py'
       - 'tests/test_data_freshness_watchdog.py'
+      - 'tests/test_refresh_youtube_daily.py'
+      - 'tests/test_youtube_workflow_guardrails.py'
+  pull_request:
+    paths:
+      - '.github/workflows/refresh-instrumental-radar.yml'
+      - 'refresh_youtube_daily.py'
+      - 'data_freshness_watchdog.py'
+      - 'generate_youtube_recommendation_pool.py'
+      - 'import_youtube_studio_export.py'
+      - 'index.html'
+      - 'assets/css/dashboard.css'
+      - 'assets/js/dashboard-02-helpers.js'
+      - 'assets/js/dashboard-04-recommendations.js'
+      - 'tests/test_refresh_youtube_daily.py'
+      - 'tests/test_youtube_workflow_guardrails.py'
+      - 'tests/test_data_freshness_watchdog.py'
+      - 'tests/test_youtube_daily_view_deltas.js'
+      - 'tests/test_youtube_analytics_scale_cache.js'
+      - 'tests/test_youtube_history_cache_refresh.js'
+      - 'tests/test_youtube_unavailable_quarantine.js'
+      - 'tests/test_youtube_recommendation_*.js'
   workflow_dispatch:
     inputs:
       force:
@@ -46,10 +44,10 @@ on:
         type: boolean
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: refresh-youtube-radar
+  group: ${{ github.event_name == 'pull_request' && format('refresh-youtube-radar-pr-{0}', github.event.pull_request.number) || 'refresh-youtube-radar-production' }}
   cancel-in-progress: false
 
 jobs:
@@ -69,7 +67,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           FORCE: ${{ inputs.force }}
         run: |
-          if [ "$EVENT_NAME" = "push" ] || [ "$FORCE" = "true" ]; then
+          if [ "$EVENT_NAME" = "push" ] || [ "$EVENT_NAME" = "pull_request" ] || [ "$FORCE" = "true" ]; then
             echo "due=true" >> "$GITHUB_OUTPUT"
           else
             schedule_arg=""
@@ -84,6 +82,9 @@ jobs:
     name: Validate daily collector
     needs: gate
     if: needs.gate.outputs.run_scan == 'true'
+    # Pull requests stay strict. Once code is on main, a test regression must
+    # remain visible without sacrificing that day's factual observation.
+    continue-on-error: ${{ github.event_name != 'pull_request' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -97,12 +98,11 @@ jobs:
         run: pip install --disable-pip-version-check openpyxl
       - name: Test collection and history integrity
         run: |
-          python -m unittest tests.test_refresh_youtube_daily tests.test_youtube_workflow_guardrails tests.test_generate_youtube_recommendation_pool
-          node tests/test_youtube_new_video_view_floor.js
+          python -m unittest tests.test_refresh_youtube_daily tests.test_youtube_workflow_guardrails
           node tests/test_youtube_daily_view_deltas.js
+          node tests/test_youtube_analytics_scale_cache.js
           node tests/test_youtube_history_cache_refresh.js
           node tests/test_youtube_unavailable_quarantine.js
-          node tests/test_youtube_channel_update_status.js
 
   validate_recommendations:
     name: Validate recommendation intelligence
@@ -110,7 +110,9 @@ jobs:
     if: needs.gate.outputs.run_scan == 'true'
     # Recommendation/UI regressions must stay visible, but they must never
     # prevent the independent daily facts collector from recording a day.
-    continue-on-error: true
+    continue-on-error: ${{ github.event_name != 'pull_request' }}
+    outputs:
+      valid: ${{ steps.recommendation_tests.outcome == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -122,9 +124,12 @@ jobs:
           node-version: '20'
       - name: Install validation dependencies
         run: pip install --disable-pip-version-check openpyxl
-      - name: Test recommendation intelligence and Studio importer
+      - id: recommendation_tests
+        name: Test recommendation intelligence and Studio importer
         run: |
-          python -m unittest tests.test_import_youtube_studio_export
+          python -m unittest tests.test_generate_youtube_recommendation_pool tests.test_import_youtube_studio_export
+          node tests/test_youtube_new_video_view_floor.js
+          node tests/test_youtube_channel_update_status.js
           node tests/test_youtube_age_normalized_analysis.js
           node tests/test_youtube_daily_recommendations.js
           node tests/test_youtube_recommendation_actions.js
@@ -142,10 +147,10 @@ jobs:
 
   prepare:
     name: Resolve one canonical tracked-video manifest
-    needs: validate
+    needs: gate
     # Feature branches validate the code only. They must not consume a full
     # 20-shard scan or delay the serialized production refresh on main.
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && needs.gate.outputs.run_scan == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -213,6 +218,8 @@ jobs:
     needs: scan
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Sync latest main
@@ -225,7 +232,7 @@ jobs:
           pattern: youtube-shard-*
           path: shards
           merge-multiple: true
-      - name: Merge only after all shards passed
+      - name: Merge factual counters and history after all shards passed
         run: >-
           python refresh_youtube_daily.py
           --merge-dir shards
@@ -233,12 +240,12 @@ jobs:
           --snapshot Lofi_Radar_data.js
           --avatars Lofi_Radar_new_channel_avatars.js
           --history-dir video_history
-          --recommendation-pool Lofi_Radar_recommendation_pool.js
-      - name: Commit refreshed catalogue and daily analytics
+          --skip-recommendation-pool
+      - name: Commit factual catalogue and daily analytics first
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Lofi_Radar_data.js Lofi_Radar_recommendation_pool.js Lofi_Radar_new_channel_avatars.js video_history
+          git add Lofi_Radar_data.js Lofi_Radar_new_channel_avatars.js video_history
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Refresh YouTube radar data and daily history"
           for attempt in 1 2 3; do
@@ -246,12 +253,47 @@ jobs:
             sleep 5
           done
           exit 1
-      - name: Verify GitHub Pages serves the new snapshot and history
+      - name: Verify GitHub Pages serves the factual snapshot and history
         run: >-
           python refresh_youtube_daily.py
           --snapshot Lofi_Radar_data.js
           --history-dir video_history
+          --verify-core-only
           --verify-base-url https://dim75017.github.io/youtube-radar-kx9v2m/
           --verify-timeout 900
           --verify-interval 15
+
+  publish_recommendations:
+    name: Publish recommendations after their own validation
+    needs: [publish, validate_recommendations]
+    if: >-
+      always() && github.ref == 'refs/heads/main' &&
+      needs.publish.result == 'success' &&
+      needs.validate_recommendations.outputs.valid == 'true'
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Sync the factual snapshot before generating ideas
+        run: git pull --ff-only origin main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Generate the pool from the latest published counters
+        run: >-
+          python generate_youtube_recommendation_pool.py
+          --snapshot Lofi_Radar_data.js
+          --output Lofi_Radar_recommendation_pool.js
+      - name: Publish the validated pool without rebasing stale data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Lofi_Radar_recommendation_pool.js
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Refresh YouTube recommendation pool"
+          git push origin HEAD:main
 

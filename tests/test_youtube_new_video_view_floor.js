@@ -29,7 +29,7 @@ assert.deepEqual(
 
 const index = fs.readFileSync('index.html', 'utf8');
 assert.ok(
-  index.includes('dashboard-02-helpers.js?v=20260801-youtube-history-day-spacing-v2'),
+  index.includes('dashboard-02-helpers.js?v=20260804-youtube-gap-v1'),
   'the browser cache key must include the current helper revision'
 );
 
