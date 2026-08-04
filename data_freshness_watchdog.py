@@ -22,12 +22,13 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 from zoneinfo import ZoneInfo
 
+from generate_youtube_recommendation_pool import GENERATOR_VERSION, POOL_PREFIX
 from spotify_performance_store import PerformanceStoreError, validate_performance_store
 
 
 PARIS = ZoneInfo("Europe/Paris")
 ACTIVE_RUN_STATES = {"queued", "in_progress", "pending", "requested", "waiting"}
-COLLECTION_EVENTS = {"schedule", "workflow_dispatch", "repository_dispatch"}
+COLLECTION_EVENTS = {"schedule", "workflow_dispatch", "repository_dispatch", "push", "workflow_run"}
 
 
 @dataclass(frozen=True)
@@ -62,6 +63,12 @@ TARGETS: dict[str, Target] = {
         "refresh-instrumental-radar.yml",
         45,
         {"force": "false"},
+    ),
+    "youtube_recommendations": Target(
+        "youtube_recommendations",
+        "refresh-youtube-recommendations.yml",
+        45,
+        {},
     ),
     "youtube_channels": Target(
         "youtube_channels",
@@ -205,6 +212,68 @@ def assess_youtube_radar(root: Path, now: datetime, ignore_deadline: bool = Fals
     return freshness_row(target, False, f"public YouTube day {history_day} is healthy", observed)
 
 
+def assess_youtube_recommendations(root: Path, now: datetime, ignore_deadline: bool = False) -> Freshness:
+    del ignore_deadline
+    target = TARGETS["youtube_recommendations"]
+    snapshot_text = read_edge(root / "Lofi_Radar_data.js", tail=96_000)
+    snapshot_source = int(regex_value(snapshot_text, r'"videoMetricsT"\s*:\s*(\d+)') or 0)
+    pool_path = root / "Lofi_Radar_recommendation_pool.js"
+    manifest_path = root / "youtube_recommendation_ledger" / "manifest.json"
+    if snapshot_source <= 0:
+        return freshness_row(target, True, "missing factual YouTube source timestamp", None)
+    if not pool_path.exists() or not manifest_path.exists():
+        return freshness_row(target, True, "missing recommendation pool or ledger manifest", None)
+
+    try:
+        pool_raw = pool_path.read_text(encoding="utf-8").strip()
+        if not pool_raw.startswith(POOL_PREFIX):
+            raise ValueError("unsupported recommendation pool assignment")
+        pool = json.loads(pool_raw[len(POOL_PREFIX):].rstrip(";\n "))
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if not isinstance(pool, dict) or not isinstance(manifest, dict):
+            raise ValueError("recommendation pool and manifest must be objects")
+        pool_version = int(pool.get("version") or 0)
+        manifest_version = int(manifest.get("generatorVersion") or 0)
+        pool_source = int(pool.get("sourceT") or 0)
+        manifest_source = int(manifest.get("sourceT") or 0)
+    except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        return freshness_row(target, True, f"invalid recommendation state: {exc}", None)
+
+    observed = parse_timestamp(manifest.get("updatedAt"))
+    pool_revision = str(pool.get("ledgerRevision") or "")
+    manifest_revision = str(manifest.get("revision") or "")
+    build_id = str(pool.get("buildId") or "")
+
+    if pool_version != GENERATOR_VERSION or manifest_version != GENERATOR_VERSION:
+        return freshness_row(
+            target,
+            True,
+            f"recommendation generator version is {pool_version}/{manifest_version}, expected {GENERATOR_VERSION}",
+            observed,
+        )
+    if pool_source != snapshot_source or manifest_source != snapshot_source:
+        return freshness_row(
+            target,
+            True,
+            f"recommendations use source {pool_source}/{manifest_source}, factual source is {snapshot_source}",
+            observed,
+        )
+    if not pool_revision or pool_revision != manifest_revision:
+        return freshness_row(target, True, "recommendation pool and ledger revisions differ", observed)
+    if not build_id:
+        return freshness_row(target, True, "recommendation pool has no buildId", observed)
+    if observed is None:
+        return freshness_row(target, True, "recommendation ledger has no valid updatedAt", observed)
+    if now - observed > timedelta(hours=9):
+        return freshness_row(target, True, "recommendation pool is older than nine hours", observed)
+    return freshness_row(
+        target,
+        False,
+        f"recommendation build {build_id} matches factual source and ledger {manifest_revision}",
+        observed,
+    )
+
+
 def performance_freshness(root: Path) -> dict[str, datetime | None | str]:
     text = read_edge(root / "Spotify_Performance_data.js", tail=96_000)
     values: dict[str, datetime | None | str] = {}
@@ -308,6 +377,7 @@ ASSESSORS = {
     "spotify_followers": assess_spotify_followers,
     "spotify_browse": assess_spotify_browse,
     "youtube_radar": assess_youtube_radar,
+    "youtube_recommendations": assess_youtube_recommendations,
     "youtube_channels": assess_youtube_channels,
 }
 

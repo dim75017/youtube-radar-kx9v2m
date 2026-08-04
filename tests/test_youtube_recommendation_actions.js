@@ -69,6 +69,10 @@ assert.doesNotMatch(source, /schedNearbyReleases/,
   'nearby releases must be replaced by the compact exact-day popover');
 assert.match(source, /recoN:reco\.n/,
   'roadmap entries preserve their recommendation identity');
+assert.match(source, /saveSharedRecommendationRoadmap\(reco,entry\)/,
+  'a generated recommendation placement is queued for the shared Roadmap');
+assert.doesNotMatch(source, /Remember to also report this date in the Google Sheet Roadmap/,
+  'the confirmation no longer asks the team to duplicate a shared placement manually');
 assert.match(source, /function setRecoTab\(tab\)/,
   'the recommendation view exposes its three decision-status tabs');
 assert.match(source, /refusedRecommendationRows\(\)/,

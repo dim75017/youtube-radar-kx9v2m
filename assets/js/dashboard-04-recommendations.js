@@ -102,7 +102,7 @@ function autoSaveComment(n){
     else if(cur==='no'||cur==='nonote') val=txt?('- · '+txt):'-';
     else val=txt;
     const persistence=rec._generated
-      ?(saveGeneratedRecommendationDecision(rec.n,val,rec),Promise.resolve({ok:true}))
+      ?saveGeneratedRecommendationDecision(rec.n,val,rec)
       :fetch(WRITE_URL+'?k='+WRITE_KEY+'&n='+encodeURIComponent(n)+'&val='+encodeURIComponent(val)).then(r=>r.json());
     persistence.then(j=>{
         if(!j.ok)throw new Error(j.err||'write failed');
@@ -116,6 +116,212 @@ function autoSaveComment(n){
 }
 const RECO_EDIT_STORAGE_KEY='lofi_radar_recommendation_edits_v1';
 const GENERATED_RECO_DECISIONS_KEY='lofi_radar_generated_reco_decisions_v1';
+const SHARED_RECO_STATE_CACHE_KEY='lofi_radar_shared_reco_state_v2';
+const SHARED_RECO_QUEUE_KEY='lofi_radar_shared_reco_queue_v1';
+const SHARED_RECO_STATE_VERSION=2;
+let SHARED_RECO_STATE={version:SHARED_RECO_STATE_VERSION,updatedAt:0,items:[]};
+let SHARED_RECO_STATE_BY_ID=new Map(),SHARED_RECO_STATE_NETWORK_READY=false,SHARED_RECO_STATE_LOAD_PROMISE=null;
+let SHARED_RECO_FLUSH_PROMISE=null,SHARED_RECO_FLUSH_TIMER=null,SHARED_RECO_UI_TIMER=null;
+let SHARED_RECO_MUTATION_SEQUENCE=0,SHARED_RECO_QUEUE_CACHE=null;
+function sharedRecommendationNumericId(value){const n=Number(value);return Number.isFinite(n)?n:null;}
+function isSharedRecommendationId(value){const n=sharedRecommendationNumericId(value);return n!=null&&n<0;}
+function sharedRecommendationCachedState(){
+  try{const value=JSON.parse(localStorage.getItem(SHARED_RECO_STATE_CACHE_KEY)||'null');return value&&Number(value.version)===SHARED_RECO_STATE_VERSION&&Array.isArray(value.items)?value:null;}catch(e){return null;}
+}
+function saveSharedRecommendationCachedState(){
+  try{localStorage.setItem(SHARED_RECO_STATE_CACHE_KEY,JSON.stringify(SHARED_RECO_STATE));}catch(e){}
+}
+function replaceSharedRecommendationState(payload,networkReady){
+  const items=Array.isArray(payload&&payload.items)?payload.items.filter(item=>item&&sharedRecommendationNumericId(item.n)!=null):[];
+  SHARED_RECO_STATE={version:SHARED_RECO_STATE_VERSION,updatedAt:Number(payload&&payload.updatedAt)||0,items};
+  SHARED_RECO_STATE_BY_ID=new Map(items.map(item=>[String(sharedRecommendationNumericId(item.n)),Object.assign({},item,{n:sharedRecommendationNumericId(item.n)})]));
+  if(networkReady){SHARED_RECO_STATE_NETWORK_READY=true;saveSharedRecommendationCachedState();}
+}
+function sharedRecommendationQueue(){
+  if(SHARED_RECO_QUEUE_CACHE)return SHARED_RECO_QUEUE_CACHE.slice();
+  try{const value=JSON.parse(localStorage.getItem(SHARED_RECO_QUEUE_KEY)||'[]');SHARED_RECO_QUEUE_CACHE=Array.isArray(value)?value.filter(item=>item&&item.action&&sharedRecommendationNumericId(item.n)!=null):[];}catch(e){SHARED_RECO_QUEUE_CACHE=[];}
+  return SHARED_RECO_QUEUE_CACHE.slice();
+}
+function saveSharedRecommendationQueue(queue){SHARED_RECO_QUEUE_CACHE=Array.isArray(queue)?queue.slice():[];try{localStorage.setItem(SHARED_RECO_QUEUE_KEY,JSON.stringify(SHARED_RECO_QUEUE_CACHE));}catch(e){}}
+function sharedRecommendationMutationKey(item){return (item.action==='roadmap'||item.action==='archive'?'roadmap':item.action)+':'+String(sharedRecommendationNumericId(item.n));}
+function applySharedRecommendationMutation(item,mutation){
+  const next=Object.assign({},item||{},{n:sharedRecommendationNumericId(mutation.n),updatedAt:Number(mutation.queuedAt)||Date.now()});
+  if(mutation.action==='decision')next.valid=String(mutation.valid||'');
+  else if(mutation.action==='edit'){
+    next.editedTitle=String(mutation.editedTitle||'');next.editedConcept=String(mutation.editedConcept||'');next.editedDesc=String(mutation.editedDesc||'');
+  }else if(mutation.action==='roadmap'){
+    next.roadmapDate=Number(mutation.roadmapDate)||null;next.roadmapState='active';
+  }else if(mutation.action==='archive')next.roadmapState='archived';
+  else if(mutation.action==='published')next.publishedVideoId=String(mutation.publishedVideoId||'');
+  ['title','genreKey','purposeKey','sourceVideoId','sourceWindow','sourceMarketScore','feedbackAffinity','generatorVersion'].forEach(key=>{
+    if(mutation[key]!=null&&mutation[key]!=='')next[key]=mutation[key];
+  });
+  return next;
+}
+function sharedRecommendationEffectiveItem(n){
+  const id=sharedRecommendationNumericId(n);if(id==null)return null;
+  let item=SHARED_RECO_STATE_BY_ID.get(String(id));
+  sharedRecommendationQueue().filter(mutation=>sharedRecommendationNumericId(mutation.n)===id).sort((a,b)=>(a.queuedAt||0)-(b.queuedAt||0)).forEach(mutation=>{item=applySharedRecommendationMutation(item,mutation);});
+  return item?Object.assign({},item):null;
+}
+function sharedRecommendationEffectiveItems(){
+  const ids=new Set([...SHARED_RECO_STATE_BY_ID.keys(),...sharedRecommendationQueue().map(item=>String(sharedRecommendationNumericId(item.n)))]);
+  return [...ids].map(id=>sharedRecommendationEffectiveItem(id)).filter(Boolean);
+}
+function sharedRecommendationRow(n,fallback){
+  const id=sharedRecommendationNumericId(n);
+  if(typeof DATA!=='undefined'&&DATA&&Array.isArray(DATA.recos)){
+    const row=DATA.recos.find(item=>sharedRecommendationNumericId(item&&item.n)===id);if(row)return row;
+  }
+  const pool=typeof window!=='undefined'&&window.LOFI_RECOMMENDATION_POOL&&Array.isArray(window.LOFI_RECOMMENDATION_POOL.items)?window.LOFI_RECOMMENDATION_POOL.items:[];
+  return pool.find(item=>sharedRecommendationNumericId(item&&item.n)===id)||fallback||{n:id};
+}
+function sharedRecommendationMetadata(row){
+  row=row||{};
+  const genreKey=row._genreKey||(typeof recoGenreKey==='function'?recoGenreKey(row.genre,row):String(row.genre||''));
+  const purposeKey=row._purposeKey||(typeof recoPurposeKey==='function'?recoPurposeKey(row):'');
+  return {
+    title:String(row.title||''),genreKey:String(genreKey||''),purposeKey:String(purposeKey||''),
+    sourceVideoId:String(row._sourceVideoId||''),sourceWindow:String(row._sourceWindow||''),
+    sourceMarketScore:Number.isFinite(Number(row._sourceMarketScore))?Number(row._sourceMarketScore):null,
+    feedbackAffinity:Number.isFinite(Number(row._feedbackAffinity))?Number(row._feedbackAffinity):null,
+    generatorVersion:Number.isFinite(Number(row._generatorVersion))?Number(row._generatorVersion):null
+  };
+}
+function queueSharedRecommendationMutation(action,row,fields,options){
+  const n=sharedRecommendationNumericId(row&&row.n!=null?row.n:row);if(n==null)return Promise.resolve({ok:false,err:'invalid recommendation id'});
+  if(!isSharedRecommendationId(n))return Promise.resolve({ok:true,localOnly:true});
+  const queuedAt=Date.now(),mutation=Object.assign({op:'upsert',action,n,queuedAt,mutationId:String(queuedAt)+'-'+String(++SHARED_RECO_MUTATION_SEQUENCE)},sharedRecommendationMetadata(sharedRecommendationRow(n,row&&typeof row==='object'?row:null)),fields||{});
+  const key=sharedRecommendationMutationKey(mutation),queue=sharedRecommendationQueue(),index=queue.findIndex(item=>sharedRecommendationMutationKey(item)===key);
+  if(index>=0)queue[index]=mutation;else queue.push(mutation);
+  saveSharedRecommendationQueue(queue);
+  if(!(options&&options.defer))scheduleSharedRecommendationFlush(0);
+  return Promise.resolve({ok:true,queued:true});
+}
+function setSharedRecommendationServerItem(item){
+  const n=sharedRecommendationNumericId(item&&item.n);if(n==null)return;
+  const normalized=Object.assign({},item,{n});SHARED_RECO_STATE_BY_ID.set(String(n),normalized);
+  SHARED_RECO_STATE.items=[...SHARED_RECO_STATE_BY_ID.values()];SHARED_RECO_STATE.updatedAt=Math.max(Number(SHARED_RECO_STATE.updatedAt)||0,Number(item.updatedAt)||Date.now());
+  saveSharedRecommendationCachedState();scheduleSharedRecommendationUiRefresh();
+}
+function scheduleSharedRecommendationUiRefresh(){
+  if(typeof setTimeout!=='function'||SHARED_RECO_UI_TIMER)return;
+  SHARED_RECO_UI_TIMER=setTimeout(()=>{
+    SHARED_RECO_UI_TIMER=null;
+    if(typeof DATA==='undefined'||!DATA)return;
+    applySharedRecommendationState(DATA);applyRecommendationEdits(DATA);
+    if(typeof invalidateRoadmapDerivedViews==='function')invalidateRoadmapDerivedViews();
+    else if(typeof invalidateRecommendationDerivedData==='function')invalidateRecommendationDerivedData();
+    if(typeof route!=='undefined'&&route==='recos'&&typeof rerenderRecos==='function')rerenderRecos();
+    else if(typeof render==='function')render();
+  },40);
+}
+function scheduleSharedRecommendationFlush(delay){
+  if(typeof setTimeout!=='function'||SHARED_RECO_FLUSH_TIMER||SHARED_RECO_FLUSH_PROMISE)return;
+  SHARED_RECO_FLUSH_TIMER=setTimeout(()=>{SHARED_RECO_FLUSH_TIMER=null;flushSharedRecommendationQueue();},Math.max(0,Number(delay)||0));
+}
+async function flushSharedRecommendationQueue(){
+  if(SHARED_RECO_FLUSH_PROMISE)return SHARED_RECO_FLUSH_PROMISE;
+  if(typeof fetch!=='function'||!sharedRecommendationQueue().length)return {ok:true,empty:true};
+  SHARED_RECO_FLUSH_PROMISE=(async()=>{
+    while(true){
+      const queue=sharedRecommendationQueue();if(!queue.length)return {ok:true};
+      const mutation=queue[0];
+      try{
+        const response=await fetch(WRITE_URL+'?k='+encodeURIComponent(WRITE_KEY),{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(mutation)});
+        const result=await response.json();if(!response.ok||!result.ok||!result.item)throw new Error(result.err||('HTTP '+response.status));
+        const current=sharedRecommendationQueue(),key=sharedRecommendationMutationKey(mutation),next=current.filter(item=>!(sharedRecommendationMutationKey(item)===key&&String(item.mutationId||item.queuedAt)===String(mutation.mutationId||mutation.queuedAt)));
+        saveSharedRecommendationQueue(next);setSharedRecommendationServerItem(result.item);
+      }catch(e){console.warn('Shared recommendation sync deferred',e);scheduleSharedRecommendationFlush(15000);return {ok:false,queued:true,err:e.message};}
+    }
+  })();
+  try{return await SHARED_RECO_FLUSH_PROMISE;}finally{SHARED_RECO_FLUSH_PROMISE=null;if(sharedRecommendationQueue().length)scheduleSharedRecommendationFlush(1000);}
+}
+function migrateLocalRecommendationState(){
+  if(!SHARED_RECO_STATE_NETWORK_READY)return;
+  const central=n=>SHARED_RECO_STATE_BY_ID.get(String(sharedRecommendationNumericId(n)))||null;
+  const decisions=generatedRecommendationDecisions();
+  Object.entries(decisions).forEach(([id,decision])=>{
+    if(!decision||typeof decision.value!=='string')return;const current=central(id);
+    if(current&&Number(current.updatedAt||0)>=Number(decision.updatedAt||0))return;
+    queueSharedRecommendationMutation('decision',sharedRecommendationRow(id),{valid:decision.value},{defer:true});
+  });
+  const edits=recommendationEdits();
+  Object.entries(edits).forEach(([id,edit])=>{
+    if(!edit)return;const current=central(id),hasCentral=current&&['editedTitle','editedConcept','editedDesc'].some(key=>Object.prototype.hasOwnProperty.call(current,key));
+    if(hasCentral&&Number(current.updatedAt||0)>=Number(edit.updatedAt||0))return;
+    queueSharedRecommendationMutation('edit',sharedRecommendationRow(id,{n:Number(id),title:edit.title}),{editedTitle:String(edit.title||''),editedConcept:String(edit.concept||''),editedDesc:String(edit.desc||'')},{defer:true});
+  });
+  if(typeof SCHED_LOCAL!=='undefined'&&Array.isArray(SCHED_LOCAL))SCHED_LOCAL.filter(row=>row&&row.recoN!=null&&isExplicitManualRoadmapPlacement(row)).forEach(row=>{
+    const current=central(row.recoN);if(current&&current.roadmapState)return;
+    queueSharedRecommendationMutation('roadmap',sharedRecommendationRow(row.recoN,row),{roadmapDate:Number(row.date),roadmapState:'active'},{defer:true});
+  });
+  if(typeof roadmapArchiveRows==='function')roadmapArchiveRows().filter(item=>item&&item.row&&item.row.recoN!=null).forEach(item=>{
+    const row=item.row,current=central(row.recoN);if(current&&current.roadmapState)return;
+    queueSharedRecommendationMutation('archive',sharedRecommendationRow(row.recoN,row),{roadmapDate:Number(row.date)||null,roadmapState:'archived'},{defer:true});
+  });
+  scheduleSharedRecommendationFlush(0);
+}
+async function loadSharedRecommendationState(force){
+  if(!force&&SHARED_RECO_STATE_NETWORK_READY)return SHARED_RECO_STATE;
+  if(SHARED_RECO_STATE_LOAD_PROMISE)return SHARED_RECO_STATE_LOAD_PROMISE;
+  const cached=sharedRecommendationCachedState();if(cached&&!SHARED_RECO_STATE.items.length)replaceSharedRecommendationState(cached,false);
+  if(typeof fetch!=='function')return SHARED_RECO_STATE;
+  SHARED_RECO_STATE_LOAD_PROMISE=(async()=>{
+    let controller=null,timeoutId=null;
+    try{
+      if(typeof AbortController==='function'){
+        controller=new AbortController();
+        if(typeof setTimeout==='function')timeoutId=setTimeout(()=>controller.abort(),4000);
+      }
+      const options={cache:'no-store'};if(controller)options.signal=controller.signal;
+      const response=await fetch(WRITE_URL+'?op=state&k='+encodeURIComponent(WRITE_KEY),options),payload=await response.json();
+      if(!response.ok||!payload.ok||Number(payload.version)!==SHARED_RECO_STATE_VERSION||!Array.isArray(payload.items))throw new Error(payload.err||('HTTP '+response.status));
+      replaceSharedRecommendationState(payload,true);migrateLocalRecommendationState();scheduleSharedRecommendationUiRefresh();return SHARED_RECO_STATE;
+    }catch(e){console.warn('Shared recommendation state unavailable; using the offline fallback',e);if(typeof setTimeout==='function')setTimeout(()=>loadSharedRecommendationState(true),30000);return SHARED_RECO_STATE;}
+    finally{if(timeoutId!=null&&typeof clearTimeout==='function')clearTimeout(timeoutId);SHARED_RECO_STATE_LOAD_PROMISE=null;}
+  })();
+  return SHARED_RECO_STATE_LOAD_PROMISE;
+}
+function applySharedRecommendationState(data){
+  ((data&&data.recos)||[]).forEach(row=>{
+    if(!row||!row._generated)return;const item=sharedRecommendationEffectiveItem(row.n);
+    if(item)row.valid=String(item.valid||'');
+  });
+  return data;
+}
+function saveSharedRecommendationEdit(row,edit){
+  return queueSharedRecommendationMutation('edit',row,{editedTitle:String(edit.title||''),editedConcept:String(edit.concept||''),editedDesc:String(edit.desc||'')});
+}
+function saveSharedRecommendationRoadmap(row,entry){return queueSharedRecommendationMutation('roadmap',row,{roadmapDate:Number(entry&&entry.date),roadmapState:'active'});}
+function saveSharedRecommendationRoadmapArchive(row){return queueSharedRecommendationMutation('archive',sharedRecommendationRow(row&&row.recoN,row),{roadmapDate:Number(row&&row.date)||null,roadmapState:'archived'});}
+function saveSharedRecommendationPublished(row,videoId){
+  const id=String(videoId||'');if(!row||!isSharedRecommendationId(row.n)||!/^[-\w]{11}$/.test(id))return Promise.resolve({ok:true,ignored:true});
+  const current=sharedRecommendationEffectiveItem(row.n);if(current&&current.publishedVideoId)return Promise.resolve({ok:true,existing:true});
+  return queueSharedRecommendationMutation('published',row,{publishedVideoId:id});
+}
+function publishedRecommendationLink(video){
+  if(!video)return null;
+  const recos=typeof DATA!=='undefined'&&DATA&&Array.isArray(DATA.recos)?DATA.recos:[],pool=typeof window!=='undefined'&&window.LOFI_RECOMMENDATION_POOL&&Array.isArray(window.LOFI_RECOMMENDATION_POOL.items)?window.LOFI_RECOMMENDATION_POOL.items:[];
+  const byId=n=>recos.find(row=>Number(row&&row.n)===Number(n))||pool.find(row=>Number(row&&row.n)===Number(n))||null;
+  const use=(n,source)=>{
+    const reco=byId(n);if(!reco)return null;
+    if(isSharedRecommendationId(reco.n))saveSharedRecommendationPublished(reco,video.vid);
+    return {n:Number(reco.n),reco,source};
+  };
+  if(video.recoN!=null){const explicit=use(video.recoN,'our-videos-recoN');if(explicit)return explicit;}
+  const published=sharedRecommendationEffectiveItems().filter(item=>String(item.publishedVideoId||'')===String(video.vid||''));
+  if(published.length===1){const linked=use(published[0].n,'shared-published-id');if(linked)return linked;}
+  const title=typeof normalizedRecommendationTitle==='function'?normalizedRecommendationTitle(video.title):String(video.title||'').trim().toLowerCase();if(!title)return null;
+  const candidates=new Set(),add=(n,value)=>{if(n==null)return;const normalized=typeof normalizedRecommendationTitle==='function'?normalizedRecommendationTitle(value):String(value||'').trim().toLowerCase();if(normalized===title)candidates.add(Number(n));};
+  recos.forEach(row=>add(row&&row.n,row&&row.title));
+  if(typeof acceptedRoadmapRows==='function')acceptedRoadmapRows().forEach(row=>add(row&&row.recoN,row&&row.title));
+  sharedRecommendationEffectiveItems().forEach(item=>add(item.n,item.editedTitle||item.title));
+  if(candidates.size!==1)return null;
+  const n=[...candidates][0],linked=use(n,'exact-unique-title');if(!linked)return null;
+  video.recoN=n;return linked;
+}
+if(typeof window!=='undefined'&&typeof window.addEventListener==='function')window.addEventListener('online',()=>{loadSharedRecommendationState(true);scheduleSharedRecommendationFlush(0);});
 const CONTINUOUS_RECO_VARIANTS_KEY='lofi_radar_reco_variants_v1';
 // V1 fabricated an unlimited stream of generic title combinations. Keep the
 // storage key for a safe migration, but invalidate every pending V1 variant.
@@ -164,6 +370,7 @@ function saveGeneratedRecommendationDecision(n,value,row){
     state.decided[id]=stored;
     saveContinuousRecommendationVariantState(state);
   }
+  return queueSharedRecommendationMutation('decision',row||{n:Number(n)},{valid:String(value||'')});
 }
 function mergeGeneratedRecommendationPool(data){
   if(!data)return data;
@@ -177,8 +384,9 @@ function mergeGeneratedRecommendationPool(data){
     const id=String(raw.n),title=normalizedRecommendationTitle(raw.title);
     if(ids.has(id)||(guardTitle&&titles.has(title)))return;
     const row=Object.assign({},raw,{_generated:true});
-    const legacyId=raw._legacyN!=null?String(raw._legacyN):'',decision=decisions[id]||(legacyId&&decisions[legacyId]);
-    if(decision&&typeof decision.value==='string'){
+    const legacyId=raw._legacyN!=null?String(raw._legacyN):'',shared=sharedRecommendationEffectiveItem(id),decision=decisions[id]||(legacyId&&decisions[legacyId]);
+    if(shared)row.valid=String(shared.valid||'');
+    else if(decision&&typeof decision.value==='string'){
       row.valid=decision.value;
       if(!decisions[id]){decisions[id]=Object.assign({},decision,{migratedFrom:legacyId});migratedDecisions=true;}
     }
@@ -187,6 +395,7 @@ function mergeGeneratedRecommendationPool(data){
   (Array.isArray(source)?source:[]).forEach(raw=>append(raw,true));
   storedVariants.forEach(raw=>append(raw,false));
   if(migratedDecisions)try{localStorage.setItem(GENERATED_RECO_DECISIONS_KEY,JSON.stringify(decisions));}catch(e){}
+  applySharedRecommendationState(data);
   return data;
 }
 function recommendationEdits(){
@@ -196,11 +405,13 @@ function saveRecommendationEdits(edits){try{localStorage.setItem(RECO_EDIT_STORA
 function applyRecommendationEdits(data){
   const edits=recommendationEdits();
   ((data&&data.recos)||[]).forEach(row=>{
-    const edit=edits[String(row.n)];if(!edit)return;
+    const item=sharedRecommendationEffectiveItem(row.n),hasShared=item&&['editedTitle','editedConcept','editedDesc'].some(key=>Object.prototype.hasOwnProperty.call(item,key));
+    const edit=hasShared?{title:item.editedTitle,concept:item.editedConcept,desc:item.editedDesc}:edits[String(row.n)];if(!edit)return;
     if(typeof edit.title==='string'&&edit.title.trim())row.title=edit.title.trim();
     if(typeof edit.concept==='string')row.concept=edit.concept.trim();
     if(typeof edit.desc==='string')row.desc=edit.desc.trim();
     row._locallyEdited=true;
+    if(hasShared)row._sharedEdited=true;
   });
   return data;
 }
@@ -266,6 +477,10 @@ function legacyRerenderRecos(){
 /* Daily recommendation rotation: only measured, quality-gated concepts enter a batch. */
 const RECO_DAILY_LIMIT=50;
 const RECO_MIN_DAILY_SCORE=72;
+// Stable recommendation IDs let the browser remember refreshes across pool
+// appends. Fifty thousand entries cover many full ledgers while staying well
+// below normal localStorage quotas; only the oldest consumed IDs can age out.
+const RECO_CONSUMED_LIMIT=50000;
 // V3 resets only the stale seen/queue rotation after the evidence-calibrated
 // scoring launch. Decisions, edits and Roadmap placements use separate stores.
 const RECO_ROTATION_KEY='lofi_radar_reco_rotation_v3';
@@ -387,21 +602,42 @@ function recoTokens(r){
   return [...new Set((String(r.title||'')+' '+String(r.niche||'')+' '+String(r.kw||''))
     .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').match(/[a-z0-9]{4,}/g)||[])].filter(x=>!stop.has(x)).slice(0,18);
 }
-function recoRotationHistory(){try{return JSON.parse(localStorage.getItem(RECO_ROTATION_KEY)||'{}')||{};}catch(e){return {};}}
-function saveRecoRotation(h){try{localStorage.setItem(RECO_ROTATION_KEY,JSON.stringify(h));}catch(e){}}
+function recoPoolIdentity(){
+  const pool=typeof window!=='undefined'&&window.LOFI_RECOMMENDATION_POOL&&typeof window.LOFI_RECOMMENDATION_POOL==='object'?window.LOFI_RECOMMENDATION_POOL:null;
+  if(!pool)return null;
+  return {
+    schema:Number(pool.schema)||0,version:Number(pool.version)||0,buildId:String(pool.buildId||''),
+    ledgerRevision:String(pool.ledgerRevision||''),sourceT:Number(pool.sourceT)||0
+  };
+}
+function normalizeRecoRotationHistory(history){
+  history=history&&typeof history==='object'&&!Array.isArray(history)?history:{};
+  const ordered=[],known=new Set(),append=ids=>(Array.isArray(ids)?ids:[]).forEach(id=>{
+    id=Number(id);if(!Number.isFinite(id)||known.has(id))return;known.add(id);ordered.push(id);
+  });
+  // Migrate both former ledgers. `_recent` used to expire when the Paris date
+  // changed, which made ideas explicitly discarded by Refresh reappear.
+  append(history._seen);append(history._consumed);append(history._recent&&history._recent.ids);
+  history._consumed=ordered.slice(-RECO_CONSUMED_LIMIT);
+  delete history._seen;delete history._recent;
+  return history;
+}
+function recoRotationHistory(){try{return normalizeRecoRotationHistory(JSON.parse(localStorage.getItem(RECO_ROTATION_KEY)||'{}')||{});}catch(e){return normalizeRecoRotationHistory({});}}
+function saveRecoRotation(h){
+  try{const history=normalizeRecoRotationHistory(h),pool=recoPoolIdentity();if(pool)history._pool=pool;localStorage.setItem(RECO_ROTATION_KEY,JSON.stringify(history));}catch(e){}
+}
 function recoSeenIds(history){
-  const seen=new Set(),day=recoDayKey(),recent=history&&history._recent;
-  if(recent&&recent.day===day&&Array.isArray(recent.ids))recent.ids.forEach(id=>{id=Number(id);if(Number.isFinite(id))seen.add(id);});
+  history=normalizeRecoRotationHistory(history);
+  const seen=new Set((history._consumed||[]).map(Number).filter(Number.isFinite));
   Object.entries(history||{}).forEach(([key,ids])=>{if(!key.startsWith('_')&&Array.isArray(ids))ids.forEach(id=>{id=Number(id);if(Number.isFinite(id))seen.add(id);});});
   return seen;
 }
 function rememberRecoIds(history,ids){
-  const day=recoDayKey(),previous=history&&history._recent&&history._recent.day===day?history._recent.ids:[];
-  const seen=new Set((previous||[]).map(Number).filter(Number.isFinite));
-  (ids||[]).forEach(id=>{id=Number(id);if(Number.isFinite(id))seen.add(id);});
-  // Same-day cooldown prevents immediate repeats without pushing the engine
-  // permanently down into lower-quality stock.
-  history._recent={day,ids:[...seen].slice(-1000)};delete history._seen;return history;
+  history=normalizeRecoRotationHistory(history);
+  const ordered=(history._consumed||[]).slice(),seen=new Set(ordered);
+  (ids||[]).forEach(id=>{id=Number(id);if(!Number.isFinite(id)||seen.has(id))return;seen.add(id);ordered.push(id);});
+  history._consumed=ordered.slice(-RECO_CONSUMED_LIMIT);
+  return history;
 }
 function recoAddSignal(map,key,value){if(key)map[key]=(map[key]||0)+value;}
 function recoSignal(map,key){return Number(map[key]||0);}
@@ -700,8 +936,30 @@ function initializeRoadmapArchive(){
   }catch(e){}
 }
 initializeRoadmapArchive();
+function sharedRecommendationHasRoadmapState(n){if(typeof sharedRecommendationEffectiveItem!=='function')return false;const item=sharedRecommendationEffectiveItem(n);return !!(item&&item.roadmapState);}
+function sharedRecommendationRoadmapRow(item){
+  if(!item||!item.roadmapDate)return null;
+  const reco=sharedRecommendationRow(item.n),date=Number(item.roadmapDate),d=new Date(date);if(!Number.isFinite(date)||isNaN(d))return null;
+  return {
+    date,jour:['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'][d.getDay()],
+    src:'Recommandation validée (partagée)',recoN:Number(item.n),title:String(item.editedTitle||item.title||reco.title||''),
+    genre:String(reco.genre||item.genreKey||''),perso:String(reco.perso||''),dur:String(reco.dur||''),concept:String(reco.concept||''),
+    scene:String(reco.scene||''),style:String(reco.style||''),niche:String(reco.niche||''),cadence:String(reco.cadence||''),
+    note:'Synchronisée depuis Recommandations',__sharedRecommendation:true
+  };
+}
+function sharedRecommendationRoadmapRows(){return typeof sharedRecommendationEffectiveItems==='function'?sharedRecommendationEffectiveItems().filter(item=>item.roadmapState==='active').map(sharedRecommendationRoadmapRow).filter(row=>row&&row.title):[];}
+function sharedRecommendationRoadmapArchiveItems(){
+  if(typeof sharedRecommendationEffectiveItems!=='function')return [];
+  return sharedRecommendationEffectiveItems().filter(item=>item.roadmapState==='archived').map(item=>{
+    const row=sharedRecommendationRoadmapRow(item);if(!row)return null;
+    row.__kind='roadmap';return {key:roadmapArchiveKey(row),archivedAt:Number(item.updatedAt)||Date.now(),row};
+  }).filter(Boolean);
+}
 function roadmapArchiveItems(){
-  return roadmapArchiveRows().filter(item=>item&&item.row&&(isMondayRoadmapProject(item.row)||isExplicitManualRoadmapPlacement(item.row)));
+  const local=roadmapArchiveRows().filter(item=>item&&item.row&&(isMondayRoadmapProject(item.row)||isExplicitManualRoadmapPlacement(item.row)))
+    .filter(item=>item.row.recoN==null||!sharedRecommendationHasRoadmapState(item.row.recoN));
+  const byKey=new Map(local.map(item=>[item.key,item]));sharedRecommendationRoadmapArchiveItems().forEach(item=>byKey.set(item.key,item));return [...byKey.values()];
 }
 function invalidateRoadmapDerivedViews(){
   if(typeof invalidateRecommendationDerivedData==='function')invalidateRecommendationDerivedData();
@@ -721,9 +979,11 @@ function acceptedRoadmapRows(){
   // in the raw snapshot for traceability, but validated recommendations only
   // enter Roadmap after a new explicit manual placement by the team.
   const roadmap=(DATA.roadmap||[]).filter(row=>row&&row.date&&isMondayRoadmapProject(row));
-  const confirmed=typeof SCHED_LOCAL!=='undefined'&&Array.isArray(SCHED_LOCAL)
-    ?SCHED_LOCAL.filter(row=>row&&row.date&&isExplicitManualRoadmapPlacement(row))
+  const shared=typeof sharedRecommendationRoadmapRows==='function'?sharedRecommendationRoadmapRows():[];
+  const local=typeof SCHED_LOCAL!=='undefined'&&Array.isArray(SCHED_LOCAL)
+    ?SCHED_LOCAL.filter(row=>row&&row.date&&isExplicitManualRoadmapPlacement(row)&&!sharedRecommendationHasRoadmapState(row.recoN))
     :[];
+  const confirmed=shared.concat(local);
   const bySlot=new Map(),keyFor=row=>{
     if(!row||!row.date||!row.title)return '';
     const key=String(row.date)+'|'+normalizedRecommendationTitle(row.title);
@@ -959,7 +1219,7 @@ function openRecoEditor(n,ev){
       '<label><span>'+(fr?'Titre':'Title')+'</span><input id="reco-edit-title" maxlength="180" value="'+esc(r.title||'')+'"></label>'+
       '<label><span>'+(fr?'Description de l’idée':'Idea description')+'</span><textarea id="reco-edit-concept" maxlength="1200">'+esc(r.concept||'')+'</textarea></label>'+
       '<label><span>'+(fr?'Description YouTube':'YouTube description')+'</span><textarea id="reco-edit-desc" maxlength="5000">'+esc(r.desc||'')+'</textarea></label>'+
-      '<p class="reco-editor-note">'+(fr?'La retouche est conservée sur cet appareil et utilisée par le classement après validation.':'The edit is kept on this device and used by the ranking after validation.')+'</p>'+
+      '<p class="reco-editor-note">'+(fr?'La retouche est partagée avec l’équipe et utilisée par le classement après validation.':'The edit is shared with the team and used by the ranking after validation.')+'</p>'+
       '<div class="reco-editor-actions"><button class="rbtn reco-edit-cancel" onclick="openRecoByNumber('+r.n+')">'+(fr?'Annuler':'Cancel')+'</button><button class="rbtn rbtn-ok" onclick="saveRecoEditor('+r.n+',event)">✓ '+(fr?'Enregistrer':'Save')+'</button></div>'+
     '</div>';
   document.getElementById('drawer').classList.add('show');document.getElementById('backdrop').classList.add('show');document.getElementById('drawer').scrollTop=0;
@@ -969,7 +1229,7 @@ function saveRecoEditor(n,ev){
   if(ev)ev.stopPropagation();
   const r=recommendationByNumber(n),title=document.getElementById('reco-edit-title'),concept=document.getElementById('reco-edit-concept'),desc=document.getElementById('reco-edit-desc');if(!r||!title||!concept||!desc)return;
   const nextTitle=title.value.trim();if(!nextTitle){title.focus();return;}
-  const edits=recommendationEdits();edits[String(r.n)]={title:nextTitle,concept:concept.value.trim(),desc:desc.value.trim(),updatedAt:Date.now()};saveRecommendationEdits(edits);
+  const edit={title:nextTitle,concept:concept.value.trim(),desc:desc.value.trim(),updatedAt:Date.now()},edits=recommendationEdits();edits[String(r.n)]=edit;saveRecommendationEdits(edits);saveSharedRecommendationEdit(r,edit);
   r.title=nextTitle;r.concept=concept.value.trim();r.desc=desc.value.trim();r._locallyEdited=true;
   invalidateRecommendationDerivedData();
   saveCache(DATA);
@@ -1175,6 +1435,7 @@ function archiveRoadmapEntry(i,ev){
   closeRoadmapContextMenu();
   const row=Object.assign({},r,{__kind:'roadmap'}),key=roadmapArchiveKey(row),archive=roadmapArchiveRows();
   if(!archive.some(item=>item.key===key)){archive.push({key,archivedAt:Date.now(),row});saveRoadmapArchiveRows(archive);}
+  if(row.recoN!=null)saveSharedRecommendationRoadmapArchive(row);
   // DATA remains the accepted Monday feed. Roadmap has its own reversible
   // archive and never changes a recommendation decision.
   invalidateRoadmapDerivedViews();
@@ -1183,6 +1444,7 @@ function archiveRoadmapEntry(i,ev){
 function restoreRoadmapEntry(i){
   const item=(window._roadmap_archive_items||roadmapArchiveItems())[i];if(!item)return;
   saveRoadmapArchiveRows(roadmapArchiveRows().filter(current=>current.key!==item.key));
+  if(item.row&&item.row.recoN!=null)saveSharedRecommendationRoadmap(sharedRecommendationRow(item.row.recoN,item.row),item.row);
   invalidateRoadmapDerivedViews();render();
 }
 function deleteRoadmapEntry(i,ev){
@@ -1320,6 +1582,7 @@ function archivedRoadmapKeys(){
   return keys;
 }
 function isArchivedRoadmapEntry(row){
+  if(row&&row.recoN!=null&&typeof sharedRecommendationEffectiveItem==='function'){const shared=sharedRecommendationEffectiveItem(row.recoN);if(shared&&shared.roadmapState)return shared.roadmapState==='archived';}
   return archivedRoadmapKeys().has(roadmapArchiveKey(row));
 }
 function scheduledRows(){
@@ -1404,6 +1667,7 @@ function scheduleRecommendation(reco,sug){
   schedSaveLocal();
   DATA.roadmap=(DATA.roadmap||[]).concat([entry]);
   saveCache(DATA);
+  saveSharedRecommendationRoadmap(reco,entry);
   return entry;
 }
 let SCHED_CUR=null;
@@ -1526,7 +1790,7 @@ function confirmSchedDate(){
     :['January','February','March','April','May','June','July','August','September','October','November','December'];
   const d=new Date(entry.date);
   let h='<div class="sched-h">✓ Date confirmed</div>'+
-    '<div class="sched-confirmed">« '+esc(reco.title)+' » is added on '+d.getDate()+' '+MFULL[d.getMonth()]+' '+d.getFullYear()+' and is now visible in Roadmap.<br><br>Remember to also report this date in the Google Sheet Roadmap so it persists for the whole team.</div>'+
+    '<div class="sched-confirmed">« '+esc(reco.title)+' » is added on '+d.getDate()+' '+MFULL[d.getMonth()]+' '+d.getFullYear()+' and is now visible in Roadmap.</div>'+
     '<div class="sched-actions" style="margin-top:14px">'+
       '<button class="sched-btn-ok" onclick="closeSchedPopup();go(\'roadmap\')">Open roadmap</button>'+
       '<button class="sched-btn-cancel" onclick="closeSchedPopup()">Close</button>'+
@@ -1650,7 +1914,8 @@ function anaRows(){
       o.cohMed=median(coh.map(x=>anaLifetimeVpm(x)));
     }else{o.pct=null;o.topDur=null;o.cohMed=null;}
     o.verdict=o.ageM<1?'early':(o.pct==null?'early':(o.pct>=70?'over':(o.pct>=40?'inline':'under')));
-    o.reco=v.recoN!=null?DATA.recos.find(r=>r.n===v.recoN):null;
+    const publishedLink=typeof publishedRecommendationLink==='function'?publishedRecommendationLink(v):null;o.reco=publishedLink?publishedLink.reco:null;
+    if(publishedLink){o.recoN=publishedLink.n;o.recoLinkSource=publishedLink.source;}
     return o;
   });
   const CM=window.CMT||{};
@@ -2633,7 +2898,6 @@ const FR_LIT=[
 ['Spaced out from the last rain/storm concept (≥3 weeks)','Espacé du dernier concept pluie/orage (≥3 semaines)'],
 ['Suggested release date — click a day to see nearby planned releases.','Date de sortie proposée — clique sur un jour pour voir les sorties proches.'],['✓ Confirm date','✓ Confirmer la date'],['Date suivante','Date suivante'],['Nearby releases','Sorties proches'],['No releases planned within 7 days of this date.','Aucune sortie planifiée dans les 7 jours autour de cette date.'],['>Not now<','>Plus tard<'],
 ['✓ Placed in the schedule','✓ Placé au planning'],['» is added on ','» est ajouté au '],[' and is now visible in Roadmap.',' et est maintenant visible dans la Roadmap.'],
-['Remember to also report this date in the Google Sheet Roadmap so it persists for the whole team.','Pense à reporter cette date dans le Google Sheet Roadmap pour que ça persiste pour toute l’équipe.'],
 ['See in the schedule','Voir dans le planning'],
 ['>Thumbnail scene<','>Scène de miniature<'],['>Music style<','>Style musical<'],['>Launch format<','>Format de lancement<'],
 ['>Data note<','>Note data<'],['>Recalibration<','>Recalibrage<'],['>Confidence<','>Confiance<'],['>Status<','>Statut<'],

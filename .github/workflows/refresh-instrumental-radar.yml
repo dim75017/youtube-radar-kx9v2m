@@ -21,20 +21,15 @@ on:
       - '.github/workflows/refresh-instrumental-radar.yml'
       - 'refresh_youtube_daily.py'
       - 'data_freshness_watchdog.py'
-      - 'generate_youtube_recommendation_pool.py'
       - 'import_youtube_studio_export.py'
-      - 'index.html'
-      - 'assets/css/dashboard.css'
-      - 'assets/js/dashboard-02-helpers.js'
-      - 'assets/js/dashboard-04-recommendations.js'
       - 'tests/test_refresh_youtube_daily.py'
+      - 'tests/test_import_youtube_studio_export.py'
       - 'tests/test_youtube_workflow_guardrails.py'
       - 'tests/test_data_freshness_watchdog.py'
       - 'tests/test_youtube_daily_view_deltas.js'
       - 'tests/test_youtube_analytics_scale_cache.js'
       - 'tests/test_youtube_history_cache_refresh.js'
       - 'tests/test_youtube_unavailable_quarantine.js'
-      - 'tests/test_youtube_recommendation_*.js'
   workflow_dispatch:
     inputs:
       force:
@@ -98,52 +93,11 @@ jobs:
         run: pip install --disable-pip-version-check openpyxl
       - name: Test collection and history integrity
         run: |
-          python -m unittest tests.test_refresh_youtube_daily tests.test_youtube_workflow_guardrails
+          python -m unittest tests.test_refresh_youtube_daily tests.test_import_youtube_studio_export tests.test_youtube_workflow_guardrails
           node tests/test_youtube_daily_view_deltas.js
           node tests/test_youtube_analytics_scale_cache.js
           node tests/test_youtube_history_cache_refresh.js
           node tests/test_youtube_unavailable_quarantine.js
-
-  validate_recommendations:
-    name: Validate recommendation intelligence
-    needs: gate
-    if: needs.gate.outputs.run_scan == 'true'
-    # Recommendation/UI regressions must stay visible, but they must never
-    # prevent the independent daily facts collector from recording a day.
-    continue-on-error: ${{ github.event_name != 'pull_request' }}
-    outputs:
-      valid: ${{ steps.recommendation_tests.outcome == 'success' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - name: Install validation dependencies
-        run: pip install --disable-pip-version-check openpyxl
-      - id: recommendation_tests
-        name: Test recommendation intelligence and Studio importer
-        run: |
-          python -m unittest tests.test_generate_youtube_recommendation_pool tests.test_import_youtube_studio_export
-          node tests/test_youtube_new_video_view_floor.js
-          node tests/test_youtube_channel_update_status.js
-          node tests/test_youtube_age_normalized_analysis.js
-          node tests/test_youtube_daily_recommendations.js
-          node tests/test_youtube_recommendation_actions.js
-          node tests/test_youtube_recommendation_edits.js
-          node tests/test_youtube_recommendation_status_tabs.js
-          node tests/test_youtube_recommendation_continuous_pool.js
-          node tests/test_youtube_recommendation_quality.js
-          node tests/test_youtube_recommendation_real_snapshot.js
-          node tests/test_youtube_recommendation_historical_acceptance_snapshot.js
-          node tests/test_youtube_recommendation_roadmap_precedence.js
-          node tests/test_youtube_recommendation_decision_animation.js
-          node tests/test_recommendation_validated_archive.js
-          node tests/test_roadmap_context_actions.js
-          node tests/test_roadmap_slot_scheduling.js
 
   prepare:
     name: Resolve one canonical tracked-video manifest
@@ -262,38 +216,3 @@ jobs:
           --verify-base-url https://dim75017.github.io/youtube-radar-kx9v2m/
           --verify-timeout 900
           --verify-interval 15
-
-  publish_recommendations:
-    name: Publish recommendations after their own validation
-    needs: [publish, validate_recommendations]
-    if: >-
-      always() && github.ref == 'refs/heads/main' &&
-      needs.publish.result == 'success' &&
-      needs.validate_recommendations.outputs.valid == 'true'
-    continue-on-error: true
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: main
-      - name: Sync the factual snapshot before generating ideas
-        run: git pull --ff-only origin main
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Generate the pool from the latest published counters
-        run: >-
-          python generate_youtube_recommendation_pool.py
-          --snapshot Lofi_Radar_data.js
-          --output Lofi_Radar_recommendation_pool.js
-      - name: Publish the validated pool without rebasing stale data
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Lofi_Radar_recommendation_pool.js
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m "Refresh YouTube recommendation pool"
-          git push origin HEAD:main
-

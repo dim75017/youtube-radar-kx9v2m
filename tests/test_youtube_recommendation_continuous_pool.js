@@ -74,20 +74,30 @@ assert.ok(!data.recos.some(row => row.n === legacyVariant.n),
   'an obsolete V1 continuous variant is not merged back into recommendations');
 overlayContext.saveDecision(-1000000001, '-');
 assert.equal(JSON.parse(stored.get('lofi_radar_generated_reco_decisions_v1'))['-1000000001'].value, '-',
-  'new generated decisions remain retained on the current device');
+  'new generated decisions remain available as an offline fallback');
+assert.equal(JSON.parse(stored.get('lofi_radar_shared_reco_queue_v1'))[0].valid, '-',
+  'new generated decisions are queued for the shared team state');
 
 assert.match(recommendations, /if\(rec\._generated\)saveGeneratedRecommendationDecision\(rec\.n,val,rec\);\s*else writeValid\(n,val,btn\);/,
   'generated IDs are never sent blindly to the legacy Sheet row writer');
-assert.match(recommendations, /const persistence=rec\._generated\s*\?\(saveGeneratedRecommendationDecision\(rec\.n,val,rec\),Promise\.resolve\(\{ok:true\}\)\)/,
-  'comments on generated ideas use local persistence instead of the legacy Sheet writer');
+assert.match(recommendations, /const persistence=rec\._generated\s*\?saveGeneratedRecommendationDecision\(rec\.n,val,rec\)/,
+  'comments on generated ideas enter the shared queue instead of the legacy Sheet writer');
+assert.match(recommendations, /op=state&k=/,
+  'the dashboard reads the central generated-recommendation state');
+assert.match(recommendations, /method:'POST'.*Content-Type':'text\/plain;charset=utf-8'/s,
+  'shared mutations use the Apps Script text POST contract without a CORS preflight');
 assert.match(recommendations, /CONTINUOUS_RECO_VARIANT_VERSION=2/,
   'the legacy V1 variant payload is explicitly versioned out');
 assert.match(recommendations, /RECO_ROTATION_KEY='lofi_radar_reco_rotation_v3'/,
   'evidence-calibrated anti-repetition uses the v3 rotation namespace');
 assert.ok(
   helpers.indexOf('mergeGeneratedRecommendationPool(d)') < helpers.indexOf('applyRecommendationEdits(d)'),
-  'generated ideas are merged before local title and description edits are applied',
+  'generated ideas are merged before shared or offline title and description edits are applied',
 );
+assert.doesNotMatch(helpers, /await\s+loadSharedRecommendationState\(/,
+  'Apps Script availability never blocks catalogue loading or the first dashboard paint');
+assert.match(helpers, /Promise\.resolve\(loadSharedRecommendationState\(\)\)\.catch\(\(\)=>\{\}\)/,
+  'the cached shared state is hydrated immediately while the network refresh runs in the background');
 assert.match(index, /Lofi_Radar_recommendation_pool\.js\?payload=/,
   'the browser fetches the measured reservoir without a stale cache');
 
@@ -129,14 +139,24 @@ const roadmapWinner = {
   n: 77, valid: '-', score: 70, genre: 'Lofi', perso: 'Lofi Girl',
   title: 'Roadmap learning winner', concept: 'rainy focus format',
 };
+let rotationNow = Date.parse('2026-08-04T10:00:00Z');
+class RotationDate extends Date {
+  constructor(...args) { super(...(args.length ? args : [rotationNow])); }
+  static now() { return rotationNow; }
+}
+const preservedDecisionState = JSON.stringify({sentinel: {value: 'X'}});
+const preservedEditState = JSON.stringify({sentinel: {title: 'Edited title'}});
+const preservedRoadmapState = JSON.stringify([{key: 'sentinel-roadmap'}]);
 const rotationStored = new Map([
-  ['lofi_radar_generated_reco_decisions_v1', '{}'],
+  ['lofi_radar_generated_reco_decisions_v1', preservedDecisionState],
+  ['lofi_radar_recommendation_edits_v1', preservedEditState],
+  ['lofi_radar_roadmap_archive_v3', preservedRoadmapState],
   ['lofi_radar_reco_rotation_v3', '{}'],
 ]);
 const rotationContext = {
   DATA: {recos: [Object.assign({}, roadmapWinner)]},
   LANG: 'fr',
-  Date,
+  Date: RotationDate,
   Intl,
   Set,
   Map,
@@ -150,7 +170,10 @@ const rotationContext = {
     getItem(key) { return rotationStored.get(key) || null; },
     setItem(key, value) { rotationStored.set(key, value); },
   },
-  window: {LOFI_RECOMMENDATION_POOL: {items: measuredSeeds.map(row => Object.assign({}, row))}},
+  window: {LOFI_RECOMMENDATION_POOL: {
+    schema: 3, version: 3, buildId: 'build-a', ledgerRevision: 'ledger-a', sourceT: 1,
+    items: measuredSeeds.map(row => Object.assign({}, row)),
+  }},
   normalizedRecommendationTitle(value) { return String(value || '').trim().toLowerCase().replace(/\s+/g, ' '); },
   persoCategory(value) { return value || 'Sans personnage'; },
   isValidated(value) { return /^x(?=$|\s|[,;:\-])/i.test(String(value || '').trim()); },
@@ -168,7 +191,10 @@ vm.runInNewContext(`${recommendations.slice(overlayStart, overlayEnd)}
   this.profileForTest = recoProfile;
   this.generateForTest = generateContinuousRecommendationVariants;
   this.seenForTest = recoSeenIds;
-  this.rememberForTest = rememberRecoIds;`, rotationContext);
+  this.rememberForTest = rememberRecoIds;
+  this.invalidateForTest = invalidateRecommendationDerivedData;
+  this.dayForTest = recoDayKey;
+  this.consumedLimitForTest = RECO_CONSUMED_LIMIT;`, rotationContext);
 rotationContext.mergePoolForTest(rotationContext.DATA);
 
 const firstProfile = rotationContext.profileForTest();
@@ -182,11 +208,7 @@ assert.ok(firstBatch.every(row => !row._continuousVariant),
 assert.deepEqual(Array.from(rotationContext.generateForTest(50, firstProfile, '2026-07-28', {}, {})), [],
   'continuous browser generation is disabled even when explicitly requested');
 
-const dayParts = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit',
-}).formatToParts(new Date());
-const part = type => dayParts.find(item => item.type === type).value;
-const today = `${part('year')}-${part('month')}-${part('day')}`;
+const today = rotationContext.dayForTest();
 assert.equal(JSON.parse(rotationStored.get('lofi_radar_reco_rotation_v3'))[today].length, measuredSeeds.length,
   'the v3 rotation stores only the measured active batch');
 
@@ -194,19 +216,59 @@ rotationContext.refreshForTest({stopPropagation() {}});
 const afterRefresh = Array.from(rotationContext.dailySetForTest());
 assert.equal(afterRefresh.length, 0,
   'same-day refresh returns no filler once the qualified measured reservoir is exhausted');
+const consumedAfterRefresh = JSON.parse(rotationStored.get('lofi_radar_reco_rotation_v3'))._consumed;
+assert.deepEqual([...consumedAfterRefresh].sort((a, b) => a - b), measuredSeeds.map(row => row.n).sort((a, b) => a - b),
+  'every idea explicitly discarded by Refresh enters the durable consumed ledger');
+assert.equal(rotationStored.get('lofi_radar_generated_reco_decisions_v1'), preservedDecisionState,
+  'refresh does not alter recommendation decisions');
+assert.equal(rotationStored.get('lofi_radar_recommendation_edits_v1'), preservedEditState,
+  'refresh does not alter recommendation edits');
+assert.equal(rotationStored.get('lofi_radar_roadmap_archive_v3'), preservedRoadmapState,
+  'refresh does not alter Roadmap state');
+
+const appendedSeeds = [
+  {
+    n: -1000000104, valid: '', score: 91, scoreAdj: 91, genre: 'Jazz', perso: 'Lofi Girl',
+    title: 'Night Tram Â· Quiet Study', concept: 'A newly appended measured direction.',
+    noteData: 'EXACT EVIDENCE D Â· 4.8 M views Â· 190 k views/month.',
+    _generated: true, _sourceVideoId: 'measuredD04', _sourceMarketScore: 84.5,
+  },
+  {
+    n: -1000000105, valid: '', score: 89, scoreAdj: 89, genre: 'Ambient', perso: 'Lofi Girl',
+    title: 'Moss Observatory Â· Calm Work', concept: 'Another newly appended measured direction.',
+    noteData: 'EXACT EVIDENCE E Â· 3.9 M views Â· 175 k views/month.',
+    _generated: true, _sourceVideoId: 'measuredE05', _sourceMarketScore: 83.25,
+  },
+];
+rotationContext.window.LOFI_RECOMMENDATION_POOL.items.push(...appendedSeeds.map(row => Object.assign({}, row)));
+rotationContext.window.LOFI_RECOMMENDATION_POOL.buildId = 'build-b';
+rotationContext.window.LOFI_RECOMMENDATION_POOL.ledgerRevision = 'ledger-b';
+rotationContext.mergePoolForTest(rotationContext.DATA);
+rotationContext.invalidateForTest();
+rotationNow = Date.parse('2026-08-05T10:00:00Z');
+const nextDayBatch = Array.from(rotationContext.dailySetForTest());
+assert.deepEqual(nextDayBatch.map(row => row.n).sort((a, b) => a - b), appendedSeeds.map(row => row.n).sort((a, b) => a - b),
+  'a new day and a new pool revision expose only newly appended stock, never refresh-discarded IDs');
+const nextDayHistory = JSON.parse(rotationStored.get('lofi_radar_reco_rotation_v3'));
+assert.equal(nextDayHistory._pool.buildId, 'build-b');
+assert.equal(nextDayHistory._pool.ledgerRevision, 'ledger-b');
+assert.deepEqual([...nextDayHistory._consumed].sort((a, b) => a - b), measuredSeeds.map(row => row.n).sort((a, b) => a - b),
+  'buildId and ledgerRevision are diagnostic metadata and never reset consumed stable IDs');
 
 const staleSeen = rotationContext.seenForTest({
   _seen: [1, 2, 3],
   _recent: {day: '1900-01-01', ids: [4, 5, 6]},
 });
-assert.equal(staleSeen.size, 0,
-  'legacy permanent and stale-day anti-repeat entries expire instead of suppressing ideas forever');
+assert.deepEqual(Array.from(staleSeen).sort((a, b) => a - b), [1, 2, 3, 4, 5, 6],
+  'legacy permanent and stale-day refresh entries migrate without becoming repeatable');
 const boundedHistory = {_seen: Array.from({length: 5000}, (_, index) => index + 1)};
-rotationContext.rememberForTest(boundedHistory, Array.from({length: 1205}, (_, index) => 10000 + index));
-assert.equal(boundedHistory._recent.day, today);
-assert.equal(boundedHistory._recent.ids.length, 1000,
-  'same-day anti-repeat memory is explicitly bounded');
+rotationContext.rememberForTest(boundedHistory, Array.from({length: rotationContext.consumedLimitForTest + 5}, (_, index) => 10000 + index));
+assert.equal(boundedHistory._consumed.length, rotationContext.consumedLimitForTest,
+  'the durable consumed ledger uses a large explicit FIFO bound');
+assert.equal(boundedHistory._consumed.at(-1), 10000 + rotationContext.consumedLimitForTest + 4);
 assert.ok(!Object.hasOwn(boundedHistory, '_seen'),
-  'the old permanent anti-repeat ledger is removed during migration');
+  'the old permanent anti-repeat ledger is migrated to the current shape');
+assert.ok(!Object.hasOwn(boundedHistory, '_recent'),
+  'the former day-scoped refresh memory is migrated to the durable ledger');
 
-console.log('YouTube measured recommendation pool and bounded rotation: OK');
+console.log('YouTube measured recommendation pool and durable no-repeat rotation: OK');

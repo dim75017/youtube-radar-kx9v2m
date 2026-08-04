@@ -1,0 +1,173 @@
+name: Refresh YouTube recommendations
+
+on:
+  schedule:
+    # Cheap feedback/pool refresh every six hours. The factual YouTube scan
+    # remains in its own workflow and is never delayed by recommendation code.
+    - cron: '11 0,6,12,18 * * *'
+  workflow_run:
+    workflows: ['Refresh YouTube radar']
+    branches: [main]
+    types: [completed]
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/refresh-youtube-recommendations.yml'
+      - 'generate_youtube_recommendation_pool.py'
+      - 'apps_script/**'
+      - 'index.html'
+      - 'assets/js/dashboard-01-config.js'
+      - 'assets/js/dashboard-02-helpers.js'
+      - 'assets/js/dashboard-04-recommendations.js'
+      - 'tests/test_generate_youtube_recommendation_pool.py'
+      - 'tests/test_youtube_recommendation_*.js'
+      - 'tests/test_recommendation_validated_archive.js'
+      - 'tests/test_roadmap_context_actions.js'
+      - 'tests/test_roadmap_slot_scheduling.js'
+      - 'tests/test_youtube_recommendation_workflow_guardrails.py'
+  pull_request:
+    paths:
+      - '.github/workflows/refresh-youtube-recommendations.yml'
+      - 'generate_youtube_recommendation_pool.py'
+      - 'apps_script/**'
+      - 'index.html'
+      - 'assets/js/dashboard-01-config.js'
+      - 'assets/js/dashboard-02-helpers.js'
+      - 'assets/js/dashboard-04-recommendations.js'
+      - 'tests/test_generate_youtube_recommendation_pool.py'
+      - 'tests/test_youtube_recommendation_*.js'
+      - 'tests/test_recommendation_validated_archive.js'
+      - 'tests/test_roadmap_context_actions.js'
+      - 'tests/test_roadmap_slot_scheduling.js'
+      - 'tests/test_youtube_recommendation_workflow_guardrails.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('refresh-youtube-recommendations-pr-{0}', github.event.pull_request.number) || 'refresh-youtube-recommendations-production' }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate recommendation intelligence
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install validation dependencies
+        run: pip install --disable-pip-version-check openpyxl
+      - name: Test generator, learning, decisions and Roadmap links
+        run: |
+          python -m unittest tests.test_generate_youtube_recommendation_pool tests.test_youtube_recommendation_workflow_guardrails
+          node tests/test_youtube_new_video_view_floor.js
+          node tests/test_youtube_channel_update_status.js
+          node tests/test_youtube_age_normalized_analysis.js
+          node tests/test_youtube_recommendation_published_link.js
+          node tests/test_youtube_daily_recommendations.js
+          node tests/test_youtube_recommendation_actions.js
+          node tests/test_youtube_recommendation_edits.js
+          node tests/test_youtube_recommendation_status_tabs.js
+          node tests/test_youtube_recommendation_shared_state.js
+          node tests/test_youtube_recommendation_continuous_pool.js
+          node tests/test_youtube_recommendation_quality.js
+          node tests/test_youtube_recommendation_real_snapshot.js
+          node tests/test_youtube_recommendation_historical_acceptance_snapshot.js
+          node tests/test_youtube_recommendation_roadmap_precedence.js
+          node tests/test_youtube_recommendation_decision_animation.js
+          node tests/test_recommendation_validated_archive.js
+          node tests/test_roadmap_context_actions.js
+          node tests/test_roadmap_slot_scheduling.js
+
+  publish:
+    name: Refresh shared feedback, ledger and browser pool
+    needs: validate
+    if: >-
+      github.event_name != 'pull_request' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - id: publish
+        name: Generate, validate and publish one atomic recommendation revision
+        env:
+          FEEDBACK_URL: https://script.google.com/macros/s/AKfycbynEewHZzfecwty-E5TV4Otgsxi3ieGy_N5PPYiM7GpPeMVz_5ka1rxY-Y67H3eknto4w/exec?op=state&k=lofiradar2026kx
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3; do
+            git restore --source=HEAD --staged --worktree -- .
+            git clean -fd -- Lofi_Radar_recommendation_pool.js youtube_recommendation_ledger
+            git fetch origin main
+            git checkout --detach origin/main
+            if ! python generate_youtube_recommendation_pool.py \
+              --snapshot Lofi_Radar_data.js \
+              --history-dir video_history \
+              --output Lofi_Radar_recommendation_pool.js \
+              --ledger-dir youtube_recommendation_ledger \
+              --bootstrap-pool Lofi_Radar_recommendation_pool.js \
+              --feedback "$FEEDBACK_URL" \
+              --browser-limit 2500 \
+              --reserve-low-water 1500 \
+              --reserve-high-water 3500; then
+              if [ "$attempt" -lt 3 ]; then sleep 10; continue; fi
+              exit 1
+            fi
+            python generate_youtube_recommendation_pool.py \
+              --validate-only \
+              --snapshot Lofi_Radar_data.js \
+              --history-dir video_history \
+              --output Lofi_Radar_recommendation_pool.js \
+              --ledger-dir youtube_recommendation_ledger \
+              --browser-limit 2500
+            node tests/test_youtube_recommendation_continuous_pool.js
+            node tests/test_youtube_recommendation_quality.js
+            node tests/test_youtube_recommendation_real_snapshot.js
+            git add Lofi_Radar_recommendation_pool.js youtube_recommendation_ledger
+            if git diff --cached --quiet; then
+              echo "published_commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+              echo "changed=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            git commit -m "Refresh YouTube recommendation learning ledger"
+            if git push origin HEAD:main; then
+              echo "published_commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Recommendation publication lost three consecutive main-branch races." >&2
+          exit 1
+      - name: Verify Pages serves the exact pool and ledger revision
+        run: >-
+          python generate_youtube_recommendation_pool.py
+          --validate-only
+          --snapshot Lofi_Radar_data.js
+          --history-dir video_history
+          --output Lofi_Radar_recommendation_pool.js
+          --ledger-dir youtube_recommendation_ledger
+          --browser-limit 2500
+          --verify-base-url https://dim75017.github.io/youtube-radar-kx9v2m/
+          --verify-timeout 900
+          --verify-interval 15
