@@ -123,7 +123,8 @@ assert.equal(context.recoPotentialForScore(95)[0], 'S', '95 is the evidence-back
 const objectiveS = {
   n: 9000, title: 'Objective S concept', genre: 'Jazz', niche: 'Relaxation',
   perso: 'Girl', concept: 'late night jazz relaxation', score: 95,
-  pot: 'S - Rente potentielle', _sourceVideoId: 'objective-source', valid: '',
+  pot: 'S - Rente potentielle', _scoringVersion: 4,
+  _sourceVideoId: 'objective-source', valid: '',
 };
 const negativePeers = Array.from({length: 10}, (_, index) => ({
   n: 9100 + index, title: `Refused peer ${index}`, genre: 'Jazz', niche: 'Relaxation',
@@ -144,6 +145,8 @@ assert.ok(!String(tierBatch[0]._dailyPotential).startsWith('S'),
   'the internal adaptive tier records that demotion separately');
 assert.ok(String(tierBatch[0].pot).startsWith('S'),
   'the visible market-potential tier remains the objective evidence-backed S');
+assert.equal(tierBatch[0].scoreAdj, 95,
+  'the visible score remains consistent with the objective S tier');
 
 const previousIds = new Set(daily.map(row => row.n));
 context.refreshDailyRecommendations({stopPropagation() {}});

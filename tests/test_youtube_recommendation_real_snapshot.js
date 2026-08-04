@@ -262,8 +262,11 @@ const objectiveRowsById = new Map((dataPayload.d.recos || []).concat(generated).
 assert.ok(realDailyBatch.every(row => {
   const objective = objectiveRowsById.get(Number(row.n)) || {};
   const score = Number(objective.score != null ? objective.score : objective.scoreAdj);
-  const expected = String(objective.pot || '')[0] || (score >= 95 ? 'S' : score >= 88 ? 'A' : score >= 78 ? 'B' : 'C');
-  return String(row.pot || '')[0] === expected && Number.isFinite(Number(row._dailyScore));
-}), 'visible grades preserve objective evidence while every row keeps a separate adaptive daily score');
+  const objectiveGrade = score >= 95 ? 'S' : score >= 88 ? 'A' : score >= 78 ? 'B' : 'C';
+  const expected = Number(objective._scoringVersion) >= 4 ? objectiveGrade : (String(objective.pot || '')[0] || objectiveGrade);
+  return String(row.pot || '')[0] === expected
+    && Number(row.scoreAdj) === Math.round(score)
+    && Number.isFinite(Number(row._dailyScore));
+}), 'visible grades and scores preserve objective evidence while every row keeps a separate adaptive daily score');
 
 console.log(`YouTube recommendation real snapshot: OK (${qualified.length} qualified, ${historyFiles.length} history shards, ${analyticsEligibleStudioCoverage.length}/${analyticsEligibleOwned.length} eligible Studio)`);
