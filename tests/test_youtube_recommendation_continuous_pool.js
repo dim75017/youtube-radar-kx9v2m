@@ -82,8 +82,8 @@ assert.match(recommendations, /const persistence=rec\._generated\s*\?\(saveGener
   'comments on generated ideas use local persistence instead of the legacy Sheet writer');
 assert.match(recommendations, /CONTINUOUS_RECO_VARIANT_VERSION=2/,
   'the legacy V1 variant payload is explicitly versioned out');
-assert.match(recommendations, /RECO_ROTATION_KEY='lofi_radar_reco_rotation_v2'/,
-  'quality-aware anti-repetition uses the v2 rotation namespace');
+assert.match(recommendations, /RECO_ROTATION_KEY='lofi_radar_reco_rotation_v3'/,
+  'evidence-calibrated anti-repetition uses the v3 rotation namespace');
 assert.ok(
   helpers.indexOf('mergeGeneratedRecommendationPool(d)') < helpers.indexOf('applyRecommendationEdits(d)'),
   'generated ideas are merged before local title and description edits are applied',
@@ -131,7 +131,7 @@ const roadmapWinner = {
 };
 const rotationStored = new Map([
   ['lofi_radar_generated_reco_decisions_v1', '{}'],
-  ['lofi_radar_reco_rotation_v2', '{}'],
+  ['lofi_radar_reco_rotation_v3', '{}'],
 ]);
 const rotationContext = {
   DATA: {recos: [Object.assign({}, roadmapWinner)]},
@@ -187,8 +187,8 @@ const dayParts = new Intl.DateTimeFormat('en-CA', {
 }).formatToParts(new Date());
 const part = type => dayParts.find(item => item.type === type).value;
 const today = `${part('year')}-${part('month')}-${part('day')}`;
-assert.equal(JSON.parse(rotationStored.get('lofi_radar_reco_rotation_v2'))[today].length, measuredSeeds.length,
-  'the v2 rotation stores only the measured active batch');
+assert.equal(JSON.parse(rotationStored.get('lofi_radar_reco_rotation_v3'))[today].length, measuredSeeds.length,
+  'the v3 rotation stores only the measured active batch');
 
 rotationContext.refreshForTest({stopPropagation() {}});
 const afterRefresh = Array.from(rotationContext.dailySetForTest());

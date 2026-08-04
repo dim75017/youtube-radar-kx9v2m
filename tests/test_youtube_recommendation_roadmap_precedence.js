@@ -134,8 +134,17 @@ const context = {
   recoRotationHistory: () => ({
     '2026-07-28': [1, 54, 55, 56, 59],
   }),
+  rememberRecoIds: history => history,
+  recoSeenIds: () => new Set(),
+  saveRecoRotation: () => {},
+  setActiveContinuousRecommendationVariants: () => {},
+  recommendationPerformanceHistoryReady: () => true,
   recoProfile: () => ({}),
   recoDailyScore: row => Number(row.score) || 0,
+  recoPotentialForScore: score => score >= 95 ? 'S' : score >= 88 ? 'A' : score >= 78 ? 'B' : 'C',
+  recoGenreKey: value => String(value || ''),
+  recoPurposeKey: () => '',
+  recoSourceKey: () => '',
   recoReasons: () => [],
 };
 
@@ -151,6 +160,7 @@ vm.runInNewContext(
 );
 vm.runInNewContext(
   `const RECO_DAILY_LIMIT=50;
+   const RECO_MIN_DAILY_SCORE=72;
    ${source.slice(dailyStart, dailyEnd)}
    this.dailyRecommendationSetForTest=dailyRecommendationSet;`,
   context,

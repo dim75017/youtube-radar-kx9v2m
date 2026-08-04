@@ -266,7 +266,9 @@ function legacyRerenderRecos(){
 /* Daily recommendation rotation: only measured, quality-gated concepts enter a batch. */
 const RECO_DAILY_LIMIT=50;
 const RECO_MIN_DAILY_SCORE=72;
-const RECO_ROTATION_KEY='lofi_radar_reco_rotation_v2';
+// V3 resets only the stale seen/queue rotation after the evidence-calibrated
+// scoring launch. Decisions, edits and Roadmap placements use separate stores.
+const RECO_ROTATION_KEY='lofi_radar_reco_rotation_v3';
 let RECO_HISTORY_PROMISE=null;
 let RECO_DERIVED_REVISION=0;
 let RECO_DAILY_CACHE=null;
@@ -450,11 +452,11 @@ function recoSourceKey(row){
 function recoClamp(value,min,max){return Math.max(min,Math.min(max,Number(value)||0));}
 function recoSourceRecencyBoost(row){
   const windowKey=String(row&&row._sourceWindow||'');
-  if(windowKey==='3m'||windowKey==='0-3m')return 9;
-  if(windowKey==='6m'||windowKey==='3-6m')return 5;
-  if(windowKey==='12m'||windowKey==='6-12m')return 2;
+  if(windowKey==='3m'||windowKey==='0-3m')return 2;
+  if(windowKey==='6m'||windowKey==='3-6m')return 1;
+  if(windowKey==='12m'||windowKey==='6-12m')return 0;
   const age=Number(row&&row._sourceAgeM);
-  if(Number.isFinite(age)){if(age<=3)return 9;if(age<=6)return 5;if(age<=12)return 2;return -8;}
+  if(Number.isFinite(age)){if(age<=3)return 2;if(age<=6)return 1;if(age<=12)return 0;return -4;}
   return 0;
 }
 function recoPerformanceSignal(o){
@@ -466,7 +468,14 @@ function recoPerformanceSignal(o){
   const relative=Number.isFinite(percentile)?percentile-50:0;
   const ctr=o.st&&o.st.ctr!=null?Number(o.st.ctr):null;
   const awp=o.st&&o.st.awp!=null?Number(o.st.awp):null;
-  return Math.max(-18,Math.min(18,relative*.22+(Number.isFinite(ctr)?Math.max(-3,Math.min(3,(ctr-4)*.7)):0)+(Number.isFinite(awp)?Math.max(-3,Math.min(3,(awp-35)*.08)):0)));
+  const impressions=o.st&&o.st.imp!=null?Number(o.st.imp):null;
+  // Studio enriches the channel signal only when the sample is credible.
+  // Small impression samples and impossible long-form percentages stay neutral.
+  const studioConfidence=Number.isFinite(impressions)&&impressions>=1000
+    ?Math.max(.25,Math.min(1,Math.log10(impressions/1000+1)/2.1)):0;
+  const ctrSignal=Number.isFinite(ctr)?Math.max(-3,Math.min(3,(ctr-4)*.7))*studioConfidence:0;
+  const awpSignal=Number.isFinite(awp)&&awp>=0&&awp<=150?Math.max(-3,Math.min(3,(awp-35)*.08))*studioConfidence:0;
+  return Math.max(-18,Math.min(18,relative*.22+ctrSignal+awpSignal));
 }
 function recoHorizonWeight(ageMonths){
   // The newest releases stay decisive, while 6- and 12-month results refine
@@ -522,16 +531,30 @@ function recoProfile(){
 function recoDailyScore(r,p,day){
   const base=Number(r.scoreAdj!=null?r.scoreAdj:r.score)||0;
   const genre=recoGenreKey(r.genre,r),purpose=recoPurposeKey(r),tokens=recoTokens(r);
-  const feedbackSource=recoClamp(recoSignal(p.feedbackSource,recoSourceKey(r))*3,-30,24);
-  const feedbackGenre=recoClamp(recoSignal(p.feedbackGenre,genre)*.75,-18,18);
-  const feedbackPurpose=recoClamp(recoSignal(p.feedbackPurpose,purpose)*.8,-14,14);
+  const feedbackSource=recoClamp(recoSignal(p.feedbackSource,recoSourceKey(r))*1.5,-14,12);
+  const feedbackGenre=recoSignal(p.feedbackGenre,genre);
+  const feedbackPurpose=recoSignal(p.feedbackPurpose,purpose);
   const feedbackPersona=recoClamp(recoSignal(p.feedbackPersona,persoCategory(r.perso)),-.7,.7);
-  const feedbackTerms=recoClamp(tokens.reduce((sum,t)=>sum+recoSignal(p.feedbackToken,t),0)*.45,-12,12);
-  const performanceGenre=recoClamp(recoSignal(p.performanceGenre,genre)*.72,-20,20);
-  const performancePurpose=recoClamp(recoSignal(p.performancePurpose,purpose)*.58,-12,12);
-  const performanceTerms=recoClamp(tokens.reduce((sum,t)=>sum+recoSignal(p.performanceToken,t),0)*.35,-10,10);
+  const feedbackTerms=tokens.reduce((sum,t)=>sum+recoSignal(p.feedbackToken,t),0);
+  const feedbackTopic=recoClamp(feedbackGenre*.28+feedbackPurpose*.34+feedbackTerms*.22,-10,10);
+  const performanceGenre=recoSignal(p.performanceGenre,genre);
+  const performancePurpose=recoSignal(p.performancePurpose,purpose);
+  const performanceTerms=tokens.reduce((sum,t)=>sum+recoSignal(p.performanceToken,t),0);
+  const performanceTopic=recoClamp(performanceGenre*.55+performancePurpose*.25+performanceTerms*.12,-9,9);
   const rotation=(recoHash(day+'|'+r.n)%1000)/1000*.8;
-  return base+recoSourceRecencyBoost(r)+feedbackSource+feedbackGenre+feedbackPurpose+feedbackPersona+feedbackTerms+performanceGenre+performancePurpose+performanceTerms+rotation;
+  const adjustment=recoClamp(recoSourceRecencyBoost(r)+feedbackSource+feedbackTopic+feedbackPersona+performanceTopic+rotation,-18,18);
+  // Feedback and channel results refine a measured market score; they must not
+  // turn a weak source into an S through several correlated bonuses. Positive
+  // evidence closes only part of the remaining distance to 100, while negative
+  // evidence can still demote a concept decisively.
+  const adjusted=adjustment>=0
+    ?base+adjustment*Math.max(0,100-base)/50
+    :base+adjustment*.65;
+  return recoClamp(adjusted,0,100);
+}
+function recoPotentialForScore(score){
+  score=Number(score)||0;
+  return score>=95?'S - Rente potentielle':score>=88?'A - Fort':score>=78?'B - Solide':'C - À tester';
 }
 function recoReasons(r,p,day){
   const fr=typeof LANG!=='undefined'&&LANG==='fr',out=[];const base=Math.round(Number(r.scoreAdj!=null?r.scoreAdj:r.score)||0);
@@ -556,26 +579,34 @@ function dailyRecommendationSet(){
   const hasSnapshot=typeof recommendationStatusSnapshot==='function';
   const candidateSource=hasSnapshot?recommendationStatusSnapshot().pending:(DATA.recos||[]);
   const candidates=candidateSource.filter(r=>!isValidated(r.valid)&&!isRefused(r.valid)&&(hasSnapshot||typeof recommendationRoadmapEntry!=='function'||!recommendationRoadmapEntry(r)));
-  const decorate=rows=>rows.map(r=>Object.assign({},r,{_dailyScore:recoDailyScore(r,profile,day),_dailyReasons:recoReasons(r,profile,day),_dailyProfile:profile}));
+  const decorate=rows=>rows.map(r=>{
+    const dailyScore=recoDailyScore(r,profile,day);
+    return Object.assign({},r,{scoreAdj:Math.round(dailyScore),pot:recoPotentialForScore(dailyScore),_dailyScore:dailyScore,_dailyReasons:recoReasons(r,profile,day),_dailyProfile:profile});
+  });
   const todayIds=Array.isArray(history[day])?history[day]:[];
   // A previous version could preserve a larger queue after the daily target
   // was changed. Keep the stored queue stable, but never show more than the
   // current daily limit.
   const activeTodayIds=todayIds.slice(0,RECO_DAILY_LIMIT);
   if(activeTodayIds.length!==todayIds.length){history[day]=activeTodayIds;saveRecoRotation(history);}
-  // Keep one stable, finite review queue for the whole day. Decisions remove an
-  // idea from this queue instead of instantly filling its place with a new one.
-  if(activeTodayIds.length){
-    const byId=new Map(candidates.map(r=>[Number(r.n),r]));
-    const sources=activeTodayIds.map(n=>byId.get(Number(n))).filter(Boolean),rows=decorate(sources);
-    if(typeof RECO_DAILY_CACHE!=='undefined')RECO_DAILY_CACHE={data:DATA,revision,day,lang,rows,sources};
-    return rows;
-  }
+  // Keep every still-pending idea from today's queue, then replace only the
+  // cards that were validated, refused or placed in Roadmap. This preserves the
+  // reviewer's position while keeping the promised 50 active ideas whenever
+  // the measured quality reservoir is large enough.
+  const byId=new Map(candidates.map(r=>[Number(r.n),r]));
+  const retained=activeTodayIds.map(n=>byId.get(Number(n))).filter(Boolean);
+  const retainedIds=new Set(retained.map(r=>Number(r.n)));
+  const removedIds=activeTodayIds.filter(n=>!retainedIds.has(Number(n)));
+  if(removedIds.length)rememberRecoIds(history,removedIds);
   const seen=recoSeenIds(history);
-  const available=candidates.filter(r=>!seen.has(Number(r.n)))
+  const available=candidates.filter(r=>!retainedIds.has(Number(r.n))&&!seen.has(Number(r.n)))
     .map(r=>({r,score:recoDailyScore(r,profile,day)}))
     .filter(item=>item.score>=RECO_MIN_DAILY_SCORE);
-  const picked=[],genres={},purposes={},sources={},combos={},settings={};
+  const picked=retained.slice(),genres={},purposes={},sources={},combos={},settings={};
+  picked.forEach(r=>{
+    const g=recoGenreKey(r.genre,r),purpose=recoPurposeKey(r),source=recoSourceKey(r),combo=g+'|'+purpose,setting=String(r._settingKey||'');
+    genres[g]=(genres[g]||0)+1;purposes[purpose]=(purposes[purpose]||0)+1;combos[combo]=(combos[combo]||0)+1;if(source)sources[source]=(sources[source]||0)+1;if(setting)settings[setting]=(settings[setting]||0)+1;
+  });
   while(picked.length<RECO_DAILY_LIMIT&&available.length){
     const ranked=available.map(item=>{
       const g=recoGenreKey(item.r.genre,item.r),purpose=recoPurposeKey(item.r),source=recoSourceKey(item.r),combo=g+'|'+purpose,setting=String(item.r._settingKey||'');
@@ -599,13 +630,7 @@ function dailyRecommendationSet(){
   return rows;
 }
 function activeDailyRecommendationCount(){
-  const revision=typeof RECO_DERIVED_REVISION!=='undefined'?RECO_DERIVED_REVISION:0,cached=typeof RECO_DAILY_CACHE!=='undefined'?RECO_DAILY_CACHE:null;
-  if(cached&&cached.data===DATA&&cached.revision===revision&&cached.day===recoDayKey()&&cached.sources.every(row=>!isValidated(row.valid)&&!isRefused(row.valid)))return cached.rows.length;
-  const pending=recommendationStatusSnapshot().pending;
-  const todayIds=(recoRotationHistory()[recoDayKey()]||[]).slice(0,RECO_DAILY_LIMIT);
-  if(!todayIds.length)return Math.min(RECO_DAILY_LIMIT,pending.length);
-  const pendingIds=new Set(pending.map(row=>Number(row.n)));
-  return todayIds.reduce((count,id)=>count+(pendingIds.has(Number(id))?1:0),0);
+  return dailyRecommendationSet().length;
 }
 function refreshDailyRecommendations(ev){
   if(ev)ev.stopPropagation();

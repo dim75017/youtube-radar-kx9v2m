@@ -8,7 +8,9 @@ from pathlib import Path
 from generate_youtube_recommendation_pool import (
     GENERATOR_VERSION,
     POOL_PREFIX,
+    SCORING_VERSION,
     _legacy_recommendation_id,
+    _potential_for_score,
     generate_recommendation_pool,
     write_recommendation_pool,
 )
@@ -37,8 +39,8 @@ class RecommendationPoolTests(unittest.TestCase):
                     "title": f"Measured instrumental source {index}",
                     "genre": genres[index % len(genres)],
                     "cluster": clusters[index % len(clusters)],
-                    "views": 100_000 + index * 1_000,
-                    "vpm": 10_000 + index * 25,
+                    "views": 100_000 + index * 25_000,
+                    "vpm": 30_000 + index * 2_500,
                     "ageM": (index % 12) + 1,
                     "kw": f"instrumental focus {index}",
                 }
@@ -60,6 +62,8 @@ class RecommendationPoolTests(unittest.TestCase):
         self.assertTrue(all(row["title"] not in source_titles for row in first))
         self.assertTrue(all(row["_generated"] for row in first))
         self.assertTrue(all(row["_generatorVersion"] == 2 for row in first))
+        self.assertEqual(SCORING_VERSION, 4)
+        self.assertTrue(all(row["_scoringVersion"] == SCORING_VERSION for row in first))
         self.assertTrue(all(row["_sourceWindow"] in {"0-3m", "3-6m", "6-12m"} for row in first))
         self.assertTrue(all(0 <= row["_sourceAgeM"] <= 12 for row in first))
         self.assertTrue(all(row["_settingKey"] and row["_settingKey"] == row["_settingKey"].casefold() for row in first))
@@ -107,7 +111,7 @@ class RecommendationPoolTests(unittest.TestCase):
             {_legacy_recommendation_id("lofirain001", 0), _legacy_recommendation_id("lofirain001", 1)},
         )
 
-    def test_current_pool_excludes_old_sources_and_scores_recency_windows_in_order(self):
+    def test_current_pool_excludes_old_sources_without_letting_age_override_market_strength(self):
         rows = [
             {"vid": "recent00001", "title": "Recent lofi focus", "genre": "Lofi", "cluster": "Study", "views": 150_000, "vpm": 50_000, "ageM": 2},
             {"vid": "middle00001", "title": "Recent ambient focus", "genre": "Ambient", "cluster": "Study", "views": 900_000, "vpm": 250_000, "ageM": 5},
@@ -122,8 +126,34 @@ class RecommendationPoolTests(unittest.TestCase):
             window: [row["score"] for row in generated if row["_sourceWindow"] == window]
             for window in windows
         }
-        self.assertGreater(min(scores["0-3m"]), max(scores["3-6m"]))
-        self.assertGreater(min(scores["3-6m"]), max(scores["6-12m"]))
+        self.assertGreater(min(scores["6-12m"]), max(scores["3-6m"]))
+        self.assertGreater(min(scores["3-6m"]), max(scores["0-3m"]))
+
+    def test_score_to_potential_contract_includes_a_rare_s_tier(self):
+        self.assertTrue(_potential_for_score(94).startswith("A"))
+        self.assertTrue(_potential_for_score(95).startswith("S"))
+        rows = generate_recommendation_pool(self.source_data(), max_items=1300)
+        tiers = Counter(row["pot"][0] for row in rows)
+        self.assertTrue({"S", "A", "B", "C"}.issubset(tiers))
+        self.assertLess(tiers["S"], tiers["A"])
+
+    def test_absolute_evidence_floor_prevents_relative_false_positives(self):
+        weak_recent = {
+            "vid": "weakrecent1",
+            "title": "Weak recent lofi source",
+            "genre": "Lofi",
+            "cluster": "Study",
+            "views": 5_000,
+            "vpm": 1_000,
+            "ageM": 1,
+        }
+        self.assertEqual(generate_recommendation_pool({"all": [weak_recent], "recos": []}), [])
+
+        marginal_recent = dict(weak_recent, vid="marginal001", views=100_000, vpm=30_000)
+        marginal_rows = generate_recommendation_pool({"all": [marginal_recent], "recos": []})
+        self.assertTrue(marginal_rows)
+        self.assertTrue(all(not row["pot"].startswith("S") for row in marginal_rows))
+        self.assertTrue(all(row["score"] < 88 for row in marginal_rows))
 
     def test_shared_feedback_profile_changes_seed_ranking_but_stays_bounded(self):
         sources = [

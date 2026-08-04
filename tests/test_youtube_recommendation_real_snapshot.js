@@ -184,6 +184,7 @@ const allowedGenres = new Set([
 for (const row of generated) {
   assert.equal(row._generated, true, `pool row ${row.n} must be identified as generated`);
   assert.equal(row._generatorVersion, 2, `pool row ${row.n} must come from generator V2`);
+  assert.equal(row._scoringVersion, 4, `pool row ${row.n} must use evidence-calibrated scoring V4`);
   assert.ok(Number.isFinite(Number(row._sourceAgeM)), `pool row ${row.n} must expose a measured source age`);
   assert.ok(Number(row._sourceAgeM) >= 0 && Number(row._sourceAgeM) <= 12,
     `pool row ${row.n} must only use a source observed within 12 months`);
@@ -194,6 +195,10 @@ for (const row of generated) {
 }
 assert.deepEqual(new Set(generated.map(row => row._sourceWindow)), allowedWindows,
   'the real V2 reservoir must cover 0-3m, 3-6m and 6-12m');
+const generatedTiers = new Set(generated.map(row => String(row.pot || '')[0]));
+assert.ok(generatedTiers.has('S'), 'the real measured reservoir must expose evidence-backed S ideas');
+assert.ok(generatedTiers.has('A') && generatedTiers.has('B'),
+  'the real measured reservoir must retain meaningful A and B grades');
 
 const historyCoverage = owned.filter(row => Array.isArray(history[row.vid]) && history[row.vid].length > 0);
 const multiPointCoverage = owned.filter(row => Array.isArray(history[row.vid]) && history[row.vid].length >= 2);
@@ -248,5 +253,15 @@ assert.ok(qualified.length >= 20,
   'the real V2 reservoir and real channel analytics must yield at least 20 quality-qualified ideas');
 assert.ok(qualified.every((item, index) => index === 0 || qualified[index - 1].score >= item.score),
   'the quality-qualified real reservoir must be rankable by the daily score');
+const realDailyBatch = Array.from(context.dailySetForTest());
+assert.equal(realDailyBatch.length, 50,
+  'the real measured reservoir must supply the complete daily 50-card promise');
+assert.ok(realDailyBatch.some(row => String(row.pot || '').startsWith('S')),
+  'the live adaptive batch must surface at least one evidence-backed S idea');
+assert.ok(realDailyBatch.every(row => {
+  const score = Number(row._dailyScore);
+  const expected = score >= 95 ? 'S' : score >= 88 ? 'A' : score >= 78 ? 'B' : 'C';
+  return String(row.pot || '')[0] === expected;
+}), 'every visible grade must be derived from the adaptive daily score');
 
 console.log(`YouTube recommendation real snapshot: OK (${qualified.length} qualified, ${historyFiles.length} history shards, ${analyticsEligibleStudioCoverage.length}/${analyticsEligibleOwned.length} eligible Studio)`);
