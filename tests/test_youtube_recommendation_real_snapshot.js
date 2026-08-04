@@ -257,11 +257,13 @@ const realDailyBatch = Array.from(context.dailySetForTest());
 assert.equal(realDailyBatch.length, 50,
   'the real measured reservoir must supply the complete daily 50-card promise');
 assert.ok(realDailyBatch.some(row => String(row.pot || '').startsWith('S')),
-  'the live adaptive batch must surface at least one evidence-backed S idea');
+  'the live batch must surface at least one objectively evidence-backed S idea');
+const objectiveRowsById = new Map((dataPayload.d.recos || []).concat(generated).map(row => [Number(row.n), row]));
 assert.ok(realDailyBatch.every(row => {
-  const score = Number(row._dailyScore);
-  const expected = score >= 95 ? 'S' : score >= 88 ? 'A' : score >= 78 ? 'B' : 'C';
-  return String(row.pot || '')[0] === expected;
-}), 'every visible grade must be derived from the adaptive daily score');
+  const objective = objectiveRowsById.get(Number(row.n)) || {};
+  const score = Number(objective.score != null ? objective.score : objective.scoreAdj);
+  const expected = String(objective.pot || '')[0] || (score >= 95 ? 'S' : score >= 88 ? 'A' : score >= 78 ? 'B' : 'C');
+  return String(row.pot || '')[0] === expected && Number.isFinite(Number(row._dailyScore));
+}), 'visible grades preserve objective evidence while every row keeps a separate adaptive daily score');
 
 console.log(`YouTube recommendation real snapshot: OK (${qualified.length} qualified, ${historyFiles.length} history shards, ${analyticsEligibleStudioCoverage.length}/${analyticsEligibleOwned.length} eligible Studio)`);
