@@ -1,0 +1,462 @@
+name: Backfill Soundcharts FAL Spotify IDs
+
+on:
+  workflow_run:
+    workflows: ["Scan Soundcharts Fans Also Like phase 2"]
+    types: [completed]
+  push:
+    branches: [main]
+    paths:
+      - backfill_soundcharts_fal_spotify_ids.py
+      - tests/test_backfill_soundcharts_fal_spotify_ids.py
+      - tests/test_soundcharts_fal_spotify_id_workflow_guardrails.py
+      - .github/workflows/backfill-soundcharts-fal-spotify-ids.yml
+  workflow_dispatch:
+    inputs:
+      max_requests:
+        description: 'Maximum Soundcharts attempts including retries (1-15000)'
+        required: true
+        default: '15000'
+        type: string
+
+permissions:
+  actions: write
+  contents: read
+
+# Paid Soundcharts traffic shares the exact lock used by every other collector.
+concurrency:
+  group: refresh-soundcharts-ar-collection-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  spotify_id_backfill:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      PHASE2_STATE_ARTIFACT: soundcharts-fal-phase2-state-v3
+      ENCRYPTED_STATE_ARTIFACT: soundcharts-fal-phase2-spotify-id-state-v1-encrypted
+      MIN_QUOTA_RESERVE: '1400000'
+      ABSOLUTE_MAX_REQUESTS: '15000'
+      WORKERS: '10'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Initialize isolated staging paths
+        shell: bash
+        run: |
+          echo "RESTORE_DIR=$RUNNER_TEMP/fal-phase2-restore" >> "$GITHUB_ENV"
+          echo "CACHE_DIR=$RUNNER_TEMP/fal-prior-encrypted-cache" >> "$GITHUB_ENV"
+          echo "BACKFILL_DIR=$RUNNER_TEMP/fal-spotify-id-backfill" >> "$GITHUB_ENV"
+          echo "BACKFILL_REPORT=$RUNNER_TEMP/fal-spotify-id-backfill/soundcharts-fal-spotify-id-backfill-report-v1.json" >> "$GITHUB_ENV"
+          echo "ENCRYPTED_STATE=$RUNNER_TEMP/fal-spotify-id-backfill/soundcharts-fal-phase2-spotify-id-state-v1.tar.gz.enc" >> "$GITHUB_ENV"
+          echo "ENCRYPTION_SUMMARY=$RUNNER_TEMP/fal-spotify-id-backfill/soundcharts-fal-encrypted-state-summary-v1.json" >> "$GITHUB_ENV"
+          echo "REVIEW_DIR=$RUNNER_TEMP/fal-review-after-id-backfill" >> "$GITHUB_ENV"
+          echo "REVIEW_SUMMARY=$RUNNER_TEMP/fal-review-after-id-backfill/soundcharts-fal-review-summary-v1.json" >> "$GITHUB_ENV"
+
+      - name: Validate private backfill and workflow guardrails
+        shell: bash
+        run: |
+          python -m py_compile backfill_soundcharts_fal_spotify_ids.py
+          python -m unittest \
+            tests/test_backfill_soundcharts_fal_spotify_ids.py \
+            tests/test_soundcharts_fal_spotify_id_workflow_guardrails.py \
+            tests/test_build_soundcharts_fal_review_manifest.py \
+            -v
+
+      - name: Require dedicated staging artifact encryption key
+        env:
+          FAL_STAGING_ARTIFACT_KEY: ${{ secrets.FAL_STAGING_ARTIFACT_KEY }}
+        shell: bash
+        run: |
+          if [[ -z "$FAL_STAGING_ARTIFACT_KEY" ]]; then
+            echo "FAL_STAGING_ARTIFACT_KEY is required before any Soundcharts call" >&2
+            exit 1
+          fi
+          if (( ${#FAL_STAGING_ARTIFACT_KEY} < 24 )); then
+            echo "FAL_STAGING_ARTIFACT_KEY must contain at least 24 characters" >&2
+            exit 1
+          fi
+
+      - name: Validate the bounded request plan
+        id: plan
+        env:
+          REQUESTED_MAX_REQUESTS: ${{ inputs.max_requests }}
+        shell: bash
+        run: |
+          max_requests="${REQUESTED_MAX_REQUESTS:-$ABSOLUTE_MAX_REQUESTS}"
+          if [[ ! "$max_requests" =~ ^[1-9][0-9]{0,4}$ ]] || (( 10#$max_requests > 15000 )); then
+            echo "max_requests must be an integer between 1 and 15000" >&2
+            exit 1
+          fi
+          echo "max_requests=$max_requests" >> "$GITHUB_OUTPUT"
+
+      - name: Restore newest encrypted backfill state or phase-2 source
+        id: restore
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FAL_STAGING_ARTIFACT_KEY: ${{ secrets.FAL_STAGING_ARTIFACT_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RESTORE_DIR" "$CACHE_DIR" "$BACKFILL_DIR" "$REVIEW_DIR"
+          plain_listing="$RUNNER_TEMP/fal-phase2-state-artifacts.json"
+          encrypted_listing="$RUNNER_TEMP/fal-phase2-encrypted-state-artifacts.json"
+          for spec in \
+            "$PHASE2_STATE_ARTIFACT:$plain_listing" \
+            "$ENCRYPTED_STATE_ARTIFACT:$encrypted_listing"; do
+            name="${spec%%:*}"
+            output="${spec#*:}"
+            curl --fail --silent --show-error --location \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${name}&per_page=100" \
+              --output "$output"
+          done
+          plain="$(jq -c '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last // empty' "$plain_listing")"
+          encrypted="$(jq -c '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last // empty' "$encrypted_listing")"
+          plain_created="$(jq -r '.created_at // empty' <<<"${plain:-null}")"
+          encrypted_created="$(jq -r '.created_at // empty' <<<"${encrypted:-null}")"
+
+          selected="$plain"
+          source_kind="phase2_plaintext_source"
+          if [[ -n "$encrypted" && "$encrypted" != "null" ]] && \
+             [[ -z "$plain_created" || "$encrypted_created" > "$plain_created" || "$encrypted_created" == "$plain_created" ]]; then
+            selected="$encrypted"
+            source_kind="encrypted_backfill_state"
+          fi
+          if [[ -z "$selected" || "$selected" == "null" ]]; then
+            echo "No phase-2 or encrypted Spotify-ID state artifact is available" >&2
+            exit 1
+          fi
+
+          artifact_id="$(jq -r '.id' <<<"$selected")"
+          archive_url="$(jq -r '.archive_download_url' <<<"$selected")"
+          archive="$RUNNER_TEMP/fal-state-source.zip"
+          source_dir="$RUNNER_TEMP/fal-state-source"
+          mkdir -p "$source_dir"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "$archive_url" --output "$archive"
+          unzip -o -q "$archive" -d "$source_dir"
+
+          if [[ "$source_kind" == "encrypted_backfill_state" ]]; then
+            encrypted_file="$(find "$source_dir" -type f -name '*.tar.gz.enc' -print -quit)"
+            test -s "$encrypted_file"
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 \
+              -pass env:FAL_STAGING_ARTIFACT_KEY \
+              -in "$encrypted_file" | tar -xz -C "$RESTORE_DIR"
+          else
+            cp -R "$source_dir"/. "$RESTORE_DIR"/
+          fi
+
+          # A newer phase-2 source wins, but its missing IDs are safely carried
+          # forward from the prior encrypted backfill cache before new calls.
+          if [[ "$source_kind" == "phase2_plaintext_source" && -n "$encrypted" && "$encrypted" != "null" ]]; then
+            cache_url="$(jq -r '.archive_download_url' <<<"$encrypted")"
+            cache_zip="$RUNNER_TEMP/fal-prior-encrypted-cache.zip"
+            cache_source="$RUNNER_TEMP/fal-prior-encrypted-cache-source"
+            mkdir -p "$cache_source"
+            curl --fail --silent --show-error --location \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "$cache_url" --output "$cache_zip"
+            unzip -o -q "$cache_zip" -d "$cache_source"
+            cache_encrypted="$(find "$cache_source" -type f -name '*.tar.gz.enc' -print -quit)"
+            test -s "$cache_encrypted"
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 \
+              -pass env:FAL_STAGING_ARTIFACT_KEY \
+              -in "$cache_encrypted" | tar -xz -C "$CACHE_DIR"
+            identity_cache_db="$(find "$CACHE_DIR" -type f -name 'soundcharts-fal-phase2-state-v3.sqlite3' -print -quit)"
+            test -s "$identity_cache_db"
+            echo "IDENTITY_CACHE_DB=$identity_cache_db" >> "$GITHUB_ENV"
+          fi
+
+          phase2_db="$(find "$RESTORE_DIR" -type f -name 'soundcharts-fal-phase2-state-v3.sqlite3' -print -quit)"
+          phase2_report="$(find "$RESTORE_DIR" -type f -name 'soundcharts-fal-phase2-report-v4.json' -print -quit)"
+          test -s "$phase2_db"
+          test -s "$phase2_report"
+          echo "PHASE2_DB=$phase2_db" >> "$GITHUB_ENV"
+          echo "PHASE2_REPORT=$phase2_report" >> "$GITHUB_ENV"
+          echo "source_artifact_id=$artifact_id" >> "$GITHUB_OUTPUT"
+          echo "source_kind=$source_kind" >> "$GITHUB_OUTPUT"
+
+      - name: Backfill exact Spotify identities in private staging
+        id: backfill
+        timeout-minutes: 180
+        env:
+          PYTHONUNBUFFERED: '1'
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          cache_args=()
+          if [[ -n "${IDENTITY_CACHE_DB:-}" ]]; then
+            cache_args+=(--identity-cache-state "$IDENTITY_CACHE_DB")
+          fi
+          python backfill_soundcharts_fal_spotify_ids.py \
+            --state "$PHASE2_DB" \
+            --phase2-report "$PHASE2_REPORT" \
+            --report "$BACKFILL_REPORT" \
+            --source-artifact-id "${{ steps.restore.outputs.source_artifact_id }}" \
+            --run-id "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --max-requests "${{ steps.plan.outputs.max_requests }}" \
+            --quota-reserve "$MIN_QUOTA_RESERVE" \
+            --workers "$WORKERS" \
+            "${cache_args[@]}"
+          test -z "$(git status --porcelain)"
+
+      - name: Verify identity, quota and staging invariants
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - "$PHASE2_DB" "$BACKFILL_REPORT" "$GITHUB_OUTPUT" <<'PY'
+          import json
+          import re
+          import sqlite3
+          import sys
+          from pathlib import Path
+
+          database = Path(sys.argv[1])
+          report = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+          if report.get("staging_only") is not True:
+              raise SystemExit("Spotify-ID backfill escaped private staging")
+          if report.get("canonical_written") is not False:
+              raise SystemExit("Spotify-ID backfill attempted a canonical write")
+          if report.get("dashboard_written") is not False:
+              raise SystemExit("Spotify-ID backfill attempted a dashboard write")
+          policy = report.get("policy") or {}
+          requests = report.get("requests") or {}
+          if policy.get("ambiguous_never_assigned") is not True:
+              raise SystemExit("Ambiguous Spotify identities can be assigned")
+          if policy.get("duplicate_within_phase2_never_assigned") is not True:
+              raise SystemExit("Within-phase-2 duplicate identities can be assigned")
+          if policy.get("raw_responses_persisted") is not False:
+              raise SystemExit("Raw Soundcharts responses were persisted")
+          if policy.get("canonical_catalogue_compared") is not False:
+              raise SystemExit("Backfill falsely claims a canonical catalogue comparison")
+          if policy.get("canonical_promotion_allowed") is not False:
+              raise SystemExit("Backfill permits canonical promotion before catalogue comparison")
+          if int(policy.get("maximum_requests") or 0) != 15000:
+              raise SystemExit("The absolute request cap is not 15000")
+          if int(requests.get("claimed") or 0) > 15000:
+              raise SystemExit("Spotify-ID backfill exceeded 15000 Soundcharts attempts")
+          if int(requests.get("protected_floor") or 0) < 1400000:
+              raise SystemExit("Spotify-ID backfill did not protect 1.4M quota")
+          forbidden_row_keys = {"tracks", "rows", "records", "candidate_ids"}
+          if forbidden_row_keys.intersection(report):
+              raise SystemExit("Backfill report contains row-level data")
+
+          connection = sqlite3.connect(database)
+          connection.row_factory = sqlite3.Row
+          if connection.execute("PRAGMA quick_check").fetchone()[0].lower() != "ok":
+              raise SystemExit("Updated phase-2 state failed quick_check")
+          invalid_streams = connection.execute(
+              """SELECT COUNT(*) FROM fal_phase2_stream_gate
+                   WHERE gate_status='eligible'
+                     AND (streams_total IS NULL OR streams_total<100000)"""
+          ).fetchone()[0]
+          if invalid_streams:
+              raise SystemExit("An invalid stream gate entered the ID backfill")
+          rows = connection.execute(
+              """SELECT b.track_uuid,b.status,b.selected_spotify_id,s.spotify_id
+                   FROM fal_phase2_spotify_id_backfill AS b
+                   JOIN fal_phase2_stream_gate AS s ON s.track_uuid=b.track_uuid"""
+          ).fetchall()
+          pattern = re.compile(r"[A-Za-z0-9]{22}")
+          conflicted = {"ambiguous", "duplicate_within_phase2", "identity_conflict"}
+          for row in rows:
+              if row["status"] in conflicted and row["spotify_id"]:
+                  raise SystemExit(f"Conflicted identity was assigned: {row['track_uuid']}")
+              if row["status"] == "resolved":
+                  selected = str(row["selected_spotify_id"] or "")
+                  if not pattern.fullmatch(selected) or selected != row["spotify_id"]:
+                      raise SystemExit(f"Resolved identity is invalid: {row['track_uuid']}")
+          duplicates = connection.execute(
+              """SELECT spotify_id,COUNT(DISTINCT track_uuid)
+                   FROM fal_phase2_stream_gate
+                  WHERE spotify_id IS NOT NULL AND trim(spotify_id)<>''
+                    AND track_uuid IN (
+                        SELECT track_uuid FROM fal_phase2_spotify_id_backfill
+                         WHERE status='resolved'
+                    )
+                  GROUP BY spotify_id HAVING COUNT(DISTINCT track_uuid)>1"""
+          ).fetchall()
+          if duplicates:
+              raise SystemExit("A within-phase-2 duplicate Spotify ID entered resolved staging")
+          connection.close()
+          with Path(sys.argv[3]).open("a", encoding="utf-8") as output:
+              output.write(
+                  f"state_changed={'true' if report.get('state_changed') is True else 'false'}\n"
+              )
+          PY
+          test -z "$(git status --porcelain)"
+
+      - name: Encrypt changed state before artifact storage
+        id: encrypt_state
+        if: steps.backfill.outcome == 'success' && steps.verify.outputs.state_changed == 'true'
+        env:
+          FAL_STAGING_ARTIFACT_KEY: ${{ secrets.FAL_STAGING_ARTIFACT_KEY }}
+          SOURCE_ARTIFACT_ID: ${{ steps.restore.outputs.source_artifact_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="$RUNNER_TEMP/fal-encrypted-bundle"
+          mkdir -p "$bundle"
+          cp "$PHASE2_DB" "$bundle/soundcharts-fal-phase2-state-v3.sqlite3"
+          cp "$PHASE2_REPORT" "$bundle/soundcharts-fal-phase2-report-v4.json"
+          cp "$BACKFILL_REPORT" "$bundle/soundcharts-fal-spotify-id-backfill-report-v1.json"
+          tar -cz -C "$bundle" . | \
+            openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 -salt \
+              -pass env:FAL_STAGING_ARTIFACT_KEY -out "$ENCRYPTED_STATE"
+          test -s "$ENCRYPTED_STATE"
+          python - "$ENCRYPTED_STATE" "$ENCRYPTION_SUMMARY" <<'PY'
+          import hashlib
+          import json
+          import os
+          import sys
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          encrypted = Path(sys.argv[1])
+          summary = {
+              "version": 1,
+              "generated_at": datetime.now(timezone.utc).isoformat(),
+              "artifact_name": "soundcharts-fal-phase2-spotify-id-state-v1-encrypted",
+              "cipher": "AES-256-CBC",
+              "key_derivation": "PBKDF2-HMAC-SHA256",
+              "iterations": 600000,
+              "salted": True,
+              "plaintext_uploaded": False,
+              "encrypted_bytes": encrypted.stat().st_size,
+              "encrypted_sha256": hashlib.sha256(encrypted.read_bytes()).hexdigest(),
+              "source_artifact_id": os.environ.get("SOURCE_ARTIFACT_ID", ""),
+          }
+          Path(sys.argv[2]).write_text(
+              json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+          )
+          PY
+      - name: Persist encrypted changed state after successful or partial backfill
+        id: state_upload
+        if: steps.encrypt_state.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundcharts-fal-phase2-spotify-id-state-v1-encrypted
+          path: ${{ env.ENCRYPTED_STATE }}
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+
+      - name: Upload aggregate backfill reports only
+        if: steps.backfill.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundcharts-fal-spotify-id-backfill-summary-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.BACKFILL_REPORT }}
+            ${{ env.ENCRYPTION_SUMMARY }}
+          if-no-files-found: ignore
+          retention-days: 90
+          compression-level: 9
+
+      - name: Chain review builder and keep only aggregate counts
+        if: steps.backfill.outcome == 'success' && steps.verify.outputs.state_changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          raw_json="$REVIEW_DIR/soundcharts-fal-review-manifest-v1.json"
+          raw_tsv="$REVIEW_DIR/soundcharts-fal-review-manifest-v1.tsv"
+          python build_soundcharts_fal_review_manifest.py \
+            --state "$PHASE2_DB" \
+            --phase2-report "$PHASE2_REPORT" \
+            --minimum-streams 100000 \
+            --json-out "$raw_json" \
+            --tsv-out "$raw_tsv"
+          python - "$raw_json" "$REVIEW_SUMMARY" <<'PY'
+          import json
+          import sys
+          from collections import Counter
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          tracks = payload.get("tracks") or []
+          buckets = Counter(str(track.get("review_bucket") or "unknown") for track in tracks)
+          blockers = Counter(
+              str(blocker)
+              for track in tracks
+              for blocker in (track.get("blocking_fields") or [])
+          )
+          summary = {
+              "version": 1,
+              "generated_at": datetime.now(timezone.utc).isoformat(),
+              "staging_only": True,
+              "canonical_written": False,
+              "dashboard_written": False,
+              "row_level_data_uploaded": False,
+              "minimum_lifetime_streams": payload.get("minimum_lifetime_streams"),
+              "total_tracks": len(tracks),
+              "review_bucket_counts": dict(sorted(buckets.items())),
+              "blocking_field_counts": dict(sorted(blockers.items())),
+              "records_digest": payload.get("records_digest"),
+              "source_state_sha256": (payload.get("source") or {}).get("phase2_state_sha256"),
+          }
+          Path(sys.argv[2]).write_text(
+              json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+          )
+          PY
+          rm -f "$raw_json" "$raw_tsv"
+          test ! -e "$raw_json"
+          test ! -e "$raw_tsv"
+          test -z "$(git status --porcelain)"
+
+      - name: Upload aggregate review summary only
+        if: steps.backfill.outcome == 'success' && steps.verify.outputs.state_changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundcharts-fal-review-summary-v1-${{ github.run_id }}
+          path: ${{ env.REVIEW_SUMMARY }}
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 9
+
+      - name: Keep only the two newest encrypted mutable state artifacts
+        if: steps.state_upload.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          listing="$RUNNER_TEMP/fal-encrypted-state-artifacts-after-backfill.json"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${ENCRYPTED_STATE_ARTIFACT}&per_page=100" \
+            --output "$listing"
+          mapfile -t stale_ids < <(jq -r \
+            '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[2:][] | .id' \
+            "$listing")
+          for artifact_id in "${stale_ids[@]}"; do
+            curl --fail --silent --show-error --location \
+              --request DELETE \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}"
+          done

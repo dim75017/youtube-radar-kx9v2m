@@ -591,15 +591,17 @@ class FalPhase2Tests(unittest.TestCase):
 
     def test_stream_gate_uses_an_inclusive_100000_lifetime_threshold(self):
         self.assertEqual(DEFAULT_MIN_TRACK_STREAMS, 100_000)
-        self.add_detail("track-at-threshold", spotify_id="spotify-at-threshold")
-        self.add_detail("track-below-threshold", spotify_id="spotify-below-threshold")
+        at_threshold_id = "4vFL08pP0H9RDUVj05qXyL"
+        below_threshold_id = "5UpeJ6WZJdbX2ucwsYIRua"
+        self.add_detail("track-at-threshold", spotify_id=at_threshold_id)
+        self.add_detail("track-below-threshold", spotify_id=below_threshold_id)
         self.assertEqual(seed_stream_gate(self.phase2), 2)
 
         def respond(path):
             if "/track-at-threshold/" in path:
-                return self.stream_history("spotify-at-threshold", 100_000)
+                return self.stream_history(at_threshold_id, 100_000)
             if "/track-below-threshold/" in path:
-                return self.stream_history("spotify-below-threshold", 99_999)
+                return self.stream_history(below_threshold_id, 99_999)
             raise AssertionError(f"unexpected stream path: {path}")
 
         scanner = self.stream_scanner(FakeClient(respond), workers=2)
@@ -625,6 +627,88 @@ class FalPhase2Tests(unittest.TestCase):
             ),
             ("blocked_streams_below_threshold", 99_999),
         )
+
+    def test_stream_gate_discovers_and_persists_one_exact_spotify_identifier(self):
+        discovered = "4vFL08pP0H9RDUVj05qXyL"
+        self.add_detail("track-missing-spotify-id")
+        seed_stream_gate(self.phase2)
+        client = FakeClient(lambda _path: self.stream_history(discovered, 123_456))
+
+        self.assertTrue(self.stream_scanner(client).scan_batch())
+        gate = self.phase2.execute(
+            """SELECT spotify_id,gate_status,streams_total
+                 FROM fal_phase2_stream_gate
+                WHERE track_uuid='track-missing-spotify-id'"""
+        ).fetchone()
+        detail = self.phase2.execute(
+            """SELECT spotify_id FROM fal_phase2_details
+                WHERE track_uuid='track-missing-spotify-id'"""
+        ).fetchone()
+        self.assertEqual(tuple(gate), (discovered, "eligible", 123_456))
+        self.assertEqual(detail["spotify_id"], discovered)
+
+    def test_stream_gate_replaces_a_malformed_preferred_id_with_exact_plot_identity(self):
+        discovered = "4vFL08pP0H9RDUVj05qXyL"
+        self.add_detail("track-malformed-spotify-id", spotify_id="not-a-track-id")
+        seed_stream_gate(self.phase2)
+        client = FakeClient(lambda _path: self.stream_history(discovered, 123_456))
+
+        self.assertTrue(self.stream_scanner(client).scan_batch())
+        gate = self.phase2.execute(
+            """SELECT spotify_id,gate_status FROM fal_phase2_stream_gate
+                WHERE track_uuid='track-malformed-spotify-id'"""
+        ).fetchone()
+        detail = self.phase2.execute(
+            """SELECT spotify_id FROM fal_phase2_details
+                WHERE track_uuid='track-malformed-spotify-id'"""
+        ).fetchone()
+        self.assertEqual(tuple(gate), (discovered, "eligible"))
+        self.assertEqual(detail["spotify_id"], discovered)
+
+    def test_stream_gate_never_guesses_between_spotify_aliases(self):
+        self.add_detail("track-ambiguous-spotify-id")
+        seed_stream_gate(self.phase2)
+        response = {
+            "items": [
+                {
+                    "date": "2026-07-31",
+                    "plots": [
+                        {"identifier": "11DtUkOzvRc4PLMvWdzSKn", "value": 123_456},
+                        {"identifier": "5UpeJ6WZJdbX2ucwsYIRua", "value": 123_456},
+                    ],
+                }
+            ]
+        }
+        self.assertTrue(
+            self.stream_scanner(FakeClient(lambda _path: response)).scan_batch()
+        )
+        gate = self.phase2.execute(
+            """SELECT spotify_id,gate_status,reason
+                 FROM fal_phase2_stream_gate
+                WHERE track_uuid='track-ambiguous-spotify-id'"""
+        ).fetchone()
+        self.assertEqual(gate["spotify_id"], None)
+        self.assertEqual(gate["gate_status"], "review_streams_unknown")
+        self.assertEqual(gate["reason"], "spotify_identifiers_ambiguous")
+
+    def test_stream_gate_quarantines_a_discovered_duplicate_spotify_identifier(self):
+        duplicate = "4vFL08pP0H9RDUVj05qXyL"
+        self.add_detail("track-original", spotify_id=duplicate)
+        self.add_detail("track-duplicate")
+        seed_stream_gate(self.phase2)
+        client = FakeClient(lambda _path: self.stream_history(duplicate, 123_456))
+
+        self.assertTrue(self.stream_scanner(client).scan_batch(max_items=2))
+        duplicate_row = self.phase2.execute(
+            """SELECT spotify_id,gate_status,streams_total
+                 FROM fal_phase2_stream_gate
+                WHERE track_uuid='track-duplicate'"""
+        ).fetchone()
+        self.assertEqual(duplicate_row["spotify_id"], duplicate)
+        self.assertEqual(
+            duplicate_row["gate_status"], "review_spotify_identity_duplicate"
+        )
+        self.assertIsNone(duplicate_row["streams_total"])
 
     def test_stream_gate_missing_metric_stays_in_review(self):
         self.add_detail("track-streams-unknown", spotify_id="spotify-unknown")

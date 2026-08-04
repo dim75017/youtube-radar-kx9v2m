@@ -1,0 +1,189 @@
+name: Build Soundcharts Fans Also Like review manifest
+
+on:
+  workflow_run:
+    workflows: ["Scan Soundcharts Fans Also Like phase 2"]
+    types: [completed]
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - build_soundcharts_fal_review_manifest.py
+      - tests/test_build_soundcharts_fal_review_manifest.py
+      - tests/test_soundcharts_fal_review_workflow_guardrails.py
+      - .github/workflows/build-soundcharts-fal-review.yml
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: soundcharts-fal-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PHASE2_STATE_ARTIFACT: soundcharts-fal-phase2-state-v3
+      REVIEW_SUMMARY_ARTIFACT: soundcharts-fal-review-summary-v1
+      MINIMUM_STREAMS: '100000'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate review builder guardrails
+        run: |
+          python -m py_compile build_soundcharts_fal_review_manifest.py
+          python -m unittest \
+            tests/test_build_soundcharts_fal_review_manifest.py \
+            tests/test_soundcharts_fal_review_workflow_guardrails.py \
+            -v
+
+      - name: Download latest private phase-2 checkpoint
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          listing="$RUNNER_TEMP/phase2-artifacts.json"
+          archive="$RUNNER_TEMP/phase2.zip"
+          phase2_dir="$RUNNER_TEMP/phase2"
+          mkdir -p "$phase2_dir"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${PHASE2_STATE_ARTIFACT}&per_page=100" \
+            --output "$listing"
+          artifact_url="$(jq -r '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .archive_download_url // empty' "$listing")"
+          test -n "$artifact_url"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "$artifact_url" --output "$archive"
+          unzip -q "$archive" -d "$phase2_dir"
+          phase2_db="$(find "$phase2_dir" -type f -name 'soundcharts-fal-phase2-state-v3.sqlite3' -print -quit)"
+          phase2_report="$(find "$phase2_dir" -type f -name 'soundcharts-fal-phase2-report-v4.json' -print -quit)"
+          test -s "$phase2_db"
+          test -s "$phase2_report"
+          echo "PHASE2_DB=$phase2_db" >> "$GITHUB_ENV"
+          echo "PHASE2_REPORT=$phase2_report" >> "$GITHUB_ENV"
+          echo "REVIEW_DIR=$RUNNER_TEMP/fal-review" >> "$GITHUB_ENV"
+
+      - name: Build private review queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$REVIEW_DIR"
+          before="$(sha256sum "$PHASE2_DB" | cut -d' ' -f1)"
+          python build_soundcharts_fal_review_manifest.py \
+            --state "$PHASE2_DB" \
+            --phase2-report "$PHASE2_REPORT" \
+            --minimum-streams "$MINIMUM_STREAMS" \
+            --json-out "$REVIEW_DIR/soundcharts-fal-review-manifest-v1.json" \
+            --tsv-out "$REVIEW_DIR/soundcharts-fal-review-manifest-v1.tsv"
+          after="$(sha256sum "$PHASE2_DB" | cut -d' ' -f1)"
+          test "$before" = "$after"
+
+      - name: Verify fail-closed review manifest
+        shell: bash
+        run: |
+          python - "$REVIEW_DIR/soundcharts-fal-review-manifest-v1.json" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          if payload.get("staging_only") is not True:
+              raise SystemExit("FAL review manifest must stay staging-only")
+          if payload.get("canonical_written") is not False:
+              raise SystemExit("FAL review manifest attempted a canonical write")
+          if payload.get("dashboard_written") is not False:
+              raise SystemExit("FAL review manifest attempted a dashboard write")
+          if int(payload.get("minimum_lifetime_streams") or 0) != 100000:
+              raise SystemExit("FAL review manifest lost the 100k floor")
+          release_window = payload.get("release_window") or {}
+          if not release_window.get("cutoff") or not release_window.get("as_of"):
+              raise SystemExit("FAL review manifest lost the phase-2 release window")
+          guardrails = payload.get("guardrails") or {}
+          if guardrails.get("unknown_ai_never_promotion_ready") is not True:
+              raise SystemExit("Unknown AI evidence can enter promotion-ready")
+          if guardrails.get("identity_rights_and_source_approval_required") is not True:
+              raise SystemExit("Identity/rights/source approval gate is missing")
+          if guardrails.get("release_window_enforced_before_first_review_batch") is not True:
+              raise SystemExit("Out-of-window releases can enter the first review batch")
+          if guardrails.get("spotify_identity_format_mismatch_and_duplicates_fail_closed") is not True:
+              raise SystemExit("Spotify identity conflicts can enter the first review batch")
+          if len(str(payload.get("records_digest") or "")) != 64:
+              raise SystemExit("Review rows are not bound by a manifest digest")
+          source = payload.get("source") or {}
+          if len(str(source.get("phase2_state_sha256") or "")) != 64:
+              raise SystemExit("Review manifest is not bound to the phase-2 state")
+          for track in payload.get("tracks") or []:
+              if int(track.get("streams_total") or 0) < 100000:
+                  raise SystemExit("Below-threshold track entered review manifest")
+              if len(str(track.get("record_digest") or "")) != 64:
+                  raise SystemExit("Review row lacks a stable digest")
+              if track.get("review_bucket") == "promotion_ready" and track.get("blocking_fields"):
+                  raise SystemExit("Blocked evidence entered promotion-ready")
+          PY
+          test -z "$(git status --porcelain)"
+
+      - name: Retain only an aggregate review summary
+        shell: bash
+        run: |
+          python - "$REVIEW_DIR/soundcharts-fal-review-manifest-v1.json" \
+            "$REVIEW_DIR/soundcharts-fal-review-summary-v1.json" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          source = Path(sys.argv[1])
+          destination = Path(sys.argv[2])
+          payload = json.loads(source.read_text(encoding="utf-8"))
+          summary = {
+              "version": payload.get("version"),
+              "generated_at": payload.get("generated_at"),
+              "status": payload.get("status"),
+              "staging_only": payload.get("staging_only"),
+              "canonical_written": payload.get("canonical_written"),
+              "dashboard_written": payload.get("dashboard_written"),
+              "minimum_lifetime_streams": payload.get("minimum_lifetime_streams"),
+              "release_window": payload.get("release_window"),
+              "summary": payload.get("summary"),
+              "guardrails": payload.get("guardrails"),
+              "records_digest": payload.get("records_digest"),
+              "source": payload.get("source"),
+          }
+          destination.write_text(
+              json.dumps(summary, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          source.with_name("soundcharts-fal-review-manifest-v1.tsv").unlink()
+          source.unlink()
+          PY
+          test ! -e "$REVIEW_DIR/soundcharts-fal-review-manifest-v1.json"
+          test ! -e "$REVIEW_DIR/soundcharts-fal-review-manifest-v1.tsv"
+          test -s "$REVIEW_DIR/soundcharts-fal-review-summary-v1.json"
+
+      - name: Upload aggregate review summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.REVIEW_SUMMARY_ARTIFACT }}-${{ github.run_id }}
+          path: ${{ env.REVIEW_DIR }}/soundcharts-fal-review-summary-v1.json
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 9
