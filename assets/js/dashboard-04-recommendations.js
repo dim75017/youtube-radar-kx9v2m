@@ -141,7 +141,7 @@ function saveContinuousRecommendationVariantState(state){
 }
 function continuousRecommendationStorageRow(row){
   const stored=Object.assign({},row);
-  delete stored._dailyScore;delete stored._dailyReasons;delete stored._dailyProfile;
+  delete stored._dailyScore;delete stored._dailyPotential;delete stored._dailyReasons;delete stored._dailyProfile;
   return stored;
 }
 function storedContinuousRecommendationRows(){
@@ -581,7 +581,15 @@ function dailyRecommendationSet(){
   const candidates=candidateSource.filter(r=>!isValidated(r.valid)&&!isRefused(r.valid)&&(hasSnapshot||typeof recommendationRoadmapEntry!=='function'||!recommendationRoadmapEntry(r)));
   const decorate=rows=>rows.map(r=>{
     const dailyScore=recoDailyScore(r,profile,day);
-    return Object.assign({},r,{scoreAdj:Math.round(dailyScore),pot:recoPotentialForScore(dailyScore),_dailyScore:dailyScore,_dailyReasons:recoReasons(r,profile,day),_dailyProfile:profile});
+    // The tier is the objective, evidence-calibrated market potential. Daily
+    // learning still controls rank through dailyScore, but it must not relabel
+    // an objectively measured S as A merely because a broad topic was refused.
+    const evidenceScore=Number(r.score!=null?r.score:r.scoreAdj);
+    const visibleScore=Math.round(Number.isFinite(evidenceScore)?evidenceScore:dailyScore);
+    const evidencePotential=Number(r._scoringVersion)>=4
+      ?recoPotentialForScore(visibleScore)
+      :(String(r.pot||'').trim()||recoPotentialForScore(visibleScore));
+    return Object.assign({},r,{scoreAdj:visibleScore,pot:evidencePotential,_dailyScore:dailyScore,_dailyPotential:recoPotentialForScore(dailyScore),_dailyReasons:recoReasons(r,profile,day),_dailyProfile:profile});
   });
   const todayIds=Array.isArray(history[day])?history[day]:[];
   // A previous version could preserve a larger queue after the daily target

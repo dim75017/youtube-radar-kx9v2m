@@ -117,6 +117,37 @@ assert.equal(context.activeDailyRecommendationCount(), 50,
 assert.equal(context.recoPotentialForScore(94)[0], 'A', '94 remains an A');
 assert.equal(context.recoPotentialForScore(95)[0], 'S', '95 is the evidence-backed S threshold');
 
+// Personalisation orders the queue but cannot erase an objective S label.
+// Ten refusals sharing the same source/topic deliberately pull this S below
+// the adaptive S threshold, while its measured market tier remains visible.
+const objectiveS = {
+  n: 9000, title: 'Objective S concept', genre: 'Jazz', niche: 'Relaxation',
+  perso: 'Girl', concept: 'late night jazz relaxation', score: 95,
+  pot: 'S - Rente potentielle', _scoringVersion: 4,
+  _sourceVideoId: 'objective-source', valid: '',
+};
+const negativePeers = Array.from({length: 10}, (_, index) => ({
+  n: 9100 + index, title: `Refused peer ${index}`, genre: 'Jazz', niche: 'Relaxation',
+  perso: 'Girl', concept: 'late night jazz relaxation', score: 90,
+  _sourceVideoId: 'objective-source', valid: '-',
+}));
+const tierDayKey = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit',
+}).format(new Date());
+const tierStored = new Map([
+  ['lofi_radar_reco_rotation_v3', JSON.stringify({[tierDayKey]: [objectiveS.n]})],
+]);
+const tierContext = makeContext([objectiveS, ...negativePeers], tierStored, []);
+const tierBatch = tierContext.dailyRecommendationSet();
+assert.equal(tierBatch.length, 1, 'the retained objective S stays in its active queue');
+assert.ok(tierBatch[0]._dailyScore < 95, 'negative learned feedback still demotes its adaptive rank');
+assert.ok(!String(tierBatch[0]._dailyPotential).startsWith('S'),
+  'the internal adaptive tier records that demotion separately');
+assert.ok(String(tierBatch[0].pot).startsWith('S'),
+  'the visible market-potential tier remains the objective evidence-backed S');
+assert.equal(tierBatch[0].scoreAdj, 95,
+  'the visible score remains consistent with the objective S tier');
+
 const previousIds = new Set(daily.map(row => row.n));
 context.refreshDailyRecommendations({stopPropagation() {}});
 const refreshed = context.dailyRecommendationSet();
