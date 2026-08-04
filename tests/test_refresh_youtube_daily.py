@@ -72,6 +72,63 @@ class DailyHistoryTests(unittest.TestCase):
             self.assertEqual(merged["videoMetrics"]["search_results_enriched"], 10)
             self.assertEqual(summary["updated"], 1)
 
+    def test_discovery_failure_never_blocks_factual_daily_history(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "Lofi_Radar_data.js"
+            avatars = root / "avatars.js"
+            shards = root / "shards"
+            shards.mkdir()
+            radar.write_snapshot(snapshot, {
+                "t": 1,
+                "d": {
+                    "all": [{"vid": "abcdefghijk", "title": "Tracked", "views": 100}],
+                    "trends": [], "news": [], "recos": [], "roadmap": [],
+                },
+            })
+            manifest = root / "tracked.json"
+            manifest.write_text(
+                json.dumps({"version": 1, "ids": ["abcdefghijk"], "quarantine_ids": []}),
+                encoding="utf-8",
+            )
+            generated = int(datetime(2026, 8, 4, 8, tzinfo=timezone.utc).timestamp() * 1000)
+            with patch.object(radar, "utc_now_ms", return_value=generated), patch.object(
+                radar, "fetch_owned_ydl_rows", side_effect=RuntimeError("owned discovery unavailable")
+            ), patch.object(
+                radar, "query_specs", return_value=[{"query": "focus music"}]
+            ), patch.object(
+                radar, "fetch_search", side_effect=RuntimeError("search unavailable")
+            ), patch.object(
+                radar,
+                "fetch_one_video",
+                return_value={"vid": "abcdefghijk", "title": "Tracked", "views": 150},
+            ), patch.dict(radar.os.environ, {"YOUTUBE_API_KEY": ""}):
+                artifact = radar.run_shard(
+                    snapshot,
+                    shards / "youtube-shard-0.json",
+                    0,
+                    1,
+                    tracked_manifest=manifest,
+                )
+
+            self.assertEqual(artifact["tracked_ok"], 1)
+            self.assertEqual(artifact["queries_ok"], 0)
+            self.assertFalse(artifact["owned_ok"])
+            radar.merge_artifacts(
+                snapshot,
+                avatars,
+                shards,
+                1,
+                generate_recommendations=False,
+            )
+            merged = radar.read_snapshot(snapshot)
+            metrics = merged["videoMetrics"]
+            self.assertFalse(metrics["partial"])
+            self.assertTrue(metrics["discovery_partial"])
+            self.assertFalse(metrics["owned_discovery_ok"])
+            self.assertEqual(metrics["history_updated"], 1)
+            self.assertTrue(radar.snapshot_freshness(snapshot, generated)["fresh"])
+
     def test_daily_history_keeps_latest_point_per_paris_day(self):
         morning = int(datetime(2026, 7, 20, 8, tzinfo=timezone.utc).timestamp() * 1000)
         evening = morning + 10 * 3600000
@@ -635,18 +692,22 @@ class DailyHistoryTests(unittest.TestCase):
             history_dir = root / "video_history"
             history_dir.mkdir()
             stamp = int(datetime(2026, 7, 28, 8, tzinfo=timezone.utc).timestamp() * 1000)
-            radar.write_snapshot(snapshot, {"videoMetricsT": stamp, "d": {}})
+            radar.write_snapshot(snapshot, {
+                "videoMetricsT": stamp,
+                "videoMetrics": {"history_updated": 2},
+                "d": {},
+            })
             pool = root / "Lofi_Radar_recommendation_pool.js"
             pool.write_text(
                 radar.POOL_PREFIX + json.dumps({"sourceT": stamp, "items": [{}] * 1001}) + ";\n",
                 encoding="utf-8",
             )
             (history_dir / "61.json").write_text(
-                json.dumps({"version": 1, "updated": stamp, "d": {}}),
+                json.dumps({"version": 1, "updated": stamp, "d": {"abcdefghijk": [[stamp, 100]]}}),
                 encoding="utf-8",
             )
             (history_dir / "62.json").write_text(
-                json.dumps({"version": 1, "updated": stamp, "d": {}}),
+                json.dumps({"version": 1, "updated": stamp, "d": {"lmnopqrstuv": [[stamp, 200]]}}),
                 encoding="utf-8",
             )
 
@@ -676,6 +737,95 @@ class DailyHistoryTests(unittest.TestCase):
         self.assertEqual(result["snapshot"], stamp)
         self.assertEqual(result["history_min"], stamp)
         self.assertEqual(result["history_shards"], 2)
+        self.assertEqual(result["history_points"], 2)
+
+    def test_core_pages_verifier_does_not_depend_on_recommendation_pool(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "snapshot.js"
+            history_dir = root / "video_history"
+            history_dir.mkdir()
+            stamp = int(datetime(2026, 8, 4, 8, tzinfo=timezone.utc).timestamp() * 1000)
+            radar.write_snapshot(snapshot, {
+                "videoMetricsT": stamp,
+                "videoMetrics": {"history_updated": 1},
+                "d": {},
+            })
+            shard = history_dir / "61.json"
+            shard.write_text(
+                json.dumps({"version": 1, "updated": stamp, "d": {"abcdefghijk": [[stamp, 100]]}}),
+                encoding="utf-8",
+            )
+
+            class Response(io.BytesIO):
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *args):
+                    self.close()
+
+            responses = iter([Response(snapshot.read_bytes()), Response(shard.read_bytes())])
+            with patch.object(
+                radar.urllib.request,
+                "urlopen",
+                side_effect=lambda *args, **kwargs: next(responses),
+            ):
+                result = radar.verify_publication(
+                    "https://example.test/radar/",
+                    snapshot,
+                    history_dir,
+                    timeout_seconds=1,
+                    interval_seconds=1,
+                    require_recommendation_pool=False,
+                )
+        self.assertTrue(result["published"])
+        self.assertIsNone(result["recommendations"])
+        self.assertEqual(result["snapshot"], stamp)
+        self.assertEqual(result["history_min"], stamp)
+
+    def test_pages_verifier_rejects_fresh_shard_metadata_with_missing_points(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "snapshot.js"
+            history_dir = root / "video_history"
+            history_dir.mkdir()
+            stamp = int(datetime(2026, 8, 4, 8, tzinfo=timezone.utc).timestamp() * 1000)
+            radar.write_snapshot(snapshot, {
+                "videoMetricsT": stamp,
+                "videoMetrics": {"history_updated": 1},
+                "d": {},
+            })
+            shard = history_dir / "61.json"
+            shard.write_text(
+                json.dumps({"version": 1, "updated": stamp, "d": {"abcdefghijk": [[stamp, 100]]}}),
+                encoding="utf-8",
+            )
+            remote_shard = json.dumps({"version": 1, "updated": stamp, "d": {}}).encode()
+
+            class Response(io.BytesIO):
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *args):
+                    self.close()
+
+            responses = iter([Response(snapshot.read_bytes()), Response(remote_shard)])
+            with patch.object(
+                radar.urllib.request,
+                "urlopen",
+                side_effect=lambda *args, **kwargs: next(responses),
+            ), patch.object(radar.time, "monotonic", side_effect=[0, 0, 2]), patch.object(
+                radar.time, "sleep", return_value=None
+            ):
+                with self.assertRaisesRegex(RuntimeError, "stale history shards"):
+                    radar.verify_publication(
+                        "https://example.test/radar/",
+                        snapshot,
+                        history_dir,
+                        timeout_seconds=1,
+                        interval_seconds=1,
+                        require_recommendation_pool=False,
+                    )
 
 
 if __name__ == "__main__":

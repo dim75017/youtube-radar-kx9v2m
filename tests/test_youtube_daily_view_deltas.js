@@ -15,6 +15,7 @@ assert.ok(mergeStart >= 0 && mergeEnd > mergeStart, 'daily history merge helper 
 const context = { Date, Intl, Map, isFinite };
 vm.runInNewContext(`${source.slice(start, end)}\n${source.slice(mergeStart, mergeEnd)};
   this.dailyViewDeltas = dailyViewDeltas;
+  this.dailyViewSeries = dailyViewSeries;
   this.mergeDailyVideoHistory = mergeDailyVideoHistory;
   this.videoHistoryDayKey = videoHistoryDayKey;`, context);
 
@@ -29,6 +30,21 @@ const deltas = context.dailyViewDeltas([
 
 assert.deepEqual(Array.from(deltas, point => Array.from(point)), [at(21, 35), at(22, 50)],
   'the chart starts from 20 July and never invents a value across a missing day');
+
+const gappedSeries = context.dailyViewSeries([
+  [Date.parse('2026-08-01T08:00:00Z'), 100],
+  [Date.parse('2026-08-04T08:00:00Z'), 160],
+]);
+assert.deepEqual(Array.from(gappedSeries.points), [],
+  'a multi-day counter change is never exposed as a daily gain');
+assert.deepEqual(Array.from(gappedSeries.missingObservations), [
+  Date.parse('2026-08-02T12:00:00Z'),
+  Date.parse('2026-08-03T12:00:00Z'),
+], 'the interface names each missing daily observation');
+assert.equal(gappedSeries.end, Date.parse('2026-08-04T12:00:00Z'),
+  'the chart range still reaches the latest exact cumulative observation');
+assert.equal(gappedSeries.latestTotal, 160,
+  'the latest exact total remains visible without inventing a daily delta');
 
 const parisMidnightBefore = Date.parse('2026-07-29T10:33:00Z');
 const parisMidnightAfter = Date.parse('2026-07-29T22:49:00Z');
@@ -99,8 +115,10 @@ assert.deepEqual(
   'the 20 July cutoff starts at Paris midnight, not UTC midnight',
 );
 
-assert.match(source, /dailyViewDeltas\(active\)/,
+assert.match(source, /histChart\(daily\.points,'daily-views',false,daily\)/,
   'video drawers chart daily view gains instead of cumulative views');
+assert.match(source, /p\[0\]-segment\[segment\.length-1\]\[0\]!==86400000/,
+  'the chart line is broken across missing days instead of bridging the gap');
 assert.match(source, /day=videoHistoryDayKey\(point\[0\]\)/,
   'daily history merging uses the canonical Paris day key');
 assert.match(source, /out\.push\(\[videoHistoryDayTimestamp\(day\),delta\]\)/,

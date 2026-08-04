@@ -50,9 +50,7 @@ SEARCH_RESULTS = int(os.environ.get("RADAR_SEARCH_RESULTS", "10"))
 TRACK_WORKERS = int(os.environ.get("RADAR_TRACK_WORKERS", "12"))
 SEARCH_WORKERS = int(os.environ.get("RADAR_SEARCH_WORKERS", "4"))
 MIN_TRACK_RATIO = 0.90
-MIN_QUERY_RATIO = 0.90
 MIN_PUBLISH_TRACK_RATIO = 0.99
-MIN_PUBLISH_QUERY_RATIO = 0.99
 HISTORY_RETENTION_DAYS = 400
 OWN_CHANNEL_HANDLES = ("@LofiGirl",)
 OWN_UPLOADS_PER_CHANNEL = 50
@@ -727,12 +725,16 @@ def run_shard(
     track_failed = 0
     api_key = os.environ.get("YOUTUBE_API_KEY", "").strip()
     owned_fresh: dict[str, dict] = {}
-    # One deterministic shard discovers the official uploads. The merge only
-    # runs after every shard passes, so a failed Lofi Girl lookup cannot
-    # silently publish a snapshot that misses a new release.
+    owned_ok = True
+    # Official-upload discovery is useful, but it must never erase a day of
+    # factual counters for the already tracked cohort.
     if shard == 0:
-        owned_fresh = fetch_owned_api_rows(now_ms, api_key) if api_key else fetch_owned_ydl_rows(now_ms)
-        fresh.update(owned_fresh)
+        try:
+            owned_fresh = fetch_owned_api_rows(now_ms, api_key) if api_key else fetch_owned_ydl_rows(now_ms)
+            fresh.update(owned_fresh)
+        except Exception as exc:
+            owned_ok = False
+            print(f"WARN official-upload discovery: {type(exc).__name__}: {exc}", file=sys.stderr)
     if api_key:
         try:
             fresh.update(fetch_api_rows(lookup_ids, now_ms, api_key))
@@ -791,8 +793,11 @@ def run_shard(
     query_ok = len(specs) - query_failed
     if ids and track_ok / len(ids) < MIN_TRACK_RATIO:
         raise RuntimeError(f"Shard {shard}: only {track_ok}/{len(ids)} tracked videos refreshed")
-    if specs and query_ok / len(specs) < MIN_QUERY_RATIO:
-        raise RuntimeError(f"Shard {shard}: only {query_ok}/{len(specs)} keyword searches succeeded")
+    if query_ok < len(specs):
+        print(
+            f"WARN shard {shard}: discovery is partial at {query_ok}/{len(specs)} keyword searches",
+            file=sys.stderr,
+        )
 
     artifact = {
         "version": 1,
@@ -806,6 +811,7 @@ def run_shard(
         "queries_ok": query_ok,
         "queries_raw": query_raw,
         "queries_enriched": query_enriched,
+        "owned_ok": owned_ok,
         "tracked_ids": ids,
         "tracked_fresh_ids": tracked_fresh_ids,
         "tracked_failed_ids": tracked_failed_ids,
@@ -1008,6 +1014,7 @@ def merge_artifacts(
     expected_shards: int,
     history_dir: Path | None = None,
     recommendation_pool: Path | None = None,
+    generate_recommendations: bool = True,
 ) -> dict:
     files = sorted(merge_dir.rglob("youtube-shard-*.json"))
     artifacts = [json.loads(path.read_text(encoding="utf-8")) for path in files]
@@ -1025,8 +1032,7 @@ def merge_artifacts(
     queries_enriched = sum(int(a.get("queries_enriched", 0)) for a in artifacts)
     if not tracked_total or tracked_ok / tracked_total < MIN_PUBLISH_TRACK_RATIO:
         raise RuntimeError(f"Merge rejected: {tracked_ok}/{tracked_total} tracked videos refreshed")
-    if not queries_total or queries_ok / queries_total < MIN_PUBLISH_QUERY_RATIO:
-        raise RuntimeError(f"Merge rejected: {queries_ok}/{queries_total} keyword searches succeeded")
+    owned_ok = all(bool(artifact.get("owned_ok", True)) for artifact in artifacts)
     tracked_fresh_ids = {
         str(video_id)
         for artifact in artifacts
@@ -1246,12 +1252,14 @@ def merge_artifacts(
         "updated": active_updated_total,
         "keywords": queries_total,
         "keywords_ok": queries_ok,
+        "discovery_partial": queries_ok < queries_total or not owned_ok,
+        "owned_discovery_ok": owned_ok,
         "search_results": queries_raw,
         "search_results_enriched": queries_enriched,
         "history_updated": history_updated,
         "history_day": history_day,
         "day_timezone": RADAR_TIMEZONE_NAME,
-        "partial": active_updated_total < active_tracked_total or queries_ok < queries_total,
+        "partial": active_updated_total < active_tracked_total,
         "unavailable_ids": unavailable_ids,
         "missing_ids": missing_ids,
     }
@@ -1264,18 +1272,21 @@ def merge_artifacts(
     }
     avatar_count = write_avatar_overlay(payload, avatars)
     write_snapshot(snapshot, payload)
-    pool_data = dict(data)
-    pool_data["videoMetricsT"] = now_ms
-    pool_payload = write_recommendation_pool(
-        pool_data,
-        recommendation_pool or snapshot.parent / DEFAULT_RECOMMENDATION_POOL.name,
-        generated_ms=now_ms,
-    )
+    pool_payload = None
+    if generate_recommendations:
+        pool_data = dict(data)
+        pool_data["videoMetricsT"] = now_ms
+        pool_payload = write_recommendation_pool(
+            pool_data,
+            recommendation_pool or snapshot.parent / DEFAULT_RECOMMENDATION_POOL.name,
+            generated_ms=now_ms,
+        )
     summary = {
         "tracked": active_tracked_total,
         "updated": active_updated_total,
         "keywords": queries_total,
         "keywords_ok": queries_ok,
+        "discovery_partial": queries_ok < queries_total or not owned_ok,
         "history_ids": history_ids,
         "history_files": history_files,
         "history_updated": history_updated,
@@ -1288,7 +1299,7 @@ def merge_artifacts(
         "news_removed_below_view_floor": removed_low_view_news,
         "ours_added": inserted_ours,
         "avatars": avatar_count,
-        "recommendations_generated": len(pool_payload["items"]),
+        "recommendations_generated": len(pool_payload["items"]) if pool_payload else None,
         "timestamp": datetime.fromtimestamp(now_ms / 1000, timezone.utc).isoformat(),
     }
     print(json.dumps(summary, ensure_ascii=False))
@@ -1311,8 +1322,6 @@ def snapshot_freshness(snapshot: Path, now_ms: int | None = None) -> dict:
         same_day
         and tracked > 0
         and updated == tracked
-        and keywords > 0
-        and keywords_ok == keywords
         and history_updated == updated
         and not bool(metrics.get("partial"))
         and metrics.get("history_day") == history_day_key(stamp)
@@ -1337,8 +1346,9 @@ def verify_publication(
     timeout_seconds: int = 900,
     interval_seconds: int = 15,
     recommendation_pool: Path | None = None,
+    require_recommendation_pool: bool = True,
 ) -> dict:
-    """Wait until Pages serves the snapshot, renewable ideas and history."""
+    """Wait until Pages serves the factual snapshot/history and optional ideas."""
     local = read_snapshot(snapshot)
     expected = int(local.get("videoMetricsT") or 0)
     if not expected:
@@ -1346,8 +1356,25 @@ def verify_publication(
     shards = sorted(history_dir.glob("*.json"))
     if not shards:
         raise RuntimeError("Local history directory has no shards")
+    local_history: dict[str, dict] = {}
+    for shard in shards:
+        document = json.loads(shard.read_text(encoding="utf-8"))
+        if not isinstance(document, dict) or not isinstance(document.get("d"), dict):
+            raise RuntimeError(f"Local history shard {shard.name} is malformed")
+        local_history[shard.name] = document
+    expected_history_updated = int((local.get("videoMetrics") or {}).get("history_updated") or 0)
+    local_latest_count = sum(
+        1
+        for document in local_history.values()
+        for points in document["d"].values()
+        if isinstance(points, list) and points and isinstance(points[-1], list) and len(points[-1]) >= 2
+    )
+    if expected_history_updated <= 0 or local_latest_count < expected_history_updated:
+        raise RuntimeError(
+            f"Local factual history is incomplete at {local_latest_count}/{expected_history_updated}"
+        )
     local_pool_path = recommendation_pool or snapshot.parent / DEFAULT_RECOMMENDATION_POOL.name
-    if not local_pool_path.exists():
+    if require_recommendation_pool and not local_pool_path.exists():
         raise RuntimeError("Local renewable recommendation pool is missing")
     root = base_url.rstrip("/") + "/"
     deadline = time.monotonic() + max(timeout_seconds, 1)
@@ -1362,31 +1389,61 @@ def verify_publication(
                 last_error = f"served snapshot={remote_stamp}, expected={expected}"
                 time.sleep(max(interval_seconds, 1))
                 continue
-            with urllib.request.urlopen(
-                root + DEFAULT_RECOMMENDATION_POOL.name + "?" + cache_buster,
-                timeout=30,
-            ) as response:
-                pool_raw = response.read().decode("utf-8").strip()
-            if not pool_raw.startswith(POOL_PREFIX):
-                raise RuntimeError("served recommendation pool is malformed")
-            remote_pool = json.loads(pool_raw[len(POOL_PREFIX):].rstrip(";\n "))
-            pool_stamp = int(remote_pool.get("sourceT") or 0)
-            pool_count = len(remote_pool.get("items") or [])
-            if pool_stamp < expected or pool_count <= 1_000:
-                last_error = f"served recommendation pool={pool_count}@{pool_stamp}, expected >1000@{expected}"
-                time.sleep(max(interval_seconds, 1))
-                continue
+            pool_count = None
+            if require_recommendation_pool:
+                with urllib.request.urlopen(
+                    root + DEFAULT_RECOMMENDATION_POOL.name + "?" + cache_buster,
+                    timeout=30,
+                ) as response:
+                    pool_raw = response.read().decode("utf-8").strip()
+                if not pool_raw.startswith(POOL_PREFIX):
+                    raise RuntimeError("served recommendation pool is malformed")
+                remote_pool = json.loads(pool_raw[len(POOL_PREFIX):].rstrip(";\n "))
+                pool_stamp = int(remote_pool.get("sourceT") or 0)
+                pool_count = len(remote_pool.get("items") or [])
+                if pool_stamp < expected or pool_count <= 1_000:
+                    last_error = f"served recommendation pool={pool_count}@{pool_stamp}, expected >1000@{expected}"
+                    time.sleep(max(interval_seconds, 1))
+                    continue
             stale_shards: list[str] = []
             history_stamps: list[int] = []
+            verified_points = 0
             for shard in shards:
                 with urllib.request.urlopen(
                     root + "video_history/" + shard.name + "?" + cache_buster,
                     timeout=30,
                 ) as response:
-                    history_stamp = int((json.load(response) or {}).get("updated") or 0)
+                    remote_history = json.load(response) or {}
+                history_stamp = int(remote_history.get("updated") or 0)
                 history_stamps.append(history_stamp)
                 if history_stamp < expected:
                     stale_shards.append(shard.name)
+                    continue
+                remote_rows = remote_history.get("d") if isinstance(remote_history, dict) else None
+                if not isinstance(remote_rows, dict):
+                    stale_shards.append(shard.name)
+                    continue
+                for video_id, local_points in local_history[shard.name]["d"].items():
+                    if not isinstance(local_points, list) or not local_points:
+                        continue
+                    local_point = local_points[-1]
+                    remote_points = remote_rows.get(video_id)
+                    if not isinstance(local_point, list) or len(local_point) < 2 or not isinstance(remote_points, list) or not remote_points:
+                        stale_shards.append(shard.name)
+                        break
+                    remote_point = remote_points[-1]
+                    if (
+                        not isinstance(remote_point, list)
+                        or len(remote_point) < 2
+                        or int(remote_point[0]) < int(local_point[0])
+                        or (
+                            int(remote_point[0]) == int(local_point[0])
+                            and int(remote_point[1]) != int(local_point[1])
+                        )
+                    ):
+                        stale_shards.append(shard.name)
+                        break
+                    verified_points += 1
             if not stale_shards:
                 result = {
                     "published": True,
@@ -1394,6 +1451,7 @@ def verify_publication(
                     "snapshot": remote_stamp,
                     "history_min": min(history_stamps),
                     "history_shards": len(history_stamps),
+                    "history_points": verified_points,
                     "recommendations": pool_count,
                 }
                 print(json.dumps(result))
@@ -1411,6 +1469,7 @@ def main() -> None:
     parser.add_argument("--avatars", type=Path, default=DEFAULT_AVATARS)
     parser.add_argument("--history-dir", type=Path, default=DEFAULT_HISTORY_DIR)
     parser.add_argument("--recommendation-pool", type=Path, default=DEFAULT_RECOMMENDATION_POOL)
+    parser.add_argument("--skip-recommendation-pool", action="store_true")
     parser.add_argument("--shard", type=int)
     parser.add_argument("--shards", type=int, default=10)
     parser.add_argument("--output", type=Path)
@@ -1419,6 +1478,7 @@ def main() -> None:
     parser.add_argument("--write-tracked-manifest", type=Path)
     parser.add_argument("--check-fresh-today", action="store_true")
     parser.add_argument("--verify-base-url")
+    parser.add_argument("--verify-core-only", action="store_true")
     parser.add_argument("--verify-timeout", type=int, default=900)
     parser.add_argument("--verify-interval", type=int, default=15)
     args = parser.parse_args()
@@ -1437,6 +1497,7 @@ def main() -> None:
             args.verify_timeout,
             args.verify_interval,
             args.recommendation_pool,
+            not args.verify_core_only,
         )
         return
     if args.merge_dir:
@@ -1447,6 +1508,7 @@ def main() -> None:
             args.shards,
             args.history_dir,
             args.recommendation_pool,
+            not args.skip_recommendation_pool,
         )
         return
     if args.shard is None or args.output is None:

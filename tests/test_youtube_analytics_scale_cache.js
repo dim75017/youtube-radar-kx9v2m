@@ -8,7 +8,7 @@ function requireText(text,needle,label){
   if(!text.includes(needle)) throw new Error(label+': missing '+needle);
 }
 
-requireText(index,'dashboard-02-helpers.js?v=20260801-youtube-history-day-spacing-v2','cache version');
+requireText(index,'dashboard-02-helpers.js?v=20260804-youtube-gap-v1','cache version');
 requireText(helpers,"if(currentRoute==='ana')return {title:'Analysis',html:anaHTML()};",'analysis title');
 requireText(helpers,"topbar.classList.remove('no-view-title')",'visible analysis header');
 for(const text of [helpers,legacy]){
