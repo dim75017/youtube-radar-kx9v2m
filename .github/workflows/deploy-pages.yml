@@ -1,0 +1,89 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      requested_sha:
+        description: 'Main commit whose publication requested this coalesced deployment'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Every source (human merge or bot dispatch) shares one lane. A newer main
+# revision supersedes an older queued build instead of creating a Pages
+# deployment backlog that can remain in deployment_queued until it times out.
+concurrency:
+  group: github-pages-production
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build latest main
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Require the requested revision to belong to main
+        if: github.event_name == 'workflow_dispatch' && inputs.requested_sha != ''
+        env:
+          REQUESTED_SHA: ${{ inputs.requested_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$REQUESTED_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Invalid requested_sha: $REQUESTED_SHA" >&2
+            exit 1
+          fi
+          git fetch --no-tags origin main
+          if ! git cat-file -e "$REQUESTED_SHA^{commit}" 2>/dev/null; then
+            echo "Requested commit is not available: $REQUESTED_SHA" >&2
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$REQUESTED_SHA" origin/main; then
+            echo "Requested commit is not part of main: $REQUESTED_SHA" >&2
+            exit 1
+          fi
+          echo "Coalescing request for $REQUESTED_SHA onto latest main $(git rev-parse origin/main)."
+
+      - uses: actions/configure-pages@v5
+
+      # Keep the same Jekyll build semantics as the former branch-based Pages
+      # deployment while making the deploy trigger explicit and controllable.
+      - name: Build site with Jekyll
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./
+          destination: ./_site
+
+      - name: Upload exact Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ./_site
+
+  deploy:
+    name: Deploy latest main
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
+        with:
+          # The generated legacy workflow stopped after 10 minutes even when
+          # GitHub still reported deployment_queued. Coalescing removes the
+          # backlog; this bounded extension absorbs occasional service delay.
+          timeout: 2700000

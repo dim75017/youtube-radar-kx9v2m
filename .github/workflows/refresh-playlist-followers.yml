@@ -15,6 +15,7 @@ on:
         type: boolean
 
 permissions:
+  actions: write
   contents: write
 
 # This exact group is shared with the main Soundcharts collector. It prevents
@@ -129,6 +130,8 @@ jobs:
 
       - name: Publish follower history independently
         if: steps.coverage_before.outputs.complete != 'true' || inputs.force == true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
@@ -137,7 +140,13 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "data: refresh daily playlist followers"
           for attempt in 1 2 3; do
-            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+            if git pull --rebase --autostash origin main && git push origin HEAD:main; then
+              published_sha="$(git rev-parse HEAD)"
+              python trigger_pages_deployment.py \
+                --repository "$GITHUB_REPOSITORY" \
+                --sha "$published_sha"
+              exit 0
+            fi
             sleep 5
           done
           exit 1

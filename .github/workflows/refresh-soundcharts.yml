@@ -160,7 +160,7 @@ on:
         type: boolean
 
 permissions:
-  actions: read
+  actions: write
   contents: write
   deployments: read
   pages: read
@@ -915,6 +915,7 @@ jobs:
         id: publish_snapshot
         if: steps.plan.outputs.publish == 'true'
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
         shell: bash
         run: |
@@ -933,10 +934,15 @@ jobs:
           test "$published" = "true"
           staged_sha="$(git rev-parse HEAD)"
           echo "sha=$staged_sha" >> "$GITHUB_OUTPUT"
+          python trigger_pages_deployment.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --sha "$staged_sha"
           echo "Staged unreferenced snapshot at $staged_sha"
 
       - name: Publish refreshed playlist covers
         if: steps.plan.outputs.publish == 'true' && steps.plan.outputs.scope == 'playlist_covers'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
@@ -945,7 +951,13 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "data: refresh Soundcharts playlist covers"
           for attempt in 1 2 3; do
-            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+            if git pull --rebase --autostash origin main && git push origin HEAD:main; then
+              published_sha="$(git rev-parse HEAD)"
+              python trigger_pages_deployment.py \
+                --repository "$GITHUB_REPOSITORY" \
+                --sha "$published_sha"
+              exit 0
+            fi
             sleep 5
           done
           exit 1
@@ -1064,6 +1076,7 @@ jobs:
       - name: Activate snapshot only after remote validation
         if: steps.plan.outputs.publish == 'true'
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
           OLD_SNAPSHOT: ${{ steps.snapshot.outputs.old }}
           STAGED_SHA: ${{ steps.publish_snapshot.outputs.sha }}
@@ -1112,7 +1125,13 @@ jobs:
             soundcharts-history
           git commit -m "data: activate validated Soundcharts snapshot"
           for attempt in 1 2 3; do
-            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+            if git pull --rebase --autostash origin main && git push origin HEAD:main; then
+              published_sha="$(git rev-parse HEAD)"
+              python trigger_pages_deployment.py \
+                --repository "$GITHUB_REPOSITORY" \
+                --sha "$published_sha"
+              exit 0
+            fi
             sleep 5
           done
           exit 1

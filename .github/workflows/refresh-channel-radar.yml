@@ -16,6 +16,7 @@ on:
         type: boolean
 
 permissions:
+  actions: write
   contents: write
 
 concurrency:
@@ -70,6 +71,8 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: python refresh_channels_monthly.py
       - name: Commit channel snapshot and history
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -77,7 +80,13 @@ jobs:
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Refresh monthly YouTube channel metrics"
           for attempt in 1 2 3; do
-            git pull --rebase origin main && git push && exit 0
+            if git pull --rebase origin main && git push; then
+              published_sha="$(git rev-parse HEAD)"
+              python trigger_pages_deployment.py \
+                --repository "$GITHUB_REPOSITORY" \
+                --sha "$published_sha"
+              exit 0
+            fi
             sleep 5
           done
           exit 1
