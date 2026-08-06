@@ -8,13 +8,18 @@ DEPLOY = (ROOT / ".github/workflows/deploy-pages.yml").read_text(encoding="utf-8
 
 
 class PagesDeployWorkflowGuardrailsTests(unittest.TestCase):
-    def test_deploy_is_explicit_coalesced_and_does_not_write_git(self):
+    def test_deploy_is_explicit_coalesced_and_recovery_is_bounded(self):
         self.assertIn("workflow_dispatch:", DEPLOY)
         self.assertRegex(DEPLOY, r"push:\s+branches: \[main\]")
         self.assertIn("group: github-pages-production", DEPLOY)
         self.assertIn("cancel-in-progress: true", DEPLOY)
-        self.assertNotIn("git push", DEPLOY)
-        self.assertNotIn("trigger_pages_deployment.py", DEPLOY)
+        self.assertIn("type: string", DEPLOY)
+        self.assertIn("default: '0'", DEPLOY)
+        self.assertIn("fromJSON(inputs.retry_attempt || '0') < 3", DEPLOY)
+        self.assertIn("fromJSON(inputs.retry_attempt || '0') >= 3", DEPLOY)
+        self.assertIn("--allow-empty", DEPLOY)
+        self.assertIn("git push origin HEAD:main", DEPLOY)
+        self.assertIn("--retry-attempt", DEPLOY)
 
     def test_minimum_pages_permissions_and_exact_build_actions_are_used(self):
         self.assertIn("contents: read", DEPLOY)
@@ -28,7 +33,25 @@ class PagesDeployWorkflowGuardrailsTests(unittest.TestCase):
             "actions/deploy-pages@v5",
         ):
             self.assertIn(action, DEPLOY)
-        self.assertIn("timeout: 2700000", DEPLOY)
+
+    def test_pages_deploy_uses_the_real_cap_then_renews_the_revision(self):
+        self.assertEqual(DEPLOY.count("actions/upload-pages-artifact@v4"), 1)
+        self.assertEqual(DEPLOY.count("actions/deploy-pages@v5"), 1)
+        self.assertEqual(DEPLOY.count("artifact_name: github-pages"), 1)
+        self.assertEqual(DEPLOY.count("timeout: 600000"), 1)
+        self.assertEqual(DEPLOY.count("continue-on-error: true"), 1)
+        self.assertNotIn("timeout: 2700000", DEPLOY)
+        self.assertIn("Mark this Pages attempt as failed", DEPLOY)
+        self.assertIn("steps.deployment.outcome == 'failure'", DEPLOY)
+        self.assertIn("retry_attempt=$next_retry", DEPLOY)
+        self.assertIn("Redispatch Pages with the original requested revision", DEPLOY)
+        self.assertIn("Fail after bounded Pages recovery", DEPLOY)
+        self.assertIn("exit 1", DEPLOY)
+
+    def test_successful_deployment_supplies_the_environment_page_url(self):
+        self.assertIn("url: ${{ steps.deployment.outputs.page_url }}", DEPLOY)
+        self.assertIn("id: deployment", DEPLOY)
+        self.assertIn("deployment_outcome: ${{ steps.deployment.outcome }}", DEPLOY)
 
     def test_dispatch_never_deploys_a_non_main_revision(self):
         self.assertIn('git merge-base --is-ancestor "$REQUESTED_SHA" origin/main', DEPLOY)

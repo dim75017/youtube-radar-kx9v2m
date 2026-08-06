@@ -32,6 +32,7 @@ def dispatch_pages(
     sha: str,
     token: str,
     ref: str = "main",
+    retry_attempt: int = 0,
     attempts: int = 4,
     sleep=time.sleep,
 ) -> None:
@@ -44,9 +45,17 @@ def dispatch_pages(
         raise ValueError("missing GITHUB_TOKEN/GH_TOKEN")
     if attempts < 1 or attempts > 8:
         raise ValueError("attempts must be between 1 and 8")
+    if retry_attempt < 0 or retry_attempt > 3:
+        raise ValueError("retry_attempt must be between 0 and 3")
 
     payload = json.dumps(
-        {"ref": ref, "inputs": {"requested_sha": sha}},
+        {
+            "ref": ref,
+            "inputs": {
+                "requested_sha": sha,
+                "retry_attempt": str(retry_attempt),
+            },
+        },
         separators=(",", ":"),
     ).encode("utf-8")
     url = (
@@ -90,6 +99,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--repository", required=True)
     parser.add_argument("--sha", required=True)
     parser.add_argument("--ref", default="main")
+    parser.add_argument("--retry-attempt", type=int, default=0)
     parser.add_argument("--attempts", type=int, default=4)
     return parser.parse_args(argv)
 
@@ -103,6 +113,7 @@ def main(argv: list[str] | None = None) -> int:
             sha=args.sha,
             token=token,
             ref=args.ref,
+            retry_attempt=args.retry_attempt,
             attempts=args.attempts,
         )
     except (ValueError, RuntimeError) as exc:

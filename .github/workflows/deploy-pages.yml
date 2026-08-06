@@ -9,6 +9,11 @@ on:
         description: 'Main commit whose publication requested this coalesced deployment'
         required: false
         type: string
+      retry_attempt:
+        description: 'Internal bounded recovery attempt (0-3)'
+        required: false
+        default: '0'
+        type: string
 
 permissions:
   contents: read
@@ -74,16 +79,104 @@ jobs:
     name: Deploy latest main
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 15
+    outputs:
+      deployment_outcome: ${{ steps.deployment.outcome }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # deploy-pages caps one polling attempt at 600,000 ms. A deployment that
+      # reaches that cap is cancelled server-side, and retrying the same SHA is
+      # cancelled immediately. The recovery job below therefore creates one
+      # unique empty main commit before each bounded redispatch.
       - name: Deploy to GitHub Pages
         id: deployment
+        continue-on-error: true
         uses: actions/deploy-pages@v5
         with:
-          # The generated legacy workflow stopped after 10 minutes even when
-          # GitHub still reported deployment_queued. Coalescing removes the
-          # backlog; this bounded extension absorbs occasional service delay.
-          timeout: 2700000
+          artifact_name: github-pages
+          timeout: 600000
+
+      - name: Mark this Pages attempt as failed
+        if: ${{ steps.deployment.outcome == 'failure' }}
+        shell: bash
+        run: |
+          echo "This Pages attempt failed; bounded recovery will renew the deployment revision." >&2
+          exit 1
+
+  recover:
+    name: Renew cancelled Pages deployment
+    needs: [build, deploy]
+    if: ${{ always() && needs.build.result == 'success' && needs.deploy.outputs.deployment_outcome == 'failure' && fromJSON(inputs.retry_attempt || '0') < 3 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Create a unique main revision for the next Pages deployment
+        id: renewal
+        env:
+          ROOT_REQUESTED_SHA: ${{ inputs.requested_sha || github.sha }}
+          CURRENT_RETRY_ATTEMPT: ${{ inputs.retry_attempt || '0' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$CURRENT_RETRY_ATTEMPT" =~ ^[0-2]$ ]]; then
+            echo "Invalid retry_attempt: $CURRENT_RETRY_ATTEMPT" >&2
+            exit 1
+          fi
+          next_retry=$((CURRENT_RETRY_ATTEMPT + 1))
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          pushed=false
+          for push_attempt in 1 2 3; do
+            git fetch --no-tags origin main
+            git checkout --detach origin/main
+            git commit --allow-empty -m "chore(pages): renew deployment ${next_retry}/3 for ${ROOT_REQUESTED_SHA:0:12}"
+            if git push origin HEAD:main; then
+              pushed=true
+              break
+            fi
+            echo "Main advanced while renewing Pages; retrying (${push_attempt}/3)."
+          done
+          if [[ "$pushed" != true ]]; then
+            echo "Unable to create a fresh main revision for Pages." >&2
+            exit 1
+          fi
+
+          echo "retry_attempt=$next_retry" >> "$GITHUB_OUTPUT"
+          echo "retry_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Redispatch Pages with the original requested revision
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          ROOT_REQUESTED_SHA: ${{ inputs.requested_sha || github.sha }}
+          NEXT_RETRY_ATTEMPT: ${{ steps.renewal.outputs.retry_attempt }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python trigger_pages_deployment.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --sha "$ROOT_REQUESTED_SHA" \
+            --retry-attempt "$NEXT_RETRY_ATTEMPT"
+
+  exhausted:
+    name: Fail after bounded Pages recovery
+    needs: [build, deploy]
+    if: ${{ always() && needs.build.result == 'success' && needs.deploy.outputs.deployment_outcome == 'failure' && fromJSON(inputs.retry_attempt || '0') >= 3 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Report exhausted Pages retries
+        shell: bash
+        run: |
+          echo "GitHub Pages failed after the initial attempt and three fresh-revision retries." >&2
+          exit 1

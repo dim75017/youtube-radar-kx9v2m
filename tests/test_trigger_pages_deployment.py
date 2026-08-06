@@ -43,9 +43,29 @@ class TriggerPagesDeploymentTests(unittest.TestCase):
         self.assertEqual(request.method, "POST")
         self.assertEqual(
             json.loads(request.data),
-            {"ref": "main", "inputs": {"requested_sha": sha}},
+            {
+                "ref": "main",
+                "inputs": {"requested_sha": sha, "retry_attempt": "0"},
+            },
         )
         self.assertEqual(request.get_header("Authorization"), "Bearer test-token")
+
+    def test_dispatch_carries_the_bounded_recovery_attempt(self):
+        with mock.patch.object(
+            pages.urllib.request, "urlopen", return_value=FakeResponse()
+        ) as opener:
+            pages.dispatch_pages(
+                repository="owner/repo",
+                sha="f" * 40,
+                token="token",
+                retry_attempt=2,
+                sleep=lambda _delay: None,
+            )
+
+        self.assertEqual(
+            json.loads(opener.call_args.args[0].data)["inputs"]["retry_attempt"],
+            "2",
+        )
 
     def test_transient_failures_retry_but_non_transient_errors_fail_closed(self):
         transient = urllib.error.HTTPError(
@@ -84,6 +104,12 @@ class TriggerPagesDeploymentTests(unittest.TestCase):
             {"repository": "owner", "sha": "d" * 40, "token": "token"},
             {"repository": "owner/repo", "sha": "HEAD", "token": "token"},
             {"repository": "owner/repo", "sha": "d" * 40, "token": ""},
+            {
+                "repository": "owner/repo",
+                "sha": "d" * 40,
+                "token": "token",
+                "retry_attempt": 4,
+            },
         )
         for kwargs in bad:
             with self.subTest(kwargs=kwargs):
