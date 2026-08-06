@@ -46,6 +46,8 @@ const legacyStart = source.indexOf('const A = Array.from(D.artists || []');
 const legacyEnd = source.indexOf('/* Raccord progressif', legacyStart);
 const legacyContext = {
   BROWSE: {active_legacy_spotify_ids: ['safe-track']},
+  TRUSTED_INTERNAL_SPOTIFY_IDS: new Set(),
+  ACTIVE_LEGACY_SPOTIFY_IDS: new Set(['safe-track']),
   D: {
     artists: [
       ['Solo Artist', 0, 'ok', 1, 0],

@@ -207,6 +207,19 @@ function paybackClass(months){
 /* Two explicit layers share the same interface: broad read-only browsing
    and strict fail-closed A&R. The browsing layer never grants contactability. */
 const BROWSE = window.SPOTIFY_BROWSE_CATALOGUE || {};
+/* Exact IDs from the business-approved spreadsheet of artists who already
+   released with the label. This is an inventory exception only: it never
+   grants Opportunity, contact or automatic-expansion eligibility. */
+const TRUSTED_INTERNAL_SPOTIFY_IDS = new Set(
+  Array.isArray(BROWSE.trusted_internal_spotify_ids)
+    ? BROWSE.trusted_internal_spotify_ids.map(id=>String(id||'').trim()).filter(Boolean)
+    : []
+);
+const ACTIVE_LEGACY_SPOTIFY_IDS = new Set(
+  Array.isArray(BROWSE.active_legacy_spotify_ids)
+    ? BROWSE.active_legacy_spotify_ids.map(id=>String(id||'').trim()).filter(Boolean)
+    : []
+);
 /* Keep the catalogue index stable when an upstream payload contains an empty
    artist slot. Tracks use these numeric indexes, so filtering would corrupt
    their mapping; a quarantined placeholder is safer than a page-wide crash. */
@@ -238,24 +251,25 @@ function isGeneralArtistQuarantined(value,structuredComplete=false){
    stay quarantined from the public inventory. */
 const LEGACY_R = (D.rows || []).filter(row=>{
   const artist=A[Number(row&&row[0])];
+  const trusted=TRUSTED_INTERNAL_SPOTIFY_IDS.has(String(row&&row[6]||'').trim());
   return artist && Number(artist[4]||0)!==1
-    && !isGeneralArtistQuarantined(artist[0]);
+    && (trusted||!isGeneralArtistQuarantined(artist[0]));
 });
 /* The raw historical collection stays intact above.  During the strict
    rebaseline only legacy rows backed by a current Soundcharts evidence pair
    are rendered in the active public catalogue. */
-const ACTIVE_LEGACY_SPOTIFY_IDS = new Set(
-  Array.isArray(BROWSE.active_legacy_spotify_ids)
-    ? BROWSE.active_legacy_spotify_ids.map(id=>String(id||'').trim()).filter(Boolean)
-    : []
-);
 const R = LEGACY_R
   .filter(row=>ACTIVE_LEGACY_SPOTIFY_IDS.has(String(row&&row[6]||'').trim()))
   .map(row=>Array.isArray(row)?row.slice():row);
 /* Keep the historical array indexed for legacy rows, but blank explicitly
    quarantined profiles so they cannot be rendered through an old payload. */
+const TRUSTED_LEGACY_ARTIST_INDEXES = new Set(
+  R.filter(row=>TRUSTED_INTERNAL_SPOTIFY_IDS.has(String(row&&row[6]||'').trim()))
+    .map(row=>Number(row&&row[0]))
+);
 A.forEach((artist,index)=>{
-  if(artist&&isGeneralArtistQuarantined(artist[0])) A[index]=null;
+  if(artist&&isGeneralArtistQuarantined(artist[0])
+    &&!TRUSTED_LEGACY_ARTIST_INDEXES.has(index)) A[index]=null;
 });
 /* Raccord progressif aux historiques journaliers validés.
    Le dashboard ne lit jamais SQLite et ne promeut aucune table staging. Un export approuvé
@@ -673,9 +687,14 @@ function publicDiscoveryTrackEligible(source){
   const instrumental=String(source.instrumental_status||'').trim().toLowerCase();
   const instrumentalConfidence=discoveryNumber(source.instrumental_confidence);
   const ai=String(source.ai_risk||'').trim().toLowerCase();
+  const rights=String(source.rights_status||'').trim().toLowerCase();
+  const rightsConfidence=discoveryNumber(source.rights_confidence);
   const expansion=String(source.expansion_status||'').trim().toLowerCase();
   const streams=discoveryNumber(source.streams);
   const artists=discoveryArray(source.artists);
+  const trustedInternal=TRUSTED_INTERNAL_SPOTIFY_IDS.has(spotifyId);
+  if(trustedInternal) return Boolean(spotifyId)
+    &&streams!=null&&streams>=MIN_TRACK_LIFETIME_STREAMS;
   const completeArtists=artists.length>0&&artists.every(artist=>
     String(artist&&artist.spotify_id||'').trim()
       &&String(artist&&artist.soundcharts_uuid||'').trim());
@@ -685,6 +704,8 @@ function publicDiscoveryTrackEligible(source){
     &&instrumental==='instrumental'
     &&instrumentalConfidence!=null&&instrumentalConfidence>=0.5
     &&['low','faible'].includes(ai)
+    &&['self_released','independent_label','indie'].includes(rights)
+    &&rightsConfidence!=null&&rightsConfidence>=0.5
     &&expansion==='eligible'
     &&streams!=null&&streams>=MIN_TRACK_LIFETIME_STREAMS
     &&completeArtists;
@@ -693,30 +714,39 @@ function strictPublicDiscoveryTracks(rows){
   const bySpotifyId=new Map();
   for(const raw of rows||[]){
     const source=discoveryRecord(raw,DISCOVERY_TRACK_SCHEMA);
-    if(!publicDiscoveryTrackEligible(source)
-      ||discoveryHasQuarantinedArtist(source,DISCOVERY_TRACK_SCHEMA)) continue;
     const spotifyId=String(source.spotify_id||'').trim();
+    const trustedInternal=TRUSTED_INTERNAL_SPOTIFY_IDS.has(spotifyId);
+    if(!publicDiscoveryTrackEligible(source)
+      ||(!trustedInternal&&discoveryHasQuarantinedArtist(source,DISCOVERY_TRACK_SCHEMA))) continue;
     if(!bySpotifyId.has(spotifyId)) bySpotifyId.set(spotifyId,source);
   }
   return [...bySpotifyId.values()];
 }
 const DISCOVERY_TRACKS = strictPublicDiscoveryTracks(RAW_DISCOVERY_TRACKS);
 const PUBLIC_DISCOVERY_ARTIST_KEYS = new Set();
+const PUBLIC_TRUSTED_ARTIST_KEYS = new Set();
 for(const track of DISCOVERY_TRACKS){
+  const trustedInternal=TRUSTED_INTERNAL_SPOTIFY_IDS.has(String(track.spotify_id||'').trim());
   for(const artist of discoveryArray(track.artists)){
     const spotifyId=String(artist&&artist.spotify_id||'').trim();
     const soundchartsUuid=String(artist&&artist.soundcharts_uuid||'').trim();
     if(spotifyId) PUBLIC_DISCOVERY_ARTIST_KEYS.add('spotify:'+spotifyId);
     if(soundchartsUuid) PUBLIC_DISCOVERY_ARTIST_KEYS.add('soundcharts:'+soundchartsUuid);
+    if(trustedInternal&&spotifyId) PUBLIC_TRUSTED_ARTIST_KEYS.add('spotify:'+spotifyId);
+    if(trustedInternal&&soundchartsUuid) PUBLIC_TRUSTED_ARTIST_KEYS.add('soundcharts:'+soundchartsUuid);
   }
 }
 const DISCOVERY_ARTISTS = RAW_DISCOVERY_ARTISTS.filter(row=>{
   const source=discoveryRecord(row,DISCOVERY_ARTIST_SCHEMA);
   const spotifyId=String(source.spotify_id||'').trim();
   const soundchartsUuid=String(source.soundcharts_uuid||'').trim();
-  return !discoveryHasQuarantinedArtist(source,DISCOVERY_ARTIST_SCHEMA,true)
-    &&((spotifyId&&PUBLIC_DISCOVERY_ARTIST_KEYS.has('spotify:'+spotifyId))
-      ||(soundchartsUuid&&PUBLIC_DISCOVERY_ARTIST_KEYS.has('soundcharts:'+soundchartsUuid)));
+  const spotifyKey=spotifyId?'spotify:'+spotifyId:'';
+  const soundchartsKey=soundchartsUuid?'soundcharts:'+soundchartsUuid:'';
+  const trustedInternal=(spotifyKey&&PUBLIC_TRUSTED_ARTIST_KEYS.has(spotifyKey))
+    ||(soundchartsKey&&PUBLIC_TRUSTED_ARTIST_KEYS.has(soundchartsKey));
+  return (trustedInternal||!discoveryHasQuarantinedArtist(source,DISCOVERY_ARTIST_SCHEMA,true))
+    &&((spotifyKey&&PUBLIC_DISCOVERY_ARTIST_KEYS.has(spotifyKey))
+      ||(soundchartsKey&&PUBLIC_DISCOVERY_ARTIST_KEYS.has(soundchartsKey)));
 });
 function discoveryPlacement(row){ return discoveryRecord(row,DISCOVERY_PLAYLIST_SCHEMA); }
 function discoveryNumber(value){

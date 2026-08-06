@@ -6,6 +6,8 @@ on:
     paths:
       - 'spotify/index.html'
       - 'Spotify_Soundcharts_data_*.js'
+      - 'Spotify_Performance_data.js'
+      - 'Spotify_Performance_tracks/**'
       - 'spotify-catalogue-baseline.csv'
       - 'spotify-catalogue-baseline.json'
       - 'build_spotify_browse_catalogue.py'
@@ -73,7 +75,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Build the strict instrumental active catalogue
+      - name: Build affiliated catalogue plus strict external discoveries
         shell: bash
         run: |
           set -euo pipefail
@@ -84,6 +86,7 @@ jobs:
             --existing Spotify_Browse_Catalogue_data.js
             --output Spotify_Browse_Catalogue_data.js
             --minimum-tracks 1
+            --performance Spotify_Performance_data.js
             --strict-rebased
             --trusted-catalogue spotify-catalogue-baseline.csv
             --trusted-artist-seeds spotify-catalogue-baseline.json
