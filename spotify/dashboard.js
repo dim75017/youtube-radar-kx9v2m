@@ -833,6 +833,16 @@ function syncTrackOwnershipFlag(track,source=null){
   if(track.discoveryMeta&&ownership.rights) track.discoveryMeta.rights=ownership.rights;
   return ownership;
 }
+function discoveryTrackMatch(trackIndex,spotifyId,soundchartsUuid,key){
+  const exact=spotifyId?trackIndex.get(spotifyId):null;
+  if(exact) return exact;
+  const bySoundcharts=soundchartsUuid?trackIndex.get('soundcharts:'+soundchartsUuid):null;
+  if(bySoundcharts){
+    const existingSpotifyId=String(bySoundcharts[6]||'').trim();
+    if(!spotifyId||!existingSpotifyId||existingSpotifyId===spotifyId) return bySoundcharts;
+  }
+  return !spotifyId&&key?trackIndex.get(key):null;
+}
 function mergeFullDiscoveryCatalogue(){
   if(!DISCOVERY_TRACKS.length&&!DISCOVERY_ARTISTS.length) return;
   const artistIndex=new Map();
@@ -971,7 +981,7 @@ function mergeFullDiscoveryCatalogue(){
       updatedAt:String(source.updated_at||''),
       reviewReasons:discoveryArray(source.review_reasons)
     };
-    let track=trackIndex.get(spotifyId)||trackIndex.get('soundcharts:'+soundchartsUuid)||trackIndex.get(key);
+    let track=discoveryTrackMatch(trackIndex,spotifyId,soundchartsUuid,key);
     if(track){
       track.discovery=true;
       track.discoveryMeta=Object.assign({},track.discoveryMeta||{},meta);
@@ -995,6 +1005,7 @@ function mergeFullDiscoveryCatalogue(){
       if(meta.availabilityStatus==='needs_listen') SC_DISCOVERY.review++;
       if(meta.availabilityStatus==='verified') SC_DISCOVERY.verified++;
     }
+    if(spotifyId) trackIndex.set(spotifyId,track);
     /* The strict discovery snapshot is merged before the broad browse baseline.
        The baseline uses `trusted_catalogue` as an ownership marker, not a genre.
        Never let that marker erase a verified musical genre already attached to
