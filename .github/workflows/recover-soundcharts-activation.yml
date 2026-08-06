@@ -1,0 +1,331 @@
+name: Recover validated Soundcharts activation
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: 'Failed refresh-soundcharts run containing the validated checkpoint'
+        required: true
+        type: string
+      source_run_attempt:
+        description: 'Attempt number used in the checkpoint artifact name'
+        required: true
+        default: '1'
+        type: string
+      staged_sha:
+        description: 'Main commit that staged the validated dated snapshot'
+        required: true
+        type: string
+      snapshot_name:
+        description: 'Validated dated Soundcharts snapshot filename'
+        required: true
+        type: string
+      expected_old:
+        description: 'Currently approved snapshot filename for the compare-and-swap'
+        required: true
+        type: string
+
+permissions:
+  actions: write
+  contents: write
+
+# Use the exact paid-collection lane. Recovery waits for a collector instead of
+# racing it, but never calls Soundcharts itself.
+concurrency:
+  group: refresh-soundcharts-ar-collection-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    name: Activate an already validated checkpoint
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate failed source run and staged revision
+        id: guard
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          SOURCE_RUN_ATTEMPT: ${{ inputs.source_run_attempt }}
+          STAGED_SHA: ${{ inputs.staged_sha }}
+          SNAPSHOT_NAME: ${{ inputs.snapshot_name }}
+          EXPECTED_OLD: ${{ inputs.expected_old }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$SOURCE_RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]]
+          [[ "$STAGED_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$SNAPSHOT_NAME" =~ ^Spotify_Soundcharts_data_[0-9]{8}T[0-9]{6}Z\.js$ ]]
+          [[ "$EXPECTED_OLD" =~ ^Spotify_Soundcharts_data_[0-9]{8}T[0-9]{6}Z\.js$ ]]
+          [[ "$SNAPSHOT_NAME" != "$EXPECTED_OLD" ]]
+
+          read -r run_status run_conclusion run_branch run_attempt < <(
+            gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID" \
+              --jq '[.status, .conclusion, .head_branch, .run_attempt] | @tsv'
+          )
+          [[ "$run_status" == "completed" ]]
+          [[ "$run_conclusion" == "failure" ]]
+          [[ "$run_branch" == "main" ]]
+          [[ "$run_attempt" == "$SOURCE_RUN_ATTEMPT" ]]
+
+          git pull --ff-only origin main
+          git merge-base --is-ancestor "$STAGED_SHA" HEAD
+          latest_stage="$(git log HEAD --format='%H' --grep='^data: stage validated Soundcharts snapshot$' -1)"
+          [[ "$latest_stage" == "$STAGED_SHA" ]]
+          git cat-file -e "$STAGED_SHA:$SNAPSHOT_NAME"
+          [[ -f "$SNAPSHOT_NAME" ]]
+          local_blob="$(git hash-object "$SNAPSHOT_NAME")"
+          staged_blob="$(git rev-parse "$STAGED_SHA:$SNAPSHOT_NAME")"
+          [[ "$local_blob" == "$staged_blob" ]]
+
+          current="$(python prepare_soundcharts_snapshot.py current --index spotify/index.html)"
+          if [[ "$current" == "$SNAPSHOT_NAME" ]]; then
+            echo "already_active=true" >> "$GITHUB_OUTPUT"
+            echo "Snapshot is already active; no recovery mutation is needed."
+            exit 0
+          fi
+          [[ "$current" == "$EXPECTED_OLD" ]]
+          echo "already_active=false" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the exact staged bytes are public
+        if: steps.guard.outputs.already_active != 'true'
+        env:
+          STAGED_SHA: ${{ inputs.staged_sha }}
+          SNAPSHOT_NAME: ${{ inputs.snapshot_name }}
+          PUBLIC_BASE_URL: https://dim75017.github.io/youtube-radar-kx9v2m
+        shell: bash
+        run: |
+          set -euo pipefail
+          public_copy="$RUNNER_TEMP/$SNAPSHOT_NAME.public"
+          curl --fail --silent --show-error --location --retry 2 --max-time 60 \
+            --header 'Cache-Control: no-cache' \
+            "$PUBLIC_BASE_URL/$SNAPSHOT_NAME?commit=$STAGED_SHA" \
+            --output "$public_copy"
+          local_sha256="$(sha256sum "$SNAPSHOT_NAME" | cut -d' ' -f1)"
+          public_sha256="$(sha256sum "$public_copy" | cut -d' ' -f1)"
+          [[ "$public_sha256" == "$local_sha256" ]]
+          cmp --silent "$SNAPSHOT_NAME" "$public_copy"
+          echo "Public snapshot SHA-256: $public_sha256"
+
+      - name: Download the completed collection checkpoint
+        if: steps.guard.outputs.already_active != 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: soundcharts-refresh-checkpoint-${{ inputs.source_run_id }}-${{ inputs.source_run_attempt }}
+          path: ${{ runner.temp }}/soundcharts-recovery-checkpoint
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.source_run_id }}
+
+      - name: Restore checkpoint outputs without the private candidate
+        id: restore
+        if: steps.guard.outputs.already_active != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          checkpoint_root="$(dirname "$(find "$RUNNER_TEMP/soundcharts-recovery-checkpoint" \
+            -type f -name Spotify_Performance_data.js -print -quit)")"
+          [[ -n "$checkpoint_root" && -f "$checkpoint_root/Spotify_Performance_data.js" ]]
+          for file in \
+            Spotify_Playlists_canonical_data.js \
+            Spotify_Selection_Contacts_data.js \
+            soundcharts-instrumental-cache.json; do
+            [[ -f "$checkpoint_root/$file" ]]
+          done
+          for directory in Spotify_Performance_tracks soundcharts-history; do
+            [[ -d "$checkpoint_root/$directory" ]]
+          done
+
+          playlist_baseline="$RUNNER_TEMP/Spotify_Playlists_canonical_previous.js"
+          cp -- Spotify_Playlists_canonical_data.js "$playlist_baseline"
+          cp -- "$checkpoint_root/Spotify_Performance_data.js" Spotify_Performance_data.js
+          cp -- "$checkpoint_root/Spotify_Playlists_canonical_data.js" Spotify_Playlists_canonical_data.js
+          cp -- "$checkpoint_root/Spotify_Selection_Contacts_data.js" Spotify_Selection_Contacts_data.js
+          cp -- "$checkpoint_root/soundcharts-instrumental-cache.json" soundcharts-instrumental-cache.json
+          rsync --archive --delete "$checkpoint_root/Spotify_Performance_tracks/" Spotify_Performance_tracks/
+          rsync --archive --delete "$checkpoint_root/soundcharts-history/" soundcharts-history/
+          echo "playlist_baseline=$playlist_baseline" >> "$GITHUB_OUTPUT"
+
+      - name: Activate, rebuild, and validate the recovered dashboard
+        if: steps.guard.outputs.already_active != 'true'
+        env:
+          SNAPSHOT_NAME: ${{ inputs.snapshot_name }}
+          EXPECTED_OLD: ${{ inputs.expected_old }}
+          PLAYLIST_BASELINE: ${{ steps.restore.outputs.playlist_baseline }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python prepare_soundcharts_snapshot.py activate \
+            --index spotify/index.html \
+            --expected-old "$EXPECTED_OLD" \
+            --new "$SNAPSHOT_NAME"
+          python build_spotify_browse_catalogue.py \
+            --source "$SNAPSHOT_NAME" \
+            --existing Spotify_Browse_Catalogue_data.js \
+            --output Spotify_Browse_Catalogue_data.js \
+            --minimum-tracks 10000 \
+            --minimum-streams 100000 \
+            --performance Spotify_Performance_data.js \
+            --strict-rebased \
+            --trusted-catalogue spotify-catalogue-baseline.csv \
+            --trusted-artist-seeds spotify-catalogue-baseline.json \
+            --exclusions spotify-catalogue-exclusions.json \
+            --protected-review-cohorts spotify-protected-review-cohorts.json
+          python validate_playlist_snapshot_transition.py \
+            --previous "$PLAYLIST_BASELINE" \
+            --candidate Spotify_Playlists_canonical_data.js
+          python - "$SNAPSHOT_NAME" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          def load(path, prefix):
+              raw = Path(path).read_text(encoding="utf-8")
+              if not raw.startswith(prefix):
+                  raise SystemExit(f"Invalid wrapper for {path}")
+              return json.loads(raw[len(prefix):].strip().removesuffix(";"))
+
+          snapshot_name = sys.argv[1]
+          browse = load(
+              "Spotify_Browse_Catalogue_data.js",
+              "window.SPOTIFY_BROWSE_CATALOGUE=",
+          )
+          performance = load(
+              "Spotify_Performance_data.js",
+              "window.SPOTIFY_PERFORMANCE=",
+          )
+          if browse.get("source_snapshot") != snapshot_name:
+              raise SystemExit("Browse catalogue does not point to the recovered snapshot")
+          transition = browse.get("transition_guard") or {}
+          if transition.get("status") != "passed":
+              raise SystemExit("Browse transition guard did not pass")
+          cohorts = browse.get("cohort_counts") or {}
+          if int(cohorts.get("tracks") or 0) < 10_000:
+              raise SystemExit("Recovered browse catalogue is unexpectedly small")
+          if int(cohorts.get("fal_promoted_tracks") or 0) != 0:
+              raise SystemExit("Recovery must not promote any Fans Also Like track")
+
+          catalogue = browse.get("discovery_catalogue") or {}
+          track_schema = list(catalogue.get("track_schema") or [])
+          artist_schema = list(catalogue.get("artist_schema") or [])
+          powfu_id = "6bmlMHgSheBauioMgKv2tn"
+          if "spotify_id" in artist_schema:
+              index = artist_schema.index("spotify_id")
+              if any(
+                  isinstance(row, list) and len(row) > index and row[index] == powfu_id
+                  for row in catalogue.get("artists") or []
+              ):
+                  raise SystemExit("Powfu reappeared in recovered artists")
+          if "artists" in track_schema:
+              index = track_schema.index("artists")
+              for row in catalogue.get("tracks") or []:
+                  if not isinstance(row, list) or len(row) <= index:
+                      continue
+                  for artist in row[index] if isinstance(row[index], list) else []:
+                      if isinstance(artist, dict) and artist.get("spotify_id") == powfu_id:
+                          raise SystemExit("Powfu reappeared in recovered tracks")
+
+          follower_status = performance.get("playlist_followers_status") or {}
+          if follower_status.get("complete") is not True:
+              raise SystemExit("Recovered playlist follower checkpoint is incomplete")
+          report = {
+              "snapshot": snapshot_name,
+              "cohorts": cohorts,
+              "transition": transition,
+              "performance_tracks": len(performance.get("tracks") or {}),
+              "performance_artists": len(performance.get("artists") or {}),
+              "performance_playlists": len(performance.get("playlists") or {}),
+              "playlist_followers_status": follower_status,
+          }
+          print(json.dumps(report, ensure_ascii=False))
+          import os
+          report_path = Path(os.environ["RUNNER_TEMP"]) / "soundcharts-recovery-summary.json"
+          with report_path.open("w", encoding="utf-8") as handle:
+              json.dump(report, handle, ensure_ascii=False, indent=2)
+              handle.write("\n")
+          PY
+          python tests/test_prepare_soundcharts_snapshot.py
+          python tests/test_build_spotify_browse_catalogue.py
+          python tests/test_validate_playlist_snapshot_transition.py
+          git diff --check
+
+      - name: Persist recovered Soundcharts bootstrap state
+        if: steps.guard.outputs.already_active != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundcharts-bootstrap-state
+          path: soundcharts-instrumental-cache.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 9
+          overwrite: true
+
+      - name: Upload recovery count report
+        if: steps.guard.outputs.already_active != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundcharts-activation-recovery-${{ inputs.source_run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/soundcharts-recovery-summary.json
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Commit and publish only the recovered canonical outputs
+        id: publish
+        if: steps.guard.outputs.already_active != 'true'
+        env:
+          SNAPSHOT_NAME: ${{ inputs.snapshot_name }}
+          STAGED_SHA: ${{ inputs.staged_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- \
+            spotify/index.html \
+            Spotify_Browse_Catalogue_data.js \
+            Spotify_Playlists_canonical_data.js \
+            Spotify_Performance_data.js \
+            Spotify_Performance_tracks \
+            Spotify_Selection_Contacts_data.js \
+            soundcharts-history
+          ! git diff --cached --quiet
+          git commit -m "data: activate validated Soundcharts snapshot"
+
+          published=false
+          for attempt in 1 2 3; do
+            if git pull --rebase --autostash origin main; then
+              current="$(python prepare_soundcharts_snapshot.py current --index spotify/index.html)"
+              [[ "$current" == "$SNAPSHOT_NAME" ]]
+              latest_stage="$(git log HEAD --format='%H' --grep='^data: stage validated Soundcharts snapshot$' -1)"
+              [[ "$latest_stage" == "$STAGED_SHA" ]]
+              if git push origin HEAD:main; then
+                published=true
+                break
+              fi
+            fi
+            sleep 5
+          done
+          [[ "$published" == "true" ]]
+          published_sha="$(git rev-parse HEAD)"
+          echo "sha=$published_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch the coalesced Pages deployment
+        if: steps.guard.outputs.already_active != 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PUBLISHED_SHA: ${{ steps.publish.outputs.sha }}
+        run: >-
+          python trigger_pages_deployment.py
+          --repository "$GITHUB_REPOSITORY"
+          --sha "$PUBLISHED_SHA"

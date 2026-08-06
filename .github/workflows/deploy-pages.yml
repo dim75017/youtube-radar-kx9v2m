@@ -70,6 +70,10 @@ jobs:
           source: ./
           destination: ./_site
 
+      - name: Prune historical and private Pages payloads
+        shell: bash
+        run: python prune_pages_artifact.py --site-dir ./_site
+
       - name: Upload exact Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
