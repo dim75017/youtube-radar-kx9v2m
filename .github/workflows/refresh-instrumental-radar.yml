@@ -173,6 +173,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     permissions:
+      actions: write
       contents: write
     steps:
       - uses: actions/checkout@v4
@@ -196,6 +197,8 @@ jobs:
           --history-dir video_history
           --skip-recommendation-pool
       - name: Commit factual catalogue and daily analytics first
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -203,7 +206,13 @@ jobs:
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Refresh YouTube radar data and daily history"
           for attempt in 1 2 3; do
-            git pull --rebase origin main && git push && exit 0
+            if git pull --rebase origin main && git push; then
+              published_sha="$(git rev-parse HEAD)"
+              python trigger_pages_deployment.py \
+                --repository "$GITHUB_REPOSITORY" \
+                --sha "$published_sha"
+              exit 0
+            fi
             sleep 5
           done
           exit 1

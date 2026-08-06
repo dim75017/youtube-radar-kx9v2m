@@ -34,6 +34,7 @@ on:
         type: boolean
 
 permissions:
+  actions: write
   contents: write
 
 concurrency:
@@ -116,6 +117,8 @@ jobs:
           git diff --check
 
       - name: Publish only when the catalogue changed
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
@@ -128,7 +131,13 @@ jobs:
           git add Spotify_Browse_Catalogue_data.js
           git commit -m 'data: refresh Spotify browsing catalogue'
           for attempt in 1 2 3; do
-            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+            if git pull --rebase --autostash origin main && git push origin HEAD:main; then
+              published_sha="$(git rev-parse HEAD)"
+              python trigger_pages_deployment.py \
+                --repository "$GITHUB_REPOSITORY" \
+                --sha "$published_sha"
+              exit 0
+            fi
             sleep 5
           done
           exit 1

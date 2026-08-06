@@ -96,6 +96,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     permissions:
+      actions: write
       contents: write
     steps:
       - uses: actions/checkout@v4
@@ -112,6 +113,7 @@ jobs:
         name: Generate, validate and publish one atomic recommendation revision
         env:
           FEEDBACK_URL: https://script.google.com/macros/s/AKfycbynEewHZzfecwty-E5TV4Otgsxi3ieGy_N5PPYiM7GpPeMVz_5ka1rxY-Y67H3eknto4w/exec?op=state&k=lofiradar2026kx
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -151,7 +153,11 @@ jobs:
             fi
             git commit -m "Refresh YouTube recommendation learning ledger"
             if git push origin HEAD:main; then
-              echo "published_commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+              published_sha="$(git rev-parse HEAD)"
+              python trigger_pages_deployment.py \
+                --repository "$GITHUB_REPOSITORY" \
+                --sha "$published_sha"
+              echo "published_commit=$published_sha" >> "$GITHUB_OUTPUT"
               echo "changed=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
