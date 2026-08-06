@@ -843,6 +843,10 @@ function discoveryTrackMatch(trackIndex,spotifyId,soundchartsUuid,key){
   }
   return !spotifyId&&key?trackIndex.get(key):null;
 }
+function applyDiscoveryLifetimeCounter(track,streams){
+  if(track&&streams!=null) track[3]=streams;
+  return track;
+}
 function mergeFullDiscoveryCatalogue(){
   if(!DISCOVERY_TRACKS.length&&!DISCOVERY_ARTISTS.length) return;
   const artistIndex=new Map();
@@ -987,7 +991,10 @@ function mergeFullDiscoveryCatalogue(){
       track.discoveryMeta=Object.assign({},track.discoveryMeta||{},meta);
       syncTrackOwnershipFlag(track,meta);
       if(!track[8]&&source.image_url) track[8]=source.image_url;
-      if(Number(track[3])<0&&streams!=null) track[3]=streams;
+      /* The accepted browse export is the canonical baseline for this exact
+         Spotify ID. A newer Performance point, when available, is applied
+         after the merge and still wins. */
+      applyDiscoveryLifetimeCounter(track,streams);
       if(!track[2]&&source.release_date) track[2]=String(source.release_date).slice(0,10);
       if(!track[5]&&(source.label||source.copyright)) track[5]=source.label||source.copyright;
       if(!track.scArtistIndexes&&linked.length) track.scArtistIndexes=[...new Set(linked)];
