@@ -745,6 +745,21 @@ class BrowseCatalogueTests(unittest.TestCase):
             {"streams_below_minimum": 1},
         )
 
+        for reason in (
+            "explicit_track_id_exclusion",
+            "explicit_artist_id_exclusion",
+        ):
+            with self.subTest(reason=reason):
+                exclusion_report = subject.validate_browse_transition(
+                    previous,
+                    candidate,
+                    {"dark-track": (reason, dark)},
+                )
+                self.assertEqual(
+                    exclusion_report["explicit_safe_removals"],
+                    {reason: 1},
+                )
+
         with self.assertRaisesRegex(
             subject.BrowseCatalogueError,
             "silently remove approved tracks",

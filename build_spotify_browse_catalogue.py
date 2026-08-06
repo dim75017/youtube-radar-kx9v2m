@@ -1177,7 +1177,12 @@ def _explicit_safe_removal(
     the transition report.
     """
 
-    if reason in {"streams_below_minimum", "blacklisted_identity"}:
+    if reason in {
+        "streams_below_minimum",
+        "blacklisted_identity",
+        "explicit_track_id_exclusion",
+        "explicit_artist_id_exclusion",
+    }:
         return True
     if reason == "instrumental_unconfirmed":
         return str(row.get("instrumental_status") or "").strip().casefold() in {
