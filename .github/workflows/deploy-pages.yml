@@ -95,6 +95,26 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          sparse-checkout: |
+            cancel_stale_pages_deployments.py
+          sparse-checkout-cone-mode: false
+
+      # A newer coalesced run can cancel the runner while deploy-pages is
+      # polling, leaving the server-side Pages deployment active. Inspect only
+      # recent commits from main and cancel only an explicitly active Pages
+      # deployment before creating the next one.
+      - name: Cancel an orphaned Pages deployment
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          python cancel_stale_pages_deployments.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --ref main
+
       # deploy-pages caps one polling attempt at 600,000 ms. A deployment that
       # reaches that cap is cancelled server-side, and retrying the same SHA is
       # cancelled immediately. The recovery job below therefore creates one
