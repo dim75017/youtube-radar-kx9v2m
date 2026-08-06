@@ -755,8 +755,12 @@ function discoveryNumber(value){
 }
 function retainStrictPublicRows(rows,spotifyIds){
   let target=0;
+  const seenSpotifyIds=new Set();
   for(const row of rows||[]){
-    if(spotifyIds.has(String(row&&row[6]||'').trim())) rows[target++]=row;
+    const spotifyId=String(row&&row[6]||'').trim();
+    if(!spotifyId||!spotifyIds.has(spotifyId)||seenSpotifyIds.has(spotifyId)) continue;
+    seenSpotifyIds.add(spotifyId);
+    rows[target++]=row;
   }
   rows.length=target;
 }
