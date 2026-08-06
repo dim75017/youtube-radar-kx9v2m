@@ -4,6 +4,7 @@ on:
   schedule:
     - cron: '37 6 1 * *'
   push:
+    branches: [main]
     paths:
       - 'refresh_channels_monthly.py'
       - '.github/workflows/refresh-channel-radar.yml'
