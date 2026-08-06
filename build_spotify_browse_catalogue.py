@@ -58,6 +58,8 @@ FORBIDDEN_SCHEMA_FIELDS = {
 
 TRUSTED_CATALOGUE_SOURCE_TIER = "trusted_internal_catalogue"
 TRUSTED_CATALOGUE_AVAILABILITY = "catalogue_trusted"
+PROMOTED_FAL_SOURCE_TIER = "soundcharts_fal_promoted"
+MANUAL_ARCHIVE_STORAGE_KEY = "spotify_catalogue_archives_v1"
 
 
 # These are the accepted provenance paths for the staged rebaseline.  Source
@@ -66,6 +68,9 @@ TRUSTED_CATALOGUE_AVAILABILITY = "catalogue_trusted"
 # its playlists have been reviewed and declared in the collector configuration.
 STRICT_SOURCE_TIERS = {
     TRUSTED_CATALOGUE_SOURCE_TIER,
+    # This provenance is assigned only after the private FAL review manifest
+    # has all required evidence and an explicit promotion has been approved.
+    PROMOTED_FAL_SOURCE_TIER,
     "editorial_playlist",
     # These are playlist-discovery sources. They remain subject to every
     # strict genre, instrumental, AI, rights and identity gate below.
@@ -695,6 +700,7 @@ def strict_rebase_catalogue(
     performance_tracks: Mapping[str, Any] | None = None,
     trusted_internal_spotify_ids: set[str] | frozenset[str] | None = None,
     trusted_internal_streams: Mapping[str, float] | None = None,
+    quarantine_details: dict[str, tuple[str, Mapping[str, Any]]] | None = None,
 ) -> tuple[dict[str, Any], dict[str, int], list[str]]:
     """Project trusted internal inventory plus evidenced external discoveries.
 
@@ -731,6 +737,9 @@ def strict_rebase_catalogue(
         )
         if reason:
             quarantine_counts[reason] = quarantine_counts.get(reason, 0) + 1
+            spotify_id = str(row.get("spotify_id") or "").strip()
+            if quarantine_details is not None and spotify_id:
+                quarantine_details[spotify_id] = (reason, dict(row))
             continue
         clean = dict(row)
         clean["artists"] = _clean_nested_artists(clean.get("artists"))
@@ -765,6 +774,195 @@ def strict_rebase_catalogue(
     return strict, dict(sorted(quarantine_counts.items())), active_legacy_spotify_ids
 
 
+def _browse_track_records(payload: Mapping[str, Any]) -> list[dict[str, Any]]:
+    catalogue = payload.get("discovery_catalogue")
+    if not isinstance(catalogue, Mapping):
+        return []
+    return [dict(row) for row in _normalise_catalogue(catalogue)["track_records"]]
+
+
+def _browse_cohort_sets(payload: Mapping[str, Any]) -> dict[str, set[str]]:
+    records = _browse_track_records(payload)
+    all_ids = {
+        str(row.get("spotify_id") or "").strip()
+        for row in records
+        if str(row.get("spotify_id") or "").strip()
+    }
+    trusted = {
+        str(value or "").strip()
+        for value in payload.get("trusted_internal_spotify_ids", [])
+        if str(value or "").strip()
+    } & all_ids
+    dark_ambient = {
+        str(row.get("spotify_id") or "").strip()
+        for row in records
+        if str(row.get("primary_genre") or "").strip().casefold() == "dark_ambient"
+        and str(row.get("spotify_id") or "").strip()
+    }
+    fal_promoted = {
+        str(row.get("spotify_id") or "").strip()
+        for row in records
+        if str(row.get("source_tier") or "").strip().casefold()
+        == PROMOTED_FAL_SOURCE_TIER
+        and str(row.get("spotify_id") or "").strip()
+    }
+    return {
+        "all": all_ids,
+        "trusted_internal": trusted,
+        "strict_external": all_ids - trusted,
+        "dark_ambient": dark_ambient,
+        "fal_promoted": fal_promoted,
+    }
+
+
+def browse_cohort_counts(payload: Mapping[str, Any]) -> dict[str, int]:
+    cohorts = _browse_cohort_sets(payload)
+    catalogue = payload.get("discovery_catalogue")
+    artists = catalogue.get("artists") if isinstance(catalogue, Mapping) else []
+    return {
+        "tracks": len(cohorts["all"]),
+        "artists": len(artists) if isinstance(artists, list) else 0,
+        "trusted_internal_tracks": len(cohorts["trusted_internal"]),
+        "strict_external_tracks": len(cohorts["strict_external"]),
+        "dark_ambient_tracks": len(cohorts["dark_ambient"]),
+        "fal_promoted_tracks": len(cohorts["fal_promoted"]),
+    }
+
+
+def _explicit_safe_removal(
+    reason: str,
+    row: Mapping[str, Any],
+) -> bool:
+    """Return whether fresh factual evidence explicitly invalidates a row.
+
+    Missing/unknown evidence is never enough to silently remove a published
+    identity. Explicit vocal, forbidden-genre, high-AI, major-rights and
+    below-floor observations are safe automatic removals and stay counted in
+    the transition report.
+    """
+
+    if reason in {"streams_below_minimum", "blacklisted_identity"}:
+        return True
+    if reason == "instrumental_unconfirmed":
+        return str(row.get("instrumental_status") or "").strip().casefold() in {
+            "vocal",
+            "non_instrumental",
+            "non-instrumental",
+            "non instrumental",
+        }
+    if reason == "genre_out_of_scope":
+        genre = str(row.get("primary_genre") or "").strip().casefold()
+        return bool(genre) and genre not in {
+            "unknown",
+            "unclassified",
+            "to_classify",
+            "a_classifier",
+            "à classifier",
+            "other",
+            "autre",
+        }
+    if reason == "ai_risk_not_low":
+        return str(row.get("ai_risk") or "").strip().casefold() in {
+            "high",
+            "elevated",
+            "eleve",
+            "élevé",
+        }
+    if reason == "rights_unconfirmed":
+        return str(row.get("rights_status") or "").strip().casefold() in {
+            "major",
+            "mixed",
+        }
+    return False
+
+
+def validate_browse_transition(
+    previous: Mapping[str, Any],
+    candidate: Mapping[str, Any],
+    quarantine_details: Mapping[str, tuple[str, Mapping[str, Any]]] | None = None,
+) -> dict[str, Any]:
+    """Fail closed when a daily rebuild silently loses an approved cohort."""
+
+    previous_cohorts = _browse_cohort_sets(previous)
+    candidate_cohorts = _browse_cohort_sets(candidate)
+    candidate_records = _browse_track_records(candidate)
+    candidate_ids = [
+        str(row.get("spotify_id") or "").strip() for row in candidate_records
+    ]
+    if any(not spotify_id for spotify_id in candidate_ids):
+        raise BrowseCatalogueError("Active browse catalogue contains a track without Spotify ID")
+    if len(set(candidate_ids)) != len(candidate_ids):
+        raise BrowseCatalogueError("Active browse catalogue contains duplicate Spotify track IDs")
+    counts = (
+        candidate.get("discovery_catalogue", {}).get("counts", {})
+        if isinstance(candidate.get("discovery_catalogue"), Mapping)
+        else {}
+    )
+    if int(counts.get("tracks") or 0) != len(candidate_ids):
+        raise BrowseCatalogueError("Active browse track count is inconsistent")
+
+    expected_counts = browse_cohort_counts(candidate)
+    if candidate.get("cohort_counts") != expected_counts:
+        raise BrowseCatalogueError("Active browse cohort counts are inconsistent")
+    if int(counts.get("artists") or 0) != expected_counts["artists"]:
+        raise BrowseCatalogueError("Active browse artist count is inconsistent")
+
+    archive_key = str(
+        (candidate.get("policy") or {}).get("manual_archive_storage_key") or ""
+    )
+    if archive_key != MANUAL_ARCHIVE_STORAGE_KEY:
+        raise BrowseCatalogueError("Manual catalogue archive storage key changed")
+    previous_archive_key = str(
+        (previous.get("policy") or {}).get("manual_archive_storage_key") or ""
+    )
+    if previous_archive_key and previous_archive_key != archive_key:
+        raise BrowseCatalogueError("Daily rebuild would orphan manual catalogue archives")
+
+    missing = previous_cohorts["all"] - candidate_cohorts["all"]
+    approved_removals: dict[str, str] = {}
+    unsafe_missing: set[str] = set()
+    for spotify_id in missing:
+        detail = (quarantine_details or {}).get(spotify_id)
+        if detail and _explicit_safe_removal(detail[0], detail[1]):
+            approved_removals[spotify_id] = detail[0]
+        else:
+            unsafe_missing.add(spotify_id)
+    if unsafe_missing:
+        preview = ", ".join(sorted(unsafe_missing)[:5])
+        raise BrowseCatalogueError(
+            "Daily browse rebuild would silently remove approved tracks "
+            f"({len(unsafe_missing)}; first: {preview})"
+        )
+
+    protected_reports: dict[str, dict[str, int]] = {}
+    for cohort in ("trusted_internal", "dark_ambient", "fal_promoted"):
+        removed = previous_cohorts[cohort] - candidate_cohorts[cohort]
+        unsafe = removed - set(approved_removals)
+        if unsafe:
+            preview = ", ".join(sorted(unsafe)[:5])
+            raise BrowseCatalogueError(
+                f"Daily browse rebuild would lose protected {cohort} tracks "
+                f"({len(unsafe)}; first: {preview})"
+            )
+        protected_reports[cohort] = {
+            "previous": len(previous_cohorts[cohort]),
+            "candidate": len(candidate_cohorts[cohort]),
+            "explicit_safe_removals": len(removed & set(approved_removals)),
+        }
+
+    removal_counts: dict[str, int] = {}
+    for reason in approved_removals.values():
+        removal_counts[reason] = removal_counts.get(reason, 0) + 1
+    return {
+        "status": "passed",
+        "previous_tracks": len(previous_cohorts["all"]),
+        "candidate_tracks": len(candidate_cohorts["all"]),
+        "retained_tracks": len(previous_cohorts["all"] & candidate_cohorts["all"]),
+        "explicit_safe_removals": dict(sorted(removal_counts.items())),
+        "protected_cohorts": protected_reports,
+    }
+
+
 def build_payload(
     sources: Sequence[tuple[Path, Mapping[str, Any]]],
     existing: Mapping[str, Any] | None,
@@ -789,6 +987,7 @@ def build_payload(
     if not catalogues:
         raise BrowseCatalogueError("No discovery catalogue source was available")
     quarantine_counts: dict[str, int] = {}
+    quarantine_details: dict[str, tuple[str, Mapping[str, Any]]] = {}
     active_legacy_spotify_ids: list[str] = []
     trusted_internal_spotify_ids: set[str] = set()
     trusted_internal_streams: dict[str, float] = {}
@@ -817,6 +1016,7 @@ def build_payload(
             performance_tracks=performance_tracks,
             trusted_internal_spotify_ids=trusted_internal_spotify_ids,
             trusted_internal_streams=trusted_internal_streams,
+            quarantine_details=quarantine_details,
         )
     else:
         merged = merge_catalogues(catalogues)
@@ -843,7 +1043,7 @@ def build_payload(
     active_trusted_internal_spotify_ids = sorted(
         set(active_legacy_spotify_ids) & trusted_internal_spotify_ids
     )
-    return {
+    payload = {
         "version": VERSION,
         "source": "soundcharts_browse_catalogue",
         "generated_at": str(newest_payload.get("generated_at") or merged.get("generated_at") or ""),
@@ -859,6 +1059,7 @@ def build_payload(
             "unverified_records_contactable": False,
             "archive": "Spotify_Radar_data.js" if strict_rebased else "",
             "minimum_lifetime_streams": minimum_streams if strict_rebased else None,
+            "manual_archive_storage_key": MANUAL_ARCHIVE_STORAGE_KEY,
         },
         "discovery_catalogue": merged,
         "active_legacy_spotify_ids": active_legacy_spotify_ids,
@@ -868,6 +1069,23 @@ def build_payload(
         "instrumental_pool": dict(instrumental_pool) if isinstance(instrumental_pool, Mapping) else {},
         "strict_snapshot_counts": strict_counts,
     }
+    payload["cohort_counts"] = browse_cohort_counts(payload)
+    if strict_rebased and isinstance(existing, Mapping):
+        payload["transition_guard"] = validate_browse_transition(
+            existing,
+            payload,
+            quarantine_details,
+        )
+    else:
+        payload["transition_guard"] = {
+            "status": "bootstrap",
+            "previous_tracks": 0,
+            "candidate_tracks": payload["cohort_counts"]["tracks"],
+            "retained_tracks": 0,
+            "explicit_safe_removals": {},
+            "protected_cohorts": {},
+        }
+    return payload
 
 
 def parse_args() -> argparse.Namespace:
@@ -953,6 +1171,8 @@ def main() -> int:
                 "tracks": payload["discovery_catalogue"]["counts"]["tracks"],
                 "artists": payload["discovery_catalogue"]["counts"]["artists"],
                 "measured_tracks": payload["discovery_catalogue"]["counts"]["measured_tracks"],
+                "cohort_counts": payload["cohort_counts"],
+                "transition_guard": payload["transition_guard"],
                 "policy": payload["policy"],
             },
             ensure_ascii=False,

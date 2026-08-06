@@ -134,6 +134,12 @@ modifie ni `Spotify_Browse_Catalogue_data.js` ni un autre fichier chargé par le
 dashboard. Toute promotion canonique exige encore une validation explicite de
 Dim et un changement séparé, revu et testé.
 
+Une piste FAL ne peut rejoindre le catalogue public qu'après cette validation
+explicite, avec la provenance dédiée `soundcharts_fal_promoted`, et en passant
+encore tous les garde-fous externes (genre, instrumentalité, IA, droits,
+identités et 100 000 streams). Le simple fait d'exister dans le staging privé
+ne lui accorde jamais cette provenance.
+
 ## Règle de maintenance
 
 Ne jamais sécuriser A&R en vidant le catalogue de navigation. Les formes suivantes constituent une régression :
@@ -152,5 +158,15 @@ Une correction doit préserver simultanément :
 Le catalogue historique approuvé ne doit jamais être vidé par un durcissement
 destiné aux découvertes externes. Le test de régression doit conserver sa voie
 séparée et son seuil public de 100 000 streams.
+
+Chaque reconstruction quotidienne publie aussi des compteurs de cohortes
+(`trusted_internal`, `dark_ambient` et FAL promues) et compare le candidat au
+catalogue déjà approuvé avant d'écrire le fichier. Une disparition n'est
+automatique que lorsqu'une nouvelle preuve factuelle l'explique explicitement
+(compteur sous 100 000, piste vocale, genre hors périmètre, risque IA élevé,
+droits major/mixed ou blacklist manuelle). Une donnée simplement absente ou
+inconnue bloque la publication au lieu de faire disparaître silencieusement la
+ligne. La clé locale `spotify_catalogue_archives_v1` reste stable : les
+exclusions manuelles faites dans le dashboard survivent aux actualisations.
 
 Les modifications de cette architecture passent par une pull request et les tests de couche catalogue. Aucun `Revert` direct sur `main` ne doit être utilisé pour opposer ces deux objectifs.

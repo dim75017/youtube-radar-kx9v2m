@@ -2550,14 +2550,15 @@ function sparkline(pts,unit='value'){
   const sx=v=>pad+(x1===x0?0:(v-x0)/(x1-x0))*(w-2*pad);
   const sy=v=>h-pad-(y1===y0?0.5*(h-2*pad):(v-y0)/(y1-y0)*(h-2*pad));
   const d=pts.map((p,i)=>(i?'L':'M')+sx(+new Date(p[0])).toFixed(1)+' '+sy(p[1]).toFixed(1)).join(' ');
-  const up = ys[ys.length-1]>=ys[0];
-  const col = up?'#4ade80':'#fb7185';
+  // Analytics encode the observed value, not a positive/negative judgement.
+  // Keep every Spotify time series visually stable when its final delta changes.
+  const col='#4ade80';
   const middleIndex=Math.floor((pts.length-1)/2), yMiddle=y0+(y1-y0)/2;
   const yMinLabel=sparklineAxisValueLabel(y0,unit), yMaxLabel=sparklineAxisValueLabel(y1,unit);
   const yLabels=y1===y0?['',yMaxLabel,'']:[yMaxLabel,sparklineAxisValueLabel(yMiddle,unit),yMinLabel];
   const xLabels=[pts[0][0],pts[middleIndex][0],pts[pts.length-1][0]].map(sparklineAxisDateLabel);
   const ariaLabel=`Historique du ${xLabels[0]} au ${xLabels[2]}, minimum ${yMinLabel}, maximum ${yMaxLabel}`;
-  const dots=pts.map(p=>`<circle class="spark-point" cx="${sx(+new Date(p[0])).toFixed(1)}" cy="${sy(p[1]).toFixed(1)}" r="1" fill="transparent" data-date="${fmtDate(p[0])}" data-value="${esc(sparklineValueLabel(p[1],unit))}"/>`).join('');
+  const dots=pts.map(p=>`<circle class="spark-point" cx="${sx(+new Date(p[0])).toFixed(1)}" cy="${sy(p[1]).toFixed(1)}" r="1.25" fill="${col}" data-date="${fmtDate(p[0])}" data-value="${esc(sparklineValueLabel(p[1],unit))}"/>`).join('');
   return `<div class="spark-wrap"><div class="spark-chart" role="img" aria-label="${esc(ariaLabel)}">
     <div class="spark-y-axis" aria-hidden="true"><span>${esc(yLabels[0])}</span><span>${esc(yLabels[1])}</span><span>${esc(yLabels[2])}</span></div>
     <div class="spark-plot"><svg class="spark" viewBox="0 0 ${w} ${h}" width="100%" height="120" preserveAspectRatio="none">

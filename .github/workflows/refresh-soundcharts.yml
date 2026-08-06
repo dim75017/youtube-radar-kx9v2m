@@ -46,8 +46,11 @@ on:
       - 'tests/test_soundcharts_workflow_guardrails.py'
       - 'tests/test_spotify_full_catalogue.js'
       - 'tests/test_spotify_catalogue_layers.js'
+      - 'tests/test_spotify_catalogue_archives.js'
       - 'tests/test_spotify_public_stream_floor.js'
       - 'tests/test_spotify_public_strict_projection.js'
+      - 'tests/test_spotify_track_analytics_interactions.js'
+      - 'tests/test_spotify_daily_chart_integrity.js'
       - 'tests/test_spotify_playlist_follower_windows.js'
       - 'tests/test_spotify_binary_ownership_status.js'
       - 'tests/test_spotify_selection_artist_offers_status.js'
@@ -108,8 +111,11 @@ on:
       - 'tests/test_soundcharts_workflow_guardrails.py'
       - 'tests/test_spotify_full_catalogue.js'
       - 'tests/test_spotify_catalogue_layers.js'
+      - 'tests/test_spotify_catalogue_archives.js'
       - 'tests/test_spotify_public_stream_floor.js'
       - 'tests/test_spotify_public_strict_projection.js'
+      - 'tests/test_spotify_track_analytics_interactions.js'
+      - 'tests/test_spotify_daily_chart_integrity.js'
       - 'tests/test_spotify_playlist_follower_windows.js'
       - 'tests/test_spotify_binary_ownership_status.js'
       - 'tests/test_spotify_selection_artist_offers_status.js'
@@ -280,8 +286,11 @@ jobs:
           node tests/test_spotify_selection_artist_offers_status.js
           node tests/test_spotify_selection_contact_state_machine.js
           node tests/test_spotify_catalogue_layers.js
+          node tests/test_spotify_catalogue_archives.js
           node tests/test_spotify_performance_lifetime.js
           node tests/test_spotify_update_status.js
+          node tests/test_spotify_track_analytics_interactions.js
+          node tests/test_spotify_daily_chart_integrity.js
           git diff --check
 
       - name: Select safe execution plan
@@ -1067,7 +1076,7 @@ jobs:
             --source "$SNAPSHOT_NAME" \
             --existing Spotify_Browse_Catalogue_data.js \
             --output Spotify_Browse_Catalogue_data.js \
-            --minimum-tracks 1 \
+            --minimum-tracks 10000 \
             --minimum-streams 100000 \
             --performance Spotify_Performance_data.js \
             --strict-rebased \

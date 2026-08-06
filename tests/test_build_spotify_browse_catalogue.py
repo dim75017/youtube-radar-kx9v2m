@@ -33,6 +33,61 @@ def catalogue(track_rows, artist_rows):
     }
 
 
+TRANSITION_TRACK_SCHEMA = [
+    "soundcharts_uuid", "spotify_id", "title", "credit_name", "artists",
+    "streams", "primary_genre", "genre_confidence", "instrumental_status",
+    "instrumental_confidence", "ai_risk", "rights_status",
+    "rights_confidence", "source_tier",
+]
+TRANSITION_ARTIST_SCHEMA = ["soundcharts_uuid", "spotify_id", "name"]
+
+
+def transition_track(spotify_id, *, genre="ambient", source_tier="editorial_playlist"):
+    artist = {
+        "soundcharts_uuid": f"artist-{spotify_id}",
+        "spotify_id": f"spotify-artist-{spotify_id}",
+        "name": f"Artist {spotify_id}",
+    }
+    return {
+        "soundcharts_uuid": f"soundcharts-{spotify_id}",
+        "spotify_id": spotify_id,
+        "title": f"Track {spotify_id}",
+        "credit_name": artist["name"],
+        "artists": [artist],
+        "streams": 200_000,
+        "primary_genre": genre,
+        "genre_confidence": 0.9,
+        "instrumental_status": "instrumental",
+        "instrumental_confidence": 0.9,
+        "ai_risk": "low",
+        "rights_status": "self_released",
+        "rights_confidence": 0.9,
+        "source_tier": source_tier,
+    }
+
+
+def transition_payload(rows, *, trusted=()):
+    artists = [row["artists"][0] for row in rows]
+    catalogue = subject.merge_catalogues([{
+        "version": 1,
+        "generated_at": "2026-08-06T10:00:00Z",
+        "track_schema": TRANSITION_TRACK_SCHEMA,
+        "artist_schema": TRANSITION_ARTIST_SCHEMA,
+        "playlist_schema": [],
+        "tracks": rows,
+        "artists": artists,
+    }])
+    payload = {
+        "policy": {
+            "manual_archive_storage_key": subject.MANUAL_ARCHIVE_STORAGE_KEY,
+        },
+        "discovery_catalogue": catalogue,
+        "trusted_internal_spotify_ids": list(trusted),
+    }
+    payload["cohort_counts"] = subject.browse_cohort_counts(payload)
+    return payload
+
+
 class BrowseCatalogueTests(unittest.TestCase):
     def test_trusted_csv_deduplicates_by_spotify_id_with_maximum_counter(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -115,6 +170,12 @@ class BrowseCatalogueTests(unittest.TestCase):
         self.assertEqual(result["policy"]["browsing"], "full")
         self.assertEqual(result["policy"]["ar"], "strict")
         self.assertFalse(result["policy"]["unverified_records_contactable"])
+        self.assertEqual(
+            result["policy"]["manual_archive_storage_key"],
+            subject.MANUAL_ARCHIVE_STORAGE_KEY,
+        )
+        self.assertEqual(result["cohort_counts"]["tracks"], 1)
+        self.assertEqual(result["transition_guard"]["status"], "bootstrap")
         self.assertEqual(result["strict_snapshot_counts"]["opportunities"], 2)
 
     def test_forbidden_contact_columns_are_removed(self):
@@ -443,6 +504,116 @@ class BrowseCatalogueTests(unittest.TestCase):
                     expected_reason,
                 )
 
+    def test_promoted_fal_source_still_passes_every_strict_evidence_gate(self):
+        promoted = transition_track(
+            "fal-promoted",
+            source_tier=subject.PROMOTED_FAL_SOURCE_TIER,
+        )
+        self.assertIsNone(subject._strict_rebaseline_reason(promoted))
+        self.assertEqual(
+            subject._strict_rebaseline_reason(
+                {**promoted, "instrumental_status": "unknown"}
+            ),
+            "instrumental_unconfirmed",
+        )
+
+    def test_daily_transition_counts_and_preserves_every_protected_cohort(self):
+        trusted = transition_track(
+            "trusted-track",
+            source_tier=subject.TRUSTED_CATALOGUE_SOURCE_TIER,
+        )
+        dark = transition_track("dark-track", genre="dark_ambient")
+        fal = transition_track(
+            "fal-track",
+            source_tier=subject.PROMOTED_FAL_SOURCE_TIER,
+        )
+        previous = transition_payload(
+            [trusted, dark, fal],
+            trusted={"trusted-track"},
+        )
+        candidate = copy.deepcopy(previous)
+
+        report = subject.validate_browse_transition(previous, candidate)
+
+        self.assertEqual(report["status"], "passed")
+        self.assertEqual(candidate["cohort_counts"], {
+            "tracks": 3,
+            "artists": 3,
+            "trusted_internal_tracks": 1,
+            "strict_external_tracks": 2,
+            "dark_ambient_tracks": 1,
+            "fal_promoted_tracks": 1,
+        })
+        for removed in (trusted, dark, fal):
+            with self.subTest(removed=removed["spotify_id"]):
+                reduced = transition_payload(
+                    [row for row in (trusted, dark, fal) if row is not removed],
+                    trusted={"trusted-track"},
+                )
+                with self.assertRaisesRegex(
+                    subject.BrowseCatalogueError,
+                    "silently remove approved tracks",
+                ):
+                    subject.validate_browse_transition(previous, reduced)
+
+    def test_daily_transition_allows_only_explicit_factual_removals(self):
+        dark = transition_track("dark-track", genre="dark_ambient")
+        previous = transition_payload([dark])
+        candidate = transition_payload([])
+        report = subject.validate_browse_transition(
+            previous,
+            candidate,
+            {
+                "dark-track": (
+                    "streams_below_minimum",
+                    {**dark, "streams": 99_999},
+                ),
+            },
+        )
+        self.assertEqual(
+            report["explicit_safe_removals"],
+            {"streams_below_minimum": 1},
+        )
+
+        with self.assertRaisesRegex(
+            subject.BrowseCatalogueError,
+            "silently remove approved tracks",
+        ):
+            subject.validate_browse_transition(
+                previous,
+                candidate,
+                {
+                    "dark-track": (
+                        "instrumental_unconfirmed",
+                        {**dark, "instrumental_status": "unknown"},
+                    ),
+                },
+            )
+        with self.assertRaisesRegex(
+            subject.BrowseCatalogueError,
+            "silently remove approved tracks",
+        ):
+            subject.validate_browse_transition(
+                previous,
+                candidate,
+                {
+                    "dark-track": (
+                        "genre_out_of_scope",
+                        {**dark, "primary_genre": "unknown"},
+                    ),
+                },
+            )
+
+    def test_daily_transition_cannot_orphan_manual_archives(self):
+        previous = transition_payload([transition_track("safe")])
+        candidate = copy.deepcopy(previous)
+        candidate["policy"]["manual_archive_storage_key"] = "renamed_storage"
+        with self.assertRaisesRegex(
+            subject.BrowseCatalogueError,
+            "archive storage key changed",
+        ):
+            subject.validate_browse_transition(previous, candidate)
+
 
     def test_performance_crossing_reactivates_only_source_backed_candidate(self):
         strict_schema = [
@@ -528,6 +699,11 @@ class BrowseCatalogueTests(unittest.TestCase):
         )
         self.assertEqual(second["active_legacy_spotify_ids"], ["spotify-candidate"])
         self.assertNotIn("spotify-orphan", second["active_legacy_spotify_ids"])
+        self.assertEqual(second["transition_guard"]["status"], "passed")
+        self.assertEqual(
+            second["transition_guard"]["explicit_safe_removals"],
+            {"streams_below_minimum": 1},
+        )
         schema = second["discovery_catalogue"]["track_schema"]
         records = [
             subject._record(row, schema)

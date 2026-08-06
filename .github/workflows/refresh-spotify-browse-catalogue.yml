@@ -14,9 +14,12 @@ on:
       - 'spotify/dashboard.js'
       - 'tests/test_build_spotify_browse_catalogue.py'
       - 'tests/test_spotify_catalogue_layers.js'
+      - 'tests/test_spotify_catalogue_archives.js'
       - 'tests/test_spotify_full_catalogue.js'
       - 'tests/test_spotify_public_stream_floor.js'
       - 'tests/test_spotify_public_strict_projection.js'
+      - 'tests/test_spotify_track_analytics_interactions.js'
+      - 'tests/test_spotify_daily_chart_integrity.js'
       - '.github/workflows/refresh-spotify-browse-catalogue.yml'
   schedule:
     - cron: '20 3 * * *'
@@ -85,7 +88,7 @@ jobs:
             --source "$current"
             --existing Spotify_Browse_Catalogue_data.js
             --output Spotify_Browse_Catalogue_data.js
-            --minimum-tracks 1
+            --minimum-tracks 10000
             --performance Spotify_Performance_data.js
             --strict-rebased
             --trusted-catalogue spotify-catalogue-baseline.csv
@@ -101,8 +104,11 @@ jobs:
           node tests/test_dashboard_genre_filter.js
           node tests/test_spotify_full_catalogue.js
           node tests/test_spotify_catalogue_layers.js
+          node tests/test_spotify_catalogue_archives.js
           node tests/test_spotify_public_stream_floor.js
           node tests/test_spotify_public_strict_projection.js
+          node tests/test_spotify_track_analytics_interactions.js
+          node tests/test_spotify_daily_chart_integrity.js
           git diff --check
 
       - name: Publish only when the catalogue changed
