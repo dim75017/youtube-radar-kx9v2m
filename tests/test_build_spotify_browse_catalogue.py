@@ -1,4 +1,5 @@
 import copy
+import tempfile
 import unittest
 
 import build_spotify_browse_catalogue as subject
@@ -33,6 +34,26 @@ def catalogue(track_rows, artist_rows):
 
 
 class BrowseCatalogueTests(unittest.TestCase):
+    def test_trusted_csv_deduplicates_by_spotify_id_with_maximum_counter(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = subject.Path(directory) / "trusted.csv"
+            path.write_text(
+                "Artiste,Track,Date,Streams,Streams/mois (moy. depuis sortie),Statut,Label / Copyright,Lien Spotify\n"
+                "Known Artist,First credit,2026-01-01,90000,0,Self-released,Known Artist,https://open.spotify.com/track/shared123\n"
+                "Known Artist,Second credit,2026-01-01,150000,0,Self-released,Known Artist,https://open.spotify.com/intl-en/track/shared123\n",
+                encoding="utf-8",
+            )
+
+            trusted = subject._trusted_catalogue_from_csv(path, None)
+            records = [
+                subject._record(row, trusted["track_schema"])
+                for row in trusted["tracks"]
+            ]
+
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["spotify_id"], "shared123")
+        self.assertEqual(records[0]["streams"], 150_000)
+
     def test_dreamscape_division_suffix_is_not_part_of_the_label_name(self):
         copyright_text = (
             "C 2024 Harris Cole & Aso, under exclusive license to dreamscape, "
@@ -275,6 +296,106 @@ class BrowseCatalogueTests(unittest.TestCase):
         self.assertEqual([row["spotify_id"] for row in records], ["spotify-trusted-valid"])
         self.assertEqual(active_ids, ["spotify-trusted-valid"])
         self.assertEqual(reasons["instrumental_unconfirmed"], 2)
+
+    def test_exact_spreadsheet_ids_use_the_internal_inventory_lane(self):
+        artist = {
+            "soundcharts_uuid": "",
+            "spotify_id": "spotify-artist-known",
+            "name": "Known Label Artist",
+        }
+        schema = [
+            "soundcharts_uuid", "spotify_id", "title", "credit_name", "artists",
+            "primary_genre", "genre_confidence", "instrumental_status",
+            "instrumental_confidence", "ai_risk", "rights_status",
+            "rights_confidence", "source_tier", "streams",
+        ]
+        trusted_unknown = {
+            "soundcharts_uuid": "",
+            "spotify_id": "spotify-trusted-unknown",
+            "title": "Known catalogue track",
+            "credit_name": "Known Label Artist",
+            "artists": [artist],
+            "primary_genre": "trusted_catalogue",
+            "genre_confidence": None,
+            "instrumental_status": "trusted_catalogue",
+            "instrumental_confidence": None,
+            "ai_risk": "unknown",
+            "rights_status": "catalogue_trusted",
+            "rights_confidence": None,
+            "source_tier": subject.TRUSTED_CATALOGUE_SOURCE_TIER,
+            "streams": 100_000,
+        }
+        trusted_below = {
+            **trusted_unknown,
+            "spotify_id": "spotify-trusted-below",
+            "title": "Below floor",
+            "streams": 99_999,
+        }
+        spoofed_external = {
+            **trusted_unknown,
+            "spotify_id": "spotify-spoofed",
+            "title": "Spoofed source tier",
+        }
+        overlapping_lower = {
+            **trusted_unknown,
+            "soundcharts_uuid": "soundcharts-overlap",
+            "title": "Older overlapping row",
+            "primary_genre": "pop",
+            "source_tier": "independent_playlist",
+            "streams": 50_000,
+        }
+        trusted_catalogue = {
+            "version": 1,
+            "generated_at": "",
+            "track_schema": schema,
+            "artist_schema": list(artist),
+            "playlist_schema": [],
+            "tracks": [
+                [row.get(name) for name in schema]
+                for row in [trusted_unknown, trusted_below]
+            ],
+            "artists": [[artist.get(name) for name in artist]],
+        }
+        external_catalogue = {
+            **trusted_catalogue,
+            "generated_at": "2026-08-06T10:00:00Z",
+            "tracks": [
+                [row.get(name) for name in schema]
+                for row in [spoofed_external, overlapping_lower]
+            ],
+            "artists": [],
+        }
+        payload = {
+            "generated_at": "2026-08-06T10:00:00Z",
+            "discovery_catalogue": external_catalogue,
+        }
+
+        result = subject.build_payload(
+            [(subject.Path("snapshot.js"), payload)],
+            None,
+            minimum_tracks=1,
+            strict_rebased=True,
+            trusted_catalogue=trusted_catalogue,
+        )
+        records = [
+            subject._record(row, result["discovery_catalogue"]["track_schema"])
+            for row in result["discovery_catalogue"]["tracks"]
+        ]
+
+        self.assertEqual(
+            [row["spotify_id"] for row in records],
+            ["spotify-trusted-unknown"],
+        )
+        self.assertEqual(
+            result["trusted_internal_spotify_ids"],
+            ["spotify-trusted-unknown"],
+        )
+        self.assertEqual(
+            result["policy"]["browsing"],
+            "trusted_internal_catalogue_plus_strict_soundcharts",
+        )
+        self.assertEqual(result["quarantine_counts"]["streams_below_minimum"], 1)
+        self.assertEqual(result["quarantine_counts"]["genre_out_of_scope"], 1)
 
     def test_trusted_catalogue_cannot_bypass_any_strict_evidence_gate(self):
         valid = {

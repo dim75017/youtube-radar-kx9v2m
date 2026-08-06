@@ -6,9 +6,21 @@ Ce dépôt sépare volontairement deux usages qui ne doivent plus être confondu
 
 `Toutes les pistes` et `Tous les artistes` servent à explorer le marché. Ces vues combinent :
 
-- le catalogue historique `Spotify_Radar_data.js` ;
+- le catalogue historique issu du tableur `Rachat_catalogue_Spotify_artistes_LOFI`, c'est-à-dire les discographies des artistes ayant déjà sorti avec le label ;
 - le catalogue de découverte Soundcharts publié dans `Spotify_Browse_Catalogue_data.js` ;
 - les mesures et métadonnées disponibles dans le snapshot Soundcharts actif.
+
+Le catalogue historique possède une voie de confiance bornée à ses identifiants
+Spotify exacts : ses pistes restent visibles dès 100 000 streams lifetime, sans
+exiger rétroactivement les preuves Soundcharts de genre, d'instrumentalité, d'IA
+ou de droits. Cette exception répond au cas d'usage commercial des artistes déjà
+connus du label. Une simple valeur `source_tier=trusted_internal_catalogue` ne
+suffit jamais : l'identifiant doit exister dans le tableur source versionné.
+
+Toutes les découvertes externes — playlists, Fans Also Like et catalogues
+d'artistes découverts — restent soumises aux garde-fous instrumentaux stricts.
+La voie historique n'accorde jamais automatiquement un statut Opportunité, un
+moyen de contact ou une éligibilité d'expansion.
 
 Une ligne peut être vérifiée, mesurée, à écouter, découverte dans une playlist, découverte dans un catalogue artiste ou encore à enrichir. Son affichage ne vaut jamais validation commerciale.
 
@@ -108,5 +120,9 @@ Une correction doit préserver simultanément :
 
 1. un catalogue large et vivant dans les vues de navigation ;
 2. un moteur A&R strict et fail-closed.
+
+Le catalogue historique approuvé ne doit jamais être vidé par un durcissement
+destiné aux découvertes externes. Le test de régression doit conserver sa voie
+séparée et son seuil public de 100 000 streams.
 
 Les modifications de cette architecture passent par une pull request et les tests de couche catalogue. Aucun `Revert` direct sur `main` ne doit être utilisé pour opposer ces deux objectifs.

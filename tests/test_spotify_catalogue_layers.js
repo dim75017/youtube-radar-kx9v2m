@@ -8,6 +8,8 @@ const index = fs.readFileSync('spotify/index.html', 'utf8');
 const dashboard = fs.readFileSync('spotify/dashboard.js', 'utf8');
 const coverage = fs.readFileSync('spotify/coverage.js', 'utf8');
 const policy = fs.readFileSync('SPOTIFY_RADAR_POLICY.md', 'utf8');
+const browseWorkflow = fs.readFileSync('.github/workflows/refresh-spotify-browse-catalogue.yml', 'utf8');
+const baselineCsv = fs.readFileSync('spotify-catalogue-baseline.csv', 'utf8');
 
 const activeSnapshotMatch = index.match(/\.\.\/(Spotify_Soundcharts_data_[^?'"\\]+\.js)\?payload=/);
 assert.ok(activeSnapshotMatch, 'the active Soundcharts snapshot must be explicit in the page shell');
@@ -106,6 +108,10 @@ assert.match(policy, /Inventaire de navigation/);
 assert.match(policy, /A&R et contacts/);
 assert.match(coverage, /Catalogue actif/);
 assert.match(coverage, /minimumLifetimeStreams = 100000/);
+assert.match(browseWorkflow, /--performance Spotify_Performance_data\.js/,
+  'the standalone browse refresh must apply the 100k floor to the latest factual counter');
+assert.match(browseWorkflow, /Spotify_Performance_tracks\/\*\*/,
+  'a performance-shard refresh must be able to promote a trusted track crossing 100k');
 
 const prefix = 'window.SPOTIFY_BROWSE_CATALOGUE=';
 const browseText = fs.readFileSync('Spotify_Browse_Catalogue_data.js', 'utf8');
@@ -119,7 +125,10 @@ assert.ok([
 assert.equal(browse.policy.ar, 'strict');
 assert.equal(browse.policy.unverified_records_contactable, false);
 const catalogue = browse.discovery_catalogue || {};
-const strictRebased = browse.policy.browsing === 'strict_instrumental_rebased';
+const strictRebased = [
+  'strict_instrumental_rebased',
+  'trusted_internal_catalogue_plus_strict_soundcharts',
+].includes(browse.policy.browsing);
 assert.ok(Array.isArray(catalogue.tracks) && catalogue.tracks.length >= (strictRebased ? 1 : 10_000),
   `active discovery catalogue unexpectedly small: ${Array.isArray(catalogue.tracks) ? catalogue.tracks.length : 0}`);
 assert.ok(Array.isArray(catalogue.artists) && catalogue.artists.length >= (strictRebased ? 1 : 1_000),
@@ -127,6 +136,19 @@ assert.ok(Array.isArray(catalogue.artists) && catalogue.artists.length >= (stric
 if (strictRebased) {
   assert.equal(browse.policy.archive, 'Spotify_Radar_data.js');
   assert.ok(Array.isArray(browse.active_legacy_spotify_ids));
+}
+if (browse.policy.browsing === 'trusted_internal_catalogue_plus_strict_soundcharts') {
+  assert.ok(Array.isArray(browse.trusted_internal_spotify_ids));
+  assert.ok(browse.trusted_internal_spotify_ids.length >= 19_000,
+    `trusted spreadsheet catalogue unexpectedly small: ${browse.trusted_internal_spotify_ids.length}`);
+  const sourceIds = new Set(Array.from(
+    baselineCsv.matchAll(/open\.spotify\.com\/(?:intl-[^/]+\/)?track\/([A-Za-z0-9]+)/g),
+    match => match[1],
+  ));
+  for (const spotifyId of browse.trusted_internal_spotify_ids) {
+    assert.equal(sourceIds.has(spotifyId), true,
+      `trusted public ID is absent from the approved spreadsheet: ${spotifyId}`);
+  }
 }
 for (const schema of [catalogue.track_schema || [], catalogue.artist_schema || []]) {
   for (const forbidden of ['contact_email', 'contact_url', 'contact_platform', 'email', 'phone']) {

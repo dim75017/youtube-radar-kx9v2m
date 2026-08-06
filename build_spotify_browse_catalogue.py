@@ -4,16 +4,20 @@
 The Spotify Radar has two intentionally different data contracts:
 
 * ``Toutes les pistes`` / ``Tous les artistes`` are inventory views. Their
-  active projection contains only tracks with at least 100,000 observed
-  lifetime Spotify streams; lower or missing counters stay archived.
+  active projection contains the exact spreadsheet-backed catalogue of artists
+  who already released with the label, plus fully evidenced external
+  discoveries. Every visible track has at least 100,000 observed lifetime
+  Spotify streams; lower or missing counters stay archived.
 * ``Opportunités A&R`` and every contact/deal action remain fail-closed and are
   sourced exclusively from the sanitized ``window.SPOTIFY_SOUNDCHARTS`` export.
 
 This script materializes the first contract into a separate public file.  It
 also supports an explicit ``--strict-rebased`` migration mode. In that mode,
-every source, including the trusted internal catalogue, must pass the same
-genre, instrumental, AI, rights, identity and stream-evidence gates. Historical
-rows remain preserved in ``Spotify_Radar_data.js`` and Git history as archive.
+only exact Spotify track IDs present in the trusted internal spreadsheet may
+use the internal-catalogue lane (100k stream floor only). Every external source
+must pass the genre, instrumental, AI, rights, identity and stream-evidence
+gates. Historical rows remain preserved in ``Spotify_Radar_data.js`` and Git
+history as archive.
 """
 
 from __future__ import annotations
@@ -205,16 +209,20 @@ def _overlay_latest_performance_streams(
 
 
 def _spotify_id_from_url(value: Any) -> str:
-    match = re.search(r"spotify\.com/track/([A-Za-z0-9]+)", str(value or ""))
+    match = re.search(
+        r"spotify\.com/(?:intl-[^/?#]+/)?track/([A-Za-z0-9]+)",
+        str(value or ""),
+    )
     return match.group(1) if match else ""
 
 
 def _trusted_catalogue_from_csv(path: Path, artist_seeds_path: Path | None) -> dict[str, Any]:
     """Read the internal catalogue without importing contacts or credentials.
 
-    This is legacy source material, not positive evidence. Its rows remain
-    ineligible for public browse, A&R, contact and automatic expansion until
-    every strict evidence field has been populated and validated.
+    The spreadsheet is the business-approved cohort of artists who already
+    released with the label. Exact track IDs from this file are eligible for
+    inventory browsing once they reach the lifetime-stream floor. This trust
+    never grants A&R opportunity, contact or automatic-expansion eligibility.
     """
     artist_ids: dict[str, str] = {}
     if artist_seeds_path and artist_seeds_path.exists():
@@ -247,15 +255,27 @@ def _trusted_catalogue_from_csv(path: Path, artist_seeds_path: Path | None) -> d
     ]
     tracks: list[dict[str, Any]] = []
     artists: dict[str, dict[str, Any]] = {}
-    seen_tracks: set[str] = set()
+    track_index_by_spotify: dict[str, int] = {}
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
         for raw in csv.DictReader(handle):
             artist_name = str(raw.get("Artiste") or "").strip()
             title = str(raw.get("Track") or "").strip()
             spotify_id = _spotify_id_from_url(raw.get("Lien Spotify"))
-            if not artist_name or not title or not spotify_id or spotify_id in seen_tracks:
+            if not artist_name or not title or not spotify_id:
                 continue
-            seen_tracks.add(spotify_id)
+            streams = _finite_number(raw.get("Streams"))
+            if spotify_id in track_index_by_spotify:
+                # The source sheet can contain the same Spotify track under
+                # more than one affiliated-artist row. Keep one canonical
+                # identity and the largest observed lifetime counter so row
+                # order cannot incorrectly move it below the public floor.
+                existing = tracks[track_index_by_spotify[spotify_id]]
+                previous_streams = _finite_number(existing.get("streams"))
+                if streams is not None and (
+                    previous_streams is None or streams > previous_streams
+                ):
+                    existing["streams"] = streams
+                continue
             artist_spotify_id = artist_ids.get(artist_name.casefold(), "")
             status = str(raw.get("Statut") or "").strip().casefold()
             raw_rights = "self_released" if status == "self-released" else "catalogue_trusted"
@@ -277,7 +297,7 @@ def _trusted_catalogue_from_csv(path: Path, artist_seeds_path: Path | None) -> d
                 "credit_name": artist_name,
                 "artists": [{"name": artist_name, "spotify_id": artist_spotify_id, "soundcharts_uuid": "", "role": "primary", "image_url": ""}],
                 "artist_soundcharts_uuids": [], "release_date": str(raw.get("Date") or "").strip(),
-                "streams": _finite_number(raw.get("Streams")), "streams_delta_24h": None,
+                "streams": streams, "streams_delta_24h": None,
                 "rights_status": rights_status, "rights_confidence": rights_confidence,
                 "label": reconciled_label(raw_label, raw_label),
                 "copyright": raw_label,
@@ -289,6 +309,7 @@ def _trusted_catalogue_from_csv(path: Path, artist_seeds_path: Path | None) -> d
                 "playlist_best_position": None, "playlist_followers_total": None,
                 "playlist_placements": [], "discovered_at": "", "updated_at": "", "review_reasons": [],
             })
+            track_index_by_spotify[spotify_id] = len(tracks) - 1
     if not tracks:
         raise BrowseCatalogueError(f"Trusted catalogue {path} yielded no valid Spotify tracks")
     return {
@@ -622,18 +643,24 @@ def merge_catalogues(catalogues: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
 def _strict_rebaseline_reason(
     row: Mapping[str, Any],
     minimum_streams: int = MIN_TRACK_LIFETIME_STREAMS,
+    trusted_internal_spotify_ids: set[str] | frozenset[str] | None = None,
 ) -> str | None:
     """Return the first factual reason an active-row candidate is quarantined."""
-    artists = _clean_nested_artists(row.get("artists"))
-    identities = [str(row.get("credit_name") or "").strip().casefold()]
-    identities.extend(str(artist.get("name") or "").strip().casefold() for artist in artists)
-    if any(identity in PUBLIC_ARTIST_BLACKLIST for identity in identities if identity):
-        return "blacklisted_identity"
     streams = _finite_number(row.get("streams"))
     if streams is None:
         return "streams_missing"
     if streams < max(0, minimum_streams):
         return "streams_below_minimum"
+    spotify_id = str(row.get("spotify_id") or "").strip()
+    if spotify_id and spotify_id in (trusted_internal_spotify_ids or set()):
+        # Exact membership in the label's source spreadsheet is the proof for
+        # this inventory lane. A source_tier string alone can never grant it.
+        return None
+    artists = _clean_nested_artists(row.get("artists"))
+    identities = [str(row.get("credit_name") or "").strip().casefold()]
+    identities.extend(str(artist.get("name") or "").strip().casefold() for artist in artists)
+    if any(identity in PUBLIC_ARTIST_BLACKLIST for identity in identities if identity):
+        return "blacklisted_identity"
     if str(row.get("source_tier") or "") not in STRICT_SOURCE_TIERS:
         return "unapproved_source"
     if str(row.get("primary_genre") or "") not in STRICT_GENRES:
@@ -666,14 +693,30 @@ def strict_rebase_catalogue(
     catalogues: Sequence[Mapping[str, Any]],
     minimum_streams: int = MIN_TRACK_LIFETIME_STREAMS,
     performance_tracks: Mapping[str, Any] | None = None,
+    trusted_internal_spotify_ids: set[str] | frozenset[str] | None = None,
+    trusted_internal_streams: Mapping[str, float] | None = None,
 ) -> tuple[dict[str, Any], dict[str, int], list[str]]:
-    """Project only fully evidenced instrumental rows into the active catalogue.
+    """Project trusted internal inventory plus evidenced external discoveries.
 
     This is intentionally a projection, never a deletion: rejected records are
     counted by reason and remain available in the historical archive.
     """
     merged = merge_catalogues(catalogues)
     normalised = _normalise_catalogue(merged)
+    # A broad Soundcharts overlap must not replace the already observed
+    # lifetime counter from the approved spreadsheet with an older/lower value.
+    # A newer Performance point is applied immediately afterwards and remains
+    # authoritative, including for a factual downward correction.
+    for row in normalised["track_records"]:
+        spotify_id = str(row.get("spotify_id") or "").strip()
+        baseline_streams = _finite_number(
+            (trusted_internal_streams or {}).get(spotify_id)
+        )
+        current_streams = _finite_number(row.get("streams"))
+        if baseline_streams is not None and (
+            current_streams is None or baseline_streams > current_streams
+        ):
+            row["streams"] = baseline_streams
     _overlay_latest_performance_streams(
         normalised["track_records"], performance_tracks
     )
@@ -681,7 +724,11 @@ def strict_rebase_catalogue(
     accepted_tracks: list[dict[str, Any]] = []
     active_artist_keys: set[str] = set()
     for row in normalised["track_records"]:
-        reason = _strict_rebaseline_reason(row, minimum_streams)
+        reason = _strict_rebaseline_reason(
+            row,
+            minimum_streams,
+            trusted_internal_spotify_ids,
+        )
         if reason:
             quarantine_counts[reason] = quarantine_counts.get(reason, 0) + 1
             continue
@@ -743,6 +790,20 @@ def build_payload(
         raise BrowseCatalogueError("No discovery catalogue source was available")
     quarantine_counts: dict[str, int] = {}
     active_legacy_spotify_ids: list[str] = []
+    trusted_internal_spotify_ids: set[str] = set()
+    trusted_internal_streams: dict[str, float] = {}
+    if isinstance(trusted_catalogue, Mapping):
+        for row in _normalise_catalogue(trusted_catalogue)["track_records"]:
+            spotify_id = str(row.get("spotify_id") or "").strip()
+            if not spotify_id:
+                continue
+            trusted_internal_spotify_ids.add(spotify_id)
+            streams = _finite_number(row.get("streams"))
+            if streams is not None:
+                trusted_internal_streams[spotify_id] = max(
+                    streams,
+                    trusted_internal_streams.get(spotify_id, streams),
+                )
     if strict_rebased:
         performance_tracks = (
             performance.get("tracks")
@@ -754,6 +815,8 @@ def build_payload(
             catalogues,
             minimum_streams,
             performance_tracks=performance_tracks,
+            trusted_internal_spotify_ids=trusted_internal_spotify_ids,
+            trusted_internal_streams=trusted_internal_streams,
         )
     else:
         merged = merge_catalogues(catalogues)
@@ -777,13 +840,20 @@ def build_payload(
         "artists": len(newest_payload.get("artists", [])) if isinstance(newest_payload.get("artists"), list) else 0,
         "opportunities": len(newest_payload.get("opportunities", [])) if isinstance(newest_payload.get("opportunities"), list) else 0,
     }
+    active_trusted_internal_spotify_ids = sorted(
+        set(active_legacy_spotify_ids) & trusted_internal_spotify_ids
+    )
     return {
         "version": VERSION,
         "source": "soundcharts_browse_catalogue",
         "generated_at": str(newest_payload.get("generated_at") or merged.get("generated_at") or ""),
         "source_snapshot": newest_path.name,
         "policy": {
-            "browsing": "strict_instrumental_rebased" if strict_rebased else "full",
+            "browsing": (
+                "trusted_internal_catalogue_plus_strict_soundcharts"
+                if strict_rebased and active_trusted_internal_spotify_ids
+                else "strict_instrumental_rebased" if strict_rebased else "full"
+            ),
             "ar": "strict",
             "contacts": "strict_only",
             "unverified_records_contactable": False,
@@ -792,6 +862,7 @@ def build_payload(
         },
         "discovery_catalogue": merged,
         "active_legacy_spotify_ids": active_legacy_spotify_ids,
+        "trusted_internal_spotify_ids": active_trusted_internal_spotify_ids,
         "quarantine_counts": quarantine_counts,
         "playlist_discovery": dict(playlist_discovery) if isinstance(playlist_discovery, Mapping) else {},
         "instrumental_pool": dict(instrumental_pool) if isinstance(instrumental_pool, Mapping) else {},
