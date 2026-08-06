@@ -115,7 +115,7 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
             "Discover a rotating batch of independent background playlists"
         )
         classify = self.workflow.index(
-            "Classify pending direct and playlist tracks before a full synchronization"
+            "Classify new direct and playlist tracks in every catalogue refresh"
         )
         self.assertIn(
             full_sync_discovery_condition, self.workflow[editorial:independent]
@@ -125,6 +125,22 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         )
         self.assertIn(
             "if os.environ.get('RUN_SCOPE') in {'strict_rebaseline', 'full_sync'}:",
+            self.workflow,
+        )
+
+    def test_daily_rebaseline_classifies_new_candidates_before_rebuild(self):
+        self.assertIn('daily_classification_data_cap="1500"', self.workflow)
+        self.assertIn(
+            "if: steps.plan.outputs.scope == 'strict_rebaseline' || "
+            "steps.plan.outputs.scope == 'full_sync'",
+            self.workflow[
+                self.workflow.index(
+                    "Classify new direct and playlist tracks in every catalogue refresh"
+                ) : self.workflow.index("Expand and measure the target instrumental pool")
+            ],
+        )
+        self.assertIn(
+            '--max-requests "${{ steps.plan.outputs.classification_requests }}"',
             self.workflow,
         )
 

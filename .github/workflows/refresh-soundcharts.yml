@@ -318,6 +318,7 @@ jobs:
           independent_playlist_data_cap="2500"
           expansion_data_cap="6000"
           classification_data_cap="8230"
+          daily_classification_data_cap="1500"
           if [[ "${{ github.event_name }}" == "pull_request" || "${{ github.event_name }}" == "push" ]]; then
             scope="ci_smoke"
             expansion_limit=""
@@ -357,6 +358,7 @@ jobs:
           performance_tracks_due="false"
           performance_artists_due="false"
           pool_requests="$expansion_requests"
+          classification_requests="0"
           if [[ "$scope" == "full_sync" ]]; then
             # The adaptive track refresh has its own 35k cap. Keep the guarded
             # opportunity-pool expansion bounded so this maintenance run does
@@ -365,6 +367,12 @@ jobs:
             performance_catalogue_due="true"
             performance_tracks_due="true"
             performance_artists_due="true"
+            classification_requests="$expansion_data_cap"
+          elif [[ "$scope" == "strict_rebaseline" ]]; then
+            # The first explicit classification run drains the historical
+            # backlog. Afterwards this bounded daily lane classifies newly
+            # discovered 100k+ rows before the browse catalogue is rebuilt.
+            classification_requests="$daily_classification_data_cap"
           fi
           if [[ "${{ github.event_name }}" == "schedule" || ( "${{ github.event_name }}" == "workflow_dispatch" && "$FRESHNESS_GATE" == "true" && "$scope" == "strict_rebaseline" ) ]]; then
             # A scheduled/watchdog repair is the authoritative daily maintenance
@@ -422,6 +430,7 @@ jobs:
           echo "expansion_limit=$expansion_limit" >> "$GITHUB_OUTPUT"
           echo "expansion_requests=$expansion_requests" >> "$GITHUB_OUTPUT"
           echo "pool_requests=$pool_requests" >> "$GITHUB_OUTPUT"
+          echo "classification_requests=$classification_requests" >> "$GITHUB_OUTPUT"
           echo "artist_requests=$artist_data_cap" >> "$GITHUB_OUTPUT"
           echo "performance_artist_requests=$performance_artist_data_cap" >> "$GITHUB_OUTPUT"
           echo "performance_track_requests=$performance_track_data_cap" >> "$GITHUB_OUTPUT"
@@ -634,10 +643,10 @@ jobs:
           --catalog-page-size 100
           --max-new-catalog-tracks 5000
 
-      - name: Classify pending direct and playlist tracks before a full synchronization
+      - name: Classify new direct and playlist tracks in every catalogue refresh
         # Only exact Soundcharts song metadata is used here.  This does not
         # infer an AI-risk or turn a direct seed into an opportunity by name.
-        if: steps.plan.outputs.scope == 'full_sync'
+        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync'
         env:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
@@ -648,7 +657,7 @@ jobs:
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
           --cache soundcharts-instrumental-cache.json
           --workers 16
-          --max-requests 6000
+          --max-requests "${{ steps.plan.outputs.classification_requests }}"
           --classification-only
 
       - name: Expand and measure the target instrumental pool
