@@ -106,6 +106,34 @@ non une preuve de compatibilité éditoriale. Sa première phase reste dans un
   Opportunité et n'effectue aucune promotion canonique. Un état des lieux et
   une validation explicite de Dim sont requis avant toute exposition publique.
 
+## 4. Expansion Fans Also Like — audit de promotion
+
+Le backfill d'identifiants Spotify exacts et l'audit de promotion restent deux
+étapes distinctes. L'audit compare chaque identifiant de piste FAL au catalogue
+canonique courant avec une égalité stricte ; aucun rapprochement flou par nom
+d'artiste ou titre n'est autorisé.
+
+Une piste ne peut entrer dans la cohorte privée de validation que si les preuves
+suivantes sont explicites : instrumental, absence de lyrics, genre cible,
+identité artiste complète, droits non-major compatibles, source approuvée et
+revue humaine tracée. Les doublons Spotify/ISRC et les valeurs inconnues sur ces
+champs restent exclus. Le nombre d'auditeurs mensuels, la speechiness ou le
+career stage ne doivent jamais servir à inventer un statut non-superstar.
+
+Le risque IA suit deux voies bornées :
+
+- un risque élevé bloque toutes les voies ;
+- un risque faible et prouvé peut rendre la piste éligible aux Opportunités ;
+- un risque inconnu reste « à vérifier » et ne peut entrer que dans la voie
+  catalogue, à condition que l'instrumentalité et l'absence de voix soient déjà
+  prouvées. Il reste exclu des Opportunités.
+
+La cohorte ligne à ligne est stockée uniquement sous forme chiffrée. Seuls des
+comptages agrégés peuvent être publiés comme artefact de workflow. L'audit ne
+modifie ni `Spotify_Browse_Catalogue_data.js` ni un autre fichier chargé par le
+dashboard. Toute promotion canonique exige encore une validation explicite de
+Dim et un changement séparé, revu et testé.
+
 ## Règle de maintenance
 
 Ne jamais sécuriser A&R en vidant le catalogue de navigation. Les formes suivantes constituent une régression :
