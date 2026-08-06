@@ -304,6 +304,62 @@ class InstrumentalPoolTests(unittest.TestCase):
             "streams_100k_then_dark_ambient_then_streams_desc",
         )
 
+    def test_classification_reaches_dark_ambient_kept_only_in_discovery_catalogue(self):
+        current = payload()
+        current["editorial"]["tracks"] = []
+        current["discovery_catalogue"] = {
+            "track_schema": [
+                "soundcharts_uuid",
+                "title",
+                "credit_name",
+                "release_date",
+                "streams",
+                "primary_genre",
+                "subgenres",
+                "genre_confidence",
+                "instrumental_status",
+                "instrumental_confidence",
+                "ai_risk",
+                "source_tier",
+                "review_reasons",
+            ],
+            "tracks": [[
+                "dark-discovery-only",
+                "Discovery-only dark track",
+                "Dark Artist",
+                "2026-01-01",
+                350_000,
+                "dark_ambient",
+                [],
+                0.8,
+                "unknown",
+                None,
+                "unknown",
+                "independent_playlist",
+                ["instrumental_check_required"],
+            ]],
+        }
+        detail = song_detail()
+        detail["object"]["uuid"] = "dark-discovery-only"
+        detail["object"]["genres"] = [
+            {"root": "Ambient", "sub": ["Dark Ambient", "Instrumental"]}
+        ]
+        summary = subject.classify_soundcharts_genres(
+            current,
+            {"version": 1, "tracks": {}, "artists": {}},
+            FakeClient({"/api/v2/song/dark-discovery-only": detail}),
+            workers=1,
+            max_requests=1,
+        )
+
+        schema = current["discovery_catalogue"]["track_schema"]
+        row = current["discovery_catalogue"]["tracks"][0]
+        self.assertEqual(summary["updated"], 1)
+        self.assertEqual(subject.field(row, schema, "primary_genre"), "dark_ambient")
+        self.assertEqual(subject.field(row, schema, "instrumental_status"), "instrumental")
+        self.assertEqual(subject.field(row, schema, "ai_risk"), "unknown")
+        self.assertTrue(subject.field(row, schema, "soundcharts_genres_checked_at"))
+
     def test_explicit_artist_catalogue_can_be_exactly_classified_without_becoming_an_opportunity(self):
         current = payload()
         schema = current["editorial"]["track_schema"]
