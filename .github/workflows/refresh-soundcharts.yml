@@ -45,6 +45,9 @@ on:
       - 'tests/test_full_discovery_catalogue.py'
       - 'tests/test_soundcharts_workflow_guardrails.py'
       - 'tests/test_spotify_full_catalogue.js'
+      - 'tests/test_spotify_catalogue_layers.js'
+      - 'tests/test_spotify_public_stream_floor.js'
+      - 'tests/test_spotify_public_strict_projection.js'
       - 'tests/test_spotify_playlist_follower_windows.js'
       - 'tests/test_spotify_binary_ownership_status.js'
       - 'tests/test_spotify_selection_artist_offers_status.js'
@@ -104,6 +107,9 @@ on:
       - 'tests/test_full_discovery_catalogue.py'
       - 'tests/test_soundcharts_workflow_guardrails.py'
       - 'tests/test_spotify_full_catalogue.js'
+      - 'tests/test_spotify_catalogue_layers.js'
+      - 'tests/test_spotify_public_stream_floor.js'
+      - 'tests/test_spotify_public_strict_projection.js'
       - 'tests/test_spotify_playlist_follower_windows.js'
       - 'tests/test_spotify_binary_ownership_status.js'
       - 'tests/test_spotify_selection_artist_offers_status.js'
@@ -267,6 +273,8 @@ jobs:
           node tests/test_ar_outreach_workflow.js
           node tests/test_dashboard_genre_filter.js
           node tests/test_spotify_full_catalogue.js
+          node tests/test_spotify_public_stream_floor.js
+          node tests/test_spotify_public_strict_projection.js
           node tests/test_spotify_playlist_follower_windows.js
           node tests/test_spotify_binary_ownership_status.js
           node tests/test_spotify_selection_artist_offers_status.js

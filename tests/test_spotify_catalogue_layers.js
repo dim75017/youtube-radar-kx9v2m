@@ -29,10 +29,14 @@ assert.match(dashboard, /BROWSE\.discovery_catalogue/,
 assert.doesNotMatch(dashboard, /const A = \[\];/);
 assert.doesNotMatch(dashboard, /const LEGACY_R = \[\];/);
 assert.doesNotMatch(dashboard, /const DISCOVERY_CATALOGUE = \{tracks:\[\],artists:\[\],counts:\{\}\};/);
-assert.match(dashboard, /catalogues\.map\(normalizeDiscoveryCatalogue\)/,
-  'each discovery source must be decoded before concatenation');
-assert.doesNotMatch(dashboard, /tracks:catalogues\.flatMap\(source=>Array\.isArray\(source\.tracks\)/,
-  'raw compact rows must never inherit another source schema');
+assert.match(dashboard, /normalizeDiscoveryCatalogue\(BROWSE_DISCOVERY\)/,
+  'the authoritative browsing projection must be decoded with its own schema');
+const publicCatalogueSource = dashboard.slice(
+  dashboard.indexOf('const DISCOVERY_CATALOGUE'),
+  dashboard.indexOf('const RAW_DISCOVERY_TRACKS'),
+);
+assert.doesNotMatch(publicCatalogueSource, /SC\.discovery_catalogue|flatMap|STRICT_DISCOVERY/,
+  'rotating review rows must never be concatenated into the public catalogue');
 
 const helpersStart = dashboard.indexOf('function discoveryArray');
 const helpersEnd = dashboard.indexOf('const BROWSE_DISCOVERY', helpersStart);
@@ -140,14 +144,17 @@ assert.ok(Array.isArray(radar.rows) && radar.rows.length >= 40_000,
 const trackSchema = catalogue.track_schema || [];
 const spotifyIndex = trackSchema.indexOf('spotify_id');
 const soundchartsIndex = trackSchema.indexOf('soundcharts_uuid');
+const publicKeys = new Set();
 const keys = new Set(
   radar.rows.map(row => String(row && row[6] || '')).filter(Boolean),
 );
 for (const row of catalogue.tracks) {
   const spotify = spotifyIndex >= 0 ? String(row[spotifyIndex] || '') : '';
   const soundcharts = soundchartsIndex >= 0 ? String(row[soundchartsIndex] || '') : '';
-  if (spotify) keys.add(spotify);
-  else if (soundcharts) keys.add(`soundcharts:${soundcharts}`);
+  const key = spotify || (soundcharts ? `soundcharts:${soundcharts}` : '');
+  assert.ok(key, 'every public discovery track must have a complete canonical key');
+  publicKeys.add(key);
+  keys.add(key);
 }
 console.log(JSON.stringify({
   historicalRows: radar.rows.length,
@@ -156,7 +163,8 @@ console.log(JSON.stringify({
   combinedKeys: keys.size,
   strictOpportunities: browse.strict_snapshot_counts && browse.strict_snapshot_counts.opportunities,
 }));
-assert.ok(keys.size >= 45_000, `combined browsing universe unexpectedly small: ${keys.size}`);
+assert.equal(publicKeys.size, catalogue.tracks.length,
+  'the strict public projection must contain exactly one row per Spotify track');
 
-console.log(`Spotify catalogue layers: ${keys.size} browsing keys; A&R stays strict`);
+console.log(`Spotify catalogue layers: ${publicKeys.size} strict public tracks; archive and A&R stay separate`);
 

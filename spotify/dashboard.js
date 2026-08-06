@@ -287,7 +287,8 @@ function scKey(v){ return String(v||'').trim().toLowerCase(); }
 const SC_ALLOWED_GENRES = new Set([
   'lofi_hip_hop','guitar','acoustic','fingerstyle','nature','soundscape',
   'jazz_jazzhop','classical','ambient','piano',
-  'halloween_lofi','christmas_lofi','dark_ambient','phonk_instrumental','dnb_instrumental'
+  'halloween_lofi','christmas_lofi','dark_ambient',
+  'phonk_instrumental','instrumental_phonk','dnb_instrumental','instrumental_dnb'
 ]);
 const SC_MIN_LISTENERS = 1000;
 const SC_MAX_LISTENERS = 5000000;
@@ -635,24 +636,15 @@ function normalizeDiscoveryCatalogue(source){
 }
 const BROWSE_DISCOVERY = BROWSE&&BROWSE.discovery_catalogue&&typeof BROWSE.discovery_catalogue==='object'
   ? BROWSE.discovery_catalogue : null;
-const STRICT_DISCOVERY = SC&&SC.discovery_catalogue&&typeof SC.discovery_catalogue==='object'
-  ? SC.discovery_catalogue : null;
 const DISCOVERY_CATALOGUE = (() => {
-  const catalogues=[BROWSE_DISCOVERY,STRICT_DISCOVERY].filter(source=>
-    source&&typeof source==='object'&&(
-      (Array.isArray(source.tracks)&&source.tracks.length)||
-      (Array.isArray(source.artists)&&source.artists.length)
-    )
-  );
-  if(!catalogues.length) return {tracks:[],artists:[],counts:{}};
-  const primary=catalogues.find(source=>source===STRICT_DISCOVERY)||catalogues[0];
-  const normalized=catalogues.map(normalizeDiscoveryCatalogue);
-  // The browse catalogue is the internal baseline and Soundcharts is the
-  // rotating discovery delta.  Both must be merged: choosing one source
-  // silently hid every newly discovered track as soon as the baseline existed.
-  return Object.assign({},primary,{
-    tracks:normalized.flatMap(source=>source.tracks),
-    artists:normalized.flatMap(source=>source.artists),
+  if(!BROWSE_DISCOVERY) return {tracks:[],artists:[],counts:{}};
+  const normalized=normalizeDiscoveryCatalogue(BROWSE_DISCOVERY);
+  /* The public Tracks / Artists / Labels projection has one authoritative
+     source. The rotating Soundcharts payload may contain review rows and must
+     never be concatenated into this public inventory. */
+  return Object.assign({},BROWSE_DISCOVERY,{
+    tracks:normalized.tracks,
+    artists:normalized.artists,
     track_schema:[],
     artist_schema:[],
     playlist_schema:[]
@@ -672,17 +664,73 @@ function discoveryHasQuarantinedArtist(row,schema,artistRecord=false){
   });
   return names.filter(Boolean).some(name=>isGeneralArtistQuarantined(name,true));
 }
-const DISCOVERY_TRACKS = RAW_DISCOVERY_TRACKS.filter(row=>
-  !discoveryHasQuarantinedArtist(row,DISCOVERY_TRACK_SCHEMA)
-);
-const DISCOVERY_ARTISTS = RAW_DISCOVERY_ARTISTS.filter(row=>
-  !discoveryHasQuarantinedArtist(row,DISCOVERY_ARTIST_SCHEMA,true)
-);
+function publicDiscoveryTrackEligible(source){
+  if(!source||typeof source!=='object') return false;
+  const spotifyId=String(source.spotify_id||'').trim();
+  const soundchartsUuid=String(source.soundcharts_uuid||'').trim();
+  const genre=String(source.primary_genre||'').trim();
+  const genreConfidence=discoveryNumber(source.genre_confidence);
+  const instrumental=String(source.instrumental_status||'').trim().toLowerCase();
+  const instrumentalConfidence=discoveryNumber(source.instrumental_confidence);
+  const ai=String(source.ai_risk||'').trim().toLowerCase();
+  const expansion=String(source.expansion_status||'').trim().toLowerCase();
+  const streams=discoveryNumber(source.streams);
+  const artists=discoveryArray(source.artists);
+  const completeArtists=artists.length>0&&artists.every(artist=>
+    String(artist&&artist.spotify_id||'').trim()
+      &&String(artist&&artist.soundcharts_uuid||'').trim());
+  return Boolean(spotifyId&&soundchartsUuid)
+    &&SC_ALLOWED_GENRES.has(genre)
+    &&genreConfidence!=null&&genreConfidence>=0.5
+    &&instrumental==='instrumental'
+    &&instrumentalConfidence!=null&&instrumentalConfidence>=0.5
+    &&['low','faible'].includes(ai)
+    &&expansion==='eligible'
+    &&streams!=null&&streams>=MIN_TRACK_LIFETIME_STREAMS
+    &&completeArtists;
+}
+function strictPublicDiscoveryTracks(rows){
+  const bySpotifyId=new Map();
+  for(const raw of rows||[]){
+    const source=discoveryRecord(raw,DISCOVERY_TRACK_SCHEMA);
+    if(!publicDiscoveryTrackEligible(source)
+      ||discoveryHasQuarantinedArtist(source,DISCOVERY_TRACK_SCHEMA)) continue;
+    const spotifyId=String(source.spotify_id||'').trim();
+    if(!bySpotifyId.has(spotifyId)) bySpotifyId.set(spotifyId,source);
+  }
+  return [...bySpotifyId.values()];
+}
+const DISCOVERY_TRACKS = strictPublicDiscoveryTracks(RAW_DISCOVERY_TRACKS);
+const PUBLIC_DISCOVERY_ARTIST_KEYS = new Set();
+for(const track of DISCOVERY_TRACKS){
+  for(const artist of discoveryArray(track.artists)){
+    const spotifyId=String(artist&&artist.spotify_id||'').trim();
+    const soundchartsUuid=String(artist&&artist.soundcharts_uuid||'').trim();
+    if(spotifyId) PUBLIC_DISCOVERY_ARTIST_KEYS.add('spotify:'+spotifyId);
+    if(soundchartsUuid) PUBLIC_DISCOVERY_ARTIST_KEYS.add('soundcharts:'+soundchartsUuid);
+  }
+}
+const DISCOVERY_ARTISTS = RAW_DISCOVERY_ARTISTS.filter(row=>{
+  const source=discoveryRecord(row,DISCOVERY_ARTIST_SCHEMA);
+  const spotifyId=String(source.spotify_id||'').trim();
+  const soundchartsUuid=String(source.soundcharts_uuid||'').trim();
+  return !discoveryHasQuarantinedArtist(source,DISCOVERY_ARTIST_SCHEMA,true)
+    &&((spotifyId&&PUBLIC_DISCOVERY_ARTIST_KEYS.has('spotify:'+spotifyId))
+      ||(soundchartsUuid&&PUBLIC_DISCOVERY_ARTIST_KEYS.has('soundcharts:'+soundchartsUuid)));
+});
 function discoveryPlacement(row){ return discoveryRecord(row,DISCOVERY_PLAYLIST_SCHEMA); }
 function discoveryNumber(value){
   if(value==null||value==='') return null;
   const number=Number(value); return Number.isFinite(number)?number:null;
 }
+function retainStrictPublicRows(rows,spotifyIds){
+  let target=0;
+  for(const row of rows||[]){
+    if(spotifyIds.has(String(row&&row[6]||'').trim())) rows[target++]=row;
+  }
+  rows.length=target;
+}
+retainStrictPublicRows(R,new Set(DISCOVERY_TRACKS.map(track=>String(track.spotify_id||'').trim())));
 function discoveryArtistKey(spotifyId,soundchartsUuid,name){
   const spotify=String(spotifyId||'').trim(), soundcharts=String(soundchartsUuid||'').trim();
   if(spotify) return 'spotify:'+spotify;

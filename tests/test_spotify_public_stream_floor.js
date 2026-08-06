@@ -31,7 +31,9 @@ const legacyRows = [
 const activeLegacyIds = legacyRows.map(row => row[6]);
 const discoveryTrackSchema = [
   'soundcharts_uuid', 'spotify_id', 'title', 'credit_name', 'artists', 'release_date',
-  'streams', 'rights_status', 'rights_confidence', 'availability_status',
+  'streams', 'rights_status', 'rights_confidence', 'label', 'availability_status',
+  'primary_genre', 'genre_confidence', 'instrumental_status', 'instrumental_confidence',
+  'ai_risk', 'expansion_status',
 ];
 const discoveryArtistSchema = [
   'soundcharts_uuid', 'spotify_id', 'name', 'monthly_listeners', 'availability_status',
@@ -40,14 +42,34 @@ const discoveryTracks = [
   {
     soundcharts_uuid: 'browse-track-below', spotify_id: 'browse-below', title: 'Browse below',
     credit_name: 'Browse Below Artist', release_date: '2026-07-06', streams: 99_999,
-    rights_status: 'self_released', rights_confidence: 0.9, availability_status: 'measured',
+    rights_status: 'independent_label', rights_confidence: 0.9, label: 'Low Label', availability_status: 'measured',
+    primary_genre: 'ambient', genre_confidence: 0.9, instrumental_status: 'instrumental',
+    instrumental_confidence: 0.9, ai_risk: 'low', expansion_status: 'eligible',
     artists: [{soundcharts_uuid: 'browse-artist-below', spotify_id: 'browse-artist-below-id', name: 'Browse Below Artist'}],
   },
   {
     soundcharts_uuid: 'browse-track-exact', spotify_id: 'browse-exact', title: 'Browse exact',
     credit_name: 'Browse Exact Artist', release_date: '2026-07-07', streams: 100_000,
-    rights_status: 'self_released', rights_confidence: 0.9, availability_status: 'measured',
+    rights_status: 'independent_label', rights_confidence: 0.9, label: 'Shared Label', availability_status: 'measured',
+    primary_genre: 'ambient', genre_confidence: 0.9, instrumental_status: 'instrumental',
+    instrumental_confidence: 0.9, ai_risk: 'low', expansion_status: 'eligible',
     artists: [{soundcharts_uuid: 'browse-artist-exact', spotify_id: 'browse-artist-exact-id', name: 'Browse Exact Artist'}],
+  },
+  {
+    soundcharts_uuid: 'browse-track-high', spotify_id: 'browse-high', title: 'Browse high',
+    credit_name: 'Browse High Artist', release_date: '2026-07-08', streams: 150_000,
+    rights_status: 'independent_label', rights_confidence: 0.9, label: 'High Label', availability_status: 'measured',
+    primary_genre: 'ambient', genre_confidence: 0.9, instrumental_status: 'instrumental',
+    instrumental_confidence: 0.9, ai_risk: 'low', expansion_status: 'eligible',
+    artists: [{soundcharts_uuid: 'browse-artist-high', spotify_id: 'browse-artist-high-id', name: 'Browse High Artist'}],
+  },
+  {
+    soundcharts_uuid: 'browse-track-down', spotify_id: 'browse-down', title: 'Browse corrected down',
+    credit_name: 'Browse Down Artist', release_date: '2026-07-09', streams: 120_000,
+    rights_status: 'independent_label', rights_confidence: 0.9, label: 'Down Label', availability_status: 'measured',
+    primary_genre: 'ambient', genre_confidence: 0.9, instrumental_status: 'instrumental',
+    instrumental_confidence: 0.9, ai_risk: 'low', expansion_status: 'eligible',
+    artists: [{soundcharts_uuid: 'browse-artist-down', spotify_id: 'browse-artist-down-id', name: 'Browse Down Artist'}],
   },
 ];
 const discoveryArtists = [
@@ -58,6 +80,14 @@ const discoveryArtists = [
   {
     soundcharts_uuid: 'browse-artist-exact', spotify_id: 'browse-artist-exact-id',
     name: 'Browse Exact Artist', monthly_listeners: 60_000, availability_status: 'measured',
+  },
+  {
+    soundcharts_uuid: 'browse-artist-high', spotify_id: 'browse-artist-high-id',
+    name: 'Browse High Artist', monthly_listeners: 60_000, availability_status: 'measured',
+  },
+  {
+    soundcharts_uuid: 'browse-artist-down', spotify_id: 'browse-artist-down-id',
+    name: 'Browse Down Artist', monthly_listeners: 60_000, availability_status: 'measured',
   },
 ];
 const compact = (record, schema) => schema.map(field => record[field] ?? null);
@@ -79,8 +109,7 @@ const context = {
     },
     SPOTIFY_PERFORMANCE: {
       tracks: {
-        'legacy-down': {history: [['2026-07-31', 99_999]]},
-        'legacy-up': {history: [['2026-07-31', 100_000]]},
+        'browse-down': {history: [['2026-07-31', 99_999]]},
       },
     },
   },
@@ -99,16 +128,12 @@ const publicRows = context.publicRows;
 const publicIds = Array.from(publicRows, row => row[6]).sort();
 assert.deepEqual(publicIds, [
   'browse-exact',
-  'legacy-exact',
-  'legacy-high',
-  'legacy-up',
+  'browse-high',
 ], 'all public track sources use the same inclusive 100,000-stream floor after current counters');
-for (const hidden of ['legacy-below', 'legacy-down', 'browse-below']) {
+for (const hidden of ['legacy-below', 'legacy-down', 'legacy-exact', 'legacy-high', 'legacy-up', 'browse-below', 'browse-down']) {
   assert.equal(publicIds.includes(hidden), false, `${hidden} must stay out of every public projection`);
 }
-assert.equal(publicIds.includes('legacy-up'), true,
-  'a current observed counter reaching exactly 100,000 must pass even if the stored catalogue value was lower');
-assert.equal(publicIds.includes('legacy-down'), false,
+assert.equal(publicIds.includes('browse-down'), false,
   'a current observed counter below 100,000 must fail even if the stored catalogue value was higher');
 
 const aggregateStart = dashboard.indexOf('const AG = A.map');
@@ -138,9 +163,9 @@ vm.runInNewContext(
 const artistAggregates = aggregateContext.artistAggregates;
 assert.equal(artistAggregates.reduce((sum, artist) => sum + artist.n, 0), publicRows.length,
   'artist track counts must be derived from the filtered public rows only');
-assert.equal(aggregateContext.totalStreams, 450_000,
+assert.equal(aggregateContext.totalStreams, 250_000,
   'artist lifetime-stream totals must equal the filtered public track sum');
-for (const hiddenArtist of ['Below only', 'Corrected below', 'Browse Below Artist']) {
+for (const hiddenArtist of ['Below only', 'Corrected below', 'Browse Below Artist', 'Browse Down Artist']) {
   assert.equal(Array.from(artistAggregates, artist => artist.name).includes(hiddenArtist), false,
     `${hiddenArtist} must not survive through an artist aggregate`);
 }
@@ -169,11 +194,11 @@ assert.deepEqual(
   labels.map(row => [row[0], row[2], row[3], row[6]]).sort((a, b) => a[0].localeCompare(b[0])),
   [
     ['high label', 1, 150_000, 1],
-    ['shared label', 2, 200_000, 2],
+    ['shared label', 1, 100_000, 1],
   ],
   'label track, stream and artist aggregates must ignore every sub-floor track',
 );
-assert.equal(labelContext.activeLabelMeta.tracks_covered, 3,
+assert.equal(labelContext.activeLabelMeta.tracks_covered, 2,
   'label coverage counts only filtered label-owned public tracks');
 assert.equal(labelContext.activeLabelMeta.labels_count, 2,
   'labels represented solely by sub-floor tracks must disappear');
