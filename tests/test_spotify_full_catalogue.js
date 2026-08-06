@@ -1,12 +1,31 @@
 'use strict';
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const vm = require('node:vm');
 const dashboard = fs.readFileSync('spotify/dashboard.js', 'utf8');
 const coverage = fs.readFileSync('spotify/coverage.js', 'utf8');
 const index = fs.readFileSync('spotify/index.html', 'utf8');
 assert.match(dashboard, /const BROWSE = window\.SPOTIFY_BROWSE_CATALOGUE \|\| \{\};/);
 assert.match(dashboard, /const DISCOVERY_CATALOGUE = \(\(\) => \{/);
 assert.match(dashboard, /function mergeFullDiscoveryCatalogue\(/);
+const matchStart = dashboard.indexOf('function discoveryTrackMatch(');
+const matchEnd = dashboard.indexOf('\nfunction mergeFullDiscoveryCatalogue(', matchStart);
+assert.ok(matchStart >= 0 && matchEnd > matchStart, 'exact Spotify identity matching must remain independently testable');
+const matchContext = {};
+vm.runInNewContext(`${dashboard.slice(matchStart, matchEnd)}; this.matchTrack=discoveryTrackMatch;`, matchContext);
+const legacyAlias = [0, 'Legacy alias', '', 200_000, 0, '', 'legacy-spotify-id'];
+const exactTrack = [0, 'Exact track', '', 200_000, 0, '', 'exact-spotify-id'];
+const aliasIndex = new Map([
+  ['legacy-spotify-id', legacyAlias],
+  ['soundcharts:shared-uuid', legacyAlias],
+]);
+assert.equal(matchContext.matchTrack(aliasIndex, 'exact-spotify-id', 'shared-uuid', 'exact-spotify-id'), null,
+  'a different Spotify ID must not be swallowed by a shared Soundcharts UUID alias');
+aliasIndex.set('exact-spotify-id', exactTrack);
+assert.equal(matchContext.matchTrack(aliasIndex, 'exact-spotify-id', 'shared-uuid', 'exact-spotify-id'), exactTrack,
+  'an exact Spotify ID match must always win over Soundcharts aliases');
+assert.equal(matchContext.matchTrack(aliasIndex, '', 'shared-uuid', 'soundcharts:shared-uuid'), legacyAlias,
+  'Soundcharts UUID matching remains available when no Spotify ID exists');
 assert.match(dashboard, /normalizeDiscoveryCatalogue\(BROWSE_DISCOVERY\)/);
 assert.match(dashboard, /tracks:normalized\.tracks/);
 assert.match(dashboard, /function publicDiscoveryTrackEligible\(/);
