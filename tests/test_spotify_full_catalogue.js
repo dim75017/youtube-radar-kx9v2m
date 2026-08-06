@@ -12,7 +12,7 @@ const matchStart = dashboard.indexOf('function discoveryTrackMatch(');
 const matchEnd = dashboard.indexOf('\nfunction mergeFullDiscoveryCatalogue(', matchStart);
 assert.ok(matchStart >= 0 && matchEnd > matchStart, 'exact Spotify identity matching must remain independently testable');
 const matchContext = {};
-vm.runInNewContext(`${dashboard.slice(matchStart, matchEnd)}; this.matchTrack=discoveryTrackMatch;`, matchContext);
+vm.runInNewContext(`${dashboard.slice(matchStart, matchEnd)}; this.matchTrack=discoveryTrackMatch; this.applyCounter=applyDiscoveryLifetimeCounter;`, matchContext);
 const legacyAlias = [0, 'Legacy alias', '', 200_000, 0, '', 'legacy-spotify-id'];
 const exactTrack = [0, 'Exact track', '', 200_000, 0, '', 'exact-spotify-id'];
 const aliasIndex = new Map([
@@ -26,6 +26,10 @@ assert.equal(matchContext.matchTrack(aliasIndex, 'exact-spotify-id', 'shared-uui
   'an exact Spotify ID match must always win over Soundcharts aliases');
 assert.equal(matchContext.matchTrack(aliasIndex, '', 'shared-uuid', 'soundcharts:shared-uuid'), legacyAlias,
   'Soundcharts UUID matching remains available when no Spotify ID exists');
+const staleCounterTrack = [0, 'Just crossed the floor', '', 99_999, 0, '', 'crossed-floor'];
+matchContext.applyCounter(staleCounterTrack, 100_001);
+assert.equal(staleCounterTrack[3], 100_001,
+  'the canonical browse counter must replace a positive legacy counter before the 100k floor is applied');
 assert.match(dashboard, /normalizeDiscoveryCatalogue\(BROWSE_DISCOVERY\)/);
 assert.match(dashboard, /tracks:normalized\.tracks/);
 assert.match(dashboard, /function publicDiscoveryTrackEligible\(/);
