@@ -78,6 +78,23 @@ const flatChart = chartContext.sparkline([['2026-07-20',200],['2026-07-21',200]]
 assert.equal((flatChart.match(/<span>200<\/span>/g) || []).length,1,
   'A flat series must show its single observed ordinate once instead of three duplicate labels.');
 assert.doesNotMatch(flatChart,/NaN|Infinity/,'A flat series must keep finite chart coordinates and labels.');
+const decliningChart = chartContext.sparkline([
+  ['2026-07-20', 410],
+  ['2026-07-21', 245],
+  ['2026-07-22', 120],
+], 'streams');
+assert.match(decliningChart, /class="spark-area"[^>]+fill="#4ade80"/,
+  'A declining analytics series must keep the shared Spotify green area.');
+assert.match(decliningChart, /class="spark-line"[^>]+stroke="#4ade80"/,
+  'A declining analytics series must keep the shared Spotify green line.');
+assert.equal((decliningChart.match(/class="spark-point"[^>]+fill="#4ade80"/g) || []).length, 3,
+  'Every observed analytics point must use the shared Spotify green.');
+assert.match(decliningChart, /class="spark-hover-point" style="display:none;background:#4ade80"/,
+  'The nearest-point hover marker must use the shared Spotify green.');
+assert.doesNotMatch(decliningChart, /#fb7185/,
+  'A negative final delta must never turn an analytics chart red.');
+assert.doesNotMatch(dashboard.slice(chartStart, chartEnd), /ys\[ys\.length-1\]\s*>?=\s*ys\[0\]/,
+  'Chart colour must not depend on the first-to-last delta.');
 
 const marker = {style:{}};
 const guide = {style:{}};

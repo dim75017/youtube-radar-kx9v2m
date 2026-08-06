@@ -12,6 +12,11 @@ for (const required of [
   'catalogueArchiveToolbar()',
 ]) assert.ok(dashboard.includes(required), `Missing reversible catalogue archive control: ${required}`);
 
+assert.doesNotMatch(dashboard, /localStorage\.removeItem\(CATALOGUE_ARCHIVE_STORAGE\)/,
+  'A data refresh must never delete the user’s manual catalogue exclusions.');
+assert.doesNotMatch(dashboard, /localStorage\.clear\(\)/,
+  'The dashboard must never clear manual catalogue exclusions with all local state.');
+
 assert.match(dashboard, /catalogueIsArchived\('tracks',r\[6\]\)/,
   'Archived tracks must disappear from the Tracks list.');
 assert.match(dashboard, /catalogueIsArchived\('artists',g\.id\|\|g\.name\)/,

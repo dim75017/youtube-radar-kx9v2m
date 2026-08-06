@@ -115,7 +115,7 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
             "Discover a rotating batch of independent background playlists"
         )
         classify = self.workflow.index(
-            "Classify pending direct and playlist tracks before a full synchronization"
+            "Classify new direct and playlist tracks in every catalogue refresh"
         )
         self.assertIn(
             full_sync_discovery_condition, self.workflow[editorial:independent]
@@ -125,6 +125,22 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         )
         self.assertIn(
             "if os.environ.get('RUN_SCOPE') in {'strict_rebaseline', 'full_sync'}:",
+            self.workflow,
+        )
+
+    def test_daily_rebaseline_classifies_new_candidates_before_rebuild(self):
+        self.assertIn('daily_classification_data_cap="1500"', self.workflow)
+        self.assertIn(
+            "if: steps.plan.outputs.scope == 'strict_rebaseline' || "
+            "steps.plan.outputs.scope == 'full_sync'",
+            self.workflow[
+                self.workflow.index(
+                    "Classify new direct and playlist tracks in every catalogue refresh"
+                ) : self.workflow.index("Expand and measure the target instrumental pool")
+            ],
+        )
+        self.assertIn(
+            '--max-requests "${{ steps.plan.outputs.classification_requests }}"',
             self.workflow,
         )
 
@@ -147,6 +163,11 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertLess(rebuild, stage)
         self.assertIn('--source "$SNAPSHOT_NAME"', section[rebuild:stage])
         self.assertIn("--performance Spotify_Performance_data.js", section[rebuild:stage])
+        self.assertIn("--exclusions spotify-catalogue-exclusions.json", section[rebuild:stage])
+        self.assertIn(
+            "--protected-review-cohorts spotify-protected-review-cohorts.json",
+            section[rebuild:stage],
+        )
         self.assertIn("Spotify_Browse_Catalogue_data.js", section[stage:])
 
     def test_selection_contacts_are_prioritised_built_and_published(self):

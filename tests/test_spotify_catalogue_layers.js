@@ -9,6 +9,7 @@ const dashboard = fs.readFileSync('spotify/dashboard.js', 'utf8');
 const coverage = fs.readFileSync('spotify/coverage.js', 'utf8');
 const policy = fs.readFileSync('SPOTIFY_RADAR_POLICY.md', 'utf8');
 const browseWorkflow = fs.readFileSync('.github/workflows/refresh-spotify-browse-catalogue.yml', 'utf8');
+const soundchartsWorkflow = fs.readFileSync('.github/workflows/refresh-soundcharts.yml', 'utf8');
 const baselineCsv = fs.readFileSync('spotify-catalogue-baseline.csv', 'utf8');
 
 const activeSnapshotMatch = index.match(/\.\.\/(Spotify_Soundcharts_data_[^?'"\\]+\.js)\?payload=/);
@@ -110,6 +111,14 @@ assert.match(coverage, /Catalogue actif/);
 assert.match(coverage, /minimumLifetimeStreams = 100000/);
 assert.match(browseWorkflow, /--performance Spotify_Performance_data\.js/,
   'the standalone browse refresh must apply the 100k floor to the latest factual counter');
+assert.match(browseWorkflow, /--minimum-tracks 10000/,
+  'the standalone daily refresh must fail closed before publishing a truncated catalogue');
+assert.match(browseWorkflow, /node tests\/test_spotify_catalogue_archives\.js/,
+  'the daily refresh must verify that manual archives remain effective');
+assert.match(soundchartsWorkflow, /--minimum-tracks 10000/,
+  'Soundcharts activation must fail closed before publishing a truncated browse catalogue');
+assert.match(soundchartsWorkflow, /node tests\/test_spotify_catalogue_archives\.js/,
+  'Soundcharts activation must verify that manual archives remain effective');
 assert.match(browseWorkflow, /Spotify_Performance_tracks\/\*\*/,
   'a performance-shard refresh must be able to promote a trusted track crossing 100k');
 

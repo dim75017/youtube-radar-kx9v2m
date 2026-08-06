@@ -36,6 +36,7 @@ from refresh_soundcharts_daily import (
     SoundchartsQuotaReserveError,
     SoundchartsRequestLimitError,
 )
+from scan_soundcharts_fal_phase1 import extract_evidence
 from spotify_performance_store import (
     PerformanceStoreError,
     read_performance_payload,
@@ -126,7 +127,7 @@ PLAYLIST_SOURCE_TIERS = frozenset(
 # while keeping it out of the measured opportunity pool until the normal
 # instrumental and AI-risk guardrails are independently satisfied.
 CLASSIFIABLE_DISCOVERY_SOURCE_TIERS = PLAYLIST_SOURCE_TIERS | frozenset(
-    {"explicit_artist_catalogue"}
+    {"explicit_artist_catalogue", "protected_review_cohort"}
 )
 
 SOUNDCHARTS_GENRE_RULES = (
@@ -806,6 +807,29 @@ def parse_song_detail(response: Any, editorial: dict[str, Any]) -> dict[str, Any
         current_instrumental=str(editorial.get("instrumental_status") or "unknown"),
         current_instrumental_confidence=finite_number(editorial.get("instrumental_confidence")),
     )
+    # Soundcharts exposes factual numeric audio features on some song-detail
+    # contracts even when the genre list does not literally contain the word
+    # “Instrumental”. Reuse the same conservative thresholds as the private
+    # FAL scanner: instrumentalness > .5 is positive evidence, while explicit
+    # content or speechiness >= .33 is voice/rap risk and wins on conflict.
+    evidence = extract_evidence(obj)
+    if evidence.get("vocal") is True:
+        classification["instrumental_status"] = "vocal"
+        classification["instrumental_confidence"] = 0.95
+        classification["has_vocal_evidence"] = True
+        classification["has_instrumental_evidence"] = False
+    elif evidence.get("instrumental") is True and not classification.get("has_vocal_evidence"):
+        classification["instrumental_status"] = "instrumental"
+        classification["instrumental_confidence"] = max(
+            finite_number(classification.get("instrumental_confidence")) or 0,
+            0.9,
+        )
+        classification["has_instrumental_evidence"] = True
+    evidence_ai = str(evidence.get("ai_risk") or "").strip().casefold()
+    if evidence_ai in {"low", "faible"}:
+        classification["ai_risk"] = "low"
+    elif evidence_ai in {"high", "elevated", "eleve", "élevé"}:
+        classification["ai_risk"] = "high"
     checked_at = utc_now()
     return {
         "soundcharts_uuid": str(obj.get("uuid") or editorial.get("soundcharts_uuid") or ""),
@@ -827,7 +851,9 @@ def parse_song_detail(response: Any, editorial: dict[str, Any]) -> dict[str, Any
     }
 
 
-def ensure_editorial_classification_fields(payload: dict[str, Any]) -> tuple[list[str], list[list[Any]]]:
+def ensure_editorial_fields(
+    payload: dict[str, Any], names: Iterable[str]
+) -> tuple[list[str], list[list[Any]]]:
     editorial = payload.setdefault("editorial", {})
     if not isinstance(editorial, dict):
         raise InstrumentalPoolError("Soundcharts editorial group must be an object")
@@ -835,7 +861,7 @@ def ensure_editorial_classification_fields(payload: dict[str, Any]) -> tuple[lis
     rows = editorial.setdefault("tracks", [])
     if not isinstance(schema, list) or not isinstance(rows, list):
         raise InstrumentalPoolError("Invalid editorial tracks export")
-    for name in ("genre_source", "soundcharts_genres", "soundcharts_genres_checked_at"):
+    for name in names:
         if name in schema:
             continue
         schema.append(name)
@@ -843,6 +869,286 @@ def ensure_editorial_classification_fields(payload: dict[str, Any]) -> tuple[lis
             if isinstance(row, list):
                 row.append(None)
     return schema, rows
+
+
+def ensure_editorial_classification_fields(payload: dict[str, Any]) -> tuple[list[str], list[list[Any]]]:
+    return ensure_editorial_fields(
+        payload,
+        (
+            "genre_source", "soundcharts_genres", "soundcharts_genres_checked_at",
+            "rights_status", "rights_confidence", "label", "copyright",
+            "artist_soundcharts_uuids",
+        ),
+    )
+
+
+def protected_review_spotify_ids(path: Path) -> frozenset[str]:
+    """Resolve the immutable protected cohorts to exact Spotify track IDs."""
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise InstrumentalPoolError(f"{path} contains invalid cohort JSON") from exc
+    definitions = manifest.get("cohorts") if isinstance(manifest, Mapping) else None
+    if not isinstance(definitions, list):
+        raise InstrumentalPoolError(f"{path} does not contain a cohorts list")
+    ids: set[str] = set()
+    for definition in definitions:
+        if not isinstance(definition, Mapping):
+            continue
+        source_name = str(definition.get("source_snapshot") or "").strip()
+        if not source_name:
+            raise InstrumentalPoolError("Protected cohort has no source_snapshot")
+        source = path.parent / source_name
+        payload = read_js_payload(source, SOUNDCHARTS_PREFIX)
+        catalogue = payload.get("discovery_catalogue")
+        if not isinstance(catalogue, Mapping):
+            raise InstrumentalPoolError(
+                f"Protected cohort source has no discovery catalogue: {source}"
+            )
+        schema = catalogue.get("track_schema")
+        rows = catalogue.get("tracks")
+        if not isinstance(schema, list) or not isinstance(rows, list):
+            raise InstrumentalPoolError(
+                f"Protected cohort source has invalid tracks: {source}"
+            )
+        genre = str(definition.get("primary_genre") or "").strip()
+        floor = finite_number(definition.get("minimum_lifetime_streams")) or 0
+        cohort_ids = {
+            str(field(row, schema, "spotify_id") or "").strip()
+            for row in rows
+            if isinstance(row, list)
+            and str(field(row, schema, "spotify_id") or "").strip()
+            and (finite_number(field(row, schema, "streams")) or -1) >= floor
+            and (
+                not genre
+                or str(field(row, schema, "primary_genre") or "") == genre
+            )
+        }
+        expected = int(finite_number(definition.get("expected_track_count")) or 0)
+        if expected and len(cohort_ids) != expected:
+            raise InstrumentalPoolError(
+                f"Protected cohort {definition.get('id')} expected {expected} "
+                f"tracks, found {len(cohort_ids)}"
+            )
+        ids.update(cohort_ids)
+    return frozenset(ids)
+
+
+def inject_protected_review_candidates(
+    soundcharts: dict[str, Any], protected_spotify_ids: set[str] | frozenset[str]
+) -> dict[str, int | set[str]]:
+    """Add protected discovery IDs to classification staging, never to A&R."""
+    protected = set(protected_spotify_ids)
+    if not protected:
+        return {"requested": 0, "mapped": 0, "inserted": 0, "uuids": set()}
+    catalogue = soundcharts.get("discovery_catalogue")
+    if not isinstance(catalogue, Mapping):
+        return {"requested": len(protected), "mapped": 0, "inserted": 0, "uuids": set()}
+    discovery_schema = catalogue.get("track_schema")
+    discovery_rows = catalogue.get("tracks")
+    if not isinstance(discovery_schema, list) or not isinstance(discovery_rows, list):
+        return {"requested": len(protected), "mapped": 0, "inserted": 0, "uuids": set()}
+
+    editorial_fields = (
+        "soundcharts_uuid", "spotify_id", "name", "artist", "release_date",
+        "primary_genre", "subgenres", "genre_confidence",
+        "instrumental_status", "instrumental_confidence", "ai_risk",
+        "ai_risk_score", "expansion_status", "review_reasons",
+        "metadata_status", "updated_at", "source_tier", "genre_source",
+        "soundcharts_genres", "soundcharts_genres_checked_at",
+    )
+    schema, rows = ensure_editorial_fields(soundcharts, editorial_fields)
+    existing_by_spotify = {
+        str(field(row, schema, "spotify_id") or "").strip(): row
+        for row in rows
+        if isinstance(row, list) and str(field(row, schema, "spotify_id") or "").strip()
+    }
+    existing_by_uuid = {
+        str(field(row, schema, "soundcharts_uuid") or "").strip(): row
+        for row in rows
+        if isinstance(row, list) and str(field(row, schema, "soundcharts_uuid") or "").strip()
+    }
+    mapped: set[str] = set()
+    inserted = 0
+    for source in discovery_rows:
+        if not isinstance(source, list):
+            continue
+        spotify_id = str(field(source, discovery_schema, "spotify_id") or "").strip()
+        uuid = str(field(source, discovery_schema, "soundcharts_uuid") or "").strip()
+        if spotify_id not in protected or not uuid:
+            continue
+        mapped.add(uuid)
+        if spotify_id in existing_by_spotify or uuid in existing_by_uuid:
+            continue
+        row = [None] * len(schema)
+        source_tier = str(
+            field(source, discovery_schema, "source_tier") or ""
+        ).casefold()
+        values = {
+            "soundcharts_uuid": uuid,
+            "spotify_id": spotify_id,
+            "name": field(source, discovery_schema, "title"),
+            "artist": field(source, discovery_schema, "credit_name"),
+            "release_date": field(source, discovery_schema, "release_date"),
+            "primary_genre": field(source, discovery_schema, "primary_genre"),
+            "subgenres": field(source, discovery_schema, "subgenres") or [],
+            "genre_confidence": field(source, discovery_schema, "genre_confidence"),
+            "instrumental_status": field(source, discovery_schema, "instrumental_status") or "unknown",
+            "instrumental_confidence": field(source, discovery_schema, "instrumental_confidence"),
+            "ai_risk": field(source, discovery_schema, "ai_risk") or "unknown",
+            "ai_risk_score": field(source, discovery_schema, "ai_risk_score"),
+            "expansion_status": "review",
+            "review_reasons": ["protected_review_cohort", "instrumental_check_required"],
+            "metadata_status": field(source, discovery_schema, "metadata_status"),
+            "updated_at": field(source, discovery_schema, "updated_at"),
+            "source_tier": (
+                source_tier
+                if source_tier in CLASSIFIABLE_DISCOVERY_SOURCE_TIERS
+                else "protected_review_cohort"
+            ),
+            "genre_source": "protected_review_baseline",
+            "soundcharts_genres": [],
+            "soundcharts_genres_checked_at": None,
+        }
+        for name, value in values.items():
+            set_field(row, schema, name, value)
+        rows.append(row)
+        existing_by_spotify[spotify_id] = row
+        existing_by_uuid[uuid] = row
+        inserted += 1
+    return {
+        "requested": len(protected),
+        "mapped": len(mapped),
+        "inserted": inserted,
+        "uuids": mapped,
+    }
+
+
+def ensure_discovery_classification_fields(payload: dict[str, Any]) -> tuple[list[str], list[list[Any]]]:
+    """Expose classification evidence on the cumulative discovery catalogue.
+
+    The public snapshot deliberately keeps a much broader discovery catalogue
+    than its strict editorial table.  Classification must therefore operate on
+    that cumulative surface too; otherwise a Dark Ambient row can be visible in
+    staging, disappear from ``editorial`` during sanitisation, and never be
+    selected by the next classification run.
+    """
+
+    catalogue = payload.get("discovery_catalogue")
+    if not isinstance(catalogue, dict):
+        return [], []
+    schema = catalogue.setdefault("track_schema", [])
+    rows = catalogue.setdefault("tracks", [])
+    if not isinstance(schema, list) or not isinstance(rows, list):
+        raise InstrumentalPoolError("Invalid discovery catalogue tracks export")
+    for name in (
+        "primary_genre",
+        "subgenres",
+        "genre_confidence",
+        "genre_source",
+        "instrumental_status",
+        "instrumental_confidence",
+        "review_reasons",
+        "soundcharts_genres",
+        "soundcharts_genres_checked_at",
+        "rights_status",
+        "rights_confidence",
+        "label",
+        "copyright",
+        "artist_soundcharts_uuids",
+    ):
+        if name in schema:
+            continue
+        schema.append(name)
+        for row in rows:
+            if isinstance(row, list):
+                row.append(None)
+    return schema, rows
+
+
+def _update_classification_row(
+    row: list[Any],
+    schema: list[str],
+    detail: Mapping[str, Any],
+) -> None:
+    if detail.get("has_exact_genre") and detail.get("primary_genre"):
+        set_field(row, schema, "primary_genre", detail["primary_genre"])
+        set_field(row, schema, "subgenres", list(detail.get("subgenres") or []))
+        set_field(row, schema, "genre_confidence", detail.get("genre_confidence"))
+        set_field(row, schema, "genre_source", "soundcharts_song")
+    elif not field(row, schema, "genre_source"):
+        set_field(row, schema, "genre_source", "playlist_evidence")
+
+    status = str(detail.get("instrumental_status") or "unknown")
+    if status in {"instrumental", "vocal"}:
+        set_field(row, schema, "instrumental_status", status)
+        set_field(row, schema, "instrumental_confidence", detail.get("instrumental_confidence"))
+
+    ai_risk = str(detail.get("ai_risk") or "").strip().casefold()
+    if "ai_risk" in schema and ai_risk in {"low", "faible", "high", "elevated", "eleve", "élevé"}:
+        set_field(row, schema, "ai_risk", "low" if ai_risk in {"low", "faible"} else "high")
+
+    set_field(row, schema, "soundcharts_genres", list(detail.get("soundcharts_genres") or []))
+    set_field(row, schema, "soundcharts_genres_checked_at", detail.get("soundcharts_genres_checked_at"))
+
+    # Song metadata also carries factual rights and Soundcharts artist UUIDs.
+    # Persist those for the subsequent audience/identifier pass, but never let
+    # a missing/unknown refresh erase a prior strong or blocking proof.
+    incoming_rights = str(detail.get("rights_status") or "unknown").casefold()
+    current_rights = str(field(row, schema, "rights_status") or "unknown").casefold()
+    incoming_rights_confidence = finite_number(detail.get("rights_confidence"))
+    current_rights_confidence = finite_number(field(row, schema, "rights_confidence"))
+    weak_rights = {"", "unknown", "unverified", "catalogue_trusted", "to_verify"}
+    should_update_rights = (
+        incoming_rights == "major"
+        or (
+            current_rights != "major"
+            and incoming_rights not in weak_rights
+            and (
+                current_rights in weak_rights
+                or incoming_rights_confidence is not None
+                and (
+                    current_rights_confidence is None
+                    or incoming_rights_confidence >= current_rights_confidence
+                )
+            )
+        )
+    )
+    if should_update_rights:
+        set_field(row, schema, "rights_status", incoming_rights)
+        if incoming_rights_confidence is not None:
+            set_field(row, schema, "rights_confidence", incoming_rights_confidence)
+    for name in ("label", "copyright"):
+        value = str(detail.get(name) or "").strip()
+        if value:
+            set_field(row, schema, name, value)
+    artist_uuids = {
+        str(artist.get("soundcharts_uuid") or "").strip()
+        for artist in detail.get("artists", [])
+        if isinstance(artist, Mapping)
+        and str(artist.get("soundcharts_uuid") or "").strip()
+    }
+    if artist_uuids:
+        existing_uuids = field(row, schema, "artist_soundcharts_uuids")
+        artist_uuids.update(
+            str(value or "").strip()
+            for value in (existing_uuids if isinstance(existing_uuids, list) else [])
+            if str(value or "").strip()
+        )
+        set_field(row, schema, "artist_soundcharts_uuids", sorted(artist_uuids))
+
+    reasons = field(row, schema, "review_reasons")
+    clean_reasons = [str(item) for item in reasons] if isinstance(reasons, list) else []
+    if status == "instrumental":
+        clean_reasons = [item for item in clean_reasons if item != "instrumental_check_required"]
+        if "soundcharts_instrumental_genre" not in clean_reasons:
+            clean_reasons.append("soundcharts_instrumental_genre")
+    elif status == "vocal" and "soundcharts_vocal_genre" not in clean_reasons:
+        clean_reasons.append("soundcharts_vocal_genre")
+    if detail.get("has_exact_genre") and "soundcharts_genre_exact" not in clean_reasons:
+        clean_reasons.append("soundcharts_genre_exact")
+    if "review_reasons" in schema:
+        set_field(row, schema, "review_reasons", clean_reasons)
 
 
 def update_editorial_classification(
@@ -861,43 +1167,32 @@ def update_editorial_classification(
     )
     if row is None:
         return False
-
-    if detail.get("has_exact_genre") and detail.get("primary_genre"):
-        set_field(row, schema, "primary_genre", detail["primary_genre"])
-        set_field(row, schema, "subgenres", list(detail.get("subgenres") or []))
-        set_field(row, schema, "genre_confidence", detail.get("genre_confidence"))
-        set_field(row, schema, "genre_source", "soundcharts_song")
-    elif not field(row, schema, "genre_source"):
-        set_field(row, schema, "genre_source", "playlist_evidence")
-
-    status = str(detail.get("instrumental_status") or "unknown")
-    if status in {"instrumental", "vocal"}:
-        set_field(row, schema, "instrumental_status", status)
-        set_field(row, schema, "instrumental_confidence", detail.get("instrumental_confidence"))
-
-    set_field(row, schema, "soundcharts_genres", list(detail.get("soundcharts_genres") or []))
-    set_field(row, schema, "soundcharts_genres_checked_at", detail.get("soundcharts_genres_checked_at"))
-
-    reasons = field(row, schema, "review_reasons")
-    clean_reasons = [str(item) for item in reasons] if isinstance(reasons, list) else []
-    if status == "instrumental":
-        clean_reasons = [item for item in clean_reasons if item != "instrumental_check_required"]
-        if "soundcharts_instrumental_genre" not in clean_reasons:
-            clean_reasons.append("soundcharts_instrumental_genre")
-    elif status == "vocal" and "soundcharts_vocal_genre" not in clean_reasons:
-        clean_reasons.append("soundcharts_vocal_genre")
-    if detail.get("has_exact_genre") and "soundcharts_genre_exact" not in clean_reasons:
-        clean_reasons.append("soundcharts_genre_exact")
-    if "review_reasons" in schema:
-        set_field(row, schema, "review_reasons", clean_reasons)
+    _update_classification_row(row, schema, detail)
     return True
 
 
-def _editorial_row_context(row: list[Any], schema: list[str]) -> dict[str, Any]:
+def update_discovery_classification(
+    payload: dict[str, Any],
+    soundcharts_uuid: str,
+    detail: Mapping[str, Any],
+) -> bool:
+    schema, rows = ensure_discovery_classification_fields(payload)
+    if not schema:
+        return False
+    updated = False
+    for row in rows:
+        if not isinstance(row, list) or str(field(row, schema, "soundcharts_uuid") or "") != soundcharts_uuid:
+            continue
+        _update_classification_row(row, schema, detail)
+        updated = True
+    return updated
+
+
+def _classification_row_context(row: list[Any], schema: list[str]) -> dict[str, Any]:
     return {
         "soundcharts_uuid": str(field(row, schema, "soundcharts_uuid") or ""),
-        "title": str(field(row, schema, "name") or ""),
-        "credit_name": str(field(row, schema, "artist") or ""),
+        "title": str(field(row, schema, "name") or field(row, schema, "title") or ""),
+        "credit_name": str(field(row, schema, "artist") or field(row, schema, "credit_name") or ""),
         "release_date": str(field(row, schema, "release_date") or ""),
         "primary_genre": str(field(row, schema, "primary_genre") or ""),
         "subgenres": list(field(row, schema, "subgenres") or [])
@@ -909,6 +1204,48 @@ def _editorial_row_context(row: list[Any], schema: list[str]) -> dict[str, Any]:
     }
 
 
+def _classification_priority_by_uuid(
+    soundcharts: Mapping[str, Any],
+) -> dict[str, tuple[int, int, float]]:
+    """Rank known high-value rows before spending classification quota.
+
+    Playlist discovery can contain tens of thousands of rows, while the daily
+    Soundcharts budget is intentionally bounded.  The public catalogue only
+    shows tracks with at least 100k lifetime streams, so classifying lower or
+    unmeasured rows first can leave the actually publishable Dark Ambient
+    cohort untouched for several runs.  Discovery counters are factual and are
+    used only to order requests; they never grant instrumental eligibility.
+    """
+
+    catalogue = soundcharts.get("discovery_catalogue")
+    if not isinstance(catalogue, Mapping):
+        return {}
+    schema = catalogue.get("track_schema")
+    rows = catalogue.get("tracks")
+    if not isinstance(schema, list) or not isinstance(rows, list):
+        return {}
+
+    priorities: dict[str, tuple[int, int, float]] = {}
+    for row in rows:
+        if not isinstance(row, (list, Mapping)):
+            continue
+        uuid = str(field(row, schema, "soundcharts_uuid") or "").strip()
+        if not uuid:
+            continue
+        streams = finite_number(field(row, schema, "streams"))
+        genre = str(field(row, schema, "primary_genre") or "").strip().casefold()
+        stream_value = float(streams or 0)
+        priority = (
+            0 if streams is not None and streams >= 100_000 else 1,
+            0 if genre == "dark_ambient" else 1,
+            -stream_value,
+        )
+        previous = priorities.get(uuid)
+        if previous is None or priority < previous:
+            priorities[uuid] = priority
+    return priorities
+
+
 def classify_soundcharts_genres(
     soundcharts: dict[str, Any],
     cache: dict[str, Any],
@@ -917,15 +1254,25 @@ def classify_soundcharts_genres(
     workers: int = 24,
     max_requests: int = 8_230,
     limit: int | None = None,
+    protected_spotify_ids: set[str] | frozenset[str] | None = None,
 ) -> dict[str, Any]:
-    schema, rows = ensure_editorial_classification_fields(soundcharts)
+    protected = inject_protected_review_candidates(
+        soundcharts, protected_spotify_ids or frozenset()
+    )
+    protected_uuids = set(protected["uuids"])
+    editorial_schema, editorial_rows = ensure_editorial_classification_fields(soundcharts)
+    discovery_schema, discovery_rows = ensure_discovery_classification_fields(soundcharts)
     cache_tracks = cache.setdefault("tracks", {})
     if not isinstance(cache_tracks, dict):
         raise InstrumentalPoolError("Instrumental cache tracks must be an object")
 
-    pending: list[tuple[str, dict[str, Any]]] = []
-    for row in rows:
-        if not isinstance(row, list):
+    candidate_rows = (
+        [(row, editorial_schema) for row in editorial_rows]
+        + [(row, discovery_schema) for row in discovery_rows]
+    )
+    candidates_by_uuid: dict[str, dict[str, Any]] = {}
+    for row, schema in candidate_rows:
+        if not isinstance(row, list) or not schema:
             continue
         uuid = str(field(row, schema, "soundcharts_uuid") or "").strip()
         source_tier = str(field(row, schema, "source_tier") or "").casefold()
@@ -933,12 +1280,24 @@ def classify_soundcharts_genres(
         instrumental = str(field(row, schema, "instrumental_status") or "unknown").casefold()
         instrumental_confidence = finite_number(field(row, schema, "instrumental_confidence")) or 0
         verified = ai_risk in {"low", "faible"} and instrumental == "instrumental" and instrumental_confidence >= 0.5
-        cached = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
-        checked_at = field(row, schema, "soundcharts_genres_checked_at") or cached.get("soundcharts_genres_checked_at")
+        checked_at = field(row, schema, "soundcharts_genres_checked_at")
         if not uuid or source_tier not in CLASSIFIABLE_DISCOVERY_SOURCE_TIERS or verified or checked_at:
             continue
-        pending.append((uuid, _editorial_row_context(row, schema)))
+        context = _classification_row_context(row, schema)
+        previous = candidates_by_uuid.get(uuid)
+        if previous:
+            context = {key: value or previous.get(key) for key, value in context.items()}
+        candidates_by_uuid[uuid] = context
+    pending = list(candidates_by_uuid.items())
 
+    priority_by_uuid = _classification_priority_by_uuid(soundcharts)
+    pending.sort(
+        key=lambda item: (
+            0 if item[0] in protected_uuids else 1,
+            *priority_by_uuid.get(item[0], (1, 1, 0.0)),
+            item[0],
+        )
+    )
     cap = min(max(0, max_requests), max(0, limit) if limit is not None else max(0, max_requests))
     selected = pending[:cap]
     budget = RequestBudget(max_requests)
@@ -956,27 +1315,30 @@ def classify_soundcharts_genres(
             continue
         existing = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
         cache_tracks[uuid] = {**existing, **parsed}
-        updated += int(update_editorial_classification(soundcharts, uuid, parsed))
+        touched = update_editorial_classification(soundcharts, uuid, parsed)
+        touched = update_discovery_classification(soundcharts, uuid, parsed) or touched
+        updated += int(touched)
         with_genres += int(bool(parsed.get("soundcharts_genres")))
         exact_genres += int(bool(parsed.get("has_exact_genre")))
         instrumental += int(bool(parsed.get("has_instrumental_evidence")))
         vocal += int(bool(parsed.get("has_vocal_evidence")))
 
-    refreshed_schema, refreshed_rows = ensure_editorial_classification_fields(soundcharts)
-    remaining = 0
-    for row in refreshed_rows:
-        if not isinstance(row, list):
-            continue
-        uuid = str(field(row, refreshed_schema, "soundcharts_uuid") or "").strip()
-        source_tier = str(field(row, refreshed_schema, "source_tier") or "").casefold()
-        ai_risk = str(field(row, refreshed_schema, "ai_risk") or "unknown").casefold()
-        status = str(field(row, refreshed_schema, "instrumental_status") or "unknown").casefold()
-        confidence = finite_number(field(row, refreshed_schema, "instrumental_confidence")) or 0
-        verified = ai_risk in {"low", "faible"} and status == "instrumental" and confidence >= 0.5
-        cached = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
-        checked_at = field(row, refreshed_schema, "soundcharts_genres_checked_at") or cached.get("soundcharts_genres_checked_at")
-        if uuid and source_tier in CLASSIFIABLE_DISCOVERY_SOURCE_TIERS and not verified and not checked_at:
-            remaining += 1
+    refreshed_editorial = ensure_editorial_classification_fields(soundcharts)
+    refreshed_discovery = ensure_discovery_classification_fields(soundcharts)
+    remaining_uuids: set[str] = set()
+    for refreshed_schema, refreshed_rows in (refreshed_editorial, refreshed_discovery):
+        for row in refreshed_rows:
+            if not isinstance(row, list):
+                continue
+            uuid = str(field(row, refreshed_schema, "soundcharts_uuid") or "").strip()
+            source_tier = str(field(row, refreshed_schema, "source_tier") or "").casefold()
+            ai_risk = str(field(row, refreshed_schema, "ai_risk") or "unknown").casefold()
+            status = str(field(row, refreshed_schema, "instrumental_status") or "unknown").casefold()
+            confidence = finite_number(field(row, refreshed_schema, "instrumental_confidence")) or 0
+            verified = ai_risk in {"low", "faible"} and status == "instrumental" and confidence >= 0.5
+            checked_at = field(row, refreshed_schema, "soundcharts_genres_checked_at")
+            if uuid and source_tier in CLASSIFIABLE_DISCOVERY_SOURCE_TIERS and not verified and not checked_at:
+                remaining_uuids.add(uuid)
 
     now = utc_now()
     summary = {
@@ -984,19 +1346,32 @@ def classify_soundcharts_genres(
         "finished_at": now,
         "pending_before": len(pending),
         "selected": len(selected),
+        "protected_requested": int(protected["requested"]),
+        "protected_mapped": int(protected["mapped"]),
+        "protected_inserted": int(protected["inserted"]),
+        "protected_selected": sum(uuid in protected_uuids for uuid, _ in selected),
         "updated": updated,
         "responses_with_genres": with_genres,
         "exact_target_genres": exact_genres,
         "instrumental_genre_evidence": instrumental,
         "vocal_genre_evidence": vocal,
-        "remaining": remaining,
+        "remaining": len(remaining_uuids),
         "requests": budget.used,
         "quota_remaining": getattr(client, "quota_remaining", None),
         "failures": failures,
+        "selected_stream_eligible": sum(
+            priority_by_uuid.get(uuid, (1, 1, 0.0))[0] == 0
+            for uuid, _ in selected
+        ),
+        "selected_dark_ambient": sum(
+            priority_by_uuid.get(uuid, (1, 1, 0.0))[1] == 0
+            for uuid, _ in selected
+        ),
         "rules": {
             "genre_source": "soundcharts_song_metadata",
             "instrumental_requires_explicit_tag": True,
             "ai_risk_never_inferred": True,
+            "request_priority": "streams_100k_then_dark_ambient_then_streams_desc",
         },
     }
     soundcharts["classification_backfill"] = summary
@@ -1647,6 +2022,14 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Backfill exact Soundcharts song genres without collecting stream histories",
     )
+    parser.add_argument(
+        "--protected-review-cohorts",
+        type=Path,
+        help=(
+            "Versioned Spotify-ID cohorts prioritized for exact song "
+            "classification without public promotion."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -1667,6 +2050,11 @@ def main() -> int:
     client.authenticate()
     client.require_quota_reserve()
     if args.classification_only:
+        protected_ids = (
+            protected_review_spotify_ids(args.protected_review_cohorts)
+            if args.protected_review_cohorts
+            else frozenset()
+        )
         summary = classify_soundcharts_genres(
             soundcharts,
             cache,
@@ -1674,6 +2062,7 @@ def main() -> int:
             workers=args.workers,
             max_requests=args.max_requests,
             limit=args.limit,
+            protected_spotify_ids=protected_ids,
         )
     else:
         summary = expand_instrumental_pool(

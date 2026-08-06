@@ -373,9 +373,9 @@ function scHasEligibleSanitizedArtists(artists){
   return scHasCompleteStructuredArtists(artists)
     &&artists.every(artist=>Boolean(scSanitizedArtistPair(artist)));
 }
-/* General catalogue views only promote explicitly eligible instrumental
-   tracks. Unknown/needs-listen material remains available to the track-first
-   A&R radar through SC.opportunities, but never becomes a general-view source. */
+/* General catalogue views require direct instrumental, genre, rights and
+   structured-identity evidence. An unknown AI risk remains visibly "à
+   vérifier" here; high risk is blocked, while A&R stays stricter (low only). */
 function scGeneralTrackEligible(row,schema){
   const spotifyId=String(scField(row,schema,'spotify_id')||'').trim();
   const soundchartsUuid=String(scField(row,schema,'soundcharts_uuid')||'').trim();
@@ -386,7 +386,6 @@ function scGeneralTrackEligible(row,schema){
   const ai=String(scField(row,schema,'ai_risk')||'').toLowerCase();
   const rights=String(scField(row,schema,'rights_status')||'').toLowerCase();
   const rightsConfidence=Number(scField(row,schema,'rights_confidence'));
-  const expansion=String(scField(row,schema,'expansion_status')||'').toLowerCase();
   const rawStreams=scField(row,schema,'streams');
   const streams=Number(rawStreams);
   const artists=scField(row,schema,'artists');
@@ -395,10 +394,9 @@ function scGeneralTrackEligible(row,schema){
     &&Number.isFinite(genreConfidence)&&genreConfidence>=0.5
     &&instrumental==='instrumental'
     &&Number.isFinite(instrumentalConfidence)&&instrumentalConfidence>=0.5
-    &&['low','faible'].includes(ai)
+    &&['low','faible','unknown','to_verify','a_verifier'].includes(ai||'unknown')
     &&['self_released','independent_label','indie'].includes(rights)
     &&Number.isFinite(rightsConfidence)&&rightsConfidence>=0.5
-    &&expansion==='eligible'
     &&rawStreams!==null&&rawStreams!==''
     &&Number.isFinite(streams)&&streams>=MIN_TRACK_LIFETIME_STREAMS&&streams<=SC_MAX_TRACK_STREAMS
     &&scHasEligibleSanitizedArtists(artists);
@@ -678,6 +676,19 @@ function discoveryHasQuarantinedArtist(row,schema,artistRecord=false){
   });
   return names.filter(Boolean).some(name=>isGeneralArtistQuarantined(name,true));
 }
+const PUBLIC_DISCOVERY_AI_LOW=new Set(['low','faible']);
+const PUBLIC_DISCOVERY_AI_REVIEW=new Set([
+  '','unknown','a verifier','à vérifier','a classifier','à classifier','pending','review'
+]);
+function publicDiscoveryAiEligible(source,aiRisk){
+  const ai=String(aiRisk||'').trim().toLowerCase();
+  if(PUBLIC_DISCOVERY_AI_LOW.has(ai)) return true;
+  const reviewRequired=source&&(
+    source.ai_review_required===true
+      ||String(source.ai_review_required||'').trim().toLowerCase()==='true'
+  );
+  return reviewRequired&&PUBLIC_DISCOVERY_AI_REVIEW.has(ai);
+}
 function publicDiscoveryTrackEligible(source){
   if(!source||typeof source!=='object') return false;
   const spotifyId=String(source.spotify_id||'').trim();
@@ -689,7 +700,6 @@ function publicDiscoveryTrackEligible(source){
   const ai=String(source.ai_risk||'').trim().toLowerCase();
   const rights=String(source.rights_status||'').trim().toLowerCase();
   const rightsConfidence=discoveryNumber(source.rights_confidence);
-  const expansion=String(source.expansion_status||'').trim().toLowerCase();
   const streams=discoveryNumber(source.streams);
   const artists=discoveryArray(source.artists);
   const trustedInternal=TRUSTED_INTERNAL_SPOTIFY_IDS.has(spotifyId);
@@ -703,10 +713,9 @@ function publicDiscoveryTrackEligible(source){
     &&genreConfidence!=null&&genreConfidence>=0.5
     &&instrumental==='instrumental'
     &&instrumentalConfidence!=null&&instrumentalConfidence>=0.5
-    &&['low','faible'].includes(ai)
+    &&publicDiscoveryAiEligible(source,ai)
     &&['self_released','independent_label','indie'].includes(rights)
     &&rightsConfidence!=null&&rightsConfidence>=0.5
-    &&expansion==='eligible'
     &&streams!=null&&streams>=MIN_TRACK_LIFETIME_STREAMS
     &&completeArtists;
 }
@@ -2160,6 +2169,7 @@ function renderArtistModal(){
   const flows = aggregateDailyFlow(allRows);
   const audience = artistAudience(g);
   const entry = artistPerfEntry(g);
+  const classification = artistClassification(g);
   const selfPct = g.n ? Math.round(g.self/g.n*100) : 0;
   const selM = acquisitionRows.filter(r=>S.sel.has(r[6])).reduce((s,r)=>s+Math.max(perMonth(r),0),0);
   const selN = acquisitionRows.filter(r=>S.sel.has(r[6])).length;
@@ -2181,6 +2191,7 @@ function renderArtistModal(){
       <div class="tg"><div class="l">≥ 500k</div><div class="v">${fmtFull(g.hot)}</div></div>
       <div class="tg"><div class="l">${T('Dernière sortie')}</div><div class="v" style="font-size:13px">${fmtDate(g.last)}</div></div>
       <div class="tg"><div class="l">${T('Signal performance')}</div><div class="v" style="font-size:13px">${performanceSignal(perf,entry)}</div></div>
+      <div class="tg"><div class="l">Risque IA</div><div class="v" style="font-size:13px">${aiRiskBadgeHtml(classification)}</div></div>
     </div>
     <div class="toolbar" style="justify-content:flex-end;margin:0 0 10px">${metricModeToggleHtml()}</div>
     ${perfGridHtml(perf,'Streams',g.streams,true)}
@@ -2550,14 +2561,15 @@ function sparkline(pts,unit='value'){
   const sx=v=>pad+(x1===x0?0:(v-x0)/(x1-x0))*(w-2*pad);
   const sy=v=>h-pad-(y1===y0?0.5*(h-2*pad):(v-y0)/(y1-y0)*(h-2*pad));
   const d=pts.map((p,i)=>(i?'L':'M')+sx(+new Date(p[0])).toFixed(1)+' '+sy(p[1]).toFixed(1)).join(' ');
-  const up = ys[ys.length-1]>=ys[0];
-  const col = up?'#4ade80':'#fb7185';
+  // Analytics encode the observed value, not a positive/negative judgement.
+  // Keep every Spotify time series visually stable when its final delta changes.
+  const col='#4ade80';
   const middleIndex=Math.floor((pts.length-1)/2), yMiddle=y0+(y1-y0)/2;
   const yMinLabel=sparklineAxisValueLabel(y0,unit), yMaxLabel=sparklineAxisValueLabel(y1,unit);
   const yLabels=y1===y0?['',yMaxLabel,'']:[yMaxLabel,sparklineAxisValueLabel(yMiddle,unit),yMinLabel];
   const xLabels=[pts[0][0],pts[middleIndex][0],pts[pts.length-1][0]].map(sparklineAxisDateLabel);
   const ariaLabel=`Historique du ${xLabels[0]} au ${xLabels[2]}, minimum ${yMinLabel}, maximum ${yMaxLabel}`;
-  const dots=pts.map(p=>`<circle class="spark-point" cx="${sx(+new Date(p[0])).toFixed(1)}" cy="${sy(p[1]).toFixed(1)}" r="1" fill="transparent" data-date="${fmtDate(p[0])}" data-value="${esc(sparklineValueLabel(p[1],unit))}"/>`).join('');
+  const dots=pts.map(p=>`<circle class="spark-point" cx="${sx(+new Date(p[0])).toFixed(1)}" cy="${sy(p[1]).toFixed(1)}" r="1.25" fill="${col}" data-date="${fmtDate(p[0])}" data-value="${esc(sparklineValueLabel(p[1],unit))}"/>`).join('');
   return `<div class="spark-wrap"><div class="spark-chart" role="img" aria-label="${esc(ariaLabel)}">
     <div class="spark-y-axis" aria-hidden="true"><span>${esc(yLabels[0])}</span><span>${esc(yLabels[1])}</span><span>${esc(yLabels[2])}</span></div>
     <div class="spark-plot"><svg class="spark" viewBox="0 0 ${w} ${h}" width="100%" height="120" preserveAspectRatio="none">
@@ -2621,6 +2633,7 @@ function trackEditorialEvidenceHtml(track){
 function openTrack(tid){
   const r = R.find(x=>x[6]===tid); if(!r) return;
   const g = AG[r[0]];
+  const classification = trackClassification(r);
   const perf = {1:trackWindow(r,1),7:trackWindow(r,7),30:trackWindow(r,30)};
   const entry = trackPerfEntry(r);
   const label = entry.label || (r[4]===1 ? r[5] : null);
@@ -2641,6 +2654,7 @@ function openTrack(tid){
       <div class="tg"><div class="l">${T('Sortie')}</div><div class="v">${fmtDate(r[2])}</div></div>
       <div class="tg"><div class="l">${T('Label')}</div><div class="v" style="font-size:12px;line-height:1.4">${label?esc(label):'—'}</div></div>
       <div class="tg"><div class="l">© / ℗</div><div class="v" style="font-size:12px;line-height:1.4">${r[5]?esc(r[5]):'—'}</div></div>
+      <div class="tg"><div class="l">Risque IA</div><div class="v" style="font-size:13px">${aiRiskBadgeHtml(classification)}</div></div>
     </div>
     <div class="toolbar" style="justify-content:flex-end;margin:0 0 10px">${metricModeToggleHtml()}</div>
     ${perfGridHtml(perf,'Streams',r[3]>=0?r[3]:null,true)}
