@@ -257,6 +257,53 @@ class InstrumentalPoolTests(unittest.TestCase):
         self.assertEqual(subject.field(row, refreshed_schema, "ai_risk"), "unknown")
         self.assertTrue(subject.field(row, refreshed_schema, "soundcharts_genres_checked_at"))
 
+    def test_classification_prioritizes_100k_dark_ambient_before_lower_stream_rows(self):
+        current = payload()
+        schema = current["editorial"]["track_schema"]
+        schema.append("source_tier")
+        first = current["editorial"]["tracks"][0]
+        first.append("independent_playlist")
+        first[schema.index("soundcharts_uuid")] = "low-stream-song"
+        first[schema.index("primary_genre")] = "ambient"
+        first[schema.index("instrumental_status")] = "unknown"
+        first[schema.index("instrumental_confidence")] = None
+        first[schema.index("ai_risk")] = "unknown"
+
+        second = list(first)
+        second[schema.index("soundcharts_uuid")] = "dark-100k-song"
+        second[schema.index("name")] = "Dark priority"
+        second[schema.index("primary_genre")] = "dark_ambient"
+        current["editorial"]["tracks"].append(second)
+        current["discovery_catalogue"] = {
+            "track_schema": ["soundcharts_uuid", "streams", "primary_genre"],
+            "tracks": [
+                ["low-stream-song", 10_000, "ambient"],
+                ["dark-100k-song", 250_000, "dark_ambient"],
+            ],
+        }
+
+        detail = song_detail()
+        detail["object"]["uuid"] = "dark-100k-song"
+        detail["object"]["genres"] = [
+            {"root": "Ambient", "sub": ["Dark Ambient", "Instrumental"]}
+        ]
+        client = FakeClient({"/api/v2/song/dark-100k-song": detail})
+        summary = subject.classify_soundcharts_genres(
+            current,
+            {"version": 1, "tracks": {}, "artists": {}},
+            client,
+            workers=1,
+            max_requests=1,
+        )
+
+        self.assertEqual(client.paths, ["/api/v2/song/dark-100k-song"])
+        self.assertEqual(summary["selected_stream_eligible"], 1)
+        self.assertEqual(summary["selected_dark_ambient"], 1)
+        self.assertEqual(
+            summary["rules"]["request_priority"],
+            "streams_100k_then_dark_ambient_then_streams_desc",
+        )
+
     def test_explicit_artist_catalogue_can_be_exactly_classified_without_becoming_an_opportunity(self):
         current = payload()
         schema = current["editorial"]["track_schema"]

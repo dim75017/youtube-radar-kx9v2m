@@ -909,6 +909,48 @@ def _editorial_row_context(row: list[Any], schema: list[str]) -> dict[str, Any]:
     }
 
 
+def _classification_priority_by_uuid(
+    soundcharts: Mapping[str, Any],
+) -> dict[str, tuple[int, int, float]]:
+    """Rank known high-value rows before spending classification quota.
+
+    Playlist discovery can contain tens of thousands of rows, while the daily
+    Soundcharts budget is intentionally bounded.  The public catalogue only
+    shows tracks with at least 100k lifetime streams, so classifying lower or
+    unmeasured rows first can leave the actually publishable Dark Ambient
+    cohort untouched for several runs.  Discovery counters are factual and are
+    used only to order requests; they never grant instrumental eligibility.
+    """
+
+    catalogue = soundcharts.get("discovery_catalogue")
+    if not isinstance(catalogue, Mapping):
+        return {}
+    schema = catalogue.get("track_schema")
+    rows = catalogue.get("tracks")
+    if not isinstance(schema, list) or not isinstance(rows, list):
+        return {}
+
+    priorities: dict[str, tuple[int, int, float]] = {}
+    for row in rows:
+        if not isinstance(row, (list, Mapping)):
+            continue
+        uuid = str(field(row, schema, "soundcharts_uuid") or "").strip()
+        if not uuid:
+            continue
+        streams = finite_number(field(row, schema, "streams"))
+        genre = str(field(row, schema, "primary_genre") or "").strip().casefold()
+        stream_value = float(streams or 0)
+        priority = (
+            0 if streams is not None and streams >= 100_000 else 1,
+            0 if genre == "dark_ambient" else 1,
+            -stream_value,
+        )
+        previous = priorities.get(uuid)
+        if previous is None or priority < previous:
+            priorities[uuid] = priority
+    return priorities
+
+
 def classify_soundcharts_genres(
     soundcharts: dict[str, Any],
     cache: dict[str, Any],
@@ -939,6 +981,13 @@ def classify_soundcharts_genres(
             continue
         pending.append((uuid, _editorial_row_context(row, schema)))
 
+    priority_by_uuid = _classification_priority_by_uuid(soundcharts)
+    pending.sort(
+        key=lambda item: (
+            *priority_by_uuid.get(item[0], (1, 1, 0.0)),
+            item[0],
+        )
+    )
     cap = min(max(0, max_requests), max(0, limit) if limit is not None else max(0, max_requests))
     selected = pending[:cap]
     budget = RequestBudget(max_requests)
@@ -993,10 +1042,19 @@ def classify_soundcharts_genres(
         "requests": budget.used,
         "quota_remaining": getattr(client, "quota_remaining", None),
         "failures": failures,
+        "selected_stream_eligible": sum(
+            priority_by_uuid.get(uuid, (1, 1, 0.0))[0] == 0
+            for uuid, _ in selected
+        ),
+        "selected_dark_ambient": sum(
+            priority_by_uuid.get(uuid, (1, 1, 0.0))[1] == 0
+            for uuid, _ in selected
+        ),
         "rules": {
             "genre_source": "soundcharts_song_metadata",
             "instrumental_requires_explicit_tag": True,
             "ai_risk_never_inferred": True,
+            "request_priority": "streams_100k_then_dark_ambient_then_streams_desc",
         },
     }
     soundcharts["classification_backfill"] = summary
