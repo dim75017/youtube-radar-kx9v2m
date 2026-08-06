@@ -36,6 +36,7 @@ from refresh_soundcharts_daily import (
     SoundchartsQuotaReserveError,
     SoundchartsRequestLimitError,
 )
+from scan_soundcharts_fal_phase1 import extract_evidence
 from spotify_performance_store import (
     PerformanceStoreError,
     read_performance_payload,
@@ -806,6 +807,29 @@ def parse_song_detail(response: Any, editorial: dict[str, Any]) -> dict[str, Any
         current_instrumental=str(editorial.get("instrumental_status") or "unknown"),
         current_instrumental_confidence=finite_number(editorial.get("instrumental_confidence")),
     )
+    # Soundcharts exposes factual numeric audio features on some song-detail
+    # contracts even when the genre list does not literally contain the word
+    # “Instrumental”. Reuse the same conservative thresholds as the private
+    # FAL scanner: instrumentalness > .5 is positive evidence, while explicit
+    # content or speechiness >= .33 is voice/rap risk and wins on conflict.
+    evidence = extract_evidence(obj)
+    if evidence.get("vocal") is True:
+        classification["instrumental_status"] = "vocal"
+        classification["instrumental_confidence"] = 0.95
+        classification["has_vocal_evidence"] = True
+        classification["has_instrumental_evidence"] = False
+    elif evidence.get("instrumental") is True and not classification.get("has_vocal_evidence"):
+        classification["instrumental_status"] = "instrumental"
+        classification["instrumental_confidence"] = max(
+            finite_number(classification.get("instrumental_confidence")) or 0,
+            0.9,
+        )
+        classification["has_instrumental_evidence"] = True
+    evidence_ai = str(evidence.get("ai_risk") or "").strip().casefold()
+    if evidence_ai in {"low", "faible"}:
+        classification["ai_risk"] = "low"
+    elif evidence_ai in {"high", "elevated", "eleve", "élevé"}:
+        classification["ai_risk"] = "high"
     checked_at = utc_now()
     return {
         "soundcharts_uuid": str(obj.get("uuid") or editorial.get("soundcharts_uuid") or ""),
@@ -899,6 +923,10 @@ def _update_classification_row(
     if status in {"instrumental", "vocal"}:
         set_field(row, schema, "instrumental_status", status)
         set_field(row, schema, "instrumental_confidence", detail.get("instrumental_confidence"))
+
+    ai_risk = str(detail.get("ai_risk") or "").strip().casefold()
+    if "ai_risk" in schema and ai_risk in {"low", "faible", "high", "elevated", "eleve", "élevé"}:
+        set_field(row, schema, "ai_risk", "low" if ai_risk in {"low", "faible"} else "high")
 
     set_field(row, schema, "soundcharts_genres", list(detail.get("soundcharts_genres") or []))
     set_field(row, schema, "soundcharts_genres_checked_at", detail.get("soundcharts_genres_checked_at"))

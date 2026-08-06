@@ -228,6 +228,35 @@ class InstrumentalPoolTests(unittest.TestCase):
         self.assertEqual(parsed["instrumental_status"], "vocal")
         self.assertEqual(parsed["instrumental_confidence"], 0.95)
 
+    def test_song_audio_features_supply_conservative_instrumental_evidence(self):
+        detail = song_detail()
+        detail["object"]["audioFeatures"] = {
+            "instrumentalness": 0.82,
+            "speechiness": 0.04,
+        }
+        editorial = subject.editorial_candidates(payload())[0]
+        editorial["instrumental_status"] = "unknown"
+        editorial["instrumental_confidence"] = None
+        parsed = subject.parse_song_detail(detail, editorial)
+        self.assertEqual(parsed["instrumental_status"], "instrumental")
+        self.assertEqual(parsed["instrumental_confidence"], 0.9)
+
+    def test_song_speechiness_blocks_conflicting_instrumental_signal(self):
+        detail = song_detail()
+        detail["object"]["genres"] = [
+            {"root": "Ambient", "sub": ["Instrumental"]}
+        ]
+        detail["object"]["audioFeatures"] = {
+            "instrumentalness": 0.91,
+            "speechiness": 0.48,
+        }
+        parsed = subject.parse_song_detail(
+            detail,
+            subject.editorial_candidates(payload())[0],
+        )
+        self.assertEqual(parsed["instrumental_status"], "vocal")
+        self.assertEqual(parsed["instrumental_confidence"], 0.95)
+
     def test_classification_backfill_updates_genre_without_inventing_ai_risk(self):
         current = payload()
         schema = current["editorial"]["track_schema"]
