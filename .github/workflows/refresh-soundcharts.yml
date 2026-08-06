@@ -15,6 +15,8 @@ on:
       - 'spotify-catalogue-baseline.json'
       - 'spotify-catalogue-baseline.csv'
       - 'spotify-explicit-artist-seeds.json'
+      - 'spotify-protected-review-cohorts.json'
+      - 'spotify-catalogue-exclusions.json'
       - 'expand_soundcharts_instrumental_pool.py'
       - 'spotify_rights.py'
       - 'build_spotify_browse_catalogue.py'
@@ -80,6 +82,8 @@ on:
       - 'spotify-catalogue-baseline.json'
       - 'spotify-catalogue-baseline.csv'
       - 'spotify-explicit-artist-seeds.json'
+      - 'spotify-protected-review-cohorts.json'
+      - 'spotify-catalogue-exclusions.json'
       - 'expand_soundcharts_instrumental_pool.py'
       - 'spotify_rights.py'
       - 'build_spotify_browse_catalogue.py'
@@ -659,6 +663,7 @@ jobs:
           --workers 16
           --max-requests "${{ steps.plan.outputs.classification_requests }}"
           --classification-only
+          --protected-review-cohorts spotify-protected-review-cohorts.json
 
       - name: Expand and measure the target instrumental pool
         if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient'
@@ -730,6 +735,7 @@ jobs:
           --workers 16
           --max-requests "${{ steps.plan.outputs.expansion_requests }}"
           --classification-only
+          --protected-review-cohorts spotify-protected-review-cohorts.json
 
       - name: Enrich public professional contacts progressively
         if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
@@ -1090,7 +1096,9 @@ jobs:
             --performance Spotify_Performance_data.js \
             --strict-rebased \
             --trusted-catalogue spotify-catalogue-baseline.csv \
-            --trusted-artist-seeds spotify-catalogue-baseline.json
+            --trusted-artist-seeds spotify-catalogue-baseline.json \
+            --exclusions spotify-catalogue-exclusions.json \
+            --protected-review-cohorts spotify-protected-review-cohorts.json
           python validate_playlist_snapshot_transition.py \
             --previous "${{ steps.playlist_baseline.outputs.path }}" \
             --candidate Spotify_Playlists_canonical_data.js

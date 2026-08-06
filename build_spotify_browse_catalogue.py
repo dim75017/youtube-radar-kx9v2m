@@ -106,6 +106,53 @@ MIN_STRICT_CONFIDENCE = 0.5
 MIN_TRACK_LIFETIME_STREAMS = 100_000
 COMPOSITE_CREDIT = re.compile(r"(?:\s(?:&|feat\.?|featuring|ft\.?|x|×)\s|,)", re.IGNORECASE)
 
+EVIDENCE_FIELDS = {
+    "primary_genre": {
+        "confidence": "genre_confidence",
+        "weak": {
+            "unknown", "unclassified", "other", "other_undefined",
+            "to_classify", "a_classifier", "trusted_catalogue",
+        },
+        "blocking": set(),
+    },
+    "instrumental_status": {
+        "confidence": "instrumental_confidence",
+        "weak": {"unknown", "to_verify", "a_verifier", "trusted_catalogue"},
+        "blocking": {"vocal"},
+    },
+    "ai_risk": {
+        "confidence": "ai_risk_score",
+        "weak": {"unknown", "to_verify", "a_verifier"},
+        "blocking": {"high"},
+    },
+    "rights_status": {
+        "confidence": "rights_confidence",
+        "weak": {
+            "unknown", "unverified", "to_verify", "a_verifier",
+            "catalogue_trusted", "trusted_catalogue",
+        },
+        "blocking": {"major"},
+    },
+}
+
+IDENTITY_FIELDS = {"spotify_id", "soundcharts_uuid"}
+
+PROTECTED_REVIEW_TRACK_FIELDS = (
+    "spotify_id",
+    "soundcharts_uuid",
+    "title",
+    "credit_name",
+    "streams",
+    "streams_source_date",
+    "primary_genre",
+    "genre_confidence",
+    "instrumental_status",
+    "instrumental_confidence",
+    "ai_risk",
+    "rights_status",
+    "source_tier",
+)
+
 
 class BrowseCatalogueError(RuntimeError):
     """Raised when a usable broad catalogue cannot be produced safely."""
@@ -373,6 +420,143 @@ def _clean_nested_artists(value: Any) -> list[dict[str, Any]]:
     return rows
 
 
+def _evidence_key(value: Any) -> str:
+    return re.sub(r"[\s/-]+", "_", str(value or "").strip().casefold())
+
+
+def _evidence_choice(
+    field: str,
+    previous: Any,
+    incoming: Any,
+    previous_confidence: Any = None,
+    incoming_confidence: Any = None,
+) -> str:
+    """Choose the safer evidence without letting an unknown erase a proof.
+
+    Explicit negative evidence is sticky because accepting a later positive or
+    unknown row would silently re-enable a vocal, high-AI-risk or major-label
+    record. Other conflicting evidence changes only when the incoming source
+    carries at least as much numeric confidence.
+    """
+    if not _meaningful(incoming):
+        return "previous"
+    if not _meaningful(previous):
+        return "incoming"
+    policy = EVIDENCE_FIELDS[field]
+    old_key = _evidence_key(previous)
+    new_key = _evidence_key(incoming)
+    blockers = policy["blocking"]
+    if old_key in blockers:
+        return "previous"
+    if new_key in blockers:
+        return "incoming"
+    old_weak = old_key in policy["weak"]
+    new_weak = new_key in policy["weak"]
+    if new_weak and not old_weak:
+        return "previous"
+    if old_weak and not new_weak:
+        return "incoming"
+    if old_key == new_key:
+        return "incoming"
+    old_confidence = _finite_number(previous_confidence)
+    new_confidence = _finite_number(incoming_confidence)
+    if new_confidence is not None and (
+        old_confidence is None or new_confidence >= old_confidence
+    ):
+        return "incoming"
+    return "previous"
+
+
+def _merge_evidence_pair(
+    merged: dict[str, Any],
+    previous: Mapping[str, Any],
+    incoming: Mapping[str, Any],
+    field: str,
+) -> None:
+    policy = EVIDENCE_FIELDS[field]
+    confidence_field = str(policy["confidence"])
+    old_value = previous.get(field)
+    new_value = incoming.get(field)
+    old_confidence = previous.get(confidence_field)
+    new_confidence = incoming.get(confidence_field)
+    choice = _evidence_choice(
+        field,
+        old_value,
+        new_value,
+        old_confidence,
+        new_confidence,
+    )
+    selected = new_value if choice == "incoming" else old_value
+    if _meaningful(selected):
+        merged[field] = selected
+
+    if _evidence_key(old_value) == _evidence_key(new_value):
+        confidences = [
+            value
+            for value in (
+                _finite_number(old_confidence),
+                _finite_number(new_confidence),
+            )
+            if value is not None
+        ]
+        if confidences:
+            merged[confidence_field] = max(confidences)
+        return
+    selected_confidence = new_confidence if choice == "incoming" else old_confidence
+    if _meaningful(selected_confidence):
+        merged[confidence_field] = selected_confidence
+    elif confidence_field in merged and not _meaningful(merged.get(confidence_field)):
+        merged.pop(confidence_field, None)
+
+
+def _manifest_spotify_ids(value: Any) -> frozenset[str]:
+    ids: set[str] = set()
+    for item in value if isinstance(value, list) else []:
+        spotify_id = (
+            str(item.get("spotify_id") or "").strip()
+            if isinstance(item, Mapping)
+            else str(item or "").strip()
+        )
+        if spotify_id:
+            ids.add(spotify_id)
+    return frozenset(ids)
+
+
+def _read_exclusions(path: Path) -> dict[str, frozenset[str]]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise BrowseCatalogueError(f"{path} contains invalid JSON") from exc
+    if not isinstance(payload, Mapping):
+        raise BrowseCatalogueError(f"{path} does not contain an exclusion object")
+    return {
+        "artist_spotify_ids": _manifest_spotify_ids(
+            payload.get("artist_spotify_ids")
+        ),
+        "track_spotify_ids": _manifest_spotify_ids(
+            payload.get("track_spotify_ids")
+        ),
+    }
+
+
+def _merge_nested_artist(
+    previous: Mapping[str, Any], incoming: Mapping[str, Any]
+) -> dict[str, Any]:
+    merged = dict(previous)
+    for field, value in incoming.items():
+        if not _meaningful(value):
+            continue
+        old_value = merged.get(field)
+        if (
+            field in IDENTITY_FIELDS
+            and _meaningful(old_value)
+            and str(old_value).strip() != str(value).strip()
+        ):
+            continue
+        merged[field] = value
+    return merged
+
+
 def _row_key(record: Mapping[str, Any], fields: Sequence[str]) -> str:
     for field in fields:
         value = str(record.get(field) or "").strip()
@@ -405,6 +589,11 @@ def _reconcile_track_rights(record: Mapping[str, Any]) -> dict[str, Any]:
 
 def _merge_record(previous: Mapping[str, Any], incoming: Mapping[str, Any]) -> dict[str, Any]:
     merged = dict(previous)
+    evidence_fields = set(EVIDENCE_FIELDS)
+    evidence_confidence_fields = {
+        str(policy["confidence"])
+        for policy in EVIDENCE_FIELDS.values()
+    }
     list_fields = {
         "artists",
         "subgenres",
@@ -427,11 +616,27 @@ def _merge_record(previous: Mapping[str, Any], incoming: Mapping[str, Any]) -> d
                 for artist in [*old, *new]:
                     key = _row_key(artist, ARTIST_KEY_FIELDS)
                     if key:
-                        by_key[key] = {**by_key.get(key, {}), **artist}
+                        by_key[key] = _merge_nested_artist(
+                            by_key.get(key, {}), artist
+                        )
                 merged[field] = list(by_key.values())
             else:
                 merged[field] = _merge_unique(merged.get(field), value)
             continue
+        if field in evidence_fields or field in evidence_confidence_fields:
+            continue
+        if field in IDENTITY_FIELDS:
+            old_value = merged.get(field)
+            if (
+                _meaningful(old_value)
+                and _meaningful(value)
+                and str(old_value).strip() != str(value).strip()
+            ):
+                reason = f"identity_conflict:{field}"
+                merged["review_reasons"] = _merge_unique(
+                    merged.get("review_reasons"), [reason]
+                )
+                continue
         if field in first_seen_fields:
             candidates = [str(v) for v in (merged.get(field), value) if v]
             merged[field] = min(candidates) if candidates else ""
@@ -458,6 +663,8 @@ def _merge_record(previous: Mapping[str, Any], incoming: Mapping[str, Any]) -> d
             continue
         if _meaningful(value):
             merged[field] = value
+    for field in EVIDENCE_FIELDS:
+        _merge_evidence_pair(merged, previous, incoming, field)
     if "artists" in merged:
         merged["artists"] = _clean_nested_artists(merged.get("artists"))
     return merged
@@ -524,6 +731,94 @@ def _normalise_catalogue(catalogue: Mapping[str, Any]) -> dict[str, Any]:
         "track_records": [row for row in tracks if _row_key(row, TRACK_KEY_FIELDS)],
         "artist_records": [row for row in artists if _row_key(row, ARTIST_KEY_FIELDS)],
     }
+
+
+def _read_protected_review_cohorts(path: Path) -> list[dict[str, Any]]:
+    """Materialize immutable review cohorts without adding them to browse.
+
+    This is an audit/recovery lane. Exact IDs remain available to later
+    classification jobs, but the lane never grants instrumental, AI, rights,
+    A&R or contact eligibility.
+    """
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise BrowseCatalogueError(f"{path} contains invalid JSON") from exc
+    raw_cohorts = manifest.get("cohorts") if isinstance(manifest, Mapping) else None
+    if not isinstance(raw_cohorts, list):
+        raise BrowseCatalogueError(f"{path} does not contain a cohorts list")
+
+    cohorts: list[dict[str, Any]] = []
+    for definition in raw_cohorts:
+        if not isinstance(definition, Mapping):
+            continue
+        cohort_id = str(definition.get("id") or "").strip()
+        source_name = str(definition.get("source_snapshot") or "").strip()
+        if not cohort_id or not source_name:
+            raise BrowseCatalogueError(
+                f"{path} has a protected cohort without id/source_snapshot"
+            )
+        source_path = path.parent / source_name
+        if not source_path.exists():
+            raise BrowseCatalogueError(
+                f"Protected review source does not exist: {source_path}"
+            )
+        source_payload = _read_payload(source_path, SOUNDCHARTS_PREFIX)
+        catalogue = _normalise_catalogue(_extract_catalogue(source_payload))
+        genre = str(definition.get("primary_genre") or "").strip()
+        minimum_streams = int(
+            _finite_number(definition.get("minimum_lifetime_streams")) or 0
+        )
+        by_spotify_id: dict[str, dict[str, Any]] = {}
+        for row in catalogue["track_records"]:
+            spotify_id = str(row.get("spotify_id") or "").strip()
+            streams = _finite_number(row.get("streams"))
+            if not spotify_id or streams is None or streams < minimum_streams:
+                continue
+            if genre and str(row.get("primary_genre") or "") != genre:
+                continue
+            compact = {
+                field: row.get(field)
+                for field in PROTECTED_REVIEW_TRACK_FIELDS
+            }
+            previous = by_spotify_id.get(spotify_id)
+            if previous is None or streams > float(
+                _finite_number(previous.get("streams")) or -1
+            ):
+                by_spotify_id[spotify_id] = compact
+
+        expected_count = int(
+            _finite_number(definition.get("expected_track_count")) or 0
+        )
+        if expected_count and len(by_spotify_id) != expected_count:
+            raise BrowseCatalogueError(
+                f"Protected cohort {cohort_id} expected {expected_count} tracks, "
+                f"found {len(by_spotify_id)}"
+            )
+        records = [by_spotify_id[key] for key in sorted(by_spotify_id)]
+        cohorts.append({
+            "id": cohort_id,
+            "label": str(definition.get("label") or cohort_id),
+            "source_snapshot": source_name,
+            "baseline_generated_at": str(
+                source_payload.get("generated_at")
+                or catalogue.get("generated_at")
+                or ""
+            ),
+            "review_state": str(
+                definition.get("review_state") or "evidence_required"
+            ),
+            "allow_automatic_active_promotion": False,
+            "contactable": False,
+            "track_schema": list(PROTECTED_REVIEW_TRACK_FIELDS),
+            "tracks": [
+                [record.get(field) for field in PROTECTED_REVIEW_TRACK_FIELDS]
+                for record in records
+            ],
+            "spotify_ids": sorted(by_spotify_id),
+            "track_count": len(records),
+        })
+    return cohorts
 
 
 def _availability_rank(value: Any) -> int:
@@ -652,18 +947,32 @@ def merge_catalogues(catalogues: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _row_artist_spotify_ids(row: Mapping[str, Any]) -> set[str]:
+    return {
+        str(artist.get("spotify_id") or "").strip()
+        for artist in _clean_nested_artists(row.get("artists"))
+        if str(artist.get("spotify_id") or "").strip()
+    }
+
+
 def _strict_rebaseline_reason(
     row: Mapping[str, Any],
     minimum_streams: int = MIN_TRACK_LIFETIME_STREAMS,
     trusted_internal_spotify_ids: set[str] | frozenset[str] | None = None,
+    excluded_artist_spotify_ids: set[str] | frozenset[str] | None = None,
+    excluded_track_spotify_ids: set[str] | frozenset[str] | None = None,
 ) -> str | None:
     """Return the first factual reason an active-row candidate is quarantined."""
+    spotify_id = str(row.get("spotify_id") or "").strip()
+    if spotify_id and spotify_id in (excluded_track_spotify_ids or set()):
+        return "explicit_track_id_exclusion"
+    if _row_artist_spotify_ids(row) & set(excluded_artist_spotify_ids or set()):
+        return "explicit_artist_id_exclusion"
     streams = _finite_number(row.get("streams"))
     if streams is None:
         return "streams_missing"
     if streams < max(0, minimum_streams):
         return "streams_below_minimum"
-    spotify_id = str(row.get("spotify_id") or "").strip()
     if spotify_id and spotify_id in (trusted_internal_spotify_ids or set()):
         # Exact membership in the label's source spreadsheet is the proof for
         # this inventory lane. A source_tier string alone can never grant it.
@@ -683,12 +992,17 @@ def _strict_rebaseline_reason(
         return "genre_confidence_low"
     if (_finite_number(row.get("instrumental_confidence")) or 0) < MIN_STRICT_CONFIDENCE:
         return "instrumental_confidence_low"
-    ai_risk = str(row.get("ai_risk") or "").strip().casefold()
+    ai_risk = _evidence_key(row.get("ai_risk") or "unknown")
     # All Tracks is a research catalogue, not the actionable A&R queue.
-    # Unknown AI evidence stays visibly “à vérifier” once instrumental/no-
+    # Unknown AI evidence stays visibly "a verifier" once instrumental/no-
     # lyrics, genre, rights and identities are proven. Explicit high risk still
     # blocks. Opportunities continue to require independently proven low risk.
-    if ai_risk not in LOW_AI_RISKS | REVIEW_AI_RISKS:
+    if ai_risk in {"high", "elevated", "medium"}:
+        return "ai_risk_not_low"
+    allowed_ai = LOW_AI_RISKS | REVIEW_AI_RISKS | {
+        "to_verify", "a_verifier", "to_classify", "a_classifier"
+    }
+    if ai_risk not in allowed_ai:
         return "ai_risk_not_low"
     if str(row.get("rights_status") or "") not in STRICT_RIGHTS:
         return "rights_unconfirmed"
@@ -713,6 +1027,8 @@ def strict_rebase_catalogue(
     trusted_internal_spotify_ids: set[str] | frozenset[str] | None = None,
     trusted_internal_streams: Mapping[str, float] | None = None,
     quarantine_details: dict[str, tuple[str, Mapping[str, Any]]] | None = None,
+    excluded_artist_spotify_ids: set[str] | frozenset[str] | None = None,
+    excluded_track_spotify_ids: set[str] | frozenset[str] | None = None,
 ) -> tuple[dict[str, Any], dict[str, int], list[str]]:
     """Project trusted internal inventory plus evidenced external discoveries.
 
@@ -746,6 +1062,8 @@ def strict_rebase_catalogue(
             row,
             minimum_streams,
             trusted_internal_spotify_ids,
+            excluded_artist_spotify_ids,
+            excluded_track_spotify_ids,
         )
         if reason:
             quarantine_counts[reason] = quarantine_counts.get(reason, 0) + 1
@@ -990,6 +1308,8 @@ def build_payload(
     trusted_catalogue: Mapping[str, Any] | None = None,
     minimum_streams: int = MIN_TRACK_LIFETIME_STREAMS,
     performance: Mapping[str, Any] | None = None,
+    exclusions: Mapping[str, frozenset[str] | set[str]] | None = None,
+    protected_review_cohorts: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     catalogues: list[Mapping[str, Any]] = []
     if isinstance(existing, Mapping):
@@ -1035,6 +1355,12 @@ def build_payload(
             trusted_internal_spotify_ids=trusted_internal_spotify_ids,
             trusted_internal_streams=trusted_internal_streams,
             quarantine_details=quarantine_details,
+            excluded_artist_spotify_ids=(exclusions or {}).get(
+                "artist_spotify_ids", frozenset()
+            ),
+            excluded_track_spotify_ids=(exclusions or {}).get(
+                "track_spotify_ids", frozenset()
+            ),
         )
     else:
         merged = merge_catalogues(catalogues)
@@ -1061,6 +1387,22 @@ def build_payload(
     active_trusted_internal_spotify_ids = sorted(
         set(active_legacy_spotify_ids) & trusted_internal_spotify_ids
     )
+    active_spotify_ids = set(active_legacy_spotify_ids)
+    protected_cohorts: list[dict[str, Any]] = []
+    for raw_cohort in protected_review_cohorts or []:
+        cohort = dict(raw_cohort)
+        cohort_ids = {
+            str(value or "").strip()
+            for value in cohort.get("spotify_ids", [])
+            if str(value or "").strip()
+        }
+        cohort["active_browse_overlap"] = len(cohort_ids & active_spotify_ids)
+        cohort["review_only_tracks"] = len(cohort_ids - active_spotify_ids)
+        # This metadata is intentionally invariant even when some exact IDs
+        # separately qualify for the trusted internal inventory lane.
+        cohort["allow_automatic_active_promotion"] = False
+        cohort["contactable"] = False
+        protected_cohorts.append(cohort)
     payload = {
         "version": VERSION,
         "source": "soundcharts_browse_catalogue",
@@ -1078,11 +1420,16 @@ def build_payload(
             "archive": "Spotify_Radar_data.js" if strict_rebased else "",
             "minimum_lifetime_streams": minimum_streams if strict_rebased else None,
             "manual_archive_storage_key": MANUAL_ARCHIVE_STORAGE_KEY,
+            "explicit_id_exclusions": bool(
+                (exclusions or {}).get("artist_spotify_ids")
+                or (exclusions or {}).get("track_spotify_ids")
+            ),
         },
         "discovery_catalogue": merged,
         "active_legacy_spotify_ids": active_legacy_spotify_ids,
         "trusted_internal_spotify_ids": active_trusted_internal_spotify_ids,
         "quarantine_counts": quarantine_counts,
+        "protected_review_cohorts": protected_cohorts,
         "playlist_discovery": dict(playlist_discovery) if isinstance(playlist_discovery, Mapping) else {},
         "instrumental_pool": dict(instrumental_pool) if isinstance(instrumental_pool, Mapping) else {},
         "strict_snapshot_counts": strict_counts,
@@ -1142,6 +1489,22 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         help="Sanitized artist-ID mapping for the trusted catalogue.",
     )
+    parser.add_argument(
+        "--exclusions",
+        type=Path,
+        help=(
+            "Versioned Spotify artist/track ID exclusions applied before "
+            "the trusted internal-catalogue bypass."
+        ),
+    )
+    parser.add_argument(
+        "--protected-review-cohorts",
+        type=Path,
+        help=(
+            "Versioned recovery cohorts kept outside the active browse/A&R "
+            "projection until their evidence is validated."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -1171,6 +1534,23 @@ def main() -> int:
                 f"Performance catalogue does not exist: {args.performance}"
             )
         performance = read_performance_payload(args.performance)
+    exclusions = None
+    if args.exclusions:
+        if not args.exclusions.exists():
+            raise BrowseCatalogueError(
+                f"Exclusion manifest does not exist: {args.exclusions}"
+            )
+        exclusions = _read_exclusions(args.exclusions)
+    protected_review_cohorts = None
+    if args.protected_review_cohorts:
+        if not args.protected_review_cohorts.exists():
+            raise BrowseCatalogueError(
+                "Protected review cohort manifest does not exist: "
+                f"{args.protected_review_cohorts}"
+            )
+        protected_review_cohorts = _read_protected_review_cohorts(
+            args.protected_review_cohorts
+        )
     payload = build_payload(
         sources,
         existing,
@@ -1179,6 +1559,8 @@ def main() -> int:
         trusted_catalogue=trusted_catalogue,
         minimum_streams=max(0, args.minimum_streams),
         performance=performance,
+        exclusions=exclusions,
+        protected_review_cohorts=protected_review_cohorts,
     )
     _write_payload(args.output, payload)
     print(

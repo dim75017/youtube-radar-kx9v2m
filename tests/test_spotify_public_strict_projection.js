@@ -98,7 +98,7 @@ vm.runInNewContext(
 
 assert.deepEqual(
   Array.from(context.strictTracks, row => row.spotify_id),
-  ['safe', 'trusted', 'trusted-exact', 'high-streams', 'phonk-alias', 'dnb-alias'],
+  ['safe', 'ai-unknown', 'trusted', 'trusted-exact', 'high-streams', 'phonk-alias', 'dnb-alias'],
   'only an exact spreadsheet ID may bypass external instrumental evidence gates',
 );
 assert.equal(context.strictTracks[0].title, 'Track safe',
@@ -107,7 +107,7 @@ assert.equal(context.strictTracks.some(row => row.spotify_id === 'high-streams')
   'the public gate must not impose an upper lifetime-stream ceiling');
 assert.deepEqual(
   Array.from(context.strictArtists, row => row.spotify_id),
-  ['artist-spotify-safe', 'artist-spotify-trusted', 'artist-spotify-high-streams', 'artist-spotify-phonk-alias', 'artist-spotify-dnb-alias'],
+  ['artist-spotify-safe', 'artist-spotify-ai-unknown', 'artist-spotify-trusted', 'artist-spotify-high-streams', 'artist-spotify-phonk-alias', 'artist-spotify-dnb-alias'],
   'public artists must come from accepted strict tracks or the exact internal cohort',
 );
 assert.deepEqual(

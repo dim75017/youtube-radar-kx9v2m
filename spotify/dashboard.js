@@ -373,9 +373,9 @@ function scHasEligibleSanitizedArtists(artists){
   return scHasCompleteStructuredArtists(artists)
     &&artists.every(artist=>Boolean(scSanitizedArtistPair(artist)));
 }
-/* General catalogue views only promote explicitly eligible instrumental
-   tracks. Unknown/needs-listen material remains available to the track-first
-   A&R radar through SC.opportunities, but never becomes a general-view source. */
+/* General catalogue views require direct instrumental, genre, rights and
+   structured-identity evidence. An unknown AI risk remains visibly "à
+   vérifier" here; high risk is blocked, while A&R stays stricter (low only). */
 function scGeneralTrackEligible(row,schema){
   const spotifyId=String(scField(row,schema,'spotify_id')||'').trim();
   const soundchartsUuid=String(scField(row,schema,'soundcharts_uuid')||'').trim();
@@ -386,7 +386,6 @@ function scGeneralTrackEligible(row,schema){
   const ai=String(scField(row,schema,'ai_risk')||'').toLowerCase();
   const rights=String(scField(row,schema,'rights_status')||'').toLowerCase();
   const rightsConfidence=Number(scField(row,schema,'rights_confidence'));
-  const expansion=String(scField(row,schema,'expansion_status')||'').toLowerCase();
   const rawStreams=scField(row,schema,'streams');
   const streams=Number(rawStreams);
   const artists=scField(row,schema,'artists');
@@ -395,10 +394,9 @@ function scGeneralTrackEligible(row,schema){
     &&Number.isFinite(genreConfidence)&&genreConfidence>=0.5
     &&instrumental==='instrumental'
     &&Number.isFinite(instrumentalConfidence)&&instrumentalConfidence>=0.5
-    &&['low','faible'].includes(ai)
+    &&['low','faible','unknown','to_verify','a_verifier'].includes(ai||'unknown')
     &&['self_released','independent_label','indie'].includes(rights)
     &&Number.isFinite(rightsConfidence)&&rightsConfidence>=0.5
-    &&expansion==='eligible'
     &&rawStreams!==null&&rawStreams!==''
     &&Number.isFinite(streams)&&streams>=MIN_TRACK_LIFETIME_STREAMS&&streams<=SC_MAX_TRACK_STREAMS
     &&scHasEligibleSanitizedArtists(artists);
@@ -689,7 +687,6 @@ function publicDiscoveryTrackEligible(source){
   const ai=String(source.ai_risk||'').trim().toLowerCase();
   const rights=String(source.rights_status||'').trim().toLowerCase();
   const rightsConfidence=discoveryNumber(source.rights_confidence);
-  const expansion=String(source.expansion_status||'').trim().toLowerCase();
   const streams=discoveryNumber(source.streams);
   const artists=discoveryArray(source.artists);
   const trustedInternal=TRUSTED_INTERNAL_SPOTIFY_IDS.has(spotifyId);
@@ -703,10 +700,9 @@ function publicDiscoveryTrackEligible(source){
     &&genreConfidence!=null&&genreConfidence>=0.5
     &&instrumental==='instrumental'
     &&instrumentalConfidence!=null&&instrumentalConfidence>=0.5
-    &&['low','faible'].includes(ai)
+    &&['low','faible','unknown','to_verify','a_verifier'].includes(ai||'unknown')
     &&['self_released','independent_label','indie'].includes(rights)
     &&rightsConfidence!=null&&rightsConfidence>=0.5
-    &&expansion==='eligible'
     &&streams!=null&&streams>=MIN_TRACK_LIFETIME_STREAMS
     &&completeArtists;
 }

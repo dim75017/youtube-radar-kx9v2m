@@ -19,8 +19,19 @@ suffit jamais : l'identifiant doit exister dans le tableur source versionné.
 
 Toutes les découvertes externes — playlists, Fans Also Like et catalogues
 d'artistes découverts — restent soumises aux garde-fous instrumentaux stricts.
+Dans les seules vues d'inventaire, `ai_risk=unknown` est affiché « à vérifier »
+et peut rester visible lorsque le genre, l'instrumentalité/no-lyrics, les droits,
+les identités structurées et le seuil de streams sont tous prouvés. Un risque IA
+`high` reste bloquant. Les Opportunités A&R exigent toujours un risque IA faible.
 La voie historique n'accorde jamais automatiquement un statut Opportunité, un
 moyen de contact ou une éligibilité d'expansion.
+
+Les cohortes de récupération versionnées, notamment le scan Dark Ambient du
+24 juillet 2026, sont conservées hors de la projection active tant que la preuve
+d'instrumentalité manque. Leur appartenance ne constitue aucune preuve : elle
+sert uniquement à les prioriser dans la classification Soundcharts exacte.
+Les exclusions manuelles sont appliquées par identifiants Spotify avant toute
+voie de confiance interne, afin qu'un refresh quotidien ne les réintroduise pas.
 
 Une ligne peut être vérifiée, mesurée, à écouter, découverte dans une playlist, découverte dans un catalogue artiste ou encore à enrichir. Son affichage ne vaut jamais validation commerciale.
 

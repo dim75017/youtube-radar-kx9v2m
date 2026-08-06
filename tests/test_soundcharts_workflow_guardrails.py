@@ -163,6 +163,11 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertLess(rebuild, stage)
         self.assertIn('--source "$SNAPSHOT_NAME"', section[rebuild:stage])
         self.assertIn("--performance Spotify_Performance_data.js", section[rebuild:stage])
+        self.assertIn("--exclusions spotify-catalogue-exclusions.json", section[rebuild:stage])
+        self.assertIn(
+            "--protected-review-cohorts spotify-protected-review-cohorts.json",
+            section[rebuild:stage],
+        )
         self.assertIn("Spotify_Browse_Catalogue_data.js", section[stage:])
 
     def test_selection_contacts_are_prioritised_built_and_published(self):

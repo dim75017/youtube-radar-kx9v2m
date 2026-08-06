@@ -284,6 +284,15 @@ class InstrumentalPoolTests(unittest.TestCase):
         self.assertEqual(subject.field(row, refreshed_schema, "genre_source"), "soundcharts_song")
         self.assertEqual(subject.field(row, refreshed_schema, "instrumental_status"), "instrumental")
         self.assertEqual(subject.field(row, refreshed_schema, "ai_risk"), "unknown")
+        self.assertEqual(subject.field(row, refreshed_schema, "rights_status"), "self_released")
+        self.assertGreaterEqual(
+            subject.field(row, refreshed_schema, "rights_confidence"),
+            0.9,
+        )
+        self.assertEqual(
+            subject.field(row, refreshed_schema, "artist_soundcharts_uuids"),
+            ["artist-uuid"],
+        )
         self.assertTrue(subject.field(row, refreshed_schema, "soundcharts_genres_checked_at"))
 
     def test_classification_prioritizes_100k_dark_ambient_before_lower_stream_rows(self):
@@ -388,6 +397,108 @@ class InstrumentalPoolTests(unittest.TestCase):
         self.assertEqual(subject.field(row, schema, "instrumental_status"), "instrumental")
         self.assertEqual(subject.field(row, schema, "ai_risk"), "unknown")
         self.assertTrue(subject.field(row, schema, "soundcharts_genres_checked_at"))
+    def test_unknown_song_rights_never_erase_strong_editorial_rights(self):
+        current = payload()
+        schema, rows = subject.ensure_editorial_classification_fields(current)
+        row = rows[0]
+        subject.set_field(row, schema, "rights_status", "self_released")
+        subject.set_field(row, schema, "rights_confidence", 0.97)
+
+        updated = subject.update_editorial_classification(
+            current,
+            "song-uuid",
+            {
+                "rights_status": "unknown",
+                "rights_confidence": None,
+                "artists": [],
+                "soundcharts_genres": [],
+                "soundcharts_genres_checked_at": "2026-08-06T00:00:00Z",
+            },
+        )
+
+        self.assertTrue(updated)
+        self.assertEqual(subject.field(row, schema, "rights_status"), "self_released")
+        self.assertEqual(subject.field(row, schema, "rights_confidence"), 0.97)
+
+    def test_protected_review_track_is_injected_and_classified_first(self):
+        current = payload()
+        editorial_schema = current["editorial"]["track_schema"]
+        editorial_schema.append("source_tier")
+        regular = current["editorial"]["tracks"][0]
+        regular.append("independent_playlist")
+        regular[editorial_schema.index("instrumental_status")] = "unknown"
+        regular[editorial_schema.index("instrumental_confidence")] = None
+        regular[editorial_schema.index("ai_risk")] = "unknown"
+        protected_spotify_id = "1234567890123456789012"
+        discovery_schema = [
+            "soundcharts_uuid", "spotify_id", "title", "credit_name",
+            "release_date", "primary_genre", "subgenres",
+            "genre_confidence", "instrumental_status",
+            "instrumental_confidence", "ai_risk", "ai_risk_score",
+            "metadata_status", "updated_at", "source_tier",
+        ]
+        protected_record = {
+            "soundcharts_uuid": "protected-uuid",
+            "spotify_id": protected_spotify_id,
+            "title": "Protected Dark Ambient",
+            "credit_name": "Protected Artist",
+            "release_date": "2026-01-01",
+            "primary_genre": "dark_ambient",
+            "subgenres": [],
+            "genre_confidence": 0.8,
+            "instrumental_status": "unknown",
+            "instrumental_confidence": None,
+            "ai_risk": "unknown",
+            "ai_risk_score": None,
+            "metadata_status": "complete",
+            "updated_at": "2026-08-06T00:00:00Z",
+            "source_tier": "independent_playlist",
+        }
+        current["discovery_catalogue"] = {
+            "track_schema": discovery_schema,
+            "tracks": [[protected_record.get(name) for name in discovery_schema]],
+        }
+        detail = song_detail()
+        detail["object"]["uuid"] = "protected-uuid"
+        detail["object"]["name"] = "Protected Dark Ambient"
+        detail["object"]["creditName"] = "Protected Artist"
+        detail["object"]["genres"] = [
+            {"root": "Ambient", "sub": ["Dark Ambient", "Instrumental"]}
+        ]
+        client = FakeClient({"/api/v2/song/protected-uuid": detail})
+        cache = {"version": 1, "tracks": {}, "artists": {}}
+
+        summary = subject.classify_soundcharts_genres(
+            current,
+            cache,
+            client,
+            workers=1,
+            max_requests=1,
+            protected_spotify_ids={protected_spotify_id},
+        )
+
+        self.assertEqual(summary["protected_requested"], 1)
+        self.assertEqual(summary["protected_mapped"], 1)
+        self.assertEqual(summary["protected_inserted"], 1)
+        self.assertEqual(summary["protected_selected"], 1)
+        self.assertEqual(len(client.paths), 1)
+        self.assertIn("protected-uuid", client.paths[0])
+        schema = current["editorial"]["track_schema"]
+        protected_row = next(
+            row
+            for row in current["editorial"]["tracks"]
+            if subject.field(row, schema, "spotify_id") == protected_spotify_id
+        )
+        self.assertEqual(
+            subject.field(protected_row, schema, "source_tier"),
+            "independent_playlist",
+        )
+        self.assertEqual(subject.field(protected_row, schema, "ai_risk"), "unknown")
+        self.assertEqual(
+            subject.field(protected_row, schema, "instrumental_status"),
+            "instrumental",
+        )
+        self.assertEqual(subject.field(protected_row, schema, "expansion_status"), "review")
 
     def test_explicit_artist_catalogue_can_be_exactly_classified_without_becoming_an_opportunity(self):
         current = payload()

@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "updated_at": "2026-08-06",
+  "artist_spotify_ids": [
+    {
+      "spotify_id": "6bmlMHgSheBauioMgKv2tn",
+      "name": "Powfu",
+      "reason": "reviewed vocal/mainstream false positive"
+    }
+  ],
+  "track_spotify_ids": [
+    "076YCyUBs1GlrzAmOsZkFU",
+    "0bItzrP7o3GwzrL6N9sJkb",
+    "0d9J3Pvoe5B9jKClkym3b3",
+    "0gx7MU31U0qNuG9poUqfa2",
+    "1DoECePnMuLtpLQSCZqwtK",
+    "1TYF5FyxFXC6bM2VOuNWhV",
+    "25yup6WYnPoITrfzhkBLmt",
+    "2AFkO878iaoha59V5SDeXm",
+    "2h0FPaYBXNaBNh50W8m3Hc",
+    "2vjzbykgEw97mF7kxfL8cW",
+    "3a2u2qDijKes0TpHczoVYB",
+    "3Gr486MMVsToeqegJ0Z9qt",
+    "3mkPGR4NklNB3Y77c3mrOS",
+    "3p8iG863bPsafyReUXaqXO",
+    "3q2igQLCY0E2DQEviJG7hX",
+    "3UYn4qdsgnQlbOgYiVIyYJ",
+    "49JuBQEJhVZv0uAs2wpjwE",
+    "4gHT8xMLhkESyOZhQ1zNIO",
+    "5DDH42ag5OosmzYQPqqMR6",
+    "5hoNgfI1q9SkCMhZ1cHYOV",
+    "5Okrz6AYoHlzGRWLEeSrrX",
+    "5r7lnyQAFWiUSToaO2kC5X",
+    "5TEH4r5OBFcKZJBjF4qOxL",
+    "607PGYIaTaTyAKQtmPpUom",
+    "6hzTeCA93yeY8WZE0kW3ui",
+    "6K8YDOe6C2HgnMJNYhUOHE",
+    "6rQPtpH1N47hdFFURFS9Ui",
+    "6XYX8QqarUnMz9IadvH3iw",
+    "72542euQT9wECESPCIKSXS",
+    "7lfoJaJRuVB43jLr4Ydi00"
+  ]
+}

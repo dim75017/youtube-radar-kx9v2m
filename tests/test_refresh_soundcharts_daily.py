@@ -1116,6 +1116,12 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertIn("steps.plan.outputs.scope == 'playlist_covers'", workflow)
         self.assertIn('--mode playlists', workflow)
         self.assertIn('--classification-only', workflow)
+        self.assertEqual(
+            workflow.count(
+                '--protected-review-cohorts spotify-protected-review-cohorts.json'
+            ),
+            3,
+        )
         self.assertEqual(workflow.count('--include-performance-catalogue'), 2)
         self.assertIn('performance_catalogue_due', workflow)
         self.assertIn("is_due('tracks_catalogue_at')", workflow)

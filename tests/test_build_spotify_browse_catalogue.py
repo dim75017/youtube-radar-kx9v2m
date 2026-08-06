@@ -128,6 +128,89 @@ class BrowseCatalogueTests(unittest.TestCase):
         self.assertEqual(status, "independent_label")
         self.assertGreaterEqual(confidence, 0.98)
 
+    def test_weaker_refresh_evidence_never_erases_validated_proof(self):
+        validated = {
+            "spotify_id": "track-a",
+            "soundcharts_uuid": "soundcharts-a",
+            "primary_genre": "dark_ambient",
+            "genre_confidence": 0.91,
+            "instrumental_status": "instrumental",
+            "instrumental_confidence": 0.94,
+            "ai_risk": "low",
+            "ai_risk_score": 0.08,
+            "rights_status": "self_released",
+            "rights_confidence": 0.92,
+        }
+        weaker = {
+            "spotify_id": "track-a",
+            "soundcharts_uuid": "soundcharts-a",
+            "primary_genre": "trusted_catalogue",
+            "genre_confidence": None,
+            "instrumental_status": "unknown",
+            "instrumental_confidence": None,
+            "ai_risk": "unknown",
+            "ai_risk_score": None,
+            "rights_status": "catalogue_trusted",
+            "rights_confidence": None,
+        }
+
+        merged = subject._merge_record(validated, weaker)
+
+        self.assertEqual(merged["primary_genre"], "dark_ambient")
+        self.assertEqual(merged["genre_confidence"], 0.91)
+        self.assertEqual(merged["instrumental_status"], "instrumental")
+        self.assertEqual(merged["instrumental_confidence"], 0.94)
+        self.assertEqual(merged["ai_risk"], "low")
+        self.assertEqual(merged["ai_risk_score"], 0.08)
+        self.assertEqual(merged["rights_status"], "self_released")
+        self.assertEqual(merged["rights_confidence"], 0.92)
+
+    def test_explicit_negative_evidence_is_sticky_and_blocks(self):
+        validated = {
+            "spotify_id": "track-a",
+            "primary_genre": "dark_ambient",
+            "genre_confidence": 0.9,
+            "instrumental_status": "instrumental",
+            "instrumental_confidence": 0.9,
+            "ai_risk": "low",
+            "rights_status": "self_released",
+            "rights_confidence": 0.9,
+        }
+        negative = {
+            "spotify_id": "track-a",
+            "instrumental_status": "vocal",
+            "instrumental_confidence": 0.7,
+            "ai_risk": "high",
+            "rights_status": "major",
+            "rights_confidence": 0.8,
+        }
+
+        blocked = subject._merge_record(validated, negative)
+        still_blocked = subject._merge_record(blocked, validated)
+
+        self.assertEqual(blocked["instrumental_status"], "vocal")
+        self.assertEqual(blocked["ai_risk"], "high")
+        self.assertEqual(blocked["rights_status"], "major")
+        self.assertEqual(still_blocked["instrumental_status"], "vocal")
+        self.assertEqual(still_blocked["ai_risk"], "high")
+        self.assertEqual(still_blocked["rights_status"], "major")
+
+    def test_conflicting_structured_identity_is_not_silently_replaced(self):
+        previous = {
+            "spotify_id": "spotify-track-a",
+            "soundcharts_uuid": "soundcharts-a",
+            "review_reasons": [],
+        }
+        incoming = {
+            "spotify_id": "spotify-track-a",
+            "soundcharts_uuid": "soundcharts-conflict",
+        }
+
+        merged = subject._merge_record(previous, incoming)
+
+        self.assertEqual(merged["soundcharts_uuid"], "soundcharts-a")
+        self.assertIn("identity_conflict:soundcharts_uuid", merged["review_reasons"])
+
     def test_merge_preserves_old_rows_and_enriches_matching_rows(self):
         old = catalogue(
             [["track-a", "", "Old title", [{"soundcharts_uuid": "artist-a", "name": "Artist A", "contact_url": "hidden"}], None, 1, "2026-07-01", "2026-07-10", "playlist_discovered"]],
@@ -458,6 +541,84 @@ class BrowseCatalogueTests(unittest.TestCase):
         self.assertEqual(result["quarantine_counts"]["streams_below_minimum"], 1)
         self.assertEqual(result["quarantine_counts"]["genre_out_of_scope"], 1)
 
+    def test_exact_artist_id_exclusion_precedes_trusted_inventory_bypass(self):
+        powfu_artist_id = "6bmlMHgSheBauioMgKv2tn"
+        row = {
+            "spotify_id": "5TEH4r5OBFcKZJBjF4qOxL",
+            "soundcharts_uuid": "",
+            "title": "death bed",
+            "credit_name": "Powfu",
+            "artists": [{
+                "name": "Powfu",
+                "spotify_id": powfu_artist_id,
+                "soundcharts_uuid": "",
+            }],
+            "streams": 2_067_076_806,
+            "primary_genre": "trusted_catalogue",
+            "instrumental_status": "trusted_catalogue",
+            "ai_risk": "unknown",
+            "rights_status": "major",
+            "source_tier": subject.TRUSTED_CATALOGUE_SOURCE_TIER,
+        }
+
+        reason = subject._strict_rebaseline_reason(
+            row,
+            trusted_internal_spotify_ids={row["spotify_id"]},
+            excluded_artist_spotify_ids={powfu_artist_id},
+        )
+        same_name_other_id = copy.deepcopy(row)
+        same_name_other_id["artists"][0]["spotify_id"] = "different-artist-id"
+        allowed = subject._strict_rebaseline_reason(
+            same_name_other_id,
+            trusted_internal_spotify_ids={row["spotify_id"]},
+            excluded_artist_spotify_ids={powfu_artist_id},
+        )
+
+        self.assertEqual(reason, "explicit_artist_id_exclusion")
+        self.assertIsNone(allowed)
+
+    def test_production_powfu_manifest_covers_artist_and_all_baseline_tracks(self):
+        exclusions = subject._read_exclusions(
+            subject.Path("spotify-catalogue-exclusions.json")
+        )
+        trusted = subject._trusted_catalogue_from_csv(
+            subject.Path("spotify-catalogue-baseline.csv"),
+            subject.Path("spotify-catalogue-baseline.json"),
+        )
+        powfu_tracks = {
+            str(row.get("spotify_id") or "")
+            for row in subject._normalise_catalogue(trusted)["track_records"]
+            if str(row.get("credit_name") or "").casefold() == "powfu"
+        }
+
+        self.assertIn(
+            "6bmlMHgSheBauioMgKv2tn",
+            exclusions["artist_spotify_ids"],
+        )
+        self.assertEqual(len(powfu_tracks), 30)
+        self.assertTrue(powfu_tracks <= exclusions["track_spotify_ids"])
+
+    def test_dark_ambient_recovery_cohort_is_exact_and_review_only(self):
+        cohorts = subject._read_protected_review_cohorts(
+            subject.Path("spotify-protected-review-cohorts.json")
+        )
+
+        self.assertEqual(len(cohorts), 1)
+        cohort = cohorts[0]
+        self.assertEqual(cohort["id"], "dark_ambient_20260724")
+        self.assertEqual(cohort["track_count"], 1_286)
+        self.assertEqual(len(set(cohort["spotify_ids"])), 1_286)
+        self.assertFalse(cohort["allow_automatic_active_promotion"])
+        self.assertFalse(cohort["contactable"])
+        instrumental_index = cohort["track_schema"].index("instrumental_status")
+        self.assertEqual(
+            {
+                str(row[instrumental_index] or "")
+                for row in cohort["tracks"]
+            },
+            {"unknown"},
+        )
+
     def test_trusted_catalogue_cannot_bypass_any_strict_evidence_gate(self):
         valid = {
             "soundcharts_uuid": "track-trusted",
@@ -480,6 +641,9 @@ class BrowseCatalogueTests(unittest.TestCase):
             "streams": 100_000,
         }
         self.assertIsNone(subject._strict_rebaseline_reason(valid))
+        self.assertIsNone(
+            subject._strict_rebaseline_reason({**valid, "ai_risk": "unknown"})
+        )
         for genre in ("guitar", "instrumental_phonk", "phonk_instrumental", "instrumental_dnb", "dnb_instrumental"):
             with self.subTest(allowed_genre=genre):
                 self.assertIsNone(subject._strict_rebaseline_reason({**valid, "primary_genre": genre}))

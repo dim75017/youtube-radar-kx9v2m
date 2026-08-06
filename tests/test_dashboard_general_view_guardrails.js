@@ -144,6 +144,10 @@ assert.equal(gateContext.isEligible(changed(10, 99_999), schema), false,
   'a track one stream below the public lifetime floor must remain private');
 assert.equal(gateContext.isEligible(changed(10, 100_000), schema), true,
   'the 100,000-stream public lifetime floor is inclusive');
+assert.equal(gateContext.isEligible(changed(6, 'unknown'), schema), true,
+  'unknown AI risk remains visible as à vérifier when every musical/right/identity proof passes');
+assert.equal(gateContext.isEligible(changed(9, 'review'), schema), true,
+  'an internal expansion label is not a substitute for factual browse evidence');
 assert.equal(gateContext.isEligible(changed(10, 250_000_000), schema), true,
   'the explicit stream ceiling is inclusive');
 for (const genre of ['acoustic', 'fingerstyle', 'soundscape']) {
@@ -161,11 +165,10 @@ for (const invalid of [
   changed(3, 0.49),
   changed(4, 'unknown'),
   changed(5, 0.49),
-  changed(6, 'unknown'),
+  changed(6, 'high'),
   changed(7, 'major'),
   changed(7, 'unknown'),
   changed(8, 0.49),
-  changed(9, 'review'),
   changed(10, ''),
   changed(10, 250_000_001),
   changed(11, [{spotify_id: 'artist-spotify', soundcharts_uuid: '', name: 'Solo Artist'}]),

@@ -10,6 +10,8 @@ on:
       - 'Spotify_Performance_tracks/**'
       - 'spotify-catalogue-baseline.csv'
       - 'spotify-catalogue-baseline.json'
+      - 'spotify-catalogue-exclusions.json'
+      - 'spotify-protected-review-cohorts.json'
       - 'build_spotify_browse_catalogue.py'
       - 'spotify/dashboard.js'
       - 'tests/test_build_spotify_browse_catalogue.py'
@@ -93,6 +95,8 @@ jobs:
             --strict-rebased
             --trusted-catalogue spotify-catalogue-baseline.csv
             --trusted-artist-seeds spotify-catalogue-baseline.json
+            --exclusions spotify-catalogue-exclusions.json
+            --protected-review-cohorts spotify-protected-review-cohorts.json
           )
           python build_spotify_browse_catalogue.py "${args[@]}"
 

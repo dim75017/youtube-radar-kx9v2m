@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "updated_at": "2026-08-06",
+  "cohorts": [
+    {
+      "id": "dark_ambient_20260724",
+      "label": "Dark Ambient — scan Soundcharts du 24 juillet 2026",
+      "source_snapshot": "Spotify_Soundcharts_data_20260724T180455Z.js",
+      "primary_genre": "dark_ambient",
+      "minimum_lifetime_streams": 100000,
+      "expected_track_count": 1286,
+      "review_state": "instrumental_evidence_required",
+      "allow_automatic_active_promotion": false,
+      "contactable": false
+    }
+  ]
+}
