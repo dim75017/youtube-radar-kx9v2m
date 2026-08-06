@@ -141,9 +141,11 @@ class PrunePagesArtifactTests(unittest.TestCase):
 
     def test_workflow_prunes_after_build_and_before_upload(self):
         build = DEPLOY.index("actions/jekyll-build-pages@v1")
+        ownership = DEPLOY.index('sudo chown -R "$(id -u):$(id -g)" ./_site')
         prune = DEPLOY.index("python prune_pages_artifact.py --site-dir ./_site")
         upload = DEPLOY.index("actions/upload-pages-artifact@v4")
-        self.assertLess(build, prune)
+        self.assertLess(build, ownership)
+        self.assertLess(ownership, prune)
         self.assertLess(prune, upload)
 
 

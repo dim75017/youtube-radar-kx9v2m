@@ -72,7 +72,12 @@ jobs:
 
       - name: Prune historical and private Pages payloads
         shell: bash
-        run: python prune_pages_artifact.py --site-dir ./_site
+        run: |
+          # jekyll-build-pages runs in a container and leaves _site owned by
+          # root. Restore ownership to the runner before the fail-closed
+          # pruning step removes historical payloads.
+          sudo chown -R "$(id -u):$(id -g)" ./_site
+          python prune_pages_artifact.py --site-dir ./_site
 
       - name: Upload exact Pages artifact
         uses: actions/upload-pages-artifact@v4
