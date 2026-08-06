@@ -48,6 +48,15 @@ class PagesDeployWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("Fail after bounded Pages recovery", DEPLOY)
         self.assertIn("exit 1", DEPLOY)
 
+    def test_deploy_cancels_only_a_verified_orphan_before_publishing(self):
+        self.assertIn("Cancel an orphaned Pages deployment", DEPLOY)
+        self.assertIn("cancel_stale_pages_deployments.py", DEPLOY)
+        self.assertIn('GITHUB_TOKEN: ${{ github.token }}', DEPLOY)
+        self.assertLess(
+            DEPLOY.index("Cancel an orphaned Pages deployment"),
+            DEPLOY.index("uses: actions/deploy-pages@v5"),
+        )
+
     def test_successful_deployment_supplies_the_environment_page_url(self):
         self.assertIn("url: ${{ steps.deployment.outputs.page_url }}", DEPLOY)
         self.assertIn("id: deployment", DEPLOY)
