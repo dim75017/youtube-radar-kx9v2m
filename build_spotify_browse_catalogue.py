@@ -60,6 +60,10 @@ TRUSTED_CATALOGUE_SOURCE_TIER = "trusted_internal_catalogue"
 TRUSTED_CATALOGUE_AVAILABILITY = "catalogue_trusted"
 PROMOTED_FAL_SOURCE_TIER = "soundcharts_fal_promoted"
 MANUAL_ARCHIVE_STORAGE_KEY = "spotify_catalogue_archives_v1"
+LOW_AI_RISKS = frozenset({"low", "faible"})
+REVIEW_AI_RISKS = frozenset(
+    {"", "unknown", "a verifier", "à vérifier", "a classifier", "à classifier", "pending", "review"}
+)
 
 
 # These are the accepted provenance paths for the staged rebaseline.  Source
@@ -537,6 +541,9 @@ def _availability_rank(value: Any) -> int:
 def merge_catalogues(catalogues: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     normalised = [_normalise_catalogue(catalogue) for catalogue in catalogues]
     track_schema = _schema_union(catalogues, "track_schema")
+    for field in ("ai_review_required", "opportunity_eligible"):
+        if field not in track_schema:
+            track_schema.append(field)
     artist_schema = _schema_union(catalogues, "artist_schema")
     playlist_schema = _schema_union(catalogues, "playlist_schema")
 
@@ -676,7 +683,12 @@ def _strict_rebaseline_reason(
         return "genre_confidence_low"
     if (_finite_number(row.get("instrumental_confidence")) or 0) < MIN_STRICT_CONFIDENCE:
         return "instrumental_confidence_low"
-    if str(row.get("ai_risk") or "") != "low":
+    ai_risk = str(row.get("ai_risk") or "").strip().casefold()
+    # All Tracks is a research catalogue, not the actionable A&R queue.
+    # Unknown AI evidence stays visibly “à vérifier” once instrumental/no-
+    # lyrics, genre, rights and identities are proven. Explicit high risk still
+    # blocks. Opportunities continue to require independently proven low risk.
+    if ai_risk not in LOW_AI_RISKS | REVIEW_AI_RISKS:
         return "ai_risk_not_low"
     if str(row.get("rights_status") or "") not in STRICT_RIGHTS:
         return "rights_unconfirmed"
@@ -743,6 +755,12 @@ def strict_rebase_catalogue(
             continue
         clean = dict(row)
         clean["artists"] = _clean_nested_artists(clean.get("artists"))
+        ai_risk = str(clean.get("ai_risk") or "").strip().casefold()
+        clean["ai_review_required"] = ai_risk not in LOW_AI_RISKS
+        clean["opportunity_eligible"] = (
+            ai_risk in LOW_AI_RISKS
+            and str(clean.get("source_tier") or "") != TRUSTED_CATALOGUE_SOURCE_TIER
+        )
         accepted_tracks.append(clean)
         for artist in clean["artists"]:
             active_artist_keys.add(_row_key(artist, ARTIST_KEY_FIELDS))

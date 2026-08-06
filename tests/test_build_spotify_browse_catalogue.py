@@ -490,7 +490,7 @@ class BrowseCatalogueTests(unittest.TestCase):
             "instrumental": ({**valid, "instrumental_status": "unknown"}, "instrumental_unconfirmed"),
             "genre_confidence": ({**valid, "genre_confidence": None}, "genre_confidence_low"),
             "instrumental_confidence": ({**valid, "instrumental_confidence": None}, "instrumental_confidence_low"),
-            "ai": ({**valid, "ai_risk": "unknown"}, "ai_risk_not_low"),
+            "ai_high": ({**valid, "ai_risk": "high"}, "ai_risk_not_low"),
             "rights": ({**valid, "rights_status": "catalogue_trusted"}, "rights_unconfirmed"),
             "rights_confidence": ({**valid, "rights_confidence": None}, "rights_confidence_low"),
             "track_identity": ({**valid, "soundcharts_uuid": ""}, "track_identity_incomplete"),
@@ -503,6 +503,9 @@ class BrowseCatalogueTests(unittest.TestCase):
                     subject._strict_rebaseline_reason(row),
                     expected_reason,
                 )
+        self.assertIsNone(
+            subject._strict_rebaseline_reason({**valid, "ai_risk": "unknown"})
+        )
 
     def test_promoted_fal_source_still_passes_every_strict_evidence_gate(self):
         promoted = transition_track(
@@ -515,6 +518,9 @@ class BrowseCatalogueTests(unittest.TestCase):
                 {**promoted, "instrumental_status": "unknown"}
             ),
             "instrumental_unconfirmed",
+        )
+        self.assertIsNone(
+            subject._strict_rebaseline_reason({**promoted, "ai_risk": "unknown"})
         )
 
     def test_daily_transition_counts_and_preserves_every_protected_cohort(self):
