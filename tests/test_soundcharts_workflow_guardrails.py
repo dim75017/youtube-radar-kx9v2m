@@ -79,7 +79,7 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("Spotify_Performance_tracks", self.workflow)
 
     def test_complete_sync_runs_daily_without_cancelling_a_live_run(self):
-        self.assertIn("- cron: '17 4 * * *'", self.workflow)
+        self.assertIn("- cron: '17 10 * * *'", self.workflow)
         self.assertNotIn("2-57/5", self.workflow)
         self.assertIn("cancel-in-progress: false", self.workflow)
 

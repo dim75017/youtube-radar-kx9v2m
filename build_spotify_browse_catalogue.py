@@ -10,10 +10,10 @@ The Spotify Radar has two intentionally different data contracts:
   sourced exclusively from the sanitized ``window.SPOTIFY_SOUNDCHARTS`` export.
 
 This script materializes the first contract into a separate public file.  It
-also supports an explicit ``--strict-rebased`` migration mode. That mode keeps
-the trusted internal catalogue as its own visible source, while Soundcharts
-discoveries must pass the strict editorial/instrumental gates. Historical rows
-remain preserved in ``Spotify_Radar_data.js`` and Git history as archive.
+also supports an explicit ``--strict-rebased`` migration mode. In that mode,
+every source, including the trusted internal catalogue, must pass the same
+genre, instrumental, AI, rights, identity and stream-evidence gates. Historical
+rows remain preserved in ``Spotify_Radar_data.js`` and Git history as archive.
 """
 
 from __future__ import annotations
@@ -52,10 +52,16 @@ FORBIDDEN_SCHEMA_FIELDS = {
     "phone_number",
 }
 
-# These are the accepted Soundcharts paths for the staged rebaseline.  A
-# publisher profile may be added only after its playlists have been reviewed
-# and declared in the collector configuration.
+TRUSTED_CATALOGUE_SOURCE_TIER = "trusted_internal_catalogue"
+TRUSTED_CATALOGUE_AVAILABILITY = "catalogue_trusted"
+
+
+# These are the accepted provenance paths for the staged rebaseline.  Source
+# provenance is necessary but never sufficient: every row still passes all of
+# the strict evidence gates below. A publisher profile may be added only after
+# its playlists have been reviewed and declared in the collector configuration.
 STRICT_SOURCE_TIERS = {
+    TRUSTED_CATALOGUE_SOURCE_TIER,
     "editorial_playlist",
     # These are playlist-discovery sources. They remain subject to every
     # strict genre, instrumental, AI, rights and identity gate below.
@@ -65,6 +71,7 @@ STRICT_SOURCE_TIERS = {
 }
 STRICT_GENRES = {
     "lofi_hip_hop",
+    "guitar",
     "piano",
     "acoustic",
     "fingerstyle",
@@ -77,7 +84,9 @@ STRICT_GENRES = {
     "halloween_lofi",
     "christmas_lofi",
     "instrumental_phonk",
+    "phonk_instrumental",
     "instrumental_dnb",
+    "dnb_instrumental",
 }
 STRICT_RIGHTS = {"self_released", "independent_label"}
 MIN_STRICT_CONFIDENCE = 0.5
@@ -87,10 +96,6 @@ COMPOSITE_CREDIT = re.compile(r"(?:\s(?:&|feat\.?|featuring|ft\.?|x|×)\s|,)", r
 
 class BrowseCatalogueError(RuntimeError):
     """Raised when a usable broad catalogue cannot be produced safely."""
-
-
-TRUSTED_CATALOGUE_SOURCE_TIER = "trusted_internal_catalogue"
-TRUSTED_CATALOGUE_AVAILABILITY = "catalogue_trusted"
 
 
 def _read_payload(path: Path, prefix: str) -> dict[str, Any]:
@@ -207,8 +212,9 @@ def _spotify_id_from_url(value: Any) -> str:
 def _trusted_catalogue_from_csv(path: Path, artist_seeds_path: Path | None) -> dict[str, Any]:
     """Read the internal catalogue without importing contacts or credentials.
 
-    The source is trusted for broad browse views only. It is never an A&R,
-    contact or automatic-expansion eligibility signal.
+    This is legacy source material, not positive evidence. Its rows remain
+    ineligible for public browse, A&R, contact and automatic expansion until
+    every strict evidence field has been populated and validated.
     """
     artist_ids: dict[str, str] = {}
     if artist_seeds_path and artist_seeds_path.exists():
@@ -628,8 +634,6 @@ def _strict_rebaseline_reason(
         return "streams_missing"
     if streams < max(0, minimum_streams):
         return "streams_below_minimum"
-    if str(row.get("source_tier") or "") == TRUSTED_CATALOGUE_SOURCE_TIER:
-        return None
     if str(row.get("source_tier") or "") not in STRICT_SOURCE_TIERS:
         return "unapproved_source"
     if str(row.get("primary_genre") or "") not in STRICT_GENRES:
@@ -779,7 +783,7 @@ def build_payload(
         "generated_at": str(newest_payload.get("generated_at") or merged.get("generated_at") or ""),
         "source_snapshot": newest_path.name,
         "policy": {
-            "browsing": "trusted_internal_catalogue_plus_strict_soundcharts" if strict_rebased else "full",
+            "browsing": "strict_instrumental_rebased" if strict_rebased else "full",
             "ar": "strict",
             "contacts": "strict_only",
             "unverified_records_contactable": False,

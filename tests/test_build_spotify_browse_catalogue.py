@@ -211,9 +211,116 @@ class BrowseCatalogueTests(unittest.TestCase):
         result = subject.build_payload(
             [(subject.Path("snapshot.js"), payload)], None, minimum_tracks=1, strict_rebased=True
         )
-        self.assertEqual(result["policy"]["browsing"], "trusted_internal_catalogue_plus_strict_soundcharts")
+        self.assertEqual(result["policy"]["browsing"], "strict_instrumental_rebased")
         self.assertEqual(result["policy"]["archive"], "Spotify_Radar_data.js")
         self.assertEqual(result["active_legacy_spotify_ids"], ["spotify-a", "spotify-independent"])
+
+    def test_trusted_catalogue_unknown_and_vocal_rows_are_quarantined(self):
+        artist = {
+            "soundcharts_uuid": "artist-trusted",
+            "spotify_id": "spotify-artist-trusted",
+            "name": "Trusted Artist",
+        }
+        evidenced = {
+            "soundcharts_uuid": "track-trusted-valid",
+            "spotify_id": "spotify-trusted-valid",
+            "title": "Verified instrumental",
+            "credit_name": "Trusted Artist",
+            "artists": [artist],
+            "primary_genre": "ambient",
+            "genre_confidence": 0.9,
+            "instrumental_status": "instrumental",
+            "instrumental_confidence": 0.9,
+            "ai_risk": "low",
+            "rights_status": "self_released",
+            "rights_confidence": 0.9,
+            "source_tier": subject.TRUSTED_CATALOGUE_SOURCE_TIER,
+            "streams": 100_000,
+        }
+        unknown = {
+            **evidenced,
+            "soundcharts_uuid": "track-trusted-unknown",
+            "spotify_id": "spotify-trusted-unknown",
+            "title": "Unknown evidence",
+            "instrumental_status": "unknown",
+        }
+        vocal = {
+            **evidenced,
+            "soundcharts_uuid": "track-trusted-vocal",
+            "spotify_id": "spotify-trusted-vocal",
+            "title": "Known vocal",
+            "instrumental_status": "vocal",
+        }
+        strict_schema = list(evidenced)
+        artist_schema = list(artist)
+        source_catalogue = {
+            "version": 1,
+            "generated_at": "2026-08-06T10:00:00Z",
+            "track_schema": strict_schema,
+            "artist_schema": artist_schema,
+            "playlist_schema": [],
+            "tracks": [
+                [row.get(name) for name in strict_schema]
+                for row in [evidenced, unknown, vocal]
+            ],
+            "artists": [[artist.get(name) for name in artist_schema]],
+        }
+
+        strict, reasons, active_ids = subject.strict_rebase_catalogue([source_catalogue])
+        records = [
+            subject._record(row, strict["track_schema"])
+            for row in strict["tracks"]
+        ]
+
+        self.assertEqual([row["spotify_id"] for row in records], ["spotify-trusted-valid"])
+        self.assertEqual(active_ids, ["spotify-trusted-valid"])
+        self.assertEqual(reasons["instrumental_unconfirmed"], 2)
+
+    def test_trusted_catalogue_cannot_bypass_any_strict_evidence_gate(self):
+        valid = {
+            "soundcharts_uuid": "track-trusted",
+            "spotify_id": "spotify-trusted",
+            "title": "Trusted track",
+            "credit_name": "Trusted Artist",
+            "artists": [{
+                "soundcharts_uuid": "artist-trusted",
+                "spotify_id": "spotify-artist-trusted",
+                "name": "Trusted Artist",
+            }],
+            "primary_genre": "ambient",
+            "genre_confidence": 0.9,
+            "instrumental_status": "instrumental",
+            "instrumental_confidence": 0.9,
+            "ai_risk": "low",
+            "rights_status": "self_released",
+            "rights_confidence": 0.9,
+            "source_tier": subject.TRUSTED_CATALOGUE_SOURCE_TIER,
+            "streams": 100_000,
+        }
+        self.assertIsNone(subject._strict_rebaseline_reason(valid))
+        for genre in ("guitar", "instrumental_phonk", "phonk_instrumental", "instrumental_dnb", "dnb_instrumental"):
+            with self.subTest(allowed_genre=genre):
+                self.assertIsNone(subject._strict_rebaseline_reason({**valid, "primary_genre": genre}))
+
+        rejected = {
+            "source": ({**valid, "source_tier": "legacy_import"}, "unapproved_source"),
+            "genre": ({**valid, "primary_genre": "trusted_catalogue"}, "genre_out_of_scope"),
+            "instrumental": ({**valid, "instrumental_status": "unknown"}, "instrumental_unconfirmed"),
+            "genre_confidence": ({**valid, "genre_confidence": None}, "genre_confidence_low"),
+            "instrumental_confidence": ({**valid, "instrumental_confidence": None}, "instrumental_confidence_low"),
+            "ai": ({**valid, "ai_risk": "unknown"}, "ai_risk_not_low"),
+            "rights": ({**valid, "rights_status": "catalogue_trusted"}, "rights_unconfirmed"),
+            "rights_confidence": ({**valid, "rights_confidence": None}, "rights_confidence_low"),
+            "track_identity": ({**valid, "soundcharts_uuid": ""}, "track_identity_incomplete"),
+            "artist_identity": ({**valid, "artists": [{"name": "Trusted Artist"}]}, "artist_identity_incomplete"),
+            "streams": ({**valid, "streams": 99_999}, "streams_below_minimum"),
+        }
+        for gate, (row, expected_reason) in rejected.items():
+            with self.subTest(gate=gate):
+                self.assertEqual(
+                    subject._strict_rebaseline_reason(row),
+                    expected_reason,
+                )
 
 
     def test_performance_crossing_reactivates_only_source_backed_candidate(self):
