@@ -676,6 +676,19 @@ function discoveryHasQuarantinedArtist(row,schema,artistRecord=false){
   });
   return names.filter(Boolean).some(name=>isGeneralArtistQuarantined(name,true));
 }
+const PUBLIC_DISCOVERY_AI_LOW=new Set(['low','faible']);
+const PUBLIC_DISCOVERY_AI_REVIEW=new Set([
+  '','unknown','a verifier','à vérifier','a classifier','à classifier','pending','review'
+]);
+function publicDiscoveryAiEligible(source,aiRisk){
+  const ai=String(aiRisk||'').trim().toLowerCase();
+  if(PUBLIC_DISCOVERY_AI_LOW.has(ai)) return true;
+  const reviewRequired=source&&(
+    source.ai_review_required===true
+      ||String(source.ai_review_required||'').trim().toLowerCase()==='true'
+  );
+  return reviewRequired&&PUBLIC_DISCOVERY_AI_REVIEW.has(ai);
+}
 function publicDiscoveryTrackEligible(source){
   if(!source||typeof source!=='object') return false;
   const spotifyId=String(source.spotify_id||'').trim();
@@ -700,7 +713,7 @@ function publicDiscoveryTrackEligible(source){
     &&genreConfidence!=null&&genreConfidence>=0.5
     &&instrumental==='instrumental'
     &&instrumentalConfidence!=null&&instrumentalConfidence>=0.5
-    &&['low','faible','unknown','to_verify','a_verifier'].includes(ai||'unknown')
+    &&publicDiscoveryAiEligible(source,ai)
     &&['self_released','independent_label','indie'].includes(rights)
     &&rightsConfidence!=null&&rightsConfidence>=0.5
     &&streams!=null&&streams>=MIN_TRACK_LIFETIME_STREAMS
@@ -2156,6 +2169,7 @@ function renderArtistModal(){
   const flows = aggregateDailyFlow(allRows);
   const audience = artistAudience(g);
   const entry = artistPerfEntry(g);
+  const classification = artistClassification(g);
   const selfPct = g.n ? Math.round(g.self/g.n*100) : 0;
   const selM = acquisitionRows.filter(r=>S.sel.has(r[6])).reduce((s,r)=>s+Math.max(perMonth(r),0),0);
   const selN = acquisitionRows.filter(r=>S.sel.has(r[6])).length;
@@ -2177,6 +2191,7 @@ function renderArtistModal(){
       <div class="tg"><div class="l">≥ 500k</div><div class="v">${fmtFull(g.hot)}</div></div>
       <div class="tg"><div class="l">${T('Dernière sortie')}</div><div class="v" style="font-size:13px">${fmtDate(g.last)}</div></div>
       <div class="tg"><div class="l">${T('Signal performance')}</div><div class="v" style="font-size:13px">${performanceSignal(perf,entry)}</div></div>
+      <div class="tg"><div class="l">Risque IA</div><div class="v" style="font-size:13px">${aiRiskBadgeHtml(classification)}</div></div>
     </div>
     <div class="toolbar" style="justify-content:flex-end;margin:0 0 10px">${metricModeToggleHtml()}</div>
     ${perfGridHtml(perf,'Streams',g.streams,true)}
@@ -2618,6 +2633,7 @@ function trackEditorialEvidenceHtml(track){
 function openTrack(tid){
   const r = R.find(x=>x[6]===tid); if(!r) return;
   const g = AG[r[0]];
+  const classification = trackClassification(r);
   const perf = {1:trackWindow(r,1),7:trackWindow(r,7),30:trackWindow(r,30)};
   const entry = trackPerfEntry(r);
   const label = entry.label || (r[4]===1 ? r[5] : null);
@@ -2638,6 +2654,7 @@ function openTrack(tid){
       <div class="tg"><div class="l">${T('Sortie')}</div><div class="v">${fmtDate(r[2])}</div></div>
       <div class="tg"><div class="l">${T('Label')}</div><div class="v" style="font-size:12px;line-height:1.4">${label?esc(label):'—'}</div></div>
       <div class="tg"><div class="l">© / ℗</div><div class="v" style="font-size:12px;line-height:1.4">${r[5]?esc(r[5]):'—'}</div></div>
+      <div class="tg"><div class="l">Risque IA</div><div class="v" style="font-size:13px">${aiRiskBadgeHtml(classification)}</div></div>
     </div>
     <div class="toolbar" style="justify-content:flex-end;margin:0 0 10px">${metricModeToggleHtml()}</div>
     ${perfGridHtml(perf,'Streams',r[3]>=0?r[3]:null,true)}

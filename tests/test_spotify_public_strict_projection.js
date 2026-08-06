@@ -13,6 +13,7 @@ const trackSchema = [
   'spotify_id', 'soundcharts_uuid', 'title', 'credit_name', 'artists', 'streams',
   'primary_genre', 'genre_confidence', 'instrumental_status', 'instrumental_confidence',
   'ai_risk', 'rights_status', 'rights_confidence', 'expansion_status',
+  'ai_review_required', 'opportunity_eligible',
 ];
 const artistSchema = ['name', 'spotify_id', 'soundcharts_uuid'];
 const artist = (suffix, complete = true) => ({
@@ -32,6 +33,8 @@ const track = (id, overrides = {}) => ({
   instrumental_status: 'instrumental',
   instrumental_confidence: 0.9,
   ai_risk: 'low',
+  ai_review_required: false,
+  opportunity_eligible: true,
   rights_status: 'self_released',
   rights_confidence: 0.9,
   expansion_status: 'eligible',
@@ -43,7 +46,28 @@ const safe = track('safe');
 const duplicate = track('safe', {title: 'Duplicate safe row'});
 const vocal = track('vocal', {instrumental_status: 'vocal'});
 const unknown = track('unknown', {instrumental_status: 'unknown'});
-const aiUnknown = track('ai-unknown', {ai_risk: 'unknown'});
+const aiUnknown = track('ai-unknown', {
+  ai_risk: 'unknown',
+  ai_review_required: true,
+  opportunity_eligible: false,
+});
+const aiUnknownUnmarked = track('ai-unknown-unmarked', {
+  ai_risk: 'unknown',
+  ai_review_required: false,
+  opportunity_eligible: false,
+});
+const aiReview = track('ai-review', {
+  ai_risk: 'à vérifier',
+  ai_review_required: true,
+  opportunity_eligible: false,
+  expansion_status: 'review',
+});
+const aiHigh = track('ai-high', {
+  ai_risk: 'high',
+  ai_review_required: true,
+  opportunity_eligible: false,
+});
+const reviewExpansionLow = track('review-expansion-low', {expansion_status: 'review'});
 const major = track('major', {rights_status: 'major'});
 const rightsUnknown = track('rights-unknown', {rights_confidence: null});
 const incomplete = track('incomplete', {artists: [artist('incomplete', false)]});
@@ -69,9 +93,13 @@ const browse = {
     track_schema: trackSchema,
     artist_schema: artistSchema,
     playlist_schema: [],
-    tracks: [safe, duplicate, vocal, unknown, aiUnknown, major, rightsUnknown, incomplete, trusted, trustedExact, trustedBelow, highStreams, phonkAlias, dnbAlias].map(row => compact(row, trackSchema)),
+    tracks: [safe, duplicate, vocal, unknown, aiUnknown, aiUnknownUnmarked, aiReview, aiHigh,
+      reviewExpansionLow, major, rightsUnknown, incomplete, trusted, trustedExact, trustedBelow,
+      highStreams, phonkAlias, dnbAlias].map(row => compact(row, trackSchema)),
     artists: [
-      artist('safe'), artist('vocal'), artist('unknown'), artist('ai-unknown'), artist('incomplete'),
+      artist('safe'), artist('vocal'), artist('unknown'), artist('ai-unknown'),
+      artist('ai-unknown-unmarked'), artist('ai-review'), artist('ai-high'),
+      artist('review-expansion-low'), artist('incomplete'),
       {name: 'Powfu', spotify_id: 'artist-spotify-trusted', soundcharts_uuid: ''},
       artist('high-streams'), artist('phonk-alias'), artist('dnb-alias'),
     ].map(row => compact(row, artistSchema)),
@@ -98,7 +126,8 @@ vm.runInNewContext(
 
 assert.deepEqual(
   Array.from(context.strictTracks, row => row.spotify_id),
-  ['safe', 'ai-unknown', 'trusted', 'trusted-exact', 'high-streams', 'phonk-alias', 'dnb-alias'],
+  ['safe', 'ai-unknown', 'ai-review', 'review-expansion-low', 'trusted', 'trusted-exact',
+    'high-streams', 'phonk-alias', 'dnb-alias'],
   'only an exact spreadsheet ID may bypass external instrumental evidence gates',
 );
 assert.equal(context.strictTracks[0].title, 'Track safe',
@@ -107,7 +136,9 @@ assert.equal(context.strictTracks.some(row => row.spotify_id === 'high-streams')
   'the public gate must not impose an upper lifetime-stream ceiling');
 assert.deepEqual(
   Array.from(context.strictArtists, row => row.spotify_id),
-  ['artist-spotify-safe', 'artist-spotify-ai-unknown', 'artist-spotify-trusted', 'artist-spotify-high-streams', 'artist-spotify-phonk-alias', 'artist-spotify-dnb-alias'],
+  ['artist-spotify-safe', 'artist-spotify-ai-unknown', 'artist-spotify-ai-review',
+    'artist-spotify-review-expansion-low', 'artist-spotify-trusted',
+    'artist-spotify-high-streams', 'artist-spotify-phonk-alias', 'artist-spotify-dnb-alias'],
   'public artists must come from accepted strict tracks or the exact internal cohort',
 );
 assert.deepEqual(
@@ -117,6 +148,52 @@ assert.deepEqual(
 );
 assert.equal(context.strictTracks.some(row => row.spotify_id === 'trusted-below'), false,
   'the internal inventory lane must still enforce the inclusive 100k stream floor');
+assert.equal(context.strictTracks.some(row => row.spotify_id === 'ai-unknown-unmarked'), false,
+  'an old or unmarked unknown-AI row must not bypass the canonical review marker');
+assert.equal(context.strictTracks.some(row => row.spotify_id === 'ai-high'), false,
+  'explicit high AI risk must stay outside All Tracks and All Artists');
+
+const classificationStart = dashboard.indexOf('function classificationFromEntry');
+const classificationEnd = dashboard.indexOf('function trackClassification', classificationStart);
+assert.ok(classificationStart >= 0 && classificationEnd > classificationStart,
+  'the public classification formatter must remain independently testable');
+const classificationContext = {
+  NON_MUSICAL_GENRE_MARKERS: new Set(),
+  UNCLASSIFIED_GENRE: 'À classifier',
+};
+vm.runInNewContext(
+  `${dashboard.slice(classificationStart, classificationEnd)};
+   this.classificationFromEntry=classificationFromEntry;`,
+  classificationContext,
+);
+assert.equal(classificationContext.classificationFromEntry({ai_risk: 'unknown'}).aiRisk, 'à vérifier',
+  'canonical AI-review entries must be labelled « À vérifier » in Analytics profiles');
+
+const arEligibleStart = dashboard.indexOf('function arHasCompleteStructuredArtists');
+const arEligibleEnd = dashboard.indexOf('function arOpportunityRows', arEligibleStart);
+assert.ok(arEligibleStart >= 0 && arEligibleEnd > arEligibleStart,
+  'the opportunity evidence gate must remain independently testable');
+const arContext = {SC_ALLOWED_GENRES: new Set(['ambient'])};
+vm.runInNewContext(
+  `${dashboard.slice(arEligibleStart, arEligibleEnd)};
+   this.arContactEligible=arContactEligible;`,
+  arContext,
+);
+const opportunity = {
+  status: 'verified',
+  genre: 'ambient',
+  genreConfidence: 0.9,
+  instrumental: 'instrumental',
+  instrumentalConfidence: 0.9,
+  rights: 'self_released',
+  artists: [artist('opportunity')],
+};
+assert.equal(arContext.arContactEligible({...opportunity, aiRisk: 'low'}), true,
+  'a fully evidenced low-AI opportunity remains eligible');
+assert.equal(arContext.arContactEligible({...opportunity, aiRisk: 'unknown'}), false,
+  'AI-review inventory must never leak into Opportunities');
+assert.equal(arContext.arContactEligible({...opportunity, aiRisk: 'high'}), false,
+  'high-AI rows must never become Opportunities');
 
 assert.doesNotMatch(
   dashboard.slice(dashboard.indexOf('const DISCOVERY_CATALOGUE'), dashboard.indexOf('const RAW_DISCOVERY_TRACKS')),
