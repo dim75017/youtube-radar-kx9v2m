@@ -77,7 +77,8 @@ const browse = {
     ].map(row => compact(row, artistSchema)),
   },
 };
-const publicRows = [safe, vocal, unknown, trusted, trustedExact, trustedBelow].map(row => [0, row.title, '', row.streams, 0, '', row.spotify_id]);
+const publicRows = [safe, {...safe, title: 'Duplicate legacy safe'}, vocal, unknown, trusted, trustedExact, trustedBelow]
+  .map(row => [0, row.title, '', row.streams, 0, '', row.spotify_id]);
 const context = {
   BROWSE: browse,
   R: publicRows,
@@ -112,7 +113,7 @@ assert.deepEqual(
 assert.deepEqual(
   Array.from(context.retainedRows, row => row[6]),
   ['safe', 'trusted', 'trusted-exact'],
-  'legacy public rows must survive only when accepted by the strict or internal projection',
+  'legacy public rows must survive once per Spotify ID when accepted by the strict or internal projection',
 );
 assert.equal(context.strictTracks.some(row => row.spotify_id === 'trusted-below'), false,
   'the internal inventory lane must still enforce the inclusive 100k stream floor');
