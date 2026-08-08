@@ -94,6 +94,31 @@ class CancelStalePagesDeploymentsTests(unittest.TestCase):
             )
         self.assertTrue(all(call.args[0].get_method() == "GET" for call in opener.call_args_list))
 
+    def test_empty_environment_stub_is_skipped_before_active_pages_deployment(self):
+        responses = [
+            Response(200, payload([{"sha": SHA_DONE}, {"sha": SHA_ACTIVE}])),
+            Response(200, payload({"status": ""})),
+            Response(200, payload({"status": "queued"})),
+            Response(204),
+            Response(200, payload({"status": "deployment_cancelled"})),
+        ]
+        opener = mock.Mock(side_effect=responses)
+
+        result = module.cancel_stale_pages_deployment(
+            repository="dim75017/youtube-radar-kx9v2m",
+            token="token",
+            opener=opener,
+            sleep=mock.Mock(),
+        )
+
+        self.assertEqual(result, SHA_ACTIVE)
+        posted = [
+            call.args[0].full_url
+            for call in opener.call_args_list
+            if call.args[0].get_method() == "POST"
+        ]
+        self.assertEqual(posted, [f"https://api.github.com/repos/dim75017/youtube-radar-kx9v2m/pages/deployments/{SHA_ACTIVE}/cancel"])
+
     def test_current_run_deployment_is_excluded_before_inspecting_orphans(self):
         responses = [
             Response(

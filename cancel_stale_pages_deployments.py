@@ -36,6 +36,7 @@ TERMINAL_STATUSES = {
     "succeed",
     "success",
 }
+NON_PAGES_STATUSES = {""}
 
 
 def _validated(value: str, pattern: re.Pattern[str], label: str) -> str:
@@ -147,6 +148,11 @@ def cancel_stale_pages_deployment(
             )
         payload = _decode_json(deployment_body, f"Pages deployment {sha}")
         state = str(payload.get("status", "")).strip().lower()
+        # GitHub also exposes environment-deployment stubs through this Pages
+        # endpoint. They have an empty status and are not cancellable Pages
+        # deployments, so they must not block inspection of older commits.
+        if state in NON_PAGES_STATUSES:
+            continue
         if state in TERMINAL_STATUSES:
             continue
         if state not in ACTIVE_STATUSES:
