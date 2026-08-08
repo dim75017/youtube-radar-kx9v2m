@@ -9,6 +9,7 @@ import cancel_stale_pages_deployments as module
 
 SHA_ACTIVE = "1" * 40
 SHA_DONE = "2" * 40
+SHA_CURRENT = "3" * 40
 
 
 class Response:
@@ -93,12 +94,49 @@ class CancelStalePagesDeploymentsTests(unittest.TestCase):
             )
         self.assertTrue(all(call.args[0].get_method() == "GET" for call in opener.call_args_list))
 
+    def test_current_run_deployment_is_excluded_before_inspecting_orphans(self):
+        responses = [
+            Response(
+                200,
+                payload(
+                    [
+                        {"sha": SHA_CURRENT},
+                        {"sha": SHA_DONE},
+                        {"sha": SHA_ACTIVE},
+                    ]
+                ),
+            ),
+            Response(200, payload({"status": "succeed"})),
+            Response(200, payload({"status": "in_progress"})),
+            Response(204),
+            Response(200, payload({"status": "deployment_cancelled"})),
+        ]
+        opener = mock.Mock(side_effect=responses)
+
+        result = module.cancel_stale_pages_deployment(
+            repository="dim75017/youtube-radar-kx9v2m",
+            token="token",
+            exclude_sha=SHA_CURRENT,
+            opener=opener,
+            sleep=mock.Mock(),
+        )
+
+        self.assertEqual(result, SHA_ACTIVE)
+        inspected_urls = [call.args[0].full_url for call in opener.call_args_list]
+        self.assertFalse(any(SHA_CURRENT in url for url in inspected_urls))
+
     def test_invalid_repository_and_missing_token_are_rejected(self):
         with self.assertRaises(ValueError):
             module.cancel_stale_pages_deployment(repository="../bad", token="token")
         with self.assertRaises(ValueError):
             module.cancel_stale_pages_deployment(
                 repository="dim75017/youtube-radar-kx9v2m", token=""
+            )
+        with self.assertRaises(ValueError):
+            module.cancel_stale_pages_deployment(
+                repository="dim75017/youtube-radar-kx9v2m",
+                token="token",
+                exclude_sha="not-a-sha",
             )
 
 

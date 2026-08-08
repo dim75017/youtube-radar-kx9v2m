@@ -109,11 +109,13 @@ jobs:
       - name: Cancel an orphaned Pages deployment
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          CURRENT_RUN_SHA: ${{ github.sha }}
         shell: bash
         run: |
           python cancel_stale_pages_deployments.py \
             --repository "$GITHUB_REPOSITORY" \
-            --ref main
+            --ref main \
+            --exclude-sha "$CURRENT_RUN_SHA"
 
       # deploy-pages caps one polling attempt at 600,000 ms. A deployment that
       # reaches that cap is cancelled server-side, and retrying the same SHA is

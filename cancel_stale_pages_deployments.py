@@ -83,6 +83,7 @@ def cancel_stale_pages_deployment(
     repository: str,
     token: str,
     ref: str = "main",
+    exclude_sha: str | None = None,
     lookback: int = 24,
     poll_attempts: int = 12,
     opener=urllib.request.urlopen,
@@ -97,6 +98,8 @@ def cancel_stale_pages_deployment(
 
     repository = _validated(repository, REPOSITORY_RE, "repository")
     ref = _validated(ref, REF_RE, "ref")
+    if exclude_sha is not None:
+        exclude_sha = _validated(exclude_sha, SHA_RE, "excluded SHA")
     if not token:
         raise ValueError("missing GITHUB_TOKEN/GH_TOKEN")
     if lookback < 1 or lookback > 100:
@@ -121,6 +124,11 @@ def cancel_stale_pages_deployment(
         sha = item.get("sha") if isinstance(item, dict) else None
         if not isinstance(sha, str) or not SHA_RE.fullmatch(sha):
             raise RuntimeError("invalid commit SHA in GitHub commit list")
+        # A job with the github-pages environment creates its own deployment
+        # record before this preflight runs. Its status can be temporarily
+        # empty; it is the deployment we are about to execute, not an orphan.
+        if sha == exclude_sha:
+            continue
         deployment_url = (
             f"https://api.github.com/repos/{repository}/pages/deployments/{sha}"
         )
@@ -194,6 +202,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repository", required=True)
     parser.add_argument("--ref", default="main")
+    parser.add_argument("--exclude-sha")
     parser.add_argument("--lookback", type=int, default=24)
     parser.add_argument("--poll-attempts", type=int, default=12)
     return parser.parse_args(argv)
@@ -207,6 +216,7 @@ def main(argv: list[str] | None = None) -> int:
             repository=args.repository,
             token=token,
             ref=args.ref,
+            exclude_sha=args.exclude_sha,
             lookback=args.lookback,
             poll_attempts=args.poll_attempts,
         )

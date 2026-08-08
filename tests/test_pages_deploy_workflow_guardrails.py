@@ -52,6 +52,8 @@ class PagesDeployWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("Cancel an orphaned Pages deployment", DEPLOY)
         self.assertIn("cancel_stale_pages_deployments.py", DEPLOY)
         self.assertIn('GITHUB_TOKEN: ${{ github.token }}', DEPLOY)
+        self.assertIn('CURRENT_RUN_SHA: ${{ github.sha }}', DEPLOY)
+        self.assertIn('--exclude-sha "$CURRENT_RUN_SHA"', DEPLOY)
         self.assertLess(
             DEPLOY.index("Cancel an orphaned Pages deployment"),
             DEPLOY.index("uses: actions/deploy-pages@v5"),
