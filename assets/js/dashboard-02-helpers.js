@@ -452,7 +452,7 @@ function removeUnavailableVideoRows(d){
   if(!d)return d;
   const unavailable=unavailableVideoIds();
   if(!unavailable.size)return d;
-  ['all','trends','news','ours'].forEach(key=>{
+  ['all','trends','news','ours','kids'].forEach(key=>{
     if(Array.isArray(d[key]))d[key]=d[key].filter(row=>!unavailable.has(String(row&&row.vid||'')));
   });
   return d;
@@ -466,6 +466,7 @@ function setRadarData(d){
   if(typeof invalidateRecommendationDerivedData==='function')invalidateRecommendationDerivedData();
   VIEW_CACHE.clear();VIEW_WARMUP_TOKEN++;
   if(typeof _anaCache!=='undefined'){_anaCache=null;_anaT=0;}
+  if(typeof window!=='undefined')window._kwc=null;
   if(typeof scheduleViewWarmup==='function')scheduleViewWarmup();
   refreshUpdateStatus();
 }
@@ -473,11 +474,28 @@ const VS={
   all:{q:'',genre:'',sort:'vpm',mode:'grid',limit:60},
   trends:{q:'',genre:'',sort:'vpm',mode:'grid',limit:60},
   news:{q:'',genre:'',sort:'added',mode:'grid',limit:60},
-  mix:{q:'',genre:'',sort:'views',mode:'grid',limit:60,age:'3m'}
+  mix:{q:'',genre:'',sort:'views',mode:'grid',limit:60,age:'3m',audience:'youtube'}
 };
 const RS={q:'',genre:'',pot:'',perso:'',val:'',sort:'scoreAdj',mode:'grid',limit:80};
 const RM={src:'',genre:'',year:'',mode:'cal',cal:null,view:'year'};
-const LS={q:'',sort:'now',mode:'grid',limit:60};
+const LS={q:'',sort:'now',mode:'grid',limit:60,audience:'youtube'};
+function radarAudience(row){return row&&row.madeForKids===true?'kids':'youtube';}
+function matchesRadarAudience(row,audience){return radarAudience(row)===(audience||'youtube');}
+function audienceSwitchHTML(scope,audience){
+  const setter=scope==='live'?'setLiveAudience':'setMixAudience';
+  const kidsTitle='Made for Kids on YouTube · availability in the YouTube Kids app is not guaranteed';
+  return '<div class="audience-switch" role="group" aria-label="Audience">'+
+    '<button type="button" class="'+(audience==='youtube'?'on':'')+'" aria-pressed="'+(audience==='youtube')+'" onclick="'+setter+'(\'youtube\')" title="Standard YouTube">YouTube</button>'+
+    '<button type="button" class="'+(audience==='kids'?'on':'')+'" aria-pressed="'+(audience==='kids')+'" onclick="'+setter+'(\'kids\')" title="'+kidsTitle+'">Kids</button></div>';
+}
+function setMixAudience(audience){
+  VS.mix.audience=audience;VS.mix.limit=60;
+  let available=(typeof mixRows==='function'?mixRows():[]).filter(v=>matchesRadarAudience(v,audience));
+  if(VS.mix.age!=='all'&&typeof inAge==='function')available=available.filter(v=>inAge(v,VS.mix.age));
+  if(VS.mix.genre&&!available.some(v=>v.genre===VS.mix.genre))VS.mix.genre='';
+  render();
+}
+function setLiveAudience(audience){LS.audience=audience;LS.limit=60;render();}
 const CS={q:'',niche:'',sort:'subs',mode:'table',limit:150};
 const CHAN_URL='https://docs.google.com/spreadsheets/d/1jDbcryjTDbRsW4Uw6OP_SYwgvbPoLQu_KcSWqC3Dfoc/export?format=xlsx';
 const CHAN_CACHE='lofiradar_chan_v1';
@@ -503,11 +521,11 @@ async function fetchData(){
 }
 /* The Sheet keeps the curated catalogue and older history. The validated
    daily snapshot supplies current counters, new discoveries and new history
-   points. Merge both sources by video ID without touching livestream data. */
+   points. Merge video rows by ID and only the official audience flag for lives. */
 function mergeExtensionSnapshot(d){
   const snap=window.LOFI_DATA&&window.LOFI_DATA.d;if(!snap)return;
   removeUnavailableVideoRows(d);
-  ['all','trends','news','ours'].forEach(key=>{
+  ['all','trends','news','ours','kids'].forEach(key=>{
     const into=d[key]||(d[key]=[]),byId=new Map(into.map(r=>[r.vid,r]));
     const unavailable=unavailableVideoIds();
     (snap[key]||[]).filter(row=>!unavailable.has(String(row&&row.vid||''))).forEach(row=>{
@@ -516,6 +534,12 @@ function mergeExtensionSnapshot(d){
       else{const added=Object.assign({},row);into.push(added);byId.set(row.vid,added);}
     });
     into.sort((a,b)=>key==='ours'?(b.pub||0)-(a.pub||0):(b.vpm||0)-(a.vpm||0));
+  });
+  const liveById=new Map((snap.lives||[]).map(row=>[String(row&&row.vid||''),row]));
+  (d.lives||[]).forEach(row=>{
+    const meta=liveById.get(String(row&&row.vid||''));if(!meta)return;
+    if(meta.madeForKids===true||meta.madeForKids===false)row.madeForKids=meta.madeForKids;
+    if(Array.isArray(meta.audiences))row.audiences=meta.audiences.slice();
   });
   const hist=d.hist||(d.hist={});
   Object.entries(snap.hist||{}).forEach(([vid,points])=>{
