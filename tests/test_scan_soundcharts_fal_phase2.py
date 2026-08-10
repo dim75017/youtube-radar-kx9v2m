@@ -1193,6 +1193,83 @@ class FalPhase2Tests(unittest.TestCase):
             0,
         )
 
+    def test_prepare_only_persists_phase1_handoff_and_queue_without_authentication(self):
+        self.add_track("prepare-only-track")
+        initialize_artist_gate(self.phase1, self.phase2)
+        self.phase2.execute(
+            """UPDATE fal_phase2_artist_gate
+                  SET gate_status='eligible',bulk_complete=0
+                WHERE candidate_uuid='candidate-1'"""
+        )
+        self.phase2.commit()
+        self.phase1.close()
+        self.phase2.close()
+        self.phase1 = None
+        self.phase2 = None
+        report_path = Path(self.temp.name) / "prepare-only-report.json"
+
+        with mock.patch(
+            "scan_soundcharts_fal_phase2.SoundchartsClient",
+            side_effect=AssertionError("prepare-only must not authenticate"),
+        ):
+            result = main(
+                [
+                    "--phase1-state",
+                    str(self.phase1_path),
+                    "--phase1-source-id",
+                    "phase1-artifact-42",
+                    "--state",
+                    str(self.phase2_path),
+                    "--report",
+                    str(report_path),
+                    "--max-requests",
+                    "0",
+                    "--max-new-queue",
+                    "10",
+                    "--active-queue-cap",
+                    "10",
+                    "--as-of",
+                    "2026-07-31",
+                    "--prepare-only",
+                ]
+            )
+
+        self.assertEqual(result, 0)
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            report["source_checkpoint"]["phase1_source_id"],
+            "phase1-artifact-42",
+        )
+        self.assertEqual(report["queue"]["migrated_this_run"], 1)
+        self.phase1 = open_phase1_state(self.phase1_path)
+        self.phase2 = open_phase2_state(self.phase2_path)
+        self.assertEqual(
+            self.phase2.execute(
+                "SELECT value FROM meta WHERE key='fal_phase2_phase1_source_id'"
+            ).fetchone()[0],
+            "phase1-artifact-42",
+        )
+        self.assertEqual(
+            self.phase2.execute("SELECT COUNT(*) FROM fal_phase2_queue").fetchone()[0],
+            1,
+        )
+
+    def test_prepare_only_requires_an_explicit_phase1_source(self):
+        self.phase1.close()
+        self.phase2.close()
+        self.phase1 = None
+        self.phase2 = None
+        with self.assertRaisesRegex(FalPhase2Error, "non-empty phase1_source_id"):
+            main(
+                [
+                    "--phase1-state",
+                    str(self.phase1_path),
+                    "--state",
+                    str(self.phase2_path),
+                    "--prepare-only",
+                ]
+            )
+
     def test_real_run_migrates_once_and_reports_that_same_migration(self):
         self.add_track("single-migration-track")
         initialize_artist_gate(self.phase1, self.phase2)
@@ -1279,6 +1356,7 @@ class FalPhase2Tests(unittest.TestCase):
         self.assertEqual(args.canary_min_sample, 500)
         self.assertEqual(args.min_track_streams, 100_000)
         self.assertFalse(args.continue_zero_yield)
+        self.assertFalse(args.prepare_only)
 
         explicit = parse_args(
             [

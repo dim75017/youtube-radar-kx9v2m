@@ -2784,6 +2784,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--canary-min-sample", type=int, default=DEFAULT_MAX_REQUESTS)
     parser.add_argument("--continue-zero-yield", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--prepare-only",
+        action="store_true",
+        help=(
+            "Persist phase-1 source reconciliation and the bounded local queue "
+            "without authenticating to Soundcharts"
+        ),
+    )
     parser.add_argument("--recover-interrupted-report", action="store_true")
     parser.add_argument("--runner-outcome", default="failure")
     parser.add_argument("--run-id", default=os.environ.get("GITHUB_RUN_ID", ""))
@@ -2802,6 +2810,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise FalPhase2Error("min_track_streams must be non-negative")
     if not 65 <= int(args.stream_history_days) <= 365:
         raise FalPhase2Error("stream_history_days must be between 65 and 365")
+    if args.dry_run and args.prepare_only:
+        raise FalPhase2Error("dry_run and prepare_only are mutually exclusive")
+    if args.recover_interrupted_report and args.prepare_only:
+        raise FalPhase2Error("recover_interrupted_report and prepare_only are mutually exclusive")
+    if args.prepare_only and not str(args.phase1_source_id or "").strip():
+        raise FalPhase2Error("prepare_only requires a non-empty phase1_source_id")
     phase1 = open_phase1_state(args.phase1_state)
     dry_run_dir: tempfile.TemporaryDirectory[str] | None = None
     client: Any | None = None
@@ -2850,10 +2864,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             ).fetchone()[0]
         )
         migration = QueueMigration(0, 0, 0, 0, 0)
-        # A dry run may simulate bounded migration because it operates on the
-        # isolated copy above.  Real runs migrate between gate/detail slices so
-        # newly admitted artists can yield tracks during that same run.
-        if args.dry_run and not paused:
+        # A dry run simulates migration on its isolated copy.  Prepare-only
+        # deliberately persists the same bounded local handoff without making
+        # any Soundcharts request.  Paid runs migrate between gate/detail slices
+        # so newly admitted artists can yield tracks during that same run.
+        if (args.dry_run or args.prepare_only) and not paused:
             migration = migrate_gated_track_queue(
                 phase1,
                 phase2,
@@ -2882,6 +2897,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if (
             (paused and artist_active == 0 and stream_active == 0)
             or args.dry_run
+            or args.prepare_only
             or (
                 artist_active <= 0
                 and active <= 0

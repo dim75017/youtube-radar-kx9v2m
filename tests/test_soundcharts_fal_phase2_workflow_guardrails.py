@@ -41,10 +41,11 @@ class SoundchartsFalPhase2WorkflowGuardrailsTests(unittest.TestCase):
     def test_phase1_is_read_only_and_phase2_uses_a_small_separate_state(self):
         self.assertIn("PHASE1_STATE_ARTIFACT: soundcharts-fal-phase1-state-v2", self.workflow)
         self.assertIn("PHASE2_STATE_ARTIFACT: soundcharts-fal-phase2-state-v3", self.workflow)
-        self.assertIn("PHASE2_CONTROL_ARTIFACT: soundcharts-fal-phase2-control-v4", self.workflow)
+        self.assertIn("PHASE2_CONTROL_ARTIFACT: soundcharts-fal-phase2-control-v5", self.workflow)
         self.assertIn("soundcharts-fal-phase2-state-v3.sqlite3", self.workflow)
         self.assertIn("soundcharts-fal-phase2-report-v4.json", self.workflow)
         self.assertNotIn("soundcharts-fal-phase2-control-v3", self.workflow)
+        self.assertNotIn("PHASE2_CONTROL_ARTIFACT: soundcharts-fal-phase2-control-v4", self.workflow)
         self.assertNotIn("soundcharts-fal-phase2-report-v3", self.workflow)
         self.assertNotIn("soundcharts-fal-phase2-state-v2", self.workflow)
         self.assertNotIn("soundcharts-fal-phase2-control-v2", self.workflow)
@@ -75,9 +76,9 @@ class SoundchartsFalPhase2WorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("TRACK_MIN_LIFETIME_STREAMS: '100000'", self.workflow)
         self.assertEqual(
             self.workflow.count('--min-lifetime-streams "$TRACK_MIN_LIFETIME_STREAMS"'),
-            3,
+            4,
         )
-        self.assertIn("PHASE2_CONTROL_ARTIFACT: soundcharts-fal-phase2-control-v4", self.workflow)
+        self.assertIn("PHASE2_CONTROL_ARTIFACT: soundcharts-fal-phase2-control-v5", self.workflow)
         self.assertIn("soundcharts-fal-phase2-report-v4.json", self.workflow)
         self.assertIn("PHASE2_STATE_ARTIFACT: soundcharts-fal-phase2-state-v3", self.workflow)
         self.assertIn("soundcharts-fal-phase2-state-v3.sqlite3", self.workflow)
@@ -103,6 +104,38 @@ class SoundchartsFalPhase2WorkflowGuardrailsTests(unittest.TestCase):
         self.assertNotIn(
             'cp "${REPORT_JSON}.preflight" "$REPORT_JSON"', self.workflow
         )
+
+    def test_green_no_op_requires_a_verified_persisted_phase1_handoff(self):
+        self.assertIn('source_checkpoint = report.get("source_checkpoint") or {}', self.workflow)
+        self.assertIn('handoff = report.get("handoff") or {}', self.workflow)
+        self.assertIn('handoff.get("phase2_state_verified") is True', self.workflow)
+        self.assertIn('handoff.get("phase2_state_sha256")', self.workflow)
+        self.assertIn('handoff.get("phase2_state_bytes")', self.workflow)
+        self.assertIn('int(sys.argv[3]) > 0', self.workflow)
+        self.assertIn("soundcharts-fal-phase2-state-artifacts-early.json", self.workflow)
+        self.assertIn('output.write(f"handoff_valid=', self.workflow)
+        self.assertIn("FAL phase-2 handoff missing", self.workflow)
+        self.assertIn("forcing a full checkpoint restore instead of a green no-op", self.workflow)
+
+    def test_idle_preflight_persists_real_state_without_soundcharts_calls(self):
+        self.assertIn("Persist the no-quota phase-1 handoff when paid work is idle", self.workflow)
+        self.assertIn('id: phase2_handoff', self.workflow)
+        self.assertIn('--phase1-source-id "$PHASE1_ARTIFACT_ID"', self.workflow)
+        self.assertIn("--max-requests 0", self.workflow)
+        self.assertIn("--prepare-only", self.workflow)
+        self.assertIn("Neither the paid scan nor the no-quota phase-1 handoff", self.workflow)
+
+    def test_uploaded_state_and_report_must_match_the_same_phase1_artifact(self):
+        self.assertIn("steps.honest_report.outcome == 'success'", self.workflow)
+        self.assertIn("WHERE key='fal_phase2_phase1_source_id'", self.workflow)
+        self.assertIn("Phase-2 handoff does not match the restored immutable phase-1 artifact", self.workflow)
+        self.assertIn("Phase-2 report/state mismatch for total active work", self.workflow)
+        self.assertIn('"phase2_state_verified": True', self.workflow)
+        self.assertIn('"phase2_state_sha256": hashlib.sha256', self.workflow)
+        self.assertIn('"phase2_state_bytes": Path(sys.argv[1]).stat().st_size', self.workflow)
+        self.assertIn("Restored FAL phase-2 state does not match its verified report", self.workflow)
+        self.assertIn("Migrating legacy FAL phase-2 state into the verified v5 handoff", self.workflow)
+        self.assertIn("if: always() && steps.state_upload.outcome == 'success'", self.workflow)
 
     def test_hard_and_maintenance_reserves_are_explicit(self):
         self.assertIn("QUOTA_RESERVE: '500000'", self.workflow)

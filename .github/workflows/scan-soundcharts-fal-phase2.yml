@@ -53,7 +53,11 @@ jobs:
       # v4 invalidates any earlier "complete" control report because the
       # lifetime-stream gate did not exist in those runs. The resumable SQLite
       # state remains v3 and is migrated in place by the scanner.
-      PHASE2_CONTROL_ARTIFACT: soundcharts-fal-phase2-control-v4
+      # v5 proves that the completion report and the persisted SQLite state
+      # consumed the same immutable phase-1 artifact.  Older controls could be
+      # produced from the observational dry-run copy and must never authorize a
+      # green no-op.
+      PHASE2_CONTROL_ARTIFACT: soundcharts-fal-phase2-control-v5
       QUOTA_RESERVE: '500000'
       MAINTENANCE_DAILY_REQUESTS: '60000'
       MAINTENANCE_THROUGH: '2026-08-18'
@@ -155,6 +159,17 @@ jobs:
             exit 0
           fi
           control_url="$(jq -r '.archive_download_url // empty' <<<"$control")"
+          control_run_id="$(jq -r '.workflow_run.id // empty' <<<"$control")"
+          test -n "$control_run_id"
+          state_listing="$RUNNER_TEMP/soundcharts-fal-phase2-state-artifacts-early.json"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${PHASE2_STATE_ARTIFACT}&per_page=100" \
+            --output "$state_listing"
+          same_run_state="$(jq -r --arg run_id "$control_run_id" \
+            '[.artifacts[] | select(.expired == false and (.workflow_run.id | tostring) == $run_id)] | length' \
+            "$state_listing")"
           archive="$RUNNER_TEMP/soundcharts-fal-phase2-control.zip"
           control_dir="$RUNNER_TEMP/soundcharts-fal-phase2-control"
           mkdir -p "$control_dir"
@@ -165,15 +180,28 @@ jobs:
           unzip -o -q "$archive" -d "$control_dir"
           report="$(find "$control_dir" -type f -name 'soundcharts-fal-phase2-report-v4.json' -print -quit)"
           test -n "$report"
-          python - "$report" "$phase1_id" "$GITHUB_OUTPUT" <<'PY'
+          python - "$report" "$phase1_id" "$same_run_state" "$GITHUB_OUTPUT" <<'PY'
           import json
           import sys
           from pathlib import Path
 
           report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
           checkpoint = report.get("checkpoint") or {}
+          source_checkpoint = report.get("source_checkpoint") or {}
+          handoff = report.get("handoff") or {}
           work = report.get("work") or {}
-          same_phase1 = str(checkpoint.get("phase1_artifact_id") or "") == sys.argv[2]
+          expected_phase1 = sys.argv[2]
+          same_phase1 = (
+              str(checkpoint.get("phase1_artifact_id") or "") == expected_phase1
+              and str(source_checkpoint.get("phase1_source_id") or "") == expected_phase1
+              and str(handoff.get("phase1_artifact_id") or "") == expected_phase1
+              and str(handoff.get("phase1_source_id") or "") == expected_phase1
+              and handoff.get("phase2_state_verified") is True
+              and isinstance(handoff.get("phase2_state_sha256"), str)
+              and len(handoff.get("phase2_state_sha256")) == 64
+              and int(handoff.get("phase2_state_bytes") or 0) > 0
+              and int(sys.argv[3]) > 0
+          )
           paused = (
               report.get("status") == "paused_zero_evidence_yield"
               and int(work.get("artist_gate_active") or 0) == 0
@@ -181,8 +209,15 @@ jobs:
           )
           complete = report.get("complete") is True
           no_op = same_phase1 and (paused or complete)
-          with Path(sys.argv[3]).open("a", encoding="utf-8") as output:
+          with Path(sys.argv[4]).open("a", encoding="utf-8") as output:
               output.write(f"no_op={'true' if no_op else 'false'}\n")
+              output.write(f"handoff_valid={'true' if same_phase1 else 'false'}\n")
+          if (paused or complete) and not same_phase1:
+              print(
+                  "::warning title=FAL phase-2 handoff missing::"
+                  "Completion control is not backed by the persisted phase-2 state; "
+                  "forcing a full checkpoint restore instead of a green no-op"
+              )
           print(
               "Phase 2 remains safely paused/complete; skipped the huge phase-1 download"
               if no_op else "Phase 2 has resumable work or a newer phase-1 source"
@@ -308,8 +343,34 @@ jobs:
             "$archive_url" --output "$archive"
           unzip -o -q "$archive" -d "$restore_dir"
           restored="$(find "$restore_dir" -type f -name 'soundcharts-fal-phase2-state-v3.sqlite3' -print -quit)"
+          restored_report="$(find "$restore_dir" -type f -name 'soundcharts-fal-phase2-report-v4.json' -print -quit)"
           test -n "$restored"
           test -s "$restored"
+          test -n "$restored_report"
+          test -s "$restored_report"
+          python - "$restored" "$restored_report" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+
+          database_path = Path(sys.argv[1])
+          report = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+          handoff = report.get("handoff") or {}
+          expected_hash = str(handoff.get("phase2_state_sha256") or "")
+          expected_bytes = int(handoff.get("phase2_state_bytes") or 0)
+          actual_hash = hashlib.sha256(database_path.read_bytes()).hexdigest()
+          actual_bytes = database_path.stat().st_size
+          if bool(expected_hash) != bool(expected_bytes):
+              raise SystemExit("Restored FAL phase-2 report contains incomplete state proof")
+          if expected_hash and (expected_hash != actual_hash or expected_bytes != actual_bytes):
+              raise SystemExit(
+                  "Restored FAL phase-2 state does not match its verified report "
+                  f"(hash={actual_hash}, bytes={actual_bytes})"
+              )
+          if not expected_hash:
+              print("Migrating legacy FAL phase-2 state into the verified v5 handoff")
+          PY
           cp "$restored" "$PHASE2_DB"
           echo "PHASE2_BOOTSTRAP_SOURCE=phase2-v3" >> "$GITHUB_ENV"
           echo "PHASE2_BOOTSTRAP_RUN_ID=$source_run_id" >> "$GITHUB_ENV"
@@ -370,6 +431,29 @@ jobs:
           )
           PY
 
+      - name: Persist the no-quota phase-1 handoff when paid work is idle
+        id: phase2_handoff
+        if: steps.early_control.outputs.no_op != 'true' && steps.should_scan.outputs.run != 'true'
+        shell: bash
+        run: |
+          zero_yield_arg=()
+          if [[ "${{ steps.plan.outputs.continue_zero_yield }}" == "true" ]]; then
+            zero_yield_arg+=(--continue-zero-yield)
+          fi
+          python scan_soundcharts_fal_phase2.py \
+            --phase1-state "$PHASE1_DB" \
+            --phase1-source-id "$PHASE1_ARTIFACT_ID" \
+            --state "$PHASE2_DB" \
+            --report "$REPORT_JSON" \
+            --max-requests 0 \
+            --max-new-queue "${{ steps.plan.outputs.max_new_queue }}" \
+            --active-queue-cap "$ACTIVE_QUEUE_CAP" \
+            --recent-days "$RECENT_DAYS" \
+            --min-lifetime-streams "$TRACK_MIN_LIFETIME_STREAMS" \
+            --canary-min-sample "$CANARY_MIN_SAMPLE" \
+            "${zero_yield_arg[@]}" \
+            --prepare-only
+
       - name: Enrich the bounded private phase-2 canary
         id: phase2_scan
         if: steps.should_scan.outputs.run == 'true'
@@ -406,12 +490,19 @@ jobs:
             "${zero_yield_arg[@]}"
 
       - name: Preserve an honest phase-2 report after runner interruption
+        id: honest_report
         if: always() && steps.early_control.outputs.no_op != 'true' && steps.preflight.outcome == 'success'
         env:
           SCAN_OUTCOME: ${{ steps.phase2_scan.outcome }}
+          HANDOFF_OUTCOME: ${{ steps.phase2_handoff.outcome }}
         shell: bash
         run: |
           outcome="${SCAN_OUTCOME:-skipped}"
+          handoff_outcome="${HANDOFF_OUTCOME:-skipped}"
+          if [[ "$outcome" == "skipped" && "$handoff_outcome" != "success" ]]; then
+            echo "Neither the paid scan nor the no-quota phase-1 handoff persisted the real phase-2 state" >&2
+            exit 1
+          fi
           if [[ "$outcome" != "success" && "$outcome" != "skipped" ]]; then
             python scan_soundcharts_fal_phase2.py \
               --phase1-state "$PHASE1_DB" \
@@ -430,6 +521,7 @@ jobs:
           test -s "$REPORT_JSON"
           python - "$REPORT_JSON" <<'PY'
           import datetime as dt
+          import hashlib
           import json
           import os
           from pathlib import Path
@@ -448,13 +540,14 @@ jobs:
 
       - name: Verify phase 1 stayed immutable and phase 2 stayed private
         id: checkpoint_guard
-        if: always() && steps.early_control.outputs.no_op != 'true' && steps.preflight.outcome == 'success'
+        if: always() && steps.early_control.outputs.no_op != 'true' && steps.honest_report.outcome == 'success'
         shell: bash
         run: |
           before="$(cat "$RUNNER_TEMP/phase1-before.sha256")"
           after="$(sha256sum "$PHASE1_DB" | cut -d' ' -f1)"
           test "$before" = "$after"
-          python - "$PHASE2_DB" "$REPORT_JSON" <<'PY'
+          python - "$PHASE2_DB" "$REPORT_JSON" "$PHASE1_ARTIFACT_ID" <<'PY'
+          import datetime as dt
           import json
           import sqlite3
           import sys
@@ -462,9 +555,60 @@ jobs:
 
           with sqlite3.connect(sys.argv[1]) as database:
               check = database.execute("PRAGMA quick_check").fetchone()
+              source_row = database.execute(
+                  "SELECT value FROM meta WHERE key='fal_phase2_phase1_source_id'"
+              ).fetchone()
+              database_work = {
+                  "artist_gate_active": database.execute(
+                      "SELECT COUNT(*) FROM fal_phase2_artist_gate WHERE gate_status IN ('pending','retry')"
+                  ).fetchone()[0],
+                  "track_detail_active": database.execute(
+                      "SELECT COUNT(*) FROM fal_phase2_queue WHERE queue_status IN ('pending','retry')"
+                  ).fetchone()[0],
+                  "track_stream_active": database.execute(
+                      "SELECT COUNT(*) FROM fal_phase2_stream_gate WHERE gate_status IN ('pending','retry')"
+                  ).fetchone()[0],
+              }
+              database_details = database.execute(
+                  "SELECT COUNT(*) FROM fal_phase2_details"
+              ).fetchone()[0]
+              database_bulk_remaining = database.execute(
+                  "SELECT COUNT(*) FROM fal_phase2_artist_gate WHERE gate_status='eligible' AND bulk_complete=0"
+              ).fetchone()[0]
           if not check or check[0] != "ok":
               raise SystemExit(f"Invalid phase-2 checkpoint: {check!r}")
           report = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+          expected_phase1 = str(sys.argv[3] or "").strip()
+          database_source = str(source_row[0] if source_row else "").strip()
+          report_source = str(
+              ((report.get("source_checkpoint") or {}).get("phase1_source_id") or "")
+          ).strip()
+          report_artifact = str(
+              ((report.get("checkpoint") or {}).get("phase1_artifact_id") or "")
+          ).strip()
+          if not expected_phase1 or {
+              database_source,
+              report_source,
+              report_artifact,
+          } != {expected_phase1}:
+              raise SystemExit(
+                  "Phase-2 handoff does not match the restored immutable phase-1 artifact "
+                  f"(expected={expected_phase1!r}, database={database_source!r}, "
+                  f"report={report_source!r}, checkpoint={report_artifact!r})"
+              )
+          report_work = report.get("work") or {}
+          for key, value in database_work.items():
+              if int(report_work.get(key) or 0) != int(value):
+                  raise SystemExit(
+                      f"Phase-2 report/state mismatch for {key}: "
+                      f"report={report_work.get(key)!r}, database={value!r}"
+                  )
+          if int(report_work.get("active") or 0) != sum(database_work.values()):
+              raise SystemExit("Phase-2 report/state mismatch for total active work")
+          if int((report.get("details") or {}).get("enriched") or 0) != database_details:
+              raise SystemExit("Phase-2 report/state mismatch for enriched details")
+          if int((report.get("artist_gate") or {}).get("eligible_bulk_remaining") or 0) != database_bulk_remaining:
+              raise SystemExit("Phase-2 report/state mismatch for eligible artist bulks")
           if report.get("staging_only") is not True:
               raise SystemExit("Phase 2 must remain staging-only")
           if report.get("canonical_written") is not False or report.get("dashboard_written") is not False:
@@ -484,6 +628,18 @@ jobs:
               ).fetchone()[0]
           if invalid:
               raise SystemExit(f"Invalid 100k stream-gate rows: {invalid}")
+          report["handoff"] = {
+              "phase1_artifact_id": expected_phase1,
+              "phase1_source_id": database_source,
+              "phase2_state_verified": True,
+              "phase2_state_sha256": hashlib.sha256(Path(sys.argv[1]).read_bytes()).hexdigest(),
+              "phase2_state_bytes": Path(sys.argv[1]).stat().st_size,
+              "verified_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+          }
+          Path(sys.argv[2]).write_text(
+              json.dumps(report, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
           PY
           test -z "$(git status --porcelain)"
 
@@ -512,10 +668,10 @@ jobs:
 
       - name: Persist the small phase-2 pause/completion control
         id: control_upload
-        if: always() && steps.checkpoint_guard.outcome == 'success'
+        if: always() && steps.state_upload.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
-          name: soundcharts-fal-phase2-control-v4
+          name: soundcharts-fal-phase2-control-v5
           path: ${{ env.REPORT_JSON }}
           if-no-files-found: error
           retention-days: 90
