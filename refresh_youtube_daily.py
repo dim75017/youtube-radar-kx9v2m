@@ -10,6 +10,7 @@ import argparse
 import atexit
 import concurrent.futures
 import hashlib
+import http.client
 import io
 import json
 import os
@@ -61,11 +62,21 @@ KIDS_DOM_PAGE_LOAD_TIMEOUT_MS = int(os.environ.get("RADAR_KIDS_DOM_PAGE_TIMEOUT_
 KIDS_DOM_SCRIPT_TIMEOUT_MS = int(os.environ.get("RADAR_KIDS_DOM_SCRIPT_TIMEOUT_MS", "5000"))
 KIDS_DOM_HTTP_TIMEOUT_SECONDS = int(os.environ.get("RADAR_KIDS_DOM_HTTP_TIMEOUT_SECONDS", "20"))
 KIDS_DOM_MARKER_WAIT_SECONDS = float(os.environ.get("RADAR_KIDS_DOM_MARKER_WAIT_SECONDS", "8"))
+KIDS_CANARY_RETRIES = int(os.environ.get("RADAR_KIDS_CANARY_RETRIES", "2"))
+KIDS_CANARY_RETRY_DELAY_SECONDS = float(
+    os.environ.get("RADAR_KIDS_CANARY_RETRY_DELAY_SECONDS", "0.75")
+)
+KIDS_WATCH_HTTP_RETRIES = int(os.environ.get("RADAR_KIDS_WATCH_HTTP_RETRIES", "2"))
+KIDS_WATCH_HTTP_RETRY_DELAY_SECONDS = float(
+    os.environ.get("RADAR_KIDS_WATCH_HTTP_RETRY_DELAY_SECONDS", "0.75")
+)
+KIDS_WATCH_MAX_HTML_BYTES = int(
+    os.environ.get("RADAR_KIDS_WATCH_MAX_HTML_BYTES", str(16 * 1024 * 1024))
+)
 TRACK_WORKERS = int(os.environ.get("RADAR_TRACK_WORKERS", "12"))
 SEARCH_WORKERS = int(os.environ.get("RADAR_SEARCH_WORKERS", "4"))
 MIN_TRACK_RATIO = 0.90
 MIN_PUBLISH_TRACK_RATIO = 0.99
-MIN_KIDS_QUERY_RATIO = 0.95
 HISTORY_RETENTION_DAYS = 400
 OWN_CHANNEL_HANDLES = ("@LofiGirl",)
 OWN_UPLOADS_PER_CHANNEL = 50
@@ -428,7 +439,198 @@ class KidsDomCanaryError(RuntimeError):
 
 
 class KidsDomProbeError(RuntimeError):
-    """A rendered watch page could not produce a trustworthy yes/no answer."""
+    """A public watch page could not produce a trustworthy yes/no answer."""
+
+
+class KidsWatchPageIndeterminateError(KidsDomProbeError):
+    """A retryable public watch page did not identify the requested video."""
+
+
+class YouTubeWatchPageClient:
+    """Validate YouTube's public, English watch-page Kids restrictions."""
+
+    _TRANSIENT_HTTP_CODES = frozenset({403, 408, 425, 429, 500, 502, 503, 504})
+    _VIDEO_DETAILS = re.compile(
+        r'"videoDetails"\s*:\s*\{\s*"videoId"\s*:\s*"(?P<video_id>[\w-]{11})"'
+    )
+    _PLAYBACK_RESTRICTION = re.compile(
+        r'"playbackMode"\s*:\s*"PLAYBACK_MODE_PAUSED_ONLY"'
+    )
+    _SUPPORT_ANSWER = re.compile(r"answer(?:=|%3D)9632097(?!\d)", re.I)
+    _SIMPLE_TEXT = re.compile(r'"simpleText"\s*:\s*"((?:\\.|[^"\\])*)"')
+    _KIDS_RESTRICTION_TEXTS = frozenset({
+        "Miniplayer is off for videos made for kids",
+        "Miniplayer is off for videos made for kids. Tap play to resume",
+        "This action is turned off for content made for kids",
+    })
+    _CONSENT_PAGE = re.compile(
+        r"<title>\s*Before you continue(?: to YouTube)?\s*</title>|"
+        r"<form\b[^>]*\baction=[\"'][^\"']*consent\.youtube\.com",
+        re.I,
+    )
+    _CAPTCHA_PAGE = re.compile(
+        r"\bid=[\"']captcha-form[\"']|"
+        r"<form\b[^>]*\baction=[\"'][^\"']*/sorry/|"
+        r"Our systems have detected unusual traffic",
+        re.I,
+    )
+
+    def __init__(
+        self,
+        *,
+        retries: int = KIDS_WATCH_HTTP_RETRIES,
+        retry_delay_seconds: float = KIDS_WATCH_HTTP_RETRY_DELAY_SECONDS,
+        timeout_seconds: int = KIDS_DOM_HTTP_TIMEOUT_SECONDS,
+    ) -> None:
+        self.retries = max(0, int(retries))
+        self.retry_delay_seconds = max(0.0, float(retry_delay_seconds))
+        self.timeout_seconds = max(1, int(timeout_seconds))
+
+    @staticmethod
+    def _request(video_id: str) -> urllib.request.Request:
+        query = urllib.parse.urlencode({
+            "v": video_id,
+            "hl": "en",
+            "gl": "US",
+            "persist_hl": "1",
+            "persist_gl": "1",
+            "bpctr": "9999999999",
+            "has_verified": "1",
+        })
+        return urllib.request.Request(
+            "https://www.youtube.com/watch?" + query,
+            headers={
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Cookie": "CONSENT=YES+cb.20210328-17-p0.en+FX+410",
+                "User-Agent": (
+                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+                ),
+            },
+        )
+
+    def _fetch_once(self, video_id: str) -> tuple[str, str]:
+        request = self._request(video_id)
+        with urllib.request.urlopen(
+            request, timeout=self.timeout_seconds
+        ) as response:
+            final_url = (
+                str(response.geturl())
+                if callable(getattr(response, "geturl", None))
+                else request.full_url
+            )
+            body = response.read(KIDS_WATCH_MAX_HTML_BYTES + 1)
+        if len(body) > KIDS_WATCH_MAX_HTML_BYTES:
+            raise KidsWatchPageIndeterminateError(
+                "YouTube watch page exceeded the bounded HTML size"
+            )
+        return body.decode("utf-8", "replace"), final_url
+
+    @classmethod
+    def _has_restriction_text(cls, html: str) -> bool:
+        for match in cls._SIMPLE_TEXT.finditer(html):
+            try:
+                value = json.loads('"' + match.group(1) + '"')
+            except json.JSONDecodeError:
+                continue
+            if value in cls._KIDS_RESTRICTION_TEXTS:
+                return True
+        return False
+
+    @classmethod
+    def _validate_final_url(cls, final_url: str, video_id: str) -> None:
+        parsed = urllib.parse.urlparse(final_url)
+        host = (parsed.hostname or "").casefold()
+        if parsed.scheme != "https":
+            raise KidsWatchPageIndeterminateError(
+                f"YouTube watch page used unexpected scheme: {parsed.scheme or 'missing'}"
+            )
+        if host == "consent.youtube.com":
+            raise KidsWatchPageIndeterminateError(
+                "YouTube watch page redirected to consent"
+            )
+        if host not in {"youtube.com", "www.youtube.com", "m.youtube.com"}:
+            raise KidsWatchPageIndeterminateError(
+                f"YouTube watch page redirected to unexpected host: {host or 'missing'}"
+            )
+        query_ids = urllib.parse.parse_qs(parsed.query).get("v") or []
+        if parsed.path != "/watch" or query_ids != [video_id]:
+            raise KidsWatchPageIndeterminateError(
+                f"YouTube watch page redirected away from {video_id}"
+            )
+
+    @classmethod
+    def _classify(cls, html: str, final_url: str, video_id: str) -> bool:
+        cls._validate_final_url(final_url, video_id)
+        if cls._CONSENT_PAGE.search(html):
+            raise KidsWatchPageIndeterminateError(
+                "YouTube watch page is blocked by consent"
+            )
+        if cls._CAPTCHA_PAGE.search(html):
+            raise KidsWatchPageIndeterminateError(
+                "YouTube watch page is blocked by captcha"
+            )
+        page_ids = {
+            match.group("video_id") for match in cls._VIDEO_DETAILS.finditer(html)
+        }
+        if not page_ids:
+            raise KidsWatchPageIndeterminateError(
+                f"YouTube watch page has no videoDetails for {video_id}"
+            )
+        if page_ids != {video_id}:
+            raise KidsWatchPageIndeterminateError(
+                f"YouTube watch page videoDetails mismatch for {video_id}: {sorted(page_ids)}"
+            )
+        signals = (
+            cls._PLAYBACK_RESTRICTION.search(html) is not None,
+            cls._has_restriction_text(html),
+            cls._SUPPORT_ANSWER.search(html) is not None,
+        )
+        signal_count = sum(signals)
+        if signal_count == len(signals):
+            return True
+        if signal_count:
+            raise KidsWatchPageIndeterminateError(
+                f"YouTube watch page has only {signal_count}/{len(signals)} Kids signals"
+            )
+        return False
+
+    def has_kids_watch_page_signals(self, video_id: str) -> bool:
+        if not VIDEO_ID.fullmatch(video_id):
+            raise KidsDomProbeError(f"Invalid YouTube video ID: {video_id!r}")
+        for attempt in range(self.retries + 1):
+            try:
+                html, final_url = self._fetch_once(video_id)
+                return self._classify(html, final_url, video_id)
+            except urllib.error.HTTPError as exc:
+                if (
+                    exc.code not in self._TRANSIENT_HTTP_CODES
+                    or attempt >= self.retries
+                ):
+                    raise KidsDomProbeError(
+                        f"YouTube watch page HTTP {exc.code} for {video_id}"
+                    ) from exc
+            except (
+                urllib.error.URLError,
+                TimeoutError,
+                OSError,
+                http.client.IncompleteRead,
+            ) as exc:
+                if attempt >= self.retries:
+                    raise KidsDomProbeError(
+                        f"YouTube watch page network failure for {video_id}: "
+                        f"{type(exc).__name__}: {exc}"
+                    ) from exc
+            except KidsWatchPageIndeterminateError:
+                if attempt >= self.retries:
+                    raise
+            if self.retry_delay_seconds:
+                time.sleep(self.retry_delay_seconds * (2 ** attempt))
+        raise KidsDomProbeError("YouTube watch-page retry loop exhausted")
+
+    def close(self) -> None:
+        pass
 
 
 class ChromeWebDriverClient:
@@ -666,21 +868,35 @@ return 'clicked';
 
 
 class KidsDomValidator:
-    """Serialize one Chrome session and fail all Kids queries if canaries drift."""
+    """Serialize one watch-page client and fail all Kids queries if canaries drift."""
 
-    def __init__(self, client: object | None = None) -> None:
+    def __init__(
+        self,
+        client: object | None = None,
+        *,
+        canary_retries: int = KIDS_CANARY_RETRIES,
+        canary_retry_delay_seconds: float = KIDS_CANARY_RETRY_DELAY_SECONDS,
+    ) -> None:
         self._client = client
         self._lock = threading.Lock()
         self._canaries_checked = False
         self._canary_error = ""
+        self._canary_retries = max(0, int(canary_retries))
+        self._canary_retry_delay_seconds = max(
+            0.0, float(canary_retry_delay_seconds)
+        )
 
     def _get_client(self) -> object:
         if self._client is None:
-            self._client = ChromeWebDriverClient()
+            self._client = YouTubeWatchPageClient()
         return self._client
 
     def _probe(self, video_id: str) -> bool:
-        return self._get_client().has_family_options_marker(video_id) is True
+        client = self._get_client()
+        probe = getattr(client, "has_kids_watch_page_signals", None)
+        if not callable(probe):
+            probe = client.has_family_options_marker
+        return probe(video_id) is True
 
     def _check_canaries(self) -> None:
         if self._canaries_checked:
@@ -688,16 +904,34 @@ class KidsDomValidator:
                 raise KidsDomCanaryError(self._canary_error)
             return
         self._canaries_checked = True
-        try:
-            positives = {video_id: self._probe(video_id) for video_id in KIDS_DOM_POSITIVE_CANARIES}
-            negative = self._probe(KIDS_DOM_NEGATIVE_CANARY)
-            if not all(positives.values()) or negative:
-                raise RuntimeError(
+        last_error: Exception | None = None
+        for attempt in range(self._canary_retries + 1):
+            try:
+                positives = {
+                    video_id: self._probe(video_id)
+                    for video_id in KIDS_DOM_POSITIVE_CANARIES
+                }
+                negative = self._probe(KIDS_DOM_NEGATIVE_CANARY)
+                if all(positives.values()) and not negative:
+                    return
+                last_error = RuntimeError(
                     f"positive={positives}, negative={negative}"
                 )
-        except Exception as exc:
-            self._canary_error = f"Kids DOM canaries failed closed: {type(exc).__name__}: {exc}"
-            raise KidsDomCanaryError(self._canary_error) from exc
+            except Exception as exc:
+                last_error = exc
+            if (
+                attempt < self._canary_retries
+                and self._canary_retry_delay_seconds
+            ):
+                time.sleep(
+                    self._canary_retry_delay_seconds * (2 ** attempt)
+                )
+        assert last_error is not None
+        self._canary_error = (
+            f"Kids DOM canaries failed closed: "
+            f"{type(last_error).__name__}: {last_error}"
+        )
+        raise KidsDomCanaryError(self._canary_error) from last_error
 
     def ensure_canaries(self) -> None:
         """Validate the rendered Kids signal even when a search has no candidates."""
@@ -1131,7 +1365,7 @@ def fetch_kids_search_ydl(spec: dict, now_ms: int) -> tuple[list[dict], int, int
         if not validator.is_made_for_kids(video_id):
             continue
         row["madeForKids"] = True
-        row["madeForKidsSource"] = "youtube_family_options_ui"
+        row["madeForKidsSource"] = "youtube_public_watch_page_restrictions"
         row["genre"] = kids_genre_from_metadata(row)
         row["cluster"] = cluster_for(row.get("title") or "", spec["cluster"])
         row["kw"] = spec["query"]
@@ -1889,16 +2123,16 @@ def merge_artifacts(
     kids_queries_ok = sum(int(a.get("kids_queries_ok", 0)) for a in artifacts)
     kids_results_examined = sum(int(a.get("kids_results_examined", 0)) for a in artifacts)
     kids_candidates_kept = sum(int(a.get("kids_candidates_kept", 0)) for a in artifacts)
+    payload = read_snapshot(snapshot)
     if require_kids:
         expected_kids_queries = len(KIDS_QUERY_SPECS)
-        if kids_queries_total != expected_kids_queries:
+        if (
+            kids_queries_total != expected_kids_queries
+            or kids_queries_ok != expected_kids_queries
+        ):
             raise RuntimeError(
-                f"Merge rejected: expected {expected_kids_queries} Kids queries, "
-                f"got {kids_queries_total}"
-            )
-        if kids_queries_ok / kids_queries_total < MIN_KIDS_QUERY_RATIO:
-            raise RuntimeError(
-                f"Merge rejected: only {kids_queries_ok}/{kids_queries_total} Kids queries succeeded"
+                f"Merge rejected: expected {expected_kids_queries}/{expected_kids_queries} "
+                f"Kids queries, got {kids_queries_ok}/{kids_queries_total}"
             )
     if not tracked_total or tracked_ok / tracked_total < MIN_PUBLISH_TRACK_RATIO:
         raise RuntimeError(f"Merge rejected: {tracked_ok}/{tracked_total} tracked videos refreshed")
@@ -1927,7 +2161,6 @@ def merge_artifacts(
             f"{len(tracked_failed_ids)} traceable missing IDs"
         )
 
-    payload = read_snapshot(snapshot)
     previous_unavailable_ids = {
         str(video_id)
         for video_id in ((payload.get("videoMetrics") or {}).get("unavailable_ids") or [])
@@ -1974,6 +2207,7 @@ def merge_artifacts(
         )
     missing_ids = sorted(tracked_failed_ids - unavailable_set)
     data = payload.setdefault("d", {})
+    bootstrap_kids = not bool(data.get("kids"))
     prune_deferred_rows(data)
     legacy_history = data.pop("hist", {})
     now_ms = max(int(a.get("generated_ms", 0)) for a in artifacts) or utc_now_ms()
@@ -2103,6 +2337,11 @@ def merge_artifacts(
             data["news"].append(discovered)
             by_news[row["vid"]] = discovered
             inserted_news += 1
+
+    if require_kids and bootstrap_kids and not data["kids"]:
+        raise RuntimeError(
+            "Merge rejected: initial Kids scan returned no verified candidates"
+        )
 
     for row in data["news"]:
         if isinstance(row.get("added"), (int, float)):
