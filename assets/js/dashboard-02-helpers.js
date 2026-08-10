@@ -490,9 +490,10 @@ function audienceSwitchHTML(scope,audience){
 }
 function setMixAudience(audience){
   VS.mix.audience=audience;VS.mix.limit=60;
-  let available=(typeof mixRows==='function'?mixRows():[]).filter(v=>matchesRadarAudience(v,audience));
-  if(VS.mix.age!=='all'&&typeof inAge==='function')available=available.filter(v=>inAge(v,VS.mix.age));
-  if(VS.mix.genre&&!available.some(v=>v.genre===VS.mix.genre))VS.mix.genre='';
+  const available=(typeof mixRows==='function'?mixRows():[]).filter(v=>matchesRadarAudience(v,audience));
+  if(VS.mix.age!=='all'&&typeof inAge==='function'&&!available.some(v=>inAge(v,VS.mix.age)))VS.mix.age='all';
+  const availableInPeriod=VS.mix.age==='all'||typeof inAge!=='function'?available:available.filter(v=>inAge(v,VS.mix.age));
+  if(VS.mix.genre&&!availableInPeriod.some(v=>v.genre===VS.mix.genre))VS.mix.genre='';
   render();
 }
 function setLiveAudience(audience){LS.audience=audience;LS.limit=60;render();}

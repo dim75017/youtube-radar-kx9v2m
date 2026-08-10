@@ -46,7 +46,8 @@ requireText(helpers,"const LS={q:'',sort:'now',mode:'grid',limit:60,audience:'yo
 requireText(keywords,"rows=rows.filter(v=>matchesRadarAudience(v,st.audience))",'video audience filter');
 requireText(recos,"rows=rows.filter(v=>matchesRadarAudience(v,LS.audience))",'live audience filter');
 requireText(keywords,"const audienceRows=kind==='mix'?all.filter(v=>matchesRadarAudience(v,st.audience)):all",'contextual counters');
-requireText(helpers,"if(VS.mix.genre&&!available.some(v=>v.genre===VS.mix.genre))VS.mix.genre=''",'genre reset');
+requireText(helpers,"if(VS.mix.age!=='all'&&typeof inAge==='function'&&!available.some(v=>inAge(v,VS.mix.age)))VS.mix.age='all'",'empty-period reset');
+requireText(helpers,"if(VS.mix.genre&&!availableInPeriod.some(v=>v.genre===VS.mix.genre))VS.mix.genre=''",'genre reset');
 requireText(keywords,"const genres=[...new Set(periodRows.map(v=>v.genre).filter(Boolean))]",'period-only genre options');
 requireText(keywords,"mixRows().forEach(v=>{tally(v.kw,';');tally(v.disc,',');});",'deduplicated keyword counters');
 requireText(helpers,"VS.mix.audience=audience;VS.mix.limit=60",'video limit reset');
@@ -72,5 +73,19 @@ const liveSortAt=lives.indexOf("'<div class=\"tb-right\">'");
 if(!(searchAt>=0&&searchAt<liveSwitchAt&&liveSwitchAt<liveSortAt)){
   throw new Error('Livestream control order must be search -> audience -> sort');
 }
+
+let renders=0;
+const switchContext={
+  VS:{mix:{audience:'youtube',age:'3m',genre:'Piano',limit:1}},
+  mixRows:()=>[{madeForKids:true,ageM:8,genre:'Piano'}],
+  matchesRadarAudience:(row,audience)=>(row.madeForKids===true?'kids':'youtube')===audience,
+  inAge:(row,age)=>age==='all'||row.ageM<=Number(age.slice(0,-1)),
+  render:()=>{renders++;}
+};
+vm.runInNewContext(functionSource(helpers,'setMixAudience'),switchContext);
+switchContext.setMixAudience('kids');
+if(switchContext.VS.mix.age!=='all')throw new Error('Kids switch must reset an empty period to all history');
+if(switchContext.VS.mix.genre!=='Piano')throw new Error('valid genre must survive the period fallback');
+if(switchContext.VS.mix.limit!==60||renders!==1)throw new Error('Kids switch must reset limit and render once');
 
 console.log('youtube Kids switch guard: ok');
