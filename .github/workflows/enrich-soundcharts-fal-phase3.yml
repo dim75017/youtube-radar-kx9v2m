@@ -13,9 +13,11 @@ permissions:
   actions: write
   contents: read
 
-# All paid Soundcharts collectors share this exact lock.
+# Paid runs share the exact Soundcharts lock. A zero-call dry-run has no
+# credentials and uses a run-scoped group so it cannot be held behind a paid
+# collector while it only validates immutable private artifacts.
 concurrency:
-  group: refresh-soundcharts-ar-collection-${{ github.ref }}
+  group: ${{ inputs.max_requests == '0' && format('soundcharts-fal-phase3-dry-{0}', github.run_id) || format('refresh-soundcharts-ar-collection-{0}', github.ref) }}
   cancel-in-progress: false
 
 jobs:

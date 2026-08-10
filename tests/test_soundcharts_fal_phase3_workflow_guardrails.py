@@ -48,7 +48,15 @@ class SoundchartsFalPhase3WorkflowGuardrailsTests(unittest.TestCase):
 
     def test_shares_the_exact_paid_soundcharts_lock(self):
         self.assertIn(
-            "group: refresh-soundcharts-ar-collection-${{ github.ref }}",
+            "inputs.max_requests == '0'",
+            self.workflow,
+        )
+        self.assertIn(
+            "format('soundcharts-fal-phase3-dry-{0}', github.run_id)",
+            self.workflow,
+        )
+        self.assertIn(
+            "format('refresh-soundcharts-ar-collection-{0}', github.ref)",
             self.workflow,
         )
         self.assertIn("cancel-in-progress: false", self.workflow)
