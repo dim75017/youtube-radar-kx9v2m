@@ -2437,20 +2437,35 @@ function liveSnapshot(vid){
   if(LIVE_SNAPSHOT_CACHE.has(vid))return LIVE_SNAPSHOT_CACHE.get(vid);
   const history=(DATA.liveHist&&DATA.liveHist[vid])||[];
   const hourly=(DATA.liveHourly&&DATA.liveHourly[vid])||[];
+  // parseHist keeps both arrays chronological: reading their tails makes the
+  // active-state and default viewer sort O(1) instead of rescanning years of
+  // hourly history for every stream.
+  const historyLast=history.length?history[history.length-1]:null;
+  const hourlyLast=hourly.length?hourly[hourly.length-1]:null;
+  let latest=null;
+  if(historyLast&&Number.isFinite(Number(historyLast[0]))&&Number.isFinite(Number(historyLast[1])))latest=historyLast;
+  if(hourlyLast&&Number.isFinite(Number(hourlyLast[0]))&&Number.isFinite(Number(hourlyLast[1]))&&(!latest||Number(hourlyLast[0])>Number(latest[0])))latest=hourlyLast;
+  const snapshot={series:null,now:latest?Number(latest[1]):null,latestT:latest?Number(latest[0]):null,peakAll:undefined,peak24:undefined};
+  LIVE_SNAPSHOT_CACHE.set(vid,snapshot);
+  return snapshot;
+}
+function livePeaks(vid){
+  const snapshot=liveSnapshot(vid);
+  if(snapshot.peakAll!==undefined)return snapshot;
+  const history=(DATA.liveHist&&DATA.liveHist[vid])||[];
+  const hourly=(DATA.liveHourly&&DATA.liveHourly[vid])||[];
   const cutoff24=Date.now()-86400000;
-  let now=null,latestT=null,peakAll=null,peak24=null;
+  let peakAll=null,peak24=null;
   const scan=points=>{
     for(const point of points){
       const time=Number(point[0]),viewers=Number(point[1]);
       if(!Number.isFinite(time)||!Number.isFinite(viewers))continue;
-      if(latestT==null||time>latestT){latestT=time;now=viewers;}
       if(peakAll==null||viewers>peakAll)peakAll=viewers;
       if(time>=cutoff24&&(peak24==null||viewers>peak24))peak24=viewers;
     }
   };
   scan(history);scan(hourly);
-  const snapshot={series:null,now,latestT,peakAll,peak24};
-  LIVE_SNAPSHOT_CACHE.set(vid,snapshot);
+  snapshot.peakAll=peakAll;snapshot.peak24=peak24;
   return snapshot;
 }
 function liveSeries(vid){
@@ -2464,8 +2479,8 @@ function liveSeries(vid){
   return series;
 }
 function liveNow(vid){return liveSnapshot(vid).now;}
-function livePeak(vid){return liveSnapshot(vid).peakAll;}
-function livePeak24h(vid){return liveSnapshot(vid).peak24;}
+function livePeak(vid){return livePeaks(vid).peakAll;}
+function livePeak24h(vid){return livePeaks(vid).peak24;}
 const LIVE_ACTIVE_FRESHNESS_MS=3*3600000;
 function liveIsActive(v){
   const snapshot=liveSnapshot(v&&v.vid);
