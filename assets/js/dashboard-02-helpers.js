@@ -116,7 +116,7 @@ function persoCategory(p){
   return 'Sans personnage';
 }
 const PERSO_ORDER=['Lofi Girl','Synthwave Boy','Mère','Père','Sans personnage','Tiago','Chat / Chien'];
-const PERIOD_EMOJI={'3m':'🟢','6m':'🟡','12m':'🟠','all':'🔴'};
+const PERIOD_EMOJI={'3m':'🟢','6m':'🟡','12m':'🟠','36m':'🔵','all':'🔴'};
 function gtag(g,extra,emo){
   if(!g)return '';
   const c=gcolor(g);
@@ -473,7 +473,7 @@ const VS={
   all:{q:'',genre:'',sort:'vpm',mode:'grid',limit:60},
   trends:{q:'',genre:'',sort:'vpm',mode:'grid',limit:60},
   news:{q:'',genre:'',sort:'added',mode:'grid',limit:60},
-  mix:{q:'',genre:'',sort:'vpm',mode:'grid',limit:60,age:'3m'}
+  mix:{q:'',genre:'',sort:'views',mode:'grid',limit:60,age:'3m'}
 };
 const RS={q:'',genre:'',pot:'',perso:'',val:'',sort:'scoreAdj',mode:'grid',limit:80};
 const RM={src:'',genre:'',year:'',mode:'cal',cal:null,view:'year'};
