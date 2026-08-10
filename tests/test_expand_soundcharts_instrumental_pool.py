@@ -175,7 +175,73 @@ def stats_response():
     }
 
 
+def protected_checked_payload(
+    *,
+    genres=None,
+    evidence_contract="",
+    source_evidence=None,
+):
+    current = payload()
+    current["editorial"]["tracks"] = []
+    protected_spotify_id = "1234567890123456789012"
+    discovery_schema = [
+        "soundcharts_uuid",
+        "spotify_id",
+        "title",
+        "credit_name",
+        "release_date",
+        "streams",
+        "primary_genre",
+        "subgenres",
+        "genre_confidence",
+        "instrumental_status",
+        "instrumental_confidence",
+        "ai_risk",
+        "ai_risk_score",
+        "metadata_status",
+        "updated_at",
+        "source_tier",
+        "soundcharts_genres",
+        "soundcharts_genres_checked_at",
+        "soundcharts_evidence_contract",
+        "source_evidence",
+    ]
+    record = {
+        "soundcharts_uuid": "protected-uuid",
+        "spotify_id": protected_spotify_id,
+        "title": "Protected Dark Ambient",
+        "credit_name": "Protected Artist",
+        "release_date": "2026-01-01",
+        "streams": 250_000,
+        "primary_genre": "dark_ambient",
+        "subgenres": [],
+        "genre_confidence": 0.8,
+        "instrumental_status": "unknown",
+        "instrumental_confidence": None,
+        "ai_risk": "unknown",
+        "ai_risk_score": None,
+        "metadata_status": "complete",
+        "updated_at": "2026-08-06T00:00:00Z",
+        "source_tier": "independent_playlist",
+        "soundcharts_genres": list(genres or []),
+        "soundcharts_genres_checked_at": "2026-08-06T00:00:00Z",
+        "soundcharts_evidence_contract": evidence_contract,
+        "source_evidence": dict(source_evidence or {}),
+    }
+    current["discovery_catalogue"] = {
+        "track_schema": discovery_schema,
+        "tracks": [[record.get(name) for name in discovery_schema]],
+    }
+    return current, protected_spotify_id
+
+
 class InstrumentalPoolTests(unittest.TestCase):
+    def test_song_detail_path_uses_fal_evidence_contract(self):
+        self.assertEqual(
+            subject.soundcharts_song_detail_path("song uuid"),
+            "/api/v2.25/song/song%20uuid",
+        )
+
     def test_audience_response_discovers_spotify_id_and_exact_delta(self):
         parsed = subject.parse_audience_response(audience_response())
         self.assertEqual(parsed["spotify_id"], "4vFL08pP0H9RDUVj05qXyL")
@@ -240,6 +306,26 @@ class InstrumentalPoolTests(unittest.TestCase):
         parsed = subject.parse_song_detail(detail, editorial)
         self.assertEqual(parsed["instrumental_status"], "instrumental")
         self.assertEqual(parsed["instrumental_confidence"], 0.9)
+        self.assertTrue(parsed["source_evidence"]["instrumental"])
+        self.assertEqual(
+            parsed["soundcharts_evidence_contract"],
+            subject.SOUNDCHARTS_SONG_EVIDENCE_CONTRACT,
+        )
+
+    def test_song_evidence_parser_reads_the_complete_v225_response(self):
+        detail = song_detail()
+        detail["evidence"] = {
+            "genres": ["Dark Ambient"],
+            "audioFeatures": {"instrumentalness": 0.84, "speechiness": 0.03},
+        }
+        parsed = subject.parse_song_detail(
+            detail,
+            subject.editorial_candidates(payload())[0],
+        )
+
+        self.assertEqual(parsed["primary_genre"], "dark_ambient")
+        self.assertEqual(parsed["instrumental_status"], "instrumental")
+        self.assertEqual(parsed["source_evidence"]["instrumentalness"], 0.84)
 
     def test_song_speechiness_blocks_conflicting_instrumental_signal(self):
         detail = song_detail()
@@ -256,6 +342,17 @@ class InstrumentalPoolTests(unittest.TestCase):
         )
         self.assertEqual(parsed["instrumental_status"], "vocal")
         self.assertEqual(parsed["instrumental_confidence"], 0.95)
+
+    def test_explicit_non_instrumental_flag_is_fail_closed_as_vocal_risk(self):
+        detail = song_detail()
+        detail["evidence"] = {"instrumental": False}
+        parsed = subject.parse_song_detail(
+            detail,
+            subject.editorial_candidates(payload())[0],
+        )
+
+        self.assertEqual(parsed["instrumental_status"], "vocal")
+        self.assertTrue(parsed["has_vocal_evidence"])
 
     def test_classification_backfill_updates_genre_without_inventing_ai_risk(self):
         current = payload()
@@ -274,7 +371,7 @@ class InstrumentalPoolTests(unittest.TestCase):
         summary = subject.classify_soundcharts_genres(
             current,
             cache,
-            FakeClient({"/api/v2/song/song-uuid": detail}),
+            FakeClient({"/api/v2.25/song/song-uuid": detail}),
             workers=1,
             max_requests=1,
         )
@@ -325,7 +422,7 @@ class InstrumentalPoolTests(unittest.TestCase):
         detail["object"]["genres"] = [
             {"root": "Ambient", "sub": ["Dark Ambient", "Instrumental"]}
         ]
-        client = FakeClient({"/api/v2/song/dark-100k-song": detail})
+        client = FakeClient({"/api/v2.25/song/dark-100k-song": detail})
         summary = subject.classify_soundcharts_genres(
             current,
             {"version": 1, "tracks": {}, "artists": {}},
@@ -334,7 +431,7 @@ class InstrumentalPoolTests(unittest.TestCase):
             max_requests=1,
         )
 
-        self.assertEqual(client.paths, ["/api/v2/song/dark-100k-song"])
+        self.assertEqual(client.paths, ["/api/v2.25/song/dark-100k-song"])
         self.assertEqual(summary["selected_stream_eligible"], 1)
         self.assertEqual(summary["selected_dark_ambient"], 1)
         self.assertEqual(
@@ -385,7 +482,7 @@ class InstrumentalPoolTests(unittest.TestCase):
         summary = subject.classify_soundcharts_genres(
             current,
             {"version": 1, "tracks": {}, "artists": {}},
-            FakeClient({"/api/v2/song/dark-discovery-only": detail}),
+            FakeClient({"/api/v2.25/song/dark-discovery-only": detail}),
             workers=1,
             max_requests=1,
         )
@@ -465,7 +562,7 @@ class InstrumentalPoolTests(unittest.TestCase):
         detail["object"]["genres"] = [
             {"root": "Ambient", "sub": ["Dark Ambient", "Instrumental"]}
         ]
-        client = FakeClient({"/api/v2/song/protected-uuid": detail})
+        client = FakeClient({"/api/v2.25/song/protected-uuid": detail})
         cache = {"version": 1, "tracks": {}, "artists": {}}
 
         summary = subject.classify_soundcharts_genres(
@@ -500,6 +597,80 @@ class InstrumentalPoolTests(unittest.TestCase):
         )
         self.assertEqual(subject.field(protected_row, schema, "expansion_status"), "review")
 
+    def test_protected_legacy_zero_evidence_is_rechecked_once_with_v225(self):
+        current, protected_spotify_id = protected_checked_payload()
+        detail = song_detail()
+        detail["object"]["uuid"] = "protected-uuid"
+        detail["object"]["genres"] = []
+        detail["object"]["audioFeatures"] = {
+            "instrumentalness": 0.88,
+            "speechiness": 0.04,
+        }
+        client = FakeClient({"/api/v2.25/song/protected-uuid": detail})
+
+        summary = subject.classify_soundcharts_genres(
+            current,
+            {"version": 1, "tracks": {}, "artists": {}},
+            client,
+            workers=1,
+            max_requests=1,
+            protected_spotify_ids={protected_spotify_id},
+        )
+
+        self.assertEqual(client.paths, ["/api/v2.25/song/protected-uuid"])
+        self.assertEqual(summary["protected_legacy_zero_evidence_pending"], 1)
+        self.assertEqual(summary["protected_legacy_zero_evidence_selected"], 1)
+        self.assertEqual(summary["remaining"], 0)
+        self.assertFalse(summary["rules"]["automatic_promotion"])
+        schema = current["discovery_catalogue"]["track_schema"]
+        row = current["discovery_catalogue"]["tracks"][0]
+        self.assertEqual(
+            subject.field(row, schema, "soundcharts_evidence_contract"),
+            subject.SOUNDCHARTS_SONG_EVIDENCE_CONTRACT,
+        )
+        self.assertTrue(
+            subject.field(row, schema, "source_evidence")["instrumental"]
+        )
+
+    def test_protected_checked_explicit_evidence_is_not_reopened(self):
+        current, protected_spotify_id = protected_checked_payload(
+            genres=[{"root": "Ambient", "sub": ["Dark Ambient"]}],
+        )
+        client = FakeClient({})
+
+        summary = subject.classify_soundcharts_genres(
+            current,
+            {"version": 1, "tracks": {}, "artists": {}},
+            client,
+            workers=1,
+            max_requests=1,
+            protected_spotify_ids={protected_spotify_id},
+        )
+
+        self.assertEqual(client.paths, [])
+        self.assertEqual(summary["protected_legacy_zero_evidence_pending"], 0)
+        self.assertEqual(summary["selected"], 0)
+
+    def test_protected_current_zero_evidence_contract_is_not_reopened_forever(self):
+        current, protected_spotify_id = protected_checked_payload(
+            evidence_contract=subject.SOUNDCHARTS_SONG_EVIDENCE_CONTRACT,
+            source_evidence={"schema_version": 2, "ai_risk": "unknown"},
+        )
+        client = FakeClient({})
+
+        summary = subject.classify_soundcharts_genres(
+            current,
+            {"version": 1, "tracks": {}, "artists": {}},
+            client,
+            workers=1,
+            max_requests=1,
+            protected_spotify_ids={protected_spotify_id},
+        )
+
+        self.assertEqual(client.paths, [])
+        self.assertEqual(summary["protected_legacy_zero_evidence_pending"], 0)
+        self.assertEqual(summary["remaining"], 0)
+
     def test_explicit_artist_catalogue_can_be_exactly_classified_without_becoming_an_opportunity(self):
         current = payload()
         schema = current["editorial"]["track_schema"]
@@ -515,7 +686,7 @@ class InstrumentalPoolTests(unittest.TestCase):
         summary = subject.classify_soundcharts_genres(
             current,
             cache,
-            FakeClient({"/api/v2/song/song-uuid": detail}),
+            FakeClient({"/api/v2.25/song/song-uuid": detail}),
             workers=1,
             max_requests=1,
         )
@@ -529,7 +700,7 @@ class InstrumentalPoolTests(unittest.TestCase):
         client = FakeClient(
             {
                 "/audience/spotify?": audience_response(),
-                "/api/v2/song/song-uuid": song_detail(),
+                "/api/v2.25/song/song-uuid": song_detail(),
                 "/artist/artist-uuid/identifiers": identifiers_response(),
                 "/artist/artist-uuid/current/stats": stats_response(),
             }
@@ -632,7 +803,7 @@ class InstrumentalPoolTests(unittest.TestCase):
         client = FakeClient(
             {
                 "/audience/spotify?": audience_response(),
-                "/api/v2/song/song-uuid": detail,
+                "/api/v2.25/song/song-uuid": detail,
             }
         )
         performance = {"tracks": {}, "artists": {}, "playlists": {}}

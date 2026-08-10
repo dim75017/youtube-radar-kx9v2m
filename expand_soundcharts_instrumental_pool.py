@@ -202,6 +202,8 @@ MAJOR_MARKERS = tuple(
 )
 
 SPOTIFY_ID_RE = re.compile(r"^[0-9A-Za-z]{22}$")
+SOUNDCHARTS_SONG_DETAIL_API_VERSION = "v2.25"
+SOUNDCHARTS_SONG_EVIDENCE_CONTRACT = "soundcharts_song_v2.25_evidence_v2"
 
 # The track UUID is already the cache dictionary key. Exact placement rows and
 # discovery timestamps live in the staged snapshot; duplicating them for every
@@ -227,6 +229,8 @@ CACHE_TRACK_FIELDS = {
     "genre_source",
     "soundcharts_genres",
     "soundcharts_genres_checked_at",
+    "soundcharts_evidence_contract",
+    "source_evidence",
     "instrumental_status",
     "instrumental_confidence",
     "source_tier",
@@ -250,6 +254,15 @@ def utc_now() -> str:
 
 def utc_today() -> dt.date:
     return dt.datetime.now(dt.timezone.utc).date()
+
+
+def soundcharts_song_detail_path(soundcharts_uuid: str) -> str:
+    """Return the evidence-rich song contract already used by the FAL scanner."""
+
+    return (
+        f"/api/{SOUNDCHARTS_SONG_DETAIL_API_VERSION}/song/"
+        f"{urllib.parse.quote(str(soundcharts_uuid or '').strip())}"
+    )
 
 
 def read_js_payload(path: Path, prefix: str) -> dict[str, Any]:
@@ -539,6 +552,12 @@ def editorial_candidates(payload: dict[str, Any], include_review: bool = True) -
                 if isinstance(field(row, schema, "soundcharts_genres"), list)
                 else [],
                 "soundcharts_genres_checked_at": str(field(row, schema, "soundcharts_genres_checked_at") or ""),
+                "soundcharts_evidence_contract": str(
+                    field(row, schema, "soundcharts_evidence_contract") or ""
+                ),
+                "source_evidence": dict(field(row, schema, "source_evidence") or {})
+                if isinstance(field(row, schema, "source_evidence"), Mapping)
+                else {},
                 "instrumental_status": instrumental,
                 "instrumental_confidence": float(instrumental_confidence or 0),
                 "ai_risk": ai_risk,
@@ -799,8 +818,19 @@ def parse_song_detail(response: Any, editorial: dict[str, Any]) -> dict[str, Any
     isrc = obj.get("isrc")
     if isinstance(isrc, dict):
         isrc = isrc.get("value")
+    # The v2.25 contract can expose evidence outside ``object``. Parse the
+    # complete response exactly like the FAL enrichment job, then reuse its
+    # flattened genre evidence when the legacy object-level field is absent.
+    evidence = extract_evidence(response)
+    raw_genres = obj.get("genres")
+    if not raw_genres:
+        raw_genres = [
+            {"root": str(label), "sub": []}
+            for label in evidence.get("genres", [])
+            if str(label or "").strip()
+        ]
     classification = soundcharts_genre_classification(
-        obj.get("genres"),
+        raw_genres,
         fallback_genre=str(editorial.get("primary_genre") or ""),
         fallback_subgenres=editorial.get("subgenres") or [],
         fallback_confidence=finite_number(editorial.get("genre_confidence")),
@@ -812,8 +842,7 @@ def parse_song_detail(response: Any, editorial: dict[str, Any]) -> dict[str, Any
     # “Instrumental”. Reuse the same conservative thresholds as the private
     # FAL scanner: instrumentalness > .5 is positive evidence, while explicit
     # content or speechiness >= .33 is voice/rap risk and wins on conflict.
-    evidence = extract_evidence(obj)
-    if evidence.get("vocal") is True:
+    if evidence.get("vocal") is True or evidence.get("instrumental") is False:
         classification["instrumental_status"] = "vocal"
         classification["instrumental_confidence"] = 0.95
         classification["has_vocal_evidence"] = True
@@ -846,6 +875,10 @@ def parse_song_detail(response: Any, editorial: dict[str, Any]) -> dict[str, Any
         "rights_status": rights,
         "rights_confidence": confidence,
         **classification,
+        # Keep only the normalized factual subset used by the fail-closed
+        # gates. Raw provider responses are neither persisted nor published.
+        "source_evidence": evidence,
+        "soundcharts_evidence_contract": SOUNDCHARTS_SONG_EVIDENCE_CONTRACT,
         "soundcharts_genres_checked_at": checked_at,
         "fetched_at": checked_at,
     }
@@ -876,6 +909,7 @@ def ensure_editorial_classification_fields(payload: dict[str, Any]) -> tuple[lis
         payload,
         (
             "genre_source", "soundcharts_genres", "soundcharts_genres_checked_at",
+            "soundcharts_evidence_contract", "source_evidence",
             "rights_status", "rights_confidence", "label", "copyright",
             "artist_soundcharts_uuids",
         ),
@@ -956,6 +990,7 @@ def inject_protected_review_candidates(
         "ai_risk_score", "expansion_status", "review_reasons",
         "metadata_status", "updated_at", "source_tier", "genre_source",
         "soundcharts_genres", "soundcharts_genres_checked_at",
+        "soundcharts_evidence_contract", "source_evidence",
     )
     schema, rows = ensure_editorial_fields(soundcharts, editorial_fields)
     existing_by_spotify = {
@@ -1009,6 +1044,8 @@ def inject_protected_review_candidates(
             "genre_source": "protected_review_baseline",
             "soundcharts_genres": [],
             "soundcharts_genres_checked_at": None,
+            "soundcharts_evidence_contract": None,
+            "source_evidence": {},
         }
         for name, value in values.items():
             set_field(row, schema, name, value)
@@ -1051,6 +1088,8 @@ def ensure_discovery_classification_fields(payload: dict[str, Any]) -> tuple[lis
         "review_reasons",
         "soundcharts_genres",
         "soundcharts_genres_checked_at",
+        "soundcharts_evidence_contract",
+        "source_evidence",
         "rights_status",
         "rights_confidence",
         "label",
@@ -1090,6 +1129,22 @@ def _update_classification_row(
 
     set_field(row, schema, "soundcharts_genres", list(detail.get("soundcharts_genres") or []))
     set_field(row, schema, "soundcharts_genres_checked_at", detail.get("soundcharts_genres_checked_at"))
+    if "source_evidence" in schema:
+        current_evidence = field(row, schema, "source_evidence")
+        merged_evidence = (
+            dict(current_evidence) if isinstance(current_evidence, Mapping) else {}
+        )
+        incoming_evidence = detail.get("source_evidence")
+        if isinstance(incoming_evidence, Mapping):
+            for name, value in incoming_evidence.items():
+                # Empty/unknown refresh values cannot erase an earlier factual
+                # signal; explicit False and numeric zero remain meaningful.
+                if name not in merged_evidence or value not in (None, "", [], {}, "unknown"):
+                    merged_evidence[str(name)] = value
+        set_field(row, schema, "source_evidence", merged_evidence)
+    evidence_contract = str(detail.get("soundcharts_evidence_contract") or "").strip()
+    if evidence_contract and "soundcharts_evidence_contract" in schema:
+        set_field(row, schema, "soundcharts_evidence_contract", evidence_contract)
 
     # Song metadata also carries factual rights and Soundcharts artist UUIDs.
     # Persist those for the subsequent audience/identifier pass, but never let
@@ -1204,6 +1259,67 @@ def _classification_row_context(row: list[Any], schema: list[str]) -> dict[str, 
     }
 
 
+def _row_has_explicit_soundcharts_evidence(row: list[Any], schema: list[str]) -> bool:
+    genres = field(row, schema, "soundcharts_genres")
+    if isinstance(genres, list) and any(str(value or "").strip() for value in genres):
+        return True
+    if str(field(row, schema, "genre_source") or "").casefold() == "soundcharts_song":
+        return True
+    if str(field(row, schema, "instrumental_status") or "").casefold() in {
+        "instrumental",
+        "vocal",
+    }:
+        return True
+    evidence = field(row, schema, "source_evidence")
+    if not isinstance(evidence, Mapping):
+        return False
+    if any(str(value or "").strip() for value in evidence.get("genres", [])):
+        return True
+    if isinstance(evidence.get("instrumental"), bool) or isinstance(
+        evidence.get("vocal"), bool
+    ):
+        return True
+    if finite_number(evidence.get("instrumentalness")) is not None or finite_number(
+        evidence.get("speechiness")
+    ) is not None:
+        return True
+    return str(evidence.get("ai_risk") or "").casefold() not in {
+        "",
+        "unknown",
+        "unclassified",
+        "pending",
+    }
+
+
+def _classification_evidence_states(
+    candidate_rows: Iterable[tuple[list[Any], list[str]]],
+) -> dict[str, dict[str, bool]]:
+    """Aggregate duplicate editorial/discovery rows before deciding a retry."""
+
+    states: dict[str, dict[str, bool]] = {}
+    for row, schema in candidate_rows:
+        if not isinstance(row, list) or not schema:
+            continue
+        uuid = str(field(row, schema, "soundcharts_uuid") or "").strip()
+        if not uuid:
+            continue
+        state = states.setdefault(
+            uuid,
+            {"checked": False, "current_contract": False, "explicit_evidence": False},
+        )
+        checked = bool(field(row, schema, "soundcharts_genres_checked_at"))
+        state["checked"] = state["checked"] or checked
+        state["current_contract"] = state["current_contract"] or (
+            checked
+            and str(field(row, schema, "soundcharts_evidence_contract") or "")
+            == SOUNDCHARTS_SONG_EVIDENCE_CONTRACT
+        )
+        state["explicit_evidence"] = state["explicit_evidence"] or (
+            _row_has_explicit_soundcharts_evidence(row, schema)
+        )
+    return states
+
+
 def _classification_priority_by_uuid(
     soundcharts: Mapping[str, Any],
 ) -> dict[str, tuple[int, int, float]]:
@@ -1270,6 +1386,8 @@ def classify_soundcharts_genres(
         [(row, editorial_schema) for row in editorial_rows]
         + [(row, discovery_schema) for row in discovery_rows]
     )
+    evidence_states = _classification_evidence_states(candidate_rows)
+    legacy_protected_zero_evidence: set[str] = set()
     candidates_by_uuid: dict[str, dict[str, Any]] = {}
     for row, schema in candidate_rows:
         if not isinstance(row, list) or not schema:
@@ -1280,9 +1398,22 @@ def classify_soundcharts_genres(
         instrumental = str(field(row, schema, "instrumental_status") or "unknown").casefold()
         instrumental_confidence = finite_number(field(row, schema, "instrumental_confidence")) or 0
         verified = ai_risk in {"low", "faible"} and instrumental == "instrumental" and instrumental_confidence >= 0.5
-        checked_at = field(row, schema, "soundcharts_genres_checked_at")
-        if not uuid or source_tier not in CLASSIFIABLE_DISCOVERY_SOURCE_TIERS or verified or checked_at:
+        state = evidence_states.get(uuid, {})
+        legacy_recheck = (
+            uuid in protected_uuids
+            and bool(state.get("checked"))
+            and not bool(state.get("current_contract"))
+            and not bool(state.get("explicit_evidence"))
+        )
+        if (
+            not uuid
+            or source_tier not in CLASSIFIABLE_DISCOVERY_SOURCE_TIERS
+            or verified
+            or (bool(state.get("checked")) and not legacy_recheck)
+        ):
             continue
+        if legacy_recheck:
+            legacy_protected_zero_evidence.add(uuid)
         context = _classification_row_context(row, schema)
         previous = candidates_by_uuid.get(uuid)
         if previous:
@@ -1301,7 +1432,7 @@ def classify_soundcharts_genres(
     cap = min(max(0, max_requests), max(0, limit) if limit is not None else max(0, max_requests))
     selected = pending[:cap]
     budget = RequestBudget(max_requests)
-    tasks = [(uuid, f"/api/v2/song/{urllib.parse.quote(uuid)}") for uuid, _ in selected]
+    tasks = [(uuid, soundcharts_song_detail_path(uuid)) for uuid, _ in selected]
     responses, failures = parallel_requests(client, tasks, budget, workers)
     contexts = dict(selected)
     updated = 0
@@ -1325,6 +1456,11 @@ def classify_soundcharts_genres(
 
     refreshed_editorial = ensure_editorial_classification_fields(soundcharts)
     refreshed_discovery = ensure_discovery_classification_fields(soundcharts)
+    refreshed_candidate_rows = (
+        [(row, refreshed_editorial[0]) for row in refreshed_editorial[1]]
+        + [(row, refreshed_discovery[0]) for row in refreshed_discovery[1]]
+    )
+    refreshed_states = _classification_evidence_states(refreshed_candidate_rows)
     remaining_uuids: set[str] = set()
     for refreshed_schema, refreshed_rows in (refreshed_editorial, refreshed_discovery):
         for row in refreshed_rows:
@@ -1336,8 +1472,20 @@ def classify_soundcharts_genres(
             status = str(field(row, refreshed_schema, "instrumental_status") or "unknown").casefold()
             confidence = finite_number(field(row, refreshed_schema, "instrumental_confidence")) or 0
             verified = ai_risk in {"low", "faible"} and status == "instrumental" and confidence >= 0.5
-            checked_at = field(row, refreshed_schema, "soundcharts_genres_checked_at")
-            if uuid and source_tier in CLASSIFIABLE_DISCOVERY_SOURCE_TIERS and not verified and not checked_at:
+            state = refreshed_states.get(uuid, {})
+            needs_initial_check = not bool(state.get("checked"))
+            needs_legacy_protected_recheck = (
+                uuid in protected_uuids
+                and bool(state.get("checked"))
+                and not bool(state.get("current_contract"))
+                and not bool(state.get("explicit_evidence"))
+            )
+            if (
+                uuid
+                and source_tier in CLASSIFIABLE_DISCOVERY_SOURCE_TIERS
+                and not verified
+                and (needs_initial_check or needs_legacy_protected_recheck)
+            ):
                 remaining_uuids.add(uuid)
 
     now = utc_now()
@@ -1350,6 +1498,12 @@ def classify_soundcharts_genres(
         "protected_mapped": int(protected["mapped"]),
         "protected_inserted": int(protected["inserted"]),
         "protected_selected": sum(uuid in protected_uuids for uuid, _ in selected),
+        "protected_legacy_zero_evidence_pending": len(
+            legacy_protected_zero_evidence
+        ),
+        "protected_legacy_zero_evidence_selected": sum(
+            uuid in legacy_protected_zero_evidence for uuid, _ in selected
+        ),
         "updated": updated,
         "responses_with_genres": with_genres,
         "exact_target_genres": exact_genres,
@@ -1369,8 +1523,12 @@ def classify_soundcharts_genres(
         ),
         "rules": {
             "genre_source": "soundcharts_song_metadata",
+            "song_detail_endpoint": "/api/v2.25/song/{uuid}",
+            "evidence_contract": SOUNDCHARTS_SONG_EVIDENCE_CONTRACT,
             "instrumental_requires_explicit_tag": True,
             "ai_risk_never_inferred": True,
+            "legacy_zero_evidence_recheck_scope": "protected_review_cohort_only",
+            "automatic_promotion": False,
             "request_priority": "streams_100k_then_dark_ambient_then_streams_desc",
         },
     }
@@ -1680,7 +1838,7 @@ def expand_instrumental_pool(
             or not cached.get("soundcharts_genres_checked_at")
             or is_stale(cached.get("fetched_at"), metadata_refresh_days)
         ):
-            metadata_tasks.append((uuid, f"/api/v2/song/{urllib.parse.quote(uuid)}"))
+            metadata_tasks.append((uuid, soundcharts_song_detail_path(uuid)))
     metadata_responses, metadata_failures = parallel_requests(client, metadata_tasks, budget, workers)
     for uuid, response in metadata_responses.items():
         parsed = parse_song_detail(response, candidate_by_uuid[uuid])
@@ -1696,6 +1854,10 @@ def expand_instrumental_pool(
                 item["genre_source"] = "soundcharts_song"
             item["soundcharts_genres"] = list(parsed.get("soundcharts_genres") or [])
             item["soundcharts_genres_checked_at"] = str(parsed.get("soundcharts_genres_checked_at") or "")
+            item["soundcharts_evidence_contract"] = str(
+                parsed.get("soundcharts_evidence_contract") or ""
+            )
+            item["source_evidence"] = dict(parsed.get("source_evidence") or {})
             status = str(parsed.get("instrumental_status") or item.get("instrumental_status") or "unknown").casefold()
             if status in {"instrumental", "vocal"}:
                 item["instrumental_status"] = status
