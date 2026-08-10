@@ -66,12 +66,21 @@ KIDS_CANARY_RETRIES = int(os.environ.get("RADAR_KIDS_CANARY_RETRIES", "2"))
 KIDS_CANARY_RETRY_DELAY_SECONDS = float(
     os.environ.get("RADAR_KIDS_CANARY_RETRY_DELAY_SECONDS", "0.75")
 )
-KIDS_WATCH_HTTP_RETRIES = int(os.environ.get("RADAR_KIDS_WATCH_HTTP_RETRIES", "2"))
-KIDS_WATCH_HTTP_RETRY_DELAY_SECONDS = float(
-    os.environ.get("RADAR_KIDS_WATCH_HTTP_RETRY_DELAY_SECONDS", "0.75")
+KIDS_INNERTUBE_CLIENT_VERSION = (
+    os.environ.get("RADAR_KIDS_INNERTUBE_CLIENT_VERSION", "20.10.38").strip()
+    or "20.10.38"
 )
-KIDS_WATCH_MAX_HTML_BYTES = int(
-    os.environ.get("RADAR_KIDS_WATCH_MAX_HTML_BYTES", str(16 * 1024 * 1024))
+KIDS_INNERTUBE_HTTP_RETRIES = int(
+    os.environ.get("RADAR_KIDS_INNERTUBE_HTTP_RETRIES", "2")
+)
+KIDS_INNERTUBE_HTTP_TIMEOUT_SECONDS = int(
+    os.environ.get("RADAR_KIDS_INNERTUBE_HTTP_TIMEOUT_SECONDS", "20")
+)
+KIDS_INNERTUBE_RETRY_DELAY_SECONDS = float(
+    os.environ.get("RADAR_KIDS_INNERTUBE_RETRY_DELAY_SECONDS", "0.75")
+)
+KIDS_INNERTUBE_MAX_JSON_BYTES = int(
+    os.environ.get("RADAR_KIDS_INNERTUBE_MAX_JSON_BYTES", str(4 * 1024 * 1024))
 )
 TRACK_WORKERS = int(os.environ.get("RADAR_TRACK_WORKERS", "12"))
 SEARCH_WORKERS = int(os.environ.get("RADAR_SEARCH_WORKERS", "4"))
@@ -166,7 +175,7 @@ KIDS_QUERY_SPECS = (
     ("synthwave for kids instrumental", "Synthwave", "Gaming / night drive"),
 )
 KIDS_DOM_POSITIVE_CANARIES = ("L1Y-GbKA0PM", "qXcMNBQnQMM")
-KIDS_DOM_NEGATIVE_CANARY = "dQw4w9WgXcQ"
+KIDS_DOM_NEGATIVE_CANARY = "XVFUtEh9zrY"
 
 _KIDS_DOM_VALIDATOR = None
 _KIDS_DOM_VALIDATOR_LOCK = threading.Lock()
@@ -442,75 +451,125 @@ class KidsDomProbeError(RuntimeError):
     """A public watch page could not produce a trustworthy yes/no answer."""
 
 
-class KidsWatchPageIndeterminateError(KidsDomProbeError):
-    """A retryable public watch page did not identify the requested video."""
+class KidsPlayerIndeterminateError(KidsDomProbeError):
+    """A retryable public player response was not conclusive."""
 
 
-class YouTubeWatchPageClient:
-    """Validate YouTube's public, English watch-page Kids restrictions."""
+class YouTubeInnertubePlayerClient:
+    """Validate Kids restrictions in YouTube's public Android player response."""
 
+    _ENDPOINT = "https://www.youtube.com/youtubei/v1/player?prettyPrint=false"
     _TRANSIENT_HTTP_CODES = frozenset({403, 408, 425, 429, 500, 502, 503, 504})
-    _VIDEO_DETAILS = re.compile(
-        r'"videoDetails"\s*:\s*\{\s*"videoId"\s*:\s*"(?P<video_id>[\w-]{11})"'
-    )
-    _PLAYBACK_RESTRICTION = re.compile(
-        r'"playbackMode"\s*:\s*"PLAYBACK_MODE_PAUSED_ONLY"'
-    )
-    _SUPPORT_ANSWER = re.compile(r"answer(?:=|%3D)9632097(?!\d)", re.I)
-    _SIMPLE_TEXT = re.compile(r'"simpleText"\s*:\s*"((?:\\.|[^"\\])*)"')
     _KIDS_RESTRICTION_TEXTS = frozenset({
         "Miniplayer is off for videos made for kids",
         "Miniplayer is off for videos made for kids. Tap play to resume",
-        "This action is turned off for content made for kids",
     })
-    _CONSENT_PAGE = re.compile(
-        r"<title>\s*Before you continue(?: to YouTube)?\s*</title>|"
-        r"<form\b[^>]*\baction=[\"'][^\"']*consent\.youtube\.com",
-        re.I,
-    )
-    _CAPTCHA_PAGE = re.compile(
-        r"\bid=[\"']captcha-form[\"']|"
-        r"<form\b[^>]*\baction=[\"'][^\"']*/sorry/|"
-        r"Our systems have detected unusual traffic",
-        re.I,
-    )
+    _PAUSED_MODE = "PLAYBACK_MODE_PAUSED_ONLY"
+    _ALLOW_MODE = "PLAYBACK_MODE_ALLOW"
 
     def __init__(
         self,
         *,
-        retries: int = KIDS_WATCH_HTTP_RETRIES,
-        retry_delay_seconds: float = KIDS_WATCH_HTTP_RETRY_DELAY_SECONDS,
-        timeout_seconds: int = KIDS_DOM_HTTP_TIMEOUT_SECONDS,
+        retries: int = KIDS_INNERTUBE_HTTP_RETRIES,
+        retry_delay_seconds: float = KIDS_INNERTUBE_RETRY_DELAY_SECONDS,
+        timeout_seconds: int = KIDS_INNERTUBE_HTTP_TIMEOUT_SECONDS,
+        client_version: str = KIDS_INNERTUBE_CLIENT_VERSION,
     ) -> None:
         self.retries = max(0, int(retries))
         self.retry_delay_seconds = max(0.0, float(retry_delay_seconds))
         self.timeout_seconds = max(1, int(timeout_seconds))
+        self.client_version = str(client_version).strip()
+        if not re.fullmatch(r"\d+(?:\.\d+)+", self.client_version):
+            raise ValueError(
+                f"Invalid Innertube Android client version: {client_version!r}"
+            )
 
-    @staticmethod
-    def _request(video_id: str) -> urllib.request.Request:
-        query = urllib.parse.urlencode({
-            "v": video_id,
-            "hl": "en",
-            "gl": "US",
-            "persist_hl": "1",
-            "persist_gl": "1",
-            "bpctr": "9999999999",
-            "has_verified": "1",
-        })
-        return urllib.request.Request(
-            "https://www.youtube.com/watch?" + query,
-            headers={
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                "Accept-Language": "en-US,en;q=0.9",
-                "Cookie": "CONSENT=YES+cb.20210328-17-p0.en+FX+410",
-                "User-Agent": (
-                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-                ),
+    def _request(self, video_id: str) -> urllib.request.Request:
+        payload = {
+            "context": {
+                "client": {
+                    "clientName": "ANDROID",
+                    "clientVersion": self.client_version,
+                    "androidSdkVersion": 35,
+                    "hl": "en",
+                    "gl": "US",
+                },
             },
+            "videoId": video_id,
+            "contentCheckOk": True,
+            "racyCheckOk": True,
+        }
+        return urllib.request.Request(
+            self._ENDPOINT,
+            data=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
+            headers={
+                "Accept": "application/json",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Content-Type": "application/json",
+                "User-Agent": (
+                    f"com.google.android.youtube/{self.client_version} "
+                    "(Linux; U; Android 15) gzip"
+                ),
+                "X-YouTube-Client-Name": "3",
+                "X-YouTube-Client-Version": self.client_version,
+            },
+            method="POST",
         )
 
-    def _fetch_once(self, video_id: str) -> tuple[str, str]:
+    @staticmethod
+    def _strict_json(raw: bytes) -> dict:
+        def object_without_duplicates(pairs: list[tuple[str, object]]) -> dict:
+            result: dict = {}
+            for key, value in pairs:
+                if key in result:
+                    raise ValueError(f"duplicate JSON key: {key}")
+                result[key] = value
+            return result
+
+        def reject_constant(value: str) -> None:
+            raise ValueError(f"invalid JSON constant: {value}")
+
+        try:
+            document = json.loads(
+                raw.decode("utf-8"),
+                object_pairs_hook=object_without_duplicates,
+                parse_constant=reject_constant,
+            )
+        except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+            raise KidsPlayerIndeterminateError(
+                f"YouTube player returned malformed JSON: {exc}"
+            ) from exc
+        if type(document) is not dict:
+            raise KidsPlayerIndeterminateError(
+                "YouTube player returned a non-object JSON response"
+            )
+        return document
+
+    @classmethod
+    def _validate_final_url(cls, final_url: str) -> None:
+        try:
+            parsed = urllib.parse.urlparse(final_url)
+            port = parsed.port
+        except ValueError as exc:
+            raise KidsPlayerIndeterminateError(
+                "YouTube player returned a malformed final URL"
+            ) from exc
+        query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+        if (
+            parsed.scheme != "https"
+            or (parsed.hostname or "").casefold() != "www.youtube.com"
+            or parsed.username is not None
+            or parsed.password is not None
+            or port is not None
+            or parsed.path != "/youtubei/v1/player"
+            or parsed.fragment
+            or query != [("prettyPrint", "false")]
+        ):
+            raise KidsPlayerIndeterminateError(
+                "YouTube player redirected away from the expected endpoint"
+            )
+
+    def _fetch_once(self, video_id: str) -> tuple[dict, str]:
         request = self._request(video_id)
         with urllib.request.urlopen(
             request, timeout=self.timeout_seconds
@@ -520,96 +579,132 @@ class YouTubeWatchPageClient:
                 if callable(getattr(response, "geturl", None))
                 else request.full_url
             )
-            body = response.read(KIDS_WATCH_MAX_HTML_BYTES + 1)
-        if len(body) > KIDS_WATCH_MAX_HTML_BYTES:
-            raise KidsWatchPageIndeterminateError(
-                "YouTube watch page exceeded the bounded HTML size"
+            body = response.read(KIDS_INNERTUBE_MAX_JSON_BYTES + 1)
+        if len(body) > KIDS_INNERTUBE_MAX_JSON_BYTES:
+            raise KidsPlayerIndeterminateError(
+                "YouTube player response exceeded the bounded JSON size"
             )
-        return body.decode("utf-8", "replace"), final_url
+        self._validate_final_url(final_url)
+        return self._strict_json(body), final_url
+
+    @staticmethod
+    def _mapping_at(value: object, *keys: str) -> dict:
+        current = value
+        for key in keys:
+            if type(current) is not dict:
+                return {}
+            current = current.get(key)
+        return current if type(current) is dict else {}
 
     @classmethod
-    def _has_restriction_text(cls, html: str) -> bool:
-        for match in cls._SIMPLE_TEXT.finditer(html):
-            try:
-                value = json.loads('"' + match.group(1) + '"')
-            except json.JSONDecodeError:
-                continue
-            if value in cls._KIDS_RESTRICTION_TEXTS:
-                return True
-        return False
+    def _has_support_answer(cls, value: object) -> bool:
+        if not isinstance(value, str):
+            return False
+        try:
+            parsed = urllib.parse.urlparse(value)
+            port = parsed.port
+        except ValueError:
+            return False
+        if (
+            parsed.scheme not in {"", "https"}
+            or (not parsed.scheme and not value.startswith("//"))
+            or (parsed.hostname or "").casefold() != "support.google.com"
+            or parsed.username is not None
+            or parsed.password is not None
+            or port is not None
+            or parsed.fragment
+        ):
+            return False
+        if parsed.path == "/youtube/answer/9632097":
+            return True
+        answers = urllib.parse.parse_qs(
+            parsed.query, keep_blank_values=True
+        ).get("answer")
+        return (
+            parsed.path == "/youtube/bin/answer.py"
+            and answers == ["9632097"]
+        )
 
     @classmethod
-    def _validate_final_url(cls, final_url: str, video_id: str) -> None:
-        parsed = urllib.parse.urlparse(final_url)
-        host = (parsed.hostname or "").casefold()
-        if parsed.scheme != "https":
-            raise KidsWatchPageIndeterminateError(
-                f"YouTube watch page used unexpected scheme: {parsed.scheme or 'missing'}"
+    def _classify(cls, payload: dict, final_url: str, video_id: str) -> bool:
+        cls._validate_final_url(final_url)
+        details = payload.get("videoDetails")
+        playability = payload.get("playabilityStatus")
+        if type(details) is not dict or type(playability) is not dict:
+            raise KidsPlayerIndeterminateError(
+                "YouTube player response is missing top-level player objects"
             )
-        if host == "consent.youtube.com":
-            raise KidsWatchPageIndeterminateError(
-                "YouTube watch page redirected to consent"
+        if details.get("videoId") != video_id:
+            raise KidsPlayerIndeterminateError(
+                f"YouTube player videoDetails mismatch for {video_id}: "
+                f"{details.get('videoId')!r}"
             )
-        if host not in {"youtube.com", "www.youtube.com", "m.youtube.com"}:
-            raise KidsWatchPageIndeterminateError(
-                f"YouTube watch page redirected to unexpected host: {host or 'missing'}"
+        if playability.get("status") != "OK":
+            raise KidsPlayerIndeterminateError(
+                f"YouTube player status is not OK for {video_id}: "
+                f"{playability.get('status')!r}"
             )
-        query_ids = urllib.parse.parse_qs(parsed.query).get("v") or []
-        if parsed.path != "/watch" or query_ids != [video_id]:
-            raise KidsWatchPageIndeterminateError(
-                f"YouTube watch page redirected away from {video_id}"
+        renderer = cls._mapping_at(
+            playability, "miniplayer", "miniplayerRenderer"
+        )
+        if not renderer:
+            raise KidsPlayerIndeterminateError(
+                f"YouTube player has no miniplayerRenderer for {video_id}"
             )
-
-    @classmethod
-    def _classify(cls, html: str, final_url: str, video_id: str) -> bool:
-        cls._validate_final_url(final_url, video_id)
-        if cls._CONSENT_PAGE.search(html):
-            raise KidsWatchPageIndeterminateError(
-                "YouTube watch page is blocked by consent"
+        mode = renderer.get("playbackMode")
+        notification = cls._mapping_at(
+            renderer,
+            "minimizedEndpoint",
+            "addToToastAction",
+            "item",
+            "notificationActionRenderer",
+        )
+        response_text = cls._mapping_at(notification, "responseText")
+        runs = response_text.get("runs")
+        text_signal = (
+            isinstance(runs, list)
+            and any(
+                type(run) is dict
+                and run.get("text") in cls._KIDS_RESTRICTION_TEXTS
+                for run in runs
             )
-        if cls._CAPTCHA_PAGE.search(html):
-            raise KidsWatchPageIndeterminateError(
-                "YouTube watch page is blocked by captcha"
-            )
-        page_ids = {
-            match.group("video_id") for match in cls._VIDEO_DETAILS.finditer(html)
-        }
-        if not page_ids:
-            raise KidsWatchPageIndeterminateError(
-                f"YouTube watch page has no videoDetails for {video_id}"
-            )
-        if page_ids != {video_id}:
-            raise KidsWatchPageIndeterminateError(
-                f"YouTube watch page videoDetails mismatch for {video_id}: {sorted(page_ids)}"
-            )
+        )
+        support_url = cls._mapping_at(
+            notification,
+            "actionButton",
+            "buttonRenderer",
+            "navigationEndpoint",
+            "urlEndpoint",
+        ).get("url")
         signals = (
-            cls._PLAYBACK_RESTRICTION.search(html) is not None,
-            cls._has_restriction_text(html),
-            cls._SUPPORT_ANSWER.search(html) is not None,
+            mode == cls._PAUSED_MODE,
+            text_signal,
+            cls._has_support_answer(support_url),
         )
         signal_count = sum(signals)
-        if signal_count == len(signals):
+        if mode == cls._PAUSED_MODE and signal_count == len(signals):
             return True
-        if signal_count:
-            raise KidsWatchPageIndeterminateError(
-                f"YouTube watch page has only {signal_count}/{len(signals)} Kids signals"
-            )
-        return False
+        if mode == cls._ALLOW_MODE and signal_count == 0:
+            return False
+        raise KidsPlayerIndeterminateError(
+            f"YouTube player Kids restrictions are inconclusive for {video_id}: "
+            f"mode={mode!r}, signals={signal_count}/{len(signals)}"
+        )
 
-    def has_kids_watch_page_signals(self, video_id: str) -> bool:
+    def has_kids_player_signals(self, video_id: str) -> bool:
         if not VIDEO_ID.fullmatch(video_id):
             raise KidsDomProbeError(f"Invalid YouTube video ID: {video_id!r}")
         for attempt in range(self.retries + 1):
             try:
-                html, final_url = self._fetch_once(video_id)
-                return self._classify(html, final_url, video_id)
+                payload, final_url = self._fetch_once(video_id)
+                return self._classify(payload, final_url, video_id)
             except urllib.error.HTTPError as exc:
                 if (
                     exc.code not in self._TRANSIENT_HTTP_CODES
                     or attempt >= self.retries
                 ):
                     raise KidsDomProbeError(
-                        f"YouTube watch page HTTP {exc.code} for {video_id}"
+                        f"YouTube player HTTP {exc.code} for {video_id}"
                     ) from exc
             except (
                 urllib.error.URLError,
@@ -619,15 +714,15 @@ class YouTubeWatchPageClient:
             ) as exc:
                 if attempt >= self.retries:
                     raise KidsDomProbeError(
-                        f"YouTube watch page network failure for {video_id}: "
+                        f"YouTube player network failure for {video_id}: "
                         f"{type(exc).__name__}: {exc}"
                     ) from exc
-            except KidsWatchPageIndeterminateError:
+            except KidsPlayerIndeterminateError:
                 if attempt >= self.retries:
                     raise
             if self.retry_delay_seconds:
                 time.sleep(self.retry_delay_seconds * (2 ** attempt))
-        raise KidsDomProbeError("YouTube watch-page retry loop exhausted")
+        raise KidsDomProbeError("YouTube player retry loop exhausted")
 
     def close(self) -> None:
         pass
@@ -888,12 +983,14 @@ class KidsDomValidator:
 
     def _get_client(self) -> object:
         if self._client is None:
-            self._client = YouTubeWatchPageClient()
+            self._client = YouTubeInnertubePlayerClient()
         return self._client
 
     def _probe(self, video_id: str) -> bool:
         client = self._get_client()
-        probe = getattr(client, "has_kids_watch_page_signals", None)
+        probe = getattr(client, "has_kids_player_signals", None)
+        if not callable(probe):
+            probe = getattr(client, "has_kids_watch_page_signals", None)
         if not callable(probe):
             probe = client.has_family_options_marker
         return probe(video_id) is True
@@ -1365,7 +1462,7 @@ def fetch_kids_search_ydl(spec: dict, now_ms: int) -> tuple[list[dict], int, int
         if not validator.is_made_for_kids(video_id):
             continue
         row["madeForKids"] = True
-        row["madeForKidsSource"] = "youtube_public_watch_page_restrictions"
+        row["madeForKidsSource"] = "youtube_innertube_android_player_restrictions"
         row["genre"] = kids_genre_from_metadata(row)
         row["cluster"] = cluster_for(row.get("title") or "", spec["cluster"])
         row["kw"] = spec["query"]

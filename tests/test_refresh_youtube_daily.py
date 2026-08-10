@@ -9,9 +9,22 @@ from unittest.mock import patch
 import refresh_youtube_daily as radar
 
 
-class WatchPageResponse(io.BytesIO):
-    def __init__(self, html, final_url):
-        super().__init__(html.encode("utf-8"))
+class InnertubeResponse(io.BytesIO):
+    def __init__(
+        self,
+        payload,
+        final_url=(
+            "https://www.youtube.com/youtubei/v1/player"
+            "?prettyPrint=false"
+        ),
+    ):
+        if isinstance(payload, bytes):
+            body = payload
+        elif isinstance(payload, str):
+            body = payload.encode("utf-8")
+        else:
+            body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
+        super().__init__(body)
         self.final_url = final_url
 
     def geturl(self):
@@ -174,275 +187,301 @@ class DailyHistoryTests(unittest.TestCase):
             self.assertFalse(radar.is_kids_marker_href(href), href)
 
     @staticmethod
-    def _kids_watch_html(video_id):
-        return (
-            '<html><script>var ytInitialPlayerResponse={'
-            '"playabilityStatus":{"miniplayer":{"miniplayerRenderer":{'
-            '"playbackMode":"PLAYBACK_MODE_PAUSED_ONLY",'
-            '"responseText":{"simpleText":'
-            '"Miniplayer is off for videos made for kids. Tap play to resume"},'
-            '"url":"//support.google.com/youtube/bin/answer.py?'
-            'answer=9632097\\u0026nohelpkit=1\\u0026hl=en"}},'
-            f'"videoDetails":{{"videoId":"{video_id}","title":"Sleep music"}}'
-            '};</script><a href="https://ytkids.app.goo.gl/nou5">Kids</a></html>'
-        )
+    def _kids_player_payload(
+        video_id,
+        *,
+        mode="PLAYBACK_MODE_PAUSED_ONLY",
+        status="OK",
+        include_text=True,
+        support_url=(
+            "//support.google.com/youtube/bin/answer.py"
+            "?answer=9632097&nohelpkit=1&hl=en"
+        ),
+    ):
+        renderer = {"playbackMode": mode}
+        if include_text or support_url is not None:
+            notification = {}
+            if include_text:
+                notification["responseText"] = {
+                    "runs": [{
+                        "text": (
+                            "Miniplayer is off for videos made for kids. "
+                            "Tap play to resume"
+                        ),
+                    }],
+                }
+            if support_url is not None:
+                notification["actionButton"] = {
+                    "buttonRenderer": {
+                        "navigationEndpoint": {
+                            "urlEndpoint": {"url": support_url},
+                        },
+                    },
+                }
+            renderer["minimizedEndpoint"] = {
+                "addToToastAction": {
+                    "item": {"notificationActionRenderer": notification},
+                },
+            }
+        return {
+            "videoDetails": {"videoId": video_id},
+            "playabilityStatus": {
+                "status": status,
+                "miniplayer": {"miniplayerRenderer": renderer},
+            },
+        }
 
-    def test_public_watch_client_accepts_only_all_strong_kids_signals(self):
+    def test_innertube_player_uses_exact_android_post_and_three_kids_signals(self):
         video_id = "Pk7UDVYh2bs"
-        final_url = f"https://www.youtube.com/watch?v={video_id}&hl=en&gl=US"
+        payload = self._kids_player_payload(video_id)
         captured = {}
 
         def fake_open(request, timeout):
             captured["request"] = request
             captured["timeout"] = timeout
-            return WatchPageResponse(self._kids_watch_html(video_id), final_url)
+            return InnertubeResponse(payload)
 
-        client = radar.YouTubeWatchPageClient(retries=0)
+        client = radar.YouTubeInnertubePlayerClient(retries=0)
         with patch.object(radar.urllib.request, "urlopen", side_effect=fake_open):
-            self.assertTrue(client.has_kids_watch_page_signals(video_id))
+            self.assertTrue(client.has_kids_player_signals(video_id))
 
-        query = radar.urllib.parse.parse_qs(
-            radar.urllib.parse.urlparse(captured["request"].full_url).query
+        request = captured["request"]
+        parsed = radar.urllib.parse.urlparse(request.full_url)
+        self.assertEqual(request.get_method(), "POST")
+        self.assertEqual(parsed.scheme, "https")
+        self.assertEqual(parsed.hostname, "www.youtube.com")
+        self.assertEqual(parsed.path, "/youtubei/v1/player")
+        self.assertEqual(
+            radar.urllib.parse.parse_qs(parsed.query),
+            {"prettyPrint": ["false"]},
         )
-        self.assertEqual(query["v"], [video_id])
-        self.assertEqual(query["hl"], ["en"])
-        self.assertEqual(query["gl"], ["US"])
-        self.assertEqual(query["bpctr"], ["9999999999"])
-        self.assertEqual(query["has_verified"], ["1"])
+        self.assertNotIn("key", radar.urllib.parse.parse_qs(parsed.query))
+        body = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(body["videoId"], video_id)
+        self.assertEqual(body["context"]["client"], {
+            "clientName": "ANDROID",
+            "clientVersion": radar.KIDS_INNERTUBE_CLIENT_VERSION,
+            "androidSdkVersion": 35,
+            "hl": "en",
+            "gl": "US",
+        })
+        self.assertIs(body["contentCheckOk"], True)
+        self.assertIs(body["racyCheckOk"], True)
         headers = {
-            key.casefold(): value
-            for key, value in captured["request"].header_items()
+            key.casefold(): value for key, value in request.header_items()
         }
-        self.assertIn("CONSENT=YES+", headers["cookie"])
+        self.assertEqual(headers["x-youtube-client-name"], "3")
+        self.assertEqual(
+            headers["x-youtube-client-version"],
+            radar.KIDS_INNERTUBE_CLIENT_VERSION,
+        )
         self.assertEqual(headers["accept-language"], "en-US,en;q=0.9")
+        self.assertNotIn("cookie", headers)
         self.assertIsInstance(
             radar.KidsDomValidator()._get_client(),
-            radar.YouTubeWatchPageClient,
+            radar.YouTubeInnertubePlayerClient,
         )
 
-        full_html = self._kids_watch_html(video_id)
-        for missing_signal, token in (
-            ("playback", '"playbackMode":"PLAYBACK_MODE_PAUSED_ONLY"'),
-            (
-                "restriction text",
-                '"simpleText":"Miniplayer is off for videos made for kids. '
-                'Tap play to resume"',
-            ),
-            ("support answer", "answer=9632097"),
-        ):
-            html = full_html.replace(token, "")
-            with self.subTest(missing_signal=missing_signal), patch.object(
-                radar.urllib.request,
-                "urlopen",
-                return_value=WatchPageResponse(html, final_url),
-            ):
-                with self.assertRaisesRegex(radar.KidsDomProbeError, "2/3"):
-                    client.has_kids_watch_page_signals(video_id)
-
-    def test_public_watch_client_rejects_valid_negative_and_wrong_video(self):
-        video_id = "dQw4w9WgXcQ"
-        final_url = f"https://www.youtube.com/watch?v={video_id}&hl=en&gl=US"
-        negative_html = (
-            '<html><script>var ytInitialPlayerResponse={'
-            f'"videoDetails":{{"videoId":"{video_id}","title":"Music"}}'
-            '};</script></html>'
+    def test_innertube_player_accepts_only_coherent_positive_or_negative(self):
+        kids_id = "Pk7UDVYh2bs"
+        normal_id = "XVFUtEh9zrY"
+        client = radar.YouTubeInnertubePlayerClient(retries=2)
+        negative = self._kids_player_payload(
+            normal_id,
+            mode="PLAYBACK_MODE_ALLOW",
+            include_text=False,
+            support_url=None,
         )
-        client = radar.YouTubeWatchPageClient(retries=2)
+        negative["unrelatedRecommendation"] = {
+            "playbackMode": "PLAYBACK_MODE_PAUSED_ONLY",
+            "text": "Miniplayer is off for videos made for kids. Tap play to resume",
+            "url": "https://support.google.com/youtube/bin/answer.py?answer=9632097",
+        }
         with patch.object(
             radar.urllib.request,
             "urlopen",
-            return_value=WatchPageResponse(negative_html, final_url),
+            side_effect=lambda *args, **kwargs: InnertubeResponse(negative),
         ) as opened, patch.object(radar.time, "sleep") as slept:
-            self.assertFalse(client.has_kids_watch_page_signals(video_id))
+            self.assertFalse(client.has_kids_player_signals(normal_id))
         self.assertEqual(opened.call_count, 1)
         slept.assert_not_called()
 
-        wrong_html = self._kids_watch_html("Pk7UDVYh2bs")
-        wrong_client = radar.YouTubeWatchPageClient(retries=0)
-        with patch.object(
-            radar.urllib.request,
-            "urlopen",
-            return_value=WatchPageResponse(wrong_html, final_url),
-        ):
-            with self.assertRaisesRegex(radar.KidsDomProbeError, "mismatch"):
-                wrong_client.has_kids_watch_page_signals(video_id)
-
-        insecure_url = f"http://www.youtube.com/watch?v={video_id}"
-        with patch.object(
-            radar.urllib.request,
-            "urlopen",
-            return_value=WatchPageResponse(negative_html, insecure_url),
-        ):
-            with self.assertRaisesRegex(
-                radar.KidsDomProbeError, "unexpected scheme"
+        invalid_payloads = {
+            "wrong video": self._kids_player_payload(kids_id),
+            "non-OK": self._kids_player_payload(kids_id, status="LOGIN_REQUIRED"),
+            "missing renderer": {
+                "videoDetails": {"videoId": kids_id},
+                "playabilityStatus": {"status": "OK"},
+            },
+            "unknown mode": self._kids_player_payload(kids_id, mode="UNKNOWN"),
+        }
+        invalid_payloads["wrong video"]["videoDetails"]["videoId"] = normal_id
+        for label, invalid in invalid_payloads.items():
+            strict_client = radar.YouTubeInnertubePlayerClient(retries=0)
+            with self.subTest(case=label), patch.object(
+                radar.urllib.request,
+                "urlopen",
+                side_effect=lambda *args, payload=invalid, **kwargs: InnertubeResponse(payload),
             ):
-                wrong_client.has_kids_watch_page_signals(video_id)
+                with self.assertRaises(radar.KidsDomProbeError):
+                    strict_client.has_kids_player_signals(kids_id)
 
-    def test_public_watch_client_retries_transient_http_failure(self):
+    def test_innertube_player_rejects_partial_or_misplaced_signals(self):
         video_id = "Pk7UDVYh2bs"
-        final_url = f"https://www.youtube.com/watch?v={video_id}&hl=en&gl=US"
-        transient = radar.urllib.error.HTTPError(
-            final_url, 503, "busy", {}, io.BytesIO(b"busy")
-        )
-        responses = iter((
-            transient,
-            WatchPageResponse(self._kids_watch_html(video_id), final_url),
-        ))
-
-        def fake_open(*args, **kwargs):
-            response = next(responses)
-            if isinstance(response, Exception):
-                raise response
-            return response
-
-        client = radar.YouTubeWatchPageClient(
-            retries=1, retry_delay_seconds=0.25
-        )
-        with patch.object(
-            radar.urllib.request, "urlopen", side_effect=fake_open
-        ) as opened, patch.object(radar.time, "sleep") as slept:
-            self.assertTrue(client.has_kids_watch_page_signals(video_id))
-        self.assertEqual(opened.call_count, 2)
-        slept.assert_called_once_with(0.25)
-
-    def test_public_watch_client_retries_403_and_incomplete_read(self):
-        video_id = "Pk7UDVYh2bs"
-        final_url = f"https://www.youtube.com/watch?v={video_id}&hl=en&gl=US"
-        failures = (
-            (
-                "403",
-                radar.urllib.error.HTTPError(
-                    final_url, 403, "blocked", {}, io.BytesIO(b"blocked")
-                ),
+        partials = {
+            2: self._kids_player_payload(video_id, support_url=None),
+            1: self._kids_player_payload(
+                video_id, include_text=False, support_url=None
             ),
-            (
-                "incomplete read",
-                radar.http.client.IncompleteRead(b"partial", 100),
-            ),
-        )
-        for label, failure in failures:
-            responses = iter((
-                failure,
-                WatchPageResponse(self._kids_watch_html(video_id), final_url),
-            ))
-
-            def fake_open(*args, **kwargs):
-                response = next(responses)
-                if isinstance(response, Exception):
-                    raise response
-                return response
-
-            client = radar.YouTubeWatchPageClient(
+        }
+        for signal_count, payload in partials.items():
+            client = radar.YouTubeInnertubePlayerClient(
                 retries=1, retry_delay_seconds=0.25
             )
-            with self.subTest(failure=label), patch.object(
-                radar.urllib.request, "urlopen", side_effect=fake_open
+            with self.subTest(signals=signal_count), patch.object(
+                radar.urllib.request,
+                "urlopen",
+                side_effect=lambda *args, body=payload, **kwargs: InnertubeResponse(body),
             ) as opened, patch.object(radar.time, "sleep") as slept:
-                self.assertTrue(client.has_kids_watch_page_signals(video_id))
-                self.assertEqual(opened.call_count, 2)
-                slept.assert_called_once_with(0.25)
+                with self.assertRaisesRegex(
+                    radar.KidsDomProbeError, f"signals={signal_count}/3"
+                ):
+                    client.has_kids_player_signals(video_id)
+            self.assertEqual(opened.call_count, 2)
+            slept.assert_called_once_with(0.25)
 
-    def test_public_watch_client_retries_indeterminate_200_and_exhausts(self):
-        video_id = "Pk7UDVYh2bs"
-        final_url = f"https://www.youtube.com/watch?v={video_id}&hl=en&gl=US"
-        captcha_html = (
-            '<html><form id="captcha-form" action="/sorry/index"></form>'
-            'Our systems have detected unusual traffic</html>'
-        )
-        responses = iter((
-            WatchPageResponse(captcha_html, final_url),
-            WatchPageResponse(self._kids_watch_html(video_id), final_url),
-        ))
-        client = radar.YouTubeWatchPageClient(
-            retries=1, retry_delay_seconds=0.25
+        allow_with_marker = self._kids_player_payload(
+            video_id, mode="PLAYBACK_MODE_ALLOW"
         )
         with patch.object(
             radar.urllib.request,
             "urlopen",
-            side_effect=lambda *args, **kwargs: next(responses),
-        ) as opened, patch.object(radar.time, "sleep") as slept:
-            self.assertTrue(client.has_kids_watch_page_signals(video_id))
-        self.assertEqual(opened.call_count, 2)
-        slept.assert_called_once_with(0.25)
+            return_value=InnertubeResponse(allow_with_marker),
+        ):
+            with self.assertRaises(radar.KidsDomProbeError):
+                radar.YouTubeInnertubePlayerClient(retries=0).has_kids_player_signals(video_id)
 
-        exhausted = radar.YouTubeWatchPageClient(
+    def test_innertube_support_url_is_strict(self):
+        valid = (
+            "//support.google.com/youtube/bin/answer.py"
+            "?answer=9632097&nohelpkit=1&hl=en"
+        )
+        self.assertTrue(
+            radar.YouTubeInnertubePlayerClient._has_support_answer(valid)
+        )
+        self.assertTrue(radar.YouTubeInnertubePlayerClient._has_support_answer(
+            "https://support.google.com/youtube/answer/9632097"
+        ))
+        for value in (
+            "http://support.google.com/youtube/bin/answer.py?answer=9632097",
+            "https://evil.example/youtube/bin/answer.py?answer=9632097",
+            "https://support.google.com.evil.example/youtube/bin/answer.py?answer=9632097",
+            "https://support.google.com:443/youtube/bin/answer.py?answer=9632097",
+            "https://support.google.com/youtube/bin/answer.py?answer=96320970",
+            "https://support.google.com/youtube/bin/answer.py?answer=9632097&answer=9632097",
+            "https://evil.example/?next=https://support.google.com/youtube/answer/9632097",
+            "//support.google.com/other?answer=9632097",
+        ):
+            with self.subTest(url=value):
+                self.assertFalse(
+                    radar.YouTubeInnertubePlayerClient._has_support_answer(value)
+                )
+
+    def test_innertube_player_rejects_redirected_endpoint(self):
+        video_id = "Pk7UDVYh2bs"
+        payload = self._kids_player_payload(video_id)
+        invalid_urls = (
+            "http://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+            "https://youtube.com/youtubei/v1/player?prettyPrint=false",
+            "https://www.youtube.com:443/youtubei/v1/player?prettyPrint=false",
+            "https://www.youtube.com/youtubei/v1/next?prettyPrint=false",
+            "https://www.youtube.com/youtubei/v1/player?prettyPrint=false&key=public",
+        )
+        for final_url in invalid_urls:
+            with self.subTest(url=final_url), patch.object(
+                radar.urllib.request,
+                "urlopen",
+                return_value=InnertubeResponse(payload, final_url),
+            ):
+                with self.assertRaisesRegex(
+                    radar.KidsDomProbeError, "expected endpoint"
+                ):
+                    radar.YouTubeInnertubePlayerClient(retries=0).has_kids_player_signals(video_id)
+
+    def test_innertube_player_retries_transient_and_malformed_responses(self):
+        video_id = "Pk7UDVYh2bs"
+        good = self._kids_player_payload(video_id)
+        endpoint = radar.YouTubeInnertubePlayerClient._ENDPOINT
+        failures = (
+            radar.urllib.error.HTTPError(
+                endpoint, 503, "busy", {}, io.BytesIO(b"busy")
+            ),
+            radar.urllib.error.HTTPError(
+                endpoint, 403, "blocked", {}, io.BytesIO(b"blocked")
+            ),
+            radar.http.client.IncompleteRead(b"partial", 100),
+            b"{not-json",
+            {"videoDetails": {"videoId": video_id}},
+        )
+        for failure in failures:
+            responses = iter((failure, good))
+
+            def fake_open(*args, **kwargs):
+                value = next(responses)
+                if isinstance(value, Exception):
+                    raise value
+                return InnertubeResponse(value)
+
+            client = radar.YouTubeInnertubePlayerClient(
+                retries=1, retry_delay_seconds=0.25
+            )
+            with self.subTest(failure=type(failure).__name__), patch.object(
+                radar.urllib.request, "urlopen", side_effect=fake_open
+            ) as opened, patch.object(radar.time, "sleep") as slept:
+                self.assertTrue(client.has_kids_player_signals(video_id))
+            self.assertEqual(opened.call_count, 2)
+            slept.assert_called_once_with(0.25)
+
+    def test_innertube_player_fails_closed_after_malformed_json_exhaustion(self):
+        video_id = "Pk7UDVYh2bs"
+        client = radar.YouTubeInnertubePlayerClient(
             retries=1, retry_delay_seconds=0
         )
         with patch.object(
             radar.urllib.request,
             "urlopen",
-            side_effect=lambda *args, **kwargs: WatchPageResponse(
-                captcha_html, final_url
-            ),
+            side_effect=lambda *args, **kwargs: InnertubeResponse(b"{bad-json"),
         ) as opened:
-            with self.assertRaisesRegex(radar.KidsDomProbeError, "captcha"):
-                exhausted.has_kids_watch_page_signals(video_id)
+            with self.assertRaisesRegex(radar.KidsDomProbeError, "malformed JSON"):
+                client.has_kids_player_signals(video_id)
         self.assertEqual(opened.call_count, 2)
 
-    def test_public_watch_client_retries_partial_signals_then_fails_closed(self):
+    def test_innertube_player_rejects_noncanonical_json_and_oversize(self):
         video_id = "Pk7UDVYh2bs"
-        final_url = f"https://www.youtube.com/watch?v={video_id}&hl=en&gl=US"
-        full_html = self._kids_watch_html(video_id)
-        text_signal = (
-            '"simpleText":"Miniplayer is off for videos made for kids. '
-            'Tap play to resume"'
+        malformed = (
+            b'{"videoDetails":{},"videoDetails":{}}',
+            b'{"value":NaN}',
+            b'[]',
         )
-        partial_pages = {
-            2: full_html.replace("answer=9632097", ""),
-            1: (
-                full_html
-                .replace("answer=9632097", "")
-                .replace(text_signal, "")
-            ),
-        }
-        for signal_count, html in partial_pages.items():
-            client = radar.YouTubeWatchPageClient(
-                retries=1, retry_delay_seconds=0.25
-            )
-            with self.subTest(signal_count=signal_count), patch.object(
+        for raw in malformed:
+            with self.subTest(raw=raw), patch.object(
                 radar.urllib.request,
                 "urlopen",
-                side_effect=lambda *args, **kwargs: WatchPageResponse(
-                    html, final_url
-                ),
-            ) as opened, patch.object(radar.time, "sleep") as slept:
-                with self.assertRaisesRegex(
-                    radar.KidsDomProbeError, f"{signal_count}/3"
-                ):
-                    client.has_kids_watch_page_signals(video_id)
-                self.assertEqual(opened.call_count, 2)
-                slept.assert_called_once_with(0.25)
-
-    def test_public_watch_client_fails_closed_on_blockers_and_network(self):
-        video_id = "Pk7UDVYh2bs"
-        final_url = f"https://www.youtube.com/watch?v={video_id}&hl=en&gl=US"
-        blocked_pages = {
-            "consent": (
-                '<html><title>Before you continue to YouTube</title>'
-                '<form action="https://consent.youtube.com/save"></form></html>'
-            ),
-            "captcha": (
-                '<html><form id="captcha-form" action="/sorry/index"></form>'
-                'Our systems have detected unusual traffic</html>'
-            ),
-        }
-        client = radar.YouTubeWatchPageClient(retries=0)
-        for blocker, html in blocked_pages.items():
-            with self.subTest(blocker=blocker), patch.object(
-                radar.urllib.request,
-                "urlopen",
-                return_value=WatchPageResponse(html, final_url),
+                side_effect=lambda *args, body=raw, **kwargs: InnertubeResponse(body),
             ):
-                with self.assertRaisesRegex(radar.KidsDomProbeError, blocker):
-                    client.has_kids_watch_page_signals(video_id)
+                with self.assertRaises(radar.KidsDomProbeError):
+                    radar.YouTubeInnertubePlayerClient(retries=0).has_kids_player_signals(video_id)
 
-        with patch.object(
+        with patch.object(radar, "KIDS_INNERTUBE_MAX_JSON_BYTES", 8), patch.object(
             radar.urllib.request,
             "urlopen",
-            side_effect=radar.urllib.error.URLError("offline"),
+            return_value=InnertubeResponse(b"123456789"),
         ):
-            with self.assertRaisesRegex(radar.KidsDomProbeError, "network failure"):
-                client.has_kids_watch_page_signals(video_id)
+            with self.assertRaisesRegex(radar.KidsDomProbeError, "bounded JSON size"):
+                radar.YouTubeInnertubePlayerClient(retries=0).has_kids_player_signals(video_id)
+
+        with self.assertRaisesRegex(ValueError, "Invalid Innertube Android"):
+            radar.YouTubeInnertubePlayerClient(client_version="bad\nheader")
 
     def test_dom_probe_rejects_consent_then_continues(self):
         client = object.__new__(radar.ChromeWebDriverClient)
@@ -669,7 +708,7 @@ class DailyHistoryTests(unittest.TestCase):
         self.assertIs(rows[0]["madeForKids"], True)
         self.assertEqual(
             rows[0]["madeForKidsSource"],
-            "youtube_public_watch_page_restrictions",
+            "youtube_innertube_android_player_restrictions",
         )
         self.assertEqual(rows[0]["audiences"], ["kids"])
 
