@@ -2435,25 +2435,34 @@ let LIVE_SNAPSHOT_DATA=null;
 function liveSnapshot(vid){
   if(LIVE_SNAPSHOT_DATA!==DATA){LIVE_SNAPSHOT_CACHE.clear();LIVE_SNAPSHOT_DATA=DATA;}
   if(LIVE_SNAPSHOT_CACHE.has(vid))return LIVE_SNAPSHOT_CACHE.get(vid);
-  const points=((DATA.liveHist&&DATA.liveHist[vid])||[]).concat((DATA.liveHourly&&DATA.liveHourly[vid])||[]);
-  points.sort((a,b)=>a[0]-b[0]);
-  const series=[];let last=null,peakAll=null,peak24=null;
+  const history=(DATA.liveHist&&DATA.liveHist[vid])||[];
+  const hourly=(DATA.liveHourly&&DATA.liveHourly[vid])||[];
   const cutoff24=Date.now()-86400000;
-  for(const point of points){
-    const time=Number(point[0]),viewers=Number(point[1]);
-    if(time===last)continue;
-    series.push(point);last=time;
-    if(Number.isFinite(viewers)){
+  let now=null,latestT=null,peakAll=null,peak24=null;
+  const scan=points=>{
+    for(const point of points){
+      const time=Number(point[0]),viewers=Number(point[1]);
+      if(!Number.isFinite(time)||!Number.isFinite(viewers))continue;
+      if(latestT==null||time>latestT){latestT=time;now=viewers;}
       if(peakAll==null||viewers>peakAll)peakAll=viewers;
       if(time>=cutoff24&&(peak24==null||viewers>peak24))peak24=viewers;
     }
-  }
-  const latest=series.length?series[series.length-1]:null;
-  const snapshot={series,now:latest?Number(latest[1]):null,latestT:latest?Number(latest[0]):null,peakAll,peak24};
+  };
+  scan(history);scan(hourly);
+  const snapshot={series:null,now,latestT,peakAll,peak24};
   LIVE_SNAPSHOT_CACHE.set(vid,snapshot);
   return snapshot;
 }
-function liveSeries(vid){return liveSnapshot(vid).series;}
+function liveSeries(vid){
+  const snapshot=liveSnapshot(vid);
+  if(snapshot.series)return snapshot.series;
+  const points=((DATA.liveHist&&DATA.liveHist[vid])||[]).concat((DATA.liveHourly&&DATA.liveHourly[vid])||[]);
+  points.sort((a,b)=>a[0]-b[0]);
+  const series=[];let last=null;
+  for(const point of points){const time=Number(point[0]);if(time!==last){series.push(point);last=time;}}
+  snapshot.series=series;
+  return series;
+}
 function liveNow(vid){return liveSnapshot(vid).now;}
 function livePeak(vid){return liveSnapshot(vid).peakAll;}
 function livePeak24h(vid){return liveSnapshot(vid).peak24;}
