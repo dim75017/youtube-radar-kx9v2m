@@ -124,8 +124,15 @@ class SoundchartsFalPhase3WorkflowGuardrailsTests(unittest.TestCase):
             'download_exact "$expected_phase1_artifact_id" "$PHASE1_STATE_ARTIFACT"',
             restore,
         )
-        self.assertIn('test "$(jq -r \'.name // empty\' "$metadata")" = "$expected_name"', restore)
-        self.assertIn('test "$(jq -r \'.expired // true\' "$metadata")" = "false"', restore)
+        self.assertIn('actual_name="$(jq -r \'.name // empty\' "$metadata")"', restore)
+        self.assertIn('[[ "$actual_name" != "$expected_name" ]]', restore)
+        self.assertIn(
+            '[[ "$(jq -r \'if has("expired") then .expired else true end\' "$metadata")" != "false" ]]',
+            restore,
+        )
+        self.assertNotIn(".expired // true", restore)
+        self.assertIn("require_file", restore)
+        self.assertIn("FAL phase-3 restore", restore)
 
     def test_source_artifact_ids_and_all_source_hashes_are_bound_to_the_report(self):
         restore = self.step(
