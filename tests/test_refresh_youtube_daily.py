@@ -118,6 +118,16 @@ class DailyHistoryTests(unittest.TestCase):
             if s["audience"] == "kids"
         ]
         self.assertTrue(all(s["searchResults"] == 50 for s in daily))
+        empty_but_bootstrapped = [
+            s
+            for s in radar.query_specs({
+                "d": {"kids": []},
+                "videoMetrics": {"kids_queries": len(radar.KIDS_QUERY_SPECS)},
+            }, include_kids=True)
+            if s["audience"] == "kids"
+        ]
+        self.assertEqual(len(empty_but_bootstrapped), 40)
+        self.assertTrue(all(s["searchResults"] == 50 for s in empty_but_bootstrapped))
         self.assertEqual(len(queries), len(set(queries)))
         for fragment in (
             "baby sleep", "toddler", "kids lofi", "ambient music for babies",
@@ -130,6 +140,251 @@ class DailyHistoryTests(unittest.TestCase):
             any(signal in query for signal in ("instrumental", "no vocals", "no lyrics"))
             for query in queries
         ))
+
+    def test_dom_marker_accepts_only_exact_family_options_destinations(self):
+        for href in (
+            "https://www.youtube.com/myfamily/#mf-compare",
+            "https://youtube.com/myfamily/#mf-compare",
+            "https://ytkids.app.goo.gl/abc123",
+        ):
+            self.assertTrue(radar.is_kids_marker_href(href), href)
+        for href in (
+            "https://www.youtube.com/myfamily/",
+            "https://www.youtube.com/myfamily/#other",
+            "https://evil.example/?next=https://youtube.com/myfamily/#mf-compare",
+            "https://not-ytkids.app.goo.gl/abc123",
+            "http://ytkids.app.goo.gl/abc123",
+            "javascript:void(0)",
+        ):
+            self.assertFalse(radar.is_kids_marker_href(href), href)
+
+    def test_dom_validator_runs_canaries_once_and_fails_closed(self):
+        class FakeClient:
+            def __init__(self, answers):
+                self.answers = answers
+                self.calls = []
+
+            def has_family_options_marker(self, video_id):
+                self.calls.append(video_id)
+                return self.answers.get(video_id, False)
+
+            def close(self):
+                pass
+
+        answers = {
+            radar.KIDS_DOM_POSITIVE_CANARIES[0]: True,
+            radar.KIDS_DOM_POSITIVE_CANARIES[1]: True,
+            radar.KIDS_DOM_NEGATIVE_CANARY: False,
+            "abcdefghijk": True,
+            "zyxwvutsrqp": False,
+        }
+        client = FakeClient(answers)
+        validator = radar.KidsDomValidator(client)
+        self.assertTrue(validator.is_made_for_kids("abcdefghijk"))
+        self.assertFalse(validator.is_made_for_kids("zyxwvutsrqp"))
+        for canary in (*radar.KIDS_DOM_POSITIVE_CANARIES, radar.KIDS_DOM_NEGATIVE_CANARY):
+            self.assertEqual(client.calls.count(canary), 1)
+
+        failing = FakeClient({
+            radar.KIDS_DOM_POSITIVE_CANARIES[0]: True,
+            radar.KIDS_DOM_POSITIVE_CANARIES[1]: False,
+            radar.KIDS_DOM_NEGATIVE_CANARY: False,
+        })
+        failed_validator = radar.KidsDomValidator(failing)
+        with self.assertRaisesRegex(radar.KidsDomCanaryError, "failed closed"):
+            failed_validator.is_made_for_kids("abcdefghijk")
+        calls_after_failure = list(failing.calls)
+        with self.assertRaises(radar.KidsDomCanaryError):
+            failed_validator.is_made_for_kids("abcdefghijk")
+        self.assertEqual(failing.calls, calls_after_failure)
+
+    def test_no_key_shard_still_runs_all_40_kids_queries(self):
+        class Validator:
+            def __init__(self):
+                self.canary_checks = 0
+
+            def ensure_canaries(self):
+                self.canary_checks += 1
+
+        validator = Validator()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "snapshot.js"
+            output = root / "youtube-shard-0.json"
+            manifest = root / "tracked.json"
+            radar.write_snapshot(snapshot, {
+                "d": {
+                    "all": [{"vid": "abcdefghijk", "title": "Focus music"}],
+                    "trends": [], "news": [], "ours": [], "kids": [], "lives": [],
+                }
+            })
+            manifest.write_text(json.dumps({
+                "version": 1, "ids": ["abcdefghijk"], "quarantine_ids": [],
+            }), encoding="utf-8")
+            with patch.dict(radar.os.environ, {"YOUTUBE_API_KEY": ""}), patch.object(
+                radar, "fetch_owned_ydl_rows", return_value={}
+            ), patch.object(
+                radar, "fetch_one_video",
+                return_value={"vid": "abcdefghijk", "views": 200_000},
+            ), patch.object(
+                radar, "fetch_discovery_spec", return_value=([], 1, 1)
+            ) as discovery, patch.object(
+                radar, "kids_dom_validator", return_value=validator
+            ):
+                artifact = radar.run_shard(snapshot, output, 0, 1, manifest)
+        self.assertEqual(len(radar.KIDS_QUERY_SPECS), 40)
+        self.assertEqual(artifact["queries_total"], 40)
+        self.assertEqual(artifact["kids_queries_total"], 40)
+        self.assertEqual(artifact["kids_queries_ok"], 40)
+        self.assertEqual(validator.canary_checks, 1)
+        self.assertEqual(discovery.call_count, 40)
+        self.assertTrue(all(call.args[2] == "" for call in discovery.call_args_list))
+
+    def test_no_key_fallback_prefilters_then_sets_dom_kids_provenance(self):
+        now = int(datetime(2026, 8, 10, 8, tzinfo=timezone.utc).timestamp() * 1000)
+        good = {
+            "id": "abcdefghijk", "title": "Baby sleep music instrumental",
+            "duration": 3 * 3600, "view_count": 2_000_000,
+            "is_live": False,
+        }
+        too_short = dict(good, id="zyxwvutsrqp", duration=19 * 60)
+
+        class Reader:
+            def __init__(self, result):
+                self.result = result
+                self.calls = []
+
+            def extract_info(self, target, download=False):
+                self.calls.append(target)
+                return self.result
+
+        flat_reader = Reader({"entries": [good, too_short]})
+        full = dict(
+            good,
+            upload_date="20260801",
+            description="Instrumental sleep music without vocals",
+            tags=["instrumental", "baby sleep"],
+            channel="Calm Baby",
+            channel_url="https://www.youtube.com/@CalmBaby",
+        )
+        full_reader = Reader(full)
+
+        class Validator:
+            def __init__(self):
+                self.calls = []
+                self.canary_checks = 0
+
+            def ensure_canaries(self):
+                self.canary_checks += 1
+
+            def is_made_for_kids(self, video_id):
+                self.calls.append(video_id)
+                return True
+
+        validator = Validator()
+        spec = {
+            "query": "baby sleep music instrumental",
+            "genre": "Baby sleep",
+            "cluster": "Relaxation / meditation",
+            "audience": "kids",
+            "searchResults": 100,
+        }
+        with patch.object(radar, "kids_search_ydl", return_value=flat_reader), patch.object(
+            radar, "ydl", return_value=full_reader
+        ), patch.object(radar, "kids_dom_validator", return_value=validator):
+            rows, raw, enriched = radar.fetch_kids_search_ydl(spec, now)
+        self.assertEqual((raw, enriched), (2, 1))
+        self.assertIn("sp=CAMSAhgC", flat_reader.calls[0])
+        self.assertEqual(len(full_reader.calls), 1)
+        self.assertEqual(validator.canary_checks, 1)
+        self.assertEqual(validator.calls, ["abcdefghijk"])
+        self.assertEqual([row["vid"] for row in rows], ["abcdefghijk"])
+        self.assertIs(rows[0]["madeForKids"], True)
+        self.assertEqual(rows[0]["madeForKidsSource"], "youtube_family_options_ui")
+        self.assertEqual(rows[0]["audiences"], ["kids"])
+
+        rejecting = Validator()
+        rejecting.is_made_for_kids = lambda video_id: False
+        unused_full_reader = Reader(full)
+        with patch.object(radar, "kids_search_ydl", return_value=flat_reader), patch.object(
+            radar, "ydl", return_value=unused_full_reader
+        ), patch.object(radar, "kids_dom_validator", return_value=rejecting):
+            rejected_rows, _, rejected_enriched = radar.fetch_kids_search_ydl(spec, now)
+        self.assertEqual(rejected_rows, [])
+        self.assertEqual(rejected_enriched, 0)
+        self.assertEqual(unused_full_reader.calls, [])
+
+        class BrokenValidator:
+            def ensure_canaries(self):
+                pass
+
+            def is_made_for_kids(self, video_id):
+                raise radar.KidsDomProbeError("webdriver lost")
+
+        with patch.object(radar, "kids_search_ydl", return_value=flat_reader), patch.object(
+            radar, "ydl", return_value=unused_full_reader
+        ), patch.object(radar, "kids_dom_validator", return_value=BrokenValidator()):
+            with self.assertRaisesRegex(radar.KidsDomProbeError, "webdriver lost"):
+                radar.fetch_kids_search_ydl(spec, now)
+
+        class BrokenReader:
+            def extract_info(self, target, download=False):
+                raise RuntimeError("yt-dlp extraction failed")
+
+        with patch.object(radar, "kids_search_ydl", return_value=flat_reader), patch.object(
+            radar, "ydl", return_value=BrokenReader()
+        ), patch.object(radar, "kids_dom_validator", return_value=validator):
+            with self.assertRaisesRegex(RuntimeError, "enrichment failed closed"):
+                radar.fetch_kids_search_ydl(spec, now)
+
+    def test_no_key_fallback_runs_canaries_when_prefilter_is_empty(self):
+        now = int(datetime(2026, 8, 10, 8, tzinfo=timezone.utc).timestamp() * 1000)
+
+        class Reader:
+            def __init__(self, result):
+                self.result = result
+                self.calls = []
+
+            def extract_info(self, target, download=False):
+                self.calls.append(target)
+                return self.result
+
+        flat_reader = Reader({"entries": [{
+            "id": "abcdefghijk",
+            "title": "Baby sleep music instrumental",
+            "duration": None,
+            "view_count": 2_000_000,
+        }]})
+        full_reader = Reader({})
+
+        class Validator:
+            def __init__(self):
+                self.canary_checks = 0
+                self.calls = []
+
+            def ensure_canaries(self):
+                self.canary_checks += 1
+
+            def is_made_for_kids(self, video_id):
+                self.calls.append(video_id)
+                return True
+
+        validator = Validator()
+        spec = {
+            "query": "baby sleep music instrumental",
+            "genre": "Baby sleep",
+            "cluster": "Relaxation / meditation",
+            "audience": "kids",
+            "searchResults": 100,
+        }
+        with patch.object(radar, "kids_search_ydl", return_value=flat_reader), patch.object(
+            radar, "ydl", return_value=full_reader
+        ), patch.object(radar, "kids_dom_validator", return_value=validator):
+            rows, raw, enriched = radar.fetch_kids_search_ydl(spec, now)
+        self.assertEqual((rows, raw, enriched), ([], 1, 0))
+        self.assertEqual(validator.canary_checks, 1)
+        self.assertEqual(validator.calls, [])
+        self.assertEqual(full_reader.calls, [])
 
     def test_instrumental_filter_rejects_kids_vocal_and_spoken_signals(self):
         base = {"duration": 3 * 3600, "title": "Baby sleep music instrumental"}

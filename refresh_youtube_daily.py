@@ -7,12 +7,16 @@ merge phase writes the public snapshot, so partial scans never look fresh.
 from __future__ import annotations
 
 import argparse
+import atexit
 import concurrent.futures
 import hashlib
 import io
 import json
 import os
 import re
+import shutil
+import socket
+import subprocess
 import sys
 import threading
 import time
@@ -53,6 +57,10 @@ SEARCH_RESULTS = int(os.environ.get("RADAR_SEARCH_RESULTS", "10"))
 KIDS_SEARCH_RESULTS = int(os.environ.get("RADAR_KIDS_SEARCH_RESULTS", "50"))
 KIDS_BOOTSTRAP_SEARCH_RESULTS = int(os.environ.get("RADAR_KIDS_BOOTSTRAP_RESULTS", "100"))
 MAX_KIDS_SEARCH_CALLS = 80
+KIDS_DOM_PAGE_LOAD_TIMEOUT_MS = int(os.environ.get("RADAR_KIDS_DOM_PAGE_TIMEOUT_MS", "15000"))
+KIDS_DOM_SCRIPT_TIMEOUT_MS = int(os.environ.get("RADAR_KIDS_DOM_SCRIPT_TIMEOUT_MS", "5000"))
+KIDS_DOM_HTTP_TIMEOUT_SECONDS = int(os.environ.get("RADAR_KIDS_DOM_HTTP_TIMEOUT_SECONDS", "20"))
+KIDS_DOM_MARKER_WAIT_SECONDS = float(os.environ.get("RADAR_KIDS_DOM_MARKER_WAIT_SECONDS", "8"))
 TRACK_WORKERS = int(os.environ.get("RADAR_TRACK_WORKERS", "12"))
 SEARCH_WORKERS = int(os.environ.get("RADAR_SEARCH_WORKERS", "4"))
 MIN_TRACK_RATIO = 0.90
@@ -146,6 +154,11 @@ KIDS_QUERY_SPECS = (
     ("drum and bass for kids instrumental", "Drum & Bass", "Gaming / night drive"),
     ("synthwave for kids instrumental", "Synthwave", "Gaming / night drive"),
 )
+KIDS_DOM_POSITIVE_CANARIES = ("L1Y-GbKA0PM", "qXcMNBQnQMM")
+KIDS_DOM_NEGATIVE_CANARY = "dQw4w9WgXcQ"
+
+_KIDS_DOM_VALIDATOR = None
+_KIDS_DOM_VALIDATOR_LOCK = threading.Lock()
 
 
 def is_deferred_row(row: dict) -> bool:
@@ -392,6 +405,288 @@ def is_kids_instrumental(row: dict) -> bool:
     return strong and explicit
 
 
+def is_kids_marker_href(href: object) -> bool:
+    """Recognize only YouTube's two rendered Family Options destinations."""
+    try:
+        parsed = urllib.parse.urlparse(str(href or ""))
+    except ValueError:
+        return False
+    host = (parsed.hostname or "").casefold()
+    if parsed.scheme != "https":
+        return False
+    if host == "ytkids.app.goo.gl":
+        return True
+    return (
+        host in {"youtube.com", "www.youtube.com"}
+        and parsed.path == "/myfamily/"
+        and parsed.fragment == "mf-compare"
+    )
+
+
+class KidsDomCanaryError(RuntimeError):
+    """The rendered Family Options signal is not trustworthy in this process."""
+
+
+class KidsDomProbeError(RuntimeError):
+    """A rendered watch page could not produce a trustworthy yes/no answer."""
+
+
+class ChromeWebDriverClient:
+    """Minimal standard-library W3C WebDriver client; never reads page source."""
+
+    _MARKER_SCRIPT = r"""
+const expectedVideoId = arguments[0];
+const visible = element => {
+  if (!element || !element.isConnected || !element.getClientRects().length) return false;
+  const style = window.getComputedStyle(element);
+  return style.display !== 'none' && style.visibility !== 'hidden' &&
+         style.visibility !== 'collapse' && Number(style.opacity || 1) > 0 &&
+         element.getAttribute('aria-hidden') !== 'true';
+};
+const locationUrl = new URL(document.location.href);
+if (locationUrl.hostname === 'consent.youtube.com' ||
+    document.querySelector('ytd-consent-bump-v2-lightbox, form[action*="consent"], iframe[src*="recaptcha"], #captcha')) {
+  return 'blocked';
+}
+if (locationUrl.pathname !== '/watch' || locationUrl.searchParams.get('v') !== expectedVideoId) {
+  return 'loading';
+}
+const watch = document.querySelector('ytd-watch-flexy');
+if (!watch || watch.getAttribute('video-id') !== expectedVideoId) return 'loading';
+const marker = href => {
+  try {
+    const url = new URL(href, document.baseURI);
+    const host = url.hostname.toLowerCase();
+    return url.protocol === 'https:' && (host === 'ytkids.app.goo.gl' ||
+      ((host === 'youtube.com' || host === 'www.youtube.com') &&
+       url.pathname === '/myfamily/' && url.hash === '#mf-compare'));
+  } catch (_) {
+    return false;
+  }
+};
+return Array.from(document.querySelectorAll('yt-video-metadata-carousel-view-model'))
+  .some(card => visible(card) && Array.from(card.querySelectorAll('a[href]'))
+    .some(link => marker(link.href))) ? 'marker' : 'ready';
+"""
+
+    def __init__(self) -> None:
+        self.process: subprocess.Popen | None = None
+        self.base_url = ""
+        self.session_id = ""
+        self._start()
+
+    @staticmethod
+    def _driver_path() -> str:
+        configured = os.environ.get("CHROMEWEBDRIVER", "").strip()
+        if configured:
+            resolved = shutil.which(configured)
+            if resolved:
+                return resolved
+            path = Path(configured).expanduser()
+            if path.is_dir():
+                for name in ("chromedriver", "chromedriver.exe"):
+                    child = path / name
+                    if child.is_file():
+                        return str(child)
+            if path.is_file():
+                return str(path)
+            raise RuntimeError(f"CHROMEWEBDRIVER does not exist: {configured}")
+        resolved = shutil.which("chromedriver") or shutil.which("chromedriver.exe")
+        if not resolved:
+            raise RuntimeError("ChromeDriver not found via CHROMEWEBDRIVER or PATH")
+        return resolved
+
+    def _request(self, method: str, path: str, payload: dict | None = None) -> object:
+        body = None if payload is None else json.dumps(payload).encode("utf-8")
+        request = urllib.request.Request(
+            self.base_url + path,
+            data=body,
+            method=method,
+            headers={"Content-Type": "application/json; charset=utf-8"},
+        )
+        try:
+            with urllib.request.urlopen(
+                request, timeout=KIDS_DOM_HTTP_TIMEOUT_SECONDS
+            ) as response:
+                document = json.load(response)
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", "replace")[:500]
+            raise RuntimeError(f"WebDriver HTTP {exc.code}: {detail}") from exc
+        if not isinstance(document, dict) or "value" not in document:
+            raise RuntimeError("Malformed WebDriver response")
+        value = document["value"]
+        if isinstance(value, dict) and value.get("error"):
+            raise RuntimeError(
+                f"WebDriver {value.get('error')}: {value.get('message') or 'unknown error'}"
+            )
+        return value
+
+    def _start(self) -> None:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as reservation:
+            reservation.bind(("127.0.0.1", 0))
+            port = reservation.getsockname()[1]
+        self.base_url = f"http://127.0.0.1:{port}"
+        self.process = subprocess.Popen(
+            [self._driver_path(), f"--port={port}", "--allowed-origins=*"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            if self.process.poll() is not None:
+                raise RuntimeError(f"ChromeDriver exited with code {self.process.returncode}")
+            try:
+                self._request("GET", "/status")
+                break
+            except Exception:
+                time.sleep(0.1)
+        else:
+            self.close()
+            raise RuntimeError("ChromeDriver did not become ready within 10 seconds")
+        value = self._request("POST", "/session", {
+            "capabilities": {
+                "alwaysMatch": {
+                    "browserName": "chrome",
+                    "pageLoadStrategy": "eager",
+                    "goog:chromeOptions": {
+                        "args": [
+                            "--headless=new",
+                            "--disable-gpu",
+                            "--disable-dev-shm-usage",
+                            "--mute-audio",
+                            "--no-sandbox",
+                            "--autoplay-policy=user-gesture-required",
+                            "--lang=en-US",
+                            "--window-size=1280,900",
+                        ]
+                    },
+                }
+            }
+        })
+        if not isinstance(value, dict) or not value.get("sessionId"):
+            self.close()
+            raise RuntimeError("ChromeDriver did not return a session ID")
+        self.session_id = str(value["sessionId"])
+        self._request("POST", f"/session/{self.session_id}/timeouts", {
+            "implicit": 0,
+            "pageLoad": KIDS_DOM_PAGE_LOAD_TIMEOUT_MS,
+            "script": KIDS_DOM_SCRIPT_TIMEOUT_MS,
+        })
+
+    def has_family_options_marker(self, video_id: str) -> bool:
+        if not VIDEO_ID.fullmatch(video_id):
+            return False
+        base = f"/session/{self.session_id}"
+        self._request("POST", base + "/url", {
+            "url": f"https://www.youtube.com/watch?v={video_id}&hl=en"
+        })
+        started = time.monotonic()
+        deadline = started + min(max(KIDS_DOM_MARKER_WAIT_SECONDS, 5), 8)
+        last_state = "loading"
+        while time.monotonic() < deadline:
+            last_state = self._request("POST", base + "/execute/sync", {
+                "script": self._MARKER_SCRIPT,
+                "args": [video_id],
+            })
+            if last_state == "marker":
+                return True
+            if last_state == "blocked":
+                raise KidsDomProbeError("YouTube watch page is blocked by consent or captcha")
+            if last_state not in {"loading", "ready"}:
+                raise KidsDomProbeError(f"Unexpected rendered watch-page state: {last_state!r}")
+            if last_state == "ready" and time.monotonic() - started >= 5:
+                return False
+            time.sleep(0.25)
+        if last_state == "ready":
+            return False
+        raise KidsDomProbeError("YouTube watch page did not load the expected video in time")
+
+    def close(self) -> None:
+        if self.session_id:
+            try:
+                self._request("DELETE", f"/session/{self.session_id}")
+            except Exception:
+                pass
+            self.session_id = ""
+        if self.process and self.process.poll() is None:
+            self.process.terminate()
+            try:
+                self.process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+                self.process.wait(timeout=2)
+        self.process = None
+
+
+class KidsDomValidator:
+    """Serialize one Chrome session and fail all Kids queries if canaries drift."""
+
+    def __init__(self, client: object | None = None) -> None:
+        self._client = client
+        self._lock = threading.Lock()
+        self._canaries_checked = False
+        self._canary_error = ""
+
+    def _get_client(self) -> object:
+        if self._client is None:
+            self._client = ChromeWebDriverClient()
+        return self._client
+
+    def _probe(self, video_id: str) -> bool:
+        return self._get_client().has_family_options_marker(video_id) is True
+
+    def _check_canaries(self) -> None:
+        if self._canaries_checked:
+            if self._canary_error:
+                raise KidsDomCanaryError(self._canary_error)
+            return
+        self._canaries_checked = True
+        try:
+            positives = {video_id: self._probe(video_id) for video_id in KIDS_DOM_POSITIVE_CANARIES}
+            negative = self._probe(KIDS_DOM_NEGATIVE_CANARY)
+            if not all(positives.values()) or negative:
+                raise RuntimeError(
+                    f"positive={positives}, negative={negative}"
+                )
+        except Exception as exc:
+            self._canary_error = f"Kids DOM canaries failed closed: {type(exc).__name__}: {exc}"
+            raise KidsDomCanaryError(self._canary_error) from exc
+
+    def ensure_canaries(self) -> None:
+        """Validate the rendered Kids signal even when a search has no candidates."""
+        with self._lock:
+            self._check_canaries()
+
+    def is_made_for_kids(self, video_id: str) -> bool:
+        with self._lock:
+            self._check_canaries()
+            try:
+                return self._probe(video_id)
+            except KidsDomProbeError:
+                raise
+            except Exception as exc:
+                raise KidsDomProbeError(
+                    f"Kids DOM verification failed for {video_id}: {type(exc).__name__}: {exc}"
+                ) from exc
+
+    def close(self) -> None:
+        with self._lock:
+            if self._client is not None:
+                self._client.close()
+                self._client = None
+
+
+def kids_dom_validator() -> KidsDomValidator:
+    global _KIDS_DOM_VALIDATOR
+    with _KIDS_DOM_VALIDATOR_LOCK:
+        if _KIDS_DOM_VALIDATOR is None:
+            _KIDS_DOM_VALIDATOR = KidsDomValidator()
+            atexit.register(_KIDS_DOM_VALIDATOR.close)
+        return _KIDS_DOM_VALIDATOR
+
+
 def ydl():
     if not hasattr(THREAD, "ydl"):
         import yt_dlp
@@ -436,6 +731,34 @@ def search_ydl():
             }
         )
     return THREAD.search_ydl
+
+
+def kids_search_ydl(result_limit: int):
+    """Flat yt-dlp search reader with an explicit Kids top-N cap."""
+    import yt_dlp
+
+    readers = getattr(THREAD, "kids_search_ydl", None)
+    if readers is None:
+        readers = {}
+        THREAD.kids_search_ydl = readers
+    if result_limit not in readers:
+        readers[result_limit] = yt_dlp.YoutubeDL(
+            {
+                "quiet": True,
+                "no_warnings": True,
+                "skip_download": True,
+                "extract_flat": True,
+                "playlistend": result_limit,
+                "socket_timeout": 15,
+                "retries": 1,
+                "extractor_retries": 1,
+                "ignoreerrors": True,
+                "cachedir": False,
+                "geo_bypass_country": "US",
+                "extractor_args": {"youtube": {"lang": ["en"], "player_client": ["web"]}},
+            }
+        )
+    return readers[result_limit]
 
 
 def owned_ydl():
@@ -684,6 +1007,106 @@ def fetch_kids_search(spec: dict, now_ms: int, key: str) -> tuple[list[dict], in
     return rows, len(video_ids), len(official)
 
 
+def is_kids_flat_candidate(info: dict) -> bool:
+    """Cheap strict gate before any full extraction or rendered-page visit."""
+    video_id = str(info.get("id") or "")
+    title = str(info.get("title") or "").strip()
+    duration = info.get("duration")
+    views = info.get("view_count")
+    live_status = str(info.get("live_status") or "").casefold()
+    if (
+        not VIDEO_ID.fullmatch(video_id)
+        or not title
+        or not isinstance(duration, (int, float))
+        or duration < MIN_SECONDS
+        or not isinstance(views, (int, float))
+        or views < MIN_KIDS_VIEWS
+        or info.get("is_live") is True
+        or live_status in {"is_live", "is_upcoming", "post_live", "was_live"}
+    ):
+        return False
+    title_only = {"title": title, "durH": float(duration) / 3600}
+    return is_kids_instrumental(title_only)
+
+
+def fetch_kids_search_ydl(spec: dict, now_ms: int) -> tuple[list[dict], int, int]:
+    """No-key Kids fallback: flat search, strict enrichment, then rendered DOM truth."""
+    result_limit = int(spec.get("searchResults") or KIDS_SEARCH_RESULTS)
+    search = (
+        "https://www.youtube.com/results?search_query="
+        + urllib.parse.quote_plus(spec["query"] + " " + KIDS_QUERY_EXCLUSIONS)
+        + "&sp=CAMSAhgC"
+    )
+    info = kids_search_ydl(result_limit).extract_info(search, download=False) or {}
+    entries = [item for item in (info.get("entries") or []) if item]
+    if not entries:
+        raise RuntimeError("yt-dlp returned no raw Kids search results")
+    prefiltered = [item for item in entries if is_kids_flat_candidate(item)]
+    ranks = {str(item.get("id")): rank for rank, item in enumerate(entries, start=1)}
+    validator = kids_dom_validator()
+    validator.ensure_canaries()
+    rows: list[dict] = []
+    enriched = 0
+    enrichment_attempts = 0
+    enrichment_failures = 0
+    for item in prefiltered:
+        video_id = str(item.get("id") or "")
+        if not validator.is_made_for_kids(video_id):
+            continue
+        enrichment_attempts += 1
+        try:
+            full = ydl().extract_info(
+                f"https://www.youtube.com/watch?v={video_id}", download=False
+            ) or {}
+        except Exception as exc:
+            enrichment_failures += 1
+            print(
+                f"WARN Kids enrichment {video_id}: {type(exc).__name__}: {exc}",
+                file=sys.stderr,
+            )
+            continue
+        if not full:
+            enrichment_failures += 1
+            continue
+        enriched += 1
+        if not is_kids_flat_candidate(full):
+            continue
+        row = info_to_row(full, now_ms)
+        if not row:
+            continue
+        row["_scanDescription"] = str(full.get("description") or "")
+        tags = full.get("tags") or []
+        row["_scanTags"] = " ".join(str(value) for value in tags) if isinstance(tags, list) else str(tags)
+        if (
+            not is_kids_instrumental(row)
+            or int(row.get("views") or 0) < MIN_KIDS_VIEWS
+            or not isinstance(row.get("vpm"), (int, float))
+            or float(row["vpm"]) < MIN_KIDS_VPM
+        ):
+            continue
+        row["madeForKids"] = True
+        row["madeForKidsSource"] = "youtube_family_options_ui"
+        row["genre"] = kids_genre_from_metadata(row)
+        row["cluster"] = cluster_for(row.get("title") or "", spec["cluster"])
+        row["kw"] = spec["query"]
+        row["kwCount"] = 1
+        row["pattern"] = "Daily Kids keyword scan"
+        row["added"] = now_ms
+        row["rank"] = ranks[video_id]
+        row["audiences"] = ["kids"]
+        row.pop("_scanDescription", None)
+        row.pop("_scanTags", None)
+        rows.append(row)
+    if enrichment_failures and (
+        enrichment_failures >= 2 or enrichment_failures == enrichment_attempts
+    ):
+        raise RuntimeError(
+            f"Kids enrichment failed closed for {enrichment_failures}/"
+            f"{enrichment_attempts} DOM-positive candidates"
+        )
+    return rows, len(entries), enriched
+
+
 def youtube_api_payload(path: str, params: dict[str, object]) -> dict:
     """Load one YouTube Data API response without exposing the API key in logs."""
     query = urllib.parse.urlencode(params)
@@ -796,11 +1219,10 @@ def query_specs(payload: dict, *, include_kids: bool = True) -> list[dict]:
     ]
     if not include_kids:
         return regular
-    kids_result_limit = (
-        KIDS_SEARCH_RESULTS
-        if payload.get("d", {}).get("kids")
-        else KIDS_BOOTSTRAP_SEARCH_RESULTS
-    )
+    kids_bootstrapped = bool(payload.get("d", {}).get("kids")) or int(
+        (payload.get("videoMetrics") or {}).get("kids_queries") or 0
+    ) >= len(KIDS_QUERY_SPECS)
+    kids_result_limit = KIDS_SEARCH_RESULTS if kids_bootstrapped else KIDS_BOOTSTRAP_SEARCH_RESULTS
     search_calls = len(KIDS_QUERY_SPECS) * max(1, (kids_result_limit + 49) // 50)
     if search_calls > MAX_KIDS_SEARCH_CALLS:
         raise RuntimeError(
@@ -940,6 +1362,7 @@ def merge_keyword_rows(rows: list[dict]) -> list[dict]:
     ranks: dict[str, list[int]] = defaultdict(list)
     audiences: dict[str, set[str]] = defaultdict(set)
     kids_status: dict[str, list[bool]] = defaultdict(list)
+    kids_sources: dict[str, set[str]] = defaultdict(set)
     for row in rows:
         video_id = row["vid"]
         old = by_id.get(video_id)
@@ -953,6 +1376,8 @@ def merge_keyword_rows(rows: list[dict]) -> list[dict]:
         )
         if isinstance(row.get("madeForKids"), bool):
             kids_status[video_id].append(row["madeForKids"])
+        if row.get("madeForKids") is True and row.get("madeForKidsSource"):
+            kids_sources[video_id].add(str(row["madeForKidsSource"]))
         if isinstance(row.get("rank"), (int, float)):
             ranks[video_id].append(int(row["rank"]))
     for video_id, row in by_id.items():
@@ -965,6 +1390,8 @@ def merge_keyword_rows(rows: list[dict]) -> list[dict]:
             row["audiences"] = sorted(audiences[video_id], key=("youtube", "kids").index)
         if True in kids_status[video_id]:
             row["madeForKids"] = True
+            if kids_sources[video_id]:
+                row["madeForKidsSource"] = sorted(kids_sources[video_id])[0]
         elif False in kids_status[video_id]:
             row["madeForKids"] = False
     return list(by_id.values())
@@ -982,6 +1409,10 @@ def preserve_audience_classification(winner: dict, other: dict | None) -> dict:
     ]
     if True in statuses:
         merged["madeForKids"] = True
+        for source_row in (winner, other):
+            if source_row.get("madeForKids") is True and source_row.get("madeForKidsSource"):
+                merged["madeForKidsSource"] = source_row["madeForKidsSource"]
+                break
     elif False in statuses:
         merged["madeForKids"] = False
     audiences = {
@@ -993,6 +1424,14 @@ def preserve_audience_classification(winner: dict, other: dict | None) -> dict:
     if audiences:
         merged["audiences"] = sorted(audiences, key=("youtube", "kids").index)
     return merged
+
+
+def fetch_discovery_spec(spec: dict, now_ms: int, api_key: str) -> tuple[list[dict], int, int]:
+    if spec.get("audience") == "kids":
+        if api_key:
+            return fetch_kids_search(spec, now_ms, api_key)
+        return fetch_kids_search_ydl(spec, now_ms)
+    return fetch_search(spec, now_ms)
 
 
 def run_shard(
@@ -1024,7 +1463,7 @@ def run_shard(
     api_key = os.environ.get("YOUTUBE_API_KEY", "").strip()
     specs = [
         spec
-        for spec in query_specs(payload, include_kids=bool(api_key))
+        for spec in query_specs(payload, include_kids=True)
         if stable_shard(spec["query"], shards) == shard
     ]
     owned_fresh: dict[str, dict] = {}
@@ -1102,14 +1541,13 @@ def run_shard(
     kids_query_failed = 0
     kids_results_examined = 0
     kids_candidates_kept = 0
+    # A canary failure is not an ordinary partial keyword miss: without a
+    # trustworthy rendered signal, no Kids classification may be published.
+    if kids_queries_total and not api_key:
+        kids_dom_validator().ensure_canaries()
     with concurrent.futures.ThreadPoolExecutor(max_workers=SEARCH_WORKERS) as pool:
         future_to_spec = {
-            pool.submit(
-                fetch_kids_search if spec.get("audience") == "kids" else fetch_search,
-                spec,
-                now_ms,
-                *([api_key] if spec.get("audience") == "kids" else []),
-            ): spec
+            pool.submit(fetch_discovery_spec, spec, now_ms, api_key): spec
             for spec in specs
         }
         for future in concurrent.futures.as_completed(future_to_spec):
@@ -1179,7 +1617,7 @@ def run_shard(
 def update_row(existing: dict, fresh: dict, now_ms: int) -> None:
     for key in (
         "title", "url", "durH", "durationSource", "views", "pub", "channel",
-        "chUrl", "channelId", "subs",
+        "chUrl", "channelId", "subs", "madeForKidsSource",
     ):
         if fresh.get(key) not in (None, ""):
             existing[key] = fresh[key]
@@ -1227,6 +1665,8 @@ def merge_discovery_fields(existing: dict, discovered: dict) -> None:
         existing["audiences"] = sorted(audiences, key=("youtube", "kids").index)
     if discovered.get("madeForKids") is True or existing.get("madeForKids") is True:
         existing["madeForKids"] = True
+        if discovered.get("madeForKidsSource"):
+            existing["madeForKidsSource"] = discovered["madeForKidsSource"]
     elif isinstance(discovered.get("madeForKids"), bool):
         existing["madeForKids"] = discovered["madeForKids"]
 
