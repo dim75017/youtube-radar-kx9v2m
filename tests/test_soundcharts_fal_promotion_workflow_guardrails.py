@@ -73,6 +73,12 @@ class SoundchartsFalPromotionWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("explicit_dim_promotion_validation_required", self.workflow)
         self.assertIn("Explicit Dim validation is no longer required", self.workflow)
 
+    def test_audience_size_and_career_stage_never_block(self):
+        self.assertIn("audience_size_and_career_stage_never_block", self.workflow)
+        self.assertIn(
+            "Audience size or career stage can block the FAL cohort", self.workflow
+        )
+
     def test_private_rows_are_encrypted_and_erased_before_artifact_upload(self):
         encrypt = self.workflow.index("Encrypt private cohort and erase plaintext rows")
         upload_private = self.workflow.index(

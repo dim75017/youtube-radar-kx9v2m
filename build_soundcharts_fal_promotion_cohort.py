@@ -34,13 +34,6 @@ APPROVED_AI = {"low", "faible"}
 REVIEW_AI = {"", "unknown", "a verifier", "at verify", "pending", "review required"}
 BLOCKED_AI = {"high", "elevated", "eleve", "critical", "fort"}
 APPROVED_REVIEW = {"approved", "approve", "validated", "valide"}
-APPROVED_NON_SUPERSTAR = {
-    "not superstar",
-    "non superstar",
-    "not a superstar",
-    "not_superstar",
-    "non_superstar",
-}
 APPROVED_NO_LYRICS = {
     "no lyrics",
     "no lyric",
@@ -284,18 +277,6 @@ def _explicit_no_lyrics(record: Mapping[str, Any]) -> bool:
     return False
 
 
-def _explicit_non_superstar(record: Mapping[str, Any]) -> bool:
-    evidence = _mapping(record.get("source_evidence"))
-    for source in (record, evidence):
-        if source.get("is_superstar") is False:
-            return True
-        if normalise_label(source.get("superstar_status")) in {
-            normalise_label(value) for value in APPROVED_NON_SUPERSTAR
-        }:
-            return True
-    return False
-
-
 def _evidence_genres(record: Mapping[str, Any]) -> list[str]:
     genres = _sequence(record.get("genres"))
     evidence = _mapping(record.get("source_evidence"))
@@ -420,8 +401,6 @@ def blocking_fields(
         blocked.append("genre_conflict")
     if not _explicit_no_lyrics(record):
         blocked.append("no_lyrics_evidence")
-    if not _explicit_non_superstar(record):
-        blocked.append("non_superstar_evidence")
     if _ai_assessment(record) == "blocked":
         blocked.append("ai_high_risk")
     if normalise_label(record.get("release_window_status")) != "within window":
@@ -573,7 +552,6 @@ def build_cohort(
         "genre_source_evidence",
         "genre_conflict",
         "no_lyrics_evidence",
-        "non_superstar_evidence",
         "artist_identity",
         "artist_spotify_id",
         "rights_evidence",
@@ -622,7 +600,7 @@ def build_cohort(
             "instrumental_evidence_required": True,
             "genre_evidence_required": True,
             "no_lyrics_evidence_required": True,
-            "non_superstar_evidence_required": True,
+            "audience_size_and_career_stage_never_block": True,
             "ai_high_risk_excluded": True,
             "ai_unknown_catalogue_only_and_marked_for_review": True,
             "low_ai_risk_required_for_opportunities": True,
@@ -675,6 +653,7 @@ def build_cohort(
         "opportunity_candidate_track_count": opportunity_candidates,
         "blocking_field_counts": dict(sorted(blocker_counts.items())),
         "candidate_records_digest": candidate_digest,
+        "audience_size_and_career_stage_never_block": True,
         "explicit_dim_validation_required": True,
         "canonical_promotion_implemented": False,
     }

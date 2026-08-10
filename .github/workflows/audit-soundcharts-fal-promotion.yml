@@ -191,6 +191,11 @@ jobs:
               raise SystemExit("Canonical comparison is not exact-ID based")
           if summary.get("explicit_dim_validation_required") is not True:
               raise SystemExit("Explicit Dim validation is no longer required")
+          guardrails = private.get("guardrails") or {}
+          if guardrails.get("audience_size_and_career_stage_never_block") is not True:
+              raise SystemExit("Audience size or career stage can block the FAL cohort")
+          if summary.get("audience_size_and_career_stage_never_block") is not True:
+              raise SystemExit("Aggregate audit lost the audience/career-stage guardrail")
           candidates = private.get("tracks") or []
           if len(candidates) != int(summary.get("promotion_candidate_track_count") or 0):
               raise SystemExit("Private cohort and aggregate count differ")

@@ -112,6 +112,10 @@ class SoundchartsFalPromotionCohortTests(unittest.TestCase):
         self.assertFalse(cohort["dashboard_written"])
         self.assertFalse(cohort["promotion_executed"])
         self.assertEqual(cohort["status"], "awaiting_explicit_dim_validation")
+        self.assertTrue(
+            cohort["guardrails"]["audience_size_and_career_stage_never_block"]
+        )
+        self.assertTrue(summary["audience_size_and_career_stage_never_block"])
         self.assertTrue(cohort["tracks"][0]["opportunity_eligible"])
         self.assertFalse(cohort["tracks"][0]["ai_review_required"])
 
@@ -133,10 +137,25 @@ class SoundchartsFalPromotionCohortTests(unittest.TestCase):
         )
         self.assertFalse(cohort["canonical_comparison"]["fuzzy_matching_used"])
 
-    def test_missing_no_lyrics_and_non_superstar_evidence_never_gets_inferred(self):
+    def test_audience_size_and_career_stage_never_block(self):
         record = ready_record()
-        record["monthly_listeners"] = 50_001
-        record["career_stage"] = "emerging"
+        record["monthly_listeners"] = 50_000_000
+        record["career_stage"] = "superstar"
+        record["source_evidence"].pop("is_superstar")
+
+        cohort, summary = build_cohort(manifest(record), canonical_payload())
+
+        self.assertEqual(summary["promotion_candidate_track_count"], 1)
+        self.assertEqual(summary["blocked_row_count"], 0)
+        self.assertNotIn(
+            "non_superstar_evidence", summary["blocking_field_counts"]
+        )
+        self.assertEqual(len(cohort["tracks"]), 1)
+
+    def test_missing_no_lyrics_evidence_stays_fail_closed(self):
+        record = ready_record()
+        record["monthly_listeners"] = 50_000_000
+        record["career_stage"] = "superstar"
         record["speechiness"] = 0.01
         record["source_evidence"].pop("vocal")
         record["source_evidence"].pop("is_superstar")
@@ -145,8 +164,8 @@ class SoundchartsFalPromotionCohortTests(unittest.TestCase):
 
         self.assertEqual(cohort["tracks"], [])
         self.assertEqual(summary["blocking_field_counts"]["no_lyrics_evidence"], 1)
-        self.assertEqual(
-            summary["blocking_field_counts"]["non_superstar_evidence"], 1
+        self.assertNotIn(
+            "non_superstar_evidence", summary["blocking_field_counts"]
         )
         self.assertEqual(summary["unknown_or_unproven_row_count"], 1)
 
@@ -224,6 +243,7 @@ class SoundchartsFalPromotionCohortTests(unittest.TestCase):
         self.assertNotIn("Quiet Horizon", encoded)
         self.assertNotIn('"tracks"', encoded)
         self.assertFalse(summary["row_level_data_uploaded"])
+        self.assertTrue(summary["audience_size_and_career_stage_never_block"])
         self.assertTrue(summary["explicit_dim_validation_required"])
 
     def test_invalid_or_non_staging_inputs_fail_closed(self):
