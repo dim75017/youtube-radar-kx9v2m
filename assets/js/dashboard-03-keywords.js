@@ -69,7 +69,7 @@ function ageMonths(v){
   if(v.pub)return (Date.now()-v.pub)/2629800000;
   return null;
 }
-const AGES=[['3m','<span class="age-dot" style="background:#4ade80;box-shadow:0 0 9px rgba(74,222,128,.7)"></span>Last 3 months',3],['6m','<span class="age-dot" style="background:#fbbf24;box-shadow:0 0 9px rgba(251,191,36,.7)"></span>Last 6 months',6],['12m','<span class="age-dot" style="background:#fb923c;box-shadow:0 0 9px rgba(251,146,60,.7)"></span>Last 12 months',12],['all','<span class="age-dot" style="background:#f87171;box-shadow:0 0 9px rgba(248,113,113,.7)"></span>All time',null]];
+const AGES=[['3m','<span class="age-dot" style="background:#4ade80;box-shadow:0 0 9px rgba(74,222,128,.7)"></span>Last 3 months',3],['6m','<span class="age-dot" style="background:#fbbf24;box-shadow:0 0 9px rgba(251,191,36,.7)"></span>Last 6 months',6],['12m','<span class="age-dot" style="background:#fb923c;box-shadow:0 0 9px rgba(251,146,60,.7)"></span>Last 12 months',12],['36m','<span class="age-dot" style="background:#60a5fa;box-shadow:0 0 9px rgba(96,165,250,.7)"></span>Last 3 years',36],['all','<span class="age-dot" style="background:#f87171;box-shadow:0 0 9px rgba(248,113,113,.7)"></span>All time',null]];
 function inAge(v,code){
   if(code==='all')return true;
   const A=AGES.find(a=>a[0]===code);if(!A)return true;
