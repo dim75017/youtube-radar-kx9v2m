@@ -7,14 +7,20 @@ const INSTRUMENTAL_EXPANSION_KEYWORDS=[
   'gaming music instrumental','gaming playlist instrumental','gaming background music instrumental','gameplay music instrumental','electronic gaming mix instrumental','focus gaming music instrumental','chill gaming music instrumental','ambient gaming music instrumental','gaming music long mix','video game music instrumental mix',
   'car music instrumental','car playlist instrumental','driving music instrumental','driving instrumental mix','road trip instrumental mix','night drive instrumental mix','highway music instrumental','late night drive instrumental','car music for driving instrumental','long drive music instrumental'
 ];
-function scanKeywords(){return [...new Set([...KEYWORDS,...INSTRUMENTAL_EXPANSION_KEYWORDS])];}
+const KIDS_SCAN_KEYWORDS=[
+  'baby sleep music instrumental','newborn sleep music instrumental','infant sleep music instrumental','toddler sleep music instrumental','kids bedtime music instrumental','nap time music for kids instrumental',
+  'instrumental lullabies for babies','baby music box no vocals','piano lullabies for babies instrumental','calming music for babies instrumental','soothing baby music no lyrics','baby sensory music instrumental','relaxing music for toddlers instrumental','calm down music for kids instrumental',
+  'kids study music instrumental','homework music for kids no lyrics','focus music for children instrumental','classroom background music instrumental','preschool quiet time music instrumental','playtime music for kids instrumental','daycare background music instrumental','Montessori music for children instrumental',
+  'reading music for kids instrumental','drawing music for kids instrumental','kids yoga music instrumental','baby lofi sleep music instrumental','kids lofi study beats instrumental','jazz for babies instrumental','classical music for babies instrumental','piano music for babies instrumental','ambient music for babies sleep instrumental',
+  'baby sleep music 8 hours instrumental','baby sleep music all night no vocals','toddler bedtime music 3 hours instrumental','kids study music 1 hour instrumental','bossa nova for babies instrumental','guitar music for babies instrumental','chill house for kids instrumental','drum and bass for kids instrumental','synthwave for kids instrumental'
+];
+function scanKeywords(){return [...new Set([...KEYWORDS,...INSTRUMENTAL_EXPANSION_KEYWORDS,...KIDS_SCAN_KEYWORDS])];}
 let KWQ='';
 function kwCounts(){
   if(window._kwc)return window._kwc;
   const c={};scanKeywords().forEach(k=>c[k.toLowerCase()]=0);
   const tally=(s,sep)=>{if(!s)return;s.split(sep).forEach(x=>{const k=x.trim().toLowerCase();if(k in c)c[k]++;});};
-  DATA.all.forEach(v=>tally(v.kw,';'));
-  DATA.news.forEach(v=>tally(v.disc,','));
+  mixRows().forEach(v=>{tally(v.kw,';');tally(v.disc,',');});
   window._kwc=c;return c;
 }
 function kwHTML(){
@@ -22,7 +28,7 @@ function kwHTML(){
   let list=scanKeywords().map(k=>[k,c[k.toLowerCase()]||0]);
   if(KWQ){const q=KWQ.toLowerCase();list=list.filter(([k])=>k.toLowerCase().includes(q));}
   list.sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
-  let h='<div class="panel" style="margin-bottom:16px"><div class="dw-sec" style="margin:0"><div class="k">🔎 How the radar works</div><div class="v">These '+KEYWORDS.length+' YouTube search queries are scanned on every sync, across all our music niches. Any long instrumental video ranking in the <b>top 100 results</b> of at least one query ends up in All Videos (≥1M views), Trends (<12 months, ≥500k) or News (fresh discoveries). The counter shows how many videos of the radar were found through each query.</div></div></div>';
+  let h='<div class="panel" style="margin-bottom:16px"><div class="dw-sec" style="margin:0"><div class="k">🔎 How the radar works</div><div class="v">These '+scanKeywords().length+' YouTube search queries cover all our music niches. The standard radar follows its regular recent-results scan. The Kids cohort uses an initial top-100 bootstrap, then refreshes the top 50 daily while continuing to track known videos by ID. Only long instrumental videos that pass the radar thresholds are retained. The counter shows how many radar videos were found through each query.</div></div></div>';
   h+='<div class="toolbar"><div class="search">'+ICONS.search+'<input placeholder="Filter keywords…" value="'+esc(KWQ)+'" oninput="KWQ=this.value;document.getElementById(\'kw-list\').innerHTML=kwListHTML()"><kbd>/</kbd></div>'+
      '<div class="result-count"><b>'+list.length+'</b> keywords</div></div>';
   h+='<div id="kw-list">'+kwListHTML()+'</div>';
@@ -37,7 +43,7 @@ function kwListHTML(){
     '<div class="kw-item" data-kw="'+esc(k)+'" title="See the radar videos found through this query" onclick="kwGo(this.dataset.kw)">'+
     '<span class="kw-name">'+esc(k)+'</span><span class="kw-n'+(n?'':' zero')+'">'+n+'</span></div>').join('')+'</div>';
 }
-function kwGo(k){VS.mix.q=k;VS.mix.limit=60;VS.mix.age='all';go('mix');}
+function kwGo(k){VS.mix.q=k;VS.mix.limit=60;VS.mix.age='all';VS.mix.audience=KIDS_SCAN_KEYWORDS.includes(k)?'kids':'youtube';VIEW_CACHE.delete(viewCacheKey('mix'));go('mix');}
 
 
 /* ================= VIDEO VIEWS ================= */
@@ -58,9 +64,15 @@ function mixRows(){
     const k=v.vid||('t:'+v.title);
     const cur=m.get(k);
     if(!cur)m.set(k,Object.assign({},v));
-    else{for(const f in v){if(cur[f]==null||cur[f]==='')cur[f]=v[f];}}
+    else{
+      for(const f in v){if(cur[f]==null||cur[f]==='')cur[f]=v[f];}
+      if(v.madeForKids===true)cur.madeForKids=true;
+      else if(typeof cur.madeForKids!=='boolean'&&v.madeForKids===false)cur.madeForKids=false;
+      const audiences=[...(cur.audiences||[]),...(v.audiences||[])];
+      if(audiences.length)cur.audiences=[...new Set(audiences)];
+    }
   });
-  add(DATA.all);add(DATA.trends);add(DATA.news);
+  add(DATA.all);add(DATA.trends);add(DATA.news);add(DATA.kids);
   _mixCache=[...m.values()];_mixT=SYNCED;
   return _mixCache;
 }
@@ -79,6 +91,7 @@ function inAge(v,code){
 }
 function filterVids(kind){
   const st=VS[kind];let rows=(kind==='mix')?mixRows():DATA[kind];
+  if(kind==='mix')rows=rows.filter(v=>matchesRadarAudience(v,st.audience));
   if(kind==='mix'&&st.age!=='all')rows=rows.filter(v=>inAge(v,st.age));
   if(st.genre)rows=rows.filter(v=>v.genre===st.genre);
   if(st.q){const q=st.q.toLowerCase();rows=rows.filter(v=>(v.title+' '+v.channel+' '+(v.kw||'')+' '+(v.disc||'')).toLowerCase().includes(q));}
@@ -88,13 +101,14 @@ function setAge(a){VS.mix.age=a;VS.mix.limit=60;render();}
 function videosHTML(kind){
   const st=VS[kind];
   const all=(kind==='mix')?mixRows():DATA[kind];
+  const audienceRows=kind==='mix'?all.filter(v=>matchesRadarAudience(v,st.audience)):all;
   const rows=filterVids(kind);
   let ageSel='';
   if(kind==='mix'){
     const curAge=AGES.find(a=>a[0]===st.age)||AGES[0];
     const curAgeLabel=(PERIOD_EMOJI[st.age]||'⚪')+' '+curAge[1].replace(/<[^>]*>/g,'');
     const ageOpts=AGES.map(a=>{
-      const n=a[2]==null?all.length:all.filter(v=>inAge(v,a[0])).length;
+      const n=a[2]==null?audienceRows.length:audienceRows.filter(v=>inAge(v,a[0])).length;
       const label=a[1].replace(/<[^>]*>/g,'');
       return {label:(PERIOD_EMOJI[a[0]]||'⚪')+' '+label+' · '+fmtInt(n),sel:st.age===a[0],onclick:'setAge('+jsq(a[0])+')'};
     });
@@ -103,8 +117,8 @@ function videosHTML(kind){
   // The genre menu is contextual: its counts always match the selected
   // period, so a genre with all-time videos cannot misleadingly look present
   // in “last 3 / 6 / 12 months”.
-  const periodRows=(kind==='mix'&&st.age!=='all')?all.filter(v=>inAge(v,st.age)):all;
-  const genres=[...new Set(all.map(v=>v.genre).filter(Boolean))].sort((a,b)=>
+  const periodRows=(kind==='mix'&&st.age!=='all')?audienceRows.filter(v=>inAge(v,st.age)):audienceRows;
+  const genres=[...new Set(periodRows.map(v=>v.genre).filter(Boolean))].sort((a,b)=>
     periodRows.filter(v=>v.genre===b).length-periodRows.filter(v=>v.genre===a).length||a.localeCompare(b)
   );
   const sortKeys=kind==='news'?['added','vpm','views','newest','dur']:(kind==='mix'?['vpm','views','newest','oldest','dur','subs','added']:['vpm','views','newest','oldest','dur','subs']);
@@ -118,6 +132,7 @@ function videosHTML(kind){
     '<div class="search">'+ICONS.search+'<input id="q-'+kind+'" placeholder="Search titles, channels, keywords…" value="'+esc(st.q)+'" oninput="VS.'+kind+'.q=this.value;VS.'+kind+'.limit=60;rerenderList(\''+kind+'\')"><kbd>/</kbd></div>'+
     ageSel+
     xdd('c-genre',genreLabel,genreOpts)+
+    (kind==='mix'?audienceSwitchHTML('mix',st.audience):'')+
     '<div class="tb-right">'+xdd('c-sort',sortLabel,sortOpts)+
     '<div class="viewtoggle">'+
       '<button class="'+(st.mode==='grid'?'on':'')+'" onclick="VS.'+kind+'.mode=\'grid\';render()" title="Grid">'+ICONS.grid+'</button>'+
