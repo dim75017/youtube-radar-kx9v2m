@@ -19,6 +19,8 @@ class FakeClient:
         self.paths.append(path)
         for needle, response in self.responses.items():
             if needle in path:
+                if isinstance(response, BaseException):
+                    raise response
                 return copy.deepcopy(response)
         raise AssertionError(f"Unexpected path: {path}")
 
@@ -354,6 +356,51 @@ class InstrumentalPoolTests(unittest.TestCase):
         self.assertEqual(parsed["instrumental_status"], "vocal")
         self.assertTrue(parsed["has_vocal_evidence"])
 
+    def test_prior_vocal_evidence_is_sticky_against_instrumental_refresh(self):
+        current = payload()
+        schema, rows = subject.ensure_editorial_classification_fields(current)
+        row = rows[0]
+        subject.set_field(row, schema, "instrumental_status", "vocal")
+        subject.set_field(row, schema, "instrumental_confidence", 0.95)
+        subject.set_field(
+            row,
+            schema,
+            "source_evidence",
+            {
+                "vocal": True,
+                "explicit": True,
+                "speechiness": 0.51,
+                "instrumental": False,
+            },
+        )
+
+        subject.update_editorial_classification(
+            current,
+            "song-uuid",
+            {
+                "instrumental_status": "instrumental",
+                "instrumental_confidence": 0.99,
+                "has_instrumental_evidence": True,
+                "has_vocal_evidence": False,
+                "source_evidence": {
+                    "vocal": False,
+                    "explicit": False,
+                    "speechiness": 0.02,
+                    "instrumental": True,
+                    "instrumentalness": 0.99,
+                },
+                "soundcharts_genres": [],
+                "soundcharts_genres_checked_at": "2026-08-10T00:00:00Z",
+            },
+        )
+
+        evidence = subject.field(row, schema, "source_evidence")
+        self.assertEqual(subject.field(row, schema, "instrumental_status"), "vocal")
+        self.assertTrue(evidence["vocal"])
+        self.assertTrue(evidence["explicit"])
+        self.assertFalse(evidence["instrumental"])
+        self.assertEqual(evidence["speechiness"], 0.51)
+
     def test_classification_backfill_updates_genre_without_inventing_ai_risk(self):
         current = payload()
         schema = current["editorial"]["track_schema"]
@@ -671,6 +718,145 @@ class InstrumentalPoolTests(unittest.TestCase):
         self.assertEqual(summary["protected_legacy_zero_evidence_pending"], 0)
         self.assertEqual(summary["remaining"], 0)
 
+    def test_protected_legacy_404_is_terminal_and_never_refetched(self):
+        current, protected_spotify_id = protected_checked_payload()
+        cache = {"version": 1, "tracks": {}, "artists": {}}
+        client = FakeClient(
+            {
+                "/api/v2.25/song/protected-uuid":
+                    subject.SoundchartsDataUnavailableError(404),
+            }
+        )
+        with patch.object(subject, "utc_now", return_value="2026-08-10T00:00:00Z"):
+            first = subject.classify_soundcharts_genres(
+                current,
+                cache,
+                client,
+                workers=1,
+                max_requests=1,
+                protected_spotify_ids={protected_spotify_id},
+            )
+
+        schema = current["discovery_catalogue"]["track_schema"]
+        row = current["discovery_catalogue"]["tracks"][0]
+        refresh = subject.field(row, schema, "soundcharts_evidence_refresh")
+        self.assertEqual(refresh["status"], "terminal_unavailable")
+        self.assertEqual(refresh["error_code"], "http_404")
+        self.assertEqual(first["protected_legacy_terminal_after"], 1)
+
+        no_call_client = FakeClient({})
+        with patch.object(subject, "utc_now", return_value="2026-08-20T00:00:00Z"):
+            second = subject.classify_soundcharts_genres(
+                current,
+                cache,
+                no_call_client,
+                workers=1,
+                max_requests=1,
+                protected_spotify_ids={protected_spotify_id},
+            )
+        self.assertEqual(no_call_client.paths, [])
+        self.assertEqual(second["selected"], 0)
+        self.assertEqual(second["protected_legacy_terminal_before"], 1)
+
+    def test_protected_legacy_invalid_payload_is_terminal(self):
+        current, protected_spotify_id = protected_checked_payload()
+        cache = {"version": 1, "tracks": {}, "artists": {}}
+        client = FakeClient({"/api/v2.25/song/protected-uuid": {"object": []}})
+        with patch.object(subject, "utc_now", return_value="2026-08-10T00:00:00Z"):
+            first = subject.classify_soundcharts_genres(
+                current,
+                cache,
+                client,
+                workers=1,
+                max_requests=1,
+                protected_spotify_ids={protected_spotify_id},
+            )
+
+        schema = current["discovery_catalogue"]["track_schema"]
+        row = current["discovery_catalogue"]["tracks"][0]
+        refresh = subject.field(row, schema, "soundcharts_evidence_refresh")
+        self.assertEqual(refresh["status"], "terminal_invalid_response")
+        self.assertEqual(first["invalid_responses"], 1)
+        self.assertEqual(first["protected_legacy_terminal_after"], 1)
+
+        no_call_client = FakeClient({})
+        with patch.object(subject, "utc_now", return_value="2026-08-20T00:00:00Z"):
+            second = subject.classify_soundcharts_genres(
+                current,
+                cache,
+                no_call_client,
+                workers=1,
+                max_requests=1,
+                protected_spotify_ids={protected_spotify_id},
+            )
+        self.assertEqual(no_call_client.paths, [])
+        self.assertEqual(second["selected"], 0)
+
+    def test_protected_legacy_transient_failures_backoff_then_stop_at_cap(self):
+        current, protected_spotify_id = protected_checked_payload()
+        cache = {"version": 1, "tracks": {}, "artists": {}}
+
+        def fail_at(timestamp):
+            client = FakeClient(
+                {
+                    "/api/v2.25/song/protected-uuid":
+                        subject.SoundchartsHttpError(503),
+                }
+            )
+            with patch.object(subject, "utc_now", return_value=timestamp):
+                summary = subject.classify_soundcharts_genres(
+                    current,
+                    cache,
+                    client,
+                    workers=1,
+                    max_requests=1,
+                    protected_spotify_ids={protected_spotify_id},
+                )
+            return client, summary
+
+        first_client, first = fail_at("2026-08-10T00:00:00Z")
+        self.assertEqual(len(first_client.paths), 1)
+        self.assertEqual(first["protected_legacy_retry_waiting_after"], 1)
+
+        waiting_client = FakeClient({})
+        with patch.object(subject, "utc_now", return_value="2026-08-10T01:00:00Z"):
+            waiting = subject.classify_soundcharts_genres(
+                current,
+                cache,
+                waiting_client,
+                workers=1,
+                max_requests=1,
+                protected_spotify_ids={protected_spotify_id},
+            )
+        self.assertEqual(waiting_client.paths, [])
+        self.assertEqual(waiting["protected_legacy_retry_waiting_before"], 1)
+
+        second_client, second = fail_at("2026-08-10T07:00:00Z")
+        self.assertEqual(len(second_client.paths), 1)
+        self.assertEqual(second["protected_legacy_retry_waiting_after"], 1)
+        third_client, third = fail_at("2026-08-10T20:00:00Z")
+        self.assertEqual(len(third_client.paths), 1)
+        self.assertEqual(third["protected_legacy_terminal_after"], 1)
+
+        schema = current["discovery_catalogue"]["track_schema"]
+        row = current["discovery_catalogue"]["tracks"][0]
+        refresh = subject.field(row, schema, "soundcharts_evidence_refresh")
+        self.assertEqual(refresh["attempts"], 3)
+        self.assertEqual(refresh["status"], "terminal_retry_exhausted")
+
+        terminal_client = FakeClient({})
+        with patch.object(subject, "utc_now", return_value="2026-08-20T00:00:00Z"):
+            terminal = subject.classify_soundcharts_genres(
+                current,
+                cache,
+                terminal_client,
+                workers=1,
+                max_requests=1,
+                protected_spotify_ids={protected_spotify_id},
+            )
+        self.assertEqual(terminal_client.paths, [])
+        self.assertEqual(terminal["protected_legacy_terminal_before"], 1)
+
     def test_explicit_artist_catalogue_can_be_exactly_classified_without_becoming_an_opportunity(self):
         current = payload()
         schema = current["editorial"]["track_schema"]
@@ -953,7 +1139,23 @@ class InstrumentalPoolTests(unittest.TestCase):
     def test_cache_round_trip(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "cache.json"
-            payload = {"version": 1, "tracks": {"a": {"spotify_id": "x"}}, "artists": {}}
+            payload = {
+                "version": 1,
+                "tracks": {
+                    "a": {
+                        "spotify_id": "x",
+                        "soundcharts_evidence_refresh": {
+                            "contract": subject.SOUNDCHARTS_SONG_EVIDENCE_CONTRACT,
+                            "status": "retry_wait",
+                            "attempts": 1,
+                            "last_attempt_at": "2026-08-10T00:00:00Z",
+                            "next_retry_at": "2026-08-10T06:00:00Z",
+                            "error_code": "http_503",
+                        },
+                    }
+                },
+                "artists": {},
+            }
             subject.write_cache(path, payload)
             self.assertEqual(subject.read_cache(path)["tracks"], payload["tracks"])
 

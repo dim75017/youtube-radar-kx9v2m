@@ -32,7 +32,9 @@ from typing import Any, Iterable, Mapping
 
 from refresh_soundcharts_daily import (
     SoundchartsClient,
+    SoundchartsDataUnavailableError,
     SoundchartsError,
+    SoundchartsHttpError,
     SoundchartsQuotaReserveError,
     SoundchartsRequestLimitError,
 )
@@ -204,6 +206,15 @@ MAJOR_MARKERS = tuple(
 SPOTIFY_ID_RE = re.compile(r"^[0-9A-Za-z]{22}$")
 SOUNDCHARTS_SONG_DETAIL_API_VERSION = "v2.25"
 SOUNDCHARTS_SONG_EVIDENCE_CONTRACT = "soundcharts_song_v2.25_evidence_v2"
+SOUNDCHARTS_EVIDENCE_MAX_ATTEMPTS = 3
+SOUNDCHARTS_EVIDENCE_RETRY_BASE_HOURS = 6
+SOUNDCHARTS_EVIDENCE_TERMINAL_STATUSES = frozenset(
+    {
+        "terminal_unavailable",
+        "terminal_invalid_response",
+        "terminal_retry_exhausted",
+    }
+)
 
 # The track UUID is already the cache dictionary key. Exact placement rows and
 # discovery timestamps live in the staged snapshot; duplicating them for every
@@ -231,6 +242,7 @@ CACHE_TRACK_FIELDS = {
     "soundcharts_genres_checked_at",
     "soundcharts_evidence_contract",
     "source_evidence",
+    "soundcharts_evidence_refresh",
     "instrumental_status",
     "instrumental_confidence",
     "source_tier",
@@ -557,6 +569,11 @@ def editorial_candidates(payload: dict[str, Any], include_review: bool = True) -
                 ),
                 "source_evidence": dict(field(row, schema, "source_evidence") or {})
                 if isinstance(field(row, schema, "source_evidence"), Mapping)
+                else {},
+                "soundcharts_evidence_refresh": dict(
+                    field(row, schema, "soundcharts_evidence_refresh") or {}
+                )
+                if isinstance(field(row, schema, "soundcharts_evidence_refresh"), Mapping)
                 else {},
                 "instrumental_status": instrumental,
                 "instrumental_confidence": float(instrumental_confidence or 0),
@@ -910,6 +927,7 @@ def ensure_editorial_classification_fields(payload: dict[str, Any]) -> tuple[lis
         (
             "genre_source", "soundcharts_genres", "soundcharts_genres_checked_at",
             "soundcharts_evidence_contract", "source_evidence",
+            "soundcharts_evidence_refresh",
             "rights_status", "rights_confidence", "label", "copyright",
             "artist_soundcharts_uuids",
         ),
@@ -991,6 +1009,7 @@ def inject_protected_review_candidates(
         "metadata_status", "updated_at", "source_tier", "genre_source",
         "soundcharts_genres", "soundcharts_genres_checked_at",
         "soundcharts_evidence_contract", "source_evidence",
+        "soundcharts_evidence_refresh",
     )
     schema, rows = ensure_editorial_fields(soundcharts, editorial_fields)
     existing_by_spotify = {
@@ -1046,6 +1065,7 @@ def inject_protected_review_candidates(
             "soundcharts_genres_checked_at": None,
             "soundcharts_evidence_contract": None,
             "source_evidence": {},
+            "soundcharts_evidence_refresh": {},
         }
         for name, value in values.items():
             set_field(row, schema, name, value)
@@ -1090,6 +1110,7 @@ def ensure_discovery_classification_fields(payload: dict[str, Any]) -> tuple[lis
         "soundcharts_genres_checked_at",
         "soundcharts_evidence_contract",
         "source_evidence",
+        "soundcharts_evidence_refresh",
         "rights_status",
         "rights_confidence",
         "label",
@@ -1105,11 +1126,158 @@ def ensure_discovery_classification_fields(payload: dict[str, Any]) -> tuple[lis
     return schema, rows
 
 
+def _merge_source_evidence(existing: Any, incoming: Any) -> dict[str, Any]:
+    """Merge evidence monotonically so a blocking fact can never disappear."""
+
+    current = dict(existing) if isinstance(existing, Mapping) else {}
+    update = dict(incoming) if isinstance(incoming, Mapping) else {}
+    merged = dict(current)
+    for name, value in update.items():
+        if value not in (None, "", [], {}, "unknown") or name not in merged:
+            merged[str(name)] = value
+
+    for name in ("vocal", "explicit"):
+        current_value = current.get(name)
+        incoming_value = update.get(name)
+        if current_value is True or incoming_value is True:
+            merged[name] = True
+        elif isinstance(incoming_value, bool):
+            merged[name] = incoming_value
+        elif isinstance(current_value, bool):
+            merged[name] = current_value
+
+    current_instrumental = current.get("instrumental")
+    incoming_instrumental = update.get("instrumental")
+    if current_instrumental is False or incoming_instrumental is False:
+        merged["instrumental"] = False
+    elif current_instrumental is True or incoming_instrumental is True:
+        merged["instrumental"] = True
+
+    for name in ("instrumentalness", "speechiness"):
+        values = [
+            value
+            for value in (
+                finite_number(current.get(name)),
+                finite_number(update.get(name)),
+            )
+            if value is not None
+        ]
+        if values:
+            merged[name] = max(values)
+
+    genres: list[str] = []
+    seen_genres: set[str] = set()
+    for source in (current.get("genres"), update.get("genres")):
+        for value in source if isinstance(source, list) else []:
+            label = str(value or "").strip()
+            key = normalize_genre_label(label)
+            if not label or not key or key in seen_genres:
+                continue
+            seen_genres.add(key)
+            genres.append(label)
+    if genres:
+        merged["genres"] = genres
+
+    high_ai = {"high", "elevated", "eleve", "élevé"}
+    current_ai = str(current.get("ai_risk") or "").strip().casefold()
+    incoming_ai = str(update.get("ai_risk") or "").strip().casefold()
+    if current_ai in high_ai or incoming_ai in high_ai:
+        merged["ai_risk"] = "high"
+    elif incoming_ai not in {"", "unknown", "unclassified", "pending"}:
+        merged["ai_risk"] = incoming_ai
+    elif current_ai:
+        merged["ai_risk"] = current_ai
+    return merged
+
+
+def _merge_soundcharts_genres(existing: Any, incoming: Any) -> list[Any]:
+    merged: list[Any] = []
+    seen: set[str] = set()
+    for source in (existing, incoming):
+        for value in source if isinstance(source, list) else []:
+            key = json.dumps(value, ensure_ascii=False, sort_keys=True)
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(value)
+    return merged
+
+
+def _has_vocal_blocking_signal(status: Any, evidence: Any) -> bool:
+    if str(status or "").strip().casefold() in {"vocal", "non_instrumental"}:
+        return True
+    if not isinstance(evidence, Mapping):
+        return False
+    speechiness = finite_number(evidence.get("speechiness"))
+    return (
+        evidence.get("vocal") is True
+        or evidence.get("explicit") is True
+        or evidence.get("instrumental") is False
+        or speechiness is not None
+        and speechiness >= 0.33
+    )
+
+
+def merge_song_detail_evidence(
+    existing: Mapping[str, Any] | None,
+    incoming: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Return a fail-closed metadata merge for cache and row updates."""
+
+    current = dict(existing or {})
+    merged = {**current, **dict(incoming)}
+    merged_evidence = _merge_source_evidence(
+        current.get("source_evidence"), incoming.get("source_evidence")
+    )
+    merged["source_evidence"] = merged_evidence
+    merged["soundcharts_genres"] = _merge_soundcharts_genres(
+        current.get("soundcharts_genres"), incoming.get("soundcharts_genres")
+    )
+
+    current_status = current.get("instrumental_status")
+    incoming_status = incoming.get("instrumental_status")
+    if _has_vocal_blocking_signal(
+        current_status, current.get("source_evidence")
+    ) or _has_vocal_blocking_signal(incoming_status, incoming.get("source_evidence")):
+        confidences = [
+            value
+            for value in (
+                finite_number(current.get("instrumental_confidence")),
+                finite_number(incoming.get("instrumental_confidence")),
+                0.95,
+            )
+            if value is not None
+        ]
+        merged["instrumental_status"] = "vocal"
+        merged["instrumental_confidence"] = max(confidences)
+        merged["has_vocal_evidence"] = True
+        merged["has_instrumental_evidence"] = False
+
+    high_ai = {"high", "elevated", "eleve", "élevé"}
+    if str(current.get("ai_risk") or "").casefold() in high_ai or str(
+        incoming.get("ai_risk") or ""
+    ).casefold() in high_ai:
+        merged["ai_risk"] = "high"
+    return merged
+
+
 def _update_classification_row(
     row: list[Any],
     schema: list[str],
     detail: Mapping[str, Any],
 ) -> None:
+    detail = merge_song_detail_evidence(
+        {
+            "soundcharts_genres": field(row, schema, "soundcharts_genres"),
+            "source_evidence": field(row, schema, "source_evidence"),
+            "instrumental_status": field(row, schema, "instrumental_status"),
+            "instrumental_confidence": field(
+                row, schema, "instrumental_confidence"
+            ),
+            "ai_risk": field(row, schema, "ai_risk"),
+        },
+        detail,
+    )
     if detail.get("has_exact_genre") and detail.get("primary_genre"):
         set_field(row, schema, "primary_genre", detail["primary_genre"])
         set_field(row, schema, "subgenres", list(detail.get("subgenres") or []))
@@ -1130,21 +1298,13 @@ def _update_classification_row(
     set_field(row, schema, "soundcharts_genres", list(detail.get("soundcharts_genres") or []))
     set_field(row, schema, "soundcharts_genres_checked_at", detail.get("soundcharts_genres_checked_at"))
     if "source_evidence" in schema:
-        current_evidence = field(row, schema, "source_evidence")
-        merged_evidence = (
-            dict(current_evidence) if isinstance(current_evidence, Mapping) else {}
-        )
-        incoming_evidence = detail.get("source_evidence")
-        if isinstance(incoming_evidence, Mapping):
-            for name, value in incoming_evidence.items():
-                # Empty/unknown refresh values cannot erase an earlier factual
-                # signal; explicit False and numeric zero remain meaningful.
-                if name not in merged_evidence or value not in (None, "", [], {}, "unknown"):
-                    merged_evidence[str(name)] = value
-        set_field(row, schema, "source_evidence", merged_evidence)
+        set_field(row, schema, "source_evidence", detail.get("source_evidence") or {})
     evidence_contract = str(detail.get("soundcharts_evidence_contract") or "").strip()
     if evidence_contract and "soundcharts_evidence_contract" in schema:
         set_field(row, schema, "soundcharts_evidence_contract", evidence_contract)
+    evidence_refresh = detail.get("soundcharts_evidence_refresh")
+    if isinstance(evidence_refresh, Mapping) and "soundcharts_evidence_refresh" in schema:
+        set_field(row, schema, "soundcharts_evidence_refresh", dict(evidence_refresh))
 
     # Song metadata also carries factual rights and Soundcharts artist UUIDs.
     # Persist those for the subsequent audience/identifier pass, but never let
@@ -1259,6 +1419,126 @@ def _classification_row_context(row: list[Any], schema: list[str]) -> dict[str, 
     }
 
 
+def _normalized_evidence_refresh(value: Any) -> dict[str, Any]:
+    refresh = dict(value) if isinstance(value, Mapping) else {}
+    attempts = finite_number(refresh.get("attempts"))
+    refresh["attempts"] = max(0, int(attempts or 0))
+    refresh["status"] = str(refresh.get("status") or "").strip().casefold()
+    refresh["last_attempt_at"] = normalize_timestamp(refresh.get("last_attempt_at"))
+    refresh["next_retry_at"] = normalize_timestamp(refresh.get("next_retry_at"))
+    refresh["error_code"] = str(refresh.get("error_code") or "").strip()
+    return refresh
+
+
+def _evidence_retry_due(state: Mapping[str, Any], now: str) -> bool:
+    status = str(state.get("refresh_status") or "").casefold()
+    attempts = int(finite_number(state.get("attempts")) or 0)
+    if status in SOUNDCHARTS_EVIDENCE_TERMINAL_STATUSES:
+        return False
+    if attempts >= SOUNDCHARTS_EVIDENCE_MAX_ATTEMPTS:
+        return False
+    if status != "retry_wait":
+        return True
+    next_retry_at = normalize_timestamp(state.get("next_retry_at"))
+    now_stamp = normalize_timestamp(now)
+    if not next_retry_at or not now_stamp:
+        return False
+    return next_retry_at <= now_stamp
+
+
+def _safe_evidence_error_code(exc: BaseException | None) -> str:
+    if isinstance(exc, SoundchartsHttpError):
+        return f"http_{exc.status}"
+    if isinstance(exc, OSError):
+        return "network_error"
+    return "request_failed"
+
+
+def _next_evidence_refresh(
+    previous: Any,
+    *,
+    attempted_at: str,
+    outcome: str,
+    error: BaseException | None = None,
+) -> dict[str, Any]:
+    state = _normalized_evidence_refresh(previous)
+    attempts = int(state.get("attempts") or 0) + 1
+    result = {
+        "contract": SOUNDCHARTS_SONG_EVIDENCE_CONTRACT,
+        "status": "complete",
+        "attempts": attempts,
+        "last_attempt_at": normalize_timestamp(attempted_at) or attempted_at,
+        "next_retry_at": None,
+        "error_code": None,
+    }
+    if outcome == "complete":
+        return result
+    if outcome == "invalid_response":
+        result.update(
+            status="terminal_invalid_response",
+            error_code="invalid_response",
+        )
+        return result
+
+    status = getattr(error, "status", None)
+    if isinstance(error, SoundchartsDataUnavailableError) or status in {
+        400,
+        404,
+        410,
+        422,
+    }:
+        result.update(
+            status="terminal_unavailable",
+            error_code=_safe_evidence_error_code(error),
+        )
+        return result
+    if attempts >= SOUNDCHARTS_EVIDENCE_MAX_ATTEMPTS:
+        result.update(
+            status="terminal_retry_exhausted",
+            error_code=_safe_evidence_error_code(error),
+        )
+        return result
+
+    attempted_stamp = normalize_timestamp(attempted_at)
+    attempted = (
+        dt.datetime.fromisoformat(attempted_stamp.replace("Z", "+00:00"))
+        if attempted_stamp
+        else dt.datetime.now(dt.timezone.utc)
+    )
+    delay_hours = SOUNDCHARTS_EVIDENCE_RETRY_BASE_HOURS * (2 ** (attempts - 1))
+    next_retry = attempted + dt.timedelta(hours=delay_hours)
+    result.update(
+        status="retry_wait",
+        next_retry_at=next_retry.replace(microsecond=0).isoformat().replace(
+            "+00:00", "Z"
+        ),
+        error_code=_safe_evidence_error_code(error),
+    )
+    return result
+
+
+def update_evidence_refresh_state(
+    payload: dict[str, Any],
+    soundcharts_uuid: str,
+    refresh: Mapping[str, Any],
+) -> bool:
+    updated = False
+    for schema, rows in (
+        ensure_editorial_classification_fields(payload),
+        ensure_discovery_classification_fields(payload),
+    ):
+        if not schema:
+            continue
+        for row in rows:
+            if not isinstance(row, list) or str(
+                field(row, schema, "soundcharts_uuid") or ""
+            ) != soundcharts_uuid:
+                continue
+            set_field(row, schema, "soundcharts_evidence_refresh", dict(refresh))
+            updated = True
+    return updated
+
+
 def _row_has_explicit_soundcharts_evidence(row: list[Any], schema: list[str]) -> bool:
     genres = field(row, schema, "soundcharts_genres")
     if isinstance(genres, list) and any(str(value or "").strip() for value in genres):
@@ -1279,6 +1559,8 @@ def _row_has_explicit_soundcharts_evidence(row: list[Any], schema: list[str]) ->
         evidence.get("vocal"), bool
     ):
         return True
+    if evidence.get("explicit") is True:
+        return True
     if finite_number(evidence.get("instrumentalness")) is not None or finite_number(
         evidence.get("speechiness")
     ) is not None:
@@ -1293,10 +1575,10 @@ def _row_has_explicit_soundcharts_evidence(row: list[Any], schema: list[str]) ->
 
 def _classification_evidence_states(
     candidate_rows: Iterable[tuple[list[Any], list[str]]],
-) -> dict[str, dict[str, bool]]:
+) -> dict[str, dict[str, Any]]:
     """Aggregate duplicate editorial/discovery rows before deciding a retry."""
 
-    states: dict[str, dict[str, bool]] = {}
+    states: dict[str, dict[str, Any]] = {}
     for row, schema in candidate_rows:
         if not isinstance(row, list) or not schema:
             continue
@@ -1305,7 +1587,16 @@ def _classification_evidence_states(
             continue
         state = states.setdefault(
             uuid,
-            {"checked": False, "current_contract": False, "explicit_evidence": False},
+            {
+                "checked": False,
+                "current_contract": False,
+                "explicit_evidence": False,
+                "refresh_status": "",
+                "attempts": 0,
+                "last_attempt_at": None,
+                "next_retry_at": None,
+                "error_code": "",
+            },
         )
         checked = bool(field(row, schema, "soundcharts_genres_checked_at"))
         state["checked"] = state["checked"] or checked
@@ -1317,6 +1608,33 @@ def _classification_evidence_states(
         state["explicit_evidence"] = state["explicit_evidence"] or (
             _row_has_explicit_soundcharts_evidence(row, schema)
         )
+        refresh = _normalized_evidence_refresh(
+            field(row, schema, "soundcharts_evidence_refresh")
+        )
+        current_attempts = int(state.get("attempts") or 0)
+        refresh_attempts = int(refresh.get("attempts") or 0)
+        status_priority = {
+            "": 0,
+            "complete": 1,
+            "retry_wait": 2,
+            "terminal_unavailable": 3,
+            "terminal_invalid_response": 3,
+            "terminal_retry_exhausted": 3,
+        }
+        if (
+            refresh_attempts > current_attempts
+            or status_priority.get(str(refresh.get("status") or ""), 0)
+            > status_priority.get(str(state.get("refresh_status") or ""), 0)
+        ):
+            state["refresh_status"] = refresh.get("status") or ""
+            state["next_retry_at"] = refresh.get("next_retry_at")
+            state["error_code"] = refresh.get("error_code") or ""
+        state["attempts"] = max(current_attempts, refresh_attempts)
+        last_attempt = refresh.get("last_attempt_at")
+        if last_attempt and (
+            not state.get("last_attempt_at") or last_attempt > state["last_attempt_at"]
+        ):
+            state["last_attempt_at"] = last_attempt
     return states
 
 
@@ -1372,6 +1690,7 @@ def classify_soundcharts_genres(
     limit: int | None = None,
     protected_spotify_ids: set[str] | frozenset[str] | None = None,
 ) -> dict[str, Any]:
+    run_at = utc_now()
     protected = inject_protected_review_candidates(
         soundcharts, protected_spotify_ids or frozenset()
     )
@@ -1387,7 +1706,10 @@ def classify_soundcharts_genres(
         + [(row, discovery_schema) for row in discovery_rows]
     )
     evidence_states = _classification_evidence_states(candidate_rows)
+    legacy_protected_zero_evidence_all: set[str] = set()
     legacy_protected_zero_evidence: set[str] = set()
+    legacy_protected_retry_waiting: set[str] = set()
+    legacy_protected_terminal: set[str] = set()
     candidates_by_uuid: dict[str, dict[str, Any]] = {}
     for row, schema in candidate_rows:
         if not isinstance(row, list) or not schema:
@@ -1399,12 +1721,26 @@ def classify_soundcharts_genres(
         instrumental_confidence = finite_number(field(row, schema, "instrumental_confidence")) or 0
         verified = ai_risk in {"low", "faible"} and instrumental == "instrumental" and instrumental_confidence >= 0.5
         state = evidence_states.get(uuid, {})
-        legacy_recheck = (
+        legacy_zero_evidence = (
             uuid in protected_uuids
             and bool(state.get("checked"))
             and not bool(state.get("current_contract"))
             and not bool(state.get("explicit_evidence"))
         )
+        retry_due = _evidence_retry_due(state, run_at)
+        legacy_recheck = legacy_zero_evidence and retry_due
+        if legacy_zero_evidence:
+            legacy_protected_zero_evidence_all.add(uuid)
+            terminal = (
+                str(state.get("refresh_status") or "")
+                in SOUNDCHARTS_EVIDENCE_TERMINAL_STATUSES
+                or int(finite_number(state.get("attempts")) or 0)
+                >= SOUNDCHARTS_EVIDENCE_MAX_ATTEMPTS
+            )
+            if terminal:
+                legacy_protected_terminal.add(uuid)
+            elif not retry_due:
+                legacy_protected_retry_waiting.add(uuid)
         if (
             not uuid
             or source_tier not in CLASSIFIABLE_DISCOVERY_SOURCE_TIERS
@@ -1433,19 +1769,47 @@ def classify_soundcharts_genres(
     selected = pending[:cap]
     budget = RequestBudget(max_requests)
     tasks = [(uuid, soundcharts_song_detail_path(uuid)) for uuid, _ in selected]
-    responses, failures = parallel_requests(client, tasks, budget, workers)
+    responses, request_errors = parallel_requests_detailed(
+        client, tasks, budget, workers
+    )
     contexts = dict(selected)
     updated = 0
     exact_genres = 0
     instrumental = 0
     vocal = 0
     with_genres = 0
+    invalid_responses = 0
     for uuid, response in responses.items():
         parsed = parse_song_detail(response, contexts[uuid])
         if not parsed:
+            if uuid in legacy_protected_zero_evidence:
+                refresh = _next_evidence_refresh(
+                    cache_tracks.get(uuid, {}).get("soundcharts_evidence_refresh")
+                    if isinstance(cache_tracks.get(uuid), Mapping)
+                    else evidence_states.get(uuid),
+                    attempted_at=run_at,
+                    outcome="invalid_response",
+                )
+                existing = (
+                    dict(cache_tracks.get(uuid))
+                    if isinstance(cache_tracks.get(uuid), Mapping)
+                    else {}
+                )
+                existing["soundcharts_evidence_refresh"] = refresh
+                cache_tracks[uuid] = existing
+                update_evidence_refresh_state(soundcharts, uuid, refresh)
+            invalid_responses += 1
             continue
+        refresh = _next_evidence_refresh(
+            cache_tracks.get(uuid, {}).get("soundcharts_evidence_refresh")
+            if isinstance(cache_tracks.get(uuid), Mapping)
+            else evidence_states.get(uuid),
+            attempted_at=run_at,
+            outcome="complete",
+        )
+        parsed["soundcharts_evidence_refresh"] = refresh
         existing = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
-        cache_tracks[uuid] = {**existing, **parsed}
+        cache_tracks[uuid] = merge_song_detail_evidence(existing, parsed)
         touched = update_editorial_classification(soundcharts, uuid, parsed)
         touched = update_discovery_classification(soundcharts, uuid, parsed) or touched
         updated += int(touched)
@@ -1453,6 +1817,26 @@ def classify_soundcharts_genres(
         exact_genres += int(bool(parsed.get("has_exact_genre")))
         instrumental += int(bool(parsed.get("has_instrumental_evidence")))
         vocal += int(bool(parsed.get("has_vocal_evidence")))
+
+    for uuid, error in request_errors.items():
+        if uuid not in legacy_protected_zero_evidence:
+            continue
+        refresh = _next_evidence_refresh(
+            cache_tracks.get(uuid, {}).get("soundcharts_evidence_refresh")
+            if isinstance(cache_tracks.get(uuid), Mapping)
+            else evidence_states.get(uuid),
+            attempted_at=run_at,
+            outcome="error",
+            error=error,
+        )
+        existing = (
+            dict(cache_tracks.get(uuid))
+            if isinstance(cache_tracks.get(uuid), Mapping)
+            else {}
+        )
+        existing["soundcharts_evidence_refresh"] = refresh
+        cache_tracks[uuid] = existing
+        update_evidence_refresh_state(soundcharts, uuid, refresh)
 
     refreshed_editorial = ensure_editorial_classification_fields(soundcharts)
     refreshed_discovery = ensure_discovery_classification_fields(soundcharts)
@@ -1462,6 +1846,8 @@ def classify_soundcharts_genres(
     )
     refreshed_states = _classification_evidence_states(refreshed_candidate_rows)
     remaining_uuids: set[str] = set()
+    refreshed_legacy_retry_waiting: set[str] = set()
+    refreshed_legacy_terminal: set[str] = set()
     for refreshed_schema, refreshed_rows in (refreshed_editorial, refreshed_discovery):
         for row in refreshed_rows:
             if not isinstance(row, list):
@@ -1474,12 +1860,25 @@ def classify_soundcharts_genres(
             verified = ai_risk in {"low", "faible"} and status == "instrumental" and confidence >= 0.5
             state = refreshed_states.get(uuid, {})
             needs_initial_check = not bool(state.get("checked"))
-            needs_legacy_protected_recheck = (
+            legacy_zero_evidence = (
                 uuid in protected_uuids
                 and bool(state.get("checked"))
                 and not bool(state.get("current_contract"))
                 and not bool(state.get("explicit_evidence"))
             )
+            retry_due = _evidence_retry_due(state, run_at)
+            needs_legacy_protected_recheck = legacy_zero_evidence and retry_due
+            if legacy_zero_evidence:
+                terminal = (
+                    str(state.get("refresh_status") or "")
+                    in SOUNDCHARTS_EVIDENCE_TERMINAL_STATUSES
+                    or int(finite_number(state.get("attempts")) or 0)
+                    >= SOUNDCHARTS_EVIDENCE_MAX_ATTEMPTS
+                )
+                if terminal:
+                    refreshed_legacy_terminal.add(uuid)
+                elif not retry_due:
+                    refreshed_legacy_retry_waiting.add(uuid)
             if (
                 uuid
                 and source_tier in CLASSIFIABLE_DISCOVERY_SOURCE_TIERS
@@ -1488,7 +1887,7 @@ def classify_soundcharts_genres(
             ):
                 remaining_uuids.add(uuid)
 
-    now = utc_now()
+    now = run_at
     summary = {
         "status": "success",
         "finished_at": now,
@@ -1498,13 +1897,25 @@ def classify_soundcharts_genres(
         "protected_mapped": int(protected["mapped"]),
         "protected_inserted": int(protected["inserted"]),
         "protected_selected": sum(uuid in protected_uuids for uuid, _ in selected),
+        "protected_legacy_zero_evidence_total": len(
+            legacy_protected_zero_evidence_all
+        ),
         "protected_legacy_zero_evidence_pending": len(
             legacy_protected_zero_evidence
         ),
         "protected_legacy_zero_evidence_selected": sum(
             uuid in legacy_protected_zero_evidence for uuid, _ in selected
         ),
+        "protected_legacy_retry_waiting_before": len(
+            legacy_protected_retry_waiting
+        ),
+        "protected_legacy_terminal_before": len(legacy_protected_terminal),
+        "protected_legacy_retry_waiting_after": len(
+            refreshed_legacy_retry_waiting
+        ),
+        "protected_legacy_terminal_after": len(refreshed_legacy_terminal),
         "updated": updated,
+        "invalid_responses": invalid_responses,
         "responses_with_genres": with_genres,
         "exact_target_genres": exact_genres,
         "instrumental_genre_evidence": instrumental,
@@ -1512,7 +1923,7 @@ def classify_soundcharts_genres(
         "remaining": len(remaining_uuids),
         "requests": budget.used,
         "quota_remaining": getattr(client, "quota_remaining", None),
-        "failures": failures,
+        "failures": len(request_errors),
         "selected_stream_eligible": sum(
             priority_by_uuid.get(uuid, (1, 1, 0.0))[0] == 0
             for uuid, _ in selected
@@ -1528,6 +1939,10 @@ def classify_soundcharts_genres(
             "instrumental_requires_explicit_tag": True,
             "ai_risk_never_inferred": True,
             "legacy_zero_evidence_recheck_scope": "protected_review_cohort_only",
+            "legacy_retry_max_attempts": SOUNDCHARTS_EVIDENCE_MAX_ATTEMPTS,
+            "legacy_retry_backoff_hours": "6_then_12_then_terminal",
+            "permanent_http_statuses_terminal": [400, 404, 410, 422],
+            "invalid_response_terminal": True,
             "automatic_promotion": False,
             "request_priority": "streams_100k_then_dark_ambient_then_streams_desc",
         },
@@ -1634,39 +2049,59 @@ class RequestBudget:
             return True
 
 
-def parallel_requests(
+def parallel_requests_detailed(
     client: Any,
     tasks: Iterable[tuple[str, str]],
     budget: RequestBudget,
     workers: int,
-) -> tuple[dict[str, Any], int]:
+) -> tuple[dict[str, Any], dict[str, BaseException]]:
     selected: list[tuple[str, str]] = []
     for key, path in tasks:
         if not budget.claim():
             break
         selected.append((key, path))
     results: dict[str, Any] = {}
-    failures = 0
+    failures: dict[str, BaseException] = {}
 
     def fetch(task: tuple[str, str]) -> tuple[str, Any]:
         key, path = task
         return key, client.get(path)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
-        futures = [pool.submit(fetch, task) for task in selected]
+        futures = {
+            pool.submit(fetch, task): task[0]
+            for task in selected
+        }
         stop_error: SoundchartsError | None = None
         for future in concurrent.futures.as_completed(futures):
+            key = futures[future]
             try:
-                key, payload = future.result()
-                results[key] = payload
+                result_key, payload = future.result()
+                results[result_key] = payload
             except (SoundchartsQuotaReserveError, SoundchartsRequestLimitError) as exc:
                 stop_error = exc
-                failures += 1
-            except (SoundchartsError, OSError, RuntimeError):
-                failures += 1
+                failures[key] = exc
+            except SoundchartsHttpError as exc:
+                # Authentication/entitlement failures are global, not track
+                # evidence. Abort without poisoning every row's retry state.
+                if exc.status in {401, 403}:
+                    stop_error = exc
+                failures[key] = exc
+            except (SoundchartsError, OSError, RuntimeError) as exc:
+                failures[key] = exc
     if stop_error is not None:
         raise stop_error
     return results, failures
+
+
+def parallel_requests(
+    client: Any,
+    tasks: Iterable[tuple[str, str]],
+    budget: RequestBudget,
+    workers: int,
+) -> tuple[dict[str, Any], int]:
+    results, failures = parallel_requests_detailed(client, tasks, budget, workers)
+    return results, len(failures)
 
 
 def _row_maps(payload: dict[str, Any], group: str) -> tuple[list[str], list[list[Any]], dict[str, list[Any]], dict[str, list[Any]]]:
@@ -1844,7 +2279,7 @@ def expand_instrumental_pool(
         parsed = parse_song_detail(response, candidate_by_uuid[uuid])
         if parsed:
             existing = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
-            cache_tracks[uuid] = {**existing, **parsed}
+            cache_tracks[uuid] = merge_song_detail_evidence(existing, parsed)
             update_editorial_classification(soundcharts, uuid, parsed)
             item = candidate_by_uuid[uuid]
             if parsed.get("has_exact_genre"):
