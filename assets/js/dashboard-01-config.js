@@ -196,7 +196,8 @@ function parseLives(ws){
       vid:id, channel:str(cv(ws,r,1)),
       title:str(cv(ws,r,2)).replace(/\s*\d{4}-\d{2}-\d{2}[ T]?\d{2}:\d{2}(:\d{2})?\s*$/,''),
       url:str(cv(ws,r,3))||('https://www.youtube.com/watch?v='+id),
-      started:toMs(cv(ws,r,4)), disc:str(cv(ws,r,5))
+      started:toMs(cv(ws,r,4)), disc:str(cv(ws,r,5)),
+      audiences:/\bkids?\b/i.test(str(cv(ws,r,6)))?['kids']:undefined
     });
   }
   return out;
