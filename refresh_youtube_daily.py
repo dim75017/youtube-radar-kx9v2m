@@ -18,6 +18,7 @@ import threading
 import time
 import urllib.parse
 import urllib.request
+import urllib.error
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -46,22 +47,49 @@ MIN_NEWS_VIEWS = 100_000
 MIN_NEWS_VPM = 10_000
 MAX_NEWS_AGE_MONTHS = 3
 MAX_NEWS_ROWS = 1_000
+MIN_KIDS_VIEWS = 100_000
+MIN_KIDS_VPM = 5_000
 SEARCH_RESULTS = int(os.environ.get("RADAR_SEARCH_RESULTS", "10"))
+KIDS_SEARCH_RESULTS = int(os.environ.get("RADAR_KIDS_SEARCH_RESULTS", "50"))
+KIDS_BOOTSTRAP_SEARCH_RESULTS = int(os.environ.get("RADAR_KIDS_BOOTSTRAP_RESULTS", "100"))
+MAX_KIDS_SEARCH_CALLS = 80
 TRACK_WORKERS = int(os.environ.get("RADAR_TRACK_WORKERS", "12"))
 SEARCH_WORKERS = int(os.environ.get("RADAR_SEARCH_WORKERS", "4"))
 MIN_TRACK_RATIO = 0.90
 MIN_PUBLISH_TRACK_RATIO = 0.99
+MIN_KIDS_QUERY_RATIO = 0.95
 HISTORY_RETENTION_DAYS = 400
 OWN_CHANNEL_HANDLES = ("@LofiGirl",)
 OWN_UPLOADS_PER_CHANNEL = 50
 THREAD = threading.local()
+YOUTUBE_API_RETRIES = int(os.environ.get("RADAR_YOUTUBE_API_RETRIES", "1"))
 
 # Genre words such as "hip hop" are intentionally not rejected: this is an
 # instrumental long-form radar.  We reject explicit vocal/performance signals.
 VOCAL = re.compile(
     r"\b(?:lyrics?|lyric\s+video|official\s+(?:music\s+)?video|music\s+video|"
     r"vocals?|vocal\s+(?:mix|edit|version)|singer|singing|sung|rap(?:ping)?|"
-    r"feat(?:uring)?\.?|ft\.?|acap+ella|a\s+cappella|live\s+performance|concert)\b",
+    r"feat(?:uring)?\.?|ft\.?|acap+ella|a\s+cappella|live\s+performance|concert|"
+    r"sing[ -]?along|karaoke|story\s*time|storytelling|bedtime\s+story|spoken|"
+    r"voice[ -]?over|voices?|choir|choral|humming|mantra|narrat(?:ion|ed|or)|"
+    r"podcast|guided|affirmations?|chanting|asmr)\b",
+    re.I,
+)
+KIDS_AMBIGUOUS = re.compile(r"\b(?:songs?|nursery\s+rhymes?|lullab(?:y|ies))\b", re.I)
+KIDS_STRONG_INSTRUMENTAL = re.compile(
+    r"\b(?:instrumental|no\s+(?:lyrics?|vocals?)|without\s+vocals?|music\s+box|"
+    r"piano|classical|ambient|soundscape|lofi|lo[ -]?fi|jazz|bossa|guitar|"
+    r"chill\s+house|drum\s+(?:and|&)\s+bass|dnb|synthwave|background\s+music|"
+    r"sleep\s+music|study\s+music|focus\s+music|relaxing\s+music|"
+    r"calming\s+music|soothing\s+music)\b",
+    re.I,
+)
+KIDS_EXPLICIT_INSTRUMENTAL = re.compile(
+    r"\b(?:instrumental|no\s+(?:lyrics?|vocals?|voices?)|without\s+(?:lyrics?|vocals?|voices?)|music\s+box)\b",
+    re.I,
+)
+NEGATED_VOCAL = re.compile(
+    r"\b(?:no|without)\s+(?:lyrics?|vocals?|voices?)\b",
     re.I,
 )
 VIDEO_ID = re.compile(r"^[\w-]{11}$")
@@ -71,6 +99,53 @@ ISO_DURATION = re.compile(
 )
 WATCH_LENGTH_SECONDS = re.compile(r'"lengthSeconds"\s*:\s*"(?P<seconds>\d+)"')
 DEFERRED_GENRE = re.compile(r"\bphonk\b", re.I)
+
+KIDS_QUERY_EXCLUSIONS = (
+    "-singalong -karaoke -storytime -storytelling "
+    "-spoken -podcast -guided -affirmations -chanting -asmr"
+)
+KIDS_QUERY_SPECS = (
+    ("baby sleep music instrumental", "Baby sleep", "Relaxation / meditation"),
+    ("newborn sleep music instrumental", "Baby sleep", "Relaxation / meditation"),
+    ("infant sleep music instrumental", "Baby sleep", "Relaxation / meditation"),
+    ("toddler sleep music instrumental", "Baby sleep", "Relaxation / meditation"),
+    ("kids bedtime music instrumental", "Baby sleep", "Relaxation / meditation"),
+    ("nap time music for kids instrumental", "Baby sleep", "Relaxation / meditation"),
+    ("instrumental lullabies for babies", "Baby sleep", "Relaxation / meditation"),
+    ("baby music box no vocals", "Baby sleep", "Relaxation / meditation"),
+    ("piano lullabies for babies instrumental", "Piano", "Relaxation / meditation"),
+    ("calming music for babies instrumental", "Baby sleep", "Relaxation / meditation"),
+    ("soothing baby music no lyrics", "Baby sleep", "Relaxation / meditation"),
+    ("baby sensory music instrumental", "Kids background", "Relaxation / meditation"),
+    ("relaxing music for toddlers instrumental", "Baby sleep", "Relaxation / meditation"),
+    ("calm down music for kids instrumental", "Kids background", "Relaxation / meditation"),
+    ("kids study music instrumental", "Kids focus", "Study / focus / work"),
+    ("homework music for kids no lyrics", "Kids focus", "Study / focus / work"),
+    ("focus music for children instrumental", "Kids focus", "Study / focus / work"),
+    ("classroom background music instrumental", "Kids focus", "Study / focus / work"),
+    ("preschool quiet time music instrumental", "Kids focus", "Study / focus / work"),
+    ("playtime music for kids instrumental", "Kids background", "Relaxation / meditation"),
+    ("daycare background music instrumental", "Kids background", "Relaxation / meditation"),
+    ("Montessori music for children instrumental", "Kids background", "Study / focus / work"),
+    ("reading music for kids instrumental", "Kids focus", "Study / focus / work"),
+    ("drawing music for kids instrumental", "Kids focus", "Study / focus / work"),
+    ("kids yoga music instrumental", "Kids background", "Relaxation / meditation"),
+    ("baby lofi sleep music instrumental", "Lofi / chillhop", "Relaxation / meditation"),
+    ("kids lofi study beats instrumental", "Lofi / chillhop", "Study / focus / work"),
+    ("jazz for babies instrumental", "Jazz", "Relaxation / meditation"),
+    ("classical music for babies instrumental", "Classical", "Relaxation / meditation"),
+    ("piano music for babies instrumental", "Piano", "Relaxation / meditation"),
+    ("ambient music for babies sleep instrumental", "Ambient", "Relaxation / meditation"),
+    ("baby sleep music 8 hours instrumental", "Baby sleep", "Relaxation / meditation"),
+    ("baby sleep music all night no vocals", "Baby sleep", "Relaxation / meditation"),
+    ("toddler bedtime music 3 hours instrumental", "Baby sleep", "Relaxation / meditation"),
+    ("kids study music 1 hour instrumental", "Kids focus", "Study / focus / work"),
+    ("bossa nova for babies instrumental", "Jazz", "Relaxation / meditation"),
+    ("guitar music for babies instrumental", "Guitar", "Relaxation / meditation"),
+    ("chill house for kids instrumental", "Chill house", "Relaxation / meditation"),
+    ("drum and bass for kids instrumental", "Drum & Bass", "Gaming / night drive"),
+    ("synthwave for kids instrumental", "Synthwave", "Gaming / night drive"),
+)
 
 
 def is_deferred_row(row: dict) -> bool:
@@ -82,7 +157,7 @@ def is_deferred_row(row: dict) -> bool:
 def prune_deferred_rows(data: dict) -> set[str]:
     """Remove paused genres from public buckets and return their video IDs."""
     dropped: set[str] = set()
-    for bucket in ("all", "trends", "news", "ours"):
+    for bucket in ("all", "trends", "news", "ours", "kids"):
         visible = []
         for row in list(data.get(bucket) or []):
             if is_deferred_row(row):
@@ -122,6 +197,41 @@ def atomic_write_text(path: Path, content: str) -> None:
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(content, encoding="utf-8")
     tmp.replace(path)
+
+
+def youtube_api_json(url: str, *, timeout: int = 30) -> dict:
+    """Read JSON with one bounded retry for transient API failures."""
+    for attempt in range(YOUTUBE_API_RETRIES + 1):
+        try:
+            with urllib.request.urlopen(url, timeout=timeout) as response:
+                return json.load(response)
+        except urllib.error.HTTPError as exc:
+            try:
+                error_payload = json.loads(exc.read().decode("utf-8", "ignore"))
+                reasons = {
+                    str(item.get("reason") or "")
+                    for item in ((error_payload.get("error") or {}).get("errors") or [])
+                }
+            except (ValueError, AttributeError):
+                reasons = set()
+            retryable = (
+                exc.code == 429
+                or exc.code >= 500
+                or "rateLimitExceeded" in reasons
+            ) and "quotaExceeded" not in reasons
+            if not retryable or attempt >= YOUTUBE_API_RETRIES:
+                raise
+            retry_after = str((exc.headers or {}).get("Retry-After") or "")
+            try:
+                delay = max(float(retry_after), 0.5)
+            except ValueError:
+                delay = 1.0 + attempt * 0.75
+            time.sleep(delay)
+        except (urllib.error.URLError, TimeoutError):
+            if attempt >= YOUTUBE_API_RETRIES:
+                raise
+            time.sleep(1.0 + attempt * 0.75)
+    raise RuntimeError("YouTube API retry loop exhausted")
 
 
 def parse_snapshot_text(raw: str) -> dict:
@@ -203,6 +313,7 @@ def owned_genre_from_title(title: object) -> str:
         (r"\b(?:lofi|lo fi|chillhop)\b", "Lofi / chillhop"),
         (r"\b(?:synthwave|retrowave|outrun)\b", "Synthwave"),
         (r"\b(?:drum and bass|drum bass|dnb|liquid jungle)\b", "Drum & Bass"),
+        (r"\b(?:chill house|lofi house|lo fi house|deep house|ambient house|downtempo house)\b", "Chill house"),
         (r"\b(?:jazz|jazzhop|bossa)\b", "Jazz"),
         (r"\b(?:classical|baroque)\b", "Classical"),
         (r"\b(?:guitar|acoustic|fingerstyle)\b", "Guitar"),
@@ -210,6 +321,19 @@ def owned_genre_from_title(title: object) -> str:
         (r"\b(?:ambient|soundscape)\b", "Ambient"),
     )
     return next((label for pattern, label in rules if re.search(pattern, text)), "")
+
+
+def kids_genre_from_metadata(row: dict) -> str:
+    text = " ".join(
+        str(row.get(key) or "")
+        for key in ("title", "_scanDescription", "_scanTags")
+    )
+    explicit = owned_genre_from_title(text)
+    if explicit:
+        return explicit
+    if re.search(r"\bmusic\s+box\b", text, re.I):
+        return "Piano"
+    return "Other / multi-genre"
 
 
 def add_owned_metadata(row: dict) -> None:
@@ -228,6 +352,8 @@ def age_months(published_ms: int | None, now_ms: int) -> float | None:
 
 def cluster_for(title: str, fallback: str = "") -> str:
     text = title.lower()
+    if any(word in text for word in ("baby", "sleep", "bedtime", "lullaby", "nap time", "all night")):
+        return "Sleep / night"
     if any(word in text for word in ("work", "focus", "study", "coding", "office")):
         return "Study / focus / work"
     if any(word in text for word in ("drive", "car", "night", "drift", "gym", "gaming")):
@@ -240,7 +366,30 @@ def is_instrumental(info: dict) -> bool:
     if not isinstance(duration, (int, float)) or duration < MIN_SECONDS:
         return False
     text = " ".join(str(info.get(key) or "") for key in ("title", "description", "channel", "uploader"))
-    return not VOCAL.search(text)
+    return not has_vocal_signal(text)
+
+
+def has_vocal_signal(text: str) -> bool:
+    return bool(VOCAL.search(NEGATED_VOCAL.sub("", text or "")))
+
+
+def is_kids_instrumental(row: dict) -> bool:
+    """Fail closed for Kids: long-form, no vocal signals and clear instrumental metadata."""
+    duration_hours = row.get("durH")
+    if not isinstance(duration_hours, (int, float)) or duration_hours * 3600 < MIN_SECONDS:
+        return False
+    content_text = " ".join(
+        str(row.get(key) or "")
+        for key in ("title", "_scanDescription", "_scanTags")
+    )
+    negative_text = content_text + " " + str(row.get("channel") or "")
+    if has_vocal_signal(negative_text):
+        return False
+    strong = bool(KIDS_STRONG_INSTRUMENTAL.search(content_text))
+    explicit = bool(KIDS_EXPLICIT_INSTRUMENTAL.search(content_text))
+    if KIDS_AMBIGUOUS.search(content_text) and not explicit:
+        return False
+    return strong and explicit
 
 
 def ydl():
@@ -397,24 +546,33 @@ def fetch_search(spec: dict, now_ms: int) -> tuple[list[dict], int, int]:
         )
         if row:
             row["rank"] = rank
+            row["audiences"] = ["youtube"]
             rows.append(row)
     if enriched / len(entries) < 0.50:
         raise RuntimeError(f"Only {enriched}/{len(entries)} search results could be enriched")
     return rows, len(entries), enriched
 
 
-def fetch_api_rows(video_ids: list[str], now_ms: int, key: str) -> dict[str, dict]:
+def fetch_api_rows(
+    video_ids: list[str],
+    now_ms: int,
+    key: str,
+    *,
+    include_scan_text: bool = False,
+) -> dict[str, dict]:
     """Fast official metrics path when a YOUTUBE_API_KEY secret is present."""
     out: dict[str, dict] = {}
     for start in range(0, len(video_ids), 50):
         batch = video_ids[start : start + 50]
-        query = urllib.parse.urlencode(
-            {"part": "snippet,contentDetails,statistics", "id": ",".join(batch), "key": key}
+        query = urllib.parse.urlencode({
+            "part": "snippet,contentDetails,statistics,status",
+            "id": ",".join(batch),
+            "key": key,
+        })
+        payload = youtube_api_json(
+            "https://www.googleapis.com/youtube/v3/videos?" + query,
+            timeout=30,
         )
-        with urllib.request.urlopen(
-            "https://www.googleapis.com/youtube/v3/videos?" + query, timeout=30
-        ) as response:
-            payload = json.load(response)
         for item in payload.get("items") or []:
             snippet = item.get("snippet") or {}
             statistics = item.get("statistics") or {}
@@ -441,20 +599,98 @@ def fetch_api_rows(video_ids: list[str], now_ms: int, key: str) -> dict[str, dic
                 "chUrl": f"https://www.youtube.com/channel/{snippet.get('channelId', '')}",
                 "channelId": snippet.get("channelId") or "",
             }
+            made_for_kids = (item.get("status") or {}).get("madeForKids")
+            if isinstance(made_for_kids, bool):
+                row["madeForKids"] = made_for_kids
             if duration is not None:
                 row["durH"] = duration / 3600
+            if include_scan_text:
+                row["_scanDescription"] = snippet.get("description") or ""
+                row["_scanTags"] = " ".join(snippet.get("tags") or [])
+                row["_liveBroadcastContent"] = snippet.get("liveBroadcastContent") or "none"
             out[video_id] = row
     return out
+
+
+def fetch_kids_search(spec: dict, now_ms: int, key: str) -> tuple[list[dict], int, int]:
+    """Search the top long-form Kids candidates and validate every row officially."""
+    if not key:
+        raise RuntimeError("Kids discovery requires YOUTUBE_API_KEY")
+    video_ids: list[str] = []
+    ranks: dict[str, int] = {}
+    page_token = ""
+    result_limit = int(spec.get("searchResults") or KIDS_SEARCH_RESULTS)
+    pages = 0
+    max_pages = max(1, (result_limit + 49) // 50)
+    while len(video_ids) < result_limit and pages < max_pages:
+        pages += 1
+        params: dict[str, object] = {
+            "part": "snippet",
+            "q": spec["query"] + " " + KIDS_QUERY_EXCLUSIONS,
+            "type": "video",
+            "order": "viewCount",
+            "videoDuration": "long",
+            "safeSearch": "strict",
+            "relevanceLanguage": "en",
+            "regionCode": "US",
+            "maxResults": min(50, result_limit - len(video_ids)),
+            "key": key,
+        }
+        if page_token:
+            params["pageToken"] = page_token
+        payload = youtube_api_payload("search", params)
+        for item in payload.get("items") or []:
+            video_id = str((item.get("id") or {}).get("videoId") or "")
+            if VIDEO_ID.match(video_id) and video_id not in ranks:
+                ranks[video_id] = len(video_ids) + 1
+                video_ids.append(video_id)
+                if len(video_ids) >= result_limit:
+                    break
+        page_token = str(payload.get("nextPageToken") or "")
+        if not page_token or not payload.get("items"):
+            break
+    if not video_ids:
+        raise RuntimeError("YouTube Data API returned no Kids search results")
+
+    official = fetch_api_rows(
+        video_ids,
+        now_ms,
+        key,
+        include_scan_text=True,
+    )
+    rows: list[dict] = []
+    for video_id in video_ids:
+        row = official.get(video_id)
+        if (
+            not row
+            or row.get("madeForKids") is not True
+            or row.get("_liveBroadcastContent") != "none"
+            or not is_kids_instrumental(row)
+        ):
+            continue
+        row = dict(row)
+        row["genre"] = kids_genre_from_metadata(row)
+        row["cluster"] = cluster_for(row.get("title") or "", spec["cluster"])
+        row["kw"] = spec["query"]
+        row["kwCount"] = 1
+        row["pattern"] = "Daily Kids keyword scan"
+        row["added"] = now_ms
+        row["rank"] = ranks[video_id]
+        row["audiences"] = ["kids"]
+        row.pop("_scanDescription", None)
+        row.pop("_scanTags", None)
+        row.pop("_liveBroadcastContent", None)
+        rows.append(row)
+    return rows, len(video_ids), len(official)
 
 
 def youtube_api_payload(path: str, params: dict[str, object]) -> dict:
     """Load one YouTube Data API response without exposing the API key in logs."""
     query = urllib.parse.urlencode(params)
-    with urllib.request.urlopen(
+    return youtube_api_json(
         "https://www.googleapis.com/youtube/v3/" + path + "?" + query,
         timeout=30,
-    ) as response:
-        return json.load(response)
+    )
 
 
 def fetch_owned_upload_ids(api_key: str) -> list[str]:
@@ -540,7 +776,7 @@ def fetch_owned_ydl_rows(now_ms: int) -> dict[str, dict]:
     return rows
 
 
-def query_specs(payload: dict) -> list[dict]:
+def query_specs(payload: dict, *, include_kids: bool = True) -> list[dict]:
     votes: dict[str, dict[str, Counter]] = defaultdict(lambda: {"genre": Counter(), "cluster": Counter()})
     for bucket in ("all", "trends", "news"):
         for row in payload.get("d", {}).get(bucket, []):
@@ -549,14 +785,38 @@ def query_specs(payload: dict) -> list[dict]:
             for query in split_keywords(row.get("kw")):
                 votes[query]["genre"][str(row.get("genre") or "Other")] += 1
                 votes[query]["cluster"][str(row.get("cluster") or "Relaxation / meditation")] += 1
-    return [
+    regular = [
         {
             "query": query,
             "genre": data["genre"].most_common(1)[0][0],
             "cluster": data["cluster"].most_common(1)[0][0],
+            "audience": "youtube",
         }
         for query, data in sorted(votes.items())
     ]
+    if not include_kids:
+        return regular
+    kids_result_limit = (
+        KIDS_SEARCH_RESULTS
+        if payload.get("d", {}).get("kids")
+        else KIDS_BOOTSTRAP_SEARCH_RESULTS
+    )
+    search_calls = len(KIDS_QUERY_SPECS) * max(1, (kids_result_limit + 49) // 50)
+    if search_calls > MAX_KIDS_SEARCH_CALLS:
+        raise RuntimeError(
+            f"Kids search budget exceeded: {search_calls}>{MAX_KIDS_SEARCH_CALLS} calls"
+        )
+    kids = [
+        {
+            "query": query,
+            "genre": genre,
+            "cluster": cluster,
+            "audience": "kids",
+            "searchResults": kids_result_limit,
+        }
+        for query, genre, cluster in KIDS_QUERY_SPECS
+    ]
+    return regular + kids
 
 
 SHEET_VIDEO_TAB_FRAGMENTS = ("All Videos", "Trends", "News", "Our Videos")
@@ -623,7 +883,7 @@ def tracked_ids(payload: dict) -> list[str]:
     }
     ids = {
         str(row.get("vid"))
-        for bucket in ("all", "trends", "news", "ours")
+        for bucket in ("all", "trends", "news", "ours", "kids")
         for row in payload.get("d", {}).get(bucket, [])
         if not is_deferred_row(row)
         if VIDEO_ID.match(str(row.get("vid") or ""))
@@ -678,12 +938,21 @@ def merge_keyword_rows(rows: list[dict]) -> list[dict]:
     by_id: dict[str, dict] = {}
     keywords: dict[str, set[str]] = defaultdict(set)
     ranks: dict[str, list[int]] = defaultdict(list)
+    audiences: dict[str, set[str]] = defaultdict(set)
+    kids_status: dict[str, list[bool]] = defaultdict(list)
     for row in rows:
         video_id = row["vid"]
         old = by_id.get(video_id)
         if not old or int(row.get("views") or 0) >= int(old.get("views") or 0):
             by_id[video_id] = dict(row)
         keywords[video_id].update(split_keywords(row.get("kw")))
+        audiences[video_id].update(
+            str(value).lower()
+            for value in (row.get("audiences") or [])
+            if str(value).lower() in {"youtube", "kids"}
+        )
+        if isinstance(row.get("madeForKids"), bool):
+            kids_status[video_id].append(row["madeForKids"])
         if isinstance(row.get("rank"), (int, float)):
             ranks[video_id].append(int(row["rank"]))
     for video_id, row in by_id.items():
@@ -692,7 +961,38 @@ def merge_keyword_rows(rows: list[dict]) -> list[dict]:
             row["kwCount"] = len(keywords[video_id])
         if ranks[video_id]:
             row["rank"] = min(ranks[video_id])
+        if audiences[video_id]:
+            row["audiences"] = sorted(audiences[video_id], key=("youtube", "kids").index)
+        if True in kids_status[video_id]:
+            row["madeForKids"] = True
+        elif False in kids_status[video_id]:
+            row["madeForKids"] = False
     return list(by_id.values())
+
+
+def preserve_audience_classification(winner: dict, other: dict | None) -> dict:
+    """Keep official Kids truth and discovery provenance when one fresher row wins."""
+    if not other:
+        return winner
+    merged = dict(winner)
+    statuses = [
+        value
+        for value in (winner.get("madeForKids"), other.get("madeForKids"))
+        if isinstance(value, bool)
+    ]
+    if True in statuses:
+        merged["madeForKids"] = True
+    elif False in statuses:
+        merged["madeForKids"] = False
+    audiences = {
+        str(value).lower()
+        for row in (winner, other)
+        for value in (row.get("audiences") or [])
+        if str(value).lower() in {"youtube", "kids"}
+    }
+    if audiences:
+        merged["audiences"] = sorted(audiences, key=("youtube", "kids").index)
+    return merged
 
 
 def run_shard(
@@ -719,13 +1019,17 @@ def run_shard(
         video_id for video_id in all_quarantine_ids if stable_shard(video_id, shards) == shard
     ]
     lookup_ids = sorted(set(ids) | set(quarantine_ids))
-    specs = [spec for spec in query_specs(payload) if stable_shard(spec["query"], shards) == shard]
-
     fresh: dict[str, dict] = {}
     track_failed = 0
     api_key = os.environ.get("YOUTUBE_API_KEY", "").strip()
+    specs = [
+        spec
+        for spec in query_specs(payload, include_kids=bool(api_key))
+        if stable_shard(spec["query"], shards) == shard
+    ]
     owned_fresh: dict[str, dict] = {}
     owned_ok = True
+    live_audiences: dict[str, dict] = {}
     # Official-upload discovery is useful, but it must never erase a day of
     # factual counters for the already tracked cohort.
     if shard == 0:
@@ -735,6 +1039,28 @@ def run_shard(
         except Exception as exc:
             owned_ok = False
             print(f"WARN official-upload discovery: {type(exc).__name__}: {exc}", file=sys.stderr)
+        if api_key:
+            live_ids = sorted({
+                str(row.get("vid") or "")
+                for row in payload.get("d", {}).get("lives", [])
+                if VIDEO_ID.match(str(row.get("vid") or ""))
+            })
+            if live_ids:
+                try:
+                    live_rows = fetch_api_rows(live_ids, now_ms, api_key)
+                    live_audiences = {
+                        video_id: {
+                            "madeForKids": row["madeForKids"],
+                            "audiences": ["kids"] if row["madeForKids"] else ["youtube"],
+                        }
+                        for video_id, row in live_rows.items()
+                        if isinstance(row.get("madeForKids"), bool)
+                    }
+                except Exception as exc:
+                    print(
+                        f"WARN livestream audience refresh: {type(exc).__name__}: {exc}",
+                        file=sys.stderr,
+                    )
     if api_key:
         try:
             fresh.update(fetch_api_rows(lookup_ids, now_ms, api_key))
@@ -772,21 +1098,40 @@ def run_shard(
     query_failed = 0
     query_raw = 0
     query_enriched = 0
+    kids_queries_total = sum(1 for spec in specs if spec.get("audience") == "kids")
+    kids_query_failed = 0
+    kids_results_examined = 0
+    kids_candidates_kept = 0
     with concurrent.futures.ThreadPoolExecutor(max_workers=SEARCH_WORKERS) as pool:
-        future_to_spec = {pool.submit(fetch_search, spec, now_ms): spec for spec in specs}
+        future_to_spec = {
+            pool.submit(
+                fetch_kids_search if spec.get("audience") == "kids" else fetch_search,
+                spec,
+                now_ms,
+                *([api_key] if spec.get("audience") == "kids" else []),
+            ): spec
+            for spec in specs
+        }
         for future in concurrent.futures.as_completed(future_to_spec):
             spec = future_to_spec[future]
             try:
                 rows, raw_count, enriched_count = future.result()
                 query_raw += raw_count
                 query_enriched += enriched_count
+                if spec.get("audience") == "kids":
+                    kids_results_examined += raw_count
+                    kids_candidates_kept += len(rows)
                 candidates.extend(rows)
                 for row in rows:
                     previous = fresh.get(row["vid"])
                     if not previous or int(row.get("views") or 0) >= int(previous.get("views") or 0):
-                        fresh[row["vid"]] = row
+                        fresh[row["vid"]] = preserve_audience_classification(row, previous)
+                    else:
+                        fresh[row["vid"]] = preserve_audience_classification(previous, row)
             except Exception as exc:
                 query_failed += 1
+                if spec.get("audience") == "kids":
+                    kids_query_failed += 1
                 print(f"WARN query {spec['query']}: {type(exc).__name__}: {exc}", file=sys.stderr)
 
     track_ok = len(tracked_fresh_ids)
@@ -811,6 +1156,10 @@ def run_shard(
         "queries_ok": query_ok,
         "queries_raw": query_raw,
         "queries_enriched": query_enriched,
+        "kids_queries_total": kids_queries_total,
+        "kids_queries_ok": kids_queries_total - kids_query_failed,
+        "kids_results_examined": kids_results_examined,
+        "kids_candidates_kept": kids_candidates_kept,
         "owned_ok": owned_ok,
         "tracked_ids": ids,
         "tracked_fresh_ids": tracked_fresh_ids,
@@ -818,6 +1167,7 @@ def run_shard(
         "tracked_unavailable_ids": tracked_unavailable_ids,
         "tracked_recovered_ids": tracked_recovered_ids,
         "owned_fresh": list(owned_fresh.values()),
+        "live_audiences": live_audiences,
         "fresh": list(fresh.values()),
         "candidates": merge_keyword_rows(candidates),
     }
@@ -833,6 +1183,14 @@ def update_row(existing: dict, fresh: dict, now_ms: int) -> None:
     ):
         if fresh.get(key) not in (None, ""):
             existing[key] = fresh[key]
+    if isinstance(fresh.get("madeForKids"), bool):
+        existing["madeForKids"] = fresh["madeForKids"]
+    if isinstance(fresh.get("audiences"), list):
+        existing["audiences"] = list(dict.fromkeys(
+            str(value).lower()
+            for value in fresh["audiences"]
+            if str(value).lower() in {"youtube", "kids"}
+        ))
     if not str(existing.get("genre") or "").strip() and fresh.get("genre"):
         existing["genre"] = fresh["genre"]
         if fresh.get("genreSource"):
@@ -859,6 +1217,18 @@ def merge_discovery_fields(existing: dict, discovered: dict) -> None:
     ]
     if ranks:
         existing["rank"] = min(ranks)
+    audiences = {
+        str(value).lower()
+        for row in (existing, discovered)
+        for value in (row.get("audiences") or [])
+        if str(value).lower() in {"youtube", "kids"}
+    }
+    if audiences:
+        existing["audiences"] = sorted(audiences, key=("youtube", "kids").index)
+    if discovered.get("madeForKids") is True or existing.get("madeForKids") is True:
+        existing["madeForKids"] = True
+    elif isinstance(discovered.get("madeForKids"), bool):
+        existing["madeForKids"] = discovered["madeForKids"]
 
 
 def history_day_key(timestamp_ms: int) -> str:
@@ -978,7 +1348,7 @@ def validate_history_refresh(
 def write_avatar_overlay(payload: dict, path: Path) -> int:
     channels: dict[str, str] = {}
     aliases: dict[str, str] = {}
-    for bucket in ("all", "trends", "news"):
+    for bucket in ("all", "trends", "news", "kids"):
         for row in payload.get("d", {}).get(bucket, []):
             channel_url = str(row.get("chUrl") or "")
             id_match = re.search(r"/channel/(UC[\w-]+)", channel_url)
@@ -1015,6 +1385,7 @@ def merge_artifacts(
     history_dir: Path | None = None,
     recommendation_pool: Path | None = None,
     generate_recommendations: bool = True,
+    require_kids: bool = False,
 ) -> dict:
     files = sorted(merge_dir.rglob("youtube-shard-*.json"))
     artifacts = [json.loads(path.read_text(encoding="utf-8")) for path in files]
@@ -1030,6 +1401,21 @@ def merge_artifacts(
     queries_ok = sum(int(a.get("queries_ok", 0)) for a in artifacts)
     queries_raw = sum(int(a.get("queries_raw", 0)) for a in artifacts)
     queries_enriched = sum(int(a.get("queries_enriched", 0)) for a in artifacts)
+    kids_queries_total = sum(int(a.get("kids_queries_total", 0)) for a in artifacts)
+    kids_queries_ok = sum(int(a.get("kids_queries_ok", 0)) for a in artifacts)
+    kids_results_examined = sum(int(a.get("kids_results_examined", 0)) for a in artifacts)
+    kids_candidates_kept = sum(int(a.get("kids_candidates_kept", 0)) for a in artifacts)
+    if require_kids:
+        expected_kids_queries = len(KIDS_QUERY_SPECS)
+        if kids_queries_total != expected_kids_queries:
+            raise RuntimeError(
+                f"Merge rejected: expected {expected_kids_queries} Kids queries, "
+                f"got {kids_queries_total}"
+            )
+        if kids_queries_ok / kids_queries_total < MIN_KIDS_QUERY_RATIO:
+            raise RuntimeError(
+                f"Merge rejected: only {kids_queries_ok}/{kids_queries_total} Kids queries succeeded"
+            )
     if not tracked_total or tracked_ok / tracked_total < MIN_PUBLISH_TRACK_RATIO:
         raise RuntimeError(f"Merge rejected: {tracked_ok}/{tracked_total} tracked videos refreshed")
     owned_ok = all(bool(artifact.get("owned_ok", True)) for artifact in artifacts)
@@ -1118,18 +1504,35 @@ def merge_artifacts(
                 continue
             previous = fresh.get(video_id)
             if not previous or int(row.get("views") or 0) >= int(previous.get("views") or 0):
-                fresh[video_id] = row
+                fresh[video_id] = preserve_audience_classification(row, previous)
+            else:
+                fresh[video_id] = preserve_audience_classification(previous, row)
         for row in artifact.get("owned_fresh") or []:
             video_id = row.get("vid")
             if VIDEO_ID.match(str(video_id or "")):
                 owned_fresh[video_id] = row
 
-    for bucket in ("all", "trends", "news"):
+    for bucket in ("all", "trends", "news", "kids"):
         for row in data.setdefault(bucket, []):
             current = fresh.get(row.get("vid"))
             if current:
                 update_row(row, current, now_ms)
+    data["kids"] = [
+        row
+        for row in data["kids"]
+        if row.get("madeForKids") is True
+        and int(row.get("views") or 0) >= MIN_KIDS_VIEWS
+        and float(row.get("vpm") or 0) >= MIN_KIDS_VPM
+    ]
     removed_low_view_news = prune_news_below_view_floor(data)
+
+    live_audiences: dict[str, dict] = {}
+    for artifact in artifacts:
+        live_audiences.update(artifact.get("live_audiences") or {})
+    for row in data.setdefault("lives", []):
+        audience = live_audiences.get(str(row.get("vid") or ""))
+        if audience:
+            row.update(audience)
 
     by_ours = {row.get("vid"): row for row in data.setdefault("ours", [])}
     inserted_ours = 0
@@ -1148,23 +1551,48 @@ def merge_artifacts(
     by_all = {row.get("vid"): row for row in data["all"]}
     by_trends = {row.get("vid"): row for row in data["trends"]}
     by_news = {row.get("vid"): row for row in data["news"]}
+    by_kids = {row.get("vid"): row for row in data["kids"]}
     inserted_all = 0
     inserted_trends = 0
     inserted_news = 0
+    inserted_kids = 0
     for row in merge_keyword_rows(candidates):
         if is_deferred_row(row):
             continue
         views = int(row.get("views") or 0)
         age = row.get("ageM")
-        for current in (by_all.get(row["vid"]), by_trends.get(row["vid"]), by_news.get(row["vid"])):
+        for current in (
+            by_all.get(row["vid"]),
+            by_trends.get(row["vid"]),
+            by_news.get(row["vid"]),
+            by_kids.get(row["vid"]),
+        ):
             if current:
                 merge_discovery_fields(current, row)
-        if views >= MIN_ALL_VIEWS and row["vid"] not in by_all:
+        audiences = {
+            str(value).lower()
+            for value in (row.get("audiences") or ["youtube"])
+            if str(value).lower() in {"youtube", "kids"}
+        }
+        is_youtube = "youtube" in audiences
+        is_kids = "kids" in audiences and row.get("madeForKids") is True
+        if (
+            is_kids
+            and views >= MIN_KIDS_VIEWS
+            and float(row.get("vpm") or 0) >= MIN_KIDS_VPM
+            and row["vid"] not in by_kids
+        ):
+            added = dict(row)
+            data["kids"].append(added)
+            by_kids[row["vid"]] = added
+            inserted_kids += 1
+        if is_youtube and views >= MIN_ALL_VIEWS and row["vid"] not in by_all:
             data["all"].append(row)
             by_all[row["vid"]] = row
             inserted_all += 1
         if (
-            views >= MIN_TREND_VIEWS
+            is_youtube
+            and views >= MIN_TREND_VIEWS
             and isinstance(age, (int, float))
             and age <= MAX_TREND_AGE_MONTHS
             and row["vid"] not in by_trends
@@ -1173,7 +1601,8 @@ def merge_artifacts(
             by_trends[row["vid"]] = row
             inserted_trends += 1
         if (
-            views >= MIN_NEWS_VIEWS
+            is_youtube
+            and views >= MIN_NEWS_VIEWS
             and isinstance(age, (int, float))
             and age <= MAX_NEWS_AGE_MONTHS
             and (row.get("vpm") or 0) >= MIN_NEWS_VPM
@@ -1202,7 +1631,7 @@ def merge_artifacts(
         and isinstance(row.get("ageM"), (int, float))
         and row["ageM"] <= MAX_TREND_AGE_MONTHS
     ]
-    for bucket in ("all", "trends", "news"):
+    for bucket in ("all", "trends", "news", "kids"):
         data[bucket].sort(key=lambda row: row.get("vpm") or 0, reverse=True)
     if len(data["news"]) > MAX_NEWS_ROWS:
         data["news"] = sorted(
@@ -1218,7 +1647,7 @@ def merge_artifacts(
     }
     desired_ids.update(
         str(row.get("vid"))
-        for bucket in ("all", "trends", "news", "ours")
+        for bucket in ("all", "trends", "news", "ours", "kids")
         for row in data[bucket]
         if VIDEO_ID.match(str(row.get("vid") or ""))
     )
@@ -1256,6 +1685,10 @@ def merge_artifacts(
         "owned_discovery_ok": owned_ok,
         "search_results": queries_raw,
         "search_results_enriched": queries_enriched,
+        "kids_queries": kids_queries_total,
+        "kids_queries_ok": kids_queries_ok,
+        "kids_results_examined": kids_results_examined,
+        "kids_candidates_kept": kids_candidates_kept,
         "history_updated": history_updated,
         "history_day": history_day,
         "day_timezone": RADAR_TIMEZONE_NAME,
@@ -1296,6 +1729,11 @@ def merge_artifacts(
         "all_added": inserted_all,
         "trends_added": inserted_trends,
         "news_added": inserted_news,
+        "kids_added": inserted_kids,
+        "kids_queries": kids_queries_total,
+        "kids_queries_ok": kids_queries_ok,
+        "kids_results_examined": kids_results_examined,
+        "kids_candidates_kept": kids_candidates_kept,
         "news_removed_below_view_floor": removed_low_view_news,
         "ours_added": inserted_ours,
         "avatars": avatar_count,
@@ -1470,6 +1908,7 @@ def main() -> None:
     parser.add_argument("--history-dir", type=Path, default=DEFAULT_HISTORY_DIR)
     parser.add_argument("--recommendation-pool", type=Path, default=DEFAULT_RECOMMENDATION_POOL)
     parser.add_argument("--skip-recommendation-pool", action="store_true")
+    parser.add_argument("--require-kids", action="store_true")
     parser.add_argument("--shard", type=int)
     parser.add_argument("--shards", type=int, default=10)
     parser.add_argument("--output", type=Path)
@@ -1509,6 +1948,7 @@ def main() -> None:
             args.history_dir,
             args.recommendation_pool,
             not args.skip_recommendation_pool,
+            args.require_kids,
         )
         return
     if args.shard is None or args.output is None:
