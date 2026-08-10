@@ -10,6 +10,233 @@ import refresh_youtube_daily as radar
 
 
 class DailyHistoryTests(unittest.TestCase):
+    def test_official_api_hydration_preserves_made_for_kids_tristate(self):
+        now = int(datetime(2026, 8, 10, 8, tzinfo=timezone.utc).timestamp() * 1000)
+        captured = {}
+        items = []
+        for video_id, status in (
+            ("abcdefghijk", {"madeForKids": True}),
+            ("zyxwvutsrqp", {"madeForKids": False}),
+            ("mnopqrstuvw", {}),
+        ):
+            items.append({
+                "id": video_id,
+                "snippet": {
+                    "title": "Long instrumental mix",
+                    "publishedAt": "2026-01-01T00:00:00Z",
+                    "channelTitle": "Channel",
+                    "channelId": "UC1234567890123456789012",
+                },
+                "contentDetails": {"duration": "PT1H"},
+                "statistics": {"viewCount": "1000000"},
+                "status": status,
+            })
+
+        class Response(io.BytesIO):
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                self.close()
+
+        def fake_open(url, timeout=30):
+            captured["url"] = url
+            return Response(json.dumps({"items": items}).encode())
+
+        with patch.object(radar.urllib.request, "urlopen", side_effect=fake_open):
+            rows = radar.fetch_api_rows(
+                ["abcdefghijk", "zyxwvutsrqp", "mnopqrstuvw"],
+                now,
+                "secret",
+            )
+        query = radar.urllib.parse.parse_qs(radar.urllib.parse.urlparse(captured["url"]).query)
+        self.assertIn("status", query["part"][0].split(","))
+        self.assertIs(rows["abcdefghijk"]["madeForKids"], True)
+        self.assertIs(rows["zyxwvutsrqp"]["madeForKids"], False)
+        self.assertNotIn("madeForKids", rows["mnopqrstuvw"])
+
+    def test_kids_search_requires_official_true_and_instrumental_long_form(self):
+        now = int(datetime(2026, 8, 10, 8, tzinfo=timezone.utc).timestamp() * 1000)
+        ids = ["abcdefghijk", "zyxwvutsrqp", "mnopqrstuvw", "qrstuvwxyz0"]
+        search_payload = {
+            "items": [{"id": {"videoId": video_id}} for video_id in ids],
+        }
+        official = {
+            "abcdefghijk": {
+                "vid": "abcdefghijk", "title": "Baby sleep music instrumental · 3 hours",
+                "views": 2_000_000, "durH": 3, "channel": "Calm Baby",
+                "madeForKids": True, "_scanDescription": "instrumental sleep music",
+            },
+            "zyxwvutsrqp": {
+                "vid": "zyxwvutsrqp", "title": "Baby sleep music instrumental",
+                "views": 3_000_000, "durH": 2, "channel": "General Music",
+                "madeForKids": False, "_scanDescription": "instrumental",
+            },
+            "mnopqrstuvw": {
+                "vid": "mnopqrstuvw", "title": "Kids sing along instrumental songs",
+                "views": 4_000_000, "durH": 2, "channel": "Singing Kids",
+                "madeForKids": True, "_scanDescription": "sing along with vocals",
+            },
+            "qrstuvwxyz0": {
+                "vid": "qrstuvwxyz0", "title": "Baby sleep music instrumental live",
+                "views": 5_000_000, "durH": 8, "channel": "Calm Baby",
+                "madeForKids": True, "_scanDescription": "instrumental",
+                "_liveBroadcastContent": "upcoming",
+            },
+        }
+        for row in official.values():
+            row.setdefault("_liveBroadcastContent", "none")
+        spec = {
+            "query": "baby sleep music instrumental",
+            "genre": "Baby sleep",
+            "cluster": "Relaxation / meditation",
+            "audience": "kids",
+        }
+        with patch.object(radar, "youtube_api_payload", return_value=search_payload), patch.object(
+            radar, "fetch_api_rows", return_value=official
+        ):
+            rows, raw, enriched = radar.fetch_kids_search(spec, now, "secret")
+        self.assertEqual((raw, enriched), (4, 4))
+        self.assertEqual([row["vid"] for row in rows], ["abcdefghijk"])
+        self.assertIs(rows[0]["madeForKids"], True)
+        self.assertEqual(rows[0]["audiences"], ["kids"])
+        self.assertNotIn("_scanDescription", rows[0])
+        with self.assertRaisesRegex(RuntimeError, "requires YOUTUBE_API_KEY"):
+            radar.fetch_kids_search(spec, now, "")
+
+    def test_kids_queries_are_builtin_with_top_100_bootstrap_and_safe_daily_budget(self):
+        specs = [s for s in radar.query_specs({"d": {}}, include_kids=True) if s["audience"] == "kids"]
+        queries = [s["query"].lower() for s in specs]
+        self.assertEqual(radar.KIDS_BOOTSTRAP_SEARCH_RESULTS, 100)
+        self.assertEqual(radar.KIDS_SEARCH_RESULTS, 50)
+        self.assertTrue(all(s["searchResults"] == 100 for s in specs))
+        calls = len(specs) * 2
+        self.assertLessEqual(calls, radar.MAX_KIDS_SEARCH_CALLS)
+        daily = [
+            s
+            for s in radar.query_specs({"d": {"kids": [{"vid": "abcdefghijk"}]}}, include_kids=True)
+            if s["audience"] == "kids"
+        ]
+        self.assertTrue(all(s["searchResults"] == 50 for s in daily))
+        self.assertEqual(len(queries), len(set(queries)))
+        for fragment in (
+            "baby sleep", "toddler", "kids lofi", "ambient music for babies",
+            "piano music for babies", "classical music for babies", "jazz for babies",
+            "bossa nova for babies", "chill house for kids", "drum and bass for kids",
+        ):
+            self.assertTrue(any(fragment in query for query in queries), fragment)
+        self.assertFalse(any("phonk" in query for query in queries))
+        self.assertTrue(all(
+            any(signal in query for signal in ("instrumental", "no vocals", "no lyrics"))
+            for query in queries
+        ))
+
+    def test_instrumental_filter_rejects_kids_vocal_and_spoken_signals(self):
+        base = {"duration": 3 * 3600, "title": "Baby sleep music instrumental"}
+        self.assertTrue(radar.is_instrumental(base))
+        for signal in (
+            "lyrics", "vocals", "sing along", "children singing", "bedtime story",
+            "spoken word", "voice-over", "guided affirmations", "choir", "humming",
+            "children voices", "mantra",
+        ):
+            row = dict(base, description=signal)
+            self.assertFalse(radar.is_instrumental(row), signal)
+        self.assertFalse(radar.is_instrumental(dict(base, duration=19 * 60)))
+        self.assertTrue(radar.is_instrumental(
+            dict(base, title="Baby sleep music · no vocals")
+        ))
+        self.assertTrue(radar.is_instrumental(
+            dict(base, title="Baby sleep music without lyrics")
+        ))
+        self.assertTrue(radar.is_instrumental(
+            dict(base, title="Nursery rhyme piano instrumental")
+        ))
+
+    def test_merge_keyword_rows_preserves_kids_truth_in_both_orders(self):
+        youtube = {
+            "vid": "abcdefghijk", "views": 2_000_000, "kw": "focus music",
+            "audiences": ["youtube"],
+        }
+        kids = {
+            "vid": "abcdefghijk", "views": 2_000_000,
+            "kw": "baby sleep music instrumental", "audiences": ["kids"],
+            "madeForKids": True,
+        }
+        for rows in ([youtube, kids], [kids, youtube]):
+            merged = radar.merge_keyword_rows(rows)[0]
+            self.assertIs(merged["madeForKids"], True)
+            self.assertEqual(merged["audiences"], ["youtube", "kids"])
+            self.assertEqual(merged["kwCount"], 2)
+
+    def test_update_row_changes_kids_status_only_when_official_value_exists(self):
+        now = int(datetime(2026, 8, 10, 8, tzinfo=timezone.utc).timestamp() * 1000)
+        existing = {"vid": "abcdefghijk", "madeForKids": True}
+        radar.update_row(existing, {"vid": "abcdefghijk", "views": 2}, now)
+        self.assertIs(existing["madeForKids"], True)
+        radar.update_row(existing, {"vid": "abcdefghijk", "madeForKids": False}, now)
+        self.assertIs(existing["madeForKids"], False)
+
+    def test_avatar_overlay_includes_kids_channels(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "avatars.js"
+            count = radar.write_avatar_overlay({
+                "d": {
+                    "all": [], "trends": [], "news": [],
+                    "kids": [{
+                        "chUrl": "https://www.youtube.com/channel/UC1234567890123456789012",
+                        "channelId": "UC1234567890123456789012",
+                    }],
+                }
+            }, output)
+            rendered = output.read_text(encoding="utf-8")
+        self.assertEqual(count, 1)
+        self.assertIn("UC1234567890123456789012", rendered)
+
+    def test_kids_candidate_stays_in_separate_public_bucket(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "Lofi_Radar_data.js"
+            avatars = root / "avatars.js"
+            shards = root / "shards"
+            shards.mkdir()
+            radar.write_snapshot(snapshot, {
+                "d": {
+                    "all": [{"vid": "abcdefghijk", "views": 1_000_000, "pub": 1700000000000}],
+                    "trends": [], "news": [], "ours": [], "recos": [], "roadmap": [], "lives": [],
+                }
+            })
+            generated = int(datetime(2026, 8, 10, 8, tzinfo=timezone.utc).timestamp() * 1000)
+            artifact = {
+                "version": 1, "generated_ms": generated, "shard": 0, "shards": 1,
+                "tracked_total": 1, "tracked_ok": 1,
+                "tracked_ids": ["abcdefghijk"], "tracked_fresh_ids": ["abcdefghijk"],
+                "tracked_failed_ids": [], "tracked_unavailable_ids": [], "tracked_recovered_ids": [],
+                "queries_total": 1, "queries_ok": 1, "queries_raw": 3, "queries_enriched": 3,
+                "fresh": [{"vid": "abcdefghijk", "views": 1_000_001}],
+                "owned_fresh": [], "live_audiences": {},
+                "candidates": [{
+                    "vid": "zyxwvutsrqp", "title": "Baby sleep music instrumental",
+                    "views": 150_000, "pub": generated - 10 * 86400000, "ageM": 1,
+                    "vpm": 150_000, "genre": "Baby sleep", "cluster": "Relaxation / meditation",
+                    "kw": "baby sleep music instrumental", "audiences": ["kids"],
+                    "madeForKids": True, "durH": 2, "channel": "Calm Baby",
+                }],
+            }
+            (shards / "youtube-shard-0.json").write_text(json.dumps(artifact), encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "expected .* Kids queries"):
+                radar.merge_artifacts(
+                    snapshot, avatars, shards, 1,
+                    generate_recommendations=False,
+                    require_kids=True,
+                )
+            summary = radar.merge_artifacts(
+                snapshot, avatars, shards, 1, generate_recommendations=False
+            )
+            data = radar.read_snapshot(snapshot)["d"]
+        self.assertEqual([row["vid"] for row in data["kids"]], ["zyxwvutsrqp"])
+        self.assertNotIn("zyxwvutsrqp", {row["vid"] for row in data["all"]})
+        self.assertEqual(summary["kids_added"], 1)
+
     def test_rerun_replaces_same_utc_day(self):
         day = int(datetime(2026, 7, 20, 8, tzinfo=timezone.utc).timestamp() * 1000)
         later = day + 4 * 3600000
@@ -830,4 +1057,3 @@ class DailyHistoryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
