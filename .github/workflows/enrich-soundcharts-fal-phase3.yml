@@ -1,0 +1,559 @@
+name: Enrich Soundcharts FAL phase 3
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_requests:
+        description: 'Soundcharts data-call cap: 0 dry-run, then 1-4000'
+        required: true
+        default: '0'
+        type: string
+
+permissions:
+  actions: write
+  contents: read
+
+# All paid Soundcharts collectors share this exact lock.
+concurrency:
+  group: refresh-soundcharts-ar-collection-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  phase3:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      PHASE1_STATE_ARTIFACT: soundcharts-fal-phase1-state-v2
+      PHASE2_ID_STATE_ARTIFACT: soundcharts-fal-phase2-spotify-id-state-v1-encrypted
+      PHASE3_STATE_ARTIFACT: soundcharts-fal-phase3-state-v1-encrypted
+      BOOTSTRAP_CACHE_ARTIFACT: soundcharts-bootstrap-state
+      MINIMUM_STREAMS: '100000'
+      MIN_QUOTA_RESERVE: '1400000'
+      ABSOLUTE_MAX_REQUESTS: '4000'
+      WORKERS: '8'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Initialize isolated private paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "SOURCE_DIR=$RUNNER_TEMP/fal-phase3-sources" >> "$GITHUB_ENV"
+          echo "PRIVATE_DIR=$RUNNER_TEMP/fal-phase3-private" >> "$GITHUB_ENV"
+          echo "AGGREGATE_DIR=$RUNNER_TEMP/fal-phase3-aggregate" >> "$GITHUB_ENV"
+          echo "PHASE3_STATE=$RUNNER_TEMP/fal-phase3-private/soundcharts-fal-phase3-state-v1.sqlite3" >> "$GITHUB_ENV"
+          echo "REVIEW_MANIFEST=$RUNNER_TEMP/fal-phase3-private/soundcharts-fal-review-manifest-v1.json" >> "$GITHUB_ENV"
+          echo "ENRICHED_MANIFEST=$RUNNER_TEMP/fal-phase3-private/soundcharts-fal-phase3-review-manifest-v1.json" >> "$GITHUB_ENV"
+          echo "PHASE3_REPORT=$RUNNER_TEMP/fal-phase3-aggregate/soundcharts-fal-phase3-report-v1.json" >> "$GITHUB_ENV"
+          echo "ENCRYPTED_STATE=$RUNNER_TEMP/fal-phase3-private/soundcharts-fal-phase3-state-v1.tar.gz.enc" >> "$GITHUB_ENV"
+          echo "ENCRYPTION_SUMMARY=$RUNNER_TEMP/fal-phase3-aggregate/soundcharts-fal-phase3-encryption-summary-v1.json" >> "$GITHUB_ENV"
+
+      - name: Validate phase-3 code and workflow guardrails
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile \
+            enrich_soundcharts_fal_phase3.py \
+            build_soundcharts_fal_review_manifest.py
+          python -m unittest \
+            tests/test_enrich_soundcharts_fal_phase3.py \
+            tests/test_soundcharts_fal_phase3_workflow_guardrails.py \
+            tests/test_build_soundcharts_fal_review_manifest.py \
+            -v
+          test -z "$(git status --porcelain)"
+
+      - name: Require the private staging encryption key
+        env:
+          FAL_STAGING_ARTIFACT_KEY: ${{ secrets.FAL_STAGING_ARTIFACT_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$FAL_STAGING_ARTIFACT_KEY" ]]; then
+            echo "FAL_STAGING_ARTIFACT_KEY is required before private state restore or Soundcharts calls" >&2
+            exit 1
+          fi
+          if (( ${#FAL_STAGING_ARTIFACT_KEY} < 24 )); then
+            echo "FAL_STAGING_ARTIFACT_KEY must contain at least 24 characters" >&2
+            exit 1
+          fi
+
+      - name: Validate the dry-run or bounded request plan
+        id: plan
+        env:
+          REQUESTED_MAX_REQUESTS: ${{ inputs.max_requests }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          max_requests="${REQUESTED_MAX_REQUESTS:-0}"
+          if [[ ! "$max_requests" =~ ^[0-9]{1,4}$ ]] || (( 10#$max_requests > 4000 )); then
+            echo "max_requests must be an integer between 0 and 4000" >&2
+            exit 1
+          fi
+          echo "max_requests=$((10#$max_requests))" >> "$GITHUB_OUTPUT"
+
+      - name: Restore verified phase-2, phase-1, cache and prior phase-3 state
+        id: restore
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FAL_STAGING_ARTIFACT_KEY: ${{ secrets.FAL_STAGING_ARTIFACT_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$SOURCE_DIR" "$PRIVATE_DIR" "$AGGREGATE_DIR"
+
+          download_latest() {
+            local artifact_name="$1"
+            local required="$2"
+            local output_dir="$3"
+            local listing="$RUNNER_TEMP/${artifact_name}-artifacts.json"
+            local archive="$RUNNER_TEMP/${artifact_name}.zip"
+            mkdir -p "$output_dir"
+            curl --fail --silent --show-error --location \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${artifact_name}&per_page=100" \
+              --output "$listing"
+            local selected
+            selected="$(jq -c '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last // empty' "$listing")"
+            if [[ -z "$selected" || "$selected" == "null" ]]; then
+              if [[ "$required" == "required" ]]; then
+                echo "Required artifact ${artifact_name} is unavailable" >&2
+                return 1
+              fi
+              return 2
+            fi
+            local archive_url artifact_id
+            archive_url="$(jq -r '.archive_download_url' <<<"$selected")"
+            artifact_id="$(jq -r '.id' <<<"$selected")"
+            curl --fail --silent --show-error --location \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "$archive_url" --output "$archive"
+            unzip -o -q "$archive" -d "$output_dir"
+            printf '%s' "$artifact_id"
+          }
+
+          download_exact() {
+            local artifact_id="$1"
+            local expected_name="$2"
+            local output_dir="$3"
+            local metadata="$RUNNER_TEMP/artifact-${artifact_id}.json"
+            local archive="$RUNNER_TEMP/artifact-${artifact_id}.zip"
+            mkdir -p "$output_dir"
+            curl --fail --silent --show-error --location \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}" \
+              --output "$metadata"
+            test "$(jq -r '.name // empty' "$metadata")" = "$expected_name"
+            test "$(jq -r '.expired // true' "$metadata")" = "false"
+            archive_url="$(jq -r '.archive_download_url // empty' "$metadata")"
+            test -n "$archive_url"
+            curl --fail --silent --show-error --location \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "$archive_url" --output "$archive"
+            unzip -o -q "$archive" -d "$output_dir"
+          }
+
+          phase2_raw="$SOURCE_DIR/phase2-encrypted"
+          phase2_plain="$SOURCE_DIR/phase2-plain"
+          phase2_artifact_id="$(download_latest "$PHASE2_ID_STATE_ARTIFACT" required "$phase2_raw")"
+          phase2_encrypted="$(find "$phase2_raw" -type f -name '*.tar.gz.enc' -print -quit)"
+          test -s "$phase2_encrypted"
+          mkdir -p "$phase2_plain"
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 \
+            -pass env:FAL_STAGING_ARTIFACT_KEY -in "$phase2_encrypted" | tar -xz -C "$phase2_plain"
+          phase2_db="$(find "$phase2_plain" -type f -name 'soundcharts-fal-phase2-state-v3.sqlite3' -print -quit)"
+          phase2_report="$(find "$phase2_plain" -type f -name 'soundcharts-fal-phase2-report-v4.json' -print -quit)"
+          phase2_backfill_report="$(find "$phase2_plain" -type f -name 'soundcharts-fal-spotify-id-backfill-report-v1.json' -print -quit)"
+          test -s "$phase2_db"
+          test -s "$phase2_report"
+          test -s "$phase2_backfill_report"
+
+          expected_phase1_artifact_id="$(python - "$phase2_report" "$phase2_backfill_report" "$phase2_db" <<'PY'
+          import hashlib
+          import json
+          import re
+          import sys
+          from pathlib import Path
+
+          report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          backfill = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+          state = Path(sys.argv[3])
+          handoff = report.get("handoff") or {}
+          if report.get("complete") is not True or report.get("staging_only") is not True:
+              raise SystemExit("Phase-2 source is not a complete private checkpoint")
+          if report.get("canonical_written") is not False or report.get("dashboard_written") is not False:
+              raise SystemExit("Phase-2 source reports a canonical/dashboard write")
+          if handoff.get("phase2_state_verified") is not True:
+              raise SystemExit("Phase-2 handoff is not verified")
+          if backfill.get("complete") is not True or backfill.get("staging_only") is not True:
+              raise SystemExit("Spotify-ID backfill is not complete private staging")
+          if backfill.get("canonical_written") is not False or backfill.get("dashboard_written") is not False:
+              raise SystemExit("Spotify-ID backfill reports a canonical/dashboard write")
+          backfill_source = backfill.get("source") or {}
+          if backfill_source.get("phase2_complete") is not True:
+              raise SystemExit("Spotify-ID backfill was not based on complete Phase 2")
+          if str(backfill_source.get("state_sha256_after") or "") != hashlib.sha256(state.read_bytes()).hexdigest():
+              raise SystemExit("Spotify-ID backfill report does not bind to the restored checkpoint")
+          values = [
+              str((report.get("checkpoint") or {}).get("phase1_artifact_id") or ""),
+              str((report.get("source_checkpoint") or {}).get("phase1_source_id") or ""),
+              str(handoff.get("phase1_artifact_id") or ""),
+              str(handoff.get("phase1_source_id") or ""),
+          ]
+          if any(not re.fullmatch(r"[1-9][0-9]*", value) for value in values):
+              raise SystemExit("Phase-2 report lacks exact Phase-1 artifact lineage")
+          if len(set(values)) != 1:
+              raise SystemExit("Phase-2 report has conflicting Phase-1 artifact lineage")
+          print(values[0])
+          PY
+          )"
+          phase1_dir="$SOURCE_DIR/phase1"
+          download_exact "$expected_phase1_artifact_id" "$PHASE1_STATE_ARTIFACT" "$phase1_dir"
+          phase1_artifact_id="$expected_phase1_artifact_id"
+          phase1_db="$(find "$phase1_dir" -type f -name 'soundcharts-fal-phase1-staging-v2.sqlite3' -print -quit)"
+          test -s "$phase1_db"
+          phase2_state_sha256="$(sha256sum "$phase2_db" | cut -d' ' -f1)"
+          phase2_report_sha256="$(sha256sum "$phase2_report" | cut -d' ' -f1)"
+          phase1_state_sha256="$(sha256sum "$phase1_db" | cut -d' ' -f1)"
+
+          cache_dir="$SOURCE_DIR/bootstrap-cache"
+          cache_artifact_id=""
+          if cache_artifact_id="$(download_latest "$BOOTSTRAP_CACHE_ARTIFACT" optional "$cache_dir")"; then
+            cache_file="$(find "$cache_dir" -type f -name 'soundcharts-instrumental-cache.json' -print -quit)"
+            test -s "$cache_file"
+            echo "SOUNDCHARTS_CACHE=$cache_file" >> "$GITHUB_ENV"
+          else
+            echo "::warning title=FAL phase-3 cache absent::Continuing from exact phase-1 identities without cache reuse"
+          fi
+
+          previous_dir="$SOURCE_DIR/phase3-previous-encrypted"
+          previous_plain="$SOURCE_DIR/phase3-previous-plain"
+          previous_artifact_id=""
+          if previous_artifact_id="$(download_latest "$PHASE3_STATE_ARTIFACT" optional "$previous_dir")"; then
+            previous_encrypted="$(find "$previous_dir" -type f -name '*.tar.gz.enc' -print -quit)"
+            test -s "$previous_encrypted"
+            mkdir -p "$previous_plain"
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 \
+              -pass env:FAL_STAGING_ARTIFACT_KEY -in "$previous_encrypted" | tar -xz -C "$previous_plain"
+            previous_state="$(find "$previous_plain" -type f -name 'soundcharts-fal-phase3-state-v1.sqlite3' -print -quit)"
+            test -s "$previous_state"
+            cp "$previous_state" "$PHASE3_STATE"
+          fi
+
+          echo "PHASE2_DB=$phase2_db" >> "$GITHUB_ENV"
+          echo "PHASE2_REPORT=$phase2_report" >> "$GITHUB_ENV"
+          echo "PHASE1_DB=$phase1_db" >> "$GITHUB_ENV"
+          echo "PHASE2_SOURCE_ARTIFACT_ID=$phase2_artifact_id" >> "$GITHUB_ENV"
+          echo "PHASE1_SOURCE_ARTIFACT_ID=$phase1_artifact_id" >> "$GITHUB_ENV"
+          echo "PHASE2_STATE_SHA256=${phase2_state_sha256}" >> "$GITHUB_ENV"
+          echo "PHASE2_REPORT_SHA256=${phase2_report_sha256}" >> "$GITHUB_ENV"
+          echo "PHASE1_STATE_SHA256=${phase1_state_sha256}" >> "$GITHUB_ENV"
+          echo "PHASE3_PREVIOUS_ARTIFACT_ID=$previous_artifact_id" >> "$GITHUB_ENV"
+          echo "source_artifact_id=$phase2_artifact_id" >> "$GITHUB_OUTPUT"
+          test -z "$(git status --porcelain)"
+
+      - name: Rebuild the ephemeral private review manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          before="$(sha256sum "$PHASE2_DB" | cut -d' ' -f1)"
+          python build_soundcharts_fal_review_manifest.py \
+            --state "$PHASE2_DB" \
+            --phase2-report "$PHASE2_REPORT" \
+            --minimum-streams "$MINIMUM_STREAMS" \
+            --json-out "$REVIEW_MANIFEST"
+          after="$(sha256sum "$PHASE2_DB" | cut -d' ' -f1)"
+          test "$before" = "$after"
+          test -s "$REVIEW_MANIFEST"
+          python - "$REVIEW_MANIFEST" "$PHASE1_SOURCE_ARTIFACT_ID" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          manifest = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          lineage = str(
+              ((manifest.get("source") or {}).get("phase2_source_checkpoint") or {}).get(
+                  "phase1_source_id"
+              )
+              or ""
+          )
+          if lineage != sys.argv[2]:
+              raise SystemExit("Review manifest lost its exact Phase-1 source lineage")
+          PY
+          test -z "$(git status --porcelain)"
+
+      - name: Enrich the advanced bucket in private staging (dry run)
+        id: enrich_dry
+        if: steps.plan.outputs.max_requests == '0'
+        continue-on-error: true
+        timeout-minutes: 180
+        env:
+          PYTHONUNBUFFERED: '1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cache_args=()
+          if [[ -n "${SOUNDCHARTS_CACHE:-}" ]]; then
+            cache_args+=(--cache "$SOUNDCHARTS_CACHE")
+          fi
+          python enrich_soundcharts_fal_phase3.py \
+            --review-manifest "$REVIEW_MANIFEST" \
+            --phase1-state "$PHASE1_DB" \
+            --state "$PHASE3_STATE" \
+            --enriched-manifest-out "$ENRICHED_MANIFEST" \
+            --report "$PHASE3_REPORT" \
+            --phase2-source-artifact-id "$PHASE2_SOURCE_ARTIFACT_ID" \
+            --phase1-source-artifact-id "$PHASE1_SOURCE_ARTIFACT_ID" \
+            --phase2-state-sha256 "$PHASE2_STATE_SHA256" \
+            --phase2-report-sha256 "$PHASE2_REPORT_SHA256" \
+            --phase1-state-sha256 "$PHASE1_STATE_SHA256" \
+            --run-id "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --max-requests "0" \
+            --quota-reserve "$MIN_QUOTA_RESERVE" \
+            --workers "$WORKERS" \
+            "${cache_args[@]}"
+
+      - name: Enrich the advanced bucket in private staging (bounded live)
+        id: enrich_live
+        if: steps.plan.outputs.max_requests != '0'
+        continue-on-error: true
+        timeout-minutes: 180
+        env:
+          PYTHONUNBUFFERED: '1'
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        shell: bash
+        run: |
+          set -euo pipefail
+          cache_args=()
+          if [[ -n "${SOUNDCHARTS_CACHE:-}" ]]; then
+            cache_args+=(--cache "$SOUNDCHARTS_CACHE")
+          fi
+          python enrich_soundcharts_fal_phase3.py \
+            --review-manifest "$REVIEW_MANIFEST" \
+            --phase1-state "$PHASE1_DB" \
+            --state "$PHASE3_STATE" \
+            --enriched-manifest-out "$ENRICHED_MANIFEST" \
+            --report "$PHASE3_REPORT" \
+            --phase2-source-artifact-id "$PHASE2_SOURCE_ARTIFACT_ID" \
+            --phase1-source-artifact-id "$PHASE1_SOURCE_ARTIFACT_ID" \
+            --phase2-state-sha256 "$PHASE2_STATE_SHA256" \
+            --phase2-report-sha256 "$PHASE2_REPORT_SHA256" \
+            --phase1-state-sha256 "$PHASE1_STATE_SHA256" \
+            --run-id "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --max-requests "${{ steps.plan.outputs.max_requests }}" \
+            --quota-reserve "$MIN_QUOTA_RESERVE" \
+            --workers "$WORKERS" \
+            "${cache_args[@]}"
+
+      - name: Select successful phase-3 enrichment
+        id: enrich
+        if: always()
+        env:
+          SELECTED_MAX_REQUESTS: ${{ steps.plan.outputs.max_requests }}
+          DRY_OUTCOME: ${{ steps.enrich_dry.outcome }}
+          LIVE_OUTCOME: ${{ steps.enrich_live.outcome }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$SELECTED_MAX_REQUESTS" == "0" ]]; then
+            test "$DRY_OUTCOME" = "success"
+            test "$LIVE_OUTCOME" = "skipped"
+          else
+            test "$DRY_OUTCOME" = "skipped"
+            test "$LIVE_OUTCOME" = "success"
+          fi
+
+      - name: Verify private-only phase-3 invariants
+        id: verify
+        if: steps.enrich.outcome == 'success'
+        env:
+          PHASE2_SOURCE_ARTIFACT_ID: ${{ env.PHASE2_SOURCE_ARTIFACT_ID }}
+          PHASE1_SOURCE_ARTIFACT_ID: ${{ env.PHASE1_SOURCE_ARTIFACT_ID }}
+          PHASE2_STATE_SHA256: ${{ env.PHASE2_STATE_SHA256 }}
+          PHASE2_REPORT_SHA256: ${{ env.PHASE2_REPORT_SHA256 }}
+          PHASE1_STATE_SHA256: ${{ env.PHASE1_STATE_SHA256 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - "$PHASE3_STATE" "$ENRICHED_MANIFEST" "$PHASE3_REPORT" <<'PY'
+          import hashlib
+          import json
+          import os
+          import sqlite3
+          import sys
+          from pathlib import Path
+
+          state, manifest_path, report_path = map(Path, sys.argv[1:])
+          report = json.loads(report_path.read_text(encoding="utf-8"))
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          for payload in (report, manifest):
+              if payload.get("staging_only") is not True:
+                  raise SystemExit("FAL phase 3 escaped private staging")
+              if payload.get("canonical_written") is not False:
+                  raise SystemExit("FAL phase 3 attempted a canonical write")
+              if payload.get("dashboard_written") is not False:
+                  raise SystemExit("FAL phase 3 attempted a dashboard write")
+              if payload.get("promotion_executed") is not False:
+                  raise SystemExit("FAL phase 3 executed an unapproved promotion")
+          if report.get("row_level_data_uploaded_unencrypted") is not False:
+              raise SystemExit("Phase-3 report claims plaintext row upload")
+          source = report.get("source") or {}
+          expected_lineage = {
+              "phase2_source_artifact_id": os.environ["PHASE2_SOURCE_ARTIFACT_ID"],
+              "phase1_source_artifact_id": os.environ["PHASE1_SOURCE_ARTIFACT_ID"],
+              "phase2_state_sha256": os.environ["PHASE2_STATE_SHA256"],
+              "phase2_report_sha256": os.environ["PHASE2_REPORT_SHA256"],
+              "phase1_state_sha256": os.environ["PHASE1_STATE_SHA256"],
+          }
+          for key, expected in expected_lineage.items():
+              if str(source.get(key) or "") != expected:
+                  raise SystemExit(f"Phase-3 report source binding mismatch: {key}")
+          policy = report.get("policy") or {}
+          if policy.get("source_approval_remains_manual") is not True:
+              raise SystemExit("Source approval was automated")
+          if policy.get("human_review_remains_manual") is not True:
+              raise SystemExit("Human review was automated")
+          if policy.get("audience_size_and_career_stage_never_block") is not True:
+              raise SystemExit("An upper artist-size gate was reintroduced")
+          requests = report.get("requests") or {}
+          if int(requests.get("claimed") or 0) > 4000:
+              raise SystemExit("Phase 3 exceeded the absolute 4000-call cap")
+          if int(requests.get("protected_floor") or 0) < 1400000:
+              raise SystemExit("Phase 3 lost the 1.4M quota reserve")
+          if {"tracks", "rows", "records", "spotify_ids", "artist_ids"}.intersection(report):
+              raise SystemExit("Aggregate report contains row-level data")
+          expected_state_hash = str((report.get("source") or {}).get("state_sha256_after") or "")
+          actual_state_hash = hashlib.sha256(state.read_bytes()).hexdigest()
+          if expected_state_hash != actual_state_hash:
+              raise SystemExit("Phase-3 report is not bound to the exact resumable state")
+          connection = sqlite3.connect(state)
+          if connection.execute("PRAGMA quick_check").fetchone()[0].lower() != "ok":
+              raise SystemExit("Phase-3 SQLite quick_check failed")
+          connection.close()
+          PY
+          test -z "$(git status --porcelain)"
+
+      - name: Encrypt resumable phase-3 state and row-level manifest
+        id: encrypt
+        if: steps.enrich.outcome == 'success' && steps.verify.outcome == 'success'
+        env:
+          FAL_STAGING_ARTIFACT_KEY: ${{ secrets.FAL_STAGING_ARTIFACT_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$PHASE3_STATE"
+          bundle="$RUNNER_TEMP/fal-phase3-encrypted-bundle"
+          mkdir -p "$bundle"
+          cp "$PHASE3_STATE" "$bundle/soundcharts-fal-phase3-state-v1.sqlite3"
+          if [[ -s "$ENRICHED_MANIFEST" ]]; then
+            cp "$ENRICHED_MANIFEST" "$bundle/soundcharts-fal-phase3-review-manifest-v1.json"
+          fi
+          if [[ -s "$PHASE3_REPORT" ]]; then
+            cp "$PHASE3_REPORT" "$bundle/soundcharts-fal-phase3-report-v1.json"
+          fi
+          tar -cz -C "$bundle" . | \
+            openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 -salt \
+              -pass env:FAL_STAGING_ARTIFACT_KEY -out "$ENCRYPTED_STATE"
+          test -s "$ENCRYPTED_STATE"
+          python - "$ENCRYPTED_STATE" "$ENCRYPTION_SUMMARY" <<'PY'
+          import hashlib
+          import json
+          import os
+          import sys
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          encrypted = Path(sys.argv[1])
+          summary = {
+              "version": 1,
+              "generated_at": datetime.now(timezone.utc).isoformat(),
+              "artifact_name": "soundcharts-fal-phase3-state-v1-encrypted",
+              "cipher": "AES-256-CBC",
+              "key_derivation": "PBKDF2-HMAC-SHA256",
+              "iterations": 600000,
+              "salted": True,
+              "plaintext_uploaded": False,
+              "row_level_data_uploaded_unencrypted": False,
+              "encrypted_bytes": encrypted.stat().st_size,
+              "encrypted_sha256": hashlib.sha256(encrypted.read_bytes()).hexdigest(),
+              "phase2_source_artifact_id": os.environ.get("PHASE2_SOURCE_ARTIFACT_ID", ""),
+              "phase1_source_artifact_id": os.environ.get("PHASE1_SOURCE_ARTIFACT_ID", ""),
+              "previous_phase3_artifact_id": os.environ.get("PHASE3_PREVIOUS_ARTIFACT_ID", ""),
+          }
+          Path(sys.argv[2]).write_text(
+              json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+          )
+          PY
+
+      - name: Upload encrypted resumable private state only
+        id: state_upload
+        if: steps.encrypt.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundcharts-fal-phase3-state-v1-encrypted
+          path: ${{ env.ENCRYPTED_STATE }}
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+
+      - name: Upload aggregate phase-3 report only
+        if: steps.state_upload.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundcharts-fal-phase3-summary-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.PHASE3_REPORT }}
+            ${{ env.ENCRYPTION_SUMMARY }}
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 9
+
+      - name: Keep only the two newest encrypted phase-3 states
+        if: steps.state_upload.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          listing="$RUNNER_TEMP/fal-phase3-states-after-upload.json"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${PHASE3_STATE_ARTIFACT}&per_page=100" \
+            --output "$listing"
+          mapfile -t stale_ids < <(jq -r \
+            '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[2:][] | .id' \
+            "$listing")
+          for artifact_id in "${stale_ids[@]}"; do
+            curl --fail --silent --show-error --location \
+              --request DELETE \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}"
+          done
+
+      - name: Confirm repository remained unchanged
+        if: always()
+        shell: bash
+        run: test -z "$(git status --porcelain)"
+
+      - name: Fail closed when enrichment or invariant verification failed
+        if: always() && (steps.enrich.outcome != 'success' || steps.verify.outcome != 'success')
+        shell: bash
+        run: |
+          echo "Phase-3 enrichment or verification failed; no canonical Phase-3 state replaced" >&2
+          exit 1
