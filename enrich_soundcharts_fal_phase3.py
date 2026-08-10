@@ -580,10 +580,25 @@ def current_song_cache_entry(entry: Mapping[str, Any]) -> bool:
     if not raw_stamp:
         return False
     try:
-        dt.datetime.fromisoformat(raw_stamp.replace("Z", "+00:00"))
+        parsed_stamp = dt.datetime.fromisoformat(raw_stamp.replace("Z", "+00:00"))
     except ValueError:
         return False
-    return True
+    return parsed_stamp.tzinfo is not None
+
+
+def current_artist_cache_entry(entry: Mapping[str, Any]) -> bool:
+    """Accept only an exact provider identity with a valid fetch timestamp."""
+
+    if not exact_spotify_id(entry.get("spotify_id")):
+        return False
+    raw_stamp = str(entry.get("identifiers_fetched_at") or "").strip()
+    if not raw_stamp:
+        return False
+    try:
+        parsed_stamp = dt.datetime.fromisoformat(raw_stamp.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return parsed_stamp.tzinfo is not None
 
 
 def _apply_track_evidence(
@@ -698,9 +713,21 @@ def _apply_track_evidence(
     )
 
 
-def hydrate_from_cache(connection: sqlite3.Connection, cache_path: Path | None) -> tuple[int, int]:
+def hydrate_from_cache(
+    connection: sqlite3.Connection,
+    cache_path: Path | None,
+    *,
+    cache_source_artifact_id: str = "",
+    cache_sha256: str = "",
+) -> tuple[int, int]:
     if cache_path is None or not cache_path.is_file():
         return 0, 0
+    if not re.fullmatch(r"[1-9][0-9]*", str(cache_source_artifact_id or "")):
+        raise FalPhase3Error("Soundcharts cache requires an exact artifact ID")
+    if not re.fullmatch(r"[0-9a-f]{64}", str(cache_sha256 or "")):
+        raise FalPhase3Error("Soundcharts cache requires an exact SHA-256")
+    if file_sha256(cache_path) != str(cache_sha256):
+        raise FalPhase3Error("Soundcharts cache SHA-256 does not match its restored artifact")
     cache = load_json_object(cache_path, "Soundcharts instrumental cache")
     cached_tracks = cache.get("tracks") if isinstance(cache.get("tracks"), Mapping) else {}
     cached_artists = cache.get("artists") if isinstance(cache.get("artists"), Mapping) else {}
@@ -760,7 +787,7 @@ def hydrate_from_cache(connection: sqlite3.Connection, cache_path: Path | None) 
         if current:
             proposed_ids[candidate_uuid] = current
         entry = cached_artists.get(candidate_uuid)
-        if isinstance(entry, Mapping):
+        if isinstance(entry, Mapping) and current_artist_cache_entry(entry):
             spotify_id = exact_spotify_id(entry.get("spotify_id"))
             if spotify_id:
                 cache_ids[candidate_uuid] = spotify_id
@@ -1209,6 +1236,8 @@ def build_report(
     phase1_identities: int,
     cache_tracks: int,
     cache_artists: int,
+    cache_source_artifact_id: str,
+    cache_sha256: str,
 ) -> dict[str, Any]:
     track_total = int(
         connection.execute("SELECT COUNT(*) FROM fal_phase3_tracks WHERE is_active=1").fetchone()[0]
@@ -1278,6 +1307,8 @@ def build_report(
             "phase2_state_sha256": str(phase2_state_sha256 or ""),
             "phase2_report_sha256": str(phase2_report_sha256 or ""),
             "phase1_state_sha256": str(phase1_state_sha256 or ""),
+            "cache_source_artifact_id": str(cache_source_artifact_id or ""),
+            "cache_sha256": str(cache_sha256 or ""),
             "review_manifest_sha256": manifest_sha256,
             "state_sha256_before": state_sha256_before,
             "state_sha256_after": file_sha256(state_path),
@@ -1286,6 +1317,10 @@ def build_report(
             "priority_bucket": ADVANCED_BUCKET,
             "phase1_artist_identity_join_before_network": True,
             "bootstrap_cache_before_network": True,
+            "cache_track_terminal_contract": SOUNDCHARTS_SONG_EVIDENCE_CONTRACT,
+            "cache_track_terminal_requires_timestamp": True,
+            "cache_artist_terminal_requires_exact_id_and_identifiers_fetched_at": True,
+            "cache_artifact_id_and_sha256_required": True,
             "artist_identifier_endpoint_residual_only": True,
             "song_detail_endpoint": "/api/v2.25/song/{uuid}",
             "no_lyrics_requires_explicit_source_field": True,
@@ -1341,6 +1376,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--phase2-state-sha256", default="")
     parser.add_argument("--phase2-report-sha256", default="")
     parser.add_argument("--phase1-state-sha256", default="")
+    parser.add_argument("--cache-source-artifact-id", default="")
+    parser.add_argument("--cache-sha256", default="")
     parser.add_argument("--run-id", default="")
     parser.add_argument("--max-requests", type=int, default=DEFAULT_MAX_REQUESTS)
     parser.add_argument("--quota-reserve", type=int, default=MIN_QUOTA_RESERVE)
@@ -1390,7 +1427,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         tracks_seeded, artists_seeded = seed_advanced_bucket(connection, advanced)
         phase1_identities = hydrate_artist_identities_from_phase1(connection, args.phase1_state)
-        cache_tracks, cache_artists = hydrate_from_cache(connection, args.cache)
+        cache_tracks, cache_artists = hydrate_from_cache(
+            connection,
+            args.cache,
+            cache_source_artifact_id=str(args.cache_source_artifact_id or ""),
+            cache_sha256=str(args.cache_sha256 or ""),
+        )
         client, quota_before, halt_reason = run_network(
             connection,
             max_requests=int(args.max_requests),
@@ -1437,6 +1479,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             phase1_identities=phase1_identities,
             cache_tracks=cache_tracks,
             cache_artists=cache_artists,
+            cache_source_artifact_id=str(args.cache_source_artifact_id or ""),
+            cache_sha256=str(args.cache_sha256 or ""),
         )
     finally:
         connection.close()

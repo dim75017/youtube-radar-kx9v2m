@@ -159,6 +159,56 @@ class SoundchartsFalPhase3WorkflowGuardrailsTests(unittest.TestCase):
         ):
             self.assertIn(token, verify)
 
+    def test_backfill_contract_is_fully_validated_before_phase3(self):
+        restore = self.step(
+            "Restore verified phase-2, phase-1, cache and prior phase-3 state"
+        )
+        for token in (
+            '"source_endpoint": "/api/v2/song/{uuid}/audience/spotify"',
+            '"identity_source": "numeric plots[].identifier"',
+            '"spotify_id_format": "exact_22_character_base62"',
+            '"eligible_stream_gate_only": True',
+            '"ambiguous_never_assigned": True',
+            '"duplicate_within_phase2_never_assigned": True',
+            '"raw_responses_persisted": False',
+            '"canonical_catalogue_compared": False',
+            '"canonical_promotion_allowed": False',
+        ):
+            self.assertIn(token, restore)
+        self.assertIn("Spotify-ID backfill policy mismatch", restore)
+
+    def test_cache_artifact_id_and_sha_are_passed_reported_and_verified(self):
+        restore = self.step(
+            "Restore verified phase-2, phase-1, cache and prior phase-3 state"
+        )
+        self.assertIn('cache_sha256="$(sha256sum "$cache_file"', restore)
+        self.assertIn('echo "CACHE_SOURCE_ARTIFACT_ID=${cache_artifact_id}"', restore)
+        self.assertIn('echo "CACHE_SHA256=${cache_sha256}"', restore)
+        invocation = "\n".join(
+            section
+            for section in self.named_steps()
+            if "python enrich_soundcharts_fal_phase3.py" in section
+        )
+        self.assertGreaterEqual(invocation.count("--cache-source-artifact-id"), 2)
+        self.assertGreaterEqual(invocation.count("--cache-sha256"), 2)
+        verify = self.step("Verify private-only phase-3 invariants")
+        for token in (
+            "CACHE_SOURCE_ARTIFACT_ID",
+            "CACHE_SHA256",
+            '"cache_source_artifact_id"',
+            '"cache_sha256"',
+            "cache_track_terminal_contract",
+            "cache_artist_terminal_requires_exact_id_and_identifiers_fetched_at",
+        ):
+            self.assertIn(token, verify)
+
+    def test_runtime_quota_report_cannot_cross_or_hide_the_floor(self):
+        verify = self.step("Verify private-only phase-3 invariants")
+        self.assertIn("if claimed > requested", verify)
+        self.assertIn("if claimed > 0 and quota_after is None", verify)
+        self.assertIn("if quota_after is not None and int(quota_after) < protected_floor", verify)
+        self.assertIn("requested < 0 or requested > 4000", verify)
+
     def test_repository_and_public_outputs_are_read_only(self):
         self.assertIn("actions: write", self.workflow)
         self.assertIn("contents: read", self.workflow)

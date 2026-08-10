@@ -28,6 +28,7 @@ TRACK_ID = "1" * 22
 ARTIST_ID = "A" * 22
 TRACK_UUID = "track-soundcharts-1"
 ARTIST_UUID = "artist-soundcharts-1"
+CACHE_ARTIFACT_ID = "9066927152"
 
 
 def advanced_record():
@@ -174,6 +175,26 @@ def cache_payload(
     }
 
 
+def hydrate_bound_cache(connection, cache_path: Path):
+    return hydrate_from_cache(
+        connection,
+        cache_path,
+        cache_source_artifact_id=CACHE_ARTIFACT_ID,
+        cache_sha256=file_sha256(cache_path),
+    )
+
+
+def cache_cli_args(cache_path: Path) -> list[str]:
+    return [
+        "--cache",
+        str(cache_path),
+        "--cache-source-artifact-id",
+        CACHE_ARTIFACT_ID,
+        "--cache-sha256",
+        file_sha256(cache_path),
+    ]
+
+
 class FalPhase3Tests(unittest.TestCase):
     def test_manifest_selects_only_exact_advanced_rows(self):
         other = advanced_record()
@@ -210,7 +231,7 @@ class FalPhase3Tests(unittest.TestCase):
                     hydrate_artist_identities_from_phase1(connection, phase1_path),
                     1,
                 )
-                track_changes, _ = hydrate_from_cache(connection, cache_path)
+                track_changes, _ = hydrate_bound_cache(connection, cache_path)
                 self.assertEqual(track_changes, 1)
 
                 artist = connection.execute(
@@ -318,7 +339,7 @@ class FalPhase3Tests(unittest.TestCase):
             connection, _ = open_state(state_path)
             try:
                 seed_advanced_bucket(connection, [advanced_record()])
-                self.assertEqual(hydrate_from_cache(connection, cache_path)[0], 0)
+                self.assertEqual(hydrate_bound_cache(connection, cache_path)[0], 0)
                 self.assertEqual(
                     connection.execute(
                         """SELECT status FROM fal_phase3_requests
@@ -383,7 +404,7 @@ class FalPhase3Tests(unittest.TestCase):
             connection, _ = open_state(root / "phase3.sqlite3")
             try:
                 seed_advanced_bucket(connection, [advanced_record()])
-                self.assertEqual(hydrate_from_cache(connection, cache_path)[0], 0)
+                self.assertEqual(hydrate_bound_cache(connection, cache_path)[0], 0)
                 row = connection.execute(
                     """SELECT t.detail_status,r.status
                          FROM fal_phase3_tracks t
@@ -430,7 +451,7 @@ class FalPhase3Tests(unittest.TestCase):
                 before = connection.execute(
                     "SELECT detail_status,rights_status,ai_risk,source_kind FROM fal_phase3_tracks"
                 ).fetchone()
-                hydrate_from_cache(connection, cache_path)
+                hydrate_bound_cache(connection, cache_path)
                 after = connection.execute(
                     "SELECT detail_status,rights_status,ai_risk,source_kind FROM fal_phase3_tracks"
                 ).fetchone()
@@ -472,6 +493,8 @@ class FalPhase3Tests(unittest.TestCase):
                     phase1_identities=1,
                     cache_tracks=0,
                     cache_artists=0,
+                    cache_source_artifact_id="",
+                    cache_sha256="",
                 )
                 self.assertFalse(report["complete"])
                 self.assertTrue(report["request_queue_exhausted"])
@@ -495,7 +518,7 @@ class FalPhase3Tests(unittest.TestCase):
                 [
                     "--review-manifest", str(manifest_path),
                     "--phase1-state", str(phase1_path),
-                    "--cache", str(cache_path),
+                    *cache_cli_args(cache_path),
                     "--state", str(state_path),
                     "--enriched-manifest-out", str(root / "enriched.json"),
                     "--report", str(report_path),
@@ -522,8 +545,14 @@ class FalPhase3Tests(unittest.TestCase):
                     {
                         "tracks": {},
                         "artists": {
-                            ARTIST_UUID: {"spotify_id": ARTIST_ID},
-                            second["candidate_uuid"]: {"spotify_id": ARTIST_ID},
+                            ARTIST_UUID: {
+                                "spotify_id": ARTIST_ID,
+                                "identifiers_fetched_at": "2026-08-10T08:00:00Z",
+                            },
+                            second["candidate_uuid"]: {
+                                "spotify_id": ARTIST_ID,
+                                "identifiers_fetched_at": "2026-08-10T08:00:00Z",
+                            },
                         },
                     }
                 ),
@@ -532,7 +561,7 @@ class FalPhase3Tests(unittest.TestCase):
             connection, _ = open_state(root / "phase3.sqlite3")
             try:
                 seed_advanced_bucket(connection, [advanced_record(), second])
-                hydrate_from_cache(connection, cache_path)
+                hydrate_bound_cache(connection, cache_path)
                 rows = connection.execute(
                     "SELECT spotify_id,identity_status FROM fal_phase3_artists ORDER BY candidate_uuid"
                 ).fetchall()
@@ -540,6 +569,66 @@ class FalPhase3Tests(unittest.TestCase):
                     [(row["spotify_id"], row["identity_status"]) for row in rows],
                     [("", "identity_conflict"), ("", "identity_conflict")],
                 )
+            finally:
+                connection.close()
+
+    def test_artist_cache_identity_without_provider_timestamp_stays_pending(self):
+        with tempfile.TemporaryDirectory() as raw_dir:
+            root = Path(raw_dir)
+            cache_path = root / "cache.json"
+            payload = {
+                "tracks": {},
+                "artists": {ARTIST_UUID: {"spotify_id": ARTIST_ID}},
+            }
+            cache_path.write_text(json.dumps(payload), encoding="utf-8")
+            connection, _ = open_state(root / "phase3.sqlite3")
+            try:
+                seed_advanced_bucket(connection, [advanced_record()])
+                self.assertEqual(hydrate_bound_cache(connection, cache_path)[1], 0)
+                row = connection.execute(
+                    """SELECT a.spotify_id,a.identity_status,r.status
+                         FROM fal_phase3_artists a
+                         JOIN fal_phase3_requests r ON r.entity_id=a.candidate_uuid
+                        WHERE r.request_kind='artist_identifiers'"""
+                ).fetchone()
+                self.assertEqual(
+                    (row["spotify_id"], row["identity_status"], row["status"]),
+                    ("", "pending", "pending"),
+                )
+
+                payload["artists"][ARTIST_UUID]["identifiers_fetched_at"] = (
+                    "2026-08-10T08:00:00Z"
+                )
+                cache_path.write_text(json.dumps(payload), encoding="utf-8")
+                self.assertEqual(hydrate_bound_cache(connection, cache_path)[1], 1)
+                row = connection.execute(
+                    """SELECT a.spotify_id,a.identity_status,r.status
+                         FROM fal_phase3_artists a
+                         JOIN fal_phase3_requests r ON r.entity_id=a.candidate_uuid
+                        WHERE r.request_kind='artist_identifiers'"""
+                ).fetchone()
+                self.assertEqual(
+                    (row["spotify_id"], row["identity_status"], row["status"]),
+                    (ARTIST_ID, "complete", "complete_cache"),
+                )
+            finally:
+                connection.close()
+
+    def test_cache_artifact_sha_mismatch_fails_closed(self):
+        with tempfile.TemporaryDirectory() as raw_dir:
+            root = Path(raw_dir)
+            cache_path = root / "cache.json"
+            cache_path.write_text(json.dumps(cache_payload()), encoding="utf-8")
+            connection, _ = open_state(root / "phase3.sqlite3")
+            try:
+                seed_advanced_bucket(connection, [advanced_record()])
+                with self.assertRaisesRegex(FalPhase3Error, "SHA-256"):
+                    hydrate_from_cache(
+                        connection,
+                        cache_path,
+                        cache_source_artifact_id=CACHE_ARTIFACT_ID,
+                        cache_sha256="0" * 64,
+                    )
             finally:
                 connection.close()
 
@@ -601,8 +690,7 @@ class FalPhase3Tests(unittest.TestCase):
                     str(manifest_path),
                     "--phase1-state",
                     str(phase1_path),
-                    "--cache",
-                    str(cache_path),
+                    *cache_cli_args(cache_path),
                     "--state",
                     str(state_path),
                     "--enriched-manifest-out",

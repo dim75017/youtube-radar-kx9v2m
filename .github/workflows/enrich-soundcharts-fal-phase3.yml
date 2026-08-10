@@ -202,6 +202,21 @@ jobs:
           if backfill.get("canonical_written") is not False or backfill.get("dashboard_written") is not False:
               raise SystemExit("Spotify-ID backfill reports a canonical/dashboard write")
           backfill_source = backfill.get("source") or {}
+          backfill_policy = backfill.get("policy") or {}
+          expected_backfill_policy = {
+              "source_endpoint": "/api/v2/song/{uuid}/audience/spotify",
+              "identity_source": "numeric plots[].identifier",
+              "spotify_id_format": "exact_22_character_base62",
+              "eligible_stream_gate_only": True,
+              "ambiguous_never_assigned": True,
+              "duplicate_within_phase2_never_assigned": True,
+              "raw_responses_persisted": False,
+              "canonical_catalogue_compared": False,
+              "canonical_promotion_allowed": False,
+          }
+          for key, expected in expected_backfill_policy.items():
+              if backfill_policy.get(key) != expected:
+                  raise SystemExit(f"Spotify-ID backfill policy mismatch: {key}")
           if backfill_source.get("phase2_complete") is not True:
               raise SystemExit("Spotify-ID backfill was not based on complete Phase 2")
           if str(backfill_source.get("state_sha256_after") or "") != hashlib.sha256(state.read_bytes()).hexdigest():
@@ -230,9 +245,22 @@ jobs:
 
           cache_dir="$SOURCE_DIR/bootstrap-cache"
           cache_artifact_id=""
+          cache_sha256=""
           if cache_artifact_id="$(download_latest "$BOOTSTRAP_CACHE_ARTIFACT" optional "$cache_dir")"; then
             cache_file="$(find "$cache_dir" -type f -name 'soundcharts-instrumental-cache.json' -print -quit)"
             test -s "$cache_file"
+            cache_sha256="$(sha256sum "$cache_file" | cut -d' ' -f1)"
+            python - "$cache_file" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          cache = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          if not isinstance(cache, dict):
+              raise SystemExit("Soundcharts bootstrap cache is not an object")
+          if not isinstance(cache.get("tracks"), dict) or not isinstance(cache.get("artists"), dict):
+              raise SystemExit("Soundcharts bootstrap cache lacks track/artist maps")
+          PY
             echo "SOUNDCHARTS_CACHE=$cache_file" >> "$GITHUB_ENV"
           else
             echo "::warning title=FAL phase-3 cache absent::Continuing from exact phase-1 identities without cache reuse"
@@ -260,6 +288,8 @@ jobs:
           echo "PHASE2_STATE_SHA256=${phase2_state_sha256}" >> "$GITHUB_ENV"
           echo "PHASE2_REPORT_SHA256=${phase2_report_sha256}" >> "$GITHUB_ENV"
           echo "PHASE1_STATE_SHA256=${phase1_state_sha256}" >> "$GITHUB_ENV"
+          echo "CACHE_SOURCE_ARTIFACT_ID=${cache_artifact_id}" >> "$GITHUB_ENV"
+          echo "CACHE_SHA256=${cache_sha256}" >> "$GITHUB_ENV"
           echo "PHASE3_PREVIOUS_ARTIFACT_ID=$previous_artifact_id" >> "$GITHUB_ENV"
           echo "source_artifact_id=$phase2_artifact_id" >> "$GITHUB_OUTPUT"
           test -z "$(git status --porcelain)"
@@ -306,7 +336,11 @@ jobs:
           set -euo pipefail
           cache_args=()
           if [[ -n "${SOUNDCHARTS_CACHE:-}" ]]; then
-            cache_args+=(--cache "$SOUNDCHARTS_CACHE")
+            cache_args+=(
+              --cache "$SOUNDCHARTS_CACHE"
+              --cache-source-artifact-id "$CACHE_SOURCE_ARTIFACT_ID"
+              --cache-sha256 "$CACHE_SHA256"
+            )
           fi
           python enrich_soundcharts_fal_phase3.py \
             --review-manifest "$REVIEW_MANIFEST" \
@@ -340,7 +374,11 @@ jobs:
           set -euo pipefail
           cache_args=()
           if [[ -n "${SOUNDCHARTS_CACHE:-}" ]]; then
-            cache_args+=(--cache "$SOUNDCHARTS_CACHE")
+            cache_args+=(
+              --cache "$SOUNDCHARTS_CACHE"
+              --cache-source-artifact-id "$CACHE_SOURCE_ARTIFACT_ID"
+              --cache-sha256 "$CACHE_SHA256"
+            )
           fi
           python enrich_soundcharts_fal_phase3.py \
             --review-manifest "$REVIEW_MANIFEST" \
@@ -386,6 +424,8 @@ jobs:
           PHASE2_STATE_SHA256: ${{ env.PHASE2_STATE_SHA256 }}
           PHASE2_REPORT_SHA256: ${{ env.PHASE2_REPORT_SHA256 }}
           PHASE1_STATE_SHA256: ${{ env.PHASE1_STATE_SHA256 }}
+          CACHE_SOURCE_ARTIFACT_ID: ${{ env.CACHE_SOURCE_ARTIFACT_ID }}
+          CACHE_SHA256: ${{ env.CACHE_SHA256 }}
         shell: bash
         run: |
           set -euo pipefail
@@ -418,6 +458,8 @@ jobs:
               "phase2_state_sha256": os.environ["PHASE2_STATE_SHA256"],
               "phase2_report_sha256": os.environ["PHASE2_REPORT_SHA256"],
               "phase1_state_sha256": os.environ["PHASE1_STATE_SHA256"],
+              "cache_source_artifact_id": os.environ.get("CACHE_SOURCE_ARTIFACT_ID", ""),
+              "cache_sha256": os.environ.get("CACHE_SHA256", ""),
           }
           for key, expected in expected_lineage.items():
               if str(source.get(key) or "") != expected:
@@ -429,11 +471,31 @@ jobs:
               raise SystemExit("Human review was automated")
           if policy.get("audience_size_and_career_stage_never_block") is not True:
               raise SystemExit("An upper artist-size gate was reintroduced")
+          if policy.get("cache_track_terminal_contract") != "soundcharts_song_v2.25_evidence_v2":
+              raise SystemExit("Legacy cache rows can terminate Phase 3")
+          if policy.get("cache_track_terminal_requires_timestamp") is not True:
+              raise SystemExit("Untimestamped track cache rows can terminate Phase 3")
+          if policy.get("cache_artist_terminal_requires_exact_id_and_identifiers_fetched_at") is not True:
+              raise SystemExit("Unverified artist cache identities can terminate Phase 3")
+          if policy.get("cache_artifact_id_and_sha256_required") is not True:
+              raise SystemExit("Cache artifact provenance is not required")
           requests = report.get("requests") or {}
-          if int(requests.get("claimed") or 0) > 4000:
+          claimed = int(requests.get("claimed") or 0)
+          requested = int(requests.get("requested_maximum") or 0)
+          if requested < 0 or requested > 4000:
+              raise SystemExit("Phase 3 requested an invalid call cap")
+          if claimed > requested:
+              raise SystemExit("Phase 3 claimed more calls than requested")
+          if claimed > 4000:
               raise SystemExit("Phase 3 exceeded the absolute 4000-call cap")
-          if int(requests.get("protected_floor") or 0) < 1400000:
+          protected_floor = int(requests.get("protected_floor") or 0)
+          if protected_floor < 1400000:
               raise SystemExit("Phase 3 lost the 1.4M quota reserve")
+          quota_after = requests.get("quota_observed_after")
+          if claimed > 0 and quota_after is None:
+              raise SystemExit("Live Phase 3 did not report its remaining quota")
+          if quota_after is not None and int(quota_after) < protected_floor:
+              raise SystemExit("Phase 3 crossed the protected quota floor")
           if {"tracks", "rows", "records", "spotify_ids", "artist_ids"}.intersection(report):
               raise SystemExit("Aggregate report contains row-level data")
           expected_state_hash = str((report.get("source") or {}).get("state_sha256_after") or "")
