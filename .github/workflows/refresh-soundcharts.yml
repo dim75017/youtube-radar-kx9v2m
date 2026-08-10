@@ -389,6 +389,12 @@ jobs:
             performance_catalogue_due="true"
             performance_tracks_due="true"
             performance_artists_due="true"
+            if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+              # A watchdog repair must respect its explicit paid-call ceiling.
+              # The normal scheduled pass keeps the larger 35k maintenance
+              # budget, while a delayed-source retry remains bounded.
+              performance_track_data_cap="$REQUESTED_MAX_REQUESTS"
+            fi
           elif [[ "$scope" == "full_sync" ]]; then
             playlist_followers_due="true"
           elif [[ "$scope" == "strict_rebaseline" ]]; then
@@ -718,6 +724,7 @@ jobs:
           --max-requests "${{ steps.plan.outputs.performance_track_requests }}"
           --history-days 90
           --include-performance-catalogue
+          --browse-catalogue Spotify_Browse_Catalogue_data.js
           --priority-artists spotify-selection-artist-seeds.json
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
 

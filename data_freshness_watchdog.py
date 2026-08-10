@@ -23,7 +23,7 @@ from typing import Any, Iterable, Mapping
 from zoneinfo import ZoneInfo
 
 from generate_youtube_recommendation_pool import GENERATOR_VERSION, POOL_PREFIX
-from spotify_performance_store import PerformanceStoreError, validate_performance_store
+from spotify_performance_store import PerformanceStoreError, read_performance_payload
 
 
 PARIS = ZoneInfo("Europe/Paris")
@@ -274,14 +274,53 @@ def assess_youtube_recommendations(root: Path, now: datetime, ignore_deadline: b
     )
 
 
-def performance_freshness(root: Path) -> dict[str, datetime | None | str]:
+def performance_freshness(root: Path) -> dict[str, datetime | int | None | str]:
     text = read_edge(root / "Spotify_Performance_data.js", tail=96_000)
-    values: dict[str, datetime | None | str] = {}
+    values: dict[str, datetime | int | None | str] = {}
     for key in ("tracks_catalogue_at", "artists_catalogue_at", "playlists_at"):
         values[key] = parse_timestamp(regex_value(text, rf'"{key}"\s*:\s*"([^"]+)"'))
     try:
-        store = validate_performance_store(root / "Spotify_Performance_data.js")
-        values["store_error"] = None if store.get("status") == "sharded" else "legacy performance store is not sharded"
+        payload = read_performance_payload(root / "Spotify_Performance_data.js")
+        values["store_error"] = (
+            None
+            if isinstance(payload.get("track_shards"), Mapping)
+            else "legacy performance store is not sharded"
+        )
+        coverage = payload.get("maintenance_coverage")
+        tracks = coverage.get("tracks") if isinstance(coverage, Mapping) else None
+        policy = tracks.get("policy") if isinstance(tracks, Mapping) else None
+        reasons = policy.get("reason_coverage") if isinstance(policy, Mapping) else None
+        published = reasons.get("published_public") if isinstance(reasons, Mapping) else None
+        if isinstance(published, Mapping):
+            values["published_public_expected"] = int(published.get("expected_requests") or 0)
+            values["published_public_selected"] = int(published.get("selected_requests") or 0)
+            values["published_public_missing"] = int(published.get("missing_requests") or 0)
+        else:
+            values["published_public_expected"] = None
+            values["published_public_selected"] = None
+            values["published_public_missing"] = None
+        entities = policy.get("published_public_entity_coverage") if isinstance(policy, Mapping) else None
+        if isinstance(entities, Mapping):
+            for key in (
+                "public_entities",
+                "resolvable_entities",
+                "unresolved_entities",
+                "selected_entities",
+                "missing_selected_entities",
+                "current_source_entities",
+                "lagging_source_entities",
+            ):
+                output_key = (
+                    "published_public_entities"
+                    if key == "public_entities"
+                    else f"published_public_{key}"
+                )
+                values[output_key] = int(entities.get(key) or 0)
+        else:
+            values["published_public_resolvable_entities"] = None
+            values["published_public_selected_entities"] = None
+            values["published_public_current_source_entities"] = None
+            values["published_public_lagging_source_entities"] = None
     except PerformanceStoreError as exc:
         values["store_error"] = str(exc)
     return values
@@ -299,9 +338,70 @@ def assess_spotify_core(root: Path, now: datetime, ignore_deadline: bool = False
     today = now.astimezone(PARIS).date()
     if now - oldest > timedelta(hours=36):
         return freshness_row(target, True, "Spotify catalogue is older than 36 hours", oldest)
-    if local_day(oldest) < today and (ignore_deadline or after_local_deadline(now, time(14, 0))):
+    if local_day(oldest) < today and (ignore_deadline or after_local_deadline(now, time(13, 45))):
         return freshness_row(target, True, f"no complete Spotify catalogue pass for Paris day {today}", oldest)
-    return freshness_row(target, False, f"Spotify catalogue day {local_day(oldest)} is healthy", oldest)
+    public_expected = values.get("published_public_expected")
+    public_selected = values.get("published_public_selected")
+    public_missing = values.get("published_public_missing")
+    if public_expected is None:
+        return freshness_row(
+            target,
+            True,
+            "missing proof that the public Spotify track cohort was scheduled",
+            oldest,
+        )
+    if public_selected != public_expected or public_missing != 0:
+        return freshness_row(
+            target,
+            True,
+            f"public Spotify track coverage is partial at {public_selected}/{public_expected}",
+            oldest,
+        )
+    resolvable = values.get("published_public_resolvable_entities")
+    public_entities = values.get("published_public_entities")
+    selected_entities = values.get("published_public_selected_entities")
+    current_entities = values.get("published_public_current_source_entities")
+    lagging_entities = values.get("published_public_lagging_source_entities")
+    if resolvable is None or current_entities is None:
+        return freshness_row(
+            target,
+            True,
+            "missing proof that public Spotify histories reached a recent source day",
+            oldest,
+        )
+    if not isinstance(public_entities, int) or public_entities <= 0:
+        return freshness_row(
+            target,
+            True,
+            "public Spotify track cohort is unexpectedly empty",
+            oldest,
+        )
+    if selected_entities != resolvable:
+        return freshness_row(
+            target,
+            True,
+            f"public Spotify entity scheduling is partial at {selected_entities}/{resolvable}",
+            oldest,
+        )
+    allowed_source_lag = max(10, (int(resolvable) + 99) // 100)
+    if int(lagging_entities or 0) > allowed_source_lag:
+        return freshness_row(
+            target,
+            True,
+            f"public Spotify histories are current for only {current_entities}/{resolvable}",
+            oldest,
+        )
+    unresolved = int(values.get("published_public_unresolved_entities") or 0)
+    return freshness_row(
+        target,
+        False,
+        (
+            f"Spotify catalogue day {local_day(oldest)} is healthy; "
+            f"public histories current at {current_entities}/{resolvable}, "
+            f"unresolved identities {unresolved}"
+        ),
+        oldest,
+    )
 
 
 def assess_spotify_followers(root: Path, now: datetime, ignore_deadline: bool = False) -> Freshness:
@@ -447,8 +547,12 @@ def dispatch_decision(status: Freshness, runs: Iterable[Mapping[str, Any]], now:
         return False, f"cooldown active for {max(1, int(remaining.total_seconds() // 60))} more minutes"
     six_hours_ago = now - timedelta(hours=6)
     attempts = sum(1 for value in recent_times if value >= six_hours_ago)
-    if attempts >= 3:
-        return False, "retry ceiling reached (3 collection attempts in 6 hours)"
+    # A delayed upstream Soundcharts source day can make an otherwise complete
+    # pass look stale. Permit one bounded repair after the scheduled attempt,
+    # then stop instead of repeating the same paid calls three times.
+    attempt_ceiling = 2 if "histories are current for only" in status.reason else 3
+    if attempts >= attempt_ceiling:
+        return False, f"retry ceiling reached ({attempt_ceiling} collection attempts in 6 hours)"
     return True, "stale and eligible for repair"
 
 

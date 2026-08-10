@@ -214,6 +214,8 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
             self.workflow,
         )
         self.assertEqual(self.workflow.count("--include-performance-catalogue"), 2)
+        self.assertIn("--browse-catalogue Spotify_Browse_Catalogue_data.js", self.workflow)
+        self.assertIn('performance_track_data_cap="$REQUESTED_MAX_REQUESTS"', self.workflow)
         self.assertIn(
             '--max-requests "${{ steps.plan.outputs.performance_artist_requests }}"',
             self.workflow,

@@ -37,6 +37,28 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
                     "artists_catalogue_at": "2026-07-29T06:00:00Z",
                     "playlists_at": "2026-07-29T06:00:00Z",
                 },
+                "maintenance_coverage": {
+                    "tracks": {
+                        "policy": {
+                            "reason_coverage": {
+                                "published_public": {
+                                    "expected_requests": 0,
+                                    "selected_requests": 0,
+                                    "missing_requests": 0,
+                                }
+                            },
+                            "published_public_entity_coverage": {
+                                "public_entities": 1,
+                                "resolvable_entities": 1,
+                                "unresolved_entities": 0,
+                                "selected_entities": 1,
+                                "missing_selected_entities": 0,
+                                "current_source_entities": 1,
+                                "lagging_source_entities": 0,
+                            },
+                        }
+                    }
+                },
             },
             shard_count=1,
         )
@@ -116,6 +138,28 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
                     "artists_catalogue_at": "2026-07-28T21:00:00Z",
                     "playlists_at": "2026-07-28T21:00:00Z",
                 },
+                "maintenance_coverage": {
+                    "tracks": {
+                        "policy": {
+                            "reason_coverage": {
+                                "published_public": {
+                                    "expected_requests": 0,
+                                    "selected_requests": 0,
+                                    "missing_requests": 0,
+                                }
+                            },
+                            "published_public_entity_coverage": {
+                                "public_entities": 1,
+                                "resolvable_entities": 1,
+                                "unresolved_entities": 0,
+                                "selected_entities": 1,
+                                "missing_selected_entities": 0,
+                                "current_source_entities": 1,
+                                "lagging_source_entities": 0,
+                            },
+                        }
+                    }
+                },
             },
             shard_count=1,
         )
@@ -149,6 +193,120 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         )[0]
         self.assertTrue(row.due)
         self.assertIn("store invalid", row.reason)
+
+    def test_spotify_core_requires_explicit_public_track_scheduling_proof(self):
+        spotify_performance_store.write_performance_payload(
+            self.root / "Spotify_Performance_data.js",
+            {
+                "tracks": {},
+                "artists": {},
+                "playlists": {},
+                "freshness": {
+                    "tracks_catalogue_at": "2026-07-29T06:00:00Z",
+                    "artists_catalogue_at": "2026-07-29T06:00:00Z",
+                    "playlists_at": "2026-07-29T06:00:00Z",
+                },
+            },
+            shard_count=1,
+        )
+
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["spotify_core"],
+        )[0]
+
+        self.assertTrue(row.due)
+        self.assertIn("public Spotify track cohort", row.reason)
+
+    def test_spotify_core_retries_partial_public_track_scheduling(self):
+        performance = spotify_performance_store.read_performance_payload(
+            self.root / "Spotify_Performance_data.js"
+        )
+        performance["maintenance_coverage"]["tracks"]["policy"]["reason_coverage"][
+            "published_public"
+        ] = {
+            "expected_requests": 100,
+            "selected_requests": 99,
+            "missing_requests": 1,
+        }
+        spotify_performance_store.write_performance_payload(
+            self.root / "Spotify_Performance_data.js",
+            performance,
+            shard_count=1,
+        )
+
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["spotify_core"],
+        )[0]
+
+        self.assertTrue(row.due)
+        self.assertIn("99/100", row.reason)
+
+    def test_spotify_core_retries_when_public_history_source_days_remain_stale(self):
+        performance = spotify_performance_store.read_performance_payload(
+            self.root / "Spotify_Performance_data.js"
+        )
+        policy = performance["maintenance_coverage"]["tracks"]["policy"]
+        policy["reason_coverage"]["published_public"] = {
+            "expected_requests": 100,
+            "selected_requests": 100,
+            "missing_requests": 0,
+        }
+        policy["published_public_entity_coverage"] = {
+            "public_entities": 100,
+            "resolvable_entities": 100,
+            "unresolved_entities": 0,
+            "selected_entities": 100,
+            "missing_selected_entities": 0,
+            "current_source_entities": 80,
+            "lagging_source_entities": 20,
+        }
+        spotify_performance_store.write_performance_payload(
+            self.root / "Spotify_Performance_data.js",
+            performance,
+            shard_count=1,
+        )
+
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["spotify_core"],
+        )[0]
+
+        self.assertTrue(row.due)
+        self.assertIn("80/100", row.reason)
+
+    def test_spotify_core_rejects_an_empty_public_cohort(self):
+        performance = spotify_performance_store.read_performance_payload(
+            self.root / "Spotify_Performance_data.js"
+        )
+        policy = performance["maintenance_coverage"]["tracks"]["policy"]
+        policy["published_public_entity_coverage"] = {
+            "public_entities": 0,
+            "resolvable_entities": 0,
+            "unresolved_entities": 0,
+            "selected_entities": 0,
+            "missing_selected_entities": 0,
+            "current_source_entities": 0,
+            "lagging_source_entities": 0,
+        }
+        spotify_performance_store.write_performance_payload(
+            self.root / "Spotify_Performance_data.js",
+            performance,
+            shard_count=1,
+        )
+
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["spotify_core"],
+        )[0]
+
+        self.assertTrue(row.due)
+        self.assertIn("unexpectedly empty", row.reason)
 
     def test_legacy_monolith_is_due_for_storage_migration(self):
         write(
@@ -347,6 +505,35 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         allowed, reason = subject.dispatch_decision(status, runs, now)
         self.assertFalse(allowed)
         self.assertIn("retry ceiling", reason)
+
+    def test_soundcharts_source_lag_allows_only_one_bounded_repair(self):
+        status = subject.Freshness(
+            target="spotify_core",
+            workflow="refresh-soundcharts.yml",
+            due=True,
+            reason="public Spotify histories are current for only 80/100",
+            observed_at=None,
+            cooldown_minutes=30,
+            inputs={"max_requests": "6000"},
+        )
+        now = datetime(2026, 7, 29, 12, tzinfo=timezone.utc)
+        runs = [
+            {
+                "event": "schedule",
+                "status": "completed",
+                "created_at": "2026-07-29T10:00:00Z",
+            },
+            {
+                "event": "workflow_dispatch",
+                "status": "completed",
+                "created_at": "2026-07-29T11:00:00Z",
+            },
+        ]
+
+        allowed, reason = subject.dispatch_decision(status, runs, now)
+
+        self.assertFalse(allowed)
+        self.assertIn("2 collection attempts", reason)
 
 
 class DataFreshnessWorkflowGuardrailTests(unittest.TestCase):

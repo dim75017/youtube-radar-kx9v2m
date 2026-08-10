@@ -42,12 +42,13 @@ from spotify_performance_store import (
 API_BASE = "https://customer.api.soundcharts.com"
 TOKEN_URL = "https://account.soundcharts.com/oauth/token"
 SOUNDCHARTS_PREFIX = "window.SPOTIFY_SOUNDCHARTS="
+BROWSE_CATALOGUE_PREFIX = "window.SPOTIFY_BROWSE_CATALOGUE="
 PLAYLISTS_PREFIX = "window.SPOTIFY_PLAYLISTS="
 AUTH_PROBE = "/api/v2/referential/platforms/streaming"
 MIN_SERVER_QUOTA_RESERVE = 500_000
 TRACK_ROTATION_BUCKETS = 7
 RECENT_RELEASE_DAYS = 90
-TRACK_MAINTENANCE_POLICY_VERSION = 2
+TRACK_MAINTENANCE_POLICY_VERSION = 3
 TRACK_PUBLIC_STREAM_FLOOR = 100_000
 TRACK_PROMOTION_WATCH_FLOOR = 75_000
 ESTIMATED_NEW_TRACK_ENTRY_BYTES = 4_096
@@ -911,12 +912,22 @@ def _artist_references(value: Any) -> tuple[set[str], set[str]]:
     return spotify_ids, soundcharts_uuids
 
 
-def build_track_maintenance_metadata(payload: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+def build_track_maintenance_metadata(
+    payload: Mapping[str, Any],
+    public_catalogue: Mapping[str, Any] | None = None,
+) -> dict[str, dict[str, Any]]:
     """Index only source-backed fields that are useful to the maintenance scheduler."""
 
     metadata: dict[str, dict[str, Any]] = {}
 
-    def merge_row(row: list[Any], schema: list[str], *, strict: bool = False, opportunity: bool = False) -> None:
+    def merge_row(
+        row: list[Any],
+        schema: list[str],
+        *,
+        strict: bool = False,
+        public: bool = False,
+        opportunity: bool = False,
+    ) -> None:
         spotify_id = str(field(row, schema, "spotify_id") or "").strip()
         if not spotify_id:
             return
@@ -940,6 +951,7 @@ def build_track_maintenance_metadata(payload: Mapping[str, Any]) -> dict[str, di
         target["artist_spotify_ids"].update(artist_ids)
         target["artist_soundcharts_uuids"].update(artist_uuids)
         target["strict"] = bool(target.get("strict") or strict)
+        target["public"] = bool(target.get("public") or public)
         target["opportunity"] = bool(target.get("opportunity") or opportunity)
 
     discovery = payload.get("discovery_catalogue")
@@ -963,6 +975,25 @@ def build_track_maintenance_metadata(payload: Mapping[str, Any]) -> dict[str, di
     for row in opportunities:
         if isinstance(row, list):
             merge_row(row, opportunity_schema, opportunity=True)
+
+    # The browse catalogue is the exact cohort a user can open in the public
+    # dashboard.  It is intentionally a scheduling input only: reading it here
+    # cannot promote or rewrite any Soundcharts row.  Without this join, trusted
+    # internal tracks that already have an exact Soundcharts UUID in the
+    # performance store fall back to the weekly rotation and their charts can
+    # remain stale even while the collector reports a successful daily pass.
+    public_discovery = (
+        public_catalogue.get("discovery_catalogue")
+        if isinstance(public_catalogue, Mapping)
+        else None
+    )
+    if isinstance(public_discovery, Mapping):
+        public_schema = public_discovery.get("track_schema")
+        public_rows = public_discovery.get("tracks")
+        if isinstance(public_schema, list) and isinstance(public_rows, list):
+            for row in public_rows:
+                if isinstance(row, list):
+                    merge_row(row, public_schema, public=True)
     return metadata
 
 
@@ -1044,6 +1075,7 @@ def plan_track_maintenance(
     reason_names = (
         "selection_or_negotiation",
         "opportunity",
+        "published_public",
         "published_strict",
         "threshold_promotion_watch",
         "needs_two_true_points",
@@ -1074,6 +1106,8 @@ def plan_track_maintenance(
                 reasons.add("selection_or_negotiation")
             if info.get("opportunity"):
                 reasons.add("opportunity")
+            if info.get("public"):
+                reasons.add("published_public")
             if info.get("strict") or isinstance(target.get("row"), list):
                 reasons.add("published_strict")
             if int(signals.get("true_points") or 0) < 2:
@@ -1112,6 +1146,7 @@ def plan_track_maintenance(
                 {
                     "selection_or_negotiation",
                     "opportunity",
+                    "published_public",
                     "published_strict",
                     "threshold_promotion_watch",
                     "needs_two_true_points",
@@ -1139,6 +1174,7 @@ def plan_track_maintenance(
         return (
             0 if "selection_or_negotiation" in reasons else 1,
             0 if "opportunity" in reasons else 1,
+            0 if "published_public" in reasons else 1,
             0 if "published_strict" in reasons else 1,
             0 if "threshold_promotion_watch" in reasons else 1,
             0 if "needs_two_true_points" in reasons else 1,
@@ -1268,6 +1304,7 @@ def refresh_tracks(
     history_days: int,
     *,
     include_performance_catalogue: bool = False,
+    public_catalogue: Mapping[str, Any] | None = None,
     priority_artist_ids: set[str] | None = None,
     priority_artist_uuids: set[str] | None = None,
 ) -> Outcome:
@@ -1284,7 +1321,17 @@ def refresh_tracks(
         raise SoundchartsError("Performance tracks must be an object")
     query = urllib.parse.urlencode({"startDate": start, "endDate": end, "limit": max(100, history_days + 5)})
     tasks_by_uuid: dict[str, dict[str, Any]] = {}
+    scheduled_uuid_by_spotify: dict[str, str] = {}
     strict_spotify_ids: set[str] = set()
+    preferred_uuid_by_spotify: dict[str, str] = {}
+    public_spotify_ids: set[str] = set()
+    public_discovery = (
+        public_catalogue.get("discovery_catalogue")
+        if isinstance(public_catalogue, Mapping)
+        else None
+    )
+    public_schema = public_discovery.get("track_schema") if isinstance(public_discovery, Mapping) else None
+    public_rows = public_discovery.get("tracks") if isinstance(public_discovery, Mapping) else None
 
     def add_target(
         uuid: str,
@@ -1293,6 +1340,13 @@ def refresh_tracks(
         *,
         performance_only: bool,
     ) -> None:
+        if spotify_id:
+            scheduled_uuid = scheduled_uuid_by_spotify.get(spotify_id)
+            if scheduled_uuid and scheduled_uuid != uuid:
+                if row is not None:
+                    raise SoundchartsError("Conflicting authoritative Soundcharts UUID for a Spotify track")
+                return
+            scheduled_uuid_by_spotify[spotify_id] = uuid
         task = tasks_by_uuid.setdefault(
             uuid,
             {
@@ -1324,7 +1378,24 @@ def refresh_tracks(
         spotify_id = str(field(row, schema, "spotify_id") or "").strip()
         if spotify_id:
             strict_spotify_ids.add(spotify_id)
+            preferred_uuid_by_spotify[spotify_id] = uuid
         add_target(uuid, spotify_id, row, performance_only=False)
+
+    # Resolve the exact public identity layer before adding discovery or
+    # historical fallbacks. Authority is strict snapshot > public browse >
+    # performance store, so one Spotify ID can never schedule two UUIDs.
+    if isinstance(public_schema, list) and isinstance(public_rows, list):
+        for public_row in public_rows:
+            if not isinstance(public_row, list):
+                continue
+            spotify_id = str(field(public_row, public_schema, "spotify_id") or "").strip()
+            uuid = str(field(public_row, public_schema, "soundcharts_uuid") or "").strip()
+            if not spotify_id:
+                continue
+            public_spotify_ids.add(spotify_id)
+            if uuid and spotify_id not in strict_spotify_ids:
+                preferred_uuid_by_spotify[spotify_id] = uuid
+
     if include_performance_catalogue:
         # The cumulative discovery catalogue is the source-backed waiting
         # room for tracks below the public 100k floor.  Enrol every resolvable
@@ -1342,7 +1413,23 @@ def refresh_tracks(
                     spotify_id = str(field(discovery_row, discovery_schema, "spotify_id") or "").strip()
                     if not uuid or spotify_id in strict_spotify_ids:
                         continue
+                    preferred_uuid = preferred_uuid_by_spotify.get(spotify_id)
+                    if preferred_uuid and preferred_uuid != uuid:
+                        continue
                     add_target(uuid, spotify_id, None, performance_only=True)
+
+        # Enrol exact public rows even when a sanitized candidate snapshot no
+        # longer carries them.  They remain performance-only and therefore can
+        # never be promoted by this maintenance pass.
+        if isinstance(public_schema, list) and isinstance(public_rows, list):
+            for public_row in public_rows:
+                if not isinstance(public_row, list):
+                    continue
+                uuid = str(field(public_row, public_schema, "soundcharts_uuid") or "").strip()
+                spotify_id = str(field(public_row, public_schema, "spotify_id") or "").strip()
+                if not uuid or not spotify_id or spotify_id in strict_spotify_ids:
+                    continue
+                add_target(uuid, spotify_id, None, performance_only=True)
 
         for raw_key, entry in store.items():
             if not isinstance(entry, dict):
@@ -1350,10 +1437,13 @@ def refresh_tracks(
             uuid = str(entry.get("soundcharts_uuid") or "").strip()
             raw_key = str(raw_key or "").strip()
             spotify_id = "" if raw_key.startswith("soundcharts:") else raw_key
-            # The approved row is authoritative for a Spotify identity. A
-            # stale performance entry for that same ID must never schedule a
-            # concurrent request against its former Soundcharts UUID.
+            # Strict/public identities are authoritative. A stale performance
+            # entry for that same ID must never schedule a concurrent request
+            # against its former Soundcharts UUID.
             if not uuid or not spotify_id or spotify_id in strict_spotify_ids:
+                continue
+            preferred_uuid = preferred_uuid_by_spotify.get(spotify_id)
+            if preferred_uuid and preferred_uuid != uuid:
                 continue
             add_target(uuid, spotify_id, None, performance_only=True)
 
@@ -1373,7 +1463,7 @@ def refresh_tracks(
         # otherwise useful 35k maintenance pass at the very last request.
         retry_headroom = max(1, safe_budget // 50)
         planning_budget = max(1, safe_budget - retry_headroom)
-    metadata = build_track_maintenance_metadata(payload)
+    metadata = build_track_maintenance_metadata(payload, public_catalogue)
     selected_tasks, policy = plan_track_maintenance(
         tasks,
         store,
@@ -1418,6 +1508,7 @@ def refresh_tracks(
     outcome.available = available_entities
     outcome.selected = selected_entities
     now = utc_now()
+    refreshed_public_ids: set[str] = set()
     for task, response in results:
         targets = task.get("targets") if isinstance(task.get("targets"), list) else []
         require_identifier_match = len(targets) > 1
@@ -1444,7 +1535,18 @@ def refresh_tracks(
             if not isinstance(entry, dict):
                 entry = {}
                 store[key] = entry
-            entry["history"] = merge_history(entry.get("history"), points)
+            previous_uuid = str(entry.get("soundcharts_uuid") or "").strip()
+            identity_changed = bool(previous_uuid and previous_uuid != task["uuid"])
+            # A corrected authoritative mapping may point at a completely
+            # different Soundcharts song. Never splice the former song's
+            # counters into the corrected identity: that creates artificial
+            # jumps and gaps in the public chart. Keep only source-backed
+            # points returned for the new UUID and record the reset for audit.
+            previous_history = None if identity_changed else entry.get("history")
+            entry["history"] = merge_history(previous_history, points)
+            if identity_changed:
+                entry["previous_soundcharts_uuid"] = previous_uuid
+                entry["identity_reset_at"] = now
             entry["soundcharts_uuid"] = task["uuid"]
             entry["observed_at"] = now
             entry["maintenance_last_attempt_at"] = attempted_at
@@ -1458,6 +1560,8 @@ def refresh_tracks(
                 set_field(row, schema, "previous_source_date", prior_day if prior_value is not None else None)
                 set_field(row, schema, "observed_at", now)
             outcome.usable += 1
+            if spotify_id in public_spotify_ids:
+                refreshed_public_ids.add(spotify_id)
             outcome.items.append(
                 {
                     "entity": "track",
@@ -1471,6 +1575,49 @@ def refresh_tracks(
                     "performance_only": bool(target.get("performance_only")),
                 }
             )
+
+    task_public_ids = {
+        str(target.get("spotify_id") or "").strip()
+        for task in tasks
+        for target in task.get("targets", [])
+        if str(target.get("spotify_id") or "").strip() in public_spotify_ids
+    }
+    selected_public_ids = {
+        str(target.get("spotify_id") or "").strip()
+        for task in selected_tasks
+        for target in task.get("targets", [])
+        if str(target.get("spotify_id") or "").strip() in public_spotify_ids
+    }
+    current_cutoff = utc_today() - dt.timedelta(days=1)
+    usable_public_ids: set[str] = set()
+    current_public_ids: set[str] = set()
+    latest_public_days: list[dt.date] = []
+    for spotify_id in task_public_ids:
+        entry = store.get(spotify_id)
+        history = normalize_history(entry.get("history")) if isinstance(entry, Mapping) else []
+        if not history:
+            continue
+        usable_public_ids.add(spotify_id)
+        try:
+            latest_day = dt.date.fromisoformat(history[-1][0])
+        except (TypeError, ValueError):
+            continue
+        latest_public_days.append(latest_day)
+        if latest_day >= current_cutoff:
+            current_public_ids.add(spotify_id)
+    policy["published_public_entity_coverage"] = {
+        "public_entities": len(public_spotify_ids),
+        "resolvable_entities": len(task_public_ids),
+        "unresolved_entities": max(0, len(public_spotify_ids) - len(task_public_ids)),
+        "selected_entities": len(selected_public_ids),
+        "missing_selected_entities": max(0, len(task_public_ids) - len(selected_public_ids)),
+        "refreshed_entities": len(refreshed_public_ids),
+        "usable_history_entities": len(usable_public_ids),
+        "current_source_entities": len(current_public_ids),
+        "lagging_source_entities": max(0, len(task_public_ids) - len(current_public_ids)),
+        "freshness_cutoff": current_cutoff.isoformat(),
+        "latest_source_date": max(latest_public_days).isoformat() if latest_public_days else None,
+    }
     return outcome
 
 
@@ -1929,6 +2076,12 @@ def parse_args() -> argparse.Namespace:
         help="Server-known Selection artists that must win over routine catalogue rotation",
     )
     parser.add_argument("--soundcharts", type=Path, default=Path("Spotify_Soundcharts_data.js"))
+    parser.add_argument(
+        "--browse-catalogue",
+        type=Path,
+        default=Path("Spotify_Browse_Catalogue_data.js"),
+        help="Exact public track cohort that must receive daily performance priority",
+    )
     parser.add_argument("--performance", type=Path, default=Path("Spotify_Performance_data.js"))
     parser.add_argument(
         "--playlists",
@@ -1962,6 +2115,12 @@ def main() -> int:
         return 0
 
     payload = read_js_payload(args.soundcharts)
+    browse_path = getattr(args, "browse_catalogue", Path("Spotify_Browse_Catalogue_data.js"))
+    public_catalogue = (
+        read_js_payload(browse_path, BROWSE_CATALOGUE_PREFIX)
+        if browse_path.exists()
+        else {}
+    )
     performance = None if args.mode == "smoke" else read_performance_payload(args.performance)
     archived_track_history: dict[str, list[list[Any]]] = {}
     storage_preflight: dict[str, Any] | None = None
@@ -2006,6 +2165,7 @@ def main() -> int:
                 remaining,
                 args.history_days,
                 include_performance_catalogue=args.include_performance_catalogue,
+                public_catalogue=public_catalogue,
                 priority_artist_ids=priority_artist_ids,
                 priority_artist_uuids=priority_artist_uuids,
             )

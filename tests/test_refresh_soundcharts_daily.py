@@ -578,6 +578,140 @@ class RefreshSoundchartsTests(unittest.TestCase):
         )
         self.assertEqual(outcome.policy['selection_mode'], 'adaptive_daily')
 
+    def test_full_track_refresh_prioritizes_every_resolvable_public_track(self):
+        payload = {
+            'schemas': {'tracks': ['soundcharts_uuid', 'spotify_id']},
+            'tracks': [],
+        }
+        public_catalogue = {
+            'discovery_catalogue': {
+                'track_schema': ['spotify_id', 'soundcharts_uuid'],
+                'tracks': [['public-track', 'public-uuid']],
+            }
+        }
+        performance = {
+            'tracks': {
+                'public-track': {
+                    'soundcharts_uuid': 'public-uuid',
+                    'history': [['2026-07-19', 100], ['2026-07-20', 110]],
+                },
+                'rotation-track': {
+                    'soundcharts_uuid': 'rotation-uuid',
+                    'history': [['2026-07-19', 200], ['2026-07-20', 210]],
+                },
+            }
+        }
+        response = {
+            'items': [
+                {
+                    'date': '2026-07-21',
+                    'plots': [{'identifier': 'public-track', 'value': 125}],
+                },
+            ]
+        }
+        client = FakeClient(response)
+
+        with patch.object(subject, 'utc_today', return_value=dt.date(2026, 7, 21)):
+            outcome = subject.refresh_tracks(
+                payload,
+                performance,
+                client,
+                1,
+                1,
+                95,
+                include_performance_catalogue=True,
+                public_catalogue=public_catalogue,
+            )
+
+        self.assertEqual(outcome.requests, 1)
+        self.assertIn('/api/v2/song/public-uuid/audience/spotify?', client.paths[0])
+        self.assertEqual(
+            outcome.policy['reason_coverage']['published_public'],
+            {
+                'expected_requests': 1,
+                'selected_requests': 1,
+                'missing_requests': 0,
+            },
+        )
+        self.assertEqual(
+            performance['tracks']['rotation-track']['history'],
+            [['2026-07-19', 200], ['2026-07-20', 210]],
+        )
+        self.assertEqual(
+            outcome.policy['published_public_entity_coverage'],
+            {
+                'public_entities': 1,
+                'resolvable_entities': 1,
+                'unresolved_entities': 0,
+                'selected_entities': 1,
+                'missing_selected_entities': 0,
+                'refreshed_entities': 1,
+                'usable_history_entities': 1,
+                'current_source_entities': 1,
+                'lagging_source_entities': 0,
+                'freshness_cutoff': '2026-07-20',
+                'latest_source_date': '2026-07-21',
+            },
+        )
+
+    def test_public_browse_uuid_wins_over_stale_performance_uuid(self):
+        payload = {
+            'schemas': {'tracks': ['soundcharts_uuid', 'spotify_id']},
+            'tracks': [],
+        }
+        public_catalogue = {
+            'discovery_catalogue': {
+                'track_schema': ['spotify_id', 'soundcharts_uuid'],
+                'tracks': [['public-track', 'public-uuid']],
+            }
+        }
+        performance = {
+            'tracks': {
+                'public-track': {
+                    'soundcharts_uuid': 'stale-uuid',
+                    'history': [['2026-07-20', 110]],
+                },
+            }
+        }
+        response = {
+            'items': [
+                {
+                    'date': '2026-07-21',
+                    'plots': [{'identifier': 'public-track', 'value': 125}],
+                },
+            ]
+        }
+        client = FakeClient(response)
+
+        with patch.object(subject, 'utc_today', return_value=dt.date(2026, 7, 21)):
+            outcome = subject.refresh_tracks(
+                payload,
+                performance,
+                client,
+                1,
+                10,
+                95,
+                include_performance_catalogue=True,
+                public_catalogue=public_catalogue,
+            )
+
+        self.assertEqual(outcome.requests, 1)
+        self.assertIn('/api/v2/song/public-uuid/audience/spotify?', client.paths[0])
+        self.assertFalse(any('/stale-uuid/' in path for path in client.paths))
+        self.assertEqual(
+            performance['tracks']['public-track']['soundcharts_uuid'],
+            'public-uuid',
+        )
+        self.assertEqual(
+            performance['tracks']['public-track']['history'],
+            [['2026-07-21', 125]],
+        )
+        self.assertEqual(
+            performance['tracks']['public-track']['previous_soundcharts_uuid'],
+            'stale-uuid',
+        )
+        self.assertIn('identity_reset_at', performance['tracks']['public-track'])
+
     def test_track_plan_prioritizes_server_selection_opportunities_recent_and_new(self):
         today = dt.date(2026, 7, 29)
         tasks = [
@@ -837,7 +971,11 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertEqual(performance['tracks']['same-spotify-id']['soundcharts_uuid'], 'approved-uuid')
         self.assertEqual(
             performance['tracks']['same-spotify-id']['history'],
-            [['2026-07-20', 100], ['2026-07-21', 135]],
+            [['2026-07-21', 135]],
+        )
+        self.assertEqual(
+            performance['tracks']['same-spotify-id']['previous_soundcharts_uuid'],
+            'stale-uuid',
         )
 
     def test_full_artist_refresh_updates_performance_only_uuid_without_promoting_it(self):
