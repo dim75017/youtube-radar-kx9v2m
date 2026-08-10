@@ -2055,11 +2055,6 @@ def parallel_requests_detailed(
     budget: RequestBudget,
     workers: int,
 ) -> tuple[dict[str, Any], dict[str, BaseException]]:
-    selected: list[tuple[str, str]] = []
-    for key, path in tasks:
-        if not budget.claim():
-            break
-        selected.append((key, path))
     results: dict[str, Any] = {}
     failures: dict[str, BaseException] = {}
 
@@ -2067,30 +2062,67 @@ def parallel_requests_detailed(
         key, path = task
         return key, client.get(path)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
-        futures = {
-            pool.submit(fetch, task): task[0]
-            for task in selected
-        }
-        stop_error: SoundchartsError | None = None
-        for future in concurrent.futures.as_completed(futures):
-            key = futures[future]
-            try:
-                result_key, payload = future.result()
-                results[result_key] = payload
-            except (SoundchartsQuotaReserveError, SoundchartsRequestLimitError) as exc:
-                stop_error = exc
-                failures[key] = exc
-            except SoundchartsHttpError as exc:
-                # Authentication/entitlement failures are global, not track
-                # evidence. Abort without poisoning every row's retry state.
-                if exc.status in {401, 403}:
-                    stop_error = exc
-                failures[key] = exc
-            except (SoundchartsError, OSError, RuntimeError) as exc:
-                failures[key] = exc
-    if stop_error is not None:
-        raise stop_error
+    task_iterator = iter(tasks)
+    max_workers = max(1, workers)
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
+    futures: dict[concurrent.futures.Future[tuple[str, Any]], str] = {}
+    abandoned = False
+
+    def submit_next() -> bool:
+        try:
+            task = next(task_iterator)
+        except StopIteration:
+            return False
+        if not budget.claim():
+            return False
+        futures[pool.submit(fetch, task)] = task[0]
+        return True
+
+    try:
+        for _ in range(max_workers):
+            if not submit_next():
+                break
+
+        while futures:
+            done, _ = concurrent.futures.wait(
+                tuple(futures),
+                return_when=concurrent.futures.FIRST_COMPLETED,
+            )
+            completed = 0
+            for future in done:
+                key = futures.pop(future)
+                completed += 1
+                try:
+                    result_key, payload = future.result()
+                    results[result_key] = payload
+                except (SoundchartsQuotaReserveError, SoundchartsRequestLimitError):
+                    # The client rejected the request before it could safely
+                    # consume quota. Nothing else should be scheduled.
+                    for pending in futures:
+                        pending.cancel()
+                    abandoned = True
+                    raise
+                except SoundchartsHttpError as exc:
+                    # Authentication/entitlement failures are global, not
+                    # track evidence. Keep at most the already-running worker
+                    # calls, cancel everything not started and return control
+                    # immediately instead of draining the full task list.
+                    if exc.status in {401, 403}:
+                        for pending in futures:
+                            pending.cancel()
+                        abandoned = True
+                        raise
+                    failures[key] = exc
+                except (SoundchartsError, OSError, RuntimeError) as exc:
+                    failures[key] = exc
+
+            # Refill only after every completed future in this batch has been
+            # inspected, so an auth failure can never race with new submits.
+            for _ in range(completed):
+                if not submit_next():
+                    break
+    finally:
+        pool.shutdown(wait=not abandoned, cancel_futures=abandoned)
     return results, failures
 
 
@@ -2279,24 +2311,25 @@ def expand_instrumental_pool(
         parsed = parse_song_detail(response, candidate_by_uuid[uuid])
         if parsed:
             existing = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
-            cache_tracks[uuid] = merge_song_detail_evidence(existing, parsed)
-            update_editorial_classification(soundcharts, uuid, parsed)
+            merged = merge_song_detail_evidence(existing, parsed)
+            cache_tracks[uuid] = merged
+            update_editorial_classification(soundcharts, uuid, merged)
             item = candidate_by_uuid[uuid]
-            if parsed.get("has_exact_genre"):
-                item["primary_genre"] = parsed["primary_genre"]
-                item["subgenres"] = list(parsed.get("subgenres") or [])
-                item["genre_confidence"] = float(parsed.get("genre_confidence") or item.get("genre_confidence") or 0)
+            if merged.get("has_exact_genre"):
+                item["primary_genre"] = merged["primary_genre"]
+                item["subgenres"] = list(merged.get("subgenres") or [])
+                item["genre_confidence"] = float(merged.get("genre_confidence") or item.get("genre_confidence") or 0)
                 item["genre_source"] = "soundcharts_song"
-            item["soundcharts_genres"] = list(parsed.get("soundcharts_genres") or [])
-            item["soundcharts_genres_checked_at"] = str(parsed.get("soundcharts_genres_checked_at") or "")
+            item["soundcharts_genres"] = list(merged.get("soundcharts_genres") or [])
+            item["soundcharts_genres_checked_at"] = str(merged.get("soundcharts_genres_checked_at") or "")
             item["soundcharts_evidence_contract"] = str(
-                parsed.get("soundcharts_evidence_contract") or ""
+                merged.get("soundcharts_evidence_contract") or ""
             )
-            item["source_evidence"] = dict(parsed.get("source_evidence") or {})
-            status = str(parsed.get("instrumental_status") or item.get("instrumental_status") or "unknown").casefold()
+            item["source_evidence"] = dict(merged.get("source_evidence") or {})
+            status = str(merged.get("instrumental_status") or item.get("instrumental_status") or "unknown").casefold()
             if status in {"instrumental", "vocal"}:
                 item["instrumental_status"] = status
-                item["instrumental_confidence"] = float(parsed.get("instrumental_confidence") or 0)
+                item["instrumental_confidence"] = float(merged.get("instrumental_confidence") or 0)
             if status == "vocal":
                 item["classification_status"] = "excluded"
             elif (

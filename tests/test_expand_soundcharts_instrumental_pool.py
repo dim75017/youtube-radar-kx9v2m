@@ -1,6 +1,7 @@
 import copy
 import datetime as dt
 import tempfile
+import threading
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -1020,6 +1021,79 @@ class InstrumentalPoolTests(unittest.TestCase):
                 continue
             self.assertEqual(subject.field(strict_row, track_schema, name), value, name)
 
+    def test_normal_projection_uses_sticky_cached_vocal_evidence(self):
+        current = payload()
+        schema = current["editorial"]["track_schema"]
+        schema.append("source_tier")
+        row = current["editorial"]["tracks"][0]
+        row.append("editorial_playlist")
+        row[schema.index("instrumental_status")] = "unknown"
+        row[schema.index("instrumental_confidence")] = None
+        row[schema.index("ai_risk")] = "unknown"
+        row[schema.index("expansion_status")] = "review"
+
+        detail = song_detail()
+        detail["object"]["artists"] = []
+        detail["object"]["mainArtists"] = []
+        detail["object"]["genres"] = [
+            {"root": "Ambient", "sub": ["Instrumental"]}
+        ]
+        detail["evidence"] = {
+            "instrumental": True,
+            "audioFeatures": {"instrumentalness": 0.98, "speechiness": 0.01},
+        }
+        client = FakeClient(
+            {
+                "/audience/spotify?": audience_response(),
+                "/api/v2.25/song/song-uuid": detail,
+            }
+        )
+        cache = {
+            "version": 1,
+            "tracks": {
+                "song-uuid": {
+                    "instrumental_status": "vocal",
+                    "instrumental_confidence": 0.95,
+                    "source_evidence": {
+                        "vocal": True,
+                        "explicit": True,
+                        "instrumental": False,
+                        "speechiness": 0.54,
+                    },
+                    "fetched_at": "2026-01-01T00:00:00Z",
+                    "soundcharts_genres_checked_at": "2026-01-01T00:00:00Z",
+                }
+            },
+            "artists": {},
+        }
+        performance = {"tracks": {}, "artists": {}, "playlists": {}}
+
+        with (
+            patch.object(subject, "utc_today", return_value=dt.date(2026, 7, 21)),
+            self.assertRaisesRegex(
+                subject.InstrumentalPoolError,
+                "No target Soundcharts track returned a usable Spotify stream history",
+            ),
+        ):
+            subject.expand_instrumental_pool(
+                current,
+                performance,
+                cache,
+                client,
+                workers=1,
+                max_requests=5,
+                limit=1,
+            )
+
+        merged = cache["tracks"]["song-uuid"]
+        self.assertEqual(merged["instrumental_status"], "vocal")
+        self.assertTrue(merged["source_evidence"]["vocal"])
+        self.assertTrue(merged["source_evidence"]["explicit"])
+        self.assertFalse(merged["source_evidence"]["instrumental"])
+        self.assertEqual(subject.field(row, schema, "instrumental_status"), "vocal")
+        self.assertEqual(current["tracks"], [])
+        self.assertEqual(performance["tracks"], {})
+
     def test_parallel_expansion_propagates_quota_reserve_stop(self):
         class ReserveClient:
             def get(self, _path):
@@ -1045,6 +1119,64 @@ class InstrumentalPoolTests(unittest.TestCase):
                 subject.RequestBudget(1),
                 workers=1,
             )
+
+    def test_parallel_auth_failure_cancels_unstarted_work_and_returns_immediately(self):
+        for status in (401, 403):
+            with self.subTest(status=status):
+                slow_started = threading.Event()
+                release_slow = threading.Event()
+                call_done = threading.Event()
+                paths: list[str] = []
+                paths_lock = threading.Lock()
+                caught: list[BaseException] = []
+
+                class AuthClient:
+                    def get(self, path):
+                        with paths_lock:
+                            paths.append(path)
+                        if path == "/auth":
+                            if not slow_started.wait(1):
+                                raise AssertionError("second worker did not start")
+                            raise subject.SoundchartsHttpError(status)
+                        if path == "/slow":
+                            slow_started.set()
+                            release_slow.wait(5)
+                            return {"ok": True}
+                        raise AssertionError(f"cancelled task unexpectedly started: {path}")
+
+                def invoke():
+                    try:
+                        subject.parallel_requests_detailed(
+                            AuthClient(),
+                            [
+                                ("auth", "/auth"),
+                                ("slow", "/slow"),
+                                ("never-1", "/never-1"),
+                                ("never-2", "/never-2"),
+                            ],
+                            subject.RequestBudget(4),
+                            workers=2,
+                        )
+                    except BaseException as exc:  # captured from worker test thread
+                        caught.append(exc)
+                    finally:
+                        call_done.set()
+
+                caller = threading.Thread(target=invoke, daemon=True)
+                caller.start()
+                try:
+                    self.assertTrue(
+                        call_done.wait(1),
+                        "auth failure waited for an unrelated in-flight request",
+                    )
+                finally:
+                    release_slow.set()
+                    caller.join(2)
+
+                self.assertEqual(len(caught), 1)
+                self.assertIsInstance(caught[0], subject.SoundchartsHttpError)
+                self.assertEqual(caught[0].status, status)
+                self.assertCountEqual(paths, ["/auth", "/slow"])
 
     def test_playlist_discovery_unknown_ai_enters_measurement_as_needs_listen(self):
         current = payload()
