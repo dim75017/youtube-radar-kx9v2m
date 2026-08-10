@@ -2430,21 +2430,37 @@ function fillLikes(){
   });
 }
 function likeTag(vid){return vid?'<span class="tag ghost" style="display:none" data-likes="'+vid+'"></span>':'';}
-function liveSeries(vid){
-  const a=((DATA.liveHist&&DATA.liveHist[vid])||[]).concat((DATA.liveHourly&&DATA.liveHourly[vid])||[]);
-  a.sort((x,y)=>x[0]-y[0]);
-  const out=[];let last=null;
-  for(const p of a){if(p[0]!==last){out.push(p);last=p[0];}}
-  return out;
+const LIVE_SNAPSHOT_CACHE=new Map();
+let LIVE_SNAPSHOT_DATA=null;
+function liveSnapshot(vid){
+  if(LIVE_SNAPSHOT_DATA!==DATA){LIVE_SNAPSHOT_CACHE.clear();LIVE_SNAPSHOT_DATA=DATA;}
+  if(LIVE_SNAPSHOT_CACHE.has(vid))return LIVE_SNAPSHOT_CACHE.get(vid);
+  const points=((DATA.liveHist&&DATA.liveHist[vid])||[]).concat((DATA.liveHourly&&DATA.liveHourly[vid])||[]);
+  points.sort((a,b)=>a[0]-b[0]);
+  const series=[];let last=null,peakAll=null,peak24=null;
+  const cutoff24=Date.now()-86400000;
+  for(const point of points){
+    const time=Number(point[0]),viewers=Number(point[1]);
+    if(time===last)continue;
+    series.push(point);last=time;
+    if(Number.isFinite(viewers)){
+      if(peakAll==null||viewers>peakAll)peakAll=viewers;
+      if(time>=cutoff24&&(peak24==null||viewers>peak24))peak24=viewers;
+    }
+  }
+  const latest=series.length?series[series.length-1]:null;
+  const snapshot={series,now:latest?Number(latest[1]):null,latestT:latest?Number(latest[0]):null,peakAll,peak24};
+  LIVE_SNAPSHOT_CACHE.set(vid,snapshot);
+  return snapshot;
 }
-function liveNow(vid){const s=liveSeries(vid);return s.length?s[s.length-1][1]:null;}
-function livePeak(vid){const s=liveSeries(vid);return s.length?Math.max.apply(null,s.map(p=>p[1])):null;}
-function livePeak24h(vid){const s=liveSeries(vid).filter(p=>p[0]>=Date.now()-86400000);return s.length?Math.max.apply(null,s.map(p=>p[1])):null;}
+function liveSeries(vid){return liveSnapshot(vid).series;}
+function liveNow(vid){return liveSnapshot(vid).now;}
+function livePeak(vid){return liveSnapshot(vid).peakAll;}
+function livePeak24h(vid){return liveSnapshot(vid).peak24;}
 const LIVE_ACTIVE_FRESHNESS_MS=3*3600000;
 function liveIsActive(v){
-  const s=liveSeries(v&&v.vid);if(!s.length)return false;
-  const latest=s[s.length-1];
-  return Number(latest[1])>0&&Date.now()-Number(latest[0])<=LIVE_ACTIVE_FRESHNESS_MS;
+  const snapshot=liveSnapshot(v&&v.vid);
+  return snapshot.now>0&&snapshot.latestT!=null&&Date.now()-snapshot.latestT<=LIVE_ACTIVE_FRESHNESS_MS;
 }
 function activeLives(){return (DATA.lives||[]).filter(liveIsActive);}
 function isOurs(ch){return /lofi girl|lofi records/i.test(ch||'');}
