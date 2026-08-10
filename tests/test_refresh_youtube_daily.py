@@ -158,6 +158,33 @@ class DailyHistoryTests(unittest.TestCase):
         ):
             self.assertFalse(radar.is_kids_marker_href(href), href)
 
+    def test_dom_probe_rejects_consent_then_continues(self):
+        client = object.__new__(radar.ChromeWebDriverClient)
+        client.session_id = "session"
+        marker_states = iter(("blocked", "marker"))
+        requests = []
+
+        def fake_request(method, path, payload=None):
+            requests.append((method, path, payload))
+            if path.endswith("/url"):
+                return None
+            if payload["script"] == radar.ChromeWebDriverClient._MARKER_SCRIPT:
+                return next(marker_states)
+            if payload["script"] == radar.ChromeWebDriverClient._CONSENT_SCRIPT:
+                return "clicked"
+            raise AssertionError(payload)
+
+        client._request = fake_request
+        with patch.object(
+            radar.time, "monotonic", side_effect=(0.0, 0.0, 0.1, 0.2)
+        ), patch.object(radar.time, "sleep"):
+            self.assertTrue(client.has_family_options_marker("abcdefghijk"))
+        self.assertIn("&gl=US", requests[0][2]["url"])
+        self.assertTrue(any(
+            payload and payload.get("script") == radar.ChromeWebDriverClient._CONSENT_SCRIPT
+            for _, _, payload in requests
+        ))
+
     def test_dom_validator_runs_canaries_once_and_fails_closed(self):
         class FakeClient:
             def __init__(self, answers):
@@ -243,7 +270,7 @@ class DailyHistoryTests(unittest.TestCase):
     def test_no_key_fallback_prefilters_then_sets_dom_kids_provenance(self):
         now = int(datetime(2026, 8, 10, 8, tzinfo=timezone.utc).timestamp() * 1000)
         good = {
-            "id": "abcdefghijk", "title": "Baby sleep music instrumental",
+            "id": "abcdefghijk", "title": "SLEEP MUSIC FOR KIDS - Nursery Rhymes Music",
             "duration": 3 * 3600, "view_count": 2_000_000,
             "is_live": False,
         }
@@ -311,8 +338,8 @@ class DailyHistoryTests(unittest.TestCase):
         ), patch.object(radar, "kids_dom_validator", return_value=rejecting):
             rejected_rows, _, rejected_enriched = radar.fetch_kids_search_ydl(spec, now)
         self.assertEqual(rejected_rows, [])
-        self.assertEqual(rejected_enriched, 0)
-        self.assertEqual(unused_full_reader.calls, [])
+        self.assertEqual(rejected_enriched, 1)
+        self.assertEqual(len(unused_full_reader.calls), 1)
 
         class BrokenValidator:
             def ensure_canaries(self):
@@ -334,7 +361,7 @@ class DailyHistoryTests(unittest.TestCase):
         with patch.object(radar, "kids_search_ydl", return_value=flat_reader), patch.object(
             radar, "ydl", return_value=BrokenReader()
         ), patch.object(radar, "kids_dom_validator", return_value=validator):
-            with self.assertRaisesRegex(RuntimeError, "enrichment failed closed"):
+            with self.assertRaisesRegex(RuntimeError, "could be enriched"):
                 radar.fetch_kids_search_ydl(spec, now)
 
     def test_no_key_fallback_runs_canaries_when_prefilter_is_empty(self):

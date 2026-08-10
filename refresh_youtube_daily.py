@@ -444,8 +444,10 @@ const visible = element => {
          element.getAttribute('aria-hidden') !== 'true';
 };
 const locationUrl = new URL(document.location.href);
-if (locationUrl.hostname === 'consent.youtube.com' ||
-    document.querySelector('ytd-consent-bump-v2-lightbox, form[action*="consent"], iframe[src*="recaptcha"], #captcha')) {
+const blockers = Array.from(document.querySelectorAll(
+  'ytd-consent-bump-v2-lightbox, form[action*="consent"], iframe[src*="recaptcha"], #captcha'
+));
+if (locationUrl.hostname === 'consent.youtube.com' || blockers.some(visible)) {
   return 'blocked';
 }
 if (locationUrl.pathname !== '/watch' || locationUrl.searchParams.get('v') !== expectedVideoId) {
@@ -467,6 +469,31 @@ const marker = href => {
 return Array.from(document.querySelectorAll('yt-video-metadata-carousel-view-model'))
   .some(card => visible(card) && Array.from(card.querySelectorAll('a[href]'))
     .some(link => marker(link.href))) ? 'marker' : 'ready';
+"""
+
+    _CONSENT_SCRIPT = r"""
+const visible = element => {
+  if (!element || !element.isConnected || !element.getClientRects().length) return false;
+  const style = window.getComputedStyle(element);
+  return style.display !== 'none' && style.visibility !== 'hidden' &&
+         style.visibility !== 'collapse' && Number(style.opacity || 1) > 0 &&
+         element.getAttribute('aria-hidden') !== 'true';
+};
+const direct = document.querySelector(
+  'ytd-consent-bump-v2-lightbox #reject-button button, '
+  + 'ytd-consent-bump-v2-lightbox button[aria-label*="Reject" i]'
+);
+if (visible(direct)) {
+  direct.click();
+  return 'clicked';
+}
+const reject = Array.from(document.querySelectorAll('button, [role="button"], input[type="submit"]'))
+  .filter(visible)
+  .find(element => /^(?:reject all|reject|decline|tout refuser|alle ablehnen|rechazar todo|rifiuta tutto)\b/i
+    .test(String(element.innerText || element.value || element.getAttribute('aria-label') || '').trim()));
+if (!reject) return 'unhandled';
+reject.click();
+return 'clicked';
 """
 
     def __init__(self) -> None:
@@ -580,11 +607,12 @@ return Array.from(document.querySelectorAll('yt-video-metadata-carousel-view-mod
             return False
         base = f"/session/{self.session_id}"
         self._request("POST", base + "/url", {
-            "url": f"https://www.youtube.com/watch?v={video_id}&hl=en"
+            "url": f"https://www.youtube.com/watch?v={video_id}&hl=en&gl=US"
         })
         started = time.monotonic()
         deadline = started + min(max(KIDS_DOM_MARKER_WAIT_SECONDS, 5), 8)
         last_state = "loading"
+        consent_started = 0.0
         while time.monotonic() < deadline:
             last_state = self._request("POST", base + "/execute/sync", {
                 "script": self._MARKER_SCRIPT,
@@ -593,7 +621,24 @@ return Array.from(document.querySelectorAll('yt-video-metadata-carousel-view-mod
             if last_state == "marker":
                 return True
             if last_state == "blocked":
-                raise KidsDomProbeError("YouTube watch page is blocked by consent or captcha")
+                if not consent_started:
+                    consent_result = self._request("POST", base + "/execute/sync", {
+                        "script": self._CONSENT_SCRIPT,
+                        "args": [],
+                    })
+                    if consent_result != "clicked":
+                        raise KidsDomProbeError(
+                            "YouTube watch page is blocked by consent or captcha"
+                        )
+                    consent_started = time.monotonic()
+                    started = consent_started
+                    deadline = consent_started + min(max(KIDS_DOM_MARKER_WAIT_SECONDS, 5), 8)
+                elif time.monotonic() - consent_started >= 5:
+                    raise KidsDomProbeError(
+                        "YouTube consent did not resolve the expected watch page"
+                    )
+                time.sleep(0.25)
+                continue
             if last_state not in {"loading", "ready"}:
                 raise KidsDomProbeError(f"Unexpected rendered watch-page state: {last_state!r}")
             if last_state == "ready" and time.monotonic() - started >= 5:
@@ -1008,7 +1053,7 @@ def fetch_kids_search(spec: dict, now_ms: int, key: str) -> tuple[list[dict], in
 
 
 def is_kids_flat_candidate(info: dict) -> bool:
-    """Cheap strict gate before any full extraction or rendered-page visit."""
+    """Cheap structural gate; description and tags provide the final proof."""
     video_id = str(info.get("id") or "")
     title = str(info.get("title") or "").strip()
     duration = info.get("duration")
@@ -1025,8 +1070,9 @@ def is_kids_flat_candidate(info: dict) -> bool:
         or live_status in {"is_live", "is_upcoming", "post_live", "was_live"}
     ):
         return False
-    title_only = {"title": title, "durH": float(duration) / 3600}
-    return is_kids_instrumental(title_only)
+    return (
+        not has_vocal_signal(title) and bool(KIDS_STRONG_INSTRUMENTAL.search(title))
+    )
 
 
 def fetch_kids_search_ydl(spec: dict, now_ms: int) -> tuple[list[dict], int, int]:
@@ -1051,8 +1097,6 @@ def fetch_kids_search_ydl(spec: dict, now_ms: int) -> tuple[list[dict], int, int
     enrichment_failures = 0
     for item in prefiltered:
         video_id = str(item.get("id") or "")
-        if not validator.is_made_for_kids(video_id):
-            continue
         enrichment_attempts += 1
         try:
             full = ydl().extract_info(
@@ -1084,6 +1128,8 @@ def fetch_kids_search_ydl(spec: dict, now_ms: int) -> tuple[list[dict], int, int
             or float(row["vpm"]) < MIN_KIDS_VPM
         ):
             continue
+        if not validator.is_made_for_kids(video_id):
+            continue
         row["madeForKids"] = True
         row["madeForKidsSource"] = "youtube_family_options_ui"
         row["genre"] = kids_genre_from_metadata(row)
@@ -1097,12 +1143,10 @@ def fetch_kids_search_ydl(spec: dict, now_ms: int) -> tuple[list[dict], int, int
         row.pop("_scanDescription", None)
         row.pop("_scanTags", None)
         rows.append(row)
-    if enrichment_failures and (
-        enrichment_failures >= 2 or enrichment_failures == enrichment_attempts
-    ):
+    if enrichment_attempts and enriched / enrichment_attempts < 0.80:
         raise RuntimeError(
-            f"Kids enrichment failed closed for {enrichment_failures}/"
-            f"{enrichment_attempts} DOM-positive candidates"
+            f"Only {enriched}/{enrichment_attempts} prefiltered Kids candidates "
+            "could be enriched"
         )
     return rows, len(entries), enriched
 
