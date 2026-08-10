@@ -15,6 +15,7 @@ on:
       - 'data_freshness_watchdog.py'
       - 'tests/test_data_freshness_watchdog.py'
       - 'tests/test_refresh_youtube_daily.py'
+      - 'tests/test_youtube_kids_switch.js'
       - 'tests/test_youtube_workflow_guardrails.py'
   pull_request:
     paths:
@@ -28,6 +29,7 @@ on:
       - 'tests/test_data_freshness_watchdog.py'
       - 'tests/test_youtube_daily_view_deltas.js'
       - 'tests/test_youtube_analytics_scale_cache.js'
+      - 'tests/test_youtube_kids_switch.js'
       - 'tests/test_youtube_history_cache_refresh.js'
       - 'tests/test_youtube_unavailable_quarantine.js'
   workflow_dispatch:
@@ -96,6 +98,7 @@ jobs:
           python -m unittest tests.test_refresh_youtube_daily tests.test_import_youtube_studio_export tests.test_youtube_workflow_guardrails
           node tests/test_youtube_daily_view_deltas.js
           node tests/test_youtube_analytics_scale_cache.js
+          node tests/test_youtube_kids_switch.js
           node tests/test_youtube_history_cache_refresh.js
           node tests/test_youtube_unavailable_quarantine.js
 
@@ -132,7 +135,7 @@ jobs:
     timeout-minutes: 90
     strategy:
       fail-fast: false
-      max-parallel: 10
+      max-parallel: 5
       matrix:
         shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
     steps:
@@ -195,6 +198,7 @@ jobs:
           --snapshot Lofi_Radar_data.js
           --avatars Lofi_Radar_new_channel_avatars.js
           --history-dir video_history
+          --require-kids
           --skip-recommendation-pool
       - name: Commit factual catalogue and daily analytics first
         env:
