@@ -126,6 +126,7 @@ class SoundchartsFalPhase2WorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("Neither the paid scan nor the no-quota phase-1 handoff", self.workflow)
 
     def test_uploaded_state_and_report_must_match_the_same_phase1_artifact(self):
+        self.assertIn("import hashlib", self.workflow)
         self.assertIn("steps.honest_report.outcome == 'success'", self.workflow)
         self.assertIn("WHERE key='fal_phase2_phase1_source_id'", self.workflow)
         self.assertIn("Phase-2 handoff does not match the restored immutable phase-1 artifact", self.workflow)

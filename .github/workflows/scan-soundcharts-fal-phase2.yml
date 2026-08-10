@@ -548,6 +548,7 @@ jobs:
           test "$before" = "$after"
           python - "$PHASE2_DB" "$REPORT_JSON" "$PHASE1_ARTIFACT_ID" <<'PY'
           import datetime as dt
+          import hashlib
           import json
           import sqlite3
           import sys
