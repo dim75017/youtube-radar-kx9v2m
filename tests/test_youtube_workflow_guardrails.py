@@ -29,6 +29,17 @@ class YoutubeWorkflowGuardrailTests(unittest.TestCase):
         self.assertIn('needs: prepare', scan)
         self.assertIn('--tracked-manifest artifacts/youtube-tracked-ids.json', scan)
 
+    def test_standard_daily_scan_excludes_kids_scope(self):
+        workflow = self.workflow()
+        prepare = workflow.split('  prepare:\n', 1)[1].split('  scan:\n', 1)[0]
+        scan = workflow.split('  scan:\n', 1)[1].split('  publish:\n', 1)[0]
+        publish = workflow.split('  publish:\n', 1)[1]
+        self.assertIn('--scan-scope standard', prepare)
+        self.assertIn('--scan-scope standard', scan)
+        self.assertIn('--scan-scope standard', publish)
+        self.assertNotIn('--require-kids', scan)
+        self.assertNotIn('--require-kids', publish)
+
     def test_recommendations_have_no_failure_coupling_to_daily_facts(self):
         workflow = self.workflow()
         self.assertNotIn('validate_recommendations:', workflow)

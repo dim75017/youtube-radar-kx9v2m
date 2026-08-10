@@ -54,6 +54,7 @@ MAX_NEWS_AGE_MONTHS = 3
 MAX_NEWS_ROWS = 1_000
 MIN_KIDS_VIEWS = 100_000
 MIN_KIDS_VPM = 5_000
+SCAN_SCOPES = ("all", "standard", "kids")
 SEARCH_RESULTS = int(os.environ.get("RADAR_SEARCH_RESULTS", "10"))
 KIDS_SEARCH_RESULTS = int(os.environ.get("RADAR_KIDS_SEARCH_RESULTS", "50"))
 KIDS_BOOTSTRAP_SEARCH_RESULTS = int(os.environ.get("RADAR_KIDS_BOOTSTRAP_RESULTS", "100"))
@@ -1301,6 +1302,7 @@ def fetch_api_rows(
             made_for_kids = (item.get("status") or {}).get("madeForKids")
             if isinstance(made_for_kids, bool):
                 row["madeForKids"] = made_for_kids
+                row["madeForKidsSource"] = "youtube_data_api_status"
             if duration is not None:
                 row["durH"] = duration / 3600
             if include_scan_text:
@@ -1376,6 +1378,8 @@ def fetch_kids_search(spec: dict, now_ms: int, key: str) -> tuple[list[dict], in
         row["added"] = now_ms
         row["rank"] = ranks[video_id]
         row["audiences"] = ["kids"]
+        row["instrumentalVerified"] = True
+        row["liveStatus"] = "none"
         row.pop("_scanDescription", None)
         row.pop("_scanTags", None)
         row.pop("_liveBroadcastContent", None)
@@ -1471,6 +1475,8 @@ def fetch_kids_search_ydl(spec: dict, now_ms: int) -> tuple[list[dict], int, int
         row["added"] = now_ms
         row["rank"] = ranks[video_id]
         row["audiences"] = ["kids"]
+        row["instrumentalVerified"] = True
+        row["liveStatus"] = "none"
         row.pop("_scanDescription", None)
         row.pop("_scanTags", None)
         rows.append(row)
@@ -1595,7 +1601,9 @@ def query_specs(payload: dict, *, include_kids: bool = True) -> list[dict]:
     if not include_kids:
         return regular
     kids_bootstrapped = bool(payload.get("d", {}).get("kids")) or int(
-        (payload.get("videoMetrics") or {}).get("kids_queries") or 0
+        (payload.get("kidsMetrics") or {}).get("queries")
+        or (payload.get("videoMetrics") or {}).get("kids_queries")
+        or 0
     ) >= len(KIDS_QUERY_SPECS)
     kids_result_limit = KIDS_SEARCH_RESULTS if kids_bootstrapped else KIDS_BOOTSTRAP_SEARCH_RESULTS
     search_calls = len(KIDS_QUERY_SPECS) * max(1, (kids_result_limit + 49) // 50)
@@ -1672,39 +1680,65 @@ def sheet_video_ids() -> set[str]:
         ) from exc
 
 
-def tracked_ids(payload: dict) -> list[str]:
+def payload_bucket_ids(payload: dict, buckets: tuple[str, ...]) -> set[str]:
+    return {
+        str(row.get("vid"))
+        for bucket in buckets
+        for row in payload.get("d", {}).get(bucket, [])
+        if not is_deferred_row(row)
+        if VIDEO_ID.match(str(row.get("vid") or ""))
+    }
+
+
+def tracked_ids(payload: dict, scan_scope: str = "all") -> list[str]:
+    if scan_scope not in SCAN_SCOPES:
+        raise ValueError(f"Unknown scan scope: {scan_scope}")
+    if scan_scope == "kids":
+        return sorted(payload_bucket_ids(payload, ("kids",)))
     unavailable = {
         str(video_id)
         for video_id in ((payload.get("videoMetrics") or {}).get("unavailable_ids") or [])
         if VIDEO_ID.match(str(video_id or ""))
     }
-    ids = {
-        str(row.get("vid"))
-        for bucket in ("all", "trends", "news", "ours", "kids")
-        for row in payload.get("d", {}).get(bucket, [])
-        if not is_deferred_row(row)
-        if VIDEO_ID.match(str(row.get("vid") or ""))
-    }
+    standard_ids = payload_bucket_ids(payload, ("all", "trends", "news", "ours"))
+    kids_ids = payload_bucket_ids(payload, ("kids",))
+    ids = set(standard_ids)
+    if scan_scope == "all":
+        ids.update(kids_ids)
     ids.update(sheet_video_ids())
+    if scan_scope == "standard":
+        ids.difference_update(kids_ids - standard_ids)
     return sorted(ids - unavailable)
 
 
-def write_tracked_manifest(snapshot: Path, output: Path) -> dict:
+def write_tracked_manifest(
+    snapshot: Path,
+    output: Path,
+    scan_scope: str = "all",
+) -> dict:
     """Resolve the canonical tracked set once for every parallel scan shard."""
     payload = read_snapshot(snapshot)
-    ids = tracked_ids(payload)
+    ids = tracked_ids(payload, scan_scope)
     if not ids:
         raise RuntimeError("Canonical tracked-video manifest is empty")
+    quarantine_ids = {
+        str(video_id)
+        for video_id in ((payload.get("videoMetrics") or {}).get("unavailable_ids") or [])
+        if VIDEO_ID.match(str(video_id or ""))
+    }
+    if scan_scope == "standard":
+        standard_ids = payload_bucket_ids(payload, ("all", "trends", "news", "ours"))
+        kids_ids = payload_bucket_ids(payload, ("kids",))
+        quarantine_ids.difference_update(kids_ids - standard_ids)
+    elif scan_scope == "kids":
+        quarantine_ids.clear()
     manifest = {
         "version": 1,
+        "scan_scope": scan_scope,
         "generated_ms": utc_now_ms(),
         "snapshot_metrics_ms": int(payload.get("videoMetricsT") or 0),
         "ids": ids,
-        "quarantine_ids": sorted({
-            str(video_id)
-            for video_id in ((payload.get("videoMetrics") or {}).get("unavailable_ids") or [])
-            if VIDEO_ID.match(str(video_id or ""))
-        }),
+        "quarantine_ids": sorted(quarantine_ids),
     }
     output.parent.mkdir(parents=True, exist_ok=True)
     atomic_write_text(output, json.dumps(manifest, ensure_ascii=False, separators=(",", ":")))
@@ -1712,11 +1746,16 @@ def write_tracked_manifest(snapshot: Path, output: Path) -> dict:
     return manifest
 
 
-def read_tracked_manifest(path: Path) -> list[str]:
+def read_tracked_manifest(path: Path, expected_scope: str | None = None) -> list[str]:
     manifest = json.loads(path.read_text(encoding="utf-8"))
     ids = [str(video_id) for video_id in (manifest.get("ids") or []) if VIDEO_ID.match(str(video_id or ""))]
     if int(manifest.get("version") or 0) != 1 or not ids:
         raise RuntimeError(f"Invalid or empty tracked-video manifest: {path}")
+    manifest_scope = str(manifest.get("scan_scope") or "all")
+    if expected_scope and manifest_scope != expected_scope:
+        raise RuntimeError(
+            f"Tracked-video manifest scope mismatch: expected {expected_scope}, got {manifest_scope}"
+        )
     if len(ids) != len(set(ids)):
         raise RuntimeError(f"Duplicate IDs in tracked-video manifest: {path}")
     return sorted(ids)
@@ -1815,18 +1854,29 @@ def run_shard(
     shard: int,
     shards: int,
     tracked_manifest: Path | None = None,
+    scan_scope: str = "all",
 ) -> dict:
+    if scan_scope not in SCAN_SCOPES:
+        raise ValueError(f"Unknown scan scope: {scan_scope}")
     payload = read_snapshot(snapshot)
     now_ms = utc_now_ms()
-    all_tracked_ids = read_tracked_manifest(tracked_manifest) if tracked_manifest else tracked_ids(payload)
-    all_quarantine_ids = (
-        read_quarantine_manifest(tracked_manifest)
+    all_tracked_ids = (
+        read_tracked_manifest(tracked_manifest, scan_scope)
         if tracked_manifest
-        else [
-            str(video_id)
-            for video_id in ((payload.get("videoMetrics") or {}).get("unavailable_ids") or [])
-            if VIDEO_ID.match(str(video_id or ""))
-        ]
+        else tracked_ids(payload, scan_scope)
+    )
+    all_quarantine_ids = (
+        []
+        if scan_scope == "kids"
+        else (
+            read_quarantine_manifest(tracked_manifest)
+            if tracked_manifest
+            else [
+                str(video_id)
+                for video_id in ((payload.get("videoMetrics") or {}).get("unavailable_ids") or [])
+                if VIDEO_ID.match(str(video_id or ""))
+            ]
+        )
     )
     ids = [video_id for video_id in all_tracked_ids if stable_shard(video_id, shards) == shard]
     quarantine_ids = [
@@ -1836,17 +1886,22 @@ def run_shard(
     fresh: dict[str, dict] = {}
     track_failed = 0
     api_key = os.environ.get("YOUTUBE_API_KEY", "").strip()
+    all_specs = query_specs(payload, include_kids=scan_scope != "standard")
     specs = [
         spec
-        for spec in query_specs(payload, include_kids=True)
-        if stable_shard(spec["query"], shards) == shard
+        for spec in all_specs
+        if (
+            scan_scope == "all"
+            or (scan_scope == "kids" and spec.get("audience") == "kids")
+            or (scan_scope == "standard" and spec.get("audience") != "kids")
+        )
+        and stable_shard(spec["query"], shards) == shard
     ]
     owned_fresh: dict[str, dict] = {}
     owned_ok = True
     live_audiences: dict[str, dict] = {}
-    # Official-upload discovery is useful, but it must never erase a day of
-    # factual counters for the already tracked cohort.
-    if shard == 0:
+    # Official-upload discovery belongs only to the standard radar.
+    if shard == 0 and scan_scope != "kids":
         try:
             owned_fresh = fetch_owned_api_rows(now_ms, api_key) if api_key else fetch_owned_ydl_rows(now_ms)
             fresh.update(owned_fresh)
@@ -1959,6 +2014,7 @@ def run_shard(
 
     artifact = {
         "version": 1,
+        "scan_scope": scan_scope,
         "generated_at": datetime.fromtimestamp(now_ms / 1000, timezone.utc).isoformat(),
         "generated_ms": now_ms,
         "shard": shard,
@@ -1993,6 +2049,7 @@ def update_row(existing: dict, fresh: dict, now_ms: int) -> None:
     for key in (
         "title", "url", "durH", "durationSource", "views", "pub", "channel",
         "chUrl", "channelId", "subs", "madeForKidsSource",
+        "instrumentalVerified", "liveStatus",
     ):
         if fresh.get(key) not in (None, ""):
             existing[key] = fresh[key]
@@ -2083,12 +2140,16 @@ def update_history_shards(
     fresh: dict[str, dict],
     legacy: dict,
     now_ms: int,
+    scope_only: bool = False,
 ) -> tuple[int, int]:
-    """Update bounded, lazy-loaded history shards outside the main snapshot."""
+    """Update selected histories without changing points owned by another scope."""
     history_dir.mkdir(parents=True, exist_ok=True)
     names = {history_shard_name(video_id) for video_id in desired_ids}
     names.update(history_shard_name(video_id) for video_id in legacy if VIDEO_ID.match(video_id))
-    names.update(path.name for path in history_dir.glob("*.json"))
+    if not scope_only:
+        # The standard publication verifier expects every existing shard header
+        # to carry the current standard refresh timestamp.
+        names.update(path.name for path in history_dir.glob("*.json"))
     total_ids = 0
     written = 0
     for name in sorted(names):
@@ -2100,19 +2161,23 @@ def update_history_shards(
             except (OSError, ValueError, AttributeError):
                 current = {}
         updated: dict[str, list[list[int]]] = {}
-        candidate_ids = set(current) | {
-            video_id for video_id in desired_ids if history_shard_name(video_id) == name
-        }
+        candidate_ids = list(current)
+        candidate_ids.extend(sorted(
+            video_id
+            for video_id in desired_ids
+            if history_shard_name(video_id) == name and video_id not in current
+        ))
         for video_id in candidate_ids:
-            # Never erase a measured history merely because a transient source
-            # stopped returning its ID. Only desired IDs receive a new point.
             points = list(current.get(video_id) or [])
             if video_id in desired_ids:
                 points += list(legacy.get(video_id) or [])
-            row = fresh.get(video_id)
-            if video_id in desired_ids and row and isinstance(row.get("views"), (int, float)):
-                points.append([now_ms, int(row["views"])])
-            clean = normalize_daily_points(points, now_ms)
+                row = fresh.get(video_id)
+                if row and isinstance(row.get("views"), (int, float)):
+                    points.append([now_ms, int(row["views"])])
+                clean = normalize_daily_points(points, now_ms)
+            else:
+                # Preserve another scope byte-for-value at the series level.
+                clean = points
             if clean:
                 updated[video_id] = clean
         total_ids += len(updated)
@@ -2192,6 +2257,255 @@ def write_avatar_overlay(payload: dict, path: Path) -> int:
     return len(channels)
 
 
+KIDS_VERIFICATION_SOURCES = {
+    "youtube_data_api_status",
+    "youtube_innertube_android_player_restrictions",
+}
+
+
+def load_scoped_artifacts(
+    merge_dir: Path,
+    expected_shards: int,
+    scan_scope: str,
+) -> list[dict]:
+    files = sorted(merge_dir.rglob("youtube-shard-*.json"))
+    artifacts = [json.loads(path.read_text(encoding="utf-8")) for path in files]
+    if len(artifacts) != expected_shards:
+        raise RuntimeError(
+            f"Expected exactly {expected_shards} shard artifacts, got {len(artifacts)}"
+        )
+    shard_values = [int(artifact.get("shard", -1)) for artifact in artifacts]
+    if len(set(shard_values)) != len(shard_values):
+        raise RuntimeError(f"Duplicate shard artifacts: {shard_values}")
+    if set(shard_values) != set(range(expected_shards)):
+        raise RuntimeError(
+            f"Expected shards 0..{expected_shards - 1}, got {sorted(shard_values)}"
+        )
+    if any(int(artifact.get("shards", -1)) != expected_shards for artifact in artifacts):
+        raise RuntimeError("Shard-count mismatch in artifacts")
+    scopes = {str(artifact.get("scan_scope") or "all") for artifact in artifacts}
+    if scopes != {scan_scope}:
+        raise RuntimeError(
+            f"Artifact scope mismatch: expected {scan_scope}, got {sorted(scopes)}"
+        )
+    return artifacts
+
+
+def is_verified_kids_candidate(row: dict) -> bool:
+    audiences = {str(value).lower() for value in (row.get("audiences") or [])}
+    duration = row.get("durH")
+    views = row.get("views")
+    vpm = row.get("vpm")
+    return (
+        audiences == {"kids"}
+        and row.get("madeForKids") is True
+        and row.get("madeForKidsSource") in KIDS_VERIFICATION_SOURCES
+        and row.get("instrumentalVerified") is True
+        and row.get("liveStatus") == "none"
+        and isinstance(duration, (int, float))
+        and duration * 3600 >= MIN_SECONDS
+        and isinstance(views, (int, float))
+        and int(views) >= MIN_KIDS_VIEWS
+        and isinstance(vpm, (int, float))
+        and float(vpm) >= MIN_KIDS_VPM
+        and not is_deferred_row(row)
+    )
+
+
+def merge_kids_artifacts(
+    snapshot: Path,
+    avatars: Path,
+    merge_dir: Path,
+    expected_shards: int,
+    history_dir: Path | None,
+    require_kids: bool,
+) -> dict:
+    artifacts = load_scoped_artifacts(merge_dir, expected_shards, "kids")
+    payload = read_snapshot(snapshot)
+    data = payload.setdefault("d", {})
+    previous_kids = list(data.get("kids") or [])
+    bootstrap = not bool(previous_kids)
+
+    tracked_total = sum(int(a.get("tracked_total", 0)) for a in artifacts)
+    tracked_ok = sum(int(a.get("tracked_ok", 0)) for a in artifacts)
+    queries_total = sum(int(a.get("queries_total", 0)) for a in artifacts)
+    queries_ok = sum(int(a.get("queries_ok", 0)) for a in artifacts)
+    queries_raw = sum(int(a.get("queries_raw", 0)) for a in artifacts)
+    queries_enriched = sum(int(a.get("queries_enriched", 0)) for a in artifacts)
+    kids_queries_total = sum(int(a.get("kids_queries_total", 0)) for a in artifacts)
+    kids_queries_ok = sum(int(a.get("kids_queries_ok", 0)) for a in artifacts)
+    kids_results_examined = sum(int(a.get("kids_results_examined", 0)) for a in artifacts)
+    kids_candidates_kept = sum(int(a.get("kids_candidates_kept", 0)) for a in artifacts)
+
+    if require_kids and (
+        kids_queries_total != len(KIDS_QUERY_SPECS)
+        or kids_queries_ok != len(KIDS_QUERY_SPECS)
+    ):
+        raise RuntimeError(
+            f"Merge rejected: expected {len(KIDS_QUERY_SPECS)}/{len(KIDS_QUERY_SPECS)} "
+            f"Kids queries, got {kids_queries_ok}/{kids_queries_total}"
+        )
+    if queries_total != kids_queries_total or queries_ok != kids_queries_ok:
+        raise RuntimeError("Kids merge rejected: artifact contains non-Kids discovery queries")
+    if tracked_total:
+        if tracked_ok / tracked_total < MIN_PUBLISH_TRACK_RATIO:
+            raise RuntimeError(
+                f"Kids merge rejected: {tracked_ok}/{tracked_total} tracked videos refreshed"
+            )
+    elif previous_kids:
+        raise RuntimeError("Kids merge rejected: existing cohort produced no tracked IDs")
+
+    tracked_fresh_ids = {
+        str(video_id)
+        for artifact in artifacts
+        for video_id in (artifact.get("tracked_fresh_ids") or [])
+        if VIDEO_ID.match(str(video_id or ""))
+    }
+    tracked_failed_ids = {
+        str(video_id)
+        for artifact in artifacts
+        for video_id in (artifact.get("tracked_failed_ids") or [])
+        if VIDEO_ID.match(str(video_id or ""))
+    }
+    if len(tracked_fresh_ids) != tracked_ok:
+        raise RuntimeError(
+            f"Kids merge rejected: {tracked_ok} refreshed counters but "
+            f"{len(tracked_fresh_ids)} traceable refreshed IDs"
+        )
+    if (
+        len(tracked_failed_ids) != tracked_total - tracked_ok
+        or tracked_failed_ids & tracked_fresh_ids
+    ):
+        raise RuntimeError("Kids merge rejected: inconsistent tracked failure IDs")
+
+    now_ms = max(int(a.get("generated_ms", 0)) for a in artifacts) or utc_now_ms()
+    fresh: dict[str, dict] = {}
+    candidates: list[dict] = []
+    for artifact in artifacts:
+        candidates.extend(artifact.get("candidates") or [])
+        for row in artifact.get("fresh") or []:
+            video_id = str(row.get("vid") or "")
+            if not VIDEO_ID.match(video_id):
+                continue
+            previous = fresh.get(video_id)
+            if not previous or int(row.get("views") or 0) >= int(previous.get("views") or 0):
+                fresh[video_id] = preserve_audience_classification(row, previous)
+            else:
+                fresh[video_id] = preserve_audience_classification(previous, row)
+
+    kids_rows = list(previous_kids)
+    by_kids = {
+        str(row.get("vid")): row
+        for row in kids_rows
+        if VIDEO_ID.match(str(row.get("vid") or ""))
+    }
+    for row in kids_rows:
+        current = fresh.get(str(row.get("vid") or ""))
+        if current:
+            update_row(row, current, now_ms)
+
+    inserted_kids = 0
+    for row in merge_keyword_rows(candidates):
+        if not is_verified_kids_candidate(row):
+            continue
+        current = by_kids.get(row["vid"])
+        if current:
+            update_row(current, row, now_ms)
+            merge_discovery_fields(current, row)
+            current["instrumentalVerified"] = True
+            current["liveStatus"] = "none"
+        else:
+            added = dict(row)
+            kids_rows.append(added)
+            by_kids[added["vid"]] = added
+            inserted_kids += 1
+
+    kids_rows = [
+        row
+        for row in kids_rows
+        if row.get("madeForKids") is True
+        and row.get("madeForKidsSource") in KIDS_VERIFICATION_SOURCES
+        and isinstance(row.get("durH"), (int, float))
+        and float(row["durH"]) * 3600 >= MIN_SECONDS
+        and int(row.get("views") or 0) >= MIN_KIDS_VIEWS
+        and isinstance(row.get("vpm"), (int, float))
+        and float(row["vpm"]) >= MIN_KIDS_VPM
+        and not is_deferred_row(row)
+    ]
+    kids_rows.sort(key=lambda row: row.get("vpm") or 0, reverse=True)
+    if require_kids and bootstrap and not kids_rows:
+        raise RuntimeError("Merge rejected: initial Kids scan returned no verified candidates")
+    data["kids"] = kids_rows
+
+    desired_ids = {
+        str(row.get("vid"))
+        for row in kids_rows
+        if VIDEO_ID.match(str(row.get("vid") or ""))
+    }
+    resolved_history_dir = history_dir or snapshot.parent / "video_history"
+    history_ids, history_files = update_history_shards(
+        resolved_history_dir,
+        desired_ids,
+        fresh,
+        {},
+        now_ms,
+        scope_only=True,
+    )
+    expected_history_views = {
+        video_id: int(fresh[video_id]["views"])
+        for video_id in desired_ids & set(fresh)
+        if isinstance(fresh[video_id].get("views"), (int, float))
+    }
+    history_updated = validate_history_refresh(
+        resolved_history_dir,
+        expected_history_views,
+        now_ms,
+    )
+    day = history_day_key(now_ms)
+    payload["kidsMetricsT"] = now_ms
+    payload["kidsMetrics"] = {
+        "day": day,
+        "day_timezone": RADAR_TIMEZONE_NAME,
+        "tracked": len(kids_rows),
+        "updated": len(expected_history_views),
+        "queries": kids_queries_total,
+        "queries_ok": kids_queries_ok,
+        "search_results": queries_raw,
+        "search_results_enriched": queries_enriched,
+        "results_examined": kids_results_examined,
+        "candidates_kept": kids_candidates_kept,
+        "added": inserted_kids,
+        "history_updated": history_updated,
+        "history_day": day,
+        "partial": (
+            kids_queries_ok < kids_queries_total
+            or (tracked_total > 0 and tracked_ok < tracked_total)
+        ),
+        "missing_ids": sorted(tracked_failed_ids),
+    }
+    avatar_count = write_avatar_overlay(payload, avatars)
+    write_snapshot(snapshot, payload)
+    summary = {
+        "scan_scope": "kids",
+        "tracked": len(kids_rows),
+        "updated": len(expected_history_views),
+        "kids_added": inserted_kids,
+        "kids_queries": kids_queries_total,
+        "kids_queries_ok": kids_queries_ok,
+        "kids_results_examined": kids_results_examined,
+        "kids_candidates_kept": kids_candidates_kept,
+        "history_ids": history_ids,
+        "history_files": history_files,
+        "history_updated": history_updated,
+        "history_day": day,
+        "avatars": avatar_count,
+        "timestamp": datetime.fromtimestamp(now_ms / 1000, timezone.utc).isoformat(),
+    }
+    print(json.dumps(summary, ensure_ascii=False))
+    return summary
+
+
+
 def merge_artifacts(
     snapshot: Path,
     avatars: Path,
@@ -2201,14 +2515,24 @@ def merge_artifacts(
     recommendation_pool: Path | None = None,
     generate_recommendations: bool = True,
     require_kids: bool = False,
+    scan_scope: str = "all",
 ) -> dict:
-    files = sorted(merge_dir.rglob("youtube-shard-*.json"))
-    artifacts = [json.loads(path.read_text(encoding="utf-8")) for path in files]
-    seen_shards = {int(artifact["shard"]) for artifact in artifacts}
-    if seen_shards != set(range(expected_shards)):
-        raise RuntimeError(f"Expected shards 0..{expected_shards - 1}, got {sorted(seen_shards)}")
-    if any(int(artifact.get("shards", -1)) != expected_shards for artifact in artifacts):
-        raise RuntimeError("Shard-count mismatch in artifacts")
+    if scan_scope not in SCAN_SCOPES:
+        raise ValueError(f"Unknown scan scope: {scan_scope}")
+    if scan_scope == "kids":
+        if generate_recommendations:
+            raise RuntimeError("Kids-only merge cannot generate recommendation data")
+        return merge_kids_artifacts(
+            snapshot,
+            avatars,
+            merge_dir,
+            expected_shards,
+            history_dir,
+            require_kids,
+        )
+    if scan_scope == "standard" and require_kids:
+        raise RuntimeError("--require-kids is incompatible with --scan-scope standard")
+    artifacts = load_scoped_artifacts(merge_dir, expected_shards, scan_scope)
 
     tracked_total = sum(int(a.get("tracked_total", 0)) for a in artifacts)
     tracked_ok = sum(int(a.get("tracked_ok", 0)) for a in artifacts)
@@ -2304,6 +2628,9 @@ def merge_artifacts(
         )
     missing_ids = sorted(tracked_failed_ids - unavailable_set)
     data = payload.setdefault("d", {})
+    preserved_kids = list(data.get("kids") or []) if scan_scope == "standard" else None
+    if preserved_kids is not None:
+        data["kids"] = []
     bootstrap_kids = not bool(data.get("kids"))
     prune_deferred_rows(data)
     legacy_history = data.pop("hist", {})
@@ -2523,6 +2850,8 @@ def merge_artifacts(
         "day": history_day,
         "day_timezone": RADAR_TIMEZONE_NAME,
     }
+    if preserved_kids is not None:
+        data["kids"] = preserved_kids
     avatar_count = write_avatar_overlay(payload, avatars)
     write_snapshot(snapshot, payload)
     pool_payload = None
@@ -2729,6 +3058,7 @@ def main() -> None:
     parser.add_argument("--recommendation-pool", type=Path, default=DEFAULT_RECOMMENDATION_POOL)
     parser.add_argument("--skip-recommendation-pool", action="store_true")
     parser.add_argument("--require-kids", action="store_true")
+    parser.add_argument("--scan-scope", choices=SCAN_SCOPES, default="all")
     parser.add_argument("--shard", type=int)
     parser.add_argument("--shards", type=int, default=10)
     parser.add_argument("--output", type=Path)
@@ -2742,7 +3072,7 @@ def main() -> None:
     parser.add_argument("--verify-interval", type=int, default=15)
     args = parser.parse_args()
     if args.write_tracked_manifest:
-        write_tracked_manifest(args.snapshot, args.write_tracked_manifest)
+        write_tracked_manifest(args.snapshot, args.write_tracked_manifest, args.scan_scope)
         return
     if args.check_fresh_today:
         health = snapshot_freshness(args.snapshot)
@@ -2769,6 +3099,7 @@ def main() -> None:
             args.recommendation_pool,
             not args.skip_recommendation_pool,
             args.require_kids,
+            args.scan_scope,
         )
         return
     if args.shard is None or args.output is None:
@@ -2776,7 +3107,14 @@ def main() -> None:
     if args.shard < 0 or args.shard >= args.shards:
         parser.error("--shard must be in [0, --shards)")
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    run_shard(args.snapshot, args.output, args.shard, args.shards, args.tracked_manifest)
+    run_shard(
+        args.snapshot,
+        args.output,
+        args.shard,
+        args.shards,
+        args.tracked_manifest,
+        args.scan_scope,
+    )
 
 
 if __name__ == "__main__":

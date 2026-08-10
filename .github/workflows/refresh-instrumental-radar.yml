@@ -119,6 +119,7 @@ jobs:
       - name: Load the canonical Our Videos list once
         run: >-
           python refresh_youtube_daily.py
+          --scan-scope standard
           --snapshot Lofi_Radar_data.js
           --write-tracked-manifest artifacts/youtube-tracked-ids.json
       - uses: actions/upload-artifact@v4
@@ -155,6 +156,7 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: >-
           python refresh_youtube_daily.py
+          --scan-scope standard
           --shard ${{ matrix.shard }}
           --shards 20
           --tracked-manifest artifacts/youtube-tracked-ids.json
@@ -193,12 +195,12 @@ jobs:
       - name: Merge factual counters and history after all shards passed
         run: >-
           python refresh_youtube_daily.py
+          --scan-scope standard
           --merge-dir shards
           --shards 20
           --snapshot Lofi_Radar_data.js
           --avatars Lofi_Radar_new_channel_avatars.js
           --history-dir video_history
-          --require-kids
           --skip-recommendation-pool
       - name: Commit factual catalogue and daily analytics first
         env:

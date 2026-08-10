@@ -1764,5 +1764,470 @@ class DailyHistoryTests(unittest.TestCase):
                     )
 
 
+class ScanScopeTests(unittest.TestCase):
+    @staticmethod
+    def _payload():
+        return {
+            "t": 111,
+            "videoMetricsT": 222,
+            "videoMetrics": {
+                "tracked": 1,
+                "updated": 1,
+                "missing_ids": [],
+                "unavailable_ids": [],
+                "sentinel": {"keep": [1, 2, 3]},
+            },
+            "videoHistory": {"updated": 222, "sentinel": "keep"},
+            "d": {
+                "all": [{
+                    "vid": "abcdefghijk",
+                    "title": "Focus music",
+                    "views": 100_000,
+                    "pub": 1_700_000_000_000,
+                    "kw": "focus music",
+                    "genre": "Lofi / chillhop",
+                    "cluster": "Study / focus / work",
+                }],
+                "trends": [{"vid": "abcdefghijk", "sentinel": "trend"}],
+                "news": [{"vid": "abcdefghijk", "sentinel": "news"}],
+                "ours": [{"vid": "abcdefghijk", "sentinel": "ours"}],
+                "recos": [{"id": "recommendation", "sentinel": ["keep"]}],
+                "roadmap": [{"id": "roadmap", "sentinel": {"keep": True}}],
+                "lives": [{"vid": "livevideo01", "sentinel": "live"}],
+                "kids": [],
+            },
+            "sentinel": {"top_level": "keep"},
+        }
+
+    @staticmethod
+    def _artifact(scope, generated, **overrides):
+        artifact = {
+            "version": 1,
+            "scan_scope": scope,
+            "generated_ms": generated,
+            "shard": 0,
+            "shards": 1,
+            "tracked_total": 1,
+            "tracked_ok": 1,
+            "tracked_ids": ["abcdefghijk"],
+            "tracked_fresh_ids": ["abcdefghijk"],
+            "tracked_failed_ids": [],
+            "tracked_unavailable_ids": [],
+            "tracked_recovered_ids": [],
+            "queries_total": 0,
+            "queries_ok": 0,
+            "queries_raw": 0,
+            "queries_enriched": 0,
+            "kids_queries_total": 0,
+            "kids_queries_ok": 0,
+            "kids_results_examined": 0,
+            "kids_candidates_kept": 0,
+            "owned_ok": True,
+            "owned_fresh": [],
+            "live_audiences": {},
+            "fresh": [{
+                "vid": "abcdefghijk",
+                "title": "Fresh focus music",
+                "views": 100_001,
+                "pub": 1_700_000_000_000,
+            }],
+            "candidates": [],
+        }
+        artifact.update(overrides)
+        return artifact
+
+    def test_query_specs_reads_kids_metrics_for_top_50_daily_mode(self):
+        payload = {
+            "d": {"kids": []},
+            "kidsMetrics": {"queries": len(radar.KIDS_QUERY_SPECS)},
+            "videoMetrics": {"kids_queries": 0},
+        }
+        specs = [
+            spec
+            for spec in radar.query_specs(payload, include_kids=True)
+            if spec.get("audience") == "kids"
+        ]
+        self.assertEqual(len(specs), len(radar.KIDS_QUERY_SPECS))
+        self.assertTrue(all(spec["searchResults"] == 50 for spec in specs))
+
+    def test_standard_shard_excludes_every_kids_operation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "snapshot.js"
+            output = root / "youtube-shard-0.json"
+            manifest = root / "tracked.json"
+            payload = self._payload()
+            payload["d"]["kids"] = [{
+                "vid": "kidsvideo01",
+                "kw": "baby sleep music instrumental",
+                "madeForKids": True,
+            }]
+            radar.write_snapshot(snapshot, payload)
+            manifest.write_text(json.dumps({
+                "version": 1,
+                "scan_scope": "standard",
+                "ids": ["abcdefghijk"],
+                "quarantine_ids": [],
+            }), encoding="utf-8")
+            seen_specs = []
+
+            def discovery(spec, now_ms, api_key):
+                seen_specs.append(dict(spec))
+                return [], 1, 1
+
+            with patch.dict(radar.os.environ, {"YOUTUBE_API_KEY": ""}), patch.object(
+                radar,
+                "fetch_one_video",
+                return_value={"vid": "abcdefghijk", "views": 100_001},
+            ), patch.object(
+                radar, "fetch_owned_ydl_rows", return_value={}
+            ), patch.object(
+                radar, "fetch_discovery_spec", side_effect=discovery
+            ), patch.object(
+                radar, "kids_dom_validator"
+            ) as validator, patch.object(
+                radar, "fetch_kids_search"
+            ) as kids_api, patch.object(
+                radar, "fetch_kids_search_ydl"
+            ) as kids_public, patch.object(
+                radar, "sheet_video_ids"
+            ) as sheet:
+                artifact = radar.run_shard(
+                    snapshot,
+                    output,
+                    0,
+                    1,
+                    manifest,
+                    scan_scope="standard",
+                )
+                output_scope = json.loads(
+                    output.read_text(encoding="utf-8")
+                )["scan_scope"]
+
+        self.assertEqual(artifact["scan_scope"], "standard")
+        self.assertEqual(artifact["tracked_ids"], ["abcdefghijk"])
+        self.assertEqual(artifact["kids_queries_total"], 0)
+        self.assertTrue(seen_specs)
+        self.assertTrue(
+            all(spec.get("audience") == "youtube" for spec in seen_specs)
+        )
+        validator.assert_not_called()
+        kids_api.assert_not_called()
+        kids_public.assert_not_called()
+        sheet.assert_not_called()
+        self.assertEqual(output_scope, "standard")
+
+    def test_kids_shard_runs_only_kids_specs_without_owned_live_or_sheet(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "snapshot.js"
+            output = root / "youtube-shard-0.json"
+            radar.write_snapshot(snapshot, self._payload())
+            seen_specs = []
+
+            def discovery(spec, now_ms, api_key):
+                seen_specs.append(dict(spec))
+                return [], 2, 1
+
+            with patch.dict(
+                radar.os.environ, {"YOUTUBE_API_KEY": "test-key"}
+            ), patch.object(
+                radar, "fetch_discovery_spec", side_effect=discovery
+            ), patch.object(
+                radar, "fetch_api_rows", return_value={}
+            ) as api_rows, patch.object(
+                radar, "fetch_owned_api_rows"
+            ) as owned_api, patch.object(
+                radar, "fetch_owned_ydl_rows"
+            ) as owned_public, patch.object(
+                radar, "kids_dom_validator"
+            ) as validator, patch.object(
+                radar, "sheet_video_ids"
+            ) as sheet:
+                artifact = radar.run_shard(
+                    snapshot,
+                    output,
+                    0,
+                    1,
+                    scan_scope="kids",
+                )
+                output_scope = json.loads(
+                    output.read_text(encoding="utf-8")
+                )["scan_scope"]
+
+        self.assertEqual(artifact["scan_scope"], "kids")
+        self.assertEqual(artifact["tracked_total"], 0)
+        self.assertEqual(
+            artifact["queries_total"], len(radar.KIDS_QUERY_SPECS)
+        )
+        self.assertEqual(
+            artifact["kids_queries_total"], len(radar.KIDS_QUERY_SPECS)
+        )
+        self.assertEqual(len(seen_specs), len(radar.KIDS_QUERY_SPECS))
+        self.assertTrue(
+            all(spec.get("audience") == "kids" for spec in seen_specs)
+        )
+        owned_api.assert_not_called()
+        owned_public.assert_not_called()
+        validator.assert_not_called()
+        sheet.assert_not_called()
+        api_rows.assert_called_once()
+        self.assertEqual(api_rows.call_args.args[0], [])
+        self.assertEqual(output_scope, "kids")
+
+    def test_standard_merge_preserves_kids_bucket_and_metrics_exactly(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "snapshot.js"
+            avatars = root / "avatars.js"
+            shards = root / "shards"
+            shards.mkdir()
+            generated = int(
+                datetime(2026, 8, 11, 8, tzinfo=timezone.utc).timestamp()
+                * 1000
+            )
+            payload = self._payload()
+            payload["kidsMetricsT"] = 987654321
+            payload["kidsMetrics"] = {
+                "queries": 40,
+                "queries_ok": 40,
+                "nested": {"preserve": [3, 2, 1]},
+            }
+            payload["d"]["kids"] = [{
+                "vid": "kidsvideo01",
+                "title": "Preserve this Kids row exactly",
+                "views": 222_222,
+                "vpm": 22_222,
+                "durH": 2,
+                "madeForKids": True,
+                "madeForKidsSource": "youtube_data_api_status",
+                "custom": {"preserve": ["byte", "value"]},
+            }]
+            radar.write_snapshot(snapshot, payload)
+            before = radar.read_snapshot(snapshot)
+            (shards / "youtube-shard-0.json").write_text(
+                json.dumps(self._artifact("standard", generated)),
+                encoding="utf-8",
+            )
+
+            radar.merge_artifacts(
+                snapshot,
+                avatars,
+                shards,
+                1,
+                generate_recommendations=False,
+                scan_scope="standard",
+            )
+            after = radar.read_snapshot(snapshot)
+
+        self.assertEqual(after["d"]["kids"], before["d"]["kids"])
+        self.assertEqual(after["kidsMetricsT"], before["kidsMetricsT"])
+        self.assertEqual(after["kidsMetrics"], before["kidsMetrics"])
+
+    def test_kids_bootstrap_changes_only_dedicated_state_avatar_and_history(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "snapshot.js"
+            avatars = root / "avatars.js"
+            shards = root / "shards"
+            history = root / "history"
+            shards.mkdir()
+            generated = int(
+                datetime(2026, 8, 11, 8, tzinfo=timezone.utc).timestamp()
+                * 1000
+            )
+            radar.write_snapshot(snapshot, self._payload())
+            before = radar.read_snapshot(snapshot)
+            candidate = {
+                "vid": "kidsvideo01",
+                "title": "Baby sleep music instrumental - 2 hours",
+                "views": 250_000,
+                "pub": generated - 30 * 86400000,
+                "ageM": 1,
+                "vpm": 250_000,
+                "durH": 2,
+                "channel": "Calm Baby",
+                "chUrl": (
+                    "https://www.youtube.com/channel/"
+                    "UC1234567890123456789012"
+                ),
+                "channelId": "UC1234567890123456789012",
+                "genre": "Baby sleep",
+                "cluster": "Relaxation / meditation",
+                "kw": "baby sleep music instrumental",
+                "audiences": ["kids"],
+                "madeForKids": True,
+                "madeForKidsSource": (
+                    "youtube_innertube_android_player_restrictions"
+                ),
+                "instrumentalVerified": True,
+                "liveStatus": "none",
+            }
+            artifact = self._artifact(
+                "kids",
+                generated,
+                tracked_total=0,
+                tracked_ok=0,
+                tracked_ids=[],
+                tracked_fresh_ids=[],
+                fresh=[candidate],
+                queries_total=len(radar.KIDS_QUERY_SPECS),
+                queries_ok=len(radar.KIDS_QUERY_SPECS),
+                queries_raw=4000,
+                queries_enriched=1800,
+                kids_queries_total=len(radar.KIDS_QUERY_SPECS),
+                kids_queries_ok=len(radar.KIDS_QUERY_SPECS),
+                kids_results_examined=4000,
+                kids_candidates_kept=1,
+                candidates=[candidate],
+            )
+            (shards / "youtube-shard-0.json").write_text(
+                json.dumps(artifact), encoding="utf-8"
+            )
+
+            summary = radar.merge_artifacts(
+                snapshot,
+                avatars,
+                shards,
+                1,
+                history_dir=history,
+                generate_recommendations=False,
+                require_kids=True,
+                scan_scope="kids",
+            )
+            after = radar.read_snapshot(snapshot)
+            history_payload = json.loads(
+                (
+                    history
+                    / radar.history_shard_name(candidate["vid"])
+                ).read_text(encoding="utf-8")
+            )
+            avatar_text = avatars.read_text(encoding="utf-8")
+
+        for key in before:
+            if key != "d":
+                self.assertEqual(after[key], before[key], key)
+        for bucket, rows in before["d"].items():
+            if bucket != "kids":
+                self.assertEqual(after["d"][bucket], rows, bucket)
+
+        self.assertEqual(
+            [row["vid"] for row in after["d"]["kids"]],
+            [candidate["vid"]],
+        )
+        self.assertEqual(after["kidsMetricsT"], generated)
+        self.assertEqual(
+            after["kidsMetrics"]["queries"],
+            len(radar.KIDS_QUERY_SPECS),
+        )
+        self.assertEqual(after["kidsMetrics"]["candidates_kept"], 1)
+        self.assertEqual(summary["kids_added"], 1)
+        self.assertEqual(
+            history_payload["d"][candidate["vid"]],
+            [[generated, 250_000]],
+        )
+        self.assertIn(candidate["channelId"], avatar_text)
+
+    def test_scope_only_history_preserves_out_of_scope_series_same_shard(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            history = Path(tmp)
+            in_scope = "abcdefghijk"
+            out_of_scope = "a1234567890"
+            old = int(
+                datetime(2026, 8, 9, 8, tzinfo=timezone.utc).timestamp()
+                * 1000
+            )
+            now = int(
+                datetime(2026, 8, 11, 8, tzinfo=timezone.utc).timestamp()
+                * 1000
+            )
+            outside_points = [
+                [old + 3000, 9],
+                [old, 7],
+                [old, 7],
+            ]
+            path = history / radar.history_shard_name(in_scope)
+            self.assertEqual(
+                path.name,
+                radar.history_shard_name(out_of_scope),
+            )
+            path.write_text(json.dumps({
+                "version": 1,
+                "updated": old,
+                "d": {
+                    in_scope: [[old, 100]],
+                    out_of_scope: outside_points,
+                },
+            }), encoding="utf-8")
+
+            radar.update_history_shards(
+                history,
+                {in_scope},
+                {in_scope: {"views": 150}},
+                {},
+                now,
+                scope_only=True,
+            )
+            updated = json.loads(path.read_text(encoding="utf-8"))
+
+        self.assertEqual(updated["d"][out_of_scope], outside_points)
+        self.assertEqual(updated["d"][in_scope][-1], [now, 150])
+
+    def test_merge_rejects_scope_mismatch_and_duplicate_shards(self):
+        generated = int(
+            datetime(2026, 8, 11, 8, tzinfo=timezone.utc).timestamp()
+            * 1000
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "snapshot.js"
+            avatars = root / "avatars.js"
+            shards = root / "shards"
+            shards.mkdir()
+            radar.write_snapshot(snapshot, self._payload())
+            (shards / "youtube-shard-0.json").write_text(
+                json.dumps(self._artifact("kids", generated)),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                RuntimeError, "Artifact scope mismatch"
+            ):
+                radar.merge_artifacts(
+                    snapshot,
+                    avatars,
+                    shards,
+                    1,
+                    generate_recommendations=False,
+                    scan_scope="standard",
+                )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "snapshot.js"
+            avatars = root / "avatars.js"
+            shards = root / "shards"
+            shards.mkdir()
+            radar.write_snapshot(snapshot, self._payload())
+            duplicate = self._artifact(
+                "standard", generated, shard=0, shards=2
+            )
+            for suffix in ("a", "b"):
+                (shards / f"youtube-shard-{suffix}.json").write_text(
+                    json.dumps(duplicate), encoding="utf-8"
+                )
+            with self.assertRaisesRegex(
+                RuntimeError, "Duplicate shard artifacts"
+            ):
+                radar.merge_artifacts(
+                    snapshot,
+                    avatars,
+                    shards,
+                    2,
+                    generate_recommendations=False,
+                    scan_scope="standard",
+                )
+
+
+
 if __name__ == "__main__":
     unittest.main()
