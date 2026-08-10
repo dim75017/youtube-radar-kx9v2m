@@ -2490,6 +2490,7 @@ function activeLives(){return (DATA.lives||[]).filter(liveIsActive);}
 function isOurs(ch){return /lofi girl|lofi records/i.test(ch||'');}
 function filterLives(){
   let rows=activeLives();
+  rows=rows.filter(v=>matchesRadarAudience(v,LS.audience));
   if(LS.q){const q=LS.q.toLowerCase();rows=rows.filter(v=>(v.title+' '+v.channel+' '+v.disc).toLowerCase().includes(q));}
   const sf=LS.sort;
   return [...rows].sort((a,b)=>{
@@ -2501,13 +2502,13 @@ function filterLives(){
   });
 }
 function livesHTML(){
-  const rows=filterLives();const all=activeLives();
-  if(!all.length)return '<div class="empty">No livestream data yet — the 📡 Live Streams tab of the Sheet is empty or missing. It fills up on the next ChatGPT scan.</div>';
+  const rows=filterLives();
   const lsSortKeys=[['now','🔴','Viewers now'],['peak','🚀','Peak viewers'],['started','🆕','Recently started'],['channel','👥','Channel']];
   const lsSortOpts=lsSortKeys.map(s=>({label:s[1]+' Sort · '+s[2],sel:LS.sort===s[0],onclick:'LS.sort='+jsq(s[0])+';rerenderLives()'}));
   const lsSortRow=lsSortKeys.find(s=>s[0]===LS.sort)||lsSortKeys[0];
   let h='<div class="toolbar">'+
     '<div class="search">'+ICONS.search+'<input placeholder="Search streams, channels, keywords…" value="'+esc(LS.q)+'" oninput="LS.q=this.value;LS.limit=60;rerenderLives()"><kbd>/</kbd></div>'+
+    audienceSwitchHTML('live',LS.audience)+
     '<div class="tb-right">'+xdd('c-sort',lsSortRow[1]+' Sort · '+lsSortRow[2],lsSortOpts)+
     '<div class="viewtoggle">'+
       '<button class="'+(LS.mode==='grid'?'on':'')+'" onclick="LS.mode=\'grid\';render()" title="Grid">'+ICONS.grid+'</button>'+
@@ -2533,7 +2534,7 @@ function liveCardHTML(v,i){
       '</div></div></div>';
 }
 function liveListHTML(rows){
-  if(!rows.length)return '<div class="empty">Nothing matches — try clearing the search.</div>';
+  if(!rows.length)return '<div class="empty">'+(LS.audience==='kids'?'No active Kids livestreams match this view.':'Nothing matches — try clearing the search.')+'</div>';
   const page=rows.slice(0,LS.limit);
   window._page_live=page;
   if(LS.mode==='grid'){
@@ -2918,6 +2919,7 @@ const FR_LIT=[
 ['✓ Validated · click to undo','✓ Validée · cliquer pour annuler'],['✓ Validate','✓ Valider'],['💾 Save to Sheet','💾 Enregistrer dans le Sheet'],
 ['>✅ Validated</div>','>✅ Validées</div>'],['>📝 With Dim note</option>','>📝 Avec note Dim</option>'],['>✅ Validated or noted</option>','>✅ Validées ou notées</option>'],['>⏳ Pending review</div>','>⏳ À trier</div>'],['>🎯 All niches</div>','>🎯 Toutes les niches</div>'],
 ['Nothing matches — try clearing filters.','Aucun résultat, essaie de retirer des filtres.'],['Nothing matches — try clearing the search.','Aucun résultat, essaie de vider la recherche.'],
+['No active Kids livestreams match this view.','Aucun livestream Kids actif ne correspond à cette vue.'],
 ['Tracking just started — the curve appears from the 2nd scan. 📡','Suivi tout juste lancé, la courbe apparaît dès le 2e scan. 📡'],[' scans · ',' scans · '],['/day measured','/jour mesuré'],['concurrent viewers · ','spectateurs simultanés · '],['>latest<','>dernier<'],
 ['found on the scan keywords','trouvés sur les mots-clés du scan'],['of our streams surfacing in results','de nos streams dans les résultats'],
 ['Compared against ','Comparée à '],[' videos on the radar',' vidéos du radar'],[' · median ',' · médiane '],
