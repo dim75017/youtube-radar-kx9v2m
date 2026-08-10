@@ -1,0 +1,443 @@
+name: Backfill public Spotify track identities
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_requests:
+        description: 'Maximum Soundcharts attempts including retries (1-22000)'
+        required: true
+        default: '20000'
+        type: string
+
+permissions:
+  actions: write
+  contents: write
+
+# Every paid Soundcharts reader shares this exact serial lock.
+concurrency:
+  group: refresh-soundcharts-ar-collection-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  public_track_identity_backfill:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      ENCRYPTED_STATE_ARTIFACT: soundcharts-public-track-identity-state-v1-encrypted
+      MIN_QUOTA_RESERVE: '1400000'
+      ABSOLUTE_MAX_REQUESTS: '22000'
+      WORKERS: '10'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate exact-identity collector
+        shell: bash
+        run: |
+          python -m py_compile backfill_public_spotify_track_identities.py
+          python -m unittest \
+            tests/test_backfill_public_spotify_track_identities.py \
+            tests/test_backfill_soundcharts_fal_spotify_ids.py \
+            tests/test_soundcharts_public_identity_workflow_guardrails.py \
+            -v
+
+      - name: Require encrypted private state
+        env:
+          FAL_STAGING_ARTIFACT_KEY: ${{ secrets.FAL_STAGING_ARTIFACT_KEY }}
+        shell: bash
+        run: |
+          if [[ -z "$FAL_STAGING_ARTIFACT_KEY" ]]; then
+            echo "FAL_STAGING_ARTIFACT_KEY is required before any Soundcharts call" >&2
+            exit 1
+          fi
+          if (( ${#FAL_STAGING_ARTIFACT_KEY} < 24 )); then
+            echo "FAL_STAGING_ARTIFACT_KEY must contain at least 24 characters" >&2
+            exit 1
+          fi
+
+      - name: Validate bounded request plan
+        id: plan
+        env:
+          REQUESTED_MAX_REQUESTS: ${{ inputs.max_requests }}
+        shell: bash
+        run: |
+          max_requests="${REQUESTED_MAX_REQUESTS:-20000}"
+          if [[ ! "$max_requests" =~ ^[1-9][0-9]{0,4}$ ]] || (( 10#$max_requests > 22000 )); then
+            echo "max_requests must be an integer between 1 and 22000" >&2
+            exit 1
+          fi
+          echo "max_requests=$max_requests" >> "$GITHUB_OUTPUT"
+
+      - name: Initialize isolated private paths
+        shell: bash
+        run: |
+          echo "STATE_DIR=$RUNNER_TEMP/public-track-identity" >> "$GITHUB_ENV"
+          echo "STATE_DB=$RUNNER_TEMP/public-track-identity/soundcharts-public-track-identity-backfill-v1.sqlite3" >> "$GITHUB_ENV"
+          echo "BACKFILL_REPORT=$RUNNER_TEMP/public-track-identity/soundcharts-public-track-identity-backfill-report-v1.json" >> "$GITHUB_ENV"
+          echo "ENCRYPTED_STATE=$RUNNER_TEMP/public-track-identity/soundcharts-public-track-identity-state-v1.tar.gz.enc" >> "$GITHUB_ENV"
+          echo "ENCRYPTED_STATE_HMAC=$RUNNER_TEMP/public-track-identity/soundcharts-public-track-identity-state-v1.tar.gz.enc.hmac" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/public-track-identity"
+
+      - name: Restore newest encrypted checkpoint when available
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FAL_STAGING_ARTIFACT_KEY: ${{ secrets.FAL_STAGING_ARTIFACT_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          listing="$RUNNER_TEMP/public-track-identity-artifacts.json"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${ENCRYPTED_STATE_ARTIFACT}&per_page=100" \
+            --output "$listing"
+          selected="$(jq -c '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last // empty' "$listing")"
+          if [[ -z "$selected" || "$selected" == "null" ]]; then
+            echo "No previous checkpoint; starting a fresh private state"
+            exit 0
+          fi
+          archive_url="$(jq -r '.archive_download_url' <<<"$selected")"
+          archive="$RUNNER_TEMP/public-track-identity-state.zip"
+          source_dir="$RUNNER_TEMP/public-track-identity-source"
+          mkdir -p "$source_dir"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "$archive_url" --output "$archive"
+          unzip -o -q "$archive" -d "$source_dir"
+          encrypted_file="$(find "$source_dir" -type f -name '*.tar.gz.enc' -print -quit)"
+          hmac_file="$(find "$source_dir" -type f -name '*.tar.gz.enc.hmac' -print -quit)"
+          test -s "$encrypted_file"
+          test -s "$hmac_file"
+          python - "$encrypted_file" "$hmac_file" <<'PY'
+          import hashlib
+          import hmac
+          import os
+          import sys
+          from pathlib import Path
+
+          encrypted = Path(sys.argv[1]).read_bytes()
+          expected = Path(sys.argv[2]).read_text(encoding="ascii").strip()
+          key = os.environ["FAL_STAGING_ARTIFACT_KEY"].encode("utf-8")
+          context = b"soundcharts-public-track-identity-state-v1\0"
+          actual = hmac.new(key, context + encrypted, hashlib.sha256).hexdigest()
+          if not hmac.compare_digest(actual, expected):
+              raise SystemExit("Encrypted checkpoint authentication failed")
+          PY
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 \
+            -pass env:FAL_STAGING_ARTIFACT_KEY \
+            -in "$encrypted_file" | tar -xz -C "$STATE_DIR"
+          test -s "$STATE_DB"
+          python - "$STATE_DB" <<'PY'
+          import sqlite3
+          import sys
+
+          connection = sqlite3.connect(f"file:{sys.argv[1]}?mode=ro", uri=True)
+          try:
+              result = connection.execute("PRAGMA quick_check").fetchone()
+          finally:
+              connection.close()
+          if not result or str(result[0]).lower() != "ok":
+              raise SystemExit("Restored checkpoint failed PRAGMA quick_check")
+          PY
+
+      - name: Record canonical files that must remain unchanged
+        shell: bash
+        run: |
+          sha256sum \
+            Spotify_Soundcharts_data.js \
+            Spotify_Browse_Catalogue_data.js \
+            spotify/index.html > "$RUNNER_TEMP/public-identity-canonical-before.sha256"
+
+      - name: Resolve exact identities and backfill performance only
+        id: backfill
+        continue-on-error: true
+        timeout-minutes: 315
+        env:
+          PYTHONUNBUFFERED: '1'
+          SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
+          SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
+          SOUNDCHARTS_TEAM_ID: dsomoguy-api
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          set +e
+          timeout --signal=INT --kill-after=45s 300m \
+            python backfill_public_spotify_track_identities.py \
+            --state "$STATE_DB" \
+            --report "$BACKFILL_REPORT" \
+            --browse-catalogue Spotify_Browse_Catalogue_data.js \
+            --soundcharts Spotify_Soundcharts_data.js \
+            --performance Spotify_Performance_data.js \
+            --max-requests "${{ steps.plan.outputs.max_requests }}" \
+            --quota-reserve "$MIN_QUOTA_RESERVE" \
+            --workers "$WORKERS" \
+            --history-days 90 \
+            --run-id "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --apply-performance
+          exit_code=$?
+          set -e
+          echo "exit_code=$exit_code" >> "$GITHUB_OUTPUT"
+          exit "$exit_code"
+
+      - name: Verify fail-closed publication boundary
+        id: verify
+        if: steps.backfill.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum -c "$RUNNER_TEMP/public-identity-canonical-before.sha256"
+          python - "$BACKFILL_REPORT" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          if report.get("performance_only") is not True:
+              raise SystemExit("Backfill is not performance-only")
+          if report.get("canonical_written") is not False:
+              raise SystemExit("Backfill attempted a canonical write")
+          if report.get("browse_catalogue_written") is not False:
+              raise SystemExit("Backfill attempted a browse-catalogue write")
+          policy = report.get("policy") or {}
+          requests = report.get("requests") or {}
+          if policy.get("title_matching_is_shortlist_only") is not True:
+              raise SystemExit("Title matching can escape its shortlist role")
+          if policy.get("ambiguous_never_assigned") is not True:
+              raise SystemExit("Ambiguous identities can be assigned")
+          if policy.get("raw_responses_persisted") is not False:
+              raise SystemExit("Raw licensed responses were persisted")
+          if int(requests.get("claimed") or 0) > 22000:
+              raise SystemExit("Backfill exceeded its absolute request cap")
+          if int(requests.get("protected_floor") or 0) < 1400000:
+              raise SystemExit("Backfill did not protect the quota reserve")
+          forbidden = {"rows", "records", "spotify_ids", "soundcharts_uuids"}
+          if forbidden.intersection(report):
+              raise SystemExit("Aggregate report contains row-level identities")
+          PY
+          python - <<'PY'
+          from pathlib import Path
+          from spotify_performance_store import validate_performance_store
+          result = validate_performance_store(Path("Spotify_Performance_data.js"))
+          if result.get("status") != "sharded":
+              raise SystemExit("Performance store is not a valid sharded export")
+          PY
+          python - <<'PY'
+          import subprocess
+
+          allowed = {
+              "Spotify_Performance_data.js",
+          }
+          changed = subprocess.check_output(
+              ["git", "status", "--porcelain"], text=True
+          ).splitlines()
+          for line in changed:
+              path = line[3:]
+              if path == "Spotify_Performance_tracks" or path.startswith("Spotify_Performance_tracks/"):
+                  continue
+              if path not in allowed:
+                  raise SystemExit(f"Unexpected repository mutation: {path}")
+          PY
+
+      - name: Verify and authenticate resumable checkpoint
+        id: checkpoint
+        if: always() && steps.backfill.outcome != 'skipped'
+        env:
+          FAL_STAGING_ARTIFACT_KEY: ${{ secrets.FAL_STAGING_ARTIFACT_KEY }}
+          BACKFILL_OUTCOME: ${{ steps.backfill.outcome }}
+          BACKFILL_EXIT_CODE: ${{ steps.backfill.outputs.exit_code }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - "$STATE_DB" "$BACKFILL_REPORT" <<'PY'
+          import datetime as dt
+          import json
+          import os
+          import sqlite3
+          import sys
+          from pathlib import Path
+
+          state_path = Path(sys.argv[1])
+          report_path = Path(sys.argv[2])
+          report = {}
+          if report_path.exists():
+              try:
+                  candidate = json.loads(report_path.read_text(encoding="utf-8"))
+                  if isinstance(candidate, dict):
+                      report = candidate
+              except (OSError, json.JSONDecodeError):
+                  report = {}
+
+          quick_check = "failed"
+          coverage = {}
+          connection = None
+          try:
+              connection = sqlite3.connect(f"file:{state_path}?mode=ro", uri=True)
+              result = connection.execute("PRAGMA quick_check").fetchone()
+              quick_check = str(result[0]).lower() if result else "missing"
+              if quick_check == "ok":
+                  for table in ("targets", "artists", "candidates"):
+                      coverage[table] = {
+                          str(status): int(count)
+                          for status, count in connection.execute(
+                              f"SELECT status,COUNT(*) FROM {table} GROUP BY status"
+                          )
+                      }
+          except (OSError, sqlite3.DatabaseError) as exc:
+              quick_check = f"failed:{type(exc).__name__}"
+          finally:
+              if connection is not None:
+                  connection.close()
+
+          backfill_outcome = os.environ.get("BACKFILL_OUTCOME", "unknown")
+          verify_outcome = os.environ.get("VERIFY_OUTCOME", "unknown")
+          interrupted = backfill_outcome != "success" or verify_outcome != "success"
+          report.update(
+              {
+                  "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+                  "performance_only": True,
+                  "canonical_written": False,
+                  "browse_catalogue_written": False,
+                  "coverage": coverage or report.get("coverage") or {},
+                  "checkpoint": {
+                      "interrupted": interrupted,
+                      "backfill_outcome": backfill_outcome,
+                      "backfill_exit_code": os.environ.get("BACKFILL_EXIT_CODE") or None,
+                      "verification_outcome": verify_outcome,
+                      "quick_check": quick_check,
+                  },
+              }
+          )
+          forbidden = {"rows", "records", "spotify_ids", "soundcharts_uuids"}
+          if forbidden.intersection(report):
+              raise SystemExit("Aggregate interruption report contains row identities")
+          report_path.parent.mkdir(parents=True, exist_ok=True)
+          report_path.write_text(
+              json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          if quick_check != "ok":
+              raise SystemExit("Checkpoint failed PRAGMA quick_check; refusing upload")
+          PY
+          bundle="$RUNNER_TEMP/public-track-identity-bundle"
+          mkdir -p "$bundle"
+          cp "$STATE_DB" "$bundle/soundcharts-public-track-identity-backfill-v1.sqlite3"
+          cp "$BACKFILL_REPORT" "$bundle/soundcharts-public-track-identity-backfill-report-v1.json"
+          tar -cz -C "$bundle" . | \
+            openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 -salt \
+              -pass env:FAL_STAGING_ARTIFACT_KEY -out "$ENCRYPTED_STATE"
+          test -s "$ENCRYPTED_STATE"
+          python - "$ENCRYPTED_STATE" "$ENCRYPTED_STATE_HMAC" <<'PY'
+          import hashlib
+          import hmac
+          import os
+          import sys
+          from pathlib import Path
+
+          encrypted = Path(sys.argv[1]).read_bytes()
+          key = os.environ["FAL_STAGING_ARTIFACT_KEY"].encode("utf-8")
+          context = b"soundcharts-public-track-identity-state-v1\0"
+          digest = hmac.new(key, context + encrypted, hashlib.sha256).hexdigest()
+          Path(sys.argv[2]).write_text(digest + "\n", encoding="ascii")
+          PY
+          test -s "$ENCRYPTED_STATE_HMAC"
+
+      - name: Persist encrypted checkpoint
+        id: state_upload
+        if: always() && steps.checkpoint.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundcharts-public-track-identity-state-v1-encrypted
+          path: |
+            ${{ env.ENCRYPTED_STATE }}
+            ${{ env.ENCRYPTED_STATE_HMAC }}
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+
+      - name: Upload aggregate report only
+        if: always() && steps.checkpoint.outcome != 'skipped'
+        uses: actions/upload-artifact@v4
+        with:
+          name: soundcharts-public-track-identity-summary-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.BACKFILL_REPORT }}
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 9
+
+      - name: Publish only validated performance files
+        if: >-
+          steps.backfill.outcome == 'success' &&
+          steps.verify.outcome == 'success' &&
+          steps.state_upload.outcome == 'success'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A -- Spotify_Performance_data.js Spotify_Performance_tracks
+          if git diff --cached --quiet; then
+            echo "No new exact performance identities to publish"
+            exit 0
+          fi
+          git commit -m "data: backfill exact public Spotify identities"
+          for attempt in 1 2 3; do
+            if git pull --rebase --autostash origin main && git push origin HEAD:main; then
+              published_sha="$(git rev-parse HEAD)"
+              python trigger_pages_deployment.py \
+                --repository "$GITHUB_REPOSITORY" \
+                --sha "$published_sha"
+              exit 0
+            fi
+            sleep 5
+          done
+          exit 1
+
+      - name: Keep only two encrypted checkpoints
+        if: always() && steps.state_upload.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          listing="$RUNNER_TEMP/public-track-identity-artifacts-after.json"
+          curl --fail --silent --show-error --location \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${ENCRYPTED_STATE_ARTIFACT}&per_page=100" \
+            --output "$listing"
+          mapfile -t stale_ids < <(jq -r \
+            '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | reverse | .[2:][] | .id' \
+            "$listing")
+          for artifact_id in "${stale_ids[@]}"; do
+            curl --fail --silent --show-error --location \
+              --request DELETE \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}"
+          done
+
+      - name: Surface failure after preserving the checkpoint
+        if: >-
+          always() && (
+            steps.backfill.outcome != 'success' ||
+            steps.verify.outcome != 'success' ||
+            steps.checkpoint.outcome != 'success' ||
+            steps.state_upload.outcome != 'success'
+          )
+        shell: bash
+        run: |
+          echo "Backfill did not complete cleanly; the valid checkpoint and interruption report were preserved when possible." >&2
+          exit 1
