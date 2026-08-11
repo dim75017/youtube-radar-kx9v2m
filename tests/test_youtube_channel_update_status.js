@@ -23,6 +23,7 @@ const context={
   CHAN:{hist:null},
   LANG:'fr',
   maxHistTime:()=>null,
+  maxLiveSummaryTime:()=>null,
   fmtInt:value=>Number(value).toLocaleString('fr-FR')
 };
 vm.createContext(context);
@@ -40,7 +41,7 @@ assert.doesNotMatch(ours.detail,/Couverture partielle|3[\s\u202f]267 \/ 3[\s\u20
 assert.equal(context.statusColor(ours),'var(--green)','A fresh Our videos scan is green');
 assert.equal(context.statusColor({key:'radar',when:Date.now()-30*60*60*1000,partial:true}),'var(--amber)','A scan older than 26 hours remains amber');
 assert.equal(context.statusColor({key:'radar',when:null,partial:false}),'var(--dim)','A missing scan timestamp remains neutral');
-if(!index.includes('dashboard-02-helpers.js?v=20260811-kids-period-v1')) throw new Error('YouTube status cache version is stale');
+if(!index.includes('dashboard-02-helpers.js?v=20260811-live-cold-v1')) throw new Error('YouTube status cache version is stale');
 if(!index.includes("Lofi_Radar_studio.js?payload='+Date.now()")) throw new Error('YouTube Studio snapshot must bypass the browser cache');
 console.log('youtube channel update status: ok');
 

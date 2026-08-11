@@ -356,6 +356,14 @@ function maxHistTime(hist){
   }
   return m;
 }
+function maxLiveSummaryTime(summary){
+  let m=null;
+  Object.values(summary||{}).forEach(item=>{
+    const t=Number(item&&item.latestT);
+    if(Number.isFinite(t)&&(m==null||t>m))m=t;
+  });
+  return m;
+}
 function scanDotColor(ms){
   if(ms==null)return 'var(--dim)';
   const h=(Date.now()-ms)/3600000;
@@ -370,7 +378,7 @@ function lastScanText(){
   // video counters were refreshed.  A discovery-only snapshot must not make
   // stale analytics look fresh.
   const vT=Math.max(maxHistTime(DATA.hist)||0,Number(window.LOFI_DATA&&window.LOFI_DATA.videoMetricsT)||0)||null;
-  const lT=maxHistTime(DATA.liveHourly)||maxHistTime(DATA.liveHist);
+  const lT=maxHistTime(DATA.liveHourly)||maxHistTime(DATA.liveHist)||maxLiveSummaryTime(DATA.liveSummary);
   const parts=[];
   const line=(ms,emo,labelEn,labelFr,descEn,descFr)=>{
     const title=fr?'Scan '+labelFr:labelEn+' scan';
@@ -386,7 +394,7 @@ function lastScanText(){
 function updateStatusLines(){
   const fr=typeof LANG!=='undefined'&&LANG==='fr';
   const videoT=Math.max(maxHistTime(DATA&&DATA.hist)||0,Number(window.LOFI_DATA&&window.LOFI_DATA.videoMetricsT)||0)||null;
-  const liveT=maxHistTime(DATA&&DATA.liveHourly)||maxHistTime(DATA&&DATA.liveHist)||null;
+  const liveT=maxHistTime(DATA&&DATA.liveHourly)||maxHistTime(DATA&&DATA.liveHist)||maxLiveSummaryTime(DATA&&DATA.liveSummary)||null;
   const channelT=Number(window.CHX&&window.CHX.t)||maxHistTime(CHAN&&CHAN.hist)||null;
   const studioT=Number(window.STUDIO_DATA&&window.STUDIO_DATA.t)||null;
   const studioThrough=window.STUDIO_DATA&&window.STUDIO_DATA.dataThrough;
@@ -536,7 +544,8 @@ function mergeExtensionSnapshot(d){
     });
     into.sort((a,b)=>key==='ours'?(b.pub||0)-(a.pub||0):(b.vpm||0)-(a.vpm||0));
   });
-  const liveById=new Map((snap.lives||[]).map(row=>[String(row&&row.vid||''),row]));
+  const liveBootstrap=window.LOFI_LIVE_DATA&&window.LOFI_LIVE_DATA.d;
+  const liveById=new Map((snap.lives||[]).concat((liveBootstrap&&liveBootstrap.lives)||[]).map(row=>[String(row&&row.vid||''),row]));
   (d.lives||[]).forEach(row=>{
     const meta=liveById.get(String(row&&row.vid||''));if(!meta)return;
     if(meta.madeForKids===true||meta.madeForKids===false)row.madeForKids=meta.madeForKids;
@@ -546,6 +555,7 @@ function mergeExtensionSnapshot(d){
   Object.entries(snap.hist||{}).forEach(([vid,points])=>{
     hist[vid]=mergeDailyVideoHistory(hist[vid],points);
   });
+  if(liveBootstrap&&liveBootstrap.liveSummary)d.liveSummary=liveBootstrap.liveSummary;
 }
 function mergeDailyVideoHistory(left,right){
   const byDay=new Map();
@@ -817,6 +827,45 @@ async function loadChan(){
   renderNav();
   render(); // re-render la vue courante : les badges AI dépendent des données Channels
 }
+function mergeLiveBootstrapIntoData(d,bootstrap){
+  const live=bootstrap&&bootstrap.d;
+  if(!d||!live)return d;
+  if(!(d.lives||[]).length)d.lives=(live.lives||[]).map(row=>Object.assign({},row));
+  d.liveSummary=live.liveSummary||d.liveSummary||{};
+  d.liveHist=d.liveHist||{};d.liveHourly=d.liveHourly||{};
+  return d;
+}
+function coldLiveData(bootstrap){
+  return mergeLiveBootstrapIntoData({
+    all:[],trends:[],news:[],kids:[],recos:[],roadmap:[],ours:[],hist:{},
+    lives:[],liveHist:{},liveHourly:{},liveSummary:{}
+  },bootstrap);
+}
+async function awaitFullRadarAssets(){
+  if(window.__radarDataReady||window.__radarRecommendationPoolReady){
+    try{await Promise.all([window.__radarDataReady,window.__radarRecommendationPoolReady].filter(Boolean));}catch(e){}
+  }
+}
+function prepareStaticRadarSnapshot(snapshot,liveBootstrap){
+  if(!snapshot||!snapshot.d)return null;
+  mergeLiveBootstrapIntoData(snapshot.d,liveBootstrap);
+  normalizeExpandedGenre(snapshot.d.all);normalizeExpandedGenre(snapshot.d.trends);normalizeExpandedGenre(snapshot.d.news);normalizeExpandedGenre(snapshot.d.ours);enrichRecos(snapshot.d.recos);
+  return snapshot.d;
+}
+async function continueColdLiveBoot(liveBootstrap){
+  await awaitFullRadarAssets();
+  const snap=(window.LOFI_DATA&&window.LOFI_DATA.d)?window.LOFI_DATA:null;
+  const staticData=prepareStaticRadarSnapshot(snap,liveBootstrap);
+  if(staticData){
+    setRadarData(staticData);SYNCED=snap.t;renderNav();render();
+  }
+  try{
+    const d=await fetchData();setRadarData(d);SYNCED=Date.now();saveCache(d);
+    setSync('',lastScanText()||'Live · synced just now');renderNav();render();
+  }catch(e){
+    setSync('',lastScanText()||'Livestream snapshot · background sync unavailable');
+  }
+}
 async function boot(){
   if(typeof LANG!=='undefined'){
     const lm=document.getElementById('loader-msg');
@@ -825,9 +874,21 @@ async function boot(){
   const hs=(location.hash||'').slice(1);
   if(hs&&VIEWS.some(v=>v.id===hs))route=hs;
   loadChan();
-  if(window.__radarDataReady||window.__radarRecommendationPoolReady){
-    try{await Promise.all([window.__radarDataReady,window.__radarRecommendationPoolReady].filter(Boolean));}catch(e){}
+  if(route==='live'&&window.__radarLiveDataReady){
+    try{
+      const liveBootstrap=await window.__radarLiveDataReady;
+      const coldData=coldLiveData(liveBootstrap);
+      if((coldData.lives||[]).length&&Object.keys(coldData.liveSummary||{}).length){
+        setRadarData(coldData);SYNCED=liveBootstrap.t;
+        document.getElementById('loader').classList.add('hide');
+        setSync('load','Livestream snapshot · refreshing in background…');
+        renderNav();render();
+        continueColdLiveBoot(liveBootstrap).catch(()=>{});
+        return;
+      }
+    }catch(e){}
   }
+  await awaitFullRadarAssets();
   // Apply the cached team state before the recommendation pool is merged, but
   // keep the network refresh non-blocking so first paint stays immediate.
   if(typeof loadSharedRecommendationState==='function')Promise.resolve(loadSharedRecommendationState()).catch(()=>{});
@@ -837,8 +898,8 @@ async function boot(){
   if(cache&&(!snap||cache.t>=snap.t)){best=cache;src='cache';}
   else if(snap){best=snap;src='snap';}
   if(best){
-    normalizeExpandedGenre(best.d.all);normalizeExpandedGenre(best.d.trends);normalizeExpandedGenre(best.d.news);normalizeExpandedGenre(best.d.ours);enrichRecos(best.d.recos);
-    setRadarData(best.d);SYNCED=best.t;
+    const staticData=prepareStaticRadarSnapshot(best,window.LOFI_LIVE_DATA);
+    setRadarData(staticData);SYNCED=best.t;
     document.getElementById('loader').classList.add('hide');
     setSync('load',(src==='snap'?'Daily snapshot · ':'Cached · ')+'trying live sync…');
     renderNav();render();

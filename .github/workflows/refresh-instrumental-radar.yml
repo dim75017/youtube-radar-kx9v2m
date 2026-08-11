@@ -12,18 +12,24 @@ on:
       - '.github/radar-heartbeat.txt'
       - '.github/workflows/refresh-instrumental-radar.yml'
       - 'refresh_youtube_daily.py'
+      - 'refresh_youtube_live_snapshot.py'
       - 'data_freshness_watchdog.py'
       - 'tests/test_data_freshness_watchdog.py'
       - 'tests/test_refresh_youtube_daily.py'
+      - 'tests/test_refresh_youtube_live_snapshot.py'
+      - 'tests/test_youtube_live_cold_boot.js'
       - 'tests/test_youtube_kids_switch.js'
       - 'tests/test_youtube_workflow_guardrails.py'
   pull_request:
     paths:
       - '.github/workflows/refresh-instrumental-radar.yml'
       - 'refresh_youtube_daily.py'
+      - 'refresh_youtube_live_snapshot.py'
       - 'data_freshness_watchdog.py'
       - 'import_youtube_studio_export.py'
       - 'tests/test_refresh_youtube_daily.py'
+      - 'tests/test_refresh_youtube_live_snapshot.py'
+      - 'tests/test_youtube_live_cold_boot.js'
       - 'tests/test_import_youtube_studio_export.py'
       - 'tests/test_youtube_workflow_guardrails.py'
       - 'tests/test_data_freshness_watchdog.py'
@@ -95,12 +101,13 @@ jobs:
         run: pip install --disable-pip-version-check openpyxl
       - name: Test collection and history integrity
         run: |
-          python -m unittest tests.test_refresh_youtube_daily tests.test_import_youtube_studio_export tests.test_youtube_workflow_guardrails
+          python -m unittest tests.test_refresh_youtube_daily tests.test_refresh_youtube_live_snapshot tests.test_import_youtube_studio_export tests.test_youtube_workflow_guardrails
           node tests/test_youtube_daily_view_deltas.js
           node tests/test_youtube_analytics_scale_cache.js
           node tests/test_youtube_kids_switch.js
           node tests/test_youtube_history_cache_refresh.js
           node tests/test_youtube_unavailable_quarantine.js
+          node tests/test_youtube_live_cold_boot.js
 
   prepare:
     name: Resolve one canonical tracked-video manifest
@@ -187,6 +194,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install live bootstrap dependency
+        run: pip install --disable-pip-version-check openpyxl
       - uses: actions/download-artifact@v4
         with:
           pattern: youtube-shard-*
@@ -202,13 +211,20 @@ jobs:
           --avatars Lofi_Radar_new_channel_avatars.js
           --history-dir video_history
           --skip-recommendation-pool
+      - name: Refresh compact livestream first-paint snapshot
+        continue-on-error: true
+        run: >-
+          python refresh_youtube_live_snapshot.py
+          --snapshot Lofi_Radar_data.js
+          --output Lofi_Radar_live_data.js
+          --max-age-hours 8
       - name: Commit factual catalogue and daily analytics first
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Lofi_Radar_data.js Lofi_Radar_new_channel_avatars.js video_history
+          git add Lofi_Radar_data.js Lofi_Radar_live_data.js Lofi_Radar_new_channel_avatars.js video_history
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "Refresh YouTube radar data and daily history"
           for attempt in 1 2 3; do

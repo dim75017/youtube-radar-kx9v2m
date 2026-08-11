@@ -27,6 +27,12 @@
 <script>
 /* Always fetch the snapshot fresh. GitHub Pages and a previous script tag may
    otherwise keep an old radar timestamp in the browser cache. */
+window.__radarLiveDataReady=(location.hash||'').slice(1)==='live'
+  ? fetch('Lofi_Radar_live_data.js?payload='+Date.now(),{cache:'no-store'})
+      .then(r=>{if(!r.ok)throw new Error('Live snapshot HTTP '+r.status);return r.text();})
+      .then(src=>{Function(src)();return window.LOFI_LIVE_DATA;})
+      .catch(()=>null)
+  : Promise.resolve(null);
 window.__radarDataReady=fetch('Lofi_Radar_data.js?payload='+Date.now(),{cache:'no-store'})
   .then(r=>{if(!r.ok)throw new Error('Snapshot HTTP '+r.status);return r.text();})
   .then(src=>{Function(src)();return window.LOFI_DATA;});
@@ -86,9 +92,9 @@ window.__radarRecommendationPoolReady=fetch('Lofi_Radar_recommendation_pool.js?p
 
 <!-- Versioned assets avoid a stale dashboard after a GitHub Pages deployment. -->
 <script src="assets/js/dashboard-01-config.js?v=20260810-kids-v1"></script>
-<script src="assets/js/dashboard-02-helpers.js?v=20260811-kids-period-v1"></script>
+<script src="assets/js/dashboard-02-helpers.js?v=20260811-live-cold-v1"></script>
 <script src="assets/js/dashboard-03-keywords.js?v=20260810-kids-v1"></script>
-<script src="assets/js/dashboard-04-recommendations.js?v=20260810-kids-v1"></script>
+<script src="assets/js/dashboard-04-recommendations.js?v=20260811-live-cold-v1"></script>
 </body>
 </html>
 

@@ -2437,6 +2437,7 @@ function liveSnapshot(vid){
   if(LIVE_SNAPSHOT_CACHE.has(vid))return LIVE_SNAPSHOT_CACHE.get(vid);
   const history=(DATA.liveHist&&DATA.liveHist[vid])||[];
   const hourly=(DATA.liveHourly&&DATA.liveHourly[vid])||[];
+  const compact=DATA.liveSummary&&DATA.liveSummary[vid];
   // parseHist keeps both arrays chronological: reading their tails makes the
   // active-state and default viewer sort O(1) instead of rescanning years of
   // hourly history for every stream.
@@ -2445,7 +2446,15 @@ function liveSnapshot(vid){
   let latest=null;
   if(historyLast&&Number.isFinite(Number(historyLast[0]))&&Number.isFinite(Number(historyLast[1])))latest=historyLast;
   if(hourlyLast&&Number.isFinite(Number(hourlyLast[0]))&&Number.isFinite(Number(hourlyLast[1]))&&(!latest||Number(hourlyLast[0])>Number(latest[0])))latest=hourlyLast;
-  const snapshot={series:null,now:latest?Number(latest[1]):null,latestT:latest?Number(latest[0]):null,peakAll:undefined,peak24:undefined};
+  const compactT=Number(compact&&compact.latestT),compactNow=Number(compact&&compact.now);
+  const compactOnly=!history.length&&!hourly.length&&Number.isFinite(compactT)&&Number.isFinite(compactNow);
+  if(compactOnly)latest=[compactT,compactNow];
+  const snapshot={
+    series:null,now:latest?Number(latest[1]):null,latestT:latest?Number(latest[0]):null,
+    peakAll:compactOnly&&Number.isFinite(Number(compact.peakAll))?Number(compact.peakAll):undefined,
+    peak24:compactOnly&&Number.isFinite(Number(compact.peak24))?Number(compact.peak24):undefined,
+    bootstrap:compactOnly,activeAtSource:compactOnly&&compact.active===true
+  };
   LIVE_SNAPSHOT_CACHE.set(vid,snapshot);
   return snapshot;
 }
@@ -2482,9 +2491,14 @@ function liveNow(vid){return liveSnapshot(vid).now;}
 function livePeak(vid){return livePeaks(vid).peakAll;}
 function livePeak24h(vid){return livePeaks(vid).peak24;}
 const LIVE_ACTIVE_FRESHNESS_MS=3*3600000;
+const LIVE_BOOTSTRAP_FRESHNESS_MS=18*3600000;
 function liveIsActive(v){
   const snapshot=liveSnapshot(v&&v.vid);
-  return snapshot.now>0&&snapshot.latestT!=null&&Date.now()-snapshot.latestT<=LIVE_ACTIVE_FRESHNESS_MS;
+  if(!(snapshot.now>0&&snapshot.latestT!=null))return false;
+  const age=Date.now()-snapshot.latestT;
+  return snapshot.bootstrap
+    ? snapshot.activeAtSource&&age<=LIVE_BOOTSTRAP_FRESHNESS_MS
+    : age<=LIVE_ACTIVE_FRESHNESS_MS;
 }
 function activeLives(){return (DATA.lives||[]).filter(liveIsActive);}
 function isOurs(ch){return /lofi girl|lofi records/i.test(ch||'');}

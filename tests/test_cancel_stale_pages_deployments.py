@@ -78,6 +78,25 @@ class CancelStalePagesDeploymentsTests(unittest.TestCase):
         self.assertIsNone(result)
         self.assertTrue(all(call.args[0].get_method() == "GET" for call in opener.call_args_list))
 
+    def test_purging_cdn_is_a_non_cancellable_terminal_transition(self):
+        opener = mock.Mock(
+            side_effect=[
+                Response(200, payload([{"sha": SHA_ACTIVE}])),
+                Response(200, payload({"status": "purging_cdn"})),
+            ]
+        )
+
+        result = module.cancel_stale_pages_deployment(
+            repository="dim75017/youtube-radar-kx9v2m",
+            token="token",
+            opener=opener,
+        )
+
+        self.assertIsNone(result)
+        self.assertTrue(
+            all(call.args[0].get_method() == "GET" for call in opener.call_args_list)
+        )
+
     def test_unknown_state_fails_closed_without_post(self):
         opener = mock.Mock(
             side_effect=[

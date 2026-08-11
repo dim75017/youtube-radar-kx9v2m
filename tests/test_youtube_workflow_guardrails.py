@@ -97,7 +97,7 @@ class YoutubeWorkflowGuardrailTests(unittest.TestCase):
         core_commit = publish.split('Commit factual catalogue and daily analytics first', 1)[1].split(
             'Verify GitHub Pages serves the factual snapshot and history', 1
         )[0]
-        self.assertIn('git add Lofi_Radar_data.js Lofi_Radar_new_channel_avatars.js video_history', core_commit)
+        self.assertIn('git add Lofi_Radar_data.js Lofi_Radar_live_data.js Lofi_Radar_new_channel_avatars.js video_history', core_commit)
         self.assertNotIn('recommendation', core_commit.casefold())
 
     def test_feature_branches_do_not_scan_or_publish_shared_daily_snapshots(self):

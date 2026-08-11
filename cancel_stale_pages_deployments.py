@@ -33,6 +33,10 @@ TERMINAL_STATUSES = {
     "deployment_succeeded",
     "failed",
     "failure",
+    # GitHub reports this undocumented transition after a successful Pages
+    # upload while it invalidates the CDN. It is no longer cancellable and
+    # must not make the next deployment fail its preflight.
+    "purging_cdn",
     "succeed",
     "success",
 }
