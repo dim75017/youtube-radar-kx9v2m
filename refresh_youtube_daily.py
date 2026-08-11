@@ -117,6 +117,10 @@ KIDS_EXPLICIT_INSTRUMENTAL = re.compile(
     r"\b(?:instrumental|no\s+(?:lyrics?|vocals?|voices?)|without\s+(?:lyrics?|vocals?|voices?)|music\s+box)\b",
     re.I,
 )
+KIDS_CONFIRMED_VOCAL_VIDEO_IDS = frozenset({
+    "eNSCeIa5_5g",
+    "Mi0XBUz562Y",
+})
 NEGATED_VOCAL = re.compile(
     r"\b(?:no|without)\s+(?:lyrics?|vocals?|voices?)\b",
     re.I,
@@ -409,6 +413,8 @@ def has_vocal_signal(text: str) -> bool:
 
 def is_kids_instrumental(row: dict) -> bool:
     """Fail closed for Kids: long-form, no vocal signals and clear instrumental metadata."""
+    if str(row.get("vid") or "") in KIDS_CONFIRMED_VOCAL_VIDEO_IDS:
+        return False
     duration_hours = row.get("durH")
     if not isinstance(duration_hours, (int, float)) or duration_hours * 3600 < MIN_SECONDS:
         return False
@@ -2297,7 +2303,8 @@ def is_verified_kids_candidate(row: dict) -> bool:
     views = row.get("views")
     vpm = row.get("vpm")
     return (
-        audiences == {"kids"}
+        str(row.get("vid") or "") not in KIDS_CONFIRMED_VOCAL_VIDEO_IDS
+        and audiences == {"kids"}
         and row.get("madeForKids") is True
         and row.get("madeForKidsSource") in KIDS_VERIFICATION_SOURCES
         and row.get("instrumentalVerified") is True
@@ -2423,14 +2430,7 @@ def merge_kids_artifacts(
     kids_rows = [
         row
         for row in kids_rows
-        if row.get("madeForKids") is True
-        and row.get("madeForKidsSource") in KIDS_VERIFICATION_SOURCES
-        and isinstance(row.get("durH"), (int, float))
-        and float(row["durH"]) * 3600 >= MIN_SECONDS
-        and int(row.get("views") or 0) >= MIN_KIDS_VIEWS
-        and isinstance(row.get("vpm"), (int, float))
-        and float(row["vpm"]) >= MIN_KIDS_VPM
-        and not is_deferred_row(row)
+        if is_verified_kids_candidate(row)
     ]
     kids_rows.sort(key=lambda row: row.get("vpm") or 0, reverse=True)
     if require_kids and bootstrap and not kids_rows:

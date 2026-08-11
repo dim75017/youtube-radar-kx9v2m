@@ -816,6 +816,30 @@ class DailyHistoryTests(unittest.TestCase):
             dict(base, title="Nursery rhyme piano instrumental")
         ))
 
+    def test_kids_filter_rejects_confirmed_vocal_false_positives(self):
+        base = {
+            "durH": 3,
+            "title": "Baby sleep music instrumental",
+            "_scanDescription": "instrumental music box, no vocals",
+        }
+        verified = dict(
+            base,
+            vid="abcdefghijk",
+            audiences=["kids"],
+            madeForKids=True,
+            madeForKidsSource="youtube_innertube_android_player_restrictions",
+            instrumentalVerified=True,
+            liveStatus="none",
+            views=200_000,
+            vpm=20_000,
+        )
+        self.assertTrue(radar.is_kids_instrumental(verified))
+        self.assertTrue(radar.is_verified_kids_candidate(verified))
+        for video_id in ("eNSCeIa5_5g", "Mi0XBUz562Y"):
+            denied = dict(verified, vid=video_id)
+            self.assertFalse(radar.is_kids_instrumental(denied), video_id)
+            self.assertFalse(radar.is_verified_kids_candidate(denied), video_id)
+
     def test_merge_keyword_rows_preserves_kids_truth_in_both_orders(self):
         youtube = {
             "vid": "abcdefghijk", "views": 2_000_000, "kw": "focus music",
