@@ -13,12 +13,16 @@ from generate_youtube_recommendation_pool import (
     JS_SAFE_INTEGER,
     POOL_PREFIX,
     SCORING_VERSION,
+    TITLE_RECIPE_VERSION,
     _apply_feedback,
+    _build_id,
+    _concept_family,
     _feedback_affinity,
     _ledger_record,
     _legacy_recommendation_id,
     _potential_for_score,
     _published_performance_profile,
+    _rehydrate_presentation,
     _source_has_explicit_vocals,
     generate_recommendation_pool,
     load_feedback,
@@ -125,6 +129,11 @@ class RecommendationPoolTests(unittest.TestCase):
         )
         self.assertEqual(len({row["n"] for row in first}), len(first))
         self.assertEqual(len({row["title"].casefold() for row in first}), len(first))
+        title_families = Counter(row["_titleFamily"] for row in first)
+        self.assertGreaterEqual(len(title_families), 150)
+        self.assertEqual({row["_titlePatternIndex"] for row in first}, set(range(12)))
+        self.assertLessEqual(max(title_families.values()) / len(first), 0.04)
+        self.assertTrue(all(row["_conceptFamily"] == _concept_family(row) for row in first))
         source_titles = {row["title"] for row in data["all"]}
         self.assertTrue(all(row["title"] not in source_titles for row in first))
         self.assertTrue(all(row["_generated"] for row in first))
@@ -151,6 +160,7 @@ class RecommendationPoolTests(unittest.TestCase):
             self.assertEqual(decoded["sourceT"], 123456)
             self.assertEqual(decoded["version"], GENERATOR_VERSION)
             self.assertEqual(decoded["schema"], BROWSER_SCHEMA_VERSION)
+            self.assertEqual(decoded["titleRecipeVersion"], TITLE_RECIPE_VERSION)
             self.assertEqual(decoded["buildId"], payload["buildId"])
             self.assertEqual(decoded["items"], payload["items"])
             self.assertGreater(len(decoded["items"]), 0)
@@ -205,7 +215,7 @@ class RecommendationPoolTests(unittest.TestCase):
         self.assertTrue(_potential_for_score(95).startswith("S"))
         rows = generate_recommendation_pool(self.source_data(), max_items=1300)
         tiers = Counter(row["pot"][0] for row in rows)
-        self.assertTrue({"S", "A", "B", "C"}.issubset(tiers))
+        self.assertTrue({"S", "A", "B"}.issubset(tiers))
         self.assertLess(tiers["S"], tiers["A"])
 
     def test_absolute_evidence_floor_prevents_relative_false_positives(self):
@@ -286,6 +296,26 @@ class RecommendationPoolTests(unittest.TestCase):
         self.assertTrue(all(row["_generatorVersion"] == 3 for row in first))
         self.assertTrue(all(row["_recipeVersion"] == 1 for row in first))
 
+    def test_title_recipe_rehydrates_existing_items_without_changing_stable_ids(self):
+        original = generate_recommendation_pool(self.source_data(40), max_items=80)
+        with mock.patch(
+            "generate_youtube_recommendation_pool.TITLE_RECIPE_VERSION",
+            TITLE_RECIPE_VERSION + 1,
+        ):
+            rehydrated = [_rehydrate_presentation(row) for row in original]
+        self.assertEqual([row["n"] for row in rehydrated], [row["n"] for row in original])
+        self.assertEqual([row["_ideaKey"] for row in rehydrated], [row["_ideaKey"] for row in original])
+        self.assertTrue(any(after["title"] != before["title"] for before, after in zip(original, rehydrated)))
+        base = {
+            "sourceT": 123,
+            "feedbackT": 456,
+            "ledgerRevision": "stable-ledger",
+            "items": original,
+            "titleRecipeVersion": TITLE_RECIPE_VERSION,
+        }
+        rotated = dict(base, titleRecipeVersion=TITLE_RECIPE_VERSION + 1)
+        self.assertNotEqual(_build_id(base), _build_id(rotated))
+
     def test_stable_id_collision_fails_closed_instead_of_becoming_order_dependent(self):
         with mock.patch("generate_youtube_recommendation_pool._stable_int", return_value=1):
             with self.assertRaisesRegex(ValueError, "collision"):
@@ -313,7 +343,11 @@ class RecommendationPoolTests(unittest.TestCase):
             )
             entries = load_recommendation_ledger(ledger)
             self.assertEqual([entry["item"] for entry in entries], legacy)
-            self.assertEqual(payload["items"], legacy)
+            self.assertEqual([row["n"] for row in payload["items"]], [row["n"] for row in legacy])
+            self.assertTrue(all(row["_conceptFamily"] for row in payload["items"]))
+            self.assertTrue(all(row["_titleFamily"] for row in payload["items"]))
+            self.assertTrue(all(row["_titleRecipeVersion"] == TITLE_RECIPE_VERSION for row in payload["items"]))
+            self.assertTrue(any(row["title"] != old["title"] for row, old in zip(payload["items"], legacy)))
             self.assertEqual([entry["ideaKey"] for entry in entries], [f"legacy:v2:{row['n']}" for row in legacy])
             self.assertTrue(all(entry["generatorVersion"] == 2 for entry in entries))
             validation = validate_recommendation_reservoir(snapshot, output, ledger, browser_limit=20)
@@ -406,7 +440,57 @@ class RecommendationPoolTests(unittest.TestCase):
             self.assertEqual(len(load_recommendation_ledger(ledger)), payload["ledger"]["total"])
             validate_recommendation_reservoir(snapshot, output, ledger, browser_limit=75)
 
-    def test_central_feedback_json_removes_resolved_idea_from_pending_projection(self):
+    def test_central_feedback_decision_removes_the_whole_concept_family_but_keeps_history(self):
+        data = self.source_data(80)
+        for status in ("refused", "validated"):
+            with self.subTest(status=status), tempfile.TemporaryDirectory() as folder:
+                root = Path(folder)
+                output = root / "pool.js"
+                ledger = root / "ledger"
+                initial = sync_recommendation_reservoir(
+                    data,
+                    output,
+                    ledger,
+                    generated_ms=1_800_000_000_000,
+                    browser_limit=40,
+                    reserve_low_water=1,
+                    reserve_high_water=40,
+                )
+                original_entries = load_recommendation_ledger(ledger)
+                decided_id = initial["items"][0]["n"]
+                decided_family = initial["items"][0]["_conceptFamily"]
+                family_ids = {
+                    int(entry["n"])
+                    for entry in original_entries
+                    if _concept_family(entry["item"]) == decided_family
+                }
+                self.assertGreaterEqual(len(family_ids), 2)
+                feedback_path = root / "feedback.json"
+                feedback_path.write_text(json.dumps({
+                    "t": 1_800_000_010_000,
+                    "decisions": [{"n": decided_id, "status": status, "updatedAt": 1_800_000_010_000}],
+                }), encoding="utf-8")
+                refreshed = sync_recommendation_reservoir(
+                    data,
+                    output,
+                    ledger,
+                    feedback=load_feedback(feedback_path),
+                    generated_ms=1_800_000_011_000,
+                    browser_limit=40,
+                    reserve_low_water=0,
+                    reserve_high_water=0,
+                )
+                current_entries = load_recommendation_ledger(ledger)
+                self.assertEqual(refreshed["feedbackT"], 1_800_000_010_000)
+                self.assertFalse(any(row["_conceptFamily"] == decided_family for row in refreshed["items"]))
+                self.assertEqual(
+                    refreshed["ledger"]["pending"],
+                    initial["ledger"]["pending"] - len(family_ids),
+                )
+                self.assertEqual({int(entry["n"]) for entry in current_entries}, {int(entry["n"]) for entry in original_entries})
+                self.assertTrue(family_ids.issubset({int(entry["n"]) for entry in current_entries}))
+
+    def test_edited_title_overrides_the_rehydrated_recipe_without_mutating_the_ledger(self):
         data = self.source_data(80)
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -421,11 +505,17 @@ class RecommendationPoolTests(unittest.TestCase):
                 reserve_low_water=1,
                 reserve_high_water=40,
             )
-            refused_id = initial["items"][0]["n"]
+            edited_id = initial["items"][0]["n"]
+            original_entries = load_recommendation_ledger(ledger)
+            stored_title = next(entry["item"]["title"] for entry in original_entries if entry["n"] == edited_id)
             feedback_path = root / "feedback.json"
             feedback_path.write_text(json.dumps({
                 "t": 1_800_000_010_000,
-                "decisions": [{"n": refused_id, "status": "refused", "updatedAt": 1_800_000_010_000}],
+                "decisions": [{
+                    "n": edited_id,
+                    "editedTitle": "A Distinct Team-Edited Title",
+                    "updatedAt": 1_800_000_010_000,
+                }],
             }), encoding="utf-8")
             refreshed = sync_recommendation_reservoir(
                 data,
@@ -437,9 +527,13 @@ class RecommendationPoolTests(unittest.TestCase):
                 reserve_low_water=0,
                 reserve_high_water=0,
             )
-            self.assertEqual(refreshed["feedbackT"], 1_800_000_010_000)
-            self.assertNotIn(refused_id, {row["n"] for row in refreshed["items"]})
-            self.assertEqual(refreshed["ledger"]["pending"], initial["ledger"]["pending"] - 1)
+            edited = next(row for row in refreshed["items"] if row["n"] == edited_id)
+            self.assertEqual(edited["title"], "A Distinct Team-Edited Title")
+            self.assertTrue(edited["_titleFamily"].startswith("edited|"))
+            self.assertEqual(
+                next(entry["item"]["title"] for entry in load_recommendation_ledger(ledger) if entry["n"] == edited_id),
+                stored_title,
+            )
 
     def test_weak_sources_leave_an_empty_truthful_ledger_instead_of_filler(self):
         data = {

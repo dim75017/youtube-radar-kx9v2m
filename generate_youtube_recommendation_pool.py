@@ -33,6 +33,7 @@ GENERATOR_VERSION = 3
 LEDGER_SCHEMA_VERSION = 1
 BROWSER_SCHEMA_VERSION = 3
 RECIPE_VERSION = 1
+TITLE_RECIPE_VERSION = 2
 V3_VARIANTS_PER_SOURCE = 8
 LEGACY_VARIANTS_PER_SOURCE = 3
 LEGACY_DEFAULT_MAX_ITEMS = 3_000
@@ -156,34 +157,87 @@ TITLE_PATTERNS = {
         "{setting} · {atmosphere} {format} for Sleep",
         "{atmosphere} {setting} · Night Rest",
         "{setting} · {format} for Deep Rest",
+        "{setting}, Lights Out · {atmosphere} {format}",
+        "Drift Off with {setting} · {format}",
+        "{setting} After Midnight · Sleep with {format}",
+        "Close Your Eyes · {atmosphere} {format} with {setting}",
+        "{format} for a Quiet Night · {setting}",
+        "{setting} · A Long Night of {format}",
+        "Sleep Through the Night · {format} at {setting}",
+        "{atmosphere} Dreams · {format} with {setting}",
+        "When {setting} Goes Quiet · {format} for Sleep",
     ),
     "study": (
         "{setting} · {atmosphere} {format} for Focus",
         "{atmosphere} {setting} · Study Session",
         "{setting} · Deep Focus with {format}",
+        "Lock In with {setting} · {format}",
+        "One More Chapter · {format} with {setting}",
+        "{setting}, No Distractions · {atmosphere} {format}",
+        "Deep Work Starts Here · {setting} {format}",
+        "{format} for a Productive Day · {setting}",
+        "Focus Until It Clicks · {setting} {format}",
+        "{setting} · A Clear-Mind {format} Session",
+        "Work in Silence · {atmosphere} {format} with {setting}",
+        "{setting} on Repeat · {format} for Focus",
     ),
     "reading": (
         "{setting} · {atmosphere} {format} for Reading",
         "{atmosphere} {setting} · Reading Session",
         "{setting} · Quiet Pages with {format}",
+        "Read Until Late · {format} with {setting}",
+        "{setting}, One More Page · {atmosphere} {format}",
+        "A Book and {setting} · {format}",
+        "Turn the Page · {setting} {format}",
+        "{format} for an Unhurried Read · {setting}",
+        "Lost in a Book · {atmosphere} {format} with {setting}",
+        "{setting} · Stories, Silence and {format}",
+        "Read by the Window · {format} from {setting}",
+        "{atmosphere} Chapters · {format} with {setting}",
     ),
     "season": (
         "{atmosphere} {setting} · {format}",
         "{setting} · Seasonal {format} Session",
         "{setting} · {atmosphere} Slow Afternoon",
+        "This Season at {setting} · {format}",
+        "{setting}, Changing Weather · {atmosphere} {format}",
+        "A Seasonal Escape · {format} with {setting}",
+        "{setting} · The Sound of the Season",
+        "Stay In Today · {setting} {format}",
+        "{atmosphere} Days with {setting} · {format}",
+        "{setting} in Full Colour · {format}",
+        "Slow Weather · {format} with {setting}",
+        "{setting} · A New-Season {format} Mix",
     ),
     "fantasy": (
         "{setting} · {atmosphere} {format} Journey",
         "{atmosphere} {setting} · Worldbuilding Session",
         "{setting} · Distant Realms with {format}",
+        "Enter {setting} · {atmosphere} {format}",
+        "Beyond {setting} · A {format} Adventure",
+        "{setting}, Another Realm · {format}",
+        "The Road to {setting} · {atmosphere} {format}",
+        "{format} for Imaginary Worlds · {setting}",
+        "Lost Beyond {setting} · {format}",
+        "{setting} · Soundtrack for a Hidden Realm",
+        "Open the Map · {atmosphere} {format} with {setting}",
+        "Legends of {setting} · {format}",
     ),
     "relax": (
         "{setting} · {atmosphere} {format} for Relaxation",
         "{atmosphere} {setting} · Slow Living",
         "{setting} · Calm Background {format}",
+        "Take It Easy with {setting} · {format}",
+        "Nothing Urgent · {atmosphere} {format} with {setting}",
+        "{setting}, Let the Day Slow Down · {format}",
+        "A Quiet Hour · {setting} {format}",
+        "Unwind at Your Own Pace · {format} with {setting}",
+        "{setting} · Leave the Noise Outside",
+        "Pause Here · {atmosphere} {format} with {setting}",
+        "{format} for Doing Nothing · {setting}",
+        "{setting} at Ease · {format}",
     ),
 }
-
 
 def _stable_int(value: str) -> int:
     return int.from_bytes(hashlib.sha256(value.encode("utf-8")).digest()[:8], "big")
@@ -440,11 +494,14 @@ def _pick_atmosphere(setting: str, hashed: int) -> str:
     return ATMOSPHERES[start]
 
 
-def _coherent_title(profile: dict, purpose_key: str, setting: str, atmosphere: str, variant: int, hashed: int) -> str:
+def _title_pattern_index(purpose_key: str, variant: int, hashed: int) -> int:
     patterns = TITLE_PATTERNS[purpose_key]
-    pattern = patterns[(variant + (hashed // 521)) % len(patterns)]
-    return pattern.format(setting=setting, atmosphere=atmosphere, format=profile["format"])
+    return (int(variant) * 5 + (hashed // 521)) % len(patterns)
 
+
+def _coherent_title(profile: dict, purpose_key: str, setting: str, atmosphere: str, variant: int, hashed: int) -> str:
+    pattern = TITLE_PATTERNS[purpose_key][_title_pattern_index(purpose_key, variant, hashed)]
+    return pattern.format(setting=setting, atmosphere=atmosphere, format=profile["format"])
 
 def _percentile(sorted_values: list[float], value: float) -> float:
     if len(sorted_values) <= 1:
@@ -638,6 +695,73 @@ def _semantic_fingerprint(item: dict) -> str:
     ))
 
 
+def _concept_family(item: dict) -> str:
+    explicit = str(item.get("_conceptFamily") or "").strip()
+    if explicit:
+        return explicit
+    genre_key = _normal(item.get("_genreKey") or _profile_key(item) or item.get("genre"))
+    purpose_key = _normal(item.get("_purposeKey") or _purpose_key(item))
+    setting_key = _normal(item.get("_settingKey"))
+    if not genre_key or not purpose_key or not setting_key:
+        return ""
+    return "|".join((genre_key, purpose_key, setting_key))
+
+
+def _canonical_setting(profile: dict, value: object) -> str:
+    setting_key = _normal(value)
+    for setting in profile.get("settings") or []:
+        if _normal(setting) == setting_key:
+            return setting
+    return re.sub(r"\s+", " ", str(value or "")).strip().title()
+
+
+def _title_family(profile: dict, purpose_key: str, pattern_index: int) -> str:
+    pattern = TITLE_PATTERNS[purpose_key][pattern_index]
+    skeleton = pattern.format(
+        setting="{setting}",
+        atmosphere="{atmosphere}",
+        format=profile["format"],
+    )
+    return "|".join((purpose_key, _title_fingerprint(skeleton)))
+
+
+def _rehydrate_presentation(item: dict) -> dict:
+    """Overlay the current title recipe without mutating append-only ledger rows."""
+    updated = dict(item)
+    updated["_conceptFamily"] = _concept_family(updated)
+    if not updated.get("_generated"):
+        return updated
+    profile_key = _profile_key(updated)
+    purpose_key = _purpose_key(updated)
+    setting = ""
+    if profile_key in PROFILES:
+        setting = _canonical_setting(PROFILES[profile_key], updated.get("_settingKey"))
+    if profile_key not in PROFILES or purpose_key not in TITLE_PATTERNS or not setting:
+        updated["_titleRecipeVersion"] = TITLE_RECIPE_VERSION
+        updated["_titleFamily"] = "legacy|" + _title_fingerprint(updated.get("title"))
+        return updated
+    identity = str(updated.get("_ideaKey") or f"id:{updated.get('n')}")
+    hashed = _stable_int(f"title:v{TITLE_RECIPE_VERSION}|{identity}")
+    try:
+        variant = int(updated.get("_recipeIndex"))
+    except (TypeError, ValueError):
+        variant = abs(int(updated.get("n") or hashed)) % V3_VARIANTS_PER_SOURCE
+    profile = PROFILES[profile_key]
+    atmosphere = _pick_atmosphere(setting, hashed)
+    pattern_index = _title_pattern_index(purpose_key, variant, hashed)
+    updated["title"] = _coherent_title(
+        profile,
+        purpose_key,
+        setting,
+        atmosphere,
+        variant,
+        hashed,
+    )
+    updated["_titleRecipeVersion"] = TITLE_RECIPE_VERSION
+    updated["_titlePatternIndex"] = pattern_index
+    updated["_titleFamily"] = _title_family(profile, purpose_key, pattern_index)
+    return updated
+
 def _idea_key(source: dict, variant: int) -> str:
     return "|".join((
         f"g{GENERATOR_VERSION}",
@@ -725,7 +849,7 @@ def _build_v3_item(
     }
     if variant < 2:
         item["_legacyN"] = _legacy_recommendation_id(source.get("vid"), variant)
-    return item
+    return _rehydrate_presentation(item)
 
 
 def _v3_candidates(data: dict, feedback_profile: dict) -> list[tuple[dict, dict]]:
@@ -874,6 +998,8 @@ def _apply_feedback(item: dict, decision: dict | None) -> dict:
         value = edits.get(key, direct_edits.get(key))
         if value is not None and str(value).strip():
             updated[key] = str(value).strip()
+            if key == "title":
+                updated["_titleFamily"] = "edited|" + _title_fingerprint(updated[key])
     updated["_sharedFeedbackT"] = int(decision.get("updatedAt") or decision.get("t") or 0)
     return updated
 
@@ -1034,6 +1160,7 @@ def _ledger_record(item: dict, source: dict | None, *, created_ms: int, source_t
         "sourceSnapshot": source_snapshot,
         "titleFingerprint": _title_fingerprint(item.get("title")),
         "semanticFingerprint": _semantic_fingerprint(item),
+        "conceptFingerprint": _concept_family(item),
         "item": dict(item),
     }
 
@@ -1173,14 +1300,19 @@ def _selected_sources(data: dict, items: list[dict]) -> dict[str, dict]:
 
 
 def _build_id(payload: dict) -> str:
-    canonical = json.dumps({
+    identity = {
         "sourceT": int(payload.get("sourceT") or 0),
         "feedbackT": int(payload.get("feedbackT") or 0),
         "ledgerRevision": str(payload.get("ledgerRevision") or ""),
         "ids": [int(row.get("n")) for row in payload.get("items") or []],
-    }, sort_keys=True, separators=(",", ":"))
+    }
+    # Legacy checked-in payloads remain verifiable until the next refresh. Every
+    # newly written payload includes this field, so a title recipe change always
+    # invalidates browser caches even though recommendation IDs stay stable.
+    if "titleRecipeVersion" in payload:
+        identity["titleRecipeVersion"] = int(payload.get("titleRecipeVersion") or 0)
+    canonical = json.dumps(identity, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:24]
-
 
 def _write_pool_payload(payload: dict, output: Path) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -1226,22 +1358,35 @@ def sync_recommendation_reservoir(
     current_sources_rows = _source_rows(data, feedback_profile)
     current_sources = {str(row.get("vid")) for row in current_sources_rows}
     decisions = _feedback_map(feedback)
+    resolved_families = {
+        str(entry.get("conceptFingerprint") or _concept_family(entry["item"]))
+        for entry in entries
+        if _feedback_valid(decisions.get(int(entry["n"])))
+        and (entry.get("conceptFingerprint") or _concept_family(entry["item"]))
+    }
     pending_entries = [
         entry for entry in entries
         if _current_entry(entry, current_sources)
         and not _feedback_valid(decisions.get(int(entry["n"])))
+        and (
+            not (entry.get("conceptFingerprint") or _concept_family(entry["item"]))
+            or str(entry.get("conceptFingerprint") or _concept_family(entry["item"])) not in resolved_families
+        )
     ]
     appended: list[dict] = []
     if len(pending_entries) < reserve_low_water:
         used_keys = {str(entry["ideaKey"]) for entry in entries}
         used_ids = {int(entry["n"]): str(entry["ideaKey"]) for entry in entries}
-        used_titles = {str(entry.get("titleFingerprint") or "") for entry in entries}
-        used_semantics = {str(entry.get("semanticFingerprint") or "") for entry in entries}
+        used_titles = {_title_fingerprint(_rehydrate_presentation(entry["item"]).get("title")) for entry in entries}
+        used_semantics = {_semantic_fingerprint(_rehydrate_presentation(entry["item"])) for entry in entries}
         for item, source in _v3_candidates(data, feedback_profile):
             idea_key = str(item["_ideaKey"])
             reco_id = int(item["n"])
             title_key = _title_fingerprint(item.get("title"))
             semantic_key = _semantic_fingerprint(item)
+            concept_family = _concept_family(item)
+            if concept_family and concept_family in resolved_families:
+                continue
             if idea_key in used_keys:
                 continue
             if reco_id in used_ids and used_ids[reco_id] != idea_key:
@@ -1264,7 +1409,7 @@ def sync_recommendation_reservoir(
     selected: list[dict] = []
     selected_titles: set[str] = set()
     for entry in pending_entries:
-        item = _apply_feedback(entry["item"], decisions.get(int(entry["n"])))
+        item = _apply_feedback(_rehydrate_presentation(entry["item"]), decisions.get(int(entry["n"])))
         title_key = _title_fingerprint(item.get("title"))
         if title_key in selected_titles:
             continue
@@ -1278,6 +1423,7 @@ def sync_recommendation_reservoir(
         "sourceT": source_t,
         "feedbackT": int(feedback.get("t") or 0),
         "version": GENERATOR_VERSION,
+        "titleRecipeVersion": TITLE_RECIPE_VERSION,
         "ledgerRevision": manifest["revision"],
         "ledger": {
             "total": len(entries),
@@ -1325,6 +1471,7 @@ def write_recommendation_pool(
         "sourceT": int(data.get("videoMetricsT") or 0),
         "feedbackT": 0,
         "version": GENERATOR_VERSION,
+        "titleRecipeVersion": TITLE_RECIPE_VERSION,
         "ledgerRevision": "",
         "ledger": {"total": len(items), "pending": len(items), "appended": len(items)},
         "sources": _selected_sources(data, items),

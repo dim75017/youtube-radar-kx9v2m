@@ -685,6 +685,7 @@ function recoSourceKey(row){
   if(row._variantSeedN!=null)return 'seed:'+String(row._variantSeedN);
   return '';
 }
+function recoGeneratedFamilyKey(row,key){return String(row&&row[key]||'').trim().toLocaleLowerCase().replace(/\s+/g,' ');}
 function recoClamp(value,min,max){return Math.max(min,Math.min(max,Number(value)||0));}
 function recoSourceRecencyBoost(row){
   const windowKey=String(row&&row._sourceWindow||'');
@@ -813,8 +814,18 @@ function dailyRecommendationSet(){
   if(cached&&cached.data===DATA&&cached.revision===revision&&cached.day===day&&cached.lang===lang&&cached.sources.every(row=>!isValidated(row.valid)&&!isRefused(row.valid)))return cached.rows;
   const history=recoRotationHistory(),profile=recoProfile();
   const hasSnapshot=typeof recommendationStatusSnapshot==='function';
-  const candidateSource=hasSnapshot?recommendationStatusSnapshot().pending:(DATA.recos||[]);
-  const candidates=candidateSource.filter(r=>!isValidated(r.valid)&&!isRefused(r.valid)&&(hasSnapshot||typeof recommendationRoadmapEntry!=='function'||!recommendationRoadmapEntry(r)));
+  const status=hasSnapshot?recommendationStatusSnapshot():null;
+  const candidateSource=status?status.pending:(DATA.recos||[]);
+  const blockedConceptFamilies=new Set(((DATA&&DATA.recos)||[]).filter(row=>{
+    if(!row)return false;
+    if(isValidated(row.valid)||isRefused(row.valid))return true;
+    return status
+      ?!!recommendationRoadmapEntryFromIndex(row,status.roadmap)
+      :(typeof recommendationRoadmapEntry==='function'&&!!recommendationRoadmapEntry(row));
+  }).map(row=>recoGeneratedFamilyKey(row,'_conceptFamily')).filter(Boolean));
+  const candidates=candidateSource
+    .filter(r=>!isValidated(r.valid)&&!isRefused(r.valid)&&(hasSnapshot||typeof recommendationRoadmapEntry!=='function'||!recommendationRoadmapEntry(r)))
+    .filter(r=>{const family=recoGeneratedFamilyKey(r,'_conceptFamily');return !family||!blockedConceptFamilies.has(family);});
   const decorate=rows=>rows.map(r=>{
     const dailyScore=recoDailyScore(r,profile,day);
     // The tier is the objective, evidence-calibrated market potential. Daily
@@ -829,42 +840,49 @@ function dailyRecommendationSet(){
     return Object.assign({},r,{scoreAdj:visibleScore,pot:evidencePotential,_dailyScore:dailyScore,_dailyPotential:recoPotentialForScore(dailyScore),_dailyReasons:recoReasons(r,profile,day),_dailyProfile:profile});
   });
   const todayIds=Array.isArray(history[day])?history[day]:[];
+  const hasStoredDailyQueue=Array.isArray(history[day]);
   // A previous version could preserve a larger queue after the daily target
   // was changed. Keep the stored queue stable, but never show more than the
   // current daily limit.
   const activeTodayIds=todayIds.slice(0,RECO_DAILY_LIMIT);
   if(activeTodayIds.length!==todayIds.length){history[day]=activeTodayIds;saveRecoRotation(history);}
-  // Keep every still-pending idea from today's queue, then replace only the
-  // cards that were validated, refused or placed in Roadmap. This preserves the
-  // reviewer's position while keeping the promised 50 active ideas whenever
-  // the measured quality reservoir is large enough.
-  const byId=new Map(candidates.map(r=>[Number(r.n),r]));
-  const retained=activeTodayIds.map(n=>byId.get(Number(n))).filter(Boolean);
-  const retainedIds=new Set(retained.map(r=>Number(r.n)));
-  const removedIds=activeTodayIds.filter(n=>!retainedIds.has(Number(n)));
-  if(removedIds.length)rememberRecoIds(history,removedIds);
+  // A daily queue is finite: decisions remove cards and reduce its counter.
+  // Only the explicit New ideas action may discard this queue and draw from
+  // the reserve. Checking the stored-array presence (rather than its length)
+  // also keeps a fully reviewed or initially empty queue at zero.
+  if(hasStoredDailyQueue){
+    const byId=new Map(candidates.map(r=>[Number(r.n),r]));
+    const retained=activeTodayIds.map(n=>byId.get(Number(n))).filter(Boolean);
+    const rows=decorate(retained);
+    if(typeof RECO_DAILY_CACHE!=='undefined')RECO_DAILY_CACHE={data:DATA,revision,day,lang,rows,sources:retained};
+    return rows;
+  }
   const seen=recoSeenIds(history);
-  const available=candidates.filter(r=>!retainedIds.has(Number(r.n))&&!seen.has(Number(r.n)))
+  const available=candidates.filter(r=>!seen.has(Number(r.n)))
     .map(r=>({r,score:recoDailyScore(r,profile,day)}))
     .filter(item=>item.score>=RECO_MIN_DAILY_SCORE);
-  const picked=retained.slice(),genres={},purposes={},sources={},combos={},settings={};
-  picked.forEach(r=>{
-    const g=recoGenreKey(r.genre,r),purpose=recoPurposeKey(r),source=recoSourceKey(r),combo=g+'|'+purpose,setting=String(r._settingKey||'');
-    genres[g]=(genres[g]||0)+1;purposes[purpose]=(purposes[purpose]||0)+1;combos[combo]=(combos[combo]||0)+1;if(source)sources[source]=(sources[source]||0)+1;if(setting)settings[setting]=(settings[setting]||0)+1;
-  });
+  const picked=[],genres={},purposes={},sources={},combos={},settings={},titleFamilies={};
+  let titleFamilyCap=1;
   while(picked.length<RECO_DAILY_LIMIT&&available.length){
-    const ranked=available.map(item=>{
-      const g=recoGenreKey(item.r.genre,item.r),purpose=recoPurposeKey(item.r),source=recoSourceKey(item.r),combo=g+'|'+purpose,setting=String(item.r._settingKey||'');
+    const eligible=available.filter(item=>{
+      const family=recoGeneratedFamilyKey(item.r,'_titleFamily');
+      return !family||(titleFamilies[family]||0)<titleFamilyCap;
+    });
+    // Prefer one title per family, then relax the cap only when the remaining
+    // measured pool cannot fill the batch. Small pools therefore stay intact.
+    if(!eligible.length){titleFamilyCap++;continue;}
+    const ranked=eligible.map(item=>{
+      const g=recoGenreKey(item.r.genre,item.r),purpose=recoPurposeKey(item.r),source=recoSourceKey(item.r),combo=g+'|'+purpose,setting=String(item.r._settingKey||''),titleFamily=recoGeneratedFamilyKey(item.r,'_titleFamily');
       // Exploit the learned winner first, then prevent a whole batch from
-      // becoming fifty near-identical takes on the same use or scenery.
-      const comboCount=combos[combo]||0,genreCount=genres[g]||0;
-      const diversity=(sources[source]||0)*10+(settings[setting]||0)*4+Math.max(0,comboCount-8)*2.5+Math.max(0,genreCount-24)*1.5+Math.max(0,(purposes[purpose]||0)-30)*.5;
+      // becoming near-identical takes on the same use, scenery or title frame.
+      const comboCount=combos[combo]||0,genreCount=genres[g]||0,titleFamilyCount=titleFamilies[titleFamily]||0;
+      const diversity=(sources[source]||0)*10+(settings[setting]||0)*4+titleFamilyCount*12+Math.max(0,comboCount-8)*2.5+Math.max(0,genreCount-24)*1.5+Math.max(0,(purposes[purpose]||0)-30)*.5;
       return {item,value:item.score-diversity};
     }).sort((a,b)=>b.value-a.value||a.item.r.n-b.item.r.n);
     if(!ranked.length)break;
     const selected=ranked[0].item,index=available.indexOf(selected);if(index>=0)available.splice(index,1);
-    const r=selected.r,g=recoGenreKey(r.genre,r),purpose=recoPurposeKey(r),source=recoSourceKey(r),combo=g+'|'+purpose,setting=String(r._settingKey||'');
-    picked.push(r);genres[g]=(genres[g]||0)+1;purposes[purpose]=(purposes[purpose]||0)+1;combos[combo]=(combos[combo]||0)+1;if(source)sources[source]=(sources[source]||0)+1;if(setting)settings[setting]=(settings[setting]||0)+1;
+    const r=selected.r,g=recoGenreKey(r.genre,r),purpose=recoPurposeKey(r),source=recoSourceKey(r),combo=g+'|'+purpose,setting=String(r._settingKey||''),titleFamily=recoGeneratedFamilyKey(r,'_titleFamily');
+    picked.push(r);genres[g]=(genres[g]||0)+1;purposes[purpose]=(purposes[purpose]||0)+1;combos[combo]=(combos[combo]||0)+1;if(source)sources[source]=(sources[source]||0)+1;if(setting)settings[setting]=(settings[setting]||0)+1;if(titleFamily)titleFamilies[titleFamily]=(titleFamilies[titleFamily]||0)+1;
   }
   history[day]=[...new Set(picked.map(r=>r.n))].slice(0,RECO_DAILY_LIMIT);
   if(recommendationPerformanceHistoryReady())history._profileReadyDay=day;else delete history._profileReadyDay;
@@ -888,6 +906,14 @@ function refreshDailyRecommendations(ev){
   if(typeof VIEW_CACHE!=='undefined')VIEW_CACHE.delete(viewCacheKey('recos'));
   rerenderRecos();
 }
+function finalizeDailyRecommendationHistoryProfile(history,day){
+  if(!history||!Array.isArray(history[day])||history._profileReadyDay===day)return false;
+  // Lazy performance data may update scores and explanations, never queue IDs.
+  // This also protects an explicit refresh and IDs resolved by a newer pool.
+  history._profileReadyDay=day;
+  saveRecoRotation(history);
+  return false;
+}
 function ensureRecommendationPerformanceHistory(){
   if(!DATA||RECO_HISTORY_PROMISE||typeof ensureVideoHistory!=='function')return;
   const ids=[...new Set((DATA.ours||[]).map(row=>row&&row.vid).filter(Boolean))];
@@ -897,9 +923,9 @@ function ensureRecommendationPerformanceHistory(){
     RECO_HISTORY_PROMISE=null;
     if(typeof _anaCache!=='undefined'){_anaCache=null;_anaT=0;}
     const day=recoDayKey(),history=recoRotationHistory();
-    // The first paint can happen before the lazy history shards arrive. Rebuild
-    // that provisional queue once so the visible batch truly uses velocity.
-    if(history[day]&&history._profileReadyDay!==day){delete history[day];history._profileReadyDay=day;saveRecoRotation(history);}
+    // The first paint can happen before the lazy history shards arrive. Keep
+    // the finite queue stable; only scores and explanations may now change.
+    finalizeDailyRecommendationHistoryProfile(history,day);
     invalidateRecommendationDerivedData();
     if(route==='recos')rerenderRecos();
   });

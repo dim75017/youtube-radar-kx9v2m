@@ -173,7 +173,8 @@ const generated = poolPayload.items || [];
 
 assert.equal(poolPayload.schema, 3, 'the checked-in recommendation browser projection must use schema V3');
 assert.equal(poolPayload.version, 3, 'the checked-in recommendation reservoir must use generator V3');
-assert.equal(generated.length, 2500, 'the bounded real browser projection must contain 2,500 ideas');
+assert.ok(generated.length >= 1000 && generated.length <= 2500,
+  'the real browser projection uses 2,500 as a maximum and never adds filler after resolved families are removed');
 assert.ok(poolPayload.ledger && Number(poolPayload.ledger.total) >= generated.length,
   'the append-only ledger must be larger than or equal to the bounded browser projection');
 assert.match(String(poolPayload.buildId || ''), /^[a-f0-9]{24}$/,

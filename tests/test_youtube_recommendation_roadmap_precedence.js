@@ -145,6 +145,7 @@ const context = {
   recoGenreKey: value => String(value || ''),
   recoPurposeKey: () => '',
   recoSourceKey: () => '',
+  recoGeneratedFamilyKey: (row, key) => String(row && row[key] || '').trim().toLowerCase(),
   recoReasons: () => [],
 };
 
