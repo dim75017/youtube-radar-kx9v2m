@@ -825,7 +825,7 @@ class DailyHistoryTests(unittest.TestCase):
             ):
                 client._classify(payload, client._ENDPOINT, video_id)
 
-    def test_watch_next_finds_modern_owner_notification_and_dedupes_exact_copies(self):
+    def test_watch_next_dedupes_only_request_specific_notification_tracking(self):
         video_id = "Pk7UDVYh2bs"
         client = radar.YouTubeWatchNextClient(retries=0)
         payload = self._next_payload(video_id)
@@ -902,6 +902,16 @@ class DailyHistoryTests(unittest.TestCase):
             },
         }
         secondary["subscribeButton"] = legacy_subscribe
+        notifications = client._notification_renderers(secondary)
+        self.assertEqual(len(notifications), 2)
+        for index, value in enumerate(notifications):
+            value["trackingParams"] = f"renderer-tracking-{index}"
+            button = value["actionButton"]["buttonRenderer"]
+            button["trackingParams"] = f"button-tracking-{index}"
+            button["text"] = {"simpleText": "Learn more"}
+            button["command"]["clickTrackingParams"] = (
+                f"click-tracking-{index}"
+            )
         self.assertTrue(client._classify(payload, client._ENDPOINT, video_id))
 
         contradiction = json.loads(json.dumps(payload))
@@ -914,6 +924,43 @@ class DailyHistoryTests(unittest.TestCase):
             radar.KidsDomProbeError, "contradictory"
         ):
             client._classify(contradiction, client._ENDPOINT, video_id)
+
+        url_contradiction = json.loads(json.dumps(payload))
+        url_secondary = url_contradiction["contents"][
+            "twoColumnWatchNextResults"
+        ]["results"]["results"]["contents"][1]["videoSecondaryInfoRenderer"]
+        url_renderer = client._notification_renderers(url_secondary)[1]
+        url_command = url_renderer["actionButton"]["buttonRenderer"][
+            "command"
+        ]
+        different_official_url = (
+            "https://support.google.com/youtube/answer/9632097"
+        )
+        url_command["urlEndpoint"]["url"] = different_official_url
+        url_command["commandMetadata"]["webCommandMetadata"][
+            "url"
+        ] = different_official_url
+        with self.assertRaisesRegex(
+            radar.KidsDomProbeError, "contradictory"
+        ):
+            client._classify(
+                url_contradiction, client._ENDPOINT, video_id
+            )
+
+        non_tracking_difference = json.loads(json.dumps(payload))
+        different_secondary = non_tracking_difference["contents"][
+            "twoColumnWatchNextResults"
+        ]["results"]["results"]["contents"][1]["videoSecondaryInfoRenderer"]
+        different = client._notification_renderers(different_secondary)[1]
+        different["actionButton"]["buttonRenderer"]["text"][
+            "simpleText"
+        ] = "Unexpected label"
+        with self.assertRaisesRegex(
+            radar.KidsDomProbeError, "contradictory"
+        ):
+            client._classify(
+                non_tracking_difference, client._ENDPOINT, video_id
+            )
 
     def test_watch_next_requires_single_primary_renderer_and_unambiguous_marker(self):
         video_id = "Pk7UDVYh2bs"

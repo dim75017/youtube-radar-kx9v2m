@@ -1095,6 +1095,19 @@ class YouTubeWatchNextClient:
             )
         return [renderer for _, renderer in notifications]
 
+    @classmethod
+    def _notification_without_tracking(cls, value: object) -> object:
+        """Remove only opaque request-specific tokens before deduplication."""
+        if type(value) is dict:
+            return {
+                key: cls._notification_without_tracking(child)
+                for key, child in value.items()
+                if key not in {"trackingParams", "clickTrackingParams"}
+            }
+        if type(value) is list:
+            return [cls._notification_without_tracking(child) for child in value]
+        return value
+
     @staticmethod
     def _path_matches(
         path: tuple[object, ...], pattern: tuple[object, ...]
@@ -1156,7 +1169,11 @@ class YouTubeWatchNextClient:
     def _notification_signals(cls, secondary_info: dict) -> tuple[bool, bool]:
         notifications = cls._notification_renderers(secondary_info)
         canonical = {
-            json.dumps(value, sort_keys=True, separators=(",", ":"))
+            json.dumps(
+                cls._notification_without_tracking(value),
+                sort_keys=True,
+                separators=(",", ":"),
+            )
             for value in notifications
         }
         if len(canonical) > 1:
