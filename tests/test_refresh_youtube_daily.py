@@ -331,7 +331,13 @@ class DailyHistoryTests(unittest.TestCase):
                     },
                 },
             }
-        secondary_info = {"owner": {"videoOwnerRenderer": {}}}
+        secondary_info = {
+            "owner": {
+                "videoOwnerRenderer": {
+                    "title": {"simpleText": "Owner"},
+                },
+            },
+        }
         if include_text or include_support:
             secondary_info["subscribeButton"] = {
                 "subscribeButtonRenderer": {
@@ -407,7 +413,11 @@ class DailyHistoryTests(unittest.TestCase):
                     "results": {
                         "results": {
                             "contents": [
-                                {"videoPrimaryInfoRenderer": {}},
+                                {
+                                    "videoPrimaryInfoRenderer": {
+                                        "title": {"simpleText": "Video title"},
+                                    },
+                                },
                                 {"videoSecondaryInfoRenderer": secondary_info},
                                 {
                                     "itemSectionRenderer": {
@@ -417,11 +427,14 @@ class DailyHistoryTests(unittest.TestCase):
                                     },
                                 },
                             ],
+                            "trackingParams": "primary-tracking",
                         },
                     },
                     "secondaryResults": {
                         "secondaryResults": {
                             "results": [{"compactVideoRenderer": {"videoId": "abcdefghijk"}}],
+                            "trackingParams": "secondary-tracking",
+                            "targetId": "watch-next-feed",
                         },
                     },
                 },
@@ -775,6 +788,180 @@ class DailyHistoryTests(unittest.TestCase):
                     video_id,
                 )
 
+    def test_watch_next_accepts_exact_relative_watch_url_with_optional_pp(self):
+        video_id = "Pk7UDVYh2bs"
+        client = radar.YouTubeWatchNextClient(retries=0)
+        for web_url in (
+            f"/watch?v={video_id}",
+            f"/watch?v={video_id}&pp=opaque_context",
+            f"/watch?pp=opaque_context&v={video_id}",
+        ):
+            payload = self._next_payload(video_id)
+            payload["currentVideoEndpoint"]["commandMetadata"][
+                "webCommandMetadata"
+            ]["url"] = web_url
+            with self.subTest(url=web_url):
+                self.assertTrue(client._classify(
+                    payload, client._ENDPOINT, video_id
+                ))
+
+        invalid_urls = (
+            f"https://www.youtube.com/watch?v={video_id}",
+            f"/watch?v={video_id}&pp=",
+            f"/watch?v={video_id}&pp=a&pp=b",
+            f"/watch?v={video_id}&feature=x",
+            f"/watch?v={video_id}&v={video_id}",
+            f"/watch?v=XVFUtEh9zrY&pp=opaque",
+            f"/watch;unexpected?v={video_id}",
+            f"/watch?v={video_id}#fragment",
+        )
+        for web_url in invalid_urls:
+            payload = self._next_payload(video_id)
+            payload["currentVideoEndpoint"]["commandMetadata"][
+                "webCommandMetadata"
+            ]["url"] = web_url
+            with self.subTest(url=web_url), self.assertRaisesRegex(
+                radar.KidsDomProbeError, "currentVideoEndpoint mismatch"
+            ):
+                client._classify(payload, client._ENDPOINT, video_id)
+
+    def test_watch_next_finds_modern_owner_notification_and_dedupes_exact_copies(self):
+        video_id = "Pk7UDVYh2bs"
+        client = radar.YouTubeWatchNextClient(retries=0)
+        payload = self._next_payload(video_id)
+        secondary = payload["contents"]["twoColumnWatchNextResults"]["results"][
+            "results"
+        ]["contents"][1]["videoSecondaryInfoRenderer"]
+        notification = client._notification_renderers(secondary)[0]
+        legacy_subscribe = json.loads(json.dumps(secondary["subscribeButton"]))
+        secondary.pop("subscribeButton")
+        secondary["owner"] = {
+            "videoOwnerRenderer": {
+                "title": {"simpleText": "Owner"},
+                "navigationEndpoint": {
+                    "showDialogCommand": {
+                        "panelLoadingStrategy": {
+                            "inlineContent": {
+                                "dialogViewModel": {
+                                    "customContent": {
+                                        "listViewModel": {
+                                            "listItems": [{
+                                                "listItemViewModel": {
+                                                    "trailingButtons": {
+                                                        "buttons": [{
+                                                            "subscribeButtonViewModel": {
+                                                                "onShowSubscriptionOptions": {
+                                                                    "innertubeCommand": {
+                                                                        "showSheetCommand": {
+                                                                            "panelLoadingStrategy": {
+                                                                                "inlineContent": {
+                                                                                    "sheetViewModel": {
+                                                                                        "content": {
+                                                                                            "listViewModel": {
+                                                                                                "listItems": [{
+                                                                                                    "listItemViewModel": {
+                                                                                                        "rendererContext": {
+                                                                                                            "commandContext": {
+                                                                                                                "onTap": {
+                                                                                                                    "innertubeCommand": {
+                                                                                                                        "signalServiceEndpoint": {
+                                                                                                                            "actions": [{
+                                                                                                                                "openPopupAction": {
+                                                                                                                                    "popup": {
+                                                                                                                                        "notificationActionRenderer": notification,
+                                                                                                                                    },
+                                                                                                                                },
+                                                                                                                            }],
+                                                                                                                        },
+                                                                                                                    },
+                                                                                                                },
+                                                                                                            },
+                                                                                                        },
+                                                                                                    },
+                                                                                                }],
+                                                                                            },
+                                                                                        },
+                                                                                    },
+                                                                                },
+                                                                            },
+                                                                        },
+                                                                    },
+                                                                },
+                                                            },
+                                                        }],
+                                                    },
+                                                },
+                                            }],
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        }
+        secondary["subscribeButton"] = legacy_subscribe
+        self.assertTrue(client._classify(payload, client._ENDPOINT, video_id))
+
+        contradiction = json.loads(json.dumps(payload))
+        conflicting_secondary = contradiction["contents"][
+            "twoColumnWatchNextResults"
+        ]["results"]["results"]["contents"][1]["videoSecondaryInfoRenderer"]
+        conflicting = client._notification_renderers(conflicting_secondary)[1]
+        conflicting["responseText"]["simpleText"] = "Different notification"
+        with self.assertRaisesRegex(
+            radar.KidsDomProbeError, "contradictory"
+        ):
+            client._classify(contradiction, client._ENDPOINT, video_id)
+
+    def test_watch_next_requires_single_primary_renderer_and_unambiguous_marker(self):
+        video_id = "Pk7UDVYh2bs"
+        client = radar.YouTubeWatchNextClient(retries=0)
+        missing_primary = self._next_payload(video_id)
+        contents = missing_primary["contents"]["twoColumnWatchNextResults"][
+            "results"
+        ]["results"]["contents"]
+        contents.pop(0)
+        with self.assertRaisesRegex(
+            radar.KidsDomProbeError, "videoPrimaryInfoRenderer"
+        ):
+            client._classify(missing_primary, client._ENDPOINT, video_id)
+
+        duplicate_primary = self._next_payload(video_id)
+        duplicate_primary["contents"]["twoColumnWatchNextResults"]["results"][
+            "results"
+        ]["contents"].append({"videoPrimaryInfoRenderer": {}})
+        with self.assertRaisesRegex(
+            radar.KidsDomProbeError, "videoPrimaryInfoRenderer"
+        ):
+            client._classify(duplicate_primary, client._ENDPOINT, video_id)
+
+        invalid_markers = (
+            "https://ytkids.app.goo.gl/other",
+            "https://ytkids.app.goo.gl/nou5?x=1",
+            "https://ytkids.app.goo.gl/nou5#fragment",
+            "https://youtube.com/myfamily/#mf-compare",
+            "https://www.youtube.com/myfamily/#other",
+            "https://www.youtube.com/myfamily/?x=1#mf-compare",
+        )
+        for marker_url in invalid_markers:
+            payload = self._next_payload(video_id, marker_url=marker_url)
+            with self.subTest(marker=marker_url), self.assertRaises(
+                radar.KidsDomProbeError
+            ):
+                client._classify(payload, client._ENDPOINT, video_id)
+
+        duplicate_carousel = self._next_payload(video_id)
+        primary = duplicate_carousel["contents"]["twoColumnWatchNextResults"][
+            "results"
+        ]["results"]["contents"]
+        primary.append(json.loads(json.dumps(primary[2])))
+        with self.assertRaisesRegex(
+            radar.KidsDomProbeError, "ambiguous metadata carousels"
+        ):
+            client._classify(duplicate_carousel, client._ENDPOINT, video_id)
+
     def test_watch_next_rejects_misplaced_kids_signals_and_incomplete_structure(self):
         video_id = "Pk7UDVYh2bs"
         client = radar.YouTubeWatchNextClient(retries=0)
@@ -791,6 +978,23 @@ class DailyHistoryTests(unittest.TestCase):
             radar.KidsDomProbeError, "misplaced=True"
         ):
             client._classify(misplaced, client._ENDPOINT, video_id)
+
+        misplaced_renderer = self._next_payload(video_id)
+        secondary_info = misplaced_renderer["contents"][
+            "twoColumnWatchNextResults"
+        ]["results"]["results"]["contents"][1]["videoSecondaryInfoRenderer"]
+        exact_notification = client._notification_renderers(secondary_info)[0]
+        secondary_info["arbitraryKey"] = {
+            "notificationActionRenderer": json.loads(
+                json.dumps(exact_notification)
+            ),
+        }
+        with self.assertRaisesRegex(
+            radar.KidsDomProbeError, "outside approved subscription paths"
+        ):
+            client._classify(
+                misplaced_renderer, client._ENDPOINT, video_id
+            )
 
         invalid = []
         wrong_endpoint = self._next_payload(
@@ -811,6 +1015,26 @@ class DailyHistoryTests(unittest.TestCase):
             "secondaryResults"
         ] = {}
         invalid.append(missing_secondary)
+        empty_secondary_feed = self._next_payload(
+            video_id,
+            include_text=False,
+            include_support=False,
+            include_marker=False,
+        )
+        empty_secondary_feed["contents"]["twoColumnWatchNextResults"][
+            "secondaryResults"
+        ]["secondaryResults"]["results"] = [{}]
+        invalid.append(empty_secondary_feed)
+        empty_secondary_info = self._next_payload(
+            video_id,
+            include_text=False,
+            include_support=False,
+            include_marker=False,
+        )
+        empty_secondary_info["contents"]["twoColumnWatchNextResults"][
+            "results"
+        ]["results"]["contents"][1]["videoSecondaryInfoRenderer"] = {}
+        invalid.append(empty_secondary_info)
         duplicate_info = self._next_payload(video_id)
         primary = duplicate_info["contents"]["twoColumnWatchNextResults"][
             "results"

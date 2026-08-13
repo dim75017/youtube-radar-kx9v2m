@@ -83,6 +83,7 @@ jobs:
       - name: Test Kids discovery, health and workflow contracts
         run: >-
           python -m unittest
+          tests.test_refresh_youtube_daily
           tests.test_youtube_kids_discovery
           tests.test_data_freshness_watchdog
           tests.test_youtube_workflow_guardrails

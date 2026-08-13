@@ -963,9 +963,33 @@ class YouTubeWatchNextClient:
             current, "commandMetadata", "webCommandMetadata"
         )
         watch = cls._mapping_at(current, "watchEndpoint")
+        web_url = web.get("url")
+        try:
+            web_parsed = urllib.parse.urlparse(web_url)
+            web_query = urllib.parse.parse_qsl(
+                web_parsed.query, keep_blank_values=True
+            )
+        except (TypeError, ValueError) as exc:
+            raise KidsPlayerIndeterminateError(
+                f"YouTube next has malformed currentVideoEndpoint URL for {video_id}"
+            ) from exc
+        query_keys = [key for key, _ in web_query]
+        web_video_values = [value for key, value in web_query if key == "v"]
+        web_url_ok = (
+            web_parsed.scheme == ""
+            and web_parsed.netloc == ""
+            and web_parsed.path == "/watch"
+            and web_parsed.params == ""
+            and web_parsed.fragment == ""
+            and web_video_values == [video_id]
+            and query_keys.count("v") == 1
+            and query_keys.count("pp") <= 1
+            and all(key in {"v", "pp"} for key in query_keys)
+            and all(value for key, value in web_query if key == "pp")
+        )
         if (
             watch.get("videoId") != video_id
-            or web.get("url") != f"/watch?v={video_id}"
+            or not web_url_ok
             or web.get("webPageType") != "WEB_PAGE_TYPE_WATCH"
         ):
             raise KidsPlayerIndeterminateError(
@@ -978,85 +1002,170 @@ class YouTubeWatchNextClient:
         primary = cls._list_at(
             two_column, "results", "results", "contents"
         )
-        secondary = cls._list_at(
+        primary_results = cls._mapping_at(two_column, "results", "results")
+        secondary_results = cls._mapping_at(
             two_column,
             "secondaryResults",
             "secondaryResults",
-            "results",
         )
-        if not primary or not secondary:
+        secondary = secondary_results.get("results")
+        secondary_renderer_names = {
+            "compactVideoRenderer",
+            "compactPlaylistRenderer",
+            "compactRadioRenderer",
+            "continuationItemRenderer",
+            "lockupViewModel",
+            "reelShelfRenderer",
+        }
+        secondary_is_complete = (
+            type(secondary) is list
+            and bool(secondary)
+            and isinstance(secondary_results.get("trackingParams"), str)
+            and bool(secondary_results.get("trackingParams"))
+            and secondary_results.get("targetId") == "watch-next-feed"
+            and all(
+                type(item) is dict
+                and len(item) == 1
+                and next(iter(item)) in secondary_renderer_names
+                and type(next(iter(item.values()))) is dict
+                and bool(next(iter(item.values())))
+                for item in secondary
+            )
+        )
+        if (
+            not primary
+            or not isinstance(primary_results.get("trackingParams"), str)
+            or not primary_results.get("trackingParams")
+            or not secondary_is_complete
+        ):
             raise KidsPlayerIndeterminateError(
                 f"YouTube next lacks complete primary/secondary content for {video_id}"
             )
+        primary_info = [
+            item.get("videoPrimaryInfoRenderer")
+            for item in primary
+            if type(item) is dict
+            and type(item.get("videoPrimaryInfoRenderer")) is dict
+        ]
         secondary_info = [
             item.get("videoSecondaryInfoRenderer")
             for item in primary
             if type(item) is dict
             and type(item.get("videoSecondaryInfoRenderer")) is dict
         ]
-        if len(secondary_info) != 1:
+        if len(primary_info) != 1 or len(secondary_info) != 1:
             raise KidsPlayerIndeterminateError(
-                f"YouTube next has {len(secondary_info)} videoSecondaryInfoRenderer "
-                f"objects for {video_id}"
+                f"YouTube next has {len(primary_info)} videoPrimaryInfoRenderer and "
+                f"{len(secondary_info)} videoSecondaryInfoRenderer objects for {video_id}"
+            )
+        owner = cls._mapping_at(
+            secondary_info[0], "owner", "videoOwnerRenderer"
+        )
+        if not primary_info[0] or not owner:
+            raise KidsPlayerIndeterminateError(
+                f"YouTube next has incomplete primary/secondary info for {video_id}"
             )
         return primary, secondary_info[0]
 
     @classmethod
     def _notification_renderers(cls, secondary_info: dict) -> list[dict]:
-        toggle = cls._mapping_at(
-            secondary_info,
-            "subscribeButton",
-            "subscribeButtonRenderer",
-            "notificationPreferenceButton",
-            "subscriptionNotificationToggleButtonRenderer",
-            "command",
-            "commandExecutorCommand",
-        )
-        commands = toggle.get("commands")
-        if type(commands) is not list:
-            return []
-        notifications = []
-        for command in commands:
-            menu = cls._mapping_at(
-                command,
-                "openPopupAction",
-                "popup",
-                "menuPopupRenderer",
+        notifications: list[tuple[tuple[object, ...], dict]] = []
+
+        def visit(value: object, path: tuple[object, ...] = ()) -> None:
+            if type(value) is dict:
+                for key, child in value.items():
+                    child_path = path + (key,)
+                    if key == "notificationActionRenderer" and type(child) is dict:
+                        notifications.append((child_path, child))
+                    visit(child, child_path)
+            elif type(value) is list:
+                for index, child in enumerate(value):
+                    visit(child, path + (index,))
+
+        visit(secondary_info)
+        misplaced = [
+            path
+            for path, _ in notifications
+            if not cls._is_allowed_notification_path(path)
+        ]
+        if misplaced:
+            raise KidsPlayerIndeterminateError(
+                "YouTube next has notificationActionRenderer outside approved "
+                f"subscription paths: {misplaced[0]!r}"
             )
-            items = menu.get("items")
-            if type(items) is not list:
-                continue
-            for item in items:
-                signal = cls._mapping_at(
-                    item,
-                    "menuServiceItemRenderer",
-                    "command",
-                    "signalServiceEndpoint",
-                )
-                actions = signal.get("actions")
-                if type(actions) is not list:
-                    continue
-                for action in actions:
-                    notification = cls._mapping_at(
-                        action,
-                        "openPopupAction",
-                        "popup",
-                        "notificationActionRenderer",
-                    )
-                    if notification:
-                        notifications.append(notification)
-        return notifications
+        return [renderer for _, renderer in notifications]
+
+    @staticmethod
+    def _path_matches(
+        path: tuple[object, ...], pattern: tuple[object, ...]
+    ) -> bool:
+        return len(path) == len(pattern) and all(
+            isinstance(actual, int) if expected is int else actual == expected
+            for actual, expected in zip(path, pattern)
+        )
+
+    @classmethod
+    def _is_allowed_notification_path(cls, path: tuple[object, ...]) -> bool:
+        legacy = (
+            "subscribeButton", "subscribeButtonRenderer",
+            "notificationPreferenceButton",
+            "subscriptionNotificationToggleButtonRenderer", "command",
+            "commandExecutorCommand", "commands", int,
+            "openPopupAction", "popup", "menuPopupRenderer", "items", int,
+            "menuServiceItemRenderer", "command", "signalServiceEndpoint",
+            "actions", int, "openPopupAction", "popup",
+            "notificationActionRenderer",
+        )
+        modern_tail = (
+            "panelLoadingStrategy", "inlineContent", "dialogViewModel",
+            "customContent", "listViewModel", "listItems", int,
+            "listItemViewModel", "trailingButtons", "buttons", int,
+            "subscribeButtonViewModel", "onShowSubscriptionOptions",
+            "innertubeCommand", "showSheetCommand", "panelLoadingStrategy",
+            "inlineContent", "sheetViewModel", "content", "listViewModel",
+            "listItems", int, "listItemViewModel", "rendererContext",
+            "commandContext", "onTap", "innertubeCommand",
+            "signalServiceEndpoint", "actions", int, "openPopupAction",
+            "popup", "notificationActionRenderer",
+        )
+        modern_prefixes = (
+            (
+                "owner", "videoOwnerRenderer", "navigationEndpoint",
+                "showDialogCommand",
+            ),
+            (
+                "owner", "videoOwnerRenderer", "attributedTitle",
+                "commandRuns", int, "onTap", "innertubeCommand",
+                "showDialogCommand",
+            ),
+            (
+                "subscribeButton", "subscribeButtonRenderer",
+                "onSubscribeEndpoints", int, "showDialogCommand",
+            ),
+            (
+                "subscribeButton", "subscribeButtonRenderer",
+                "onUnsubscribeEndpoints", int, "showDialogCommand",
+            ),
+        )
+        return cls._path_matches(path, legacy) or any(
+            cls._path_matches(path, prefix + modern_tail)
+            for prefix in modern_prefixes
+        )
 
     @classmethod
     def _notification_signals(cls, secondary_info: dict) -> tuple[bool, bool]:
         notifications = cls._notification_renderers(secondary_info)
-        if len(notifications) > 1:
+        canonical = {
+            json.dumps(value, sort_keys=True, separators=(",", ":"))
+            for value in notifications
+        }
+        if len(canonical) > 1:
             raise KidsPlayerIndeterminateError(
-                "YouTube next has ambiguous Kids notification renderers"
+                "YouTube next has contradictory Kids notification renderers"
             )
-        if not notifications:
+        if not canonical:
             return False, False
-        notification = notifications[0]
+        notification = json.loads(next(iter(canonical)))
         text = cls._mapping_at(notification, "responseText").get("simpleText")
         text_signal = text == cls._KIDS_NOTIFICATION_TEXT
         command = cls._mapping_at(
@@ -1088,6 +1197,7 @@ class YouTubeWatchNextClient:
                 if carousel:
                     carousels.append(carousel)
 
+        marker_urls = []
         for carousel in carousels:
             items = carousel.get("carouselItems")
             if type(items) is not list:
@@ -1122,10 +1232,41 @@ class YouTubeWatchNextClient:
                 if (
                     isinstance(endpoint_url, str)
                     and endpoint_url == button_url
-                    and is_kids_marker_href(endpoint_url)
                 ):
-                    return True
-        return False
+                    if cls._is_official_carousel_marker(endpoint_url):
+                        marker_urls.append(endpoint_url)
+        if len(carousels) > 1 or len(marker_urls) > 1:
+            raise KidsPlayerIndeterminateError(
+                "YouTube next has ambiguous metadata carousels or Kids markers"
+            )
+        return len(marker_urls) == 1
+
+    @staticmethod
+    def _is_official_carousel_marker(value: object) -> bool:
+        try:
+            parsed = urllib.parse.urlparse(str(value or ""))
+            port = parsed.port
+        except ValueError:
+            return False
+        host = (parsed.hostname or "").casefold()
+        if (
+            parsed.scheme != "https"
+            or parsed.username is not None
+            or parsed.password is not None
+            or port is not None
+        ):
+            return False
+        if host == "ytkids.app.goo.gl":
+            return parsed.path == "/nou5" and not (
+                parsed.params or parsed.query or parsed.fragment
+            )
+        return (
+            host == "www.youtube.com"
+            and parsed.path == "/myfamily/"
+            and not parsed.params
+            and not parsed.query
+            and parsed.fragment == "mf-compare"
+        )
 
     @staticmethod
     def _all_strings(value: object):
@@ -1161,7 +1302,7 @@ class YouTubeWatchNextClient:
             )
             or (
                 not marker_signal
-                and any(is_kids_marker_href(value) for value in strings)
+                and any(cls._is_official_carousel_marker(value) for value in strings)
             )
         )
         if signal_count == 0 and not misplaced:
