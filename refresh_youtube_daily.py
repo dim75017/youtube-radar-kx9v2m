@@ -13,6 +13,7 @@ import hashlib
 import http.client
 import io
 import json
+import math
 import os
 import re
 import shutil
@@ -25,7 +26,7 @@ import urllib.parse
 import urllib.request
 import urllib.error
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -56,11 +57,13 @@ MIN_KIDS_VIEWS = 100_000
 MIN_KIDS_VPM = 5_000
 SCAN_SCOPES = ("all", "standard", "kids")
 METADATA_SOURCE_YTDLP = "youtube_yt_dlp"
+METADATA_SOURCE_SHEET = "dashboard_sheet"
 METADATA_SOURCE_PRESERVED = "preserved_existing"
 METADATA_SOURCE_API = "youtube_data_api"
 METADATA_SOURCE_PRIORITY = {
     "": 0,
     METADATA_SOURCE_YTDLP: 1,
+    METADATA_SOURCE_SHEET: 1,
     METADATA_SOURCE_PRESERVED: 2,
     METADATA_SOURCE_API: 3,
 }
@@ -1672,13 +1675,110 @@ def sheet_cell_video_id(cell: object) -> str | None:
     return None
 
 
-def sheet_video_catalog() -> dict[str, set[str]]:
+def sheet_number(value: object) -> float | None:
+    """Mirror the dashboard Sheet parser for factual numeric metadata."""
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, (int, float)):
+        parsed = float(value)
+    else:
+        try:
+            parsed = float(re.sub(r"[,\s]", "", str(value)))
+        except (TypeError, ValueError):
+            return None
+    return parsed if math.isfinite(parsed) else None
+
+
+def sheet_date_ms(value: object, epoch: datetime) -> int | None:
+    """Convert an XLSX date exactly enough to match the browser's ``toMs``."""
+    if isinstance(value, bool) or value is None:
+        return None
+    parsed: datetime | None = None
+    if isinstance(value, datetime):
+        parsed = value
+    elif isinstance(value, date):
+        parsed = datetime(value.year, value.month, value.day)
+    elif isinstance(value, (int, float)):
+        if not math.isfinite(float(value)):
+            return None
+        parsed = epoch + timedelta(days=float(value))
+    else:
+        text = str(value).strip()
+        if not text:
+            return None
+        try:
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    stamp = int(round(parsed.timestamp() * 1000))
+    return stamp if stamp > 0 else None
+
+
+def canonical_ours_metadata_rows(
+    ours_ids: list[str] | set[str],
+    rows_by_id: dict[str, dict],
+) -> list[dict]:
+    """Return one explicit Sheet visibility record for every canonical ID."""
+    rows: list[dict] = []
+    for video_id in sorted(ours_ids):
+        source = rows_by_id.get(video_id)
+        if not isinstance(source, dict):
+            raise RuntimeError(
+                f"Canonical Our Videos metadata is missing for {video_id}"
+            )
+        pub = source.get("pub")
+        duration = source.get("durH")
+        if pub is not None and (
+            isinstance(pub, bool)
+            or not isinstance(pub, (int, float))
+            or not math.isfinite(float(pub))
+            or float(pub) <= 0
+        ):
+            raise RuntimeError(
+                f"Canonical Our Videos publication metadata is invalid for {video_id}"
+            )
+        if duration is not None and (
+            isinstance(duration, bool)
+            or not isinstance(duration, (int, float))
+            or not math.isfinite(float(duration))
+            or float(duration) < 0
+        ):
+            raise RuntimeError(
+                f"Canonical Our Videos duration metadata is invalid for {video_id}"
+            )
+        rows.append({
+            "vid": video_id,
+            "pub": int(pub) if pub is not None else None,
+            "durH": float(duration) if duration is not None else None,
+        })
+    return rows
+
+
+def canonical_ours_metadata_digest(rows: list[dict]) -> str:
+    rendered = json.dumps(
+        rows,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(rendered.encode("utf-8")).hexdigest()
+
+
+def sheet_video_catalog() -> dict[str, object]:
     """Load visible video IDs and the canonical Analyse cohort in one request."""
     try:
         from openpyxl import load_workbook
 
         with urllib.request.urlopen(SHEET_EXPORT, timeout=45) as response:
-            workbook = load_workbook(io.BytesIO(response.read()), read_only=True, data_only=False)
+            payload = response.read()
+        workbook = load_workbook(
+            io.BytesIO(payload), read_only=True, data_only=False
+        )
+        values_workbook = load_workbook(
+            io.BytesIO(payload), read_only=True, data_only=True
+        )
         titles = [
             name
             for name in workbook.sheetnames
@@ -1688,21 +1788,40 @@ def sheet_video_catalog() -> dict[str, set[str]]:
             raise RuntimeError("Our Videos tab is missing from the radar Sheet")
         ids: set[str] = set()
         ours_ids: set[str] = set()
+        ours_rows: dict[str, dict] = {}
         for title in titles:
-            max_col = 1 if "Our Videos" in title else 2
+            is_ours = "Our Videos" in title
+            max_col = 6 if is_ours else 2
+            value_rows = (
+                values_workbook[title].iter_rows(min_row=1, max_col=max_col)
+                if is_ours
+                else None
+            )
             for row in workbook[title].iter_rows(min_row=1, max_col=max_col):
-                for cell in row:
+                value_row = next(value_rows) if value_rows is not None else None
+                cells = row[:1] if is_ours else row
+                for cell in cells:
                     video_id = sheet_cell_video_id(cell)
                     if video_id:
                         ids.add(video_id)
-                        if "Our Videos" in title:
+                        if is_ours:
                             ours_ids.add(video_id)
+                            ours_rows[video_id] = {
+                                "vid": video_id,
+                                "pub": sheet_date_ms(
+                                    value_row[2].value,
+                                    values_workbook.epoch,
+                                ),
+                                "durH": sheet_number(value_row[5].value),
+                            }
                         break
         if not ids:
             raise RuntimeError("No dashboard video ID found in the radar Sheet")
         if not ours_ids:
             raise RuntimeError("Our Videos tab contains no valid video ID")
-        return {"all": ids, "ours": ours_ids}
+        if set(ours_rows) != ours_ids:
+            raise RuntimeError("Our Videos metadata coverage is incomplete")
+        return {"all": ids, "ours": ours_ids, "ours_rows": ours_rows}
     except Exception as exc:
         raise RuntimeError(
             f"Could not load the canonical dashboard video list: {type(exc).__name__}: {exc}"
@@ -1757,7 +1876,7 @@ def write_tracked_manifest(
     """Resolve the canonical tracked set once for every parallel scan shard."""
     payload = read_snapshot(snapshot)
     sheet_catalog = (
-        {"all": set(), "ours": set()}
+        {"all": set(), "ours": set(), "ours_rows": {}}
         if scan_scope == "kids"
         else sheet_video_catalog()
     )
@@ -1775,6 +1894,13 @@ def write_tracked_manifest(
     canonical_ours_digest = hashlib.sha256(
         "\n".join(canonical_ours_ids).encode("utf-8")
     ).hexdigest()
+    canonical_ours_metadata = canonical_ours_metadata_rows(
+        canonical_ours_ids,
+        sheet_catalog["ours_rows"],
+    )
+    canonical_ours_metadata_digest_value = canonical_ours_metadata_digest(
+        canonical_ours_metadata
+    )
     manifest = {
         "version": 2,
         "scan_scope": scan_scope,
@@ -1786,6 +1912,12 @@ def write_tracked_manifest(
         "ours_ids": canonical_ours_ids,
         "ours_total": len(canonical_ours_ids),
         "ours_digest": canonical_ours_digest,
+        # Publication date and duration are part of the browser's visibility
+        # predicate. Carry them through the one shared manifest so a public
+        # counter row cannot lose Sheet metadata in a no-API shard.
+        "ours_metadata": canonical_ours_metadata,
+        "ours_metadata_total": len(canonical_ours_metadata),
+        "ours_metadata_digest": canonical_ours_metadata_digest_value,
         "quarantine_ids": sorted(quarantine_ids),
     }
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -1812,7 +1944,7 @@ def read_tracked_manifest(path: Path, expected_scope: str | None = None) -> list
 def read_ours_manifest(
     path: Path,
     expected_scope: str | None = None,
-) -> tuple[list[str], bool, int, str]:
+) -> tuple[list[str], bool, int, str, dict[str, dict], int, str]:
     """Return canonical Our Videos IDs and whether the manifest proves coverage."""
     manifest = json.loads(path.read_text(encoding="utf-8"))
     manifest_scope = str(manifest.get("scan_scope") or "all")
@@ -1821,9 +1953,9 @@ def read_ours_manifest(
             f"Tracked-video manifest scope mismatch: expected {expected_scope}, got {manifest_scope}"
         )
     if manifest_scope == "kids":
-        return [], int(manifest.get("version") or 0) >= 2, 0, ""
+        return [], int(manifest.get("version") or 0) >= 2, 0, "", {}, 0, ""
     if int(manifest.get("version") or 0) < 2:
-        return [], False, 0, ""
+        return [], False, 0, "", {}, 0, ""
     ours_ids = [
         str(video_id)
         for video_id in (manifest.get("ours_ids") or [])
@@ -1837,7 +1969,48 @@ def read_ours_manifest(
     expected_digest = hashlib.sha256("\n".join(ours_ids).encode("utf-8")).hexdigest()
     if ours_total != len(ours_ids) or ours_digest != expected_digest:
         raise RuntimeError(f"Invalid canonical Our Videos proof in tracked manifest: {path}")
-    return ours_ids, True, ours_total, ours_digest
+    raw_metadata = manifest.get("ours_metadata") or []
+    if not isinstance(raw_metadata, list):
+        raise RuntimeError(
+            f"Invalid canonical Our Videos metadata proof in tracked manifest: {path}"
+        )
+    metadata_rows: list[dict] = []
+    metadata_by_id: dict[str, dict] = {}
+    for source in raw_metadata:
+        if not isinstance(source, dict):
+            raise RuntimeError(
+                f"Invalid canonical Our Videos metadata proof in tracked manifest: {path}"
+            )
+        video_id = str(source.get("vid") or "")
+        if not VIDEO_ID.fullmatch(video_id) or video_id in metadata_by_id:
+            raise RuntimeError(
+                f"Invalid canonical Our Videos metadata proof in tracked manifest: {path}"
+            )
+        normalized = canonical_ours_metadata_rows([video_id], {video_id: source})[0]
+        metadata_rows.append(normalized)
+        metadata_by_id[video_id] = normalized
+    metadata_rows.sort(key=lambda row: row["vid"])
+    metadata_total = int(manifest.get("ours_metadata_total") or 0)
+    metadata_digest = str(manifest.get("ours_metadata_digest") or "")
+    expected_metadata_digest = canonical_ours_metadata_digest(metadata_rows)
+    if (
+        set(metadata_by_id) != set(ours_ids)
+        or metadata_total != len(ours_ids)
+        or len(metadata_rows) != metadata_total
+        or metadata_digest != expected_metadata_digest
+    ):
+        raise RuntimeError(
+            f"Invalid canonical Our Videos metadata proof in tracked manifest: {path}"
+        )
+    return (
+        ours_ids,
+        True,
+        ours_total,
+        ours_digest,
+        metadata_by_id,
+        metadata_total,
+        metadata_digest,
+    )
 
 
 def read_quarantine_manifest(path: Path) -> list[str]:
@@ -1962,21 +2135,39 @@ def run_shard(
             canonical_ours_manifest,
             canonical_ours_total,
             canonical_ours_digest,
+            all_canonical_ours_metadata,
+            canonical_ours_metadata_total,
+            canonical_ours_metadata_digest_value,
         ) = read_ours_manifest(
             tracked_manifest, scan_scope
         )
     elif scan_scope == "kids":
         all_canonical_ours_ids, canonical_ours_manifest = [], True
         canonical_ours_total, canonical_ours_digest = 0, ""
+        all_canonical_ours_metadata = {}
+        canonical_ours_metadata_total = 0
+        canonical_ours_metadata_digest_value = ""
     else:
         # Collector mode without a shared manifest remains supported locally,
         # but still resolves the canonical Analyse cohort fail-closed.
-        all_canonical_ours_ids = sorted(sheet_video_catalog()["ours"])
+        sheet_catalog = sheet_video_catalog()
+        all_canonical_ours_ids = sorted(sheet_catalog["ours"])
         canonical_ours_manifest = True
         canonical_ours_total = len(all_canonical_ours_ids)
         canonical_ours_digest = hashlib.sha256(
             "\n".join(all_canonical_ours_ids).encode("utf-8")
         ).hexdigest()
+        metadata_rows = canonical_ours_metadata_rows(
+            all_canonical_ours_ids,
+            sheet_catalog["ours_rows"],
+        )
+        all_canonical_ours_metadata = {
+            row["vid"]: row for row in metadata_rows
+        }
+        canonical_ours_metadata_total = len(metadata_rows)
+        canonical_ours_metadata_digest_value = canonical_ours_metadata_digest(
+            metadata_rows
+        )
     all_quarantine_ids = (
         []
         if scan_scope == "kids"
@@ -1995,6 +2186,10 @@ def run_shard(
         video_id
         for video_id in all_canonical_ours_ids
         if stable_shard(video_id, shards) == shard
+    ]
+    canonical_ours_metadata = [
+        all_canonical_ours_metadata[video_id]
+        for video_id in canonical_ours_ids
     ]
     quarantine_ids = [
         video_id for video_id in all_quarantine_ids if stable_shard(video_id, shards) == shard
@@ -2152,6 +2347,9 @@ def run_shard(
         "canonical_ours_ids": canonical_ours_ids,
         "canonical_ours_total": canonical_ours_total,
         "canonical_ours_digest": canonical_ours_digest,
+        "canonical_ours_metadata": canonical_ours_metadata,
+        "canonical_ours_metadata_total": canonical_ours_metadata_total,
+        "canonical_ours_metadata_digest": canonical_ours_metadata_digest_value,
         "tracked_fresh_ids": tracked_fresh_ids,
         "tracked_failed_ids": tracked_failed_ids,
         "tracked_unavailable_ids": tracked_unavailable_ids,
@@ -2170,6 +2368,8 @@ def metadata_priority(row: dict, field: str | None = None) -> int:
     source = str(row.get("metadataSource") or "")
     if field == "pub":
         source = str(row.get("pubSource") or source)
+    elif field == "durH":
+        source = str(row.get("durationSource") or source)
     if not source and row.get("madeForKidsSource") == "youtube_data_api_status":
         source = METADATA_SOURCE_API
     return METADATA_SOURCE_PRIORITY.get(source, 0)
@@ -2200,6 +2400,10 @@ def update_row(existing: dict, fresh: dict, now_ms: int) -> None:
             existing[key] = fresh[key]
             if key == "pub" and fresh.get("pubSource"):
                 existing["pubSource"] = fresh["pubSource"]
+            elif key == "durH":
+                duration_source = fresh.get("durationSource") or fresh.get("metadataSource")
+                if duration_source:
+                    existing["durationSource"] = duration_source
     if fresh.get("metadataSource") and metadata_priority(fresh) >= metadata_priority(existing):
         existing["metadataSource"] = fresh["metadataSource"]
     for key in ("madeForKidsSource", "instrumentalVerified", "liveStatus"):
@@ -2233,6 +2437,18 @@ def merge_owned_metadata(existing: dict, discovered: dict) -> None:
     ):
         if existing.get(key) in (None, "") and discovered.get(key) not in (None, ""):
             existing[key] = discovered[key]
+
+
+def merge_sheet_ours_metadata(existing: dict, sheet_row: dict) -> None:
+    """Fill the same Our Videos fields that the browser retains from Sheet."""
+    published = sheet_row.get("pub")
+    if existing.get("pub") in (None, "") and isinstance(published, (int, float)):
+        existing["pub"] = int(published)
+        existing["pubSource"] = METADATA_SOURCE_SHEET
+    duration = sheet_row.get("durH")
+    if existing.get("durH") in (None, "") and isinstance(duration, (int, float)):
+        existing["durH"] = float(duration)
+        existing["durationSource"] = METADATA_SOURCE_SHEET
 
 
 def merge_discovery_fields(existing: dict, discovered: dict) -> None:
@@ -2451,9 +2667,12 @@ def is_analysis_card(row: dict) -> bool:
     if not isinstance(published, (int, float)) or published <= 0:
         return False
     duration = row.get("durH")
-    return duration is None or (
-        isinstance(duration, (int, float)) and float(duration) >= 0.15
-    )
+    # anaResolvedDurationHours() treats zero/invalid direct durations as
+    # unknown; an unknown duration remains visible. Only a known positive
+    # short-form duration is excluded.
+    if not isinstance(duration, (int, float)) or not math.isfinite(float(duration)):
+        return True
+    return float(duration) <= 0 or float(duration) >= 0.15
 
 
 def write_avatar_overlay(payload: dict, path: Path) -> int:
@@ -2846,6 +3065,68 @@ def merge_artifacts(
             raise RuntimeError(
                 "Merge rejected: canonical Our Videos cohort is truncated or inconsistent"
             )
+    canonical_ours_metadata: dict[str, dict] = {}
+    if canonical_ours_declared and scan_scope != "kids":
+        metadata_totals = {
+            int(artifact.get("canonical_ours_metadata_total") or 0)
+            for artifact in artifacts
+        }
+        metadata_digests = {
+            str(artifact.get("canonical_ours_metadata_digest") or "")
+            for artifact in artifacts
+        }
+        if (
+            len(metadata_totals) != 1
+            or len(metadata_digests) != 1
+            or not next(iter(metadata_digests), "")
+        ):
+            raise RuntimeError(
+                "Merge rejected: canonical Our Videos metadata proof differs across shards"
+            )
+        metadata_rows: list[dict] = []
+        for artifact in artifacts:
+            shard_ids = {
+                str(video_id)
+                for video_id in (artifact.get("canonical_ours_ids") or [])
+                if VIDEO_ID.fullmatch(str(video_id or ""))
+            }
+            shard_metadata_ids: set[str] = set()
+            for source in artifact.get("canonical_ours_metadata") or []:
+                if not isinstance(source, dict):
+                    raise RuntimeError(
+                        "Merge rejected: canonical Our Videos metadata is invalid"
+                    )
+                video_id = str(source.get("vid") or "")
+                if (
+                    not VIDEO_ID.fullmatch(video_id)
+                    or video_id in shard_metadata_ids
+                    or video_id in canonical_ours_metadata
+                ):
+                    raise RuntimeError(
+                        "Merge rejected: canonical Our Videos metadata contains duplicates"
+                    )
+                normalized = canonical_ours_metadata_rows(
+                    [video_id], {video_id: source}
+                )[0]
+                shard_metadata_ids.add(video_id)
+                canonical_ours_metadata[video_id] = normalized
+                metadata_rows.append(normalized)
+            if shard_metadata_ids != shard_ids:
+                raise RuntimeError(
+                    "Merge rejected: canonical Our Videos metadata shard is truncated"
+                )
+        metadata_rows.sort(key=lambda row: row["vid"])
+        metadata_total = next(iter(metadata_totals))
+        metadata_digest = next(iter(metadata_digests))
+        if (
+            set(canonical_ours_metadata) != canonical_ours_ids
+            or len(metadata_rows) != metadata_total
+            or metadata_total != canonical_ours_total
+            or canonical_ours_metadata_digest(metadata_rows) != metadata_digest
+        ):
+            raise RuntimeError(
+                "Merge rejected: canonical Our Videos metadata is truncated or inconsistent"
+            )
 
     previous_unavailable_ids = {
         str(video_id)
@@ -2956,6 +3237,10 @@ def merge_artifacts(
             data["ours"].append(current)
             by_ours[video_id] = current
             inserted_ours += 1
+        # Match Object.assign(Sheet row, snapshot row) in the client: Sheet
+        # publication/duration metadata exists before the fresh counter row is
+        # applied, and remains when a no-API collector omitted those fields.
+        merge_sheet_ours_metadata(current, canonical_ours_metadata[video_id])
         authoritative = fresh.get(video_id)
         if authoritative:
             update_row(current, authoritative, now_ms)

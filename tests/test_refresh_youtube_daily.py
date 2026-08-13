@@ -1050,6 +1050,11 @@ class DailyHistoryTests(unittest.TestCase):
             })
             manifest = root / "tracked.json"
             ours_digest = radar.hashlib.sha256(b"abcdefghijk").hexdigest()
+            ours_metadata = [{
+                "vid": "abcdefghijk",
+                "pub": 1_700_000_000_000,
+                "durH": 1.0,
+            }]
             manifest.write_text(
                 json.dumps({
                     "version": 2,
@@ -1058,6 +1063,11 @@ class DailyHistoryTests(unittest.TestCase):
                     "ours_ids": ["abcdefghijk"],
                     "ours_total": 1,
                     "ours_digest": ours_digest,
+                    "ours_metadata": ours_metadata,
+                    "ours_metadata_total": 1,
+                    "ours_metadata_digest": radar.canonical_ours_metadata_digest(
+                        ours_metadata
+                    ),
                     "quarantine_ids": [],
                 }),
                 encoding="utf-8",
@@ -1158,6 +1168,8 @@ class DailyHistoryTests(unittest.TestCase):
         news["B2"] = '=HYPERLINK("https://www.youtube.com/shorts/mnopqrstuvw","News")'
         ours = workbook.create_sheet("Our Videos")
         ours["A2"] = "12345678901"
+        ours["C2"] = datetime(2026, 8, 13)
+        ours["F2"] = 0.125
         payload = io.BytesIO()
         workbook.save(payload)
         payload.seek(0)
@@ -1177,6 +1189,14 @@ class DailyHistoryTests(unittest.TestCase):
             {"abcdefghijk", "zyxwvutsrqp", "mnopqrstuvw", "12345678901"},
         )
         self.assertEqual(catalog["ours"], {"12345678901"})
+        self.assertEqual(
+            catalog["ours_rows"]["12345678901"],
+            {
+                "vid": "12345678901",
+                "pub": int(datetime(2026, 8, 13, tzinfo=timezone.utc).timestamp() * 1000),
+                "durH": 0.125,
+            },
+        )
 
     def test_one_canonical_manifest_is_reused_by_all_shards(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1187,7 +1207,17 @@ class DailyHistoryTests(unittest.TestCase):
             with patch.object(
                 radar,
                 "sheet_video_catalog",
-                return_value={"all": {"abcdefghijk", "zyxwvutsrqp"}, "ours": {"abcdefghijk"}},
+                return_value={
+                    "all": {"abcdefghijk", "zyxwvutsrqp"},
+                    "ours": {"abcdefghijk"},
+                    "ours_rows": {
+                        "abcdefghijk": {
+                            "vid": "abcdefghijk",
+                            "pub": 1_700_000_000_000,
+                            "durH": 1.0,
+                        },
+                    },
+                },
             ), patch.object(radar, "tracked_ids", return_value=["abcdefghijk", "zyxwvutsrqp"]) as tracked:
                 manifest = radar.write_tracked_manifest(snapshot, manifest_path)
             loaded = radar.read_tracked_manifest(manifest_path)
@@ -1195,6 +1225,8 @@ class DailyHistoryTests(unittest.TestCase):
         self.assertEqual(manifest["ids"], ["abcdefghijk", "zyxwvutsrqp"])
         self.assertEqual(manifest["ours_ids"], ["abcdefghijk"])
         self.assertEqual(manifest["ours_total"], 1)
+        self.assertEqual(manifest["ours_metadata_total"], 1)
+        self.assertEqual(manifest["ours_metadata"][0]["durH"], 1.0)
         self.assertEqual(loaded, ["abcdefghijk", "zyxwvutsrqp"])
 
     def test_publicly_unavailable_ids_are_quarantined_but_kept_as_recovery_probes(self):
@@ -1218,6 +1250,18 @@ class DailyHistoryTests(unittest.TestCase):
                 return_value={
                     "all": {"abcdefghijk", "zyxwvutsrqp"},
                     "ours": {"abcdefghijk", "zyxwvutsrqp"},
+                    "ours_rows": {
+                        "abcdefghijk": {
+                            "vid": "abcdefghijk",
+                            "pub": 1_700_000_000_000,
+                            "durH": 1.0,
+                        },
+                        "zyxwvutsrqp": {
+                            "vid": "zyxwvutsrqp",
+                            "pub": 1_700_000_100_000,
+                            "durH": 2.0,
+                        },
+                    },
                 },
             ):
                 manifest = radar.write_tracked_manifest(snapshot, manifest_path)
@@ -1228,6 +1272,32 @@ class DailyHistoryTests(unittest.TestCase):
         self.assertEqual(manifest["ours_total"], 2)
         self.assertEqual(active, ["zyxwvutsrqp"])
         self.assertEqual(probes, ["abcdefghijk"])
+
+    def test_canonical_manifest_rejects_truncated_sheet_metadata(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "tracked.json"
+            ids = ["abcdefghijk", "zyxwvutsrqp"]
+            metadata = [
+                {"vid": ids[0], "pub": 1_700_000_000_000, "durH": 0.01},
+                {"vid": ids[1], "pub": 1_700_000_100_000, "durH": 1.0},
+            ]
+            path.write_text(json.dumps({
+                "version": 2,
+                "scan_scope": "standard",
+                "ids": ids,
+                "ours_ids": ids,
+                "ours_total": 2,
+                "ours_digest": radar.hashlib.sha256(
+                    "\n".join(ids).encode("utf-8")
+                ).hexdigest(),
+                "ours_metadata": metadata[:1],
+                "ours_metadata_total": 2,
+                "ours_metadata_digest": radar.canonical_ours_metadata_digest(
+                    metadata
+                ),
+            }), encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "metadata proof"):
+                radar.read_ours_manifest(path, "standard")
 
     def test_missing_subscriber_count_does_not_become_zero(self):
         now = int(datetime(2026, 7, 20, 8, tzinfo=timezone.utc).timestamp() * 1000)
@@ -1354,6 +1424,31 @@ class DailyHistoryTests(unittest.TestCase):
         valid["all"][0]["vpm"] = 0
         with self.assertRaisesRegex(RuntimeError, "vpm"):
             radar.validate_card_refresh(valid, fresh, {"abcdefghijk"}, now)
+
+    def test_sheet_duration_is_a_fallback_and_api_duration_remains_authoritative(self):
+        now = int(datetime(2026, 8, 13, 8, tzinfo=timezone.utc).timestamp() * 1000)
+        pub = 1_700_000_000_000
+        sheet = {"vid": "abcdefghijk", "pub": pub, "durH": 0.01}
+
+        fallback = {"vid": "abcdefghijk"}
+        radar.merge_sheet_ours_metadata(fallback, sheet)
+        radar.update_row(fallback, {
+            "vid": "abcdefghijk", "views": 100, "pub": pub,
+            "metadataSource": radar.METADATA_SOURCE_YTDLP,
+            "pubSource": radar.METADATA_SOURCE_YTDLP,
+        }, now)
+        self.assertEqual(fallback["durH"], 0.01)
+        self.assertEqual(fallback["durationSource"], radar.METADATA_SOURCE_SHEET)
+
+        authoritative = {"vid": "abcdefghijk"}
+        radar.merge_sheet_ours_metadata(authoritative, sheet)
+        radar.update_row(authoritative, {
+            "vid": "abcdefghijk", "views": 100, "pub": pub, "durH": 1.0,
+            "metadataSource": radar.METADATA_SOURCE_API,
+            "pubSource": radar.METADATA_SOURCE_API,
+        }, now)
+        self.assertEqual(authoritative["durH"], 1.0)
+        self.assertEqual(authoritative["durationSource"], radar.METADATA_SOURCE_API)
 
     def test_official_upload_lookup_uses_the_channel_uploads_playlist(self):
         responses = iter([
@@ -1502,6 +1597,11 @@ class DailyHistoryTests(unittest.TestCase):
                 "metadataSource": radar.METADATA_SOURCE_API,
                 "pubSource": radar.METADATA_SOURCE_API,
             } for index, video_id in enumerate(ids)]
+            sheet_metadata = [{
+                "vid": video_id,
+                "pub": 1_700_000_000_000 + index,
+                "durH": 1.0,
+            } for index, video_id in enumerate(ids)]
             artifact = {
                 "version": 1, "scan_scope": "standard", "generated_ms": generated,
                 "shard": 0, "shards": 1, "tracked_total": 83, "tracked_ok": 83,
@@ -1514,6 +1614,11 @@ class DailyHistoryTests(unittest.TestCase):
                 "canonical_ours_ids": ids,
                 "canonical_ours_total": 83,
                 "canonical_ours_digest": digest,
+                "canonical_ours_metadata": sheet_metadata,
+                "canonical_ours_metadata_total": 83,
+                "canonical_ours_metadata_digest": radar.canonical_ours_metadata_digest(
+                    sheet_metadata
+                ),
             }
             (shards / "youtube-shard-0.json").write_text(json.dumps(artifact), encoding="utf-8")
             summary = radar.merge_artifacts(
@@ -1549,6 +1654,11 @@ class DailyHistoryTests(unittest.TestCase):
             digest = radar.hashlib.sha256(
                 "\n".join(sorted(sheet_ids)).encode("utf-8")
             ).hexdigest()
+            sheet_metadata = [{
+                "vid": video_id,
+                "pub": 1_700_000_000_000 + index,
+                "durH": 0.01 if index < 7 else 1.0,
+            } for index, video_id in enumerate(sorted(sheet_ids))]
             # Mirrors production: 79 unique Sheet rows, seven short rows hidden
             # by Analyse, plus twelve ordinary snapshot-only rows of which one
             # is short. Two more rows prove the final public exclusions: a
@@ -1572,7 +1682,6 @@ class DailyHistoryTests(unittest.TestCase):
                     "title": f"Sheet {index}",
                     "views": 100_000 + index,
                     "pub": 1_700_000_000_000 + index,
-                    "durH": 0.01 if index < 7 else 1.0,
                     "metadataSource": radar.METADATA_SOURCE_API,
                     "pubSource": radar.METADATA_SOURCE_API,
                 })
@@ -1607,6 +1716,11 @@ class DailyHistoryTests(unittest.TestCase):
                 "canonical_ours_ids": sorted(sheet_ids),
                 "canonical_ours_total": 79,
                 "canonical_ours_digest": digest,
+                "canonical_ours_metadata": sheet_metadata,
+                "canonical_ours_metadata_total": 79,
+                "canonical_ours_metadata_digest": radar.canonical_ours_metadata_digest(
+                    sheet_metadata
+                ),
             }
             (shards / "youtube-shard-0.json").write_text(json.dumps(artifact), encoding="utf-8")
             summary = radar.merge_artifacts(
@@ -1627,6 +1741,62 @@ class DailyHistoryTests(unittest.TestCase):
         self.assertEqual(summary["sheet_ours_updated"], 79)
         self.assertEqual(summary["analysis_rows_expected"], 83)
         self.assertEqual(summary["analysis_rows_updated"], 83)
+        by_id = {row["vid"]: row for row in merged["d"]["ours"]}
+        self.assertEqual(by_id[sheet_ids[0]]["durH"], 0.01)
+        self.assertEqual(by_id[sheet_ids[7]]["durH"], 1.0)
+
+    def test_canonical_sheet_metadata_proof_rejects_a_truncated_shard(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "Lofi_Radar_data.js"
+            avatars = root / "avatars.js"
+            shards = root / "shards"
+            shards.mkdir()
+            generated = int(datetime(2026, 8, 13, 8, tzinfo=timezone.utc).timestamp() * 1000)
+            ids = ["abcdefghijk", "zyxwvutsrqp"]
+            digest = radar.hashlib.sha256("\n".join(ids).encode("utf-8")).hexdigest()
+            complete_metadata = [
+                {"vid": ids[0], "pub": 1_700_000_000_000, "durH": 0.01},
+                {"vid": ids[1], "pub": 1_700_000_100_000, "durH": 1.0},
+            ]
+            radar.write_snapshot(snapshot, {"d": {
+                "all": [], "trends": [], "news": [], "kids": [], "ours": [],
+                "recos": [], "roadmap": [], "lives": [],
+            }})
+            fresh = [{
+                "vid": video_id,
+                "views": 100_000 + index,
+                "pub": 1_700_000_000_000 + index,
+                "metadataSource": radar.METADATA_SOURCE_API,
+                "pubSource": radar.METADATA_SOURCE_API,
+            } for index, video_id in enumerate(ids)]
+            artifact = {
+                "version": 1, "scan_scope": "standard", "generated_ms": generated,
+                "shard": 0, "shards": 1, "tracked_total": 2, "tracked_ok": 2,
+                "tracked_ids": ids, "tracked_fresh_ids": ids,
+                "tracked_failed_ids": [], "tracked_unavailable_ids": [],
+                "tracked_recovered_ids": [], "queries_total": 0, "queries_ok": 0,
+                "queries_raw": 0, "queries_enriched": 0, "owned_ok": True,
+                "fresh": fresh, "owned_fresh": [], "candidates": [],
+                "canonical_ours_manifest": True,
+                "canonical_ours_ids": ids,
+                "canonical_ours_total": 2,
+                "canonical_ours_digest": digest,
+                "canonical_ours_metadata": complete_metadata[:1],
+                "canonical_ours_metadata_total": 2,
+                "canonical_ours_metadata_digest": radar.canonical_ours_metadata_digest(
+                    complete_metadata
+                ),
+            }
+            (shards / "youtube-shard-0.json").write_text(
+                json.dumps(artifact), encoding="utf-8"
+            )
+            with self.assertRaisesRegex(RuntimeError, "metadata shard is truncated"):
+                radar.merge_artifacts(
+                    snapshot, avatars, shards, 1,
+                    generate_recommendations=False,
+                    scan_scope="standard",
+                )
 
     def test_canonical_sheet_owned_proof_rejects_a_truncated_shard_union(self):
         with tempfile.TemporaryDirectory() as tmp:
