@@ -55,7 +55,8 @@ requireText(helpers,"LS.audience=audience;LS.limit=60",'live limit reset');
 requireText(helpers,'aria-pressed="','audience switch accessibility');
 requireText(keywords,'add(DATA.all);add(DATA.trends);add(DATA.news);add(DATA.kids);','Kids bucket');
 requireText(config,"audiences:/\\bkids?\\b/i.test(str(cv(ws,r,6)))?['kids']:undefined",'live audience column');
-requireText(helpers,"const liveById=new Map((snap.lives||[]).concat((liveBootstrap&&liveBootstrap.lives)||[]).map",'live official status merge');
+requireText(helpers,"mergeLiveCatalogueRows(d,snap.lives||[])",'live snapshot catalogue merge');
+requireText(helpers,"mergeLiveCatalogueRows(d,(liveBootstrap&&liveBootstrap.lives)||[])",'live official status merge');
 requireText(css,'.audience-switch{display:flex;flex:0 0 auto;white-space:nowrap','responsive switch');
 requireText(recos,"['No active Kids livestreams match this view.','Aucun livestream Kids actif ne correspond à cette vue.']",'Kids empty-state translation');
 

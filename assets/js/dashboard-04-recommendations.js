@@ -2461,6 +2461,7 @@ function fillLikes(){
 function likeTag(vid){return vid?'<span class="tag ghost" style="display:none" data-likes="'+vid+'"></span>':'';}
 const LIVE_SNAPSHOT_CACHE=new Map();
 let LIVE_SNAPSHOT_DATA=null;
+function invalidateLiveSnapshotCache(){LIVE_SNAPSHOT_CACHE.clear();LIVE_SNAPSHOT_DATA=null;}
 function liveSnapshot(vid){
   if(LIVE_SNAPSHOT_DATA!==DATA){LIVE_SNAPSHOT_CACHE.clear();LIVE_SNAPSHOT_DATA=DATA;}
   if(LIVE_SNAPSHOT_CACHE.has(vid))return LIVE_SNAPSHOT_CACHE.get(vid);
@@ -2476,13 +2477,20 @@ function liveSnapshot(vid){
   if(historyLast&&Number.isFinite(Number(historyLast[0]))&&Number.isFinite(Number(historyLast[1])))latest=historyLast;
   if(hourlyLast&&Number.isFinite(Number(hourlyLast[0]))&&Number.isFinite(Number(hourlyLast[1]))&&(!latest||Number(hourlyLast[0])>Number(latest[0])))latest=hourlyLast;
   const compactT=Number(compact&&compact.latestT),compactNow=Number(compact&&compact.now);
-  const compactOnly=!history.length&&!hourly.length&&Number.isFinite(compactT)&&Number.isFinite(compactNow);
-  if(compactOnly)latest=[compactT,compactNow];
+  const compactValid=!!compact&&compact.latestT!=null&&compact.now!=null&&Number.isFinite(compactT)&&Number.isFinite(compactNow);
+  // The compact point replaces a Sheet tail only when it is genuinely newer.
+  // Equal timestamps keep the normal 3h history freshness semantics.
+  const compactWins=compactValid&&(!latest||compactT>Number(latest[0]));
+  if(compactWins)latest=[compactT,compactNow];
+  const compactPeak=key=>{
+    if(!compactWins||!Object.prototype.hasOwnProperty.call(compact,key))return undefined;
+    if(compact[key]==null)return null;
+    const value=Number(compact[key]);return Number.isFinite(value)?value:null;
+  };
   const snapshot={
     series:null,now:latest?Number(latest[1]):null,latestT:latest?Number(latest[0]):null,
-    peakAll:compactOnly&&Number.isFinite(Number(compact.peakAll))?Number(compact.peakAll):undefined,
-    peak24:compactOnly&&Number.isFinite(Number(compact.peak24))?Number(compact.peak24):undefined,
-    bootstrap:compactOnly,activeAtSource:compactOnly&&compact.active===true
+    peakAll:compactPeak('peakAll'),peak24:compactPeak('peak24'),
+    bootstrap:compactWins,activeAtSource:compactWins&&compact.active===true
   };
   LIVE_SNAPSHOT_CACHE.set(vid,snapshot);
   return snapshot;
@@ -2523,11 +2531,11 @@ const LIVE_ACTIVE_FRESHNESS_MS=3*3600000;
 const LIVE_BOOTSTRAP_FRESHNESS_MS=18*3600000;
 function liveIsActive(v){
   const snapshot=liveSnapshot(v&&v.vid);
-  if(!(snapshot.now>0&&snapshot.latestT!=null))return false;
+  if(snapshot.latestT==null)return false;
   const age=Date.now()-snapshot.latestT;
   return snapshot.bootstrap
-    ? snapshot.activeAtSource&&age<=LIVE_BOOTSTRAP_FRESHNESS_MS
-    : age<=LIVE_ACTIVE_FRESHNESS_MS;
+    ? snapshot.now>=0&&snapshot.activeAtSource&&age<=LIVE_BOOTSTRAP_FRESHNESS_MS
+    : snapshot.now>0&&age<=LIVE_ACTIVE_FRESHNESS_MS;
 }
 function activeLives(){return (DATA.lives||[]).filter(liveIsActive);}
 function isOurs(ch){return /lofi girl|lofi records/i.test(ch||'');}

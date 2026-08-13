@@ -196,7 +196,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install live bootstrap dependency
-        run: pip install --disable-pip-version-check openpyxl
+        run: pip install --disable-pip-version-check yt-dlp==2026.7.4 openpyxl
       - uses: actions/download-artifact@v4
         with:
           pattern: youtube-shard-*
@@ -219,6 +219,7 @@ jobs:
           --scheduled-check
           --fail-if-due
       - name: Refresh compact livestream first-paint snapshot
+        id: live_snapshot
         continue-on-error: true
         run: >-
           python refresh_youtube_live_snapshot.py
@@ -256,3 +257,8 @@ jobs:
           --verify-base-url https://dim75017.github.io/youtube-radar-kx9v2m/
           --verify-timeout 900
           --verify-interval 15
+      - name: Report incomplete official livestream discovery
+        if: always() && steps.live_snapshot.outcome != 'success'
+        run: |
+          echo "Official livestream discovery failed; the prior live asset was preserved."
+          exit 1

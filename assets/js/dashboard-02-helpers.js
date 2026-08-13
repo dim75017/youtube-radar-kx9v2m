@@ -559,34 +559,49 @@ async function fetchData(){
   if(!d.all.length&&!d.trends.length)throw new Error('Parsed 0 rows — sheet structure may have changed');
   return d;
 }
+function mergeLiveCatalogueRows(d,rows){
+  if(!d)return [];
+  const into=d.lives||(d.lives=[]),byId=new Map(into.map(row=>[String(row&&row.vid||''),row]));
+  (rows||[]).forEach(source=>{
+    const vid=String(source&&source.vid||'');if(!vid)return;
+    const current=byId.get(vid);
+    if(!current){const added=Object.assign({},source);into.push(added);byId.set(vid,added);return;}
+    ['madeForKids','audiences','channelId','chUrl','subs','liveStatus','source'].forEach(key=>{
+      if(source[key]===undefined||source[key]===null)return;
+      current[key]=Array.isArray(source[key])?source[key].slice():source[key];
+    });
+  });
+  return into;
+}
 /* The Sheet keeps the curated catalogue and older history. The validated
    daily snapshot supplies current counters, new discoveries and new history
-   points. Merge video rows by ID and only the official audience flag for lives. */
+   points. Official /streams rows are unioned by ID so a new Lofi Girl radio
+   cannot disappear merely because keyword discovery has not found it yet. */
 function mergeExtensionSnapshot(d){
-  const snap=window.LOFI_DATA&&window.LOFI_DATA.d;if(!snap)return;
-  removeUnavailableVideoRows(d);
-  ['all','trends','news','ours','kids'].forEach(key=>{
-    const into=d[key]||(d[key]=[]),byId=new Map(into.map(r=>[r.vid,r]));
-    const unavailable=unavailableVideoIds();
-    (snap[key]||[]).filter(row=>!unavailable.has(String(row&&row.vid||''))).forEach(row=>{
-      const current=byId.get(row.vid);
-      if(current)Object.assign(current,row);
-      else{const added=Object.assign({},row);into.push(added);byId.set(row.vid,added);}
-    });
-    into.sort((a,b)=>key==='ours'?(b.pub||0)-(a.pub||0):(b.vpm||0)-(a.vpm||0));
-  });
+  const snap=window.LOFI_DATA&&window.LOFI_DATA.d;
   const liveBootstrap=window.LOFI_LIVE_DATA&&window.LOFI_LIVE_DATA.d;
-  const liveById=new Map((snap.lives||[]).concat((liveBootstrap&&liveBootstrap.lives)||[]).map(row=>[String(row&&row.vid||''),row]));
-  (d.lives||[]).forEach(row=>{
-    const meta=liveById.get(String(row&&row.vid||''));if(!meta)return;
-    if(meta.madeForKids===true||meta.madeForKids===false)row.madeForKids=meta.madeForKids;
-    if(Array.isArray(meta.audiences))row.audiences=meta.audiences.slice();
-  });
-  const hist=d.hist||(d.hist={});
-  Object.entries(snap.hist||{}).forEach(([vid,points])=>{
-    hist[vid]=mergeDailyVideoHistory(hist[vid],points);
-  });
-  if(liveBootstrap&&liveBootstrap.liveSummary)d.liveSummary=liveBootstrap.liveSummary;
+  if(snap){
+    removeUnavailableVideoRows(d);
+    ['all','trends','news','ours','kids'].forEach(key=>{
+      const into=d[key]||(d[key]=[]),byId=new Map(into.map(r=>[r.vid,r]));
+      const unavailable=unavailableVideoIds();
+      (snap[key]||[]).filter(row=>!unavailable.has(String(row&&row.vid||''))).forEach(row=>{
+        const current=byId.get(row.vid);
+        if(current)Object.assign(current,row);
+        else{const added=Object.assign({},row);into.push(added);byId.set(row.vid,added);}
+      });
+      into.sort((a,b)=>key==='ours'?(b.pub||0)-(a.pub||0):(b.vpm||0)-(a.vpm||0));
+    });
+    mergeLiveCatalogueRows(d,snap.lives||[]);
+    const hist=d.hist||(d.hist={});
+    Object.entries(snap.hist||{}).forEach(([vid,points])=>{
+      hist[vid]=mergeDailyVideoHistory(hist[vid],points);
+    });
+  }
+  mergeLiveCatalogueRows(d,(liveBootstrap&&liveBootstrap.lives)||[]);
+  if(liveBootstrap&&liveBootstrap.liveSummary){
+    d.liveSummary=Object.assign({},d.liveSummary||{},liveBootstrap.liveSummary);
+  }
 }
 function mergeDailyVideoHistory(left,right){
   const byDay=new Map();
@@ -882,9 +897,10 @@ async function loadChan(){
 function mergeLiveBootstrapIntoData(d,bootstrap){
   const live=bootstrap&&bootstrap.d;
   if(!d||!live)return d;
-  if(!(d.lives||[]).length)d.lives=(live.lives||[]).map(row=>Object.assign({},row));
-  d.liveSummary=live.liveSummary||d.liveSummary||{};
+  mergeLiveCatalogueRows(d,live.lives||[]);
+  d.liveSummary=Object.assign({},d.liveSummary||{},live.liveSummary||{});
   d.liveHist=d.liveHist||{};d.liveHourly=d.liveHourly||{};
+  if(typeof invalidateLiveSnapshotCache==='function')invalidateLiveSnapshotCache();
   return d;
 }
 function coldLiveData(bootstrap){
@@ -989,6 +1005,12 @@ function updateActiveNavRoute(){document.querySelectorAll('#nav [data-route]').f
 function go(r){
   const startedAt=Date.now();
   route=r;try{history.replaceState(null,'','#'+r);}catch(e){}updateActiveNavRoute();render({preferCache:true});window.scrollTo({top:0});
+  if(r==='live'&&typeof window.__loadRadarLiveData==='function'){
+    window.__loadRadarLiveData().then(bootstrap=>{
+      if(!bootstrap||!DATA)return;
+      mergeLiveBootstrapIntoData(DATA,bootstrap);setRadarData(DATA);render();
+    }).catch(()=>{});
+  }
   const sb=document.getElementById('sidebar'),vl=document.getElementById('side-veil');
   if(sb)sb.classList.remove('open');if(vl)vl.classList.remove('show');
   if(document.documentElement)document.documentElement.dataset.radarNavigationMs=String(Date.now()-startedAt);
