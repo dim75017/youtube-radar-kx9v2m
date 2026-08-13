@@ -2983,19 +2983,6 @@ def merge_artifacts(
             by_ours[added["vid"]] = added
             inserted_ours += 1
     data["ours"].sort(key=lambda row: row.get("pub") or 0, reverse=True)
-    analysis_rows = [row for row in data["ours"] if is_analysis_card(row)]
-    analysis_ids = {str(row.get("vid") or "") for row in analysis_rows}
-    if len(analysis_ids) != len(analysis_rows):
-        raise RuntimeError("Merge rejected: duplicate visible Analyse video IDs")
-    analysis_rows_expected = len(analysis_rows)
-    analysis_rows_updated = 0
-    if canonical_ours_declared:
-        _, analysis_rows_updated = validate_card_refresh(
-            {"ours": analysis_rows},
-            fresh,
-            analysis_ids,
-            now_ms,
-        )
 
     by_all = {row.get("vid"): row for row in data["all"]}
     by_trends = {row.get("vid"): row for row in data["trends"]}
@@ -3096,6 +3083,28 @@ def merge_artifacts(
         # Preserve the dedicated cohort/membership and Kids scan metadata while
         # publishing its newly refreshed standard counters.
         data["kids"] = preserved_kids
+
+    # Prove exactly the cohort the browser can display. This must happen only
+    # after every public prune, and unavailable rows are excluded just like
+    # removeUnavailableVideoRows() in the client.
+    analysis_rows = [
+        row
+        for row in data["ours"]
+        if str(row.get("vid") or "") not in unavailable_set
+        and is_analysis_card(row)
+    ]
+    analysis_ids = {str(row.get("vid") or "") for row in analysis_rows}
+    if len(analysis_ids) != len(analysis_rows):
+        raise RuntimeError("Merge rejected: duplicate visible Analyse video IDs")
+    analysis_rows_expected = len(analysis_rows)
+    analysis_rows_updated = 0
+    if canonical_ours_declared:
+        _, analysis_rows_updated = validate_card_refresh(
+            {"ours": analysis_rows},
+            fresh,
+            analysis_ids,
+            now_ms,
+        )
 
     desired_ids = {
         str(video_id)

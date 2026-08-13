@@ -1543,16 +1543,19 @@ class DailyHistoryTests(unittest.TestCase):
             shards.mkdir()
             generated = int(datetime(2026, 8, 13, 8, tzinfo=timezone.utc).timestamp() * 1000)
             sheet_ids = [f"s{index:010d}" for index in range(79)]
-            extra_ids = [f"x{index:010d}" for index in range(12)]
-            all_ids = sorted(sheet_ids + extra_ids)
+            extra_ids = [f"x{index:010d}" for index in range(14)]
+            filler_ids = [f"f{index:010d}" for index in range(8)]
+            all_ids = sorted(sheet_ids + extra_ids + filler_ids)
             digest = radar.hashlib.sha256(
                 "\n".join(sorted(sheet_ids)).encode("utf-8")
             ).hexdigest()
             # Mirrors production: 79 unique Sheet rows, seven short rows hidden
-            # by Analyse, plus twelve snapshot-only rows of which one is short.
+            # by Analyse, plus twelve ordinary snapshot-only rows of which one
+            # is short. Two more rows prove the final public exclusions: a
+            # deferred phonk row and an unavailable row.
             existing_extras = [{
                 "vid": video_id,
-                "title": f"Snapshot-only {index}",
+                "title": "Phonk must be pruned" if index == 12 else f"Snapshot-only {index}",
                 "views": 90_000 + index,
                 "pub": 1_700_000_100_000 + index,
                 "durH": 0.025 if index == 0 else None,
@@ -1580,14 +1583,26 @@ class DailyHistoryTests(unittest.TestCase):
                     "metadataSource": radar.METADATA_SOURCE_API,
                     "pubSource": radar.METADATA_SOURCE_API,
                 })
+            for index, video_id in enumerate(filler_ids):
+                fresh.append({
+                    "vid": video_id,
+                    "title": f"Tracked filler {index}",
+                    "views": 120_000 + index,
+                    "pub": 1_700_000_200_000 + index,
+                    "metadataSource": radar.METADATA_SOURCE_API,
+                    "pubSource": radar.METADATA_SOURCE_API,
+                })
             artifact = {
                 "version": 1, "scan_scope": "standard", "generated_ms": generated,
-                "shard": 0, "shards": 1, "tracked_total": 91, "tracked_ok": 91,
-                "tracked_ids": all_ids, "tracked_fresh_ids": all_ids,
-                "tracked_failed_ids": [], "tracked_unavailable_ids": [],
+                "shard": 0, "shards": 1, "tracked_total": 101, "tracked_ok": 100,
+                "tracked_ids": all_ids,
+                "tracked_fresh_ids": [video_id for video_id in all_ids if video_id != extra_ids[13]],
+                "tracked_failed_ids": [extra_ids[13]],
+                "tracked_unavailable_ids": [extra_ids[13]],
                 "tracked_recovered_ids": [], "queries_total": 0, "queries_ok": 0,
                 "queries_raw": 0, "queries_enriched": 0, "owned_ok": True,
-                "fresh": fresh, "owned_fresh": fresh[:50], "candidates": [],
+                "fresh": [row for row in fresh if row["vid"] != extra_ids[13]],
+                "owned_fresh": fresh[:50], "candidates": [],
                 "canonical_ours_manifest": True,
                 "canonical_ours_ids": sorted(sheet_ids),
                 "canonical_ours_total": 79,
@@ -1601,8 +1616,12 @@ class DailyHistoryTests(unittest.TestCase):
             )
             merged = radar.read_snapshot(snapshot)
 
-        visible = [row for row in merged["d"]["ours"] if radar.is_analysis_card(row)]
-        self.assertEqual(len({row["vid"] for row in merged["d"]["ours"]}), 91)
+        visible = [
+            row for row in merged["d"]["ours"]
+            if row["vid"] != extra_ids[13] and radar.is_analysis_card(row)
+        ]
+        self.assertNotIn(extra_ids[12], {row["vid"] for row in merged["d"]["ours"]})
+        self.assertEqual(len({row["vid"] for row in merged["d"]["ours"]}), 92)
         self.assertEqual(len(visible), 83)
         self.assertEqual(summary["sheet_ours_expected"], 79)
         self.assertEqual(summary["sheet_ours_updated"], 79)
