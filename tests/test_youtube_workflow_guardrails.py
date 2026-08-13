@@ -161,6 +161,7 @@ class YoutubeWorkflowGuardrailTests(unittest.TestCase):
         self.assertIn('tests.test_youtube_kids_discovery', validate)
         self.assertIn('tests.test_data_freshness_watchdog', validate)
         self.assertIn('tests.test_youtube_workflow_guardrails', validate)
+        self.assertIn('pip install --disable-pip-version-check openpyxl', validate)
         self.assertIn('max-parallel: 5', scan)
         self.assertIn(
             'shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]',

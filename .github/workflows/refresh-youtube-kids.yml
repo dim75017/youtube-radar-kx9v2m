@@ -80,6 +80,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install validation dependency
+        run: pip install --disable-pip-version-check openpyxl
       - name: Test Kids discovery, health and workflow contracts
         run: >-
           python -m unittest
