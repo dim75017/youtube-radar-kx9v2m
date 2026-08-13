@@ -8,6 +8,9 @@ import io
 import json
 import math
 import re
+import time
+import urllib.error
+import urllib.parse
 import urllib.request
 from collections import defaultdict
 from datetime import date, datetime, timezone
@@ -32,6 +35,10 @@ OFFICIAL_CHANNEL_ID = "UCSJ4gkVC6NrvII8umztf0Ow"
 OFFICIAL_STREAMS_URL = "https://www.youtube.com/@LofiGirl/streams"
 OFFICIAL_UPLOADS_URL = "https://www.youtube.com/playlist?list=UUSJ4gkVC6NrvII8umztf0Ow"
 OFFICIAL_LISTING_LIMIT = 100
+NEXT_ENDPOINT = "https://www.youtube.com/youtubei/v1/next?prettyPrint=false"
+NEXT_CLIENT_VERSION = "2.20260114.08.00"
+NEXT_MAX_JSON_BYTES = 2 * 1024 * 1024
+NEXT_TRANSIENT_HTTP_CODES = {408, 409, 425, 429, 500, 502, 503, 504}
 
 
 def utc_now_ms() -> int:
@@ -80,6 +87,265 @@ def positive_number(value: object, *, allow_zero: bool = False) -> float | None:
     return parsed
 
 
+def _strict_json(body: bytes) -> dict:
+    def reject_constant(value: str):
+        raise ValueError(f"invalid JSON constant {value}")
+
+    def reject_duplicates(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"duplicate JSON key {key!r}")
+            result[key] = value
+        return result
+
+    value = json.loads(
+        body.decode("utf-8"),
+        parse_constant=reject_constant,
+        object_pairs_hook=reject_duplicates,
+    )
+    if type(value) is not dict:
+        raise ValueError("YouTube next response is not a JSON object")
+    return value
+
+
+class YouTubeNextLiveFallback:
+    """Read a currently-live public counter when yt-dlp hits YouTube's bot gate.
+
+    The public ``next`` response has no exact start time.  This adapter therefore
+    accepts only a start timestamp already recorded in the prior verified asset;
+    the human-readable date is used solely as a consistency check.
+    """
+
+    def __init__(self, *, retries: int = 2, timeout_seconds: int = 20) -> None:
+        self.retries = max(0, int(retries))
+        self.timeout_seconds = max(1, int(timeout_seconds))
+
+    @staticmethod
+    def _mapping_at(value: object, *keys: str) -> dict:
+        current = value
+        for key in keys:
+            if type(current) is not dict:
+                return {}
+            current = current.get(key)
+        return current if type(current) is dict else {}
+
+    @staticmethod
+    def _runs_text(value: object) -> str:
+        if type(value) is not dict or type(value.get("runs")) is not list:
+            return ""
+        runs = value["runs"]
+        if not runs or any(type(run) is not dict or not isinstance(run.get("text"), str) for run in runs):
+            return ""
+        return "".join(run["text"] for run in runs)
+
+    @staticmethod
+    def _started_date(value: object) -> date | None:
+        match = re.fullmatch(
+            r"Started streaming on ([A-Z][a-z]{2}) (\d{1,2}), (\d{4})",
+            clean_text(value),
+        )
+        if not match:
+            return None
+        months = {
+            name: index
+            for index, name in enumerate(
+                ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"),
+                1,
+            )
+        }
+        try:
+            return date(int(match.group(3)), months[match.group(1)], int(match.group(2)))
+        except (KeyError, ValueError):
+            return None
+
+    @staticmethod
+    def _validate_final_url(final_url: str) -> None:
+        try:
+            parsed = urllib.parse.urlparse(final_url)
+            query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+            port = parsed.port
+        except ValueError as exc:
+            raise RuntimeError("YouTube next returned a malformed URL") from exc
+        if (
+            parsed.scheme != "https"
+            or (parsed.hostname or "").casefold() != "www.youtube.com"
+            or parsed.username is not None
+            or parsed.password is not None
+            or port is not None
+            or parsed.path != "/youtubei/v1/next"
+            or parsed.fragment
+            or query != [("prettyPrint", "false")]
+        ):
+            raise RuntimeError("YouTube next redirected away from its public endpoint")
+
+    def _fetch_once(self, video_id: str) -> tuple[dict, str]:
+        request = urllib.request.Request(
+            NEXT_ENDPOINT,
+            data=json.dumps(
+                {
+                    "context": {
+                        "client": {
+                            "clientName": "WEB",
+                            "clientVersion": NEXT_CLIENT_VERSION,
+                            "hl": "en",
+                            "gl": "US",
+                        }
+                    },
+                    "videoId": video_id,
+                },
+                separators=(",", ":"),
+            ).encode("utf-8"),
+            headers={
+                "Accept": "application/json",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Content-Type": "application/json",
+                "User-Agent": (
+                    "Mozilla/5.0 (X11; Linux x86_64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/140.0.0.0 Safari/537.36"
+                ),
+                "X-YouTube-Client-Name": "1",
+                "X-YouTube-Client-Version": NEXT_CLIENT_VERSION,
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
+            final_url = str(response.geturl())
+            body = response.read(NEXT_MAX_JSON_BYTES + 1)
+        if len(body) > NEXT_MAX_JSON_BYTES:
+            raise RuntimeError("YouTube next response exceeded the bounded JSON size")
+        self._validate_final_url(final_url)
+        return _strict_json(body), final_url
+
+    def _project(self, payload: dict, video_id: str, started_ms: object) -> dict:
+        current = self._mapping_at(payload, "currentVideoEndpoint")
+        watch = self._mapping_at(current, "watchEndpoint")
+        web = self._mapping_at(current, "commandMetadata", "webCommandMetadata")
+        if watch.get("videoId") != video_id or web.get("webPageType") != "WEB_PAGE_TYPE_WATCH":
+            raise RuntimeError(f"YouTube next identity mismatch for {video_id}")
+        parsed_watch = urllib.parse.urlparse(clean_text(web.get("url")))
+        watch_query = urllib.parse.parse_qs(parsed_watch.query, keep_blank_values=True)
+        if (
+            parsed_watch.scheme
+            or parsed_watch.netloc
+            or parsed_watch.path != "/watch"
+            or parsed_watch.params
+            or parsed_watch.fragment
+            or watch_query.get("v") != [video_id]
+            or any(key not in {"v", "pp"} for key in watch_query)
+            or len(watch_query.get("pp", [])) > 1
+            or any(not value for value in watch_query.get("pp", []))
+        ):
+            raise RuntimeError(f"YouTube next watch URL mismatch for {video_id}")
+
+        contents = self._mapping_at(
+            payload, "contents", "twoColumnWatchNextResults", "results", "results"
+        ).get("contents")
+        if type(contents) is not list:
+            raise RuntimeError(f"YouTube next has no primary content for {video_id}")
+        primary = [
+            item.get("videoPrimaryInfoRenderer")
+            for item in contents
+            if type(item) is dict and type(item.get("videoPrimaryInfoRenderer")) is dict
+        ]
+        secondary = [
+            item.get("videoSecondaryInfoRenderer")
+            for item in contents
+            if type(item) is dict and type(item.get("videoSecondaryInfoRenderer")) is dict
+        ]
+        if len(primary) != 1 or len(secondary) != 1:
+            raise RuntimeError(f"YouTube next has ambiguous primary/owner data for {video_id}")
+
+        title = self._runs_text(primary[0].get("title"))
+        view = self._mapping_at(primary[0], "viewCount", "videoViewCountRenderer")
+        original = view.get("originalViewCount")
+        runs = (view.get("viewCount") or {}).get("runs")
+        if (
+            not title
+            or view.get("isLive") is not True
+            or not isinstance(original, str)
+            or re.fullmatch(r"[0-9]+", original, flags=re.ASCII) is None
+            or type(runs) is not list
+            or len(runs) != 2
+            or type(runs[0]) is not dict
+            or type(runs[1]) is not dict
+            or runs[1].get("text") != " watching now"
+            or not isinstance(runs[0].get("text"), str)
+            or not re.fullmatch(r"[0-9]{1,3}(?:,[0-9]{3})*|[0-9]+", runs[0]["text"], flags=re.ASCII)
+            or int(runs[0]["text"].replace(",", "")) != int(original)
+        ):
+            raise RuntimeError(f"YouTube next has no exact live counter for {video_id}")
+
+        owner = self._mapping_at(secondary[0], "owner", "videoOwnerRenderer")
+        owner_browse = self._mapping_at(owner, "navigationEndpoint", "browseEndpoint").get("browseId")
+        owner_runs = (owner.get("title") or {}).get("runs")
+        if type(owner_runs) is not list or len(owner_runs) != 1 or type(owner_runs[0]) is not dict:
+            raise RuntimeError(f"YouTube next has no exact owner for {video_id}")
+        title_browse = self._mapping_at(owner_runs[0], "navigationEndpoint", "browseEndpoint").get("browseId")
+        if (
+            owner_browse != OFFICIAL_CHANNEL_ID
+            or title_browse != OFFICIAL_CHANNEL_ID
+            or owner_runs[0].get("text") != "Lofi Girl"
+        ):
+            raise RuntimeError(f"YouTube next owner mismatch for {video_id}")
+
+        started = positive_number(started_ms)
+        if started is None:
+            raise RuntimeError(
+                f"YouTube next has no exact start time for new official stream {video_id}"
+            )
+        date_text = self._started_date((primary[0].get("dateText") or {}).get("simpleText"))
+        factual_date = datetime.fromtimestamp(started / 1000, tz=timezone.utc).date()
+        if date_text is None or abs((date_text - factual_date).days) > 1:
+            raise RuntimeError(f"YouTube next start date mismatch for {video_id}")
+        return {
+            "id": video_id,
+            "channel_id": OFFICIAL_CHANNEL_ID,
+            "availability": "public",
+            "title": title,
+            "is_live": True,
+            "live_status": "is_live",
+            "concurrent_view_count": int(original),
+            "release_timestamp": int(started / 1000),
+            "detail_source": "youtube_next_previous_start",
+        }
+
+    def extract_info(self, video_id: str, *, started_ms: object) -> dict:
+        if not VIDEO_ID.fullmatch(video_id):
+            raise RuntimeError(f"Invalid YouTube video ID: {video_id!r}")
+        for attempt in range(self.retries + 1):
+            try:
+                payload, _ = self._fetch_once(video_id)
+                return self._project(payload, video_id, started_ms)
+            except urllib.error.HTTPError as exc:
+                if exc.code not in NEXT_TRANSIENT_HTTP_CODES or attempt >= self.retries:
+                    raise RuntimeError(f"YouTube next HTTP {exc.code} for {video_id}") from exc
+            except (urllib.error.URLError, TimeoutError, OSError) as exc:
+                if attempt >= self.retries:
+                    raise RuntimeError(
+                        f"YouTube next network failure for {video_id}: {type(exc).__name__}"
+                    ) from exc
+            except (UnicodeDecodeError, ValueError) as exc:
+                if attempt >= self.retries:
+                    raise RuntimeError(
+                        f"YouTube next returned malformed JSON for {video_id}"
+                    ) from exc
+            except RuntimeError:
+                if attempt >= self.retries:
+                    raise
+            time.sleep(2 ** attempt)
+        raise RuntimeError("YouTube next retry loop exhausted")
+
+
+def is_youtube_antibot_error(error: BaseException) -> bool:
+    message = str(error).casefold().replace("’", "'")
+    return (
+        "sign in to confirm you're not a bot" in message
+        or "sign in to confirm you are not a bot" in message
+    )
+
+
 def official_live_row(info: dict, observed_ms: int) -> tuple[dict, tuple[int, int]]:
     """Project one verified active official stream without inventing counters."""
     video_id = clean_text(info.get("id"))
@@ -123,6 +389,7 @@ def discover_official_live_streams(
     *,
     flat_reader=None,
     detail_reader=None,
+    next_reader=None,
     previous_active: dict[str, dict] | None = None,
 ) -> dict:
     """Discover every currently-live radio exposed by the official streams tab."""
@@ -196,12 +463,33 @@ def discover_official_live_streams(
     rows: list[dict] = []
     points: dict[str, list[tuple[int, int]]] = {}
     detail_cache: dict[str, dict] = {}
+    next_fallbacks = 0
 
     def detail(video_id: str) -> dict:
+        nonlocal next_reader, next_fallbacks
         if video_id not in detail_cache:
-            detail_cache[video_id] = detail_reader.extract_info(
-                f"https://www.youtube.com/watch?v={video_id}", download=False
-            ) or {}
+            try:
+                detail_cache[video_id] = detail_reader.extract_info(
+                    f"https://www.youtube.com/watch?v={video_id}", download=False
+                ) or {}
+            except Exception as exc:
+                if not is_youtube_antibot_error(exc) or video_id not in candidate_ids:
+                    raise
+                if next_reader is None:
+                    next_reader = YouTubeNextLiveFallback()
+                prior = previous_active.get(video_id) or {}
+                if (
+                    prior.get("trusted") is not True
+                    or positive_number(prior.get("started")) is None
+                ):
+                    raise RuntimeError(
+                        f"Official stream {video_id} hit YouTube's bot gate and has "
+                        "no previously verified exact start timestamp"
+                    ) from exc
+                detail_cache[video_id] = next_reader.extract_info(
+                    video_id, started_ms=prior.get("started")
+                )
+                next_fallbacks += 1
         return detail_cache[video_id]
 
     active_ids: list[str] = []
@@ -294,6 +582,7 @@ def discover_official_live_streams(
             "recoveredStillLive": recovered,
             "confirmedEnded": confirmed_ended,
             "legacyRejected": legacy_rejected,
+            "nextFallbacks": next_fallbacks,
         },
     }
 
@@ -387,7 +676,12 @@ def load_previous_active_official_lives(path: Path | None) -> dict[str, dict]:
             and (summaries.get(video_id) or {}).get("active") is True
         )
         if trusted or legacy:
-            result[video_id] = {"trusted": trusted}
+            result[video_id] = {
+                "trusted": trusted,
+                "started": int(row.get("started"))
+                if positive_number(row.get("started")) is not None
+                else None,
+            }
     return result
 
 
@@ -521,6 +815,7 @@ def build_payload(
             "officialRecoveredStillLive": int(official_metrics.get("recoveredStillLive") or 0),
             "officialConfirmedEnded": int(official_metrics.get("confirmedEnded") or 0),
             "officialLegacyRejected": int(official_metrics.get("legacyRejected") or 0),
+            "officialNextFallbacks": int(official_metrics.get("nextFallbacks") or 0),
         },
     }
 

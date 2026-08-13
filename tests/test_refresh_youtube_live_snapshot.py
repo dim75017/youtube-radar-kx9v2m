@@ -213,7 +213,210 @@ class RefreshYouTubeLiveSnapshotTests(unittest.TestCase):
                 encoding="utf-8",
             )
             cohort = live.load_previous_active_official_lives(asset)
-        self.assertEqual(cohort, {"0muHFBSiybw": {"trusted": True}})
+        self.assertEqual(
+            cohort,
+            {"0muHFBSiybw": {"trusted": True, "started": None}},
+        )
+
+    @staticmethod
+    def next_payload(
+        video_id="0muHFBSiybw",
+        *,
+        channel_id=None,
+        is_live=True,
+        original="3208",
+        displayed="3,208",
+        started_text="Started streaming on Aug 12, 2026",
+    ):
+        channel_id = channel_id or live.OFFICIAL_CHANNEL_ID
+        return {
+            "currentVideoEndpoint": {
+                "commandMetadata": {
+                    "webCommandMetadata": {
+                        "url": f"/watch?v={video_id}",
+                        "webPageType": "WEB_PAGE_TYPE_WATCH",
+                    }
+                },
+                "watchEndpoint": {"videoId": video_id},
+            },
+            "contents": {
+                "twoColumnWatchNextResults": {
+                    "results": {
+                        "results": {
+                            "contents": [
+                                {
+                                    "videoPrimaryInfoRenderer": {
+                                        "title": {"runs": [{"text": "summer lofi radio"}]},
+                                        "viewCount": {
+                                            "videoViewCountRenderer": {
+                                                "isLive": is_live,
+                                                "originalViewCount": original,
+                                                "viewCount": {
+                                                    "runs": [
+                                                        {"text": displayed},
+                                                        {"text": " watching now"},
+                                                    ]
+                                                },
+                                            }
+                                        },
+                                        "dateText": {"simpleText": started_text},
+                                    }
+                                },
+                                {
+                                    "videoSecondaryInfoRenderer": {
+                                        "owner": {
+                                            "videoOwnerRenderer": {
+                                                "navigationEndpoint": {
+                                                    "browseEndpoint": {"browseId": channel_id}
+                                                },
+                                                "title": {
+                                                    "runs": [
+                                                        {
+                                                            "text": "Lofi Girl",
+                                                            "navigationEndpoint": {
+                                                                "browseEndpoint": {
+                                                                    "browseId": channel_id
+                                                                }
+                                                            },
+                                                        }
+                                                    ]
+                                                },
+                                            }
+                                        }
+                                    }
+                                },
+                            ]
+                        }
+                    }
+                }
+            },
+        }
+
+    def test_next_fallback_projects_only_strict_current_live_facts(self):
+        client = live.YouTubeNextLiveFallback(retries=0)
+        info = client._project(
+            self.next_payload(), "0muHFBSiybw", 1_786_546_921_000
+        )
+        self.assertEqual(info["concurrent_view_count"], 3208)
+        self.assertEqual(info["release_timestamp"], 1_786_546_921)
+        self.assertEqual(info["channel_id"], live.OFFICIAL_CHANNEL_ID)
+        self.assertEqual(info["detail_source"], "youtube_next_previous_start")
+        for payload in (
+            self.next_payload(is_live=False),
+            self.next_payload(channel_id="UCxxxxxxxxxxxxxxxxxxxxxx"),
+            self.next_payload(original="3209"),
+            self.next_payload(started_text="Started streaming on Jan 1, 2024"),
+        ):
+            with self.subTest(payload=payload):
+                with self.assertRaises(RuntimeError):
+                    client._project(payload, "0muHFBSiybw", 1_786_546_921_000)
+        with self.assertRaisesRegex(RuntimeError, "no exact start time"):
+            client._project(self.next_payload(), "0muHFBSiybw", None)
+
+    def test_antibot_detail_uses_next_with_only_prior_factual_start(self):
+        class FlatReader:
+            def extract_info(self, url, download=False):
+                if url == live.OFFICIAL_STREAMS_URL:
+                    return {"entries": [{"id": "0muHFBSiybw", "live_status": "is_live"}]}
+                return {"entries": []}
+
+        class BlockedReader:
+            def extract_info(self, url, download=False):
+                raise RuntimeError("Sign in to confirm you’re not a bot")
+
+        class NextReader:
+            def __init__(self):
+                self.calls = []
+
+            def extract_info(self, video_id, *, started_ms):
+                self.calls.append((video_id, started_ms))
+                return {
+                    "id": video_id,
+                    "channel_id": live.OFFICIAL_CHANNEL_ID,
+                    "availability": "public",
+                    "title": "summer lofi radio",
+                    "is_live": True,
+                    "live_status": "is_live",
+                    "concurrent_view_count": 3210,
+                    "release_timestamp": int(started_ms / 1000),
+                }
+
+        next_reader = NextReader()
+        result = live.discover_official_live_streams(
+            1_786_640_000_000,
+            flat_reader=FlatReader(),
+            detail_reader=BlockedReader(),
+            next_reader=next_reader,
+            previous_active={
+                "0muHFBSiybw": {
+                    "trusted": True,
+                    "started": 1_786_546_921_000,
+                }
+            },
+        )
+        self.assertEqual(next_reader.calls, [("0muHFBSiybw", 1_786_546_921_000)])
+        self.assertEqual(result["metrics"]["nextFallbacks"], 1)
+        self.assertEqual(result["points"]["0muHFBSiybw"][0][1], 3210)
+
+    def test_next_fallback_is_not_used_for_other_detail_failures(self):
+        class FlatReader:
+            def extract_info(self, url, download=False):
+                return {
+                    "entries": [{"id": "0muHFBSiybw", "live_status": "is_live"}]
+                    if url == live.OFFICIAL_STREAMS_URL
+                    else []
+                }
+
+        class BrokenReader:
+            def extract_info(self, url, download=False):
+                raise RuntimeError("unrelated extractor failure")
+
+        class UnexpectedNext:
+            def extract_info(self, video_id, *, started_ms):
+                raise AssertionError("Next fallback must not run")
+
+        with self.assertRaisesRegex(RuntimeError, "unrelated extractor failure"):
+            live.discover_official_live_streams(
+                flat_reader=FlatReader(),
+                detail_reader=BrokenReader(),
+                next_reader=UnexpectedNext(),
+                previous_active={
+                    "0muHFBSiybw": {
+                        "trusted": True,
+                        "started": 1_786_546_921_000,
+                    }
+                },
+            )
+
+    def test_antibot_fallback_rejects_unverified_legacy_start(self):
+        class FlatReader:
+            def extract_info(self, url, download=False):
+                return {
+                    "entries": [{"id": "0muHFBSiybw", "live_status": "is_live"}]
+                    if url == live.OFFICIAL_STREAMS_URL
+                    else []
+                }
+
+        class BlockedReader:
+            def extract_info(self, url, download=False):
+                raise RuntimeError("Sign in to confirm you’re not a bot")
+
+        class UnexpectedNext:
+            def extract_info(self, video_id, *, started_ms):
+                raise AssertionError("Unverified start must never reach Next")
+
+        with self.assertRaisesRegex(RuntimeError, "no previously verified exact start"):
+            live.discover_official_live_streams(
+                flat_reader=FlatReader(),
+                detail_reader=BlockedReader(),
+                next_reader=UnexpectedNext(),
+                previous_active={
+                    "0muHFBSiybw": {
+                        "trusted": False,
+                        "started": 1_786_546_921_000,
+                    }
+                },
+            )
 
     def test_streams_tab_entry_without_flat_status_is_hydrated_not_dropped(self):
         class Reader:
