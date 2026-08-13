@@ -7,10 +7,10 @@ on:
     inputs:
       requested_sha:
         description: 'Main commit whose publication requested this coalesced deployment'
-        required: false
+        required: true
         type: string
       retry_attempt:
-        description: 'Internal bounded recovery attempt (0-3)'
+        description: 'Deprecated compatibility input; immutable deployments are not retried under another SHA'
         required: false
         default: '0'
         type: string
@@ -32,33 +32,47 @@ jobs:
     name: Build latest main
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    outputs:
+      resolved_sha: ${{ steps.revision.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          # deploy-pages always publishes under github.sha. Never let a
+          # workflow-dispatch run float to a newer checkout than that identity.
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
-      - name: Require the requested revision to belong to main
-        if: github.event_name == 'workflow_dispatch' && inputs.requested_sha != ''
+      - id: revision
+        name: Resolve and require one immutable Pages revision
         env:
           REQUESTED_SHA: ${{ inputs.requested_sha }}
+          RUN_SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ ! "$REQUESTED_SHA" =~ ^[0-9a-f]{40}$ ]]; then
-            echo "Invalid requested_sha: $REQUESTED_SHA" >&2
+          resolved_sha="$(git rev-parse HEAD)"
+          if [[ ! "$RUN_SHA" =~ ^[0-9a-f]{40}$ ]] || [[ "$resolved_sha" != "$RUN_SHA" ]]; then
+            echo "Pages run identity diverged: run=$RUN_SHA checkout=$resolved_sha" >&2
             exit 1
           fi
           git fetch --no-tags origin main
-          if ! git cat-file -e "$REQUESTED_SHA^{commit}" 2>/dev/null; then
-            echo "Requested commit is not available: $REQUESTED_SHA" >&2
+          if ! git merge-base --is-ancestor "$resolved_sha" origin/main; then
+            echo "Pages run commit is not part of main: $resolved_sha" >&2
             exit 1
           fi
-          if ! git merge-base --is-ancestor "$REQUESTED_SHA" origin/main; then
-            echo "Requested commit is not part of main: $REQUESTED_SHA" >&2
-            exit 1
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            if [[ ! "$REQUESTED_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "Invalid requested_sha: $REQUESTED_SHA" >&2
+              exit 1
+            fi
+            if [[ "$REQUESTED_SHA" != "$RUN_SHA" ]]; then
+              echo "Pages dispatch identity diverged: requested=$REQUESTED_SHA run=$RUN_SHA" >&2
+              exit 1
+            fi
           fi
-          echo "Coalescing request for $REQUESTED_SHA onto latest main $(git rev-parse origin/main)."
+          echo "sha=$resolved_sha" >> "$GITHUB_OUTPUT"
+          echo "Building immutable Pages revision $resolved_sha."
 
       - uses: actions/configure-pages@v5
 
@@ -69,6 +83,20 @@ jobs:
         with:
           source: ./
           destination: ./_site
+          build_revision: ${{ steps.revision.outputs.sha }}
+
+      - name: Require the built revision to remain immutable
+        env:
+          RESOLVED_SHA: ${{ steps.revision.outputs.sha }}
+          BUILD_REVISION: ${{ steps.revision.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          checkout_sha="$(git rev-parse HEAD)"
+          if [[ "$checkout_sha" != "$RESOLVED_SHA" ]] || [[ "$BUILD_REVISION" != "$RESOLVED_SHA" ]]; then
+            echo "Pages build identity diverged: checkout=$checkout_sha build=$BUILD_REVISION resolved=$RESOLVED_SHA" >&2
+            exit 1
+          fi
 
       - name: Prune historical and private Pages payloads
         shell: bash
@@ -97,10 +125,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ needs.build.outputs.resolved_sha }}
           sparse-checkout: |
             cancel_stale_pages_deployments.py
           sparse-checkout-cone-mode: false
+
+      - name: Require deploy-pages to use the built revision
+        env:
+          RUN_SHA: ${{ github.sha }}
+          RESOLVED_SHA: ${{ needs.build.outputs.resolved_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          checkout_sha="$(git rev-parse HEAD)"
+          if [[ "$RUN_SHA" != "$RESOLVED_SHA" ]] || [[ "$checkout_sha" != "$RESOLVED_SHA" ]]; then
+            echo "Pages deploy identity diverged: run=$RUN_SHA checkout=$checkout_sha built=$RESOLVED_SHA" >&2
+            exit 1
+          fi
 
       # A newer coalesced run can cancel the runner while deploy-pages is
       # polling, leaving the server-side Pages deployment active. Inspect only
@@ -109,7 +150,7 @@ jobs:
       - name: Cancel an orphaned Pages deployment
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          CURRENT_RUN_SHA: ${{ github.sha }}
+          CURRENT_RUN_SHA: ${{ needs.build.outputs.resolved_sha }}
         shell: bash
         run: |
           python cancel_stale_pages_deployments.py \
@@ -117,10 +158,10 @@ jobs:
             --ref main \
             --exclude-sha "$CURRENT_RUN_SHA"
 
-      # deploy-pages caps one polling attempt at 600,000 ms. A deployment that
-      # reaches that cap is cancelled server-side, and retrying the same SHA is
-      # cancelled immediately. The recovery job below therefore creates one
-      # unique empty main commit before each bounded redispatch.
+      # deploy-pages caps one polling attempt at 600,000 ms. Fail this immutable
+      # revision if that attempt cannot finish; a later real main commit may
+      # create the next deployment identity, but this workflow never manufactures
+      # an empty revision or labels another artifact with this run's SHA.
       - name: Deploy to GitHub Pages
         id: deployment
         continue-on-error: true
@@ -133,81 +174,5 @@ jobs:
         if: ${{ steps.deployment.outcome == 'failure' }}
         shell: bash
         run: |
-          echo "This Pages attempt failed; bounded recovery will renew the deployment revision." >&2
-          exit 1
-
-  recover:
-    name: Renew cancelled Pages deployment
-    needs: [build, deploy]
-    if: ${{ always() && needs.build.result == 'success' && needs.deploy.outputs.deployment_outcome == 'failure' && fromJSON(inputs.retry_attempt || '0') < 3 }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: write
-      actions: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-
-      - name: Create a unique main revision for the next Pages deployment
-        id: renewal
-        env:
-          ROOT_REQUESTED_SHA: ${{ inputs.requested_sha || github.sha }}
-          CURRENT_RETRY_ATTEMPT: ${{ inputs.retry_attempt || '0' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ ! "$CURRENT_RETRY_ATTEMPT" =~ ^[0-2]$ ]]; then
-            echo "Invalid retry_attempt: $CURRENT_RETRY_ATTEMPT" >&2
-            exit 1
-          fi
-          next_retry=$((CURRENT_RETRY_ATTEMPT + 1))
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          pushed=false
-          for push_attempt in 1 2 3; do
-            git fetch --no-tags origin main
-            git checkout --detach origin/main
-            git commit --allow-empty -m "chore(pages): renew deployment ${next_retry}/3 for ${ROOT_REQUESTED_SHA:0:12}"
-            if git push origin HEAD:main; then
-              pushed=true
-              break
-            fi
-            echo "Main advanced while renewing Pages; retrying (${push_attempt}/3)."
-          done
-          if [[ "$pushed" != true ]]; then
-            echo "Unable to create a fresh main revision for Pages." >&2
-            exit 1
-          fi
-
-          echo "retry_attempt=$next_retry" >> "$GITHUB_OUTPUT"
-          echo "retry_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Redispatch Pages with the original requested revision
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          ROOT_REQUESTED_SHA: ${{ inputs.requested_sha || github.sha }}
-          NEXT_RETRY_ATTEMPT: ${{ steps.renewal.outputs.retry_attempt }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          python trigger_pages_deployment.py \
-            --repository "$GITHUB_REPOSITORY" \
-            --sha "$ROOT_REQUESTED_SHA" \
-            --retry-attempt "$NEXT_RETRY_ATTEMPT"
-
-  exhausted:
-    name: Fail after bounded Pages recovery
-    needs: [build, deploy]
-    if: ${{ always() && needs.build.result == 'success' && needs.deploy.outputs.deployment_outcome == 'failure' && fromJSON(inputs.retry_attempt || '0') >= 3 }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    steps:
-      - name: Report exhausted Pages retries
-        shell: bash
-        run: |
-          echo "GitHub Pages failed after the initial attempt and three fresh-revision retries." >&2
+          echo "This immutable Pages deployment failed; a different revision was not substituted." >&2
           exit 1

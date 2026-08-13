@@ -184,7 +184,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     needs: scan
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 55
     permissions:
       actions: write
       contents: write
@@ -239,7 +239,9 @@ jobs:
               published_sha="$(git rev-parse HEAD)"
               python trigger_pages_deployment.py \
                 --repository "$GITHUB_REPOSITORY" \
-                --sha "$published_sha"
+                --sha "$published_sha" \
+                --wait-for-completion \
+                --run-timeout 1800
               exit 0
             fi
             sleep 5

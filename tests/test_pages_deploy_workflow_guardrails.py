@@ -8,18 +8,17 @@ DEPLOY = (ROOT / ".github/workflows/deploy-pages.yml").read_text(encoding="utf-8
 
 
 class PagesDeployWorkflowGuardrailsTests(unittest.TestCase):
-    def test_deploy_is_explicit_coalesced_and_recovery_is_bounded(self):
+    def test_deploy_is_explicit_coalesced_and_immutable(self):
         self.assertIn("workflow_dispatch:", DEPLOY)
         self.assertRegex(DEPLOY, r"push:\s+branches: \[main\]")
         self.assertIn("group: github-pages-production", DEPLOY)
         self.assertIn("cancel-in-progress: true", DEPLOY)
         self.assertIn("type: string", DEPLOY)
         self.assertIn("default: '0'", DEPLOY)
-        self.assertIn("fromJSON(inputs.retry_attempt || '0') < 3", DEPLOY)
-        self.assertIn("fromJSON(inputs.retry_attempt || '0') >= 3", DEPLOY)
-        self.assertIn("--allow-empty", DEPLOY)
-        self.assertIn("git push origin HEAD:main", DEPLOY)
-        self.assertIn("--retry-attempt", DEPLOY)
+        self.assertRegex(DEPLOY, r"requested_sha:\s+description:.*\s+required: true")
+        self.assertIn('if [[ "$REQUESTED_SHA" != "$RUN_SHA" ]]', DEPLOY)
+        self.assertNotIn("git push origin HEAD:main", DEPLOY)
+        self.assertNotIn("--allow-empty", DEPLOY)
 
     def test_minimum_pages_permissions_and_exact_build_actions_are_used(self):
         self.assertIn("contents: read", DEPLOY)
@@ -43,16 +42,13 @@ class PagesDeployWorkflowGuardrailsTests(unittest.TestCase):
         self.assertNotIn("timeout: 2700000", DEPLOY)
         self.assertIn("Mark this Pages attempt as failed", DEPLOY)
         self.assertIn("steps.deployment.outcome == 'failure'", DEPLOY)
-        self.assertIn("retry_attempt=$next_retry", DEPLOY)
-        self.assertIn("Redispatch Pages with the original requested revision", DEPLOY)
-        self.assertIn("Fail after bounded Pages recovery", DEPLOY)
         self.assertIn("exit 1", DEPLOY)
 
     def test_deploy_cancels_only_a_verified_orphan_before_publishing(self):
         self.assertIn("Cancel an orphaned Pages deployment", DEPLOY)
         self.assertIn("cancel_stale_pages_deployments.py", DEPLOY)
         self.assertIn('GITHUB_TOKEN: ${{ github.token }}', DEPLOY)
-        self.assertIn('CURRENT_RUN_SHA: ${{ github.sha }}', DEPLOY)
+        self.assertIn('CURRENT_RUN_SHA: ${{ needs.build.outputs.resolved_sha }}', DEPLOY)
         self.assertIn('--exclude-sha "$CURRENT_RUN_SHA"', DEPLOY)
         self.assertLess(
             DEPLOY.index("Cancel an orphaned Pages deployment"),
@@ -65,9 +61,24 @@ class PagesDeployWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("deployment_outcome: ${{ steps.deployment.outcome }}", DEPLOY)
 
     def test_dispatch_never_deploys_a_non_main_revision(self):
-        self.assertIn('git merge-base --is-ancestor "$REQUESTED_SHA" origin/main', DEPLOY)
-        self.assertIn("ref: main", DEPLOY)
+        self.assertIn('git merge-base --is-ancestor "$resolved_sha" origin/main', DEPLOY)
+        self.assertIn('ref: ${{ github.sha }}', DEPLOY)
+        self.assertIn('build_revision: ${{ steps.revision.outputs.sha }}', DEPLOY)
+        self.assertIn('if [[ "$REQUESTED_SHA" != "$RUN_SHA" ]]', DEPLOY)
+        self.assertIn('if [[ "$RUN_SHA" != "$RESOLVED_SHA" ]]', DEPLOY)
+        self.assertIn('ref: ${{ needs.build.outputs.resolved_sha }}', DEPLOY)
         self.assertIn("fetch-depth: 0", DEPLOY)
+
+    def test_youtube_publishers_wait_for_the_exact_pages_run(self):
+        for name in (
+            "refresh-instrumental-radar.yml",
+            "refresh-youtube-recommendations.yml",
+        ):
+            text = (ROOT / ".github/workflows" / name).read_text(encoding="utf-8")
+            with self.subTest(workflow=name):
+                self.assertIn("--wait-for-completion", text)
+                self.assertIn("--run-timeout 1800", text)
+                self.assertIn("timeout-minutes: 55", text)
 
     def test_every_current_main_publisher_dispatches_pages_after_push(self):
         workflows = {
