@@ -37,6 +37,7 @@ const context = {
   mixRows: () => market,
   genreKey: () => 'ambient',
   recoGenreKey: (value, row) => /\b(?:lofi|lo-fi|chillhop)\b/i.test(String(value || '') + ' ' + String(row?.title || '')) ? 'lofi' : '',
+  videoThirtyDayMetric: (row) => ({value: null, kind: 'lifetime', label: 'lifetime avg/month', note: '30-day history partial'}),
   anaDiags: () => [],
   median(values) {
     const ordered = values.filter(value => value != null).sort((a, b) => a - b);

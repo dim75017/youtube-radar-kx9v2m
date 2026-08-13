@@ -101,13 +101,14 @@ jobs:
         run: pip install --disable-pip-version-check openpyxl
       - name: Test collection and history integrity
         run: |
-          python -m unittest tests.test_refresh_youtube_daily tests.test_refresh_youtube_live_snapshot tests.test_import_youtube_studio_export tests.test_youtube_workflow_guardrails
+          python -m unittest tests.test_refresh_youtube_daily tests.test_refresh_youtube_live_snapshot tests.test_import_youtube_studio_export tests.test_data_freshness_watchdog tests.test_youtube_workflow_guardrails
           node tests/test_youtube_daily_view_deltas.js
           node tests/test_youtube_analytics_scale_cache.js
           node tests/test_youtube_kids_switch.js
           node tests/test_youtube_history_cache_refresh.js
           node tests/test_youtube_unavailable_quarantine.js
           node tests/test_youtube_live_cold_boot.js
+          node tests/test_youtube_card_freshness_ui.js
 
   prepare:
     name: Resolve one canonical tracked-video manifest
@@ -211,6 +212,12 @@ jobs:
           --avatars Lofi_Radar_new_channel_avatars.js
           --history-dir video_history
           --skip-recommendation-pool
+      - name: Block incomplete, stale or divergent cards before publication
+        run: >-
+          python data_freshness_watchdog.py
+          --target youtube_radar
+          --scheduled-check
+          --fail-if-due
       - name: Refresh compact livestream first-paint snapshot
         continue-on-error: true
         run: >-

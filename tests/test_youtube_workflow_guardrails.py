@@ -16,10 +16,12 @@ class YoutubeWorkflowGuardrailTests(unittest.TestCase):
         scan = workflow.split('  scan:\n', 1)[1].split('  publish:\n', 1)[0]
         self.assertIn('tests.test_refresh_youtube_daily', validate)
         self.assertIn('tests.test_import_youtube_studio_export', validate)
+        self.assertIn('tests.test_data_freshness_watchdog', validate)
         self.assertIn('test_youtube_daily_view_deltas.js', validate)
         self.assertIn('test_youtube_analytics_scale_cache.js', validate)
         self.assertIn('test_youtube_history_cache_refresh.js', validate)
         self.assertIn('test_youtube_unavailable_quarantine.js', validate)
+        self.assertIn('test_youtube_card_freshness_ui.js', validate)
         self.assertNotIn('test_generate_youtube_recommendation_pool', validate)
         self.assertNotIn('test_youtube_recommendation_', validate)
         self.assertIn('needs: gate', prepare)
@@ -99,6 +101,21 @@ class YoutubeWorkflowGuardrailTests(unittest.TestCase):
         )[0]
         self.assertIn('git add Lofi_Radar_data.js Lofi_Radar_live_data.js Lofi_Radar_new_channel_avatars.js video_history', core_commit)
         self.assertNotIn('recommendation', core_commit.casefold())
+
+    def test_publication_blocks_incomplete_or_divergent_cards_before_commit(self):
+        workflow = self.workflow()
+        publish = workflow.split('  publish:\n', 1)[1]
+        guard = publish.split('Block incomplete, stale or divergent cards before publication', 1)[1].split(
+            'Refresh compact livestream first-paint snapshot', 1
+        )[0]
+        self.assertIn('data_freshness_watchdog.py', guard)
+        self.assertIn('--target youtube_radar', guard)
+        self.assertIn('--scheduled-check', guard)
+        self.assertIn('--fail-if-due', guard)
+        self.assertLess(
+            publish.index('Block incomplete, stale or divergent cards before publication'),
+            publish.index('Commit factual catalogue and daily analytics first'),
+        )
 
     def test_feature_branches_do_not_scan_or_publish_shared_daily_snapshots(self):
         workflow = self.workflow()

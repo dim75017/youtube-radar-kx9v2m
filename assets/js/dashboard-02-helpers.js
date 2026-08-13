@@ -9,6 +9,11 @@ function fmtN(x){
   return String(Math.round(x));
 }
 function fmtInt(x){return x==null?'—':Math.round(x).toLocaleString('en-US');}
+function fmtViewsExact(x){
+  const n=Number(x);if(!Number.isFinite(n))return '—';
+  const locale=(typeof LANG!=='undefined'&&LANG==='fr')?'fr-FR':'en-US';
+  return Math.round(n).toLocaleString(locale);
+}
 function fmtDur(h){
   if(h==null)return '—';
   if(h<1)return Math.round(h*60)+' min';
@@ -237,6 +242,32 @@ function videoHistMetric(pts,windowMs){
   const pct=previous!=null&&previous>0?(delta-previous)/previous*100:null;
   return {delta,covered,previous,pct,scans:a.filter(p=>p[0]>=base[0]).length};
 }
+function videoAgeMonths(row){
+  const published=Number(row&&row.pub);
+  if(Number.isFinite(published)&&published>0)return Math.max((Date.now()-published)/2629800000,0);
+  const stored=Number(row&&row.ageM);return Number.isFinite(stored)&&stored>=0?stored:null;
+}
+function videoLatestViews(row,pts){
+  const history=cleanVideoHist(pts);
+  if(history.length)return history[history.length-1][1];
+  const total=Number(row&&row.views);return Number.isFinite(total)?total:null;
+}
+function videoThirtyDayMetric(row,pts){
+  const exact=videoHistMetric(pts,VIDEO_HIST_WINDOWS.d30);
+  if(exact)return {value:exact.delta,kind:'exact',label:'views 30 days',note:''};
+  const total=videoLatestViews(row,pts),months=videoAgeMonths(row);
+  const average=total!=null&&months!=null&&months>0?total/months:null;
+  if(Number.isFinite(average))return {value:average,kind:'lifetime',label:'lifetime avg/month',note:'30-day history partial'};
+  return {value:null,kind:'partial',label:'views 30 days',note:'partial data'};
+}
+function videoUiMetrics(row){
+  const points=DATA&&DATA.hist&&row&&row.vid?DATA.hist[row.vid]:null;
+  return {views:videoLatestViews(row,points),ageM:videoAgeMonths(row),period:videoThirtyDayMetric(row,points)};
+}
+function videoPeriodLabel(metric){
+  if(!metric)return 'views 30 days · partial data';
+  return metric.note?metric.label+' · '+metric.note:metric.label;
+}
 function videoHistSlice(pts,key){
   const a=cleanVideoHist(pts),ms=VIDEO_HIST_WINDOWS[key];
   if(!a.length||!ms)return a;
@@ -256,7 +287,7 @@ function videoHistMetricCard(key,pts){
     const sign=m.pct>0?'+':'';trend=sign+Math.round(m.pct)+'% '+c.previous;
     klass=m.pct>4?'up':m.pct<-4?'down':'flat';
   }else trend=c.measured+(key==='h24'?Math.round(m.covered/3600000)+c.hours:Math.round(m.covered/86400000)+c.days);
-  return '<div class="vha-card '+klass+'"><span>'+esc(c[key])+'</span><b>+'+fmtN(m.delta)+'</b><small>'+esc(c.gained)+' · '+fmtN(rate)+esc(units)+'</small><em>'+esc(trend)+'</em></div>';
+  return '<div class="vha-card '+klass+'"><span>'+esc(c[key])+'</span><b>+'+fmtViewsExact(m.delta)+'</b><small>'+esc(c.gained)+' · '+fmtN(rate)+esc(units)+'</small><em>'+esc(trend)+'</em></div>';
 }
 function videoHistoryAnalytics(pts){
   const c=videoHistCopy(),all=cleanVideoHist(pts),key=VIDEO_HIST_WINDOWS.hasOwnProperty(VIDEO_HIST_PERIOD)?VIDEO_HIST_PERIOD:'d7';
@@ -304,12 +335,12 @@ function histChart(pts,unit,showMeta,coverage){
   const meta=u==='viewers'
     ? 'Peak <b>'+fmtN(Math.max.apply(null,ys))+'</b> · latest <b>'+fmtN(pts[pts.length-1][1])+'</b> concurrent viewers · '+pts.length+' scans'
     : dailyViews
-      ? '<b>'+fmtN(ys.reduce((sum,value)=>sum+value,0))+'</b> views gained · '+pts.length+' measured days · '+fmtDateFull(x0)+' → '+fmtDateFull(x1)
+      ? '<b>'+fmtViewsExact(ys.reduce((sum,value)=>sum+value,0))+'</b> views gained · '+pts.length+' measured days · '+fmtDateFull(x0)+' → '+fmtDateFull(x1)
       : '<b>+'+fmtN(perDay)+'</b> '+u+'/day measured · '+pts.length+' scans · '+fmtDateFull(x0)+' → '+fmtDateFull(x1);
   const hid='h'+(++HIST_SEQ);
   HIST_REG[hid]={pts,unit:dailyViews?'views gained':u,W,H,P,x0,x1,y1};
   const c=videoHistCopy();
-  const gapMeta=missing.length?'<div class="hist-gap">'+missing.length+' '+esc(c.missingScans)+' · '+esc(c.lastExact)+' : '+fmtDateFull(coverage.end)+' ('+fmtN(coverage.latestTotal)+') · '+esc(c.noInterpolation)+'</div>':'';
+  const gapMeta=missing.length?'<div class="hist-gap">'+missing.length+' '+esc(c.missingScans)+' · '+esc(c.lastExact)+' : '+fmtDateFull(coverage.end)+' ('+fmtViewsExact(coverage.latestTotal)+') · '+esc(c.noInterpolation)+'</div>':'';
   return (showMeta===false?'':'<div class="hist-meta">'+meta+'</div>')+gapMeta+
     '<div class="hist-wrap'+(liveViewers?' hist-live':'')+'" data-hid="'+hid+'">'+
     '<svg class="hist-svg" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+
@@ -607,6 +638,24 @@ async function loadVideoHistoryShard(key){
     .finally(()=>VIDEO_HISTORY_PENDING.delete(key));
   VIDEO_HISTORY_PENDING.set(key,pending);return pending;
 }
+async function preloadVideoHistoryForRows(rows,concurrency){
+  const keys=[...new Set((rows||[]).map(row=>videoHistoryKey(row&&row.vid)).filter(Boolean))]
+    .filter(key=>{
+      const validated=VIDEO_HISTORY_VALIDATED_AT.get(key)||0;
+      const ready=VIDEO_HISTORY_SHARDS.has(key)&&Date.now()-validated<VIDEO_HISTORY_CACHE_TTL_MS;
+      return !ready&&!VIDEO_HISTORY_ERRORS.has(key);
+    });
+  let cursor=0,loaded=0;
+  const worker=async()=>{
+    while(cursor<keys.length){
+      const key=keys[cursor++];
+      try{const shard=await loadVideoHistoryShard(key);mergeHistoryShardIntoData(shard,DATA);loaded++;}catch(e){}
+    }
+  };
+  const count=Math.max(1,Math.min(Number(concurrency)||4,keys.length||1));
+  await Promise.all(Array.from({length:count},worker));
+  return loaded;
+}
 async function ensureVideoHistory(vid){
   if(!vid)return false;
   const key=videoHistoryKey(vid);
@@ -614,6 +663,9 @@ async function ensureVideoHistory(vid){
     const shard=await loadVideoHistoryShard(key);
     mergeHistoryShardIntoData(shard,DATA);
     if(typeof _anaCache!=='undefined'){_anaCache=null;_anaT=0;}
+    if(route==='mix'&&typeof rerenderList==='function'){
+      VIEW_CACHE.delete(viewCacheKey('mix'));rerenderList('mix');
+    }
     const current=window._openVideoDrawer;
     if(current&&current.v&&current.v.vid===vid)openDrawer(current.kind,current.v,true,true);
     if(window._openAnaVid===vid&&route==='ana'){
@@ -990,6 +1042,7 @@ function render(options){
   }
   if(topbar)topbar.classList.remove('no-view-title');
   armAutoLoad();fillLikes();if(route==='ana')fillAnaLikes();
+  if(route==='mix'&&typeof scheduleVisibleVideoHistory==='function')scheduleVisibleVideoHistory('mix',window._page_mix||[]);
 }
 
 /* ================= DASHBOARD ================= */
@@ -1025,7 +1078,10 @@ function dashHTML(){
     chartp('Velocity by genre','Median views/month per genre · videos from the last 12 months',vbars(vsorted,vmax,gcolor,true))+
   '</div>';
 
-  const hot=[...T].sort((a,b)=>(b.vpm||0)-(a.vpm||0)).slice(0,5);
+  const hot=[...T].sort((a,b)=>{
+    const av=videoUiMetrics(a).period.value,bv=videoUiMetrics(b).period.value;
+    return (bv==null?-1:bv)-(av==null?-1:av);
+  }).slice(0,5);
   const latest=[...N].sort((a,b)=>(b.added||0)-(a.added||0)).slice(0,5);
   const today=Date.now()-86400000*2;
   const coming=RD.filter(r=>r.date&&r.date>=today).sort((a,b)=>a.date-b.date).slice(0,7);
@@ -1034,9 +1090,9 @@ function dashHTML(){
     '<div style="min-width:0"><div class="mi-t">'+esc(v.title)+'</div><div class="mi-s">'+statHTML+'</div></div></div>';
   h+='<div class="dash-3">'+
     '<div class="panel"><h3>🔥 Hot right now<span class="link" onclick="VS.mix.age=\'12m\';VS.mix.sort=\'vpm\';go(\'mix\')">View all →</span></h3><div class="psub">Fastest-growing videos published in the last 12 months</div><div class="mini-list">'+
-      hot.map(v=>mini(v,'<b>'+fmtN(v.vpm)+'/mo</b><span>'+esc(v.channel)+'</span>','trends')).join('')+'</div></div>'+
+      hot.map(v=>{const m=videoUiMetrics(v);return mini(v,'<b>'+fmtViewsExact(m.period.value)+'</b><span>'+(m.period.kind==='exact'?'views 30 days':'lifetime avg/month · partial history')+' · '+esc(v.channel)+'</span>','trends');}).join('')+'</div></div>'+
     '<div class="panel"><h3>📰 Latest discoveries<span class="link" onclick="VS.mix.age=\'3m\';VS.mix.sort=\'added\';go(\'mix\')">View all →</span></h3><div class="psub">New videos the YouTube algorithm just started pushing · daily scan</div><div class="mini-list">'+
-      (latest.length?latest.map(v=>mini(v,'<b>'+fmtN(v.views)+' views</b><span>'+fmtAge(v.ageM)+' old</span>','news')).join(''):'<div class="empty">No discoveries yet</div>')+'</div></div>'+
+      (latest.length?latest.map(v=>{const m=videoUiMetrics(v);return mini(v,'<b>'+fmtViewsExact(m.views)+' views</b><span>'+fmtAge(m.ageM)+' old · '+fmtDateFull(v.pub)+'</span>','news');}).join(''):'<div class="empty">No discoveries yet</div>')+'</div></div>'+
     '<div class="panel"><h3>🗓️ Coming up<span class="link" onclick="go(\'roadmap\')">Full roadmap →</span></h3><div class="psub">Next planned releases · synced with Monday</div>'+
       coming.map(r=>{const d=new Date(r.date);return '<div class="rm-mini" style="--gc:'+gcolor(r.genre)+'"><div class="d">'+d.getDate()+' '+MONTHS[d.getMonth()]+'</div><div class="t">'+esc(r.title)+'</div>'+gtag(r.genre,1)+'</div>';}).join('')+'</div>'+
   '</div>';

@@ -29,6 +29,8 @@ from spotify_performance_store import PerformanceStoreError, read_performance_pa
 PARIS = ZoneInfo("Europe/Paris")
 ACTIVE_RUN_STATES = {"queued", "in_progress", "pending", "requested", "waiting"}
 COLLECTION_EVENTS = {"schedule", "workflow_dispatch", "repository_dispatch", "push", "workflow_run"}
+YOUTUBE_SNAPSHOT_PREFIX = "window.LOFI_DATA="
+YOUTUBE_CARD_BUCKETS = ("all", "trends", "news", "ours", "kids")
 
 
 @dataclass(frozen=True)
@@ -168,24 +170,147 @@ def freshness_row(target: Target, due: bool, reason: str, observed: datetime | N
     )
 
 
+def read_youtube_snapshot(path: Path) -> Mapping[str, Any]:
+    raw = path.read_text(encoding="utf-8").strip()
+    if not raw.startswith(YOUTUBE_SNAPSHOT_PREFIX):
+        raise ValueError("unsupported Lofi_Radar_data.js assignment")
+    payload = json.loads(raw[len(YOUTUBE_SNAPSHOT_PREFIX):].rstrip(";\n "))
+    if not isinstance(payload, Mapping):
+        raise ValueError("YouTube snapshot payload is not an object")
+    return payload
+
+
+def metric_int(metrics: Mapping[str, Any], key: str) -> int:
+    value = metrics.get(key)
+    if isinstance(value, bool):
+        return 0
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def metric_day(metrics: Mapping[str, Any], key: str) -> date | None:
+    try:
+        return date.fromisoformat(str(metrics.get(key) or ""))
+    except ValueError:
+        return None
+
+
+def youtube_card_history_problem(
+    root: Path,
+    snapshot: Mapping[str, Any],
+    standard_day: date,
+    kids_day: date,
+) -> str | None:
+    """Return the first publication-blocking card/history inconsistency."""
+
+    data = snapshot.get("d")
+    if not isinstance(data, Mapping):
+        return "YouTube snapshot has no card catalogue"
+    metrics = snapshot.get("videoMetrics")
+    unavailable = {
+        str(value)
+        for value in (metrics.get("unavailable_ids") or [])
+    } if isinstance(metrics, Mapping) else set()
+
+    card_rows: dict[str, list[tuple[str, Mapping[str, Any]]]] = {}
+    invalid_rows = 0
+    for bucket in YOUTUBE_CARD_BUCKETS:
+        rows = data.get(bucket) or []
+        if not isinstance(rows, list):
+            return f'YouTube card bucket "{bucket}" is invalid'
+        for row in rows:
+            if not isinstance(row, Mapping):
+                invalid_rows += 1
+                continue
+            video_id = str(row.get("vid") or "")
+            if not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id):
+                invalid_rows += 1
+                continue
+            if video_id in unavailable:
+                continue
+            card_rows.setdefault(video_id, []).append((bucket, row))
+
+    if invalid_rows:
+        return f"YouTube snapshot contains {invalid_rows} card rows without a valid video id"
+    if not card_rows:
+        return "YouTube snapshot has no visible card rows"
+
+    history_cache: dict[str, Mapping[str, Any] | None] = {}
+    missing: set[str] = set()
+    stale: set[str] = set()
+    mismatched: set[str] = set()
+    for video_id, rows in card_rows.items():
+        shard_name = f"{ord(video_id[0]):02x}.json"
+        if shard_name not in history_cache:
+            shard_path = root / "video_history" / shard_name
+            try:
+                shard = json.loads(shard_path.read_text(encoding="utf-8"))
+                history_cache[shard_name] = shard.get("d") if isinstance(shard, Mapping) else None
+            except (OSError, ValueError, json.JSONDecodeError):
+                history_cache[shard_name] = None
+        shard_data = history_cache[shard_name]
+        points = shard_data.get(video_id) if isinstance(shard_data, Mapping) else None
+        if not isinstance(points, list) or not points:
+            missing.add(video_id)
+            continue
+        valid_points = [
+            point
+            for point in points
+            if isinstance(point, list) and len(point) >= 2 and parse_timestamp(point[0]) is not None
+        ]
+        if not valid_points:
+            missing.add(video_id)
+            continue
+        latest = max(valid_points, key=lambda point: parse_timestamp(point[0]) or datetime.min.replace(tzinfo=timezone.utc))
+        latest_time = parse_timestamp(latest[0])
+        try:
+            latest_views = int(latest[1])
+        except (TypeError, ValueError):
+            missing.add(video_id)
+            continue
+        expected_days = {kids_day if bucket == "kids" else standard_day for bucket, _row in rows}
+        if latest_time is None or local_day(latest_time) not in expected_days:
+            stale.add(video_id)
+        for _bucket, row in rows:
+            try:
+                card_views = int(row.get("views"))
+            except (TypeError, ValueError):
+                mismatched.add(video_id)
+                continue
+            if card_views != latest_views:
+                mismatched.add(video_id)
+
+    if missing:
+        sample = ", ".join(sorted(missing)[:3])
+        return f"YouTube history is missing for {len(missing)} visible card videos ({sample})"
+    if stale:
+        sample = ", ".join(sorted(stale)[:3])
+        return f"YouTube cards and latest history day diverge for {len(stale)} videos ({sample})"
+    if mismatched:
+        sample = ", ".join(sorted(mismatched)[:3])
+        return f"YouTube card views and latest history disagree for {len(mismatched)} videos ({sample})"
+    return None
+
+
 def assess_youtube_radar(root: Path, now: datetime, ignore_deadline: bool = False) -> Freshness:
     target = TARGETS["youtube_radar"]
-    text = read_edge(root / "Lofi_Radar_data.js", tail=96_000)
-    observed = parse_timestamp(regex_value(text, r'"videoMetricsT"\s*:\s*(\d+)'))
-    history_day_raw = regex_value(text, r'"history_day"\s*:\s*"(\d{4}-\d{2}-\d{2})"')
-    tracked_raw = regex_value(text, r'"videoMetrics"\s*:\s*\{[^{}]*?"tracked"\s*:\s*(\d+)')
-    updated_raw = regex_value(text, r'"videoMetrics"\s*:\s*\{[^{}]*?"updated"\s*:\s*(\d+)')
-    history_updated_raw = regex_value(text, r'"videoMetrics"\s*:\s*\{[^{}]*?"history_updated"\s*:\s*(\d+)')
-    timezone_raw = regex_value(text, r'"videoMetrics"\s*:\s*\{[^{}]*?"day_timezone"\s*:\s*"([^"]+)"')
-    partial_raw = regex_value(text, r'"videoMetrics"\s*:\s*\{[^{}]*?"partial"\s*:\s*(true|false)')
     try:
-        history_day = date.fromisoformat(history_day_raw) if history_day_raw else None
-    except ValueError:
-        history_day = None
-    tracked = int(tracked_raw or 0)
-    updated = int(updated_raw or 0)
-    history_updated = int(history_updated_raw or 0)
-    partial = partial_raw != "false"
+        snapshot = read_youtube_snapshot(root / "Lofi_Radar_data.js")
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        return freshness_row(target, True, f"invalid public YouTube snapshot: {exc}", None)
+
+    metrics = snapshot.get("videoMetrics")
+    kids_metrics = snapshot.get("kidsMetrics")
+    if not isinstance(metrics, Mapping):
+        return freshness_row(target, True, "missing public YouTube observation", None)
+    observed = parse_timestamp(snapshot.get("videoMetricsT"))
+    history_day = metric_day(metrics, "history_day")
+    tracked = metric_int(metrics, "tracked")
+    updated = metric_int(metrics, "updated")
+    history_updated = metric_int(metrics, "history_updated")
+    partial = metrics.get("partial") is not False
     today = now.astimezone(PARIS).date()
 
     if observed is None or history_day is None:
@@ -203,13 +328,68 @@ def assess_youtube_radar(root: Path, now: datetime, ignore_deadline: bool = Fals
         )
     if partial:
         return freshness_row(target, True, "YouTube snapshot is marked partial", observed)
-    if timezone_raw != "Europe/Paris":
+    if metrics.get("day_timezone") != "Europe/Paris":
         return freshness_row(target, True, "YouTube history timezone is not Europe/Paris", observed)
+
+    card_rows_expected = metric_int(metrics, "card_rows_expected")
+    card_rows_updated = metric_int(metrics, "card_rows_updated")
+    if card_rows_expected <= 0:
+        return freshness_row(target, True, "missing YouTube card-row coverage proof", observed)
+    if card_rows_updated != card_rows_expected:
+        return freshness_row(
+            target,
+            True,
+            f"YouTube card-row coverage is only {card_rows_updated}/{card_rows_expected}",
+            observed,
+        )
+
+    if not isinstance(kids_metrics, Mapping):
+        return freshness_row(target, True, "missing daily YouTube Kids observation", observed)
+    kids_observed = parse_timestamp(snapshot.get("kidsMetricsT"))
+    kids_day = metric_day(kids_metrics, "history_day")
+    kids_tracked = metric_int(kids_metrics, "tracked")
+    kids_updated = metric_int(kids_metrics, "updated")
+    kids_history_updated = metric_int(kids_metrics, "history_updated")
+    if kids_observed is None or kids_day is None:
+        return freshness_row(target, True, "missing daily YouTube Kids observation", kids_observed or observed)
+    if kids_tracked <= 0:
+        return freshness_row(target, True, "missing canonical YouTube Kids tracked cohort", kids_observed)
+    if kids_updated != kids_tracked:
+        return freshness_row(
+            target,
+            True,
+            f"YouTube Kids coverage is partial at {kids_updated}/{kids_tracked}",
+            kids_observed,
+        )
+    if kids_history_updated != kids_updated:
+        return freshness_row(
+            target,
+            True,
+            f"YouTube Kids history coverage is only {kids_history_updated}/{kids_updated}",
+            kids_observed,
+        )
+    if kids_metrics.get("partial") is not False:
+        return freshness_row(target, True, "YouTube Kids snapshot is marked partial", kids_observed)
+    if kids_metrics.get("day_timezone") != "Europe/Paris":
+        return freshness_row(target, True, "YouTube Kids history timezone is not Europe/Paris", kids_observed)
+
+    card_problem = youtube_card_history_problem(root, snapshot, history_day, kids_day)
+    if card_problem:
+        return freshness_row(target, True, card_problem, observed)
     if now - observed > timedelta(hours=30):
         return freshness_row(target, True, "public YouTube observation is older than 30 hours", observed)
+    if now - kids_observed > timedelta(hours=30):
+        return freshness_row(target, True, "public YouTube Kids observation is older than 30 hours", kids_observed)
     if history_day < today and (ignore_deadline or after_local_deadline(now, time(10, 30))):
         return freshness_row(target, True, f"no public YouTube observation for Paris day {today}", observed)
-    return freshness_row(target, False, f"public YouTube day {history_day} is healthy", observed)
+    if kids_day < today and (ignore_deadline or after_local_deadline(now, time(10, 30))):
+        return freshness_row(target, True, f"no public YouTube Kids observation for Paris day {today}", kids_observed)
+    return freshness_row(
+        target,
+        False,
+        f"public YouTube and Kids day {history_day}/{kids_day} is healthy; cards {card_rows_updated}/{card_rows_expected}",
+        min(observed, kids_observed),
+    )
 
 
 def assess_youtube_recommendations(root: Path, now: datetime, ignore_deadline: bool = False) -> Freshness:
@@ -611,6 +791,11 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--github-output", type=Path)
     result.add_argument("--print-due", action="store_true", help="print only true/false for one target")
     result.add_argument(
+        "--fail-if-due",
+        action="store_true",
+        help="exit non-zero when any selected source fails its freshness or integrity guard",
+    )
+    result.add_argument(
         "--scheduled-check",
         action="store_true",
         help="collector cron: require the current Paris day/month without watchdog grace",
@@ -649,6 +834,8 @@ def main(argv: list[str] | None = None) -> int:
     if dispatch_results and any("retry ceiling" in str(row.get("decision")) for row in dispatch_results):
         print("A stale target exceeded the automatic retry ceiling.", file=sys.stderr)
         return 2
+    if args.fail_if_due and any(row.due for row in rows):
+        return 1
     return 0
 
 

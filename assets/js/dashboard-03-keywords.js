@@ -47,9 +47,13 @@ function kwGo(k){VS.mix.q=k;VS.mix.limit=60;VS.mix.age='all';VS.mix.audience=KID
 
 
 /* ================= VIDEO VIEWS ================= */
+function videoTrendSortValue(v){
+  const metric=videoUiMetrics(v).period;
+  return metric&&metric.value!=null?metric.value:-1;
+}
 const SORTS={
-  vpm:{lbl:'Velocity (views/mo)',emoji:'🚀',fn:(a,b)=>(b.vpm||0)-(a.vpm||0)},
-  views:{lbl:'Total views',emoji:'👀',fn:(a,b)=>(b.views||0)-(a.views||0)},
+  vpm:{lbl:'30-day views',emoji:'🚀',fn:(a,b)=>videoTrendSortValue(b)-videoTrendSortValue(a)},
+  views:{lbl:'Total views',emoji:'👀',fn:(a,b)=>videoUiMetrics(b).views-videoUiMetrics(a).views},
   newest:{lbl:'Newest first',emoji:'🆕',fn:(a,b)=>(b.pub||0)-(a.pub||0)},
   oldest:{lbl:'Oldest first',emoji:'📜',fn:(a,b)=>(a.pub||0)-(b.pub||0)},
   dur:{lbl:'Duration',emoji:'⏱️',fn:(a,b)=>(b.durH||0)-(a.durH||0)},
@@ -77,9 +81,7 @@ function mixRows(){
   return _mixCache;
 }
 function ageMonths(v){
-  if(v.ageM!=null)return v.ageM;
-  if(v.pub)return (Date.now()-v.pub)/2629800000;
-  return null;
+  return videoAgeMonths(v);
 }
 const AGES=[['3m','<span class="age-dot" style="background:#4ade80;box-shadow:0 0 9px rgba(74,222,128,.7)"></span>Last 3 months',3],['6m','<span class="age-dot" style="background:#fbbf24;box-shadow:0 0 9px rgba(251,191,36,.7)"></span>Last 6 months',6],['12m','<span class="age-dot" style="background:#fb923c;box-shadow:0 0 9px rgba(251,146,60,.7)"></span>Last 12 months',12],['36m','<span class="age-dot" style="background:#60a5fa;box-shadow:0 0 9px rgba(96,165,250,.7)"></span>Last 3 years',36],['all','<span class="age-dot" style="background:#f87171;box-shadow:0 0 9px rgba(248,113,113,.7)"></span>All time',null]];
 function inAge(v,code){
@@ -98,6 +100,26 @@ function filterVids(kind){
   return [...rows].sort(SORTS[st.sort].fn);
 }
 function setAge(a){VS.mix.age=a;VS.mix.limit=60;render();}
+let VISIBLE_VIDEO_HISTORY_PROMISE=null,VISIBLE_VIDEO_HISTORY_QUEUED=false;
+function scheduleVisibleVideoHistory(kind,rows){
+  if(route!==kind||!Array.isArray(rows)||!rows.length)return;
+  const needsHistory=rows.some(row=>row&&row.vid&&!videoHistoryReady(row.vid)&&!videoHistoryError(row.vid));
+  if(!needsHistory||VISIBLE_VIDEO_HISTORY_PROMISE||VISIBLE_VIDEO_HISTORY_QUEUED)return;
+  VISIBLE_VIDEO_HISTORY_QUEUED=true;
+  const run=()=>{
+    VISIBLE_VIDEO_HISTORY_QUEUED=false;
+    if(route!==kind)return;
+    VISIBLE_VIDEO_HISTORY_PROMISE=preloadVideoHistoryForRows(rows,4);
+    VISIBLE_VIDEO_HISTORY_PROMISE.then(loaded=>{
+      VISIBLE_VIDEO_HISTORY_PROMISE=null;
+      if(loaded<=0)return;
+      VIEW_CACHE.delete(viewCacheKey(kind));
+      if(route===kind)rerenderList(kind);
+    },()=>{VISIBLE_VIDEO_HISTORY_PROMISE=null;});
+  };
+  if(typeof window!=='undefined'&&'requestIdleCallback' in window)window.requestIdleCallback(run,{timeout:180});
+  else setTimeout(run,0);
+}
 function videosHTML(kind){
   const st=VS[kind];
   const all=(kind==='mix')?mixRows():DATA[kind];
@@ -146,6 +168,7 @@ function rerenderList(kind){
   const el=document.getElementById('list-'+kind);
   if(el)el.innerHTML=listHTML(kind,rows);
   i18nZone(el);armAutoLoad();fillLikes();
+  scheduleVisibleVideoHistory(kind,window['_page_'+kind]||[]);
 }
 function listHTML(kind,rows){
   const st=VS[kind];
@@ -155,20 +178,21 @@ function listHTML(kind,rows){
   if(st.mode==='grid'){
     h='<div class="vgrid">'+page.map((v,i)=>vcardHTML(kind,v,i)).join('')+'</div>';
   }else{
-    h='<table class="vtable"><thead><tr><th></th><th>Title</th><th>Views/mo</th><th>Views</th><th>Duration</th><th>Published</th><th>Genre</th><th>Channel</th><th>Subs</th></tr></thead><tbody>'+
-      page.map((v,i)=>'<tr class="row" onclick="openIdx(\''+kind+'\','+i+')">'+
+    h='<table class="vtable"><thead><tr><th></th><th>Title</th><th>30-day performance</th><th>Total views</th><th>Duration</th><th>Published</th><th>Genre</th><th>Channel</th><th>Subs</th></tr></thead><tbody>'+
+      page.map((v,i)=>{const m=videoUiMetrics(v);return '<tr class="row" onclick="openIdx(\''+kind+'\','+i+')">'+
         '<td><img class="tthumb" loading="lazy" src="'+thumb(v.vid)+'" onerror="this.style.visibility=\'hidden\'"></td>'+
         '<td class="ttitle">'+esc(v.title)+scanNewBadge(v,true)+'</td>'+
-        '<td class="num vpmcell">'+fmtN(v.vpm)+'</td><td class="num">'+fmtN(v.views)+'</td>'+
-        '<td class="num">'+fmtDur(v.durH)+'</td><td class="num">'+fmtDate(v.pub)+'</td>'+
+        '<td class="num vpmcell" title="'+esc(videoPeriodLabel(m.period))+'">'+fmtViewsExact(m.period.value)+'<small style="display:block;color:var(--muted);font-size:9px">'+esc(m.period.kind==='exact'?'views 30 days':'lifetime avg/month · partial history')+'</small></td><td class="num">'+fmtViewsExact(m.views)+'</td>'+
+        '<td class="num">'+fmtDur(v.durH)+'</td><td class="num">'+fmtDateFull(v.pub)+'</td>'+
         '<td>'+gtag(v.genre)+'</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(v.channel)+'</td>'+
-        '<td class="num">'+fmtN(subsFor(v))+'</td></tr>').join('')+'</tbody></table>';
+        '<td class="num">'+fmtN(subsFor(v))+'</td></tr>';}).join('')+'</tbody></table>';
   }
   if(rows.length>st.limit)h+='<button class="load-more" onclick="VS.'+kind+'.limit+=120;rerenderList(\''+kind+'\')">Loading more · '+fmtInt(rows.length-st.limit)+' remaining</button>';
   window['_page_'+kind]=page;
   return h;
 }
 function vcardHTML(kind,v,i){
+  const m=videoUiMetrics(v);
   return '<div class="vcard" onclick="openIdx(\''+kind+'\','+i+')">'+
     '<div class="thumbwrap">'+scanNewBadge(v,false)+'<img loading="lazy" src="'+thumb(v.vid)+'" onerror="this.src=\'https://i.ytimg.com/vi/'+(v.vid||'')+'/hqdefault.jpg\';this.onerror=null;">'+
       (v.vid?'<span class="like-flag" style="display:none" data-likes="'+v.vid+'"></span>':'')+
@@ -178,10 +202,10 @@ function vcardHTML(kind,v,i){
       '<div class="vmeta">'+vChanAva(v,17)+'<a href="'+esc(v.chUrl||'#')+'" target="_blank" onclick="event.stopPropagation()">'+esc(v.channel)+'</a><span class="subs">· '+fmtN(subsFor(v))+' subs</span></div>'+
       '<div class="vtags">'+gtag(v.genre,0,true)+'</div>'+
       '<div class="vstats">'+
-        '<div class="vstat hl"><b>'+fmtN(v.vpm)+'</b><span>views/mo</span></div>'+
-        '<div class="vstat"><b>'+fmtN(v.views)+'</b><span>views</span></div>'+
-        '<div class="vstat"><b>'+fmtAge(v.ageM)+'</b><span>age</span></div>'+
-        '<div class="vstat"><b>'+fmtDate(v.pub)+'</b><span>published</span></div>'+
+        '<div class="vstat hl" title="'+esc(videoPeriodLabel(m.period))+'"><b>'+fmtViewsExact(m.period.value)+'</b><span>'+(m.period.kind==='exact'?'views 30 days':'lifetime avg/month · partial history')+'</span></div>'+
+        '<div class="vstat"><b>'+fmtViewsExact(m.views)+'</b><span>total views</span></div>'+
+        '<div class="vstat"><b>'+fmtAge(m.ageM)+'</b><span>age</span></div>'+
+        '<div class="vstat"><b>'+fmtDateFull(v.pub)+'</b><span>published</span></div>'+
       '</div></div></div>';
 }
 
@@ -202,6 +226,7 @@ function openVid(kind,key){
 function openDrawer(kind,v,keepHistoryPeriod,historyReload){
   if(!keepHistoryPeriod)VIDEO_HIST_PERIOD='d7';
   window._openVideoDrawer={kind,v};
+  const metrics=videoUiMetrics(v);
   if(v.vid&&!videoHistoryReady(v.vid)&&!videoHistoryBusy(v.vid)&&!videoHistoryError(v.vid)&&!historyReload)ensureVideoHistory(v.vid);
   const sec=(k,val,icon)=>val?'<div class="dw-sec"><div class="k">'+(icon||'')+' '+k+'</div><div class="v">'+esc(val)+'</div></div>':'';
   let extra='';
@@ -230,10 +255,11 @@ function openDrawer(kind,v,keepHistoryPeriod,historyReload){
         '<span class="tag ghost" style="gap:6px">'+vChanAva(v,18)+(v.chUrl?'<a href="'+esc(v.chUrl)+'" target="_blank" style="color:inherit">'+esc(v.channel)+' ↗</a>':esc(v.channel))+'</span>'+
         '<span class="tag ghost">'+fmtN(subsFor(v))+' subs</span>'+likeTag(v.vid)+'</div>'+
       '<div class="dw-stats">'+
-        '<div class="dw-stat hl"><b>'+fmtN(v.vpm)+'</b><span>views/mo</span></div>'+
-        '<div class="dw-stat"><b>'+fmtN(v.views)+'</b><span>views</span></div>'+
+        '<div class="dw-stat hl" title="'+esc(videoPeriodLabel(metrics.period))+'"><b>'+fmtViewsExact(metrics.period.value)+'</b><span>'+(metrics.period.kind==='exact'?'views 30 days':'lifetime avg/month · partial history')+'</span></div>'+
+        '<div class="dw-stat"><b>'+fmtViewsExact(metrics.views)+'</b><span>total views</span></div>'+
         '<div class="dw-stat"><b>'+fmtDur(v.durH)+'</b><span>duration</span></div>'+
-        '<div class="dw-stat"><b>'+fmtAge(v.ageM)+'</b><span>age</span></div>'+
+        '<div class="dw-stat"><b>'+fmtAge(metrics.ageM)+'</b><span>age</span></div>'+
+        '<div class="dw-stat"><b>'+fmtDateFull(v.pub)+'</b><span>published</span></div>'+
       '</div>'+
       '<div class="dw-sec">'+videoHistoryPanel(v.vid,DATA.hist&&v.vid?DATA.hist[v.vid]:null,false)+'</div>'+
       extra+

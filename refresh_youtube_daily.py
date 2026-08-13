@@ -55,6 +55,20 @@ MAX_NEWS_ROWS = 1_000
 MIN_KIDS_VIEWS = 100_000
 MIN_KIDS_VPM = 5_000
 SCAN_SCOPES = ("all", "standard", "kids")
+METADATA_SOURCE_YTDLP = "youtube_yt_dlp"
+METADATA_SOURCE_PRESERVED = "preserved_existing"
+METADATA_SOURCE_API = "youtube_data_api"
+METADATA_SOURCE_PRIORITY = {
+    "": 0,
+    METADATA_SOURCE_YTDLP: 1,
+    METADATA_SOURCE_PRESERVED: 2,
+    METADATA_SOURCE_API: 3,
+}
+CARD_BUCKETS = ("all", "trends", "news", "ours", "kids")
+CARD_METADATA_FIELDS = (
+    "title", "url", "durH", "durationSource", "pub", "channel",
+    "chUrl", "channelId", "subs",
+)
 SEARCH_RESULTS = int(os.environ.get("RADAR_SEARCH_RESULTS", "10"))
 KIDS_SEARCH_RESULTS = int(os.environ.get("RADAR_KIDS_SEARCH_RESULTS", "50"))
 KIDS_BOOTSTRAP_SEARCH_RESULTS = int(os.environ.get("RADAR_KIDS_BOOTSTRAP_RESULTS", "100"))
@@ -1183,6 +1197,7 @@ def info_to_row(info: dict, now_ms: int, *, genre: str = "", cluster: str = "", 
         "views": int(views),
         "channel": info.get("channel") or info.get("uploader") or "Unknown channel",
         "chUrl": info.get("channel_url") or info.get("uploader_url") or "",
+        "metadataSource": METADATA_SOURCE_YTDLP,
     }
     channel_id = str(info.get("channel_id") or "")
     if CHANNEL_ID.match(channel_id):
@@ -1194,6 +1209,7 @@ def info_to_row(info: dict, now_ms: int, *, genre: str = "", cluster: str = "", 
         row["durH"] = float(duration) / 3600
     if published:
         row["pub"] = published
+        row["pubSource"] = METADATA_SOURCE_YTDLP
     if age is not None:
         row["ageM"] = age
         row["vpm"] = int(views) / age
@@ -1304,6 +1320,8 @@ def fetch_api_rows(
                 "channel": snippet.get("channelTitle") or "Unknown channel",
                 "chUrl": f"https://www.youtube.com/channel/{snippet.get('channelId', '')}",
                 "channelId": snippet.get("channelId") or "",
+                "metadataSource": METADATA_SOURCE_API,
+                "pubSource": METADATA_SOURCE_API,
             }
             made_for_kids = (item.get("status") or {}).get("madeForKids")
             if isinstance(made_for_kids, bool):
@@ -1708,12 +1726,12 @@ def tracked_ids(payload: dict, scan_scope: str = "all") -> list[str]:
     }
     standard_ids = payload_bucket_ids(payload, ("all", "trends", "news", "ours"))
     kids_ids = payload_bucket_ids(payload, ("kids",))
-    ids = set(standard_ids)
-    if scan_scope == "all":
-        ids.update(kids_ids)
+    # The standard job owns daily counters for every existing public card,
+    # including the already-classified Kids cohort. Kids *discovery* remains a
+    # separate scope; adding these IDs here only performs the ordinary metrics
+    # lookup and prevents their cards/history from freezing between Kids scans.
+    ids = set(standard_ids) | kids_ids
     ids.update(sheet_video_ids())
-    if scan_scope == "standard":
-        ids.difference_update(kids_ids - standard_ids)
     return sorted(ids - unavailable)
 
 
@@ -1732,11 +1750,7 @@ def write_tracked_manifest(
         for video_id in ((payload.get("videoMetrics") or {}).get("unavailable_ids") or [])
         if VIDEO_ID.match(str(video_id or ""))
     }
-    if scan_scope == "standard":
-        standard_ids = payload_bucket_ids(payload, ("all", "trends", "news", "ours"))
-        kids_ids = payload_bucket_ids(payload, ("kids",))
-        quarantine_ids.difference_update(kids_ids - standard_ids)
-    elif scan_scope == "kids":
+    if scan_scope == "kids":
         quarantine_ids.clear()
     manifest = {
         "version": 1,
@@ -1843,6 +1857,18 @@ def preserve_audience_classification(winner: dict, other: dict | None) -> dict:
     }
     if audiences:
         merged["audiences"] = sorted(audiences, key=("youtube", "kids").index)
+    # Counter selection and metadata selection are intentionally independent.
+    # A yt-dlp row can carry the newest counter while the official API row has
+    # the precise publication timestamp and canonical snippet metadata.
+    for key in CARD_METADATA_FIELDS:
+        if other.get(key) in (None, ""):
+            continue
+        if metadata_priority(other, key) > metadata_priority(merged, key):
+            merged[key] = other[key]
+            if key == "pub" and other.get("pubSource"):
+                merged["pubSource"] = other["pubSource"]
+    if metadata_priority(other) > metadata_priority(merged):
+        merged["metadataSource"] = other.get("metadataSource")
     return merged
 
 
@@ -2051,12 +2077,43 @@ def run_shard(
     return artifact
 
 
+def metadata_priority(row: dict, field: str | None = None) -> int:
+    source = str(row.get("metadataSource") or "")
+    if field == "pub":
+        source = str(row.get("pubSource") or source)
+    if not source and row.get("madeForKidsSource") == "youtube_data_api_status":
+        source = METADATA_SOURCE_API
+    return METADATA_SOURCE_PRIORITY.get(source, 0)
+
+
+def should_replace_metadata(existing: dict, fresh: dict, key: str) -> bool:
+    if existing.get(key) in (None, ""):
+        return True
+    existing_priority = metadata_priority(existing, key)
+    fresh_priority = metadata_priority(fresh, key)
+    # Legacy card metadata often came from the official API before provenance
+    # fields existed. Never let a lower-precision yt-dlp discovery row silently
+    # replace it; the next API refresh can still update it authoritatively.
+    if existing_priority == 0 and fresh_priority == 1:
+        if key == "pub":
+            existing["pubSource"] = METADATA_SOURCE_PRESERVED
+        else:
+            existing["metadataSource"] = METADATA_SOURCE_PRESERVED
+        return False
+    return fresh_priority >= existing_priority
+
+
 def update_row(existing: dict, fresh: dict, now_ms: int) -> None:
-    for key in (
-        "title", "url", "durH", "durationSource", "views", "pub", "channel",
-        "chUrl", "channelId", "subs", "madeForKidsSource",
-        "instrumentalVerified", "liveStatus",
-    ):
+    if isinstance(fresh.get("views"), (int, float)):
+        existing["views"] = int(fresh["views"])
+    for key in CARD_METADATA_FIELDS:
+        if fresh.get(key) not in (None, "") and should_replace_metadata(existing, fresh, key):
+            existing[key] = fresh[key]
+            if key == "pub" and fresh.get("pubSource"):
+                existing["pubSource"] = fresh["pubSource"]
+    if fresh.get("metadataSource") and metadata_priority(fresh) >= metadata_priority(existing):
+        existing["metadataSource"] = fresh["metadataSource"]
+    for key in ("madeForKidsSource", "instrumentalVerified", "liveStatus"):
         if fresh.get(key) not in (None, ""):
             existing[key] = fresh[key]
     if isinstance(fresh.get("madeForKids"), bool):
@@ -2078,6 +2135,15 @@ def update_row(existing: dict, fresh: dict, now_ms: int) -> None:
         existing["ageM"] = age
         if isinstance(views, (int, float)):
             existing["vpm"] = views / age
+
+
+def merge_owned_metadata(existing: dict, discovered: dict) -> None:
+    """Use official-upload discovery to add/fill cards, never as counter truth."""
+    for key in CARD_METADATA_FIELDS + (
+        "metadataSource", "pubSource", "source", "genre", "genreSource",
+    ):
+        if existing.get(key) in (None, "") and discovered.get(key) not in (None, ""):
+            existing[key] = discovered[key]
 
 
 def merge_discovery_fields(existing: dict, discovered: dict) -> None:
@@ -2229,6 +2295,65 @@ def validate_history_refresh(
             f"on {expected_day} ({sample})"
         )
     return len(expected_views)
+
+
+def validate_card_refresh(
+    data: dict,
+    fresh: dict[str, dict],
+    refreshed_ids: set[str],
+    now_ms: int,
+) -> tuple[int, int]:
+    """Fail closed when a refreshed history counter did not reach every card."""
+    expected = 0
+    failures: list[str] = []
+    for bucket in CARD_BUCKETS:
+        for index, row in enumerate(data.get(bucket) or []):
+            video_id = str(row.get("vid") or "")
+            if video_id not in refreshed_ids:
+                continue
+            expected += 1
+            current = fresh.get(video_id) or {}
+            fresh_views = current.get("views")
+            published = row.get("pub")
+            fresh_published = current.get("pub")
+            label = f"{bucket}[{index}]/{video_id}"
+            if not isinstance(fresh_views, (int, float)) or int(row.get("views") or -1) != int(fresh_views):
+                failures.append(label + ":views")
+                continue
+            if not isinstance(published, (int, float)) or not isinstance(fresh_published, (int, float)):
+                failures.append(label + ":pub")
+                continue
+            if (
+                metadata_priority(current, "pub") >= metadata_priority(row, "pub")
+                and int(published) != int(fresh_published)
+            ):
+                failures.append(label + ":pub")
+                continue
+            expected_age = age_months(int(published), now_ms)
+            age = row.get("ageM")
+            vpm = row.get("vpm")
+            expected_vpm = float(fresh_views) / expected_age if expected_age else None
+            if (
+                expected_age is None
+                or not isinstance(age, (int, float))
+                or abs(float(age) - expected_age) > max(1e-9, expected_age * 1e-9)
+            ):
+                failures.append(label + ":ageM")
+                continue
+            if (
+                expected_vpm is None
+                or not isinstance(vpm, (int, float))
+                or abs(float(vpm) - expected_vpm) > max(1e-6, expected_vpm * 1e-9)
+            ):
+                failures.append(label + ":vpm")
+    if not expected:
+        raise RuntimeError("Card refresh rejected: no refreshed card row was validated")
+    if failures:
+        sample = ", ".join(failures[:8])
+        raise RuntimeError(
+            f"Card refresh rejected for {len(failures)}/{expected} rows ({sample})"
+        )
+    return expected, expected
 
 
 def write_avatar_overlay(payload: dict, path: Path) -> int:
@@ -2629,9 +2754,9 @@ def merge_artifacts(
     missing_ids = sorted(tracked_failed_ids - unavailable_set)
     data = payload.setdefault("d", {})
     preserved_kids = list(data.get("kids") or []) if scan_scope == "standard" else None
+    bootstrap_kids = not bool(data.get("kids"))
     if preserved_kids is not None:
         data["kids"] = []
-    bootstrap_kids = not bool(data.get("kids"))
     prune_deferred_rows(data)
     legacy_history = data.pop("hist", {})
     now_ms = max(int(a.get("generated_ms", 0)) for a in artifacts) or utc_now_ms()
@@ -2654,9 +2779,14 @@ def merge_artifacts(
             if VIDEO_ID.match(str(video_id or "")):
                 owned_fresh[video_id] = row
 
-    for bucket in ("all", "trends", "news", "kids"):
+    for bucket in ("all", "trends", "news", "ours", "kids"):
         for row in data.setdefault(bucket, []):
             current = fresh.get(row.get("vid"))
+            if current:
+                update_row(row, current, now_ms)
+    if preserved_kids is not None:
+        for row in preserved_kids:
+            current = fresh.get(str(row.get("vid") or ""))
             if current:
                 update_row(row, current, now_ms)
     data["kids"] = [
@@ -2681,10 +2811,13 @@ def merge_artifacts(
     for row in owned_fresh.values():
         current = by_ours.get(row["vid"])
         if current:
-            update_row(current, row, now_ms)
-            current["source"] = row.get("source") or current.get("source")
+            merge_owned_metadata(current, row)
         else:
-            added = dict(row)
+            added = {"vid": row["vid"]}
+            merge_owned_metadata(added, row)
+            authoritative = fresh.get(row["vid"])
+            if authoritative:
+                update_row(added, authoritative, now_ms)
             data["ours"].append(added)
             by_ours[added["vid"]] = added
             inserted_ours += 1
@@ -2785,6 +2918,10 @@ def merge_artifacts(
             data["news"], key=lambda row: row.get("added") or 0, reverse=True
         )[:MAX_NEWS_ROWS]
     prune_deferred_rows(data)
+    if preserved_kids is not None:
+        # Preserve the dedicated cohort/membership and Kids scan metadata while
+        # publishing its newly refreshed standard counters.
+        data["kids"] = preserved_kids
 
     desired_ids = {
         str(video_id)
@@ -2819,7 +2956,38 @@ def merge_artifacts(
             f"{len(expected_history_views)} usable history values"
         )
     history_updated = validate_history_refresh(resolved_history_dir, expected_history_views, now_ms)
+    card_rows_expected, card_rows_updated = validate_card_refresh(
+        data,
+        fresh,
+        refreshed_history_ids,
+        now_ms,
+    )
     history_day = history_day_key(now_ms)
+
+    if preserved_kids is not None and data.get("kids"):
+        kids_ids = {
+            str(row.get("vid"))
+            for row in data["kids"]
+            if VIDEO_ID.match(str(row.get("vid") or ""))
+        }
+        active_kids_ids = kids_ids - unavailable_set
+        refreshed_kids_ids = active_kids_ids & refreshed_history_ids
+        kids_metrics = dict(payload.get("kidsMetrics") or {})
+        # The standard run refreshes only the existing Kids cohort's factual
+        # counters. Keep discovery/query statistics from the most recent real
+        # Kids scan so this daily maintenance cannot masquerade as discovery.
+        kids_metrics.update({
+            "day": history_day,
+            "day_timezone": RADAR_TIMEZONE_NAME,
+            "tracked": len(active_kids_ids),
+            "updated": len(refreshed_kids_ids),
+            "history_updated": len(refreshed_kids_ids),
+            "history_day": history_day,
+            "partial": len(refreshed_kids_ids) < len(active_kids_ids),
+            "missing_ids": sorted(active_kids_ids - refreshed_kids_ids),
+        })
+        payload["kidsMetricsT"] = now_ms
+        payload["kidsMetrics"] = kids_metrics
 
     payload["t"] = now_ms
     payload["videoMetricsT"] = now_ms
@@ -2837,6 +3005,8 @@ def merge_artifacts(
         "kids_results_examined": kids_results_examined,
         "kids_candidates_kept": kids_candidates_kept,
         "history_updated": history_updated,
+        "card_rows_expected": card_rows_expected,
+        "card_rows_updated": card_rows_updated,
         "history_day": history_day,
         "day_timezone": RADAR_TIMEZONE_NAME,
         "partial": active_updated_total < active_tracked_total,
@@ -2850,8 +3020,6 @@ def merge_artifacts(
         "day": history_day,
         "day_timezone": RADAR_TIMEZONE_NAME,
     }
-    if preserved_kids is not None:
-        data["kids"] = preserved_kids
     avatar_count = write_avatar_overlay(payload, avatars)
     write_snapshot(snapshot, payload)
     pool_payload = None
@@ -2872,6 +3040,8 @@ def merge_artifacts(
         "history_ids": history_ids,
         "history_files": history_files,
         "history_updated": history_updated,
+        "card_rows_expected": card_rows_expected,
+        "card_rows_updated": card_rows_updated,
         "history_day": history_day,
         "unavailable": len(unavailable_ids),
         "missing": len(missing_ids),
@@ -2904,12 +3074,16 @@ def snapshot_freshness(snapshot: Path, now_ms: int | None = None) -> dict:
     keywords = int(metrics.get("keywords") or 0)
     keywords_ok = int(metrics.get("keywords_ok") or 0)
     history_updated = int(metrics.get("history_updated") or 0)
+    card_rows_expected = int(metrics.get("card_rows_expected") or 0)
+    card_rows_updated = int(metrics.get("card_rows_updated") or 0)
     same_day = bool(stamp) and history_day_key(stamp) == history_day_key(now_ms)
     fresh = (
         same_day
         and tracked > 0
         and updated == tracked
         and history_updated == updated
+        and card_rows_expected > 0
+        and card_rows_updated == card_rows_expected
         and not bool(metrics.get("partial"))
         and metrics.get("history_day") == history_day_key(stamp)
         and metrics.get("day_timezone") == RADAR_TIMEZONE_NAME
@@ -2923,6 +3097,8 @@ def snapshot_freshness(snapshot: Path, now_ms: int | None = None) -> dict:
         "keywords": keywords,
         "keywords_ok": keywords_ok,
         "history_updated": history_updated,
+        "card_rows_expected": card_rows_expected,
+        "card_rows_updated": card_rows_updated,
     }
 
 
@@ -2949,7 +3125,14 @@ def verify_publication(
         if not isinstance(document, dict) or not isinstance(document.get("d"), dict):
             raise RuntimeError(f"Local history shard {shard.name} is malformed")
         local_history[shard.name] = document
-    expected_history_updated = int((local.get("videoMetrics") or {}).get("history_updated") or 0)
+    local_metrics = local.get("videoMetrics") or {}
+    expected_history_updated = int(local_metrics.get("history_updated") or 0)
+    expected_card_rows = int(local_metrics.get("card_rows_expected") or 0)
+    updated_card_rows = int(local_metrics.get("card_rows_updated") or 0)
+    if expected_card_rows <= 0 or updated_card_rows != expected_card_rows:
+        raise RuntimeError(
+            f"Local factual cards are incomplete at {updated_card_rows}/{expected_card_rows}"
+        )
     local_latest_count = sum(
         1
         for document in local_history.values()
@@ -2974,6 +3157,19 @@ def verify_publication(
             remote_stamp = int(remote.get("videoMetricsT") or 0)
             if remote_stamp < expected:
                 last_error = f"served snapshot={remote_stamp}, expected={expected}"
+                time.sleep(max(interval_seconds, 1))
+                continue
+            remote_metrics = remote.get("videoMetrics") or {}
+            remote_card_expected = int(remote_metrics.get("card_rows_expected") or 0)
+            remote_card_updated = int(remote_metrics.get("card_rows_updated") or 0)
+            if (
+                remote_card_expected != expected_card_rows
+                or remote_card_updated != expected_card_rows
+            ):
+                last_error = (
+                    f"served cards={remote_card_updated}/{remote_card_expected}, "
+                    f"expected={expected_card_rows}/{expected_card_rows}"
+                )
                 time.sleep(max(interval_seconds, 1))
                 continue
             pool_count = None
@@ -3039,6 +3235,7 @@ def verify_publication(
                     "history_min": min(history_stamps),
                     "history_shards": len(history_stamps),
                     "history_points": verified_points,
+                    "card_rows": remote_card_updated,
                     "recommendations": pool_count,
                 }
                 print(json.dumps(result))

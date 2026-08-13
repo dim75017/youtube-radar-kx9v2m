@@ -1,6 +1,8 @@
+import io
 import json
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -11,6 +13,74 @@ import spotify_performance_store
 def write(path: Path, value: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(value, encoding="utf-8")
+
+
+def write_youtube_fixture(
+    root: Path,
+    *,
+    stamp: int,
+    day: str,
+    card_views: int = 100,
+    history_views: int | None = None,
+    history_stamp: int | None = None,
+    card_rows_expected: int = 2,
+    card_rows_updated: int = 2,
+    tracked: int = 1,
+    updated: int = 1,
+    history_updated: int = 1,
+    partial: bool = False,
+    day_timezone: str = "Europe/Paris",
+    kids_day: str | None = None,
+    kids_stamp: int | None = None,
+) -> None:
+    kids_day = kids_day or day
+    kids_stamp = kids_stamp or stamp
+    history_views = card_views if history_views is None else history_views
+    history_stamp = history_stamp or stamp
+    standard_id = "abcDEF12345"
+    kids_id = "kidDEF12345"
+    payload = {
+        "d": {
+            "all": [{"vid": standard_id, "views": card_views}],
+            "trends": [],
+            "news": [],
+            "ours": [],
+            "kids": [{"vid": kids_id, "views": 50}],
+        },
+        "videoMetricsT": stamp,
+        "videoMetrics": {
+            "tracked": tracked,
+            "updated": updated,
+            "history_updated": history_updated,
+            "history_day": day,
+            "day_timezone": day_timezone,
+            "partial": partial,
+            "unavailable_ids": [],
+            "card_rows_expected": card_rows_expected,
+            "card_rows_updated": card_rows_updated,
+        },
+        "kidsMetricsT": kids_stamp,
+        "kidsMetrics": {
+            "tracked": 1,
+            "updated": 1,
+            "history_updated": 1,
+            "history_day": kids_day,
+            "day": kids_day,
+            "day_timezone": "Europe/Paris",
+            "partial": False,
+        },
+    }
+    write(root / "Lofi_Radar_data.js", f"window.LOFI_DATA={json.dumps(payload)};")
+    histories = {
+        standard_id: [[history_stamp, history_views]],
+        kids_id: [[kids_stamp, 50]],
+    }
+    by_shard: dict[str, dict[str, list[list[int]]]] = {}
+    for video_id, points in histories.items():
+        shard = f"{ord(video_id[0]):02x}.json"
+        by_shard.setdefault(shard, {})[video_id] = points
+    for shard, rows in by_shard.items():
+        write(root / "video_history" / shard, json.dumps({"version": 1, "d": rows}))
 
 
 class DataFreshnessWatchdogTests(unittest.TestCase):
@@ -68,12 +138,7 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
             '"expected":554,"updated":554,"complete":true,"observed_at":"2026-07-29T06:00:00Z"}}};',
         )
         stamp = int(datetime(2026, 7, 29, 6, tzinfo=timezone.utc).timestamp() * 1000)
-        write(
-            self.root / "Lofi_Radar_data.js",
-            f'window.LOFI_DATA={{"videoMetricsT":{stamp},"videoMetrics":{{"tracked":3273,"updated":3273,'
-            '"history_updated":3273,"history_day":"2026-07-29","day_timezone":"Europe/Paris",'
-            '"partial":false}}};',
-        )
+        write_youtube_fixture(self.root, stamp=stamp, day="2026-07-29")
         write(
             self.root / "Lofi_Radar_recommendation_pool.js",
             'window.LOFI_RECOMMENDATION_POOL={"schema":3,"version":3,'
@@ -324,11 +389,11 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         self.assertIn("not sharded", row.reason)
 
     def test_collector_cron_requires_today_even_before_the_watchdog_grace_deadline(self):
-        write(
-            self.root / "Lofi_Radar_data.js",
-            'window.LOFI_DATA={"videoMetricsT":1785240000000,"videoMetrics":{"tracked":100,"updated":100,'
-            '"history_updated":100,"history_day":"2026-07-28","day_timezone":"Europe/Paris",'
-            '"partial":false}};',
+        stamp = int(datetime(2026, 7, 28, 12, tzinfo=timezone.utc).timestamp() * 1000)
+        write_youtube_fixture(
+            self.root,
+            stamp=stamp,
+            day="2026-07-28",
         )
         now = datetime(2026, 7, 29, 7, 17, tzinfo=timezone.utc)  # 09:17 Paris
         normal = subject.assess(self.root, now, ["youtube_radar"])[0]
@@ -338,11 +403,14 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
 
     def test_partial_youtube_coverage_is_retried_even_above_ninety_nine_percent(self):
         stamp = int(datetime(2026, 7, 29, 6, tzinfo=timezone.utc).timestamp() * 1000)
-        write(
-            self.root / "Lofi_Radar_data.js",
-            f'window.LOFI_DATA={{"videoMetricsT":{stamp},"videoMetrics":{{"tracked":3271,"updated":3264,'
-            '"history_updated":3264,"history_day":"2026-07-29","day_timezone":"Europe/Paris",'
-            '"partial":true}}};',
+        write_youtube_fixture(
+            self.root,
+            stamp=stamp,
+            day="2026-07-29",
+            tracked=3271,
+            updated=3264,
+            history_updated=3264,
+            partial=True,
         )
         row = subject.assess(
             self.root,
@@ -351,6 +419,99 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         )[0]
         self.assertTrue(row.due)
         self.assertIn("3264/3271", row.reason)
+
+    def test_youtube_card_rows_must_all_be_updated(self):
+        stamp = int(datetime(2026, 7, 29, 6, tzinfo=timezone.utc).timestamp() * 1000)
+        write_youtube_fixture(
+            self.root,
+            stamp=stamp,
+            day="2026-07-29",
+            card_rows_expected=2,
+            card_rows_updated=1,
+        )
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["youtube_radar"],
+        )[0]
+        self.assertTrue(row.due)
+        self.assertIn("1/2", row.reason)
+
+    def test_youtube_kids_must_have_a_fresh_daily_observation(self):
+        stamp = int(datetime(2026, 7, 29, 6, tzinfo=timezone.utc).timestamp() * 1000)
+        kids_stamp = int(datetime(2026, 7, 28, 6, tzinfo=timezone.utc).timestamp() * 1000)
+        write_youtube_fixture(
+            self.root,
+            stamp=stamp,
+            day="2026-07-29",
+            kids_day="2026-07-28",
+            kids_stamp=kids_stamp,
+        )
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["youtube_radar"],
+        )[0]
+        self.assertTrue(row.due)
+        self.assertIn("YouTube Kids", row.reason)
+
+    def test_youtube_card_views_must_match_the_latest_history_point(self):
+        stamp = int(datetime(2026, 7, 29, 6, tzinfo=timezone.utc).timestamp() * 1000)
+        write_youtube_fixture(
+            self.root,
+            stamp=stamp,
+            day="2026-07-29",
+            card_views=100,
+            history_views=101,
+        )
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["youtube_radar"],
+        )[0]
+        self.assertTrue(row.due)
+        self.assertIn("card views and latest history disagree", row.reason)
+
+    def test_youtube_card_history_must_include_the_declared_day(self):
+        stamp = int(datetime(2026, 7, 29, 6, tzinfo=timezone.utc).timestamp() * 1000)
+        old_history_stamp = int(datetime(2026, 7, 28, 6, tzinfo=timezone.utc).timestamp() * 1000)
+        write_youtube_fixture(
+            self.root,
+            stamp=stamp,
+            day="2026-07-29",
+            history_stamp=old_history_stamp,
+        )
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["youtube_radar"],
+        )[0]
+        self.assertTrue(row.due)
+        self.assertIn("latest history day diverge", row.reason)
+
+    def test_fail_if_due_turns_the_publication_guard_into_a_nonzero_exit(self):
+        stamp = int(datetime(2026, 7, 29, 6, tzinfo=timezone.utc).timestamp() * 1000)
+        write_youtube_fixture(
+            self.root,
+            stamp=stamp,
+            day="2026-07-29",
+            card_rows_expected=2,
+            card_rows_updated=1,
+        )
+        with redirect_stdout(io.StringIO()):
+            code = subject.main(
+                [
+                    "--root",
+                    str(self.root),
+                    "--target",
+                    "youtube_radar",
+                    "--now",
+                    "2026-07-29T11:00:00Z",
+                    "--scheduled-check",
+                    "--fail-if-due",
+                ]
+            )
+        self.assertEqual(code, 1)
 
     def test_recommendations_follow_the_exact_factual_source_without_a_size_floor(self):
         row = subject.assess(
@@ -405,11 +566,14 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
 
     def test_youtube_history_count_and_timezone_must_match_the_complete_scan(self):
         stamp = int(datetime(2026, 7, 29, 6, tzinfo=timezone.utc).timestamp() * 1000)
-        write(
-            self.root / "Lofi_Radar_data.js",
-            f'window.LOFI_DATA={{"videoMetricsT":{stamp},"videoMetrics":{{"tracked":100,"updated":100,'
-            '"history_updated":99,"history_day":"2026-07-29","day_timezone":"UTC",'
-            '"partial":false}}};',
+        write_youtube_fixture(
+            self.root,
+            stamp=stamp,
+            day="2026-07-29",
+            tracked=100,
+            updated=100,
+            history_updated=99,
+            day_timezone="UTC",
         )
         row = subject.assess(
             self.root,

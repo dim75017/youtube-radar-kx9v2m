@@ -82,6 +82,8 @@ class DailyHistoryTests(unittest.TestCase):
         self.assertIs(rows["abcdefghijk"]["madeForKids"], True)
         self.assertIs(rows["zyxwvutsrqp"]["madeForKids"], False)
         self.assertNotIn("madeForKids", rows["mnopqrstuvw"])
+        self.assertEqual(rows["abcdefghijk"]["metadataSource"], radar.METADATA_SOURCE_API)
+        self.assertEqual(rows["abcdefghijk"]["pubSource"], radar.METADATA_SOURCE_API)
 
     def test_kids_search_requires_official_true_and_instrumental_long_form(self):
         now = int(datetime(2026, 8, 10, 8, tzinfo=timezone.utc).timestamp() * 1000)
@@ -900,7 +902,7 @@ class DailyHistoryTests(unittest.TestCase):
                 "tracked_ids": ["abcdefghijk"], "tracked_fresh_ids": ["abcdefghijk"],
                 "tracked_failed_ids": [], "tracked_unavailable_ids": [], "tracked_recovered_ids": [],
                 "queries_total": 1, "queries_ok": 1, "queries_raw": 3, "queries_enriched": 3,
-                "fresh": [{"vid": "abcdefghijk", "views": 1_000_001}],
+                "fresh": [{"vid": "abcdefghijk", "views": 1_000_001, "pub": 1700000000000}],
                 "owned_fresh": [], "live_audiences": {},
                 "candidates": [{
                     "vid": "zyxwvutsrqp", "title": "Baby sleep music instrumental",
@@ -1042,7 +1044,7 @@ class DailyHistoryTests(unittest.TestCase):
             radar.write_snapshot(snapshot, {
                 "t": 1,
                 "d": {
-                    "all": [{"vid": "abcdefghijk", "title": "Tracked", "views": 100}],
+                    "all": [{"vid": "abcdefghijk", "title": "Tracked", "views": 100, "pub": 1700000000000}],
                     "trends": [], "news": [], "recos": [], "roadmap": [],
                 },
             })
@@ -1061,7 +1063,7 @@ class DailyHistoryTests(unittest.TestCase):
             ), patch.object(
                 radar,
                 "fetch_one_video",
-                return_value={"vid": "abcdefghijk", "title": "Tracked", "views": 150},
+                return_value={"vid": "abcdefghijk", "title": "Tracked", "views": 150, "pub": 1700000000000},
             ), patch.dict(radar.os.environ, {"YOUTUBE_API_KEY": ""}):
                 artifact = radar.run_shard(
                     snapshot,
@@ -1264,6 +1266,69 @@ class DailyHistoryTests(unittest.TestCase):
         )
         self.assertEqual(curated["genre"], "Ambient")
 
+    def test_update_row_keeps_precise_api_metadata_against_yt_dlp(self):
+        now = int(datetime(2026, 7, 20, 8, tzinfo=timezone.utc).timestamp() * 1000)
+        precise_pub = 1_700_000_000_123
+        existing = {
+            "vid": "abcdefghijk",
+            "title": "Canonical API title",
+            "views": 100,
+            "pub": precise_pub,
+            "metadataSource": radar.METADATA_SOURCE_API,
+            "pubSource": radar.METADATA_SOURCE_API,
+        }
+        radar.update_row(existing, {
+            "vid": "abcdefghijk",
+            "title": "Less reliable discovery title",
+            "views": 150,
+            "pub": 1_700_006_400_000,
+            "metadataSource": radar.METADATA_SOURCE_YTDLP,
+            "pubSource": radar.METADATA_SOURCE_YTDLP,
+        }, now)
+        self.assertEqual(existing["views"], 150)
+        self.assertEqual(existing["title"], "Canonical API title")
+        self.assertEqual(existing["pub"], precise_pub)
+        self.assertEqual(existing["pubSource"], radar.METADATA_SOURCE_API)
+
+        legacy = {"vid": "zyxwvutsrqp", "pub": precise_pub, "views": 10}
+        radar.update_row(legacy, {
+            "vid": "zyxwvutsrqp",
+            "title": "yt-dlp title must not replace legacy metadata",
+            "views": 20,
+            "pub": 1_700_006_400_000,
+            "metadataSource": radar.METADATA_SOURCE_YTDLP,
+            "pubSource": radar.METADATA_SOURCE_YTDLP,
+        }, now)
+        self.assertEqual(legacy["views"], 20)
+        self.assertEqual(legacy["pub"], precise_pub)
+        self.assertEqual(legacy["pubSource"], radar.METADATA_SOURCE_PRESERVED)
+        self.assertEqual(
+            legacy["title"],
+            "yt-dlp title must not replace legacy metadata",
+        )
+
+    def test_card_validation_rejects_stale_views_or_derived_metrics(self):
+        now = int(datetime(2026, 8, 13, 8, tzinfo=timezone.utc).timestamp() * 1000)
+        pub = 1_700_000_000_000
+        fresh = {"abcdefghijk": {"vid": "abcdefghijk", "views": 200, "pub": pub}}
+        age = radar.age_months(pub, now)
+        valid = {
+            "all": [{
+                "vid": "abcdefghijk",
+                "views": 200,
+                "pub": pub,
+                "ageM": age,
+                "vpm": 200 / age,
+            }],
+        }
+        self.assertEqual(
+            radar.validate_card_refresh(valid, fresh, {"abcdefghijk"}, now),
+            (1, 1),
+        )
+        valid["all"][0]["vpm"] = 0
+        with self.assertRaisesRegex(RuntimeError, "vpm"):
+            radar.validate_card_refresh(valid, fresh, {"abcdefghijk"}, now)
+
     def test_official_upload_lookup_uses_the_channel_uploads_playlist(self):
         responses = iter([
             {"items": [{"contentDetails": {"relatedPlaylists": {"uploads": "UUofficial"}}}]},
@@ -1319,6 +1384,73 @@ class DailyHistoryTests(unittest.TestCase):
             history = json.loads((root / "video_history" / "7a.json").read_text(encoding="utf-8"))
             self.assertEqual(history["d"]["zyxwvutsrqp"], [[generated, 200]])
 
+    def test_existing_owned_card_uses_tracked_fresh_not_owned_discovery_counter(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "Lofi_Radar_data.js"
+            avatars = root / "avatars.js"
+            shards = root / "shards"
+            shards.mkdir()
+            generated = int(datetime(2026, 8, 13, 8, tzinfo=timezone.utc).timestamp() * 1000)
+            precise_pub = 1_700_000_000_123
+            radar.write_snapshot(snapshot, {
+                "d": {
+                    "all": [], "trends": [], "news": [], "kids": [],
+                    "ours": [{
+                        "vid": "abcdefghijk",
+                        "title": "Canonical title",
+                        "views": 100,
+                        "pub": precise_pub,
+                        "metadataSource": radar.METADATA_SOURCE_API,
+                        "pubSource": radar.METADATA_SOURCE_API,
+                    }],
+                    "recos": [], "roadmap": [], "lives": [],
+                },
+            })
+            tracked = {
+                "vid": "abcdefghijk",
+                "title": "Canonical title",
+                "views": 250,
+                "pub": precise_pub,
+                "metadataSource": radar.METADATA_SOURCE_API,
+                "pubSource": radar.METADATA_SOURCE_API,
+            }
+            discovery = {
+                "vid": "abcdefghijk",
+                "title": "Discovery title",
+                "views": 175,
+                "pub": precise_pub + 86_400_000,
+                "metadataSource": radar.METADATA_SOURCE_YTDLP,
+                "pubSource": radar.METADATA_SOURCE_YTDLP,
+                "source": "Official Lofi Girl daily scan",
+            }
+            artifact = {
+                "version": 1, "generated_ms": generated, "shard": 0, "shards": 1,
+                "tracked_total": 1, "tracked_ok": 1,
+                "tracked_ids": ["abcdefghijk"],
+                "tracked_fresh_ids": ["abcdefghijk"],
+                "tracked_failed_ids": [], "tracked_unavailable_ids": [],
+                "tracked_recovered_ids": [], "queries_total": 0, "queries_ok": 0,
+                "queries_raw": 0, "queries_enriched": 0, "owned_ok": True,
+                "fresh": [tracked], "owned_fresh": [discovery], "candidates": [],
+            }
+            (shards / "youtube-shard-0.json").write_text(json.dumps(artifact), encoding="utf-8")
+            summary = radar.merge_artifacts(
+                snapshot,
+                avatars,
+                shards,
+                1,
+                generate_recommendations=False,
+            )
+            merged = radar.read_snapshot(snapshot)
+        card = merged["d"]["ours"][0]
+        self.assertEqual(card["views"], 250)
+        self.assertEqual(card["pub"], precise_pub)
+        self.assertEqual(card["title"], "Canonical title")
+        self.assertEqual(card["source"], "Official Lofi Girl daily scan")
+        self.assertEqual(summary["card_rows_expected"], 1)
+        self.assertEqual(summary["card_rows_updated"], 1)
+
     def test_fallback_quarantines_only_after_two_consecutive_missing_scans(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1360,7 +1492,7 @@ class DailyHistoryTests(unittest.TestCase):
                     "queries_ok": 1,
                     "queries_raw": 1,
                     "queries_enriched": 1,
-                    "fresh": [{"vid": public_id, "views": views}],
+                    "fresh": [{"vid": public_id, "views": views, "pub": 1700000000000}],
                     "owned_fresh": [],
                     "candidates": [],
                 }
@@ -1408,8 +1540,8 @@ class DailyHistoryTests(unittest.TestCase):
                 "queries_raw": 1,
                 "queries_enriched": 1,
                 "fresh": [
-                    {"vid": public_id, "views": 103},
-                    {"vid": missing_id, "views": 201},
+                    {"vid": public_id, "views": 103, "pub": 1700000000000},
+                    {"vid": missing_id, "views": 201, "pub": 1700000000000},
                 ],
                 "owned_fresh": [],
                 "candidates": [],
@@ -1438,7 +1570,10 @@ class DailyHistoryTests(unittest.TestCase):
             public_id, intermittent_id = "abcdefghijk", "zyxwvutsrqp"
             radar.write_snapshot(snapshot, {
                 "d": {
-                    "all": [{"vid": public_id}, {"vid": intermittent_id}],
+                    "all": [
+                        {"vid": public_id, "pub": 1700000000000},
+                        {"vid": intermittent_id, "pub": 1700000000000},
+                    ],
                     "trends": [], "news": [], "ours": [], "recos": [], "roadmap": [],
                 }
             })
@@ -1459,7 +1594,7 @@ class DailyHistoryTests(unittest.TestCase):
                 )
 
             first = int(datetime(2026, 7, 20, 8, tzinfo=timezone.utc).timestamp() * 1000)
-            write_artifact(first, [{"vid": public_id, "views": 100}], [intermittent_id])
+            write_artifact(first, [{"vid": public_id, "views": 100, "pub": 1700000000000}], [intermittent_id])
             with patch.object(radar, "MIN_PUBLISH_TRACK_RATIO", 0.0):
                 radar.merge_artifacts(snapshot, avatars, shards, 1)
             self.assertEqual(
@@ -1469,8 +1604,8 @@ class DailyHistoryTests(unittest.TestCase):
 
             second = first + 3600000
             write_artifact(second, [
-                {"vid": public_id, "views": 101},
-                {"vid": intermittent_id, "views": 201},
+                {"vid": public_id, "views": 101, "pub": 1700000000000},
+                {"vid": intermittent_id, "views": 201, "pub": 1700000000000},
             ], [])
             radar.merge_artifacts(snapshot, avatars, shards, 1)
             metrics = radar.read_snapshot(snapshot)["videoMetrics"]
@@ -1565,7 +1700,7 @@ class DailyHistoryTests(unittest.TestCase):
                 {
                     "t": 1,
                     "d": {
-                        "all": [{"vid": "abcdefghijk", "views": 1_000_000}],
+                        "all": [{"vid": "abcdefghijk", "views": 1_000_000, "pub": 1700000000000}],
                         "trends": [],
                         "news": [],
                         "ours": [],
@@ -1587,7 +1722,7 @@ class DailyHistoryTests(unittest.TestCase):
                 "queries_ok": 1,
                 "queries_raw": 2,
                 "queries_enriched": 2,
-                "fresh": [{"vid": "abcdefghijk", "views": 1_000_001}],
+                "fresh": [{"vid": "abcdefghijk", "views": 1_000_001, "pub": 1700000000000}],
                 "candidates": [
                     {
                         "vid": "zyxwvutsrqp",
@@ -1629,6 +1764,8 @@ class DailyHistoryTests(unittest.TestCase):
                     "keywords": 100,
                     "keywords_ok": 100,
                     "history_updated": 1000,
+                    "card_rows_expected": 1000,
+                    "card_rows_updated": 1000,
                     "history_day": "2026-07-28",
                     "day_timezone": "Europe/Paris",
                     "partial": False,
@@ -1654,7 +1791,11 @@ class DailyHistoryTests(unittest.TestCase):
             stamp = int(datetime(2026, 7, 28, 8, tzinfo=timezone.utc).timestamp() * 1000)
             radar.write_snapshot(snapshot, {
                 "videoMetricsT": stamp,
-                "videoMetrics": {"history_updated": 2},
+                "videoMetrics": {
+                    "history_updated": 2,
+                    "card_rows_expected": 2,
+                    "card_rows_updated": 2,
+                },
                 "d": {},
             })
             pool = root / "Lofi_Radar_recommendation_pool.js"
@@ -1708,7 +1849,11 @@ class DailyHistoryTests(unittest.TestCase):
             stamp = int(datetime(2026, 8, 4, 8, tzinfo=timezone.utc).timestamp() * 1000)
             radar.write_snapshot(snapshot, {
                 "videoMetricsT": stamp,
-                "videoMetrics": {"history_updated": 1},
+                "videoMetrics": {
+                    "history_updated": 1,
+                    "card_rows_expected": 1,
+                    "card_rows_updated": 1,
+                },
                 "d": {},
             })
             shard = history_dir / "61.json"
@@ -1752,7 +1897,11 @@ class DailyHistoryTests(unittest.TestCase):
             stamp = int(datetime(2026, 8, 4, 8, tzinfo=timezone.utc).timestamp() * 1000)
             radar.write_snapshot(snapshot, {
                 "videoMetricsT": stamp,
-                "videoMetrics": {"history_updated": 1},
+                "videoMetrics": {
+                    "history_updated": 1,
+                    "card_rows_expected": 1,
+                    "card_rows_updated": 1,
+                },
                 "d": {},
             })
             shard = history_dir / "61.json"
@@ -1890,7 +2039,7 @@ class ScanScopeTests(unittest.TestCase):
             manifest.write_text(json.dumps({
                 "version": 1,
                 "scan_scope": "standard",
-                "ids": ["abcdefghijk"],
+                "ids": ["abcdefghijk", "kidsvideo01"],
                 "quarantine_ids": [],
             }), encoding="utf-8")
             seen_specs = []
@@ -1902,7 +2051,11 @@ class ScanScopeTests(unittest.TestCase):
             with patch.dict(radar.os.environ, {"YOUTUBE_API_KEY": ""}), patch.object(
                 radar,
                 "fetch_one_video",
-                return_value={"vid": "abcdefghijk", "views": 100_001},
+                side_effect=lambda video_id, now_ms: {
+                    "vid": video_id,
+                    "views": 100_001,
+                    "pub": 1_700_000_000_000,
+                },
             ), patch.object(
                 radar, "fetch_owned_ydl_rows", return_value={}
             ), patch.object(
@@ -1929,7 +2082,8 @@ class ScanScopeTests(unittest.TestCase):
                 )["scan_scope"]
 
         self.assertEqual(artifact["scan_scope"], "standard")
-        self.assertEqual(artifact["tracked_ids"], ["abcdefghijk"])
+        self.assertEqual(artifact["tracked_ids"], ["abcdefghijk", "kidsvideo01"])
+        self.assertEqual(artifact["tracked_ok"], 2)
         self.assertEqual(artifact["kids_queries_total"], 0)
         self.assertTrue(seen_specs)
         self.assertTrue(
@@ -1940,6 +2094,13 @@ class ScanScopeTests(unittest.TestCase):
         kids_public.assert_not_called()
         sheet.assert_not_called()
         self.assertEqual(output_scope, "standard")
+
+    def test_standard_manifest_includes_existing_kids_without_kids_discovery(self):
+        payload = self._payload()
+        payload["d"]["kids"] = [{"vid": "kidsvideo01"}]
+        with patch.object(radar, "sheet_video_ids", return_value=set()):
+            ids = radar.tracked_ids(payload, "standard")
+        self.assertEqual(ids, ["abcdefghijk", "kidsvideo01"])
 
     def test_kids_shard_runs_only_kids_specs_without_owned_live_or_sheet(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1999,7 +2160,7 @@ class ScanScopeTests(unittest.TestCase):
         self.assertEqual(api_rows.call_args.args[0], [])
         self.assertEqual(output_scope, "kids")
 
-    def test_standard_merge_preserves_kids_bucket_and_metrics_exactly(self):
+    def test_standard_merge_refreshes_preserved_kids_counters_and_metrics(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             snapshot = root / "snapshot.js"
@@ -2019,8 +2180,10 @@ class ScanScopeTests(unittest.TestCase):
             }
             payload["d"]["kids"] = [{
                 "vid": "kidsvideo01",
-                "title": "Preserve this Kids row exactly",
+                "title": "Preserve this Kids cohort row",
                 "views": 222_222,
+                "pub": 1_700_000_000_000,
+                "ageM": 10,
                 "vpm": 22_222,
                 "durH": 2,
                 "madeForKids": True,
@@ -2028,9 +2191,34 @@ class ScanScopeTests(unittest.TestCase):
                 "custom": {"preserve": ["byte", "value"]},
             }]
             radar.write_snapshot(snapshot, payload)
-            before = radar.read_snapshot(snapshot)
+            artifact = self._artifact(
+                "standard",
+                generated,
+                tracked_total=2,
+                tracked_ok=2,
+                tracked_ids=["abcdefghijk", "kidsvideo01"],
+                tracked_fresh_ids=["abcdefghijk", "kidsvideo01"],
+                fresh=[
+                    {
+                        "vid": "abcdefghijk",
+                        "title": "Fresh focus music",
+                        "views": 100_001,
+                        "pub": 1_700_000_000_000,
+                    },
+                    {
+                        "vid": "kidsvideo01",
+                        "title": "Fresh official Kids title",
+                        "views": 333_333,
+                        "pub": 1_700_000_000_000,
+                        "metadataSource": radar.METADATA_SOURCE_API,
+                        "pubSource": radar.METADATA_SOURCE_API,
+                        "madeForKids": True,
+                        "madeForKidsSource": "youtube_data_api_status",
+                    },
+                ],
+            )
             (shards / "youtube-shard-0.json").write_text(
-                json.dumps(self._artifact("standard", generated)),
+                json.dumps(artifact),
                 encoding="utf-8",
             )
 
@@ -2044,9 +2232,21 @@ class ScanScopeTests(unittest.TestCase):
             )
             after = radar.read_snapshot(snapshot)
 
-        self.assertEqual(after["d"]["kids"], before["d"]["kids"])
-        self.assertEqual(after["kidsMetricsT"], before["kidsMetricsT"])
-        self.assertEqual(after["kidsMetrics"], before["kidsMetrics"])
+        self.assertEqual([row["vid"] for row in after["d"]["kids"]], ["kidsvideo01"])
+        self.assertEqual(after["d"]["kids"][0]["views"], 333_333)
+        self.assertEqual(after["d"]["kids"][0]["title"], "Fresh official Kids title")
+        self.assertEqual(
+            after["d"]["kids"][0]["custom"],
+            {"preserve": ["byte", "value"]},
+        )
+        self.assertEqual(after["kidsMetricsT"], generated)
+        self.assertEqual(after["kidsMetrics"]["queries"], 40)
+        self.assertEqual(after["kidsMetrics"]["nested"], {"preserve": [3, 2, 1]})
+        self.assertEqual(after["kidsMetrics"]["tracked"], 1)
+        self.assertEqual(after["kidsMetrics"]["updated"], 1)
+        self.assertEqual(after["kidsMetrics"]["history_updated"], 1)
+        self.assertFalse(after["kidsMetrics"]["partial"])
+        self.assertEqual(after["videoMetrics"]["card_rows_expected"], after["videoMetrics"]["card_rows_updated"])
 
     def test_kids_bootstrap_changes_only_dedicated_state_avatar_and_history(self):
         with tempfile.TemporaryDirectory() as tmp:

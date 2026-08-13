@@ -1841,8 +1841,10 @@ function ensureAnalysisHistory(){
   const ids=[...new Set((DATA.ours||[]).map(v=>v.vid).filter(Boolean))];
   const missing=ids.filter(vid=>!videoHistoryReady(vid)&&!videoHistoryError(vid));
   if(!missing.length)return;
-  ANALYSIS_HISTORY_PROMISE=Promise.all(missing.map(ensureVideoHistory)).finally(()=>{
-    ANALYSIS_HISTORY_PROMISE=null;_anaCache=null;_anaT=0;if(route==='ana')render();
+  ANALYSIS_HISTORY_PROMISE=preloadVideoHistoryForRows(DATA.ours,4).finally(()=>{
+    ANALYSIS_HISTORY_PROMISE=null;_anaCache=null;_anaT=0;
+    if(typeof VIEW_CACHE!=='undefined')VIEW_CACHE.delete(viewCacheKey('ana'));
+    if(route==='ana')render();
   });
 }
 const ANA_AGE_COHORTS=[
@@ -1920,6 +1922,7 @@ function anaRows(){
     o.ageCohort=anaAgeCohort(o.ageDays);
     const s=(DATA.hist&&DATA.hist[v.vid])||[];
     o.views=s.length?s[s.length-1][1]:Number.isFinite(Number(v.views))?Number(v.views):null;
+    o.views30=videoThirtyDayMetric(o,s);
     o.vpm=anaLifetimeVpm(o,o.ageDays);
     if(s.length>=2){
       const end=s[s.length-1],cut=end[0]-30.44*86400000,recent=s.filter(p=>p[0]>=cut);
@@ -2332,8 +2335,8 @@ function anaCardHTML(o,i){
       '<div class="vtags">'+gtag(o.genre)+(o.durH!=null?ghosttag(fmtDur(o.durH)):'')+(o.pub?'<span class="tag ghost">📅 '+fmtDateFull(o.pub)+'</span>':'')+'</div>'+
       anaProgressBarHTML(o)+
       '<div class="vstats">'+
-        anaStat(o.views,o.medViews,'views',true,null,ageRef)+
-        anaStat(o.vpm,o.chMed,'views/mo',false,null,ageRef)+
+        anaStat(o.views,o.medViews,'total views',true,fmtViewsExact,ageRef)+
+        anaStat(o.views30.value,null,o.views30.kind==='exact'?'views 30 days':'lifetime avg/month · partial history',false,fmtViewsExact)+
         '<div class="vstat" data-alikesw="'+o.vid+'"><b data-alikes="'+o.vid+'">…</b><span>likes</span></div>'+
         anaStat(cmt,o.medCmt,'comments',false,null,ageRef)+
         (o.st&&o.st.awp!=null?anaStat(o.st.awp,o.awpMed,'avg view',false,fmtPct,ageRef):'')+
@@ -2386,8 +2389,8 @@ function anaHTML(){
           anaProgressBarHTML(o)+
         '</div>'+
         '<div style="text-align:right;flex:none">'+
-          '<div style="font-family:Sora;font-size:17px;font-weight:700;color:'+pcol(o.pctCh)+'">'+fmtN(o.views)+'</div>'+
-          '<div style="font-size:10.5px;color:'+vsMed(o.vpm,o.chMed)+';margin-bottom:8px;font-weight:600">'+fmtN(o.vpm)+' views/mo</div>'+
+          '<div style="font-family:Sora;font-size:17px;font-weight:700;color:'+pcol(o.pctCh)+'">'+fmtViewsExact(o.views)+'</div>'+
+          '<div style="font-size:10.5px;color:var(--muted);margin-bottom:8px;font-weight:600">'+fmtViewsExact(o.views30.value)+' '+(o.views30.kind==='exact'?'views 30 days':'lifetime avg/month · partial history')+'</div>'+
         '</div></div>';
     }).join('');
   }else{
@@ -2409,8 +2412,8 @@ function openAnaIdx(i,historyReload){
       '<div class="dw-stats">'+
         '<div class="dw-stat hl"><b style="color:'+pcol(o.pctCh)+'">'+(o.pctCh==null?'—':o.pctCh+'th')+'</b><span>percentile · channel</span></div>'+
         '<div class="dw-stat"><b style="color:'+pcol(o.pct)+'">'+(o.pct==null?'—':o.pct+'th')+'</b><span>percentile vs market</span></div>'+
-        '<div class="dw-stat"><b style="color:'+vsMed(o.vpm,o.chMed)+'">'+fmtN(o.vpm)+'</b><span>views/mo lifetime</span></div>'+
-        '<div class="dw-stat"><b style="color:'+vsMed(o.vNow,o.vpm)+'">'+fmtN(o.vNow)+'</b><span>views/mo now</span></div>'+
+        '<div class="dw-stat"><b>'+fmtViewsExact(o.views)+'</b><span>total views</span></div>'+
+        '<div class="dw-stat" title="'+esc(videoPeriodLabel(o.views30))+'"><b>'+fmtViewsExact(o.views30.value)+'</b><span>'+(o.views30.kind==='exact'?'views 30 days':'lifetime avg/month · partial history')+'</span></div>'+
       '</div>'+
       '<div class="dw-sec"><div class="k">⚖️ Age-matched comparison</div><div class="v">Published '+fmtDateFull(o.pub)+' · '+Math.round(o.ageDays||0)+' days old · market cohort: '+esc(o.cohAgeLabel||'—')+' ('+fmtInt(o.cohN||0)+' videos) · channel cohort: '+esc(o.chAgeLabel||'—')+' ('+fmtInt(o.chN||0)+' videos). Raw totals stay visible; performance colors and percentiles only compare releases at a similar age.</div></div>'+
       (o.st?'<div class="dw-stats" style="margin-top:10px">'+
@@ -2847,14 +2850,14 @@ function subsFor(v){
   return subs2For(v.channel);
 }
 function wlVideoTableHTML(rows){
-  return '<table class="vtable"><thead><tr><th></th><th>Title</th><th>Views/mo</th><th>Views</th><th>Duration</th><th>Published</th><th>Genre</th><th>Channel</th><th>Subs</th></tr></thead><tbody>'+
-    rows.map((v,i)=>'<tr class="row" onclick="openIdx(\'mix\','+i+')">'+
+  return '<table class="vtable"><thead><tr><th></th><th>Title</th><th>30-day performance</th><th>Total views</th><th>Duration</th><th>Published</th><th>Genre</th><th>Channel</th><th>Subs</th></tr></thead><tbody>'+
+    rows.map((v,i)=>{const m=videoUiMetrics(v);return '<tr class="row" onclick="openIdx(\'mix\','+i+')">'+
       '<td><img class="tthumb" loading="lazy" src="'+thumb(v.vid)+'" onerror="this.style.visibility=\'hidden\'"></td>'+
       '<td class="ttitle">'+esc(v.title)+'</td>'+
-      '<td class="num vpmcell">'+fmtN(v.vpm)+'</td><td class="num">'+fmtN(v.views)+'</td>'+
-      '<td class="num">'+fmtDur(v.durH)+'</td><td class="num">'+fmtDate(v.pub)+'</td>'+
+      '<td class="num vpmcell" title="'+esc(videoPeriodLabel(m.period))+'">'+fmtViewsExact(m.period.value)+'<small style="display:block;color:var(--muted);font-size:9px">'+esc(m.period.kind==='exact'?'views 30 days':'lifetime avg/month · partial history')+'</small></td><td class="num">'+fmtViewsExact(m.views)+'</td>'+
+      '<td class="num">'+fmtDur(v.durH)+'</td><td class="num">'+fmtDateFull(v.pub)+'</td>'+
       '<td>'+gtag(v.genre)+'</td><td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(v.channel)+'</td>'+
-      '<td class="num">'+fmtN(subsFor(v))+'</td></tr>').join('')+'</tbody></table>';
+      '<td class="num">'+fmtN(subsFor(v))+'</td></tr>';}).join('')+'</tbody></table>';
 }
 function wlLiveTableHTML(rows){
   return '<table class="vtable"><thead><tr><th></th><th>Stream</th><th>Channel</th><th>👀 Now</th><th>Peak</th><th>Started</th><th>Discovery keywords</th></tr></thead><tbody>'+
@@ -2943,6 +2946,7 @@ const FR_LIT=[
 ['Search titles, channels, keywords…','Chercher titres, chaînes, mots-clés…'],['Search streams, channels, keywords…','Chercher streams, chaînes, mots-clés…'],['Search channels, niches, countries…','Chercher chaînes, niches, pays…'],['Search concepts, titles, niches…','Chercher concepts, titres, niches…'],
 ['All potential','Tout potentiel'],['All characters','Tous les personnages'],['All sources','Toutes les sources'],['All genres','Tous les genres'],
 ['>Sort · Velocity (views/mo)<','>Tri · Vélocité (vues/mois)<'],['>Sort · Total views<','>Tri · Vues totales<'],['>Sort · Newest first<','>Tri · Plus récentes<'],['>Sort · Oldest first<','>Tri · Plus anciennes<'],['>Sort · Duration<','>Tri · Durée<'],['>Sort · Channel size<','>Tri · Taille de chaîne<'],['>Sort · Recently added<','>Tri · Ajout récent<'],['>Sort · Viewers now<','>Tri · Spectateurs actuels<'],['>Sort · Peak viewers<','>Tri · Pic de spectateurs<'],['>Sort · Recently started<','>Tri · Lancement récent<'],['>Sort · Channel<','>Tri · Chaîne<'],['>Sort · Subscribers<','>Tri · Abonnés<'],['>Sort · Views / year<','>Tri · Vues / an<'],['>Sort · Avg last 10<','>Tri · Moy. 10 dernières<'],['>Sort · Uploads / month<','>Tri · Uploads / mois<'],['>Sort · Last upload<','>Tri · Dernier upload<'],['>Sort · Name<','>Tri · Nom<'],['>Sort · Adjusted score<','>Tri · Score ajusté<'],['>Sort · Score<','>Tri · Score<'],['>Sort · Confidence<','>Tri · Confiance<'],['>Sort · N°<','>Tri · N°<'],['>Sort · Worst percentile first<','>Tri · Pire percentile d’abord<'],['>Sort · Best percentile first<','>Tri · Meilleur percentile d’abord<'],['>Sort · Most views<','>Tri · Plus de vues<'],
+['30-day views','Vues sur 30 jours'],['30-day performance','Performance sur 30 jours'],['views 30 days','vues sur 30 jours'],['lifetime avg/month','moyenne mensuelle lifetime'],['30-day history partial','historique 30 jours partiel'],['partial history','historique partiel'],['partial data','données partielles'],
 ['</b> videos<','</b> vidéos<'],['</b> streams<','</b> streams<'],['</b> channels<','</b> chaînes<'],['</b> concepts<','</b> concepts<'],
 [' remaining<',' restantes<'],['Loading more · ','Chargement · '],
 ['>Stream<','>Stream<'],['>👀 Now<','>👀 Actuel<'],['>Peak<','>Pic<'],['>Started<','>Lancé<'],['>Discovery keywords<','>Mots-clés de découverte<'],
