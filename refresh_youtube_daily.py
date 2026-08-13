@@ -1672,8 +1672,8 @@ def sheet_cell_video_id(cell: object) -> str | None:
     return None
 
 
-def sheet_video_ids() -> set[str]:
-    """Load every video ID that the live dashboard can display from the Sheet."""
+def sheet_video_catalog() -> dict[str, set[str]]:
+    """Load visible video IDs and the canonical Analyse cohort in one request."""
     try:
         from openpyxl import load_workbook
 
@@ -1687,6 +1687,7 @@ def sheet_video_ids() -> set[str]:
         if not any("Our Videos" in name for name in titles):
             raise RuntimeError("Our Videos tab is missing from the radar Sheet")
         ids: set[str] = set()
+        ours_ids: set[str] = set()
         for title in titles:
             max_col = 1 if "Our Videos" in title else 2
             for row in workbook[title].iter_rows(min_row=1, max_col=max_col):
@@ -1694,14 +1695,23 @@ def sheet_video_ids() -> set[str]:
                     video_id = sheet_cell_video_id(cell)
                     if video_id:
                         ids.add(video_id)
+                        if "Our Videos" in title:
+                            ours_ids.add(video_id)
                         break
         if not ids:
             raise RuntimeError("No dashboard video ID found in the radar Sheet")
-        return ids
+        if not ours_ids:
+            raise RuntimeError("Our Videos tab contains no valid video ID")
+        return {"all": ids, "ours": ours_ids}
     except Exception as exc:
         raise RuntimeError(
             f"Could not load the canonical dashboard video list: {type(exc).__name__}: {exc}"
         ) from exc
+
+
+def sheet_video_ids() -> set[str]:
+    """Load every video ID that the live dashboard can display from the Sheet."""
+    return sheet_video_catalog()["all"]
 
 
 def payload_bucket_ids(payload: dict, buckets: tuple[str, ...]) -> set[str]:
@@ -1714,7 +1724,11 @@ def payload_bucket_ids(payload: dict, buckets: tuple[str, ...]) -> set[str]:
     }
 
 
-def tracked_ids(payload: dict, scan_scope: str = "all") -> list[str]:
+def tracked_ids(
+    payload: dict,
+    scan_scope: str = "all",
+    canonical_sheet_ids: set[str] | None = None,
+) -> list[str]:
     if scan_scope not in SCAN_SCOPES:
         raise ValueError(f"Unknown scan scope: {scan_scope}")
     if scan_scope == "kids":
@@ -1731,7 +1745,7 @@ def tracked_ids(payload: dict, scan_scope: str = "all") -> list[str]:
     # separate scope; adding these IDs here only performs the ordinary metrics
     # lookup and prevents their cards/history from freezing between Kids scans.
     ids = set(standard_ids) | kids_ids
-    ids.update(sheet_video_ids())
+    ids.update(canonical_sheet_ids if canonical_sheet_ids is not None else sheet_video_ids())
     return sorted(ids - unavailable)
 
 
@@ -1742,7 +1756,12 @@ def write_tracked_manifest(
 ) -> dict:
     """Resolve the canonical tracked set once for every parallel scan shard."""
     payload = read_snapshot(snapshot)
-    ids = tracked_ids(payload, scan_scope)
+    sheet_catalog = (
+        {"all": set(), "ours": set()}
+        if scan_scope == "kids"
+        else sheet_video_catalog()
+    )
+    ids = tracked_ids(payload, scan_scope, sheet_catalog["all"])
     if not ids:
         raise RuntimeError("Canonical tracked-video manifest is empty")
     quarantine_ids = {
@@ -1752,12 +1771,21 @@ def write_tracked_manifest(
     }
     if scan_scope == "kids":
         quarantine_ids.clear()
+    canonical_ours_ids = sorted(sheet_catalog["ours"])
+    canonical_ours_digest = hashlib.sha256(
+        "\n".join(canonical_ours_ids).encode("utf-8")
+    ).hexdigest()
     manifest = {
-        "version": 1,
+        "version": 2,
         "scan_scope": scan_scope,
         "generated_ms": utc_now_ms(),
         "snapshot_metrics_ms": int(payload.get("videoMetricsT") or 0),
         "ids": ids,
+        # Keep the full canonical Sheet cohort even when an ID is quarantined:
+        # publication must never silently turn 83/83 into a false-green 82/82.
+        "ours_ids": canonical_ours_ids,
+        "ours_total": len(canonical_ours_ids),
+        "ours_digest": canonical_ours_digest,
         "quarantine_ids": sorted(quarantine_ids),
     }
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -1769,7 +1797,7 @@ def write_tracked_manifest(
 def read_tracked_manifest(path: Path, expected_scope: str | None = None) -> list[str]:
     manifest = json.loads(path.read_text(encoding="utf-8"))
     ids = [str(video_id) for video_id in (manifest.get("ids") or []) if VIDEO_ID.match(str(video_id or ""))]
-    if int(manifest.get("version") or 0) != 1 or not ids:
+    if int(manifest.get("version") or 0) not in (1, 2) or not ids:
         raise RuntimeError(f"Invalid or empty tracked-video manifest: {path}")
     manifest_scope = str(manifest.get("scan_scope") or "all")
     if expected_scope and manifest_scope != expected_scope:
@@ -1779,6 +1807,37 @@ def read_tracked_manifest(path: Path, expected_scope: str | None = None) -> list
     if len(ids) != len(set(ids)):
         raise RuntimeError(f"Duplicate IDs in tracked-video manifest: {path}")
     return sorted(ids)
+
+
+def read_ours_manifest(
+    path: Path,
+    expected_scope: str | None = None,
+) -> tuple[list[str], bool, int, str]:
+    """Return canonical Our Videos IDs and whether the manifest proves coverage."""
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    manifest_scope = str(manifest.get("scan_scope") or "all")
+    if expected_scope and manifest_scope != expected_scope:
+        raise RuntimeError(
+            f"Tracked-video manifest scope mismatch: expected {expected_scope}, got {manifest_scope}"
+        )
+    if manifest_scope == "kids":
+        return [], int(manifest.get("version") or 0) >= 2, 0, ""
+    if int(manifest.get("version") or 0) < 2:
+        return [], False, 0, ""
+    ours_ids = [
+        str(video_id)
+        for video_id in (manifest.get("ours_ids") or [])
+        if VIDEO_ID.match(str(video_id or ""))
+    ]
+    if not ours_ids or len(ours_ids) != len(set(ours_ids)):
+        raise RuntimeError(f"Invalid canonical Our Videos cohort in tracked manifest: {path}")
+    ours_ids = sorted(ours_ids)
+    ours_total = int(manifest.get("ours_total") or 0)
+    ours_digest = str(manifest.get("ours_digest") or "")
+    expected_digest = hashlib.sha256("\n".join(ours_ids).encode("utf-8")).hexdigest()
+    if ours_total != len(ours_ids) or ours_digest != expected_digest:
+        raise RuntimeError(f"Invalid canonical Our Videos proof in tracked manifest: {path}")
+    return ours_ids, True, ours_total, ours_digest
 
 
 def read_quarantine_manifest(path: Path) -> list[str]:
@@ -1897,6 +1956,27 @@ def run_shard(
         if tracked_manifest
         else tracked_ids(payload, scan_scope)
     )
+    if tracked_manifest:
+        (
+            all_canonical_ours_ids,
+            canonical_ours_manifest,
+            canonical_ours_total,
+            canonical_ours_digest,
+        ) = read_ours_manifest(
+            tracked_manifest, scan_scope
+        )
+    elif scan_scope == "kids":
+        all_canonical_ours_ids, canonical_ours_manifest = [], True
+        canonical_ours_total, canonical_ours_digest = 0, ""
+    else:
+        # Collector mode without a shared manifest remains supported locally,
+        # but still resolves the canonical Analyse cohort fail-closed.
+        all_canonical_ours_ids = sorted(sheet_video_catalog()["ours"])
+        canonical_ours_manifest = True
+        canonical_ours_total = len(all_canonical_ours_ids)
+        canonical_ours_digest = hashlib.sha256(
+            "\n".join(all_canonical_ours_ids).encode("utf-8")
+        ).hexdigest()
     all_quarantine_ids = (
         []
         if scan_scope == "kids"
@@ -1911,6 +1991,11 @@ def run_shard(
         )
     )
     ids = [video_id for video_id in all_tracked_ids if stable_shard(video_id, shards) == shard]
+    canonical_ours_ids = [
+        video_id
+        for video_id in all_canonical_ours_ids
+        if stable_shard(video_id, shards) == shard
+    ]
     quarantine_ids = [
         video_id for video_id in all_quarantine_ids if stable_shard(video_id, shards) == shard
     ]
@@ -2063,6 +2148,10 @@ def run_shard(
         "kids_candidates_kept": kids_candidates_kept,
         "owned_ok": owned_ok,
         "tracked_ids": ids,
+        "canonical_ours_manifest": canonical_ours_manifest,
+        "canonical_ours_ids": canonical_ours_ids,
+        "canonical_ours_total": canonical_ours_total,
+        "canonical_ours_digest": canonical_ours_digest,
         "tracked_fresh_ids": tracked_fresh_ids,
         "tracked_failed_ids": tracked_failed_ids,
         "tracked_unavailable_ids": tracked_unavailable_ids,
@@ -2706,6 +2795,46 @@ def merge_artifacts(
             f"Merge rejected: {expected_failed} missing counters but "
             f"{len(tracked_failed_ids)} traceable missing IDs"
         )
+    canonical_ours_declared = any(
+        artifact.get("canonical_ours_manifest") is True for artifact in artifacts
+    )
+    if canonical_ours_declared and not all(
+        artifact.get("canonical_ours_manifest") is True for artifact in artifacts
+    ):
+        raise RuntimeError("Merge rejected: canonical Our Videos manifest coverage is incomplete")
+    canonical_ours_totals = {
+        int(artifact.get("canonical_ours_total") or 0) for artifact in artifacts
+    }
+    canonical_ours_digests = {
+        str(artifact.get("canonical_ours_digest") or "") for artifact in artifacts
+    }
+    if canonical_ours_declared and (
+        len(canonical_ours_totals) != 1
+        or len(canonical_ours_digests) != 1
+        or not next(iter(canonical_ours_digests), "")
+    ):
+        raise RuntimeError("Merge rejected: canonical Our Videos proof differs across shards")
+    canonical_ours_ids = {
+        str(video_id)
+        for artifact in artifacts
+        for video_id in (artifact.get("canonical_ours_ids") or [])
+        if VIDEO_ID.match(str(video_id or ""))
+    }
+    if canonical_ours_declared and scan_scope != "kids" and not canonical_ours_ids:
+        raise RuntimeError("Merge rejected: canonical Our Videos cohort is empty")
+    if canonical_ours_declared and scan_scope != "kids":
+        canonical_ours_total = next(iter(canonical_ours_totals))
+        canonical_ours_digest = next(iter(canonical_ours_digests))
+        actual_digest = hashlib.sha256(
+            "\n".join(sorted(canonical_ours_ids)).encode("utf-8")
+        ).hexdigest()
+        if (
+            len(canonical_ours_ids) != canonical_ours_total
+            or actual_digest != canonical_ours_digest
+        ):
+            raise RuntimeError(
+                "Merge rejected: canonical Our Videos cohort is truncated or inconsistent"
+            )
 
     previous_unavailable_ids = {
         str(video_id)
@@ -2808,6 +2937,27 @@ def merge_artifacts(
 
     by_ours = {row.get("vid"): row for row in data.setdefault("ours", [])}
     inserted_ours = 0
+    canonical_ours_rows: list[dict] = []
+    for video_id in sorted(canonical_ours_ids):
+        current = by_ours.get(video_id)
+        if current is None:
+            current = {"vid": video_id}
+            data["ours"].append(current)
+            by_ours[video_id] = current
+            inserted_ours += 1
+        authoritative = fresh.get(video_id)
+        if authoritative:
+            update_row(current, authoritative, now_ms)
+        canonical_ours_rows.append(current)
+    sheet_ours_expected = len(canonical_ours_ids)
+    sheet_ours_updated = 0
+    if canonical_ours_declared:
+        _, sheet_ours_updated = validate_card_refresh(
+            {"ours": canonical_ours_rows},
+            fresh,
+            set(canonical_ours_ids),
+            now_ms,
+        )
     for row in owned_fresh.values():
         current = by_ours.get(row["vid"])
         if current:
@@ -3007,6 +3157,8 @@ def merge_artifacts(
         "history_updated": history_updated,
         "card_rows_expected": card_rows_expected,
         "card_rows_updated": card_rows_updated,
+        "sheet_ours_expected": sheet_ours_expected,
+        "sheet_ours_updated": sheet_ours_updated,
         "history_day": history_day,
         "day_timezone": RADAR_TIMEZONE_NAME,
         "partial": active_updated_total < active_tracked_total,
@@ -3042,6 +3194,8 @@ def merge_artifacts(
         "history_updated": history_updated,
         "card_rows_expected": card_rows_expected,
         "card_rows_updated": card_rows_updated,
+        "sheet_ours_expected": sheet_ours_expected,
+        "sheet_ours_updated": sheet_ours_updated,
         "history_day": history_day,
         "unavailable": len(unavailable_ids),
         "missing": len(missing_ids),
@@ -3076,6 +3230,8 @@ def snapshot_freshness(snapshot: Path, now_ms: int | None = None) -> dict:
     history_updated = int(metrics.get("history_updated") or 0)
     card_rows_expected = int(metrics.get("card_rows_expected") or 0)
     card_rows_updated = int(metrics.get("card_rows_updated") or 0)
+    sheet_ours_expected = int(metrics.get("sheet_ours_expected") or 0)
+    sheet_ours_updated = int(metrics.get("sheet_ours_updated") or 0)
     same_day = bool(stamp) and history_day_key(stamp) == history_day_key(now_ms)
     fresh = (
         same_day
@@ -3084,6 +3240,8 @@ def snapshot_freshness(snapshot: Path, now_ms: int | None = None) -> dict:
         and history_updated == updated
         and card_rows_expected > 0
         and card_rows_updated == card_rows_expected
+        and sheet_ours_expected > 0
+        and sheet_ours_updated == sheet_ours_expected
         and not bool(metrics.get("partial"))
         and metrics.get("history_day") == history_day_key(stamp)
         and metrics.get("day_timezone") == RADAR_TIMEZONE_NAME
@@ -3099,6 +3257,8 @@ def snapshot_freshness(snapshot: Path, now_ms: int | None = None) -> dict:
         "history_updated": history_updated,
         "card_rows_expected": card_rows_expected,
         "card_rows_updated": card_rows_updated,
+        "sheet_ours_expected": sheet_ours_expected,
+        "sheet_ours_updated": sheet_ours_updated,
     }
 
 
@@ -3129,9 +3289,15 @@ def verify_publication(
     expected_history_updated = int(local_metrics.get("history_updated") or 0)
     expected_card_rows = int(local_metrics.get("card_rows_expected") or 0)
     updated_card_rows = int(local_metrics.get("card_rows_updated") or 0)
+    expected_sheet_ours = int(local_metrics.get("sheet_ours_expected") or 0)
+    updated_sheet_ours = int(local_metrics.get("sheet_ours_updated") or 0)
     if expected_card_rows <= 0 or updated_card_rows != expected_card_rows:
         raise RuntimeError(
             f"Local factual cards are incomplete at {updated_card_rows}/{expected_card_rows}"
+        )
+    if expected_sheet_ours <= 0 or updated_sheet_ours != expected_sheet_ours:
+        raise RuntimeError(
+            f"Local Our Videos cards are incomplete at {updated_sheet_ours}/{expected_sheet_ours}"
         )
     local_latest_count = sum(
         1
@@ -3162,6 +3328,8 @@ def verify_publication(
             remote_metrics = remote.get("videoMetrics") or {}
             remote_card_expected = int(remote_metrics.get("card_rows_expected") or 0)
             remote_card_updated = int(remote_metrics.get("card_rows_updated") or 0)
+            remote_sheet_ours_expected = int(remote_metrics.get("sheet_ours_expected") or 0)
+            remote_sheet_ours_updated = int(remote_metrics.get("sheet_ours_updated") or 0)
             if (
                 remote_card_expected != expected_card_rows
                 or remote_card_updated != expected_card_rows
@@ -3169,6 +3337,16 @@ def verify_publication(
                 last_error = (
                     f"served cards={remote_card_updated}/{remote_card_expected}, "
                     f"expected={expected_card_rows}/{expected_card_rows}"
+                )
+                time.sleep(max(interval_seconds, 1))
+                continue
+            if (
+                remote_sheet_ours_expected != expected_sheet_ours
+                or remote_sheet_ours_updated != expected_sheet_ours
+            ):
+                last_error = (
+                    f"served Our Videos={remote_sheet_ours_updated}/{remote_sheet_ours_expected}, "
+                    f"expected={expected_sheet_ours}/{expected_sheet_ours}"
                 )
                 time.sleep(max(interval_seconds, 1))
                 continue

@@ -1049,8 +1049,17 @@ class DailyHistoryTests(unittest.TestCase):
                 },
             })
             manifest = root / "tracked.json"
+            ours_digest = radar.hashlib.sha256(b"abcdefghijk").hexdigest()
             manifest.write_text(
-                json.dumps({"version": 1, "ids": ["abcdefghijk"], "quarantine_ids": []}),
+                json.dumps({
+                    "version": 2,
+                    "scan_scope": "all",
+                    "ids": ["abcdefghijk"],
+                    "ours_ids": ["abcdefghijk"],
+                    "ours_total": 1,
+                    "ours_digest": ours_digest,
+                    "quarantine_ids": [],
+                }),
                 encoding="utf-8",
             )
             generated = int(datetime(2026, 8, 4, 8, tzinfo=timezone.utc).timestamp() * 1000)
@@ -1161,11 +1170,13 @@ class DailyHistoryTests(unittest.TestCase):
                 self.close()
 
         with patch.object(radar.urllib.request, "urlopen", return_value=Response(payload.read())):
-            ids = radar.sheet_video_ids()
+            catalog = radar.sheet_video_catalog()
+            ids = catalog["all"]
         self.assertEqual(
             ids,
             {"abcdefghijk", "zyxwvutsrqp", "mnopqrstuvw", "12345678901"},
         )
+        self.assertEqual(catalog["ours"], {"12345678901"})
 
     def test_one_canonical_manifest_is_reused_by_all_shards(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1173,11 +1184,17 @@ class DailyHistoryTests(unittest.TestCase):
             snapshot = root / "snapshot.js"
             manifest_path = root / "artifacts" / "tracked.json"
             radar.write_snapshot(snapshot, {"videoMetricsT": 123, "d": {}})
-            with patch.object(radar, "tracked_ids", return_value=["abcdefghijk", "zyxwvutsrqp"]) as tracked:
+            with patch.object(
+                radar,
+                "sheet_video_catalog",
+                return_value={"all": {"abcdefghijk", "zyxwvutsrqp"}, "ours": {"abcdefghijk"}},
+            ), patch.object(radar, "tracked_ids", return_value=["abcdefghijk", "zyxwvutsrqp"]) as tracked:
                 manifest = radar.write_tracked_manifest(snapshot, manifest_path)
             loaded = radar.read_tracked_manifest(manifest_path)
         tracked.assert_called_once()
         self.assertEqual(manifest["ids"], ["abcdefghijk", "zyxwvutsrqp"])
+        self.assertEqual(manifest["ours_ids"], ["abcdefghijk"])
+        self.assertEqual(manifest["ours_total"], 1)
         self.assertEqual(loaded, ["abcdefghijk", "zyxwvutsrqp"])
 
     def test_publicly_unavailable_ids_are_quarantined_but_kept_as_recovery_probes(self):
@@ -1195,11 +1212,20 @@ class DailyHistoryTests(unittest.TestCase):
                     ],
                 },
             })
-            with patch.object(radar, "sheet_video_ids", return_value={"abcdefghijk", "zyxwvutsrqp"}):
+            with patch.object(
+                radar,
+                "sheet_video_catalog",
+                return_value={
+                    "all": {"abcdefghijk", "zyxwvutsrqp"},
+                    "ours": {"abcdefghijk", "zyxwvutsrqp"},
+                },
+            ):
                 manifest = radar.write_tracked_manifest(snapshot, manifest_path)
             active = radar.read_tracked_manifest(manifest_path)
             probes = radar.read_quarantine_manifest(manifest_path)
         self.assertEqual(manifest["ids"], ["zyxwvutsrqp"])
+        self.assertEqual(manifest["ours_ids"], ["abcdefghijk", "zyxwvutsrqp"])
+        self.assertEqual(manifest["ours_total"], 2)
         self.assertEqual(active, ["zyxwvutsrqp"])
         self.assertEqual(probes, ["abcdefghijk"])
 
@@ -1450,6 +1476,103 @@ class DailyHistoryTests(unittest.TestCase):
         self.assertEqual(card["source"], "Official Lofi Girl daily scan")
         self.assertEqual(summary["card_rows_expected"], 1)
         self.assertEqual(summary["card_rows_updated"], 1)
+
+    def test_all_83_sheet_owned_cards_are_materialized_from_fresh_beyond_discovery_cap(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "Lofi_Radar_data.js"
+            avatars = root / "avatars.js"
+            shards = root / "shards"
+            shards.mkdir()
+            generated = int(datetime(2026, 8, 13, 8, tzinfo=timezone.utc).timestamp() * 1000)
+            ids = [f"{index:011d}" for index in range(83)]
+            digest = radar.hashlib.sha256("\n".join(ids).encode("utf-8")).hexdigest()
+            radar.write_snapshot(snapshot, {
+                "d": {
+                    "all": [], "trends": [], "news": [], "kids": [],
+                    "ours": [{"vid": video_id, "title": "Sheet title"} for video_id in ids[:50]],
+                    "recos": [], "roadmap": [], "lives": [],
+                },
+            })
+            fresh = [{
+                "vid": video_id,
+                "title": f"Canonical {index}",
+                "views": 100_000 + index,
+                "pub": 1_700_000_000_000 + index,
+                "metadataSource": radar.METADATA_SOURCE_API,
+                "pubSource": radar.METADATA_SOURCE_API,
+            } for index, video_id in enumerate(ids)]
+            artifact = {
+                "version": 1, "scan_scope": "standard", "generated_ms": generated,
+                "shard": 0, "shards": 1, "tracked_total": 83, "tracked_ok": 83,
+                "tracked_ids": ids, "tracked_fresh_ids": ids,
+                "tracked_failed_ids": [], "tracked_unavailable_ids": [],
+                "tracked_recovered_ids": [], "queries_total": 0, "queries_ok": 0,
+                "queries_raw": 0, "queries_enriched": 0, "owned_ok": True,
+                "fresh": fresh, "owned_fresh": fresh[:50], "candidates": [],
+                "canonical_ours_manifest": True,
+                "canonical_ours_ids": ids,
+                "canonical_ours_total": 83,
+                "canonical_ours_digest": digest,
+            }
+            (shards / "youtube-shard-0.json").write_text(json.dumps(artifact), encoding="utf-8")
+            summary = radar.merge_artifacts(
+                snapshot, avatars, shards, 1,
+                generate_recommendations=False,
+                scan_scope="standard",
+            )
+            merged = radar.read_snapshot(snapshot)
+
+        self.assertEqual(len(merged["d"]["ours"]), 83)
+        by_id = {row["vid"]: row for row in merged["d"]["ours"]}
+        self.assertEqual(by_id[ids[-1]]["views"], 100_082)
+        self.assertEqual(by_id[ids[-1]]["pub"], 1_700_000_000_082)
+        self.assertEqual(summary["sheet_ours_expected"], 83)
+        self.assertEqual(summary["sheet_ours_updated"], 83)
+        self.assertEqual(merged["videoMetrics"]["sheet_ours_expected"], 83)
+        self.assertEqual(merged["videoMetrics"]["sheet_ours_updated"], 83)
+
+    def test_canonical_sheet_owned_proof_rejects_a_truncated_shard_union(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "Lofi_Radar_data.js"
+            avatars = root / "avatars.js"
+            shards = root / "shards"
+            shards.mkdir()
+            generated = int(datetime(2026, 8, 13, 8, tzinfo=timezone.utc).timestamp() * 1000)
+            ids = [f"{index:011d}" for index in range(83)]
+            digest = radar.hashlib.sha256("\n".join(ids).encode("utf-8")).hexdigest()
+            radar.write_snapshot(snapshot, {"d": {
+                "all": [], "trends": [], "news": [], "kids": [], "ours": [],
+                "recos": [], "roadmap": [], "lives": [],
+            }})
+            partial = ids[:-1]
+            fresh = [{
+                "vid": video_id, "views": 100_000 + index,
+                "pub": 1_700_000_000_000 + index,
+                "metadataSource": radar.METADATA_SOURCE_API,
+                "pubSource": radar.METADATA_SOURCE_API,
+            } for index, video_id in enumerate(partial)]
+            artifact = {
+                "version": 1, "scan_scope": "standard", "generated_ms": generated,
+                "shard": 0, "shards": 1, "tracked_total": 82, "tracked_ok": 82,
+                "tracked_ids": partial, "tracked_fresh_ids": partial,
+                "tracked_failed_ids": [], "tracked_unavailable_ids": [],
+                "tracked_recovered_ids": [], "queries_total": 0, "queries_ok": 0,
+                "queries_raw": 0, "queries_enriched": 0, "owned_ok": True,
+                "fresh": fresh, "owned_fresh": fresh[:50], "candidates": [],
+                "canonical_ours_manifest": True,
+                "canonical_ours_ids": partial,
+                "canonical_ours_total": 83,
+                "canonical_ours_digest": digest,
+            }
+            (shards / "youtube-shard-0.json").write_text(json.dumps(artifact), encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "truncated or inconsistent"):
+                radar.merge_artifacts(
+                    snapshot, avatars, shards, 1,
+                    generate_recommendations=False,
+                    scan_scope="standard",
+                )
 
     def test_fallback_quarantines_only_after_two_consecutive_missing_scans(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1766,6 +1889,8 @@ class DailyHistoryTests(unittest.TestCase):
                     "history_updated": 1000,
                     "card_rows_expected": 1000,
                     "card_rows_updated": 1000,
+                    "sheet_ours_expected": 83,
+                    "sheet_ours_updated": 83,
                     "history_day": "2026-07-28",
                     "day_timezone": "Europe/Paris",
                     "partial": False,
@@ -1795,6 +1920,8 @@ class DailyHistoryTests(unittest.TestCase):
                     "history_updated": 2,
                     "card_rows_expected": 2,
                     "card_rows_updated": 2,
+                    "sheet_ours_expected": 1,
+                    "sheet_ours_updated": 1,
                 },
                 "d": {},
             })
@@ -1853,6 +1980,8 @@ class DailyHistoryTests(unittest.TestCase):
                     "history_updated": 1,
                     "card_rows_expected": 1,
                     "card_rows_updated": 1,
+                    "sheet_ours_expected": 1,
+                    "sheet_ours_updated": 1,
                 },
                 "d": {},
             })
@@ -1901,6 +2030,8 @@ class DailyHistoryTests(unittest.TestCase):
                     "history_updated": 1,
                     "card_rows_expected": 1,
                     "card_rows_updated": 1,
+                    "sheet_ours_expected": 1,
+                    "sheet_ours_updated": 1,
                 },
                 "d": {},
             })

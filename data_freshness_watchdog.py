@@ -342,6 +342,17 @@ def assess_youtube_radar(root: Path, now: datetime, ignore_deadline: bool = Fals
             f"YouTube card-row coverage is only {card_rows_updated}/{card_rows_expected}",
             observed,
         )
+    sheet_ours_expected = metric_int(metrics, "sheet_ours_expected")
+    sheet_ours_updated = metric_int(metrics, "sheet_ours_updated")
+    if sheet_ours_expected <= 0:
+        return freshness_row(target, True, "missing canonical Our Videos coverage proof", observed)
+    if sheet_ours_updated != sheet_ours_expected:
+        return freshness_row(
+            target,
+            True,
+            f"Our Videos coverage is only {sheet_ours_updated}/{sheet_ours_expected}",
+            observed,
+        )
 
     if not isinstance(kids_metrics, Mapping):
         return freshness_row(target, True, "missing daily YouTube Kids observation", observed)
