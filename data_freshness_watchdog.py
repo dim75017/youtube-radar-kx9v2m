@@ -353,6 +353,17 @@ def assess_youtube_radar(root: Path, now: datetime, ignore_deadline: bool = Fals
             f"Our Videos coverage is only {sheet_ours_updated}/{sheet_ours_expected}",
             observed,
         )
+    analysis_rows_expected = metric_int(metrics, "analysis_rows_expected")
+    analysis_rows_updated = metric_int(metrics, "analysis_rows_updated")
+    if analysis_rows_expected <= 0:
+        return freshness_row(target, True, "missing visible Analyse coverage proof", observed)
+    if analysis_rows_updated != analysis_rows_expected:
+        return freshness_row(
+            target,
+            True,
+            f"visible Analyse coverage is only {analysis_rows_updated}/{analysis_rows_expected}",
+            observed,
+        )
 
     if not isinstance(kids_metrics, Mapping):
         return freshness_row(target, True, "missing daily YouTube Kids observation", observed)

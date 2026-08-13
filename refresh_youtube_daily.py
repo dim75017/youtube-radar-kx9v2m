@@ -2445,6 +2445,17 @@ def validate_card_refresh(
     return expected, expected
 
 
+def is_analysis_card(row: dict) -> bool:
+    """Mirror the Analyse UI's factual visibility predicate exactly."""
+    published = row.get("pub")
+    if not isinstance(published, (int, float)) or published <= 0:
+        return False
+    duration = row.get("durH")
+    return duration is None or (
+        isinstance(duration, (int, float)) and float(duration) >= 0.15
+    )
+
+
 def write_avatar_overlay(payload: dict, path: Path) -> int:
     channels: dict[str, str] = {}
     aliases: dict[str, str] = {}
@@ -2972,6 +2983,19 @@ def merge_artifacts(
             by_ours[added["vid"]] = added
             inserted_ours += 1
     data["ours"].sort(key=lambda row: row.get("pub") or 0, reverse=True)
+    analysis_rows = [row for row in data["ours"] if is_analysis_card(row)]
+    analysis_ids = {str(row.get("vid") or "") for row in analysis_rows}
+    if len(analysis_ids) != len(analysis_rows):
+        raise RuntimeError("Merge rejected: duplicate visible Analyse video IDs")
+    analysis_rows_expected = len(analysis_rows)
+    analysis_rows_updated = 0
+    if canonical_ours_declared:
+        _, analysis_rows_updated = validate_card_refresh(
+            {"ours": analysis_rows},
+            fresh,
+            analysis_ids,
+            now_ms,
+        )
 
     by_all = {row.get("vid"): row for row in data["all"]}
     by_trends = {row.get("vid"): row for row in data["trends"]}
@@ -3159,6 +3183,8 @@ def merge_artifacts(
         "card_rows_updated": card_rows_updated,
         "sheet_ours_expected": sheet_ours_expected,
         "sheet_ours_updated": sheet_ours_updated,
+        "analysis_rows_expected": analysis_rows_expected,
+        "analysis_rows_updated": analysis_rows_updated,
         "history_day": history_day,
         "day_timezone": RADAR_TIMEZONE_NAME,
         "partial": active_updated_total < active_tracked_total,
@@ -3196,6 +3222,8 @@ def merge_artifacts(
         "card_rows_updated": card_rows_updated,
         "sheet_ours_expected": sheet_ours_expected,
         "sheet_ours_updated": sheet_ours_updated,
+        "analysis_rows_expected": analysis_rows_expected,
+        "analysis_rows_updated": analysis_rows_updated,
         "history_day": history_day,
         "unavailable": len(unavailable_ids),
         "missing": len(missing_ids),
@@ -3232,6 +3260,8 @@ def snapshot_freshness(snapshot: Path, now_ms: int | None = None) -> dict:
     card_rows_updated = int(metrics.get("card_rows_updated") or 0)
     sheet_ours_expected = int(metrics.get("sheet_ours_expected") or 0)
     sheet_ours_updated = int(metrics.get("sheet_ours_updated") or 0)
+    analysis_rows_expected = int(metrics.get("analysis_rows_expected") or 0)
+    analysis_rows_updated = int(metrics.get("analysis_rows_updated") or 0)
     same_day = bool(stamp) and history_day_key(stamp) == history_day_key(now_ms)
     fresh = (
         same_day
@@ -3242,6 +3272,8 @@ def snapshot_freshness(snapshot: Path, now_ms: int | None = None) -> dict:
         and card_rows_updated == card_rows_expected
         and sheet_ours_expected > 0
         and sheet_ours_updated == sheet_ours_expected
+        and analysis_rows_expected > 0
+        and analysis_rows_updated == analysis_rows_expected
         and not bool(metrics.get("partial"))
         and metrics.get("history_day") == history_day_key(stamp)
         and metrics.get("day_timezone") == RADAR_TIMEZONE_NAME
@@ -3259,6 +3291,8 @@ def snapshot_freshness(snapshot: Path, now_ms: int | None = None) -> dict:
         "card_rows_updated": card_rows_updated,
         "sheet_ours_expected": sheet_ours_expected,
         "sheet_ours_updated": sheet_ours_updated,
+        "analysis_rows_expected": analysis_rows_expected,
+        "analysis_rows_updated": analysis_rows_updated,
     }
 
 
@@ -3291,6 +3325,8 @@ def verify_publication(
     updated_card_rows = int(local_metrics.get("card_rows_updated") or 0)
     expected_sheet_ours = int(local_metrics.get("sheet_ours_expected") or 0)
     updated_sheet_ours = int(local_metrics.get("sheet_ours_updated") or 0)
+    expected_analysis_rows = int(local_metrics.get("analysis_rows_expected") or 0)
+    updated_analysis_rows = int(local_metrics.get("analysis_rows_updated") or 0)
     if expected_card_rows <= 0 or updated_card_rows != expected_card_rows:
         raise RuntimeError(
             f"Local factual cards are incomplete at {updated_card_rows}/{expected_card_rows}"
@@ -3298,6 +3334,10 @@ def verify_publication(
     if expected_sheet_ours <= 0 or updated_sheet_ours != expected_sheet_ours:
         raise RuntimeError(
             f"Local Our Videos cards are incomplete at {updated_sheet_ours}/{expected_sheet_ours}"
+        )
+    if expected_analysis_rows <= 0 or updated_analysis_rows != expected_analysis_rows:
+        raise RuntimeError(
+            f"Local Analyse cards are incomplete at {updated_analysis_rows}/{expected_analysis_rows}"
         )
     local_latest_count = sum(
         1
@@ -3330,6 +3370,8 @@ def verify_publication(
             remote_card_updated = int(remote_metrics.get("card_rows_updated") or 0)
             remote_sheet_ours_expected = int(remote_metrics.get("sheet_ours_expected") or 0)
             remote_sheet_ours_updated = int(remote_metrics.get("sheet_ours_updated") or 0)
+            remote_analysis_expected = int(remote_metrics.get("analysis_rows_expected") or 0)
+            remote_analysis_updated = int(remote_metrics.get("analysis_rows_updated") or 0)
             if (
                 remote_card_expected != expected_card_rows
                 or remote_card_updated != expected_card_rows
@@ -3337,6 +3379,16 @@ def verify_publication(
                 last_error = (
                     f"served cards={remote_card_updated}/{remote_card_expected}, "
                     f"expected={expected_card_rows}/{expected_card_rows}"
+                )
+                time.sleep(max(interval_seconds, 1))
+                continue
+            if (
+                remote_analysis_expected != expected_analysis_rows
+                or remote_analysis_updated != expected_analysis_rows
+            ):
+                last_error = (
+                    f"served Analyse={remote_analysis_updated}/{remote_analysis_expected}, "
+                    f"expected={expected_analysis_rows}/{expected_analysis_rows}"
                 )
                 time.sleep(max(interval_seconds, 1))
                 continue

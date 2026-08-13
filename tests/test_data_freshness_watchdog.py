@@ -27,6 +27,8 @@ def write_youtube_fixture(
     card_rows_updated: int = 2,
     sheet_ours_expected: int = 1,
     sheet_ours_updated: int = 1,
+    analysis_rows_expected: int = 1,
+    analysis_rows_updated: int = 1,
     tracked: int = 1,
     updated: int = 1,
     history_updated: int = 1,
@@ -62,6 +64,8 @@ def write_youtube_fixture(
             "card_rows_updated": card_rows_updated,
             "sheet_ours_expected": sheet_ours_expected,
             "sheet_ours_updated": sheet_ours_updated,
+            "analysis_rows_expected": analysis_rows_expected,
+            "analysis_rows_updated": analysis_rows_updated,
         },
         "kidsMetricsT": kids_stamp,
         "kidsMetrics": {
@@ -457,6 +461,25 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         )[0]
         self.assertTrue(row.due)
         self.assertIn("Our Videos coverage is only 82/83", row.reason)
+
+    def test_youtube_visible_analysis_cohort_must_all_be_updated(self):
+        stamp = int(datetime(2026, 8, 13, 8, tzinfo=timezone.utc).timestamp() * 1000)
+        write_youtube_fixture(
+            self.root,
+            stamp=stamp,
+            day="2026-08-13",
+            sheet_ours_expected=79,
+            sheet_ours_updated=79,
+            analysis_rows_expected=83,
+            analysis_rows_updated=82,
+        )
+        row = subject.assess(
+            self.root,
+            datetime(2026, 8, 13, 12, tzinfo=timezone.utc),
+            ["youtube_radar"],
+        )[0]
+        self.assertTrue(row.due)
+        self.assertIn("visible Analyse coverage is only 82/83", row.reason)
 
     def test_youtube_kids_must_have_a_fresh_daily_observation(self):
         stamp = int(datetime(2026, 7, 29, 6, tzinfo=timezone.utc).timestamp() * 1000)

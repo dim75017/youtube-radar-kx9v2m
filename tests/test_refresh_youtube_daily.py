@@ -1531,6 +1531,83 @@ class DailyHistoryTests(unittest.TestCase):
         self.assertEqual(summary["sheet_ours_updated"], 83)
         self.assertEqual(merged["videoMetrics"]["sheet_ours_expected"], 83)
         self.assertEqual(merged["videoMetrics"]["sheet_ours_updated"], 83)
+        self.assertEqual(summary["analysis_rows_expected"], 83)
+        self.assertEqual(summary["analysis_rows_updated"], 83)
+
+    def test_visible_analysis_proof_matches_real_sheet_snapshot_merge_shape(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "Lofi_Radar_data.js"
+            avatars = root / "avatars.js"
+            shards = root / "shards"
+            shards.mkdir()
+            generated = int(datetime(2026, 8, 13, 8, tzinfo=timezone.utc).timestamp() * 1000)
+            sheet_ids = [f"s{index:010d}" for index in range(79)]
+            extra_ids = [f"x{index:010d}" for index in range(12)]
+            all_ids = sorted(sheet_ids + extra_ids)
+            digest = radar.hashlib.sha256(
+                "\n".join(sorted(sheet_ids)).encode("utf-8")
+            ).hexdigest()
+            # Mirrors production: 79 unique Sheet rows, seven short rows hidden
+            # by Analyse, plus twelve snapshot-only rows of which one is short.
+            existing_extras = [{
+                "vid": video_id,
+                "title": f"Snapshot-only {index}",
+                "views": 90_000 + index,
+                "pub": 1_700_000_100_000 + index,
+                "durH": 0.025 if index == 0 else None,
+            } for index, video_id in enumerate(extra_ids)]
+            radar.write_snapshot(snapshot, {"d": {
+                "all": [], "trends": [], "news": [], "kids": [],
+                "ours": existing_extras,
+                "recos": [], "roadmap": [], "lives": [],
+            }})
+            fresh = []
+            for index, video_id in enumerate(sheet_ids):
+                fresh.append({
+                    "vid": video_id,
+                    "title": f"Sheet {index}",
+                    "views": 100_000 + index,
+                    "pub": 1_700_000_000_000 + index,
+                    "durH": 0.01 if index < 7 else 1.0,
+                    "metadataSource": radar.METADATA_SOURCE_API,
+                    "pubSource": radar.METADATA_SOURCE_API,
+                })
+            for index, row in enumerate(existing_extras):
+                fresh.append({
+                    **row,
+                    "views": 110_000 + index,
+                    "metadataSource": radar.METADATA_SOURCE_API,
+                    "pubSource": radar.METADATA_SOURCE_API,
+                })
+            artifact = {
+                "version": 1, "scan_scope": "standard", "generated_ms": generated,
+                "shard": 0, "shards": 1, "tracked_total": 91, "tracked_ok": 91,
+                "tracked_ids": all_ids, "tracked_fresh_ids": all_ids,
+                "tracked_failed_ids": [], "tracked_unavailable_ids": [],
+                "tracked_recovered_ids": [], "queries_total": 0, "queries_ok": 0,
+                "queries_raw": 0, "queries_enriched": 0, "owned_ok": True,
+                "fresh": fresh, "owned_fresh": fresh[:50], "candidates": [],
+                "canonical_ours_manifest": True,
+                "canonical_ours_ids": sorted(sheet_ids),
+                "canonical_ours_total": 79,
+                "canonical_ours_digest": digest,
+            }
+            (shards / "youtube-shard-0.json").write_text(json.dumps(artifact), encoding="utf-8")
+            summary = radar.merge_artifacts(
+                snapshot, avatars, shards, 1,
+                generate_recommendations=False,
+                scan_scope="standard",
+            )
+            merged = radar.read_snapshot(snapshot)
+
+        visible = [row for row in merged["d"]["ours"] if radar.is_analysis_card(row)]
+        self.assertEqual(len({row["vid"] for row in merged["d"]["ours"]}), 91)
+        self.assertEqual(len(visible), 83)
+        self.assertEqual(summary["sheet_ours_expected"], 79)
+        self.assertEqual(summary["sheet_ours_updated"], 79)
+        self.assertEqual(summary["analysis_rows_expected"], 83)
+        self.assertEqual(summary["analysis_rows_updated"], 83)
 
     def test_canonical_sheet_owned_proof_rejects_a_truncated_shard_union(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -1891,6 +1968,8 @@ class DailyHistoryTests(unittest.TestCase):
                     "card_rows_updated": 1000,
                     "sheet_ours_expected": 83,
                     "sheet_ours_updated": 83,
+                    "analysis_rows_expected": 83,
+                    "analysis_rows_updated": 83,
                     "history_day": "2026-07-28",
                     "day_timezone": "Europe/Paris",
                     "partial": False,
@@ -1922,6 +2001,8 @@ class DailyHistoryTests(unittest.TestCase):
                     "card_rows_updated": 2,
                     "sheet_ours_expected": 1,
                     "sheet_ours_updated": 1,
+                    "analysis_rows_expected": 1,
+                    "analysis_rows_updated": 1,
                 },
                 "d": {},
             })
@@ -1982,6 +2063,8 @@ class DailyHistoryTests(unittest.TestCase):
                     "card_rows_updated": 1,
                     "sheet_ours_expected": 1,
                     "sheet_ours_updated": 1,
+                    "analysis_rows_expected": 1,
+                    "analysis_rows_updated": 1,
                 },
                 "d": {},
             })
@@ -2032,6 +2115,8 @@ class DailyHistoryTests(unittest.TestCase):
                     "card_rows_updated": 1,
                     "sheet_ours_expected": 1,
                     "sheet_ours_updated": 1,
+                    "analysis_rows_expected": 1,
+                    "analysis_rows_updated": 1,
                 },
                 "d": {},
             })
