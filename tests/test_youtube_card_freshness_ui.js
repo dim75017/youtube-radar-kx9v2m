@@ -8,7 +8,7 @@ const helpers = fs.readFileSync('assets/js/dashboard-02-helpers.js', 'utf8');
 const videos = fs.readFileSync('assets/js/dashboard-03-keywords.js', 'utf8');
 const analysis = fs.readFileSync('assets/js/dashboard-04-recommendations.js', 'utf8');
 
-const formatStart = helpers.indexOf('function fmtViewsExact');
+const formatStart = helpers.indexOf('function fmtN');
 const formatEnd = helpers.indexOf('function fmtDur', formatStart);
 const metricStart = helpers.indexOf('function cleanVideoHist');
 const metricEnd = helpers.indexOf('function videoHistSlice', metricStart);
@@ -27,6 +27,7 @@ vm.runInNewContext(`
   this.videoAgeMonths=videoAgeMonths;
   this.videoLatestViews=videoLatestViews;
   this.videoThirtyDayMetric=videoThirtyDayMetric;
+  this.videoCardPeriodLabel=videoCardPeriodLabel;
 `, context);
 
 const day = 86_400_000;
@@ -36,6 +37,8 @@ assert.equal(exact.kind, 'exact');
 assert.equal(exact.value, 3_000, 'a complete 30-day counter history yields the factual gain');
 assert.equal(context.videoLatestViews({views: 999}, fullHistory), 4_000,
   'the latest history counter supersedes the stale row counter');
+assert.equal(context.videoCardPeriodLabel(exact), 'last 30 days',
+  'a factual 30-day gain gets the short card label');
 
 const partialHistory = fullHistory.slice(-10);
 const fallback = context.videoThirtyDayMetric({pub: now-100*day, views: 999}, partialHistory);
@@ -44,16 +47,27 @@ assert.match(fallback.label, /lifetime avg\/month/,
   'partial history is never presented as a factual 30-day gain');
 assert.ok(Math.abs(fallback.value-(4_000/context.videoAgeMonths({pub: now-100*day}))) < 1e-9,
   'fallback uses the fresh total and dynamic publication age');
+assert.equal(context.videoCardPeriodLabel(fallback), 'avg / month',
+  'a lifetime fallback stays visibly distinct from factual 30-day performance');
+assert.equal(context.fmtN(1_155_896), '1.2M');
+assert.equal(context.fmtN(3_283_979), '3.3M');
 assert.equal(context.fmtViewsExact(1_234_567), '1,234,567',
-  'video totals use exact grouped digits instead of compact rounding');
+  'exact grouped digits remain available for detailed views');
 
 const cardStart = videos.indexOf('function vcardHTML');
 const drawerStart = videos.indexOf('function openDrawer');
 const drawerEnd = videos.indexOf('function closeDrawer', drawerStart);
-assert.match(videos.slice(cardStart, drawerStart), /fmtViewsExact\(m\.views\)/,
-  'video cards render exact total views');
-assert.match(videos.slice(cardStart, drawerStart), /fmtDateFull\(v\.pub\)/,
-  'video cards render the complete publication date');
+const videoCard = videos.slice(cardStart, drawerStart);
+assert.match(videoCard, /fmtN\(m\.period\.value\)/,
+  'video cards compact the 30-day or fallback value');
+assert.match(videoCard, /fmtN\(m\.views\)/,
+  'video cards compact total views');
+assert.match(videoCard, /videoCardPeriodLabel\(m\.period\)/,
+  'video cards use the short, honest period label');
+assert.match(videoCard, /fmtDate\(v\.pub\)/,
+  'video cards keep only month and year');
+assert.doesNotMatch(videoCard, /fmtViewsExact|fmtDateFull|lifetime avg\/month · partial history/,
+  'cards no longer expose verbose exact values or fallback copy');
 assert.match(videos.slice(cardStart, drawerStart), /fmtAge\(m\.ageM\)/,
   'video cards render age recalculated from publication time');
 assert.match(videos.slice(drawerStart, drawerEnd), /fmtViewsExact\(metrics\.views\)/,
@@ -69,8 +83,37 @@ assert.doesNotMatch(analysis.slice(preloadStart, preloadEnd), /Promise\.all\(mis
   'Analysis must not launch one visible-history request per video at once');
 assert.match(analysis, /o\.views30=videoThirtyDayMetric\(o,s\)/,
   'Analysis cards derive their 30-day metric from factual history');
-assert.match(analysis, /fmtViewsExact\(o\.views\)/,
-  'Analysis list and detail expose exact total counters');
+const analysisCardStart = analysis.indexOf('function anaCardHTML');
+const analysisCardEnd = analysis.indexOf('function fillAnaLikes', analysisCardStart);
+const analysisCard = analysis.slice(analysisCardStart, analysisCardEnd);
+assert.match(analysisCard, /videoCardPeriodLabel\(o\.views30\)/,
+  'Analysis cards use the same short, honest period label');
+assert.doesNotMatch(analysisCard, /fmtViewsExact|lifetime avg\/month · partial history/,
+  'Analysis cards stay compact');
+const analysisListStart = analysis.indexOf('function anaHTML');
+const analysisListEnd = analysis.indexOf('function openAnaIdx', analysisListStart);
+assert.match(analysis.slice(analysisListStart, analysisListEnd), /fmtN\(o\.views\)/,
+  'Analysis list cards compact total views');
+assert.match(analysis.slice(analysisListStart, analysisListEnd), /fmtN\(o\.views30\.value\)/,
+  'Analysis list cards compact the period value');
+const analysisDrawerEnd = analysis.indexOf('function closeAna', analysisListEnd);
+assert.match(analysis.slice(analysisListEnd, analysisDrawerEnd), /fmtViewsExact\(o\.views\)/,
+  'Analysis detail keeps exact total counters');
+
+const dashboardStart = helpers.indexOf('function dashHTML');
+const dashboardEnd = helpers.indexOf('function ', dashboardStart + 12);
+const dashboardCards = helpers.slice(dashboardStart, dashboardEnd);
+assert.match(dashboardCards, /fmtN\(m\.period\.value\)/,
+  'Dashboard mini-cards compact their period value');
+assert.match(dashboardCards, /videoCardPeriodLabel\(m\.period\)/,
+  'Dashboard mini-cards use the short period label');
+assert.match(dashboardCards, /fmtN\(m\.views\)/,
+  'Dashboard discovery mini-cards compact total views');
+
+const index = fs.readFileSync('index.html', 'utf8');
+for (const asset of ['dashboard-02-helpers.js', 'dashboard-03-keywords.js', 'dashboard-04-recommendations.js']) {
+  assert.ok(index.includes(asset+'?v=20260813-card-compact-v1'), asset+' cache version is current');
+}
 
 const visibleStart = videos.indexOf('let VISIBLE_VIDEO_HISTORY_PROMISE');
 const visibleEnd = videos.indexOf('function videosHTML', visibleStart);

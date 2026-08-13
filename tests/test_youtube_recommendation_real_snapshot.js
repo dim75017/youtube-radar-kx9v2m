@@ -181,7 +181,12 @@ assert.match(String(poolPayload.buildId || ''), /^[a-f0-9]{24}$/,
   'the V3 projection must expose its deterministic build id');
 assert.match(String(poolPayload.ledgerRevision || ''), /^[a-f0-9]{64}$/,
   'the V3 projection must expose its exact ledger revision');
-assert.equal(owned.length, 50, 'the real owned-channel snapshot must still expose all 50 videos');
+const expectedSheetOwned = Number(dataPayload.videoMetrics && dataPayload.videoMetrics.sheet_ours_expected);
+const expectedAnalysisOwned = Number(dataPayload.videoMetrics && dataPayload.videoMetrics.analysis_rows_expected);
+assert.ok(expectedSheetOwned > 0 && expectedAnalysisOwned > 0,
+  'the real snapshot must expose its canonical Sheet and visible Analysis coverage');
+assert.ok(owned.length >= expectedSheetOwned && owned.length >= expectedAnalysisOwned,
+  'the real owned-channel snapshot must cover every canonical Sheet and visible Analysis row');
 assert.ok(Number.isFinite(snapshotTime), 'the real snapshot must expose a stable measurement timestamp');
 assert.ok(historyFiles.length >= 1, 'at least one real history shard must be loaded');
 
@@ -222,7 +227,7 @@ assert.ok(generatedTiers.has('A') && generatedTiers.has('B'),
 const historyCoverage = owned.filter(row => Array.isArray(history[row.vid]) && history[row.vid].length > 0);
 const multiPointCoverage = owned.filter(row => Array.isArray(history[row.vid]) && history[row.vid].length >= 2);
 const studioCoverage = owned.filter(row => studioPayload.d && studioPayload.d[row.vid]);
-assert.equal(historyCoverage.length, owned.length, 'all 50 owned videos must be connected to real history shards');
+assert.equal(historyCoverage.length, owned.length, 'all owned videos must be connected to real history shards');
 assert.ok(multiPointCoverage.length >= 20, 'enough owned videos must have multi-day history for recent velocity');
 assert.ok(studioCoverage.length >= 20, 'enough owned videos must be connected to real YouTube Studio metrics');
 

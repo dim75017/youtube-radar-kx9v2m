@@ -2332,11 +2332,11 @@ function anaCardHTML(o,i){
     '<div class="thumbwrap"><img loading="lazy" src="'+thumb(o.vid)+'" onerror="this.style.visibility=\'hidden\'"></div>'+
     '<div class="vbody">'+
       '<div class="vtitle">'+esc(o.title)+'</div>'+
-      '<div class="vtags">'+gtag(o.genre)+(o.durH!=null?ghosttag(fmtDur(o.durH)):'')+(o.pub?'<span class="tag ghost">📅 '+fmtDateFull(o.pub)+'</span>':'')+'</div>'+
+      '<div class="vtags">'+gtag(o.genre)+(o.durH!=null?ghosttag(fmtDur(o.durH)):'')+(o.pub?'<span class="tag ghost">📅 '+fmtDate(o.pub)+'</span>':'')+'</div>'+
       anaProgressBarHTML(o)+
       '<div class="vstats">'+
-        anaStat(o.views,o.medViews,'total views',true,fmtViewsExact,ageRef)+
-        anaStat(o.views30.value,null,o.views30.kind==='exact'?'views 30 days':'lifetime avg/month · partial history',false,fmtViewsExact)+
+        anaStat(o.views,o.medViews,'views',true,null,ageRef)+
+        anaStat(o.views30.value,null,videoCardPeriodLabel(o.views30),false)+
         '<div class="vstat" data-alikesw="'+o.vid+'"><b data-alikes="'+o.vid+'">…</b><span>likes</span></div>'+
         anaStat(cmt,o.medCmt,'comments',false,null,ageRef)+
         (o.st&&o.st.awp!=null?anaStat(o.st.awp,o.awpMed,'avg view',false,fmtPct,ageRef):'')+
@@ -2385,12 +2385,12 @@ function anaHTML(){
         '<img loading="lazy" src="'+thumb(o.vid)+'" onerror="this.style.visibility=\'hidden\'">'+
         '<div style="flex:1;min-width:0">'+
           '<div style="font-weight:600;font-size:13.5px;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(o.title)+'</div>'+
-          '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px">'+gtag(o.genre)+ghosttag(o.perso)+(o.durH!=null?ghosttag(fmtDur(o.durH)):'')+'<span class="tag ghost">'+fmtDateFull(o.pub)+'</span>'+(o.st?'<span class="tag ghost" style="color:'+(o.ctrMed&&o.st.ctr<o.ctrMed*0.75?'#f87171':o.ctrMed&&o.st.ctr>o.ctrMed*1.25?'#34d399':'var(--muted)')+'">CTR '+o.st.ctr.toFixed(1)+'%</span><span class="tag ghost" style="color:'+vsMed(o.st.awtMs,o.awtMed)+'">avg view '+fmtWatch(o.st.awtMs)+'</span>':'')+(o.reco?'<span class="tag ghost">reco #'+Math.round(o.reco.n)+(o.reco.pot?' · '+o.reco.pot[0]:'')+'</span>':'')+'</div>'+
+          '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px">'+gtag(o.genre)+ghosttag(o.perso)+(o.durH!=null?ghosttag(fmtDur(o.durH)):'')+'<span class="tag ghost">'+fmtDate(o.pub)+'</span>'+(o.st?'<span class="tag ghost" style="color:'+(o.ctrMed&&o.st.ctr<o.ctrMed*0.75?'#f87171':o.ctrMed&&o.st.ctr>o.ctrMed*1.25?'#34d399':'var(--muted)')+'">CTR '+o.st.ctr.toFixed(1)+'%</span><span class="tag ghost" style="color:'+vsMed(o.st.awtMs,o.awtMed)+'">avg view '+fmtWatch(o.st.awtMs)+'</span>':'')+(o.reco?'<span class="tag ghost">reco #'+Math.round(o.reco.n)+(o.reco.pot?' · '+o.reco.pot[0]:'')+'</span>':'')+'</div>'+
           anaProgressBarHTML(o)+
         '</div>'+
         '<div style="text-align:right;flex:none">'+
-          '<div style="font-family:Sora;font-size:17px;font-weight:700;color:'+pcol(o.pctCh)+'">'+fmtViewsExact(o.views)+'</div>'+
-          '<div style="font-size:10.5px;color:var(--muted);margin-bottom:8px;font-weight:600">'+fmtViewsExact(o.views30.value)+' '+(o.views30.kind==='exact'?'views 30 days':'lifetime avg/month · partial history')+'</div>'+
+          '<div style="font-family:Sora;font-size:17px;font-weight:700;color:'+pcol(o.pctCh)+'">'+fmtN(o.views)+'</div>'+
+          '<div style="font-size:10.5px;color:var(--muted);margin-bottom:8px;font-weight:600">'+fmtN(o.views30.value)+' '+esc(videoCardPeriodLabel(o.views30))+'</div>'+
         '</div></div>';
     }).join('');
   }else{
@@ -2954,7 +2954,7 @@ const FR_LIT=[
 ['Search titles, channels, keywords…','Chercher titres, chaînes, mots-clés…'],['Search streams, channels, keywords…','Chercher streams, chaînes, mots-clés…'],['Search channels, niches, countries…','Chercher chaînes, niches, pays…'],['Search concepts, titles, niches…','Chercher concepts, titres, niches…'],
 ['All potential','Tout potentiel'],['All characters','Tous les personnages'],['All sources','Toutes les sources'],['All genres','Tous les genres'],
 ['>Sort · Velocity (views/mo)<','>Tri · Vélocité (vues/mois)<'],['>Sort · Total views<','>Tri · Vues totales<'],['>Sort · Newest first<','>Tri · Plus récentes<'],['>Sort · Oldest first<','>Tri · Plus anciennes<'],['>Sort · Duration<','>Tri · Durée<'],['>Sort · Channel size<','>Tri · Taille de chaîne<'],['>Sort · Recently added<','>Tri · Ajout récent<'],['>Sort · Viewers now<','>Tri · Spectateurs actuels<'],['>Sort · Peak viewers<','>Tri · Pic de spectateurs<'],['>Sort · Recently started<','>Tri · Lancement récent<'],['>Sort · Channel<','>Tri · Chaîne<'],['>Sort · Subscribers<','>Tri · Abonnés<'],['>Sort · Views / year<','>Tri · Vues / an<'],['>Sort · Avg last 10<','>Tri · Moy. 10 dernières<'],['>Sort · Uploads / month<','>Tri · Uploads / mois<'],['>Sort · Last upload<','>Tri · Dernier upload<'],['>Sort · Name<','>Tri · Nom<'],['>Sort · Adjusted score<','>Tri · Score ajusté<'],['>Sort · Score<','>Tri · Score<'],['>Sort · Confidence<','>Tri · Confiance<'],['>Sort · N°<','>Tri · N°<'],['>Sort · Worst percentile first<','>Tri · Pire percentile d’abord<'],['>Sort · Best percentile first<','>Tri · Meilleur percentile d’abord<'],['>Sort · Most views<','>Tri · Plus de vues<'],
-['30-day views','Vues sur 30 jours'],['30-day performance','Performance sur 30 jours'],['views 30 days','vues sur 30 jours'],['lifetime avg/month','moyenne mensuelle lifetime'],['30-day history partial','historique 30 jours partiel'],['partial history','historique partiel'],['partial data','données partielles'],
+['30-day views','Vues sur 30 jours'],['30-day performance','Performance sur 30 jours'],['views 30 days','vues sur 30 jours'],['last 30 days','30 jours'],['avg / month','moy. / mois'],['lifetime avg/month','moyenne mensuelle lifetime'],['30-day history partial','historique 30 jours partiel'],['partial history','historique partiel'],['partial data','données partielles'],
 ['</b> videos<','</b> vidéos<'],['</b> streams<','</b> streams<'],['</b> channels<','</b> chaînes<'],['</b> concepts<','</b> concepts<'],
 [' remaining<',' restantes<'],['Loading more · ','Chargement · '],
 ['>Stream<','>Stream<'],['>👀 Now<','>👀 Actuel<'],['>Peak<','>Pic<'],['>Started<','>Lancé<'],['>Discovery keywords<','>Mots-clés de découverte<'],

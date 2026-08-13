@@ -268,6 +268,9 @@ function videoPeriodLabel(metric){
   if(!metric)return 'views 30 days · partial data';
   return metric.note?metric.label+' · '+metric.note:metric.label;
 }
+function videoCardPeriodLabel(metric){
+  return metric&&metric.kind==='lifetime'?'avg / month':'last 30 days';
+}
 function videoHistSlice(pts,key){
   const a=cleanVideoHist(pts),ms=VIDEO_HIST_WINDOWS[key];
   if(!a.length||!ms)return a;
@@ -1112,9 +1115,9 @@ function dashHTML(){
     '<div style="min-width:0"><div class="mi-t">'+esc(v.title)+'</div><div class="mi-s">'+statHTML+'</div></div></div>';
   h+='<div class="dash-3">'+
     '<div class="panel"><h3>🔥 Hot right now<span class="link" onclick="VS.mix.age=\'12m\';VS.mix.sort=\'vpm\';go(\'mix\')">View all →</span></h3><div class="psub">Fastest-growing videos published in the last 12 months</div><div class="mini-list">'+
-      hot.map(v=>{const m=videoUiMetrics(v);return mini(v,'<b>'+fmtViewsExact(m.period.value)+'</b><span>'+(m.period.kind==='exact'?'views 30 days':'lifetime avg/month · partial history')+' · '+esc(v.channel)+'</span>','trends');}).join('')+'</div></div>'+
+      hot.map(v=>{const m=videoUiMetrics(v);return mini(v,'<b>'+fmtN(m.period.value)+'</b><span>'+esc(videoCardPeriodLabel(m.period))+' · '+esc(v.channel)+'</span>','trends');}).join('')+'</div></div>'+
     '<div class="panel"><h3>📰 Latest discoveries<span class="link" onclick="VS.mix.age=\'3m\';VS.mix.sort=\'added\';go(\'mix\')">View all →</span></h3><div class="psub">New videos the YouTube algorithm just started pushing · daily scan</div><div class="mini-list">'+
-      (latest.length?latest.map(v=>{const m=videoUiMetrics(v);return mini(v,'<b>'+fmtViewsExact(m.views)+' views</b><span>'+fmtAge(m.ageM)+' old · '+fmtDateFull(v.pub)+'</span>','news');}).join(''):'<div class="empty">No discoveries yet</div>')+'</div></div>'+
+      (latest.length?latest.map(v=>{const m=videoUiMetrics(v);return mini(v,'<b>'+fmtN(m.views)+' views</b><span>'+fmtAge(m.ageM)+' old · '+fmtDate(v.pub)+'</span>','news');}).join(''):'<div class="empty">No discoveries yet</div>')+'</div></div>'+
     '<div class="panel"><h3>🗓️ Coming up<span class="link" onclick="go(\'roadmap\')">Full roadmap →</span></h3><div class="psub">Next planned releases · synced with Monday</div>'+
       coming.map(r=>{const d=new Date(r.date);return '<div class="rm-mini" style="--gc:'+gcolor(r.genre)+'"><div class="d">'+d.getDate()+' '+MONTHS[d.getMonth()]+'</div><div class="t">'+esc(r.title)+'</div>'+gtag(r.genre,1)+'</div>';}).join('')+'</div>'+
   '</div>';

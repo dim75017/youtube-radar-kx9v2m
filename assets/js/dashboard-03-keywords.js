@@ -202,10 +202,10 @@ function vcardHTML(kind,v,i){
       '<div class="vmeta">'+vChanAva(v,17)+'<a href="'+esc(v.chUrl||'#')+'" target="_blank" onclick="event.stopPropagation()">'+esc(v.channel)+'</a><span class="subs">· '+fmtN(subsFor(v))+' subs</span></div>'+
       '<div class="vtags">'+gtag(v.genre,0,true)+'</div>'+
       '<div class="vstats">'+
-        '<div class="vstat hl" title="'+esc(videoPeriodLabel(m.period))+'"><b>'+fmtViewsExact(m.period.value)+'</b><span>'+(m.period.kind==='exact'?'views 30 days':'lifetime avg/month · partial history')+'</span></div>'+
-        '<div class="vstat"><b>'+fmtViewsExact(m.views)+'</b><span>total views</span></div>'+
+        '<div class="vstat hl" title="'+esc(videoPeriodLabel(m.period))+'"><b>'+fmtN(m.period.value)+'</b><span>'+esc(videoCardPeriodLabel(m.period))+'</span></div>'+
+        '<div class="vstat"><b>'+fmtN(m.views)+'</b><span>views</span></div>'+
         '<div class="vstat"><b>'+fmtAge(m.ageM)+'</b><span>age</span></div>'+
-        '<div class="vstat"><b>'+fmtDateFull(v.pub)+'</b><span>published</span></div>'+
+        '<div class="vstat"><b>'+fmtDate(v.pub)+'</b><span>published</span></div>'+
       '</div></div></div>';
 }
 
