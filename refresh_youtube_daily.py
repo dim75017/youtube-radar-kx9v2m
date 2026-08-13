@@ -73,9 +73,17 @@ CARD_METADATA_FIELDS = (
     "chUrl", "channelId", "subs",
 )
 SEARCH_RESULTS = int(os.environ.get("RADAR_SEARCH_RESULTS", "10"))
-KIDS_SEARCH_RESULTS = int(os.environ.get("RADAR_KIDS_SEARCH_RESULTS", "50"))
+KIDS_SEARCH_RESULTS = int(os.environ.get("RADAR_KIDS_SEARCH_RESULTS", "100"))
 KIDS_BOOTSTRAP_SEARCH_RESULTS = int(os.environ.get("RADAR_KIDS_BOOTSTRAP_RESULTS", "100"))
 MAX_KIDS_SEARCH_CALLS = 80
+KIDS_MIN_RESULTS_EXAMINED = 2_000
+KIDS_SEARCH_LANES = ("viewCount", "relevance", "date")
+KIDS_YTDLP_SEARCH_PARAMS = {
+    # YouTube search protobuf filters: long videos with the requested order.
+    "viewCount": "CAMSAhgC",
+    "relevance": "EgIYAg%3D%3D",
+    "date": "CAISBAgCEAE%3D",
+}
 KIDS_DOM_PAGE_LOAD_TIMEOUT_MS = int(os.environ.get("RADAR_KIDS_DOM_PAGE_TIMEOUT_MS", "15000"))
 KIDS_DOM_SCRIPT_TIMEOUT_MS = int(os.environ.get("RADAR_KIDS_DOM_SCRIPT_TIMEOUT_MS", "5000"))
 KIDS_DOM_HTTP_TIMEOUT_SECONDS = int(os.environ.get("RADAR_KIDS_DOM_HTTP_TIMEOUT_SECONDS", "20"))
@@ -134,6 +142,17 @@ KIDS_EXPLICIT_INSTRUMENTAL = re.compile(
     r"\b(?:instrumental|no\s+(?:lyrics?|vocals?|voices?)|without\s+(?:lyrics?|vocals?|voices?)|music\s+box)\b",
     re.I,
 )
+KIDS_CONTEXTUAL_MUSICAL_PROOF = re.compile(
+    r"\b(?:piano|classical|mozart|brahms|music\s+box|ambient|soundscape|lofi|lo[ -]?fi|"
+    r"jazz|bossa|guitar|chill\s+house|drum\s+(?:and|&)\s+bass|dnb|synthwave)\b",
+    re.I,
+)
+KIDS_LULLABY_PROOF = re.compile(
+    r"\b(?:piano|classical|mozart|brahms|music\s+box|instrumental|"
+    r"no\s+(?:lyrics?|vocals?|voices?)|without\s+(?:lyrics?|vocals?|voices?))\b",
+    re.I,
+)
+KIDS_HARD_AMBIGUOUS = re.compile(r"\b(?:songs?|nursery\s+rhymes?)\b", re.I)
 KIDS_CONFIRMED_VOCAL_VIDEO_IDS = frozenset({
     "eNSCeIa5_5g",
     "Mi0XBUz562Y",
@@ -428,25 +447,40 @@ def has_vocal_signal(text: str) -> bool:
     return bool(VOCAL.search(NEGATED_VOCAL.sub("", text or "")))
 
 
-def is_kids_instrumental(row: dict) -> bool:
-    """Fail closed for Kids: long-form, no vocal signals and clear instrumental metadata."""
+def kids_instrumental_evidence(row: dict) -> str:
+    """Return the auditable proof used by the final fail-closed Kids gate."""
     if str(row.get("vid") or "") in KIDS_CONFIRMED_VOCAL_VIDEO_IDS:
-        return False
+        return ""
     duration_hours = row.get("durH")
     if not isinstance(duration_hours, (int, float)) or duration_hours * 3600 < MIN_SECONDS:
-        return False
+        return ""
     content_text = " ".join(
         str(row.get(key) or "")
         for key in ("title", "_scanDescription", "_scanTags")
     )
     negative_text = content_text + " " + str(row.get("channel") or "")
     if has_vocal_signal(negative_text):
-        return False
+        return ""
     strong = bool(KIDS_STRONG_INSTRUMENTAL.search(content_text))
     explicit = bool(KIDS_EXPLICIT_INSTRUMENTAL.search(content_text))
-    if KIDS_AMBIGUOUS.search(content_text) and not explicit:
-        return False
-    return strong and explicit
+    # ``songs`` and ``nursery rhymes`` remain fail-closed because those labels
+    # overwhelmingly denote vocal programmes even on Made-for-Kids videos.
+    if KIDS_HARD_AMBIGUOUS.search(content_text):
+        return ""
+    if explicit and strong:
+        return "metadata_explicit"
+    # Lullabies can be purely instrumental, but need a musical proof stronger
+    # than the word itself (piano/classical/composer/music-box or explicit).
+    if KIDS_AMBIGUOUS.search(content_text) and not KIDS_LULLABY_PROOF.search(content_text):
+        return ""
+    if strong and KIDS_CONTEXTUAL_MUSICAL_PROOF.search(content_text):
+        return "made_for_kids_contextual_metadata"
+    return ""
+
+
+def is_kids_instrumental(row: dict) -> bool:
+    """Fail closed for Kids: long-form, no vocal signals and clear instrumental metadata."""
+    return bool(kids_instrumental_evidence(row))
 
 
 def is_kids_marker_href(href: object) -> bool:
@@ -1340,45 +1374,105 @@ def fetch_api_rows(
     return out
 
 
-def fetch_kids_search(spec: dict, now_ms: int, key: str) -> tuple[list[dict], int, int]:
-    """Search the top long-form Kids candidates and validate every row officially."""
+def empty_kids_funnel() -> dict[str, int]:
+    return {
+        "raw": 0,
+        "unique": 0,
+        "enriched": 0,
+        "rejected_missing_metadata": 0,
+        "rejected_prefilter": 0,
+        "rejected_enrichment_unavailable": 0,
+        "rejected_live": 0,
+        "rejected_duration": 0,
+        "rejected_views": 0,
+        "rejected_vpm": 0,
+        "rejected_vocal_or_instrumental": 0,
+        "rejected_made_for_kids": 0,
+        "kept": 0,
+        "lane_calls_expected": 0,
+        "lane_calls_completed": 0,
+    }
+
+
+def merge_kids_funnel(target: dict[str, int], source: dict | None) -> None:
+    for key, value in (source or {}).items():
+        if isinstance(value, (int, float)):
+            target[key] = int(target.get(key, 0)) + int(value)
+
+
+def validate_kids_funnel(funnel: dict[str, int], raw: int, kept: int) -> None:
+    rejected = sum(
+        int(value)
+        for key, value in funnel.items()
+        if key.startswith("rejected_")
+    )
+    if int(funnel.get("raw", 0)) != int(raw):
+        raise RuntimeError("Kids funnel rejected: raw results do not match examined results")
+    if int(funnel.get("kept", 0)) != int(kept):
+        raise RuntimeError("Kids funnel rejected: kept results do not match candidate results")
+    if int(funnel.get("unique", 0)) != rejected + int(funnel.get("kept", 0)):
+        raise RuntimeError("Kids funnel rejected: unique results are not fully accounted for")
+    if int(funnel.get("lane_calls_completed", 0)) != int(
+        funnel.get("lane_calls_expected", 0)
+    ):
+        raise RuntimeError("Kids funnel rejected: search lane coverage is incomplete")
+
+
+def fetch_kids_search(spec: dict, now_ms: int, key: str) -> tuple[list[dict], int, int, dict]:
+    """Search two bounded lanes and validate every deduplicated row officially."""
     if not key:
         raise RuntimeError("Kids discovery requires YOUTUBE_API_KEY")
     video_ids: list[str] = []
     ranks: dict[str, int] = {}
-    page_token = ""
+    discovery_lanes: dict[str, set[str]] = defaultdict(set)
     result_limit = int(spec.get("searchResults") or KIDS_SEARCH_RESULTS)
-    pages = 0
-    max_pages = max(1, (result_limit + 49) // 50)
-    while len(video_ids) < result_limit and pages < max_pages:
-        pages += 1
-        params: dict[str, object] = {
-            "part": "snippet",
-            "q": spec["query"] + " " + KIDS_QUERY_EXCLUSIONS,
-            "type": "video",
-            "order": "viewCount",
-            "videoDuration": "long",
-            "safeSearch": "strict",
-            "relevanceLanguage": "en",
-            "regionCode": "US",
-            "maxResults": min(50, result_limit - len(video_ids)),
-            "key": key,
-        }
-        if page_token:
-            params["pageToken"] = page_token
-        payload = youtube_api_payload("search", params)
-        for item in payload.get("items") or []:
-            video_id = str((item.get("id") or {}).get("videoId") or "")
-            if VIDEO_ID.match(video_id) and video_id not in ranks:
-                ranks[video_id] = len(video_ids) + 1
-                video_ids.append(video_id)
-                if len(video_ids) >= result_limit:
+    lanes = tuple(spec.get("searchLanes") or ("viewCount",))
+    funnel = empty_kids_funnel()
+    funnel["lane_calls_expected"] = len(lanes)
+    lane_limit = max(1, result_limit // len(lanes))
+    for lane in lanes:
+        page_token = ""
+        lane_seen = 0
+        pages = 0
+        max_pages = max(1, (lane_limit + 49) // 50)
+        while lane_seen < lane_limit and pages < max_pages:
+            pages += 1
+            params: dict[str, object] = {
+                "part": "snippet",
+                "q": spec["query"] + " " + KIDS_QUERY_EXCLUSIONS,
+                "type": "video",
+                "order": lane,
+                "videoDuration": "long",
+                "safeSearch": "strict",
+                "relevanceLanguage": "en",
+                "regionCode": "US",
+                "maxResults": min(50, lane_limit - lane_seen),
+                "key": key,
+            }
+            if page_token:
+                params["pageToken"] = page_token
+            payload = youtube_api_payload("search", params)
+            items = payload.get("items") or []
+            if items:
+                funnel["lane_calls_completed"] += 1
+            funnel["raw"] += len(items)
+            for item in items:
+                video_id = str((item.get("id") or {}).get("videoId") or "")
+                if not VIDEO_ID.match(video_id):
+                    continue
+                lane_seen += 1
+                discovery_lanes[video_id].add(lane)
+                if video_id not in ranks:
+                    ranks[video_id] = len(video_ids) + 1
+                    video_ids.append(video_id)
+                if lane_seen >= lane_limit:
                     break
-        page_token = str(payload.get("nextPageToken") or "")
-        if not page_token or not payload.get("items"):
-            break
+            page_token = str(payload.get("nextPageToken") or "")
+            if not page_token or not items:
+                break
     if not video_ids:
         raise RuntimeError("YouTube Data API returned no Kids search results")
+    funnel["unique"] = len(video_ids)
 
     official = fetch_api_rows(
         video_ids,
@@ -1389,12 +1483,28 @@ def fetch_kids_search(spec: dict, now_ms: int, key: str) -> tuple[list[dict], in
     rows: list[dict] = []
     for video_id in video_ids:
         row = official.get(video_id)
-        if (
-            not row
-            or row.get("madeForKids") is not True
-            or row.get("_liveBroadcastContent") != "none"
-            or not is_kids_instrumental(row)
-        ):
+        if not row:
+            funnel["rejected_missing_metadata"] += 1
+            continue
+        if row.get("_liveBroadcastContent") != "none":
+            funnel["rejected_live"] += 1
+            continue
+        duration = row.get("durH")
+        if not isinstance(duration, (int, float)) or duration * 3600 < MIN_SECONDS:
+            funnel["rejected_duration"] += 1
+            continue
+        if int(row.get("views") or 0) < MIN_KIDS_VIEWS:
+            funnel["rejected_views"] += 1
+            continue
+        if not isinstance(row.get("vpm"), (int, float)) or float(row["vpm"]) < MIN_KIDS_VPM:
+            funnel["rejected_vpm"] += 1
+            continue
+        evidence = kids_instrumental_evidence(row)
+        if not evidence:
+            funnel["rejected_vocal_or_instrumental"] += 1
+            continue
+        if row.get("madeForKids") is not True:
+            funnel["rejected_made_for_kids"] += 1
             continue
         row = dict(row)
         row["genre"] = kids_genre_from_metadata(row)
@@ -1406,16 +1516,20 @@ def fetch_kids_search(spec: dict, now_ms: int, key: str) -> tuple[list[dict], in
         row["rank"] = ranks[video_id]
         row["audiences"] = ["kids"]
         row["instrumentalVerified"] = True
+        row["instrumentalEvidenceSource"] = evidence
+        row["discoveryLanes"] = sorted(discovery_lanes[video_id])
         row["liveStatus"] = "none"
         row.pop("_scanDescription", None)
         row.pop("_scanTags", None)
         row.pop("_liveBroadcastContent", None)
         rows.append(row)
-    return rows, len(video_ids), len(official)
+    funnel["enriched"] = len(official)
+    funnel["kept"] = len(rows)
+    return rows, funnel["raw"], len(official), funnel
 
 
 def is_kids_flat_candidate(info: dict) -> bool:
-    """Cheap structural gate; description and tags provide the final proof."""
+    """Cheap structural gate; unknown flat metadata is enriched, never accepted."""
     video_id = str(info.get("id") or "")
     title = str(info.get("title") or "").strip()
     duration = info.get("duration")
@@ -1424,32 +1538,55 @@ def is_kids_flat_candidate(info: dict) -> bool:
     if (
         not VIDEO_ID.fullmatch(video_id)
         or not title
-        or not isinstance(duration, (int, float))
-        or duration < MIN_SECONDS
-        or not isinstance(views, (int, float))
-        or views < MIN_KIDS_VIEWS
         or info.get("is_live") is True
         or live_status in {"is_live", "is_upcoming", "post_live", "was_live"}
     ):
         return False
-    return (
-        not has_vocal_signal(title) and bool(KIDS_STRONG_INSTRUMENTAL.search(title))
-    )
+    if isinstance(duration, (int, float)) and duration < MIN_SECONDS:
+        return False
+    if isinstance(views, (int, float)) and views < MIN_KIDS_VIEWS:
+        return False
+    return not has_vocal_signal(title)
 
 
-def fetch_kids_search_ydl(spec: dict, now_ms: int) -> tuple[list[dict], int, int]:
+def fetch_kids_search_ydl(spec: dict, now_ms: int) -> tuple[list[dict], int, int, dict]:
     """No-key Kids fallback: flat search, strict enrichment, then rendered DOM truth."""
     result_limit = int(spec.get("searchResults") or KIDS_SEARCH_RESULTS)
-    search = (
-        "https://www.youtube.com/results?search_query="
-        + urllib.parse.quote_plus(spec["query"] + " " + KIDS_QUERY_EXCLUSIONS)
-        + "&sp=CAMSAhgC"
-    )
-    info = kids_search_ydl(result_limit).extract_info(search, download=False) or {}
-    entries = [item for item in (info.get("entries") or []) if item]
+    lanes = tuple(spec.get("searchLanes") or ("viewCount",))
+    lane_limit = max(1, result_limit // len(lanes))
+    entries_by_id: dict[str, dict] = {}
+    discovery_lanes: dict[str, set[str]] = defaultdict(set)
+    lane_ranks: dict[str, list[int]] = defaultdict(list)
+    raw_received = 0
+    lane_calls_completed = 0
+    for lane in lanes:
+        search = (
+            "https://www.youtube.com/results?search_query="
+            + urllib.parse.quote_plus(spec["query"] + " " + KIDS_QUERY_EXCLUSIONS)
+            + "&sp=" + KIDS_YTDLP_SEARCH_PARAMS[lane]
+        )
+        info = kids_search_ydl(lane_limit).extract_info(search, download=False) or {}
+        lane_entries = [item for item in (info.get("entries") or []) if item][:lane_limit]
+        if lane_entries:
+            lane_calls_completed += 1
+        raw_received += len(lane_entries)
+        for rank, item in enumerate(lane_entries, start=1):
+            video_id = str(item.get("id") or "")
+            if not VIDEO_ID.fullmatch(video_id):
+                continue
+            discovery_lanes[video_id].add(lane)
+            lane_ranks[video_id].append(rank)
+            entries_by_id.setdefault(video_id, item)
+    entries = list(entries_by_id.values())
     if not entries:
         raise RuntimeError("yt-dlp returned no raw Kids search results")
     prefiltered = [item for item in entries if is_kids_flat_candidate(item)]
+    funnel = empty_kids_funnel()
+    funnel["lane_calls_expected"] = len(lanes)
+    funnel["lane_calls_completed"] = lane_calls_completed
+    funnel["raw"] = raw_received
+    funnel["unique"] = len(entries)
+    funnel["rejected_prefilter"] = len(entries) - len(prefiltered)
     ranks = {str(item.get("id")): rank for rank, item in enumerate(entries, start=1)}
     validator = kids_dom_validator()
     validator.ensure_canaries()
@@ -1466,6 +1603,7 @@ def fetch_kids_search_ydl(spec: dict, now_ms: int) -> tuple[list[dict], int, int
             ) or {}
         except Exception as exc:
             enrichment_failures += 1
+            funnel["rejected_enrichment_unavailable"] += 1
             print(
                 f"WARN Kids enrichment {video_id}: {type(exc).__name__}: {exc}",
                 file=sys.stderr,
@@ -1473,24 +1611,37 @@ def fetch_kids_search_ydl(spec: dict, now_ms: int) -> tuple[list[dict], int, int
             continue
         if not full:
             enrichment_failures += 1
+            funnel["rejected_enrichment_unavailable"] += 1
             continue
         enriched += 1
-        if not is_kids_flat_candidate(full):
+        if full.get("is_live") is True or str(full.get("live_status") or "").casefold() in {
+            "is_live", "is_upcoming", "post_live", "was_live",
+        }:
+            funnel["rejected_live"] += 1
             continue
         row = info_to_row(full, now_ms)
         if not row:
+            funnel["rejected_missing_metadata"] += 1
             continue
         row["_scanDescription"] = str(full.get("description") or "")
         tags = full.get("tags") or []
         row["_scanTags"] = " ".join(str(value) for value in tags) if isinstance(tags, list) else str(tags)
-        if (
-            not is_kids_instrumental(row)
-            or int(row.get("views") or 0) < MIN_KIDS_VIEWS
-            or not isinstance(row.get("vpm"), (int, float))
-            or float(row["vpm"]) < MIN_KIDS_VPM
-        ):
+        evidence = kids_instrumental_evidence(row)
+        duration = row.get("durH")
+        if not isinstance(duration, (int, float)) or duration * 3600 < MIN_SECONDS:
+            funnel["rejected_duration"] += 1
+            continue
+        if int(row.get("views") or 0) < MIN_KIDS_VIEWS:
+            funnel["rejected_views"] += 1
+            continue
+        if not isinstance(row.get("vpm"), (int, float)) or float(row["vpm"]) < MIN_KIDS_VPM:
+            funnel["rejected_vpm"] += 1
+            continue
+        if not evidence:
+            funnel["rejected_vocal_or_instrumental"] += 1
             continue
         if not validator.is_made_for_kids(video_id):
+            funnel["rejected_made_for_kids"] += 1
             continue
         row["madeForKids"] = True
         row["madeForKidsSource"] = "youtube_innertube_android_player_restrictions"
@@ -1500,9 +1651,11 @@ def fetch_kids_search_ydl(spec: dict, now_ms: int) -> tuple[list[dict], int, int
         row["kwCount"] = 1
         row["pattern"] = "Daily Kids keyword scan"
         row["added"] = now_ms
-        row["rank"] = ranks[video_id]
+        row["rank"] = min(lane_ranks[video_id])
         row["audiences"] = ["kids"]
         row["instrumentalVerified"] = True
+        row["instrumentalEvidenceSource"] = evidence
+        row["discoveryLanes"] = sorted(discovery_lanes[video_id])
         row["liveStatus"] = "none"
         row.pop("_scanDescription", None)
         row.pop("_scanTags", None)
@@ -1512,7 +1665,9 @@ def fetch_kids_search_ydl(spec: dict, now_ms: int) -> tuple[list[dict], int, int
             f"Only {enriched}/{enrichment_attempts} prefiltered Kids candidates "
             "could be enriched"
         )
-    return rows, len(entries), enriched
+    funnel["enriched"] = enriched
+    funnel["kept"] = len(rows)
+    return rows, raw_received, enriched, funnel
 
 
 def youtube_api_payload(path: str, params: dict[str, object]) -> dict:
@@ -1607,7 +1762,22 @@ def fetch_owned_ydl_rows(now_ms: int) -> dict[str, dict]:
     return rows
 
 
-def query_specs(payload: dict, *, include_kids: bool = True) -> list[dict]:
+def kids_search_lanes(day: str | None = None) -> list[tuple[str, ...]]:
+    """Use exactly two calls/query while rotating relevance and recent daily."""
+    query_day = day or history_day_key(utc_now_ms())
+    day_parity = datetime.fromisoformat(query_day).date().toordinal() % 2
+    return [
+        ("viewCount", "date" if (index + day_parity) % 2 else "relevance")
+        for index in range(len(KIDS_QUERY_SPECS))
+    ]
+
+
+def query_specs(
+    payload: dict,
+    *,
+    include_kids: bool = True,
+    kids_day: str | None = None,
+) -> list[dict]:
     votes: dict[str, dict[str, Counter]] = defaultdict(lambda: {"genre": Counter(), "cluster": Counter()})
     for bucket in ("all", "trends", "news"):
         for row in payload.get("d", {}).get(bucket, []):
@@ -1627,13 +1797,12 @@ def query_specs(payload: dict, *, include_kids: bool = True) -> list[dict]:
     ]
     if not include_kids:
         return regular
-    kids_bootstrapped = bool(payload.get("d", {}).get("kids")) or int(
-        (payload.get("kidsMetrics") or {}).get("queries")
-        or (payload.get("videoMetrics") or {}).get("kids_queries")
-        or 0
-    ) >= len(KIDS_QUERY_SPECS)
-    kids_result_limit = KIDS_SEARCH_RESULTS if kids_bootstrapped else KIDS_BOOTSTRAP_SEARCH_RESULTS
-    search_calls = len(KIDS_QUERY_SPECS) * max(1, (kids_result_limit + 49) // 50)
+    kids_result_limit = max(KIDS_SEARCH_RESULTS, KIDS_BOOTSTRAP_SEARCH_RESULTS)
+    kids_lanes = kids_search_lanes(kids_day)
+    search_calls = sum(
+        len(lanes) * max(1, math.ceil((kids_result_limit / len(lanes)) / 50))
+        for lanes in kids_lanes
+    )
     if search_calls > MAX_KIDS_SEARCH_CALLS:
         raise RuntimeError(
             f"Kids search budget exceeded: {search_calls}>{MAX_KIDS_SEARCH_CALLS} calls"
@@ -1646,8 +1815,10 @@ def query_specs(payload: dict, *, include_kids: bool = True) -> list[dict]:
             "audience": "kids",
             "searchResults": kids_result_limit,
         }
-        for query, genre, cluster in KIDS_QUERY_SPECS
+        for (query, genre, cluster), lanes in zip(KIDS_QUERY_SPECS, kids_lanes)
     ]
+    for spec, lanes in zip(kids, kids_lanes):
+        spec["searchLanes"] = list(lanes)
     return regular + kids
 
 
@@ -1881,7 +2052,7 @@ def write_tracked_manifest(
         else sheet_video_catalog()
     )
     ids = tracked_ids(payload, scan_scope, sheet_catalog["all"])
-    if not ids:
+    if not ids and scan_scope != "kids":
         raise RuntimeError("Canonical tracked-video manifest is empty")
     quarantine_ids = {
         str(video_id)
@@ -1929,9 +2100,11 @@ def write_tracked_manifest(
 def read_tracked_manifest(path: Path, expected_scope: str | None = None) -> list[str]:
     manifest = json.loads(path.read_text(encoding="utf-8"))
     ids = [str(video_id) for video_id in (manifest.get("ids") or []) if VIDEO_ID.match(str(video_id or ""))]
-    if int(manifest.get("version") or 0) not in (1, 2) or not ids:
-        raise RuntimeError(f"Invalid or empty tracked-video manifest: {path}")
     manifest_scope = str(manifest.get("scan_scope") or "all")
+    if int(manifest.get("version") or 0) not in (1, 2) or (
+        not ids and manifest_scope != "kids"
+    ):
+        raise RuntimeError(f"Invalid or empty tracked-video manifest: {path}")
     if expected_scope and manifest_scope != expected_scope:
         raise RuntimeError(
             f"Tracked-video manifest scope mismatch: expected {expected_scope}, got {manifest_scope}"
@@ -2104,7 +2277,7 @@ def preserve_audience_classification(winner: dict, other: dict | None) -> dict:
     return merged
 
 
-def fetch_discovery_spec(spec: dict, now_ms: int, api_key: str) -> tuple[list[dict], int, int]:
+def fetch_discovery_spec(spec: dict, now_ms: int, api_key: str) -> tuple:
     if spec.get("audience") == "kids":
         if api_key:
             return fetch_kids_search(spec, now_ms, api_key)
@@ -2283,6 +2456,8 @@ def run_shard(
     kids_query_failed = 0
     kids_results_examined = 0
     kids_candidates_kept = 0
+    kids_funnel = empty_kids_funnel()
+    kids_funnel_queries = 0
     # A canary failure is not an ordinary partial keyword miss: without a
     # trustworthy rendered signal, no Kids classification may be published.
     if kids_queries_total and not api_key:
@@ -2295,7 +2470,16 @@ def run_shard(
         for future in concurrent.futures.as_completed(future_to_spec):
             spec = future_to_spec[future]
             try:
-                rows, raw_count, enriched_count = future.result()
+                result = future.result()
+                if len(result) == 4:
+                    rows, raw_count, enriched_count, funnel = result
+                else:
+                    rows, raw_count, enriched_count = result
+                    funnel = None
+                if spec.get("audience") == "kids":
+                    merge_kids_funnel(kids_funnel, funnel)
+                    if isinstance(funnel, dict):
+                        kids_funnel_queries += 1
                 query_raw += raw_count
                 query_enriched += enriched_count
                 if spec.get("audience") == "kids":
@@ -2323,9 +2507,15 @@ def run_shard(
             f"WARN shard {shard}: discovery is partial at {query_ok}/{len(specs)} keyword searches",
             file=sys.stderr,
         )
+    if (
+        kids_queries_total
+        and kids_query_failed == 0
+        and kids_funnel_queries == kids_queries_total
+    ):
+        validate_kids_funnel(kids_funnel, kids_results_examined, kids_candidates_kept)
 
     artifact = {
-        "version": 1,
+        "version": 2,
         "scan_scope": scan_scope,
         "generated_at": datetime.fromtimestamp(now_ms / 1000, timezone.utc).isoformat(),
         "generated_ms": now_ms,
@@ -2341,6 +2531,8 @@ def run_shard(
         "kids_queries_ok": kids_queries_total - kids_query_failed,
         "kids_results_examined": kids_results_examined,
         "kids_candidates_kept": kids_candidates_kept,
+        "kids_funnel": kids_funnel,
+        "kids_funnel_queries": kids_funnel_queries,
         "owned_ok": owned_ok,
         "tracked_ids": ids,
         "canonical_ours_manifest": canonical_ours_manifest,
@@ -2406,7 +2598,10 @@ def update_row(existing: dict, fresh: dict, now_ms: int) -> None:
                     existing["durationSource"] = duration_source
     if fresh.get("metadataSource") and metadata_priority(fresh) >= metadata_priority(existing):
         existing["metadataSource"] = fresh["metadataSource"]
-    for key in ("madeForKidsSource", "instrumentalVerified", "liveStatus"):
+    for key in (
+        "madeForKidsSource", "instrumentalVerified", "instrumentalEvidenceSource",
+        "discoveryLanes", "liveStatus",
+    ):
         if fresh.get(key) not in (None, ""):
             existing[key] = fresh[key]
     if isinstance(fresh.get("madeForKids"), bool):
@@ -2787,6 +2982,16 @@ def merge_kids_artifacts(
     kids_queries_ok = sum(int(a.get("kids_queries_ok", 0)) for a in artifacts)
     kids_results_examined = sum(int(a.get("kids_results_examined", 0)) for a in artifacts)
     kids_candidates_kept = sum(int(a.get("kids_candidates_kept", 0)) for a in artifacts)
+    kids_funnel = empty_kids_funnel()
+    for artifact in artifacts:
+        merge_kids_funnel(kids_funnel, artifact.get("kids_funnel"))
+    funnel_contract = all(
+        int(artifact.get("version") or 0) >= 2 for artifact in artifacts
+    )
+    if require_kids and not funnel_contract:
+        raise RuntimeError("Kids merge rejected: artifacts have no verified funnel contract")
+    if require_kids and funnel_contract:
+        validate_kids_funnel(kids_funnel, kids_results_examined, kids_candidates_kept)
 
     if require_kids and (
         kids_queries_total != len(KIDS_QUERY_SPECS)
@@ -2798,6 +3003,30 @@ def merge_kids_artifacts(
         )
     if queries_total != kids_queries_total or queries_ok != kids_queries_ok:
         raise RuntimeError("Kids merge rejected: artifact contains non-Kids discovery queries")
+    verified_candidates = merge_keyword_rows([
+        row
+        for artifact in artifacts
+        for row in (artifact.get("candidates") or [])
+        if is_verified_kids_candidate(row)
+    ])
+    if require_kids and (
+        kids_results_examined < KIDS_MIN_RESULTS_EXAMINED
+        or kids_candidates_kept <= 0
+        or not verified_candidates
+    ):
+        raise RuntimeError(
+            "Kids merge rejected: discovery coverage or verified candidates are insufficient"
+        )
+    expected_lane_calls = len(KIDS_QUERY_SPECS) * 2
+    if require_kids and funnel_contract and (
+        int(kids_funnel.get("lane_calls_expected", 0)) != expected_lane_calls
+        or int(kids_funnel.get("lane_calls_completed", 0)) != expected_lane_calls
+    ):
+        raise RuntimeError(
+            "Kids merge rejected: expected 80/80 search lanes, got "
+            f"{int(kids_funnel.get('lane_calls_completed', 0))}/"
+            f"{int(kids_funnel.get('lane_calls_expected', 0))}"
+        )
     if tracked_total:
         if tracked_ok / tracked_total < MIN_PUBLISH_TRACK_RATIO:
             raise RuntimeError(
@@ -2917,7 +3146,13 @@ def merge_kids_artifacts(
         "search_results": queries_raw,
         "search_results_enriched": queries_enriched,
         "results_examined": kids_results_examined,
+        "results_examined_minimum": KIDS_MIN_RESULTS_EXAMINED,
         "candidates_kept": kids_candidates_kept,
+        "verified_unique": len(verified_candidates),
+        "duplicate_occurrences": max(0, kids_candidates_kept - len(verified_candidates)),
+        "funnel": kids_funnel,
+        "search_lanes_expected": int(kids_funnel.get("lane_calls_expected", 0)),
+        "search_lanes_completed": int(kids_funnel.get("lane_calls_completed", 0)),
         "added": inserted_kids,
         "history_updated": history_updated,
         "history_day": day,
@@ -2938,6 +3173,10 @@ def merge_kids_artifacts(
         "kids_queries_ok": kids_queries_ok,
         "kids_results_examined": kids_results_examined,
         "kids_candidates_kept": kids_candidates_kept,
+        "kids_verified_unique": len(verified_candidates),
+        "kids_funnel": kids_funnel,
+        "kids_search_lanes_expected": int(kids_funnel.get("lane_calls_expected", 0)),
+        "kids_search_lanes_completed": int(kids_funnel.get("lane_calls_completed", 0)),
         "history_ids": history_ids,
         "history_files": history_files,
         "history_updated": history_updated,

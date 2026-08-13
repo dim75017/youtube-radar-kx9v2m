@@ -8,6 +8,7 @@ on:
   workflow_run:
     workflows:
       - 'Refresh YouTube radar'
+      - 'Refresh YouTube Kids radar'
       - 'Refresh YouTube recommendations'
       - 'Refresh channel radar'
       - 'Refresh Soundcharts A&R engine'
@@ -21,9 +22,11 @@ on:
     branches: [main]
     paths:
       - 'data_freshness_watchdog.py'
+      - 'youtube_kids_discovery_proof.py'
       - 'tests/test_data_freshness_watchdog.py'
       - '.github/workflows/data-freshness-watchdog.yml'
       - '.github/workflows/refresh-instrumental-radar.yml'
+      - '.github/workflows/refresh-youtube-kids.yml'
       - '.github/workflows/refresh-youtube-recommendations.yml'
       - '.github/workflows/refresh-channel-radar.yml'
       - '.github/workflows/refresh-soundcharts.yml'
@@ -42,8 +45,11 @@ on:
   pull_request:
     paths:
       - 'data_freshness_watchdog.py'
+      - 'youtube_kids_discovery_proof.py'
       - 'tests/test_data_freshness_watchdog.py'
+      - 'tests/test_youtube_kids_discovery.py'
       - '.github/workflows/data-freshness-watchdog.yml'
+      - '.github/workflows/refresh-youtube-kids.yml'
 
 permissions:
   actions: write

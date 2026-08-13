@@ -116,6 +116,8 @@ class DailyHistoryTests(unittest.TestCase):
         }
         for row in official.values():
             row.setdefault("_liveBroadcastContent", "none")
+            row.setdefault("ageM", 1)
+            row.setdefault("vpm", row["views"])
         spec = {
             "query": "baby sleep music instrumental",
             "genre": "Baby sleep",
@@ -125,39 +127,43 @@ class DailyHistoryTests(unittest.TestCase):
         with patch.object(radar, "youtube_api_payload", return_value=search_payload), patch.object(
             radar, "fetch_api_rows", return_value=official
         ):
-            rows, raw, enriched = radar.fetch_kids_search(spec, now, "secret")
+            rows, raw, enriched, funnel = radar.fetch_kids_search(spec, now, "secret")
         self.assertEqual((raw, enriched), (4, 4))
         self.assertEqual([row["vid"] for row in rows], ["abcdefghijk"])
         self.assertIs(rows[0]["madeForKids"], True)
         self.assertEqual(rows[0]["audiences"], ["kids"])
         self.assertNotIn("_scanDescription", rows[0])
+        self.assertEqual(funnel["kept"], 1)
         with self.assertRaisesRegex(RuntimeError, "requires YOUTUBE_API_KEY"):
             radar.fetch_kids_search(spec, now, "")
 
-    def test_kids_queries_are_builtin_with_top_100_bootstrap_and_safe_daily_budget(self):
-        specs = [s for s in radar.query_specs({"d": {}}, include_kids=True) if s["audience"] == "kids"]
+    def test_kids_queries_are_builtin_with_top_100_daily_and_safe_lane_budget(self):
+        specs = [s for s in radar.query_specs({"d": {}}, include_kids=True, kids_day="2026-08-13") if s["audience"] == "kids"]
         queries = [s["query"].lower() for s in specs]
         self.assertEqual(radar.KIDS_BOOTSTRAP_SEARCH_RESULTS, 100)
-        self.assertEqual(radar.KIDS_SEARCH_RESULTS, 50)
+        self.assertEqual(radar.KIDS_SEARCH_RESULTS, 100)
         self.assertTrue(all(s["searchResults"] == 100 for s in specs))
-        calls = len(specs) * 2
+        calls = sum(len(s["searchLanes"]) for s in specs)
         self.assertLessEqual(calls, radar.MAX_KIDS_SEARCH_CALLS)
         daily = [
             s
-            for s in radar.query_specs({"d": {"kids": [{"vid": "abcdefghijk"}]}}, include_kids=True)
+            for s in radar.query_specs({"d": {"kids": [{"vid": "abcdefghijk"}]}}, include_kids=True, kids_day="2026-08-13")
             if s["audience"] == "kids"
         ]
-        self.assertTrue(all(s["searchResults"] == 50 for s in daily))
+        self.assertTrue(all(s["searchResults"] == 100 for s in daily))
         empty_but_bootstrapped = [
             s
             for s in radar.query_specs({
                 "d": {"kids": []},
                 "videoMetrics": {"kids_queries": len(radar.KIDS_QUERY_SPECS)},
-            }, include_kids=True)
+            }, include_kids=True, kids_day="2026-08-13")
             if s["audience"] == "kids"
         ]
         self.assertEqual(len(empty_but_bootstrapped), 40)
-        self.assertTrue(all(s["searchResults"] == 50 for s in empty_but_bootstrapped))
+        self.assertTrue(all(s["searchResults"] == 100 for s in empty_but_bootstrapped))
+        self.assertEqual(sum("viewCount" in s["searchLanes"] for s in specs), 40)
+        self.assertEqual(sum("relevance" in s["searchLanes"] for s in specs), 20)
+        self.assertEqual(sum("date" in s["searchLanes"] for s in specs), 20)
         self.assertEqual(len(queries), len(set(queries)))
         for fragment in (
             "baby sleep", "toddler", "kids lofi", "ambient music for babies",
@@ -170,6 +176,16 @@ class DailyHistoryTests(unittest.TestCase):
             any(signal in query for signal in ("instrumental", "no vocals", "no lyrics"))
             for query in queries
         ))
+
+    def test_kids_lane_plan_rotates_secondary_lane_next_day(self):
+        first = radar.kids_search_lanes("2026-08-13")
+        second = radar.kids_search_lanes("2026-08-14")
+        self.assertEqual(len(first), len(radar.KIDS_QUERY_SPECS))
+        self.assertTrue(all(lanes[0] == "viewCount" for lanes in first))
+        self.assertEqual(
+            [lanes[1] for lanes in first],
+            ["date" if lanes[1] == "relevance" else "relevance" for lanes in second],
+        )
 
     def test_dom_marker_accepts_only_exact_family_options_destinations(self):
         for href in (
@@ -651,7 +667,7 @@ class DailyHistoryTests(unittest.TestCase):
     def test_no_key_fallback_prefilters_then_sets_dom_kids_provenance(self):
         now = int(datetime(2026, 8, 10, 8, tzinfo=timezone.utc).timestamp() * 1000)
         good = {
-            "id": "abcdefghijk", "title": "SLEEP MUSIC FOR KIDS - Nursery Rhymes Music",
+            "id": "abcdefghijk", "title": "SLEEP MUSIC FOR KIDS - Peaceful Background Music",
             "duration": 3 * 3600, "view_count": 2_000_000,
             "is_live": False,
         }
@@ -696,13 +712,16 @@ class DailyHistoryTests(unittest.TestCase):
             "cluster": "Relaxation / meditation",
             "audience": "kids",
             "searchResults": 100,
+            "searchLanes": ["viewCount", "relevance"],
         }
         with patch.object(radar, "kids_search_ydl", return_value=flat_reader), patch.object(
             radar, "ydl", return_value=full_reader
         ), patch.object(radar, "kids_dom_validator", return_value=validator):
-            rows, raw, enriched = radar.fetch_kids_search_ydl(spec, now)
-        self.assertEqual((raw, enriched), (2, 1))
+            rows, raw, enriched, funnel = radar.fetch_kids_search_ydl(spec, now)
+        self.assertEqual((raw, enriched), (4, 1))
         self.assertIn("sp=CAMSAhgC", flat_reader.calls[0])
+        self.assertIn("sp=EgIYAg%3D%3D", flat_reader.calls[1])
+        self.assertEqual(len(flat_reader.calls), 2)
         self.assertEqual(len(full_reader.calls), 1)
         self.assertEqual(validator.canary_checks, 1)
         self.assertEqual(validator.calls, ["abcdefghijk"])
@@ -713,6 +732,17 @@ class DailyHistoryTests(unittest.TestCase):
             "youtube_innertube_android_player_restrictions",
         )
         self.assertEqual(rows[0]["audiences"], ["kids"])
+        self.assertEqual(rows[0]["discoveryLanes"], ["relevance", "viewCount"])
+        self.assertEqual(funnel["raw"], 4)
+        self.assertEqual(funnel["unique"], 2)
+        self.assertEqual(funnel["kept"], 1)
+        self.assertEqual(funnel["lane_calls_expected"], 2)
+        self.assertEqual(funnel["lane_calls_completed"], 2)
+        rejected = sum(
+            value for key, value in funnel.items() if key.startswith("rejected_")
+        )
+        self.assertEqual(funnel["unique"], rejected + funnel["kept"])
+        radar.validate_kids_funnel(funnel, raw, len(rows))
 
         rejecting = Validator()
         rejecting.is_made_for_kids = lambda video_id: False
@@ -720,10 +750,11 @@ class DailyHistoryTests(unittest.TestCase):
         with patch.object(radar, "kids_search_ydl", return_value=flat_reader), patch.object(
             radar, "ydl", return_value=unused_full_reader
         ), patch.object(radar, "kids_dom_validator", return_value=rejecting):
-            rejected_rows, _, rejected_enriched = radar.fetch_kids_search_ydl(spec, now)
+            rejected_rows, _, rejected_enriched, rejected_funnel = radar.fetch_kids_search_ydl(spec, now)
         self.assertEqual(rejected_rows, [])
         self.assertEqual(rejected_enriched, 1)
         self.assertEqual(len(unused_full_reader.calls), 1)
+        self.assertEqual(rejected_funnel["rejected_made_for_kids"], 1)
 
         class BrokenValidator:
             def ensure_canaries(self):
@@ -762,7 +793,7 @@ class DailyHistoryTests(unittest.TestCase):
 
         flat_reader = Reader({"entries": [{
             "id": "abcdefghijk",
-            "title": "Baby sleep music instrumental",
+            "title": "Baby sleep music with vocals",
             "duration": None,
             "view_count": 2_000_000,
         }]})
@@ -791,11 +822,35 @@ class DailyHistoryTests(unittest.TestCase):
         with patch.object(radar, "kids_search_ydl", return_value=flat_reader), patch.object(
             radar, "ydl", return_value=full_reader
         ), patch.object(radar, "kids_dom_validator", return_value=validator):
-            rows, raw, enriched = radar.fetch_kids_search_ydl(spec, now)
+            rows, raw, enriched, funnel = radar.fetch_kids_search_ydl(spec, now)
         self.assertEqual((rows, raw, enriched), ([], 1, 0))
+        self.assertEqual(funnel["rejected_prefilter"], 1)
         self.assertEqual(validator.canary_checks, 1)
         self.assertEqual(validator.calls, [])
         self.assertEqual(full_reader.calls, [])
+
+    def test_no_key_lane_plan_is_exactly_eighty_distinct_searches_max(self):
+        specs = [
+            spec for spec in radar.query_specs(
+                {"d": {"kids": []}}, include_kids=True, kids_day="2026-08-13"
+            )
+            if spec["audience"] == "kids"
+        ]
+        urls = []
+        for spec in specs:
+            for lane in spec["searchLanes"]:
+                urls.append(
+                    "https://www.youtube.com/results?search_query="
+                    + radar.urllib.parse.quote_plus(
+                        spec["query"] + " " + radar.KIDS_QUERY_EXCLUSIONS
+                    )
+                    + "&sp=" + radar.KIDS_YTDLP_SEARCH_PARAMS[lane]
+                )
+        self.assertEqual(len(urls), radar.MAX_KIDS_SEARCH_CALLS)
+        self.assertEqual(len(set(urls)), radar.MAX_KIDS_SEARCH_CALLS)
+        self.assertEqual(sum("sp=CAMSAhgC" in url for url in urls), 40)
+        self.assertEqual(sum("sp=EgIYAg%3D%3D" in url for url in urls), 20)
+        self.assertEqual(sum("sp=CAISBAgCEAE%3D" in url for url in urls), 20)
 
     def test_instrumental_filter_rejects_kids_vocal_and_spoken_signals(self):
         base = {"duration": 3 * 3600, "title": "Baby sleep music instrumental"}
@@ -811,12 +866,55 @@ class DailyHistoryTests(unittest.TestCase):
         self.assertTrue(radar.is_instrumental(
             dict(base, title="Baby sleep music · no vocals")
         ))
+
         self.assertTrue(radar.is_instrumental(
             dict(base, title="Baby sleep music without lyrics")
         ))
         self.assertTrue(radar.is_instrumental(
             dict(base, title="Nursery rhyme piano instrumental")
         ))
+
+    def test_contextual_kids_instrumental_proof_requires_distinct_musical_signal(self):
+        base = {
+            "durH": 3,
+            "channel": "Calm Baby",
+            "_scanDescription": "Peaceful ambient soundscape for newborn sleep",
+        }
+        for video_id, title in (
+            ("ctxsleep001", "Baby sleep music for deep rest"),
+            ("ctxsleep002", "Calming music for babies and toddlers"),
+        ):
+            row = dict(base, vid=video_id, title=title)
+            self.assertEqual(
+                radar.kids_instrumental_evidence(row),
+                "made_for_kids_contextual_metadata",
+            )
+            self.assertTrue(radar.is_kids_instrumental(row))
+
+        self.assertFalse(radar.is_kids_instrumental({
+            "vid": "abcdefghijk",
+            "durH": 3,
+            "title": "Baby sleep music for deep rest",
+            "_scanDescription": "Calming bedtime music for newborn sleep",
+            "channel": "Calm Baby",
+        }))
+
+        mozart = dict(
+            base,
+            vid="abcdefghijk",
+            title="Sleep instantly with Mozart and Brahms lullabies",
+            _scanDescription="Long classical piano music for baby sleep",
+        )
+        self.assertTrue(radar.is_kids_instrumental(mozart))
+        for title in (
+            "Nursery rhymes for baby sleep",
+            "Kids songs for bedtime",
+            "Gentle lullabies for newborns",
+        ):
+            self.assertFalse(
+                radar.is_kids_instrumental(dict(base, vid="zyxwvutsrqp", title=title)),
+                title,
+            )
 
     def test_kids_filter_rejects_confirmed_vocal_false_positives(self):
         base = {
@@ -1228,6 +1326,22 @@ class DailyHistoryTests(unittest.TestCase):
         self.assertEqual(manifest["ours_metadata_total"], 1)
         self.assertEqual(manifest["ours_metadata"][0]["durH"], 1.0)
         self.assertEqual(loaded, ["abcdefghijk", "zyxwvutsrqp"])
+
+    def test_empty_tracked_manifest_is_allowed_only_for_kids_scope(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "snapshot.js"
+            kids_manifest = root / "kids.json"
+            standard_manifest = root / "standard.json"
+            radar.write_snapshot(snapshot, {"d": {"kids": []}})
+            kids = radar.write_tracked_manifest(snapshot, kids_manifest, "kids")
+            self.assertEqual(kids["ids"], [])
+            self.assertEqual(radar.read_tracked_manifest(kids_manifest, "kids"), [])
+            standard_manifest.write_text(json.dumps({
+                "version": 2, "scan_scope": "standard", "ids": [],
+            }), encoding="utf-8")
+            with self.assertRaisesRegex(RuntimeError, "empty tracked-video manifest"):
+                radar.read_tracked_manifest(standard_manifest, "standard")
 
     def test_publicly_unavailable_ids_are_quarantined_but_kept_as_recovery_probes(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -2414,7 +2528,7 @@ class ScanScopeTests(unittest.TestCase):
         artifact.update(overrides)
         return artifact
 
-    def test_query_specs_reads_kids_metrics_for_top_50_daily_mode(self):
+    def test_query_specs_keeps_top_100_after_previous_kids_scan(self):
         payload = {
             "d": {"kids": []},
             "kidsMetrics": {"queries": len(radar.KIDS_QUERY_SPECS)},
@@ -2426,7 +2540,8 @@ class ScanScopeTests(unittest.TestCase):
             if spec.get("audience") == "kids"
         ]
         self.assertEqual(len(specs), len(radar.KIDS_QUERY_SPECS))
-        self.assertTrue(all(spec["searchResults"] == 50 for spec in specs))
+        self.assertTrue(all(spec["searchResults"] == 100 for spec in specs))
+        self.assertTrue(all(len(spec["searchLanes"]) == 2 for spec in specs))
 
     def test_standard_shard_excludes_every_kids_operation(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -2695,6 +2810,7 @@ class ScanScopeTests(unittest.TestCase):
             artifact = self._artifact(
                 "kids",
                 generated,
+                version=2,
                 tracked_total=0,
                 tracked_ok=0,
                 tracked_ids=[],
@@ -2708,6 +2824,16 @@ class ScanScopeTests(unittest.TestCase):
                 kids_queries_ok=len(radar.KIDS_QUERY_SPECS),
                 kids_results_examined=4000,
                 kids_candidates_kept=1,
+                kids_funnel={
+                    **radar.empty_kids_funnel(),
+                    "raw": 4000,
+                    "unique": 1800,
+                    "enriched": 1800,
+                    "rejected_made_for_kids": 1799,
+                    "kept": 1,
+                    "lane_calls_expected": 80,
+                    "lane_calls_completed": 80,
+                },
                 candidates=[candidate],
             )
             (shards / "youtube-shard-0.json").write_text(
@@ -2756,6 +2882,53 @@ class ScanScopeTests(unittest.TestCase):
             [[generated, 250_000]],
         )
         self.assertIn(candidate["channelId"], avatar_text)
+
+    def test_require_kids_rejects_zero_verified_yield_and_preserves_funnel(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "snapshot.js"
+            avatars = root / "avatars.js"
+            shards = root / "shards"
+            shards.mkdir()
+            generated = int(datetime(2026, 8, 13, 8, tzinfo=timezone.utc).timestamp() * 1000)
+            radar.write_snapshot(snapshot, self._payload())
+            funnel = radar.empty_kids_funnel()
+            funnel.update({
+                "raw": 2_000,
+                "unique": 40,
+                "enriched": 40,
+                "rejected_made_for_kids": 40,
+                "lane_calls_expected": 80,
+                "lane_calls_completed": 80,
+            })
+            artifact = self._artifact(
+                "kids", generated,
+                version=2,
+                tracked_total=0,
+                tracked_ok=0,
+                tracked_ids=[],
+                tracked_fresh_ids=[],
+                fresh=[],
+                queries_total=40,
+                queries_ok=40,
+                queries_raw=2_000,
+                queries_enriched=40,
+                kids_queries_total=40,
+                kids_queries_ok=40,
+                kids_results_examined=2_000,
+                kids_candidates_kept=0,
+                kids_funnel=funnel,
+            )
+            (shards / "youtube-shard-0.json").write_text(
+                json.dumps(artifact), encoding="utf-8"
+            )
+            with self.assertRaisesRegex(RuntimeError, "coverage or verified candidates"):
+                radar.merge_artifacts(
+                    snapshot, avatars, shards, 1,
+                    generate_recommendations=False,
+                    require_kids=True,
+                    scan_scope="kids",
+                )
 
     def test_scope_only_history_preserves_out_of_scope_series_same_shard(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -9,6 +9,7 @@ deadlines are evaluated in Europe/Paris, including daylight-saving changes.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -31,6 +32,9 @@ ACTIVE_RUN_STATES = {"queued", "in_progress", "pending", "requested", "waiting"}
 COLLECTION_EVENTS = {"schedule", "workflow_dispatch", "repository_dispatch", "push", "workflow_run"}
 YOUTUBE_SNAPSHOT_PREFIX = "window.LOFI_DATA="
 YOUTUBE_CARD_BUCKETS = ("all", "trends", "news", "ours", "kids")
+YOUTUBE_KIDS_EXPECTED_QUERIES = 40
+YOUTUBE_KIDS_EXPECTED_SEARCH_LANES = 80
+YOUTUBE_KIDS_MIN_RESULTS_EXAMINED = 2_000
 
 
 @dataclass(frozen=True)
@@ -64,6 +68,12 @@ TARGETS: dict[str, Target] = {
         "youtube_radar",
         "refresh-instrumental-radar.yml",
         45,
+        {"force": "false"},
+    ),
+    "youtube_kids": Target(
+        "youtube_kids",
+        "refresh-youtube-kids.yml",
+        180,
         {"force": "false"},
     ),
     "youtube_recommendations": Target(
@@ -195,6 +205,28 @@ def metric_day(metrics: Mapping[str, Any], key: str) -> date | None:
         return date.fromisoformat(str(metrics.get(key) or ""))
     except ValueError:
         return None
+
+
+def youtube_kids_cohort_ids(snapshot: Mapping[str, Any]) -> list[str]:
+    data = snapshot.get("d")
+    if not isinstance(data, Mapping):
+        raise ValueError("YouTube snapshot has no card catalogue")
+    rows = data.get("kids")
+    if not isinstance(rows, list) or not rows:
+        raise ValueError("YouTube Kids catalogue is empty")
+    ids: list[str] = []
+    for row in rows:
+        video_id = str(row.get("vid") or "") if isinstance(row, Mapping) else ""
+        if not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id):
+            raise ValueError("YouTube Kids catalogue contains an invalid video id")
+        ids.append(video_id)
+    if len(ids) != len(set(ids)):
+        raise ValueError("YouTube Kids catalogue contains duplicate video ids")
+    return sorted(ids)
+
+
+def youtube_kids_cohort_digest(video_ids: Iterable[str]) -> str:
+    return hashlib.sha256("\n".join(sorted(video_ids)).encode("utf-8")).hexdigest()
 
 
 def youtube_card_history_problem(
@@ -411,6 +443,99 @@ def assess_youtube_radar(root: Path, now: datetime, ignore_deadline: bool = Fals
         False,
         f"public YouTube and Kids day {history_day}/{kids_day} is healthy; cards {card_rows_updated}/{card_rows_expected}",
         min(observed, kids_observed),
+    )
+
+
+def assess_youtube_kids(root: Path, now: datetime, ignore_deadline: bool = False) -> Freshness:
+    """Require a real daily Kids discovery, not only refreshed card counters."""
+    target = TARGETS["youtube_kids"]
+    try:
+        snapshot = read_youtube_snapshot(root / "Lofi_Radar_data.js")
+        cohort_ids = youtube_kids_cohort_ids(snapshot)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        return freshness_row(target, True, f"invalid YouTube Kids discovery snapshot: {exc}", None)
+
+    metrics = snapshot.get("kidsMetrics")
+    if not isinstance(metrics, Mapping):
+        return freshness_row(target, True, "missing YouTube Kids discovery proof", None)
+    observed = parse_timestamp(snapshot.get("kidsDiscoveryT"))
+    discovery_day = metric_day(metrics, "discovery_day")
+    today = now.astimezone(PARIS).date()
+    if observed is None or discovery_day is None:
+        return freshness_row(target, True, "missing YouTube Kids discovery timestamp or day", observed)
+    if observed > now + timedelta(minutes=5):
+        return freshness_row(target, True, "YouTube Kids discovery timestamp is in the future", observed)
+    if local_day(observed) != discovery_day:
+        return freshness_row(target, True, "YouTube Kids discovery timestamp and Paris day diverge", observed)
+    if metrics.get("discovery_complete") is not True:
+        return freshness_row(target, True, "YouTube Kids discovery is not marked complete", observed)
+
+    queries = metric_int(metrics, "discovery_queries")
+    queries_ok = metric_int(metrics, "discovery_queries_ok")
+    if queries != YOUTUBE_KIDS_EXPECTED_QUERIES or queries_ok != queries:
+        return freshness_row(
+            target,
+            True,
+            f"YouTube Kids discovery query coverage is {queries_ok}/{queries}, expected "
+            f"{YOUTUBE_KIDS_EXPECTED_QUERIES}/{YOUTUBE_KIDS_EXPECTED_QUERIES}",
+            observed,
+        )
+    results_examined = metric_int(metrics, "discovery_results_examined")
+    candidates_kept = metric_int(metrics, "discovery_candidates_kept")
+    search_lanes_expected = metric_int(metrics, "discovery_search_lanes_expected")
+    search_lanes_completed = metric_int(metrics, "discovery_search_lanes_completed")
+    if (
+        search_lanes_expected != YOUTUBE_KIDS_EXPECTED_SEARCH_LANES
+        or search_lanes_completed != search_lanes_expected
+    ):
+        return freshness_row(
+            target,
+            True,
+            f"YouTube Kids search lane coverage is {search_lanes_completed}/"
+            f"{search_lanes_expected}, expected {YOUTUBE_KIDS_EXPECTED_SEARCH_LANES}/"
+            f"{YOUTUBE_KIDS_EXPECTED_SEARCH_LANES}",
+            observed,
+        )
+    if results_examined < YOUTUBE_KIDS_MIN_RESULTS_EXAMINED or candidates_kept <= 0:
+        return freshness_row(
+            target,
+            True,
+            f"YouTube Kids discovery yield/coverage is insufficient "
+            f"({candidates_kept}/{results_examined}, minimum results "
+            f"{YOUTUBE_KIDS_MIN_RESULTS_EXAMINED})",
+            observed,
+        )
+
+    tracked = metric_int(metrics, "discovery_tracked")
+    if tracked != len(cohort_ids):
+        return freshness_row(
+            target,
+            True,
+            f"YouTube Kids discovery cohort proof is {tracked}/{len(cohort_ids)}",
+            observed,
+        )
+    expected_digest = youtube_kids_cohort_digest(cohort_ids)
+    if str(metrics.get("discovery_ids_digest") or "") != expected_digest:
+        return freshness_row(target, True, "YouTube Kids discovery cohort digest diverges", observed)
+    if now - observed > timedelta(hours=30):
+        return freshness_row(target, True, "YouTube Kids discovery is older than 30 hours", observed)
+    if discovery_day < today and (
+        ignore_deadline or after_local_deadline(now, time(15, 30))
+    ):
+        return freshness_row(
+            target,
+            True,
+            f"no YouTube Kids discovery for Paris day {today}",
+            observed,
+        )
+    if discovery_day > today:
+        return freshness_row(target, True, "YouTube Kids discovery day is in the future", observed)
+    return freshness_row(
+        target,
+        False,
+        f"YouTube Kids discovery {discovery_day} is complete: "
+        f"{queries_ok}/{queries} queries, {len(cohort_ids)} cards",
+        observed,
     )
 
 
@@ -679,6 +804,7 @@ ASSESSORS = {
     "spotify_followers": assess_spotify_followers,
     "spotify_browse": assess_spotify_browse,
     "youtube_radar": assess_youtube_radar,
+    "youtube_kids": assess_youtube_kids,
     "youtube_recommendations": assess_youtube_recommendations,
     "youtube_channels": assess_youtube_channels,
 }

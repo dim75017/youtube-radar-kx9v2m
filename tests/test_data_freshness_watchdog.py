@@ -36,9 +36,19 @@ def write_youtube_fixture(
     day_timezone: str = "Europe/Paris",
     kids_day: str | None = None,
     kids_stamp: int | None = None,
+    kids_discovery_day: str | None = None,
+    kids_discovery_stamp: int | None = None,
+    kids_discovery_queries_ok: int = subject.YOUTUBE_KIDS_EXPECTED_QUERIES,
+    kids_discovery_results: int = subject.YOUTUBE_KIDS_MIN_RESULTS_EXAMINED,
+    kids_discovery_candidates: int = 1,
+    kids_discovery_lanes_completed: int = subject.YOUTUBE_KIDS_EXPECTED_SEARCH_LANES,
+    kids_discovery_complete: bool = True,
+    kids_discovery_digest: str | None = None,
 ) -> None:
     kids_day = kids_day or day
     kids_stamp = kids_stamp or stamp
+    kids_discovery_day = kids_discovery_day or day
+    kids_discovery_stamp = kids_discovery_stamp or stamp
     history_views = card_views if history_views is None else history_views
     history_stamp = history_stamp or stamp
     standard_id = "abcDEF12345"
@@ -68,6 +78,7 @@ def write_youtube_fixture(
             "analysis_rows_updated": analysis_rows_updated,
         },
         "kidsMetricsT": kids_stamp,
+        "kidsDiscoveryT": kids_discovery_stamp,
         "kidsMetrics": {
             "tracked": 1,
             "updated": 1,
@@ -76,6 +87,19 @@ def write_youtube_fixture(
             "day": kids_day,
             "day_timezone": "Europe/Paris",
             "partial": False,
+            "discovery_day": kids_discovery_day,
+            "discovery_queries": subject.YOUTUBE_KIDS_EXPECTED_QUERIES,
+            "discovery_queries_ok": kids_discovery_queries_ok,
+            "discovery_results_examined": kids_discovery_results,
+            "discovery_candidates_kept": kids_discovery_candidates,
+            "discovery_search_lanes_expected": subject.YOUTUBE_KIDS_EXPECTED_SEARCH_LANES,
+            "discovery_search_lanes_completed": kids_discovery_lanes_completed,
+            "discovery_tracked": 1,
+            "discovery_ids_digest": (
+                kids_discovery_digest
+                or subject.youtube_kids_cohort_digest([kids_id])
+            ),
+            "discovery_complete": kids_discovery_complete,
         },
     }
     write(root / "Lofi_Radar_data.js", f"window.LOFI_DATA={json.dumps(payload)};")
@@ -499,6 +523,119 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         self.assertTrue(row.due)
         self.assertIn("YouTube Kids", row.reason)
 
+    def test_youtube_kids_discovery_has_its_own_current_complete_proof(self):
+        stamp = int(datetime(2026, 8, 13, 11, 37, tzinfo=timezone.utc).timestamp() * 1000)
+        write_youtube_fixture(
+            self.root,
+            stamp=stamp,
+            day="2026-08-13",
+        )
+        row = subject.assess(
+            self.root,
+            datetime(2026, 8, 13, 14, tzinfo=timezone.utc),
+            ["youtube_kids"],
+        )[0]
+        self.assertFalse(row.due, row.reason)
+        self.assertIn("40/40", row.reason)
+
+    def test_fresh_kids_counters_do_not_mask_stale_kids_discovery(self):
+        counter_stamp = int(
+            datetime(2026, 8, 13, 8, tzinfo=timezone.utc).timestamp() * 1000
+        )
+        discovery_stamp = int(
+            datetime(2026, 8, 12, 11, 37, tzinfo=timezone.utc).timestamp() * 1000
+        )
+        write_youtube_fixture(
+            self.root,
+            stamp=counter_stamp,
+            day="2026-08-13",
+            kids_stamp=counter_stamp,
+            kids_day="2026-08-13",
+            kids_discovery_stamp=discovery_stamp,
+            kids_discovery_day="2026-08-12",
+        )
+        row = subject.assess(
+            self.root,
+            datetime(2026, 8, 13, 14, tzinfo=timezone.utc),
+            ["youtube_kids"],
+        )[0]
+        self.assertTrue(row.due)
+        self.assertIn("Paris day 2026-08-13", row.reason)
+
+    def test_youtube_kids_discovery_rejects_incomplete_queries_and_zero_yield(self):
+        stamp = int(datetime(2026, 8, 13, 11, 37, tzinfo=timezone.utc).timestamp() * 1000)
+        write_youtube_fixture(
+            self.root,
+            stamp=stamp,
+            day="2026-08-13",
+            kids_discovery_queries_ok=39,
+        )
+        incomplete = subject.assess(
+            self.root,
+            datetime(2026, 8, 13, 14, tzinfo=timezone.utc),
+            ["youtube_kids"],
+        )[0]
+        self.assertTrue(incomplete.due)
+        self.assertIn("39/40", incomplete.reason)
+
+        write_youtube_fixture(
+            self.root,
+            stamp=stamp,
+            day="2026-08-13",
+            kids_discovery_candidates=0,
+        )
+        zero_yield = subject.assess(
+            self.root,
+            datetime(2026, 8, 13, 14, tzinfo=timezone.utc),
+            ["youtube_kids"],
+        )[0]
+        self.assertTrue(zero_yield.due)
+        self.assertIn("yield/coverage is insufficient", zero_yield.reason)
+
+        write_youtube_fixture(
+            self.root,
+            stamp=stamp,
+            day="2026-08-13",
+            kids_discovery_results=subject.YOUTUBE_KIDS_MIN_RESULTS_EXAMINED - 1,
+        )
+        shallow = subject.assess(
+            self.root,
+            datetime(2026, 8, 13, 14, tzinfo=timezone.utc),
+            ["youtube_kids"],
+        )[0]
+        self.assertTrue(shallow.due)
+        self.assertIn("minimum results", shallow.reason)
+
+        write_youtube_fixture(
+            self.root,
+            stamp=stamp,
+            day="2026-08-13",
+            kids_discovery_lanes_completed=79,
+        )
+        lanes = subject.assess(
+            self.root,
+            datetime(2026, 8, 13, 14, tzinfo=timezone.utc),
+            ["youtube_kids"],
+        )[0]
+        self.assertTrue(lanes.due)
+        self.assertIn("79/80", lanes.reason)
+
+    def test_youtube_kids_discovery_rejects_a_divergent_cohort_digest(self):
+        stamp = int(datetime(2026, 8, 13, 11, 37, tzinfo=timezone.utc).timestamp() * 1000)
+        write_youtube_fixture(
+            self.root,
+            stamp=stamp,
+            day="2026-08-13",
+            kids_discovery_digest="0" * 64,
+        )
+        row = subject.assess(
+            self.root,
+            datetime(2026, 8, 13, 14, tzinfo=timezone.utc),
+            ["youtube_kids"],
+        )[0]
+        self.assertTrue(row.due)
+        self.assertIn("digest diverges", row.reason)
+
     def test_youtube_card_views_must_match_the_latest_history_point(self):
         stamp = int(datetime(2026, 7, 29, 6, tzinfo=timezone.utc).timestamp() * 1000)
         write_youtube_fixture(
@@ -756,14 +893,18 @@ class DataFreshnessWorkflowGuardrailTests(unittest.TestCase):
         self.assertNotIn("SOUNDCHARTS_CLIENT_SECRET", workflow)
         self.assertIn("data_freshness_watchdog.py --dispatch", workflow)
         self.assertIn("Refresh YouTube recommendations", workflow)
+        self.assertIn("Refresh YouTube Kids radar", workflow)
         self.assertIn("youtube_recommendation_ledger/manifest.json", workflow)
         source = Path("data_freshness_watchdog.py").read_text(encoding="utf-8")
         self.assertIn('"youtube_recommendations": Target(', source)
         self.assertIn('"refresh-youtube-recommendations.yml"', source)
+        self.assertIn('"youtube_kids": Target(', source)
+        self.assertIn('"refresh-youtube-kids.yml"', source)
 
     def test_collectors_recheck_freshness_before_expensive_work(self):
         expected = {
             "refresh-instrumental-radar.yml": "--target youtube_radar",
+            "refresh-youtube-kids.yml": "--target youtube_kids",
             "refresh-soundcharts.yml": "--target spotify_core",
             "refresh-spotify-browse-catalogue.yml": "--target spotify_browse",
             "refresh-channel-radar.yml": "--target youtube_channels",

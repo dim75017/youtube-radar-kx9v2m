@@ -3,11 +3,15 @@ import unittest
 
 
 WORKFLOW = Path('.github/workflows/refresh-instrumental-radar.yml')
+KIDS_WORKFLOW = Path('.github/workflows/refresh-youtube-kids.yml')
 
 
 class YoutubeWorkflowGuardrailTests(unittest.TestCase):
     def workflow(self) -> str:
         return WORKFLOW.read_text(encoding='utf-8')
+
+    def kids_workflow(self) -> str:
+        return KIDS_WORKFLOW.read_text(encoding='utf-8')
 
     def test_daily_facts_wait_only_for_collection_integrity(self):
         workflow = self.workflow()
@@ -124,6 +128,103 @@ class YoutubeWorkflowGuardrailTests(unittest.TestCase):
         self.assertIn("if: github.ref == 'refs/heads/main'", prepare)
         self.assertIn("if: github.ref == 'refs/heads/main'", publish)
         self.assertIn('needs: scan', publish)
+
+    def test_kids_discovery_has_cloud_schedule_and_shared_production_lock(self):
+        workflow = self.kids_workflow()
+        self.assertIn('name: Refresh YouTube Kids radar', workflow)
+        self.assertIn('  push:', workflow)
+        self.assertIn("cron: '37 11 * * *'", workflow)
+        self.assertIn("cron: '7 20 * * *'", workflow)
+        self.assertIn('  workflow_dispatch:', workflow)
+        self.assertIn("'refresh-youtube-radar-production'", workflow)
+        self.assertIn("format('refresh-youtube-radar-pr-{0}'", workflow)
+        self.assertIn('cancel-in-progress: false', workflow)
+
+        watchdog = Path('.github/workflows/data-freshness-watchdog.yml').read_text(
+            encoding='utf-8'
+        )
+        self.assertIn("- 'Refresh YouTube Kids radar'", watchdog)
+
+    def test_kids_gate_and_all_twenty_shards_are_kids_only(self):
+        workflow = self.kids_workflow()
+        gate = workflow.split('  gate:\n', 1)[1].split('  validate:\n', 1)[0]
+        validate = workflow.split('  validate:\n', 1)[1].split('  scan:\n', 1)[0]
+        scan = workflow.split('  scan:\n', 1)[1].split('  publish:\n', 1)[0]
+        self.assertIn('--target youtube_kids', gate)
+        self.assertIn('--scheduled-check', gate)
+        self.assertIn('steps.freshness.outputs.due', gate)
+        self.assertIn("github.ref == 'refs/heads/main'", scan)
+        self.assertIn('needs.gate.outputs.run_scan', scan)
+        self.assertIn('needs: [gate, validate]', scan)
+        self.assertNotIn('continue-on-error', validate)
+        self.assertIn('max-parallel: 5', scan)
+        self.assertIn(
+            'shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]',
+            scan,
+        )
+        self.assertIn('--scan-scope kids', scan)
+        self.assertIn('--shards 20', scan)
+        self.assertNotIn('--tracked-manifest', scan)
+        self.assertNotIn('YOUTUBE_API_KEY', scan)
+        self.assertIn('youtube-kids-shard-${{ matrix.shard }}', scan)
+
+    def test_kids_publication_is_fail_closed_scoped_and_pages_verified(self):
+        workflow = self.kids_workflow()
+        publish = workflow.split('  publish:\n', 1)[1]
+        self.assertIn("if: github.ref == 'refs/heads/main'", publish)
+        self.assertIn('needs: scan', publish)
+        self.assertIn('pattern: youtube-kids-shard-*', publish)
+        self.assertIn('--scan-scope kids', publish)
+        self.assertIn('--shards 20', publish)
+        self.assertIn('--require-kids', publish)
+        self.assertIn('--skip-recommendation-pool', publish)
+        self.assertIn('youtube_kids_discovery_proof.py', publish)
+        self.assertIn('--stamp', publish)
+        self.assertIn('--target youtube_kids', publish)
+        self.assertIn('--scheduled-check', publish)
+        self.assertIn('--fail-if-due', publish)
+        self.assertLess(
+            publish.index('Record a source-backed Kids discovery proof'),
+            publish.index('Block incomplete or stale Kids discovery before publication'),
+        )
+        self.assertLess(
+            publish.index('Block incomplete or stale Kids discovery before publication'),
+            publish.index('Commit factual Kids catalogue and history'),
+        )
+        commit = publish.split('Commit factual Kids catalogue and history', 1)[1].split(
+            'Verify GitHub Pages serves the shared factual snapshot and history', 1
+        )[0]
+        self.assertIn(
+            'git add Lofi_Radar_data.js Lofi_Radar_new_channel_avatars.js video_history',
+            commit,
+        )
+        self.assertNotIn('Lofi_Radar_recommendation_pool.js', commit)
+        self.assertIn('--sha "$published_sha"', commit)
+        self.assertIn('--wait-for-completion', commit)
+        self.assertIn('--verify-core-only', publish)
+        self.assertIn('--verify-base-url https://dim75017.github.io/youtube-radar-kx9v2m/', publish)
+
+    def test_kids_pull_requests_validate_without_scanning_or_writes(self):
+        workflow = self.kids_workflow()
+        gate = workflow.split('  gate:\n', 1)[1].split('  validate:\n', 1)[0]
+        scan = workflow.split('  scan:\n', 1)[1].split('  publish:\n', 1)[0]
+        global_permissions = workflow.split('permissions:\n', 1)[1].split(
+            '# Serialize', 1
+        )[0]
+        publish = workflow.split('  publish:\n', 1)[1]
+        self.assertIn('$EVENT_NAME" = "pull_request', gate)
+        self.assertIn("github.ref == 'refs/heads/main'", scan)
+        self.assertIn('contents: read', global_permissions)
+        self.assertIn('contents: write', publish)
+        self.assertIn('tests.test_youtube_kids_discovery', workflow)
+
+    def test_standard_counter_refresh_cannot_advance_kids_discovery_marker(self):
+        collector = Path('refresh_youtube_daily.py').read_text(encoding='utf-8')
+        standard_kids_update = collector.split(
+            'if preserved_kids is not None and data.get("kids"):', 1
+        )[1].split('payload["t"] = now_ms', 1)[0]
+        self.assertIn('payload["kidsMetricsT"] = now_ms', standard_kids_update)
+        self.assertNotIn('kidsDiscoveryT', standard_kids_update)
 
 
 if __name__ == '__main__':
