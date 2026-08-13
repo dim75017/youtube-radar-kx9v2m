@@ -108,6 +108,19 @@ KIDS_INNERTUBE_RETRY_DELAY_SECONDS = float(
 KIDS_INNERTUBE_MAX_JSON_BYTES = int(
     os.environ.get("RADAR_KIDS_INNERTUBE_MAX_JSON_BYTES", str(4 * 1024 * 1024))
 )
+KIDS_NEXT_CLIENT_VERSION = "2.20260114.08.00"
+KIDS_NEXT_HTTP_RETRIES = int(
+    os.environ.get("RADAR_KIDS_NEXT_HTTP_RETRIES", "2")
+)
+KIDS_NEXT_HTTP_TIMEOUT_SECONDS = int(
+    os.environ.get("RADAR_KIDS_NEXT_HTTP_TIMEOUT_SECONDS", "20")
+)
+KIDS_NEXT_RETRY_DELAY_SECONDS = float(
+    os.environ.get("RADAR_KIDS_NEXT_RETRY_DELAY_SECONDS", "0.75")
+)
+KIDS_NEXT_MAX_JSON_BYTES = int(
+    os.environ.get("RADAR_KIDS_NEXT_MAX_JSON_BYTES", str(2 * 1024 * 1024))
+)
 KIDS_WATCH_HTTP_RETRIES = int(
     os.environ.get("RADAR_KIDS_WATCH_HTTP_RETRIES", "2")
 )
@@ -514,11 +527,11 @@ def is_kids_marker_href(href: object) -> bool:
 
 
 class KidsDomCanaryError(RuntimeError):
-    """The rendered Family Options signal is not trustworthy in this process."""
+    """No public YouTube source proved a trustworthy Kids signal."""
 
 
 class KidsDomProbeError(RuntimeError):
-    """A public watch page could not produce a trustworthy yes/no answer."""
+    """A public YouTube source could not produce a trustworthy yes/no answer."""
 
 
 class KidsPlayerIndeterminateError(KidsDomProbeError):
@@ -838,6 +851,363 @@ class YouTubeInnertubePlayerClient:
         pass
 
 
+class YouTubeWatchNextClient:
+    """Classify Kids from YouTube's complete public WEB ``next`` response."""
+
+    _ENDPOINT = "https://www.youtube.com/youtubei/v1/next?prettyPrint=false"
+    _TRANSIENT_HTTP_CODES = YouTubeInnertubePlayerClient._TRANSIENT_HTTP_CODES
+    _KIDS_NOTIFICATION_TEXT = "This action is turned off for content made for kids"
+
+    def __init__(
+        self,
+        *,
+        retries: int = KIDS_NEXT_HTTP_RETRIES,
+        retry_delay_seconds: float = KIDS_NEXT_RETRY_DELAY_SECONDS,
+        timeout_seconds: int = KIDS_NEXT_HTTP_TIMEOUT_SECONDS,
+    ) -> None:
+        self.retries = max(0, int(retries))
+        self.retry_delay_seconds = max(0.0, float(retry_delay_seconds))
+        self.timeout_seconds = max(1, int(timeout_seconds))
+
+    def _request(self, video_id: str) -> urllib.request.Request:
+        payload = {
+            "context": {
+                "client": {
+                    "clientName": "WEB",
+                    "clientVersion": KIDS_NEXT_CLIENT_VERSION,
+                    "hl": "en",
+                    "gl": "US",
+                },
+            },
+            "videoId": video_id,
+        }
+        return urllib.request.Request(
+            self._ENDPOINT,
+            data=json.dumps(payload, separators=(",", ":")).encode("utf-8"),
+            headers={
+                "Accept": "application/json",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Content-Type": "application/json",
+                "User-Agent": (
+                    "Mozilla/5.0 (X11; Linux x86_64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/140.0.0.0 Safari/537.36"
+                ),
+                "X-YouTube-Client-Name": "1",
+                "X-YouTube-Client-Version": KIDS_NEXT_CLIENT_VERSION,
+            },
+            method="POST",
+        )
+
+    @classmethod
+    def _validate_final_url(cls, final_url: str) -> None:
+        try:
+            parsed = urllib.parse.urlparse(final_url)
+            port = parsed.port
+        except ValueError as exc:
+            raise KidsPlayerIndeterminateError(
+                "YouTube next returned a malformed final URL"
+            ) from exc
+        query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+        if (
+            parsed.scheme != "https"
+            or (parsed.hostname or "").casefold() != "www.youtube.com"
+            or parsed.username is not None
+            or parsed.password is not None
+            or port is not None
+            or parsed.path != "/youtubei/v1/next"
+            or parsed.fragment
+            or query != [("prettyPrint", "false")]
+        ):
+            raise KidsPlayerIndeterminateError(
+                "YouTube next redirected away from the expected endpoint"
+            )
+
+    def _fetch_once(self, video_id: str) -> tuple[dict, str]:
+        request = self._request(video_id)
+        with urllib.request.urlopen(
+            request, timeout=self.timeout_seconds
+        ) as response:
+            final_url = (
+                str(response.geturl())
+                if callable(getattr(response, "geturl", None))
+                else request.full_url
+            )
+            body = response.read(KIDS_NEXT_MAX_JSON_BYTES + 1)
+        if len(body) > KIDS_NEXT_MAX_JSON_BYTES:
+            raise KidsPlayerIndeterminateError(
+                "YouTube next response exceeded the bounded JSON size"
+            )
+        self._validate_final_url(final_url)
+        return YouTubeInnertubePlayerClient._strict_json(body), final_url
+
+    @staticmethod
+    def _mapping_at(value: object, *keys: str) -> dict:
+        return YouTubeInnertubePlayerClient._mapping_at(value, *keys)
+
+    @staticmethod
+    def _list_at(value: object, *keys: str) -> list:
+        current = value
+        for key in keys:
+            if type(current) is not dict:
+                return []
+            current = current.get(key)
+        return current if type(current) is list else []
+
+    @classmethod
+    def _complete_watch_content(
+        cls, payload: dict, video_id: str
+    ) -> tuple[list, dict]:
+        current = cls._mapping_at(payload, "currentVideoEndpoint")
+        web = cls._mapping_at(
+            current, "commandMetadata", "webCommandMetadata"
+        )
+        watch = cls._mapping_at(current, "watchEndpoint")
+        if (
+            watch.get("videoId") != video_id
+            or web.get("url") != f"/watch?v={video_id}"
+            or web.get("webPageType") != "WEB_PAGE_TYPE_WATCH"
+        ):
+            raise KidsPlayerIndeterminateError(
+                f"YouTube next currentVideoEndpoint mismatch for {video_id}"
+            )
+
+        two_column = cls._mapping_at(
+            payload, "contents", "twoColumnWatchNextResults"
+        )
+        primary = cls._list_at(
+            two_column, "results", "results", "contents"
+        )
+        secondary = cls._list_at(
+            two_column,
+            "secondaryResults",
+            "secondaryResults",
+            "results",
+        )
+        if not primary or not secondary:
+            raise KidsPlayerIndeterminateError(
+                f"YouTube next lacks complete primary/secondary content for {video_id}"
+            )
+        secondary_info = [
+            item.get("videoSecondaryInfoRenderer")
+            for item in primary
+            if type(item) is dict
+            and type(item.get("videoSecondaryInfoRenderer")) is dict
+        ]
+        if len(secondary_info) != 1:
+            raise KidsPlayerIndeterminateError(
+                f"YouTube next has {len(secondary_info)} videoSecondaryInfoRenderer "
+                f"objects for {video_id}"
+            )
+        return primary, secondary_info[0]
+
+    @classmethod
+    def _notification_renderers(cls, secondary_info: dict) -> list[dict]:
+        toggle = cls._mapping_at(
+            secondary_info,
+            "subscribeButton",
+            "subscribeButtonRenderer",
+            "notificationPreferenceButton",
+            "subscriptionNotificationToggleButtonRenderer",
+            "command",
+            "commandExecutorCommand",
+        )
+        commands = toggle.get("commands")
+        if type(commands) is not list:
+            return []
+        notifications = []
+        for command in commands:
+            menu = cls._mapping_at(
+                command,
+                "openPopupAction",
+                "popup",
+                "menuPopupRenderer",
+            )
+            items = menu.get("items")
+            if type(items) is not list:
+                continue
+            for item in items:
+                signal = cls._mapping_at(
+                    item,
+                    "menuServiceItemRenderer",
+                    "command",
+                    "signalServiceEndpoint",
+                )
+                actions = signal.get("actions")
+                if type(actions) is not list:
+                    continue
+                for action in actions:
+                    notification = cls._mapping_at(
+                        action,
+                        "openPopupAction",
+                        "popup",
+                        "notificationActionRenderer",
+                    )
+                    if notification:
+                        notifications.append(notification)
+        return notifications
+
+    @classmethod
+    def _notification_signals(cls, secondary_info: dict) -> tuple[bool, bool]:
+        notifications = cls._notification_renderers(secondary_info)
+        if len(notifications) > 1:
+            raise KidsPlayerIndeterminateError(
+                "YouTube next has ambiguous Kids notification renderers"
+            )
+        if not notifications:
+            return False, False
+        notification = notifications[0]
+        text = cls._mapping_at(notification, "responseText").get("simpleText")
+        text_signal = text == cls._KIDS_NOTIFICATION_TEXT
+        command = cls._mapping_at(
+            notification, "actionButton", "buttonRenderer", "command"
+        )
+        endpoint_url = cls._mapping_at(command, "urlEndpoint").get("url")
+        metadata_url = cls._mapping_at(
+            command, "commandMetadata", "webCommandMetadata"
+        ).get("url")
+        support_signal = (
+            isinstance(endpoint_url, str)
+            and endpoint_url == metadata_url
+            and YouTubeInnertubePlayerClient._has_support_answer(endpoint_url)
+        )
+        return text_signal, support_signal
+
+    @classmethod
+    def _carousel_marker_signal(cls, primary: list) -> bool:
+        carousels = []
+        for item in primary:
+            section = cls._mapping_at(item, "itemSectionRenderer")
+            section_contents = section.get("contents")
+            if type(section_contents) is not list:
+                continue
+            for content in section_contents:
+                carousel = cls._mapping_at(
+                    content, "videoMetadataCarouselViewModel"
+                )
+                if carousel:
+                    carousels.append(carousel)
+
+        for carousel in carousels:
+            items = carousel.get("carouselItems")
+            if type(items) is not list:
+                continue
+            for item in items:
+                text_item = cls._mapping_at(
+                    item,
+                    "carouselItemViewModel",
+                    "carouselItem",
+                    "ctaCarouselItemViewModel",
+                    "textCarousel",
+                    "textCarouselItemViewModel",
+                )
+                if not text_item:
+                    continue
+                on_tap = cls._mapping_at(
+                    text_item, "onTap", "innertubeCommand"
+                )
+                button_tap = cls._mapping_at(
+                    text_item,
+                    "button",
+                    "buttonViewModel",
+                    "onTap",
+                    "innertubeCommand",
+                )
+                endpoint_url = cls._mapping_at(
+                    on_tap, "urlEndpoint"
+                ).get("url")
+                button_url = cls._mapping_at(
+                    button_tap, "urlEndpoint"
+                ).get("url")
+                if (
+                    isinstance(endpoint_url, str)
+                    and endpoint_url == button_url
+                    and is_kids_marker_href(endpoint_url)
+                ):
+                    return True
+        return False
+
+    @staticmethod
+    def _all_strings(value: object):
+        if type(value) is dict:
+            for child in value.values():
+                yield from YouTubeWatchNextClient._all_strings(child)
+        elif type(value) is list:
+            for child in value:
+                yield from YouTubeWatchNextClient._all_strings(child)
+        elif isinstance(value, str):
+            yield value
+
+    @classmethod
+    def _classify(cls, payload: dict, final_url: str, video_id: str) -> bool:
+        cls._validate_final_url(final_url)
+        primary, secondary_info = cls._complete_watch_content(payload, video_id)
+        text_signal, support_signal = cls._notification_signals(secondary_info)
+        marker_signal = cls._carousel_marker_signal(primary)
+        signals = (text_signal, support_signal, marker_signal)
+        signal_count = sum(signals)
+        if signal_count == len(signals):
+            return True
+
+        strings = tuple(cls._all_strings(payload))
+        misplaced = (
+            (not text_signal and cls._KIDS_NOTIFICATION_TEXT in strings)
+            or (
+                not support_signal
+                and any(
+                    YouTubeInnertubePlayerClient._has_support_answer(value)
+                    for value in strings
+                )
+            )
+            or (
+                not marker_signal
+                and any(is_kids_marker_href(value) for value in strings)
+            )
+        )
+        if signal_count == 0 and not misplaced:
+            return False
+        raise KidsPlayerIndeterminateError(
+            f"YouTube next Kids restrictions are inconclusive for {video_id}: "
+            f"signals={signal_count}/{len(signals)}, misplaced={misplaced}"
+        )
+
+    def has_kids_player_signals(self, video_id: str) -> bool:
+        if not VIDEO_ID.fullmatch(video_id):
+            raise KidsDomProbeError(f"Invalid YouTube video ID: {video_id!r}")
+        for attempt in range(self.retries + 1):
+            try:
+                payload, final_url = self._fetch_once(video_id)
+                return self._classify(payload, final_url, video_id)
+            except urllib.error.HTTPError as exc:
+                if (
+                    exc.code not in self._TRANSIENT_HTTP_CODES
+                    or attempt >= self.retries
+                ):
+                    raise KidsDomProbeError(
+                        f"YouTube next HTTP {exc.code} for {video_id}"
+                    ) from exc
+            except (
+                urllib.error.URLError,
+                TimeoutError,
+                OSError,
+                http.client.IncompleteRead,
+            ) as exc:
+                if attempt >= self.retries:
+                    raise KidsDomProbeError(
+                        f"YouTube next network failure for {video_id}: "
+                        f"{type(exc).__name__}: {exc}"
+                    ) from exc
+            except KidsPlayerIndeterminateError:
+                if attempt >= self.retries:
+                    raise
+            if self.retry_delay_seconds:
+                time.sleep(self.retry_delay_seconds * (2 ** attempt))
+        raise KidsDomProbeError("YouTube next retry loop exhausted")
+
+    def close(self) -> None:
+        pass
+
+
 class YouTubeWatchPagePlayerClient:
     """Read the public watch-page player bootstrap without cookies or API keys."""
 
@@ -1021,9 +1391,11 @@ class YouTubePublicPlayerClient:
         self,
         innertube_client: object | None = None,
         watch_client: object | None = None,
+        next_client: object | None = None,
     ) -> None:
         self._backends = (
             ("innertube_android", innertube_client or YouTubeInnertubePlayerClient()),
+            ("watch_next", next_client or YouTubeWatchNextClient()),
             ("watch_page", watch_client or YouTubeWatchPagePlayerClient()),
         )
         self._selected_backend: tuple[str, object] | None = None
@@ -1058,6 +1430,11 @@ class YouTubePublicPlayerClient:
                 negative = self._probe_backend(name, client, negative_id)
                 if all(positives.values()) and not negative:
                     self._selected_backend = (name, client)
+                    print(
+                        f"INFO Kids public player backend selected: {name}",
+                        file=sys.stderr,
+                        flush=True,
+                    )
                     return name
                 errors.append(
                     f"{name}=positive={positives}, negative={negative}"
@@ -1321,7 +1698,7 @@ return 'clicked';
 
 
 class KidsDomValidator:
-    """Serialize one watch-page client and fail all Kids queries if canaries drift."""
+    """Serialize one canary-proven public client for every Kids query in a shard."""
 
     def __init__(
         self,

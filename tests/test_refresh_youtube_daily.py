@@ -302,6 +302,132 @@ class DailyHistoryTests(unittest.TestCase):
             + b";var nextBootstrap = true;</script></body></html>"
         )
 
+    @staticmethod
+    def _next_payload(
+        video_id,
+        *,
+        include_text=True,
+        include_support=True,
+        include_marker=True,
+        support_url=(
+            "//support.google.com/youtube/bin/answer.py"
+            "?answer=9632097&nohelpkit=1&hl=en"
+        ),
+        marker_url="https://ytkids.app.goo.gl/nou5",
+    ):
+        notification = {}
+        if include_text:
+            notification["responseText"] = {
+                "simpleText": "This action is turned off for content made for kids",
+            }
+        if include_support:
+            notification["actionButton"] = {
+                "buttonRenderer": {
+                    "command": {
+                        "commandMetadata": {
+                            "webCommandMetadata": {"url": support_url},
+                        },
+                        "urlEndpoint": {"url": support_url},
+                    },
+                },
+            }
+        secondary_info = {"owner": {"videoOwnerRenderer": {}}}
+        if include_text or include_support:
+            secondary_info["subscribeButton"] = {
+                "subscribeButtonRenderer": {
+                    "notificationPreferenceButton": {
+                        "subscriptionNotificationToggleButtonRenderer": {
+                            "command": {
+                                "commandExecutorCommand": {
+                                    "commands": [{
+                                        "openPopupAction": {
+                                            "popup": {
+                                                "menuPopupRenderer": {
+                                                    "items": [{
+                                                        "menuServiceItemRenderer": {
+                                                            "command": {
+                                                                "signalServiceEndpoint": {
+                                                                    "actions": [{
+                                                                        "openPopupAction": {
+                                                                            "popup": {
+                                                                                "notificationActionRenderer": notification,
+                                                                            },
+                                                                        },
+                                                                    }],
+                                                                },
+                                                            },
+                                                        },
+                                                    }],
+                                                },
+                                            },
+                                        },
+                                    }],
+                                },
+                            },
+                        },
+                    },
+                },
+            }
+        carousel = {
+            "carouselTitles": [{"carouselTitleViewModel": {"title": "Info"}}],
+            "carouselItems": [],
+        }
+        if include_marker:
+            command = {"urlEndpoint": {"url": marker_url}}
+            carousel["carouselItems"] = [{
+                "carouselItemViewModel": {
+                    "carouselItem": {
+                        "ctaCarouselItemViewModel": {
+                            "textCarousel": {
+                                "textCarouselItemViewModel": {
+                                    "onTap": {"innertubeCommand": command},
+                                    "button": {
+                                        "buttonViewModel": {
+                                            "onTap": {"innertubeCommand": command},
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            }]
+        return {
+            "currentVideoEndpoint": {
+                "commandMetadata": {
+                    "webCommandMetadata": {
+                        "url": f"/watch?v={video_id}",
+                        "webPageType": "WEB_PAGE_TYPE_WATCH",
+                    },
+                },
+                "watchEndpoint": {"videoId": video_id},
+            },
+            "contents": {
+                "twoColumnWatchNextResults": {
+                    "results": {
+                        "results": {
+                            "contents": [
+                                {"videoPrimaryInfoRenderer": {}},
+                                {"videoSecondaryInfoRenderer": secondary_info},
+                                {
+                                    "itemSectionRenderer": {
+                                        "contents": [{
+                                            "videoMetadataCarouselViewModel": carousel,
+                                        }],
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                    "secondaryResults": {
+                        "secondaryResults": {
+                            "results": [{"compactVideoRenderer": {"videoId": "abcdefghijk"}}],
+                        },
+                    },
+                },
+            },
+        }
+
     def test_innertube_player_uses_exact_android_post_and_three_kids_signals(self):
         video_id = "Pk7UDVYh2bs"
         payload = self._kids_player_payload(video_id)
@@ -554,6 +680,244 @@ class DailyHistoryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Invalid Innertube Android"):
             radar.YouTubeInnertubePlayerClient(client_version="bad\nheader")
 
+    def test_watch_next_uses_exact_public_web_post_without_credentials(self):
+        video_id = "Pk7UDVYh2bs"
+        payload = self._next_payload(video_id)
+        captured = {}
+
+        def fake_open(request, timeout):
+            captured["request"] = request
+            captured["timeout"] = timeout
+            return InnertubeResponse(
+                payload, radar.YouTubeWatchNextClient._ENDPOINT
+            )
+
+        client = radar.YouTubeWatchNextClient(retries=0)
+        with patch.object(radar.urllib.request, "urlopen", side_effect=fake_open):
+            self.assertTrue(client.has_kids_player_signals(video_id))
+
+        request = captured["request"]
+        self.assertEqual(request.get_method(), "POST")
+        self.assertEqual(request.full_url, radar.YouTubeWatchNextClient._ENDPOINT)
+        body = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(body, {
+            "context": {
+                "client": {
+                    "clientName": "WEB",
+                    "clientVersion": radar.KIDS_NEXT_CLIENT_VERSION,
+                    "hl": "en",
+                    "gl": "US",
+                },
+            },
+            "videoId": video_id,
+        })
+        headers = {
+            key.casefold(): value for key, value in request.header_items()
+        }
+        self.assertEqual(headers["x-youtube-client-name"], "1")
+        self.assertEqual(
+            headers["x-youtube-client-version"],
+            "2.20260114.08.00",
+        )
+        self.assertNotIn("cookie", headers)
+        self.assertNotIn("authorization", headers)
+        self.assertNotIn(
+            "key",
+            radar.urllib.parse.parse_qs(
+                radar.urllib.parse.urlparse(request.full_url).query
+            ),
+        )
+
+    def test_watch_next_accepts_only_complete_positive_or_complete_negative(self):
+        video_id = "Pk7UDVYh2bs"
+        client = radar.YouTubeWatchNextClient(retries=0)
+        for marker_url in (
+            "https://ytkids.app.goo.gl/nou5",
+            "https://www.youtube.com/myfamily/#mf-compare",
+        ):
+            with self.subTest(marker=marker_url):
+                self.assertTrue(client._classify(
+                    self._next_payload(video_id, marker_url=marker_url),
+                    client._ENDPOINT,
+                    video_id,
+                ))
+        self.assertFalse(client._classify(
+            self._next_payload(
+                video_id,
+                include_text=False,
+                include_support=False,
+                include_marker=False,
+            ),
+            client._ENDPOINT,
+            video_id,
+        ))
+
+        for signals in (
+            (True, False, False),
+            (False, True, False),
+            (False, False, True),
+            (True, True, False),
+            (True, False, True),
+            (False, True, True),
+        ):
+            with self.subTest(signals=signals), self.assertRaisesRegex(
+                radar.KidsDomProbeError,
+                f"signals={sum(signals)}/3",
+            ):
+                client._classify(
+                    self._next_payload(
+                        video_id,
+                        include_text=signals[0],
+                        include_support=signals[1],
+                        include_marker=signals[2],
+                    ),
+                    client._ENDPOINT,
+                    video_id,
+                )
+
+    def test_watch_next_rejects_misplaced_kids_signals_and_incomplete_structure(self):
+        video_id = "Pk7UDVYh2bs"
+        client = radar.YouTubeWatchNextClient(retries=0)
+        misplaced = self._next_payload(
+            video_id,
+            include_text=False,
+            include_support=False,
+            include_marker=False,
+        )
+        misplaced["unrelatedRenderer"] = {
+            "simpleText": "This action is turned off for content made for kids",
+        }
+        with self.assertRaisesRegex(
+            radar.KidsDomProbeError, "misplaced=True"
+        ):
+            client._classify(misplaced, client._ENDPOINT, video_id)
+
+        invalid = []
+        wrong_endpoint = self._next_payload(
+            video_id,
+            include_text=False,
+            include_support=False,
+            include_marker=False,
+        )
+        wrong_endpoint["currentVideoEndpoint"]["watchEndpoint"]["videoId"] = (
+            "XVFUtEh9zrY"
+        )
+        invalid.append(wrong_endpoint)
+        missing_primary = self._next_payload(video_id)
+        missing_primary["contents"]["twoColumnWatchNextResults"]["results"] = {}
+        invalid.append(missing_primary)
+        missing_secondary = self._next_payload(video_id)
+        missing_secondary["contents"]["twoColumnWatchNextResults"][
+            "secondaryResults"
+        ] = {}
+        invalid.append(missing_secondary)
+        duplicate_info = self._next_payload(video_id)
+        primary = duplicate_info["contents"]["twoColumnWatchNextResults"][
+            "results"
+        ]["results"]["contents"]
+        primary.append({"videoSecondaryInfoRenderer": {}})
+        invalid.append(duplicate_info)
+        for payload in invalid:
+            with self.subTest(keys=list(payload)), self.assertRaises(
+                radar.KidsDomProbeError
+            ):
+                client._classify(payload, client._ENDPOINT, video_id)
+
+    def test_watch_next_rejects_malformed_json_redirect_and_oversize(self):
+        video_id = "Pk7UDVYh2bs"
+        client = radar.YouTubeWatchNextClient(retries=0)
+        malformed = (
+            b'{"currentVideoEndpoint":{},"currentVideoEndpoint":{}}',
+            b'{"value":NaN}',
+            b"[]",
+            b"{bad-json",
+        )
+        for body in malformed:
+            with self.subTest(body=body), patch.object(
+                radar.urllib.request,
+                "urlopen",
+                return_value=InnertubeResponse(
+                    body, radar.YouTubeWatchNextClient._ENDPOINT
+                ),
+            ):
+                with self.assertRaises(radar.KidsDomProbeError):
+                    client.has_kids_player_signals(video_id)
+
+        invalid_urls = (
+            "http://www.youtube.com/youtubei/v1/next?prettyPrint=false",
+            "https://youtube.com/youtubei/v1/next?prettyPrint=false",
+            "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+            "https://www.youtube.com/youtubei/v1/next?prettyPrint=false&key=x",
+        )
+        for final_url in invalid_urls:
+            with self.subTest(url=final_url), patch.object(
+                radar.urllib.request,
+                "urlopen",
+                return_value=InnertubeResponse(
+                    self._next_payload(video_id), final_url
+                ),
+            ):
+                with self.assertRaisesRegex(
+                    radar.KidsDomProbeError, "expected endpoint"
+                ):
+                    client.has_kids_player_signals(video_id)
+
+        with patch.object(radar, "KIDS_NEXT_MAX_JSON_BYTES", 8), patch.object(
+            radar.urllib.request,
+            "urlopen",
+            return_value=InnertubeResponse(
+                b"123456789", radar.YouTubeWatchNextClient._ENDPOINT
+            ),
+        ):
+            with self.assertRaisesRegex(radar.KidsDomProbeError, "bounded JSON"):
+                client.has_kids_player_signals(video_id)
+
+    def test_public_player_prefers_complete_next_backend_before_watch(self):
+        class Backend:
+            def __init__(self, answers=None, error=None):
+                self.answers = answers or {}
+                self.error = error
+                self.calls = []
+
+            def has_kids_player_signals(self, video_id):
+                self.calls.append(video_id)
+                if self.error:
+                    raise self.error
+                return self.answers[video_id]
+
+            def close(self):
+                pass
+
+        first_positive, second_positive = radar.KIDS_DOM_POSITIVE_CANARIES
+        answers = {
+            first_positive: True,
+            second_positive: True,
+            radar.KIDS_DOM_NEGATIVE_CANARY: False,
+            "abcdefghijk": True,
+        }
+        android = Backend(error=radar.KidsDomProbeError("android unavailable"))
+        next_backend = Backend(answers=answers)
+        watch = Backend(answers=answers)
+        public = radar.YouTubePublicPlayerClient(
+            android, watch_client=watch, next_client=next_backend
+        )
+        with patch("builtins.print") as printed:
+            selected = public.select_backend(
+                radar.KIDS_DOM_POSITIVE_CANARIES,
+                radar.KIDS_DOM_NEGATIVE_CANARY,
+            )
+        self.assertEqual(selected, "watch_next")
+        self.assertTrue(public.has_kids_player_signals("abcdefghijk"))
+        self.assertEqual(android.calls, [first_positive])
+        self.assertEqual(next_backend.calls, [
+            first_positive,
+            second_positive,
+            radar.KIDS_DOM_NEGATIVE_CANARY,
+            "abcdefghijk",
+        ])
+        self.assertEqual(watch.calls, [])
+        printed.assert_called_once()
+
     def test_watch_page_player_uses_exact_public_get_and_web_restriction_shape(self):
         video_id = "Pk7UDVYh2bs"
         payload = self._watch_player_payload(video_id)
@@ -719,17 +1083,23 @@ class DailyHistoryTests(unittest.TestCase):
 
         first_positive, second_positive = radar.KIDS_DOM_POSITIVE_CANARIES
         primary = Backend(error=radar.KidsPlayerIndeterminateError("missing objects"))
+        next_backend = Backend(
+            error=radar.KidsPlayerIndeterminateError("next missing objects")
+        )
         watch = Backend(answers={
             first_positive: True,
             second_positive: True,
             radar.KIDS_DOM_NEGATIVE_CANARY: False,
             "abcdefghijk": True,
         })
-        public = radar.YouTubePublicPlayerClient(primary, watch)
+        public = radar.YouTubePublicPlayerClient(
+            primary, watch_client=watch, next_client=next_backend
+        )
         validator = radar.KidsDomValidator(public, canary_retries=0)
         validator.ensure_canaries()
         self.assertTrue(validator.is_made_for_kids("abcdefghijk"))
         self.assertEqual(primary.calls, [first_positive])
+        self.assertEqual(next_backend.calls, [first_positive])
         self.assertEqual(watch.calls, [
             first_positive,
             second_positive,
@@ -753,7 +1123,8 @@ class DailyHistoryTests(unittest.TestCase):
 
         client = radar.YouTubePublicPlayerClient(
             BrokenBackend("android unavailable"),
-            BrokenBackend("watch unavailable"),
+            watch_client=BrokenBackend("watch unavailable"),
+            next_client=BrokenBackend("next unavailable"),
         )
         with self.assertRaisesRegex(
             radar.KidsDomProbeError,
@@ -790,7 +1161,15 @@ class DailyHistoryTests(unittest.TestCase):
             radar.KIDS_DOM_NEGATIVE_CANARY: False,
         })
         validator = radar.KidsDomValidator(
-            radar.YouTubePublicPlayerClient(android, watch),
+            radar.YouTubePublicPlayerClient(
+                android,
+                watch_client=watch,
+                next_client=PartialBackend({
+                    first_positive: False,
+                    second_positive: False,
+                    radar.KIDS_DOM_NEGATIVE_CANARY: False,
+                }),
+            ),
             canary_retries=0,
         )
         with self.assertRaisesRegex(
@@ -836,7 +1215,9 @@ class DailyHistoryTests(unittest.TestCase):
         )
         unused = Backend({**complete, candidate: True})
         validator = radar.KidsDomValidator(
-            radar.YouTubePublicPlayerClient(selected, unused),
+            radar.YouTubePublicPlayerClient(
+                selected, watch_client=unused, next_client=unused
+            ),
             canary_retries=0,
         )
         validator.ensure_canaries()
