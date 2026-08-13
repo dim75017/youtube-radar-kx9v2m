@@ -1779,6 +1779,109 @@ class DailyHistoryTests(unittest.TestCase):
         self.assertEqual(validator.calls, [])
         self.assertEqual(full_reader.calls, [])
 
+    def test_no_key_fallback_preserves_exact_flat_duration_when_cloud_detail_omits_it(self):
+        now = int(datetime(2026, 8, 10, 8, tzinfo=timezone.utc).timestamp() * 1000)
+        flat = {
+            "id": "abcdefghijk",
+            "title": "Baby sleep music instrumental no vocals",
+            "duration": 3 * 3600,
+            "view_count": 2_000_000,
+        }
+        full = {
+            "id": "abcdefghijk",
+            "title": flat["title"],
+            "duration": None,
+            "view_count": 2_000_000,
+            "upload_date": "20260801",
+            "description": "Long instrumental piano music without vocals",
+            "tags": ["instrumental", "baby sleep"],
+            "channel": "Calm Baby",
+        }
+
+        class Reader:
+            def __init__(self, result):
+                self.result = result
+
+            def extract_info(self, target, download=False):
+                return self.result
+
+        class Validator:
+            def ensure_canaries(self):
+                pass
+
+            def is_made_for_kids(self, video_id):
+                return video_id == "abcdefghijk"
+
+        spec = {
+            "query": "baby sleep music instrumental",
+            "genre": "Baby sleep",
+            "cluster": "Relaxation / meditation",
+            "audience": "kids",
+            "searchResults": 100,
+            "searchLanes": ["viewCount", "relevance"],
+        }
+        with patch.object(
+            radar, "kids_search_ydl", return_value=Reader({"entries": [flat]})
+        ), patch.object(radar, "ydl", return_value=Reader(full)), patch.object(
+            radar, "kids_dom_validator", return_value=Validator()
+        ):
+            rows, raw, enriched, funnel = radar.fetch_kids_search_ydl(spec, now)
+
+        self.assertEqual((raw, enriched), (2, 1))
+        self.assertEqual([row["vid"] for row in rows], ["abcdefghijk"])
+        self.assertEqual(rows[0]["durH"], 3.0)
+        self.assertEqual(rows[0]["durationSource"], "youtube_search_result")
+        self.assertEqual(funnel["duration_fallback_from_search"], 1)
+        self.assertEqual(funnel["duration_missing"], 0)
+        self.assertEqual(funnel["duration_below_minimum"], 0)
+        self.assertEqual(funnel["rejected_duration"], 0)
+        radar.validate_kids_funnel(funnel, raw, len(rows))
+
+        for invalid_detail_duration in (float("nan"), float("inf"), 0, -1):
+            detail = dict(full, duration=invalid_detail_duration)
+            with self.subTest(detail_duration=invalid_detail_duration), patch.object(
+                radar, "kids_search_ydl", return_value=Reader({"entries": [flat]})
+            ), patch.object(radar, "ydl", return_value=Reader(detail)), patch.object(
+                radar, "kids_dom_validator", return_value=Validator()
+            ):
+                fallback_rows, _, _, fallback_funnel = radar.fetch_kids_search_ydl(
+                    spec, now
+                )
+            self.assertEqual(fallback_rows[0]["durH"], 3.0)
+            self.assertEqual(
+                fallback_rows[0]["durationSource"], "youtube_search_result"
+            )
+            self.assertEqual(fallback_funnel["duration_fallback_from_search"], 1)
+
+        for invalid_flat_duration in (True, float("nan"), float("inf"), 0, -1):
+            invalid_flat = dict(flat, duration=invalid_flat_duration)
+            with self.subTest(flat_duration=invalid_flat_duration), patch.object(
+                radar,
+                "kids_search_ydl",
+                return_value=Reader({"entries": [invalid_flat]}),
+            ), patch.object(radar, "ydl", return_value=Reader(full)), patch.object(
+                radar, "kids_dom_validator", return_value=Validator()
+            ):
+                rejected_rows, _, _, rejected_funnel = radar.fetch_kids_search_ydl(
+                    spec, now
+                )
+            self.assertEqual(rejected_rows, [])
+            self.assertEqual(rejected_funnel["duration_fallback_from_search"], 0)
+            self.assertEqual(
+                rejected_funnel["duration_missing"]
+                + rejected_funnel["rejected_prefilter"],
+                1,
+            )
+
+        mismatched = dict(full, id="zyxwvutsrqp")
+        with patch.object(
+            radar, "kids_search_ydl", return_value=Reader({"entries": [flat]})
+        ), patch.object(radar, "ydl", return_value=Reader(mismatched)), patch.object(
+            radar, "kids_dom_validator", return_value=Validator()
+        ):
+            with self.assertRaisesRegex(RuntimeError, "different video ID"):
+                radar.fetch_kids_search_ydl(spec, now)
+
     def test_no_key_lane_plan_is_exactly_eighty_distinct_searches_max(self):
         specs = [
             spec for spec in radar.query_specs(

@@ -2216,6 +2216,9 @@ def empty_kids_funnel() -> dict[str, int]:
         "rejected_vocal_or_instrumental": 0,
         "rejected_made_for_kids": 0,
         "kept": 0,
+        "duration_fallback_from_search": 0,
+        "duration_missing": 0,
+        "duration_below_minimum": 0,
         "lane_calls_expected": 0,
         "lane_calls_completed": 0,
     }
@@ -2450,12 +2453,48 @@ def fetch_kids_search_ydl(spec: dict, now_ms: int) -> tuple[list[dict], int, int
         if not row:
             funnel["rejected_missing_metadata"] += 1
             continue
+        if row.get("vid") != video_id:
+            raise RuntimeError(
+                f"Kids enrichment returned a different video ID for {video_id}"
+            )
+        full_duration = row.get("durH")
+        flat_duration = item.get("duration")
+        full_duration_valid = (
+            isinstance(full_duration, (int, float))
+            and not isinstance(full_duration, bool)
+            and math.isfinite(float(full_duration))
+            and float(full_duration) > 0
+        )
+        if (
+            not full_duration_valid
+            and isinstance(flat_duration, (int, float))
+            and not isinstance(flat_duration, bool)
+            and math.isfinite(float(flat_duration))
+            and float(flat_duration) > 0
+        ):
+            # On hosted runners YouTube can omit player-duration fields from
+            # the detailed response while the same video's search renderer
+            # still provides its factual duration. The flat row was bound to
+            # this exact video ID before enrichment, so retaining that value
+            # restores information instead of guessing it.
+            row["durH"] = float(flat_duration) / 3600
+            row["durationSource"] = "youtube_search_result"
+            funnel["duration_fallback_from_search"] += 1
         row["_scanDescription"] = str(full.get("description") or "")
         tags = full.get("tags") or []
         row["_scanTags"] = " ".join(str(value) for value in tags) if isinstance(tags, list) else str(tags)
         evidence = kids_instrumental_evidence(row)
         duration = row.get("durH")
-        if not isinstance(duration, (int, float)) or duration * 3600 < MIN_SECONDS:
+        if (
+            not isinstance(duration, (int, float))
+            or isinstance(duration, bool)
+            or not math.isfinite(float(duration))
+        ):
+            funnel["duration_missing"] += 1
+            funnel["rejected_duration"] += 1
+            continue
+        if float(duration) * 3600 < MIN_SECONDS:
+            funnel["duration_below_minimum"] += 1
             funnel["rejected_duration"] += 1
             continue
         if int(row.get("views") or 0) < MIN_KIDS_VIEWS:
