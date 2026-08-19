@@ -592,7 +592,7 @@ def hydrate_artist_identities_from_phase1(
     changed = 0
     for candidate_uuid, spotify_id in identities.items():
         existing = connection.execute(
-            """SELECT spotify_id,identity_status,identifiers_evidence_json
+            """SELECT spotify_id,identity_status,identity_source,identifiers_evidence_json
                  FROM fal_phase3_artists
                  WHERE candidate_uuid=? AND is_active=1""",
             (candidate_uuid,),
@@ -633,9 +633,39 @@ def hydrate_artist_identities_from_phase1(
             str(existing["identity_status"] or "") == "identity_conflict"
             and any(value != spotify_id for value in evidence_ids)
         )
-        conflict = conflict or sticky_evidence_conflict
+        adjudicated_id = exact_spotify_id(evidence.get("provider_spotify_id"))
+        provider_tiebreak_complete = bool(
+            str(existing["identity_source"] or "")
+            == "soundcharts_artist_identifiers_tiebreak"
+            and existing_id
+            and existing_id == adjudicated_id
+        )
+        cache_id = exact_spotify_id(evidence.get("cache_spotify_id"))
+        needs_provider_tiebreak = bool(
+            str(existing["identity_source"] or "")
+            == "cache_or_cross_source_identity_conflict"
+            and cache_id
+            and cache_id != spotify_id
+            and not adjudicated_id
+        )
+        initialize_provider_tiebreak = bool(
+            needs_provider_tiebreak
+            and evidence.get("provider_tiebreak_initialized") is not True
+        )
+        if needs_provider_tiebreak:
+            evidence["provider_tiebreak_initialized"] = True
+        if provider_tiebreak_complete:
+            conflict = False
+        else:
+            conflict = conflict or sticky_evidence_conflict
         status = "identity_conflict" if conflict else "complete"
         selected = "" if conflict else spotify_id
+        identity_source = "phase1_candidates_exact_spotify_id"
+        if provider_tiebreak_complete:
+            selected = existing_id
+            identity_source = "soundcharts_artist_identifiers_tiebreak"
+        elif needs_provider_tiebreak:
+            identity_source = "cache_or_cross_source_identity_conflict"
         evidence["phase1_spotify_id"] = spotify_id
         if existing_id:
             evidence["existing_spotify_id"] = existing_id
@@ -646,23 +676,48 @@ def hydrate_artist_identities_from_phase1(
             (
                 selected,
                 status,
-                "phase1_candidates_exact_spotify_id",
+                identity_source,
                 safe_json(evidence),
                 now,
                 candidate_uuid,
             ),
         )
-        connection.execute(
-            """UPDATE fal_phase3_requests SET status=?,error_code=?,updated_at=?
-                 WHERE request_kind='artist_identifiers' AND entity_id=?""",
-            (
-                "identity_conflict" if conflict else "complete_phase1",
-                "duplicate_or_conflicting_phase1_artist_identity" if conflict else None,
-                now,
-                candidate_uuid,
-            ),
+        request_status = (
+            "retry"
+            if needs_provider_tiebreak
+            else "complete_provider"
+            if provider_tiebreak_complete
+            else "identity_conflict"
+            if conflict
+            else "complete_phase1"
         )
-        changed += int(not conflict and (existing_id != spotify_id or existing["identity_status"] != "complete"))
+        error_code = (
+            "cross_source_identity_requires_provider_tiebreak"
+            if needs_provider_tiebreak
+            else "duplicate_or_conflicting_phase1_artist_identity"
+            if conflict
+            else None
+        )
+        if not needs_provider_tiebreak or initialize_provider_tiebreak:
+            connection.execute(
+                """UPDATE fal_phase3_requests SET status=?,error_code=?,updated_at=?
+                     WHERE request_kind='artist_identifiers' AND entity_id=?""",
+                (request_status, error_code, now, candidate_uuid),
+            )
+        if initialize_provider_tiebreak:
+            connection.execute(
+                """UPDATE fal_phase3_requests SET attempts=0
+                     WHERE request_kind='artist_identifiers' AND entity_id=?""",
+                (candidate_uuid,),
+            )
+        changed += int(
+            not conflict
+            and (
+                existing_id != selected
+                or existing["identity_status"] != "complete"
+                or str(existing["identity_source"] or "") != identity_source
+            )
+        )
     connection.commit()
     return changed
 
@@ -987,7 +1042,17 @@ def hydrate_from_cache(
         candidate_uuid = str(row["candidate_uuid"])
         spotify_id = cache_ids.get(candidate_uuid, "")
         current = exact_spotify_id(row["spotify_id"])
-        conflict = bool(spotify_id and current and current != spotify_id)
+        provider_tiebreak_complete = bool(
+            str(row["identity_source"] or "")
+            == "soundcharts_artist_identifiers_tiebreak"
+            and current
+        )
+        conflict = bool(
+            spotify_id
+            and current
+            and current != spotify_id
+            and not provider_tiebreak_complete
+        )
         if conflict:
             try:
                 evidence = json.loads(str(row["identifiers_evidence_json"] or "{}"))
@@ -996,6 +1061,7 @@ def hydrate_from_cache(
             evidence = dict(evidence) if isinstance(evidence, Mapping) else {}
             evidence["existing_spotify_id"] = current
             evidence["cache_spotify_id"] = spotify_id
+            evidence["provider_tiebreak_initialized"] = True
             connection.execute(
                 """UPDATE fal_phase3_artists SET spotify_id='',identity_status='identity_conflict',
                           identity_source='cache_or_cross_source_identity_conflict',
@@ -1004,8 +1070,8 @@ def hydrate_from_cache(
                 (safe_json(evidence), now, candidate_uuid),
             )
             connection.execute(
-                """UPDATE fal_phase3_requests SET status='identity_conflict',
-                          error_code='duplicate_or_conflicting_cache_artist_identity',updated_at=?
+                """UPDATE fal_phase3_requests SET status='retry',attempts=0,
+                          error_code='cross_source_identity_requires_provider_tiebreak',updated_at=?
                      WHERE request_kind='artist_identifiers' AND entity_id=?""",
                 (now, candidate_uuid),
             )
@@ -1110,7 +1176,8 @@ def _store_artist_response(connection: sqlite3.Connection, task: RequestTask, pa
     spotify_id = provider_spotify_ids[0] if len(provider_spotify_ids) == 1 else ""
     now = utc_now()
     existing = connection.execute(
-        """SELECT spotify_id,identifiers_evidence_json FROM fal_phase3_artists
+        """SELECT spotify_id,identity_source,identifiers_evidence_json
+             FROM fal_phase3_artists
              WHERE candidate_uuid=? AND is_active=1""",
         (task.entity_id,),
     ).fetchone()
@@ -1140,6 +1207,34 @@ def _store_artist_response(connection: sqlite3.Connection, task: RequestTask, pa
         return "identity_conflict"
     if not spotify_id:
         return "identity_missing"
+    phase1_id = exact_spotify_id(previous_evidence.get("phase1_spotify_id"))
+    cache_id = exact_spotify_id(previous_evidence.get("cache_spotify_id"))
+    tiebreak_candidates = {value for value in (phase1_id, cache_id) if value}
+    cross_source_tiebreak = bool(
+        str(existing["identity_source"] or "")
+        == "cache_or_cross_source_identity_conflict"
+    )
+    if cross_source_tiebreak:
+        evidence = previous_evidence
+        evidence.update(dict(parsed) if isinstance(parsed, Mapping) else {})
+        evidence["provider_spotify_id"] = spotify_id
+        if not tiebreak_candidates or spotify_id not in tiebreak_candidates:
+            connection.execute(
+                """UPDATE fal_phase3_artists SET spotify_id='',identity_status='identity_conflict',
+                          identity_source='soundcharts_artist_identifiers_conflict',
+                          identifiers_evidence_json=?,updated_at=?
+                     WHERE candidate_uuid=? AND is_active=1""",
+                (safe_json(evidence), now, task.entity_id),
+            )
+            return "identity_conflict"
+        connection.execute(
+            """UPDATE fal_phase3_artists SET spotify_id=?,identity_status='complete',
+                      identity_source='soundcharts_artist_identifiers_tiebreak',
+                      identifiers_evidence_json=?,updated_at=?
+                 WHERE candidate_uuid=? AND is_active=1""",
+            (spotify_id, safe_json(evidence), now, task.entity_id),
+        )
+        return "complete_provider"
     if existing_id and existing_id != spotify_id:
         evidence = previous_evidence
         evidence.update(dict(parsed) if isinstance(parsed, Mapping) else {})
@@ -1544,6 +1639,7 @@ def build_report(
             "cache_track_terminal_requires_timestamp": True,
             "cache_artist_terminal_requires_exact_id_and_identifiers_fetched_at": True,
             "cache_artifact_id_and_sha256_required": True,
+            "cross_source_identity_requires_live_provider_tiebreak": True,
             "artist_identifier_endpoint_residual_only": True,
             "song_detail_endpoint": "/api/v2.25/song/{uuid}",
             "no_lyrics_requires_explicit_source_field": True,
