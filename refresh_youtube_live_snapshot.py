@@ -327,8 +327,8 @@ class YouTubeNextLiveFallback:
 
     The public ``next`` response has no exact start time. This adapter therefore
     accepts a separate factual start timestamp and uses the human-readable date
-    only as a consistency check. Relative dates are allowed solely when the exact
-    timestamp was just proved by :class:`YouTubeWatchPageLiveProof`.
+    only as a consistency check. Relative dates must match the response-time age
+    of an exact start proved either by a trusted prior asset or WatchPage.
     """
 
     def __init__(self, *, retries: int = 2, timeout_seconds: int = 20) -> None:
@@ -374,6 +374,49 @@ class YouTubeNextLiveFallback:
             return None
 
     @staticmethod
+    def _relative_started_age_ms(value: object) -> tuple[int, int] | None:
+        match = re.fullmatch(
+            r"Started streaming ([1-9][0-9]*|one|a|an) "
+            r"(second|minute|hour|day|week)(s?) ago",
+            clean_text(value),
+            flags=re.IGNORECASE,
+        )
+        if not match:
+            return None
+        raw_amount = match.group(1).casefold()
+        amount = 1 if raw_amount in {"one", "a", "an"} else int(raw_amount)
+        plural = bool(match.group(3))
+        if (amount == 1 and plural) or (amount != 1 and not plural):
+            return None
+        unit_ms = {
+            "second": 1_000,
+            "minute": 60_000,
+            "hour": 3_600_000,
+            "day": DAY_MS,
+            "week": 7 * DAY_MS,
+        }[match.group(2).casefold()]
+        return amount, unit_ms
+
+    @classmethod
+    def _relative_start_matches(
+        cls,
+        value: object,
+        *,
+        started_ms: float,
+        observed_ms: object,
+    ) -> bool:
+        relative = cls._relative_started_age_ms(value)
+        observed = positive_number(observed_ms)
+        if relative is None or observed is None or observed < started_ms:
+            return False
+        amount, unit_ms = relative
+        age_ms = observed - started_ms
+        tolerance_ms = 5_000
+        lower = max(0, amount * unit_ms - tolerance_ms)
+        upper = (amount + 1) * unit_ms + tolerance_ms
+        return lower <= age_ms < upper
+
+    @staticmethod
     def _validate_final_url(final_url: str) -> None:
         try:
             parsed = urllib.parse.urlparse(final_url)
@@ -393,7 +436,7 @@ class YouTubeNextLiveFallback:
         ):
             raise RuntimeError("YouTube next redirected away from its public endpoint")
 
-    def _fetch_once(self, video_id: str) -> tuple[dict, str]:
+    def _fetch_once(self, video_id: str) -> tuple[dict, str, int]:
         request = urllib.request.Request(
             NEXT_ENDPOINT,
             data=json.dumps(
@@ -427,10 +470,11 @@ class YouTubeNextLiveFallback:
         with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
             final_url = str(response.geturl())
             body = response.read(NEXT_MAX_JSON_BYTES + 1)
+            response_observed_ms = utc_now_ms()
         if len(body) > NEXT_MAX_JSON_BYTES:
             raise RuntimeError("YouTube next response exceeded the bounded JSON size")
         self._validate_final_url(final_url)
-        return _strict_json(body), final_url
+        return _strict_json(body), final_url, response_observed_ms
 
     def _project(
         self,
@@ -440,6 +484,7 @@ class YouTubeNextLiveFallback:
         *,
         start_source: str = "previous_verified_asset",
         expected_title: str | None = None,
+        observed_ms: object = None,
     ) -> dict:
         current = self._mapping_at(payload, "currentVideoEndpoint")
         watch = self._mapping_at(current, "watchEndpoint")
@@ -521,16 +566,17 @@ class YouTubeNextLiveFallback:
         raw_date_text = clean_text((primary[0].get("dateText") or {}).get("simpleText"))
         date_text = self._started_date(raw_date_text)
         factual_date = datetime.fromtimestamp(started / 1000, tz=timezone.utc).date()
-        relative_date = re.fullmatch(
-            r"Started streaming (?:[1-9][0-9]*|one|an?) "
-            r"(?:seconds?|minutes?|hours?|days?|weeks?|months?|years?) ago",
-            raw_date_text,
-            flags=re.IGNORECASE,
-        )
         if date_text is not None:
             if abs((date_text - factual_date).days) > 1:
                 raise RuntimeError(f"YouTube next start date mismatch for {video_id}")
-        elif not (relative_date and start_source == "youtube_watch_page"):
+        elif not (
+            start_source in {"previous_verified_asset", "youtube_watch_page"}
+            and self._relative_start_matches(
+                raw_date_text,
+                started_ms=started,
+                observed_ms=observed_ms,
+            )
+        ):
             raise RuntimeError(f"YouTube next start date mismatch for {video_id}")
         return {
             "id": video_id,
@@ -560,13 +606,14 @@ class YouTubeNextLiveFallback:
             raise RuntimeError(f"Invalid YouTube video ID: {video_id!r}")
         for attempt in range(self.retries + 1):
             try:
-                payload, _ = self._fetch_once(video_id)
+                payload, _, response_observed_ms = self._fetch_once(video_id)
                 return self._project(
                     payload,
                     video_id,
                     started_ms,
                     start_source=start_source,
                     expected_title=expected_title,
+                    observed_ms=response_observed_ms,
                 )
             except urllib.error.HTTPError as exc:
                 if exc.code not in NEXT_TRANSIENT_HTTP_CODES or attempt >= self.retries:
@@ -606,6 +653,26 @@ def is_youtube_ended_recording_error(
         f"[youtube] {video_id}: {ENDED_UNPLAYABLE_REASON}",
         f"ERROR: [youtube] {video_id}: {ENDED_UNPLAYABLE_REASON}",
     }
+
+
+def safe_fallback_error_label(error: BaseException) -> str:
+    """Keep public diagnostics useful without echoing arbitrary exception text."""
+    if isinstance(error, urllib.error.HTTPError):
+        return f"HTTP {int(error.code)}"
+    message = str(error).casefold()
+    for needle, label in (
+        ("start date mismatch", "start date mismatch"),
+        ("network failure", "network failure"),
+        ("malformed json", "malformed JSON"),
+        ("exact live counter", "live counter mismatch"),
+        ("active proof is invalid", "active proof mismatch"),
+        ("evidence is incomplete", "incomplete public evidence"),
+        ("identity mismatch", "identity mismatch"),
+        ("live state is ambiguous", "ambiguous live state"),
+    ):
+        if needle in message:
+            return label
+    return type(error).__name__
 
 
 def official_live_row(info: dict, observed_ms: int) -> tuple[dict, tuple[int, int]]:
@@ -732,91 +799,145 @@ def discover_official_live_streams(
     next_fallbacks = 0
     ended_ids: set[str] = set()
 
-    def detail(video_id: str) -> dict:
+    def validate_next_active(
+        next_info: dict,
+        video_id: str,
+        started_ms: int,
+        *,
+        expected_title: str | None = None,
+    ) -> int:
+        title = clean_text(next_info.get("title"))
+        next_started = positive_number(next_info.get("release_timestamp"))
+        viewers = positive_number(
+            next_info.get("concurrent_view_count"), allow_zero=True
+        )
+        if (
+            clean_text(next_info.get("id")) != video_id
+            or clean_text(next_info.get("channel_id")) != OFFICIAL_CHANNEL_ID
+            or clean_text(next_info.get("availability")) != "public"
+            or not title
+            or (expected_title is not None and title != expected_title)
+            or next_info.get("is_live") is not True
+            or clean_text(next_info.get("live_status")) != "is_live"
+            or next_started is None
+            or int(next_started * 1000) != started_ms
+            or viewers is None
+            or not viewers.is_integer()
+        ):
+            raise RuntimeError(f"YouTube next active proof is invalid for {video_id}")
+        return int(viewers)
+
+    def watch_fallback(video_id: str, original_error: BaseException) -> dict:
         nonlocal watch_reader, next_reader, watch_page_fallbacks, next_fallbacks
+        if watch_reader is None:
+            watch_reader = YouTubeWatchPageLiveProof()
+        watch_info = watch_reader.extract_info(video_id) or {}
+        watch_page_fallbacks += 1
+        if (
+            clean_text(watch_info.get("id")) != video_id
+            or clean_text(watch_info.get("channel_id")) != OFFICIAL_CHANNEL_ID
+            or clean_text(watch_info.get("availability")) != "public"
+        ):
+            raise RuntimeError(
+                f"YouTube WatchPage proof identity mismatch for {video_id}"
+            ) from original_error
+        if (
+            watch_info.get("is_live") is False
+            and clean_text(watch_info.get("live_status"))
+            in {"was_live", "post_live"}
+        ):
+            return watch_info
+        if (
+            watch_info.get("is_live") is not True
+            or clean_text(watch_info.get("live_status")) != "is_live"
+        ):
+            raise RuntimeError(
+                f"YouTube WatchPage live state is ambiguous for {video_id}"
+            ) from original_error
+        title = clean_text(watch_info.get("title"))
+        started_seconds = positive_number(watch_info.get("release_timestamp"))
+        if not title or started_seconds is None:
+            raise RuntimeError(
+                f"YouTube WatchPage proof is incomplete for {video_id}"
+            ) from original_error
+        if next_reader is None:
+            next_reader = YouTubeNextLiveFallback()
+        started_ms = int(started_seconds * 1000)
+        next_info = next_reader.extract_info(
+            video_id,
+            started_ms=started_ms,
+            start_source="youtube_watch_page",
+            expected_title=title,
+        )
+        viewers = validate_next_active(
+            next_info,
+            video_id,
+            started_ms,
+            expected_title=title,
+        )
+        result = dict(watch_info)
+        result["concurrent_view_count"] = viewers
+        result["detail_source"] = "youtube_watch_page+youtube_next"
+        next_fallbacks += 1
+        return result
+
+    def detail(video_id: str) -> dict:
+        nonlocal next_reader, next_fallbacks
         if video_id not in detail_cache:
             try:
                 detail_cache[video_id] = detail_reader.extract_info(
                     f"https://www.youtube.com/watch?v={video_id}", download=False
                 ) or {}
             except Exception as exc:
-                if not (
-                    is_youtube_antibot_error(exc)
-                    or is_youtube_ended_recording_error(exc, video_id)
-                ):
+                anti_bot = is_youtube_antibot_error(exc)
+                ended_recording = is_youtube_ended_recording_error(exc, video_id)
+                if not (anti_bot or ended_recording):
                     raise
                 if video_id not in candidate_ids and video_id not in previous_active:
                     raise RuntimeError(
                         f"Unexpected official live fallback target {video_id}"
                     ) from exc
-                if watch_reader is None:
-                    watch_reader = YouTubeWatchPageLiveProof()
-                watch_info = watch_reader.extract_info(video_id) or {}
-                watch_page_fallbacks += 1
+
+                prior_next_error: BaseException | None = None
+                prior = previous_active.get(video_id) or {}
+                prior_started = positive_number(prior.get("started"))
                 if (
-                    clean_text(watch_info.get("id")) != video_id
-                    or clean_text(watch_info.get("channel_id")) != OFFICIAL_CHANNEL_ID
-                    or clean_text(watch_info.get("availability")) != "public"
+                    anti_bot
+                    and video_id in candidate_ids
+                    and prior.get("trusted") is True
+                    and prior_started is not None
                 ):
-                    raise RuntimeError(
-                        f"YouTube WatchPage proof identity mismatch for {video_id}"
-                    ) from exc
-                if (
-                    watch_info.get("is_live") is False
-                    and clean_text(watch_info.get("live_status"))
-                    in {"was_live", "post_live"}
-                ):
-                    detail_cache[video_id] = watch_info
-                    return detail_cache[video_id]
-                if (
-                    watch_info.get("is_live") is not True
-                    or clean_text(watch_info.get("live_status")) != "is_live"
-                ):
-                    raise RuntimeError(
-                        f"YouTube WatchPage live state is ambiguous for {video_id}"
-                    ) from exc
-                title = clean_text(watch_info.get("title"))
-                started_seconds = positive_number(watch_info.get("release_timestamp"))
-                if not title or started_seconds is None:
-                    raise RuntimeError(
-                        f"YouTube WatchPage proof is incomplete for {video_id}"
-                    ) from exc
-                if next_reader is None:
-                    next_reader = YouTubeNextLiveFallback()
-                started_ms = int(started_seconds * 1000)
-                next_info = next_reader.extract_info(
-                    video_id,
-                    started_ms=started_ms,
-                    start_source="youtube_watch_page",
-                    expected_title=title,
-                )
-                next_started = positive_number(next_info.get("release_timestamp"))
-                if (
-                    clean_text(next_info.get("id")) != video_id
-                    or clean_text(next_info.get("channel_id")) != OFFICIAL_CHANNEL_ID
-                    or clean_text(next_info.get("availability")) != "public"
-                    or clean_text(next_info.get("title")) != title
-                    or next_info.get("is_live") is not True
-                    or clean_text(next_info.get("live_status")) != "is_live"
-                    or next_started is None
-                    or int(next_started * 1000) != started_ms
-                ):
-                    raise RuntimeError(
-                        f"YouTube next diverges from WatchPage proof for {video_id}"
-                    ) from exc
-                viewers = positive_number(
-                    next_info.get("concurrent_view_count"), allow_zero=True
-                )
-                if viewers is None or not viewers.is_integer():
-                    raise RuntimeError(
-                        f"YouTube next has no exact concurrent count for {video_id}"
-                    ) from exc
-                detail_cache[video_id] = dict(watch_info)
-                detail_cache[video_id]["concurrent_view_count"] = int(viewers)
-                detail_cache[video_id]["detail_source"] = (
-                    "youtube_watch_page+youtube_next"
-                )
-                next_fallbacks += 1
+                    if next_reader is None:
+                        next_reader = YouTubeNextLiveFallback()
+                    prior_started_ms = int(prior_started)
+                    try:
+                        prior_next_info = next_reader.extract_info(
+                            video_id,
+                            started_ms=prior.get("started"),
+                        )
+                        prior_viewers = validate_next_active(
+                            prior_next_info, video_id, prior_started_ms
+                        )
+                    except Exception as next_error:
+                        # A failed/non-live Next response never proves an end.
+                        prior_next_error = next_error
+                    else:
+                        detail_cache[video_id] = dict(prior_next_info)
+                        detail_cache[video_id]["concurrent_view_count"] = prior_viewers
+                        next_fallbacks += 1
+                        return detail_cache[video_id]
+
+                try:
+                    detail_cache[video_id] = watch_fallback(video_id, exc)
+                except Exception as watch_error:
+                    if prior_next_error is not None:
+                        raise RuntimeError(
+                            "Trusted YouTube next proof failed "
+                            f"({safe_fallback_error_label(prior_next_error)}); "
+                            "strict WatchPage fallback failed "
+                            f"({safe_fallback_error_label(watch_error)})"
+                        ) from None
+                    raise
         return detail_cache[video_id]
 
     active_ids: list[str] = []
