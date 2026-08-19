@@ -150,6 +150,22 @@ def phase2_manifest(rows=None):
     return refresh_manifest(payload)
 
 
+def mixed_phase2_manifest():
+    priority = phase2_record(1)
+    non_priority = phase2_record(2)
+    non_priority["rights_status"] = "major"
+    non_priority["rights_confidence"] = 0.99
+    non_priority["source_evidence"].update(
+        {
+            "rights_status": "major",
+            "rights_confidence": 0.99,
+            "rights_basis": "phase2_explicit_major_rights",
+        }
+    )
+    refresh_row(non_priority)
+    return phase2_manifest([priority, non_priority])
+
+
 def phase3_manifest(raw):
     payload = copy.deepcopy(raw)
     payload["generated_at"] = "2026-08-19T08:05:00Z"
@@ -238,13 +254,35 @@ class Bundle:
 
     def make_report(self):
         active = 1
+        priority_track_uuids = {
+            str(row.get("track_uuid") or "")
+            for row in self.raw["tracks"]
+            if str(row.get("review_bucket") or "")
+            == merge.ADVANCED_REVIEW_BUCKET
+        }
+        priority_rows = [
+            row
+            for row in self.phase3["tracks"]
+            if str(row.get("track_uuid") or "") in priority_track_uuids
+        ]
+        (
+            priority_artists,
+            artist_complete,
+            track_complete,
+        ) = merge._phase3_manifest_technical_counts(priority_rows)
+        priority_tracks = len(priority_rows)
+        artist_unresolved = priority_artists - artist_complete
+        track_unresolved = priority_tracks - track_complete
+        state_unresolved = artist_unresolved + track_unresolved
+        technical_complete = active == 0 and state_unresolved == 0
         return {
             "version": 1,
             "generated_at": "2026-08-19T08:06:00Z",
             "run_id": "12345-1",
             "status": "partial_private_evidence_retry_required",
-            "complete": False,
-            "request_queue_exhausted": False,
+            "complete": technical_complete,
+            "technical_complete": technical_complete,
+            "request_queue_exhausted": active == 0,
             "evidence_complete": False,
             "staging_only": True,
             "canonical_written": False,
@@ -279,11 +317,26 @@ class Bundle:
                 "cache_artist_terminal_requires_exact_id_and_identifiers_fetched_at": True,
                 "cache_artifact_id_and_sha256_required": True,
                 "phase1_artist_identity_join_before_network": True,
+                "cross_source_identity_requires_live_provider_tiebreak": True,
+                "artist_identifier_query_spotify_only_default": True,
+                "provider_verified_never_tiebreaks": True,
+                "provider_tiebreak_requires_unique_default_or_single_filtered_identity": True,
+                "provider_tiebreak_must_match_phase1_or_cache": True,
                 "audience_size_and_career_stage_never_block": True,
+            },
+            "coverage": {
+                "priority_artists": priority_artists,
+                "artist_identity_complete": artist_complete,
+                "artist_state_unresolved": artist_unresolved,
+                "priority_tracks": priority_tracks,
+                "track_evidence_complete": track_complete,
+                "track_state_technical_complete": track_complete,
+                "track_state_unresolved": track_unresolved,
             },
             "requests": {
                 "active_remaining": active,
                 "terminal_unresolved": 0,
+                "state_unresolved": state_unresolved,
             },
         }
 
@@ -306,6 +359,10 @@ class MergeSoundchartsFalPhase3ReviewTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.bundle = Bundle(self.temp.name)
+
+    def make_mixed_bundle(self):
+        raw = mixed_phase2_manifest()
+        return Bundle(self.temp.name, raw=raw, phase3=phase3_manifest(raw))
 
     def test_happy_path_is_private_and_keeps_manual_fields_pending(self):
         payload = self.bundle.merge()
@@ -381,6 +438,128 @@ class MergeSoundchartsFalPhase3ReviewTests(unittest.TestCase):
         with self.assertRaisesRegex(merge.FalPhase3ReviewMergeError, "Phase-1 state lineage"):
             self.bundle.merge()
 
+    def test_accepts_a_fully_complete_technical_report(self):
+        self.bundle.report["requests"].update(
+            active_remaining=0,
+            terminal_unresolved=0,
+            state_unresolved=0,
+        )
+        self.bundle.report["request_queue_exhausted"] = True
+        self.bundle.report["technical_complete"] = True
+        self.bundle.report["complete"] = True
+        self.bundle.write_report()
+
+        payload = self.bundle.merge()
+
+        self.assertEqual(payload["summary"]["tracks"], 2)
+
+    def test_accepts_exhausted_queue_with_unresolved_private_state(self):
+        row = self.bundle.phase3["tracks"][0]
+        row["artist_spotify_id"] = ""
+        row["artist_identity_status"] = "identity_conflict"
+        row["phase3_artist_identity_source"] = (
+            "cache_or_cross_source_identity_conflict"
+        )
+        self.bundle.write_phase3()
+        self.bundle.report["coverage"].update(
+            artist_identity_complete=1,
+            artist_state_unresolved=1,
+        )
+        self.bundle.report["requests"].update(
+            active_remaining=0,
+            terminal_unresolved=0,
+            state_unresolved=1,
+        )
+        self.bundle.report["request_queue_exhausted"] = True
+        self.bundle.report["technical_complete"] = False
+        self.bundle.report["complete"] = False
+        self.bundle.write_report()
+
+        payload = self.bundle.merge()
+
+        self.assertEqual(payload["summary"]["tracks"], 2)
+
+    def test_rejects_complete_true_with_unresolved_private_state(self):
+        row = self.bundle.phase3["tracks"][0]
+        row["artist_spotify_id"] = ""
+        row["artist_identity_status"] = "identity_conflict"
+        row["phase3_artist_identity_source"] = (
+            "cache_or_cross_source_identity_conflict"
+        )
+        self.bundle.write_phase3()
+        self.bundle.report["coverage"].update(
+            artist_identity_complete=1,
+            artist_state_unresolved=1,
+        )
+        self.bundle.report["requests"].update(
+            active_remaining=0,
+            terminal_unresolved=0,
+            state_unresolved=1,
+        )
+        self.bundle.report["request_queue_exhausted"] = True
+        self.bundle.report["technical_complete"] = False
+        self.bundle.report["complete"] = True
+        self.bundle.write_report()
+
+        with self.assertRaisesRegex(
+            merge.FalPhase3ReviewMergeError,
+            "completion flag disagrees with unresolved technical state",
+        ):
+            self.bundle.merge()
+
+    def test_rejects_inconsistent_private_state_arithmetic(self):
+        self.bundle.report["coverage"]["artist_state_unresolved"] = 1
+        self.bundle.report["requests"]["state_unresolved"] = 1
+        self.bundle.write_report()
+
+        with self.assertRaisesRegex(
+            merge.FalPhase3ReviewMergeError,
+            "artist state counts are arithmetically inconsistent",
+        ):
+            self.bundle.merge()
+
+    def test_rejects_artist_completion_count_not_backed_by_manifest(self):
+        self.bundle.report["coverage"].update(
+            artist_identity_complete=1,
+            artist_state_unresolved=1,
+        )
+        self.bundle.report["requests"]["state_unresolved"] = 1
+        self.bundle.write_report()
+
+        with self.assertRaisesRegex(
+            merge.FalPhase3ReviewMergeError,
+            "artist completion count disagrees with its manifest rows",
+        ):
+            self.bundle.merge()
+
+    def test_rejects_track_completion_count_not_backed_by_manifest(self):
+        self.bundle.report["coverage"].update(
+            track_evidence_complete=1,
+            track_state_technical_complete=1,
+            track_state_unresolved=1,
+        )
+        self.bundle.report["requests"]["state_unresolved"] = 1
+        self.bundle.write_report()
+
+        with self.assertRaisesRegex(
+            merge.FalPhase3ReviewMergeError,
+            "track completion count disagrees with its manifest rows",
+        ):
+            self.bundle.merge()
+
+    def test_rejects_false_flags_when_the_technical_state_is_complete(self):
+        self.bundle.report["requests"]["active_remaining"] = 0
+        self.bundle.report["request_queue_exhausted"] = True
+        self.bundle.report["technical_complete"] = False
+        self.bundle.report["complete"] = False
+        self.bundle.write_report()
+
+        with self.assertRaisesRegex(
+            merge.FalPhase3ReviewMergeError,
+            "technical_complete flag disagrees with unresolved technical state",
+        ):
+            self.bundle.merge()
+
     def test_rejects_identity_tuple_union_mutation(self):
         self.bundle.phase3["tracks"][0]["spotify_id"] = "Z" * 22
         self.bundle.write_phase3()
@@ -390,8 +569,84 @@ class MergeSoundchartsFalPhase3ReviewTests(unittest.TestCase):
     def test_rejects_missing_phase3_row_even_with_fresh_digests(self):
         self.bundle.phase3["tracks"].pop()
         self.bundle.write_phase3()
+        self.bundle.report["coverage"].update(
+            priority_artists=1,
+            artist_identity_complete=1,
+            priority_tracks=1,
+            track_evidence_complete=1,
+            track_state_technical_complete=1,
+        )
+        self.bundle.write_report()
         with self.assertRaisesRegex(merge.FalPhase3ReviewMergeError, "identity tuple unions differ"):
             self.bundle.merge()
+
+    def test_mixed_manifest_counts_only_hash_bound_phase2_advanced_scope(self):
+        bundle = self.make_mixed_bundle()
+
+        self.assertEqual(
+            [row["review_bucket"] for row in bundle.raw["tracks"]],
+            [merge.ADVANCED_REVIEW_BUCKET, "blocked"],
+        )
+        self.assertEqual(bundle.report["coverage"]["priority_tracks"], 1)
+        self.assertEqual(bundle.report["coverage"]["priority_artists"], 1)
+        self.assertEqual(
+            bundle.report["source"]["enriched_manifest_row_count"], 2
+        )
+
+        payload = bundle.merge()
+
+        self.assertEqual(payload["summary"]["tracks"], 2)
+
+    def test_mixed_manifest_rejects_removed_scoped_identity(self):
+        bundle = self.make_mixed_bundle()
+        bundle.phase3["tracks"] = [
+            row
+            for row in bundle.phase3["tracks"]
+            if row["track_uuid"] != "track-1"
+        ]
+        bundle.write_phase3()
+
+        with self.assertRaisesRegex(
+            merge.FalPhase3ReviewMergeError, "identity tuple unions differ"
+        ):
+            bundle.merge()
+
+    def test_mixed_manifest_rejects_added_scoped_identity(self):
+        bundle = self.make_mixed_bundle()
+        added = copy.deepcopy(bundle.phase3["tracks"][0])
+        added.update(
+            {
+                "track_uuid": "track-added",
+                "spotify_id": "E" * 22,
+                "detail_spotify_id": "E" * 22,
+                "stream_spotify_id": "E" * 22,
+                "spotify_url": f"https://open.spotify.com/track/{'E' * 22}",
+                "isrc": "FRABC2600099",
+                "candidate_uuid": "candidate-added",
+                "candidate_name": "Added Artist",
+                "artist_spotify_id": "F" * 22,
+            }
+        )
+        bundle.phase3["tracks"].append(added)
+        bundle.write_phase3()
+
+        with self.assertRaisesRegex(
+            merge.FalPhase3ReviewMergeError, "identity tuple unions differ"
+        ):
+            bundle.merge()
+
+    def test_mixed_manifest_rejects_mutated_scoped_identity(self):
+        bundle = self.make_mixed_bundle()
+        scoped = next(
+            row for row in bundle.phase3["tracks"] if row["track_uuid"] == "track-1"
+        )
+        scoped["spotify_id"] = "Z" * 22
+        bundle.write_phase3()
+
+        with self.assertRaisesRegex(
+            merge.FalPhase3ReviewMergeError, "identity tuple unions differ"
+        ):
+            bundle.merge()
 
     def test_rejects_authoritative_phase2_field_mutation(self):
         self.bundle.phase3["tracks"][0]["title"] = "Mutated title"
@@ -403,6 +658,132 @@ class MergeSoundchartsFalPhase3ReviewTests(unittest.TestCase):
         self.bundle.phase3["tracks"][0]["source_evidence"]["invented_score"] = 1
         self.bundle.write_phase3()
         with self.assertRaisesRegex(merge.FalPhase3ReviewMergeError, "non-allowlisted"):
+            self.bundle.merge()
+
+    def test_accepts_provider_tiebreak_with_artist_provenance_and_no_song_evidence(self):
+        row = self.bundle.phase3["tracks"][0]
+        row["phase3_artist_identity_source"] = (
+            "soundcharts_artist_identifiers_tiebreak"
+        )
+        row["phase3_artist_identity_contract"] = (
+            merge.ARTIST_PROVIDER_IDENTITY_CONTRACT
+        )
+        row["phase3_artist_identity_observed_at"] = EVIDENCE_AT
+        row["phase3_detail_status"] = "pending"
+        row["source_contract"] = ""
+        row["evidence_updated_at"] = ""
+        row["source_evidence"]["source_contract"] = ""
+        row["source_evidence"]["evidence_updated_at"] = ""
+        self.bundle.write_phase3()
+        self.bundle.report["coverage"].update(
+            track_evidence_complete=1,
+            track_state_technical_complete=1,
+            track_state_unresolved=1,
+        )
+        self.bundle.report["requests"]["state_unresolved"] = 1
+        self.bundle.write_report()
+
+        payload = self.bundle.merge()
+
+        merged = next(
+            row for row in payload["tracks"] if row["track_uuid"] == "track-1"
+        )
+        self.assertEqual(merged["artist_spotify_id"], ARTIST_ID_1)
+        self.assertEqual(merged["artist_identity_status"], "complete")
+        self.assertEqual(
+            merged["phase3_artist_identity_source"],
+            "soundcharts_artist_identifiers_tiebreak",
+        )
+        self.assertEqual(
+            merged["phase3_artist_identity_contract"],
+            merge.ARTIST_PROVIDER_IDENTITY_CONTRACT,
+        )
+        self.assertEqual(
+            merged["phase3_artist_identity_observed_at"], EVIDENCE_AT
+        )
+        self.assertEqual(merged["phase3_detail_status"], "pending")
+        self.assertEqual(merged["source_contract"], "")
+        self.assertEqual(merged["evidence_updated_at"], "")
+
+    def test_rejects_provider_tiebreak_without_exact_artist_provenance(self):
+        row = self.bundle.phase3["tracks"][0]
+        row["phase3_artist_identity_source"] = (
+            "soundcharts_artist_identifiers_tiebreak"
+        )
+        row["phase3_artist_identity_contract"] = "untrusted-provider-contract"
+        row["phase3_artist_identity_observed_at"] = EVIDENCE_AT
+        self.bundle.write_phase3()
+        self.bundle.report["coverage"].update(
+            artist_identity_complete=1,
+            artist_state_unresolved=1,
+        )
+        self.bundle.report["requests"]["state_unresolved"] = 1
+        self.bundle.write_report()
+
+        with self.assertRaisesRegex(
+            merge.FalPhase3ReviewMergeError,
+            "provider artist identity lacks its exact contract/provenance",
+        ):
+            self.bundle.merge()
+
+    def test_rejects_provider_tiebreak_with_naive_artist_timestamp(self):
+        row = self.bundle.phase3["tracks"][0]
+        row["phase3_artist_identity_source"] = (
+            "soundcharts_artist_identifiers_tiebreak"
+        )
+        row["phase3_artist_identity_contract"] = (
+            merge.ARTIST_PROVIDER_IDENTITY_CONTRACT
+        )
+        row["phase3_artist_identity_observed_at"] = "2026-08-19T08:00:00"
+        self.bundle.write_phase3()
+        self.bundle.report["coverage"].update(
+            artist_identity_complete=1,
+            artist_state_unresolved=1,
+        )
+        self.bundle.report["requests"]["state_unresolved"] = 1
+        self.bundle.write_report()
+
+        with self.assertRaisesRegex(
+            merge.FalPhase3ReviewMergeError,
+            "provider artist identity lacks its exact contract/provenance",
+        ):
+            self.bundle.merge()
+
+    def test_rejects_unknown_artist_identity_source(self):
+        self.bundle.phase3["tracks"][0]["phase3_artist_identity_source"] = (
+            "untrusted_artist_identity_source"
+        )
+        self.bundle.write_phase3()
+        self.bundle.report["coverage"].update(
+            artist_identity_complete=1,
+            artist_state_unresolved=1,
+        )
+        self.bundle.report["requests"]["state_unresolved"] = 1
+        self.bundle.write_report()
+
+        with self.assertRaisesRegex(
+            merge.FalPhase3ReviewMergeError,
+            "unsupported artist identity source",
+        ):
+            self.bundle.merge()
+
+    def test_rejects_complete_identity_carried_by_a_conflict_source(self):
+        row = self.bundle.phase3["tracks"][0]
+        row["phase3_artist_identity_source"] = (
+            "cache_or_cross_source_identity_conflict"
+        )
+        self.bundle.write_phase3()
+        self.bundle.report["coverage"].update(
+            artist_identity_complete=1,
+            artist_state_unresolved=1,
+        )
+        self.bundle.report["requests"]["state_unresolved"] = 1
+        self.bundle.write_report()
+
+        with self.assertRaisesRegex(
+            merge.FalPhase3ReviewMergeError,
+            "conflict artist identity source cannot be complete",
+        ):
             self.bundle.merge()
 
     def test_rejects_automated_human_review(self):
@@ -419,6 +800,13 @@ class MergeSoundchartsFalPhase3ReviewTests(unittest.TestCase):
         row["source_evidence"]["source_contract"] = ""
         row["source_evidence"]["evidence_updated_at"] = ""
         self.bundle.write_phase3()
+        self.bundle.report["coverage"].update(
+            track_evidence_complete=1,
+            track_state_technical_complete=1,
+            track_state_unresolved=1,
+        )
+        self.bundle.report["requests"]["state_unresolved"] = 1
+        self.bundle.write_report()
         payload = self.bundle.merge()
         merged = next(row for row in payload["tracks"] if row["track_uuid"] == "track-1")
         self.assertEqual(merged["ai_risk"], "unknown")

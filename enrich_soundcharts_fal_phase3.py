@@ -63,6 +63,13 @@ MAX_WORKERS = 10
 DEFAULT_RETRY_LIMIT = 3
 ADVANCED_BUCKET = "ai_review_required"
 SPOTIFY_ID_RE = re.compile(r"^[0-9A-Za-z]{22}$")
+PROVIDER_IDENTITY_CONTRACT = "soundcharts_artist_identifiers_default_v1"
+CURRENT_PROVIDER_IDENTITY_SOURCES = frozenset(
+    {
+        "soundcharts_artist_identifiers",
+        "soundcharts_artist_identifiers_tiebreak",
+    }
+)
 ACTIVE_REQUEST_STATUSES = {"pending", "retry", "inflight"}
 TERMINAL_REQUEST_STATUSES = {
     "complete_cache",
@@ -79,6 +86,25 @@ RECORD_DIGEST_EXCLUDED_FIELDS = {
     "review_sources",
     "review_notes",
     "record_digest",
+}
+PROVIDER_IDENTITY_RESOLUTION_REASON_ALLOWLIST = {
+    "legacy_multi_id_provider_evidence_requeued_for_default_refresh",
+    "legacy_multi_id_provider_evidence_retry_budget_exhausted",
+    "legacy_provider_identity_outside_cross_source_candidates",
+    "provider_exact_identity_missing",
+    "provider_exact_identity_missing_cross_source_conflict",
+    "provider_multiple_default_identities_cross_source_conflict",
+    "provider_multiple_default_identities_without_cross_source_tiebreak",
+    "provider_multiple_filtered_identities_cross_source_conflict",
+    "provider_multiple_filtered_identities_without_cross_source_tiebreak",
+    "provider_unique_default_identity_disagrees_with_existing_identity",
+    "provider_unique_default_identity_accepted",
+    "provider_unique_default_identity_matches_cross_source_candidate",
+    "provider_unique_default_identity_outside_cross_source_candidates",
+    "provider_unique_filtered_identity_disagrees_with_existing_identity",
+    "provider_unique_filtered_identity_accepted",
+    "provider_unique_filtered_identity_matches_cross_source_candidate",
+    "provider_unique_filtered_identity_outside_cross_source_candidates",
 }
 
 
@@ -170,7 +196,10 @@ class RequestTask:
     def path(self) -> str:
         quoted = urllib.parse.quote(self.entity_id)
         if self.kind == "artist_identifiers":
-            return f"/api/v2/artist/{quoted}/identifiers?offset=0&limit=100"
+            return (
+                f"/api/v2/artist/{quoted}/identifiers"
+                "?platform=spotify&onlyDefault=true&offset=0&limit=100"
+            )
         if self.kind == "song_detail":
             return f"/api/v2.25/song/{quoted}"
         raise FalPhase3Error(f"Unsupported request kind: {self.kind}")
@@ -203,6 +232,28 @@ def finite_number(value: Any) -> float | None:
 def exact_spotify_id(value: Any) -> str:
     candidate = str(value or "").strip()
     return candidate if SPOTIFY_ID_RE.fullmatch(candidate) else ""
+
+
+def aware_iso_timestamp(value: Any) -> str:
+    candidate = str(value or "").strip()
+    if not candidate:
+        return ""
+    try:
+        parsed = dt.datetime.fromisoformat(candidate.replace("Z", "+00:00"))
+    except ValueError:
+        return ""
+    return candidate if parsed.tzinfo is not None else ""
+
+
+def provider_identity_provenance(
+    evidence: Mapping[str, Any] | None,
+) -> tuple[str, str]:
+    evidence = evidence if isinstance(evidence, Mapping) else {}
+    contract = str(evidence.get("provider_identity_contract") or "")
+    observed_at = aware_iso_timestamp(evidence.get("provider_identity_observed_at"))
+    if contract != PROVIDER_IDENTITY_CONTRACT or not observed_at:
+        return "", ""
+    return contract, observed_at
 
 
 def file_sha256(path: Path) -> str:
@@ -541,6 +592,8 @@ def _read_only_sqlite(path: Path, required_table: str) -> sqlite3.Connection:
 def hydrate_artist_identities_from_phase1(
     connection: sqlite3.Connection,
     phase1_path: Path | None,
+    *,
+    retry_limit: int = DEFAULT_RETRY_LIMIT,
 ) -> int:
     if phase1_path is None:
         return 0
@@ -621,14 +674,16 @@ def hydrate_artist_identities_from_phase1(
             if exact_spotify_id(value)
         }
         raw_evidence_ids = evidence.get("spotify_ids")
+        provider_ids_from_evidence: set[str] = set()
         if isinstance(raw_evidence_ids, Sequence) and not isinstance(
             raw_evidence_ids, (str, bytes, bytearray)
         ):
-            evidence_ids.update(
+            provider_ids_from_evidence.update(
                 exact_spotify_id(value)
                 for value in raw_evidence_ids
                 if exact_spotify_id(value)
             )
+            evidence_ids.update(provider_ids_from_evidence)
         sticky_evidence_conflict = bool(
             str(existing["identity_status"] or "") == "identity_conflict"
             and any(value != spotify_id for value in evidence_ids)
@@ -641,16 +696,59 @@ def hydrate_artist_identities_from_phase1(
             and existing_id == adjudicated_id
         )
         cache_id = exact_spotify_id(evidence.get("cache_spotify_id"))
-        needs_provider_tiebreak = bool(
+        cache_provider_tiebreak = bool(
             str(existing["identity_source"] or "")
             == "cache_or_cross_source_identity_conflict"
             and cache_id
             and cache_id != spotify_id
             and not adjudicated_id
         )
-        initialize_provider_tiebreak = bool(
-            needs_provider_tiebreak
+        legacy_multi_id_tiebreak = bool(
+            str(existing["identity_status"] or "") == "identity_conflict"
+            and str(existing["identity_source"] or "")
+            == "soundcharts_artist_identifiers_conflict"
+            and evidence.get("provider_tiebreak_initialized") is True
+            and cache_id
+            and cache_id != spotify_id
+            and len(provider_ids_from_evidence) > 1
+            and not adjudicated_id
+            and "provider_spotify_identifiers_v2" not in evidence
+            and evidence.get("provider_default_refresh_initialized") is not True
+        )
+        legacy_retry_available = False
+        if legacy_multi_id_tiebreak:
+            request = connection.execute(
+                """SELECT attempts FROM fal_phase3_requests
+                     WHERE request_kind='artist_identifiers' AND entity_id=?""",
+                (candidate_uuid,),
+            ).fetchone()
+            attempts = int(request["attempts"] or 0) if request is not None else retry_limit
+            legacy_retry_available = attempts < int(retry_limit)
+            evidence["provider_default_refresh_initialized"] = True
+            evidence["provider_identity_reason"] = (
+                "legacy_multi_id_provider_evidence_requeued_for_default_refresh"
+                if legacy_retry_available
+                else "legacy_multi_id_provider_evidence_retry_budget_exhausted"
+            )
+        elif (
+            str(existing["identity_status"] or "") == "identity_conflict"
+            and adjudicated_id
+            and adjudicated_id not in {spotify_id, cache_id}
+            and not evidence.get("provider_identity_reason")
+        ):
+            evidence["provider_identity_reason"] = (
+                "legacy_provider_identity_outside_cross_source_candidates"
+            )
+        needs_provider_tiebreak = bool(
+            cache_provider_tiebreak or (legacy_multi_id_tiebreak and legacy_retry_available)
+        )
+        initialize_cache_tiebreak = bool(
+            cache_provider_tiebreak
             and evidence.get("provider_tiebreak_initialized") is not True
+        )
+        initialize_provider_tiebreak = bool(
+            initialize_cache_tiebreak
+            or (legacy_multi_id_tiebreak and legacy_retry_available)
         )
         if needs_provider_tiebreak:
             evidence["provider_tiebreak_initialized"] = True
@@ -704,7 +802,7 @@ def hydrate_artist_identities_from_phase1(
                      WHERE request_kind='artist_identifiers' AND entity_id=?""",
                 (request_status, error_code, now, candidate_uuid),
             )
-        if initialize_provider_tiebreak:
+        if initialize_cache_tiebreak:
             connection.execute(
                 """UPDATE fal_phase3_requests SET attempts=0
                      WHERE request_kind='artist_identifiers' AND entity_id=?""",
@@ -1157,23 +1255,75 @@ def fetch_tasks(client: Any, tasks: Sequence[RequestTask], workers: int) -> list
         return list(executor.map(fetch, tasks))
 
 
-def _spotify_ids_in_identifier_response(payload: Any) -> list[str]:
+def _spotify_identifier_response_evidence(
+    payload: Any,
+) -> tuple[list[str], str, str, list[dict[str, Any]]]:
+    """Normalize top-level Spotify identifiers without inferring a preference.
+
+    The live request is filtered with ``onlyDefault=true``.  One explicit
+    default wins even if the provider also returns non-default IDs; otherwise a
+    single exact filtered ID is sufficient when the ``default`` flag is
+    omitted.  ``verified`` is retained as evidence only and never breaks a tie.
+    """
+
     items = payload.get("items") if isinstance(payload, Mapping) else []
-    return sorted(
-        {
-            exact_spotify_id(item.get("identifier"))
-            for item in items
-            if isinstance(item, Mapping)
-            and str(item.get("platformCode") or "").casefold() == "spotify"
-            and exact_spotify_id(item.get("identifier"))
-        }
-    )
+    by_id: dict[str, dict[str, Any]] = {}
+    for item in items if isinstance(items, Sequence) else []:
+        if not isinstance(item, Mapping):
+            continue
+        if str(item.get("platformCode") or "").casefold() != "spotify":
+            continue
+        spotify_id = exact_spotify_id(item.get("identifier"))
+        if not spotify_id:
+            continue
+        normalized = by_id.setdefault(
+            spotify_id,
+            {
+                "spotify_id": spotify_id,
+                "default": False,
+                "verified": False,
+            },
+        )
+        normalized["default"] = bool(normalized["default"] or item.get("default") is True)
+        normalized["verified"] = bool(
+            normalized["verified"] or item.get("verified") is True
+        )
+
+    normalized_items = [by_id[key] for key in sorted(by_id)]
+    provider_ids = [str(item["spotify_id"]) for item in normalized_items]
+    default_ids = [
+        str(item["spotify_id"]) for item in normalized_items if item["default"] is True
+    ]
+    if len(default_ids) == 1:
+        preferred_id = default_ids[0]
+        preference_reason = "provider_unique_default_identity"
+    elif len(default_ids) > 1:
+        preferred_id = ""
+        preference_reason = "provider_multiple_default_identities"
+    elif len(provider_ids) == 1:
+        preferred_id = provider_ids[0]
+        preference_reason = "provider_unique_filtered_identity"
+    elif len(provider_ids) > 1:
+        preferred_id = ""
+        preference_reason = "provider_multiple_filtered_identities"
+    else:
+        preferred_id = ""
+        preference_reason = "provider_exact_identity_missing"
+    return provider_ids, preferred_id, preference_reason, normalized_items
+
+
+def _spotify_ids_in_identifier_response(payload: Any) -> list[str]:
+    return _spotify_identifier_response_evidence(payload)[0]
 
 
 def _store_artist_response(connection: sqlite3.Connection, task: RequestTask, payload: Any) -> str:
     parsed = parse_artist_identifiers(payload)
-    provider_spotify_ids = _spotify_ids_in_identifier_response(payload)
-    spotify_id = provider_spotify_ids[0] if len(provider_spotify_ids) == 1 else ""
+    (
+        provider_spotify_ids,
+        preferred_spotify_id,
+        provider_preference_reason,
+        normalized_provider_identifiers,
+    ) = _spotify_identifier_response_evidence(payload)
     now = utc_now()
     existing = connection.execute(
         """SELECT spotify_id,identity_source,identifiers_evidence_json
@@ -1191,10 +1341,56 @@ def _store_artist_response(connection: sqlite3.Connection, task: RequestTask, pa
     previous_evidence = (
         dict(previous_evidence) if isinstance(previous_evidence, Mapping) else {}
     )
-    if len(provider_spotify_ids) > 1:
-        evidence = previous_evidence
-        evidence.update(dict(parsed) if isinstance(parsed, Mapping) else {})
+    evidence = previous_evidence
+    evidence.update(dict(parsed) if isinstance(parsed, Mapping) else {})
+    evidence["provider_spotify_identifiers_v2"] = normalized_provider_identifiers
+    evidence["provider_identity_contract"] = PROVIDER_IDENTITY_CONTRACT
+    evidence["provider_identity_observed_at"] = now
+    evidence["provider_identity_reason"] = provider_preference_reason
+    if provider_spotify_ids:
         evidence["spotify_ids"] = provider_spotify_ids
+    phase1_id = exact_spotify_id(previous_evidence.get("phase1_spotify_id"))
+    cache_id = exact_spotify_id(previous_evidence.get("cache_spotify_id"))
+    tiebreak_candidates = {value for value in (phase1_id, cache_id) if value}
+    cross_source_tiebreak = bool(
+        str(existing["identity_source"] or "")
+        == "cache_or_cross_source_identity_conflict"
+    )
+    if cross_source_tiebreak:
+        if preferred_spotify_id:
+            evidence["provider_spotify_id"] = preferred_spotify_id
+        if not preferred_spotify_id:
+            evidence["provider_identity_reason"] = (
+                f"{provider_preference_reason}_cross_source_conflict"
+            )
+        elif not tiebreak_candidates or preferred_spotify_id not in tiebreak_candidates:
+            evidence["provider_identity_reason"] = (
+                f"{provider_preference_reason}_outside_cross_source_candidates"
+            )
+        else:
+            evidence["provider_identity_reason"] = (
+                f"{provider_preference_reason}_matches_cross_source_candidate"
+            )
+            connection.execute(
+                """UPDATE fal_phase3_artists SET spotify_id=?,identity_status='complete',
+                          identity_source='soundcharts_artist_identifiers_tiebreak',
+                          identifiers_evidence_json=?,updated_at=?
+                     WHERE candidate_uuid=? AND is_active=1""",
+                (preferred_spotify_id, safe_json(evidence), now, task.entity_id),
+            )
+            return "complete_provider"
+        connection.execute(
+            """UPDATE fal_phase3_artists SET spotify_id='',identity_status='identity_conflict',
+                      identity_source='soundcharts_artist_identifiers_conflict',
+                      identifiers_evidence_json=?,updated_at=?
+                 WHERE candidate_uuid=? AND is_active=1""",
+            (safe_json(evidence), now, task.entity_id),
+        )
+        return "identity_conflict"
+    if not preferred_spotify_id and len(provider_spotify_ids) > 1:
+        evidence["provider_identity_reason"] = (
+            f"{provider_preference_reason}_without_cross_source_tiebreak"
+        )
         if existing_id:
             evidence["existing_spotify_id"] = existing_id
         connection.execute(
@@ -1205,41 +1401,14 @@ def _store_artist_response(connection: sqlite3.Connection, task: RequestTask, pa
             (safe_json(evidence), now, task.entity_id),
         )
         return "identity_conflict"
-    if not spotify_id:
+    if not preferred_spotify_id:
         return "identity_missing"
-    phase1_id = exact_spotify_id(previous_evidence.get("phase1_spotify_id"))
-    cache_id = exact_spotify_id(previous_evidence.get("cache_spotify_id"))
-    tiebreak_candidates = {value for value in (phase1_id, cache_id) if value}
-    cross_source_tiebreak = bool(
-        str(existing["identity_source"] or "")
-        == "cache_or_cross_source_identity_conflict"
-    )
-    if cross_source_tiebreak:
-        evidence = previous_evidence
-        evidence.update(dict(parsed) if isinstance(parsed, Mapping) else {})
-        evidence["provider_spotify_id"] = spotify_id
-        if not tiebreak_candidates or spotify_id not in tiebreak_candidates:
-            connection.execute(
-                """UPDATE fal_phase3_artists SET spotify_id='',identity_status='identity_conflict',
-                          identity_source='soundcharts_artist_identifiers_conflict',
-                          identifiers_evidence_json=?,updated_at=?
-                     WHERE candidate_uuid=? AND is_active=1""",
-                (safe_json(evidence), now, task.entity_id),
-            )
-            return "identity_conflict"
-        connection.execute(
-            """UPDATE fal_phase3_artists SET spotify_id=?,identity_status='complete',
-                      identity_source='soundcharts_artist_identifiers_tiebreak',
-                      identifiers_evidence_json=?,updated_at=?
-                 WHERE candidate_uuid=? AND is_active=1""",
-            (spotify_id, safe_json(evidence), now, task.entity_id),
-        )
-        return "complete_provider"
-    if existing_id and existing_id != spotify_id:
-        evidence = previous_evidence
-        evidence.update(dict(parsed) if isinstance(parsed, Mapping) else {})
+    evidence["provider_spotify_id"] = preferred_spotify_id
+    if existing_id and existing_id != preferred_spotify_id:
         evidence["existing_spotify_id"] = existing_id
-        evidence["provider_spotify_id"] = spotify_id
+        evidence["provider_identity_reason"] = (
+            f"{provider_preference_reason}_disagrees_with_existing_identity"
+        )
         connection.execute(
             """UPDATE fal_phase3_artists SET spotify_id='',identity_status='identity_conflict',
                       identity_source='soundcharts_artist_identifiers_conflict',
@@ -1248,13 +1417,12 @@ def _store_artist_response(connection: sqlite3.Connection, task: RequestTask, pa
             (safe_json(evidence), now, task.entity_id),
         )
         return "identity_conflict"
-    evidence = previous_evidence
-    evidence.update(dict(parsed) if isinstance(parsed, Mapping) else {})
+    evidence["provider_identity_reason"] = f"{provider_preference_reason}_accepted"
     connection.execute(
         """UPDATE fal_phase3_artists SET spotify_id=?,identity_status='complete',
                   identity_source='soundcharts_artist_identifiers',identifiers_evidence_json=?,updated_at=?
              WHERE candidate_uuid=? AND is_active=1""",
-        (spotify_id, safe_json(evidence), now, task.entity_id),
+        (preferred_spotify_id, safe_json(evidence), now, task.entity_id),
     )
     return "complete_provider"
 
@@ -1415,6 +1583,8 @@ def build_enriched_manifest(
         record = dict(raw)
         record["evidence_updated_at"] = ""
         record["source_contract"] = ""
+        record["phase3_artist_identity_contract"] = ""
+        record["phase3_artist_identity_observed_at"] = ""
         phase3_track = tracks_by_uuid.get(str(record.get("track_uuid") or ""))
         phase3_artist = artists_by_uuid.get(str(record.get("candidate_uuid") or ""))
         if phase3_track is not None:
@@ -1452,11 +1622,33 @@ def build_enriched_manifest(
             record["source_contract"] = str(phase3_track["source_contract"] or "")
         if phase3_artist is not None:
             artist_id = exact_spotify_id(phase3_artist["spotify_id"])
+            identity_status = str(phase3_artist["identity_status"] or "")
+            identity_source = str(phase3_artist["identity_source"] or "")
             record["artist_spotify_id"] = artist_id
             record["artist_identity_status"] = (
-                "complete" if artist_id and phase3_artist["identity_status"] == "complete" else str(phase3_artist["identity_status"])
+                "complete" if artist_id and identity_status == "complete" else identity_status
             )
-            record["phase3_artist_identity_source"] = str(phase3_artist["identity_source"] or "")
+            record["phase3_artist_identity_source"] = identity_source
+            if (
+                artist_id
+                and identity_status == "complete"
+                and identity_source in CURRENT_PROVIDER_IDENTITY_SOURCES
+            ):
+                try:
+                    identity_evidence = json.loads(
+                        str(phase3_artist["identifiers_evidence_json"] or "{}")
+                    )
+                except json.JSONDecodeError:
+                    identity_evidence = {}
+                identity_evidence = (
+                    identity_evidence if isinstance(identity_evidence, Mapping) else {}
+                )
+                identity_contract, identity_observed_at = provider_identity_provenance(
+                    identity_evidence
+                )
+                if identity_contract and identity_observed_at:
+                    record["phase3_artist_identity_contract"] = identity_contract
+                    record["phase3_artist_identity_observed_at"] = identity_observed_at
         # Automated enrichment can never carry or manufacture a human approval.
         record["source_approved_for_publication"] = False
         record["review_decision"] = "pending"
@@ -1512,6 +1704,36 @@ def request_status_counts(connection: sqlite3.Connection) -> dict[str, int]:
     }
 
 
+def provider_identity_resolution_counts(
+    connection: sqlite3.Connection,
+) -> dict[str, int]:
+    """Return only allowlisted aggregate reasons; never expose provider IDs."""
+
+    counts: Counter[str] = Counter()
+    rows = connection.execute(
+        """SELECT identifiers_evidence_json FROM fal_phase3_artists
+             WHERE is_active=1"""
+    ).fetchall()
+    for row in rows:
+        try:
+            evidence = json.loads(str(row["identifiers_evidence_json"] or "{}"))
+        except json.JSONDecodeError:
+            evidence = {}
+        reason = (
+            str(evidence.get("provider_identity_reason") or "")
+            if isinstance(evidence, Mapping)
+            else ""
+        )
+        if not reason:
+            continue
+        counts[
+            reason
+            if reason in PROVIDER_IDENTITY_RESOLUTION_REASON_ALLOWLIST
+            else "unclassified_provider_identity_resolution"
+        ] += 1
+    return dict(sorted(counts.items()))
+
+
 def build_report(
     connection: sqlite3.Connection,
     *,
@@ -1564,14 +1786,46 @@ def build_report(
                'pending','retry','inflight','complete_cache','complete_phase1','complete_provider'
              )"""
     ).fetchone()[0])
-    identity_complete = int(connection.execute(
-        """SELECT COUNT(*) FROM fal_phase3_artists
-             WHERE is_active=1 AND identity_status='complete' AND length(spotify_id)=22"""
-    ).fetchone()[0])
-    unique_spotify_artists = int(connection.execute(
-        """SELECT COUNT(DISTINCT spotify_id) FROM fal_phase3_artists
-             WHERE is_active=1 AND identity_status='complete' AND length(spotify_id)=22"""
-    ).fetchone()[0])
+    artist_state_rows = connection.execute(
+        """SELECT spotify_id,identity_status,identity_source,identifiers_evidence_json
+             FROM fal_phase3_artists
+             WHERE is_active=1"""
+    ).fetchall()
+    complete_artist_ids: list[str] = []
+    for row in artist_state_rows:
+        spotify_id = exact_spotify_id(row["spotify_id"])
+        if str(row["identity_status"] or "") != "complete" or not spotify_id:
+            continue
+        if str(row["identity_source"] or "") in CURRENT_PROVIDER_IDENTITY_SOURCES:
+            try:
+                identity_evidence = json.loads(
+                    str(row["identifiers_evidence_json"] or "{}")
+                )
+            except json.JSONDecodeError:
+                identity_evidence = {}
+            if not provider_identity_provenance(
+                identity_evidence if isinstance(identity_evidence, Mapping) else {}
+            )[0]:
+                continue
+        complete_artist_ids.append(spotify_id)
+    identity_complete = len(complete_artist_ids)
+    unique_spotify_artists = len(set(complete_artist_ids))
+    artist_state_unresolved = artist_total - identity_complete
+    track_state_rows = connection.execute(
+        """SELECT detail_status,evidence_updated_at,source_contract
+             FROM fal_phase3_tracks WHERE is_active=1"""
+    ).fetchall()
+    track_state_technical_complete = sum(
+        1
+        for row in track_state_rows
+        if str(row["detail_status"] or "") in {"complete_cache", "complete_provider"}
+        and aware_iso_timestamp(row["evidence_updated_at"])
+        and str(row["source_contract"] or "") == SOUNDCHARTS_SONG_EVIDENCE_CONTRACT
+    )
+    track_state_unresolved = track_total - track_state_technical_complete
+    state_unresolved = artist_state_unresolved + track_state_unresolved
+    state_complete = state_unresolved == 0
+    technical_complete = active == 0 and terminal_failures == 0 and state_complete
     no_lyrics = int(connection.execute(
         """SELECT COUNT(*) FROM fal_phase3_tracks
              WHERE is_active=1 AND no_lyrics_status='confirmed'"""
@@ -1594,7 +1848,7 @@ def build_report(
         else "authentication_blocked"
         if halt_reason == "authentication_rejected"
         else "private_review_enrichment_complete"
-        if active == 0 and terminal_failures == 0
+        if technical_complete
         else "private_review_enrichment_exhausted_with_unresolved_evidence"
         if active == 0
         else "partial_private_evidence_retry_required"
@@ -1604,7 +1858,8 @@ def build_report(
         "generated_at": utc_now(),
         "run_id": run_id,
         "status": status,
-        "complete": active == 0 and terminal_failures == 0,
+        "complete": technical_complete,
+        "technical_complete": technical_complete,
         "request_queue_exhausted": active == 0,
         "evidence_complete": False,
         "staging_only": True,
@@ -1641,6 +1896,10 @@ def build_report(
             "cache_artifact_id_and_sha256_required": True,
             "cross_source_identity_requires_live_provider_tiebreak": True,
             "artist_identifier_endpoint_residual_only": True,
+            "artist_identifier_query_spotify_only_default": True,
+            "provider_verified_never_tiebreaks": True,
+            "provider_tiebreak_requires_unique_default_or_single_filtered_identity": True,
+            "provider_tiebreak_must_match_phase1_or_cache": True,
             "song_detail_endpoint": "/api/v2.25/song/{uuid}",
             "no_lyrics_requires_explicit_source_field": True,
             "ai_risk_never_inferred": True,
@@ -1660,6 +1919,7 @@ def build_report(
             "halt_reason": halt_reason,
             "active_remaining": active,
             "terminal_unresolved": terminal_failures,
+            "state_unresolved": state_unresolved,
             "status_counts": request_status_counts(connection),
         },
         "changes": {
@@ -1674,7 +1934,14 @@ def build_report(
             "priority_artists": artist_total,
             "artist_identity_complete": identity_complete,
             "artist_identity_rows_complete": identity_complete,
+            "artist_state_unresolved": artist_state_unresolved,
             "unique_spotify_artists_complete": unique_spotify_artists,
+            "track_evidence_complete": track_state_technical_complete,
+            "track_state_technical_complete": track_state_technical_complete,
+            "track_state_unresolved": track_state_unresolved,
+            "provider_identity_resolution_counts": provider_identity_resolution_counts(
+                connection
+            ),
             "no_lyrics_explicit": no_lyrics,
             "ai_risk_counts": ai_counts,
             "rights_status_counts": rights_counts,
@@ -1747,7 +2014,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     halt_reason = ""
     try:
         tracks_seeded, artists_seeded = seed_advanced_bucket(connection, advanced)
-        phase1_identities = hydrate_artist_identities_from_phase1(connection, args.phase1_state)
+        phase1_identities = hydrate_artist_identities_from_phase1(
+            connection,
+            args.phase1_state,
+            retry_limit=int(args.retry_limit),
+        )
         cache_tracks, cache_artists = hydrate_from_cache(
             connection,
             args.cache,

@@ -37,9 +37,11 @@ MERGE_VERSION = 1
 MANIFEST_VERSION = 1
 PHASE3_VERSION = 1
 DEFAULT_MINIMUM_STREAMS = 100_000
+ADVANCED_REVIEW_BUCKET = "ai_review_required"
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 ARTIFACT_ID_RE = re.compile(r"^[1-9][0-9]*$")
 SPOTIFY_ID_RE = re.compile(r"^[0-9A-Za-z]{22}$")
+ARTIST_PROVIDER_IDENTITY_CONTRACT = "soundcharts_artist_identifiers_default_v1"
 
 IDENTITY_FIELDS = ("track_uuid", "candidate_uuid", "spotify_id", "isrc")
 MANUAL_FIELD_DEFAULTS: dict[str, Any] = {
@@ -77,6 +79,8 @@ PHASE3_EVIDENCE_OVERLAY_FIELDS = frozenset(
         "instrumental_status",
         "phase3_detail_status",
         "phase3_artist_identity_source",
+        "phase3_artist_identity_contract",
+        "phase3_artist_identity_observed_at",
         "phase3_decision",
         "evidence_updated_at",
         "source_contract",
@@ -142,6 +146,21 @@ ARTIST_IDENTITY_SOURCES = {
     "phase1_candidates_exact_spotify_id",
     "soundcharts_bootstrap_cache",
     "soundcharts_artist_identifiers",
+    "soundcharts_artist_identifiers_tiebreak",
+    "soundcharts_artist_identifiers_conflict",
+    "soundcharts_artist_identifiers_collision",
+    "cache_or_cross_source_identity_conflict",
+}
+PROVIDER_ARTIST_IDENTITY_SOURCES = {
+    "soundcharts_artist_identifiers",
+    "soundcharts_artist_identifiers_tiebreak",
+}
+COMPLETE_ARTIST_IDENTITY_SOURCES = {
+    "phase1_candidates_exact_spotify_id",
+    "soundcharts_bootstrap_cache",
+    *PROVIDER_ARTIST_IDENTITY_SOURCES,
+}
+CONFLICT_ARTIST_IDENTITY_SOURCES = {
     "soundcharts_artist_identifiers_conflict",
     "soundcharts_artist_identifiers_collision",
     "cache_or_cross_source_identity_conflict",
@@ -216,6 +235,15 @@ def _mapping(value: Any, label: str) -> dict[str, Any]:
     if not isinstance(value, Mapping):
         raise FalPhase3ReviewMergeError(f"{label} must be an object")
     return dict(value)
+
+
+def _nonnegative_count(payload: Mapping[str, Any], key: str, label: str) -> int:
+    value = payload.get(key)
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise FalPhase3ReviewMergeError(f"{label} {key} must be an integer")
+    if value < 0:
+        raise FalPhase3ReviewMergeError(f"{label} {key} cannot be negative")
+    return value
 
 
 def _rows(payload: Mapping[str, Any], label: str) -> list[dict[str, Any]]:
@@ -453,6 +481,10 @@ def _validate_phase3_report(
     phase3_manifest_sha256: str,
     phase3_records_digest: str,
     phase3_row_count: int,
+    phase3_priority_track_count: int,
+    phase3_priority_artist_count: int,
+    phase3_artist_complete: int,
+    phase3_track_complete: int,
 ) -> dict[str, Any]:
     if int(report.get("version") or 0) != PHASE3_VERSION:
         raise FalPhase3ReviewMergeError("Phase-3 report version must be 1")
@@ -544,6 +576,11 @@ def _validate_phase3_report(
         "cache_artist_terminal_requires_exact_id_and_identifiers_fetched_at": True,
         "cache_artifact_id_and_sha256_required": True,
         "phase1_artist_identity_join_before_network": True,
+        "cross_source_identity_requires_live_provider_tiebreak": True,
+        "artist_identifier_query_spotify_only_default": True,
+        "provider_verified_never_tiebreaks": True,
+        "provider_tiebreak_requires_unique_default_or_single_filtered_identity": True,
+        "provider_tiebreak_must_match_phase1_or_cache": True,
         "audience_size_and_career_stage_never_block": True,
     }
     for key, expected in required_policy.items():
@@ -552,23 +589,89 @@ def _validate_phase3_report(
                 f"Phase-3 report policy mismatch: {key}"
             )
 
-    requests = _mapping(report.get("requests"), "Phase-3 report requests")
-    try:
-        active = int(requests.get("active_remaining"))
-        terminal = int(requests.get("terminal_unresolved"))
-    except (TypeError, ValueError) as exc:
+    coverage = _mapping(report.get("coverage"), "Phase-3 report coverage")
+    priority_artists = _nonnegative_count(
+        coverage, "priority_artists", "Phase-3 report coverage"
+    )
+    artist_complete = _nonnegative_count(
+        coverage, "artist_identity_complete", "Phase-3 report coverage"
+    )
+    artist_unresolved = _nonnegative_count(
+        coverage, "artist_state_unresolved", "Phase-3 report coverage"
+    )
+    priority_tracks = _nonnegative_count(
+        coverage, "priority_tracks", "Phase-3 report coverage"
+    )
+    track_complete = _nonnegative_count(
+        coverage, "track_evidence_complete", "Phase-3 report coverage"
+    )
+    track_technical_complete = _nonnegative_count(
+        coverage, "track_state_technical_complete", "Phase-3 report coverage"
+    )
+    track_unresolved = _nonnegative_count(
+        coverage, "track_state_unresolved", "Phase-3 report coverage"
+    )
+    if priority_tracks != phase3_priority_track_count:
         raise FalPhase3ReviewMergeError(
-            "Phase-3 request completion counts are missing"
-        ) from exc
-    if active < 0 or terminal < 0:
-        raise FalPhase3ReviewMergeError("Phase-3 request counts cannot be negative")
+            "Phase-3 priority track count differs from its Phase-2 advanced scope"
+        )
+    if priority_artists != phase3_priority_artist_count:
+        raise FalPhase3ReviewMergeError(
+            "Phase-3 priority artist count differs from its Phase-2 advanced scope"
+        )
+    if artist_complete != phase3_artist_complete:
+        raise FalPhase3ReviewMergeError(
+            "Phase-3 artist completion count disagrees with its manifest rows"
+        )
+    if track_complete != phase3_track_complete:
+        raise FalPhase3ReviewMergeError(
+            "Phase-3 track completion count disagrees with its manifest rows"
+        )
+    if artist_complete > priority_artists or artist_unresolved != (
+        priority_artists - artist_complete
+    ):
+        raise FalPhase3ReviewMergeError(
+            "Phase-3 artist state counts are arithmetically inconsistent"
+        )
+    if track_complete > priority_tracks or track_unresolved != (
+        priority_tracks - track_complete
+    ):
+        raise FalPhase3ReviewMergeError(
+            "Phase-3 track state counts are arithmetically inconsistent"
+        )
+    if track_technical_complete != track_complete:
+        raise FalPhase3ReviewMergeError(
+            "Phase-3 technical track count disagrees with track evidence completion"
+        )
+
+    requests = _mapping(report.get("requests"), "Phase-3 report requests")
+    active = _nonnegative_count(
+        requests, "active_remaining", "Phase-3 report requests"
+    )
+    terminal = _nonnegative_count(
+        requests, "terminal_unresolved", "Phase-3 report requests"
+    )
+    state_unresolved = _nonnegative_count(
+        requests, "state_unresolved", "Phase-3 report requests"
+    )
+    if state_unresolved != artist_unresolved + track_unresolved:
+        raise FalPhase3ReviewMergeError(
+            "Phase-3 state_unresolved disagrees with coverage deltas"
+        )
     if report.get("request_queue_exhausted") is not (active == 0):
         raise FalPhase3ReviewMergeError(
             "Phase-3 queue exhaustion flag disagrees with active requests"
         )
-    if report.get("complete") is not (active == 0 and terminal == 0):
+    technical_complete = (
+        active == 0 and terminal == 0 and state_unresolved == 0
+    )
+    if report.get("technical_complete") is not technical_complete:
         raise FalPhase3ReviewMergeError(
-            "Phase-3 completion flag disagrees with unresolved requests"
+            "Phase-3 technical_complete flag disagrees with unresolved technical state"
+        )
+    if report.get("complete") is not technical_complete:
+        raise FalPhase3ReviewMergeError(
+            "Phase-3 completion flag disagrees with unresolved technical state"
         )
     return source
 
@@ -641,6 +744,58 @@ def _valid_timestamp(value: Any) -> bool:
     except ValueError:
         return False
     return parsed.tzinfo is not None
+
+
+def _phase3_manifest_technical_counts(
+    rows: Sequence[Mapping[str, Any]],
+) -> tuple[int, int, int]:
+    """Derive artist and track completion from the hash-bound row content."""
+
+    artists: dict[str, tuple[str, str, str, str, str]] = {}
+    track_complete = 0
+    for index, row in enumerate(rows):
+        candidate_uuid = str(row.get("candidate_uuid") or "").strip()
+        artist_snapshot = (
+            str(row.get("artist_spotify_id") or "").strip(),
+            str(row.get("artist_identity_status") or "pending").strip(),
+            str(row.get("phase3_artist_identity_source") or "").strip(),
+            str(row.get("phase3_artist_identity_contract") or "").strip(),
+            str(row.get("phase3_artist_identity_observed_at") or "").strip(),
+        )
+        previous = artists.setdefault(candidate_uuid, artist_snapshot)
+        if previous != artist_snapshot:
+            raise FalPhase3ReviewMergeError(
+                f"Phase-3 manifest has inconsistent artist identity rows for {candidate_uuid}"
+            )
+        if (
+            str(row.get("phase3_detail_status") or "").strip()
+            in {"complete_cache", "complete_provider"}
+            and str(row.get("source_contract") or "").strip()
+            == SOUNDCHARTS_SONG_EVIDENCE_CONTRACT
+            and _valid_timestamp(row.get("evidence_updated_at"))
+        ):
+            track_complete += 1
+
+    artist_complete = 0
+    for artist_id, status, source, identity_contract, observed_at in artists.values():
+        if (
+            status == "complete"
+            and SPOTIFY_ID_RE.fullmatch(artist_id)
+            and source in COMPLETE_ARTIST_IDENTITY_SOURCES
+            and (
+                source not in PROVIDER_ARTIST_IDENTITY_SOURCES
+                or (
+                    identity_contract == ARTIST_PROVIDER_IDENTITY_CONTRACT
+                    and _valid_timestamp(observed_at)
+                )
+            )
+            and (
+                source in PROVIDER_ARTIST_IDENTITY_SOURCES
+                or (not identity_contract and not observed_at)
+            )
+        ):
+            artist_complete += 1
+    return len(artists), artist_complete, track_complete
 
 
 def _validate_evidence_changes(
@@ -919,12 +1074,20 @@ def _merge_artist_identity(
             "artist_spotify_id",
             "artist_identity_status",
             "phase3_artist_identity_source",
+            "phase3_artist_identity_contract",
+            "phase3_artist_identity_observed_at",
         )
     ):
         return
     artist_id = str(phase3.get("artist_spotify_id") or "").strip()
     status = str(phase3.get("artist_identity_status") or "pending").strip()
     source = str(phase3.get("phase3_artist_identity_source") or "").strip()
+    identity_contract = str(
+        phase3.get("phase3_artist_identity_contract") or ""
+    ).strip()
+    identity_observed_at = str(
+        phase3.get("phase3_artist_identity_observed_at") or ""
+    ).strip()
     authoritative_ids = _explicit_artist_spotify_ids(merged)
     if len(authoritative_ids) > 1:
         raise FalPhase3ReviewMergeError(
@@ -937,8 +1100,33 @@ def _merge_artist_identity(
         )
     if source not in ARTIST_IDENTITY_SOURCES:
         raise FalPhase3ReviewMergeError(f"{label} has an unsupported artist identity source")
+    if source in CONFLICT_ARTIST_IDENTITY_SOURCES and (
+        status == "complete" or artist_id
+    ):
+        raise FalPhase3ReviewMergeError(
+            f"{label} conflict artist identity source cannot be complete"
+        )
+    if source in PROVIDER_ARTIST_IDENTITY_SOURCES:
+        if status == "complete" and (
+            identity_contract != ARTIST_PROVIDER_IDENTITY_CONTRACT
+            or not _valid_timestamp(identity_observed_at)
+        ):
+            raise FalPhase3ReviewMergeError(
+                f"{label} provider artist identity lacks its exact contract/provenance"
+            )
+        if status != "complete" and (identity_contract or identity_observed_at):
+            raise FalPhase3ReviewMergeError(
+                f"{label} incomplete provider artist identity carries terminal provenance"
+            )
+    elif identity_contract or identity_observed_at:
+        raise FalPhase3ReviewMergeError(
+            f"{label} non-provider artist identity carries provider provenance"
+        )
     if status == "complete":
-        if not SPOTIFY_ID_RE.fullmatch(artist_id) or not source:
+        if (
+            not SPOTIFY_ID_RE.fullmatch(artist_id)
+            or source not in COMPLETE_ARTIST_IDENTITY_SOURCES
+        ):
             raise FalPhase3ReviewMergeError(
                 f"{label} complete artist identity lacks an exact sourced Spotify ID"
             )
@@ -952,6 +1140,8 @@ def _merge_artist_identity(
     merged["artist_spotify_id"] = artist_id
     merged["artist_identity_status"] = status
     merged["phase3_artist_identity_source"] = source
+    merged["phase3_artist_identity_contract"] = identity_contract
+    merged["phase3_artist_identity_observed_at"] = identity_observed_at
 
 
 def merge_record(
@@ -1180,15 +1370,6 @@ def merge_manifests(
         phase2_source,
         phase3_rows,
     )
-    report_source = _validate_phase3_report(
-        phase3_report,
-        phase2_source=phase2_source,
-        phase2_manifest_sha256=phase2_manifest_sha256,
-        phase3_manifest_sha256=phase3_manifest_sha256,
-        phase3_records_digest=str(phase3_manifest.get("records_digest") or ""),
-        phase3_row_count=len(phase3_rows),
-    )
-
     phase2_index = _identity_index(phase2_rows, "Phase-2 manifest")
     phase3_index = _identity_index(phase3_rows, "Phase-3 manifest")
     if set(phase2_index) != set(phase3_index):
@@ -1198,6 +1379,30 @@ def merge_manifests(
             "Phase-2/Phase-3 identity tuple unions differ "
             f"(missing={missing}, added={added})"
         )
+
+    priority_phase3_rows = [
+        phase3_index[identity]
+        for identity, phase2_row in phase2_index.items()
+        if str(phase2_row.get("review_bucket") or "")
+        == ADVANCED_REVIEW_BUCKET
+    ]
+    (
+        phase3_priority_artist_count,
+        phase3_artist_complete,
+        phase3_track_complete,
+    ) = _phase3_manifest_technical_counts(priority_phase3_rows)
+    report_source = _validate_phase3_report(
+        phase3_report,
+        phase2_source=phase2_source,
+        phase2_manifest_sha256=phase2_manifest_sha256,
+        phase3_manifest_sha256=phase3_manifest_sha256,
+        phase3_records_digest=str(phase3_manifest.get("records_digest") or ""),
+        phase3_row_count=len(phase3_rows),
+        phase3_priority_track_count=len(priority_phase3_rows),
+        phase3_priority_artist_count=phase3_priority_artist_count,
+        phase3_artist_complete=phase3_artist_complete,
+        phase3_track_complete=phase3_track_complete,
+    )
 
     merged_rows = [
         merge_record(phase2_row, phase3_index[identity], index=index)
