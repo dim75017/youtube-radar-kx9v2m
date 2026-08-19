@@ -42,6 +42,11 @@ class DailyHistoryTests(unittest.TestCase):
         now = int(datetime(2026, 8, 10, 8, tzinfo=timezone.utc).timestamp() * 1000)
         captured = {}
         items = []
+        comment_counts = {
+            "abcdefghijk": "42",
+            "zyxwvutsrqp": "0",
+            "mnopqrstuvw": "-1",
+        }
         for video_id, status in (
             ("abcdefghijk", {"madeForKids": True}),
             ("zyxwvutsrqp", {"madeForKids": False}),
@@ -56,7 +61,10 @@ class DailyHistoryTests(unittest.TestCase):
                     "channelId": "UC1234567890123456789012",
                 },
                 "contentDetails": {"duration": "PT1H"},
-                "statistics": {"viewCount": "1000000"},
+                "statistics": {
+                    "viewCount": "1000000",
+                    "commentCount": comment_counts[video_id],
+                },
                 "status": status,
             })
 
@@ -82,6 +90,9 @@ class DailyHistoryTests(unittest.TestCase):
         self.assertIs(rows["abcdefghijk"]["madeForKids"], True)
         self.assertIs(rows["zyxwvutsrqp"]["madeForKids"], False)
         self.assertNotIn("madeForKids", rows["mnopqrstuvw"])
+        self.assertEqual(rows["abcdefghijk"]["comments"], 42)
+        self.assertEqual(rows["zyxwvutsrqp"]["comments"], 0)
+        self.assertNotIn("comments", rows["mnopqrstuvw"])
         self.assertEqual(rows["abcdefghijk"]["metadataSource"], radar.METADATA_SOURCE_API)
         self.assertEqual(rows["abcdefghijk"]["pubSource"], radar.METADATA_SOURCE_API)
 
@@ -2064,6 +2075,16 @@ class DailyHistoryTests(unittest.TestCase):
         radar.update_row(existing, {"vid": "abcdefghijk", "madeForKids": False}, now)
         self.assertIs(existing["madeForKids"], False)
 
+    def test_update_row_persists_only_nonnegative_comment_counts(self):
+        now = int(datetime(2026, 8, 10, 8, tzinfo=timezone.utc).timestamp() * 1000)
+        existing = {"vid": "abcdefghijk", "comments": 12}
+        radar.update_row(existing, {"vid": "abcdefghijk", "views": 2}, now)
+        self.assertEqual(existing["comments"], 12)
+        radar.update_row(existing, {"vid": "abcdefghijk", "comments": 0}, now)
+        self.assertEqual(existing["comments"], 0)
+        radar.update_row(existing, {"vid": "abcdefghijk", "comments": -1}, now)
+        self.assertEqual(existing["comments"], 0)
+
     def test_avatar_overlay_includes_kids_channels(self):
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "avatars.js"
@@ -2538,10 +2559,12 @@ class DailyHistoryTests(unittest.TestCase):
                 "upload_date": "20260719",
                 "channel_id": "UC1234567890123456789012",
                 "channel_url": "https://www.youtube.com/@FocusChannel",
+                "comment_count": 17,
             },
             now,
         )
         self.assertEqual(row["channelId"], "UC1234567890123456789012")
+        self.assertEqual(row["comments"], 17)
 
     def test_public_watch_duration_uses_real_length_seconds(self):
         self.assertEqual(
@@ -2710,12 +2733,13 @@ class DailyHistoryTests(unittest.TestCase):
             radar.write_snapshot(snapshot, {"t": 1, "d": {"all": [{"vid": "abcdefghijk", "views": 100, "pub": 1700000000000}], "trends": [], "news": [], "ours": [], "recos": [], "roadmap": []}})
             generated = int(datetime(2026, 7, 20, 8, tzinfo=timezone.utc).timestamp() * 1000)
             tracked = {"vid": "abcdefghijk", "title": "Tracked", "views": 101, "pub": 1700000000000}
-            owned = {"vid": "zyxwvutsrqp", "title": "New Lofi Girl upload", "views": 200, "pub": generated, "durH": 1.0, "source": "Official Lofi Girl daily scan"}
+            owned = {"vid": "zyxwvutsrqp", "title": "New Lofi Girl upload", "views": 200, "comments": 27, "pub": generated, "durH": 1.0, "source": "Official Lofi Girl daily scan"}
             artifact = {"version": 1, "generated_ms": generated, "shard": 0, "shards": 1, "tracked_total": 1, "tracked_ok": 1, "tracked_ids": ["abcdefghijk"], "tracked_fresh_ids": ["abcdefghijk"], "queries_total": 1, "queries_ok": 1, "queries_raw": 1, "queries_enriched": 1, "fresh": [tracked, owned], "owned_fresh": [owned], "candidates": []}
             (shards / "youtube-shard-0.json").write_text(json.dumps(artifact), encoding="utf-8")
             radar.merge_artifacts(snapshot, avatars, shards, 1)
             merged = radar.read_snapshot(snapshot)
             self.assertEqual(merged["d"]["ours"][0]["vid"], "zyxwvutsrqp")
+            self.assertEqual(merged["d"]["ours"][0]["comments"], 27)
             history = json.loads((root / "video_history" / "7a.json").read_text(encoding="utf-8"))
             self.assertEqual(history["d"]["zyxwvutsrqp"], [[generated, 200]])
 

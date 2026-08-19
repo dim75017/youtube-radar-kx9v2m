@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import openpyxl
 
@@ -177,7 +178,62 @@ class RefreshYouTubeLiveSnapshotTests(unittest.TestCase):
         self.assertEqual(result["metrics"]["missingFromListing"], 2)
         self.assertEqual(result["metrics"]["recoveredStillLive"], 1)
         self.assertEqual(result["metrics"]["confirmedEnded"], 1)
-        self.assertEqual(result["metrics"]["listingConfirmedEnded"], 1)
+        self.assertEqual(result["metrics"]["listingConfirmedEnded"], 0)
+        self.assertEqual(result["metrics"]["listingUpcoming"], 1)
+
+    def test_flat_upcoming_rows_never_call_detail_or_watch_fallback(self):
+        active_id = "0muHFBSiybw"
+        streams_upcoming = "abcdefghijk"
+        uploads_upcoming = "zyxwvutsrqp"
+
+        class FlatReader:
+            def extract_info(self, url, download=False):
+                if url == live.OFFICIAL_STREAMS_URL:
+                    return {"entries": [
+                        {"id": active_id, "live_status": "is_live"},
+                        {"id": streams_upcoming, "live_status": "is_upcoming"},
+                    ]}
+                return {"entries": [
+                    {"id": uploads_upcoming, "live_status": "is_upcoming"}
+                ]}
+
+        class DetailReader:
+            def __init__(self):
+                self.calls = []
+
+            def extract_info(self, url, download=False):
+                video_id = url.rsplit("=", 1)[-1]
+                self.calls.append(video_id)
+                if video_id != active_id:
+                    raise RuntimeError("Sign in to confirm you're not a bot")
+                return {
+                    "id": active_id,
+                    "channel_id": live.OFFICIAL_CHANNEL_ID,
+                    "availability": "public",
+                    "title": "active radio",
+                    "is_live": True,
+                    "live_status": "is_live",
+                    "concurrent_view_count": 12,
+                    "release_timestamp": 1_786_546_921,
+                }
+
+        class UnexpectedWatch:
+            def extract_info(self, video_id):
+                raise AssertionError("Explicit upcoming rows must not reach WatchPage")
+
+        detail = DetailReader()
+        result = live.discover_official_live_streams(
+            1_786_640_000_000,
+            flat_reader=FlatReader(),
+            detail_reader=detail,
+            watch_reader=UnexpectedWatch(),
+        )
+        self.assertEqual(detail.calls, [active_id])
+        self.assertEqual([row["vid"] for row in result["rows"]], [active_id])
+        self.assertEqual(result["metrics"]["streamsTabActive"], 1)
+        self.assertEqual(result["metrics"]["streamsTabCandidates"], 1)
+        self.assertEqual(result["metrics"]["listingUpcoming"], 2)
+        self.assertEqual(result["metrics"]["watchPageFallbacks"], 0)
 
     def test_trusted_previous_live_with_ambiguous_identity_blocks_discovery(self):
         class Reader:
@@ -217,6 +273,130 @@ class RefreshYouTubeLiveSnapshotTests(unittest.TestCase):
             cohort,
             {"0muHFBSiybw": {"trusted": True, "started": None}},
         )
+
+    @staticmethod
+    def watch_payload(
+        video_id="rFZHOHl-L8A",
+        *,
+        channel_id=None,
+        title="lofi hip hop radio 📚 beats to relax/study to",
+        micro_title=None,
+        status="OK",
+        reason=None,
+        is_live=True,
+        is_live_content=True,
+        is_live_now=True,
+        is_private=False,
+        is_unlisted=False,
+        is_crawlable=True,
+        canonical_url=None,
+        start="2026-08-19T07:43:43+00:00",
+        end=None,
+    ):
+        channel_id = channel_id or live.OFFICIAL_CHANNEL_ID
+        playability = {"status": status}
+        if reason is not None:
+            playability["reason"] = reason
+        broadcast = {"isLiveNow": is_live_now, "startTimestamp": start}
+        if end is not None:
+            broadcast["endTimestamp"] = end
+        return {
+            "playabilityStatus": playability,
+            "videoDetails": {
+                "videoId": video_id,
+                "channelId": channel_id,
+                "author": "Lofi Girl",
+                "title": title,
+                "isLive": is_live,
+                "isLiveContent": is_live_content,
+                "isPrivate": is_private,
+                "isCrawlable": is_crawlable,
+            },
+            "microformat": {
+                "playerMicroformatRenderer": {
+                    "externalVideoId": video_id,
+                    "externalChannelId": channel_id,
+                    "ownerChannelName": "Lofi Girl",
+                    "title": {"simpleText": micro_title or title},
+                    "canonicalUrl": canonical_url
+                    or f"https://www.youtube.com/watch?v={video_id}",
+                    "isUnlisted": is_unlisted,
+                    "liveBroadcastDetails": broadcast,
+                }
+            },
+        }
+
+    def test_watch_page_proves_exact_public_live_and_ended_states(self):
+        active = live.YouTubeWatchPageLiveProof._project(
+            self.watch_payload(), "rFZHOHl-L8A"
+        )
+        self.assertIs(active["is_live"], True)
+        self.assertEqual(active["release_timestamp"], 1_787_125_423)
+        self.assertEqual(active["title"], "lofi hip hop radio 📚 beats to relax/study to")
+
+        ended = live.YouTubeWatchPageLiveProof._project(
+            self.watch_payload(
+                video_id="X4VbdwhkE10",
+                title="old official radio",
+                status="UNPLAYABLE",
+                reason=live.ENDED_UNPLAYABLE_REASON,
+                is_live=False,
+                is_live_now=False,
+                start="2026-08-18T10:00:00Z",
+                end="2026-08-19T03:09:13Z",
+            ),
+            "X4VbdwhkE10",
+        )
+        self.assertIs(ended["is_live"], False)
+        self.assertEqual(ended["live_status"], "was_live")
+
+        mutations = (
+            {"channel_id": "UCxxxxxxxxxxxxxxxxxxxxxx"},
+            {"status": "LOGIN_REQUIRED"},
+            {"is_private": True},
+            {"is_unlisted": True},
+            {"is_crawlable": False},
+            {"is_live_content": False},
+            {"canonical_url": "https://www.youtube.com/watch?v=LTiqKDrjqr4"},
+            {"micro_title": "another title"},
+            {"start": "2026-08-19T07:43:43"},
+        )
+        for mutation in mutations:
+            with self.subTest(mutation=mutation):
+                with self.assertRaises(RuntimeError):
+                    live.YouTubeWatchPageLiveProof._project(
+                        self.watch_payload(**mutation), "rFZHOHl-L8A"
+                    )
+        with self.assertRaises(RuntimeError):
+            live.YouTubeWatchPageLiveProof._project(
+                self.watch_payload(
+                    video_id="X4VbdwhkE10",
+                    title="old official radio",
+                    status="UNPLAYABLE",
+                    reason="Video unavailable",
+                    is_live=False,
+                    is_live_now=False,
+                    end="2026-08-19T03:09:13Z",
+                ),
+                "X4VbdwhkE10",
+            )
+
+    def test_watch_page_extracts_one_strict_player_assignment(self):
+        payload = self.watch_payload()
+        html = (
+            "<script>var ytInitialPlayerResponse = "
+            + json.dumps(payload, ensure_ascii=False)
+            + ";</script>"
+        ).encode("utf-8")
+        self.assertEqual(
+            live.YouTubeWatchPageLiveProof._player_response(html), payload
+        )
+        with self.assertRaisesRegex(RuntimeError, "ambiguous"):
+            live.YouTubeWatchPageLiveProof._player_response(html + html)
+        with self.assertRaisesRegex(RuntimeError, "malformed"):
+            live.YouTubeWatchPageLiveProof._player_response(
+                b'<script>ytInitialPlayerResponse={"a":1,"a":2};</script>'
+            )
 
     @staticmethod
     def next_payload(
@@ -301,6 +481,27 @@ class RefreshYouTubeLiveSnapshotTests(unittest.TestCase):
         self.assertEqual(info["release_timestamp"], 1_786_546_921)
         self.assertEqual(info["channel_id"], live.OFFICIAL_CHANNEL_ID)
         self.assertEqual(info["detail_source"], "youtube_next_previous_start")
+        relative = client._project(
+            self.next_payload(started_text="Started streaming 8 hours ago"),
+            "0muHFBSiybw",
+            1_786_546_921_000,
+            start_source="youtube_watch_page",
+            expected_title="summer lofi radio",
+        )
+        self.assertEqual(relative["detail_source"], "youtube_next_watch_page_start")
+        with self.assertRaisesRegex(RuntimeError, "start date mismatch"):
+            client._project(
+                self.next_payload(started_text="Started streaming 8 hours ago"),
+                "0muHFBSiybw",
+                1_786_546_921_000,
+            )
+        with self.assertRaises(RuntimeError):
+            client._project(
+                self.next_payload(),
+                "0muHFBSiybw",
+                1_786_546_921_000,
+                expected_title="different title",
+            )
         for payload in (
             self.next_payload(is_live=False),
             self.next_payload(channel_id="UCxxxxxxxxxxxxxxxxxxxxxx"),
@@ -313,7 +514,7 @@ class RefreshYouTubeLiveSnapshotTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "no exact start time"):
             client._project(self.next_payload(), "0muHFBSiybw", None)
 
-    def test_antibot_detail_uses_next_with_only_prior_factual_start(self):
+    def test_antibot_cold_boot_combines_watch_proof_with_next_counter(self):
         class FlatReader:
             def extract_info(self, url, download=False):
                 if url == live.OFFICIAL_STREAMS_URL:
@@ -324,12 +525,32 @@ class RefreshYouTubeLiveSnapshotTests(unittest.TestCase):
             def extract_info(self, url, download=False):
                 raise RuntimeError("Sign in to confirm you’re not a bot")
 
+        class WatchReader:
+            def __init__(self):
+                self.calls = []
+
+            def extract_info(self, video_id):
+                self.calls.append(video_id)
+                return {
+                    "id": video_id,
+                    "channel_id": live.OFFICIAL_CHANNEL_ID,
+                    "availability": "public",
+                    "title": "summer lofi radio",
+                    "is_live": True,
+                    "live_status": "is_live",
+                    "release_timestamp": 1_786_546_921,
+                }
+
         class NextReader:
             def __init__(self):
                 self.calls = []
 
-            def extract_info(self, video_id, *, started_ms):
-                self.calls.append((video_id, started_ms))
+            def extract_info(
+                self, video_id, *, started_ms, start_source, expected_title
+            ):
+                self.calls.append(
+                    (video_id, started_ms, start_source, expected_title)
+                )
                 return {
                     "id": video_id,
                     "channel_id": live.OFFICIAL_CHANNEL_ID,
@@ -342,19 +563,25 @@ class RefreshYouTubeLiveSnapshotTests(unittest.TestCase):
                 }
 
         next_reader = NextReader()
+        watch_reader = WatchReader()
         result = live.discover_official_live_streams(
             1_786_640_000_000,
             flat_reader=FlatReader(),
             detail_reader=BlockedReader(),
+            watch_reader=watch_reader,
             next_reader=next_reader,
-            previous_active={
-                "0muHFBSiybw": {
-                    "trusted": True,
-                    "started": 1_786_546_921_000,
-                }
-            },
         )
-        self.assertEqual(next_reader.calls, [("0muHFBSiybw", 1_786_546_921_000)])
+        self.assertEqual(watch_reader.calls, ["0muHFBSiybw"])
+        self.assertEqual(
+            next_reader.calls,
+            [(
+                "0muHFBSiybw",
+                1_786_546_921_000,
+                "youtube_watch_page",
+                "summer lofi radio",
+            )],
+        )
+        self.assertEqual(result["metrics"]["watchPageFallbacks"], 1)
         self.assertEqual(result["metrics"]["nextFallbacks"], 1)
         self.assertEqual(result["points"]["0muHFBSiybw"][0][1], 3210)
 
@@ -388,7 +615,7 @@ class RefreshYouTubeLiveSnapshotTests(unittest.TestCase):
                 },
             )
 
-    def test_antibot_fallback_rejects_unverified_legacy_start(self):
+    def test_antibot_watch_proof_failure_never_reaches_next(self):
         class FlatReader:
             def extract_info(self, url, download=False):
                 return {
@@ -401,22 +628,163 @@ class RefreshYouTubeLiveSnapshotTests(unittest.TestCase):
             def extract_info(self, url, download=False):
                 raise RuntimeError("Sign in to confirm you’re not a bot")
 
-        class UnexpectedNext:
-            def extract_info(self, video_id, *, started_ms):
-                raise AssertionError("Unverified start must never reach Next")
+        class BrokenWatch:
+            def extract_info(self, video_id):
+                raise RuntimeError("strict WatchPage proof failed")
 
-        with self.assertRaisesRegex(RuntimeError, "no previously verified exact start"):
+        class UnexpectedNext:
+            def extract_info(self, video_id, **kwargs):
+                raise AssertionError("Next must never run without WatchPage proof")
+
+        with self.assertRaisesRegex(RuntimeError, "strict WatchPage proof failed"):
             live.discover_official_live_streams(
                 flat_reader=FlatReader(),
                 detail_reader=BlockedReader(),
+                watch_reader=BrokenWatch(),
                 next_reader=UnexpectedNext(),
-                previous_active={
-                    "0muHFBSiybw": {
-                        "trusted": False,
-                        "started": 1_786_546_921_000,
-                    }
-                },
             )
+
+    def test_antibot_replacement_removes_ended_previous_radio(self):
+        new_id = "rFZHOHl-L8A"
+        old_id = "X4VbdwhkE10"
+
+        class FlatReader:
+            def extract_info(self, url, download=False):
+                if url == live.OFFICIAL_STREAMS_URL:
+                    return {"entries": [{"id": new_id, "live_status": "is_live"}]}
+                return {"entries": []}
+
+        class BlockedReader:
+            def extract_info(self, url, download=False):
+                raise RuntimeError("Sign in to confirm you're not a bot")
+
+        class WatchReader:
+            def extract_info(self, video_id):
+                if video_id == new_id:
+                    return {
+                        "id": new_id,
+                        "channel_id": live.OFFICIAL_CHANNEL_ID,
+                        "availability": "public",
+                        "title": "lofi hip hop radio",
+                        "is_live": True,
+                        "live_status": "is_live",
+                        "release_timestamp": 1_787_125_423,
+                    }
+                return {
+                    "id": old_id,
+                    "channel_id": live.OFFICIAL_CHANNEL_ID,
+                    "availability": "public",
+                    "title": "ended radio",
+                    "is_live": False,
+                    "live_status": "was_live",
+                    "release_timestamp": 1_787_040_000,
+                    "end_timestamp": 1_787_108_953,
+                }
+
+        class NextReader:
+            def __init__(self):
+                self.calls = []
+
+            def extract_info(
+                self, video_id, *, started_ms, start_source, expected_title
+            ):
+                self.calls.append(video_id)
+                return {
+                    "id": video_id,
+                    "channel_id": live.OFFICIAL_CHANNEL_ID,
+                    "availability": "public",
+                    "title": expected_title,
+                    "is_live": True,
+                    "live_status": "is_live",
+                    "concurrent_view_count": 4321,
+                    "release_timestamp": started_ms / 1000,
+                }
+
+        next_reader = NextReader()
+        result = live.discover_official_live_streams(
+            1_787_128_000_000,
+            flat_reader=FlatReader(),
+            detail_reader=BlockedReader(),
+            watch_reader=WatchReader(),
+            next_reader=next_reader,
+            previous_active={old_id: {"trusted": True, "started": 1_787_040_000_000}},
+        )
+        self.assertEqual([row["vid"] for row in result["rows"]], [new_id])
+        self.assertEqual(result["endedIds"], [old_id])
+        self.assertEqual(result["metrics"]["watchPageFallbacks"], 2)
+        self.assertEqual(result["metrics"]["nextFallbacks"], 1)
+        self.assertEqual(result["metrics"]["confirmedEnded"], 1)
+        self.assertEqual(next_reader.calls, [new_id])
+
+    def test_exact_ended_recording_error_uses_watch_proof_without_next(self):
+        active_id = "rFZHOHl-L8A"
+        ended_id = "X4VbdwhkE10"
+
+        class FlatReader:
+            def extract_info(self, url, download=False):
+                if url == live.OFFICIAL_STREAMS_URL:
+                    return {"entries": [{"id": active_id, "live_status": "is_live"}]}
+                return {"entries": []}
+
+        class DetailReader:
+            def extract_info(self, url, download=False):
+                video_id = url.rsplit("=", 1)[-1]
+                if video_id == ended_id:
+                    raise RuntimeError(
+                        f"ERROR: [youtube] {ended_id}: "
+                        f"{live.ENDED_UNPLAYABLE_REASON}"
+                    )
+                return {
+                    "id": active_id,
+                    "channel_id": live.OFFICIAL_CHANNEL_ID,
+                    "availability": "public",
+                    "title": "current radio",
+                    "is_live": True,
+                    "live_status": "is_live",
+                    "concurrent_view_count": 20,
+                    "release_timestamp": 1_787_125_423,
+                }
+
+        class WatchReader:
+            def __init__(self):
+                self.calls = []
+
+            def extract_info(self, video_id):
+                self.calls.append(video_id)
+                return {
+                    "id": ended_id,
+                    "channel_id": live.OFFICIAL_CHANNEL_ID,
+                    "availability": "public",
+                    "title": "ended radio",
+                    "is_live": False,
+                    "live_status": "was_live",
+                    "release_timestamp": 1_780_555_998,
+                    "end_timestamp": 1_787_108_953,
+                }
+
+        class UnexpectedNext:
+            def extract_info(self, video_id, **kwargs):
+                raise AssertionError("An ended WatchPage proof must not call Next")
+
+        watch_reader = WatchReader()
+        result = live.discover_official_live_streams(
+            1_787_128_000_000,
+            flat_reader=FlatReader(),
+            detail_reader=DetailReader(),
+            watch_reader=watch_reader,
+            next_reader=UnexpectedNext(),
+            previous_active={ended_id: {"trusted": True}},
+        )
+        self.assertEqual(watch_reader.calls, [ended_id])
+        self.assertEqual(result["endedIds"], [ended_id])
+        self.assertEqual(result["metrics"]["confirmedEnded"], 1)
+        self.assertEqual(result["metrics"]["watchPageFallbacks"], 1)
+        self.assertEqual(result["metrics"]["nextFallbacks"], 0)
+        self.assertFalse(
+            live.is_youtube_ended_recording_error(
+                RuntimeError(live.ENDED_UNPLAYABLE_REASON + " retry"), ended_id
+            )
+        )
 
     def test_streams_tab_entry_without_flat_status_is_hydrated_not_dropped(self):
         class Reader:
@@ -464,6 +832,7 @@ class RefreshYouTubeLiveSnapshotTests(unittest.TestCase):
             {"is_live": False},
             {"availability": "private"},
             {"concurrent_view_count": None},
+            {"concurrent_view_count": 1.5},
         ):
             with self.subTest(mutation=mutation):
                 with self.assertRaises(RuntimeError):
@@ -508,6 +877,65 @@ class RefreshYouTubeLiveSnapshotTests(unittest.TestCase):
         official["points"][video_id] = [(observed + 1, 0)]
         zero_payload = live.build_payload(workbook, official_snapshot=official)
         self.assertIs(zero_payload["d"]["liveSummary"][video_id]["active"], True)
+
+    def test_confirmed_ended_official_radio_cannot_remain_active_from_sheet_lag(self):
+        observed = live.to_ms("2026-08-11T12:00:00Z")
+        official_id = "0muHFBSiybw"
+        official = {
+            "rows": [{
+                "vid": official_id,
+                "channel": "Lofi Girl",
+                "channelId": live.OFFICIAL_CHANNEL_ID,
+                "title": "current radio",
+                "url": f"https://www.youtube.com/watch?v={official_id}",
+                "started": observed - 3_600_000,
+                "liveStatus": "is_live",
+            }],
+            "points": {official_id: [(observed, 10)]},
+            "endedIds": ["abcdefghijk"],
+            "metrics": {"expected": 1, "verified": 1, "observedT": observed},
+        }
+        payload = live.build_payload(self.workbook(), official_snapshot=official)
+        self.assertIs(payload["d"]["liveSummary"][official_id]["active"], True)
+        self.assertIs(payload["d"]["liveSummary"]["abcdefghijk"]["active"], False)
+
+    def test_pages_verification_requires_exact_asset_bytes(self):
+        class Response:
+            def __init__(self, request):
+                self.request = request
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def geturl(self):
+                return self.request.full_url
+
+            def read(self, limit):
+                self.asserted_limit = limit
+                return b"window.LOFI_LIVE_DATA={};\n"
+
+        with tempfile.TemporaryDirectory() as directory:
+            asset = Path(directory) / "Lofi_Radar_live_data.js"
+            asset.write_bytes(b"window.LOFI_LIVE_DATA={};\n")
+
+            def open_response(request, timeout):
+                self.assertEqual(timeout, 30)
+                self.assertIn(
+                    "/youtube-radar-kx9v2m/Lofi_Radar_live_data.js?live_verify=",
+                    request.full_url,
+                )
+                return Response(request)
+
+            with mock.patch.object(live.urllib.request, "urlopen", open_response):
+                live.verify_published_asset(
+                    asset,
+                    "https://dim75017.github.io/youtube-radar-kx9v2m/",
+                    timeout_seconds=1,
+                    interval_seconds=0.1,
+                )
 
     def test_daily_workflow_refreshes_asset_without_hourly_deploy_loop(self):
         workflow = Path('.github/workflows/refresh-instrumental-radar.yml').read_text(encoding='utf-8')

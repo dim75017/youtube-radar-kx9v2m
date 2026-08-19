@@ -25,15 +25,20 @@ const latest = {
   title: 'summer lofi - chill beats to relax to',
   pub: daysAgo(2),
   views: 2_000,
+  comments: 321,
 };
 const ours = [latest, video('young-a', 5, 1_000), video('young-b', 6, 800), video('young-c', 7, 600), video('old', 200, 100_000)];
+ours.find(row => row.vid === 'young-b').comments = -1;
 const history = Object.fromEntries(ours.map(row => [row.vid, [[now, row.views]]]));
 const market = [video('market-young-a', 5, 1_100), video('market-young-b', 6, 900), video('market-young-c', 7, 700), video('market-old', 200, 999_999)];
 const context = {
   Date: FixedDate,
   DATA: {ours, hist: history, recos: []},
   SYNCED: 1,
-  window: {STUDIO_DATA: {d: {'latest-lofi': {awtMs: 1_308_000, awp: 35.74}}}, CMT: {}},
+  window: {
+    STUDIO_DATA: {d: {'latest-lofi': {awtMs: 1_308_000, awp: 35.74}}},
+    CMT: {'latest-lofi': 999, 'young-a': 17, 'young-b': 19},
+  },
   mixRows: () => market,
   genreKey: () => 'ambient',
   recoGenreKey: (value, row) => /\b(?:lofi|lo-fi|chillhop)\b/i.test(String(value || '') + ' ' + String(row?.title || '')) ? 'lofi' : '',
@@ -58,6 +63,10 @@ const enrichedLatest = rows.find(row => row.vid === 'latest-lofi');
 assert.equal(enrichedLatest.genre, 'Lofi / chillhop', 'an explicit genre in the title must fill the missing badge');
 assert.ok(Math.abs(enrichedLatest.durH - (1_308_000 / 0.3574 / 3_600_000)) < 1e-9,
   'Studio watch duration and watched percentage must restore the real video duration');
+assert.equal(enrichedLatest.comments, 321, 'fresh row comments must override the legacy CMT snapshot');
+assert.equal(young.comments, 17, 'legacy CMT remains a fallback while old rows migrate');
+assert.equal(rows.find(row => row.vid === 'young-b').comments, 19,
+  'invalid direct comments must fall back instead of being coerced to zero');
 assert.equal(young.cohAgeLabel, '0-7 days');
 assert.equal(young.cohN, 3, 'market comparison must exclude the older, high-view video');
 assert.equal(young.medViews, 800, 'channel raw-view baseline must only use releases of the same age');
@@ -65,13 +74,43 @@ assert.equal(old.pctCh, null, 'insufficient same-age peers must remain neutral i
 assert.ok(young.vpm > 0, 'lifetime velocity stays available as an age-normalized raw metric');
 assert.match(source, /function anaProgressBarHTML\(o\)/,
   'Analysis cards must use one shared progress-bar renderer');
-assert.match(source, /hasPercentile\?Math\.max\(0,Math\.min\(100,Number\(o\.pctCh\)\)\):50/,
-  'Missing comparable peers must render a neutral midpoint bar, not an invisible zero-width bar');
+const pcolStart = source.indexOf('function pcol(');
+const pcolEnd = source.indexOf('\nfunction vsMed', pcolStart);
+const performanceStart = source.indexOf('function anaPercentileValue(');
+const performanceEnd = source.indexOf('\nfunction anaCardHTML', performanceStart);
+assert.ok(pcolStart >= 0 && pcolEnd > pcolStart && performanceStart >= 0 && performanceEnd > performanceStart,
+  'Analysis percentile and progress helpers must remain independently testable');
+const progressContext = {};
+vm.runInNewContext(
+  `${source.slice(pcolStart, pcolEnd)}\n${source.slice(performanceStart, performanceEnd)}; this.progress=anaProgressBarHTML;`,
+  progressContext,
+);
+const pending = progressContext.progress({pctCh: null, pct: null});
+assert.match(pending, /data-performance-source="pending"/,
+  'missing comparisons must be labelled pending instead of becoming a fake zero percentile');
+assert.match(pending, /width:50%;background:#64748b/,
+  'missing comparisons must render a visible neutral midpoint bar');
+assert.match(pending, />pending<\/span>/, 'the pending state must be explicit on the card');
+assert.doesNotMatch(pending, /background:#f87171/,
+  'missing comparisons must never inherit the underperformance red');
+const marketFallback = progressContext.progress({pctCh: '', pct: 75});
+assert.match(marketFallback, /data-performance-source="market"/,
+  'a real age-matched market percentile may backfill a missing channel percentile');
+assert.match(marketFallback, /width:75%;background:#34d399/,
+  'the market fallback must preserve its factual percentile and color');
+const invalid = progressContext.progress({pctCh: 'not-a-number', pct: null});
+assert.match(invalid, /data-performance-source="pending"/,
+  'non-numeric values must stay pending rather than being coerced to a score');
+const realZero = progressContext.progress({pctCh: 0, pct: 75});
+assert.match(realZero, /data-performance-source="channel"/,
+  'a real zero percentile remains valid and must not fall through to market');
 const cardStart = source.indexOf('function anaCardHTML(');
 const cardEnd = source.indexOf('\nfunction fillAnaLikes', cardStart);
 assert.ok(cardStart >= 0 && cardEnd > cardStart, 'Analysis card renderer must remain available');
 assert.match(source.slice(cardStart, cardEnd), /gtag\(o\.genre\).*fmtDur\(o\.durH\)/,
   'Analysis grid cards must show genre and duration together');
+assert.match(source.slice(cardStart, cardEnd), /const cmt=o\.comments/,
+  'Analysis cards must render the normalized fresh-or-legacy comment count');
 assert.doesNotMatch(source.slice(cardStart, cardEnd), /age cohort ·/,
   'The age-cohort label must not clutter Analysis cards');
 

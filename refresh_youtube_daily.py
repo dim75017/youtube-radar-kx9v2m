@@ -354,6 +354,18 @@ def split_keywords(value: object) -> list[str]:
     return [part.strip() for part in re.split(r"\s*;\s*|[\r\n]+", str(value or "")) if part.strip()]
 
 
+def parse_nonnegative_count(value: object) -> int | None:
+    """Accept exact public counters without coercing missing or invalid values to zero."""
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, int):
+        return value if value >= 0 else None
+    if isinstance(value, float):
+        return int(value) if math.isfinite(value) and value >= 0 and value.is_integer() else None
+    text = str(value).strip()
+    return int(text) if re.fullmatch(r"\d+", text) else None
+
+
 def stable_shard(value: str, shards: int) -> int:
     digest = hashlib.sha256(value.encode("utf-8")).digest()
     return int.from_bytes(digest[:8], "big") % shards
@@ -2086,6 +2098,9 @@ def info_to_row(info: dict, now_ms: int, *, genre: str = "", cluster: str = "", 
     followers = info.get("channel_follower_count")
     if isinstance(followers, (int, float)) and followers > 0:
         row["subs"] = int(followers)
+    comments = parse_nonnegative_count(info.get("comment_count"))
+    if comments is not None:
+        row["comments"] = comments
     if isinstance(duration, (int, float)):
         row["durH"] = float(duration) / 3600
     if published:
@@ -2204,6 +2219,9 @@ def fetch_api_rows(
                 "metadataSource": METADATA_SOURCE_API,
                 "pubSource": METADATA_SOURCE_API,
             }
+            comments = parse_nonnegative_count(statistics.get("commentCount"))
+            if comments is not None:
+                row["comments"] = comments
             made_for_kids = (item.get("status") or {}).get("madeForKids")
             if isinstance(made_for_kids, bool):
                 row["madeForKids"] = made_for_kids
@@ -3470,6 +3488,9 @@ def should_replace_metadata(existing: dict, fresh: dict, key: str) -> bool:
 def update_row(existing: dict, fresh: dict, now_ms: int) -> None:
     if isinstance(fresh.get("views"), (int, float)):
         existing["views"] = int(fresh["views"])
+    comments = parse_nonnegative_count(fresh.get("comments"))
+    if comments is not None:
+        existing["comments"] = comments
     for key in CARD_METADATA_FIELDS:
         if fresh.get(key) not in (None, "") and should_replace_metadata(existing, fresh, key):
             existing[key] = fresh[key]

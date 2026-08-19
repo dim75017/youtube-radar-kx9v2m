@@ -1906,6 +1906,11 @@ function anaAgeComparable(rows,ageDays,minCount){
   if(nearby.length>=minCount)return {rows:nearby,label:target.label+' (nearby ages)',exact:false,sufficient:true};
   return {rows:exact,label:target.label,exact:true,sufficient:false};
 }
+function anaCommentCount(value){
+  if(value==null||value===''||typeof value==='boolean')return null;
+  const count=Number(value);
+  return Number.isFinite(count)&&count>=0&&Math.floor(count)===count?count:null;
+}
 function anaRows(){
   if(_anaCache&&_anaT===SYNCED)return _anaCache;
   const SD=(window.STUDIO_DATA&&window.STUDIO_DATA.d)||{};
@@ -1949,6 +1954,11 @@ function anaRows(){
   });
   const CM=window.CMT||{};
   out.forEach(o=>{
+    const direct=anaCommentCount(o.comments);
+    const legacy=anaCommentCount(CM[o.vid]);
+    o.comments=direct!=null?direct:legacy;
+  });
+  out.forEach(o=>{
     const peers=anaAgeComparable(out.filter(x=>x.vid!==o.vid),o.ageDays,2);
     const comparable=peers.sufficient?peers.rows:[];
     const velocityPeers=comparable.filter(x=>x.vpm!=null);
@@ -1959,7 +1969,7 @@ function anaRows(){
     o.awpMed=median(comparable.map(x=>x.st?x.st.awp:null));
     o.awtMed=median(comparable.map(x=>x.st?x.st.awtMs:null));
     o.medViews=median(comparable.map(x=>x.views));
-    o.medCmt=median(comparable.map(x=>CM[x.vid]!=null?CM[x.vid]:null));
+    o.medCmt=median(comparable.map(x=>x.comments));
     o.pctCh=(o.vpm!=null&&velocityPeers.length>=2)?Math.round(velocityPeers.filter(x=>x.vpm<o.vpm).length/velocityPeers.length*100):null;
     o.pctNow=(o.vNow!=null&&recentVelocityPeers.length>=2)?Math.round(recentVelocityPeers.filter(x=>x.vNow<o.vNow).length/recentVelocityPeers.length*100):null;
     o.diags=anaDiags(o);
@@ -2319,14 +2329,30 @@ function anaStat(val,med,lbl,hl,fmt,baseline){
   const col=vsMed(val,med);
   return '<div class="vstat'+(hl?' hl':'')+(tip?' tipw':'')+'"'+(tip?' style="--tipc:'+col+'"':'')+'><b style="color:'+col+'">'+f(val)+'</b><span>'+lbl+'</span>'+tipHTML(val,med,f,baseline)+'</div>';
 }
+function anaPercentileValue(value){
+  if(value==null||value===''||typeof value==='boolean')return null;
+  const percentile=Number(value);
+  return Number.isFinite(percentile)?Math.max(0,Math.min(100,percentile)):null;
+}
+function anaPerformancePercentile(o){
+  const channel=anaPercentileValue(o&&o.pctCh);
+  if(channel!=null)return {value:channel,source:'channel'};
+  const market=anaPercentileValue(o&&o.pct);
+  return market!=null?{value:market,source:'market'}:null;
+}
 function anaProgressBarHTML(o){
-  const hasPercentile=Number.isFinite(Number(o&&o.pctCh));
-  const width=hasPercentile?Math.max(0,Math.min(100,Number(o.pctCh))):50;
-  const color=hasPercentile?pcol(Number(o.pctCh)):'#64748b';
-  return '<div style="display:flex;align-items:center;gap:8px;margin:2px 0 10px"><div class="pbar" aria-label="'+(hasPercentile?'Channel performance percentile':'Channel performance comparison pending')+'"><i style="width:'+width+'%;background:'+color+'"></i></div></div>';
+  const metric=anaPerformancePercentile(o);
+  const fr=typeof LANG!=='undefined'&&LANG==='fr';
+  const width=metric?metric.value:50;
+  const color=metric?pcol(metric.value):'#64748b';
+  const source=metric?metric.source:'pending';
+  const label=metric
+    ?(metric.source==='channel'?(fr?'Percentile chaîne à âge comparable':'Age-matched channel percentile'):(fr?'Percentile marché à âge comparable':'Age-matched market percentile'))
+    :(fr?'Comparaison en attente · données à âge comparable insuffisantes':'Comparison pending · not enough age-matched data');
+  return '<div style="display:flex;align-items:center;gap:8px;margin:2px 0 10px"><div class="pbar" data-performance-source="'+source+'" aria-label="'+label+'" title="'+label+'"><i style="width:'+width+'%;background:'+color+'"></i></div>'+(metric?'':'<span class="result-count">'+(fr?'en attente':'pending')+'</span>')+'</div>';
 }
 function anaCardHTML(o,i){
-  const cmt=(window.CMT&&window.CMT[o.vid]!=null)?window.CMT[o.vid]:null;
+  const cmt=o.comments;
   const ageRef='Same-age channel median ('+o.chAgeLabel+') · ';
   return '<div class="vcard ana-c" onclick="openAnaIdx('+i+')">'+
     '<div class="thumbwrap"><img loading="lazy" src="'+thumb(o.vid)+'" onerror="this.style.visibility=\'hidden\'"></div>'+

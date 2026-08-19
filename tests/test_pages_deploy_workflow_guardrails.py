@@ -5,6 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEPLOY = (ROOT / ".github/workflows/deploy-pages.yml").read_text(encoding="utf-8")
+BUILD_JOB = DEPLOY.split("\n  deploy:\n", 1)[0]
 
 
 class PagesDeployWorkflowGuardrailsTests(unittest.TestCase):
@@ -61,13 +62,66 @@ class PagesDeployWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("deployment_outcome: ${{ steps.deployment.outcome }}", DEPLOY)
 
     def test_dispatch_never_deploys_a_non_main_revision(self):
-        self.assertIn('git merge-base --is-ancestor "$resolved_sha" origin/main', DEPLOY)
         self.assertIn('ref: ${{ github.sha }}', DEPLOY)
         self.assertIn('build_revision: ${{ steps.revision.outputs.sha }}', DEPLOY)
         self.assertIn('if [[ "$REQUESTED_SHA" != "$RUN_SHA" ]]', DEPLOY)
         self.assertIn('if [[ "$RUN_SHA" != "$RESOLVED_SHA" ]]', DEPLOY)
         self.assertIn('ref: ${{ needs.build.outputs.resolved_sha }}', DEPLOY)
-        self.assertIn("fetch-depth: 0", DEPLOY)
+        self.assertIn('GH_TOKEN: ${{ github.token }}', BUILD_JOB)
+        self.assertIn(
+            'repos/${GITHUB_REPOSITORY}/commits/${RUN_SHA}', BUILD_JOB
+        )
+        self.assertIn(
+            'repos/${GITHUB_REPOSITORY}/compare/${RUN_SHA}...main', BUILD_JOB
+        )
+        self.assertIn("ahead|identical)", BUILD_JOB)
+        self.assertNotIn("git fetch", BUILD_JOB)
+        self.assertNotIn("git merge-base", BUILD_JOB)
+
+    def test_build_checkout_is_shallow_sparse_and_public_only(self):
+        self.assertIn("Checkout only the public Pages runtime", BUILD_JOB)
+        self.assertIn("fetch-depth: 1", BUILD_JOB)
+        self.assertNotIn("fetch-depth: 0", BUILD_JOB)
+        self.assertIn("sparse-checkout-cone-mode: false", BUILD_JOB)
+        for pattern in (
+            "/*.html",
+            "/*.js",
+            "/*.json",
+            "!/Spotify_Soundcharts_data_*.js",
+            "!/soundcharts-instrumental-cache.json",
+            "/assets/",
+            "/spotify/",
+            "/Spotify_Performance_tracks/",
+            "/video_history/",
+            "/prune_pages_artifact.py",
+        ):
+            with self.subTest(pattern=pattern):
+                self.assertIn(pattern, BUILD_JOB)
+        for private_tree in (
+            "/soundcharts-history/",
+            "/sr-prospects/",
+            "/tests/",
+            "/youtube_recommendation_ledger/",
+        ):
+            with self.subTest(private_tree=private_tree):
+                self.assertNotIn(private_tree, BUILD_JOB)
+
+    def test_only_active_and_latest_soundcharts_snapshots_are_materialized(self):
+        self.assertIn("Materialize required Soundcharts snapshots", BUILD_JOB)
+        self.assertIn(
+            'grep -oE "$snapshot_reference_re" spotify/index.html', BUILD_JOB
+        )
+        self.assertIn('git ls-tree --name-only "$RUN_SHA"', BUILD_JOB)
+        self.assertIn(
+            'required_snapshots=("${referenced_snapshots[@]}" "$latest_snapshot")',
+            BUILD_JOB,
+        )
+        self.assertIn("git sparse-checkout add --stdin", BUILD_JOB)
+        self.assertIn('[[ ! -f "$snapshot" || -L "$snapshot" ]]', BUILD_JOB)
+        self.assertLess(
+            BUILD_JOB.index("Materialize required Soundcharts snapshots"),
+            BUILD_JOB.index("actions/jekyll-build-pages@v1"),
+        )
 
     def test_youtube_publishers_wait_for_the_exact_pages_run(self):
         for name in (
