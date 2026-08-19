@@ -8,6 +8,7 @@ from enrich_soundcharts_fal_phase3 import (
     ADVANCED_BUCKET,
     FalPhase3Error,
     RequestTask,
+    _store_artist_response,
     _store_song_response,
     build_enriched_manifest,
     build_report,
@@ -255,6 +256,225 @@ class FalPhase3Tests(unittest.TestCase):
                         "SELECT COUNT(*) FROM fal_phase3_requests WHERE status IN ('pending','retry')"
                     ).fetchone()[0],
                     0,
+                )
+            finally:
+                connection.close()
+
+    def test_phase1_shared_spotify_id_is_a_soundcharts_uuid_alias_not_a_conflict(self):
+        second = advanced_record()
+        second.update(
+            track_uuid="track-soundcharts-2",
+            spotify_id="2" * 22,
+            candidate_uuid="artist-soundcharts-2",
+            candidate_name="Quiet Artist Alias",
+            record_digest="second-record",
+        )
+        with tempfile.TemporaryDirectory() as raw_dir:
+            root = Path(raw_dir)
+            phase1_path = root / "phase1.sqlite3"
+            make_phase1(phase1_path)
+            phase1 = sqlite3.connect(phase1_path)
+            try:
+                phase1.execute(
+                    """INSERT INTO candidates(
+                         soundcharts_uuid,spotify_id,name,status,catalog_total)
+                       VALUES(?,?,?,?,?)""",
+                    (
+                        second["candidate_uuid"],
+                        ARTIST_ID,
+                        second["candidate_name"],
+                        "review_inventory_complete",
+                        1,
+                    ),
+                )
+                phase1.execute(
+                    "INSERT INTO candidate_tracks(candidate_uuid,track_uuid) VALUES(?,?)",
+                    (second["candidate_uuid"], second["track_uuid"]),
+                )
+                phase1.commit()
+            finally:
+                phase1.close()
+            connection, _ = open_state(root / "phase3.sqlite3")
+            try:
+                seed_advanced_bucket(connection, [advanced_record(), second])
+                connection.execute(
+                    """UPDATE fal_phase3_artists
+                          SET spotify_id='',identity_status='identity_conflict',
+                              identity_source='phase1_candidates_exact_spotify_id'"""
+                )
+                connection.execute(
+                    """UPDATE fal_phase3_requests
+                          SET status='identity_conflict',
+                              error_code='duplicate_or_conflicting_phase1_artist_identity'
+                        WHERE request_kind='artist_identifiers'"""
+                )
+                connection.commit()
+                self.assertEqual(
+                    hydrate_artist_identities_from_phase1(connection, phase1_path),
+                    2,
+                )
+                rows = connection.execute(
+                    """SELECT a.candidate_uuid,a.spotify_id,a.identity_status,a.identity_source,
+                              r.status AS request_status,r.error_code
+                         FROM fal_phase3_artists a
+                         JOIN fal_phase3_requests r
+                           ON r.request_kind='artist_identifiers'
+                          AND r.entity_id=a.candidate_uuid
+                        ORDER BY a.candidate_uuid"""
+                ).fetchall()
+                self.assertEqual(len(rows), 2)
+                for row in rows:
+                    self.assertEqual(row["spotify_id"], ARTIST_ID)
+                    self.assertEqual(row["identity_status"], "complete")
+                    self.assertEqual(
+                        row["identity_source"],
+                        "phase1_candidates_exact_spotify_id",
+                    )
+                    self.assertEqual(row["request_status"], "complete_phase1")
+                    self.assertIsNone(row["error_code"])
+            finally:
+                connection.close()
+
+    def test_phase1_identity_disagrees_with_existing_exact_id_fails_closed(self):
+        with tempfile.TemporaryDirectory() as raw_dir:
+            root = Path(raw_dir)
+            phase1_path = root / "phase1.sqlite3"
+            make_phase1(phase1_path)
+            connection, _ = open_state(root / "phase3.sqlite3")
+            try:
+                seed_advanced_bucket(connection, [advanced_record()])
+                connection.execute(
+                    """UPDATE fal_phase3_artists
+                          SET spotify_id=?,identity_status='complete',
+                              identity_source='soundcharts_provider_exact'
+                        WHERE candidate_uuid=?""",
+                    ("B" * 22, ARTIST_UUID),
+                )
+                connection.commit()
+
+                self.assertEqual(
+                    hydrate_artist_identities_from_phase1(connection, phase1_path),
+                    0,
+                )
+                row = connection.execute(
+                    """SELECT a.spotify_id,a.identity_status,r.status AS request_status,
+                              r.error_code,a.identifiers_evidence_json
+                         FROM fal_phase3_artists a
+                         JOIN fal_phase3_requests r
+                           ON r.request_kind='artist_identifiers'
+                          AND r.entity_id=a.candidate_uuid
+                        WHERE a.candidate_uuid=?""",
+                    (ARTIST_UUID,),
+                ).fetchone()
+                self.assertEqual(row["spotify_id"], "")
+                self.assertEqual(row["identity_status"], "identity_conflict")
+                self.assertEqual(row["request_status"], "identity_conflict")
+                self.assertEqual(
+                    row["error_code"],
+                    "duplicate_or_conflicting_phase1_artist_identity",
+                )
+                evidence = json.loads(row["identifiers_evidence_json"])
+                self.assertEqual(evidence["existing_spotify_id"], "B" * 22)
+                self.assertEqual(evidence["phase1_spotify_id"], ARTIST_ID)
+
+                # A second run must not reinterpret the now-blank selected ID
+                # as proof that the exact cross-source disagreement vanished.
+                self.assertEqual(
+                    hydrate_artist_identities_from_phase1(connection, phase1_path),
+                    0,
+                )
+                rerun = connection.execute(
+                    """SELECT a.spotify_id,a.identity_status,r.status AS request_status
+                         FROM fal_phase3_artists a
+                         JOIN fal_phase3_requests r
+                           ON r.request_kind='artist_identifiers'
+                          AND r.entity_id=a.candidate_uuid
+                        WHERE a.candidate_uuid=?""",
+                    (ARTIST_UUID,),
+                ).fetchone()
+                self.assertEqual(
+                    (
+                        rerun["spotify_id"],
+                        rerun["identity_status"],
+                        rerun["request_status"],
+                    ),
+                    ("", "identity_conflict", "identity_conflict"),
+                )
+            finally:
+                connection.close()
+
+    def test_phase1_shared_spotify_aliases_survive_cache_hydration(self):
+        second = advanced_record()
+        second.update(
+            track_uuid="track-soundcharts-2",
+            spotify_id="2" * 22,
+            candidate_uuid="artist-soundcharts-2",
+            candidate_name="Quiet Artist Alias",
+            record_digest="second-record",
+        )
+        with tempfile.TemporaryDirectory() as raw_dir:
+            root = Path(raw_dir)
+            phase1_path = root / "phase1.sqlite3"
+            cache_path = root / "cache.json"
+            make_phase1(phase1_path)
+            phase1 = sqlite3.connect(phase1_path)
+            try:
+                phase1.execute(
+                    """INSERT INTO candidates(
+                         soundcharts_uuid,spotify_id,name,status,catalog_total)
+                       VALUES(?,?,?,?,?)""",
+                    (
+                        second["candidate_uuid"],
+                        ARTIST_ID,
+                        second["candidate_name"],
+                        "review_inventory_complete",
+                        1,
+                    ),
+                )
+                phase1.execute(
+                    "INSERT INTO candidate_tracks(candidate_uuid,track_uuid) VALUES(?,?)",
+                    (second["candidate_uuid"], second["track_uuid"]),
+                )
+                phase1.commit()
+            finally:
+                phase1.close()
+            cache_path.write_text(
+                json.dumps({"version": 1, "tracks": {}, "artists": {}}),
+                encoding="utf-8",
+            )
+            connection, _ = open_state(root / "phase3.sqlite3")
+            try:
+                seed_advanced_bucket(connection, [advanced_record(), second])
+                self.assertEqual(
+                    hydrate_artist_identities_from_phase1(connection, phase1_path),
+                    2,
+                )
+                self.assertEqual(hydrate_bound_cache(connection, cache_path), (0, 0))
+                rows = connection.execute(
+                    """SELECT spotify_id,identity_status,identity_source
+                         FROM fal_phase3_artists ORDER BY candidate_uuid"""
+                ).fetchall()
+                self.assertEqual(
+                    [
+                        (
+                            row["spotify_id"],
+                            row["identity_status"],
+                            row["identity_source"],
+                        )
+                        for row in rows
+                    ],
+                    [
+                        (
+                            ARTIST_ID,
+                            "complete",
+                            "phase1_candidates_exact_spotify_id",
+                        ),
+                        (
+                            ARTIST_ID,
+                            "complete",
+                            "phase1_candidates_exact_spotify_id",
+                        ),
+                    ],
                 )
             finally:
                 connection.close()
@@ -593,7 +813,7 @@ class FalPhase3Tests(unittest.TestCase):
                 SOUNDCHARTS_SONG_EVIDENCE_CONTRACT,
             )
 
-    def test_duplicate_cache_artist_identity_marks_every_active_artist_conflict(self):
+    def test_duplicate_cache_artist_identity_is_accepted_as_exact_alias(self):
         second = advanced_record()
         second.update(
             track_uuid="track-soundcharts-2",
@@ -632,8 +852,149 @@ class FalPhase3Tests(unittest.TestCase):
                 ).fetchall()
                 self.assertEqual(
                     [(row["spotify_id"], row["identity_status"]) for row in rows],
-                    [("", "identity_conflict"), ("", "identity_conflict")],
+                    [(ARTIST_ID, "complete"), (ARTIST_ID, "complete")],
                 )
+            finally:
+                connection.close()
+
+    def test_cache_identity_disagreement_for_one_uuid_preserves_both_ids(self):
+        cache_id = "D" * 22
+        with tempfile.TemporaryDirectory() as raw_dir:
+            root = Path(raw_dir)
+            cache_path = root / "cache.json"
+            cache_path.write_text(
+                json.dumps(
+                    {
+                        "version": 1,
+                        "tracks": {},
+                        "artists": {
+                            ARTIST_UUID: {
+                                "spotify_id": cache_id,
+                                "identifiers_fetched_at": "2026-08-10T08:00:00Z",
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            connection, _ = open_state(root / "phase3.sqlite3")
+            try:
+                seed_advanced_bucket(connection, [advanced_record()])
+                connection.execute(
+                    """UPDATE fal_phase3_artists
+                          SET spotify_id=?,identity_status='complete',
+                              identity_source='phase1_candidates_exact_spotify_id'
+                        WHERE candidate_uuid=?""",
+                    (ARTIST_ID, ARTIST_UUID),
+                )
+                connection.commit()
+                self.assertEqual(hydrate_bound_cache(connection, cache_path), (0, 0))
+                row = connection.execute(
+                    """SELECT spotify_id,identity_status,identifiers_evidence_json
+                         FROM fal_phase3_artists WHERE candidate_uuid=?""",
+                    (ARTIST_UUID,),
+                ).fetchone()
+                evidence = json.loads(row["identifiers_evidence_json"])
+                self.assertEqual(row["spotify_id"], "")
+                self.assertEqual(row["identity_status"], "identity_conflict")
+                self.assertEqual(evidence["existing_spotify_id"], ARTIST_ID)
+                self.assertEqual(evidence["cache_spotify_id"], cache_id)
+            finally:
+                connection.close()
+
+    def test_provider_shared_spotify_identity_is_accepted_as_exact_alias(self):
+        second = advanced_record()
+        second.update(
+            track_uuid="track-soundcharts-2",
+            spotify_id="2" * 22,
+            candidate_uuid="artist-soundcharts-2",
+            candidate_name="Quiet Artist Alias",
+            record_digest="second-record",
+        )
+        payload = {
+            "items": [
+                {
+                    "platformCode": "spotify",
+                    "identifier": ARTIST_ID,
+                    "url": f"https://open.spotify.com/artist/{ARTIST_ID}",
+                    "default": True,
+                    "verified": True,
+                }
+            ]
+        }
+        with tempfile.TemporaryDirectory() as raw_dir:
+            connection, _ = open_state(Path(raw_dir) / "phase3.sqlite3")
+            try:
+                seed_advanced_bucket(connection, [advanced_record(), second])
+                self.assertEqual(
+                    _store_artist_response(
+                        connection,
+                        RequestTask("artist_identifiers", ARTIST_UUID),
+                        payload,
+                    ),
+                    "complete_provider",
+                )
+                self.assertEqual(
+                    _store_artist_response(
+                        connection,
+                        RequestTask("artist_identifiers", second["candidate_uuid"]),
+                        payload,
+                    ),
+                    "complete_provider",
+                )
+                rows = connection.execute(
+                    """SELECT spotify_id,identity_status FROM fal_phase3_artists
+                         ORDER BY candidate_uuid"""
+                ).fetchall()
+                self.assertEqual(
+                    [(row["spotify_id"], row["identity_status"]) for row in rows],
+                    [(ARTIST_ID, "complete"), (ARTIST_ID, "complete")],
+                )
+            finally:
+                connection.close()
+
+    def test_provider_identity_disagreement_for_one_uuid_preserves_both_ids(self):
+        provider_id = "C" * 22
+        payload = {
+            "items": [
+                {
+                    "platformCode": "spotify",
+                    "identifier": provider_id,
+                    "url": f"https://open.spotify.com/artist/{provider_id}",
+                    "verified": True,
+                }
+            ]
+        }
+        with tempfile.TemporaryDirectory() as raw_dir:
+            connection, _ = open_state(Path(raw_dir) / "phase3.sqlite3")
+            try:
+                seed_advanced_bucket(connection, [advanced_record()])
+                connection.execute(
+                    """UPDATE fal_phase3_artists
+                          SET spotify_id=?,identity_status='pending',
+                              identity_source='phase1_candidates_exact_spotify_id'
+                        WHERE candidate_uuid=?""",
+                    (ARTIST_ID, ARTIST_UUID),
+                )
+                connection.commit()
+                self.assertEqual(
+                    _store_artist_response(
+                        connection,
+                        RequestTask("artist_identifiers", ARTIST_UUID),
+                        payload,
+                    ),
+                    "identity_conflict",
+                )
+                row = connection.execute(
+                    """SELECT spotify_id,identity_status,identifiers_evidence_json
+                         FROM fal_phase3_artists WHERE candidate_uuid=?""",
+                    (ARTIST_UUID,),
+                ).fetchone()
+                evidence = json.loads(row["identifiers_evidence_json"])
+                self.assertEqual(row["spotify_id"], "")
+                self.assertEqual(row["identity_status"], "identity_conflict")
+                self.assertEqual(evidence["existing_spotify_id"], ARTIST_ID)
+                self.assertEqual(evidence["provider_spotify_id"], provider_id)
             finally:
                 connection.close()
 

@@ -588,25 +588,69 @@ def hydrate_artist_identities_from_phase1(
                     identities[str(row["soundcharts_uuid"])] = spotify_id
     finally:
         source.close()
-    counts = Counter(identities.values())
     now = utc_now()
     changed = 0
     for candidate_uuid, spotify_id in identities.items():
         existing = connection.execute(
-            """SELECT spotify_id,identity_status FROM fal_phase3_artists
+            """SELECT spotify_id,identity_status,identifiers_evidence_json
+                 FROM fal_phase3_artists
                  WHERE candidate_uuid=? AND is_active=1""",
             (candidate_uuid,),
         ).fetchone()
         if existing is None:
             continue
         existing_id = exact_spotify_id(existing["spotify_id"])
-        conflict = counts[spotify_id] > 1 or (existing_id and existing_id != spotify_id)
+        # Soundcharts can expose several candidate UUID aliases for the same
+        # exact Spotify artist.  That many-to-one mapping is valid.  Only a
+        # disagreement for the same candidate UUID is an identity conflict.
+        conflict = bool(existing_id and existing_id != spotify_id)
+        try:
+            evidence = json.loads(str(existing["identifiers_evidence_json"] or "{}"))
+        except json.JSONDecodeError:
+            evidence = {}
+        evidence = dict(evidence) if isinstance(evidence, Mapping) else {}
+        evidence_ids = {
+            exact_spotify_id(value)
+            for key in (
+                "existing_spotify_id",
+                "cache_spotify_id",
+                "provider_spotify_id",
+                "spotify_id",
+            )
+            for value in (evidence.get(key),)
+            if exact_spotify_id(value)
+        }
+        raw_evidence_ids = evidence.get("spotify_ids")
+        if isinstance(raw_evidence_ids, Sequence) and not isinstance(
+            raw_evidence_ids, (str, bytes, bytearray)
+        ):
+            evidence_ids.update(
+                exact_spotify_id(value)
+                for value in raw_evidence_ids
+                if exact_spotify_id(value)
+            )
+        sticky_evidence_conflict = bool(
+            str(existing["identity_status"] or "") == "identity_conflict"
+            and any(value != spotify_id for value in evidence_ids)
+        )
+        conflict = conflict or sticky_evidence_conflict
         status = "identity_conflict" if conflict else "complete"
         selected = "" if conflict else spotify_id
+        evidence["phase1_spotify_id"] = spotify_id
+        if existing_id:
+            evidence["existing_spotify_id"] = existing_id
         connection.execute(
-            """UPDATE fal_phase3_artists SET spotify_id=?,identity_status=?,identity_source=?,updated_at=?
+            """UPDATE fal_phase3_artists SET spotify_id=?,identity_status=?,identity_source=?,
+                      identifiers_evidence_json=?,updated_at=?
                  WHERE candidate_uuid=?""",
-            (selected, status, "phase1_candidates_exact_spotify_id", now, candidate_uuid),
+            (
+                selected,
+                status,
+                "phase1_candidates_exact_spotify_id",
+                safe_json(evidence),
+                now,
+                candidate_uuid,
+            ),
         )
         connection.execute(
             """UPDATE fal_phase3_requests SET status=?,error_code=?,updated_at=?
@@ -924,40 +968,40 @@ def hydrate_from_cache(
             track_changes += int(row["detail_status"] != "complete_cache")
 
     artist_rows = connection.execute(
-        """SELECT candidate_uuid,spotify_id,identity_status FROM fal_phase3_artists
+        """SELECT candidate_uuid,spotify_id,identity_status,identity_source,
+                  identifiers_evidence_json
+             FROM fal_phase3_artists
              WHERE is_active=1"""
     ).fetchall()
     cache_ids: dict[str, str] = {}
-    proposed_ids: dict[str, str] = {}
     for row in artist_rows:
         candidate_uuid = str(row["candidate_uuid"])
         if str(row["identity_status"]) == "identity_conflict":
             continue
-        current = exact_spotify_id(row["spotify_id"])
-        if current:
-            proposed_ids[candidate_uuid] = current
         entry = cached_artists.get(candidate_uuid)
         if isinstance(entry, Mapping) and current_artist_cache_entry(entry):
             spotify_id = exact_spotify_id(entry.get("spotify_id"))
             if spotify_id:
                 cache_ids[candidate_uuid] = spotify_id
-                proposed_ids.setdefault(candidate_uuid, spotify_id)
-    proposed_counts = Counter(proposed_ids.values())
     for row in artist_rows:
         candidate_uuid = str(row["candidate_uuid"])
         spotify_id = cache_ids.get(candidate_uuid, "")
         current = exact_spotify_id(row["spotify_id"])
-        proposed = proposed_ids.get(candidate_uuid, "")
-        conflict = bool(
-            (spotify_id and current and current != spotify_id)
-            or (proposed and proposed_counts.get(proposed, 0) > 1)
-        )
+        conflict = bool(spotify_id and current and current != spotify_id)
         if conflict:
+            try:
+                evidence = json.loads(str(row["identifiers_evidence_json"] or "{}"))
+            except json.JSONDecodeError:
+                evidence = {}
+            evidence = dict(evidence) if isinstance(evidence, Mapping) else {}
+            evidence["existing_spotify_id"] = current
+            evidence["cache_spotify_id"] = spotify_id
             connection.execute(
                 """UPDATE fal_phase3_artists SET spotify_id='',identity_status='identity_conflict',
-                          identity_source='cache_or_cross_source_identity_conflict',updated_at=?
+                          identity_source='cache_or_cross_source_identity_conflict',
+                          identifiers_evidence_json=?,updated_at=?
                      WHERE candidate_uuid=?""",
-                (now, candidate_uuid),
+                (safe_json(evidence), now, candidate_uuid),
             )
             connection.execute(
                 """UPDATE fal_phase3_requests SET status='identity_conflict',
@@ -1065,9 +1109,27 @@ def _store_artist_response(connection: sqlite3.Connection, task: RequestTask, pa
     provider_spotify_ids = _spotify_ids_in_identifier_response(payload)
     spotify_id = provider_spotify_ids[0] if len(provider_spotify_ids) == 1 else ""
     now = utc_now()
+    existing = connection.execute(
+        """SELECT spotify_id,identifiers_evidence_json FROM fal_phase3_artists
+             WHERE candidate_uuid=? AND is_active=1""",
+        (task.entity_id,),
+    ).fetchone()
+    if existing is None:
+        raise FalPhase3Error(f"Artist response has no active phase-3 row: {task.entity_id}")
+    existing_id = exact_spotify_id(existing["spotify_id"])
+    try:
+        previous_evidence = json.loads(str(existing["identifiers_evidence_json"] or "{}"))
+    except json.JSONDecodeError:
+        previous_evidence = {}
+    previous_evidence = (
+        dict(previous_evidence) if isinstance(previous_evidence, Mapping) else {}
+    )
     if len(provider_spotify_ids) > 1:
-        evidence = dict(parsed) if isinstance(parsed, Mapping) else {}
+        evidence = previous_evidence
+        evidence.update(dict(parsed) if isinstance(parsed, Mapping) else {})
         evidence["spotify_ids"] = provider_spotify_ids
+        if existing_id:
+            evidence["existing_spotify_id"] = existing_id
         connection.execute(
             """UPDATE fal_phase3_artists SET spotify_id='',identity_status='identity_conflict',
                       identity_source='soundcharts_artist_identifiers_conflict',
@@ -1078,39 +1140,26 @@ def _store_artist_response(connection: sqlite3.Connection, task: RequestTask, pa
         return "identity_conflict"
     if not spotify_id:
         return "identity_missing"
-    duplicates = connection.execute(
-        """SELECT candidate_uuid FROM fal_phase3_artists
-             WHERE spotify_id=? AND candidate_uuid<>? AND identity_status='complete'
-               AND is_active=1""",
-        (spotify_id, task.entity_id),
-    ).fetchall()
-    if duplicates:
-        conflicting = [str(row["candidate_uuid"]) for row in duplicates]
-        for candidate_uuid in conflicting:
-            connection.execute(
-                """UPDATE fal_phase3_artists SET spotify_id='',identity_status='identity_conflict',
-                          identity_source='soundcharts_artist_identifiers_collision',updated_at=?
-                     WHERE candidate_uuid=?""",
-                (now, candidate_uuid),
-            )
-            connection.execute(
-                """UPDATE fal_phase3_requests SET status='identity_conflict',
-                          error_code='duplicate_provider_artist_spotify_id',updated_at=?
-                     WHERE request_kind='artist_identifiers' AND entity_id=?""",
-                (now, candidate_uuid),
-            )
+    if existing_id and existing_id != spotify_id:
+        evidence = previous_evidence
+        evidence.update(dict(parsed) if isinstance(parsed, Mapping) else {})
+        evidence["existing_spotify_id"] = existing_id
+        evidence["provider_spotify_id"] = spotify_id
         connection.execute(
             """UPDATE fal_phase3_artists SET spotify_id='',identity_status='identity_conflict',
-                      identity_source='soundcharts_artist_identifiers',identifiers_evidence_json=?,updated_at=?
+                      identity_source='soundcharts_artist_identifiers_conflict',
+                      identifiers_evidence_json=?,updated_at=?
                  WHERE candidate_uuid=? AND is_active=1""",
-            (safe_json(parsed), now, task.entity_id),
+            (safe_json(evidence), now, task.entity_id),
         )
         return "identity_conflict"
+    evidence = previous_evidence
+    evidence.update(dict(parsed) if isinstance(parsed, Mapping) else {})
     connection.execute(
         """UPDATE fal_phase3_artists SET spotify_id=?,identity_status='complete',
                   identity_source='soundcharts_artist_identifiers',identifiers_evidence_json=?,updated_at=?
              WHERE candidate_uuid=? AND is_active=1""",
-        (spotify_id, safe_json(parsed), now, task.entity_id),
+        (spotify_id, safe_json(evidence), now, task.entity_id),
     )
     return "complete_provider"
 
@@ -1424,6 +1473,10 @@ def build_report(
         """SELECT COUNT(*) FROM fal_phase3_artists
              WHERE is_active=1 AND identity_status='complete' AND length(spotify_id)=22"""
     ).fetchone()[0])
+    unique_spotify_artists = int(connection.execute(
+        """SELECT COUNT(DISTINCT spotify_id) FROM fal_phase3_artists
+             WHERE is_active=1 AND identity_status='complete' AND length(spotify_id)=22"""
+    ).fetchone()[0])
     no_lyrics = int(connection.execute(
         """SELECT COUNT(*) FROM fal_phase3_tracks
              WHERE is_active=1 AND no_lyrics_status='confirmed'"""
@@ -1524,6 +1577,8 @@ def build_report(
             "priority_tracks": track_total,
             "priority_artists": artist_total,
             "artist_identity_complete": identity_complete,
+            "artist_identity_rows_complete": identity_complete,
+            "unique_spotify_artists_complete": unique_spotify_artists,
             "no_lyrics_explicit": no_lyrics,
             "ai_risk_counts": ai_counts,
             "rights_status_counts": rights_counts,
