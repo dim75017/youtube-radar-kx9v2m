@@ -100,8 +100,7 @@ jobs:
           if [[ "$GITHUB_EVENT_NAME" == "workflow_run" ]]; then
             triggering_run_id="${{ github.event.workflow_run.id }}"
             selected="$(jq -c --arg run_id "$triggering_run_id" \
-              '[.artifacts[] | select(.expired == false and (.workflow_run.id | tostring) == $run_id)] | \
-               sort_by(.created_at) | last // empty' "$listing")"
+              '[.artifacts[] | select(.expired == false and (.workflow_run.id | tostring) == $run_id)] | sort_by(.created_at) | last // empty' "$listing")"
           else
             triggering_run_id=""
             selected="$(jq -c '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last // empty' "$listing")"

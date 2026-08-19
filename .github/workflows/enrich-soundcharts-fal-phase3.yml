@@ -148,8 +148,7 @@ jobs:
             local selected
             if [[ -n "$expected_run_id" ]]; then
               selected="$(jq -c --arg run_id "$expected_run_id" \
-                '[.artifacts[] | select(.expired == false and (.workflow_run.id | tostring) == $run_id)] | \
-                 sort_by(.created_at) | last // empty' "$listing")"
+                '[.artifacts[] | select(.expired == false and (.workflow_run.id | tostring) == $run_id)] | sort_by(.created_at) | last // empty' "$listing")"
             else
               selected="$(jq -c '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last // empty' "$listing")"
             fi

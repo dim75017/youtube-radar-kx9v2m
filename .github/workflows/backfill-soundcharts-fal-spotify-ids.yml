@@ -128,8 +128,7 @@ jobs:
               "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${PHASE2_CONTROL_ARTIFACT}&per_page=100" \
               --output "$control_listing"
             trigger_control="$(jq -c --arg run_id "$triggering_phase2_run_id" \
-              '[.artifacts[] | select(.expired == false and (.workflow_run.id | tostring) == $run_id)] | \
-               sort_by(.created_at) | last // empty' "$control_listing")"
+              '[.artifacts[] | select(.expired == false and (.workflow_run.id | tostring) == $run_id)] | sort_by(.created_at) | last // empty' "$control_listing")"
             if [[ -z "$trigger_control" || "$trigger_control" == "null" ]]; then
               echo "Triggering Phase-2 run has no exact completion control" >&2
               exit 1
@@ -166,8 +165,7 @@ jobs:
           PY
             )"
             plain="$(jq -c --arg run_id "$triggering_phase2_run_id" \
-              '[.artifacts[] | select(.expired == false and (.workflow_run.id | tostring) == $run_id)] | \
-               sort_by(.created_at) | last // empty' "$plain_listing")"
+              '[.artifacts[] | select(.expired == false and (.workflow_run.id | tostring) == $run_id)] | sort_by(.created_at) | last // empty' "$plain_listing")"
             phase2_state_exact="true"
             if [[ -z "$plain" || "$plain" == "null" ]]; then
               # A verified no-op Phase-2 deliberately skips its unchanged

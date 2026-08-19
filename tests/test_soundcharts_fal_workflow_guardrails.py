@@ -229,6 +229,20 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("10#$max_requests > 40000", section)
         self.assertRegex(section, re.compile(r"max_requests must be an integer between 1 and 40000"))
 
+    def test_exact_artifact_jq_programs_never_embed_shell_continuations(self):
+        workflows = (
+            "scan-soundcharts-fal-phase2.yml",
+            "backfill-soundcharts-fal-spotify-ids.yml",
+            "enrich-soundcharts-fal-phase3.yml",
+            "audit-soundcharts-fal-promotion.yml",
+        )
+        for name in workflows:
+            text = (ROOT / ".github" / "workflows" / name).read_text(
+                encoding="utf-8"
+            ).replace("\r\n", "\n")
+            with self.subTest(workflow=name):
+                self.assertNotIn(")] | \\\n", text)
+
 
 if __name__ == "__main__":
     unittest.main()
