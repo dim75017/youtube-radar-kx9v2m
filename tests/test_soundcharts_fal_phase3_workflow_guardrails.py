@@ -40,11 +40,17 @@ class SoundchartsFalPhase3WorkflowGuardrailsTests(unittest.TestCase):
             sections.append(self.workflow[start:end])
         return sections
 
-    def test_is_manual_only(self):
+    def test_runs_after_exact_backfill_and_supports_manual_dry_run(self):
         triggers = self.trigger_block()
+        self.assertRegex(triggers, r"(?m)^  workflow_run:\s*$")
+        self.assertIn('workflows: ["Backfill Soundcharts FAL Spotify IDs"]', triggers)
+        self.assertIn("types: [completed]", triggers)
+        self.assertNotIn("schedule:", triggers)
         self.assertRegex(triggers, r"(?m)^  workflow_dispatch:\s*$")
-        for forbidden in ("push:", "pull_request:", "schedule:", "workflow_run:"):
+        for forbidden in ("push:", "pull_request:"):
             self.assertNotIn(forbidden, triggers)
+        self.assertIn("github.event.workflow_run.conclusion == 'success'", self.workflow)
+        self.assertIn("github.event.workflow_run.head_branch == 'main'", self.workflow)
 
     def test_shares_the_exact_paid_soundcharts_lock(self):
         self.assertIn(
@@ -70,6 +76,9 @@ class SoundchartsFalPhase3WorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("max_requests must be an integer between 0 and 4000", self.workflow)
         self.assertIn('--max-requests "${{ steps.plan.outputs.max_requests }}"', self.workflow)
         self.assertIn('--quota-reserve "$MIN_QUOTA_RESERVE"', self.workflow)
+        plan = self.step("Validate the dry-run or bounded request plan")
+        self.assertIn('if [[ "$GITHUB_EVENT_NAME" == "workflow_run" ]]', plan)
+        self.assertIn('default_max_requests="$ABSOLUTE_MAX_REQUESTS"', plan)
 
     def test_dry_run_never_receives_soundcharts_credentials(self):
         invocation_steps = [
@@ -133,6 +142,11 @@ class SoundchartsFalPhase3WorkflowGuardrailsTests(unittest.TestCase):
         self.assertNotIn(".expired // true", restore)
         self.assertIn("require_file", restore)
         self.assertIn("FAL phase-3 restore", restore)
+        self.assertIn('triggering_backfill_run_id="${{ github.event.workflow_run.id }}"', restore)
+        self.assertIn(
+            'download_latest "$PHASE2_ID_STATE_ARTIFACT" required "$phase2_raw" "$triggering_backfill_run_id"',
+            restore,
+        )
 
     def test_source_artifact_ids_and_all_source_hashes_are_bound_to_the_report(self):
         restore = self.step(
@@ -173,6 +187,12 @@ class SoundchartsFalPhase3WorkflowGuardrailsTests(unittest.TestCase):
             "PHASE1_STATE_SHA256",
         ):
             self.assertIn(token, verify)
+        self.assertIn("validate_enriched_manifest_digests", verify)
+        self.assertIn("review_manifest_sha256", verify)
+        self.assertIn("enriched_manifest_sha256", verify)
+        self.assertIn("enriched_manifest_records_digest", verify)
+        self.assertIn("enriched_manifest_row_count", verify)
+        self.assertIn("Phase-3 report file binding mismatch", verify)
 
     def test_backfill_contract_is_fully_validated_before_phase3(self):
         restore = self.step(
@@ -258,6 +278,20 @@ class SoundchartsFalPhase3WorkflowGuardrailsTests(unittest.TestCase):
         for plaintext in ("PHASE3_STATE", "ENRICHED_MANIFEST", "REVIEW_MANIFEST"):
             self.assertNotIn(f"env.{plaintext}", private_upload)
 
+        encrypt = self.step("Encrypt resumable phase-3 state and row-level manifest")
+        self.assertIn(
+            'cp "$REVIEW_MANIFEST" "$bundle/soundcharts-fal-phase2-review-manifest-v1.json"',
+            encrypt,
+        )
+        self.assertIn(
+            'cp "$ENRICHED_MANIFEST" "$bundle/soundcharts-fal-phase3-review-manifest-v1.json"',
+            encrypt,
+        )
+        self.assertIn(
+            'cp "$PHASE3_REPORT" "$bundle/soundcharts-fal-phase3-report-v1.json"',
+            encrypt,
+        )
+
         aggregate_upload = self.step("Upload aggregate phase-3 report only")
         self.assertIn("${{ env.PHASE3_REPORT }}", aggregate_upload)
         self.assertIn("${{ env.ENCRYPTION_SUMMARY }}", aggregate_upload)
@@ -277,18 +311,30 @@ class SoundchartsFalPhase3WorkflowGuardrailsTests(unittest.TestCase):
         self.assertNotIn("hashFiles(", self.workflow)
         self.assertIn("sha256sum", self.workflow)
 
+    def test_previous_phase3_state_requires_its_report_hash_and_lineage(self):
+        restore = self.step(
+            "Restore verified phase-2, phase-1, cache and prior phase-3 state"
+        )
+        self.assertIn("previous_report=", restore)
+        self.assertIn("Previous Phase-3 state does not match its report hash", restore)
+        self.assertIn("Previous Phase-3 report lacks verified lineage", restore)
+        self.assertIn("Previous Phase-3 report lacks artifact lineage", restore)
+        self.assertIn("PRAGMA quick_check", restore)
+
     def test_upload_and_purge_chain_only_after_enrichment_and_verification(self):
         enrich = self.workflow.index("Enrich the advanced bucket in private staging")
         verify = self.workflow.index("Verify private-only phase-3 invariants")
         encrypt = self.workflow.index("Encrypt resumable phase-3 state and row-level manifest")
         state_upload = self.workflow.index("Upload encrypted resumable private state only")
         summary_upload = self.workflow.index("Upload aggregate phase-3 report only")
-        purge = self.workflow.index("Keep only the two newest encrypted phase-3 states")
+        retention = self.workflow.index("Keep only the two newest encrypted phase-3 states")
+        purge = self.workflow.index("Purge decrypted phase-3 working files")
         self.assertLess(enrich, verify)
         self.assertLess(verify, encrypt)
         self.assertLess(encrypt, state_upload)
         self.assertLess(state_upload, summary_upload)
-        self.assertLess(summary_upload, purge)
+        self.assertLess(summary_upload, retention)
+        self.assertLess(retention, purge)
 
         encrypt_step = self.step("Encrypt resumable phase-3 state and row-level manifest")
         self.assertIn("steps.enrich.outcome == 'success'", encrypt_step)
@@ -296,6 +342,12 @@ class SoundchartsFalPhase3WorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("if: steps.encrypt.outcome == 'success'", self.step("Upload encrypted resumable private state only"))
         self.assertIn("if: steps.state_upload.outcome == 'success'", self.step("Upload aggregate phase-3 report only"))
         self.assertIn("if: steps.state_upload.outcome == 'success'", self.step("Keep only the two newest encrypted phase-3 states"))
+        purge_step = self.step("Purge decrypted phase-3 working files")
+        self.assertIn("if: always()", purge_step)
+        self.assertIn('rm -rf -- "$SOURCE_DIR" "$PRIVATE_DIR" "$bundle"', purge_step)
+        self.assertIn('test ! -e "$SOURCE_DIR"', purge_step)
+        self.assertIn('test ! -e "$PRIVATE_DIR"', purge_step)
+        self.assertIn('test ! -e "$bundle"', purge_step)
 
     def test_verification_failure_has_no_upload_path(self):
         verify = self.step("Verify private-only phase-3 invariants")

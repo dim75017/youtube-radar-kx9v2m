@@ -2,18 +2,9 @@ name: Audit Soundcharts FAL promotion candidates
 
 on:
   workflow_run:
-    workflows: ["Backfill Soundcharts FAL Spotify IDs"]
+    workflows: ["Enrich Soundcharts FAL phase 3"]
     types: [completed]
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - build_soundcharts_fal_promotion_cohort.py
-      - build_soundcharts_fal_review_manifest.py
-      - Spotify_Browse_Catalogue_data.js
-      - tests/test_build_soundcharts_fal_promotion_cohort.py
-      - tests/test_soundcharts_fal_promotion_workflow_guardrails.py
-      - .github/workflows/audit-soundcharts-fal-promotion.yml
 
 permissions:
   actions: read
@@ -33,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
-      ENCRYPTED_STATE_ARTIFACT: soundcharts-fal-phase2-spotify-id-state-v1-encrypted
+      PHASE3_STATE_ARTIFACT: soundcharts-fal-phase3-state-v1-encrypted
       MINIMUM_STREAMS: '100000'
 
     steps:
@@ -53,7 +44,7 @@ jobs:
           echo "RESTORE_DIR=$RUNNER_TEMP/fal-promotion-state" >> "$GITHUB_ENV"
           echo "PRIVATE_DIR=$RUNNER_TEMP/fal-promotion-private" >> "$GITHUB_ENV"
           echo "AGGREGATE_DIR=$RUNNER_TEMP/fal-promotion-aggregate" >> "$GITHUB_ENV"
-          echo "REVIEW_MANIFEST=$RUNNER_TEMP/fal-promotion-private/soundcharts-fal-review-manifest-v1.json" >> "$GITHUB_ENV"
+          echo "REVIEW_MANIFEST=$RUNNER_TEMP/fal-promotion-private/soundcharts-fal-merged-review-manifest-v1.json" >> "$GITHUB_ENV"
           echo "PRIVATE_COHORT=$RUNNER_TEMP/fal-promotion-private/soundcharts-fal-promotion-candidates-v1.json" >> "$GITHUB_ENV"
           echo "PROMOTION_SUMMARY=$RUNNER_TEMP/fal-promotion-aggregate/soundcharts-fal-promotion-summary-v1.json" >> "$GITHUB_ENV"
           echo "ENCRYPTED_COHORT=$RUNNER_TEMP/fal-promotion-private/soundcharts-fal-promotion-candidates-v1.tar.gz.enc" >> "$GITHUB_ENV"
@@ -64,10 +55,10 @@ jobs:
         run: |
           set -euo pipefail
           python -m py_compile \
-            build_soundcharts_fal_review_manifest.py \
+            merge_soundcharts_fal_phase3_review.py \
             build_soundcharts_fal_promotion_cohort.py
           python -m unittest \
-            tests/test_build_soundcharts_fal_review_manifest.py \
+            tests/test_merge_soundcharts_fal_phase3_review.py \
             tests/test_build_soundcharts_fal_promotion_cohort.py \
             tests/test_soundcharts_fal_promotion_workflow_guardrails.py \
             -v
@@ -88,7 +79,7 @@ jobs:
             exit 1
           fi
 
-      - name: Restore newest encrypted Spotify-ID staging state
+      - name: Restore exact encrypted Phase-3 review source
         id: restore
         env:
           GH_TOKEN: ${{ github.token }}
@@ -97,21 +88,34 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RESTORE_DIR" "$PRIVATE_DIR" "$AGGREGATE_DIR"
-          listing="$RUNNER_TEMP/fal-spotify-id-state-artifacts.json"
-          archive="$RUNNER_TEMP/fal-spotify-id-state.zip"
-          encrypted_source="$RUNNER_TEMP/fal-spotify-id-state-source"
+          listing="$RUNNER_TEMP/fal-phase3-state-artifacts.json"
+          archive="$RUNNER_TEMP/fal-phase3-state.zip"
+          encrypted_source="$RUNNER_TEMP/fal-phase3-state-source"
           mkdir -p "$encrypted_source"
           curl --fail --silent --show-error --location \
             --header "Authorization: Bearer $GH_TOKEN" \
             --header "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${ENCRYPTED_STATE_ARTIFACT}&per_page=100" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${PHASE3_STATE_ARTIFACT}&per_page=100" \
             --output "$listing"
-          selected="$(jq -c '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last // empty' "$listing")"
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_run" ]]; then
+            triggering_run_id="${{ github.event.workflow_run.id }}"
+            selected="$(jq -c --arg run_id "$triggering_run_id" \
+              '[.artifacts[] | select(.expired == false and (.workflow_run.id | tostring) == $run_id)] | \
+               sort_by(.created_at) | last // empty' "$listing")"
+          else
+            triggering_run_id=""
+            selected="$(jq -c '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last // empty' "$listing")"
+          fi
           if [[ -z "$selected" || "$selected" == "null" ]]; then
-            echo "No encrypted Spotify-ID staging state is available" >&2
+            echo "No exact encrypted Phase-3 state is available for run ${triggering_run_id:-latest}" >&2
             exit 1
           fi
           artifact_id="$(jq -r '.id' <<<"$selected")"
+          artifact_run_id="$(jq -r '.workflow_run.id' <<<"$selected")"
+          if [[ -n "$triggering_run_id" && "$artifact_run_id" != "$triggering_run_id" ]]; then
+            echo "Phase-3 artifact does not belong to the triggering workflow run" >&2
+            exit 1
+          fi
           archive_url="$(jq -r '.archive_download_url' <<<"$selected")"
           curl --fail --silent --show-error --location \
             --header "Authorization: Bearer $GH_TOKEN" \
@@ -123,27 +127,33 @@ jobs:
           openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 \
             -pass env:FAL_STAGING_ARTIFACT_KEY \
             -in "$encrypted_file" | tar -xz -C "$RESTORE_DIR"
-          phase2_db="$(find "$RESTORE_DIR" -type f -name 'soundcharts-fal-phase2-state-v3.sqlite3' -print -quit)"
-          phase2_report="$(find "$RESTORE_DIR" -type f -name 'soundcharts-fal-phase2-report-v4.json' -print -quit)"
-          test -s "$phase2_db"
-          test -s "$phase2_report"
-          echo "PHASE2_DB=$phase2_db" >> "$GITHUB_ENV"
-          echo "PHASE2_REPORT=$phase2_report" >> "$GITHUB_ENV"
+          phase3_state="$(find "$RESTORE_DIR" -type f -name 'soundcharts-fal-phase3-state-v1.sqlite3' -print -quit)"
+          phase2_manifest="$(find "$RESTORE_DIR" -type f -name 'soundcharts-fal-phase2-review-manifest-v1.json' -print -quit)"
+          phase3_manifest="$(find "$RESTORE_DIR" -type f -name 'soundcharts-fal-phase3-review-manifest-v1.json' -print -quit)"
+          phase3_report="$(find "$RESTORE_DIR" -type f -name 'soundcharts-fal-phase3-report-v1.json' -print -quit)"
+          test -s "$phase3_state"
+          test -s "$phase2_manifest"
+          test -s "$phase3_manifest"
+          test -s "$phase3_report"
+          echo "PHASE3_STATE=$phase3_state" >> "$GITHUB_ENV"
+          echo "PHASE2_REVIEW_MANIFEST=$phase2_manifest" >> "$GITHUB_ENV"
+          echo "PHASE3_ENRICHED_MANIFEST=$phase3_manifest" >> "$GITHUB_ENV"
+          echo "PHASE3_REPORT=$phase3_report" >> "$GITHUB_ENV"
           echo "SOURCE_ARTIFACT_ID=$artifact_id" >> "$GITHUB_ENV"
           echo "source_artifact_id=$artifact_id" >> "$GITHUB_OUTPUT"
           test -z "$(git status --porcelain)"
 
-      - name: Build ephemeral private review manifest
+      - name: Merge exact Phase-2 facts with Phase-3 evidence
         shell: bash
         run: |
           set -euo pipefail
-          before="$(sha256sum "$PHASE2_DB" | cut -d' ' -f1)"
-          python build_soundcharts_fal_review_manifest.py \
-            --state "$PHASE2_DB" \
-            --phase2-report "$PHASE2_REPORT" \
-            --minimum-streams "$MINIMUM_STREAMS" \
-            --json-out "$REVIEW_MANIFEST"
-          after="$(sha256sum "$PHASE2_DB" | cut -d' ' -f1)"
+          before="$(sha256sum "$PHASE3_STATE" | cut -d' ' -f1)"
+          python merge_soundcharts_fal_phase3_review.py \
+            --phase2-manifest "$PHASE2_REVIEW_MANIFEST" \
+            --phase3-manifest "$PHASE3_ENRICHED_MANIFEST" \
+            --phase3-report "$PHASE3_REPORT" \
+            --output "$REVIEW_MANIFEST"
+          after="$(sha256sum "$PHASE3_STATE" | cut -d' ' -f1)"
           test "$before" = "$after"
           test -s "$REVIEW_MANIFEST"
           test -z "$(git status --porcelain)"
@@ -263,9 +273,17 @@ jobs:
               json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
           )
           PY
-          rm -f "$REVIEW_MANIFEST" "$PRIVATE_COHORT"
+          rm -f \
+            "$REVIEW_MANIFEST" \
+            "$PRIVATE_COHORT" \
+            "$PHASE2_REVIEW_MANIFEST" \
+            "$PHASE3_ENRICHED_MANIFEST" \
+            "$PHASE3_REPORT" \
+            "$PHASE3_STATE"
           test ! -e "$REVIEW_MANIFEST"
           test ! -e "$PRIVATE_COHORT"
+          test ! -e "$PHASE2_REVIEW_MANIFEST"
+          test ! -e "$PHASE3_ENRICHED_MANIFEST"
           test -s "$PROMOTION_SUMMARY"
           test -s "$ENCRYPTION_SUMMARY"
           test -z "$(git status --porcelain)"

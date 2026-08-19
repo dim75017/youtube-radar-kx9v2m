@@ -17,8 +17,10 @@ from enrich_soundcharts_fal_phase3 import (
     main,
     open_state,
     pending_tasks,
+    recalculate_enriched_manifest_digests,
     seed_advanced_bucket,
     strict_track_evidence,
+    validate_enriched_manifest_digests,
     validate_manifest,
 )
 from expand_soundcharts_instrumental_pool import SOUNDCHARTS_SONG_EVIDENCE_CONTRACT
@@ -320,6 +322,44 @@ class FalPhase3Tests(unittest.TestCase):
             finally:
                 connection.close()
 
+    def test_completed_legacy_state_without_provenance_is_requeued(self):
+        with tempfile.TemporaryDirectory() as raw_dir:
+            state_path = Path(raw_dir) / "phase3.sqlite3"
+            connection, _ = open_state(state_path)
+            try:
+                seed_advanced_bucket(connection, [advanced_record()])
+                connection.execute(
+                    """UPDATE fal_phase3_tracks
+                          SET detail_status='complete_provider',
+                              evidence_updated_at='',source_contract=''"""
+                )
+                connection.execute(
+                    """UPDATE fal_phase3_requests SET status='complete_provider',attempts=3
+                         WHERE request_kind='song_detail'"""
+                )
+                connection.commit()
+
+                seed_advanced_bucket(connection, [advanced_record()])
+                song_request = connection.execute(
+                    """SELECT status,attempts,error_code FROM fal_phase3_requests
+                         WHERE request_kind='song_detail' AND entity_id=?""",
+                    (TRACK_UUID,),
+                ).fetchone()
+                self.assertEqual(song_request["status"], "retry")
+                self.assertEqual(song_request["attempts"], 0)
+                self.assertEqual(
+                    song_request["error_code"], "missing_evidence_provenance"
+                )
+                self.assertIn(
+                    ("song_detail", TRACK_UUID),
+                    [
+                        (task.kind, task.entity_id)
+                        for task in pending_tasks(connection, retry_limit=3, limit=10)
+                    ],
+                )
+            finally:
+                connection.close()
+
     def test_legacy_cache_is_nonterminal_and_negative_evidence_is_sticky(self):
         with tempfile.TemporaryDirectory() as raw_dir:
             root = Path(raw_dir)
@@ -483,6 +523,9 @@ class FalPhase3Tests(unittest.TestCase):
                     phase2_report_sha256="b" * 64,
                     phase1_state_sha256="c" * 64,
                     manifest_sha256="d" * 64,
+                    enriched_manifest_sha256="e" * 64,
+                    enriched_manifest_records_digest="f" * 64,
+                    enriched_manifest_row_count=1,
                     max_requests=1,
                     quota_reserve=1_400_000,
                     quota_before=None,
@@ -510,6 +553,7 @@ class FalPhase3Tests(unittest.TestCase):
             phase1_path = root / "phase1.sqlite3"
             cache_path = root / "cache.json"
             state_path = root / "phase3.sqlite3"
+            enriched_path = root / "enriched.json"
             report_path = root / "report.json"
             manifest_path.write_text(json.dumps(review_manifest()), encoding="utf-8")
             make_phase1(phase1_path)
@@ -520,13 +564,34 @@ class FalPhase3Tests(unittest.TestCase):
                     "--phase1-state", str(phase1_path),
                     *cache_cli_args(cache_path),
                     "--state", str(state_path),
-                    "--enriched-manifest-out", str(root / "enriched.json"),
+                    "--enriched-manifest-out", str(enriched_path),
                     "--report", str(report_path),
                     "--max-requests", "0",
                 ]
             )
             report = json.loads(report_path.read_text(encoding="utf-8"))
+            enriched = json.loads(enriched_path.read_text(encoding="utf-8"))
             self.assertEqual(report["source"]["state_sha256_after"], file_sha256(state_path))
+            self.assertEqual(
+                report["source"]["enriched_manifest_sha256"],
+                file_sha256(enriched_path),
+            )
+            self.assertEqual(
+                report["source"]["enriched_manifest_records_digest"],
+                enriched["records_digest"],
+            )
+            self.assertEqual(
+                report["source"]["enriched_manifest_row_count"],
+                len(enriched["tracks"]),
+            )
+            self.assertEqual(
+                enriched["tracks"][0]["evidence_updated_at"],
+                "2026-08-10T08:00:00Z",
+            )
+            self.assertEqual(
+                enriched["tracks"][0]["source_contract"],
+                SOUNDCHARTS_SONG_EVIDENCE_CONTRACT,
+            )
 
     def test_duplicate_cache_artist_identity_marks_every_active_artist_conflict(self):
         second = advanced_record()
@@ -655,6 +720,38 @@ class FalPhase3Tests(unittest.TestCase):
         self.assertEqual(evidence["ai_risk"], "unknown")
 
     def test_enriched_manifest_never_approves_source_or_human_review(self):
+        source_record = advanced_record()
+        source_record.update(
+            source_approved_for_publication=True,
+            review_decision="approved",
+            reviewer="Injected reviewer",
+            reviewed_at="2026-08-10T09:00:00Z",
+            review_sources=["Injected source"],
+            review_notes="Injected approval",
+        )
+        with tempfile.TemporaryDirectory() as raw_dir:
+            state_path = Path(raw_dir) / "phase3.sqlite3"
+            connection, _ = open_state(state_path)
+            try:
+                seed_advanced_bucket(connection, [source_record])
+                enriched = build_enriched_manifest(
+                    review_manifest(source_record), connection
+                )
+            finally:
+                connection.close()
+
+        record = enriched["tracks"][0]
+        self.assertFalse(record["source_approved_for_publication"])
+        self.assertEqual(record["review_decision"], "pending")
+        self.assertEqual(record["reviewer"], "")
+        self.assertEqual(record["reviewed_at"], "")
+        self.assertEqual(record["review_sources"], [])
+        self.assertEqual(record["review_notes"], "")
+        self.assertFalse(enriched["promotion_executed"])
+        self.assertTrue(enriched["guardrails"]["source_approval_remains_manual"])
+        self.assertTrue(enriched["guardrails"]["human_review_remains_manual"])
+
+    def test_enriched_manifest_digests_detect_tampering_and_can_be_recalculated(self):
         with tempfile.TemporaryDirectory() as raw_dir:
             state_path = Path(raw_dir) / "phase3.sqlite3"
             connection, _ = open_state(state_path)
@@ -664,12 +761,18 @@ class FalPhase3Tests(unittest.TestCase):
             finally:
                 connection.close()
 
-        record = enriched["tracks"][0]
-        self.assertFalse(record["source_approved_for_publication"])
-        self.assertEqual(record["review_decision"], "pending")
-        self.assertFalse(enriched["promotion_executed"])
-        self.assertTrue(enriched["guardrails"]["source_approval_remains_manual"])
-        self.assertTrue(enriched["guardrails"]["human_review_remains_manual"])
+        original = validate_enriched_manifest_digests(enriched)
+        self.assertEqual(original["row_count"], 1)
+        self.assertEqual(original["records_digest"], enriched["records_digest"])
+        enriched["tracks"][0]["title"] = "Tampered title"
+        with self.assertRaises(FalPhase3Error):
+            validate_enriched_manifest_digests(enriched)
+
+        recalculated = recalculate_enriched_manifest_digests(enriched)
+        self.assertNotEqual(recalculated["records_digest"], original["records_digest"])
+        self.assertEqual(
+            validate_enriched_manifest_digests(enriched), recalculated
+        )
 
     def test_cli_dry_run_uses_no_credentials_and_writes_private_outputs(self):
         with tempfile.TemporaryDirectory() as raw_dir:

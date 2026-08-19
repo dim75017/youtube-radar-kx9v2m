@@ -4,9 +4,6 @@ on:
   workflow_run:
     workflows: ["Scan Soundcharts Fans Also Like phase 1"]
     types: [completed]
-  schedule:
-    # Resume between the phase-1, daily A&R, and playlist follower windows.
-    - cron: '53 8,20 * * *'
   workflow_dispatch:
     inputs:
       max_requests:
@@ -29,8 +26,9 @@ permissions:
   actions: write
   contents: read
 
-# This is the exact lock used by every Soundcharts collector. Paid requests are
-# serialized even when a workflow_run and a scheduled resume arrive together.
+# This is the exact lock used by every Soundcharts collector. Phase 1 is the
+# single scheduled root; this phase resumes only from that exact handoff or a
+# deliberate manual dispatch.
 concurrency:
   group: refresh-soundcharts-ar-collection-${{ github.ref }}
   cancel-in-progress: false
@@ -46,6 +44,7 @@ jobs:
     timeout-minutes: 240
     env:
       PHASE1_STATE_ARTIFACT: soundcharts-fal-phase1-state-v2
+      PHASE1_CONTROL_ARTIFACT: soundcharts-fal-phase1-control-v2
       # v3 intentionally starts a clean private checkpoint: the former v2
       # gate queried Soundcharts' reduced /api/v2/artist representation, so
       # its genre-empty review decisions must be fetched again via v2.9.
@@ -105,7 +104,7 @@ jobs:
         run: |
           default_max_requests=500
           default_max_new_queue=2000
-          if [[ "$GITHUB_EVENT_NAME" == "workflow_run" || "$GITHUB_EVENT_NAME" == "schedule" ]]; then
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_run" ]]; then
             default_max_requests=40000
             default_max_new_queue=10000
           fi
@@ -141,8 +140,89 @@ jobs:
             --header "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${PHASE1_STATE_ARTIFACT}&per_page=100" \
             --output "$phase1_listing"
-          phase1_id="$(jq -r '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last | .id // empty' "$phase1_listing")"
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_run" ]]; then
+            triggering_phase1_run_id="${{ github.event.workflow_run.id }}"
+            control_listing="$RUNNER_TEMP/soundcharts-fal-phase1-control-trigger.json"
+            curl --fail --silent --show-error --location \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${PHASE1_CONTROL_ARTIFACT}&per_page=100" \
+              --output "$control_listing"
+            trigger_control="$(jq -c --arg run_id "$triggering_phase1_run_id" \
+              '[.artifacts[] | select(.expired == false and (.workflow_run.id | tostring) == $run_id)] | \
+               sort_by(.created_at) | last // empty' "$control_listing")"
+            if [[ -z "$trigger_control" || "$trigger_control" == "null" ]]; then
+              echo "Triggering Phase-1 run has no exact completion control" >&2
+              exit 1
+            fi
+            trigger_control_zip="$RUNNER_TEMP/soundcharts-fal-phase1-control-trigger.zip"
+            trigger_control_dir="$RUNNER_TEMP/soundcharts-fal-phase1-control-trigger"
+            mkdir -p "$trigger_control_dir"
+            curl --fail --silent --show-error --location \
+              --header "Authorization: Bearer $GH_TOKEN" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              "$(jq -r '.archive_download_url' <<<"$trigger_control")" \
+              --output "$trigger_control_zip"
+            unzip -o -q "$trigger_control_zip" -d "$trigger_control_dir"
+            trigger_report="$(find "$trigger_control_dir" -type f -name 'soundcharts-fal-phase1-report-v2.json' -print -quit)"
+            trigger_ledger="$(find "$trigger_control_dir" -type f -name '*seed-ledger-v2.json' -print -quit)"
+            test -s "$trigger_report"
+            test -s "$trigger_ledger"
+            python - "$trigger_report" "$trigger_ledger" "$GITHUB_OUTPUT" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          from scan_soundcharts_fal_phase1 import validate_report_seed_ledger
+
+          report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          ledger = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+          # A no-op run rebuilds an equivalent ledger at a newer timestamp,
+          # while deliberately reusing the previously verified state. Bind the
+          # exact cohort/count here; the restored state is checked below.
+          validate_report_seed_ledger(report, ledger, require_generation_match=False)
+          if report.get("complete") is not True or report.get("status") != "complete":
+              raise SystemExit("Triggering Phase-1 completion control is not complete")
+          if report.get("staging_only") is not True or report.get("canonical_written") is not False:
+              raise SystemExit("Triggering Phase-1 completion control escaped private staging")
+          cohort_hash = str(ledger.get("cohort_hash") or "")
+          if len(cohort_hash) != 64:
+              raise SystemExit("Triggering Phase-1 ledger has no exact cohort hash")
+          with Path(sys.argv[3]).open("a", encoding="utf-8") as output:
+              output.write(f"expected_cohort_hash={cohort_hash}\n")
+          PY
+            phase1_selected="$(jq -c --arg run_id "$triggering_phase1_run_id" \
+              '[.artifacts[] | select(.expired == false and (.workflow_run.id | tostring) == $run_id)] | \
+               sort_by(.created_at) | last // empty' "$phase1_listing")"
+            phase1_state_exact="true"
+            if [[ -z "$phase1_selected" || "$phase1_selected" == "null" ]]; then
+              # A completed no-op Phase-1 intentionally skips re-uploading its
+              # multi-GB state. The exact control above binds the cohort; the
+              # restored prior state is checked against that hash before use.
+              phase1_selected="$(jq -c '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last // empty' "$phase1_listing")"
+              phase1_state_exact="false"
+              echo "phase1_selection_mode=validated_noop_state" >> "$GITHUB_OUTPUT"
+            else
+              echo "phase1_selection_mode=exact_trigger_state" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            triggering_phase1_run_id=""
+            phase1_state_exact="false"
+            phase1_selected="$(jq -c '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last // empty' "$phase1_listing")"
+            echo "expected_cohort_hash=" >> "$GITHUB_OUTPUT"
+            echo "phase1_selection_mode=latest_recovery_state" >> "$GITHUB_OUTPUT"
+          fi
+          if [[ -z "$phase1_selected" || "$phase1_selected" == "null" ]]; then
+            echo "No exact Phase-1 artifact is available for run ${triggering_phase1_run_id:-latest}" >&2
+            exit 1
+          fi
+          phase1_id="$(jq -r '.id // empty' <<<"$phase1_selected")"
+          phase1_run_id="$(jq -r '.workflow_run.id // empty' <<<"$phase1_selected")"
           test -n "$phase1_id"
+          if [[ "$phase1_state_exact" == "true" && "$phase1_run_id" != "$triggering_phase1_run_id" ]]; then
+            echo "Phase-1 artifact does not belong to the triggering workflow run" >&2
+            exit 1
+          fi
           echo "phase1_artifact_id=$phase1_id" >> "$GITHUB_OUTPUT"
           if [[ "${{ steps.plan.outputs.continue_zero_yield }}" == "true" ]]; then
             echo "Explicit manual zero-yield override requested; continuing"
@@ -180,8 +260,9 @@ jobs:
           unzip -o -q "$archive" -d "$control_dir"
           report="$(find "$control_dir" -type f -name 'soundcharts-fal-phase2-report-v4.json' -print -quit)"
           test -n "$report"
-          python - "$report" "$phase1_id" "$same_run_state" "$GITHUB_OUTPUT" <<'PY'
+          python - "$report" "$phase1_id" "$same_run_state" "$GITHUB_OUTPUT" "$REPORT_JSON" <<'PY'
           import json
+          import shutil
           import sys
           from pathlib import Path
 
@@ -209,6 +290,10 @@ jobs:
           )
           complete = report.get("complete") is True
           no_op = same_phase1 and (paused or complete)
+          if no_op:
+              target = Path(sys.argv[5])
+              target.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(sys.argv[1], target)
           with Path(sys.argv[4]).open("a", encoding="utf-8") as output:
               output.write(f"no_op={'true' if no_op else 'false'}\n")
               output.write(f"handoff_valid={'true' if same_phase1 else 'false'}\n")
@@ -224,7 +309,7 @@ jobs:
           )
           PY
 
-      - name: Restore the latest immutable private phase-1 v2 checkpoint
+      - name: Restore the exact immutable private phase-1 v2 checkpoint
         id: restore_phase1
         if: steps.early_control.outputs.no_op != 'true'
         env:
@@ -232,20 +317,21 @@ jobs:
         shell: bash
         run: |
           mkdir -p "$PHASE1_DIR"
-          listing="$RUNNER_TEMP/soundcharts-fal-phase1-v2-artifacts.json"
+          artifact_id="${{ steps.early_control.outputs.phase1_artifact_id }}"
+          metadata="$RUNNER_TEMP/soundcharts-fal-phase1-v2-artifact.json"
           curl --fail --silent --show-error --location \
             --header "Authorization: Bearer $GH_TOKEN" \
             --header "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${PHASE1_STATE_ARTIFACT}&per_page=100" \
-            --output "$listing"
-          selected="$(jq -c '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last // empty' "$listing")"
-          if [[ -z "$selected" || "$selected" == "null" ]]; then
-            echo "No non-expired phase-1 v2 checkpoint; refusing a silent phase-2 reset" >&2
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}" \
+            --output "$metadata"
+          actual_name="$(jq -r '.name // empty' "$metadata")"
+          expired="$(jq -r 'if has("expired") then .expired else true end' "$metadata")"
+          if [[ "$actual_name" != "$PHASE1_STATE_ARTIFACT" || "$expired" != "false" ]]; then
+            echo "Exact Phase-1 artifact ${artifact_id} is unavailable or has the wrong identity" >&2
             exit 1
           fi
-          artifact_id="$(jq -r '.id' <<<"$selected")"
-          archive_url="$(jq -r '.archive_download_url // empty' <<<"$selected")"
-          source_run_id="$(jq -r '.workflow_run.id // empty' <<<"$selected")"
+          archive_url="$(jq -r '.archive_download_url // empty' "$metadata")"
+          source_run_id="$(jq -r '.workflow_run.id // empty' "$metadata")"
           test -n "$artifact_id"
           test -n "$archive_url"
           archive="$RUNNER_TEMP/soundcharts-fal-phase1-v2.zip"
@@ -269,9 +355,11 @@ jobs:
       - name: Gate phase 2 on a complete, healthy, staging-only phase 1
         id: phase1_gate
         if: steps.early_control.outputs.no_op != 'true'
+        env:
+          EXPECTED_PHASE1_COHORT_HASH: ${{ steps.early_control.outputs.expected_cohort_hash }}
         shell: bash
         run: |
-          python - "$PHASE1_DB" "$PHASE1_REPORT" <<'PY'
+          python - "$PHASE1_DB" "$PHASE1_REPORT" "$EXPECTED_PHASE1_COHORT_HASH" <<'PY'
           import json
           import sqlite3
           import sys
@@ -279,6 +367,7 @@ jobs:
 
           database_path = Path(sys.argv[1])
           report = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+          expected_cohort_hash = str(sys.argv[3] or "")
           if report.get("complete") is not True or report.get("status") != "complete":
               raise SystemExit("Latest phase-1 v2 report is not complete")
           if report.get("staging_only") is not True or report.get("canonical_written") is not False:
@@ -295,6 +384,18 @@ jobs:
               scope_marker = database.execute(
                   "SELECT value FROM meta WHERE key='discography_scope_version'"
               ).fetchone()
+              state_cohort_hash = database.execute(
+                  "SELECT value FROM meta WHERE key='seed_ledger_hash'"
+              ).fetchone()
+          report_cohort_hash = str((report.get("seed_ledger") or {}).get("cohort_hash") or "")
+          if expected_cohort_hash and (
+              report_cohort_hash != expected_cohort_hash
+              or not state_cohort_hash
+              or str(state_cohort_hash[0] or "") != expected_cohort_hash
+          ):
+              raise SystemExit(
+                  "Restored Phase-1 state does not match the triggering completion cohort"
+              )
           if (
               not check
               or check[0] != "ok"
@@ -669,7 +770,10 @@ jobs:
 
       - name: Persist the small phase-2 pause/completion control
         id: control_upload
-        if: always() && steps.state_upload.outcome == 'success'
+        if: >-
+          always() &&
+          (steps.early_control.outputs.no_op == 'true' ||
+           steps.state_upload.outcome == 'success')
         uses: actions/upload-artifact@v4
         with:
           name: soundcharts-fal-phase2-control-v5

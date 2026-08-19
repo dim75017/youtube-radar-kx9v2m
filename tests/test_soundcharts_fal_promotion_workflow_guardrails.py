@@ -11,14 +11,14 @@ class SoundchartsFalPromotionWorkflowGuardrailsTests(unittest.TestCase):
     def setUpClass(cls):
         cls.workflow = WORKFLOW.read_text(encoding="utf-8")
 
-    def test_runs_after_exact_spotify_id_backfill_and_can_be_dispatched(self):
+    def test_runs_after_exact_phase3_and_can_be_dispatched(self):
         self.assertIn(
-            'workflows: ["Backfill Soundcharts FAL Spotify IDs"]', self.workflow
+            'workflows: ["Enrich Soundcharts FAL phase 3"]', self.workflow
         )
         self.assertIn("github.event.workflow_run.conclusion == 'success'", self.workflow)
         self.assertIn("github.event.workflow_run.head_branch == 'main'", self.workflow)
         self.assertIn("workflow_dispatch:", self.workflow)
-        self.assertIn("push:", self.workflow)
+        self.assertNotIn("push:", self.workflow)
 
     def test_is_read_only_and_spends_no_soundcharts_quota(self):
         self.assertIn("actions: read", self.workflow)
@@ -37,18 +37,44 @@ class SoundchartsFalPromotionWorkflowGuardrailsTests(unittest.TestCase):
         for token in forbidden:
             self.assertNotIn(token, self.workflow)
 
-    def test_restores_only_the_newest_encrypted_spotify_id_state(self):
+    def test_restores_exact_phase3_artifact_and_never_falls_back_to_raw_phase2(self):
         self.assertIn(
-            "soundcharts-fal-phase2-spotify-id-state-v1-encrypted", self.workflow
+            "soundcharts-fal-phase3-state-v1-encrypted", self.workflow
         )
+        self.assertIn("github.event.workflow_run.id", self.workflow)
+        self.assertIn(".workflow_run.id", self.workflow)
         self.assertIn("sort_by(.created_at) | last", self.workflow)
         self.assertIn("secrets.FAL_STAGING_ARTIFACT_KEY", self.workflow)
         self.assertIn(
             "openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -md sha256",
             self.workflow,
         )
-        self.assertIn("soundcharts-fal-phase2-state-v3.sqlite3", self.workflow)
-        self.assertIn("soundcharts-fal-phase2-report-v4.json", self.workflow)
+        for private_source in (
+            "soundcharts-fal-phase3-state-v1.sqlite3",
+            "soundcharts-fal-phase2-review-manifest-v1.json",
+            "soundcharts-fal-phase3-review-manifest-v1.json",
+            "soundcharts-fal-phase3-report-v1.json",
+        ):
+            self.assertIn(private_source, self.workflow)
+        self.assertNotIn(
+            "soundcharts-fal-phase2-spotify-id-state-v1-encrypted", self.workflow
+        )
+
+    def test_merges_phase2_facts_and_phase3_evidence_before_promotion(self):
+        section_start = self.workflow.index(
+            "Merge exact Phase-2 facts with Phase-3 evidence"
+        )
+        section_end = self.workflow.index(
+            "Compare exact IDs and build private promotion candidate cohort"
+        )
+        section = self.workflow[section_start:section_end]
+        self.assertIn("merge_soundcharts_fal_phase3_review.py", section)
+        self.assertIn('--phase2-manifest "$PHASE2_REVIEW_MANIFEST"', section)
+        self.assertIn('--phase3-manifest "$PHASE3_ENRICHED_MANIFEST"', section)
+        self.assertIn('--phase3-report "$PHASE3_REPORT"', section)
+        self.assertIn('--output "$REVIEW_MANIFEST"', section)
+        self.assertIn('before="$(sha256sum "$PHASE3_STATE"', section)
+        self.assertIn('test "$before" = "$after"', section)
 
     def test_compares_against_current_canonical_catalogue_by_exact_id(self):
         build = self.workflow.index(
@@ -89,7 +115,15 @@ class SoundchartsFalPromotionWorkflowGuardrailsTests(unittest.TestCase):
         )
         section = self.workflow[encrypt:upload_private]
         self.assertIn("openssl enc -aes-256-cbc -pbkdf2", section)
-        self.assertIn('rm -f "$REVIEW_MANIFEST" "$PRIVATE_COHORT"', section)
+        for private_path in (
+            '"$REVIEW_MANIFEST"',
+            '"$PRIVATE_COHORT"',
+            '"$PHASE2_REVIEW_MANIFEST"',
+            '"$PHASE3_ENRICHED_MANIFEST"',
+            '"$PHASE3_REPORT"',
+            '"$PHASE3_STATE"',
+        ):
+            self.assertIn(private_path, section)
         self.assertIn('test ! -e "$PRIVATE_COHORT"', section)
 
         private_upload = self.workflow[upload_private:upload_aggregate]

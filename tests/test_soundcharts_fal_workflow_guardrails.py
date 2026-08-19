@@ -16,7 +16,7 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
 
     def test_manual_start_and_cloud_resume_are_enabled(self):
         self.assertIn("workflow_dispatch:", self.workflow)
-        self.assertIn("- cron: '23 13,20 * * *'", self.workflow)
+        self.assertIn("- cron: '23 9 * * *'", self.workflow)
         self.assertIn("branches: [main]", self.workflow)
         self.assertIn("'build_soundcharts_fal_seed_ledger.py'", self.workflow)
         self.assertNotIn("*/2", self.workflow)
@@ -97,14 +97,15 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
 
     def test_full_seed_cohort_and_protected_quota_reserve_are_explicit(self):
         self.assertIn("MIN_RESOLVED_SEEDS: '4500'", self.workflow)
-        self.assertIn("HARD_MAX_RESOLVED_SEEDS: '10000'", self.workflow)
+        self.assertIn("EMERGENCY_MAX_RESOLVED_SEEDS: '20000'", self.workflow)
+        self.assertNotIn("HARD_MAX_RESOLVED_SEEDS", self.workflow)
         self.assertIn("MAX_SEED_GROWTH_PERCENT: '35'", self.workflow)
         self.assertIn("MAX_SEED_GROWTH_ABSOLUTE: '2000'", self.workflow)
         self.assertIn("MAX_SEED_SHRINK_PERCENT: '20'", self.workflow)
         self.assertIn("MAX_UNRESOLVED_SEEDS: '0'", self.workflow)
         self.assertIn("QUOTA_RESERVE: '500000'", self.workflow)
         self.assertIn("MAINTENANCE_DAILY_REQUESTS: '60000'", self.workflow)
-        self.assertRegex(self.workflow, r"--max-seeds\s+[\"']?\$HARD_MAX_RESOLVED_SEEDS")
+        self.assertRegex(self.workflow, r"--max-seeds\s+[\"']?\$EMERGENCY_MAX_RESOLVED_SEEDS")
         self.assertEqual(
             self.workflow.count('--min-seed-guard "${{ steps.seed_transition.outputs.min_resolved }}"'),
             2,
@@ -122,7 +123,7 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("build_soundcharts_fal_seed_ledger.py", self.workflow)
         self.assertIn('--active-snapshot "${{ steps.active_snapshot.outputs.path }}"', self.workflow)
         self.assertIn('--previous-ledger "$PREVIOUS_SEED_LEDGER"', self.workflow)
-        self.assertIn('--max-resolved "$HARD_MAX_RESOLVED_SEEDS"', self.workflow)
+        self.assertIn('--max-resolved "$EMERGENCY_MAX_RESOLVED_SEEDS"', self.workflow)
         self.assertIn('--max-growth-percent "$MAX_SEED_GROWTH_PERCENT"', self.workflow)
         self.assertIn('--max-growth-absolute "$MAX_SEED_GROWTH_ABSOLUTE"', self.workflow)
         self.assertIn('--max-shrink-percent "$MAX_SEED_SHRINK_PERCENT"', self.workflow)

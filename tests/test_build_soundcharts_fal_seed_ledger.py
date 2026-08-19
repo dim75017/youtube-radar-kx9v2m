@@ -116,6 +116,50 @@ class SoundchartsFalSeedLedgerTests(unittest.TestCase):
         self.assertTrue(allowed_min <= 7_241 <= allowed_max)
         self.assertFalse(allowed_min <= 7_583 <= allowed_max)
 
+    def test_transition_validation_accepts_growth_past_the_legacy_ten_thousand_cap(self):
+        def ledger(size):
+            return build_ledger(
+                [
+                    ArtistObservation(
+                        f"uuid-{index:05d}",
+                        f"spotify-{index:05d}",
+                        f"Artist {index}",
+                        None,
+                        "strict_artist",
+                    )
+                    for index in range(size)
+                ]
+            )
+
+        previous = ledger(9_908)
+        accepted = ledger(10_665)
+        transition = validate_ledger_transition(
+            previous,
+            accepted,
+            min_resolved=4_500,
+            hard_max_resolved=20_000,
+            max_growth_percent=35,
+            max_growth_absolute=2_000,
+            max_shrink_percent=20,
+            max_unresolved=0,
+        )
+
+        self.assertEqual(transition["previous_resolved"], 9_908)
+        self.assertEqual(transition["current_resolved"], 10_665)
+        self.assertEqual((transition["allowed_min"], transition["allowed_max"]), (7_926, 11_908))
+
+        with self.assertRaises(SeedLedgerError):
+            validate_ledger_transition(
+                previous,
+                ledger(11_909),
+                min_resolved=4_500,
+                hard_max_resolved=20_000,
+                max_growth_percent=35,
+                max_growth_absolute=2_000,
+                max_shrink_percent=20,
+                max_unresolved=0,
+            )
+
     def test_previous_canonical_uuid_wins_when_source_priority_flips(self):
         previous = build_ledger(
             [

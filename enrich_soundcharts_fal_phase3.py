@@ -72,6 +72,14 @@ TERMINAL_REQUEST_STATUSES = {
     "unavailable",
     "request_failed",
 }
+RECORD_DIGEST_EXCLUDED_FIELDS = {
+    "review_decision",
+    "reviewer",
+    "reviewed_at",
+    "review_sources",
+    "review_notes",
+    "record_digest",
+}
 
 
 STATE_SCHEMA = """
@@ -100,6 +108,8 @@ CREATE TABLE IF NOT EXISTS fal_phase3_tracks (
   ai_risk TEXT NOT NULL DEFAULT 'unknown',
   provider_evidence_json TEXT NOT NULL DEFAULT '{}',
   source_kind TEXT NOT NULL DEFAULT '',
+  evidence_updated_at TEXT NOT NULL DEFAULT '',
+  source_contract TEXT NOT NULL DEFAULT '',
   is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0,1)),
   first_seen_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
@@ -209,6 +219,96 @@ def safe_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
+def enriched_record_digest(record: Mapping[str, Any]) -> str:
+    """Return the evidence digest while keeping manual review fields mutable."""
+
+    return stable_digest(
+        {
+            key: value
+            for key, value in record.items()
+            if key not in RECORD_DIGEST_EXCLUDED_FIELDS
+        }
+    )
+
+
+def recalculate_enriched_manifest_digests(
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    """Rebuild every row digest and the ordered manifest digest in place."""
+
+    raw_rows = payload.get("tracks")
+    if not isinstance(raw_rows, list):
+        raise FalPhase3Error("Enriched manifest has no track rows")
+    rows: list[dict[str, Any]] = []
+    for index, raw in enumerate(raw_rows):
+        if not isinstance(raw, Mapping):
+            raise FalPhase3Error(f"Enriched manifest row {index} is not an object")
+        record = dict(raw)
+        record["record_digest"] = enriched_record_digest(record)
+        rows.append(record)
+    payload["tracks"] = rows
+    payload["track_schema"] = list(rows[0]) if rows else []
+    summary = payload.get("summary")
+    summary = dict(summary) if isinstance(summary, Mapping) else {}
+    summary["tracks"] = len(rows)
+    payload["summary"] = summary
+    payload["records_digest"] = stable_digest(
+        [record["record_digest"] for record in rows]
+    )
+    return {
+        "records_digest": payload["records_digest"],
+        "row_count": len(rows),
+    }
+
+
+def validate_enriched_manifest_digests(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Verify row/manifest digests and the manual-pending Phase-3 contract."""
+
+    raw_rows = payload.get("tracks")
+    if not isinstance(raw_rows, list):
+        raise FalPhase3Error("Enriched manifest has no track rows")
+    row_digests: list[str] = []
+    for index, raw in enumerate(raw_rows):
+        if not isinstance(raw, Mapping):
+            raise FalPhase3Error(f"Enriched manifest row {index} is not an object")
+        expected = enriched_record_digest(raw)
+        if str(raw.get("record_digest") or "") != expected:
+            raise FalPhase3Error(f"Enriched manifest row {index} has a stale digest")
+        if raw.get("source_approved_for_publication") is not False:
+            raise FalPhase3Error("Phase 3 cannot approve a publication source")
+        if str(raw.get("review_decision") or "pending") != "pending":
+            raise FalPhase3Error("Phase 3 cannot complete human review")
+        review_sources = raw.get("review_sources")
+        if isinstance(review_sources, Sequence) and not isinstance(
+            review_sources, (str, bytes, bytearray)
+        ):
+            has_review_sources = bool(review_sources)
+        else:
+            has_review_sources = bool(review_sources)
+        if any(
+            (
+                str(raw.get("reviewer") or "").strip(),
+                str(raw.get("reviewed_at") or "").strip(),
+                has_review_sources,
+                str(raw.get("review_notes") or "").strip(),
+            )
+        ):
+            raise FalPhase3Error("Phase 3 manual review fields must remain pending")
+        row_digests.append(expected)
+    expected_records_digest = stable_digest(row_digests)
+    if str(payload.get("records_digest") or "") != expected_records_digest:
+        raise FalPhase3Error("Enriched manifest records digest is stale")
+    summary = payload.get("summary")
+    if not isinstance(summary, Mapping) or int(summary.get("tracks") or 0) != len(
+        raw_rows
+    ):
+        raise FalPhase3Error("Enriched manifest row count is inconsistent")
+    return {
+        "records_digest": expected_records_digest,
+        "row_count": len(raw_rows),
+    }
+
+
 def load_json_object(path: Path, label: str) -> dict[str, Any]:
     if not path.is_file():
         raise FalPhase3Error(f"{label} is missing: {path.resolve()}")
@@ -279,6 +379,16 @@ def open_state(path: Path) -> tuple[sqlite3.Connection, bool]:
         if "is_active" not in columns:
             connection.execute(
                 f"ALTER TABLE {table} ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1"
+            )
+    track_columns = {
+        str(row[1])
+        for row in connection.execute("PRAGMA table_info(fal_phase3_tracks)").fetchall()
+    }
+    for column in ("evidence_updated_at", "source_contract"):
+        if column not in track_columns:
+            connection.execute(
+                f"ALTER TABLE fal_phase3_tracks ADD COLUMN {column} "
+                "TEXT NOT NULL DEFAULT ''"
             )
     check = connection.execute("PRAGMA quick_check").fetchone()
     if not check or check[0] != "ok":
@@ -383,6 +493,22 @@ def seed_advanced_bucket(
                       error_code='interrupted_before_commit',updated_at=?
                  WHERE status='inflight' AND is_active=1""",
             (now,),
+        )
+        # Existing encrypted v1 checkpoints predate per-row evidence
+        # provenance. Requeue those terminal song rows so a current cache or a
+        # bounded provider call can establish the timestamp and contract rather
+        # than silently treating legacy evidence as current.
+        connection.execute(
+            """UPDATE fal_phase3_requests SET status='retry',attempts=0,
+                      error_code='missing_evidence_provenance',updated_at=?
+                 WHERE request_kind='song_detail' AND is_active=1
+                   AND entity_id IN (
+                     SELECT track_uuid FROM fal_phase3_tracks
+                      WHERE is_active=1
+                        AND detail_status IN ('complete_cache','complete_provider')
+                        AND (evidence_updated_at='' OR source_contract<>?)
+                   )""",
+            (now, SOUNDCHARTS_SONG_EVIDENCE_CONTRACT),
         )
         connection.commit()
     except Exception:
@@ -542,8 +668,14 @@ def strict_track_evidence(
         ai_risk = "low"
     if ai_risk in {"elevated", "eleve", "elevé"}:
         ai_risk = "high"
+    evidence_updated_at = str(
+        parsed.get("soundcharts_genres_checked_at") or parsed.get("fetched_at") or ""
+    ).strip()
+    source_contract = str(parsed.get("soundcharts_evidence_contract") or "").strip()
     normalized_evidence = {
         "source": source,
+        "source_contract": source_contract,
+        "evidence_updated_at": evidence_updated_at,
         "instrumental": (
             evidence.get("instrumental")
             if isinstance(evidence.get("instrumental"), bool)
@@ -565,6 +697,8 @@ def strict_track_evidence(
         "copyright": copyright_text,
         "no_lyrics_status": "confirmed" if no_lyrics else "unknown",
         "ai_risk": ai_risk,
+        "evidence_updated_at": evidence_updated_at,
+        "source_contract": source_contract,
         "provider_evidence": normalized_evidence,
     }
 
@@ -612,7 +746,8 @@ def _apply_track_evidence(
     now = utc_now()
     previous = connection.execute(
         """SELECT rights_status,rights_confidence,rights_basis,label,copyright,
-                  no_lyrics_status,ai_risk,provider_evidence_json,source_kind
+                  no_lyrics_status,ai_risk,provider_evidence_json,source_kind,
+                  evidence_updated_at,source_contract
              FROM fal_phase3_tracks WHERE track_uuid=? AND is_active=1""",
         (track_uuid,),
     ).fetchone()
@@ -692,10 +827,17 @@ def _apply_track_evidence(
     merged_source_kind = source_kind
     if str(previous["source_kind"] or "") and dict(previous_provider):
         merged_source_kind = f"{source_kind}_fail_closed_merge"
+    evidence_updated_at = str(
+        evidence.get("evidence_updated_at") or previous["evidence_updated_at"] or ""
+    ).strip()
+    source_contract = str(
+        evidence.get("source_contract") or previous["source_contract"] or ""
+    ).strip()
     connection.execute(
         """UPDATE fal_phase3_tracks SET detail_status=?,rights_status=?,rights_confidence=?,
                   rights_basis=?,label=?,copyright=?,no_lyrics_status=?,ai_risk=?,
-                  provider_evidence_json=?,source_kind=?,updated_at=? WHERE track_uuid=?""",
+                  provider_evidence_json=?,source_kind=?,evidence_updated_at=?,
+                  source_contract=?,updated_at=? WHERE track_uuid=?""",
         (
             detail_status,
             rights_status,
@@ -707,6 +849,8 @@ def _apply_track_evidence(
             ai_risk,
             safe_json(merged_provider),
             merged_source_kind,
+            evidence_updated_at,
+            source_contract,
             now,
             track_uuid,
         ),
@@ -735,10 +879,16 @@ def hydrate_from_cache(
     artist_changes = 0
     now = utc_now()
     for row in connection.execute(
-        """SELECT track_uuid,detail_status FROM fal_phase3_tracks
+        """SELECT track_uuid,detail_status,evidence_updated_at,source_contract
+             FROM fal_phase3_tracks
              WHERE is_active=1"""
     ).fetchall():
-        if str(row["detail_status"]) in {"complete_provider", "complete_cache"}:
+        if (
+            str(row["detail_status"]) in {"complete_provider", "complete_cache"}
+            and str(row["evidence_updated_at"] or "").strip()
+            and str(row["source_contract"] or "")
+            == SOUNDCHARTS_SONG_EVIDENCE_CONTRACT
+        ):
             continue
         entry = cached_tracks.get(str(row["track_uuid"]))
         if not isinstance(entry, Mapping):
@@ -1119,6 +1269,8 @@ def build_enriched_manifest(
         if not isinstance(raw, Mapping):
             continue
         record = dict(raw)
+        record["evidence_updated_at"] = ""
+        record["source_contract"] = ""
         phase3_track = tracks_by_uuid.get(str(record.get("track_uuid") or ""))
         phase3_artist = artists_by_uuid.get(str(record.get("candidate_uuid") or ""))
         if phase3_track is not None:
@@ -1150,6 +1302,10 @@ def build_enriched_manifest(
                 record["instrumental_status"] = "vocal"
                 record["phase3_decision"] = "blocked_explicit_vocal"
             record["phase3_detail_status"] = str(phase3_track["detail_status"])
+            record["evidence_updated_at"] = str(
+                phase3_track["evidence_updated_at"] or ""
+            )
+            record["source_contract"] = str(phase3_track["source_contract"] or "")
         if phase3_artist is not None:
             artist_id = exact_spotify_id(phase3_artist["spotify_id"])
             record["artist_spotify_id"] = artist_id
@@ -1157,21 +1313,18 @@ def build_enriched_manifest(
                 "complete" if artist_id and phase3_artist["identity_status"] == "complete" else str(phase3_artist["identity_status"])
             )
             record["phase3_artist_identity_source"] = str(phase3_artist["identity_source"] or "")
-        # These two approvals are intentionally preserved exactly as supplied.
-        record["source_approved_for_publication"] = raw.get("source_approved_for_publication") is True
-        record["review_decision"] = str(raw.get("review_decision") or "pending")
+        # Automated enrichment can never carry or manufacture a human approval.
+        record["source_approved_for_publication"] = False
+        record["review_decision"] = "pending"
+        record["reviewer"] = ""
+        record["reviewed_at"] = ""
+        record["review_sources"] = []
+        record["review_notes"] = ""
         record["blocking_fields"] = review_blocking_fields(record)
         record["review_bucket"], record["review_reason"] = classify_review_bucket(record)
         if str(record.get("rights_status") or "").casefold() in {"major", "mixed"}:
             record["review_bucket"] = "blocked"
             record["review_reason"] = "explicit_blocking_rights_evidence"
-        record["record_digest"] = stable_digest(
-            {
-                key: value
-                for key, value in record.items()
-                if key not in {"review_decision", "reviewer", "reviewed_at", "review_sources", "review_notes", "record_digest"}
-            }
-        )
         enriched_rows.append(record)
     output = dict(manifest)
     output["generated_at"] = utc_now()
@@ -1199,7 +1352,8 @@ def build_enriched_manifest(
     output["summary"] = dict(output.get("summary") or {})
     output["summary"]["tracks"] = len(enriched_rows)
     output["summary"]["by_bucket"] = dict(sorted(by_bucket.items()))
-    output["records_digest"] = stable_digest([row["record_digest"] for row in enriched_rows])
+    recalculate_enriched_manifest_digests(output)
+    validate_enriched_manifest_digests(output)
     return output
 
 
@@ -1226,6 +1380,9 @@ def build_report(
     phase2_report_sha256: str,
     phase1_state_sha256: str,
     manifest_sha256: str,
+    enriched_manifest_sha256: str,
+    enriched_manifest_records_digest: str,
+    enriched_manifest_row_count: int,
     max_requests: int,
     quota_reserve: int,
     quota_before: int | None,
@@ -1239,6 +1396,14 @@ def build_report(
     cache_source_artifact_id: str,
     cache_sha256: str,
 ) -> dict[str, Any]:
+    if not re.fullmatch(r"[0-9a-f]{64}", str(enriched_manifest_sha256 or "")):
+        raise FalPhase3Error("Enriched manifest requires an exact SHA-256 binding")
+    if not re.fullmatch(
+        r"[0-9a-f]{64}", str(enriched_manifest_records_digest or "")
+    ):
+        raise FalPhase3Error("Enriched manifest requires an exact records digest")
+    if int(enriched_manifest_row_count) < 0:
+        raise FalPhase3Error("Enriched manifest row count cannot be negative")
     track_total = int(
         connection.execute("SELECT COUNT(*) FROM fal_phase3_tracks WHERE is_active=1").fetchone()[0]
     )
@@ -1310,6 +1475,11 @@ def build_report(
             "cache_source_artifact_id": str(cache_source_artifact_id or ""),
             "cache_sha256": str(cache_sha256 or ""),
             "review_manifest_sha256": manifest_sha256,
+            "enriched_manifest_sha256": str(enriched_manifest_sha256),
+            "enriched_manifest_records_digest": str(
+                enriched_manifest_records_digest
+            ),
+            "enriched_manifest_row_count": int(enriched_manifest_row_count),
             "state_sha256_before": state_sha256_before,
             "state_sha256_after": file_sha256(state_path),
         },
@@ -1442,11 +1612,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             run_id=run_id,
         )
         enriched = build_enriched_manifest(manifest, connection)
+        enriched_binding = recalculate_enriched_manifest_digests(enriched)
+        if validate_enriched_manifest_digests(enriched) != enriched_binding:
+            raise FalPhase3Error("Enriched manifest binding changed before write")
         args.enriched_manifest_out.parent.mkdir(parents=True, exist_ok=True)
         args.enriched_manifest_out.write_text(
             json.dumps(enriched, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+        written_enriched = load_json_object(
+            args.enriched_manifest_out, "Written FAL phase-3 enriched manifest"
+        )
+        if validate_enriched_manifest_digests(written_enriched) != enriched_binding:
+            raise FalPhase3Error("Written enriched manifest binding is inconsistent")
+        enriched_manifest_sha256 = file_sha256(args.enriched_manifest_out)
         connection.execute(
             "INSERT INTO meta(key,value) VALUES('fal_phase3_last_run_id',?) "
             "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
@@ -1469,6 +1648,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             phase2_report_sha256=str(args.phase2_report_sha256 or ""),
             phase1_state_sha256=str(args.phase1_state_sha256 or ""),
             manifest_sha256=file_sha256(args.review_manifest),
+            enriched_manifest_sha256=enriched_manifest_sha256,
+            enriched_manifest_records_digest=str(enriched_binding["records_digest"]),
+            enriched_manifest_row_count=int(enriched_binding["row_count"]),
             max_requests=int(args.max_requests),
             quota_reserve=int(args.quota_reserve),
             quota_before=quota_before,

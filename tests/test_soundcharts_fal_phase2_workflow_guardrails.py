@@ -17,7 +17,7 @@ class SoundchartsFalPhase2WorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("github.event.workflow_run.conclusion == 'success'", self.workflow)
         self.assertIn("github.event.workflow_run.head_branch == 'main'", self.workflow)
         self.assertIn("workflow_dispatch:", self.workflow)
-        self.assertIn("- cron: '53 8,20 * * *'", self.workflow)
+        self.assertNotIn("schedule:", self.workflow)
         self.assertIn("Latest phase-1 v2 report is not complete", self.workflow)
         self.assertIn(
             'scope_version != "main_performer_v1"',
@@ -31,6 +31,32 @@ class SoundchartsFalPhase2WorkflowGuardrailsTests(unittest.TestCase):
             'scope_marker[0] != "main_performer_v1"',
             self.workflow,
         )
+
+    def test_workflow_run_consumes_only_its_exact_phase1_artifact(self):
+        self.assertIn('triggering_phase1_run_id="${{ github.event.workflow_run.id }}"', self.workflow)
+        self.assertIn("(.workflow_run.id | tostring) == $run_id", self.workflow)
+        self.assertIn("PHASE1_CONTROL_ARTIFACT: soundcharts-fal-phase1-control-v2", self.workflow)
+        self.assertIn("Triggering Phase-1 run has no exact completion control", self.workflow)
+        self.assertIn("validate_report_seed_ledger(report, ledger, require_generation_match=False)", self.workflow)
+        self.assertIn("phase1_selection_mode=validated_noop_state", self.workflow)
+        self.assertIn("Restored Phase-1 state does not match the triggering completion cohort", self.workflow)
+        self.assertIn("Phase-1 artifact does not belong to the triggering workflow run", self.workflow)
+        self.assertIn(
+            'artifact_id="${{ steps.early_control.outputs.phase1_artifact_id }}"',
+            self.workflow,
+        )
+        self.assertIn(
+            '"https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}"',
+            self.workflow,
+        )
+        self.assertIn("Restore the exact immutable private phase-1 v2 checkpoint", self.workflow)
+
+    def test_noop_run_publishes_an_exact_small_control_without_reuploading_state(self):
+        self.assertIn('shutil.copy2(sys.argv[1], target)', self.workflow)
+        control = self.workflow.index("Persist the small phase-2 pause/completion control")
+        self.assertIn("steps.early_control.outputs.no_op == 'true'", self.workflow[control:])
+        state = self.workflow.index("Persist the small private resumable phase-2 state")
+        self.assertIn("steps.checkpoint_guard.outcome == 'success'", self.workflow[state:control])
 
     def test_all_soundcharts_calls_share_the_existing_serial_lock(self):
         self.assertIn(
@@ -89,7 +115,7 @@ class SoundchartsFalPhase2WorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn('default_max_requests=500', self.workflow)
         self.assertIn('default_max_new_queue=2000', self.workflow)
         self.assertIn(
-            '"$GITHUB_EVENT_NAME" == "workflow_run" || "$GITHUB_EVENT_NAME" == "schedule"',
+            '"$GITHUB_EVENT_NAME" == "workflow_run"',
             self.workflow,
         )
         self.assertIn('default_max_requests=40000', self.workflow)

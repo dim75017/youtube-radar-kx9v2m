@@ -2,9 +2,10 @@ name: Scan Soundcharts Fans Also Like phase 1
 
 on:
   schedule:
-    # Two bounded bulk windows leave the daily core and follower collectors
-    # uncontested. New catalogue facts always take priority over FAL expansion.
-    - cron: '23 13,20 * * *'
+    # This is the only scheduled root of the FAL chain. Downstream phases are
+    # workflow_run-driven so GitHub's single pending concurrency slot cannot
+    # replace one phase with an overlapping recovery cron.
+    - cron: '23 9 * * *'
   push:
     branches: [main]
     paths:
@@ -50,7 +51,9 @@ jobs:
       QUOTA_RESERVE: '500000'
       MAINTENANCE_DAILY_REQUESTS: '60000'
       MIN_RESOLVED_SEEDS: '4500'
-      HARD_MAX_RESOLVED_SEEDS: '10000'
+      # Emergency circuit-breaker only. Normal growth remains bounded against
+      # the last accepted ledger by MAX_SEED_GROWTH_PERCENT / ABSOLUTE below.
+      EMERGENCY_MAX_RESOLVED_SEEDS: '20000'
       MAX_SEED_GROWTH_PERCENT: '35'
       MAX_SEED_GROWTH_ABSOLUTE: '2000'
       MAX_SEED_SHRINK_PERCENT: '20'
@@ -149,7 +152,7 @@ jobs:
               echo "Ignoring incomplete FAL completion control artifact $candidate_id" >&2
               continue
             fi
-            if python - "$candidate_report" "$candidate_ledger" "$HARD_MAX_RESOLVED_SEEDS" <<'PY'
+            if python - "$candidate_report" "$candidate_ledger" "$EMERGENCY_MAX_RESOLVED_SEEDS" <<'PY'
           import json
           import sys
           from pathlib import Path
@@ -209,7 +212,7 @@ jobs:
             --output "$SEED_LEDGER" \
             --previous-ledger "$PREVIOUS_SEED_LEDGER" \
             --min-resolved "$MIN_RESOLVED_SEEDS" \
-            --max-resolved "$HARD_MAX_RESOLVED_SEEDS" \
+            --max-resolved "$EMERGENCY_MAX_RESOLVED_SEEDS" \
             --max-growth-percent "$MAX_SEED_GROWTH_PERCENT" \
             --max-growth-absolute "$MAX_SEED_GROWTH_ABSOLUTE" \
             --max-shrink-percent "$MAX_SEED_SHRINK_PERCENT" \
@@ -365,7 +368,7 @@ jobs:
           --max-requests "${{ steps.plan.outputs.max_requests }}"
           --quota-reserve "$QUOTA_RESERVE"
           --maintenance-daily-requests "$MAINTENANCE_DAILY_REQUESTS"
-          --max-seeds "$HARD_MAX_RESOLVED_SEEDS"
+          --max-seeds "$EMERGENCY_MAX_RESOLVED_SEEDS"
           --min-seed-guard "${{ steps.seed_transition.outputs.min_resolved }}"
           --max-seed-guard "${{ steps.seed_transition.outputs.max_resolved }}"
           --candidate-min-audience 50000
@@ -455,7 +458,7 @@ jobs:
             --max-requests "${{ steps.plan.outputs.max_requests }}" \
             --quota-reserve "$QUOTA_RESERVE" \
             --maintenance-daily-requests "$MAINTENANCE_DAILY_REQUESTS" \
-            --max-seeds "$HARD_MAX_RESOLVED_SEEDS" \
+            --max-seeds "$EMERGENCY_MAX_RESOLVED_SEEDS" \
             --min-seed-guard "${{ steps.seed_transition.outputs.min_resolved }}" \
             --max-seed-guard "${{ steps.seed_transition.outputs.max_resolved }}" \
             --candidate-min-audience 50000 \

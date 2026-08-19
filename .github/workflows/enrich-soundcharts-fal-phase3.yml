@@ -1,6 +1,9 @@
 name: Enrich Soundcharts FAL phase 3
 
 on:
+  workflow_run:
+    workflows: ["Backfill Soundcharts FAL Spotify IDs"]
+    types: [completed]
   workflow_dispatch:
     inputs:
       max_requests:
@@ -17,12 +20,16 @@ permissions:
 # credentials and uses a run-scoped group so it cannot be held behind a paid
 # collector while it only validates immutable private artifacts.
 concurrency:
-  group: ${{ inputs.max_requests == '0' && format('soundcharts-fal-phase3-dry-{0}', github.run_id) || format('refresh-soundcharts-ar-collection-{0}', github.ref) }}
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.max_requests == '0' && format('soundcharts-fal-phase3-dry-{0}', github.run_id) || format('refresh-soundcharts-ar-collection-{0}', github.ref) }}
   cancel-in-progress: false
 
 jobs:
   phase3:
-    if: github.ref == 'refs/heads/main'
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_run' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_branch == 'main'))
     runs-on: ubuntu-latest
     timeout-minutes: 240
     env:
@@ -95,7 +102,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          max_requests="${REQUESTED_MAX_REQUESTS:-0}"
+          default_max_requests=0
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_run" ]]; then
+            default_max_requests="$ABSOLUTE_MAX_REQUESTS"
+          fi
+          max_requests="${REQUESTED_MAX_REQUESTS:-$default_max_requests}"
           if [[ ! "$max_requests" =~ ^[0-9]{1,4}$ ]] || (( 10#$max_requests > 4000 )); then
             echo "max_requests must be an integer between 0 and 4000" >&2
             exit 1
@@ -125,6 +136,7 @@ jobs:
             local artifact_name="$1"
             local required="$2"
             local output_dir="$3"
+            local expected_run_id="${4:-}"
             local listing="$RUNNER_TEMP/${artifact_name}-artifacts.json"
             local archive="$RUNNER_TEMP/${artifact_name}.zip"
             mkdir -p "$output_dir"
@@ -134,7 +146,13 @@ jobs:
               "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${artifact_name}&per_page=100" \
               --output "$listing"
             local selected
-            selected="$(jq -c '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last // empty' "$listing")"
+            if [[ -n "$expected_run_id" ]]; then
+              selected="$(jq -c --arg run_id "$expected_run_id" \
+                '[.artifacts[] | select(.expired == false and (.workflow_run.id | tostring) == $run_id)] | \
+                 sort_by(.created_at) | last // empty' "$listing")"
+            else
+              selected="$(jq -c '[.artifacts[] | select(.expired == false)] | sort_by(.created_at) | last // empty' "$listing")"
+            fi
             if [[ -z "$selected" || "$selected" == "null" ]]; then
               if [[ "$required" == "required" ]]; then
                 echo "Required artifact ${artifact_name} is unavailable" >&2
@@ -185,7 +203,11 @@ jobs:
 
           phase2_raw="$SOURCE_DIR/phase2-encrypted"
           phase2_plain="$SOURCE_DIR/phase2-plain"
-          phase2_artifact_id="$(download_latest "$PHASE2_ID_STATE_ARTIFACT" required "$phase2_raw")"
+          triggering_backfill_run_id=""
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_run" ]]; then
+            triggering_backfill_run_id="${{ github.event.workflow_run.id }}"
+          fi
+          phase2_artifact_id="$(download_latest "$PHASE2_ID_STATE_ARTIFACT" required "$phase2_raw" "$triggering_backfill_run_id")"
           phase2_encrypted="$(find "$phase2_raw" -type f -name '*.tar.gz.enc' -print -quit)"
           require_file "$phase2_encrypted" "encrypted Phase-2 bundle"
           mkdir -p "$phase2_plain"
@@ -295,7 +317,41 @@ jobs:
             openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 \
               -pass env:FAL_STAGING_ARTIFACT_KEY -in "$previous_encrypted" | tar -xz -C "$previous_plain"
             previous_state="$(find "$previous_plain" -type f -name 'soundcharts-fal-phase3-state-v1.sqlite3' -print -quit)"
+            previous_report="$(find "$previous_plain" -type f -name 'soundcharts-fal-phase3-report-v1.json' -print -quit)"
             require_file "$previous_state" "previous Phase-3 SQLite state"
+            require_file "$previous_report" "previous Phase-3 verification report"
+            python - "$previous_state" "$previous_report" <<'PY'
+          import hashlib
+          import json
+          import re
+          import sqlite3
+          import sys
+          from pathlib import Path
+
+          state = Path(sys.argv[1])
+          report = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+          if int(report.get("version") or 0) != 1:
+              raise SystemExit("Previous Phase-3 report version is unsupported")
+          if report.get("staging_only") is not True:
+              raise SystemExit("Previous Phase-3 report escaped private staging")
+          if report.get("canonical_written") is not False or report.get("dashboard_written") is not False:
+              raise SystemExit("Previous Phase-3 report claims a public write")
+          source = report.get("source") or {}
+          expected_hash = str(source.get("state_sha256_after") or "")
+          actual_hash = hashlib.sha256(state.read_bytes()).hexdigest()
+          if expected_hash != actual_hash:
+              raise SystemExit("Previous Phase-3 state does not match its report hash")
+          for key in ("phase2_state_sha256", "phase2_report_sha256", "phase1_state_sha256"):
+              if not re.fullmatch(r"[0-9a-f]{64}", str(source.get(key) or "")):
+                  raise SystemExit(f"Previous Phase-3 report lacks verified lineage: {key}")
+          for key in ("phase2_source_artifact_id", "phase1_source_artifact_id"):
+              if not re.fullmatch(r"[1-9][0-9]*", str(source.get(key) or "")):
+                  raise SystemExit(f"Previous Phase-3 report lacks artifact lineage: {key}")
+          with sqlite3.connect(state) as connection:
+              check = connection.execute("PRAGMA quick_check").fetchone()
+          if not check or check[0] != "ok":
+              raise SystemExit(f"Previous Phase-3 SQLite quick_check failed: {check!r}")
+          PY
             cp "$previous_state" "$PHASE3_STATE"
           fi
 
@@ -448,7 +504,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python - "$PHASE3_STATE" "$ENRICHED_MANIFEST" "$PHASE3_REPORT" <<'PY'
+          python - "$PHASE3_STATE" "$REVIEW_MANIFEST" "$ENRICHED_MANIFEST" "$PHASE3_REPORT" <<'PY'
           import hashlib
           import json
           import os
@@ -456,7 +512,9 @@ jobs:
           import sys
           from pathlib import Path
 
-          state, manifest_path, report_path = map(Path, sys.argv[1:])
+          from enrich_soundcharts_fal_phase3 import validate_enriched_manifest_digests
+
+          state, phase2_manifest_path, manifest_path, report_path = map(Path, sys.argv[1:])
           report = json.loads(report_path.read_text(encoding="utf-8"))
           manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
           for payload in (report, manifest):
@@ -483,6 +541,16 @@ jobs:
           for key, expected in expected_lineage.items():
               if str(source.get(key) or "") != expected:
                   raise SystemExit(f"Phase-3 report source binding mismatch: {key}")
+          enriched_binding = validate_enriched_manifest_digests(manifest)
+          exact_file_bindings = {
+              "review_manifest_sha256": hashlib.sha256(phase2_manifest_path.read_bytes()).hexdigest(),
+              "enriched_manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+              "enriched_manifest_records_digest": enriched_binding["records_digest"],
+              "enriched_manifest_row_count": enriched_binding["row_count"],
+          }
+          for key, expected in exact_file_bindings.items():
+              if source.get(key) != expected:
+                  raise SystemExit(f"Phase-3 report file binding mismatch: {key}")
           policy = report.get("policy") or {}
           if policy.get("source_approval_remains_manual") is not True:
               raise SystemExit("Source approval was automated")
@@ -539,13 +607,14 @@ jobs:
           test -s "$PHASE3_STATE"
           bundle="$RUNNER_TEMP/fal-phase3-encrypted-bundle"
           mkdir -p "$bundle"
+          test -s "$PHASE3_STATE"
+          test -s "$REVIEW_MANIFEST"
+          test -s "$ENRICHED_MANIFEST"
+          test -s "$PHASE3_REPORT"
           cp "$PHASE3_STATE" "$bundle/soundcharts-fal-phase3-state-v1.sqlite3"
-          if [[ -s "$ENRICHED_MANIFEST" ]]; then
-            cp "$ENRICHED_MANIFEST" "$bundle/soundcharts-fal-phase3-review-manifest-v1.json"
-          fi
-          if [[ -s "$PHASE3_REPORT" ]]; then
-            cp "$PHASE3_REPORT" "$bundle/soundcharts-fal-phase3-report-v1.json"
-          fi
+          cp "$REVIEW_MANIFEST" "$bundle/soundcharts-fal-phase2-review-manifest-v1.json"
+          cp "$ENRICHED_MANIFEST" "$bundle/soundcharts-fal-phase3-review-manifest-v1.json"
+          cp "$PHASE3_REPORT" "$bundle/soundcharts-fal-phase3-report-v1.json"
           tar -cz -C "$bundle" . | \
             openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 -salt \
               -pass env:FAL_STAGING_ARTIFACT_KEY -out "$ENCRYPTED_STATE"
@@ -626,6 +695,17 @@ jobs:
               --header "X-GitHub-Api-Version: 2022-11-28" \
               "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}"
           done
+
+      - name: Purge decrypted phase-3 working files
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="$RUNNER_TEMP/fal-phase3-encrypted-bundle"
+          rm -rf -- "$SOURCE_DIR" "$PRIVATE_DIR" "$bundle"
+          test ! -e "$SOURCE_DIR"
+          test ! -e "$PRIVATE_DIR"
+          test ! -e "$bundle"
 
       - name: Confirm repository remained unchanged
         if: always()

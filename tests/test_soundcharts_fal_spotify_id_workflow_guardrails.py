@@ -11,13 +11,13 @@ class SoundchartsFalSpotifyIdWorkflowGuardrailsTests(unittest.TestCase):
     def setUpClass(cls):
         cls.workflow = WORKFLOW.read_text(encoding="utf-8")
 
-    def test_runs_after_complete_phase2_and_on_first_main_install(self):
+    def test_runs_only_after_complete_phase2_or_manual_dispatch(self):
         self.assertIn(
             'workflows: ["Scan Soundcharts Fans Also Like phase 2"]', self.workflow
         )
         self.assertIn("github.event.workflow_run.conclusion == 'success'", self.workflow)
         self.assertIn("github.event.workflow_run.head_branch == 'main'", self.workflow)
-        self.assertIn("push:", self.workflow)
+        self.assertNotIn("  push:", self.workflow)
         self.assertIn("workflow_dispatch:", self.workflow)
 
     def test_shares_exact_paid_soundcharts_concurrency_lock(self):
@@ -26,6 +26,25 @@ class SoundchartsFalSpotifyIdWorkflowGuardrailsTests(unittest.TestCase):
             self.workflow,
         )
         self.assertIn("cancel-in-progress: false", self.workflow)
+
+    def test_workflow_run_consumes_only_its_exact_phase2_artifact(self):
+        self.assertIn('triggering_phase2_run_id="${{ github.event.workflow_run.id }}"', self.workflow)
+        self.assertIn("(.workflow_run.id | tostring) == $run_id", self.workflow)
+        self.assertIn('phase2_state_exact="false"', self.workflow)
+        self.assertIn("Phase-2 artifact does not belong to the triggering workflow run", self.workflow)
+        self.assertIn("PHASE2_CONTROL_ARTIFACT: soundcharts-fal-phase2-control-v5", self.workflow)
+        self.assertIn("Triggering Phase-2 run has no exact completion control", self.workflow)
+        self.assertIn("Triggering Phase-2 control lacks exact state proof", self.workflow)
+        self.assertIn("Restored Phase-2 state does not match the triggering completion control", self.workflow)
+
+    def test_successful_noop_still_uploads_an_exact_encrypted_phase3_handoff(self):
+        encrypt = self.workflow.index("Encrypt exact state before artifact storage")
+        upload = self.workflow.index("Persist exact encrypted backfill handoff")
+        self.assertLess(encrypt, upload)
+        section = self.workflow[encrypt:upload]
+        self.assertIn("steps.backfill.outcome == 'success'", section)
+        self.assertIn("steps.verify.outcome == 'success'", section)
+        self.assertNotIn("state_changed == 'true'", section)
 
     def test_request_cap_and_quota_floor_are_fail_closed(self):
         self.assertIn("ABSOLUTE_MAX_REQUESTS: '15000'", self.workflow)
@@ -42,7 +61,7 @@ class SoundchartsFalSpotifyIdWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("soundcharts-fal-phase2-report-v4.json", self.workflow)
         self.assertIn('--phase2-report "$PHASE2_REPORT"', self.workflow)
         self.assertIn('cp "$PHASE2_REPORT" "$bundle/soundcharts-fal-phase2-report-v4.json"', self.workflow)
-        state_upload = self.workflow.index("Persist encrypted changed state")
+        state_upload = self.workflow.index("Persist exact encrypted backfill handoff")
         state_section = self.workflow[state_upload:]
         self.assertIn("${{ env.ENCRYPTED_STATE }}", state_section)
         self.assertNotIn("${{ env.PHASE2_DB }}", state_section)
