@@ -88,8 +88,8 @@ assert.match(recommendations, /method:'POST'.*Content-Type':'text\/plain;charset
   'shared mutations use the Apps Script text POST contract without a CORS preflight');
 assert.match(recommendations, /CONTINUOUS_RECO_VARIANT_VERSION=2/,
   'the legacy V1 variant payload is explicitly versioned out');
-assert.match(recommendations, /RECO_ROTATION_KEY='lofi_radar_reco_rotation_v3'/,
-  'evidence-calibrated anti-repetition uses the v3 rotation namespace');
+assert.match(recommendations, /RECO_ROTATION_KEY='lofi_radar_reco_rotation_v4'/,
+  'full-history anti-repetition uses the v4 rotation namespace');
 assert.ok(
   helpers.indexOf('mergeGeneratedRecommendationPool(d)') < helpers.indexOf('applyRecommendationEdits(d)'),
   'generated ideas are merged before shared or offline title and description edits are applied',
@@ -120,24 +120,32 @@ const measuredSeeds = [
     n: -1000000101, valid: '', score: 88, scoreAdj: 88, genre: 'Lofi', perso: 'Lofi Girl',
     title: 'Rainy Library · Deep Focus', concept: 'A measured lofi direction.',
     noteData: 'EXACT EVIDENCE A · 12.3 M views · 420 k views/month.',
-    _generated: true, _sourceVideoId: 'measuredA01', _sourceMarketScore: 91.25,
+    _generated: true, _generatorVersion: 4, _sourceVideoId: 'measuredA01', _sourceMarketScore: 91.25,
   },
   {
     n: -1000000102, valid: '', score: 88, scoreAdj: 88, genre: 'Ambient', perso: 'Lofi Girl',
     title: 'Silent Orbit · Slow Down', concept: 'A measured ambient direction.',
     noteData: 'EXACT EVIDENCE B · 8.1 M views · 300 k views/month.',
-    _generated: true, _sourceVideoId: 'measuredB02', _sourceMarketScore: 86.5,
+    _generated: true, _generatorVersion: 4, _sourceVideoId: 'measuredB02', _sourceMarketScore: 86.5,
   },
   {
     n: -1000000103, valid: '', score: 86, scoreAdj: 86, genre: 'Piano', perso: 'Lofi Girl',
     title: 'First Snow · Reading Flow', concept: 'A measured piano direction.',
     noteData: 'EXACT EVIDENCE C · 5.4 M views · 210 k views/month.',
-    _generated: true, _sourceVideoId: 'measuredC03', _sourceMarketScore: 82.75,
+    _generated: true, _generatorVersion: 4, _sourceVideoId: 'measuredC03', _sourceMarketScore: 82.75,
   },
 ];
-const roadmapWinner = {
-  n: 77, valid: '-', score: 70, genre: 'Lofi', perso: 'Lofi Girl',
-  title: 'Roadmap learning winner', concept: 'rainy focus format',
+const roadmapPending = {
+  n: 77, valid: '', score: 70, genre: 'Lofi', perso: 'Lofi Girl',
+  title: 'Roadmap pending title', concept: 'rainy focus format',
+};
+const roadmapRefused = {
+  n: 78, valid: '-', score: 70, genre: 'Jazz', perso: 'Lofi Girl',
+  title: 'Roadmap refused title', concept: 'late jazz format',
+};
+const acceptedTitle = {
+  n: 79, valid: 'X', score: 70, genre: 'Ambient', perso: 'Lofi Girl',
+  title: 'Explicitly accepted title', concept: 'ambient focus format',
 };
 let rotationNow = Date.parse('2026-08-04T10:00:00Z');
 class RotationDate extends Date {
@@ -151,10 +159,10 @@ const rotationStored = new Map([
   ['lofi_radar_generated_reco_decisions_v1', preservedDecisionState],
   ['lofi_radar_recommendation_edits_v1', preservedEditState],
   ['lofi_radar_roadmap_archive_v3', preservedRoadmapState],
-  ['lofi_radar_reco_rotation_v3', '{}'],
+  ['lofi_radar_reco_rotation_v4', '{}'],
 ]);
 const rotationContext = {
-  DATA: {recos: [Object.assign({}, roadmapWinner)]},
+  DATA: {recos: [roadmapPending, roadmapRefused, acceptedTitle].map(row => Object.assign({}, row))},
   LANG: 'fr',
   Date: RotationDate,
   Intl,
@@ -171,15 +179,18 @@ const rotationContext = {
     setItem(key, value) { rotationStored.set(key, value); },
   },
   window: {LOFI_RECOMMENDATION_POOL: {
-    schema: 3, version: 3, buildId: 'build-a', ledgerRevision: 'ledger-a', sourceT: 1,
+    schema: 3, version: 4, buildId: 'build-a', ledgerRevision: 'ledger-a', modelRevision: 'model-a', sourceT: 1,
     items: measuredSeeds.map(row => Object.assign({}, row)),
   }},
   normalizedRecommendationTitle(value) { return String(value || '').trim().toLowerCase().replace(/\s+/g, ' '); },
   persoCategory(value) { return value || 'Sans personnage'; },
   isValidated(value) { return /^x(?=$|\s|[,;:\-])/i.test(String(value || '').trim()); },
   isRefused(value) { return /^-/.test(String(value || '').trim()); },
-  recommendationRoadmapEntry(row) { return Number(row && row.n) === 77 ? {recoN: 77, title: roadmapWinner.title} : null; },
-  scheduledRows() { return [{recoN: 77, title: roadmapWinner.title}]; },
+  recommendationRoadmapEntry(row) {
+    row = [roadmapPending, roadmapRefused].find(item => item.n === Number(row && row.n));
+    return row ? {recoN: row.n, title: row.title} : null;
+  },
+  scheduledRows() { return [roadmapPending, roadmapRefused].map(row => ({recoN: row.n, title: row.title})); },
   anaRows() { return []; },
   rerenderRecos() {},
 };
@@ -198,8 +209,12 @@ vm.runInNewContext(`${recommendations.slice(overlayStart, overlayEnd)}
 rotationContext.mergePoolForTest(rotationContext.DATA);
 
 const firstProfile = rotationContext.profileForTest();
-assert.ok(firstProfile.feedbackGenre.lofi > 0,
-  'an active Roadmap placement wins over a stale refusal as positive learning feedback');
+assert.equal(firstProfile.feedbackGenre.lofi, undefined,
+  'a Roadmap placement without an explicit title decision is neutral');
+assert.equal(firstProfile.feedbackGenre.jazz, -8,
+  'a Roadmap placement never overrides an explicit title refusal');
+assert.equal(firstProfile.feedbackGenre.ambient, 6,
+  'only an explicit title validation supplies positive feedback');
 const firstBatch = Array.from(rotationContext.dailySetForTest());
 assert.equal(firstBatch.length, measuredSeeds.length,
   'the batch stays short when only three measured qualified concepts remain');
@@ -209,14 +224,14 @@ assert.deepEqual(Array.from(rotationContext.generateForTest(50, firstProfile, '2
   'continuous browser generation is disabled even when explicitly requested');
 
 const today = rotationContext.dayForTest();
-assert.equal(JSON.parse(rotationStored.get('lofi_radar_reco_rotation_v3'))[today].length, measuredSeeds.length,
-  'the v3 rotation stores only the measured active batch');
+assert.equal(JSON.parse(rotationStored.get('lofi_radar_reco_rotation_v4'))[today].length, measuredSeeds.length,
+  'the v4 rotation stores only the measured active batch');
 
 rotationContext.refreshForTest({stopPropagation() {}});
 const afterRefresh = Array.from(rotationContext.dailySetForTest());
 assert.equal(afterRefresh.length, 0,
   'same-day refresh returns no filler once the qualified measured reservoir is exhausted');
-const consumedAfterRefresh = JSON.parse(rotationStored.get('lofi_radar_reco_rotation_v3'))._consumed;
+const consumedAfterRefresh = JSON.parse(rotationStored.get('lofi_radar_reco_rotation_v4'))._consumed;
 assert.deepEqual([...consumedAfterRefresh].sort((a, b) => a - b), measuredSeeds.map(row => row.n).sort((a, b) => a - b),
   'every idea explicitly discarded by Refresh enters the durable consumed ledger');
 assert.equal(rotationStored.get('lofi_radar_generated_reco_decisions_v1'), preservedDecisionState,
@@ -231,13 +246,13 @@ const appendedSeeds = [
     n: -1000000104, valid: '', score: 91, scoreAdj: 91, genre: 'Jazz', perso: 'Lofi Girl',
     title: 'Night Tram Â· Quiet Study', concept: 'A newly appended measured direction.',
     noteData: 'EXACT EVIDENCE D Â· 4.8 M views Â· 190 k views/month.',
-    _generated: true, _sourceVideoId: 'measuredD04', _sourceMarketScore: 84.5,
+    _generated: true, _generatorVersion: 4, _sourceVideoId: 'measuredD04', _sourceMarketScore: 84.5,
   },
   {
     n: -1000000105, valid: '', score: 89, scoreAdj: 89, genre: 'Ambient', perso: 'Lofi Girl',
     title: 'Moss Observatory Â· Calm Work', concept: 'Another newly appended measured direction.',
     noteData: 'EXACT EVIDENCE E Â· 3.9 M views Â· 175 k views/month.',
-    _generated: true, _sourceVideoId: 'measuredE05', _sourceMarketScore: 83.25,
+    _generated: true, _generatorVersion: 4, _sourceVideoId: 'measuredE05', _sourceMarketScore: 83.25,
   },
 ];
 rotationContext.window.LOFI_RECOMMENDATION_POOL.items.push(...appendedSeeds.map(row => Object.assign({}, row)));
@@ -249,7 +264,7 @@ rotationNow = Date.parse('2026-08-05T10:00:00Z');
 const nextDayBatch = Array.from(rotationContext.dailySetForTest());
 assert.deepEqual(nextDayBatch.map(row => row.n).sort((a, b) => a - b), appendedSeeds.map(row => row.n).sort((a, b) => a - b),
   'a new day and a new pool revision expose only newly appended stock, never refresh-discarded IDs');
-const nextDayHistory = JSON.parse(rotationStored.get('lofi_radar_reco_rotation_v3'));
+const nextDayHistory = JSON.parse(rotationStored.get('lofi_radar_reco_rotation_v4'));
 assert.equal(nextDayHistory._pool.buildId, 'build-b');
 assert.equal(nextDayHistory._pool.ledgerRevision, 'ledger-b');
 assert.deepEqual([...nextDayHistory._consumed].sort((a, b) => a - b), measuredSeeds.map(row => row.n).sort((a, b) => a - b),

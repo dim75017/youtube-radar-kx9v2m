@@ -51,12 +51,14 @@ assert.deepEqual(
     concept: data.recos[0].concept,
     desc: data.recos[0].desc,
     edited: data.recos[0]._locallyEdited,
+    titleEdited: data.recos[0]._titleEdited,
   },
   {
     title: 'Retouched title',
     concept: 'Retouched idea description',
     desc: 'Retouched YouTube description',
     edited: true,
+    titleEdited: true,
   },
   'the persisted overlay restores title and both description fields after a reload',
 );
@@ -72,8 +74,8 @@ editContext.replaceSharedState({version: 2, updatedAt: 500, items: [{
 const sharedData = {recos: [{n: 7, title: 'Original title', concept: 'Original concept', desc: 'Original description'}]};
 editContext.applyEdits(sharedData);
 assert.deepEqual(
-  {title: sharedData.recos[0].title, concept: sharedData.recos[0].concept, desc: sharedData.recos[0].desc, shared: sharedData.recos[0]._sharedEdited},
-  {title: 'Team title', concept: 'Team concept', desc: 'Team description', shared: true},
+  {title: sharedData.recos[0].title, concept: sharedData.recos[0].concept, desc: sharedData.recos[0].desc, shared: sharedData.recos[0]._sharedEdited, titleEdited: sharedData.recos[0]._titleEdited},
+  {title: 'Team title', concept: 'Team concept', desc: 'Team description', shared: true, titleEdited: true},
   'the central team edit overrides the stale local fallback after synchronization',
 );
 
@@ -129,6 +131,7 @@ for (const required of [
   'function saveRecoEditor(',
   'saveRecommendationEdits(edits)',
   'saveSharedRecommendationEdit(r,edit)',
+  'r._titleEdited=true',
 ]) {
   assert.ok(editor.includes(required), 'Missing recommendation editor behavior: ' + required);
 }

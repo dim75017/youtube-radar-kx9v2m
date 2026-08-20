@@ -61,7 +61,7 @@ const rotationProposal = {
 };
 const ordinaryValidated = {n: 57, title: 'Ordinary validated idea', valid: 'X'};
 const ordinaryRefused = {n: 58, title: 'Ordinary refused idea', valid: '-'};
-const ordinaryPending = {n: 59, title: 'Ordinary pending idea', valid: '', score: 20};
+const ordinaryPending = {n: 59, title: 'Ordinary pending idea', valid: '', score: 20, _generatorVersion: 4};
 const mondayValidated = {n: 60, title: 'Existing Monday project', valid: 'X'};
 const locallyPlacedValidated = {n: 61, title: 'Locally placed project', valid: 'X'};
 
@@ -137,6 +137,9 @@ const context = {
   rememberRecoIds: history => history,
   recoSeenIds: () => new Set(),
   saveRecoRotation: () => {},
+  recoPoolIdentity: () => ({version: 4, buildId: 'roadmap-test'}),
+  recoPoolIdentityKey: identity => identity ? `${identity.version}|${identity.buildId}` : '',
+  activeRecommendationGeneratorVersion: () => 4,
   setActiveContinuousRecommendationVariants: () => {},
   recommendationPerformanceHistoryReady: () => true,
   recoProfile: () => ({}),
@@ -146,6 +149,8 @@ const context = {
   recoPurposeKey: () => '',
   recoSourceKey: () => '',
   recoGeneratedFamilyKey: (row, key) => String(row && row[key] || '').trim().toLowerCase(),
+  recoNormalizedTopicKey: row => String(row && row.title || '').trim().toLowerCase(),
+  recoUniqueTopicRows: rows => rows,
   recoReasons: () => [],
 };
 
@@ -161,7 +166,7 @@ vm.runInNewContext(
 );
 vm.runInNewContext(
   `const RECO_DAILY_LIMIT=50;
-   const RECO_MIN_DAILY_SCORE=72;
+   const RECO_MIN_DAILY_SCORE=78;
    ${source.slice(dailyStart, dailyEnd)}
    this.dailyRecommendationSetForTest=dailyRecommendationSet;`,
   context,
@@ -212,7 +217,7 @@ assert.ok(validatedIds.includes(acceptedValidatedRecos[52].n),
   'an old Roadmap archive cannot hide a still-validated recommendation');
 
 const pendingIds = Array.from(context.dailyRecommendationSetForTest()).map(row => row.n);
-assert.deepEqual(pendingIds, [malformedInArchivedRoadmap.n, ordinaryPending.n],
-  'an obsolete produced-mix row no longer hides a pending recommendation');
+assert.deepEqual(pendingIds, [ordinaryPending.n],
+  'only the V4 pending idea enters review; an obsolete neutral row stays audit-only');
 
 console.log('Roadmap has priority over Pending, Validated and Refused recommendation queues.');

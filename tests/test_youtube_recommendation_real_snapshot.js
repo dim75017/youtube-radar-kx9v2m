@@ -8,7 +8,9 @@ const vm = require('node:vm');
 const ROOT = path.resolve(__dirname, '..');
 const RECOMMENDATION_SOURCE = path.join(ROOT, 'assets/js/dashboard-04-recommendations.js');
 const DATA_FILE = path.join(ROOT, 'Lofi_Radar_data.js');
-const POOL_FILE = path.join(ROOT, 'Lofi_Radar_recommendation_pool.js');
+const POOL_FILE = process.env.RECOMMENDATION_POOL_FILE
+  ? path.resolve(process.env.RECOMMENDATION_POOL_FILE)
+  : path.join(ROOT, 'Lofi_Radar_recommendation_pool.js');
 const STUDIO_FILE = path.join(ROOT, 'Lofi_Radar_studio.js');
 const HISTORY_DIR = path.join(ROOT, 'video_history');
 
@@ -140,6 +142,9 @@ function recommendationContext({recos, ownedRows, measuredSeeds, snapshotTime}) 
     },
     window: {
       LOFI_RECOMMENDATION_POOL: {
+        schema: 3,
+        version: measuredSeeds.some(row => Number(row._generatorVersion) === 4) ? 4 : 3,
+        modelRevision: measuredSeeds.some(row => Number(row._generatorVersion) === 4) ? 'real-v4-model' : '',
         items: measuredSeeds.map(row => Object.assign({}, row)),
       },
     },
@@ -159,6 +164,8 @@ function recommendationContext({recos, ownedRows, measuredSeeds, snapshotTime}) 
     this.profileForTest = recoProfile;
     this.scoreForTest = recoDailyScore;
     this.dailySetForTest = dailyRecommendationSet;
+    this.topicForTest = recoNormalizedTopicKey;
+    this.genreForTest = recoGenreKey;
     this.minimumScoreForTest = RECO_MIN_DAILY_SCORE;`, context);
   return context;
 }
@@ -171,16 +178,22 @@ const snapshotTime = Number(dataPayload.videoMetricsT || dataPayload.t || poolPa
 const owned = dataPayload.d.ours || [];
 const generated = poolPayload.items || [];
 
-assert.equal(poolPayload.schema, 3, 'the checked-in recommendation browser projection must use schema V3');
-assert.equal(poolPayload.version, 3, 'the checked-in recommendation reservoir must use generator V3');
-assert.ok(generated.length >= 1000 && generated.length <= 2500,
-  'the real browser projection uses 2,500 as a maximum and never adds filler after resolved families are removed');
+assert.equal(poolPayload.schema, 3, 'the recommendation browser projection must keep schema V3');
+const isLearnedV4 = Number(poolPayload.version) === 4;
+assert.ok(isLearnedV4 || Number(poolPayload.version) === 3,
+  'the checked-in reservoir must be either the migration input V3 or the learned V4 projection');
+assert.ok(generated.length > 0 && generated.length <= 2500,
+  'the real browser projection is non-empty, bounded and never padded with filler');
 assert.ok(poolPayload.ledger && Number(poolPayload.ledger.total) >= generated.length,
   'the append-only ledger must be larger than or equal to the bounded browser projection');
 assert.match(String(poolPayload.buildId || ''), /^[a-f0-9]{24}$/,
-  'the V3 projection must expose its deterministic build id');
+  'the projection must expose its deterministic build id');
 assert.match(String(poolPayload.ledgerRevision || ''), /^[a-f0-9]{64}$/,
-  'the V3 projection must expose its exact ledger revision');
+  'the projection must expose its exact ledger revision');
+if (isLearnedV4) {
+  assert.match(String(poolPayload.modelRevision || ''), /^[a-f0-9]{64}$/,
+    'the learned projection must expose the exact title/performance model revision');
+}
 const expectedSheetOwned = Number(dataPayload.videoMetrics && dataPayload.videoMetrics.sheet_ours_expected);
 const expectedAnalysisOwned = Number(dataPayload.videoMetrics && dataPayload.videoMetrics.analysis_rows_expected);
 assert.ok(expectedSheetOwned > 0 && expectedAnalysisOwned > 0,
@@ -190,39 +203,59 @@ assert.ok(owned.length >= expectedSheetOwned && owned.length >= expectedAnalysis
 assert.ok(Number.isFinite(snapshotTime), 'the real snapshot must expose a stable measurement timestamp');
 assert.ok(historyFiles.length >= 1, 'at least one real history shard must be loaded');
 
-const allowedWindows = new Set(['0-3m', '3-6m', '6-12m']);
+const allowedWindows = new Set(['0-3m', '3-6m', '6-12m', '12m+']);
 const allowedGenres = new Set([
   'lofi', 'ambient', 'nature', 'jazz', 'piano', 'classical', 'guitar', 'house', 'dnb', 'synthwave',
 ]);
 for (const row of generated) {
   assert.equal(row._generated, true, `pool row ${row.n} must be identified as generated`);
-  assert.ok(row._generatorVersion === 2 || row._generatorVersion === 3,
-    `pool row ${row.n} must be a losslessly bootstrapped V2 item or a source-backed V3 item`);
-  if (row._generatorVersion === 3) {
+  if (isLearnedV4) {
+    assert.equal(row._generatorVersion, 4,
+      `learned pool row ${row.n} must use generator V4 without leaking legacy proposals`);
+    assert.match(String(row._ideaKey || ''), /^g4\|r2\|/,
+      `learned pool row ${row.n} must expose its stable V4 recipe key`);
+    assert.equal(row._recipeVersion, 2, `learned pool row ${row.n} must use recipe schema 2`);
+    assert.equal(row._scoringVersion, 5, `learned pool row ${row.n} must use scoring V5`);
+    assert.ok(row._conceptFamily && row._titleStyleKey && row._titleFamily,
+      `learned pool row ${row.n} must expose its evidence-bound title model`);
+    assert.equal(Boolean(row._settingKey), false,
+      `learned pool row ${row.n} must never require an invented location`);
+  } else {
+    assert.ok(row._generatorVersion === 2 || row._generatorVersion === 3,
+      `migration row ${row.n} must be a losslessly bootstrapped V2 item or a source-backed V3 item`);
+  }
+  if (!isLearnedV4 && row._generatorVersion === 3) {
     assert.match(String(row._ideaKey || ''), /^g3\|r1\|/,
       `V3 pool row ${row.n} must expose its stable recipe key`);
     assert.equal(row._recipeVersion, 1, `V3 pool row ${row.n} must use recipe schema 1`);
-    assert.ok(Number.isSafeInteger(Number(row.n)), `V3 pool row ${row.n} must use a JS-safe stable id`);
   }
-  assert.equal(row._scoringVersion, 4, `pool row ${row.n} must use evidence-calibrated scoring V4`);
+  assert.ok(Number.isSafeInteger(Number(row.n)), `pool row ${row.n} must use a JS-safe stable id`);
+  if (!isLearnedV4) {
+    assert.equal(row._scoringVersion, 4, `migration pool row ${row.n} must retain calibrated scoring V4`);
+  }
   assert.ok(Number.isFinite(Number(row._sourceAgeM)), `pool row ${row.n} must expose a measured source age`);
-  assert.ok(Number(row._sourceAgeM) >= 0 && Number(row._sourceAgeM) <= 12,
-    `pool row ${row.n} must only use a source observed within 12 months`);
-  assert.ok(allowedWindows.has(row._sourceWindow), `pool row ${row.n} must use a canonical 3/6/12-month window`);
+  assert.ok(Number(row._sourceAgeM) >= 0,
+    `pool row ${row.n} must expose a non-negative measured source age`);
+  if (!isLearnedV4) {
+    assert.ok(Number(row._sourceAgeM) <= 12,
+      `migration pool row ${row.n} must retain its historical 12-month bound`);
+  }
+  assert.ok(allowedWindows.has(row._sourceWindow), `pool row ${row.n} must use a canonical history window`);
   assert.ok(allowedGenres.has(row._genreKey), `pool row ${row.n} must use a normalized canonical genre`);
   assert.equal(Object.prototype.hasOwnProperty.call(row, '_continuousVariant'), false,
     `pool row ${row.n} must not be a browser-fabricated continuous variant`);
 }
-assert.ok(generated.some(row => row._generatorVersion === 2),
-  'the V3 projection must preserve the existing V2 recommendation identities');
-assert.ok(generated.some(row => row._generatorVersion === 3),
-  'the V3 projection must expose newly generated ledger-backed ideas');
-assert.deepEqual(new Set(generated.map(row => row._sourceWindow)), allowedWindows,
-  'the real mixed V2/V3 reservoir must cover 0-3m, 3-6m and 6-12m');
-const generatedTiers = new Set(generated.map(row => String(row.pot || '')[0]));
-assert.ok(generatedTiers.has('S'), 'the real measured reservoir must expose evidence-backed S ideas');
-assert.ok(generatedTiers.has('A') && generatedTiers.has('B'),
-  'the real measured reservoir must retain meaningful A and B grades');
+if (isLearnedV4) {
+  assert.ok(generated.some(row => row._sourceWindow === '12m+'),
+    'the learned reservoir must keep strong evergreen market evidence instead of cutting it at 12 months');
+  assert.ok(generated.some(row => !row._settingKey),
+    'the learned reservoir must contain titles that do not depend on a location');
+} else {
+  assert.ok(generated.some(row => row._generatorVersion === 2),
+    'the migration input preserves the existing V2 recommendation identities for audit');
+  assert.ok(generated.some(row => row._generatorVersion === 3),
+    'the migration input preserves source-backed V3 ideas for audit');
+}
 
 const historyCoverage = owned.filter(row => Array.isArray(history[row.vid]) && history[row.vid].length > 0);
 const multiPointCoverage = owned.filter(row => Array.isArray(history[row.vid]) && history[row.vid].length >= 2);
@@ -260,6 +293,8 @@ const profile = context.profileForTest();
 assert.ok(profile.windows['3m'] > 0, 'the real channel profile must contain a 0-3m performance window');
 assert.ok(profile.windows['6m'] > 0, 'the real channel profile must contain a 3-6m performance window');
 assert.ok(profile.windows['12m'] > 0, 'the real channel profile must contain a 6-12m performance window');
+assert.ok(profile.windows['24m'] > 0 && profile.windows['60m'] > 0 && profile.windows.evergreen > 0,
+  'the real channel profile must learn from the complete historical catalogue with decreasing weights');
 for (const genre of ['lofi', 'synthwave', 'nature']) {
   const signal = Number(profile.performanceGenre[genre]);
   assert.ok(Number.isFinite(signal) && signal !== 0,
@@ -273,13 +308,31 @@ const qualified = generated
   .map(row => ({row, score: Number(context.scoreForTest(row, profile, day))}))
   .filter(item => Number.isFinite(item.score) && item.score >= context.minimumScoreForTest)
   .sort((a, b) => b.score - a.score || Number(a.row.n) - Number(b.row.n));
-assert.ok(qualified.length >= 20,
-  'the real V2 reservoir and real channel analytics must yield at least 20 quality-qualified ideas');
+assert.ok(qualified.length > 0,
+  'the real measured reservoir and channel analytics must yield at least one quality-qualified idea');
 assert.ok(qualified.every((item, index) => index === 0 || qualified[index - 1].score >= item.score),
   'the quality-qualified real reservoir must be rankable by the daily score');
 const realDailyBatch = Array.from(context.dailySetForTest());
-assert.equal(realDailyBatch.length, 50,
-  'the real measured reservoir must supply the complete daily 50-card promise');
+if (isLearnedV4) {
+  assert.ok(realDailyBatch.length > 0 && realDailyBatch.length <= 50,
+    'the learned V4 reservoir may stop below 50 instead of filling the batch with weak ideas');
+  const normalizedTopics = realDailyBatch.map(row => context.topicForTest(row));
+  const normalizedGenreTopics = realDailyBatch.map((row, index) => `${context.genreForTest(row.genre, row)}|${normalizedTopics[index]}`);
+  assert.ok(normalizedTopics.every(Boolean),
+    'every V4 daily card must expose a normalizable measured topic');
+  assert.equal(new Set(normalizedTopics).size, realDailyBatch.length,
+    'the real V4 daily batch must contain each normalized global hook/topic at most once');
+  assert.equal(new Set(normalizedGenreTopics).size, realDailyBatch.length,
+    'the real V4 daily batch must contain each genre×topic combination at most once');
+} else {
+  assert.equal(realDailyBatch.length, 0,
+    'the checked-in V3 migration input fails closed until a learned V4 projection is loaded');
+}
+if (process.env.PRINT_RECOMMENDATION_BATCH === '1') {
+  for (const [index, row] of realDailyBatch.entries()) {
+    console.log(`${String(index + 1).padStart(2, '0')} ${Math.round(row._dailyScore)} ${row.title}`);
+  }
+}
 const objectiveRowsById = new Map((dataPayload.d.recos || []).concat(generated).map(row => [Number(row.n), row]));
 assert.ok(realDailyBatch.every(row => {
   const objective = objectiveRowsById.get(Number(row.n)) || {};

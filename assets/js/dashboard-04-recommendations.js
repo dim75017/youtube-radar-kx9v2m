@@ -407,7 +407,12 @@ function applyRecommendationEdits(data){
   ((data&&data.recos)||[]).forEach(row=>{
     const item=sharedRecommendationEffectiveItem(row.n),hasShared=item&&['editedTitle','editedConcept','editedDesc'].some(key=>Object.prototype.hasOwnProperty.call(item,key));
     const edit=hasShared?{title:item.editedTitle,concept:item.editedConcept,desc:item.editedDesc}:edits[String(row.n)];if(!edit)return;
-    if(typeof edit.title==='string'&&edit.title.trim())row.title=edit.title.trim();
+    if(typeof edit.title==='string'&&edit.title.trim()){
+      row.title=edit.title.trim();
+      // Classification must follow the copy the team actually reviews, not
+      // the generator keys attached to the superseded title.
+      row._titleEdited=true;
+    }
     if(typeof edit.concept==='string')row.concept=edit.concept.trim();
     if(typeof edit.desc==='string')row.desc=edit.desc.trim();
     row._locallyEdited=true;
@@ -476,14 +481,14 @@ function legacyRerenderRecos(){
 }
 /* Daily recommendation rotation: only measured, quality-gated concepts enter a batch. */
 const RECO_DAILY_LIMIT=50;
-const RECO_MIN_DAILY_SCORE=72;
+const RECO_MIN_DAILY_SCORE=78;
 // Stable recommendation IDs let the browser remember refreshes across pool
 // appends. Fifty thousand entries cover many full ledgers while staying well
 // below normal localStorage quotas; only the oldest consumed IDs can age out.
 const RECO_CONSUMED_LIMIT=50000;
-// V3 resets only the stale seen/queue rotation after the evidence-calibrated
-// scoring launch. Decisions, edits and Roadmap placements use separate stores.
-const RECO_ROTATION_KEY='lofi_radar_reco_rotation_v3';
+// V4 resets only the stale seen/queue rotation after the full-history learning
+// launch. Decisions, edits and Roadmap placements use separate stores.
+const RECO_ROTATION_KEY='lofi_radar_reco_rotation_v4';
 let RECO_HISTORY_PROMISE=null;
 let RECO_DERIVED_REVISION=0;
 let RECO_DAILY_CACHE=null;
@@ -599,7 +604,10 @@ function recoTokens(r){
   // Remove generator boilerplate and generic media words: feedback must learn
   // the actual theme/use, not penalise the whole catalogue at once.
   const stop=new Set(['avec','dans','pour','the','and','from','music','radio','mix','video','youtube','direction','autour','pensee','concept','cree','depuis','corpus','instrumental','quotidien','affiner','avant','validation','editoriale','format','session','background']);
-  return [...new Set((String(r.title||'')+' '+String(r.niche||'')+' '+String(r.kw||''))
+  const evidence=r&&r._titleEdited
+    ?String(r.title||'')
+    :String(r&&r.title||'')+' '+String(r&&r.niche||'')+' '+String(r&&r.kw||'');
+  return [...new Set(evidence
     .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').match(/[a-z0-9]{4,}/g)||[])].filter(x=>!stop.has(x)).slice(0,18);
 }
 function recoPoolIdentity(){
@@ -607,8 +615,18 @@ function recoPoolIdentity(){
   if(!pool)return null;
   return {
     schema:Number(pool.schema)||0,version:Number(pool.version)||0,buildId:String(pool.buildId||''),
-    ledgerRevision:String(pool.ledgerRevision||''),sourceT:Number(pool.sourceT)||0
+    ledgerRevision:String(pool.ledgerRevision||''),modelRevision:String(pool.modelRevision||''),
+    sourceT:Number(pool.sourceT)||0,feedbackT:Number(pool.feedbackT)||0
   };
+}
+function activeRecommendationGeneratorVersion(){
+  const pool=typeof window!=='undefined'&&window.LOFI_RECOMMENDATION_POOL&&typeof window.LOFI_RECOMMENDATION_POOL==='object'?window.LOFI_RECOMMENDATION_POOL:null;
+  const version=Number(pool&&pool.version)||0;
+  return version>=4?version:0;
+}
+function recoPoolIdentityKey(identity){
+  if(!identity||typeof identity!=='object')return '';
+  return [identity.schema,identity.version,identity.buildId,identity.ledgerRevision,identity.modelRevision,identity.sourceT,identity.feedbackT].map(value=>String(value==null?'':value)).join('|');
 }
 function normalizeRecoRotationHistory(history){
   history=history&&typeof history==='object'&&!Array.isArray(history)?history:{};
@@ -643,41 +661,49 @@ function recoAddSignal(map,key,value){if(key)map[key]=(map[key]||0)+value;}
 function recoSignal(map,key){return Number(map[key]||0);}
 function recoFeatureText(value){return String(value||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();}
 function recoGenreKey(value,row){
-  if(row&&row._genreKey)return recoFeatureText(row._genreKey).replace(/\s+/g,'_');
-  const explicit=recoFeatureText(value);
-  const classify=text=>{
-    if(/\b(dnb|drum bass|drum and bass|liquid jungle)\b/.test(text))return 'dnb';
-    if(/\b(chill house|lofi house|deep house|melodic house)\b/.test(text))return 'house';
-    if(/\b(synthwave|retrowave|chillwave|outrun)\b/.test(text))return 'synthwave';
-    if(/\b(christmas|xmas|noel)\b/.test(text))return 'christmas';
-    if(/\b(halloween)\b/.test(text))return 'halloween';
-    // Lofi must win over rain/piano/jazz words when the source is explicitly
-    // presented as lofi (the previous order caused the genre corruption).
-    if(/\b(lofi|lo fi|chillhop|hip hop)\b/.test(text))return 'lofi';
-    if(/\b(classical|classique|baroque|orchestra|chamber)\b/.test(text))return 'classical';
-    if(/\b(guitar|acoustic|fingerstyle)\b/.test(text))return 'guitar';
-    if(/\b(jazz|jazzhop|bossa)\b/.test(text))return 'jazz';
-    if(/\b(piano)\b/.test(text))return 'piano';
-    if(/\b(nature|rain|forest|ocean|river|thunder|fireplace|white noise|bird sounds|waves)\b/.test(text))return 'nature';
-    if(/\b(ambient|soundscape|meditation|deep focus|sleep music)\b/.test(text))return 'ambient';
-    return '';
+  const titleEdited=!!(row&&row._titleEdited);
+  if(!titleEdited&&row&&row._genreKey)return recoFeatureText(row._genreKey).replace(/\s+/g,'_');
+  const genreKeys=text=>{
+    const keys=new Set(),add=(pattern,key)=>{if(pattern.test(text))keys.add(key);};
+    add(/\b(dnb|drum bass|drum and bass|liquid jungle)\b/,'dnb');
+    add(/\b(chill house|lofi house|deep house|melodic house)\b/,'house');
+    add(/\b(synthwave|retrowave|chillwave|outrun)\b/,'synthwave');
+    add(/\b(classical|classique|baroque|orchestra|chamber|symphony|cello|violin)\b/,'classical');
+    add(/\b(guitar|acoustic|fingerstyle|blues)\b/,'guitar');
+    add(/\b(jazz|jazzhop|bossa)\b/,'jazz');
+    add(/\bpiano\b/,'piano');
+    add(/\b(lofi|lo fi|chillhop|hip hop)\b/,'lofi');
+    add(/\bnature (sounds?|ambience|soundscape|noise|asmr)\b|\b(white|brown) noise\b|\b(fan|airplane cabin|birds?|birdsong|rain(?:storm)?|thunder|forest|ocean|sea|river|stream|waterfall|waves?|fireplace|crickets?)\b.{0,45}\b(sounds?|ambience|noise|asmr)\b|\b(sounds?|ambience|noise|asmr)\b.{0,45}\b(fan|airplane cabin|birds?|birdsong|rain(?:storm)?|thunder|forest|ocean|sea|river|stream|waterfall|waves?|fireplace|crickets?)\b/,'nature');
+    add(/\b(ambient|soundscape)\b/,'ambient');
+    return keys;
   };
-  if(explicit&&explicit!=='unknown'&&explicit!=='unset'&&explicit!=='a classifier'){
-    const direct=classify(explicit);if(direct)return direct;
+  const priority=['dnb','house','synthwave','classical','guitar','jazz','piano','lofi','nature','ambient'];
+  if(titleEdited){
+    const titleKeys=genreKeys(recoFeatureText(row&&row.title)),declaredKeys=genreKeys(recoFeatureText(value));
+    const declared=priority.find(key=>declaredKeys.has(key)&&titleKeys.has(key));
+    if(declared)return declared;
+    return titleKeys.size===1?Array.from(titleKeys)[0]:'';
   }
+  const explicit=recoFeatureText(value),explicitKeys=genreKeys(explicit),direct=priority.find(key=>explicitKeys.has(key));
+  if(direct)return direct;
   const text=recoFeatureText([row&&row.title,row&&row.cluster,row&&row.niche,row&&row.kw].filter(Boolean).join(' '));
-  return classify(text);
+  const inferred=genreKeys(text),single=priority.find(key=>inferred.has(key));if(single)return single;
+  if(/\b(christmas|xmas|noel)\b/.test(text))return 'christmas';
+  if(/\bhalloween\b/.test(text))return 'halloween';
+  return '';
 }
 function recoPurposeKey(row){
-  if(row&&row._purposeKey)return recoFeatureText(row._purposeKey).replace(/\s+/g,'_');
-  const text=recoFeatureText([row&&row.title,row&&row.cluster,row&&row.niche,row&&row.kw,row&&row.concept].filter(Boolean).join(' '));
+  if(row&&!row._titleEdited&&row._purposeKey)return recoFeatureText(row._purposeKey).replace(/\s+/g,'_');
+  const text=recoFeatureText(row&&row._titleEdited
+    ?row.title
+    :[row&&row.title,row&&row.cluster,row&&row.niche,row&&row.kw,row&&row.concept].filter(Boolean).join(' '));
   if(/\b(sleep|night rest|bedtime|nap|insomnia)\b/.test(text))return 'sleep';
-  if(/\b(study|focus|work|coding|program\w*|concentr\w*|productiv\w*)\b/.test(text))return 'study';
   if(/\b(read\w*|writ\w*|book|library|pages)\b/.test(text))return 'reading';
+  if(/\b(study|focus|work|coding|program\w*|concentr\w*|productiv\w*)\b/.test(text))return 'study';
   if(/\b(winter|summer|autumn|fall|spring|christmas|halloween|snow)\b/.test(text))return 'season';
-  if(/\b(fantasy|medieval|worldbuild\w*|adventure|game|dream\w*)\b/.test(text))return 'fantasy';
-  if(/\b(relax\w*|calm|unwind|slow|peace\w*|cozy|chill)\b/.test(text))return 'relax';
-  return '';
+  if(/\b(fantasy|medieval|worldbuild\w*|dystopian?|distant world)\b/.test(text))return 'fantasy';
+  if(/\b(relax\w*|calm|unwind|slow|peace\w*|cozy|chill\w*|gaming|game)\b/.test(text))return 'relax';
+  return row&&row._titleEdited?'relax':'';
 }
 function recoSourceKey(row){
   if(!row)return '';
@@ -686,14 +712,46 @@ function recoSourceKey(row){
   return '';
 }
 function recoGeneratedFamilyKey(row,key){return String(row&&row[key]||'').trim().toLocaleLowerCase().replace(/\s+/g,' ');}
+function recoTitleHookKey(row){
+  const raw=String(row&&row.title||'').split(/[|·\[\]—–]/)[0];
+  return recoFeatureText(raw).split(/\s+/).filter(Boolean).slice(0,3).join(' ');
+}
+function recoNormalizedTopicKey(row){
+  let raw=String(row&&row._topicKey||'');
+  if(!raw){
+    const family=String(row&&row._conceptFamily||'').split('|');
+    if(family.length>=3)raw=family.slice(2).join(' ');
+  }
+  if(!raw){
+    raw=String(row&&row.title||'').split(/[|·\[\]—–]/)[0]
+      .replace(/^\s*\d+\s*(?:hours?|hrs?)\s+of\s+/i,'');
+  }
+  return recoFeatureText(raw).replace(/\b(?:music|mix|radio|playlist)\b/g,' ').replace(/\s+/g,' ').trim();
+}
+function recoUniqueTopicRows(rows){
+  const genreTopics=new Set(),globalTopics=new Set(),out=[];
+  (rows||[]).forEach(row=>{
+    const topic=recoNormalizedTopicKey(row),genreTopic=topic?recoGenreKey(row&&row.genre,row)+'|'+topic:'';
+    if(topic&&(globalTopics.has(topic)||genreTopics.has(genreTopic)))return;
+    if(topic){globalTopics.add(topic);genreTopics.add(genreTopic);}out.push(row);
+  });
+  return out;
+}
+function recoTitleSimilarity(a,b){
+  const tokens=row=>new Set(recoFeatureText(row&&row.title).split(/\s+/).filter(token=>token.length>2));
+  const left=tokens(a),right=tokens(b);if(!left.size||!right.size)return 0;
+  let shared=0;left.forEach(token=>{if(right.has(token))shared++;});
+  return shared/Math.min(left.size,right.size);
+}
 function recoClamp(value,min,max){return Math.max(min,Math.min(max,Number(value)||0));}
 function recoSourceRecencyBoost(row){
   const windowKey=String(row&&row._sourceWindow||'');
-  if(windowKey==='3m'||windowKey==='0-3m')return 2;
-  if(windowKey==='6m'||windowKey==='3-6m')return 1;
-  if(windowKey==='12m'||windowKey==='6-12m')return 0;
+  if(windowKey==='3m'||windowKey==='0-3m')return 8;
+  if(windowKey==='6m'||windowKey==='3-6m')return 5;
+  if(windowKey==='12m'||windowKey==='6-12m')return 3;
+  if(windowKey==='24m'||windowKey==='12-24m')return 1;
   const age=Number(row&&row._sourceAgeM);
-  if(Number.isFinite(age)){if(age<=3)return 2;if(age<=6)return 1;if(age<=12)return 0;return -4;}
+  if(Number.isFinite(age)){if(age<=3)return 8;if(age<=6)return 5;if(age<=12)return 3;if(age<=24)return 1;}
   return 0;
 }
 function recoPerformanceSignal(o){
@@ -715,34 +773,41 @@ function recoPerformanceSignal(o){
   return Math.max(-18,Math.min(18,relative*.22+ctrSignal+awpSignal));
 }
 function recoHorizonWeight(ageMonths){
-  // The newest releases stay decisive, while 6- and 12-month results refine
-  // the model without letting old packaging/topic choices dominate.
+  // The newest releases stay decisive, while the complete published catalogue
+  // remains useful with a progressively smaller influence.
   if(!Number.isFinite(ageMonths)||ageMonths<0)return null;
   if(ageMonths<=3)return {id:'3m',weight:1.25};
   if(ageMonths<=6)return {id:'6m',weight:.55};
   if(ageMonths<=12)return {id:'12m',weight:.28};
-  return null;
+  if(ageMonths<=24)return {id:'24m',weight:.16};
+  if(ageMonths<=60)return {id:'60m',weight:.08};
+  return {id:'evergreen',weight:.04};
 }
 function recoVideoFields(o){
-  // A recommendation link is useful when it exists, but every owned video in
-  // Analyse can teach the model from its own tagged metadata.
-  return o.reco||o||{};
+  // Analyse owns the published title and all learning metadata. The linked
+  // recommendation is provenance only: reusing any of its fields would teach
+  // the model the proposal instead of the video that was actually published.
+  const published=o&&typeof o==='object'?o:{};
+  const fields={};
+  Object.keys(published).forEach(key=>{if(key!=='reco')fields[key]=published[key];});
+  fields.title=published.title==null?'':published.title;
+  return fields;
 }
 function recoProfile(){
   const p={
-    feedbackGenre:{},feedbackPurpose:{},feedbackPersona:{},feedbackToken:{},feedbackSource:{},
+    feedbackGenre:{},feedbackPurpose:{},feedbackCombo:{},feedbackPersona:{},feedbackToken:{},feedbackSource:{},
     performanceGenre:{},performancePurpose:{},performanceToken:{},recentGenre:{},recentPurpose:{},
-    recentVideos:0,signaledVideos:0,windows:{'3m':0,'6m':0,'12m':0},feedback:0
+    recentVideos:0,signaledVideos:0,windows:{'3m':0,'6m':0,'12m':0,'24m':0,'60m':0,evergreen:0},feedback:0
   };
-  const activeRoadmap=typeof scheduledRows==='function'?scheduledRows():[];
-  const activeRoadmapIds=new Set(activeRoadmap.filter(row=>row&&row.recoN!=null).map(row=>Number(row.recoN)));
-  const activeRoadmapTitles=new Set(activeRoadmap.map(row=>normalizedRecommendationTitle(row&&row.title)).filter(Boolean));
   (DATA.recos||[]).forEach(r=>{
-    const placedActive=activeRoadmapIds.has(Number(r.n))||activeRoadmapTitles.has(normalizedRecommendationTitle(r.title));
-    const feedback=placedActive?8:(isRefused(r.valid)?-8:(isValidated(r.valid)?6:0));if(!feedback)return;
+    // Only an explicit title decision teaches the editorial model. Roadmap,
+    // publication and archive state describe production, not title quality.
+    const feedback=isRefused(r.valid)?-8:(isValidated(r.valid)?6:0);if(!feedback)return;
     p.feedback++;
-    recoAddSignal(p.feedbackGenre,recoGenreKey(r.genre,r),feedback);
-    recoAddSignal(p.feedbackPurpose,recoPurposeKey(r),feedback);
+    const genre=recoGenreKey(r.genre,r),purpose=recoPurposeKey(r);
+    recoAddSignal(p.feedbackGenre,genre,feedback);
+    recoAddSignal(p.feedbackPurpose,purpose,feedback);
+    recoAddSignal(p.feedbackCombo,genre&&purpose?genre+'|'+purpose:'',feedback);
     recoAddSignal(p.feedbackPersona,persoCategory(r.perso),feedback*.08);
     recoAddSignal(p.feedbackSource,recoSourceKey(r),feedback);
     recoTokens(r).forEach(t=>recoAddSignal(p.feedbackToken,t,feedback*.32));
@@ -771,15 +836,19 @@ function recoDailyScore(r,p,day){
   const feedbackSource=recoClamp(recoSignal(p.feedbackSource,recoSourceKey(r))*1.5,-14,12);
   const feedbackGenre=recoSignal(p.feedbackGenre,genre);
   const feedbackPurpose=recoSignal(p.feedbackPurpose,purpose);
+  const feedbackCombo=recoSignal(p.feedbackCombo,genre&&purpose?genre+'|'+purpose:'');
   const feedbackPersona=recoClamp(recoSignal(p.feedbackPersona,persoCategory(r.perso)),-.7,.7);
   const feedbackTerms=tokens.reduce((sum,t)=>sum+recoSignal(p.feedbackToken,t),0);
-  const feedbackTopic=recoClamp(feedbackGenre*.28+feedbackPurpose*.34+feedbackTerms*.22,-10,10);
+  // Exact genre×purpose decisions outrank a broad purpose preference. Thus a
+  // rejected ambient-sleep format stays rejected without condemning sleep in
+  // piano, nature or other genres that the team still accepts.
+  const feedbackTopic=recoClamp(feedbackCombo*.55+feedbackGenre*.2+feedbackPurpose*.22+feedbackTerms*.18,-10,10);
   const performanceGenre=recoSignal(p.performanceGenre,genre);
   const performancePurpose=recoSignal(p.performancePurpose,purpose);
   const performanceTerms=tokens.reduce((sum,t)=>sum+recoSignal(p.performanceToken,t),0);
   const performanceTopic=recoClamp(performanceGenre*.55+performancePurpose*.25+performanceTerms*.12,-9,9);
   const rotation=(recoHash(day+'|'+r.n)%1000)/1000*.8;
-  const adjustment=recoClamp(recoSourceRecencyBoost(r)+feedbackSource+feedbackTopic+feedbackPersona+performanceTopic+rotation,-18,18);
+  const adjustment=recoClamp(feedbackSource+feedbackTopic+feedbackPersona+performanceTopic+rotation,-18,18);
   // Feedback and channel results refine a measured market score; they must not
   // turn a weak source into an S through several correlated bonuses. Positive
   // evidence closes only part of the remaining distance to 100, while negative
@@ -810,12 +879,24 @@ function recommendationPerformanceHistoryReady(){
 }
 function dailyRecommendationSet(){
   const day=recoDayKey(),lang=typeof LANG!=='undefined'?LANG:'en',revision=typeof RECO_DERIVED_REVISION!=='undefined'?RECO_DERIVED_REVISION:0;
+  const poolIdentity=recoPoolIdentity(),poolKey=recoPoolIdentityKey(poolIdentity);
   const cached=typeof RECO_DAILY_CACHE!=='undefined'?RECO_DAILY_CACHE:null;
-  if(cached&&cached.data===DATA&&cached.revision===revision&&cached.day===day&&cached.lang===lang&&cached.sources.every(row=>!isValidated(row.valid)&&!isRefused(row.valid)))return cached.rows;
+  if(cached&&cached.data===DATA&&cached.revision===revision&&cached.day===day&&cached.lang===lang&&cached.poolIdentityKey===poolKey&&cached.sources.every(row=>!isValidated(row.valid)&&!isRefused(row.valid)))return cached.rows;
   const history=recoRotationHistory(),profile=recoProfile();
   const hasSnapshot=typeof recommendationStatusSnapshot==='function';
   const status=hasSnapshot?recommendationStatusSnapshot():null;
   const candidateSource=status?status.pending:(DATA.recos||[]);
+  const activeGeneratorVersion=activeRecommendationGeneratorVersion();
+  // Loading failures and stale V3 payloads are not an empty editorial lot.
+  // Return before writing rotation state so a later V4 fetch can recover in
+  // the same session without being trapped behind a persisted empty queue.
+  if(activeGeneratorVersion!==4){
+    if(typeof RECO_DAILY_CACHE!=='undefined')RECO_DAILY_CACHE={data:DATA,revision,day,lang,poolIdentityKey:poolKey,rows:[],sources:[]};
+    return [];
+  }
+  // Repair empty queues persisted by earlier clients when the measured pool
+  // has since changed. Stable consumed IDs and every other user store remain.
+  if(Array.isArray(history[day])&&!history[day].length&&recoPoolIdentityKey(history._pool)!==poolKey)delete history[day];
   const blockedConceptFamilies=new Set(((DATA&&DATA.recos)||[]).filter(row=>{
     if(!row)return false;
     if(isValidated(row.valid)||isRefused(row.valid))return true;
@@ -823,9 +904,23 @@ function dailyRecommendationSet(){
       ?!!recommendationRoadmapEntryFromIndex(row,status.roadmap)
       :(typeof recommendationRoadmapEntry==='function'&&!!recommendationRoadmapEntry(row));
   }).map(row=>recoGeneratedFamilyKey(row,'_conceptFamily')).filter(Boolean));
+  // A refusal is an immediate global veto on the reviewed hook. The backend
+  // persists the same rule at the next refresh, but the browser must enforce
+  // it now as well so another genre/purpose variant cannot reappear through
+  // New ideas during the intervening hours.
+  const refusedTopics=new Set(((DATA&&DATA.recos)||[])
+    .filter(row=>row&&isRefused(row.valid))
+    .map(recoNormalizedTopicKey)
+    .filter(Boolean));
   const candidates=candidateSource
     .filter(r=>!isValidated(r.valid)&&!isRefused(r.valid)&&(hasSnapshot||typeof recommendationRoadmapEntry!=='function'||!recommendationRoadmapEntry(r)))
-    .filter(r=>{const family=recoGeneratedFamilyKey(r,'_conceptFamily');return !family||!blockedConceptFamilies.has(family);});
+    // Fail closed: only learned V4 ideas can enter the active review queue.
+    // A missing/failed/stale pool must never revive old neutral V2/V3/Sheet
+    // proposals. Their explicit X/- decisions remain in DATA for learning and
+    // in the corresponding history tabs.
+    .filter(r=>activeGeneratorVersion===4&&Number(r&&r._generatorVersion)===4)
+    .filter(r=>{const family=recoGeneratedFamilyKey(r,'_conceptFamily');return !family||!blockedConceptFamilies.has(family);})
+    .filter(r=>{const topic=recoNormalizedTopicKey(r);return !topic||!refusedTopics.has(topic);});
   const decorate=rows=>rows.map(r=>{
     const dailyScore=recoDailyScore(r,profile,day);
     // The tier is the objective, evidence-calibrated market potential. Daily
@@ -852,44 +947,50 @@ function dailyRecommendationSet(){
   // also keeps a fully reviewed or initially empty queue at zero.
   if(hasStoredDailyQueue){
     const byId=new Map(candidates.map(r=>[Number(r.n),r]));
-    const retained=activeTodayIds.map(n=>byId.get(Number(n))).filter(Boolean);
+    const resolved=activeTodayIds.map(n=>byId.get(Number(n))).filter(Boolean);
+    const retained=recoUniqueTopicRows(resolved);
+    if(retained.length!==resolved.length){history[day]=retained.map(row=>row.n);saveRecoRotation(history);}
     const rows=decorate(retained);
-    if(typeof RECO_DAILY_CACHE!=='undefined')RECO_DAILY_CACHE={data:DATA,revision,day,lang,rows,sources:retained};
+    if(typeof RECO_DAILY_CACHE!=='undefined')RECO_DAILY_CACHE={data:DATA,revision,day,lang,poolIdentityKey:poolKey,rows,sources:retained};
     return rows;
   }
   const seen=recoSeenIds(history);
   const available=candidates.filter(r=>!seen.has(Number(r.n)))
-    .map(r=>({r,score:recoDailyScore(r,profile,day)}))
+    // Recency is a separate ordering prior, not evidence for the objective
+    // market score/tier. It can break a close call without hiding a much
+    // stronger evergreen source.
+    .map(r=>{const score=recoDailyScore(r,profile,day);return {r,score,rankScore:score+recoSourceRecencyBoost(r)};})
     .filter(item=>item.score>=RECO_MIN_DAILY_SCORE);
-  const picked=[],genres={},purposes={},sources={},combos={},settings={},titleFamilies={};
-  let titleFamilyCap=1;
+  const picked=[],genres={},purposes={},sources={},combos={},settings={},titleHooks={},strictGenreTopics=new Set(),strictGlobalTopics=new Set();
   while(picked.length<RECO_DAILY_LIMIT&&available.length){
     const eligible=available.filter(item=>{
-      const family=recoGeneratedFamilyKey(item.r,'_titleFamily');
-      return !family||(titleFamilies[family]||0)<titleFamilyCap;
+      const topic=recoNormalizedTopicKey(item.r),genreTopic=topic?recoGenreKey(item.r.genre,item.r)+'|'+topic:'';
+      return !topic||(!strictGenreTopics.has(genreTopic)&&!strictGlobalTopics.has(topic));
     });
-    // Prefer one title per family, then relax the cap only when the remaining
-    // measured pool cannot fill the batch. Small pools therefore stay intact.
-    if(!eligible.length){titleFamilyCap++;continue;}
+    if(!eligible.length)break;
     const ranked=eligible.map(item=>{
-      const g=recoGenreKey(item.r.genre,item.r),purpose=recoPurposeKey(item.r),source=recoSourceKey(item.r),combo=g+'|'+purpose,setting=String(item.r._settingKey||''),titleFamily=recoGeneratedFamilyKey(item.r,'_titleFamily');
+      const g=recoGenreKey(item.r.genre,item.r),purpose=recoPurposeKey(item.r),source=recoSourceKey(item.r),combo=g+'|'+purpose,setting=String(item.r._settingKey||''),titleHook=recoTitleHookKey(item.r);
       // Exploit the learned winner first, then prevent a whole batch from
-      // becoming near-identical takes on the same use, scenery or title frame.
-      const comboCount=combos[combo]||0,genreCount=genres[g]||0,titleFamilyCount=titleFamilies[titleFamily]||0;
-      const diversity=(sources[source]||0)*10+(settings[setting]||0)*4+titleFamilyCount*12+Math.max(0,comboCount-8)*2.5+Math.max(0,genreCount-24)*1.5+Math.max(0,(purposes[purpose]||0)-30)*.5;
-      return {item,value:item.score-diversity};
+      // becoming near-identical takes on the same source or repeated title
+      // hook. `_titleFamily` is only genre×style in V4, so it must not create
+      // artificial genre quotas.
+      const comboCount=combos[combo]||0,genreCount=genres[g]||0,hookCount=titleHooks[titleHook]||0;
+      const nearDuplicate=picked.some(row=>recoTitleSimilarity(item.r,row)>=.8)?12:0;
+      const diversity=(sources[source]||0)*10+(settings[setting]||0)*4+hookCount*8+nearDuplicate+Math.max(0,comboCount-8)*2.5+Math.max(0,genreCount-24)*1.5+Math.max(0,(purposes[purpose]||0)-30)*.5;
+      return {item,value:item.rankScore-diversity};
     }).sort((a,b)=>b.value-a.value||a.item.r.n-b.item.r.n);
     if(!ranked.length)break;
     const selected=ranked[0].item,index=available.indexOf(selected);if(index>=0)available.splice(index,1);
-    const r=selected.r,g=recoGenreKey(r.genre,r),purpose=recoPurposeKey(r),source=recoSourceKey(r),combo=g+'|'+purpose,setting=String(r._settingKey||''),titleFamily=recoGeneratedFamilyKey(r,'_titleFamily');
-    picked.push(r);genres[g]=(genres[g]||0)+1;purposes[purpose]=(purposes[purpose]||0)+1;combos[combo]=(combos[combo]||0)+1;if(source)sources[source]=(sources[source]||0)+1;if(setting)settings[setting]=(settings[setting]||0)+1;if(titleFamily)titleFamilies[titleFamily]=(titleFamilies[titleFamily]||0)+1;
+    const r=selected.r,g=recoGenreKey(r.genre,r),purpose=recoPurposeKey(r),source=recoSourceKey(r),combo=g+'|'+purpose,setting=String(r._settingKey||''),titleHook=recoTitleHookKey(r);
+    const strictTopic=recoNormalizedTopicKey(r);if(strictTopic){strictGenreTopics.add(g+'|'+strictTopic);strictGlobalTopics.add(strictTopic);}
+    picked.push(r);genres[g]=(genres[g]||0)+1;purposes[purpose]=(purposes[purpose]||0)+1;combos[combo]=(combos[combo]||0)+1;if(source)sources[source]=(sources[source]||0)+1;if(setting)settings[setting]=(settings[setting]||0)+1;if(titleHook)titleHooks[titleHook]=(titleHooks[titleHook]||0)+1;
   }
   history[day]=[...new Set(picked.map(r=>r.n))].slice(0,RECO_DAILY_LIMIT);
   if(recommendationPerformanceHistoryReady())history._profileReadyDay=day;else delete history._profileReadyDay;
   setActiveContinuousRecommendationVariants([]);
   Object.keys(history).filter(key=>!key.startsWith('_')).sort().slice(0,-14).forEach(k=>delete history[k]);saveRecoRotation(history);
   const rows=decorate(picked);
-  if(typeof RECO_DAILY_CACHE!=='undefined')RECO_DAILY_CACHE={data:DATA,revision,day,lang,rows,sources:picked};
+  if(typeof RECO_DAILY_CACHE!=='undefined')RECO_DAILY_CACHE={data:DATA,revision,day,lang,poolIdentityKey:poolKey,rows,sources:picked};
   return rows;
 }
 function activeDailyRecommendationCount(){
@@ -933,7 +1034,7 @@ function ensureRecommendationPerformanceHistory(){
 function dailyRecoBrief(rows){
   const fr=typeof LANG!=='undefined'&&LANG==='fr',p=rows[0]&&rows[0]._dailyProfile||{recentVideos:0};
   const text=p.recentVideos
-    ?(fr?'Classement fondé sur les validations/refus de l’équipe et les résultats des vidéos publiées depuis 0–3, 3–6 et 6–12 mois. Les 3 derniers mois pèsent le plus ; la vitesse quotidienne récente est utilisée dès que l’historique est disponible.':'Ranking uses team approvals/refusals and results from videos published 0–3, 3–6 and 6–12 months ago. The latest 3 months carry the most weight; recent daily velocity is used as soon as history is available.')
+    ?(fr?'Classement fondé sur les validations/refus de titres et tout l’historique des vidéos publiées. Les résultats récents pèsent le plus ; les anciennes vidéos restent prises en compte avec un poids décroissant.':'Ranking uses title approvals/refusals and the complete history of published videos. Recent results carry the most weight; older videos remain included with a decreasing weight.')
     :(fr?'Les performances de la chaîne arriveront avec le prochain import YouTube. En attendant, la sélection utilise le score catalogue, les validations/refus de l’équipe et la rotation anti-répétition.':'Channel performance will be used after the next YouTube import. Until then, the selection uses the catalogue score, team feedback and anti-repeat rotation.');
   const qualityNote=rows.length<RECO_DAILY_LIMIT?(fr?' Le moteur s’arrête au seuil de pertinence au lieu de compléter avec des idées faibles.':' The engine stops at the relevance threshold instead of filling the batch with weak ideas.'):'';
   return '<div class="reco-daily-brief"><div><div class="reco-daily-kicker">'+(fr?'SÉLECTION DU JOUR':'DAILY SELECTION')+' · '+recoDayKey()+'</div><p>'+text+qualityNote+'</p></div><div class="reco-daily-stats"><b>'+rows.length+'</b><span>'+(fr?'idées actives':'active ideas')+'</span><b>'+p.recentVideos+'</b><span>'+(fr?'vidéos analysées':'videos analysed')+'</span></div></div>';
@@ -1256,7 +1357,7 @@ function saveRecoEditor(n,ev){
   const r=recommendationByNumber(n),title=document.getElementById('reco-edit-title'),concept=document.getElementById('reco-edit-concept'),desc=document.getElementById('reco-edit-desc');if(!r||!title||!concept||!desc)return;
   const nextTitle=title.value.trim();if(!nextTitle){title.focus();return;}
   const edit={title:nextTitle,concept:concept.value.trim(),desc:desc.value.trim(),updatedAt:Date.now()},edits=recommendationEdits();edits[String(r.n)]=edit;saveRecommendationEdits(edits);saveSharedRecommendationEdit(r,edit);
-  r.title=nextTitle;r.concept=concept.value.trim();r.desc=desc.value.trim();r._locallyEdited=true;
+  r.title=nextTitle;r.concept=concept.value.trim();r.desc=desc.value.trim();r._locallyEdited=true;r._titleEdited=true;
   invalidateRecommendationDerivedData();
   saveCache(DATA);
   if(typeof VIEW_CACHE!=='undefined')VIEW_CACHE.delete(viewCacheKey('recos'));
