@@ -47,6 +47,7 @@ on:
       - 'tests/test_full_discovery_catalogue.py'
       - 'tests/test_soundcharts_workflow_guardrails.py'
       - 'tests/test_spotify_full_catalogue.js'
+      - 'tests/test_spotify_custom_player.js'
       - 'tests/test_spotify_catalogue_layers.js'
       - 'tests/test_spotify_catalogue_archives.js'
       - 'tests/test_spotify_public_stream_floor.js'
@@ -67,6 +68,8 @@ on:
       - 'spotify/index.html'
       - 'spotify/dashboard.js'
       - 'spotify/dashboard.css'
+      - 'spotify/player.js'
+      - 'spotify/player.css'
       - 'spotify/discovery.css'
       - 'spotify/coverage.js'
   pull_request:
@@ -114,6 +117,7 @@ on:
       - 'tests/test_full_discovery_catalogue.py'
       - 'tests/test_soundcharts_workflow_guardrails.py'
       - 'tests/test_spotify_full_catalogue.js'
+      - 'tests/test_spotify_custom_player.js'
       - 'tests/test_spotify_catalogue_layers.js'
       - 'tests/test_spotify_catalogue_archives.js'
       - 'tests/test_spotify_public_stream_floor.js'
@@ -134,6 +138,8 @@ on:
       - 'spotify/index.html'
       - 'spotify/dashboard.js'
       - 'spotify/dashboard.css'
+      - 'spotify/player.js'
+      - 'spotify/player.css'
       - 'spotify/discovery.css'
       - 'spotify/coverage.js'
   schedule:
@@ -276,6 +282,7 @@ jobs:
         run: |
           python -m py_compile refresh_soundcharts_daily.py spotify_performance_store.py scan_soundcharts_fal_phase1.py playlist_follower_daily_status.py validate_playlist_snapshot_transition.py discover_soundcharts_playlists.py expand_soundcharts_instrumental_pool.py spotify_rights.py build_spotify_browse_catalogue.py build_spotify_selection_contacts.py enrich_public_artist_contacts.py sync_soundcharts_opportunities.py prepare_soundcharts_snapshot.py
           node --check spotify/dashboard.js
+          node --check spotify/player.js
           node tests/test_spotify_performance_loader.js
           node tests/test_dashboard_opportunity_guardrails.js
           node tests/test_dashboard_general_view_guardrails.js
@@ -283,6 +290,7 @@ jobs:
           node tests/test_ar_outreach_workflow.js
           node tests/test_dashboard_genre_filter.js
           node tests/test_spotify_full_catalogue.js
+          node tests/test_spotify_custom_player.js
           node tests/test_spotify_public_stream_floor.js
           node tests/test_spotify_public_strict_projection.js
           node tests/test_spotify_playlist_follower_windows.js

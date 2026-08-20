@@ -110,6 +110,7 @@ const EN_MAP = {
   "Revenu /mois":"Revenue /mo","Évolution des streams":"Streams trend","en hausse":"rising","en baisse":"declining",
   "Courbe en cours de constitution : la veille hebdomadaire enregistre un point par semaine. Reviens dans quelques semaines pour voir la tendance.":"Curve being built: the weekly watch records one point per week. Come back in a few weeks to see the trend.",
   "Ouvrir sur Spotify":"Open on Spotify","Épinglé":"Pinned","Épingler":"Pin",
+  "Lecteur Spotify":"Spotify player","Lire":"Play","Pause":"Pause","Connexion à Spotify…":"Connecting to Spotify…","Prêt à écouter":"Ready to play","Chargement de la piste…":"Loading track…","Lecture Spotify indisponible":"Spotify playback unavailable","Progression de la piste":"Track progress","Partager":"Share","Lien copié":"Link copied",
   "Revenus & rachat estimés (0,0035$/stream, +20% multi-plateformes, modèle LOFI RECORDS). L'historique des streams est capté par la veille pour tracer la tendance dans le temps.":"Revenue & buyout estimated (0.0035$/stream, +20% multi-platform, LOFI RECORDS model). Stream history is captured by the watch to plot the trend over time.",
   "Aucun artiste épinglé. Clique sur l'étoile ☆ d'une carte artiste.":"No pinned artists yet. Hit the ☆ on any artist card.",
   "Horizon de projection":"Projection horizon","mois de revenu projeté":"months of projected revenue","Durée choisie pour calculer l'avance et le payback.":"Chosen duration used to calculate the advance and payback."
@@ -1636,14 +1637,47 @@ function spotifyTrackUrl(id){return spotifyWebUrl(`track/${encodeURIComponent(St
 function spotifyArtistUrl(id){return spotifyWebUrl(`artist/${encodeURIComponent(String(id||'').trim())}`);}
 function spotifyPlaylistUrl(id){return spotifyWebUrl(`playlist/${encodeURIComponent(String(id||'').trim())}`);}
 function spotifySearchUrl(query,suffix=''){return spotifyWebUrl(`search/${encodeURIComponent(query||'')}${suffix}`);}
-function spotifyEmbedUrl(type,id){return `https://open.spotify.com/embed/${type}/${encodeURIComponent(String(id||'').trim())}?utm_source=generator&locale=${SPOTIFY_WEB_LOCALE}`;}
-function spotifyTrackEmbedHtml(id,title,extraClass=''){
+function spotifyTrackPlayerHtml(id,title,artist='',artwork='',extraClass=''){
   const spotifyId=spotifyTrackId(id);
   if(!spotifyId) return '';
-  return `<div class="ar-detail-player ${esc(extraClass)}"><iframe title="Spotify player · ${esc(title||'Track')}" src="${spotifyEmbedUrl('track',spotifyId)}" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>`;
+  const row=R.find(item=>item&&String(item[6]||'')===spotifyId)||null;
+  const inferredArtist=row&&A[row[0]]?A[row[0]][0]:'';
+  const player=window.SpotifyRadarPlayer;
+  if(player&&typeof player.html==='function') return player.html({
+    spotifyId,
+    title:title||row&&row[1]||'Track',
+    artist:artist||inferredArtist||'Artiste non renseigné',
+    artwork:artwork||row&&row[8]||'',
+    extraClass:`ar-detail-player ${extraClass||''}`,
+    labels:{
+      player:T('Lecteur Spotify'),play:T('Lire'),pause:T('Pause'),loading:T('Connexion à Spotify…'),
+      ready:T('Prêt à écouter'),buffering:T('Chargement de la piste…'),unavailable:T('Lecture Spotify indisponible'),
+      progress:T('Progression de la piste'),open:T('Ouvrir sur Spotify'),share:T('Partager'),copied:T('Lien copié'),
+    },
+  });
+  return `<div class="ar-detail-player ${esc(extraClass)}"><a class="btn-back" href="${spotifyTrackUrl(spotifyId)}" target="_blank" rel="noopener">${T('Ouvrir sur Spotify')}</a></div>`;
 }
-function clearSpotifyEmbeds(root){
+function hydrateSpotifyRadarPlayerCovers(root){
+  if(!root||typeof fetch!=='function') return;
+  [...root.querySelectorAll('[data-spotify-player-cover-id]')]
+    .filter(node=>!node.dataset.spotifyPlayerCoverHydrated)
+    .slice(0,8)
+    .forEach(node=>{
+      node.dataset.spotifyPlayerCoverHydrated='1';
+      const id=spotifyTrackId(node.dataset.spotifyPlayerCoverId);if(!id)return;
+      spotifyThumbnailWhenVisible(node,spotifyTrackUrl(id),imageUrl=>{
+        const playerNode=node.closest('.spotify-radar-player');
+        if(playerNode&&window.SpotifyRadarPlayer&&imageUrl)window.SpotifyRadarPlayer.setCover(playerNode,imageUrl);
+      });
+    });
+}
+function mountSpotifyRadarPlayers(root){
+  if(window.SpotifyRadarPlayer)window.SpotifyRadarPlayer.hydrate(root);
+  hydrateSpotifyRadarPlayerCovers(root);
+}
+function clearSpotifyPlayers(root){
   if(!root) return;
+  if(window.SpotifyRadarPlayer)window.SpotifyRadarPlayer.clear(root);
   root.querySelectorAll('iframe[src*="open.spotify.com/embed/"]').forEach(player=>{
     player.src='about:blank';
     player.remove();
@@ -1652,9 +1686,7 @@ function clearSpotifyEmbeds(root){
 function arOpportunityPlayerHtml(opportunity){
   const spotifyId=spotifyTrackId(opportunity&&opportunity.spotifyId);
   if(!spotifyId) return '';
-  // Le lecteur Spotify embarqué conserve l'écoute dans le radar :
-  // artwork, lecture/pause, progression et durée restent directement disponibles.
-  return spotifyTrackEmbedHtml(spotifyId,opportunity.title,'ar-opportunity-player');
+  return spotifyTrackPlayerHtml(spotifyId,opportunity.title,opportunity.credit,arTrackCoverUrl(opportunity),'ar-opportunity-player');
 }
 function trackUrl(id,row=null){
   const raw=String(id||'').trim();
@@ -1772,7 +1804,16 @@ function arTrackCandidates(){
     return {spotifyId,artist,title,streams,candidate,score:Math.min(100,candidate.score+lift)};
   }).filter(Boolean).sort((a,b)=>b.score-a.score||b.streams-a.streams||a.title.localeCompare(b.title));
 }
-function playArTrack(spotifyId){ S.radarTrackId=spotifyId; renderRadar(); }
+function playArTrack(spotifyId){
+  const id=spotifyTrackId(spotifyId);if(!id)return;
+  const current=V&&V.querySelector(`.spotify-radar-player[data-spotify-id="${id}"]`);
+  if(S.radarTrackId===id&&current&&window.SpotifyRadarPlayer){window.SpotifyRadarPlayer.toggle(current);return;}
+  S.radarTrackId=id;renderRadar();
+  requestAnimationFrame(()=>{
+    const player=V&&V.querySelector(`.spotify-radar-player[data-spotify-id="${id}"]`);
+    if(player&&window.SpotifyRadarPlayer)window.SpotifyRadarPlayer.requestPlay(player);
+  });
+}
 function arClusters(){
   if(!SC || !SC.editorial || !Array.isArray(SC.editorial.tracks)) return [];
   const schema=SC.editorial.track_schema||[];
@@ -2667,7 +2708,7 @@ function openTrack(tid){
   const entry = trackPerfEntry(r);
   const label = entry.label || (r[4]===1 ? r[5] : null);
   const box = document.getElementById('tmbox');
-  clearSpotifyEmbeds(box);
+  clearSpotifyPlayers(box);
   pauseSpotifyOembed(4000);
   box.innerHTML = `
     <div class="thd">
@@ -2678,7 +2719,7 @@ function openTrack(tid){
       </div>
       <button class="tclose" onclick="closeTrack()">✕</button>
     </div>
-    ${spotifyTrackEmbedHtml(r[6],r[1],'track-modal-player')}
+    ${spotifyTrackPlayerHtml(r[6],r[1],A[r[0]][0],r[8],'track-modal-player')}
     <div class="tgrid">
       <div class="tg"><div class="l">${T('Sortie')}</div><div class="v">${fmtDate(r[2])}</div></div>
       <div class="tg"><div class="l">${T('Label')}</div><div class="v" style="font-size:12px;line-height:1.4">${label?esc(label):'—'}</div></div>
@@ -2697,6 +2738,7 @@ function openTrack(tid){
   bindMetricModeToggle(()=>openTrack(tid),box);
   bindSparklineHover(box);
   document.getElementById('track-modal').style.display='flex';
+  mountSpotifyRadarPlayers(box);
   hydrateArPlaylistCovers();
 }
 function openTrackFromCatalogueRow(event,tid){
@@ -2709,7 +2751,7 @@ function openTrackFromCatalogueRow(event,tid){
 }
 function closeTrack(){
   const modal=document.getElementById('track-modal');
-  clearSpotifyEmbeds(modal);
+  clearSpotifyPlayers(modal);
   modal.style.display='none';
 }
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeTrack(); });
@@ -2730,12 +2772,7 @@ function arDraft(candidate,note){
 function closeArModal(){
   const modal=document.getElementById('ar-modal');
   if(!modal) return;
-  /* A hidden Spotify iframe may keep playing briefly. Blank its document before
-     hiding the sheet so closing a detail sheet always stops playback at once. */
-  modal.querySelectorAll('iframe[src*="open.spotify.com/embed/"]').forEach(player=>{
-    player.src='about:blank';
-    player.remove();
-  });
+  clearSpotifyPlayers(modal);
   modal.style.display='none';
 }
 function openArMessage(uuid){
@@ -2840,9 +2877,10 @@ function renderRadarLegacy(){
         <div class="ar-track-num">${fmt(track.streams)}<div class="genre-sub">streams total</div></div>
         <div class="ar-track-score"><span class="badge ${track.score>=80?'self':'new'}">${track.score}/100</span></div>
       </div>`).join('')}</div>
-      ${selectedTrack?`<div class="ar-player"><div><div class="ar-player-label">Lecture intégrée Spotify</div><div class="ar-player-name">${esc(selectedTrack.title)} <span style="color:var(--muted);font-weight:500">· ${esc(selectedTrack.artist)}</span></div></div><iframe title="Spotify player · ${esc(selectedTrack.title)}" src="${spotifyEmbedUrl('track',selectedTrack.spotifyId)}" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe></div>`:''}
+      ${selectedTrack?spotifyTrackPlayerHtml(selectedTrack.spotifyId,selectedTrack.title,selectedTrack.artist,arTrackCoverUrl(selectedTrack),'ar-player'):''}
     </div>`;
     V.querySelector('.toolbar').insertAdjacentHTML('afterend',trackPanel);
+    mountSpotifyRadarPlayers(V);
   }
   document.querySelectorAll('[data-radar-filter]').forEach(button=>button.addEventListener('click',()=>{S.radarFilter=button.dataset.radarFilter;renderRadar();}));
   document.getElementById('radar-limit').addEventListener('change',event=>{S.radarLimit=+event.target.value;S.radarFilter='priority';renderRadar();});
@@ -3740,7 +3778,7 @@ function openArOpportunity(spotifyId){
   const isListed=arListHas(spotifyId);
   const selectable=arContactEligible(opportunity);
   box.className='tmbox ambox';
-  clearSpotifyEmbeds(box);
+  clearSpotifyPlayers(box);
   pauseSpotifyOembed(4000);
   box.innerHTML=`<div class="thd"><div class="av-sm">♫</div><div style="min-width:0;flex:1"><h3>${esc(opportunity.title)}</h3><div class="tar ar-detail-artists">${arArtistLinksHtml(opportunity)}<span class="ar-detail-artist-separator"> · </span>opportunité de track</div></div><button class="tclose" onclick="closeArModal()">✕</button></div>
     ${arOpportunityPlayerHtml(opportunity)}
@@ -3758,6 +3796,7 @@ function openArOpportunity(spotifyId){
   if(artistLine) artistLine.innerHTML=arArtistLinksHtml(opportunity);
   bindSparklineHover(box);
   document.getElementById('ar-modal').style.display='flex';
+  mountSpotifyRadarPlayers(box);
   hydrateArPlaylistCovers();
 }
 function sortTriangleIndicator(active,direction){

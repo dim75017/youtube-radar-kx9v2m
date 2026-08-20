@@ -12,7 +12,7 @@ assert.match(dashboard, /response\.status===429/, 'Spotify 429 responses trigger
 assert.match(dashboard, /response\.headers\.get\('Retry-After'\)/, 'Spotify Retry-After is respected');
 assert.match(dashboard, /function pruneSpotifyOembedObservers\(/, 'detached image nodes are pruned');
 assert.match(dashboard, /function spotifyThumbnailWhenVisible\(/, 'missing covers are loaded lazily');
-assert.doesNotMatch(dashboard, /embed\/iframe-api\/v1|createController\(/, 'the stale iframe SDK stays removed');
+assert.match(dashboard, /function mountSpotifyRadarPlayers\(root\)/, 'custom players share one hydration entrypoint');
 assert.doesNotMatch(dashboard, /while \(covActive < 8/, 'legacy request bursts are removed');
 
 const brokerStart = dashboard.indexOf('const SPOTIFY_OEMBED_CACHE=');
@@ -103,7 +103,7 @@ function makeBroker(fetchImpl) {
   const closeStart = dashboard.indexOf('function closeTrack(){');
   const closeEnd = dashboard.indexOf('\ndocument.addEventListener', closeStart);
   const closeTrack = dashboard.slice(closeStart, closeEnd);
-  assert.match(closeTrack, /clearSpotifyEmbeds\(modal\)/, 'closing a track destroys the Spotify iframe');
+  assert.match(closeTrack, /clearSpotifyPlayers\(modal\)/, 'closing a track destroys the Spotify player controller');
   console.log('Spotify player rate-limit behavior: OK');
 })().catch(error => { console.error(error); process.exitCode = 1; });
 
