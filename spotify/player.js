@@ -3,7 +3,7 @@
 /* Spotify Radar custom player
    ----------------------------
    The visible controls are ours, but playback stays inside Spotify's official
-   Embed IFrame API. The waveform is a deterministic seek/progress surface,
+   Embed IFrame API. The waveform is a deterministic progress display,
    not an audio analysis. Spotify does not expose volume control here,
    so this component deliberately does not render a fake one. */
 (function spotifyRadarPlayerModule(global){
@@ -85,7 +85,7 @@
       <button class="spotify-radar-player-toggle" type="button" onclick="SpotifyRadarPlayer.toggle(this)" aria-label="${escapeHtml(labels.play)} ${escapeHtml(title)}" aria-pressed="false"><span class="spotify-radar-player-glyph" data-icon="loading" aria-hidden="true"></span></button>
       <div class="spotify-radar-player-timeline">
         <time class="spotify-radar-player-current">0:00</time>
-        <div class="spotify-radar-player-wave"><canvas aria-hidden="true"></canvas><input class="spotify-radar-player-seek" type="range" min="0" max="0" value="0" step="0.1" disabled aria-label="${escapeHtml(labels.progress)}"></div>
+        <div class="spotify-radar-player-wave" role="progressbar" aria-label="${escapeHtml(labels.progress)}" aria-valuemin="0"><canvas aria-hidden="true"></canvas></div>
         <time class="spotify-radar-player-duration">--:--</time>
       </div>
       <div class="spotify-radar-player-actions">
@@ -143,17 +143,18 @@
   function updateTimeline(player,state){
     const current=player.querySelector('.spotify-radar-player-current');
     const duration=player.querySelector('.spotify-radar-player-duration');
-    const seek=player.querySelector('.spotify-radar-player-seek');
+    const wave=player.querySelector('.spotify-radar-player-wave');
     if(current)current.textContent=formatTime(state.position);
     if(duration)duration.textContent=formatTime(state.duration);
     const progress=state.duration?Math.max(0,Math.min(1,state.position/state.duration)):0;
     drawWave(player,progress);
-    if(seek){
+    if(wave){
       if(state.duration){
-        seek.disabled=false;seek.max=String(state.duration);seek.value=String(state.position);
-        seek.setAttribute('aria-valuetext',`${formatTime(state.position)} / ${formatTime(state.duration)}`);
+        wave.setAttribute('aria-valuemax',String(Math.round(state.duration)));
+        wave.setAttribute('aria-valuenow',String(Math.round(state.position)));
+        wave.setAttribute('aria-valuetext',`${formatTime(state.position)} / ${formatTime(state.duration)}`);
       }else{
-        seek.disabled=true;seek.max='0';seek.value='0';seek.removeAttribute('aria-valuetext');
+        wave.removeAttribute('aria-valuemax');wave.removeAttribute('aria-valuenow');wave.removeAttribute('aria-valuetext');
       }
     }
   }
@@ -185,15 +186,6 @@
     if(instance){instance.pendingPlay=true;instance.playIntentEpoch=epoch;}
     return epoch;
   }
-  function seekFromControl(player,instance,control){
-    if(!isCurrentInstance(player,instance)||!control||control.disabled||!instance.duration)return;
-    const seconds=Math.max(0,Math.min(instance.duration,Number(control.value)));
-    if(!Number.isFinite(seconds)||!instance.controller||typeof instance.controller.seek!=='function')return;
-    try{
-      instance.controller.seek(seconds);instance.position=seconds;
-      updateTimeline(player,{position:seconds,duration:instance.duration});
-    }catch(error){setStatus(player,instance.paused?'paused':'playing');}
-  }
   function registerController(player,instance,controller){
     if(!player||!controller) return;
     if(!player.isConnected||!isCurrentInstance(player,instance)){
@@ -203,12 +195,6 @@
     const engineFrame=player.querySelector('.spotify-radar-player-engine iframe');
     if(engineFrame){engineFrame.tabIndex=-1;engineFrame.setAttribute('aria-hidden','true');}
     const listen=(name,handler)=>{if(typeof controller.addListener==='function')controller.addListener(name,event=>{if(isCurrentInstance(player,instance))handler(event);});};
-    const seek=player.querySelector('.spotify-radar-player-seek');
-    if(seek&&typeof seek.addEventListener==='function'){
-      const onSeek=()=>seekFromControl(player,instance,seek);
-      seek.addEventListener('input',onSeek);seek.addEventListener('change',onSeek);
-      instance.seekControl=seek;instance.seekHandler=onSeek;
-    }
     listen('ready',()=>{
       instance.ready=true;clearTimeout(instance.readyTimer);setStatus(player,'paused');
       if(instance.pendingPlay&&instance.playIntentEpoch===PLAY_INTENT_EPOCH&&player._spotifyPlayIntentEpoch===PLAY_INTENT_EPOCH){
@@ -301,9 +287,6 @@
     const instance=instanceFor(player);
     if(instance){
       instance.cancelled=true;cancelPendingIntent(player,instance);clearTimeout(instance.readyTimer);clearTimeout(instance.playbackStartTimer);
-      if(instance.seekControl&&instance.seekHandler&&typeof instance.seekControl.removeEventListener==='function'){
-        instance.seekControl.removeEventListener('input',instance.seekHandler);instance.seekControl.removeEventListener('change',instance.seekHandler);
-      }
       try{instance.controller&&instance.controller.destroy();}catch(error){}
       if(INSTANCES.get(player)===instance)INSTANCES.delete(player);
     }

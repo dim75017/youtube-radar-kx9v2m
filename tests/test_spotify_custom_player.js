@@ -26,10 +26,10 @@ const markup = player.html({
 assert.match(markup, /<section class="spotify-radar-player track-modal-player"/);
 assert.match(markup, /aria-label="Lecteur Spotify · Night &lt; Walk"/);
 assert.match(markup, /aria-label="Lire Night &lt; Walk"/);
-assert.match(markup, /class="spotify-radar-player-seek"[^>]*type="range"|type="range"[^>]*class="spotify-radar-player-seek"/, 'the waveform exposes a native keyboard/pointer seek range');
-assert.match(markup, /class="spotify-radar-player-seek"[^>]*disabled|disabled[^>]*class="spotify-radar-player-seek"/, 'seek stays disabled until Spotify reports a real duration');
-assert.match(markup, /class="spotify-radar-player-seek"[^>]*aria-label="Progression de la piste"|aria-label="Progression de la piste"[^>]*class="spotify-radar-player-seek"/, 'the native seek range owns the timeline accessible name');
-assert.doesNotMatch(markup, /role="progressbar"/, 'the decorative waveform must not compete with the native slider semantics');
+assert.match(markup, /class="spotify-radar-player-wave" role="progressbar"/);
+assert.match(markup, /aria-label="Progression de la piste"/);
+assert.doesNotMatch(markup, /type="range"|spotify-radar-player-seek/, 'track seek is not exposed because Spotify only documents it for podcast episodes');
+assert.doesNotMatch(playerSource, /controller\.seek\(/, 'the track player must not call an unsupported seek method');
 assert.match(markup, /role="status" aria-live="polite"/);
 assert.match(markup, /target="_blank" rel="noopener"/);
 assert.match(markup, /Night &lt; Walk/);
@@ -281,26 +281,6 @@ function playerRoot(...players){
   assert.equal(firstController.playCalls,0,'a superseded pending player must not autoplay later');
   assert.equal(secondController.playCalls,1,'only the latest pending intent autoplays');
   harness.api.clear(rootForBoth);
-}
-
-// The native range is inert before duration, becomes accessible once Spotify
-// reports duration, and forwards both pointer/keyboard-style input values.
-{
-  const harness=controlledHarness(),seekPlayer=controlledPlayer();
-  const seekRoot=playerRoot(seekPlayer),seekController=controlledController();
-  harness.api.hydrate(seekRoot);harness.callbacks[0].ready(seekController);
-  seekPlayer.nodes.seek.value='14';seekPlayer.nodes.seek.dispatch('input');
-  assert.deepEqual(seekController.seekCalls,[],'seek is inert before a real duration');
-  seekController.emit('playback_update',{duration:0,position:0,isPaused:true});
-  assert.equal(seekPlayer.nodes.seek.disabled,true,'zero/unknown duration keeps seek disabled');
-  seekController.emit('playback_update',{duration:215432,position:12654,isPaused:true});
-  assert.equal(seekPlayer.nodes.seek.disabled,false,'a real duration enables the seek range');
-  assert.equal(Number(seekPlayer.nodes.seek.max),215.432);
-  assert.equal(Number(seekPlayer.nodes.seek.value),12.654);
-  seekPlayer.nodes.seek.value='42';seekPlayer.nodes.seek.dispatch('input');
-  seekPlayer.nodes.seek.value='70';seekPlayer.nodes.seek.dispatch('change');
-  assert.deepEqual(seekController.seekCalls,[42,70],'pointer/input and keyboard/change seek in seconds');
-  harness.api.clear(seekRoot);
 }
 
 for (const required of [

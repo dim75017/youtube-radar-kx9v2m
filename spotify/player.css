@@ -32,8 +32,6 @@
 .spotify-radar-player-current,.spotify-radar-player-duration{color:rgba(236,238,248,.62);font:750 10px/1 Inter,sans-serif;font-variant-numeric:tabular-nums;text-align:center;white-space:nowrap}
 .spotify-radar-player-wave{position:relative;display:block;min-width:0;height:38px;border-radius:5px;overflow:hidden}
 .spotify-radar-player-wave canvas{display:block;width:100%;height:38px;color:#667086}
-.spotify-radar-player-seek{position:absolute;inset:0;width:100%;height:100%;margin:0;cursor:pointer;opacity:0}
-.spotify-radar-player-seek:disabled{cursor:default}
 .spotify-radar-player-actions{display:flex;align-items:center;gap:7px}
 .spotify-radar-player-action{display:grid;width:44px;height:44px;place-items:center;border:1px solid rgba(150,214,170,.13);border-radius:10px;background:rgba(255,255,255,.018);color:rgba(236,238,248,.7);transition:color .15s,border-color .15s,background .15s,transform .13s}
 .spotify-radar-player-action:hover{border-color:rgba(30,215,96,.45);background:rgba(30,215,96,.09);color:#dfffea}
@@ -47,7 +45,7 @@
 .spotify-radar-player[data-state="unavailable"] .spotify-radar-player-toggle{background:#cbd5d0;color:#59635d}
 .spotify-radar-player-engine{position:absolute;z-index:-1;top:0;left:0;width:300px;height:80px;overflow:hidden;clip-path:inset(50%);opacity:.001;pointer-events:none}
 .spotify-radar-player .spotify-radar-player-engine iframe{position:static!important;width:300px!important;height:80px!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important}
-.spotify-radar-player-toggle:focus-visible,.spotify-radar-player-action:focus-visible,.spotify-radar-player-wave:focus-within{outline:2px solid var(--cyan,#86efac);outline-offset:3px}
+.spotify-radar-player-toggle:focus-visible,.spotify-radar-player-action:focus-visible{outline:2px solid var(--cyan,#86efac);outline-offset:3px}
 .spotify-radar-player.ar-player{border-top:1px solid rgba(150,214,170,.18)!important}
 .spotify-radar-player.ar-opportunity-player,.spotify-radar-player.track-modal-player{margin:12px 0}
 @keyframes spotify-radar-spin{to{transform:rotate(360deg)}}
