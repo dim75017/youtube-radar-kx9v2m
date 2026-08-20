@@ -680,6 +680,33 @@ const PUBLIC_DISCOVERY_AI_LOW=new Set(['low','faible']);
 const PUBLIC_DISCOVERY_AI_REVIEW=new Set([
   '','unknown','a verifier','à vérifier','a classifier','à classifier','pending','review'
 ]);
+const PUBLIC_SOUNDCHARTS_EVIDENCE_CONTRACTS=new Set([
+  'soundcharts_song_v2.25_evidence_v3'
+]);
+const PUBLIC_EXTERNAL_EVIDENCE_GATE=(BROWSE.policy&&BROWSE.policy.external_instrumental_evidence_gate)||{};
+const PUBLIC_GRANDFATHERED_EXTERNAL_SPOTIFY_IDS=new Set(
+  Number(PUBLIC_EXTERNAL_EVIDENCE_GATE.version)===1
+    &&Array.isArray(PUBLIC_EXTERNAL_EVIDENCE_GATE.grandfathered_spotify_ids)
+    ? PUBLIC_EXTERNAL_EVIDENCE_GATE.grandfathered_spotify_ids.map(id=>String(id||'').trim()).filter(Boolean)
+    : []
+);
+const PUBLIC_NO_LYRICS_STATUSES=new Set([
+  'no lyrics','no lyric','lyrics free','instrumental no lyrics','no vocals','non vocal'
+]);
+function publicDiscoveryHasContractualInstrumentalEvidence(source){
+  const evidence=source&&source.source_evidence;
+  if(!evidence||typeof evidence!=='object'||Array.isArray(evidence)) return false;
+  const topContract=String(source.soundcharts_evidence_contract||'').trim();
+  const nestedContract=String(evidence.source_contract||'').trim();
+  if(topContract&&nestedContract&&topContract!==nestedContract) return false;
+  const contract=topContract||nestedContract;
+  if(!PUBLIC_SOUNDCHARTS_EVIDENCE_CONTRACTS.has(contract)) return false;
+  if(evidence.instrumental!==true
+    ||evidence.vocal===true||evidence.has_lyrics===true||evidence.no_lyrics===false) return false;
+  if(evidence.vocal===false||evidence.has_lyrics===false||evidence.no_lyrics===true) return true;
+  return ['lyrics_status','vocal_status','no_lyrics_status'].some(field=>
+    PUBLIC_NO_LYRICS_STATUSES.has(String(evidence[field]||'').trim().toLowerCase().replace(/-/g,' ')));
+}
 function publicDiscoveryAiEligible(source,aiRisk){
   const ai=String(aiRisk||'').trim().toLowerCase();
   if(PUBLIC_DISCOVERY_AI_LOW.has(ai)) return true;
@@ -705,6 +732,7 @@ function publicDiscoveryTrackEligible(source){
   const trustedInternal=TRUSTED_INTERNAL_SPOTIFY_IDS.has(spotifyId);
   if(trustedInternal) return Boolean(spotifyId)
     &&streams!=null&&streams>=MIN_TRACK_LIFETIME_STREAMS;
+  const previouslyApproved=PUBLIC_GRANDFATHERED_EXTERNAL_SPOTIFY_IDS.has(spotifyId);
   const completeArtists=artists.length>0&&artists.every(artist=>
     String(artist&&artist.spotify_id||'').trim()
       &&String(artist&&artist.soundcharts_uuid||'').trim());
@@ -713,6 +741,7 @@ function publicDiscoveryTrackEligible(source){
     &&genreConfidence!=null&&genreConfidence>=0.5
     &&instrumental==='instrumental'
     &&instrumentalConfidence!=null&&instrumentalConfidence>=0.5
+    &&(previouslyApproved||publicDiscoveryHasContractualInstrumentalEvidence(source))
     &&publicDiscoveryAiEligible(source,ai)
     &&['self_released','independent_label','indie'].includes(rights)
     &&rightsConfidence!=null&&rightsConfidence>=0.5

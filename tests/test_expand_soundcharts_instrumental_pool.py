@@ -286,7 +286,7 @@ class InstrumentalPoolTests(unittest.TestCase):
         self.assertIn("lofi_hip_hop", parsed["subgenres"])
         self.assertEqual(parsed["genre_source"], "soundcharts_song")
         self.assertEqual(parsed["instrumental_status"], "instrumental")
-        self.assertEqual(parsed["instrumental_confidence"], 0.95)
+        self.assertEqual(parsed["instrumental_confidence"], 1.0)
         self.assertEqual(parsed["soundcharts_genres"][0]["root"], "Hip-Hop/Rap")
 
     def test_explicit_vocal_genre_never_becomes_instrumental(self):
@@ -297,7 +297,7 @@ class InstrumentalPoolTests(unittest.TestCase):
         self.assertEqual(parsed["instrumental_status"], "vocal")
         self.assertEqual(parsed["instrumental_confidence"], 0.95)
 
-    def test_song_audio_features_supply_conservative_instrumental_evidence(self):
+    def test_song_audio_features_remain_review_only(self):
         detail = song_detail()
         detail["object"]["audioFeatures"] = {
             "instrumentalness": 0.82,
@@ -306,10 +306,15 @@ class InstrumentalPoolTests(unittest.TestCase):
         editorial = subject.editorial_candidates(payload())[0]
         editorial["instrumental_status"] = "unknown"
         editorial["instrumental_confidence"] = None
+        editorial["source_tier"] = "independent_playlist"
         parsed = subject.parse_song_detail(detail, editorial)
-        self.assertEqual(parsed["instrumental_status"], "instrumental")
-        self.assertEqual(parsed["instrumental_confidence"], 0.9)
-        self.assertTrue(parsed["source_evidence"]["instrumental"])
+        self.assertEqual(parsed["instrumental_status"], "unknown")
+        self.assertIsNone(parsed["instrumental_confidence"])
+        self.assertIsNone(parsed["source_evidence"]["instrumental"])
+        self.assertIsNone(parsed["source_evidence"]["no_lyrics"])
+        self.assertEqual(parsed["source_evidence"]["instrumentalness"], 0.82)
+        self.assertEqual(parsed["source_evidence"]["speechiness"], 0.04)
+        self.assertFalse(parsed["source_evidence"]["instrumental_proof_complete"])
         self.assertEqual(
             parsed["soundcharts_evidence_contract"],
             subject.SOUNDCHARTS_SONG_EVIDENCE_CONTRACT,
@@ -321,16 +326,17 @@ class InstrumentalPoolTests(unittest.TestCase):
             "genres": ["Dark Ambient"],
             "audioFeatures": {"instrumentalness": 0.84, "speechiness": 0.03},
         }
-        parsed = subject.parse_song_detail(
-            detail,
-            subject.editorial_candidates(payload())[0],
-        )
+        editorial = subject.editorial_candidates(payload())[0]
+        editorial["instrumental_status"] = "unknown"
+        editorial["instrumental_confidence"] = None
+        editorial["source_tier"] = "independent_playlist"
+        parsed = subject.parse_song_detail(detail, editorial)
 
         self.assertEqual(parsed["primary_genre"], "dark_ambient")
-        self.assertEqual(parsed["instrumental_status"], "instrumental")
+        self.assertEqual(parsed["instrumental_status"], "unknown")
         self.assertEqual(parsed["source_evidence"]["instrumentalness"], 0.84)
 
-    def test_song_speechiness_blocks_conflicting_instrumental_signal(self):
+    def test_song_speechiness_alone_does_not_claim_vocal_or_instrumental(self):
         detail = song_detail()
         detail["object"]["genres"] = [
             {"root": "Ambient", "sub": ["Instrumental"]}
@@ -339,12 +345,63 @@ class InstrumentalPoolTests(unittest.TestCase):
             "instrumentalness": 0.91,
             "speechiness": 0.48,
         }
-        parsed = subject.parse_song_detail(
-            detail,
-            subject.editorial_candidates(payload())[0],
+        editorial = subject.editorial_candidates(payload())[0]
+        editorial["instrumental_status"] = "unknown"
+        editorial["instrumental_confidence"] = None
+        editorial["source_tier"] = "independent_playlist"
+        parsed = subject.parse_song_detail(detail, editorial)
+        self.assertEqual(parsed["instrumental_status"], "unknown")
+        self.assertIsNone(parsed["instrumental_confidence"])
+        self.assertEqual(parsed["source_evidence"]["speechiness"], 0.48)
+
+    def test_automatic_instrumental_requires_literal_no_lyrics_pair(self):
+        editorial = subject.editorial_candidates(payload())[0]
+        editorial["instrumental_status"] = "unknown"
+        editorial["instrumental_confidence"] = None
+        editorial["source_tier"] = "independent_playlist"
+
+        instrumental_only = song_detail()
+        instrumental_only["object"]["isInstrumental"] = True
+        parsed = subject.parse_song_detail(instrumental_only, editorial)
+        self.assertEqual(parsed["instrumental_status"], "unknown")
+        self.assertTrue(parsed["source_evidence"]["instrumental"])
+        self.assertIsNone(parsed["source_evidence"]["no_lyrics"])
+
+        no_lyrics_only = song_detail()
+        no_lyrics_only["object"]["hasLyrics"] = False
+        parsed = subject.parse_song_detail(no_lyrics_only, editorial)
+        self.assertEqual(parsed["instrumental_status"], "unknown")
+        self.assertIsNone(parsed["source_evidence"]["instrumental"])
+        self.assertTrue(parsed["source_evidence"]["no_lyrics"])
+
+        complete = song_detail()
+        complete["object"]["isInstrumental"] = True
+        complete["object"]["hasLyrics"] = False
+        parsed = subject.parse_song_detail(complete, editorial)
+        self.assertEqual(parsed["instrumental_status"], "instrumental")
+        self.assertEqual(parsed["instrumental_confidence"], 0.99)
+        self.assertTrue(parsed["source_evidence"]["instrumental_proof_complete"])
+        self.assertIn(
+            "response.object.isInstrumental",
+            parsed["source_evidence"]["instrumental_sources"],
         )
+        self.assertIn(
+            "response.object.hasLyrics",
+            parsed["source_evidence"]["no_lyrics_sources"],
+        )
+
+    def test_literal_lyrics_signal_blocks_complete_instrumental_pair(self):
+        detail = song_detail()
+        detail["object"]["isInstrumental"] = True
+        detail["object"]["noLyrics"] = True
+        detail["evidence"] = {"hasLyrics": True}
+        editorial = subject.editorial_candidates(payload())[0]
+        editorial["source_tier"] = "independent_playlist"
+        parsed = subject.parse_song_detail(detail, editorial)
+
         self.assertEqual(parsed["instrumental_status"], "vocal")
-        self.assertEqual(parsed["instrumental_confidence"], 0.95)
+        self.assertTrue(parsed["source_evidence"]["vocal"])
+        self.assertFalse(parsed["source_evidence"]["no_lyrics"])
 
     def test_explicit_non_instrumental_flag_is_fail_closed_as_vocal_risk(self):
         detail = song_detail()
@@ -427,7 +484,11 @@ class InstrumentalPoolTests(unittest.TestCase):
         self.assertEqual(summary["updated"], 1)
         self.assertEqual(subject.field(row, refreshed_schema, "primary_genre"), "ambient")
         self.assertEqual(subject.field(row, refreshed_schema, "genre_source"), "soundcharts_song")
-        self.assertEqual(subject.field(row, refreshed_schema, "instrumental_status"), "instrumental")
+        self.assertEqual(subject.field(row, refreshed_schema, "instrumental_status"), "unknown")
+        self.assertIn(
+            "instrumental_check_required",
+            subject.field(row, refreshed_schema, "review_reasons"),
+        )
         self.assertEqual(subject.field(row, refreshed_schema, "ai_risk"), "unknown")
         self.assertEqual(subject.field(row, refreshed_schema, "rights_status"), "self_released")
         self.assertGreaterEqual(
@@ -439,6 +500,121 @@ class InstrumentalPoolTests(unittest.TestCase):
             ["artist-uuid"],
         )
         self.assertTrue(subject.field(row, refreshed_schema, "soundcharts_genres_checked_at"))
+
+    def test_legacy_numeric_playlist_approval_is_rechecked_and_downgraded(self):
+        current = payload()
+        schema, rows = subject.ensure_editorial_classification_fields(current)
+        if "source_tier" not in schema:
+            schema.append("source_tier")
+            for existing_row in rows:
+                existing_row.append(None)
+        row = rows[0]
+        subject.set_field(row, schema, "source_tier", "independent_playlist")
+        subject.set_field(row, schema, "instrumental_status", "instrumental")
+        subject.set_field(row, schema, "instrumental_confidence", 0.9)
+        subject.set_field(row, schema, "ai_risk", "low")
+        subject.set_field(
+            row,
+            schema,
+            "soundcharts_genres_checked_at",
+            "2026-08-19T00:00:00Z",
+        )
+        subject.set_field(
+            row,
+            schema,
+            "soundcharts_evidence_contract",
+            "soundcharts_song_v2.25_evidence_v2",
+        )
+        subject.set_field(
+            row,
+            schema,
+            "source_evidence",
+            {
+                "schema_version": 2,
+                "instrumental": True,
+                "instrumentalness": 0.94,
+                "speechiness": 0.02,
+            },
+        )
+        detail = song_detail()
+        detail["object"]["audioFeatures"] = {
+            "instrumentalness": 0.94,
+            "speechiness": 0.02,
+        }
+        # A current no-lyrics half must not combine with the legacy
+        # numeric-derived instrumental half into a false approval.
+        detail["object"]["hasLyrics"] = False
+        client = FakeClient({"/api/v2.25/song/song-uuid": detail})
+
+        summary = subject.classify_soundcharts_genres(
+            current,
+            {"version": 1, "tracks": {}, "artists": {}},
+            client,
+            workers=1,
+            max_requests=1,
+        )
+
+        self.assertEqual(client.paths, ["/api/v2.25/song/song-uuid"])
+        self.assertEqual(summary["updated"], 1)
+        self.assertEqual(subject.field(row, schema, "instrumental_status"), "unknown")
+        self.assertIsNone(
+            subject.field(row, schema, "instrumental_confidence")
+        )
+        self.assertEqual(
+            subject.field(row, schema, "soundcharts_evidence_contract"),
+            subject.SOUNDCHARTS_SONG_EVIDENCE_CONTRACT,
+        )
+        self.assertFalse(
+            subject.field(row, schema, "source_evidence")[
+                "instrumental_proof_complete"
+            ]
+        )
+
+    def test_classification_cache_vocal_block_is_sticky_against_positive_pair(self):
+        current = payload()
+        schema, rows = subject.ensure_editorial_classification_fields(current)
+        if "source_tier" not in schema:
+            schema.append("source_tier")
+            for existing_row in rows:
+                existing_row.append(None)
+        row = rows[0]
+        subject.set_field(row, schema, "source_tier", "independent_playlist")
+        subject.set_field(row, schema, "instrumental_status", "unknown")
+        subject.set_field(row, schema, "instrumental_confidence", None)
+        subject.set_field(row, schema, "ai_risk", "unknown")
+        detail = song_detail()
+        detail["object"]["isInstrumental"] = True
+        detail["object"]["hasLyrics"] = False
+        cache = {
+            "version": 1,
+            "tracks": {
+                "song-uuid": {
+                    "instrumental_status": "vocal",
+                    "instrumental_confidence": 0.95,
+                    "source_evidence": {
+                        "vocal": True,
+                        "explicit": True,
+                        "instrumental": False,
+                    },
+                }
+            },
+            "artists": {},
+        }
+
+        subject.classify_soundcharts_genres(
+            current,
+            cache,
+            FakeClient({"/api/v2.25/song/song-uuid": detail}),
+            workers=1,
+            max_requests=1,
+        )
+
+        self.assertEqual(subject.field(row, schema, "instrumental_status"), "vocal")
+        evidence = subject.field(row, schema, "source_evidence")
+        self.assertTrue(evidence["vocal"])
+        self.assertTrue(evidence["explicit"])
+        self.assertFalse(evidence["instrumental"])
+        self.assertEqual(cache["tracks"]["song-uuid"]["instrumental_status"], "vocal")
 
     def test_classification_prioritizes_100k_dark_ambient_before_lower_stream_rows(self):
         current = payload()
@@ -470,6 +646,8 @@ class InstrumentalPoolTests(unittest.TestCase):
         detail["object"]["genres"] = [
             {"root": "Ambient", "sub": ["Dark Ambient", "Instrumental"]}
         ]
+        detail["object"]["isInstrumental"] = True
+        detail["object"]["hasLyrics"] = False
         client = FakeClient({"/api/v2.25/song/dark-100k-song": detail})
         summary = subject.classify_soundcharts_genres(
             current,
@@ -539,7 +717,7 @@ class InstrumentalPoolTests(unittest.TestCase):
         row = current["discovery_catalogue"]["tracks"][0]
         self.assertEqual(summary["updated"], 1)
         self.assertEqual(subject.field(row, schema, "primary_genre"), "dark_ambient")
-        self.assertEqual(subject.field(row, schema, "instrumental_status"), "instrumental")
+        self.assertEqual(subject.field(row, schema, "instrumental_status"), "unknown")
         self.assertEqual(subject.field(row, schema, "ai_risk"), "unknown")
         self.assertTrue(subject.field(row, schema, "soundcharts_genres_checked_at"))
     def test_unknown_song_rights_never_erase_strong_editorial_rights(self):
@@ -610,6 +788,8 @@ class InstrumentalPoolTests(unittest.TestCase):
         detail["object"]["genres"] = [
             {"root": "Ambient", "sub": ["Dark Ambient", "Instrumental"]}
         ]
+        detail["object"]["isInstrumental"] = True
+        detail["object"]["hasLyrics"] = False
         client = FakeClient({"/api/v2.25/song/protected-uuid": detail})
         cache = {"version": 1, "tracks": {}, "artists": {}}
 
@@ -676,13 +856,18 @@ class InstrumentalPoolTests(unittest.TestCase):
             subject.field(row, schema, "soundcharts_evidence_contract"),
             subject.SOUNDCHARTS_SONG_EVIDENCE_CONTRACT,
         )
-        self.assertTrue(
+        self.assertIsNone(
             subject.field(row, schema, "source_evidence")["instrumental"]
+        )
+        self.assertEqual(
+            subject.field(row, schema, "source_evidence")["instrumentalness"],
+            0.88,
         )
 
     def test_protected_checked_explicit_evidence_is_not_reopened(self):
         current, protected_spotify_id = protected_checked_payload(
             genres=[{"root": "Ambient", "sub": ["Dark Ambient"]}],
+            evidence_contract=subject.SOUNDCHARTS_SONG_EVIDENCE_CONTRACT,
         )
         client = FakeClient({})
 

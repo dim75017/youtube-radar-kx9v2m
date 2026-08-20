@@ -28,7 +28,12 @@ import urllib.parse
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from expand_soundcharts_instrumental_pool import parse_song_detail
+from expand_soundcharts_instrumental_pool import (
+    SOUNDCHARTS_SONG_EVIDENCE_CONTRACT,
+    merge_song_detail_evidence,
+    parse_song_detail,
+    soundcharts_song_detail_path,
+)
 from refresh_soundcharts_daily import (
     PLAYLISTS_PREFIX,
     SOUNDCHARTS_PREFIX,
@@ -114,6 +119,9 @@ TRACK_FIELDS = (
     "genre_source",
     "soundcharts_genres",
     "soundcharts_genres_checked_at",
+    "soundcharts_evidence_contract",
+    "source_evidence",
+    "soundcharts_evidence_refresh",
     "instrumental_status",
     "instrumental_confidence",
     "ai_risk",
@@ -816,52 +824,102 @@ def upsert_editorial_track(
     )
     existing_first = field(row, schema, "playlist_first_seen_at")
     existing_last = field(row, schema, "playlist_last_seen_at")
+    effective_detail: Mapping[str, Any] = {}
+    if isinstance(detail, Mapping):
+        effective_detail = merge_song_detail_evidence(
+            {
+                "soundcharts_genres": field(row, schema, "soundcharts_genres"),
+                "soundcharts_evidence_contract": field(
+                    row, schema, "soundcharts_evidence_contract"
+                ),
+                "source_evidence": field(row, schema, "source_evidence"),
+                "soundcharts_evidence_refresh": field(
+                    row, schema, "soundcharts_evidence_refresh"
+                ),
+                "instrumental_status": field(
+                    row, schema, "instrumental_status"
+                ),
+                "instrumental_confidence": field(
+                    row, schema, "instrumental_confidence"
+                ),
+                "ai_risk": field(row, schema, "ai_risk"),
+            },
+            detail,
+        )
     artist_uuids = _merge_unique(
         field(row, schema, "artist_soundcharts_uuids"),
         [
             str(artist.get("soundcharts_uuid") or "")
-            for artist in (detail.get("artists", []) if isinstance(detail, Mapping) else [])
+            for artist in effective_detail.get("artists", [])
             if isinstance(artist, Mapping)
         ],
     )
-    detail_genre = str((detail or {}).get("primary_genre") or "") if (detail or {}).get("has_exact_genre") else ""
+    detail_genre = (
+        str(effective_detail.get("primary_genre") or "")
+        if effective_detail.get("has_exact_genre")
+        else ""
+    )
     genre = detail_genre or str(field(row, schema, "primary_genre") or evidence.get("primary_genre") or "")
     existing_confidence = _finite_number(field(row, schema, "genre_confidence"))
-    detail_instrumental = str((detail or {}).get("instrumental_status") or "unknown")
-    current_instrumental = detail_instrumental if detail_instrumental in {"instrumental", "vocal"} else str(field(row, schema, "instrumental_status") or "unknown")
+    detail_instrumental = str(
+        effective_detail.get("instrumental_status") or "unknown"
+    )
+    current_contract = (
+        str(effective_detail.get("soundcharts_evidence_contract") or "")
+        == SOUNDCHARTS_SONG_EVIDENCE_CONTRACT
+    )
+    current_instrumental = (
+        detail_instrumental
+        if detail_instrumental in {"instrumental", "vocal"} or current_contract
+        else str(field(row, schema, "instrumental_status") or "unknown")
+    )
     current_ai = str(field(row, schema, "ai_risk") or "unknown")
     current_expansion = str(field(row, schema, "expansion_status") or "review")
+    review_reasons = _merge_unique(
+        field(row, schema, "review_reasons"),
+        [f"{source_tier}_discovery", "instrumental_check_required", "ai_check_required"],
+    )
+    if current_instrumental == "instrumental":
+        review_reasons = [
+            reason
+            for reason in review_reasons
+            if reason != "instrumental_check_required"
+        ]
+        review_reasons = _merge_unique(
+            review_reasons,
+            ["soundcharts_explicit_no_lyrics_proof"],
+        )
 
     values = {
         "soundcharts_uuid": uuid,
         "spotify_id": str(field(row, schema, "spotify_id") or ""),
-        "name": str((detail or {}).get("title") or evidence.get("name") or field(row, schema, "name") or "Titre non renseigné"),
-        "artist": str((detail or {}).get("credit_name") or evidence.get("credit_name") or field(row, schema, "artist") or "Artiste non renseigné"),
-        "release_date": str((detail or {}).get("release_date") or field(row, schema, "release_date") or ""),
-        "label": str((detail or {}).get("label") or field(row, schema, "label") or ""),
-        "copyright": str((detail or {}).get("copyright") or field(row, schema, "copyright") or ""),
-        "isrc": str((detail or {}).get("isrc") or field(row, schema, "isrc") or ""),
-        "image_url": str((detail or {}).get("image_url") or field(row, schema, "image_url") or ""),
-        "rights_status": str((detail or {}).get("rights_status") or field(row, schema, "rights_status") or "unknown"),
-        "rights_confidence": _finite_number((detail or {}).get("rights_confidence"))
+        "name": str(effective_detail.get("title") or evidence.get("name") or field(row, schema, "name") or "Titre non renseigné"),
+        "artist": str(effective_detail.get("credit_name") or evidence.get("credit_name") or field(row, schema, "artist") or "Artiste non renseigné"),
+        "release_date": str(effective_detail.get("release_date") or field(row, schema, "release_date") or ""),
+        "label": str(effective_detail.get("label") or field(row, schema, "label") or ""),
+        "copyright": str(effective_detail.get("copyright") or field(row, schema, "copyright") or ""),
+        "isrc": str(effective_detail.get("isrc") or field(row, schema, "isrc") or ""),
+        "image_url": str(effective_detail.get("image_url") or field(row, schema, "image_url") or ""),
+        "rights_status": str(effective_detail.get("rights_status") or field(row, schema, "rights_status") or "unknown"),
+        "rights_confidence": _finite_number(effective_detail.get("rights_confidence"))
         or _finite_number(field(row, schema, "rights_confidence"))
         or 0.25,
         "primary_genre": genre,
-        "subgenres": _merge_unique((detail or {}).get("subgenres"), field(row, schema, "subgenres"), evidence.get("subgenres")),
-        "genre_confidence": float((detail or {}).get("genre_confidence") or 0.0) if detail_genre else max(float(existing_confidence or 0), _genre_confidence(evidence)),
+        "subgenres": _merge_unique(effective_detail.get("subgenres"), field(row, schema, "subgenres"), evidence.get("subgenres")),
+        "genre_confidence": float(effective_detail.get("genre_confidence") or 0.0) if detail_genre else max(float(existing_confidence or 0), _genre_confidence(evidence)),
         "genre_source": "soundcharts_song" if detail_genre else str(field(row, schema, "genre_source") or source_tier),
-        "soundcharts_genres": list((detail or {}).get("soundcharts_genres") or field(row, schema, "soundcharts_genres") or []),
-        "soundcharts_genres_checked_at": str((detail or {}).get("soundcharts_genres_checked_at") or field(row, schema, "soundcharts_genres_checked_at") or ""),
+        "soundcharts_genres": list(effective_detail.get("soundcharts_genres") or field(row, schema, "soundcharts_genres") or []),
+        "soundcharts_genres_checked_at": str(effective_detail.get("soundcharts_genres_checked_at") or field(row, schema, "soundcharts_genres_checked_at") or ""),
+        "soundcharts_evidence_contract": str(effective_detail.get("soundcharts_evidence_contract") or field(row, schema, "soundcharts_evidence_contract") or ""),
+        "source_evidence": dict(effective_detail.get("source_evidence") or field(row, schema, "source_evidence") or {}),
+        "soundcharts_evidence_refresh": dict(effective_detail.get("soundcharts_evidence_refresh") or field(row, schema, "soundcharts_evidence_refresh") or {}),
         "instrumental_status": current_instrumental,
-        "instrumental_confidence": (detail or {}).get("instrumental_confidence") if current_instrumental in {"instrumental", "vocal"} else field(row, schema, "instrumental_confidence"),
+        "instrumental_confidence": effective_detail.get("instrumental_confidence") if current_instrumental in {"instrumental", "vocal"} else None if current_contract else field(row, schema, "instrumental_confidence"),
         "ai_risk": current_ai,
         "ai_risk_score": field(row, schema, "ai_risk_score"),
         "expansion_status": current_expansion if current_expansion in {"eligible", "review"} else "review",
-        "review_reasons": _merge_unique(
-            field(row, schema, "review_reasons"),
-            [f"{source_tier}_discovery", "instrumental_check_required", "ai_check_required"],
-        ),
-        "metadata_status": "complete" if detail else str(field(row, schema, "metadata_status") or "playlist_only"),
+        "review_reasons": review_reasons,
+        "metadata_status": "complete" if effective_detail else str(field(row, schema, "metadata_status") or "playlist_only"),
         "updated_at": now,
         "source_tier": preferred_source_tier(current_source, source_tier),
         "playlist_ids": playlist_ids,
@@ -1264,12 +1322,17 @@ def discover_from_playlists(
         cached_detail = cache_track_discovery_evidence(
             cache_tracks, evidence, source_tier=str(evidence.get("source_tier") or "editorial_playlist"), now=now
         )
+        has_cached_song_detail = bool(
+            cached_detail.get("artists")
+            or cached_detail.get("soundcharts_evidence_contract")
+            or cached_detail.get("source_evidence")
+        )
         _, inserted = upsert_editorial_track(
             track_rows,
             track_schema,
             tracks_by_uuid,
             evidence,
-            detail=cached_detail if cached_detail.get("artists") else None,
+            detail=cached_detail if has_cached_song_detail else None,
             source_tier=str(evidence.get("source_tier") or "editorial_playlist"),
             now=now,
         )
@@ -1278,7 +1341,10 @@ def discover_from_playlists(
 
     selected_unseen = unseen[: max(0, max_new_playlist_tracks)]
     detail_tasks = [
-        (item["soundcharts_uuid"], "/api/v2/song/" + urllib.parse.quote(item["soundcharts_uuid"]))
+        (
+            item["soundcharts_uuid"],
+            soundcharts_song_detail_path(item["soundcharts_uuid"]),
+        )
         for item in selected_unseen
     ]
     detail_responses, detail_failures = parallel_get(client, detail_tasks, workers=workers)
@@ -1290,7 +1356,7 @@ def discover_from_playlists(
         parsed_detail = parse_song_detail(raw_detail, evidence) if raw_detail is not None else None
         if parsed_detail:
             existing = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
-            cache_tracks[uuid] = {**existing, **parsed_detail}
+            cache_tracks[uuid] = merge_song_detail_evidence(existing, parsed_detail)
             cache_track_discovery_evidence(
                 cache_tracks, evidence, source_tier=str(evidence.get("source_tier") or "editorial_playlist"), now=now
             )

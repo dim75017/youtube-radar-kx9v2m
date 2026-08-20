@@ -99,6 +99,12 @@ const context = {
   window: {
     SPOTIFY_BROWSE_CATALOGUE: {
       active_legacy_spotify_ids: activeLegacyIds,
+      policy: {
+        external_instrumental_evidence_gate: {
+          version: 1,
+          grandfathered_spotify_ids: discoveryTracks.map(row => row.spotify_id),
+        },
+      },
       discovery_catalogue: {
         track_schema: discoveryTrackSchema,
         artist_schema: discoveryArtistSchema,

@@ -359,6 +359,78 @@ class PlaylistDiscoveryTests(unittest.TestCase):
             "editorial_playlist",
         )
 
+    def test_playlist_upsert_keeps_numeric_evidence_review_only_and_vocal_sticky(self):
+        soundcharts = empty_soundcharts()
+        schema, rows = subject.ensure_editorial_schema(
+            soundcharts["editorial"], "tracks", subject.TRACK_FIELDS
+        )
+        evidence = {
+            "soundcharts_uuid": "song-proof",
+            "name": "Proof Track",
+            "credit_name": "Proof Artist",
+            "primary_genre": "ambient",
+            "source_tier": "independent_playlist",
+        }
+        raw_detail = song_detail(
+            "song-proof", "Proof Track", "artist-proof", "Proof Artist"
+        )
+        raw_detail["object"]["audioFeatures"] = {
+            "instrumentalness": 0.99,
+            "speechiness": 0.01,
+        }
+        parsed = subject.parse_song_detail(raw_detail, evidence)
+
+        row, _ = subject.upsert_editorial_track(
+            rows,
+            schema,
+            {},
+            evidence,
+            detail=parsed,
+            source_tier="independent_playlist",
+            now="2026-08-20T00:00:00Z",
+        )
+
+        self.assertEqual(
+            subject.field(row, schema, "instrumental_status"), "unknown"
+        )
+        self.assertEqual(
+            subject.field(row, schema, "soundcharts_evidence_contract"),
+            subject.SOUNDCHARTS_SONG_EVIDENCE_CONTRACT,
+        )
+        row_evidence = subject.field(row, schema, "source_evidence")
+        self.assertEqual(row_evidence["instrumentalness"], 0.99)
+        self.assertFalse(row_evidence["instrumental_proof_complete"])
+
+        subject.set_field(row, schema, "instrumental_status", "vocal")
+        subject.set_field(row, schema, "instrumental_confidence", 0.95)
+        subject.set_field(
+            row,
+            schema,
+            "source_evidence",
+            {"vocal": True, "explicit": True, "instrumental": False},
+        )
+        strict_detail = song_detail(
+            "song-proof", "Proof Track", "artist-proof", "Proof Artist"
+        )
+        strict_detail["object"]["isInstrumental"] = True
+        strict_detail["object"]["hasLyrics"] = False
+        parsed_strict = subject.parse_song_detail(strict_detail, evidence)
+        subject.upsert_editorial_track(
+            rows,
+            schema,
+            {"song-proof": row},
+            evidence,
+            detail=parsed_strict,
+            source_tier="independent_playlist",
+            now="2026-08-20T01:00:00Z",
+        )
+
+        self.assertEqual(subject.field(row, schema, "instrumental_status"), "vocal")
+        sticky = subject.field(row, schema, "source_evidence")
+        self.assertTrue(sticky["vocal"])
+        self.assertTrue(sticky["explicit"])
+        self.assertFalse(sticky["instrumental"])
+
     def test_playlist_evidence_deduplicates_and_prefers_best_position(self):
         placements = [
             {
@@ -402,12 +474,15 @@ class PlaylistDiscoveryTests(unittest.TestCase):
         self.assertEqual(evidence["primary_genre"], "ambient")
 
     def test_discovery_onboards_playlist_tracks_artists_and_catalogues(self):
+        song_one = song_detail("song-1", "Soft Rain", "artist-1", "Quiet Artist")
+        song_one["object"]["isInstrumental"] = True
+        song_one["object"]["hasLyrics"] = False
         client = FakeClient(
             {
                 "/by-platform/spotify/playlist-1": playlist_metadata(),
                 "/playlist/playlist-uuid-1/tracks/latest": playlist_page(),
-                "/api/v2/song/song-1": song_detail("song-1", "Soft Rain", "artist-1", "Quiet Artist"),
-                "/api/v2/song/song-2": song_detail("song-2", "Night Keys", "artist-2", "Second Artist"),
+                "/api/v2.25/song/song-1": song_one,
+                "/api/v2.25/song/song-2": song_detail("song-2", "Night Keys", "artist-2", "Second Artist"),
                 "/artist/artist-1/songs?": catalogue_page("artist-1", "catalogue-song-1", "Morning Catalogue"),
                 "/artist/artist-2/songs?": catalogue_page("artist-2", "catalogue-song-2", "Evening Catalogue"),
             }
@@ -445,6 +520,26 @@ class PlaylistDiscoveryTests(unittest.TestCase):
         self.assertEqual(subject.field(rows["song-1"], track_schema, "source_tier"), "editorial_playlist")
         self.assertEqual(subject.field(rows["song-1"], track_schema, "playlist_best_position"), 3)
         self.assertEqual(subject.field(rows["song-1"], track_schema, "ai_risk"), "unknown")
+        self.assertEqual(
+            subject.field(
+                rows["song-1"], track_schema, "soundcharts_evidence_contract"
+            ),
+            subject.SOUNDCHARTS_SONG_EVIDENCE_CONTRACT,
+        )
+        source_evidence = subject.field(
+            rows["song-1"], track_schema, "source_evidence"
+        )
+        self.assertTrue(source_evidence["instrumental"])
+        self.assertTrue(source_evidence["no_lyrics"])
+        self.assertTrue(source_evidence["instrumental_proof_complete"])
+        self.assertEqual(
+            subject.field(rows["song-1"], track_schema, "instrumental_status"),
+            "instrumental",
+        )
+        self.assertEqual(
+            cache["tracks"]["song-1"]["source_evidence"],
+            source_evidence,
+        )
         self.assertEqual(subject.field(rows["catalogue-song-1"], track_schema, "source_tier"), "playlist_artist_catalogue")
         self.assertEqual(subject.field(rows["catalogue-song-1"], track_schema, "expansion_status"), "review")
         artist_schema = editorial["artist_schema"]
@@ -478,8 +573,8 @@ class PlaylistDiscoveryTests(unittest.TestCase):
             {
                 "/by-platform/spotify/playlist-1": playlist_metadata(),
                 "/playlist/playlist-uuid-1/tracks/latest": playlist_page(),
-                "/api/v2/song/song-1": song_detail("song-1", "Soft Rain", "artist-1", "Quiet Artist"),
-                "/api/v2/song/song-2": song_detail("song-2", "Night Keys", "artist-2", "Second Artist"),
+                "/api/v2.25/song/song-1": song_detail("song-1", "Soft Rain", "artist-1", "Quiet Artist"),
+                "/api/v2.25/song/song-2": song_detail("song-2", "Night Keys", "artist-2", "Second Artist"),
                 "/artist/artist-1/songs?": catalogue_page("artist-1", "catalogue-song-1", "Morning Catalogue"),
                 "/artist/artist-2/songs?": catalogue_page("artist-2", "catalogue-song-2", "Evening Catalogue"),
             }

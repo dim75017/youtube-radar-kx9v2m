@@ -109,6 +109,22 @@ PUBLIC_MIN_CONFIDENCE = 0.5
 PUBLIC_MIN_ARTIST_MONTHLY_LISTENERS = 1_000
 PUBLIC_MAX_ARTIST_MONTHLY_LISTENERS = 5_000_000
 PUBLIC_MAX_TRACK_STREAMS = 250_000_000
+SUPPORTED_SOUNDCHARTS_EVIDENCE_CONTRACTS = frozenset(
+    {
+        "soundcharts_song_v2.25_evidence_v3",
+    }
+)
+EXPLICIT_NO_LYRICS_STATUSES = frozenset(
+    {
+        "no lyrics",
+        "no lyric",
+        "lyrics free",
+        "instrumental no lyrics",
+        "no vocals",
+        "non vocal",
+        "non-vocal",
+    }
+)
 
 # Automatic publication is intentionally conservative.  Discovery/classifier
 # jobs may grow staging freely, but a materially smaller strict catalogue or a
@@ -117,7 +133,6 @@ PUBLIC_MAX_TRACK_STREAMS = 250_000_000
 MIN_AUTO_RETENTION_RATIO = 0.80
 MAX_AUTO_DISCOVERY_GROWTH_RATIO = 1.35
 MAX_AUTO_DISCOVERY_GROWTH_ROWS = 5_000
-HIGH_STREAM_UNCLASSIFIED_THRESHOLD = 50_000_000
 PUBLIC_CONTACT_EMAIL_RE = re.compile(
     r"^[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,63}$", re.I
 )
@@ -161,6 +176,56 @@ def _nonempty(value: Any) -> bool:
     if isinstance(value, (list, tuple, dict, set, frozenset)):
         return bool(value)
     return bool(str(value).strip())
+
+
+def has_contractual_instrumental_no_lyrics_evidence(
+    record: Mapping[str, Any],
+) -> bool:
+    """Require provider provenance plus two independent boolean facts.
+
+    ``instrumentalness`` is a useful ranking score, but it is not proof that a
+    recording contains no singing or lyrics.  Automatic public promotion is
+    therefore allowed only when the normalized source evidence explicitly
+    confirms both ``instrumental`` and the absence of vocals/lyrics.  Unknown
+    or future provider contracts remain fail-closed until reviewed here.
+    """
+
+    evidence = record.get("source_evidence")
+    if not isinstance(evidence, Mapping):
+        return False
+
+    top_contract = str(
+        record.get("soundcharts_evidence_contract") or ""
+    ).strip()
+    nested_contract = str(evidence.get("source_contract") or "").strip()
+    contracts = {
+        value for value in (top_contract, nested_contract) if value
+    }
+    if (
+        len(contracts) != 1
+        or next(iter(contracts))
+        not in SUPPORTED_SOUNDCHARTS_EVIDENCE_CONTRACTS
+    ):
+        return False
+
+    if evidence.get("instrumental") is not True:
+        return False
+    if (
+        evidence.get("vocal") is True
+        or evidence.get("has_lyrics") is True
+        or evidence.get("no_lyrics") is False
+    ):
+        return False
+    if (
+        evidence.get("vocal") is False
+        or evidence.get("has_lyrics") is False
+        or evidence.get("no_lyrics") is True
+    ):
+        return True
+    return any(
+        _normalise_text(evidence.get(field)) in EXPLICIT_NO_LYRICS_STATUSES
+        for field in ("lyrics_status", "vocal_status", "no_lyrics_status")
+    )
 
 
 def _schema(payload: Mapping[str, Any], name: str) -> list[str]:
@@ -2164,9 +2229,11 @@ def quarantine_unapproved_discovery_additions(
     """Keep new unclassified discoveries in staging, outside the public browse UI.
 
     Rows already present in the reviewed predecessor are grandfathered.  A new
-    row is public only after Soundcharts explicitly identifies it as
-    instrumental with sufficient confidence.  The collector cache remains the
-    source for later classification, so quarantine does not discard scan work.
+    row is public only after a supported Soundcharts evidence contract
+    explicitly confirms both instrumental audio and the absence of
+    vocals/lyrics.  A numeric instrumentalness score alone is review evidence,
+    never publication evidence.  The collector cache remains the source for
+    later classification, so quarantine does not discard scan work.
     """
 
     catalogue = candidate.get("discovery_catalogue")
@@ -2181,12 +2248,7 @@ def quarantine_unapproved_discovery_additions(
     artist_schema = catalogue.get("artist_schema")
     artist_schema = list(artist_schema) if isinstance(artist_schema, list) else []
 
-    previous_tracks = _discovery_track_records(previous)
-    previous_track_aliases = {
-        alias
-        for record in previous_tracks.values()
-        for alias in _discovery_identity_aliases(record)
-    }
+    previous_track_aliases = _previous_approved_discovery_aliases(previous)
     retained_tracks: list[Any] = []
     referenced_artist_ids: set[str] = set()
     track_rows = catalogue.get("tracks")
@@ -2211,6 +2273,7 @@ def quarantine_unapproved_discovery_additions(
         if not was_previously_approved and not (
             instrumental == "instrumental"
             and confidence >= PUBLIC_MIN_CONFIDENCE
+            and has_contractual_instrumental_no_lyrics_evidence(record)
         ):
             continue
         retained_tracks.append(row)
@@ -2393,6 +2456,27 @@ def _discovery_track_records(payload: Mapping[str, Any]) -> dict[str, Mapping[st
     return records
 
 
+def _previous_approved_discovery_aliases(
+    payload: Mapping[str, Any],
+) -> set[str]:
+    """Return exact predecessor identities, including pre-discovery snapshots."""
+
+    discovery = _discovery_track_records(payload)
+    if discovery:
+        return {
+            alias
+            for record in discovery.values()
+            for alias in _discovery_identity_aliases(record)
+        }
+    schema = _schema(payload, "tracks")
+    rows = payload.get("tracks")
+    return {
+        alias
+        for row in (rows if isinstance(rows, list) else [])
+        for alias in _discovery_identity_aliases(_mapping_from_row(row, schema))
+    }
+
+
 def validate_snapshot_transition(
     previous: Mapping[str, Any], candidate: Mapping[str, Any]
 ) -> None:
@@ -2446,11 +2530,7 @@ def validate_snapshot_transition(
                 f"({len(previous_discovery)} -> {len(candidate_discovery)})"
             )
 
-    previous_discovery_aliases = {
-        alias
-        for record in previous_discovery.values()
-        for alias in _discovery_identity_aliases(record)
-    }
+    previous_discovery_aliases = _previous_approved_discovery_aliases(previous)
     for record in candidate_discovery.values():
         if _discovery_identity_aliases(record).intersection(
             previous_discovery_aliases
@@ -2462,14 +2542,13 @@ def validate_snapshot_transition(
             raise SnapshotValidationError(
                 "new vocal/non-instrumental discovery row cannot be auto-activated"
             )
-        streams = _finite_number(record.get("streams"))
-        if (
-            streams is not None
-            and streams >= HIGH_STREAM_UNCLASSIFIED_THRESHOLD
-            and not (instrumental == "instrumental" and confidence >= PUBLIC_MIN_CONFIDENCE)
+        if not (
+            instrumental == "instrumental"
+            and confidence >= PUBLIC_MIN_CONFIDENCE
+            and has_contractual_instrumental_no_lyrics_evidence(record)
         ):
             raise SnapshotValidationError(
-                "high-stream discovery row lacks verified instrumental evidence"
+                "new discovery row lacks contractual instrumental/no-lyrics evidence"
             )
 
 

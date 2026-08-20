@@ -76,6 +76,17 @@ EDITORIAL_TRACK_SCHEMA = [
     "ai_risk",
     "expansion_status",
 ]
+EVIDENCE_CONTRACT = "soundcharts_song_v2.25_evidence_v3"
+
+
+def explicit_instrumental_evidence(**overrides):
+    evidence = {
+        "source_contract": EVIDENCE_CONTRACT,
+        "instrumental": True,
+        "vocal": False,
+    }
+    evidence.update(overrides)
+    return evidence
 
 
 def collaborator(name, spotify_id, soundcharts_uuid):
@@ -1139,7 +1150,90 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
 
         with self.assertRaisesRegex(
             subject.SnapshotValidationError,
-            "lacks verified instrumental evidence",
+            "lacks contractual instrumental/no-lyrics evidence",
+        ):
+            subject.validate_snapshot_transition(previous, candidate)
+
+    def test_contractual_evidence_requires_instrumental_and_no_lyrics_facts(self):
+        valid = {
+            "soundcharts_evidence_contract": EVIDENCE_CONTRACT,
+            "source_evidence": explicit_instrumental_evidence(),
+        }
+
+        self.assertTrue(
+            subject.has_contractual_instrumental_no_lyrics_evidence(valid)
+        )
+        for name, invalid in {
+            "missing_source_evidence": {
+                "soundcharts_evidence_contract": EVIDENCE_CONTRACT,
+            },
+            "score_only": {
+                "soundcharts_evidence_contract": EVIDENCE_CONTRACT,
+                "source_evidence": {"instrumentalness": 0.99},
+            },
+            "legacy_v2_derived_booleans": {
+                "soundcharts_evidence_contract": (
+                    "soundcharts_song_v2.25_evidence_v2"
+                ),
+                "source_evidence": explicit_instrumental_evidence(
+                    source_contract="soundcharts_song_v2.25_evidence_v2"
+                ),
+            },
+            "vocal_unknown": {
+                **valid,
+                "source_evidence": explicit_instrumental_evidence(vocal=None),
+            },
+            "missing_contract": {
+                "source_evidence": explicit_instrumental_evidence(
+                    source_contract=""
+                ),
+            },
+            "conflicting_contract": {
+                **valid,
+                "source_evidence": explicit_instrumental_evidence(
+                    source_contract="soundcharts_song_v2.25_evidence_v2"
+                ),
+            },
+        }.items():
+            with self.subTest(name=name):
+                self.assertFalse(
+                    subject.has_contractual_instrumental_no_lyrics_evidence(
+                        invalid
+                    )
+                )
+
+    def test_transition_rejects_score_only_addition_below_old_stream_threshold(self):
+        schema = [
+            "soundcharts_uuid",
+            "spotify_id",
+            "streams",
+            "instrumental_status",
+            "instrumental_confidence",
+            "soundcharts_evidence_contract",
+            "source_evidence",
+        ]
+        previous = {
+            "discovery_catalogue": {
+                "track_schema": schema,
+                "tracks": [["old-song", "old-track", 1_000, "instrumental", 0.9, None, None]],
+            }
+        }
+        candidate = copy.deepcopy(previous)
+        candidate["discovery_catalogue"]["tracks"].append(
+            [
+                "new-song",
+                "new-track",
+                2_000,
+                "instrumental",
+                0.99,
+                EVIDENCE_CONTRACT,
+                {"instrumentalness": 0.99, "instrumental": True, "vocal": None},
+            ]
+        )
+
+        with self.assertRaisesRegex(
+            subject.SnapshotValidationError,
+            "lacks contractual instrumental/no-lyrics evidence",
         ):
             subject.validate_snapshot_transition(previous, candidate)
 
@@ -1155,13 +1249,15 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
             "playlist_count",
             "source_tier",
             "availability_status",
+            "soundcharts_evidence_contract",
+            "source_evidence",
         ]
         artist_schema = ["soundcharts_uuid", "spotify_id", "name"]
         previous = {
             "discovery_catalogue": {
                 "track_schema": schema,
                 "artist_schema": artist_schema,
-                "tracks": [["old-song", "old-track", [], ["old-artist"], 1_000, "unknown", None, 1, "independent_playlist", "needs_listen"]],
+                "tracks": [["old-song", "old-track", [], ["old-artist"], 1_000, "unknown", None, 1, "independent_playlist", "needs_listen", None, None]],
                 "artists": [["old-artist", "old-artist-spotify", "Old Artist"]],
             }
         }
@@ -1171,8 +1267,8 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
                 "artist_schema": artist_schema,
                 "tracks": [
                     *copy.deepcopy(previous["discovery_catalogue"]["tracks"]),
-                    ["unsafe-song", "unsafe-track", [], ["unsafe-artist"], 500_000_000, "unknown", None, 1, "independent_playlist", "needs_listen"],
-                    ["safe-song", "safe-track", [], ["safe-artist"], 2_000, "instrumental", 0.9, 1, "editorial_playlist", "verified"],
+                    ["unsafe-song", "unsafe-track", [], ["unsafe-artist"], 500_000_000, "unknown", None, 1, "independent_playlist", "needs_listen", None, None],
+                    ["safe-song", "safe-track", [], ["safe-artist"], 2_000, "instrumental", 0.9, 1, "editorial_playlist", "verified", EVIDENCE_CONTRACT, explicit_instrumental_evidence()],
                 ],
                 "artists": [
                     *copy.deepcopy(previous["discovery_catalogue"]["artists"]),

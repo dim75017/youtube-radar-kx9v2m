@@ -31,7 +31,11 @@ import re
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
-from prepare_soundcharts_snapshot import PUBLIC_ARTIST_BLACKLIST
+from prepare_soundcharts_snapshot import (
+    PUBLIC_ARTIST_BLACKLIST,
+    SUPPORTED_SOUNDCHARTS_EVIDENCE_CONTRACTS,
+    has_contractual_instrumental_no_lyrics_evidence,
+)
 from spotify_rights import reconciled_label, reconcile_rights
 
 SOUNDCHARTS_PREFIX = "window.SPOTIFY_SOUNDCHARTS="
@@ -104,6 +108,7 @@ STRICT_GENRES = {
 STRICT_RIGHTS = {"self_released", "independent_label"}
 MIN_STRICT_CONFIDENCE = 0.5
 MIN_TRACK_LIFETIME_STREAMS = 100_000
+EXTERNAL_INSTRUMENTAL_EVIDENCE_GATE_VERSION = 1
 COMPOSITE_CREDIT = re.compile(r"(?:\s(?:&|feat\.?|featuring|ft\.?|x|×)\s|,)", re.IGNORECASE)
 
 EVIDENCE_FIELDS = {
@@ -509,16 +514,25 @@ def _merge_evidence_pair(
         merged.pop(confidence_field, None)
 
 
-def _manifest_spotify_ids(value: Any) -> frozenset[str]:
+def _manifest_spotify_ids(value: Any, field: str) -> frozenset[str]:
+    if not isinstance(value, list):
+        raise BrowseCatalogueError(f"exclusion field {field} must be a list")
     ids: set[str] = set()
-    for item in value if isinstance(value, list) else []:
+    for index, item in enumerate(value):
         spotify_id = (
             str(item.get("spotify_id") or "").strip()
             if isinstance(item, Mapping)
-            else str(item or "").strip()
+            else str(item or "").strip() if isinstance(item, str) else ""
         )
-        if spotify_id:
-            ids.add(spotify_id)
+        if not spotify_id:
+            raise BrowseCatalogueError(
+                f"exclusion field {field}[{index}] lacks a Spotify ID"
+            )
+        if spotify_id in ids:
+            raise BrowseCatalogueError(
+                f"exclusion field {field} contains duplicate Spotify ID {spotify_id}"
+            )
+        ids.add(spotify_id)
     return frozenset(ids)
 
 
@@ -529,13 +543,63 @@ def _read_exclusions(path: Path) -> dict[str, frozenset[str]]:
         raise BrowseCatalogueError(f"{path} contains invalid JSON") from exc
     if not isinstance(payload, Mapping):
         raise BrowseCatalogueError(f"{path} does not contain an exclusion object")
+    version = payload.get("version")
+    if isinstance(version, bool) or version not in {1, 2}:
+        raise BrowseCatalogueError(
+            f"{path} has unsupported exclusion schema version {version!r}"
+        )
+    artist_ids = _manifest_spotify_ids(
+        payload.get("artist_spotify_ids"), "artist_spotify_ids"
+    )
+    track_ids = set(
+        _manifest_spotify_ids(
+            payload.get("track_spotify_ids"), "track_spotify_ids"
+        )
+    )
+    batches = payload.get("quarantined_track_batches", [])
+    if not isinstance(batches, list):
+        raise BrowseCatalogueError(
+            "exclusion field quarantined_track_batches must be a list"
+        )
+    if version == 1 and batches:
+        raise BrowseCatalogueError(
+            "quarantined_track_batches requires exclusion schema version 2"
+        )
+    batch_ids: set[str] = set()
+    quarantined_track_ids: set[str] = set()
+    for index, batch in enumerate(batches):
+        if not isinstance(batch, Mapping):
+            raise BrowseCatalogueError(
+                f"quarantined_track_batches[{index}] must be an object"
+            )
+        batch_id = str(batch.get("batch_id") or "").strip()
+        if not batch_id:
+            raise BrowseCatalogueError(
+                f"quarantined_track_batches[{index}] lacks batch_id"
+            )
+        if batch_id in batch_ids:
+            raise BrowseCatalogueError(
+                f"duplicate quarantined track batch_id {batch_id}"
+            )
+        batch_ids.add(batch_id)
+        batch_track_ids = set(
+            _manifest_spotify_ids(
+                batch.get("spotify_ids"),
+                f"quarantined_track_batches[{index}].spotify_ids",
+            )
+        )
+        duplicate_ids = (track_ids | quarantined_track_ids) & batch_track_ids
+        if duplicate_ids:
+            preview = ", ".join(sorted(duplicate_ids)[:5])
+            raise BrowseCatalogueError(
+                "quarantined track batches contain already-declared Spotify IDs: "
+                + preview
+            )
+        quarantined_track_ids.update(batch_track_ids)
+    track_ids.update(quarantined_track_ids)
     return {
-        "artist_spotify_ids": _manifest_spotify_ids(
-            payload.get("artist_spotify_ids")
-        ),
-        "track_spotify_ids": _manifest_spotify_ids(
-            payload.get("track_spotify_ids")
-        ),
+        "artist_spotify_ids": artist_ids,
+        "track_spotify_ids": frozenset(track_ids),
     }
 
 
@@ -961,6 +1025,7 @@ def _strict_rebaseline_reason(
     trusted_internal_spotify_ids: set[str] | frozenset[str] | None = None,
     excluded_artist_spotify_ids: set[str] | frozenset[str] | None = None,
     excluded_track_spotify_ids: set[str] | frozenset[str] | None = None,
+    require_contractual_instrumental_evidence: bool = False,
 ) -> str | None:
     """Return the first factual reason an active-row candidate is quarantined."""
     spotify_id = str(row.get("spotify_id") or "").strip()
@@ -992,6 +1057,11 @@ def _strict_rebaseline_reason(
         return "genre_confidence_low"
     if (_finite_number(row.get("instrumental_confidence")) or 0) < MIN_STRICT_CONFIDENCE:
         return "instrumental_confidence_low"
+    if (
+        require_contractual_instrumental_evidence
+        and not has_contractual_instrumental_no_lyrics_evidence(row)
+    ):
+        return "external_instrumental_no_lyrics_evidence_missing"
     ai_risk = _evidence_key(row.get("ai_risk") or "unknown")
     # All Tracks is a research catalogue, not the actionable A&R queue.
     # Unknown AI evidence stays visibly "a verifier" once instrumental/no-
@@ -1029,6 +1099,7 @@ def strict_rebase_catalogue(
     quarantine_details: dict[str, tuple[str, Mapping[str, Any]]] | None = None,
     excluded_artist_spotify_ids: set[str] | frozenset[str] | None = None,
     excluded_track_spotify_ids: set[str] | frozenset[str] | None = None,
+    grandfathered_external_spotify_ids: set[str] | frozenset[str] | None = None,
 ) -> tuple[dict[str, Any], dict[str, int], list[str]]:
     """Project trusted internal inventory plus evidenced external discoveries.
 
@@ -1058,16 +1129,21 @@ def strict_rebase_catalogue(
     accepted_tracks: list[dict[str, Any]] = []
     active_artist_keys: set[str] = set()
     for row in normalised["track_records"]:
+        spotify_id = str(row.get("spotify_id") or "").strip()
         reason = _strict_rebaseline_reason(
             row,
             minimum_streams,
             trusted_internal_spotify_ids,
             excluded_artist_spotify_ids,
             excluded_track_spotify_ids,
+            require_contractual_instrumental_evidence=(
+                grandfathered_external_spotify_ids is not None
+                and spotify_id not in grandfathered_external_spotify_ids
+                and spotify_id not in (trusted_internal_spotify_ids or set())
+            ),
         )
         if reason:
             quarantine_counts[reason] = quarantine_counts.get(reason, 0) + 1
-            spotify_id = str(row.get("spotify_id") or "").strip()
             if quarantine_details is not None and spotify_id:
                 quarantine_details[spotify_id] = (reason, dict(row))
             continue
@@ -1165,6 +1241,40 @@ def browse_cohort_counts(payload: Mapping[str, Any]) -> dict[str, int]:
     }
 
 
+def _carried_grandfathered_external_ids(
+    previous: Mapping[str, Any] | None,
+    previous_external_ids: set[str],
+) -> set[str]:
+    """Carry only the one-time legacy exception created at gate adoption.
+
+    Once the v1 marker exists, contractual tracks promoted later must never be
+    added to the grandfather list merely because they appeared yesterday.
+    """
+
+    if not isinstance(previous, Mapping):
+        return set()
+    policy = previous.get("policy")
+    gate = (
+        policy.get("external_instrumental_evidence_gate")
+        if isinstance(policy, Mapping)
+        else None
+    )
+    if not isinstance(gate, Mapping) or gate.get("version") != (
+        EXTERNAL_INSTRUMENTAL_EVIDENCE_GATE_VERSION
+    ):
+        return set(previous_external_ids)
+    raw_ids = gate.get("grandfathered_spotify_ids")
+    if not isinstance(raw_ids, list):
+        raise BrowseCatalogueError(
+            "External instrumental evidence gate lacks grandfathered_spotify_ids"
+        )
+    return {
+        str(value or "").strip()
+        for value in raw_ids
+        if str(value or "").strip()
+    } & previous_external_ids
+
+
 def _explicit_safe_removal(
     reason: str,
     row: Mapping[str, Any],
@@ -1182,6 +1292,7 @@ def _explicit_safe_removal(
         "blacklisted_identity",
         "explicit_track_id_exclusion",
         "explicit_artist_id_exclusion",
+        "external_instrumental_no_lyrics_evidence_missing",
     }:
         return True
     if reason == "instrumental_unconfirmed":
@@ -1248,6 +1359,30 @@ def validate_browse_transition(
     if int(counts.get("artists") or 0) != expected_counts["artists"]:
         raise BrowseCatalogueError("Active browse artist count is inconsistent")
 
+    candidate_by_spotify_id = {
+        str(row.get("spotify_id") or "").strip(): row
+        for row in candidate_records
+        if str(row.get("spotify_id") or "").strip()
+    }
+    new_external_ids = (
+        candidate_cohorts["strict_external"]
+        - previous_cohorts["strict_external"]
+    )
+    unproven_new_external_ids = sorted(
+        spotify_id
+        for spotify_id in new_external_ids
+        if not has_contractual_instrumental_no_lyrics_evidence(
+            candidate_by_spotify_id.get(spotify_id, {})
+        )
+    )
+    if unproven_new_external_ids:
+        preview = ", ".join(unproven_new_external_ids[:5])
+        raise BrowseCatalogueError(
+            "Daily browse rebuild would publish new external tracks without "
+            "contractual instrumental/no-lyrics evidence "
+            f"({len(unproven_new_external_ids)}; first: {preview})"
+        )
+
     archive_key = str(
         (candidate.get("policy") or {}).get("manual_archive_storage_key") or ""
     )
@@ -1299,6 +1434,7 @@ def validate_browse_transition(
         "previous_tracks": len(previous_cohorts["all"]),
         "candidate_tracks": len(candidate_cohorts["all"]),
         "retained_tracks": len(previous_cohorts["all"] & candidate_cohorts["all"]),
+        "new_contractual_external_tracks": len(new_external_ids),
         "explicit_safe_removals": dict(sorted(removal_counts.items())),
         "protected_cohorts": protected_reports,
     }
@@ -1317,6 +1453,15 @@ def build_payload(
     protected_review_cohorts: Sequence[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     catalogues: list[Mapping[str, Any]] = []
+    previous_external_spotify_ids = (
+        _browse_cohort_sets(existing)["strict_external"]
+        if isinstance(existing, Mapping)
+        else set()
+    )
+    carried_grandfathered_external_ids = _carried_grandfathered_external_ids(
+        existing,
+        previous_external_spotify_ids,
+    )
     if isinstance(existing, Mapping):
         old = existing.get("discovery_catalogue")
         if isinstance(old, Mapping):
@@ -1365,6 +1510,9 @@ def build_payload(
             ),
             excluded_track_spotify_ids=(exclusions or {}).get(
                 "track_spotify_ids", frozenset()
+            ),
+            grandfathered_external_spotify_ids=(
+                carried_grandfathered_external_ids
             ),
         )
     else:
@@ -1440,6 +1588,19 @@ def build_payload(
         "strict_snapshot_counts": strict_counts,
     }
     payload["cohort_counts"] = browse_cohort_counts(payload)
+    active_external_spotify_ids = _browse_cohort_sets(payload)["strict_external"]
+    payload["policy"]["external_instrumental_evidence_gate"] = {
+        "version": EXTERNAL_INSTRUMENTAL_EVIDENCE_GATE_VERSION,
+        "supported_contracts": sorted(
+            SUPPORTED_SOUNDCHARTS_EVIDENCE_CONTRACTS
+        ),
+        "new_external_requires_explicit_instrumental": True,
+        "new_external_requires_explicit_no_lyrics": True,
+        "grandfathered_spotify_ids": sorted(
+            carried_grandfathered_external_ids
+            & active_external_spotify_ids
+        ),
+    }
     if strict_rebased and isinstance(existing, Mapping):
         payload["transition_guard"] = validate_browse_transition(
             existing,
@@ -1452,6 +1613,7 @@ def build_payload(
             "previous_tracks": 0,
             "candidate_tracks": payload["cohort_counts"]["tracks"],
             "retained_tracks": 0,
+            "new_contractual_external_tracks": 0,
             "explicit_safe_removals": {},
             "protected_cohorts": {},
         }

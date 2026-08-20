@@ -1,4 +1,5 @@
 import copy
+import json
 import tempfile
 import unittest
 
@@ -37,9 +38,21 @@ TRANSITION_TRACK_SCHEMA = [
     "soundcharts_uuid", "spotify_id", "title", "credit_name", "artists",
     "streams", "primary_genre", "genre_confidence", "instrumental_status",
     "instrumental_confidence", "ai_risk", "rights_status",
-    "rights_confidence", "source_tier",
+    "rights_confidence", "source_tier", "soundcharts_evidence_contract",
+    "source_evidence",
 ]
 TRANSITION_ARTIST_SCHEMA = ["soundcharts_uuid", "spotify_id", "name"]
+EVIDENCE_CONTRACT = "soundcharts_song_v2.25_evidence_v3"
+
+
+def explicit_instrumental_evidence(**overrides):
+    evidence = {
+        "source_contract": EVIDENCE_CONTRACT,
+        "instrumental": True,
+        "vocal": False,
+    }
+    evidence.update(overrides)
+    return evidence
 
 
 def transition_track(spotify_id, *, genre="ambient", source_tier="editorial_playlist"):
@@ -63,6 +76,8 @@ def transition_track(spotify_id, *, genre="ambient", source_tier="editorial_play
         "rights_status": "self_released",
         "rights_confidence": 0.9,
         "source_tier": source_tier,
+        "soundcharts_evidence_contract": EVIDENCE_CONTRACT,
+        "source_evidence": explicit_instrumental_evidence(),
     }
 
 
@@ -322,6 +337,7 @@ class BrowseCatalogueTests(unittest.TestCase):
             "primary_genre", "genre_confidence", "instrumental_status",
             "instrumental_confidence", "ai_risk", "rights_status",
             "rights_confidence", "source_tier", "streams",
+            "soundcharts_evidence_contract", "source_evidence",
         ]
         artist_schema = ["soundcharts_uuid", "spotify_id", "name"]
         valid_artist = {
@@ -333,6 +349,8 @@ class BrowseCatalogueTests(unittest.TestCase):
             "genre_confidence": 0.9, "instrumental_status": "instrumental",
             "instrumental_confidence": 0.9, "ai_risk": "low", "rights_status": "self_released",
             "rights_confidence": 0.9, "source_tier": "editorial_playlist", "streams": 100_000,
+            "soundcharts_evidence_contract": EVIDENCE_CONTRACT,
+            "source_evidence": explicit_instrumental_evidence(),
         }
         independent = {
             **valid, "soundcharts_uuid": "track-independent", "spotify_id": "spotify-independent",
@@ -598,6 +616,90 @@ class BrowseCatalogueTests(unittest.TestCase):
         self.assertEqual(len(powfu_tracks), 30)
         self.assertTrue(powfu_tracks <= exclusions["track_spotify_ids"])
 
+    def test_production_unproven_soundcharts_batch_is_fully_quarantined(self):
+        manifest_path = subject.Path("spotify-catalogue-exclusions.json")
+        raw_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        batches = {
+            str(batch.get("batch_id") or ""): batch
+            for batch in raw_manifest.get("quarantined_track_batches", [])
+            if isinstance(batch, dict)
+        }
+        batch = batches["soundcharts-20260819-unproven-instrumental"]
+        quarantined_ids = {
+            str(value or "").strip()
+            for value in batch.get("spotify_ids", [])
+            if str(value or "").strip()
+        }
+
+        self.assertEqual(len(quarantined_ids), 154)
+        self.assertEqual(len(batch.get("spotify_ids", [])), 154)
+        self.assertTrue(
+            {
+                "1LGFhRGycG5VI9cU8gFgVP",  # Losing Interest
+                "5vTSnZTmS1gMiWuA9kDE19",  # Futile Devices (Doveman remix)
+                "4DZNBRBogcfKTTaTyi4V01",  # i'm closing my eyes
+            }
+            <= quarantined_ids
+        )
+
+        browse = subject._read_payload(
+            subject.Path("Spotify_Browse_Catalogue_data.js"),
+            subject.BROWSE_PREFIX,
+        )
+        active_ids = subject._browse_cohort_sets(browse)["all"]
+        self.assertFalse(quarantined_ids & active_ids)
+        gate = browse["policy"]["external_instrumental_evidence_gate"]
+        self.assertEqual(gate["version"], 1)
+        self.assertFalse(
+            quarantined_ids & set(gate.get("grandfathered_spotify_ids", []))
+        )
+
+    def test_v2_exclusions_merge_quarantined_batches_and_reject_duplicates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = subject.Path(directory) / "exclusions.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "version": 2,
+                        "artist_spotify_ids": [],
+                        "track_spotify_ids": ["track-manual"],
+                        "quarantined_track_batches": [
+                            {
+                                "batch_id": "bad-batch",
+                                "spotify_ids": ["track-a", "track-b"],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            parsed = subject._read_exclusions(path)
+            self.assertEqual(
+                parsed["track_spotify_ids"],
+                frozenset({"track-manual", "track-a", "track-b"}),
+            )
+
+            path.write_text(
+                json.dumps(
+                    {
+                        "version": 2,
+                        "artist_spotify_ids": [],
+                        "track_spotify_ids": ["track-a"],
+                        "quarantined_track_batches": [
+                            {
+                                "batch_id": "bad-batch",
+                                "spotify_ids": ["track-a"],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                subject.BrowseCatalogueError, "already-declared Spotify IDs"
+            ):
+                subject._read_exclusions(path)
+
     def test_dark_ambient_recovery_cohort_is_exact_and_review_only(self):
         cohorts = subject._read_protected_review_cohorts(
             subject.Path("spotify-protected-review-cohorts.json")
@@ -726,6 +828,91 @@ class BrowseCatalogueTests(unittest.TestCase):
                 ):
                     subject.validate_browse_transition(previous, reduced)
 
+    def test_new_external_requires_contractual_instrumental_no_lyrics_evidence(self):
+        legacy = transition_track("legacy")
+        legacy["soundcharts_evidence_contract"] = None
+        legacy["source_evidence"] = None
+        previous = transition_payload([legacy])
+        proven = transition_track("proven")
+        score_only = transition_track("score-only")
+        score_only["source_evidence"] = {
+            "instrumental": True,
+            "vocal": None,
+            "instrumentalness": 0.99,
+        }
+        source_catalogue = transition_payload(
+            [legacy, proven, score_only]
+        )["discovery_catalogue"]
+        source = {
+            "generated_at": "2026-08-07T10:00:00Z",
+            "discovery_catalogue": source_catalogue,
+        }
+
+        result = subject.build_payload(
+            [(subject.Path("snapshot.js"), source)],
+            previous,
+            minimum_tracks=1,
+            strict_rebased=True,
+        )
+
+        self.assertEqual(
+            set(result["active_legacy_spotify_ids"]),
+            {"legacy", "proven"},
+        )
+        self.assertEqual(
+            result["quarantine_counts"][
+                "external_instrumental_no_lyrics_evidence_missing"
+            ],
+            1,
+        )
+        self.assertEqual(
+            result["policy"]["external_instrumental_evidence_gate"][
+                "grandfathered_spotify_ids"
+            ],
+            ["legacy"],
+        )
+        self.assertEqual(
+            result["transition_guard"]["new_contractual_external_tracks"],
+            1,
+        )
+
+        proof_removed = copy.deepcopy(proven)
+        proof_removed["source_evidence"] = {
+            "instrumental": True,
+            "vocal": None,
+            "instrumentalness": 0.99,
+        }
+        second_source = {
+            "generated_at": "2026-08-08T10:00:00Z",
+            "discovery_catalogue": transition_payload(
+                [legacy, proof_removed]
+            )["discovery_catalogue"],
+        }
+        second = subject.build_payload(
+            [(subject.Path("snapshot-2.js"), second_source)],
+            result,
+            minimum_tracks=1,
+            strict_rebased=True,
+        )
+        self.assertEqual(second["active_legacy_spotify_ids"], ["legacy"])
+        self.assertEqual(
+            second["policy"]["external_instrumental_evidence_gate"][
+                "grandfathered_spotify_ids"
+            ],
+            ["legacy"],
+        )
+        self.assertEqual(
+            second["transition_guard"]["explicit_safe_removals"],
+            {"external_instrumental_no_lyrics_evidence_missing": 1},
+        )
+
+        unsafe = transition_payload([legacy, score_only])
+        with self.assertRaisesRegex(
+            subject.BrowseCatalogueError,
+            "without contractual instrumental/no-lyrics evidence",
+        ):
+            subject.validate_browse_transition(previous, unsafe)
+
     def test_daily_transition_allows_only_explicit_factual_removals(self):
         dark = transition_track("dark-track", genre="dark_ambient")
         previous = transition_payload([dark])
@@ -806,6 +993,7 @@ class BrowseCatalogueTests(unittest.TestCase):
             "primary_genre", "genre_confidence", "instrumental_status",
             "instrumental_confidence", "ai_risk", "rights_status",
             "rights_confidence", "source_tier", "streams", "streams_source_date",
+            "soundcharts_evidence_contract", "source_evidence",
         ]
         artist_schema = ["soundcharts_uuid", "spotify_id", "name"]
         artist = {
@@ -831,6 +1019,8 @@ class BrowseCatalogueTests(unittest.TestCase):
                 "source_tier": "editorial_playlist",
                 "streams": streams,
                 "streams_source_date": "2026-07-30",
+                "soundcharts_evidence_contract": EVIDENCE_CONTRACT,
+                "source_evidence": explicit_instrumental_evidence(),
             }
 
         candidate = track("track-candidate", "spotify-candidate", 99_999)

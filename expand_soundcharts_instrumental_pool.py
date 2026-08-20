@@ -84,6 +84,8 @@ TRACK_EXTRA_FIELDS = (
     "genre_source",
     "soundcharts_genres",
     "soundcharts_genres_checked_at",
+    "soundcharts_evidence_contract",
+    "source_evidence",
     "instrumental_status",
     "instrumental_confidence",
     "ai_risk",
@@ -108,6 +110,8 @@ STRICT_TRACK_EVIDENCE_FIELDS = (
     "genre_source",
     "soundcharts_genres",
     "soundcharts_genres_checked_at",
+    "soundcharts_evidence_contract",
+    "source_evidence",
     "instrumental_status",
     "instrumental_confidence",
     "ai_risk",
@@ -205,7 +209,7 @@ MAJOR_MARKERS = tuple(
 
 SPOTIFY_ID_RE = re.compile(r"^[0-9A-Za-z]{22}$")
 SOUNDCHARTS_SONG_DETAIL_API_VERSION = "v2.25"
-SOUNDCHARTS_SONG_EVIDENCE_CONTRACT = "soundcharts_song_v2.25_evidence_v2"
+SOUNDCHARTS_SONG_EVIDENCE_CONTRACT = "soundcharts_song_v2.25_evidence_v3"
 SOUNDCHARTS_EVIDENCE_MAX_ATTEMPTS = 3
 SOUNDCHARTS_EVIDENCE_RETRY_BASE_HOURS = 6
 SOUNDCHARTS_EVIDENCE_TERMINAL_STATUSES = frozenset(
@@ -531,6 +535,15 @@ def editorial_candidates(payload: dict[str, Any], include_review: bool = True) -
         instrumental_confidence = finite_number(field(row, schema, "instrumental_confidence"))
         source_tier = str(field(row, schema, "source_tier") or "").strip().casefold()
         playlist_source = source_tier in PLAYLIST_SOURCE_TIERS
+        automatic_source = source_tier in CLASSIFIABLE_DISCOVERY_SOURCE_TIERS
+        evidence_contract = str(
+            field(row, schema, "soundcharts_evidence_contract") or ""
+        ).strip()
+        source_evidence = (
+            dict(field(row, schema, "source_evidence") or {})
+            if isinstance(field(row, schema, "source_evidence"), Mapping)
+            else {}
+        )
         ai_safe = ai_risk in {"low", "faible"}
         ai_reviewable = playlist_source and ai_risk in {"", "unknown", "unclassified", "pending"}
         if not uuid or uuid in seen or genre not in TARGET_GENRES:
@@ -541,7 +554,18 @@ def editorial_candidates(payload: dict[str, Any], include_review: bool = True) -
             continue
         if not ai_safe and not ai_reviewable:
             continue
-        verified = ai_safe and instrumental == "instrumental" and (instrumental_confidence or 0) >= 0.5
+        verified = (
+            ai_safe
+            and instrumental == "instrumental"
+            and (instrumental_confidence or 0) >= 0.5
+            and (
+                not automatic_source
+                or _has_complete_instrumental_proof(
+                    source_evidence,
+                    evidence_contract,
+                )
+            )
+        )
         if expansion != "eligible" and not (include_review and expansion == "review"):
             continue
         if expansion == "eligible" and not verified and not include_review:
@@ -564,12 +588,8 @@ def editorial_candidates(payload: dict[str, Any], include_review: bool = True) -
                 if isinstance(field(row, schema, "soundcharts_genres"), list)
                 else [],
                 "soundcharts_genres_checked_at": str(field(row, schema, "soundcharts_genres_checked_at") or ""),
-                "soundcharts_evidence_contract": str(
-                    field(row, schema, "soundcharts_evidence_contract") or ""
-                ),
-                "source_evidence": dict(field(row, schema, "source_evidence") or {})
-                if isinstance(field(row, schema, "source_evidence"), Mapping)
-                else {},
+                "soundcharts_evidence_contract": evidence_contract,
+                "source_evidence": source_evidence,
                 "soundcharts_evidence_refresh": dict(
                     field(row, schema, "soundcharts_evidence_refresh") or {}
                 )
@@ -784,9 +804,6 @@ def soundcharts_genre_classification(
     elif explicit_vocal:
         instrumental = "vocal"
         instrumental_confidence = 0.95
-    elif explicit_instrumental:
-        instrumental = "instrumental"
-        instrumental_confidence = 0.95
 
     checked_at = utc_now()
     return {
@@ -798,9 +815,111 @@ def soundcharts_genre_classification(
         "instrumental_status": instrumental,
         "instrumental_confidence": instrumental_confidence,
         "has_exact_genre": bool(mapped),
-        "has_instrumental_evidence": explicit_instrumental and not explicit_vocal,
+        # A genre called "Instrumental" is useful taxonomy evidence, but it is
+        # not proof that this exact recording has no lyrics.  Positive
+        # instrumental proof is established from explicit song-level booleans
+        # in ``parse_song_detail`` below.
+        "has_instrumental_evidence": False,
         "has_vocal_evidence": explicit_vocal and not explicit_instrumental,
     }
+
+
+def _explicit_song_boolean_evidence(response: Any) -> dict[str, Any]:
+    """Extract only literal provider booleans and their field provenance.
+
+    ``extract_evidence`` intentionally retains numeric audio features for the
+    FAL review workflow.  Those scores are useful triage signals, but neither
+    instrumentalness nor speechiness proves the absence of lyrics.  This
+    stricter parser therefore keeps numeric features out of the automatic
+    decision and requires two independent literal facts: instrumental=true and
+    no-lyrics=true (or has-lyrics=false).
+    """
+
+    instrumental_values: list[tuple[bool, str]] = []
+    vocal_values: list[tuple[bool, str]] = []
+    no_lyrics_values: list[tuple[bool, str]] = []
+
+    instrumental_keys = {"instrumental", "is instrumental", "isinstrumental"}
+    vocal_keys = {"vocal", "vocals", "is vocal", "isvocal"}
+    has_lyrics_keys = {
+        "has lyrics",
+        "haslyrics",
+        "contains lyrics",
+        "containslyrics",
+        "lyrics",
+    }
+    no_lyrics_keys = {
+        "no lyrics",
+        "nolyrics",
+        "without lyrics",
+        "withoutlyrics",
+    }
+
+    def visit(value: Any, path: str = "response") -> None:
+        if isinstance(value, Mapping):
+            for raw_key, nested in value.items():
+                key = normalize_genre_label(raw_key)
+                child_path = f"{path}.{raw_key}"
+                if isinstance(nested, bool):
+                    if key in instrumental_keys:
+                        instrumental_values.append((nested, child_path))
+                    elif key in vocal_keys:
+                        vocal_values.append((nested, child_path))
+                    elif key in has_lyrics_keys:
+                        no_lyrics_values.append((not nested, child_path))
+                        vocal_values.append((nested, child_path))
+                    elif key in no_lyrics_keys:
+                        no_lyrics_values.append((nested, child_path))
+                        vocal_values.append((not nested, child_path))
+                visit(nested, child_path)
+        elif isinstance(value, (list, tuple)):
+            for index, nested in enumerate(value):
+                visit(nested, f"{path}[{index}]")
+
+    visit(response)
+
+    def conservative_value(values: list[tuple[bool, str]]) -> bool | None:
+        if any(value is False for value, _ in values):
+            return False
+        if any(value is True for value, _ in values):
+            return True
+        return None
+
+    instrumental = conservative_value(instrumental_values)
+    no_lyrics = conservative_value(no_lyrics_values)
+    vocal = True if any(value is True for value, _ in vocal_values) else (
+        False if vocal_values else None
+    )
+    return {
+        "instrumental": instrumental,
+        "vocal": vocal,
+        "no_lyrics": no_lyrics,
+        "instrumental_sources": sorted(
+            {path for value, path in instrumental_values if value is True}
+        ),
+        "vocal_sources": sorted(
+            {path for value, path in vocal_values if value is True}
+        ),
+        "no_lyrics_sources": sorted(
+            {path for value, path in no_lyrics_values if value is True}
+        ),
+    }
+
+
+def _has_complete_instrumental_proof(
+    evidence: Any,
+    evidence_contract: Any = SOUNDCHARTS_SONG_EVIDENCE_CONTRACT,
+) -> bool:
+    if str(evidence_contract or "").strip() != SOUNDCHARTS_SONG_EVIDENCE_CONTRACT:
+        return False
+    if not isinstance(evidence, Mapping):
+        return False
+    return (
+        evidence.get("instrumental") is True
+        and evidence.get("no_lyrics") is True
+        and evidence.get("vocal") is not True
+        and evidence.get("explicit") is not True
+    )
 
 
 def parse_song_detail(response: Any, editorial: dict[str, Any]) -> dict[str, Any] | None:
@@ -839,6 +958,22 @@ def parse_song_detail(response: Any, editorial: dict[str, Any]) -> dict[str, Any
     # complete response exactly like the FAL enrichment job, then reuse its
     # flattened genre evidence when the legacy object-level field is absent.
     evidence = extract_evidence(response)
+    explicit_booleans = _explicit_song_boolean_evidence(response)
+    # ``extract_evidence`` also derives instrumental/vocal booleans from
+    # numeric audio features.  Keep the scores for human review, but replace
+    # those derived booleans with literal provider fields so they can never
+    # become automatic proof.
+    evidence["schema_version"] = 3
+    evidence["instrumental"] = explicit_booleans["instrumental"]
+    evidence["vocal"] = explicit_booleans["vocal"]
+    evidence["no_lyrics"] = explicit_booleans["no_lyrics"]
+    for name in (
+        "instrumental_sources",
+        "vocal_sources",
+        "no_lyrics_sources",
+    ):
+        evidence[name] = explicit_booleans[name]
+    evidence["provider_contract"] = SOUNDCHARTS_SONG_EVIDENCE_CONTRACT
     raw_genres = obj.get("genres")
     if not raw_genres:
         raw_genres = [
@@ -854,23 +989,39 @@ def parse_song_detail(response: Any, editorial: dict[str, Any]) -> dict[str, Any
         current_instrumental=str(editorial.get("instrumental_status") or "unknown"),
         current_instrumental_confidence=finite_number(editorial.get("instrumental_confidence")),
     )
-    # Soundcharts exposes factual numeric audio features on some song-detail
-    # contracts even when the genre list does not literally contain the word
-    # “Instrumental”. Reuse the same conservative thresholds as the private
-    # FAL scanner: instrumentalness > .5 is positive evidence, while explicit
-    # content or speechiness >= .33 is voice/rap risk and wins on conflict.
-    if evidence.get("vocal") is True or evidence.get("instrumental") is False:
+    automatic_source = str(editorial.get("source_tier") or "").casefold() in (
+        CLASSIFIABLE_DISCOVERY_SOURCE_TIERS
+    )
+    if automatic_source and classification.get("instrumental_status") != "vocal":
+        classification["instrumental_status"] = "unknown"
+        classification["instrumental_confidence"] = None
+
+    # Positive automatic validation requires a literal instrumental boolean
+    # *and* a literal no-lyrics boolean from the current provider contract.
+    # Numeric instrumentalness/speechiness values remain visible in
+    # ``source_evidence`` for listening triage, but never decide the status.
+    explicit_block = evidence.get("explicit") is True
+    if (
+        evidence.get("vocal") is True
+        or evidence.get("instrumental") is False
+        or explicit_block
+    ):
         classification["instrumental_status"] = "vocal"
         classification["instrumental_confidence"] = 0.95
         classification["has_vocal_evidence"] = True
         classification["has_instrumental_evidence"] = False
-    elif evidence.get("instrumental") is True and not classification.get("has_vocal_evidence"):
+    elif _has_complete_instrumental_proof(evidence) and not classification.get(
+        "has_vocal_evidence"
+    ):
         classification["instrumental_status"] = "instrumental"
         classification["instrumental_confidence"] = max(
             finite_number(classification.get("instrumental_confidence")) or 0,
-            0.9,
+            0.99,
         )
         classification["has_instrumental_evidence"] = True
+    evidence["instrumental_proof_complete"] = bool(
+        classification.get("has_instrumental_evidence")
+    )
     evidence_ai = str(evidence.get("ai_risk") or "").strip().casefold()
     if evidence_ai in {"low", "faible"}:
         classification["ai_risk"] = "low"
@@ -1148,10 +1299,30 @@ def _merge_source_evidence(existing: Any, incoming: Any) -> dict[str, Any]:
 
     current_instrumental = current.get("instrumental")
     incoming_instrumental = update.get("instrumental")
+    incoming_observation = (
+        str(update.get("provider_contract") or "").strip()
+        == SOUNDCHARTS_SONG_EVIDENCE_CONTRACT
+    )
     if current_instrumental is False or incoming_instrumental is False:
         merged["instrumental"] = False
+    elif incoming_observation:
+        # Positive halves must come from the same current-contract response;
+        # never combine a legacy numeric-derived ``instrumental=True`` with a
+        # later no-lyrics flag.
+        merged["instrumental"] = (
+            True if incoming_instrumental is True else None
+        )
     elif current_instrumental is True or incoming_instrumental is True:
         merged["instrumental"] = True
+
+    current_no_lyrics = current.get("no_lyrics")
+    incoming_no_lyrics = update.get("no_lyrics")
+    if current_no_lyrics is False or incoming_no_lyrics is False:
+        merged["no_lyrics"] = False
+    elif incoming_observation:
+        merged["no_lyrics"] = True if incoming_no_lyrics is True else None
+    elif current_no_lyrics is True or incoming_no_lyrics is True:
+        merged["no_lyrics"] = True
 
     for name in ("instrumentalness", "speechiness"):
         values = [
@@ -1178,6 +1349,23 @@ def _merge_source_evidence(existing: Any, incoming: Any) -> dict[str, Any]:
     if genres:
         merged["genres"] = genres
 
+    for name in (
+        "instrumental_sources",
+        "vocal_sources",
+        "no_lyrics_sources",
+    ):
+        sources: list[str] = []
+        seen_sources: set[str] = set()
+        for source in (current.get(name), update.get(name)):
+            for value in source if isinstance(source, list) else []:
+                label = str(value or "").strip()
+                if not label or label in seen_sources:
+                    continue
+                seen_sources.add(label)
+                sources.append(label)
+        if sources:
+            merged[name] = sources
+
     high_ai = {"high", "elevated", "eleve", "élevé"}
     current_ai = str(current.get("ai_risk") or "").strip().casefold()
     incoming_ai = str(update.get("ai_risk") or "").strip().casefold()
@@ -1187,6 +1375,10 @@ def _merge_source_evidence(existing: Any, incoming: Any) -> dict[str, Any]:
         merged["ai_risk"] = incoming_ai
     elif current_ai:
         merged["ai_risk"] = current_ai
+    merged["instrumental_proof_complete"] = _has_complete_instrumental_proof(
+        merged,
+        merged.get("provider_contract"),
+    )
     return merged
 
 
@@ -1208,13 +1400,11 @@ def _has_vocal_blocking_signal(status: Any, evidence: Any) -> bool:
         return True
     if not isinstance(evidence, Mapping):
         return False
-    speechiness = finite_number(evidence.get("speechiness"))
     return (
         evidence.get("vocal") is True
         or evidence.get("explicit") is True
         or evidence.get("instrumental") is False
-        or speechiness is not None
-        and speechiness >= 0.33
+        or evidence.get("no_lyrics") is False
     )
 
 
@@ -1252,6 +1442,23 @@ def merge_song_detail_evidence(
         merged["instrumental_confidence"] = max(confidences)
         merged["has_vocal_evidence"] = True
         merged["has_instrumental_evidence"] = False
+    elif _has_complete_instrumental_proof(
+        merged_evidence,
+        merged.get("soundcharts_evidence_contract"),
+    ):
+        confidences = [
+            value
+            for value in (
+                finite_number(current.get("instrumental_confidence")),
+                finite_number(incoming.get("instrumental_confidence")),
+                0.99,
+            )
+            if value is not None
+        ]
+        merged["instrumental_status"] = "instrumental"
+        merged["instrumental_confidence"] = max(confidences)
+        merged["has_vocal_evidence"] = False
+        merged["has_instrumental_evidence"] = True
 
     high_ai = {"high", "elevated", "eleve", "élevé"}
     if str(current.get("ai_risk") or "").casefold() in high_ai or str(
@@ -1287,9 +1494,20 @@ def _update_classification_row(
         set_field(row, schema, "genre_source", "playlist_evidence")
 
     status = str(detail.get("instrumental_status") or "unknown")
-    if status in {"instrumental", "vocal"}:
+    current_evidence_contract = (
+        str(detail.get("soundcharts_evidence_contract") or "").strip()
+        == SOUNDCHARTS_SONG_EVIDENCE_CONTRACT
+    )
+    if status in {"instrumental", "vocal"} or (
+        status == "unknown" and current_evidence_contract
+    ):
         set_field(row, schema, "instrumental_status", status)
-        set_field(row, schema, "instrumental_confidence", detail.get("instrumental_confidence"))
+        set_field(
+            row,
+            schema,
+            "instrumental_confidence",
+            detail.get("instrumental_confidence") if status != "unknown" else None,
+        )
 
     ai_risk = str(detail.get("ai_risk") or "").strip().casefold()
     if "ai_risk" in schema and ai_risk in {"low", "faible", "high", "elevated", "eleve", "élevé"}:
@@ -1356,10 +1574,21 @@ def _update_classification_row(
     clean_reasons = [str(item) for item in reasons] if isinstance(reasons, list) else []
     if status == "instrumental":
         clean_reasons = [item for item in clean_reasons if item != "instrumental_check_required"]
-        if "soundcharts_instrumental_genre" not in clean_reasons:
-            clean_reasons.append("soundcharts_instrumental_genre")
+        if "soundcharts_explicit_no_lyrics_proof" not in clean_reasons:
+            clean_reasons.append("soundcharts_explicit_no_lyrics_proof")
     elif status == "vocal" and "soundcharts_vocal_genre" not in clean_reasons:
         clean_reasons.append("soundcharts_vocal_genre")
+    elif status == "unknown":
+        clean_reasons = [
+            item
+            for item in clean_reasons
+            if item not in {
+                "soundcharts_instrumental_genre",
+                "soundcharts_explicit_no_lyrics_proof",
+            }
+        ]
+        if "instrumental_check_required" not in clean_reasons:
+            clean_reasons.append("instrumental_check_required")
     if detail.get("has_exact_genre") and "soundcharts_genre_exact" not in clean_reasons:
         clean_reasons.append("soundcharts_genre_exact")
     if "review_reasons" in schema:
@@ -1414,6 +1643,13 @@ def _classification_row_context(row: list[Any], schema: list[str]) -> dict[str, 
         if isinstance(field(row, schema, "subgenres"), list)
         else [],
         "genre_confidence": finite_number(field(row, schema, "genre_confidence")),
+        "source_tier": str(field(row, schema, "source_tier") or ""),
+        "soundcharts_evidence_contract": str(
+            field(row, schema, "soundcharts_evidence_contract") or ""
+        ),
+        "source_evidence": dict(field(row, schema, "source_evidence") or {})
+        if isinstance(field(row, schema, "source_evidence"), Mapping)
+        else {},
         "instrumental_status": str(field(row, schema, "instrumental_status") or "unknown"),
         "instrumental_confidence": finite_number(field(row, schema, "instrumental_confidence")),
     }
@@ -1561,10 +1797,6 @@ def _row_has_explicit_soundcharts_evidence(row: list[Any], schema: list[str]) ->
         return True
     if evidence.get("explicit") is True:
         return True
-    if finite_number(evidence.get("instrumentalness")) is not None or finite_number(
-        evidence.get("speechiness")
-    ) is not None:
-        return True
     return str(evidence.get("ai_risk") or "").casefold() not in {
         "",
         "unknown",
@@ -1710,6 +1942,7 @@ def classify_soundcharts_genres(
     legacy_protected_zero_evidence: set[str] = set()
     legacy_protected_retry_waiting: set[str] = set()
     legacy_protected_terminal: set[str] = set()
+    contract_recheck_candidates: set[str] = set()
     candidates_by_uuid: dict[str, dict[str, Any]] = {}
     for row, schema in candidate_rows:
         if not isinstance(row, list) or not schema:
@@ -1719,7 +1952,19 @@ def classify_soundcharts_genres(
         ai_risk = str(field(row, schema, "ai_risk") or "unknown").casefold()
         instrumental = str(field(row, schema, "instrumental_status") or "unknown").casefold()
         instrumental_confidence = finite_number(field(row, schema, "instrumental_confidence")) or 0
-        verified = ai_risk in {"low", "faible"} and instrumental == "instrumental" and instrumental_confidence >= 0.5
+        evidence_contract = str(
+            field(row, schema, "soundcharts_evidence_contract") or ""
+        )
+        source_evidence = field(row, schema, "source_evidence")
+        verified = (
+            ai_risk in {"low", "faible"}
+            and instrumental == "instrumental"
+            and instrumental_confidence >= 0.5
+            and _has_complete_instrumental_proof(
+                source_evidence,
+                evidence_contract,
+            )
+        )
         state = evidence_states.get(uuid, {})
         legacy_zero_evidence = (
             uuid in protected_uuids
@@ -1729,6 +1974,11 @@ def classify_soundcharts_genres(
         )
         retry_due = _evidence_retry_due(state, run_at)
         legacy_recheck = legacy_zero_evidence and retry_due
+        contract_recheck = (
+            bool(state.get("checked"))
+            and not bool(state.get("current_contract"))
+            and retry_due
+        )
         if legacy_zero_evidence:
             legacy_protected_zero_evidence_all.add(uuid)
             terminal = (
@@ -1745,9 +1995,15 @@ def classify_soundcharts_genres(
             not uuid
             or source_tier not in CLASSIFIABLE_DISCOVERY_SOURCE_TIERS
             or verified
-            or (bool(state.get("checked")) and not legacy_recheck)
+            or (
+                bool(state.get("checked"))
+                and not legacy_recheck
+                and not contract_recheck
+            )
         ):
             continue
+        if contract_recheck:
+            contract_recheck_candidates.add(uuid)
         if legacy_recheck:
             legacy_protected_zero_evidence.add(uuid)
         context = _classification_row_context(row, schema)
@@ -1782,7 +2038,7 @@ def classify_soundcharts_genres(
     for uuid, response in responses.items():
         parsed = parse_song_detail(response, contexts[uuid])
         if not parsed:
-            if uuid in legacy_protected_zero_evidence:
+            if uuid in contract_recheck_candidates:
                 refresh = _next_evidence_refresh(
                     cache_tracks.get(uuid, {}).get("soundcharts_evidence_refresh")
                     if isinstance(cache_tracks.get(uuid), Mapping)
@@ -1809,17 +2065,21 @@ def classify_soundcharts_genres(
         )
         parsed["soundcharts_evidence_refresh"] = refresh
         existing = cache_tracks.get(uuid) if isinstance(cache_tracks.get(uuid), dict) else {}
-        cache_tracks[uuid] = merge_song_detail_evidence(existing, parsed)
-        touched = update_editorial_classification(soundcharts, uuid, parsed)
-        touched = update_discovery_classification(soundcharts, uuid, parsed) or touched
+        merged_detail = merge_song_detail_evidence(existing, parsed)
+        cache_tracks[uuid] = merged_detail
+        touched = update_editorial_classification(soundcharts, uuid, merged_detail)
+        touched = (
+            update_discovery_classification(soundcharts, uuid, merged_detail)
+            or touched
+        )
         updated += int(touched)
-        with_genres += int(bool(parsed.get("soundcharts_genres")))
-        exact_genres += int(bool(parsed.get("has_exact_genre")))
-        instrumental += int(bool(parsed.get("has_instrumental_evidence")))
-        vocal += int(bool(parsed.get("has_vocal_evidence")))
+        with_genres += int(bool(merged_detail.get("soundcharts_genres")))
+        exact_genres += int(bool(merged_detail.get("has_exact_genre")))
+        instrumental += int(bool(merged_detail.get("has_instrumental_evidence")))
+        vocal += int(bool(merged_detail.get("has_vocal_evidence")))
 
     for uuid, error in request_errors.items():
-        if uuid not in legacy_protected_zero_evidence:
+        if uuid not in contract_recheck_candidates:
             continue
         refresh = _next_evidence_refresh(
             cache_tracks.get(uuid, {}).get("soundcharts_evidence_refresh")
@@ -1857,7 +2117,19 @@ def classify_soundcharts_genres(
             ai_risk = str(field(row, refreshed_schema, "ai_risk") or "unknown").casefold()
             status = str(field(row, refreshed_schema, "instrumental_status") or "unknown").casefold()
             confidence = finite_number(field(row, refreshed_schema, "instrumental_confidence")) or 0
-            verified = ai_risk in {"low", "faible"} and status == "instrumental" and confidence >= 0.5
+            evidence_contract = str(
+                field(row, refreshed_schema, "soundcharts_evidence_contract") or ""
+            )
+            source_evidence = field(row, refreshed_schema, "source_evidence")
+            verified = (
+                ai_risk in {"low", "faible"}
+                and status == "instrumental"
+                and confidence >= 0.5
+                and _has_complete_instrumental_proof(
+                    source_evidence,
+                    evidence_contract,
+                )
+            )
             state = refreshed_states.get(uuid, {})
             needs_initial_check = not bool(state.get("checked"))
             legacy_zero_evidence = (
@@ -1868,6 +2140,11 @@ def classify_soundcharts_genres(
             )
             retry_due = _evidence_retry_due(state, run_at)
             needs_legacy_protected_recheck = legacy_zero_evidence and retry_due
+            needs_contract_recheck = (
+                bool(state.get("checked"))
+                and not bool(state.get("current_contract"))
+                and retry_due
+            )
             if legacy_zero_evidence:
                 terminal = (
                     str(state.get("refresh_status") or "")
@@ -1883,7 +2160,11 @@ def classify_soundcharts_genres(
                 uuid
                 and source_tier in CLASSIFIABLE_DISCOVERY_SOURCE_TIERS
                 and not verified
-                and (needs_initial_check or needs_legacy_protected_recheck)
+                and (
+                    needs_initial_check
+                    or needs_legacy_protected_recheck
+                    or needs_contract_recheck
+                )
             ):
                 remaining_uuids.add(uuid)
 
@@ -1936,9 +2217,11 @@ def classify_soundcharts_genres(
             "genre_source": "soundcharts_song_metadata",
             "song_detail_endpoint": "/api/v2.25/song/{uuid}",
             "evidence_contract": SOUNDCHARTS_SONG_EVIDENCE_CONTRACT,
-            "instrumental_requires_explicit_tag": True,
+            "instrumental_requires_explicit_boolean": True,
+            "instrumental_requires_explicit_no_lyrics": True,
+            "numeric_audio_features_are_review_only": True,
             "ai_risk_never_inferred": True,
-            "legacy_zero_evidence_recheck_scope": "protected_review_cohort_only",
+            "legacy_contract_recheck_scope": "all_classifiable_discovery_sources",
             "legacy_retry_max_attempts": SOUNDCHARTS_EVIDENCE_MAX_ATTEMPTS,
             "legacy_retry_backoff_hours": "6_then_12_then_terminal",
             "permanent_http_statuses_terminal": [400, 404, 410, 422],
@@ -2156,6 +2439,14 @@ def _new_row(schema: list[str]) -> list[Any]:
 
 def has_strict_track_evidence(row: list[Any], schema: list[str]) -> bool:
     artists = field(row, schema, "artists")
+    source_tier = str(field(row, schema, "source_tier") or "").casefold()
+    automatic_instrumental_proof = (
+        source_tier not in CLASSIFIABLE_DISCOVERY_SOURCE_TIERS
+        or _has_complete_instrumental_proof(
+            field(row, schema, "source_evidence"),
+            field(row, schema, "soundcharts_evidence_contract"),
+        )
+    )
     return (
         str(field(row, schema, "primary_genre") or "") in TARGET_GENRES
         and (finite_number(field(row, schema, "genre_confidence")) or 0) >= 0.5
@@ -2163,6 +2454,7 @@ def has_strict_track_evidence(row: list[Any], schema: list[str]) -> bool:
         and (finite_number(field(row, schema, "instrumental_confidence")) or 0) >= 0.5
         and str(field(row, schema, "ai_risk") or "").casefold() in {"low", "faible"}
         and str(field(row, schema, "expansion_status") or "").casefold() == "eligible"
+        and automatic_instrumental_proof
         and str(field(row, schema, "rights_status") or "").casefold()
         in {"self_released", "independent_label", "indie"}
         and (finite_number(field(row, schema, "rights_confidence")) or 0) >= 0.5
@@ -2330,14 +2622,30 @@ def expand_instrumental_pool(
             if status in {"instrumental", "vocal"}:
                 item["instrumental_status"] = status
                 item["instrumental_confidence"] = float(merged.get("instrumental_confidence") or 0)
+            elif (
+                str(merged.get("soundcharts_evidence_contract") or "")
+                == SOUNDCHARTS_SONG_EVIDENCE_CONTRACT
+            ):
+                item["instrumental_status"] = "unknown"
+                item["instrumental_confidence"] = 0.0
             if status == "vocal":
                 item["classification_status"] = "excluded"
             elif (
                 str(item.get("ai_risk") or "unknown").casefold() in {"low", "faible"}
                 and status == "instrumental"
                 and float(item.get("instrumental_confidence") or 0) >= 0.5
+                and (
+                    str(item.get("source_tier") or "").casefold()
+                    not in CLASSIFIABLE_DISCOVERY_SOURCE_TIERS
+                    or _has_complete_instrumental_proof(
+                        item.get("source_evidence"),
+                        item.get("soundcharts_evidence_contract"),
+                    )
+                )
             ):
                 item["classification_status"] = "verified"
+            else:
+                item["classification_status"] = "needs_listen"
 
     unique_artists: dict[str, str] = {}
     for item in candidates:
@@ -2474,6 +2782,11 @@ def expand_instrumental_pool(
             "genre_source": item.get("genre_source") or item.get("source_tier") or "playlist_evidence",
             "soundcharts_genres": item.get("soundcharts_genres") or [],
             "soundcharts_genres_checked_at": item.get("soundcharts_genres_checked_at") or track_meta.get("soundcharts_genres_checked_at"),
+            "soundcharts_evidence_contract": item.get("soundcharts_evidence_contract")
+            or track_meta.get("soundcharts_evidence_contract"),
+            "source_evidence": item.get("source_evidence")
+            or track_meta.get("source_evidence")
+            or {},
             "instrumental_status": item["instrumental_status"],
             "instrumental_confidence": item["instrumental_confidence"],
             "ai_risk": item["ai_risk"],

@@ -69,7 +69,7 @@ class FakeClient:
                     for index in range(5)
                 ],
             }
-        if path in {"/api/v2/song/track-0", "/api/v2/song/track-1"}:
+        if path in {"/api/v2.25/song/track-0", "/api/v2.25/song/track-1"}:
             index = int(path.rsplit("-", 1)[1])
             artist_uuid = f"artist-{index}"
             return {
