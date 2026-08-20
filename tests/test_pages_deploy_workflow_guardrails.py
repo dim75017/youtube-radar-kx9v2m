@@ -93,6 +93,7 @@ class PagesDeployWorkflowGuardrailsTests(unittest.TestCase):
             "/spotify/",
             "/Spotify_Performance_tracks/",
             "/video_history/",
+            "/youtube_recommendation_ledger/manifest.json",
             "/prune_pages_artifact.py",
         ):
             with self.subTest(pattern=pattern):
@@ -101,10 +102,14 @@ class PagesDeployWorkflowGuardrailsTests(unittest.TestCase):
             "/soundcharts-history/",
             "/sr-prospects/",
             "/tests/",
-            "/youtube_recommendation_ledger/",
         ):
             with self.subTest(private_tree=private_tree):
                 self.assertNotIn(private_tree, BUILD_JOB)
+        self.assertNotIn(
+            "\n            /youtube_recommendation_ledger/\n",
+            BUILD_JOB,
+            "only the aggregate manifest may be published, never the ledger tree",
+        )
 
     def test_only_active_and_latest_soundcharts_snapshots_are_materialized(self):
         self.assertIn("Materialize required Soundcharts snapshots", BUILD_JOB)
