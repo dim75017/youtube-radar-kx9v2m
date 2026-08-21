@@ -32,9 +32,9 @@ jobs:
           node build_spotify_preview_audio.js
           --mode "${{ inputs.mode }}"
           --attempts "${{ inputs.mode == 'batch' && '2' || '8' }}"
-          --concurrency 6
+          --concurrency 10
           --batch-delay-ms 600
-          --embed-delay-ms 500
+          --embed-delay-ms 250
           --checkpoint-every 250
 
       - name: Report coverage
