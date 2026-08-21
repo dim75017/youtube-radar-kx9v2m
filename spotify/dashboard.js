@@ -110,7 +110,7 @@ const EN_MAP = {
   "Revenu /mois":"Revenue /mo","Évolution des streams":"Streams trend","en hausse":"rising","en baisse":"declining",
   "Courbe en cours de constitution : la veille hebdomadaire enregistre un point par semaine. Reviens dans quelques semaines pour voir la tendance.":"Curve being built: the weekly watch records one point per week. Come back in a few weeks to see the trend.",
   "Ouvrir sur Spotify":"Open on Spotify","Épinglé":"Pinned","Épingler":"Pin",
-  "Lecteur Spotify":"Spotify player","Écouter le titre entier dans Spotify":"Listen to the full track in Spotify","Titre entier dans Spotify":"Full track in Spotify","Partager":"Share","Lien copié":"Link copied",
+  "Lecteur Spotify intégré":"Embedded Spotify player","Chargement du lecteur Spotify…":"Loading Spotify player…","Le lecteur Spotify est indisponible":"Spotify player is unavailable",
   "Revenus & rachat estimés (0,0035$/stream, +20% multi-plateformes, modèle LOFI RECORDS). L'historique des streams est capté par la veille pour tracer la tendance dans le temps.":"Revenue & buyout estimated (0.0035$/stream, +20% multi-platform, LOFI RECORDS model). Stream history is captured by the watch to plot the trend over time.",
   "Aucun artiste épinglé. Clique sur l'étoile ☆ d'une carte artiste.":"No pinned artists yet. Hit the ☆ on any artist card.",
   "Horizon de projection":"Projection horizon","mois de revenu projeté":"months of projected revenue","Durée choisie pour calculer l'avance et le payback.":"Chosen duration used to calculate the advance and payback."
@@ -1651,11 +1651,10 @@ function spotifyTrackPlayerHtml(id,title,artist='',artwork='',extraClass='',opti
     extraClass:`ar-detail-player ${extraClass||''}`,
     transportOnly:Boolean(options&&options.transportOnly),
     labels:{
-      player:T('Lecteur Spotify'),play:T('Écouter le titre entier dans Spotify'),note:T('Titre entier dans Spotify'),
-      open:T('Ouvrir sur Spotify'),share:T('Partager'),copied:T('Lien copié'),
+      player:T('Lecteur Spotify intégré'),loading:T('Chargement du lecteur Spotify…'),unavailable:T('Le lecteur Spotify est indisponible'),
     },
   });
-  return `<div class="ar-detail-player ${esc(extraClass)}"><a class="btn-back" href="${spotifyTrackUrl(spotifyId)}" target="_blank" rel="noopener">${T('Ouvrir sur Spotify')}</a></div>`;
+  return `<div class="spotify-radar-player-frame"><section class="spotify-radar-player ar-detail-player ${esc(extraClass)}" data-spotify-id="${spotifyId}"><div class="spotify-radar-player-embed-shell"><iframe class="spotify-radar-player-embed" src="https://open.spotify.com/embed/track/${spotifyId}?utm_source=generator&amp;theme=0" width="100%" height="152" frameborder="0" allowfullscreen allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" title="${esc(T('Lecteur Spotify intégré'))} · ${esc(title||'Track')}"></iframe></div></section></div>`;
 }
 function hydrateSpotifyRadarPlayerCovers(root){
   if(!root||typeof fetch!=='function') return;
@@ -1802,8 +1801,15 @@ function arTrackCandidates(){
 }
 function playArTrack(spotifyId){
   const id=spotifyTrackId(spotifyId);if(!id)return;
-  window.open(spotifyTrackUrl(id),'_blank','noopener');
+  const current=V&&V.querySelector(`.spotify-radar-player[data-spotify-id="${id}"]`);
+  if(S.radarTrackId===id&&current&&window.SpotifyRadarPlayer){window.SpotifyRadarPlayer.requestPlay(current);return;}
   S.radarTrackId=id;renderRadar();
+  requestAnimationFrame(()=>{
+    const player=V&&V.querySelector(`.spotify-radar-player[data-spotify-id="${id}"]`);
+    if(!player)return;
+    player.scrollIntoView({behavior:'smooth',block:'nearest'});
+    if(window.SpotifyRadarPlayer)window.SpotifyRadarPlayer.requestPlay(player);
+  });
 }
 function arClusters(){
   if(!SC || !SC.editorial || !Array.isArray(SC.editorial.tracks)) return [];
@@ -2432,7 +2438,9 @@ function arPromptArtistCompanions(spotifyId){
   const companions=arArtistCompanionRows(spotifyId);
   if(!source||!companions.length)return false;
   const artist=(Array.isArray(source.artists)?source.artists.map(item=>item&&item.name).filter(Boolean)[0]:null)||source.credit||'cet artiste';
-  const box=document.getElementById('ar-body');box.className='tmbox ambox';
+  const box=document.getElementById('ar-body');
+  clearSpotifyPlayers(box);
+  box.className='tmbox ambox';
   box.innerHTML=`<div class="thd"><div class="av-sm">⭐</div><div style="min-width:0;flex:1"><h3>Autres tracks de ${esc(artist)}</h3><div class="tar">${companions.length} autre${companions.length>1?'s':''} opportunité${companions.length>1?'s':''} éligible${companions.length>1?'s':''}</div></div><button class="tclose" onclick="closeArModal()">✕</button></div><div class="ar-companion-list">${companions.map(item=>`<label class="ar-companion-item"><input type="checkbox" value="${esc(item.spotifyId)}" checked><span><strong>${esc(item.title)}</strong><small>${esc(arGenreLabel(item.genre))} · ${item.releaseDate?fmtDate(item.releaseDate.slice(0,10)):'—'}</small></span></label>`).join('')}</div><div class="ar-actions"><button class="btn-back" id="ar-add-companions">Ajouter les tracks sélectionnées</button><button class="chip" onclick="closeArModal();renderRadar()">Pas maintenant</button></div>`;
   box.querySelectorAll('.ar-companion-item').forEach((node,index)=>node.querySelector(':scope > span')?.insertAdjacentHTML('beforeend',arCompanionSignalsHtml(companions[index])));
   document.getElementById('ar-add-companions').addEventListener('click',()=>{const ids=[...box.querySelectorAll('input:checked')].map(input=>input.value);arAddManyToList(ids);closeArModal();});
@@ -2769,6 +2777,7 @@ function closeArModal(){
 function openArMessage(uuid){
   const candidate=arCandidates().find(item=>item.uuid===uuid); if(!candidate) return;
   const box=document.getElementById('ar-body');
+  clearSpotifyPlayers(box);
   const note=arGetNote(uuid);
   const renderDraft=()=>{
     const currentNote=document.getElementById('ar-note')?.value||'';
@@ -2863,7 +2872,7 @@ function renderRadarLegacy(){
     const trackPanel=`<div class="panel ar-track-panel">
       <div class="ar-track-head"><div><h3>🎧 Tracks prioritaires à écouter</h3><p>Les titres passent avant les profils : score A&R, réseau Fans Also Like et volume Soundcharts.</p></div><span class="badge new">${trackPool.length} titres</span></div>
       <div class="ar-track-list">${trackPool.map((track,index)=>`<div class="ar-track-row">
-        <button class="ar-track-play" title="Écouter ${esc(track.title)} dans Spotify" onclick="playArTrack('${esc(track.spotifyId)}')">▶</button>
+        <button class="ar-track-play" title="Écouter ${esc(track.title)} dans le lecteur intégré" onclick="playArTrack('${esc(track.spotifyId)}')">${track.spotifyId===S.radarTrackId?'❚❚':'▶'}</button>
         <div><div class="ar-track-title">${index+1}. ${esc(track.title)}</div><div class="ar-track-artist">${esc(track.artist)} · ${fmtFull(track.candidate.listeners)} auditeurs mensuels</div></div>
         <div class="ar-track-num">${fmt(track.streams)}<div class="genre-sub">streams total</div></div>
         <div class="ar-track-score"><span class="badge ${track.score>=80?'self':'new'}">${track.score}/100</span></div>
@@ -3864,7 +3873,9 @@ function openArOutreach(spotifyId){
   const group=arSelectionGroupByArtistKey(artistKey);
   const drafts=arOutreachDrafts(opportunity);const email=arPublicEmail(opportunity);let selectedIndex=Math.max(0,Math.min(drafts.length-1,Number(artistEntry.draftVariant??entry.draftVariant)||0));
   const initial=drafts[selectedIndex];const subject=artistEntry.subject||entry.subject||initial.subject;const body=artistEntry.body||entry.body||initial.body;
-  const box=document.getElementById('ar-body');box.className='tmbox ambox ar-composer';
+  const box=document.getElementById('ar-body');
+  clearSpotifyPlayers(box);
+  box.className='tmbox ambox ar-composer';
   box.innerHTML=`<header class="ar-composer-head"><div class="ar-composer-icon">✉</div><div><div class="ar-composer-kicker">PRÉPARER LE CONTACT</div><h3>${esc(artist.name)}</h3><p>À propos de “${esc(opportunity.title)}”</p></div><button class="tclose" onclick="closeArModal()">✕</button></header>
     <div class="ar-composer-content"><aside class="ar-composer-side">${arSelectionContactPanelHtml(opportunity)}<div class="ar-draft-heading">Choisir un angle</div><div class="ar-draft-choices">${drafts.map((draft,index)=>`<button class="${index===selectedIndex?'on':''}" type="button" data-ar-draft="${index}">${esc(draft.label)}</button>`).join('')}</div></aside><section class="ar-composer-form">${email?`<label class="ar-form-label">Destinataire public<input id="ar-outreach-email" value="${esc(email)}" readonly></label>`:''}<label class="ar-form-label">Objet<input id="ar-outreach-subject" value="${esc(subject)}"></label><label class="ar-form-label ar-message-field">Message<textarea id="ar-outreach-body">${esc(body)}</textarea></label><div class="ar-composer-economics" id="ar-composer-economics" data-artist-key="${esc(artistKey)}">${group?arSelectionEconomicsHtml(group):''}</div><div class="ar-actions"><button class="chip" id="ar-copy-draft">Copier le message</button>${email?`<button class="btn-back" id="ar-open-mail">Ouvrir dans ma messagerie</button>`:''}<button class="chip" id="ar-mark-contacted">✓ Message envoyé</button></div></section></div>`;
   const save=(patch={})=>arArtistUpdate(artistKey,Object.assign({subject:document.getElementById('ar-outreach-subject').value,body:document.getElementById('ar-outreach-body').value,draftVariant:selectedIndex},patch));

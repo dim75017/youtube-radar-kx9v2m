@@ -95,6 +95,18 @@ for (const required of ['perf-grid ar-detail-performance', 'monthlyListenersMetr
   if (!detail.includes(required)) throw new Error(`A&R detail self-release information is missing: ${required}`);
 }
 if (!source.includes("spotifyTrackPlayerHtml(spotifyId,opportunity.title,opportunity.credit,arTrackCoverUrl(opportunity),'ar-opportunity-player',{transportOnly:true})")) throw new Error('A&R detail player must use the shared transport-only Spotify player.');
+const playStart = source.indexOf('function playArTrack(spotifyId){');
+const playEnd = source.indexOf('\nfunction arClusters(){', playStart);
+const playArTrack = source.slice(playStart, playEnd);
+if (playStart < 0 || playEnd < 0) throw new Error('A&R inline playback handler is missing.');
+if (playArTrack.includes('window.open')) throw new Error('A&R Play must never leave the Radar.');
+if (!playArTrack.includes('SpotifyRadarPlayer.requestPlay')) throw new Error('A&R Play must control the embedded Spotify player.');
+for (const name of ['arPromptArtistCompanions','openArMessage','openArOutreach']) {
+  const start=source.indexOf(`function ${name}(`);
+  const end=source.indexOf('\nfunction ',start+10);
+  const body=source.slice(start,end);
+  if(start<0 || !body.includes('clearSpotifyPlayers(box)')) throw new Error(`${name} must destroy any active embedded player before replacing the modal.`);
+}
 for (const removed of ['arOpportunityCoverPlayerHtml(opportunity)', 'Pourquoi cette musique est dans la liste', "reasonsSection.querySelector('h4')", 'ar-detail-facts ar-detail-reasons', 'ar-detail-listeners']) {
   if (detail.includes(removed)) throw new Error(`A&R detail must not retain the old player/reasons UI: ${removed}`);
 }
