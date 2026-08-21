@@ -1,11 +1,6 @@
 name: Build Spotify preview audio map
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/workflows/build-spotify-preview-audio.yml
   workflow_dispatch:
     inputs:
       mode:
