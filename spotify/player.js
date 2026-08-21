@@ -419,7 +419,7 @@
     if(disconnect)disconnect.addEventListener('click',()=>{try{if(auth&&typeof auth.disconnect==='function')auth.disconnect();}catch(error){}if(SDK_PLAYER){try{SDK_PLAYER.disconnect();}catch(error){}}SDK_DEVICE_ID='';ACTIVE_TRACK_ID='';ACTIVE_BASELINE=null;stopTicker();close();PLAYERS.forEach(refreshConnectionState);});
     modal.querySelector('form').addEventListener('submit',event=>{
       event.preventDefault();const value=modal.querySelector('#spotify-radar-client-id').value.trim(),errorNode=modal.querySelector('.spotify-radar-auth-error');
-      if(!/^[A-Za-z0-9]{32}$/.test(value)){errorNode.textContent='Le Client ID Spotify doit contenir 32 caractères.';return;}
+      if(!/^[A-Za-z0-9]{16,32}$/.test(value)){errorNode.textContent='Le Client ID Spotify doit contenir entre 16 et 32 caractères.';return;}
       if(!auth||typeof auth.configure!=='function'){errorNode.textContent='Le module de connexion Spotify est indisponible.';return;}
       try{auth.configure(value);close();PLAYERS.forEach(refreshConnectionState);const pending=PENDING_PLAYER;if(pending)requestPlay(pending);}catch(error){errorNode.textContent='Impossible d’enregistrer ce Client ID.';}
     });

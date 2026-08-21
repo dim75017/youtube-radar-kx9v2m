@@ -6,6 +6,7 @@
    ID is public configuration; credentials and the PKCE transaction live only
    for the current browser tab/session. */
 (function spotifyRadarAuthModule(global){
+  const DEFAULT_CLIENT_ID='31yyjjxidxlrdjiq3t2jb4pbrqei';
   const CLIENT_ID_KEY='spotify_radar_client_id';
   const VERIFIER_KEY='spotify_radar_pkce_verifier';
   const STATE_KEY='spotify_radar_oauth_state';
@@ -34,13 +35,13 @@
 
   function normalizedClientId(value){
     const id=String(value||'').trim();
-    if(!/^[A-Za-z0-9]{32}$/.test(id)) throw new Error('Client ID Spotify invalide.');
+    if(!/^[A-Za-z0-9]{16,32}$/.test(id)) throw new Error('Client ID Spotify invalide.');
     return id;
   }
 
   function clientId(){
     const value=storage('localStorage').getItem(CLIENT_ID_KEY);
-    return value?normalizedClientId(value):'';
+    return normalizedClientId(value||DEFAULT_CLIENT_ID);
   }
 
   function clearTransaction(target=storage('sessionStorage')){
@@ -55,8 +56,8 @@
   function configure(value){
     const id=normalizedClientId(value);
     const local=storage('localStorage');
-    const previous=local.getItem(CLIENT_ID_KEY)||'';
-    if(previous&&previous!==id){
+    const previous=local.getItem(CLIENT_ID_KEY)||DEFAULT_CLIENT_ID;
+    if(previous!==id){
       clearTransaction();
       clearTokens();
     }

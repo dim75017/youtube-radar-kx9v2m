@@ -106,9 +106,9 @@ const playArTrack = dashboard.slice(dashboard.indexOf('function playArTrack(spot
 assert.doesNotMatch(playArTrack, /window\.open|target="_blank"|open\.spotify\.com/, 'A&R row Play never leaves the Radar');
 assert.match(playArTrack, /SpotifyRadarPlayer\.requestPlay/, 'A&R row Play targets the custom Web Playback player');
 
-const authIndex = index.indexOf('auth.js?v=20260821-web-playback-v1');
-const playerIndex = index.indexOf('player.js?v=20260821-web-playback-v1');
-const dashboardIndex = index.indexOf('dashboard.js?v=20260821-web-playback-v1');
+const authIndex = index.indexOf('auth.js?v=20260821-web-playback-v2');
+const playerIndex = index.indexOf('player.js?v=20260821-web-playback-v2');
+const dashboardIndex = index.indexOf('dashboard.js?v=20260821-web-playback-v2');
 const sdkIndex = index.indexOf('https://sdk.scdn.co/spotify-player.js');
 assert.ok(authIndex >= 0 && playerIndex > authIndex && dashboardIndex > playerIndex && sdkIndex > dashboardIndex, 'auth, custom player, dashboard, then Web Playback SDK load in the safe callback order');
 assert.doesNotMatch(index, /open\.spotify\.com\/embed\/iframe-api|spotify-radar-player-embed/, 'the obsolete Spotify IFrame API is not loaded');

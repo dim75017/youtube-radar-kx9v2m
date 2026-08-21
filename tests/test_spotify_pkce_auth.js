@@ -58,7 +58,9 @@ function base64Url(bytes){
   assert.ok(auth,'the browser module exposes SpotifyRadarAuth');
   assert.deepEqual(Object.keys(auth),['configure','clientId','redirectUri','begin','finishCallback','accessToken','disconnect','isConnected']);
   assert.throws(()=>auth.configure('short'),/Client ID Spotify invalide/);
-  const clientId='0123456789abcdef0123456789abcdef';
+  const clientId='31yyjjxidxlrdjiq3t2jb4pbrqei';
+  assert.equal(auth.clientId(),clientId,'the authorized public Client ID is available by default');
+  assert.equal(localStorage.getItem('spotify_radar_client_id'),null,'the default public Client ID needs no browser setup');
   assert.equal(auth.configure(` ${clientId} `),clientId);
   assert.equal(auth.clientId(),clientId);
   assert.equal(localStorage.getItem('spotify_radar_client_id'),clientId,'only the public Client ID is persistent');
@@ -151,7 +153,7 @@ function base64Url(bytes){
   assert.equal(await auth.accessToken(),'popup-access');
   auth.disconnect();
 
-  assert.match(callback,/<script src="\.\/auth\.js"><\/script>/);
+  assert.match(callback,/<script src="\.\/auth\.js\?v=20260821-web-playback-v2"><\/script>/);
   assert.match(callback,/SpotifyRadarAuth\.finishCallback\(\)/);
   assert.match(callback,/postMessage\(\{type:'spotify-radar-auth-complete'\},origin\)/);
   assert.match(callback,/window\.location\.replace\(returnUrl\)/);
