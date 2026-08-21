@@ -1,6 +1,11 @@
 name: Build Spotify preview audio map
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/build-spotify-preview-audio.yml
   workflow_dispatch:
     inputs:
       mode:
@@ -30,8 +35,8 @@ jobs:
         continue-on-error: true
         run: >-
           node build_spotify_preview_audio.js
-          --mode "${{ inputs.mode }}"
-          --attempts "${{ inputs.mode == 'batch' && '2' || '8' }}"
+          --mode "${{ inputs.mode || 'embed' }}"
+          --attempts "${{ (inputs.mode || 'embed') == 'batch' && '2' || '8' }}"
           --concurrency 10
           --batch-delay-ms 600
           --embed-delay-ms 250
