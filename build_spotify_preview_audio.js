@@ -96,19 +96,66 @@ function extractAnonymousEmbedSession(html) {
 }
 
 function parseExistingOutput(filePath) {
-  if (!fs.existsSync(filePath)) return { hashes: {}, missing: [] };
+  if (!fs.existsSync(filePath)) {
+    return {
+      hashes: {},
+      missing: [],
+      shardCount: null,
+      shardIndex: null,
+      pendingTracks: null,
+      shardIds: [],
+      sourceSnapshot: '',
+      totalTracks: null,
+    };
+  }
   try {
     const source = fs.readFileSync(filePath, 'utf8');
     const separator = source.indexOf('=');
-    if (separator < 0) return { hashes: {}, missing: [] };
+    if (separator < 0) throw new Error('window_assignment_missing');
     const data = JSON.parse(source.slice(separator + 1).replace(/;\s*$/u, ''));
     return {
       hashes: data && typeof data.hashes === 'object' && data.hashes ? data.hashes : {},
       missing: Array.isArray(data && data.missing) ? data.missing : [],
+      shardCount: Number.isInteger(data && data.shard_count) ? data.shard_count : null,
+      shardIndex: Number.isInteger(data && data.shard_index) ? data.shard_index : null,
+      pendingTracks: Number.isInteger(data && data.pending_tracks)
+        ? data.pending_tracks
+        : null,
+      shardIds: Array.isArray(data && data.shard_ids) ? data.shard_ids : [],
+      sourceSnapshot: String(data && data.source_snapshot || ''),
+      totalTracks: Number.isInteger(data && data.total_tracks) ? data.total_tracks : null,
     };
   } catch (error) {
-    return { hashes: {}, missing: [] };
+    return {
+      hashes: {},
+      missing: [],
+      shardCount: null,
+      shardIndex: null,
+      pendingTracks: null,
+      shardIds: [],
+      sourceSnapshot: '',
+      totalTracks: null,
+    };
   }
+}
+
+function normalizeShardOptions(options = {}) {
+  const shardCount = options.shardCount === undefined ? 1 : Number(options.shardCount);
+  const shardIndex = options.shardIndex === undefined ? 0 : Number(options.shardIndex);
+  if (!Number.isInteger(shardCount) || shardCount < 1) {
+    throw new Error(`invalid_shard_count:${options.shardCount}`);
+  }
+  if (!Number.isInteger(shardIndex) || shardIndex < 0 || shardIndex >= shardCount) {
+    throw new Error(`invalid_shard_index:${options.shardIndex}`);
+  }
+  return { shardCount, shardIndex };
+}
+
+function selectPendingShard(pending, shardCount, shardIndex) {
+  const normalized = normalizeShardOptions({ shardCount, shardIndex });
+  return pending.filter(
+    (spotifyId, pendingIndex) => pendingIndex % normalized.shardCount === normalized.shardIndex,
+  );
 }
 
 function retryAfterMilliseconds(response, attempt) {
@@ -268,9 +315,14 @@ function buildPayload(options) {
     const hash = String(options.hashes[spotifyId] || '').toLowerCase();
     if (PREVIEW_HASH_PATTERN.test(hash)) hashes[spotifyId] = hash;
   }
-  const missing = [...options.missing].filter(id => wanted.has(id)).sort();
-  const failed = [...options.failed].filter(id => wanted.has(id)).sort();
-  return {
+  const missing = [...new Set(options.missing)]
+    .filter(id => wanted.has(id) && !hashes[id])
+    .sort();
+  const missingIds = new Set(missing);
+  const failed = [...new Set(options.failed)]
+    .filter(id => wanted.has(id) && !hashes[id] && !missingIds.has(id))
+    .sort();
+  const payload = {
     version: 1,
     generated_at: new Date().toISOString(),
     source: 'spotify_audio_preview_clip',
@@ -284,6 +336,15 @@ function buildPayload(options) {
     missing,
     failed,
   };
+  if (Number(options.shardCount) > 1) {
+    payload.shard_count = options.shardCount;
+    payload.shard_index = options.shardIndex;
+    payload.pending_tracks = options.pendingTracks;
+    payload.shard_tracks = options.shardIds.length;
+    payload.shard_completed_tracks = options.shardCompletedTracks;
+    payload.shard_ids = [...options.shardIds];
+  }
+  return payload;
 }
 
 function writePayload(filePath, payload) {
@@ -305,6 +366,7 @@ async function buildPreviewMap(options) {
     : null;
   const ids = collectTrackIds(browse, soundcharts);
   const wanted = new Set(ids);
+  const { shardCount, shardIndex } = normalizeShardOptions(options);
   const mode = options.mode === 'embed' ? 'embed' : 'batch';
   const previous = parseExistingOutput(options.outputPath);
   const hashes = {};
@@ -319,7 +381,25 @@ async function buildPreviewMap(options) {
     (mode === 'embed' ? [] : previous.missing).filter(id => wanted.has(id)),
   );
   const failed = new Set();
-  const pending = ids.filter(id => !hashes[id] && !missing.has(id));
+  const allPending = ids.filter(id => !hashes[id] && !missing.has(id));
+  const previousShardIdsValid =
+    new Set(previous.shardIds).size === previous.shardIds.length &&
+    previous.shardIds.every(id => TRACK_ID_PATTERN.test(id) && wanted.has(id));
+  const canResumeShard =
+    shardCount > 1 &&
+    previous.shardCount === shardCount &&
+    previous.shardIndex === shardIndex &&
+    previous.totalTracks === ids.length &&
+    previous.sourceSnapshot === String(browse.generated_at || '') &&
+    previousShardIdsValid;
+  const shardIds = canResumeShard
+    ? [...previous.shardIds]
+    : selectPendingShard(allPending, shardCount, shardIndex);
+  const pendingTracks = canResumeShard && Number.isInteger(previous.pendingTracks)
+    ? previous.pendingTracks
+    : allPending.length;
+  const pending = shardIds.filter(id => !hashes[id] && !missing.has(id));
+  const previouslyCompleted = shardIds.length - pending.length;
   const concurrency = Math.max(1, Math.min(80, Number(options.concurrency) || 4));
   const checkpointEvery = Math.max(25, Number(options.checkpointEvery) || 250);
   const batchDelayMs = Math.max(0, Number(options.batchDelayMs) || 350);
@@ -336,6 +416,11 @@ async function buildPreviewMap(options) {
       missing,
       failed,
       sourceSnapshot: browse.generated_at || '',
+      shardCount,
+      shardIndex,
+      pendingTracks,
+      shardIds,
+      shardCompletedTracks: previouslyCompleted + completed,
     }));
     lastCheckpoint = Date.now();
     process.stdout.write(
@@ -402,6 +487,11 @@ async function buildPreviewMap(options) {
     missing,
     failed,
     sourceSnapshot: browse.generated_at || '',
+    shardCount,
+    shardIndex,
+    pendingTracks,
+    shardIds,
+    shardCompletedTracks: previouslyCompleted + completed,
   });
 }
 
@@ -428,6 +518,8 @@ async function main() {
     checkpointEvery: Number(argumentValue(args, '--checkpoint-every', '250')),
     batchDelayMs: Number(argumentValue(args, '--batch-delay-ms', '350')),
     embedDelayMs: Number(argumentValue(args, '--embed-delay-ms', '500')),
+    shardCount: Number(argumentValue(args, '--shard-count', '1')),
+    shardIndex: Number(argumentValue(args, '--shard-index', '0')),
   };
   const payload = await buildPreviewMap(options);
   process.stdout.write(`${JSON.stringify({
@@ -435,6 +527,8 @@ async function main() {
     available_tracks: payload.available_tracks,
     missing_tracks: payload.missing_tracks,
     failed_tracks: payload.failed_tracks,
+    shard_count: options.shardCount,
+    shard_index: options.shardIndex,
     output: options.outputPath,
   })}\n`);
   if (payload.failed_tracks > 0) process.exitCode = 2;
@@ -456,5 +550,9 @@ module.exports = {
   fetchAnonymousEmbedSession,
   fetchPreviewBatch,
   parseWindowAssignment,
+  normalizeShardOptions,
+  selectPendingShard,
   buildPayload,
+  buildPreviewMap,
+  writePayload,
 };

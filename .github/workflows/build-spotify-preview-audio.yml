@@ -11,7 +11,7 @@ on:
       mode:
         description: Preview lookup mode
         required: true
-        default: batch
+        default: embed
         type: choice
         options:
           - batch
@@ -26,25 +26,88 @@ concurrency:
 
 jobs:
   build:
+    name: build shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build anonymous 30-second preview map
+      - name: Prepare shard checkpoint
+        run: >-
+          cp Spotify_Preview_Audio_data.js
+          "Spotify_Preview_Audio_shard_${{ matrix.shard }}.js"
+
+      - name: Build anonymous 30-second preview shard
         continue-on-error: true
         run: >-
           node build_spotify_preview_audio.js
           --mode "${{ inputs.mode || 'embed' }}"
           --attempts "${{ (inputs.mode || 'embed') == 'batch' && '2' || '3' }}"
-          --concurrency 6
+          --concurrency 4
           --timeout-ms 10000
           --batch-delay-ms 600
-          --embed-delay-ms 250
-          --checkpoint-every 250
+          --embed-delay-ms 300
+          --checkpoint-every 100
+          --shard-count 4
+          --shard-index "${{ matrix.shard }}"
+          --output "Spotify_Preview_Audio_shard_${{ matrix.shard }}.js"
 
-      - name: Report coverage
+      - name: Report shard coverage
         if: always()
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const source = fs.readFileSync('Spotify_Preview_Audio_shard_${{ matrix.shard }}.js', 'utf8');
+          const data = JSON.parse(source.slice(source.indexOf('=') + 1).replace(/;\s*$/, ''));
+          console.log(JSON.stringify({
+            shard_index: data.shard_index,
+            shard_tracks: data.shard_tracks,
+            shard_completed_tracks: data.shard_completed_tracks,
+            total_tracks: data.total_tracks,
+            available_tracks: data.available_tracks,
+            missing_tracks: data.missing_tracks,
+            failed_tracks: data.failed_tracks,
+          }));
+          NODE
+
+      - name: Upload preview shard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotify-preview-shard-${{ github.run_id }}-${{ matrix.shard }}
+          path: Spotify_Preview_Audio_shard_${{ matrix.shard }}.js
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: merge preview shards
+    needs: build
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download preview shards
+        uses: actions/download-artifact@v4
+        with:
+          pattern: spotify-preview-shard-${{ github.run_id }}-*
+          path: spotify-preview-shards
+          merge-multiple: true
+
+      - name: Merge and validate preview shards
+        run: >-
+          node merge_spotify_preview_audio.js
+          --base Spotify_Preview_Audio_data.js
+          --output Spotify_Preview_Audio_data.js
+          --shard-count 4
+          --shards spotify-preview-shards/Spotify_Preview_Audio_shard_*.js
+
+      - name: Report merged coverage
         run: |
           node - <<'NODE'
           const fs = require('node:fs');
@@ -58,8 +121,7 @@ jobs:
           }));
           NODE
 
-      - name: Upload preview map
-        if: always()
+      - name: Upload merged preview map
         uses: actions/upload-artifact@v4
         with:
           name: spotify-preview-audio-${{ github.run_id }}
