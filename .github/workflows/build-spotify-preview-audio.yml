@@ -37,7 +37,7 @@ jobs:
           node build_spotify_preview_audio.js
           --mode "${{ inputs.mode || 'embed' }}"
           --attempts "${{ (inputs.mode || 'embed') == 'batch' && '2' || '3' }}"
-          --concurrency 10
+          --concurrency 6
           --timeout-ms 10000
           --batch-delay-ms 600
           --embed-delay-ms 250
