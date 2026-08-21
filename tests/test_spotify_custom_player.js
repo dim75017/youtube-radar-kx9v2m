@@ -20,6 +20,16 @@ assert.ok(previewData && previewData.hashes, 'the generated Spotify preview map 
 const previewEntries = Object.entries(previewData.hashes);
 assert.ok(previewEntries.length > 0, 'the preview map contains playable catalogue tracks');
 assert.equal(previewData.available_tracks, previewEntries.length, 'the preview map availability count matches its hashes');
+assert.equal(previewData.failed_tracks, 0, 'a failed lookup batch must never be published as complete');
+assert.equal(
+  previewData.available_tracks + previewData.missing_tracks,
+  previewData.total_tracks,
+  'every catalogue track is classified as playable or honestly unavailable',
+);
+assert.ok(
+  previewData.available_tracks / previewData.total_tracks >= 0.95,
+  'at least 95% of the active player catalogue must have a real Spotify preview before publication',
+);
 for (const [id, hash] of previewEntries) {
   assert.match(id, /^[A-Za-z0-9]{22}$/, 'preview map keys are Spotify track IDs');
   assert.match(hash, /^[a-f0-9]{40}$/, 'preview map values are immutable Spotify CDN hashes');
