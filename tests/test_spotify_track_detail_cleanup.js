@@ -13,8 +13,8 @@ const trackDetail = js.slice(trackStart, trackEnd);
 
 assert.doesNotMatch(js, /spotify-centered-toggle/, 'the oversized centered player control must not be rendered');
 assert.doesNotMatch(css, /spotify-centered-toggle/, 'the centered player control styles must be removed');
-assert.match(trackDetail, /spotifyTrackPlayerHtml\(r\[6\],r\[1\],A\[r\[0\]\]\[0\],r\[8\],'track-modal-player'\)/, 'track details use the shared custom Spotify player');
-assert.match(trackDetail, /clearSpotifyPlayers\(box\)/, 'remounting a track detail must dispose its previous player controller');
+assert.match(trackDetail, /spotifyTrackPlayerHtml\(r\[6\],r\[1\],A\[r\[0\]\]\[0\],r\[8\],'track-modal-player',\{transportOnly:true\}\)/, 'track details use the shared transport-only Spotify player');
+assert.match(trackDetail, /clearSpotifyPlayers\(box\)/, 'remounting a track detail must clear previous player resources');
 assert.match(trackDetail, /mountSpotifyRadarPlayers\(box\)/, 'track details hydrate the custom player after rendering');
 assert.doesNotMatch(trackDetail, /Vélocité réelle|Cadence|Signal performance/, 'track details keep only useful metadata');
 assert.match(trackDetail, /T\('Sortie'\)/, 'release date remains visible in track details');

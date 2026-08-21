@@ -65,7 +65,7 @@ assert.equal(rows.some(row => row[6] === 'performance-only-track'), false,
   'performance-only entries remain outside the catalogue');
 assert.equal(rows.some(row => row[6] === 'below-floor-track'), false,
   'a current catalogue counter below 100,000 remains outside public views');
-assert.match(index, /dashboard\.js\?v=20260820-custom-player-v1/,
+assert.match(index, /dashboard\.js\?v=20260820-custom-player-v2/,
   'the lifetime correction must be cache-busted in production');
 
 console.log('Spotify lifetime counters follow real performance history: OK');

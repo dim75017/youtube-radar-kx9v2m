@@ -94,7 +94,7 @@ for (const required of ['<div class="l">Genre</div>', 'arOpportunityPlayerHtml(o
 for (const required of ['perf-grid ar-detail-performance', 'monthlyListenersMetricCardHtml(opportunity.artistMonthlyListeners)', 'arRightsCreditsHtml(opportunity)', 'ar-rights-confidence']) {
   if (!detail.includes(required)) throw new Error(`A&R detail self-release information is missing: ${required}`);
 }
-if (!source.includes("spotifyTrackPlayerHtml(spotifyId,opportunity.title,opportunity.credit,arTrackCoverUrl(opportunity),'ar-opportunity-player')")) throw new Error('A&R detail player must use the shared custom Spotify player.');
+if (!source.includes("spotifyTrackPlayerHtml(spotifyId,opportunity.title,opportunity.credit,arTrackCoverUrl(opportunity),'ar-opportunity-player',{transportOnly:true})")) throw new Error('A&R detail player must use the shared transport-only Spotify player.');
 for (const removed of ['arOpportunityCoverPlayerHtml(opportunity)', 'Pourquoi cette musique est dans la liste', "reasonsSection.querySelector('h4')", 'ar-detail-facts ar-detail-reasons', 'ar-detail-listeners']) {
   if (detail.includes(removed)) throw new Error(`A&R detail must not retain the old player/reasons UI: ${removed}`);
 }
