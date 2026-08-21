@@ -55,7 +55,7 @@ assert.doesNotMatch(evidence, /Origine de la découverte/,
   'unknown discovery-source audiences must not bypass the minimum in track details');
 assert.match(evidence, /≥ 10k followers/,
   'the detail panel must disclose the editorial audience threshold');
-assert.match(index, /dashboard\.js\?v=20260821-inline-player-v3&amp;editorial=10k-v1/,
+assert.match(index, /dashboard\.js\?v=20260821-web-playback-v1&amp;editorial=10k-v1/,
   'the published dashboard asset must bypass caches for the 10k detail rule');
 
 const cardStart = source.indexOf('function arEditorialCardHtml(');

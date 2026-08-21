@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Connexion Spotify — Lofi Radar</title>
+<style>
+html{color-scheme:dark}body{min-height:100vh;margin:0;display:grid;place-items:center;background:#080d13;color:#eef6f0;font:500 16px/1.5 system-ui,sans-serif}.card{width:min(440px,calc(100% - 48px));padding:30px;border:1px solid rgba(150,214,170,.22);border-radius:20px;background:#111822;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.34)}.mark{font-size:32px;color:#1ed760}h1{margin:10px 0 6px;font-size:22px}p{margin:0;color:#aab8ad}a{display:none;margin-top:20px;color:#7ee69d}
+</style>
+</head>
+<body>
+<main class="card" aria-live="polite">
+  <div class="mark" aria-hidden="true">●</div>
+  <h1>Connexion Spotify</h1>
+  <p id="status">Validation sécurisée en cours…</p>
+  <a id="back" href="./index.html">Revenir au Spotify Radar</a>
+</main>
+<script src="./auth.js"></script>
+<script>
+(async()=>{
+  const status=document.getElementById('status');
+  const back=document.getElementById('back');
+  const origin=window.location.origin;
+  let session=window.sessionStorage;
+  try{if(window.opener&&!window.opener.closed&&window.opener.location.origin===origin)session=window.opener.sessionStorage;}catch(error){}
+  const fallback=new URL('./index.html',window.location.href);
+  let returnUrl=fallback.href;
+  try{
+    const remembered=new URL(session.getItem('spotify_radar_oauth_return_url')||fallback.href,window.location.href);
+    if(remembered.origin===origin&&remembered.pathname!==window.location.pathname)returnUrl=remembered.href;
+  }catch(error){}
+  try{
+    await window.SpotifyRadarAuth.finishCallback();
+    if(window.opener&&!window.opener.closed){
+      window.opener.postMessage({type:'spotify-radar-auth-complete'},origin);
+      window.close();
+      return;
+    }
+    status.textContent='Connexion validée. Retour au Radar…';
+    window.location.replace(returnUrl);
+  }catch(error){
+    if(window.opener&&!window.opener.closed){
+      window.opener.postMessage({type:'spotify-radar-auth-error'},origin);
+      window.close();
+      return;
+    }
+    status.textContent='La connexion Spotify n’a pas pu être validée.';
+    back.style.display='inline-block';
+  }
+})();
+</script>
+</body>
+</html>

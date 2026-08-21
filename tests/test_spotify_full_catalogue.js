@@ -64,10 +64,13 @@ assert.match(coverage, /Catalogue actif/);
 assert.match(coverage, /minimumLifetimeStreams = 100000/);
 assert.match(index, /Spotify_Browse_Catalogue_data\.js\?payload=/);
 assert.match(index, /discovery\.css\?v=20260722-unified-catalogue-v1/);
-assert.match(index, /player\.css\?v=20260821-inline-player-v3/);
-assert.match(index, /player\.js\?v=20260821-inline-player-v3/);
-assert.match(index, /dashboard\.js\?v=20260821-inline-player-v3/);
-assert.match(index, /open\.spotify\.com\/embed\/iframe-api\/v1/);
+assert.match(index, /player\.css\?v=20260821-web-playback-v1/);
+assert.match(index, /player\.js\?v=20260821-web-playback-v1/);
+assert.match(index, /dashboard\.js\?v=20260821-web-playback-v1/);
+assert.match(index, /https:\/\/sdk\.scdn\.co\/spotify-player\.js/,
+  'the full-track Spotify Web Playback SDK must remain loaded');
+assert.doesNotMatch(index, /open\.spotify\.com\/embed\/iframe-api\/v1/,
+  'the preview-only Spotify IFrame API must not return');
 assert.match(dashboard, /const SPOTIFY_WEB_LOCALE='en'/);
 assert.match(dashboard, /locale=\$\{SPOTIFY_WEB_LOCALE\}/);
 assert.match(dashboard, /function artistTrackClassification\(g\)/);

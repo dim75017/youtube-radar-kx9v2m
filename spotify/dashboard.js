@@ -1651,10 +1651,15 @@ function spotifyTrackPlayerHtml(id,title,artist='',artwork='',extraClass='',opti
     extraClass:`ar-detail-player ${extraClass||''}`,
     transportOnly:Boolean(options&&options.transportOnly),
     labels:{
-      player:T('Lecteur Spotify intégré'),loading:T('Chargement du lecteur Spotify…'),unavailable:T('Le lecteur Spotify est indisponible'),
+      player:T('Lecteur Radar · Spotify Premium'),
+      loading:T('Connexion au lecteur Spotify…'),
+      buffering:T('Chargement du titre…'),
+      setup:T('Configurer Spotify Premium pour écouter le titre entier'),
+      connect:T('Connecter Spotify Premium pour écouter le titre entier'),
+      unavailable:T('Lecture intégrale momentanément indisponible'),
     },
   });
-  return `<div class="spotify-radar-player-frame"><section class="spotify-radar-player ar-detail-player ${esc(extraClass)}" data-spotify-id="${spotifyId}"><div class="spotify-radar-player-embed-shell"><iframe class="spotify-radar-player-embed" src="https://open.spotify.com/embed/track/${spotifyId}?utm_source=generator&amp;theme=0" width="100%" height="152" frameborder="0" allowfullscreen allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy" title="${esc(T('Lecteur Spotify intégré'))} · ${esc(title||'Track')}"></iframe></div></section></div>`;
+  return `<div class="spotify-radar-player-frame"><section class="spotify-radar-player spotify-radar-player--transport ar-detail-player ${esc(extraClass)}" data-spotify-id="${spotifyId}" data-state="unavailable" aria-label="${esc(T('Lecteur Radar · Spotify Premium'))} · ${esc(title||'Track')}"><span class="spotify-radar-player-status" role="status">${esc(T('Lecture intégrale momentanément indisponible'))}</span></section></div>`;
 }
 function hydrateSpotifyRadarPlayerCovers(root){
   if(!root||typeof fetch!=='function') return;
@@ -1682,15 +1687,6 @@ function arOpportunityPlayerHtml(opportunity){
   const spotifyId=spotifyTrackId(opportunity&&opportunity.spotifyId);
   if(!spotifyId) return '';
   return spotifyTrackPlayerHtml(spotifyId,opportunity.title,opportunity.credit,arTrackCoverUrl(opportunity),'ar-opportunity-player',{transportOnly:true});
-}
-function trackUrl(id,row=null){
-  const raw=String(id||'').trim();
-  const spotifyId=spotifyTrackId(raw);
-  if(spotifyId) return spotifyTrackUrl(spotifyId);
-  const track=row||R.find(item=>String(item&&item[6]||'')===raw)||null;
-  const artist=track&&A[track[0]]?A[track[0]][0]:'';
-  const query=[artist,track&&track[1]].filter(Boolean).join(' ');
-  return spotifySearchUrl(query||raw);
 }
 function trackStatusHtml(track){
   const ownership=trackOwnershipInfo(track);
@@ -2730,9 +2726,6 @@ function openTrack(tid){
     ${trackEditorialEvidenceHtml(r)}
     ${trackDailyAnalyticsHtml(tid,'track')}
     ${trackOfferHtml(r)}
-    <div style="display:flex;gap:10px;margin-top:14px">
-      <a class="btn-back" style="margin:0;text-decoration:none" href="${trackUrl(r[6],r)}" target="_blank" rel="noopener">▶ ${T('Ouvrir sur Spotify')}</a>
-  </div>
     <div class="tnote">${T("Les fenêtres Analytics utilisent uniquement l'historique quotidien et comparent des périodes de même durée. Le simulateur de rachat reste une estimation séparée.")}</div>`;
   bindMetricModeToggle(()=>openTrack(tid),box);
   bindSparklineHover(box);
