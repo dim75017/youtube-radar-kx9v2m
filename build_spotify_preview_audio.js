@@ -27,22 +27,23 @@ function addTrackRows(target, rows, schema) {
 
 function collectTrackIds(browse, soundcharts) {
   const ids = new Set();
-  for (const value of browse && browse.active_legacy_spotify_ids || []) {
-    const spotifyId = String(value || '').trim();
-    if (TRACK_ID_PATTERN.test(spotifyId)) ids.add(spotifyId);
-  }
-  const browseDiscovery = browse && browse.discovery_catalogue || {};
-  addTrackRows(ids, browseDiscovery.tracks, browseDiscovery.track_schema);
-
   const snapshot = soundcharts || {};
   const schemas = snapshot.schemas || {};
-  addTrackRows(ids, snapshot.tracks, schemas.tracks);
+  // Player-facing opportunities and measured tracks are resolved first so a
+  // resumed build always has useful coverage before it reaches the long tail.
   addTrackRows(ids, snapshot.opportunities, schemas.opportunities);
+  addTrackRows(ids, snapshot.tracks, schemas.tracks);
   const editorial = snapshot.editorial || {};
   addTrackRows(ids, editorial.tracks, editorial.track_schema);
   const discovery = snapshot.discovery_catalogue || {};
   addTrackRows(ids, discovery.tracks, discovery.track_schema);
-  return [...ids].sort();
+  const browseDiscovery = browse && browse.discovery_catalogue || {};
+  addTrackRows(ids, browseDiscovery.tracks, browseDiscovery.track_schema);
+  for (const value of browse && browse.active_legacy_spotify_ids || []) {
+    const spotifyId = String(value || '').trim();
+    if (TRACK_ID_PATTERN.test(spotifyId)) ids.add(spotifyId);
+  }
+  return [...ids];
 }
 
 function extractPreviewHash(html) {
@@ -304,6 +305,7 @@ async function buildPreviewMap(options) {
     : null;
   const ids = collectTrackIds(browse, soundcharts);
   const wanted = new Set(ids);
+  const mode = options.mode === 'embed' ? 'embed' : 'batch';
   const previous = parseExistingOutput(options.outputPath);
   const hashes = {};
   for (const [spotifyId, hash] of Object.entries(previous.hashes)) {
@@ -311,13 +313,17 @@ async function buildPreviewMap(options) {
       hashes[spotifyId] = String(hash).toLowerCase();
     }
   }
-  const missing = new Set(previous.missing.filter(id => wanted.has(id)));
+  // A nullable Web API preview_url is not definitive: the public embed page
+  // can still expose a licensed preview clip, so embed mode rechecks misses.
+  const missing = new Set(
+    (mode === 'embed' ? [] : previous.missing).filter(id => wanted.has(id)),
+  );
   const failed = new Set();
   const pending = ids.filter(id => !hashes[id] && !missing.has(id));
-  const mode = options.mode === 'embed' ? 'embed' : 'batch';
   const concurrency = Math.max(1, Math.min(80, Number(options.concurrency) || 4));
   const checkpointEvery = Math.max(25, Number(options.checkpointEvery) || 250);
   const batchDelayMs = Math.max(0, Number(options.batchDelayMs) || 350);
+  const embedDelayMs = Math.max(0, Number(options.embedDelayMs) || 500);
   let cursor = 0;
   let completed = 0;
   let lastCheckpoint = Date.now();
@@ -352,6 +358,7 @@ async function buildPreviewMap(options) {
         completed += 1;
         checkpoint(false);
       }
+      if (cursor < pending.length && embedDelayMs) await wait(embedDelayMs);
     }
   }
 
@@ -420,6 +427,7 @@ async function main() {
     timeoutMs: Number(argumentValue(args, '--timeout-ms', '18000')),
     checkpointEvery: Number(argumentValue(args, '--checkpoint-every', '250')),
     batchDelayMs: Number(argumentValue(args, '--batch-delay-ms', '350')),
+    embedDelayMs: Number(argumentValue(args, '--embed-delay-ms', '500')),
   };
   const payload = await buildPreviewMap(options);
   process.stdout.write(`${JSON.stringify({
