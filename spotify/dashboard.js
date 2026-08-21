@@ -3284,6 +3284,24 @@ function arEditorialMiniData(playlist){
     genre:first(playlist&&playlist.genre,row&&row[10]),
   };
 }
+const AR_DETAIL_EDITORIAL_MIN_FOLLOWERS=10000;
+function arEditorialPlaylistFollowerCount(playlist){
+  const followers=arEditorialMiniData(playlist).followers;
+  if(followers==null||followers==='') return null;
+  const number=Number(followers);
+  return Number.isFinite(number)&&number>=0?number:null;
+}
+function arDetailEditorialPlaylists(opportunity){
+  const explicit=Array.isArray(opportunity&&opportunity.editorialPlaylists)
+    ?opportunity.editorialPlaylists.some(playlist=>playlist&&(playlist.spotifyId||playlist.name)):false;
+  /* topPlaylist only carries editorial_followers_total. That aggregate cannot
+     prove that an individual playlist clears the detail-view floor. */
+  if(!explicit) return [];
+  return arEditorialPlaylists(opportunity).filter(playlist=>{
+    const followers=arEditorialPlaylistFollowerCount(playlist);
+    return followers!=null&&followers>=AR_DETAIL_EDITORIAL_MIN_FOLLOWERS;
+  });
+}
 function arPlaylistSnapshotValue(playlistId,name){
   const column=Array.isArray(PLcols)?PLcols.indexOf(name):-1;
   if(column<0) return '';
@@ -3335,17 +3353,12 @@ function arEditorialSummary(opportunity,limit=3){
   return `${playlists.length} playlist${playlists.length>1?'s':''} éditoriale${playlists.length>1?'s':''}${names.length?' · '+names.join(', ')+extra:''}${since?' · depuis '+since:''}`;
 }
 function arEditorialPlaylistEvidenceHtml(opportunity){
-  const playlists=arEditorialPlaylists(opportunity);
-  if(!playlists.length){
-    const sourceNames=Array.isArray(opportunity&&opportunity.discoverySourcePlaylistNames)?opportunity.discoverySourcePlaylistNames:[];
-    return sourceNames.length
-      ?`<div class="analytics-section"><h4>Origine de la découverte</h4><div class="analytics-note">Artiste découvert via ${esc(sourceNames.slice(0,4).join(', '))}. Cette track n’est pas confirmée comme présente dans ces playlists.</div></div>`
-      :'';
-  }
+  const playlists=arDetailEditorialPlaylists(opportunity);
+  if(!playlists.length) return '';
   return arEditorialPlaylistPanelHtml(opportunity,'Présence en playlists éditoriales');
 }
 function arEditorialPlaylistPanelHtml(opportunity,heading='Playlists éditoriales'){
-  const playlists=arEditorialPlaylists(opportunity);
+  const playlists=arDetailEditorialPlaylists(opportunity);
   if(!playlists.length) return '';
   const cards=playlists.map((playlist,index)=>{
     const playlistId=String(playlist.spotifyId||'').trim();
@@ -3359,7 +3372,7 @@ function arEditorialPlaylistPanelHtml(opportunity,heading='Playlists éditoriale
     const content=`${cover}<span class="ar-detail-editorial-copy"><strong>${esc(name)}</strong><small>${esc(followers)} · ${esc(tracks)} · ${esc(genre)}${esc(position)}</small></span>`;
     return playlistId?`<a class="ar-detail-editorial" href="${spotifyPlaylistUrl(playlistId)}" target="_blank" rel="noopener">${content}</a>`:`<div class="ar-detail-editorial">${content}</div>`;
   }).join('');
-  return `<div class="analytics-section ar-detail-editorials"><h4>${esc(heading)} <span class="analytics-note">${fmtFull(playlists.length)}</span></h4><div class="ar-detail-editorial-list">${cards}</div></div>`;
+  return `<div class="analytics-section ar-detail-editorials"><h4>${esc(heading)} <span class="analytics-note">${fmtFull(playlists.length)} · ≥ 10k followers</span></h4><div class="ar-detail-editorial-list">${cards}</div></div>`;
 }
 function arDetailEditorialPlaylistsHtml(opportunity){
   return arEditorialPlaylistPanelHtml(opportunity);
