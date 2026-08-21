@@ -6,7 +6,7 @@
    ID is public configuration; credentials and the PKCE transaction live only
    for the current browser tab/session. */
 (function spotifyRadarAuthModule(global){
-  const DEFAULT_CLIENT_ID='31yyjjxidxlrdjiq3t2jb4pbrqei';
+  const DEFAULT_CLIENT_ID='';
   const CLIENT_ID_KEY='spotify_radar_client_id';
   const VERIFIER_KEY='spotify_radar_pkce_verifier';
   const STATE_KEY='spotify_radar_oauth_state';

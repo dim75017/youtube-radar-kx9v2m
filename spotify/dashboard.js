@@ -111,6 +111,12 @@ const EN_MAP = {
   "Courbe en cours de constitution : la veille hebdomadaire enregistre un point par semaine. Reviens dans quelques semaines pour voir la tendance.":"Curve being built: the weekly watch records one point per week. Come back in a few weeks to see the trend.",
   "Ouvrir sur Spotify":"Open on Spotify","Épinglé":"Pinned","Épingler":"Pin",
   "Lecteur Spotify intégré":"Embedded Spotify player","Chargement du lecteur Spotify…":"Loading Spotify player…","Le lecteur Spotify est indisponible":"Spotify player is unavailable",
+  "Lecteur Radar · extrait Spotify 30 s":"Radar player · 30-second Spotify preview","Lire l’extrait":"Play preview","Mettre en pause":"Pause preview",
+  "Chargement de l’extrait Spotify…":"Loading Spotify preview…","Mise en mémoire tampon…":"Buffering preview…","Extrait Spotify · 30 s":"Spotify preview · 30 sec",
+  "En pause · extrait Spotify 30 s":"Paused · 30-second Spotify preview","Extrait terminé · relancer":"Preview finished · play again",
+  "Extrait audio indisponible pour ce titre":"Audio preview unavailable for this track","Position dans l’extrait":"Position in preview","Extrait fourni par Spotify":"Preview provided by Spotify",
+  "Lecture bloquée par le navigateur · cliquez à nouveau sur Play":"Playback blocked by the browser · select Play again","Impossible de charger cet extrait":"Unable to load this preview",
+  "Volume":"Volume","Couper le son":"Mute","Rétablir le son":"Unmute",
   "Revenus & rachat estimés (0,0035$/stream, +20% multi-plateformes, modèle LOFI RECORDS). L'historique des streams est capté par la veille pour tracer la tendance dans le temps.":"Revenue & buyout estimated (0.0035$/stream, +20% multi-platform, LOFI RECORDS model). Stream history is captured by the watch to plot the trend over time.",
   "Aucun artiste épinglé. Clique sur l'étoile ☆ d'une carte artiste.":"No pinned artists yet. Hit the ☆ on any artist card.",
   "Horizon de projection":"Projection horizon","mois de revenu projeté":"months of projected revenue","Durée choisie pour calculer l'avance et le payback.":"Chosen duration used to calculate the advance and payback."
@@ -1651,15 +1657,25 @@ function spotifyTrackPlayerHtml(id,title,artist='',artwork='',extraClass='',opti
     extraClass:`ar-detail-player ${extraClass||''}`,
     transportOnly:Boolean(options&&options.transportOnly),
     labels:{
-      player:T('Lecteur Radar · Spotify Premium'),
-      loading:T('Connexion au lecteur Spotify…'),
-      buffering:T('Chargement du titre…'),
-      setup:T('Configurer Spotify Premium pour écouter le titre entier'),
-      connect:T('Connecter Spotify Premium pour écouter le titre entier'),
-      unavailable:T('Lecture intégrale momentanément indisponible'),
+      player:T('Lecteur Radar · extrait Spotify 30 s'),
+      play:T('Lire l’extrait'),
+      pause:T('Mettre en pause'),
+      loading:T('Chargement de l’extrait Spotify…'),
+      buffering:T('Mise en mémoire tampon…'),
+      ready:T('Extrait Spotify · 30 s'),
+      paused:T('En pause · extrait Spotify 30 s'),
+      ended:T('Extrait terminé · relancer'),
+      unavailable:T('Extrait audio indisponible pour ce titre'),
+      autoplay:T('Lecture bloquée par le navigateur · cliquez à nouveau sur Play'),
+      error:T('Impossible de charger cet extrait'),
+      progress:T('Position dans l’extrait'),
+      volume:T('Volume'),
+      mute:T('Couper le son'),
+      unmute:T('Rétablir le son'),
+      source:T('Extrait fourni par Spotify'),
     },
   });
-  return `<div class="spotify-radar-player-frame"><section class="spotify-radar-player spotify-radar-player--transport ar-detail-player ${esc(extraClass)}" data-spotify-id="${spotifyId}" data-state="unavailable" aria-label="${esc(T('Lecteur Radar · Spotify Premium'))} · ${esc(title||'Track')}"><span class="spotify-radar-player-status" role="status">${esc(T('Lecture intégrale momentanément indisponible'))}</span></section></div>`;
+  return `<div class="spotify-radar-player-frame"><section class="spotify-radar-player spotify-radar-player--transport ar-detail-player ${esc(extraClass)}" data-spotify-id="${spotifyId}" data-state="unavailable" aria-label="${esc(T('Lecteur Radar · extrait Spotify 30 s'))} · ${esc(title||'Track')}"><span class="spotify-radar-player-status" role="status" aria-live="polite">${esc(T('Extrait audio indisponible pour ce titre'))}</span></section></div>`;
 }
 function hydrateSpotifyRadarPlayerCovers(root){
   if(!root||typeof fetch!=='function') return;

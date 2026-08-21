@@ -64,13 +64,18 @@ assert.match(coverage, /Catalogue actif/);
 assert.match(coverage, /minimumLifetimeStreams = 100000/);
 assert.match(index, /Spotify_Browse_Catalogue_data\.js\?payload=/);
 assert.match(index, /discovery\.css\?v=20260722-unified-catalogue-v1/);
-assert.match(index, /player\.css\?v=20260821-web-playback-v2/);
-assert.match(index, /player\.js\?v=20260821-web-playback-v2/);
-assert.match(index, /dashboard\.js\?v=20260821-web-playback-v2/);
-assert.match(index, /https:\/\/sdk\.scdn\.co\/spotify-player\.js/,
-  'the full-track Spotify Web Playback SDK must remain loaded');
+assert.match(index, /player\.css\?v=20260821-custom-preview-v1/);
+assert.match(index, /player\.js\?v=20260821-custom-preview-v1/);
+assert.match(index, /dashboard\.js\?v=20260821-custom-preview-v1/);
+const previewDataIndex = index.indexOf('../Spotify_Preview_Audio_data.js?v=20260821-custom-preview-v1');
+const customPlayerIndex = index.indexOf('player.js?v=20260821-custom-preview-v1');
+const dashboardIndex = index.indexOf('dashboard.js?v=20260821-custom-preview-v1');
+assert.ok(previewDataIndex >= 0 && customPlayerIndex > previewDataIndex && dashboardIndex > customPlayerIndex,
+  'the local preview map loads before the custom audio player and dashboard');
+assert.doesNotMatch(index, /https:\/\/sdk\.scdn\.co\/spotify-player\.js|(?:^|["'])auth\.js(?:\?|["'])/m,
+  'the catalogue must not load Spotify Web Playback SDK or browser authentication');
 assert.doesNotMatch(index, /open\.spotify\.com\/embed\/iframe-api\/v1/,
-  'the preview-only Spotify IFrame API must not return');
+  'the Spotify IFrame API must not return');
 assert.match(dashboard, /const SPOTIFY_WEB_LOCALE='en'/);
 assert.match(dashboard, /locale=\$\{SPOTIFY_WEB_LOCALE\}/);
 assert.match(dashboard, /function artistTrackClassification\(g\)/);
