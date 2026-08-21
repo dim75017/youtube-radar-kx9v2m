@@ -1,0 +1,61 @@
+name: Build Spotify preview audio map
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Preview lookup mode
+        required: true
+        default: batch
+        type: choice
+        options:
+          - batch
+          - embed
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spotify-preview-audio-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build anonymous 30-second preview map
+        continue-on-error: true
+        run: >-
+          node build_spotify_preview_audio.js
+          --mode "${{ inputs.mode }}"
+          --attempts 8
+          --concurrency 6
+          --batch-delay-ms 600
+          --checkpoint-every 250
+
+      - name: Report coverage
+        if: always()
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const source = fs.readFileSync('Spotify_Preview_Audio_data.js', 'utf8');
+          const data = JSON.parse(source.slice(source.indexOf('=') + 1).replace(/;\s*$/, ''));
+          console.log(JSON.stringify({
+            total_tracks: data.total_tracks,
+            available_tracks: data.available_tracks,
+            missing_tracks: data.missing_tracks,
+            failed_tracks: data.failed_tracks,
+          }));
+          NODE
+
+      - name: Upload preview map
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotify-preview-audio-${{ github.run_id }}
+          path: Spotify_Preview_Audio_data.js
+          if-no-files-found: error
+          retention-days: 1
