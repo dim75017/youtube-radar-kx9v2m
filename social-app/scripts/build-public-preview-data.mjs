@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { assertAudienceAnalytics } from "../lib/audience-analytics.ts";
 import { assertAudienceHistory } from "../lib/audience-metrics.ts";
 import { assertAudioTrendFeed } from "../lib/audio-trends.ts";
 import { assertCommentOpportunityFeed } from "../lib/comment-opportunities.ts";
@@ -25,6 +26,7 @@ const [
   audioTrendFeed,
   audioTrendScanStatus,
   audienceHistory,
+  audienceAnalytics,
   commentOpportunityFeed,
 ] = await Promise.all([
   readJson(resolve(root, "data", "public-history.json")),
@@ -34,6 +36,7 @@ const [
   readJson(resolve(root, "data", "audio-trends", "feed.json")),
   readJson(resolve(root, "data", "audio-trends", "refresh-status.json")),
   readJson(resolve(root, "data", "audience-history.json")),
+  readJson(resolve(root, "data", "audience-analytics.json")),
   readJson(resolve(root, "data", "comment-opportunities", "feed.json")),
 ]);
 
@@ -48,6 +51,7 @@ assertVideoTrendScanStatus(videoTrendScanStatus);
 assertAudioTrendFeed(audioTrendFeed);
 assertAudioTrendScanStatus(audioTrendScanStatus);
 assertAudienceHistory(audienceHistory);
+assertAudienceAnalytics(audienceAnalytics);
 assertCommentOpportunityFeed(commentOpportunityFeed);
 
 await mkdir(output, { recursive: true });
@@ -57,6 +61,7 @@ await mkdir(resolve(output, "comment-opportunities"), { recursive: true });
 await writeJson(resolve(output, "public-history-summary.json"), summary);
 await writeJson(resolve(output, "public-history.json"), snapshot);
 await writeJson(resolve(output, "audience-history.json"), audienceHistory);
+await writeJson(resolve(output, "audience-analytics.json"), audienceAnalytics);
 await writeJson(resolve(output, "trends", "feed.json"), trendFeed);
 await writeJson(resolve(output, "trends", "refresh-status.json"), videoTrendScanStatus);
 await writeJson(resolve(output, "audio-trends", "feed.json"), audioTrendFeed);

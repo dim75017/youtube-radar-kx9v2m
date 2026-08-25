@@ -67,6 +67,9 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     previewEntry,
     audienceMetrics,
     audienceHistory,
+    audienceAnalyticsModel,
+    audienceAnalyticsSnapshot,
+    publicPreviewBuilder,
     youtubeLogo,
     instagramLogo,
     tiktokLogo,
@@ -94,6 +97,9 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     readFile(new URL("../preview/main.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/audience-metrics.ts", import.meta.url), "utf8"),
     readFile(new URL("../data/audience-history.json", import.meta.url), "utf8"),
+    readFile(new URL("../lib/audience-analytics.ts", import.meta.url), "utf8"),
+    readFile(new URL("../data/audience-analytics.json", import.meta.url), "utf8"),
+    readFile(new URL("../scripts/build-public-preview-data.mjs", import.meta.url), "utf8"),
     readFile(new URL("../public/platforms/youtube.svg", import.meta.url), "utf8"),
     readFile(new URL("../public/platforms/instagram.svg", import.meta.url), "utf8"),
     readFile(new URL("../public/platforms/tiktok.svg", import.meta.url), "utf8"),
@@ -264,6 +270,24 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(previewEntry, /initialAudienceHistory=\{audienceHistory\}/);
   assert.match(previewEntry, /refreshAudienceHistory/);
   assert.match(previewEntry, /RAW_AUDIENCE_HISTORY_URL = `\$\{liveDataBaseUrl\}\/audience-history\.json`/);
+  assert.match(previewEntry, /RAW_AUDIENCE_ANALYTICS_URL/);
+  assert.match(previewEntry, /audienceAnalytics=\{audienceAnalytics\}/);
+  assert.match(previewEntry, /refreshAudienceAnalytics/);
+  assert.match(
+    previewEntry,
+    /RAW_AUDIENCE_ANALYTICS_URL = `\$\{liveDataBaseUrl\}\/audience-analytics\.json`/,
+  );
+  assert.match(
+    previewEntry,
+    /window\.setInterval\(\s*refreshAudienceAnalytics,\s*60 \* 60 \* 1_000,?\s*\)/,
+  );
+  assert.match(publicPreviewBuilder, /assertAudienceAnalytics\(audienceAnalytics\)/);
+  assert.match(
+    publicPreviewBuilder,
+    /writeJson\(resolve\(output, "audience-analytics\.json"\), audienceAnalytics\)/,
+  );
+  assert.match(audienceAnalyticsModel, /assertAudienceAnalytics/);
+  assert.equal(JSON.parse(audienceAnalyticsSnapshot).version, 1);
   assert.match(previewEntry, /raw\.githubusercontent\.com\/dim75017\/youtube-radar-kx9v2m\/main\/social-app\/data/);
   assert.match(previewEntry, /RAW_AUDIO_TREND_FEED_URL = `\$\{liveDataBaseUrl\}\/audio-trends\/feed\.json`/);
   assert.match(previewEntry, /RAW_TREND_FEED_URL = `\$\{liveDataBaseUrl\}\/trends\/feed\.json`/);

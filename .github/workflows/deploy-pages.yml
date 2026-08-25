@@ -226,6 +226,8 @@ jobs:
           test -f ../social/data/trends/feed.json
           test -f ../social/data/audio-trends/feed.json
           test -f ../social/data/comment-opportunities/feed.json
+          test -f ../social/data/audience-history.json
+          test -f ../social/data/audience-analytics.json
 
       - uses: actions/configure-pages@v5
 

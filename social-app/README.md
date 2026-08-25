@@ -5,15 +5,15 @@ Le **Social & Community Intelligence OS** de Lofi Girl analyse les contenus publ
 **Interface unifiée :** https://dim75017.github.io/youtube-radar-kx9v2m/social/
 
 Le code source, les workflows et le site public vivent dans ce dépôt unique. La
-branche `main` contient l’application et les données validées ; la branche
-`gh-pages` contient uniquement l’export public servi à l’adresse ci-dessus.
+branche `main` contient l’application et les données validées ; le workflow
+GitHub Pages construit puis publie l’export public servi à l’adresse ci-dessus.
 
 ## Fonctionnalités
 
 - Recommandations séparées en **Trends vidéos**, **Trends audio**, **Posts recommandés** et **Commentaires**. Le feed audio contient au minimum 50 sons distincts (41 TikTok, 6 Instagram et 3 YouTube), affiche un exemple vidéo lisible directement, le nombre public de vidéos utilisant le son lorsqu’il est disponible, la croissance réellement mesurée et un angle Lofi Girl concret. Il est contrôlé deux fois par jour ; un lot inférieur à 50 ou privé d’une seule miniature TikTok / lecture Instagram n’est pas publié.
 - Navigation interactive : Tableau de bord, « Tous les posts » dépliable par plateforme, « Recommandations » dépliable en Posts recommandés, Commentaires et Trends, puis Roadmap.
 - Veille « Commentaires » : le radar surveille en continu 97 comptes dont une simple publication est un événement (gaming, ciné, séries, anime, musique, tech, créateurs, sport) et repère aussi ce qui perce ailleurs sur YouTube, Instagram, TikTok et X. Deux voies : la watchlist est relue toutes les 15 minutes via les flux Atom publics, la veille large repasse toutes les 6 heures avec un horizon de 7 jours. Chaque carte affiche le palier du moment, la vitesse réellement mesurée, le temps qu'il reste dans la fenêtre où un commentaire peut encore être lu, et trois réactions courtes dans la voix de Lofi Girl (drôle, smart, complice), avec lecture du post, copie en un clic et file locale « à commenter / fait / passé ». Un moment majeur encore dans sa fenêtre est annoncé une fois dans le salon CM sur Discord. Le radar ne poste jamais un commentaire : il propose, un humain relit et publie.
-- Tableau de bord audience : total de followers, évolution issue de relevés réels et taux d’engagement comparable par plateforme. Un filtre commun pilote les deux indicateurs sur 30 jours (vue par défaut), 3 mois, 6 mois, 1 an ou All time. L’engagement utilise tous les posts mesurables publiés dans la fenêtre sélectionnée ; l’évolution des followers repose uniquement sur les observations réellement collectées, sans interpolation ni remplacement des valeurs absentes par zéro.
+- Tableau de bord audience : total de followers, évolution issue de relevés réels, taux d’engagement comparable et analytics natifs par plateforme. Le rattrapage propriétaire contient 365 jours de followers/vues/engagement TikTok, 365 jours d’activité X, 365 jours de variation nette des abonnés YouTube et les fenêtres 30/90 jours réellement fournies par Instagram Insights. Un filtre commun pilote les indicateurs sur 30 jours (vue par défaut), 3 mois, 6 mois, 1 an ou All time. Les jours absents restent vides et un flux net n’est jamais présenté comme un total historique.
 - Catalogue public de **910 contenus visibles** au 4 août 2026 : 519 YouTube (319 Shorts + 200 posts Communauté), 386 TikTok et 5 X.
 - « Tous les posts » ouvre par défaut le classement global YouTube, Instagram, TikTok et X. Son dépliant permet ensuite d’ouvrir une plateforme et ses catégories propres. Les contenus sont triés par likes publics décroissants ; les vues servent uniquement quand les likes ne sont pas disponibles.
 - Le filtre de durée (30 jours, 3 mois, 6 mois, 1 an ou All time) et le tri populaire/récent restent disponibles. Le score analytique composite demeure réservé aux analyses et aux idées ; il n’ordonne plus la liste visible.
@@ -24,11 +24,11 @@ branche `main` contient l’application et les données validées ; la branche
 
 ## Couverture des données publiques
 
-- **YouTube** : uniquement les Shorts et les posts Communauté publics. Les nombres visibles sont des contenus **collectés**, pas des totaux historiques : la fenêtre publique livre actuellement 200 posts Communauté (94 images, 17 sondages et 89 textes), puis arrête sa pagination. Le scanner conserve désormais les relevés de façon cumulative et dédupliquée pour ne plus perdre les posts qui sortent de cette fenêtre. Les vidéos longues et les lives sont entièrement exclus.
+- **YouTube** : uniquement les Shorts et les posts Communauté publics. Les nombres visibles sont des contenus **collectés**, pas des totaux historiques : la fenêtre publique livre actuellement 200 posts Communauté (94 images, 17 sondages et 89 textes), puis arrête sa pagination. Studio fournit aussi la variation nette quotidienne des abonnés sur un an et le compteur actuel exact ; les totaux historiques ne sont pas reconstruits à partir d’une ancre incomplète.
 - **Dates YouTube** : les 319 Shorts dont la date publique n’est pas récupérable restent inclus dans All time et sont exclus des durées bornées, sans leur inventer une date à partir de l’import.
-- **TikTok** : catalogue public visible du profil officiel, avec dates et métriques publiques disponibles.
-- **X** : cinq publications actuellement accessibles par le scanner public. Un historique plus profond nécessite l’API X appropriée.
-- **Instagram** : le profil officiel déclare 1 673 publications, mais l’historique complet et ses insights nécessitent l’autorisation Meta du compte propriétaire. Aucun chiffre n’est inventé en attendant.
+- **TikTok** : catalogue public visible du profil officiel, avec dates et métriques publiques disponibles. L’export Studio propriétaire fournit en plus une année de totaux followers et d’activité quotidiens.
+- **X** : cinq publications actuellement accessibles par le scanner public. L’espace propriétaire fournit désormais une année d’activité quotidienne agrégée ; il ne fournit pas de total followers historique, donc seule la variation nette est tracée rétroactivement.
+- **Instagram** : le profil officiel déclare 1 673 publications. La session propriétaire fournit le total followers exact et les agrégats Insights 30/90 jours ; l’interface web ne fournit pas de série quotidienne rétroactive, donc aucune fausse courbe n’est reconstruite.
 
 La couverture porte sur les contenus encore publics et visibles : les contenus supprimés, privés ou non répertoriés ne peuvent pas être certifiés par un scan public.
 
@@ -43,6 +43,7 @@ pnpm build
 pnpm build:preview
 pnpm test
 pnpm audience:refresh
+pnpm audience:native:import -- --manifest work/owner-analytics/AAAA-MM-JJ/manifest.json
 pnpm audio-trends:refresh
 pnpm comments:watchlist        # résout les identifiants de chaîne manquants
 pnpm comments:refresh          # voie rapide : watchlist, horizon 48 h
@@ -63,4 +64,4 @@ Aucun des deux n'est nécessaire pour que le scan, le classement et la publicati
 
 ## Étape suivante
 
-Importer l’historique propriétaire YouTube Posts pour récupérer les publications Communauté antérieures à la fenêtre publique, puis connecter YouTube Data API afin d’ajouter les likes et dates exactes des Shorts. Connecter ensuite les accès propriétaires Meta, TikTok et X et automatiser les relevés à 1 h, 6 h, 24 h, 72 h et 7 jours.
+Poursuivre les relevés propriétaires quotidiens afin que les courbes exactes se densifient, et compléter YouTube avec les autres métriques Studio exportables sans reconstruire de données absentes.

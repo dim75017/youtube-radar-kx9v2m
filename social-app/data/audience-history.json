@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-08-25T13:24:57.540Z",
+  "generatedAt": "2026-08-25T15:56:31.959Z",
   "platforms": {
     "youtube": {
       "profileUrl": "https://www.youtube.com/@LofiGirl",
@@ -146,8 +146,8 @@
           "label": "Profil public YouTube · 15.8M"
         },
         {
-          "capturedAt": "2026-08-25T12:31:41.157Z",
-          "followers": 15820270,
+          "capturedAt": "2026-08-25T15:52:00.000Z",
+          "followers": 15820413,
           "precision": "exact",
           "sourceUrl": "https://studio.youtube.com/artist/a_lcagLDIDJj5/analytics/tab-overview/period-default/total_reach-all",
           "label": "YouTube Studio · compteur d’abonnés exact vérifié"
@@ -156,10 +156,10 @@
       "engagementByPeriod": {
         "30d": {
           "period": "30d",
-          "calculatedAt": "2026-08-25T13:24:57.540Z",
+          "calculatedAt": "2026-08-25T15:56:31.959Z",
           "formula": "mean(likes+comments)/followers*100",
-          "followers": 15820270,
-          "followersObservedAt": "2026-08-25T12:31:41.157Z",
+          "followers": 15820413,
+          "followersObservedAt": "2026-08-25T15:52:00.000Z",
           "followersPrecision": "exact",
           "sampleSize": 18,
           "averageInteractions": 2964.722222,
@@ -169,10 +169,10 @@
         },
         "90d": {
           "period": "90d",
-          "calculatedAt": "2026-08-25T13:24:57.540Z",
+          "calculatedAt": "2026-08-25T15:56:31.959Z",
           "formula": "mean(likes+comments)/followers*100",
-          "followers": 15820270,
-          "followersObservedAt": "2026-08-25T12:31:41.157Z",
+          "followers": 15820413,
+          "followersObservedAt": "2026-08-25T15:52:00.000Z",
           "followersPrecision": "exact",
           "sampleSize": 164,
           "averageInteractions": 4648.664634,
@@ -182,10 +182,10 @@
         },
         "180d": {
           "period": "180d",
-          "calculatedAt": "2026-08-25T13:24:57.540Z",
+          "calculatedAt": "2026-08-25T15:56:31.959Z",
           "formula": "mean(likes+comments)/followers*100",
-          "followers": 15820270,
-          "followersObservedAt": "2026-08-25T12:31:41.157Z",
+          "followers": 15820413,
+          "followersObservedAt": "2026-08-25T15:52:00.000Z",
           "followersPrecision": "exact",
           "sampleSize": 333,
           "averageInteractions": 4766.321321,
@@ -195,10 +195,10 @@
         },
         "365d": {
           "period": "365d",
-          "calculatedAt": "2026-08-25T13:24:57.540Z",
+          "calculatedAt": "2026-08-25T15:56:31.959Z",
           "formula": "mean(likes+comments)/followers*100",
-          "followers": 15820270,
-          "followersObservedAt": "2026-08-25T12:31:41.157Z",
+          "followers": 15820413,
+          "followersObservedAt": "2026-08-25T15:52:00.000Z",
           "followersPrecision": "exact",
           "sampleSize": 590,
           "averageInteractions": 5031.198305,
@@ -208,14 +208,14 @@
         },
         "all": {
           "period": "all",
-          "calculatedAt": "2026-08-25T13:24:57.540Z",
+          "calculatedAt": "2026-08-25T15:56:31.959Z",
           "formula": "mean(likes+comments)/followers*100",
-          "followers": 15820270,
-          "followersObservedAt": "2026-08-25T12:31:41.157Z",
+          "followers": 15820413,
+          "followersObservedAt": "2026-08-25T15:52:00.000Z",
           "followersPrecision": "exact",
           "sampleSize": 1956,
           "averageInteractions": 15112.899284,
-          "ratePercent": 0.095529,
+          "ratePercent": 0.095528,
           "oldestPostAt": "2019-08-06T15:13:28.403Z",
           "newestPostAt": "2026-08-04T14:33:28.403Z"
         }
@@ -279,71 +279,78 @@
           "precision": "exact",
           "sourceUrl": "https://www.instagram.com/lofigirl/",
           "label": "Profil public Instagram · compteur entier exposé par la page"
+        },
+        {
+          "capturedAt": "2026-08-25T15:35:00.000Z",
+          "followers": 1430006,
+          "precision": "exact",
+          "sourceUrl": "https://www.instagram.com/accounts/insights/?timeframe=90",
+          "label": "Instagram Insights · total followers exact vérifié"
         }
       ],
       "engagementByPeriod": {
         "30d": {
           "period": "30d",
-          "calculatedAt": "2026-08-25T13:24:57.540Z",
+          "calculatedAt": "2026-08-25T15:56:31.959Z",
           "formula": "mean(likes+comments)/followers*100",
-          "followers": 1429801,
-          "followersObservedAt": "2026-08-22T06:02:00.687Z",
+          "followers": 1430006,
+          "followersObservedAt": "2026-08-25T15:35:00.000Z",
           "followersPrecision": "exact",
           "sampleSize": 12,
           "averageInteractions": 16243.833333,
-          "ratePercent": 1.136091,
+          "ratePercent": 1.135928,
           "oldestPostAt": "2026-07-27T12:00:00.000Z",
           "newestPostAt": "2026-08-05T12:00:00.000Z"
         },
         "90d": {
           "period": "90d",
-          "calculatedAt": "2026-08-25T13:24:57.540Z",
+          "calculatedAt": "2026-08-25T15:56:31.959Z",
           "formula": "mean(likes+comments)/followers*100",
-          "followers": 1429801,
-          "followersObservedAt": "2026-08-22T06:02:00.687Z",
+          "followers": 1430006,
+          "followersObservedAt": "2026-08-25T15:35:00.000Z",
           "followersPrecision": "exact",
           "sampleSize": 84,
           "averageInteractions": 5329.416667,
-          "ratePercent": 0.372738,
+          "ratePercent": 0.372685,
           "oldestPostAt": "2026-05-28T12:00:00.000Z",
           "newestPostAt": "2026-08-05T12:00:00.000Z"
         },
         "180d": {
           "period": "180d",
-          "calculatedAt": "2026-08-25T13:24:57.540Z",
+          "calculatedAt": "2026-08-25T15:56:31.959Z",
           "formula": "mean(likes+comments)/followers*100",
-          "followers": 1429801,
-          "followersObservedAt": "2026-08-22T06:02:00.687Z",
+          "followers": 1430006,
+          "followersObservedAt": "2026-08-25T15:35:00.000Z",
           "followersPrecision": "exact",
           "sampleSize": 189,
           "averageInteractions": 4308.62963,
-          "ratePercent": 0.301345,
+          "ratePercent": 0.301302,
           "oldestPostAt": "2026-02-27T12:00:00.000Z",
           "newestPostAt": "2026-08-05T12:00:00.000Z"
         },
         "365d": {
           "period": "365d",
-          "calculatedAt": "2026-08-25T13:24:57.540Z",
+          "calculatedAt": "2026-08-25T15:56:31.959Z",
           "formula": "mean(likes+comments)/followers*100",
-          "followers": 1429801,
-          "followersObservedAt": "2026-08-22T06:02:00.687Z",
+          "followers": 1430006,
+          "followersObservedAt": "2026-08-25T15:35:00.000Z",
           "followersPrecision": "exact",
           "sampleSize": 371,
           "averageInteractions": 8626.137466,
-          "ratePercent": 0.60331,
+          "ratePercent": 0.603224,
           "oldestPostAt": "2025-08-26T12:00:00.000Z",
           "newestPostAt": "2026-08-05T12:00:00.000Z"
         },
         "all": {
           "period": "all",
-          "calculatedAt": "2026-08-25T13:24:57.540Z",
+          "calculatedAt": "2026-08-25T15:56:31.959Z",
           "formula": "mean(likes+comments)/followers*100",
-          "followers": 1429801,
-          "followersObservedAt": "2026-08-22T06:02:00.687Z",
+          "followers": 1430006,
+          "followersObservedAt": "2026-08-25T15:35:00.000Z",
           "followersPrecision": "exact",
           "sampleSize": 1675,
           "averageInteractions": 15838.410746,
-          "ratePercent": 1.107735,
+          "ratePercent": 1.107577,
           "oldestPostAt": "2019-06-05T12:00:00.000Z",
           "newestPostAt": "2026-08-05T12:00:00.000Z"
         }
@@ -367,95 +374,2559 @@
           "label": "Publication officielle : 1 million d’abonnés TikTok"
         },
         {
-          "capturedAt": "2026-08-11T18:11:24.826Z",
-          "followers": 1548818,
+          "capturedAt": "2025-08-24T10:00:00.000Z",
+          "followers": 1449984,
           "precision": "exact",
-          "sourceUrl": "https://www.tiktok.com/@lofigirl",
-          "label": "Métadonnée publique TikTok statsV2"
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
         },
         {
-          "capturedAt": "2026-08-12T20:53:27.478Z",
-          "followers": 1548659,
+          "capturedAt": "2025-08-25T10:00:00.000Z",
+          "followers": 1450302,
           "precision": "exact",
-          "sourceUrl": "https://www.tiktok.com/@lofigirl",
-          "label": "Métadonnée publique TikTok statsV2"
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
         },
         {
-          "capturedAt": "2026-08-13T18:13:55.292Z",
-          "followers": 1548556,
+          "capturedAt": "2025-08-26T10:00:00.000Z",
+          "followers": 1450771,
           "precision": "exact",
-          "sourceUrl": "https://www.tiktok.com/@lofigirl",
-          "label": "Métadonnée publique TikTok statsV2"
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
         },
         {
-          "capturedAt": "2026-08-14T09:46:28.590Z",
-          "followers": 1547519,
+          "capturedAt": "2025-08-27T10:00:00.000Z",
+          "followers": 1451418,
           "precision": "exact",
-          "sourceUrl": "https://www.tiktok.com/@lofigirl",
-          "label": "Métadonnée publique TikTok statsV2"
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
         },
         {
-          "capturedAt": "2026-08-15T07:49:03.422Z",
-          "followers": 1547430,
+          "capturedAt": "2025-08-28T10:00:00.000Z",
+          "followers": 1452191,
           "precision": "exact",
-          "sourceUrl": "https://www.tiktok.com/@lofigirl",
-          "label": "Métadonnée publique TikTok statsV2"
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
         },
         {
-          "capturedAt": "2026-08-16T07:53:31.380Z",
-          "followers": 1547258,
+          "capturedAt": "2025-08-29T10:00:00.000Z",
+          "followers": 1453224,
           "precision": "exact",
-          "sourceUrl": "https://www.tiktok.com/@lofigirl",
-          "label": "Métadonnée publique TikTok statsV2"
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
         },
         {
-          "capturedAt": "2026-08-17T07:35:04.781Z",
-          "followers": 1547133,
+          "capturedAt": "2025-08-30T10:00:00.000Z",
+          "followers": 1454099,
           "precision": "exact",
-          "sourceUrl": "https://www.tiktok.com/@lofigirl",
-          "label": "Métadonnée publique TikTok statsV2"
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
         },
         {
-          "capturedAt": "2026-08-18T18:06:11.261Z",
-          "followers": 1547911,
+          "capturedAt": "2025-08-31T10:00:00.000Z",
+          "followers": 1455031,
           "precision": "exact",
-          "sourceUrl": "https://www.tiktok.com/@lofigirl",
-          "label": "Métadonnée publique TikTok statsV2"
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
         },
         {
-          "capturedAt": "2026-08-19T19:11:16.816Z",
-          "followers": 1547780,
+          "capturedAt": "2025-09-01T10:00:00.000Z",
+          "followers": 1462561,
           "precision": "exact",
-          "sourceUrl": "https://www.tiktok.com/@lofigirl",
-          "label": "Métadonnée publique TikTok statsV2"
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
         },
         {
-          "capturedAt": "2026-08-20T13:21:13.375Z",
-          "followers": 1547668,
+          "capturedAt": "2025-09-02T10:00:00.000Z",
+          "followers": 1496509,
           "precision": "exact",
-          "sourceUrl": "https://www.tiktok.com/@lofigirl",
-          "label": "Métadonnée publique TikTok statsV2"
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
         },
         {
-          "capturedAt": "2026-08-21T07:25:33.966Z",
-          "followers": 1546590,
+          "capturedAt": "2025-09-03T10:00:00.000Z",
+          "followers": 1515215,
           "precision": "exact",
-          "sourceUrl": "https://www.tiktok.com/@lofigirl",
-          "label": "Métadonnée publique TikTok statsV2"
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
         },
         {
-          "capturedAt": "2026-08-22T07:10:26.822Z",
-          "followers": 1546453,
+          "capturedAt": "2025-09-04T10:00:00.000Z",
+          "followers": 1523449,
           "precision": "exact",
-          "sourceUrl": "https://www.tiktok.com/@lofigirl",
-          "label": "Métadonnée publique TikTok statsV2"
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
         },
         {
-          "capturedAt": "2026-08-23T07:11:43.423Z",
-          "followers": 1546277,
+          "capturedAt": "2025-09-05T10:00:00.000Z",
+          "followers": 1525217,
           "precision": "exact",
-          "sourceUrl": "https://www.tiktok.com/@lofigirl",
-          "label": "Métadonnée publique TikTok statsV2"
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-06T10:00:00.000Z",
+          "followers": 1527642,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-07T10:00:00.000Z",
+          "followers": 1528946,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-08T10:00:00.000Z",
+          "followers": 1529556,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-09T10:00:00.000Z",
+          "followers": 1529973,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-10T10:00:00.000Z",
+          "followers": 1530260,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-11T10:00:00.000Z",
+          "followers": 1530544,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-12T10:00:00.000Z",
+          "followers": 1530784,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-13T10:00:00.000Z",
+          "followers": 1531566,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-14T10:00:00.000Z",
+          "followers": 1531895,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-15T10:00:00.000Z",
+          "followers": 1532053,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-16T10:00:00.000Z",
+          "followers": 1532250,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-17T10:00:00.000Z",
+          "followers": 1532465,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-18T10:00:00.000Z",
+          "followers": 1532585,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-19T10:00:00.000Z",
+          "followers": 1532935,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-20T10:00:00.000Z",
+          "followers": 1533519,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-21T10:00:00.000Z",
+          "followers": 1534073,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-22T10:00:00.000Z",
+          "followers": 1534258,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-23T10:00:00.000Z",
+          "followers": 1534392,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-24T10:00:00.000Z",
+          "followers": 1534510,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-25T10:00:00.000Z",
+          "followers": 1534665,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-26T10:00:00.000Z",
+          "followers": 1534951,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-27T10:00:00.000Z",
+          "followers": 1535266,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-28T10:00:00.000Z",
+          "followers": 1535551,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-29T10:00:00.000Z",
+          "followers": 1535705,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-09-30T10:00:00.000Z",
+          "followers": 1535840,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-01T10:00:00.000Z",
+          "followers": 1535899,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-02T10:00:00.000Z",
+          "followers": 1535928,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-03T10:00:00.000Z",
+          "followers": 1535930,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-04T10:00:00.000Z",
+          "followers": 1535903,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-05T10:00:00.000Z",
+          "followers": 1535796,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-06T10:00:00.000Z",
+          "followers": 1535780,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-07T10:00:00.000Z",
+          "followers": 1535686,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-08T10:00:00.000Z",
+          "followers": 1535597,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-09T10:00:00.000Z",
+          "followers": 1535533,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-10T10:00:00.000Z",
+          "followers": 1535541,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-11T10:00:00.000Z",
+          "followers": 1535501,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-12T10:00:00.000Z",
+          "followers": 1535431,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-13T10:00:00.000Z",
+          "followers": 1535330,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-14T10:00:00.000Z",
+          "followers": 1535293,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-15T10:00:00.000Z",
+          "followers": 1535355,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-16T10:00:00.000Z",
+          "followers": 1535376,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-17T10:00:00.000Z",
+          "followers": 1535388,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-18T10:00:00.000Z",
+          "followers": 1535318,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-19T10:00:00.000Z",
+          "followers": 1535185,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-20T10:00:00.000Z",
+          "followers": 1535112,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-21T10:00:00.000Z",
+          "followers": 1535071,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-22T10:00:00.000Z",
+          "followers": 1535043,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-23T10:00:00.000Z",
+          "followers": 1534939,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-24T10:00:00.000Z",
+          "followers": 1534885,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-25T10:00:00.000Z",
+          "followers": 1534840,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-26T10:00:00.000Z",
+          "followers": 1534802,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-27T10:00:00.000Z",
+          "followers": 1534694,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-28T10:00:00.000Z",
+          "followers": 1534589,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-29T10:00:00.000Z",
+          "followers": 1534543,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-30T10:00:00.000Z",
+          "followers": 1534499,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-10-31T10:00:00.000Z",
+          "followers": 1534444,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-01T10:00:00.000Z",
+          "followers": 1534328,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-02T10:00:00.000Z",
+          "followers": 1534117,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-03T10:00:00.000Z",
+          "followers": 1534006,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-04T10:00:00.000Z",
+          "followers": 1533876,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-05T10:00:00.000Z",
+          "followers": 1533761,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-06T10:00:00.000Z",
+          "followers": 1533698,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-07T10:00:00.000Z",
+          "followers": 1533612,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-08T10:00:00.000Z",
+          "followers": 1533469,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-09T10:00:00.000Z",
+          "followers": 1533249,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-10T10:00:00.000Z",
+          "followers": 1533104,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-11T10:00:00.000Z",
+          "followers": 1532952,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-12T10:00:00.000Z",
+          "followers": 1532802,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-13T10:00:00.000Z",
+          "followers": 1532652,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-14T10:00:00.000Z",
+          "followers": 1532544,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-15T10:00:00.000Z",
+          "followers": 1532393,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-16T10:00:00.000Z",
+          "followers": 1532194,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-17T10:00:00.000Z",
+          "followers": 1532059,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-18T10:00:00.000Z",
+          "followers": 1531933,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-19T10:00:00.000Z",
+          "followers": 1531841,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-20T10:00:00.000Z",
+          "followers": 1532402,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-21T10:00:00.000Z",
+          "followers": 1532651,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-22T10:00:00.000Z",
+          "followers": 1532539,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-23T10:00:00.000Z",
+          "followers": 1532381,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-24T10:00:00.000Z",
+          "followers": 1532219,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-25T10:00:00.000Z",
+          "followers": 1532058,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-26T10:00:00.000Z",
+          "followers": 1531883,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-27T10:00:00.000Z",
+          "followers": 1531699,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-28T10:00:00.000Z",
+          "followers": 1531688,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-29T10:00:00.000Z",
+          "followers": 1531731,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-11-30T10:00:00.000Z",
+          "followers": 1531807,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-01T10:00:00.000Z",
+          "followers": 1531860,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-02T10:00:00.000Z",
+          "followers": 1531884,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-03T10:00:00.000Z",
+          "followers": 1531963,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-04T10:00:00.000Z",
+          "followers": 1532017,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-05T10:00:00.000Z",
+          "followers": 1532063,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-06T10:00:00.000Z",
+          "followers": 1532039,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-07T10:00:00.000Z",
+          "followers": 1531984,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-08T10:00:00.000Z",
+          "followers": 1531958,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-09T10:00:00.000Z",
+          "followers": 1531952,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-10T10:00:00.000Z",
+          "followers": 1532037,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-11T10:00:00.000Z",
+          "followers": 1532162,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-12T10:00:00.000Z",
+          "followers": 1532295,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-13T10:00:00.000Z",
+          "followers": 1532273,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-14T10:00:00.000Z",
+          "followers": 1532372,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-15T10:00:00.000Z",
+          "followers": 1532349,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-16T10:00:00.000Z",
+          "followers": 1532333,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-17T10:00:00.000Z",
+          "followers": 1532298,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-18T10:00:00.000Z",
+          "followers": 1532279,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-19T10:00:00.000Z",
+          "followers": 1532356,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-20T10:00:00.000Z",
+          "followers": 1532633,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-21T10:00:00.000Z",
+          "followers": 1532840,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-22T10:00:00.000Z",
+          "followers": 1532753,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-23T10:00:00.000Z",
+          "followers": 1532656,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-24T10:00:00.000Z",
+          "followers": 1532513,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-25T10:00:00.000Z",
+          "followers": 1532387,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-26T10:00:00.000Z",
+          "followers": 1532216,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-27T10:00:00.000Z",
+          "followers": 1532015,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-28T10:00:00.000Z",
+          "followers": 1531778,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-29T10:00:00.000Z",
+          "followers": 1531570,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-30T10:00:00.000Z",
+          "followers": 1531323,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2025-12-31T10:00:00.000Z",
+          "followers": 1531121,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-01T10:00:00.000Z",
+          "followers": 1530901,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-02T10:00:00.000Z",
+          "followers": 1530641,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-03T10:00:00.000Z",
+          "followers": 1530455,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-04T10:00:00.000Z",
+          "followers": 1530223,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-05T10:00:00.000Z",
+          "followers": 1530069,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-06T10:00:00.000Z",
+          "followers": 1529948,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-07T10:00:00.000Z",
+          "followers": 1529787,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-08T10:00:00.000Z",
+          "followers": 1529635,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-09T10:00:00.000Z",
+          "followers": 1529502,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-10T10:00:00.000Z",
+          "followers": 1529297,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-11T10:00:00.000Z",
+          "followers": 1529097,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-12T10:00:00.000Z",
+          "followers": 1528914,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-13T10:00:00.000Z",
+          "followers": 1528752,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-14T10:00:00.000Z",
+          "followers": 1528638,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-15T10:00:00.000Z",
+          "followers": 1528493,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-16T10:00:00.000Z",
+          "followers": 1528351,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-17T10:00:00.000Z",
+          "followers": 1528227,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-18T10:00:00.000Z",
+          "followers": 1528133,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-19T10:00:00.000Z",
+          "followers": 1528228,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-20T10:00:00.000Z",
+          "followers": 1528216,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-21T10:00:00.000Z",
+          "followers": 1528117,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-22T10:00:00.000Z",
+          "followers": 1531420,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-23T10:00:00.000Z",
+          "followers": 1539977,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-24T10:00:00.000Z",
+          "followers": 1543648,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-25T10:00:00.000Z",
+          "followers": 1546446,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-26T10:00:00.000Z",
+          "followers": 1548738,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-27T10:00:00.000Z",
+          "followers": 1549840,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-28T10:00:00.000Z",
+          "followers": 1550006,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-29T10:00:00.000Z",
+          "followers": 1550095,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-30T10:00:00.000Z",
+          "followers": 1550286,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-01-31T10:00:00.000Z",
+          "followers": 1550329,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-01T10:00:00.000Z",
+          "followers": 1550236,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-02T10:00:00.000Z",
+          "followers": 1550137,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-03T10:00:00.000Z",
+          "followers": 1550033,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-04T10:00:00.000Z",
+          "followers": 1549929,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-05T10:00:00.000Z",
+          "followers": 1549841,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-06T10:00:00.000Z",
+          "followers": 1549768,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-07T10:00:00.000Z",
+          "followers": 1549604,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-08T10:00:00.000Z",
+          "followers": 1549452,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-09T10:00:00.000Z",
+          "followers": 1549298,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-10T10:00:00.000Z",
+          "followers": 1549153,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-11T10:00:00.000Z",
+          "followers": 1549025,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-12T10:00:00.000Z",
+          "followers": 1548891,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-13T10:00:00.000Z",
+          "followers": 1548789,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-14T10:00:00.000Z",
+          "followers": 1548673,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-15T10:00:00.000Z",
+          "followers": 1548535,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-16T10:00:00.000Z",
+          "followers": 1548387,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-17T10:00:00.000Z",
+          "followers": 1548284,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-18T10:00:00.000Z",
+          "followers": 1548207,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-19T10:00:00.000Z",
+          "followers": 1548228,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-20T10:00:00.000Z",
+          "followers": 1548893,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-21T10:00:00.000Z",
+          "followers": 1549434,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-22T10:00:00.000Z",
+          "followers": 1549689,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-23T10:00:00.000Z",
+          "followers": 1549717,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-24T10:00:00.000Z",
+          "followers": 1549697,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-25T10:00:00.000Z",
+          "followers": 1549657,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-26T10:00:00.000Z",
+          "followers": 1549664,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-27T10:00:00.000Z",
+          "followers": 1549729,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-02-28T10:00:00.000Z",
+          "followers": 1549712,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-01T10:00:00.000Z",
+          "followers": 1549667,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-02T10:00:00.000Z",
+          "followers": 1549609,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-03T10:00:00.000Z",
+          "followers": 1549517,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-04T10:00:00.000Z",
+          "followers": 1549459,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-05T10:00:00.000Z",
+          "followers": 1549412,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-06T10:00:00.000Z",
+          "followers": 1549341,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-07T10:00:00.000Z",
+          "followers": 1549277,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-08T10:00:00.000Z",
+          "followers": 1549128,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-09T10:00:00.000Z",
+          "followers": 1549076,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-10T10:00:00.000Z",
+          "followers": 1549051,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-11T10:00:00.000Z",
+          "followers": 1548968,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-12T10:00:00.000Z",
+          "followers": 1548885,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-13T10:00:00.000Z",
+          "followers": 1548823,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-14T10:00:00.000Z",
+          "followers": 1548788,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-15T10:00:00.000Z",
+          "followers": 1548817,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-16T10:00:00.000Z",
+          "followers": 1548772,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-17T10:00:00.000Z",
+          "followers": 1548722,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-18T10:00:00.000Z",
+          "followers": 1548750,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-19T10:00:00.000Z",
+          "followers": 1548676,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-20T10:00:00.000Z",
+          "followers": 1548601,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-21T10:00:00.000Z",
+          "followers": 1548591,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-22T10:00:00.000Z",
+          "followers": 1548512,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-23T10:00:00.000Z",
+          "followers": 1548478,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-24T10:00:00.000Z",
+          "followers": 1548452,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-25T10:00:00.000Z",
+          "followers": 1548426,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-26T10:00:00.000Z",
+          "followers": 1548359,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-27T10:00:00.000Z",
+          "followers": 1548293,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-28T10:00:00.000Z",
+          "followers": 1548232,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-29T10:00:00.000Z",
+          "followers": 1548155,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-30T10:00:00.000Z",
+          "followers": 1548079,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-03-31T10:00:00.000Z",
+          "followers": 1547994,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-01T10:00:00.000Z",
+          "followers": 1547955,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-02T10:00:00.000Z",
+          "followers": 1547909,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-03T10:00:00.000Z",
+          "followers": 1547836,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-04T10:00:00.000Z",
+          "followers": 1547745,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-05T10:00:00.000Z",
+          "followers": 1547659,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-06T10:00:00.000Z",
+          "followers": 1547561,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-07T10:00:00.000Z",
+          "followers": 1547463,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-08T10:00:00.000Z",
+          "followers": 1547384,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-09T10:00:00.000Z",
+          "followers": 1547297,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-10T10:00:00.000Z",
+          "followers": 1547174,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-11T10:00:00.000Z",
+          "followers": 1547082,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-12T10:00:00.000Z",
+          "followers": 1546967,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-13T10:00:00.000Z",
+          "followers": 1546928,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-14T10:00:00.000Z",
+          "followers": 1546892,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-15T10:00:00.000Z",
+          "followers": 1546848,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-16T10:00:00.000Z",
+          "followers": 1546790,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-17T10:00:00.000Z",
+          "followers": 1546739,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-18T10:00:00.000Z",
+          "followers": 1546619,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-19T10:00:00.000Z",
+          "followers": 1546485,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-20T10:00:00.000Z",
+          "followers": 1546410,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-21T10:00:00.000Z",
+          "followers": 1546331,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-22T10:00:00.000Z",
+          "followers": 1546234,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-23T10:00:00.000Z",
+          "followers": 1546167,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-24T10:00:00.000Z",
+          "followers": 1546088,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-25T10:00:00.000Z",
+          "followers": 1545979,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-26T10:00:00.000Z",
+          "followers": 1545855,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-27T10:00:00.000Z",
+          "followers": 1545769,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-28T10:00:00.000Z",
+          "followers": 1545761,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-29T10:00:00.000Z",
+          "followers": 1546044,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-04-30T10:00:00.000Z",
+          "followers": 1546185,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-01T10:00:00.000Z",
+          "followers": 1546181,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-02T10:00:00.000Z",
+          "followers": 1546167,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-03T10:00:00.000Z",
+          "followers": 1546045,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-04T10:00:00.000Z",
+          "followers": 1545976,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-05T10:00:00.000Z",
+          "followers": 1545894,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-06T10:00:00.000Z",
+          "followers": 1545787,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-07T10:00:00.000Z",
+          "followers": 1545764,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-08T10:00:00.000Z",
+          "followers": 1546505,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-09T10:00:00.000Z",
+          "followers": 1546774,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-10T10:00:00.000Z",
+          "followers": 1546863,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-11T10:00:00.000Z",
+          "followers": 1546909,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-12T10:00:00.000Z",
+          "followers": 1546928,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-13T10:00:00.000Z",
+          "followers": 1546879,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-14T10:00:00.000Z",
+          "followers": 1546788,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-15T10:00:00.000Z",
+          "followers": 1546761,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-16T10:00:00.000Z",
+          "followers": 1546754,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-17T10:00:00.000Z",
+          "followers": 1546687,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-18T10:00:00.000Z",
+          "followers": 1546664,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-19T10:00:00.000Z",
+          "followers": 1546603,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-20T10:00:00.000Z",
+          "followers": 1546531,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-21T10:00:00.000Z",
+          "followers": 1546442,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-22T10:00:00.000Z",
+          "followers": 1546344,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-23T10:00:00.000Z",
+          "followers": 1546250,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-24T10:00:00.000Z",
+          "followers": 1546128,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-25T10:00:00.000Z",
+          "followers": 1546040,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-26T10:00:00.000Z",
+          "followers": 1545965,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-27T10:00:00.000Z",
+          "followers": 1545899,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-28T10:00:00.000Z",
+          "followers": 1545825,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-29T10:00:00.000Z",
+          "followers": 1545730,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-30T10:00:00.000Z",
+          "followers": 1545613,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-05-31T10:00:00.000Z",
+          "followers": 1545550,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-01T10:00:00.000Z",
+          "followers": 1545487,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-02T10:00:00.000Z",
+          "followers": 1545389,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-03T10:00:00.000Z",
+          "followers": 1545324,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-04T10:00:00.000Z",
+          "followers": 1545242,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-05T10:00:00.000Z",
+          "followers": 1545188,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-06T10:00:00.000Z",
+          "followers": 1545092,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-07T10:00:00.000Z",
+          "followers": 1545009,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-08T10:00:00.000Z",
+          "followers": 1544930,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-09T10:00:00.000Z",
+          "followers": 1544820,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-10T10:00:00.000Z",
+          "followers": 1544750,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-11T10:00:00.000Z",
+          "followers": 1544692,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-12T10:00:00.000Z",
+          "followers": 1544616,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-13T10:00:00.000Z",
+          "followers": 1544569,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-14T10:00:00.000Z",
+          "followers": 1544518,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-15T10:00:00.000Z",
+          "followers": 1544457,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-16T10:00:00.000Z",
+          "followers": 1544365,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-17T10:00:00.000Z",
+          "followers": 1544253,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-18T10:00:00.000Z",
+          "followers": 1544097,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-19T10:00:00.000Z",
+          "followers": 1544031,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-20T10:00:00.000Z",
+          "followers": 1543987,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-21T10:00:00.000Z",
+          "followers": 1543877,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-22T10:00:00.000Z",
+          "followers": 1543820,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-23T10:00:00.000Z",
+          "followers": 1543741,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-24T10:00:00.000Z",
+          "followers": 1543626,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-25T10:00:00.000Z",
+          "followers": 1543522,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-26T10:00:00.000Z",
+          "followers": 1543437,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-27T10:00:00.000Z",
+          "followers": 1543294,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-28T10:00:00.000Z",
+          "followers": 1543160,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-29T10:00:00.000Z",
+          "followers": 1543042,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-06-30T10:00:00.000Z",
+          "followers": 1542899,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-01T10:00:00.000Z",
+          "followers": 1542744,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-02T10:00:00.000Z",
+          "followers": 1543158,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-03T10:00:00.000Z",
+          "followers": 1543291,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-04T10:00:00.000Z",
+          "followers": 1543231,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-05T10:00:00.000Z",
+          "followers": 1543070,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-06T10:00:00.000Z",
+          "followers": 1542867,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-07T10:00:00.000Z",
+          "followers": 1542725,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-08T10:00:00.000Z",
+          "followers": 1542685,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-09T10:00:00.000Z",
+          "followers": 1542582,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-10T10:00:00.000Z",
+          "followers": 1542449,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-11T10:00:00.000Z",
+          "followers": 1542296,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-12T10:00:00.000Z",
+          "followers": 1542117,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-13T10:00:00.000Z",
+          "followers": 1541963,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-14T10:00:00.000Z",
+          "followers": 1541770,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-15T10:00:00.000Z",
+          "followers": 1541597,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-16T10:00:00.000Z",
+          "followers": 1541474,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-17T10:00:00.000Z",
+          "followers": 1541381,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-18T10:00:00.000Z",
+          "followers": 1541258,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-19T10:00:00.000Z",
+          "followers": 1541077,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-20T10:00:00.000Z",
+          "followers": 1540926,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-21T10:00:00.000Z",
+          "followers": 1540802,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-22T10:00:00.000Z",
+          "followers": 1540647,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-23T10:00:00.000Z",
+          "followers": 1540469,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-24T10:00:00.000Z",
+          "followers": 1540290,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-25T10:00:00.000Z",
+          "followers": 1540116,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-26T10:00:00.000Z",
+          "followers": 1539914,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-27T10:00:00.000Z",
+          "followers": 1539729,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-28T10:00:00.000Z",
+          "followers": 1539520,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-29T10:00:00.000Z",
+          "followers": 1539330,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-30T10:00:00.000Z",
+          "followers": 1539160,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-07-31T10:00:00.000Z",
+          "followers": 1539012,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-01T10:00:00.000Z",
+          "followers": 1540220,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-02T10:00:00.000Z",
+          "followers": 1546246,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-03T10:00:00.000Z",
+          "followers": 1548260,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-04T10:00:00.000Z",
+          "followers": 1549131,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-05T10:00:00.000Z",
+          "followers": 1549418,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-06T10:00:00.000Z",
+          "followers": 1549472,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-07T10:00:00.000Z",
+          "followers": 1549374,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-08T10:00:00.000Z",
+          "followers": 1549237,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-09T10:00:00.000Z",
+          "followers": 1549079,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-10T10:00:00.000Z",
+          "followers": 1548930,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-11T10:00:00.000Z",
+          "followers": 1548772,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-12T10:00:00.000Z",
+          "followers": 1548640,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-13T10:00:00.000Z",
+          "followers": 1548552,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-14T10:00:00.000Z",
+          "followers": 1548431,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-15T10:00:00.000Z",
+          "followers": 1548308,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-16T10:00:00.000Z",
+          "followers": 1548140,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-17T10:00:00.000Z",
+          "followers": 1548009,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-18T10:00:00.000Z",
+          "followers": 1547882,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-19T10:00:00.000Z",
+          "followers": 1547751,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-20T10:00:00.000Z",
+          "followers": 1547598,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-21T10:00:00.000Z",
+          "followers": 1547449,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-22T10:00:00.000Z",
+          "followers": 1547327,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
+        },
+        {
+          "capturedAt": "2026-08-23T10:00:00.000Z",
+          "followers": 1547160,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+          "label": "TikTok Studio · total followers quotidien exporté"
         },
         {
           "capturedAt": "2026-08-24T07:39:59.555Z",
@@ -475,7 +2946,7 @@
       "engagementByPeriod": {
         "30d": {
           "period": "30d",
-          "calculatedAt": "2026-08-25T13:24:57.540Z",
+          "calculatedAt": "2026-08-25T15:56:31.959Z",
           "formula": "mean(likes+comments)/followers*100",
           "followers": 1545959,
           "followersObservedAt": "2026-08-25T13:24:57.540Z",
@@ -488,7 +2959,7 @@
         },
         "90d": {
           "period": "90d",
-          "calculatedAt": "2026-08-25T13:24:57.540Z",
+          "calculatedAt": "2026-08-25T15:56:31.959Z",
           "formula": "mean(likes+comments)/followers*100",
           "followers": 1545959,
           "followersObservedAt": "2026-08-25T13:24:57.540Z",
@@ -501,7 +2972,7 @@
         },
         "180d": {
           "period": "180d",
-          "calculatedAt": "2026-08-25T13:24:57.540Z",
+          "calculatedAt": "2026-08-25T15:56:31.959Z",
           "formula": "mean(likes+comments)/followers*100",
           "followers": 1545959,
           "followersObservedAt": "2026-08-25T13:24:57.540Z",
@@ -514,7 +2985,7 @@
         },
         "365d": {
           "period": "365d",
-          "calculatedAt": "2026-08-25T13:24:57.540Z",
+          "calculatedAt": "2026-08-25T15:56:31.959Z",
           "formula": "mean(likes+comments)/followers*100",
           "followers": 1545959,
           "followersObservedAt": "2026-08-25T13:24:57.540Z",
@@ -527,7 +2998,7 @@
         },
         "all": {
           "period": "all",
-          "calculatedAt": "2026-08-25T13:24:57.540Z",
+          "calculatedAt": "2026-08-25T15:56:31.959Z",
           "formula": "mean(likes+comments)/followers*100",
           "followers": 1545959,
           "followersObservedAt": "2026-08-25T13:24:57.540Z",
@@ -619,71 +3090,78 @@
           "precision": "exact",
           "sourceUrl": "https://api.x.com/2/users/by/username/lofigirl",
           "label": "X API v2 User Lookup · public_metrics.followers_count"
+        },
+        {
+          "capturedAt": "2026-08-25T15:48:00.000Z",
+          "followers": 260680,
+          "precision": "exact",
+          "sourceUrl": "https://x.com/lofigirl",
+          "label": "X · compteur de followers exact vérifié"
         }
       ],
       "engagementByPeriod": {
         "30d": {
           "period": "30d",
-          "calculatedAt": "2026-08-25T13:24:57.540Z",
+          "calculatedAt": "2026-08-25T15:56:31.959Z",
           "formula": "mean(likes+comments)/followers*100",
-          "followers": 260831,
-          "followersObservedAt": "2026-08-20T07:24:38.606Z",
+          "followers": 260680,
+          "followersObservedAt": "2026-08-25T15:48:00.000Z",
           "followersPrecision": "exact",
-          "sampleSize": 201,
-          "averageInteractions": 78.004975,
-          "ratePercent": 0.029906,
-          "oldestPostAt": "2026-07-26T15:30:34.000Z",
+          "sampleSize": 200,
+          "averageInteractions": 78.26,
+          "ratePercent": 0.030021,
+          "oldestPostAt": "2026-07-26T18:02:33.000Z",
           "newestPostAt": "2026-08-19T21:02:25.000Z"
         },
         "90d": {
           "period": "90d",
-          "calculatedAt": "2026-08-25T13:24:57.540Z",
+          "calculatedAt": "2026-08-25T15:56:31.959Z",
           "formula": "mean(likes+comments)/followers*100",
-          "followers": 260831,
-          "followersObservedAt": "2026-08-20T07:24:38.606Z",
+          "followers": 260680,
+          "followersObservedAt": "2026-08-25T15:48:00.000Z",
           "followersPrecision": "exact",
-          "sampleSize": 794,
-          "averageInteractions": 57.599496,
-          "ratePercent": 0.022083,
-          "oldestPostAt": "2026-05-27T15:06:29.000Z",
+          "sampleSize": 793,
+          "averageInteractions": 57.619168,
+          "ratePercent": 0.022103,
+          "oldestPostAt": "2026-05-27T17:25:03.000Z",
           "newestPostAt": "2026-08-19T21:02:25.000Z"
         },
         "180d": {
           "period": "180d",
-          "calculatedAt": "2026-08-25T13:24:57.540Z",
+          "calculatedAt": "2026-08-25T15:56:31.959Z",
           "formula": "mean(likes+comments)/followers*100",
-          "followers": 260831,
-          "followersObservedAt": "2026-08-20T07:24:38.606Z",
+          "followers": 260680,
+          "followersObservedAt": "2026-08-25T15:48:00.000Z",
           "followersPrecision": "exact",
           "sampleSize": 1414,
           "averageInteractions": 60.938472,
-          "ratePercent": 0.023363,
+          "ratePercent": 0.023377,
           "oldestPostAt": "2026-02-26T16:04:11.000Z",
           "newestPostAt": "2026-08-19T21:02:25.000Z"
         },
         "365d": {
           "period": "365d",
-          "calculatedAt": "2026-08-25T13:24:57.540Z",
+          "calculatedAt": "2026-08-25T15:56:31.959Z",
           "formula": "mean(likes+comments)/followers*100",
-          "followers": 260831,
-          "followersObservedAt": "2026-08-20T07:24:38.606Z",
+          "followers": 260680,
+          "followersObservedAt": "2026-08-25T15:48:00.000Z",
           "followersPrecision": "exact",
           "sampleSize": 2070,
           "averageInteractions": 168.825121,
-          "ratePercent": 0.064726,
+          "ratePercent": 0.064763,
           "oldestPostAt": "2025-08-25T16:37:00.000Z",
           "newestPostAt": "2026-08-19T21:02:25.000Z"
         },
         "all": {
           "period": "all",
-          "calculatedAt": "2026-08-25T13:24:57.540Z",
+          "calculatedAt": "2026-08-25T15:56:31.959Z",
           "formula": "mean(likes+comments)/followers*100",
-          "followers": 260831,
-          "followersObservedAt": "2026-08-20T07:24:38.606Z",
+          "followers": 260680,
+          "followersObservedAt": "2026-08-25T15:48:00.000Z",
           "followersPrecision": "exact",
           "sampleSize": 5241,
           "averageInteractions": 429.067354,
-          "ratePercent": 0.1645,
+          "ratePercent": 0.164595,
           "oldestPostAt": "2015-04-16T19:30:17.000Z",
           "newestPostAt": "2026-08-19T21:02:25.000Z"
         }

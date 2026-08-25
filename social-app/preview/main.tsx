@@ -5,6 +5,7 @@ import "../../assets/css/radar-foundation.css";
 import "../app/globals.css";
 import "../app/editorial.css";
 import audienceHistoryJson from "../data/audience-history.json";
+import audienceAnalyticsJson from "../data/audience-analytics.json";
 import audioTrendFeedJson from "../data/audio-trends/feed.json";
 import audioTrendScanStatusJson from "../data/audio-trends/refresh-status.json";
 import commentOpportunityFeedJson from "../data/comment-opportunities/feed.json";
@@ -15,6 +16,10 @@ import {
   assertAudienceHistory,
   type AudienceHistory,
 } from "../lib/audience-metrics";
+import {
+  assertAudienceAnalytics,
+  type AudienceAnalytics,
+} from "../lib/audience-analytics";
 import {
   assertAudioTrendFeed,
   type AudioTrendFeed,
@@ -53,6 +58,9 @@ const fallbackTrendFeed = assertSocialTrendFeed(
 const fallbackAudienceHistory = assertAudienceHistory(
   audienceHistoryJson as AudienceHistory,
 );
+const fallbackAudienceAnalytics = assertAudienceAnalytics(
+  audienceAnalyticsJson as AudienceAnalytics,
+);
 const fallbackAudioTrendFeed = assertAudioTrendFeed(
   audioTrendFeedJson as AudioTrendFeed,
 );
@@ -72,6 +80,7 @@ const RAW_AUDIO_TREND_FEED_URL = `${liveDataBaseUrl}/audio-trends/feed.json`;
 const RAW_VIDEO_TREND_STATUS_URL = `${liveDataBaseUrl}/trends/refresh-status.json`;
 const RAW_AUDIO_TREND_STATUS_URL = `${liveDataBaseUrl}/audio-trends/refresh-status.json`;
 const RAW_AUDIENCE_HISTORY_URL = `${liveDataBaseUrl}/audience-history.json`;
+const RAW_AUDIENCE_ANALYTICS_URL = `${liveDataBaseUrl}/audience-analytics.json`;
 const RAW_COMMENT_OPPORTUNITIES_URL = `${liveDataBaseUrl}/comment-opportunities/feed.json`;
 const emptySnapshot: PublicHistorySnapshot = {
   generatedAt: publicHistorySummary.generatedAt,
@@ -98,6 +107,7 @@ function PublicPreview() {
   const [videoTrendScanStatus, setVideoTrendScanStatus] = useState(fallbackVideoTrendScanStatus);
   const [audioTrendScanStatus, setAudioTrendScanStatus] = useState(fallbackAudioTrendScanStatus);
   const [audienceHistory, setAudienceHistory] = useState(fallbackAudienceHistory);
+  const [audienceAnalytics, setAudienceAnalytics] = useState(fallbackAudienceAnalytics);
   const [commentOpportunityFeed, setCommentOpportunityFeed] = useState(fallbackCommentOpportunityFeed);
   const [pendingPlatforms, setPendingPlatforms] = useState<SocialPlatform[]>([
     ...PLATFORM_ORDER,
@@ -143,6 +153,55 @@ function PublicPreview() {
 
     refreshTrendFeed();
     const hourlyRefresh = window.setInterval(refreshTrendFeed, 60 * 60 * 1_000);
+    document.addEventListener("visibilitychange", refreshOnReturn);
+
+    return () => {
+      active = false;
+      window.clearInterval(hourlyRefresh);
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+      controller.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+
+    const refreshAudienceAnalytics = () => {
+      void fetch(`${RAW_AUDIENCE_ANALYTICS_URL}?v=${Date.now()}`, {
+        cache: "no-store",
+        signal: controller.signal,
+        headers: { Accept: "application/json" },
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error(`Actualisation analytics impossible (${response.status}).`);
+          }
+          return assertAudienceAnalytics(
+            (await response.json()) as AudienceAnalytics,
+          );
+        })
+        .then((snapshot) => {
+          if (!active) return;
+          const incomingAt = Date.parse(snapshot.generatedAt);
+          if (!Number.isFinite(incomingAt)) return;
+          setAudienceAnalytics((current) =>
+            incomingAt >= Date.parse(current.generatedAt) ? snapshot : current,
+          );
+        })
+        .catch(() => {
+          // Le dernier snapshot agrégé reste visible si GitHub est indisponible.
+        });
+    };
+    const refreshOnReturn = () => {
+      if (document.visibilityState === "visible") refreshAudienceAnalytics();
+    };
+
+    refreshAudienceAnalytics();
+    const hourlyRefresh = window.setInterval(
+      refreshAudienceAnalytics,
+      60 * 60 * 1_000,
+    );
     document.addEventListener("visibilitychange", refreshOnReturn);
 
     return () => {
@@ -448,6 +507,7 @@ function PublicPreview() {
       initialAudioTrendScanStatus={audioTrendScanStatus}
       initialCommentOpportunityFeed={commentOpportunityFeed}
       initialAudienceHistory={audienceHistory}
+      audienceAnalytics={audienceAnalytics}
       previewMode
       publicCounts={publicHistorySummary.platformCounts}
       publicFormatCounts={publicHistorySummary.formatCounts}
