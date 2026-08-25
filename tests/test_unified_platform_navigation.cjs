@@ -51,18 +51,18 @@ test("YouTube, Spotify and Social expose the same centered header order", () => 
   }
 });
 
-test("platform headers use real local logos and a centered three-column layout", () => {
+test("platform headers use the official Spotify mark and a centered three-column layout", () => {
   const youtube = read("assets/platform-youtube.svg");
-  const spotify = read("assets/platform-spotify.svg");
-  const socialSpotify = read("social-app/public/platforms/spotify.svg");
   const instagram = read("assets/platform-instagram.svg");
+  const officialSpotify = "https://storage.googleapis.com/pr-newsroom-wp/1/2023/05/Spotify_Primary_Logo_RGB_Green.png";
   assert.match(youtube, /fill="#FFFFFF"/);
-  assert.match(spotify, /fill="#1ED760"/);
-  assert.match(spotify, /fill="#191414"/);
-  assert.match(spotify, /Zm1\.16-4\.25/);
-  assert.doesNotMatch(spotify, /Zm\.16-4\.25/);
-  assert.equal(spotify, socialSpotify);
   assert.match(instagram, /stroke="#FFFFFF"/);
+
+  for (const sourcePath of ["index.html", "spotify/index.html", "social-app/app/SocialOS.tsx"]) {
+    const block = platformBlock(read(sourcePath));
+    assert.match(block, new RegExp(officialSpotify.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.doesNotMatch(block, /platform(?:s)?\/spotify\.svg/);
+  }
 
   for (const cssPath of [
     "assets/css/dashboard.css",
@@ -71,6 +71,7 @@ test("platform headers use real local logos and a centered three-column layout",
   ]) {
     const css = read(cssPath);
     assert.match(css, /\.platform-header\s*\{[\s\S]*?justify-content:\s*center/);
+    assert.match(css, /\.platform-header\s*\{[\s\S]*?width:\s*calc\(100% \+ var\(--content-gutter\) \+ var\(--content-gutter\)\)/);
     assert.match(css, /\.radar-switch\s*\{[\s\S]*?grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
   }
 });
