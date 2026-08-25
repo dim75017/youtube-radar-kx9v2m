@@ -54,16 +54,15 @@ jobs:
             /*.js
             /*.json
             !/Spotify_Soundcharts_data_*.js
-            !/Spotify_Performance_data.js
             !/Spotify_Radar_data.js
             !/Spotify_Selection_Contacts_data.js
-            !/Spotify_Preview_Audio_data.js
             !/Spotify_Playlist_Covers_data.js
             !/Spotify_Performance_loader.js
             !/soundcharts-instrumental-cache.json
             /assets/
             /.github/workflows/
             /spotify/
+            /Spotify_Performance_tracks/
             /video_history/
             /youtube_recommendation_ledger/manifest.json
             /prune_pages_artifact.py
@@ -71,6 +70,7 @@ jobs:
             /social-app/
             /tests/spotify_light_bootstrap_contract.js
             /tests/test_spotify_instant_runtime.js
+            /tests/test_spotify_track_analytics_runtime.js
             /tests/test_unified_design_system.cjs
             /tests/test_unified_platform_navigation.cjs
             /tests/test_youtube_genre_vertical_bars.cjs
@@ -202,6 +202,7 @@ jobs:
           test -f Spotify_Instant_data.js
           test -f Spotify_Catalogue_data.js
           node tests/test_spotify_instant_runtime.js
+          node tests/test_spotify_track_analytics_runtime.js
 
       - name: Build the Social Radar runtime
         working-directory: social-app
@@ -263,6 +264,11 @@ jobs:
           set -euo pipefail
           test -f ./_site/index.html
           test -f ./_site/spotify/index.html
+          test -f ./_site/spotify/track-analytics.js
+          test -f ./_site/spotify/track-analytics.css
+          test -d ./_site/Spotify_Performance_tracks
+          test ! -e ./_site/Spotify_Performance_data.js
+          test ! -e ./_site/Spotify_Preview_Audio_data.js
           test -f ./_site/social/index.html
           test -f ./_site/assets/platform-spotify.svg
           test -f ./_site/social/platforms/spotify.svg

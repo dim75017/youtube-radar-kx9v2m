@@ -5,3 +5,5 @@ exclude:
   - Spotify_Browse_Catalogue_data.js
   - Spotify_Playlists_canonical_data.js
   - Spotify_Labels_data.js
+  - Spotify_Performance_data.js
+  - Spotify_Preview_Audio_data.js

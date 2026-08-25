@@ -56,6 +56,64 @@ function maxDate(...values) {
   return values.filter(Boolean).map(String).sort().pop() || '';
 }
 
+function compactEditorialPlacements(raw) {
+  const byPlaylist = new Map();
+  for (const item of Array.isArray(raw) ? raw : []) {
+    const values = Array.isArray(item) ? item : [
+      item && (item.spotify_id || item.playlist_id),
+      item && (item.name || item.playlist_name),
+      item && item.position,
+      item && (item.followers || item.playlist_followers),
+      item && (item.first_seen_at || item.entry_date),
+      item && item.last_seen_at,
+    ];
+    const spotifyId = text(values[0]).trim();
+    const name = text(values[1]).trim();
+    if (!spotifyId && !name) continue;
+    const key = spotifyId || name.toLocaleLowerCase('en');
+    const candidate = {
+      spotifyId,
+      name,
+      position: finite(values[2]),
+      followers: finite(values[3]),
+      firstSeen: text(values[4]).slice(0, 10),
+      lastSeen: text(values[5]).slice(0, 10),
+    };
+    const previous = byPlaylist.get(key);
+    if (!previous) {
+      byPlaylist.set(key, candidate);
+      continue;
+    }
+    const candidateIsNewer = candidate.lastSeen >= previous.lastSeen;
+    byPlaylist.set(key, {
+      spotifyId: candidate.spotifyId || previous.spotifyId,
+      name: candidateIsNewer ? (candidate.name || previous.name) : (previous.name || candidate.name),
+      position: candidateIsNewer && candidate.position != null ? candidate.position : previous.position,
+      // Some snapshots expose zero when the audience lookup is temporarily
+      // missing. Preserve the latest positive observation instead of turning
+      // a verified editorial placement into an unknown one.
+      followers: candidateIsNewer
+        ? (candidate.followers > 0 ? candidate.followers : previous.followers)
+        : (previous.followers > 0 ? previous.followers : candidate.followers),
+      firstSeen: [previous.firstSeen, candidate.firstSeen].filter(Boolean).sort()[0] || '',
+      lastSeen: [previous.lastSeen, candidate.lastSeen].filter(Boolean).sort().pop() || '',
+    });
+  }
+  return [...byPlaylist.values()]
+    .filter(item => item.followers != null && item.followers >= 10_000)
+    .sort((left, right) => (right.followers || 0) - (left.followers || 0) ||
+      (left.position || Number.MAX_SAFE_INTEGER) - (right.position || Number.MAX_SAFE_INTEGER))
+    .map(item => [
+      item.spotifyId, item.name, item.position, item.followers,
+      item.firstSeen, item.lastSeen,
+    ]);
+}
+
+function performanceBucket(spotifyId, shardCount) {
+  const digest = crypto.createHash('sha256').update(spotifyId, 'utf8').digest();
+  return digest.readUInt32BE(0) % shardCount;
+}
+
 function atomicWrite(target, contents) {
   const directory = path.dirname(target);
   fs.mkdirSync(directory, { recursive: true });
@@ -76,9 +134,13 @@ function main() {
   const browseLoaded = loadWindowExport('Spotify_Browse_Catalogue_data.js', 'SPOTIFY_BROWSE_CATALOGUE');
   const playlistsLoaded = loadWindowExport('Spotify_Playlists_canonical_data.js', 'SPOTIFY_PLAYLISTS');
   const labelsLoaded = loadWindowExport('Spotify_Labels_data.js', 'SPOTIFY_LABELS');
+  const performanceLoaded = loadWindowExport('Spotify_Performance_data.js', 'SPOTIFY_PERFORMANCE');
+  const previewLoaded = loadWindowExport('Spotify_Preview_Audio_data.js', 'SPOTIFY_PREVIEW_AUDIO');
   const browse = browseLoaded.value;
   const playlistsSource = playlistsLoaded.value;
   const labelsSource = labelsLoaded.value;
+  const performanceSource = performanceLoaded.value;
+  const previewSource = previewLoaded.value;
   const discovery = browse.discovery_catalogue || {};
 
   if (!Array.isArray(discovery.track_schema) || !Array.isArray(discovery.tracks)) {
@@ -93,6 +155,17 @@ function main() {
   if (!Array.isArray(labelsSource.cols) || !Array.isArray(labelsSource.rows)) {
     throw new Error('Spotify label catalogue is missing its schema or rows');
   }
+  const performanceManifest = performanceSource.track_shards;
+  if (!performanceManifest || performanceManifest.algorithm !== 'sha256_mod' ||
+      !Number.isInteger(performanceManifest.shard_count) ||
+      !Array.isArray(performanceManifest.shards) ||
+      performanceManifest.shards.length !== performanceManifest.shard_count) {
+    throw new Error('Spotify performance export is missing its track-shard manifest');
+  }
+  const performanceTracks = performanceSource.tracks && typeof performanceSource.tracks === 'object'
+    ? performanceSource.tracks : {};
+  const previewHashes = previewSource.hashes && typeof previewSource.hashes === 'object'
+    ? previewSource.hashes : {};
 
   const t = schemaIndex(discovery.track_schema);
   const a = schemaIndex(discovery.artist_schema);
@@ -113,6 +186,9 @@ function main() {
     'delta_24h', 'rights_status', 'label', 'copyright', 'genre', 'image_url',
     'playlist_count', 'playlist_best_position', 'playlist_followers_total',
     'opportunity_eligible', 'artist_spotify_id', 'updated_at',
+    'preview_hash', 'performance_bucket', 'performance_available',
+    'editorial_placements', 'instrumental_status', 'instrumental_confidence',
+    'ai_risk', 'ai_risk_score', 'genre_confidence', 'subgenres',
   ];
   const artistSchema = [
     'spotify_id', 'name', 'monthly_listeners', 'genre', 'image_url',
@@ -157,6 +233,16 @@ function main() {
       row[t.opportunity_eligible] === true,
       artistId,
       text(row[t.updated_at] || row[t.streams_source_date]),
+      /^[a-f0-9]{40}$/i.test(text(previewHashes[spotifyId])) ? text(previewHashes[spotifyId]).toLowerCase() : '',
+      performanceBucket(spotifyId, performanceManifest.shard_count),
+      Object.prototype.hasOwnProperty.call(performanceTracks, spotifyId),
+      compactEditorialPlacements(row[t.playlist_placements]),
+      text(row[t.instrumental_status]),
+      finite(row[t.instrumental_confidence]),
+      text(row[t.ai_risk]),
+      finite(row[t.ai_risk_score]),
+      finite(row[t.genre_confidence]),
+      Array.isArray(row[t.subgenres]) ? row[t.subgenres].map(text).filter(Boolean) : [],
     ];
     tracks.push(compact);
     if (artistId) {
@@ -231,6 +317,8 @@ function main() {
     browseLoaded.sourcePath,
     playlistsLoaded.sourcePath,
     labelsLoaded.sourcePath,
+    performanceLoaded.sourcePath,
+    previewLoaded.sourcePath,
   ]);
   const counts = {
     tracks: tracks.length,
@@ -240,7 +328,7 @@ function main() {
     opportunities: opportunities.length,
   };
   const common = {
-    version: 2,
+    version: 3,
     generated_at: maxDate(
       browse.generated_at,
       playlistsSource.meta && playlistsSource.meta.snapshot_ts,
@@ -254,6 +342,23 @@ function main() {
       playlists: playlistSchema,
       labels: labelSchema,
     },
+    analytics: {
+      editorial_min_followers: 10_000,
+      preview_duration_seconds: finite(previewSource.duration_seconds) || 30,
+      performance: {
+        version: performanceManifest.version,
+        algorithm: performanceManifest.algorithm,
+        shard_count: performanceManifest.shard_count,
+        tracks_total: performanceManifest.tracks_total,
+        shard_schema: ['bucket', 'path', 'sha256', 'tracks'],
+        shards: performanceManifest.shards.map(descriptor => [
+          descriptor.bucket,
+          text(descriptor.path),
+          text(descriptor.sha256),
+          finite(descriptor.tracks),
+        ]),
+      },
+    },
   };
   const catalogue = {
     ...common,
@@ -263,12 +368,21 @@ function main() {
     playlists,
     labels,
   };
+  const instantTrack = row => {
+    const projected = row.slice();
+    // Detail-only values stay out of first paint. They are available after
+    // the explicit catalogue hydration triggered by opening a track.
+    projected[trackSchema.indexOf('preview_hash')] = '';
+    projected[trackSchema.indexOf('editorial_placements')] = [];
+    projected[trackSchema.indexOf('subgenres')] = [];
+    return projected;
+  };
   const instant = {
     ...common,
     // Enough rows for the first screen and the first navigation interactions.
     // The complete 1–2 MiB gzip catalogue is hydrated after first paint.
-    tracks: tracks.slice(0, 160),
-    radar: opportunities.slice(0, 160),
+    tracks: tracks.slice(0, 160).map(instantTrack),
+    radar: opportunities.slice(0, 160).map(instantTrack),
     artists: artists.slice(0, 100),
     playlists: playlists.slice(0, 100),
     labels: labels.slice(0, 100),
@@ -281,8 +395,8 @@ function main() {
   if (instantBytes > 250_000) {
     throw new Error(`Spotify first-paint snapshot exceeds 250 kB: ${instantBytes} bytes`);
   }
-  if (catalogueBytes > 8_000_000) {
-    throw new Error(`Spotify compact catalogue exceeds 8 MB: ${catalogueBytes} bytes`);
+  if (catalogueBytes > 12_000_000) {
+    throw new Error(`Spotify compact catalogue exceeds 12 MB: ${catalogueBytes} bytes`);
   }
 
   atomicWrite(

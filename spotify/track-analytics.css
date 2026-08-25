@@ -1,0 +1,41 @@
+/* Loaded only when a Spotify track detail is opened. */
+.tmbox.track-analytics-box{width:min(920px,calc(100vw - 28px));max-width:920px;padding:22px 24px}
+.track-analytics-box .thd{position:relative;padding-right:42px}
+.track-analytics-box .tcov{display:grid;overflow:hidden;place-items:center;color:#86efac;font-size:22px}
+.track-analytics-box .tcov img{width:100%;height:100%;object-fit:cover}
+.track-analytics-title{min-width:0;flex:1}
+.track-analytics-title h3,.track-analytics-artist{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.track-analytics-box .tclose{position:absolute;top:0;right:0;display:grid;width:34px;height:34px;place-items:center;border:1px solid var(--radar-border);border-radius:7px;background:#181b21;color:var(--radar-muted);font-size:17px}
+.track-analytics-box .tclose:hover{border-color:rgba(30,215,96,.42);color:var(--radar-text)}
+.track-analytics-player{margin:0 0 16px}
+.track-analytics-facts{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+.track-analytics-facts .tg{min-width:0}
+.track-analytics-facts .track-small-value{font-size:12px!important;line-height:1.4;overflow-wrap:anywhere}
+.track-analytics-toolbar{display:flex;justify-content:flex-end;margin:0 0 10px}
+.track-analytics-loading{display:grid;min-height:118px;place-items:center;border:1px solid var(--radar-border);border-radius:var(--radar-radius);background:var(--radar-panel);color:var(--radar-muted);font-size:11px}
+.track-analytics-loading::before{width:15px;height:15px;margin-right:8px;border:2px solid rgba(30,215,96,.18);border-top-color:#1ed760;border-radius:50%;animation:track-analytics-spin .8s linear infinite;content:''}
+.track-analytics-empty{display:grid;min-height:92px;place-items:center;text-align:center}
+.track-analytics-box .ar-detail-editorial-copy small{white-space:normal}
+.track-analytics-box .ar-detail-editorial{min-height:58px}
+.track-offer .ogrid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.track-offer .track-publishing{display:inline-flex;align-items:center;gap:6px;margin-left:8px;color:var(--radar-muted);font-size:10px}
+.track-offer-green{color:var(--acc2)}
+.track-offer-cyan{color:var(--cyan)}
+.track-analytics-actions{margin-top:14px}
+.track-analytics-actions .fast-selection-action{min-width:180px}
+@keyframes track-analytics-spin{to{transform:rotate(360deg)}}
+@media(max-width:760px){
+  .tmbox.track-analytics-box{padding:18px 15px}
+  .track-analytics-facts{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .track-analytics-box .thd{padding-right:36px}
+  .track-offer .ogrid{grid-template-columns:1fr}
+  .track-offer .payback-horizon{width:100%;margin:7px 0 0;padding:7px 0 0;border-top:1px solid var(--radar-border);border-left:0}
+}
+@media(max-width:480px){
+  .track-analytics-facts{grid-template-columns:1fr!important}
+  .track-analytics-toolbar .metric-toggle{width:100%}
+  .track-analytics-toolbar .metric-toggle button{flex:1}
+  .track-analytics-actions{display:block}
+  .track-analytics-actions .fast-selection-action{width:100%}
+}
+@media(prefers-reduced-motion:reduce){.track-analytics-loading::before{animation-duration:1.8s}}

@@ -50,6 +50,12 @@ function assertSpotifyLightBootstrap(index) {
     'the complete catalogue must never hydrate automatically, including during prerender');
   assert.doesNotMatch(index, /Spotify_Catalogue_data\.js/,
     'the complete catalogue must stay outside the initial document');
+  assert.doesNotMatch(index, /track-analytics\.js|player\.js/,
+    'track analytics and audio transport must remain lazy assets');
+  assert.match(instantRuntime, /function loadTrackAnalytics\(\)/,
+    'the lightweight renderer must expose the user-triggered analytics loader');
+  assert.match(instantRuntime, /track-analytics\.js\?v=/,
+    'opening a track must fetch the analytical renderer with a stable version');
 
   const instantDataBytes = fs.statSync(path.join(root, 'Spotify_Instant_data.js')).size;
   const instantRuntimeBytes = fs.statSync(path.join(root, 'spotify', 'instant.js')).size;

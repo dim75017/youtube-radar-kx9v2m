@@ -13,7 +13,7 @@
 (()=>{
   window.__RADAR_WAS_PRERENDERED=!!document.prerendering;
   if(!(HTMLScriptElement.supports&&HTMLScriptElement.supports('speculationrules'))){
-    ['spotify/?app=20260825-instant-v2#opportunities','Spotify_Instant_data.js?v=20260825-light-v5','spotify/instant.js?v=20260825-light-v5','spotify/instant.css?v=20260825-light-v5'].forEach(href=>{
+    ['spotify/?app=20260825-instant-v2#opportunities','Spotify_Instant_data.js?v=20260825-track-analytics-v1','spotify/instant.js?v=20260825-track-analytics-v1','spotify/instant.css?v=20260825-light-v5'].forEach(href=>{
       const hint=document.createElement('link');
       hint.rel='prefetch';hint.href=href;if(/\.js(?:\?|$)/.test(href))hint.as='script';if(/\.css(?:\?|$)/.test(href))hint.as='style';
       document.head.appendChild(hint);

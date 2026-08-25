@@ -62,7 +62,7 @@ function evaluate(source, globalName) {
 const instant = evaluate(instantSource, 'SPOTIFY_INSTANT');
 const catalogue = evaluate(catalogueSource, 'SPOTIFY_CATALOGUE');
 for (const payload of [instant, catalogue]) {
-  assert.equal(payload.version, 2);
+  assert.equal(payload.version, 3);
   assert.match(payload.source_hash, /^[a-f0-9]{16}$/);
   assert.ok(payload.schemas && Array.isArray(payload.schemas.tracks));
   assert.ok(payload.counts.tracks >= 1_000);
@@ -84,8 +84,8 @@ assert.equal(catalogue.artists.length, catalogue.counts.artists);
 assert.equal(catalogue.playlists.length, catalogue.counts.playlists);
 assert.equal(catalogue.labels.length, catalogue.counts.labels);
 assert.equal(catalogue.radar.length, catalogue.counts.opportunities);
-assert.ok(fs.statSync(path.join(root, 'Spotify_Catalogue_data.js')).size <= 8_000_000,
-  'the complete compact catalogue must remain below 8 MB uncompressed');
+assert.ok(fs.statSync(path.join(root, 'Spotify_Catalogue_data.js')).size <= 12_000_000,
+  'the complete compact catalogue must remain below 12 MB uncompressed');
 
 const criticalFiles = [
   'spotify/index.html',

@@ -13,10 +13,14 @@ on:
       - 'spotify-catalogue-exclusions.json'
       - 'spotify-protected-review-cohorts.json'
       - 'build_spotify_browse_catalogue.py'
+      - 'build_spotify_instant_runtime.js'
       - 'spotify_counter_integrity.py'
       - 'repair_spotify_counter_integrity.py'
       - 'spotify_performance_store.py'
       - 'spotify/dashboard.js'
+      - 'spotify/instant.js'
+      - 'spotify/track-analytics.js'
+      - 'spotify/track-analytics.css'
       - 'spotify/player.js'
       - 'spotify/player.css'
       - 'tests/test_build_spotify_browse_catalogue.py'
@@ -33,6 +37,8 @@ on:
       - 'tests/test_spotify_public_strict_projection.js'
       - 'tests/test_spotify_track_analytics_interactions.js'
       - 'tests/test_spotify_daily_chart_integrity.js'
+      - 'tests/test_spotify_instant_runtime.js'
+      - 'tests/test_spotify_track_analytics_runtime.js'
       - '.github/workflows/refresh-spotify-browse-catalogue.yml'
   schedule:
     - cron: '20 3 * * *'
@@ -117,7 +123,10 @@ jobs:
           python -m py_compile build_spotify_browse_catalogue.py spotify_counter_integrity.py repair_spotify_counter_integrity.py spotify_performance_store.py
           python -m unittest tests/test_build_spotify_browse_catalogue.py tests/test_spotify_counter_integrity.py tests/test_repair_spotify_counter_integrity.py -v
           python repair_spotify_counter_integrity.py --performance Spotify_Performance_data.js --browse Spotify_Browse_Catalogue_data.js --check
+          node build_spotify_instant_runtime.js
           node --check spotify/dashboard.js
+          node --check spotify/instant.js
+          node --check spotify/track-analytics.js
           node --check spotify/player.js
           node --check spotify/coverage.js
           node tests/test_dashboard_genre_filter.js
@@ -131,6 +140,8 @@ jobs:
           node tests/test_spotify_daily_chart_integrity.js
           node tests/test_spotify_counter_integrity.js
           node tests/test_spotify_data_through.js
+          node tests/test_spotify_instant_runtime.js
+          node tests/test_spotify_track_analytics_runtime.js
           git diff --check
 
       - name: Publish only when the catalogue changed
@@ -139,13 +150,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet -- Spotify_Browse_Catalogue_data.js; then
+          if git diff --quiet -- Spotify_Browse_Catalogue_data.js Spotify_Instant_data.js Spotify_Catalogue_data.js; then
             echo 'Browsing catalogue already up to date.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Spotify_Browse_Catalogue_data.js
+          git add Spotify_Browse_Catalogue_data.js Spotify_Instant_data.js Spotify_Catalogue_data.js
           git commit -m 'data: refresh Spotify browsing catalogue'
           for attempt in 1 2 3; do
             if git pull --rebase --autostash origin main && git push origin HEAD:main; then

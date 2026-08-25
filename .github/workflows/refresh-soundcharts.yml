@@ -22,6 +22,7 @@ on:
       - 'expand_soundcharts_instrumental_pool.py'
       - 'spotify_rights.py'
       - 'build_spotify_browse_catalogue.py'
+      - 'build_spotify_instant_runtime.js'
       - 'build_spotify_selection_contacts.py'
       - 'enrich_public_artist_contacts.py'
       - 'sync_soundcharts_opportunities.py'
@@ -61,6 +62,8 @@ on:
       - 'tests/test_spotify_public_strict_projection.js'
       - 'tests/test_spotify_track_analytics_interactions.js'
       - 'tests/test_spotify_daily_chart_integrity.js'
+      - 'tests/test_spotify_instant_runtime.js'
+      - 'tests/test_spotify_track_analytics_runtime.js'
       - 'tests/test_spotify_playlist_follower_windows.js'
       - 'tests/test_spotify_binary_ownership_status.js'
       - 'tests/test_spotify_selection_artist_offers_status.js'
@@ -74,6 +77,9 @@ on:
       - '.github/workflows/scan-soundcharts-fal-phase1.yml'
       - 'spotify/index.html'
       - 'spotify/dashboard.js'
+      - 'spotify/instant.js'
+      - 'spotify/track-analytics.js'
+      - 'spotify/track-analytics.css'
       - 'spotify/dashboard.css'
       - 'spotify/player.js'
       - 'spotify/player.css'
@@ -99,6 +105,7 @@ on:
       - 'expand_soundcharts_instrumental_pool.py'
       - 'spotify_rights.py'
       - 'build_spotify_browse_catalogue.py'
+      - 'build_spotify_instant_runtime.js'
       - 'build_spotify_selection_contacts.py'
       - 'enrich_public_artist_contacts.py'
       - 'sync_soundcharts_opportunities.py'
@@ -138,6 +145,8 @@ on:
       - 'tests/test_spotify_public_strict_projection.js'
       - 'tests/test_spotify_track_analytics_interactions.js'
       - 'tests/test_spotify_daily_chart_integrity.js'
+      - 'tests/test_spotify_instant_runtime.js'
+      - 'tests/test_spotify_track_analytics_runtime.js'
       - 'tests/test_spotify_playlist_follower_windows.js'
       - 'tests/test_spotify_binary_ownership_status.js'
       - 'tests/test_spotify_selection_artist_offers_status.js'
@@ -151,6 +160,9 @@ on:
       - '.github/workflows/scan-soundcharts-fal-phase1.yml'
       - 'spotify/index.html'
       - 'spotify/dashboard.js'
+      - 'spotify/instant.js'
+      - 'spotify/track-analytics.js'
+      - 'spotify/track-analytics.css'
       - 'spotify/dashboard.css'
       - 'spotify/player.js'
       - 'spotify/player.css'
@@ -299,6 +311,8 @@ jobs:
           python -m py_compile refresh_soundcharts_daily.py spotify_performance_store.py spotify_counter_integrity.py repair_spotify_counter_integrity.py scan_soundcharts_fal_phase1.py playlist_follower_daily_status.py validate_playlist_snapshot_transition.py discover_soundcharts_playlists.py expand_soundcharts_instrumental_pool.py spotify_rights.py build_spotify_browse_catalogue.py build_spotify_selection_contacts.py enrich_public_artist_contacts.py sync_soundcharts_opportunities.py prepare_soundcharts_snapshot.py
           node --check spotify/dashboard.js
           node --check spotify/player.js
+          node --check spotify/instant.js
+          node --check spotify/track-analytics.js
           node tests/test_spotify_performance_loader.js
           node tests/test_dashboard_opportunity_guardrails.js
           node tests/test_dashboard_general_view_guardrails.js
@@ -321,6 +335,8 @@ jobs:
           node tests/test_spotify_update_status.js
           node tests/test_spotify_track_analytics_interactions.js
           node tests/test_spotify_daily_chart_integrity.js
+          node tests/test_spotify_instant_runtime.js
+          node tests/test_spotify_track_analytics_runtime.js
           git diff --check
 
       - name: Select safe execution plan
@@ -986,7 +1002,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A -- Spotify_Playlists_canonical_data.js Spotify_Performance_data.js Spotify_Performance_tracks soundcharts-history
+          node build_spotify_instant_runtime.js
+          git add -A -- Spotify_Playlists_canonical_data.js Spotify_Performance_data.js Spotify_Performance_tracks Spotify_Instant_data.js Spotify_Catalogue_data.js soundcharts-history
           git diff --cached --quiet && exit 0
           git commit -m "data: refresh Soundcharts playlist covers"
           for attempt in 1 2 3; do
@@ -1158,12 +1175,15 @@ jobs:
           python validate_playlist_snapshot_transition.py \
             --previous "${{ steps.playlist_baseline.outputs.path }}" \
             --candidate Spotify_Playlists_canonical_data.js
+          node build_spotify_instant_runtime.js
           git add -A -- \
             spotify/index.html \
             Spotify_Browse_Catalogue_data.js \
             Spotify_Playlists_canonical_data.js \
             Spotify_Performance_data.js \
             Spotify_Performance_tracks \
+            Spotify_Instant_data.js \
+            Spotify_Catalogue_data.js \
             Spotify_Selection_Contacts_data.js \
             soundcharts-history
           git commit -m "data: activate validated Soundcharts snapshot"

@@ -22,6 +22,8 @@
   let data=boot;
   let fullReady=Boolean(window.SPOTIFY_CATALOGUE);
   let fullPromise=null;
+  let trackAnalyticsPromise=null;
+  let modalRequest=0;
   let lang='fr';
   try{lang=localStorage.getItem('sr_lang')||'fr';}catch(error){}
   const initialRoute=location.hash.slice(1);
@@ -306,26 +308,55 @@
     if(sort)sort.addEventListener('change',event=>{state.sort[state.view]=event.target.value;state.shown=100;render();});
   }
 
-  function openTrack(id){
-    const row=findTrack(id);if(!row)return;
+  function loadTrackAnalytics(){
+    if(window.SpotifyTrackAnalytics)return Promise.resolve(window.SpotifyTrackAnalytics);
+    if(trackAnalyticsPromise)return trackAnalyticsPromise;
+    trackAnalyticsPromise=new Promise((resolve,reject)=>{
+      const script=document.createElement('script');
+      script.src=`track-analytics.js?v=${encodeURIComponent(boot.source_hash||'track-analytics-v1')}`;
+      script.async=true;
+      script.onload=()=>window.SpotifyTrackAnalytics?resolve(window.SpotifyTrackAnalytics):reject(new Error('Spotify track analytics did not initialize'));
+      script.onerror=()=>reject(new Error('Spotify track analytics failed to load'));
+      document.head.appendChild(script);
+    }).catch(error=>{trackAnalyticsPromise=null;throw error;});
+    return trackAnalyticsPromise;
+  }
+
+  async function openTrack(id){
+    const initialRow=findTrack(id);if(!initialRow)return;
+    const request=++modalRequest;
     const modal=document.getElementById('track-modal');
     const box=document.getElementById('tmbox');
-    const selected=selectionHas(id);
-    box.innerHTML=`<button class="fast-modal-close" type="button" data-close-modal aria-label="${esc(w('close'))}">×</button>
-      <div class="fast-modal-head">${image(row[T.image_url],'modal-cover')}<div><span class="fast-kicker">${esc(w('detail'))}</span><h3>${esc(row[T.title])}</h3><p>${esc(row[T.credit_name])}</p></div></div>
-      <div class="fast-detail-grid">
-        <div><span>${esc(w('streams'))}</span><strong>${fullNumber(row[T.streams])}</strong></div>
-        <div><span>${esc(w('velocity'))}</span><strong>${delta(row[T.delta_24h])}</strong></div>
-        <div><span>${esc(w('release'))}</span><strong>${date(row[T.release_date])}</strong></div>
-        <div><span>${esc(w('genre'))}</span><strong>${esc(genre(row[T.genre]))}</strong></div>
-        <div><span>${esc(w('rights'))}</span><strong>${esc(rights(row[T.rights_status]))}</strong></div>
-        <div><span>Playlists</span><strong>${fullNumber(row[T.playlist_count])}</strong></div>
-      </div>
-      <div class="fast-modal-note"><span>${esc(row[T.label]||row[T.copyright]||w('unknown'))}</span></div>
-      <div class="fast-modal-actions"><a class="fast-open-spotify" href="https://open.spotify.com/track/${encodeURIComponent(id)}" target="_blank" rel="noopener">${esc(w('openSpotify'))}</a><button type="button" class="fast-selection-action ${selected?'on':''}" data-select-track="${esc(id)}">${esc(selected?w('remove'):w('add'))}</button></div>`;
+    box.className='tmbox track-analytics-box';
+    box.innerHTML=`<button class="fast-modal-close" type="button" data-close-modal aria-label="${esc(w('close'))}">×</button><div class="fast-modal-head">${image(initialRow[T.image_url],'modal-cover')}<div><span class="fast-kicker">${esc(w('detail'))}</span><h3>${esc(initialRow[T.title])}</h3><p>${esc(initialRow[T.credit_name])}</p></div></div><div class="track-analytics-loading">${esc(lang==='fr'?"Chargement de la vue analytique…":'Loading track analytics…')}</div>`;
     modal.style.display='flex';
+    try{
+      const [catalogue,analyticsModule]=await Promise.all([loadFullCatalogue(),loadTrackAnalytics()]);
+      if(request!==modalRequest||modal.style.display==='none')return;
+      const fields=catalogue&&catalogue.schemas&&catalogue.schemas.tracks||boot.schemas.tracks;
+      const positions=Object.fromEntries(fields.map((field,index)=>[field,index]));
+      const rows=[...(catalogue&&Array.isArray(catalogue.tracks)?catalogue.tracks:[]),...(catalogue&&Array.isArray(catalogue.radar)?catalogue.radar:[])];
+      const row=rows.find(item=>item[positions.spotify_id]===id)||findTrack(id)||initialRow;
+      await analyticsModule.open({
+        spotifyId:id,row,schema:fields,box,language:lang,selected:selectionHas(id),
+        analytics:catalogue&&catalogue.analytics||boot.analytics,
+        assetVersion:boot.source_hash||'track-analytics-v1',
+      });
+    }catch(error){
+      console.error(error);
+      if(request!==modalRequest)return;
+      box.className='tmbox';
+      box.innerHTML=`<button class="fast-modal-close" type="button" data-close-modal aria-label="${esc(w('close'))}">×</button><div class="fast-empty"><strong>${esc(lang==='fr'?"La vue analytique n'a pas pu être chargée.":'Track analytics could not be loaded.')}</strong><span>${esc(lang==='fr'?'Réessaie dans un instant.':'Please try again in a moment.')}</span></div>`;
+    }
   }
-  function closeModal(){const modal=document.getElementById('track-modal');if(modal)modal.style.display='none';}
+  function closeModal(){
+    modalRequest+=1;
+    const modal=document.getElementById('track-modal');
+    const box=document.getElementById('tmbox');
+    if(window.SpotifyTrackAnalytics)window.SpotifyTrackAnalytics.close(modal);
+    if(modal)modal.style.display='none';
+    if(box)box.className='tmbox';
+  }
 
   function updateCounts(){
     const counts=boot.counts||{};
