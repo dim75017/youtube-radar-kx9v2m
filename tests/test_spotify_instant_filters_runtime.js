@@ -50,12 +50,13 @@ const payload = {
 };
 
 const elements = new Map();
+const viewListeners = {};
 const element = extra => Object.assign({
   innerHTML: '', textContent: '', style: {}, dataset: {},
   addEventListener() {}, querySelectorAll() { return []; }, querySelector() { return null; },
   classList: {toggle() {},add() {},remove() {}},
 }, extra);
-const view = element();
+const view = element({addEventListener(type,handler) { viewListeners[type]=handler; }});
 elements.set('view', view);
 elements.set('nav', element());
 elements.set('track-modal', element({style:{display:'none'}}));
@@ -63,23 +64,38 @@ elements.set('tmbox', element());
 elements.set('lang-btn', element());
 for (const id of ['c-radar','c-opps','c-art','c-pl','c-lb','c-ar-list']) elements.set(id, element());
 const storage = {};
+let storageBlocked = false;
+let appendedMenu = null;
+let menuAction = null;
 const performance = {now:()=>0,mark() {}};
 const windowObject = {
   SPOTIFY_INSTANT: payload,
   SPOTIFY_CATALOGUE: payload,
   __SPOTIFY_FILTER_TEST__: true,
   performance,
-  addEventListener() {}, scrollTo() {},
+  innerWidth: 1280, innerHeight: 720,
+  addEventListener() {}, scrollTo() {}, setTimeout(callback) { callback(); },
 };
 const context = {
   window: windowObject,
   document: {
     documentElement: {lang:'fr',dataset:{}},
+    body: {appendChild(menu) { appendedMenu=menu;menu.connected=true; }},
+    createElement() {
+      menuAction=element({listeners:{},addEventListener(type,handler){this.listeners[type]=handler;}});
+      const menu=element({
+        connected:false,offsetWidth:230,offsetHeight:44,
+        setAttribute() {},remove(){this.connected=false;},
+        querySelector(selector){return selector==='[data-selection-context-add]'?menuAction:null;},
+      });
+      Object.defineProperty(menu,'isConnected',{get(){return this.connected;}});
+      return menu;
+    },
     getElementById: id=>elements.get(id)||null,
     querySelectorAll: ()=>[], querySelector: ()=>null,
     addEventListener() {},
   },
-  localStorage: {getItem:key=>storage[key]||null,setItem:(key,value)=>{storage[key]=String(value);}},
+  localStorage: {getItem:key=>storage[key]||null,setItem:(key,value)=>{if(storageBlocked)throw new Error('storage blocked');storage[key]=String(value);}},
   location: {hash:'#opportunities',pathname:'/spotify/',search:''},
   history: {replaceState() {}},
   performance,
@@ -144,7 +160,7 @@ api.state.filters.radar.genre = 'jazz_jazzhop';
 assert.match(renderView('radar'), /Winter Jazz/);
 assert.doesNotMatch(view.innerHTML, /Été calme/);
 
-storage.spotify_ar_outreach_list_v1 = JSON.stringify({
+api.selectionSet({
   t1:{status:'contacted'},t2:{status:'follow_up'},t3:{status:'refused'},
 });
 api.state.filters.selection.stage = 'contacted';
@@ -154,6 +170,43 @@ assert.doesNotMatch(view.innerHTML, /Unknown Piano/);
 api.state.filters.selection.stage = 'refused';
 assert.match(renderView('ar-list'), /Unknown Piano/);
 assert.doesNotMatch(view.innerHTML, /Été calme|Winter Jazz/);
+
+api.selectionSet({});
+api.state.view='radar';
+const plusTarget={dataset:{selectionAdd:'t1'},closest(selector){return selector==='[data-selection-add]'?this:null;}};
+viewListeners.click({target:plusTarget,stopPropagation(){}});
+assert.equal(api.selectionHas('t1'),true,'the visible + button must add the track');
+assert.equal(api.selectionGet().t1.status,'to_contact');
+assert.ok(api.selectionGet().t1.addedAt,'the instant runtime must retain the legacy addedAt field');
+assert.equal(api.selectionGet().t1.note,'');
+assert.ok(JSON.parse(storage.spotify_ar_outreach_artists_v1)['spotify:a1'],'adding a track must keep the legacy artist selection ledger compatible');
+viewListeners.click({target:plusTarget,stopPropagation(){}});
+assert.equal(api.selectionHas('t1'),true,'clicking the + action twice must be idempotent, never remove the track');
+
+const removeTarget={dataset:{selectionRemove:'t1'},closest(selector){return selector==='[data-selection-remove]'?this:null;}};
+viewListeners.click({target:removeTarget,stopPropagation(){}});
+assert.equal(api.selectionHas('t1'),false,'only the explicit remove action may delete a selected track');
+
+storageBlocked=true;
+const blockedTarget={dataset:{selectionAdd:'t2'},closest(selector){return selector==='[data-selection-add]'?this:null;}};
+viewListeners.click({target:blockedTarget,stopPropagation(){}});
+assert.equal(api.selectionHas('t2'),true,'the + button must still work in memory when browser storage is unavailable');
+assert.equal(context.document.documentElement.dataset.spotifySelectionStorage,'memory');
+storageBlocked=false;
+
+api.selectionSet({});
+let contextPrevented=false;
+const contextRow={dataset:{trackId:'t3'}};
+const contextTarget={closest(selector){
+  if(selector==='tr[data-track-id]')return contextRow;
+  return null;
+}};
+viewListeners.contextmenu({target:contextTarget,clientX:300,clientY:220,preventDefault(){contextPrevented=true;}});
+assert.equal(contextPrevented,true,'right-clicking a track row must replace the native menu');
+assert.ok(appendedMenu&&appendedMenu.isConnected,'right-clicking a track must open the custom selection menu');
+assert.equal(typeof menuAction.listeners.click,'function','the context menu must expose an add action');
+menuAction.listeners.click({stopPropagation(){}});
+assert.equal(api.selectionHas('t3'),true,'the context-menu action must add the track to Selection');
 
 assert.equal(api.rightsKey('major'), 'label');
 assert.equal(api.rightsKey('unknown'), 'unknown');

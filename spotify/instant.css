@@ -50,7 +50,10 @@ a.fast-primary:hover,button.fast-primary:hover{color:#61df8d}
 .fast-action-cell{width:48px;text-align:right}
 .fast-select,.fast-remove{display:inline-grid;place-items:center;width:30px;height:30px;border:1px solid var(--radar-border-strong);border-radius:6px;background:#181b21;color:var(--radar-muted);font-size:17px;cursor:pointer}
 .fast-select:hover,.fast-select.on{border-color:rgba(30,215,96,.48);background:rgba(30,215,96,.1);color:#6be296}
+.fast-select:disabled{cursor:default;opacity:1}
 .fast-remove{border-color:rgba(248,113,113,.22);background:transparent;color:#f29a9a}
+.fast-context-menu{position:fixed;z-index:10000;min-width:230px;padding:5px;border:1px solid rgba(30,215,96,.32);border-radius:10px;background:#111b18;box-shadow:0 16px 42px rgba(0,0,0,.52)}
+.fast-context-menu button{display:block;width:100%;padding:9px 10px;border:0;border-radius:7px;background:transparent;color:#eefff4;font:700 11px var(--radar-font);text-align:left;cursor:pointer}.fast-context-menu button:hover{background:rgba(30,215,96,.13)}.fast-context-menu button:disabled{color:var(--radar-dim);cursor:default}
 .fast-email{display:block;margin-top:3px;color:var(--radar-dim);font-size:9px}
 .fast-more-wrap{display:flex;justify-content:center;padding:18px 0 8px}
 .fast-more{display:inline-flex;align-items:center;gap:9px;height:36px;padding:0 14px;border:1px solid var(--radar-border-strong);border-radius:var(--radar-radius-control);background:var(--radar-panel);color:var(--radar-muted);font:600 11px var(--radar-font);cursor:pointer}

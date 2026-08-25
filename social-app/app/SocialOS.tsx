@@ -1242,7 +1242,7 @@ export function SocialOS({
               <img src="platforms/youtube.svg" alt="" />
               <span className="platform-label">YouTube</span>
             </a>
-            <a className="spotify" href="../spotify/?app=20260825-filters-v1#opportunities" aria-label="Spotify">
+            <a className="spotify" href="../spotify/?app=20260825-selection-v1#opportunities" aria-label="Spotify">
               <img src="platforms/spotify.svg?v=20260825-logo-v2" width="22" height="22" alt="" />
               <span className="platform-label">Spotify</span>
             </a>

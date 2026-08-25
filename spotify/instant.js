@@ -19,6 +19,12 @@
   for(const [name,fields] of Object.entries(boot.schemas))schema[name]=Object.fromEntries(fields.map((field,index)=>[field,index]));
   const T=schema.tracks,A=schema.artists,P=schema.playlists,L=schema.labels;
   const AR_LIST_STORAGE='spotify_ar_outreach_list_v1';
+  const AR_ARTIST_STORAGE='spotify_ar_outreach_artists_v1';
+  const parseStoredObject=raw=>{try{const value=JSON.parse(raw||'{}');return value&&typeof value==='object'&&!Array.isArray(value)?value:{};}catch(error){return {};}};
+  const readStoredObject=key=>{try{return parseStoredObject(localStorage.getItem(key));}catch(error){return {};}};
+  let selectionCache=readStoredObject(AR_LIST_STORAGE);
+  let selectionArtistCache=readStoredObject(AR_ARTIST_STORAGE);
+  let selectionContextMenu=null;
   let data=boot;
   let fullReady=Boolean(window.SPOTIFY_CATALOGUE);
   let fullPromise=null;
@@ -59,7 +65,7 @@
       all:'Tous',allGenres:'Tous les genres',filterGenre:'Genre',period:'Période',rightsFilter:'Propriété',streamFloor:'Seuil streams',catalogueUnavailable:'Catalogue complet indisponible. Aucun résultat partiel n’est affiché.',
       relation:'Relation Lofi Girl',curator:'Curateur',clearFilters:'Effacer les filtres',last30:'30 jours',last90:'90 jours',last180:'180 jours',last365:'12 mois',allHistory:'Tout l’historique',
       self:'Indie',otherLabel:'Label',unconfirmed:'À confirmer',loyal:'Loyal (>50)',regular:'Regular (25–50)',occasional:'Occasional (1–24)',never:'Jamais',
-      editorial:'Éditoriales',independentCurators:'Indépendantes',toContact:'À contacter',contacted:'Contacté',negotiating:'En négociation',validated:'Validé',refused:'Refusé',
+      editorial:'Éditoriales',independentCurators:'Indépendantes',toContact:'À contacter',contacted:'Contacté',negotiating:'En négociation',validated:'Validé',refused:'Refusé',alreadySelected:'Déjà dans la sélection',
     },
     en:{
       opportunities:'Opportunities',selection:'Selection',tracks:'Tracks',artists:'Artists',playlists:'Playlists',labels:'Labels',
@@ -75,7 +81,7 @@
       all:'All',allGenres:'All genres',filterGenre:'Genre',period:'Period',rightsFilter:'Ownership',streamFloor:'Stream floor',catalogueUnavailable:'The full catalogue is unavailable. No partial result is being shown.',
       relation:'Lofi Girl relation',curator:'Curator',clearFilters:'Clear filters',last30:'30 days',last90:'90 days',last180:'180 days',last365:'12 months',allHistory:'All time',
       self:'Indie',otherLabel:'Label',unconfirmed:'To confirm',loyal:'Loyal (>50)',regular:'Regular (25–50)',occasional:'Occasional (1–24)',never:'Never',
-      editorial:'Editorial',independentCurators:'Independent',toContact:'To contact',contacted:'Contacted',negotiating:'Negotiating',validated:'Validated',refused:'Refused',
+      editorial:'Editorial',independentCurators:'Independent',toContact:'To contact',contacted:'Contacted',negotiating:'Negotiating',validated:'Validated',refused:'Refused',alreadySelected:'Already in selection',
     },
   };
   const w=key=>words[lang][key]||key;
@@ -160,25 +166,62 @@
     ?`<img class="fast-${kind}" src="${esc(url)}" alt="" loading="lazy" decoding="async" fetchpriority="low">`
     :`<span class="fast-${kind} fast-placeholder" aria-hidden="true">♫</span>`;
 
-  function selectionGet(){
-    try{const value=JSON.parse(localStorage.getItem(AR_LIST_STORAGE)||'{}');return value&&typeof value==='object'?value:{};}catch(error){return {};}
+  function persistStoredObject(key,value){
+    const serialized=JSON.stringify(value);
+    try{localStorage.setItem(key,serialized);document.documentElement.dataset.spotifySelectionStorage='persistent';return true;}
+    catch(error){document.documentElement.dataset.spotifySelectionStorage='memory';return false;}
   }
-  function selectionSet(value){try{localStorage.setItem(AR_LIST_STORAGE,JSON.stringify(value));}catch(error){}}
+  function selectionGet(){return selectionCache;}
+  function selectionSet(value){selectionCache=value&&typeof value==='object'&&!Array.isArray(value)?value:{};return persistStoredObject(AR_LIST_STORAGE,selectionCache);}
+  function selectionArtistGet(){return selectionArtistCache;}
+  function selectionArtistSet(value){selectionArtistCache=value&&typeof value==='object'&&!Array.isArray(value)?value:{};return persistStoredObject(AR_ARTIST_STORAGE,selectionArtistCache);}
   function selectionHas(id){return Boolean(selectionGet()[id]);}
-  function selectionToggle(id){
-    const items=selectionGet();
-    if(items[id])delete items[id];
-    else{
-      const track=findTrack(id);
-      items[id]={
-        spotifyId:id,
-        title:track?track[T.title]:'',
-        artistName:track?track[T.credit_name]:'',
-        status:'to_contact',
-        selectionAddedAt:new Date().toISOString(),
-      };
-    }
-    selectionSet(items);updateCounts();render();
+  function storedSelectionStage(entry){
+    const key=String(entry&&entry.status||'').trim().toLowerCase();
+    if(key==='closed')return 'validated';if(key==='follow_up')return 'contacted';if(key==='negotiation')return 'negotiating';
+    return ['to_contact','contacted','negotiating','validated','refused'].includes(key)?key:'to_contact';
+  }
+  function selectionArtistKey(track){
+    const spotifyId=String(track&&track[T.artist_spotify_id]||'').trim();
+    const credit=String(track&&track[T.credit_name]||'').trim().toLowerCase();
+    return spotifyId?`spotify:${spotifyId}`:(credit?`credit:${credit}`:'');
+  }
+  function selectionAdd(id){
+    const key=String(id||'').trim(),track=findTrack(key);if(!key||!track)return false;
+    const items=selectionGet(),artists=selectionArtistGet(),artistKey=selectionArtistKey(track),now=new Date().toISOString();
+    const previous=items[key]&&typeof items[key]==='object'?items[key]:{};
+    const addedAt=previous.addedAt||previous.selectionAddedAt||now;
+    const inheritedStatus=previous.status||storedSelectionStage(artistKey&&artists[artistKey]);
+    items[key]=Object.assign({addedAt,status:inheritedStatus,note:'',nextFollowUp:'',contactedAt:'',subject:'',body:''},previous,{
+      spotifyId:key,title:track[T.title]||'',artistName:track[T.credit_name]||'',addedAt,selectionAddedAt:addedAt,
+    });
+    if(artistKey)artists[artistKey]=Object.assign({status:'to_contact',selectionAddedAt:addedAt},artists[artistKey]||{});
+    selectionSet(items);selectionArtistSet(artists);updateCounts();render();return true;
+  }
+  function selectionRemove(id){
+    const key=String(id||'').trim(),items=selectionGet();if(!key||!items[key])return false;
+    delete items[key];selectionSet(items);updateCounts();render();return true;
+  }
+  function selectionToggle(id){return selectionHas(id)?selectionRemove(id):selectionAdd(id);}
+  function closeSelectionContextMenu(){
+    if(selectionContextMenu&&selectionContextMenu.isConnected)selectionContextMenu.remove();
+    selectionContextMenu=null;
+  }
+  function openSelectionContextMenu(id,clientX,clientY){
+    const key=String(id||'').trim(),track=findTrack(key);if(!key||!track)return false;
+    closeSelectionContextMenu();
+    const selected=selectionHas(key),menu=document.createElement('div');
+    menu.className='fast-context-menu';menu.setAttribute('role','menu');
+    menu.innerHTML=`<button type="button" role="menuitem" data-selection-context-add ${selected?'disabled':''}>${selected?'✓':'⭐'} ${esc(selected?w('alreadySelected'):w('add'))}</button>`;
+    document.body.appendChild(menu);
+    const width=menu.offsetWidth||230,height=menu.offsetHeight||44;
+    menu.style.left=Math.max(8,Math.min(Number(clientX)||0,window.innerWidth-width-8))+'px';
+    menu.style.top=Math.max(8,Math.min(Number(clientY)||0,window.innerHeight-height-8))+'px';
+    const action=menu.querySelector('[data-selection-context-add]');
+    if(action&&!selected)action.addEventListener('click',event=>{event.stopPropagation();closeSelectionContextMenu();selectionAdd(key);});
+    selectionContextMenu=menu;
+    window.setTimeout(()=>document.addEventListener('click',closeSelectionContextMenu,{once:true}),0);
+    return true;
   }
 
   function source(name){
@@ -224,7 +267,7 @@
         <td>${esc(genre(row[T.genre]))}</td>
         <td class="fast-date">${date(row[T.release_date])}</td>
         <td><span class="fast-rights ${rights(row[T.rights_status])===w('independent')?'indie':''}">${esc(rights(row[T.rights_status]))}</span></td>
-        ${opportunity?`<td class="fast-action-cell"><button type="button" class="fast-select ${selected?'on':''}" data-select-track="${esc(id)}" aria-label="${esc(selected?w('remove'):w('add'))}">${selected?'✓':'＋'}</button></td>`:''}
+        ${opportunity?`<td class="fast-action-cell"><button type="button" class="fast-select ${selected?'on':''}" data-selection-add="${esc(id)}" aria-label="${esc(selected?w('alreadySelected'):w('add'))}" ${selected?'disabled':''}>${selected?'✓':'＋'}</button></td>`:''}
       </tr>`;
     }).join('');
   }
@@ -395,13 +438,14 @@
       <div class="fast-selection-metric"><span>${esc(w('streams'))}</span><strong>${compact(row[T.streams])}</strong></div>
       <div class="fast-selection-metric"><span>${esc(w('velocity'))}</span><strong>${delta(row[T.delta_24h])}</strong></div>
       <label class="fast-selection-metric fast-selection-stage"><span>${esc(w('stage'))}</span><select data-selection-status="${esc(id)}">${SELECTION_STAGES.map(([value,key])=>`<option value="${value}" ${selectionStage(entry.status)===value?'selected':''}>${esc(w(key))}</option>`).join('')}</select></label>
-      <button type="button" class="fast-remove" data-select-track="${esc(id)}" aria-label="${esc(w('remove'))}">×</button>
+      <button type="button" class="fast-remove" data-selection-remove="${esc(id)}" aria-label="${esc(w('remove'))}">×</button>
     </article>`).join('');
     const tabs=`<div class="fast-stage-tabs" role="tablist" aria-label="${esc(w('stage'))}">${SELECTION_STAGES.map(([value,key])=>`<button type="button" role="tab" data-selection-stage="${value}" aria-selected="${stage===value}" class="${stage===value?'on':''}">${esc(w(key))}<span>${fullNumber(counts[value])}</span></button>`).join('')}</div>`;
     view.innerHTML=heading(w('selectionTitle'),allRows.length,w('selectedHint'))+tabs+(rows.length?`<div class="fast-selection-list">${body}</div>`:`<div class="fast-empty"><strong>${esc(w('selectedEmpty'))}</strong><span>${esc(selectionStageLabel(stage))}</span></div>`);
   }
 
   function render(){
+    closeSelectionContextMenu();
     const started=window.performance&&window.performance.now?window.performance.now():Date.now();
     document.documentElement.lang=lang;
     document.querySelectorAll('#nav button').forEach(button=>button.classList.toggle('active',button.dataset.v===state.view));
@@ -561,10 +605,20 @@
     if(stageButton){state.filters.selection.stage=stageButton.dataset.selectionStage;render();return;}
     const moreButton=event.target.closest('[data-action="more"]');
     if(moreButton){state.shown+=100;refreshWithFull();return;}
+    const addButton=event.target.closest('[data-selection-add]');
+    if(addButton){event.stopPropagation();selectionAdd(addButton.dataset.selectionAdd);return;}
+    const removeButton=event.target.closest('[data-selection-remove]');
+    if(removeButton){event.stopPropagation();selectionRemove(removeButton.dataset.selectionRemove);return;}
     const selectionButton=event.target.closest('[data-select-track]');
     if(selectionButton){event.stopPropagation();selectionToggle(selectionButton.dataset.selectTrack);return;}
     const trackButton=event.target.closest('[data-open-track]');
     if(trackButton){openTrack(trackButton.dataset.openTrack);return;}
+  });
+  view.addEventListener('contextmenu',event=>{
+    const target=event.target&&typeof event.target.closest==='function'?event.target:null;if(!target)return;
+    if(target.closest('a,input,select,label,[data-selection-add],[data-selection-remove]'))return;
+    const row=target.closest('tr[data-track-id]');if(!row)return;
+    event.preventDefault();openSelectionContextMenu(row.dataset.trackId,event.clientX,event.clientY);
   });
   view.addEventListener('change',event=>{
     const status=event.target.closest('[data-selection-status]');if(!status)return;
@@ -576,7 +630,12 @@
     const selectionButton=event.target.closest('[data-select-track]');
     if(selectionButton){selectionToggle(selectionButton.dataset.selectTrack);closeModal();}
   });
-  document.addEventListener('keydown',event=>{if(event.key==='Escape')closeModal();});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'){closeSelectionContextMenu();closeModal();}});
+  document.addEventListener('scroll',closeSelectionContextMenu,true);
+  window.addEventListener('storage',event=>{
+    if(event.key===AR_LIST_STORAGE){selectionCache=parseStoredObject(event.newValue);updateCounts();render();}
+    if(event.key===AR_ARTIST_STORAGE)selectionArtistCache=parseStoredObject(event.newValue);
+  });
   document.getElementById('lang-btn').addEventListener('click',()=>{
     lang=lang==='fr'?'en':'fr';try{localStorage.setItem('sr_lang',lang);}catch(error){}render();
   });
@@ -593,7 +652,7 @@
 
   if(window.SPOTIFY_CATALOGUE){data=window.SPOTIFY_CATALOGUE;fullReady=true;}
   updateCounts();render();
-  if(window.__SPOTIFY_FILTER_TEST__)window.SPOTIFY_FILTER_TEST_API={state,render,clearFilters,matchesQuery,genreKey,rightsKey,relationKey,ageDays,number,compact};
+  if(window.__SPOTIFY_FILTER_TEST__)window.SPOTIFY_FILTER_TEST_API={state,render,clearFilters,matchesQuery,genreKey,rightsKey,relationKey,ageDays,number,compact,selectionGet,selectionSet,selectionHas,selectionAdd,selectionRemove,openSelectionContextMenu,closeSelectionContextMenu};
   performance.mark&&performance.mark('spotify-radar-interactive');
   window.SPOTIFY_LIGHT_RUNTIME_READY=true;
   document.documentElement.dataset.spotifyReady='true';
