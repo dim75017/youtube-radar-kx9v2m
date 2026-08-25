@@ -529,7 +529,10 @@ test("the daily workflow enforces a fresh YouTube point on both scheduled passes
   assert.match(workflow, /--require-fresh-platform youtube/);
   assert.match(workflow, /Two daily collection passes/);
   assert.match(workflow, /actions:\s*write/);
-  assert.match(workflow, /gh workflow run deploy-pages\.yml --ref main/);
+  assert.match(
+    workflow,
+    /gh workflow run deploy-pages\.yml --ref main[\s\\]*-f requested_sha="\$\(git rev-parse HEAD\)"/,
+  );
   assert.doesNotMatch(workflow, /catch-up pass/i);
 });
 

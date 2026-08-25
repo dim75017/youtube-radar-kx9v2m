@@ -57,4 +57,5 @@ jobs:
           git diff --cached --quiet || git commit -m "Update audience history"
           git pull --rebase origin main
           git push origin HEAD:main
-          gh workflow run deploy-pages.yml --ref main
+          gh workflow run deploy-pages.yml --ref main \
+            -f requested_sha="$(git rev-parse HEAD)"
