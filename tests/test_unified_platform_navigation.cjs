@@ -15,7 +15,7 @@ function platformBlock(source) {
   return match[0];
 }
 
-test("YouTube, Spotify and Social expose the same vertical platform order", () => {
+test("YouTube, Spotify and Social expose the same centered header order", () => {
   const surfaces = [
     {
       source: read("index.html"),
@@ -33,6 +33,10 @@ test("YouTube, Spotify and Social expose the same vertical platform order", () =
 
   for (const { source, hrefs } of surfaces) {
     const block = platformBlock(source);
+    const sidebarEnd = source.indexOf("</aside>");
+    assert.match(source, /<header class(?:Name)?="platform-header">/);
+    assert.ok(sidebarEnd >= 0, "missing sidebar boundary");
+    assert.ok(source.indexOf(block) > sidebarEnd, "platform navigation must live in the page header, not the sidebar");
     const positions = ["YouTube", "Spotify", "Social"].map((label) =>
       block.indexOf(label),
     );
@@ -47,12 +51,17 @@ test("YouTube, Spotify and Social expose the same vertical platform order", () =
   }
 });
 
-test("platform selectors use real local logos and a one-column layout", () => {
+test("platform headers use real local logos and a centered three-column layout", () => {
   const youtube = read("assets/platform-youtube.svg");
   const spotify = read("assets/platform-spotify.svg");
+  const socialSpotify = read("social-app/public/platforms/spotify.svg");
   const instagram = read("assets/platform-instagram.svg");
   assert.match(youtube, /fill="#FFFFFF"/);
   assert.match(spotify, /fill="#1ED760"/);
+  assert.match(spotify, /fill="#191414"/);
+  assert.match(spotify, /Zm1\.16-4\.25/);
+  assert.doesNotMatch(spotify, /Zm\.16-4\.25/);
+  assert.equal(spotify, socialSpotify);
   assert.match(instagram, /stroke="#FFFFFF"/);
 
   for (const cssPath of [
@@ -61,7 +70,8 @@ test("platform selectors use real local logos and a one-column layout", () => {
     "social-app/app/globals.css",
   ]) {
     const css = read(cssPath);
-    assert.match(css, /\.radar-switch\s*\{[\s\S]*?grid-template-columns:\s*1fr/);
+    assert.match(css, /\.platform-header\s*\{[\s\S]*?justify-content:\s*center/);
+    assert.match(css, /\.radar-switch\s*\{[\s\S]*?grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
   }
 });
 

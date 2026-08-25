@@ -191,31 +191,52 @@ a {
   white-space: nowrap;
 }
 
+.platform-header {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(11, 13, 21, 0.72), rgba(11, 13, 21, 0));
+  padding: 14px 0 16px;
+}
+
 .radar-switch {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 3px;
-  margin: 0 4px 11px;
+  width: min(100%, 440px);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0;
   border: 1px solid var(--border);
-  border-radius: 11px;
-  background: rgba(5, 6, 10, 0.38);
+  border-radius: 12px;
+  background: rgba(5, 6, 10, 0.58);
   padding: 4px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
 }
 
 .radar-switch a {
   display: flex;
+  min-width: 0;
   align-items: center;
+  justify-content: center;
   gap: 9px;
   overflow: hidden;
   border-radius: 8px;
   padding: 8px 10px;
   color: var(--dim);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 750;
-  text-align: left;
+  text-align: center;
   text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.radar-switch .platform-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .radar-switch img {
@@ -427,7 +448,7 @@ a {
   min-width: 0;
   min-height: 100vh;
   margin-left: var(--sidebar);
-  padding: 30px 30px 70px;
+  padding: 0 30px 70px;
 }
 
 .topbar {
@@ -3227,24 +3248,8 @@ a {
   .nav-text,
   .nav-label,
   .sidebar-foot span,
-  .sync-row div,
-  .radar-switch .platform-label {
+  .sync-row div {
     display: none;
-  }
-
-  .radar-switch {
-    display: grid;
-  }
-
-  .radar-switch a {
-    justify-content: center;
-    gap: 0;
-    padding-inline: 2px;
-  }
-
-  .radar-switch img {
-    width: 20px;
-    height: 20px;
   }
 
   .nav button {
@@ -3368,19 +3373,8 @@ a {
   .nav-text,
   .nav-label,
   .sidebar-foot span,
-  .sync-row div,
-  .radar-switch .platform-label {
+  .sync-row div {
     display: inline;
-  }
-
-  .radar-switch {
-    display: grid;
-  }
-
-  .radar-switch a {
-    justify-content: flex-start;
-    gap: 9px;
-    padding-inline: 10px;
   }
 
   .nav button {
@@ -3447,7 +3441,7 @@ a {
   }
 
   .topbar {
-    padding-top: 68px;
+    padding-top: 24px;
   }
 
   .topbar h2 {
@@ -3602,6 +3596,22 @@ a {
 
   .loading-panel {
     grid-column: auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .radar-switch a {
+    gap: 0;
+    padding-inline: 8px;
+  }
+
+  .radar-switch .platform-label {
+    display: none;
+  }
+
+  .radar-switch img {
+    width: 20px;
+    height: 20px;
   }
 }
 

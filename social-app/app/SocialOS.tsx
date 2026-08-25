@@ -1133,21 +1133,6 @@ export function SocialOS({
           </div>
         </div>
 
-        <div className="radar-switch" aria-label="Choisir une plateforme">
-          <a className="youtube" href="../">
-            <img src="platforms/youtube.svg" alt="" />
-            <span className="platform-label">YouTube</span>
-          </a>
-          <a className="spotify" href="../spotify/">
-            <img src="platforms/spotify.svg" alt="" />
-            <span className="platform-label">Spotify</span>
-          </a>
-          <a className="social on" href="./" aria-current="page">
-            <img src="platforms/instagram.svg" alt="" />
-            <span className="platform-label">Social</span>
-          </a>
-        </div>
-
         <nav className="nav" aria-label="Navigation principale">
           {(["Pilotage"] as const).map((group) => (
             <div className="nav-group" key={group}>
@@ -1282,6 +1267,23 @@ export function SocialOS({
       </aside>
 
       <main className="main">
+        <header className="platform-header">
+          <div className="radar-switch" role="navigation" aria-label="Changer de site Lofi Radar">
+            <a className="youtube" href="../" aria-label="YouTube">
+              <img src="platforms/youtube.svg" alt="" />
+              <span className="platform-label">YouTube</span>
+            </a>
+            <a className="spotify" href="../spotify/" aria-label="Spotify">
+              <img src="platforms/spotify.svg?v=20260825-logo-fix-v1" alt="" />
+              <span className="platform-label">Spotify</span>
+            </a>
+            <a className="social on" href="./" aria-current="page" aria-label="Social">
+              <img src="platforms/instagram.svg" alt="" />
+              <span className="platform-label">Social</span>
+            </a>
+          </div>
+        </header>
+
         {error ? (
           <div className="error-banner" role="alert">
             <span>⚠️</span>

@@ -46,8 +46,10 @@ button,input,select{max-width:100%}
 .logo h1{font-family:'Sora';font-size:15.5px;font-weight:800;letter-spacing:.3px;white-space:nowrap}
 .logo h1 span{background:linear-gradient(90deg,#1ed760,#4ade80);-webkit-background-clip:text;background-clip:text;color:transparent}
 .logo small{display:block;font-size:10px;font-weight:500;color:var(--dim);letter-spacing:1.6px;text-transform:uppercase;margin-top:2px;white-space:nowrap}
-.radar-switch{display:grid;grid-template-columns:1fr;gap:4px;margin:0 4px 12px;padding:4px;border:1px solid var(--border);border-radius:11px;background:rgba(5,10,7,.42)}
-.radar-switch a{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;text-align:left;color:var(--dim);font-size:11px;font-weight:750;letter-spacing:.15px}
+.platform-header{display:flex;width:100%;min-width:0;align-items:center;justify-content:center;margin-bottom:18px;padding:14px 0 16px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(11,18,14,.72),rgba(11,18,14,0))}
+.radar-switch{display:grid;width:min(100%,440px);grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin:0;padding:4px;border:1px solid var(--border);border-radius:12px;background:rgba(5,10,7,.58);box-shadow:0 10px 30px rgba(0,0,0,.16)}
+.radar-switch a{display:flex;min-width:0;align-items:center;justify-content:center;gap:9px;padding:9px 12px;border-radius:8px;text-align:center;color:var(--dim);font-size:12px;font-weight:750;letter-spacing:.15px;white-space:nowrap}
+.radar-switch a span{overflow:hidden;text-overflow:ellipsis}
 .radar-switch a img{width:18px;height:18px;flex:none;object-fit:contain}
 .radar-switch a:hover{color:var(--text);background:rgba(255,255,255,.05)}
 .radar-switch a.yt.on{color:#fff;background:rgba(255,0,51,.18);box-shadow:inset 0 0 0 1px rgba(255,0,51,.35)}
@@ -108,7 +110,7 @@ button,input,select{max-width:100%}
 #lang-btn img{width:28px;height:21px;border-radius:4px;box-shadow:0 0 0 1px rgba(255,255,255,.12)}
 
 /* ---------- Main ---------- */
-#main{margin-left:var(--sidebar);padding:26px 30px 60px;min-width:0;max-width:100%}
+#main{margin-left:var(--sidebar);padding:0 30px 60px;min-width:0;max-width:100%}
 #view,.panel,.toolbar,.page-head,.freshbar,.offer,.tmbox,.acard{min-width:0;max-width:100%}
 .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap}
 .page-head h2{font-family:'Sora';font-size:22px;font-weight:700}
@@ -691,7 +693,7 @@ td.selc,th.selc{width:44px;padding-left:14px}
   .nav button .emo{width:auto;font-size:14px}
   .nav .count{display:none}
   .side-foot{display:none}
-  #main{margin-left:0;padding:16px 12px 64px;max-width:100%}
+  #main{margin-left:0;padding:0 12px 64px;max-width:100%}
   #lang-btn{top:auto;bottom:14px;right:14px;box-shadow:0 6px 22px rgba(0,0,0,.55)}
   .page-head h2{font-size:19px}
   .page-head p{font-size:12.5px}
@@ -726,7 +728,7 @@ td.selc,th.selc{width:44px;padding-left:14px}
 }
 
 @media(max-width:560px){
-  #main{padding:12px 8px 68px}
+  #main{padding:0 8px 68px}
   #sidebar{padding-left:7px;padding-right:7px}
   .logo{justify-content:center}
   .nav button,.nav button[data-v="playlists"]{font-size:10.5px;padding:7px 3px}
@@ -776,6 +778,12 @@ td.selc,th.selc{width:44px;padding-left:14px}
   .perf-card .pcompare{min-height:0}
   .analytics-section{padding:12px}
   .analytics-kpis{grid-template-columns:1fr}
+}
+
+@media(max-width:420px){
+  .radar-switch a{gap:0;padding-inline:8px}
+  .radar-switch a span{display:none}
+  .radar-switch a img{width:20px;height:20px}
 }
 /* Dynamic full-pool A&R engine */
 .ar-mini-tag.deal{font-weight:800;color:#dffdf0;border-color:rgba(94,234,212,.24);background:rgba(94,234,212,.07)}
