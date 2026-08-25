@@ -3,8 +3,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Lofi Social Radar",
-    template: "%s · Lofi Social Radar",
+    default: "Lofi Radar · Social",
+    template: "%s · Lofi Radar",
   },
   description:
     "Radar interne des performances Instagram, X, TikTok et YouTube de Lofi Girl.",

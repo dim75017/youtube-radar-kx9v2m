@@ -1127,28 +1127,25 @@ export function SocialOS({
           </div>
           <div className="brand-copy">
             <h1>
-              Lofi <span>Social Radar</span>
+              Lofi <span>Radar</span>
             </h1>
-            <small>Community Intelligence</small>
+            <small>Social · Community</small>
           </div>
         </div>
 
-        <div className="radar-switch" aria-label="Produit actif">
-          <a
-            href="https://dim75017.github.io/youtube-radar-kx9v2m/"
-            target="_blank"
-            rel="noreferrer"
-          >
-            ▶ YouTube
+        <div className="radar-switch" aria-label="Choisir une plateforme">
+          <a className="youtube" href="../">
+            <img src="platforms/youtube.svg" alt="" />
+            <span className="platform-label">YouTube</span>
           </a>
-          <a
-            href="https://dim75017.github.io/youtube-radar-kx9v2m/spotify/"
-            target="_blank"
-            rel="noreferrer"
-          >
-            ♫ Spotify
+          <a className="spotify" href="../spotify/">
+            <img src="platforms/spotify.svg" alt="" />
+            <span className="platform-label">Spotify</span>
           </a>
-          <span className="on">● Social</span>
+          <a className="social on" href="./" aria-current="page">
+            <img src="platforms/instagram.svg" alt="" />
+            <span className="platform-label">Social</span>
+          </a>
         </div>
 
         <nav className="nav" aria-label="Navigation principale">
@@ -3711,7 +3708,7 @@ function PostMediaPreview({
             <iframe
               src={video.playerUrl}
               title={`Lecteur ${meta.label} : ${post.title || post.text || "publication"}`}
-              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+              allow="encrypted-media; picture-in-picture; fullscreen"
               referrerPolicy="strict-origin-when-cross-origin"
               allowFullScreen
             />

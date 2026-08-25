@@ -11,7 +11,10 @@ import {
 } from "../lib/trend-scan-status.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const output = resolve(root, "work", "pages-dist", "data");
+const outputRoot = process.env.LOFI_SOCIAL_OUT_DIR
+  ? resolve(root, process.env.LOFI_SOCIAL_OUT_DIR)
+  : resolve(root, "work", "pages-dist");
+const output = resolve(outputRoot, "data");
 const platforms = ["youtube", "instagram", "tiktok", "x"];
 
 const [

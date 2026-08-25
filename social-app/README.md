@@ -2,7 +2,7 @@
 
 Le **Social & Community Intelligence OS** de Lofi Girl analyse les contenus publics des comptes officiels, classe les posts qui surperforment et transforme leurs signaux en idées éditoriales testables.
 
-**Maquette publique :** https://dim75017.github.io/lofi-social-radar-preview/
+**Interface unifiée :** https://dim75017.github.io/youtube-radar-kx9v2m/social/
 
 Le code source, les workflows et le site public vivent dans ce dépôt unique. La
 branche `main` contient l’application et les données validées ; la branche

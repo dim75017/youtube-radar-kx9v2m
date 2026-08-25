@@ -525,7 +525,7 @@ function CommentOpportunityMedia({ opportunity, rank }: { opportunity: CommentOp
           <iframe
             src={embedUrl}
             title={`Vidéo de ${opportunity.author}`}
-            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+            allow="encrypted-media; picture-in-picture; fullscreen"
             referrerPolicy="strict-origin-when-cross-origin"
             allowFullScreen
           />

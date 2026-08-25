@@ -139,10 +139,9 @@ export function SocialInlinePlayer({
 
   useEffect(() => {
     if (!active || !useInstagramVideo) return;
-    requestInstagramPlayback();
     const video = videoRef.current;
     return () => video?.pause();
-  }, [active, instagramPlaybackUrl, requestInstagramPlayback, useInstagramVideo]);
+  }, [active, instagramPlaybackUrl, useInstagramVideo]);
 
   useEffect(() => {
     if (!active) return;
@@ -161,9 +160,7 @@ export function SocialInlinePlayer({
         event.data["x-tiktok-player"] !== true
       ) return;
 
-      if (event.data.type === "onPlayerReady") {
-        requestTikTokPlayback();
-      } else if (event.data.type === "onStateChange" && event.data.value === 1) {
+      if (event.data.type === "onStateChange" && event.data.value === 1) {
         clearFallbackTimer();
         setStatus("playing");
       } else if (event.data.type === "onMute" && event.data.value === true) {
@@ -200,17 +197,12 @@ export function SocialInlinePlayer({
             },
             onReady: (event) => {
               youtubePlayerRef.current = event.target;
-              requestYouTubePlayback();
             },
             onStateChange: (event) => {
               if (event.data !== 1) return;
               try {
-                if (event.target.isMuted()) {
-                  event.target.unMute();
-                  event.target.setVolume(100);
-                }
                 clearFallbackTimer();
-                setStatus(event.target.isMuted() ? "blocked" : "playing");
+                setStatus("playing");
               } catch {
                 clearFallbackTimer();
                 setStatus("blocked");
@@ -280,8 +272,7 @@ export function SocialInlinePlayer({
           title={title}
           controls
           playsInline
-          autoPlay
-          preload="auto"
+          preload="metadata"
           muted={false}
           onPlaying={() => setStatus("playing")}
           onError={() => {
@@ -332,13 +323,10 @@ export function SocialInlinePlayer({
         ref={iframeRef}
         src={embedUrl}
         title={title}
-        allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+        allow="encrypted-media; picture-in-picture; fullscreen"
         referrerPolicy="strict-origin-when-cross-origin"
         loading="lazy"
         allowFullScreen
-        onLoad={() => {
-          if (platform === "tiktok") requestTikTokPlayback();
-        }}
       />
       {status === "blocked" && (platform === "tiktok" || platform === "youtube") ? (
         <button

@@ -31,11 +31,11 @@ test("builds official players for YouTube Shorts and TikTok videos", () => {
 
   assert.equal(
     youtube?.playerUrl,
-    "https://www.youtube-nocookie.com/embed/thR75861Btw?autoplay=1&playsinline=1&rel=0",
+    "https://www.youtube-nocookie.com/embed/thR75861Btw?autoplay=0&playsinline=1&rel=0",
   );
   assert.equal(
     tiktok?.playerUrl,
-    "https://www.tiktok.com/player/v1/7532570759349226774?autoplay=1&controls=1&description=0&music_info=0&rel=0",
+    "https://www.tiktok.com/player/v1/7532570759349226774?autoplay=0&controls=1&description=0&music_info=0&rel=0",
   );
   assert.match(getTikTokOEmbedUrl(tiktokPost) ?? "", /tiktok\.com%2F%40lofigirl%2Fvideo/);
 });

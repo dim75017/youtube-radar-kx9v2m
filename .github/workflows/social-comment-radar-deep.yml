@@ -1,0 +1,90 @@
+name: Social · Comment radar deep lane
+
+# Same pipeline as the fast lane with a seven-day discovery horizon and a
+# larger voice-engine budget. It exists to catch what the 15-minute lane could
+# not see: a channel that was unreachable for a while, a video that only started
+# climbing on its second day, and the cards that are due to be pruned.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 1,7,13,19 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: social-comment-radar-write
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: social-app
+    steps:
+      - name: Check out radar source
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Restore the candidate baseline
+        uses: actions/cache@v4
+        with:
+          path: social-app/data/comment-opportunities/candidates.json
+          key: comment-radar-candidates-${{ github.run_id }}
+          restore-keys: |
+            comment-radar-candidates-
+
+      - name: Scan the watchlist over a week
+        id: scan
+        continue-on-error: true
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: node --experimental-strip-types scripts/refresh-comment-opportunities.mjs --lane=deep
+
+      - name: Validate the snapshot
+        id: validation
+        if: steps.scan.outcome == 'success'
+        continue-on-error: true
+        run: |
+          node --experimental-strip-types --test \
+            tests/comment-opportunities.test.mjs \
+            tests/comment-radar-refresh.test.mjs \
+            tests/comment-drop-alerts.test.mjs \
+            tests/lofi-voice.test.mjs
+
+      - name: Announce new drops in the CM channel
+        if: steps.scan.outcome == 'success' && steps.validation.outcome == 'success'
+        continue-on-error: true
+        env:
+          DISCORD_CM_WEBHOOK_URL: ${{ secrets.DISCORD_CM_WEBHOOK_URL }}
+        run: node --experimental-strip-types scripts/notify-comment-drops.mjs
+
+      - name: Commit the verified snapshot
+        id: commit
+        if: steps.scan.outcome == 'success' && steps.validation.outcome == 'success'
+        run: |
+          git config user.name "lofi-social-radar-bot"
+          git config user.email "lofi-social-radar-bot@users.noreply.github.com"
+          git add data/comment-opportunities/feed.json data/comment-opportunities/refresh-status.json
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          git commit -m "Refresh comment radar (deep)"
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+      - name: Mark an invalid or failed scan
+        if: steps.scan.outcome == 'failure' || steps.validation.outcome == 'failure'
+        run: exit 1

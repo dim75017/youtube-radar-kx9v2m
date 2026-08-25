@@ -8,7 +8,7 @@ import {
 
 const hostOrigin = "https://dim75017.github.io";
 
-test("builds sound-on TikTok and controllable YouTube inline players", () => {
+test("builds user-initiated TikTok and controllable YouTube inline players", () => {
   const tiktok = buildSocialInlineEmbedUrl(
     "tiktok",
     "https://www.tiktok.com/@creator/video/7663570718331768084",
@@ -22,9 +22,9 @@ test("builds sound-on TikTok and controllable YouTube inline players", () => {
 
   assert.equal(
     tiktok,
-    "https://www.tiktok.com/player/v1/7663570718331768084?autoplay=1&muted=0&controls=1&volume_control=1&play_button=1&description=0&music_info=0&rel=0",
+    "https://www.tiktok.com/player/v1/7663570718331768084?autoplay=0&muted=0&controls=1&volume_control=1&play_button=1&description=0&music_info=0&rel=0",
   );
-  assert.match(youtube ?? "", /autoplay=1/);
+  assert.match(youtube ?? "", /autoplay=0/);
   assert.match(youtube ?? "", /enablejsapi=1/);
   assert.match(youtube ?? "", /origin=https%3A%2F%2Fdim75017\.github\.io/);
 });

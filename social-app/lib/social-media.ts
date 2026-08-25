@@ -36,7 +36,7 @@ export function getSocialVideoEmbed(
     return {
       platform: "youtube",
       externalId,
-      playerUrl: `https://www.youtube-nocookie.com/embed/${externalId}?autoplay=1&playsinline=1&rel=0`,
+      playerUrl: `https://www.youtube-nocookie.com/embed/${externalId}?autoplay=0&playsinline=1&rel=0`,
       posterUrl:
         post.thumbnail_url ??
         `https://i.ytimg.com/vi/${externalId}/hqdefault.jpg`,
@@ -52,7 +52,7 @@ export function getSocialVideoEmbed(
     return {
       platform: "tiktok",
       externalId,
-      playerUrl: `https://www.tiktok.com/player/v1/${externalId}?autoplay=1&controls=1&description=0&music_info=0&rel=0`,
+      playerUrl: `https://www.tiktok.com/player/v1/${externalId}?autoplay=0&controls=1&description=0&music_info=0&rel=0`,
       posterUrl: post.thumbnail_url,
     };
   }

@@ -1,0 +1,50 @@
+name: Social · Backfill Instagram history
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "41 * * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: social-history-write
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    defaults:
+      run:
+        working-directory: social-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate fail-closed Instagram guard
+        run: |
+          node --check scripts/instagram-public-profile-guard.mjs
+          node --test tests/instagram-public-profile-guard.test.mjs
+      - run: npm install --no-save playwright
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/collect_instagram_x_history.mjs
+        env:
+          # X now uses the paid official API workflow. Keeping the legacy
+          # profile scroller away from X prevents it from weakening API rows.
+          SOCIAL_HISTORY_PLATFORM: instagram
+      - name: Synchronize the lightweight public summary
+        run: node --experimental-strip-types scripts/sync-public-history-summary.mjs
+      - name: Save public history
+        run: |
+          git config user.name "lofi-social-radar-bot"
+          git config user.email "lofi-social-radar-bot@users.noreply.github.com"
+          git add data/public-history.json data/public-history-summary.json
+          git diff --cached --quiet || git commit -m "Backfill Instagram history"
+          git pull --rebase origin main
+          git push

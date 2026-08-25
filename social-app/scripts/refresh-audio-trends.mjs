@@ -850,7 +850,7 @@ async function verifyTikTokThumbnail(candidate, { fetchImpl, timeoutMs }) {
     headers: {
       Accept: "image/avif,image/webp,image/png,image/jpeg",
       Range: `bytes=0-${TIKTOK_THUMBNAIL_PROBE_BYTES - 1}`,
-      "User-Agent": "Mozilla/5.0 (compatible; LofiSocialRadar/1.0; +https://github.com/dim75017/lofi-social-radar-preview)",
+      "User-Agent": "Mozilla/5.0 (compatible; LofiSocialRadar/1.0; +https://github.com/dim75017/youtube-radar-kx9v2m)",
     },
     redirect: "follow",
     signal: AbortSignal.timeout(timeoutMs),
@@ -905,7 +905,7 @@ function tiktokOEmbedRequestOptions(timeoutMs) {
     headers: {
       Accept: "application/json",
       "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
-      "User-Agent": "Mozilla/5.0 (compatible; LofiSocialRadar/1.0; +https://github.com/dim75017/lofi-social-radar-preview)",
+      "User-Agent": "Mozilla/5.0 (compatible; LofiSocialRadar/1.0; +https://github.com/dim75017/youtube-radar-kx9v2m)",
     },
     redirect: "follow",
     signal: AbortSignal.timeout(timeoutMs),
@@ -954,7 +954,7 @@ async function verifyInstagramSignedPlayback(candidate, {
       Accept: "video/mp4",
       Origin: "https://dim75017.github.io",
       Range: `bytes=0-${INSTAGRAM_PLAYBACK_PROBE_BYTES - 1}`,
-      "User-Agent": "Mozilla/5.0 (compatible; LofiSocialRadar/1.0; +https://github.com/dim75017/lofi-social-radar-preview)",
+      "User-Agent": "Mozilla/5.0 (compatible; LofiSocialRadar/1.0; +https://github.com/dim75017/youtube-radar-kx9v2m)",
     },
     redirect: "follow",
     signal: AbortSignal.timeout(timeoutMs),
@@ -1007,7 +1007,7 @@ function publicPageRequestOptions(timeoutMs) {
     headers: {
       Accept: "text/html,application/xhtml+xml",
       "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
-      "User-Agent": "Mozilla/5.0 (compatible; LofiSocialRadar/1.0; +https://github.com/dim75017/lofi-social-radar-preview)",
+      "User-Agent": "Mozilla/5.0 (compatible; LofiSocialRadar/1.0; +https://github.com/dim75017/youtube-radar-kx9v2m)",
     },
     redirect: "follow",
     signal: AbortSignal.timeout(timeoutMs),

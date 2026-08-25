@@ -58,7 +58,7 @@ export function buildSocialInlineEmbedUrl(
       if (!isPlatformHost(hostname, "tiktok.com")) return null;
       const id = path.match(/^\/@[^/]+\/video\/(\d{12,24})$/iu)?.[1];
       return id
-        ? `https://www.tiktok.com/player/v1/${id}?autoplay=1&muted=0&controls=1&volume_control=1&play_button=1&description=0&music_info=0&rel=0`
+        ? `https://www.tiktok.com/player/v1/${id}?autoplay=0&muted=0&controls=1&volume_control=1&play_button=1&description=0&music_info=0&rel=0`
         : null;
     }
 
@@ -66,7 +66,7 @@ export function buildSocialInlineEmbedUrl(
       if (!isPlatformHost(hostname, "youtube.com")) return null;
       const id = path.match(/^\/shorts\/([A-Za-z0-9_-]{11})$/u)?.[1] ?? url.searchParams.get("v");
       if (!id || !/^[A-Za-z0-9_-]{11}$/u.test(id) || !hostOrigin) return null;
-      return `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&playsinline=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(hostOrigin)}`;
+      return `https://www.youtube-nocookie.com/embed/${id}?autoplay=0&playsinline=1&rel=0&enablejsapi=1&origin=${encodeURIComponent(hostOrigin)}`;
     }
 
     if (platform === "instagram") {

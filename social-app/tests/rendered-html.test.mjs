@@ -32,7 +32,7 @@ test("server-renders the live Social Radar shell", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>Lofi Social Radar<\/title>/i);
+  assert.match(html, /<title>Lofi Radar · Social<\/title>/i);
   assert.match(html, /Tableau de bord/);
   assert.match(html, /Tous les posts/);
   assert.match(html, /Commentaires/);
@@ -53,7 +53,7 @@ test("server-renders the live Social Radar shell", async () => {
 
 test("keeps real social collection, post formats and persistence explicit", async () => {
   const [
-    hosting,
+    viteConfig,
     schema,
     component,
     formats,
@@ -80,7 +80,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     socialInlinePlayer,
     socialInlinePlayerModel,
   ] = await Promise.all([
-    readFile(new URL("../.openai/hosting.json", import.meta.url), "utf8"),
+    readFile(new URL("../vite.config.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/SocialOS.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/social-formats.ts", import.meta.url), "utf8"),
@@ -108,7 +108,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     readFile(new URL("../lib/social-inline-player.ts", import.meta.url), "utf8"),
   ]);
 
-  assert.match(hosting, /"d1"\s*:\s*"DB"/);
+  assert.match(viteConfig, /const d1 = "DB"/);
   assert.match(schema, /socialAccounts/);
   assert.match(schema, /socialPosts/);
   assert.match(schema, /postMetricSnapshots/);
@@ -246,16 +246,17 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(previewEntry, /RAW_AUDIENCE_HISTORY_URL/);
   assert.match(previewEntry, /initialAudienceHistory=\{audienceHistory\}/);
   assert.match(previewEntry, /refreshAudienceHistory/);
-  assert.match(previewEntry, /RAW_AUDIENCE_HISTORY_URL = `\$\{dataBaseUrl\}\/audience-history\.json`/);
-  assert.match(previewEntry, /raw\.githubusercontent\.com\/dim75017\/lofi-social-radar-preview\/main\/data\/audio-trends\/feed\.json/);
-  assert.match(previewEntry, /raw\.githubusercontent\.com\/dim75017\/lofi-social-radar-preview\/main\/data\/trends\/feed\.json/);
+  assert.match(previewEntry, /RAW_AUDIENCE_HISTORY_URL = `\$\{liveDataBaseUrl\}\/audience-history\.json`/);
+  assert.match(previewEntry, /raw\.githubusercontent\.com\/dim75017\/youtube-radar-kx9v2m\/main\/social-app\/data/);
+  assert.match(previewEntry, /RAW_AUDIO_TREND_FEED_URL = `\$\{liveDataBaseUrl\}\/audio-trends\/feed\.json`/);
+  assert.match(previewEntry, /RAW_TREND_FEED_URL = `\$\{liveDataBaseUrl\}\/trends\/feed\.json`/);
   assert.match(previewEntry, /window\.setInterval\(refreshTrendFeed, 60 \* 60 \* 1_000\)/);
   assert.match(previewEntry, /visibilitychange/);
   assert.match(previewEntry, /RAW_COMMENT_OPPORTUNITIES_URL/);
   assert.match(previewEntry, /initialCommentOpportunityFeed=\{commentOpportunityFeed\}/);
   assert.match(
     previewEntry,
-    /RAW_COMMENT_OPPORTUNITIES_URL = `\$\{dataBaseUrl\}\/comment-opportunities\/feed\.json`/,
+    /RAW_COMMENT_OPPORTUNITIES_URL = `\$\{liveDataBaseUrl\}\/comment-opportunities\/feed\.json`/,
   );
   assert.match(previewEntry, /window\.setInterval\(refreshCommentOpportunities, 60 \* 60 \* 1_000\)/);
   assert.match(audienceMetrics, /mean\(likes\+comments\)\/followers\*100/);
@@ -372,7 +373,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(styles, /\.audio-reference-play-overlay\s*\{/);
   assert.match(component, /activePlayerId/);
   assert.match(component, /<SocialInlinePlayer/);
-  assert.match(socialInlinePlayerModel, /autoplay=1&muted=0/);
+  assert.match(socialInlinePlayerModel, /autoplay=0&muted=0/);
   assert.match(socialInlinePlayerModel, /enablejsapi=1/);
   assert.match(socialInlinePlayer, /event\.origin !== "https:\/\/www\.tiktok\.com"/);
   assert.match(socialInlinePlayer, /type: "unMute"/);
@@ -386,6 +387,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(directInstagramPlayer, /<video/);
   assert.match(directInstagramPlayer, /controls/);
   assert.match(directInstagramPlayer, /playsInline/);
+  assert.doesNotMatch(directInstagramPlayer, /autoPlay/);
   assert.doesNotMatch(directInstagramPlayer, /<iframe/);
   assert.match(audioTrendView, /playbackUrl=\{trend\.referenceVideo\.playbackUrl\}/);
   assert.match(audioTrendView, /playbackExpiresAt=\{trend\.referenceVideo\.playbackExpiresAt\}/);
@@ -571,9 +573,9 @@ test("makes editorial trend freshness visible and checks it without reading medi
     readFile(new URL("../app/AudioTrendFeedView.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/trend-health.ts", import.meta.url), "utf8"),
     readFile(new URL("../scripts/check-trends-health.mjs", import.meta.url), "utf8"),
-    readFile(new URL("../.github/workflows/check-trends-health.yml", import.meta.url), "utf8"),
-    readFile(new URL("../.github/workflows/refresh-social-trends.yml", import.meta.url), "utf8"),
-    readFile(new URL("../.github/workflows/refresh-audio-trends.yml", import.meta.url), "utf8"),
+    readFile(new URL("../../.github/workflows/social-check-trends-health.yml", import.meta.url), "utf8"),
+    readFile(new URL("../../.github/workflows/social-refresh-video-trends.yml", import.meta.url), "utf8"),
+    readFile(new URL("../../.github/workflows/social-refresh-audio-trends.yml", import.meta.url), "utf8"),
   ]);
 
   const videoTrendView = socialComponent.slice(
@@ -599,8 +601,8 @@ test("makes editorial trend freshness visible and checks it without reading medi
   assert.match(healthWorkflow, /contents: read/);
   assert.doesNotMatch(healthWorkflow, /contents: write|actions: write|git push|workflow run/i);
   for (const workflow of [videoRefreshWorkflow, audioRefreshWorkflow]) {
-    assert.match(workflow, /actions: write/);
-    assert.match(workflow, /gh workflow run publish-public-preview\.yml --ref main/);
-    assert.match(workflow, /steps\.commit\.outputs\.changed == 'true'/);
+    assert.match(workflow, /working-directory: social-app/);
+    assert.doesNotMatch(workflow, /actions: write|gh-pages|publish-public-preview/);
+    assert.match(workflow, /id: commit/);
   }
 });

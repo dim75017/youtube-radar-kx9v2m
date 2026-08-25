@@ -3,6 +3,9 @@ name: Deploy GitHub Pages
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "social-app/data/comment-opportunities/feed.json"
+      - "social-app/data/comment-opportunities/refresh-status.json"
   workflow_dispatch:
     inputs:
       requested_sha:
@@ -58,6 +61,8 @@ jobs:
             /video_history/
             /youtube_recommendation_ledger/manifest.json
             /prune_pages_artifact.py
+            /_config.yml
+            /social-app/
 
       - id: revision
         name: Resolve and require one immutable Pages revision
@@ -161,6 +166,30 @@ jobs:
           done
           echo "Materialized active and staged Soundcharts snapshots only."
 
+      - name: Set up Node.js for Social Radar
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable pnpm
+        shell: bash
+        run: corepack enable
+
+      - name: Build the Social Radar runtime
+        working-directory: social-app
+        env:
+          LOFI_SOCIAL_BASE_PATH: /youtube-radar-kx9v2m/social/
+          LOFI_SOCIAL_OUT_DIR: ../social
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile
+          pnpm build:preview
+          test -f ../social/index.html
+          test -f ../social/data/trends/feed.json
+          test -f ../social/data/audio-trends/feed.json
+          test -f ../social/data/comment-opportunities/feed.json
+
       - uses: actions/configure-pages@v5
 
       # Keep the same Jekyll build semantics as the former branch-based Pages
@@ -193,6 +222,20 @@ jobs:
           # pruning step removes historical payloads.
           sudo chown -R "$(id -u):$(id -g)" ./_site
           python prune_pages_artifact.py --site-dir ./_site
+
+      - name: Require the unified public surface only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f ./_site/index.html
+          test -f ./_site/spotify/index.html
+          test -f ./_site/social/index.html
+          test ! -e ./_site/social-app
+          if grep -R -F 'https://dim75017.github.io/lofi-social-radar-preview/' ./_site/social || \
+             grep -R -F 'raw.githubusercontent.com/dim75017/lofi-social-radar-preview/main/' ./_site/social; then
+            echo "The Social runtime still references a legacy public data base." >&2
+            exit 1
+          fi
 
       - name: Upload exact Pages artifact
         uses: actions/upload-pages-artifact@v4
