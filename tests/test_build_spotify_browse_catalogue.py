@@ -1086,6 +1086,64 @@ class BrowseCatalogueTests(unittest.TestCase):
         ]
         self.assertEqual(records[0]["streams"], 100_000)
 
+    def test_quarantined_performance_history_overrides_newer_corrupt_source_and_reconciles_delta(self):
+        cases = (
+            {
+                "name": "exact previous day recalculates delta",
+                "history": [["2026-08-17", 203_100], ["2026-08-18", 205_208]],
+                "expected_delta": 2_108,
+            },
+            {
+                "name": "missing previous day clears delta",
+                "history": [["2026-08-16", 201_000], ["2026-08-18", 205_208]],
+                "expected_delta": None,
+            },
+        )
+        for index, case in enumerate(cases):
+            with self.subTest(case=case["name"]):
+                spotify_id = f"spotify-quarantined-{index}"
+                soundcharts_uuid = f"soundcharts-quarantined-{index}"
+                row = {
+                    "spotify_id": spotify_id,
+                    "soundcharts_uuid": soundcharts_uuid,
+                    "streams": 241_582_598,
+                    "streams_source_date": "2026-08-19",
+                    "streams_delta_24h": 241_377_390,
+                }
+                performance = {
+                    spotify_id: {
+                        "soundcharts_uuid": soundcharts_uuid,
+                        "history": case["history"],
+                        "counter_integrity": {
+                            "version": 1,
+                            "status": "spike_quarantined",
+                            "events": [{"type": "unconfirmed_discontinuity_quarantined"}],
+                        },
+                    }
+                }
+
+                applied = subject._overlay_latest_performance_streams([row], performance)
+
+                self.assertEqual(applied, 1)
+                self.assertEqual(row["streams"], 205_208)
+                self.assertEqual(row["streams_source_date"], "2026-08-18")
+                self.assertEqual(row["streams_delta_24h"], case["expected_delta"])
+
+    def test_performance_overlay_ignores_rows_without_a_matching_history(self):
+        row = {
+            "spotify_id": "catalogue-only",
+            "soundcharts_uuid": "catalogue-only-uuid",
+            "streams": 123_456,
+            "streams_source_date": "2026-08-19",
+            "streams_delta_24h": 456,
+        }
+
+        applied = subject._overlay_latest_performance_streams([row], {})
+
+        self.assertEqual(applied, 0)
+        self.assertEqual(row["streams"], 123_456)
+        self.assertEqual(row["streams_delta_24h"], 456)
+
 
 if __name__ == "__main__":
     unittest.main()

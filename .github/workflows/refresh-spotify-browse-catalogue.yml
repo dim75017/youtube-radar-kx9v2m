@@ -13,10 +13,18 @@ on:
       - 'spotify-catalogue-exclusions.json'
       - 'spotify-protected-review-cohorts.json'
       - 'build_spotify_browse_catalogue.py'
+      - 'spotify_counter_integrity.py'
+      - 'repair_spotify_counter_integrity.py'
+      - 'spotify_performance_store.py'
       - 'spotify/dashboard.js'
       - 'spotify/player.js'
       - 'spotify/player.css'
       - 'tests/test_build_spotify_browse_catalogue.py'
+      - 'tests/test_spotify_counter_integrity.py'
+      - 'tests/test_repair_spotify_counter_integrity.py'
+      - 'tests/spotify_counter_integrity_cases.json'
+      - 'tests/test_spotify_counter_integrity.js'
+      - 'tests/test_spotify_data_through.js'
       - 'tests/test_spotify_catalogue_layers.js'
       - 'tests/test_spotify_catalogue_archives.js'
       - 'tests/test_spotify_full_catalogue.js'
@@ -106,7 +114,9 @@ jobs:
 
       - name: Validate the two-layer contract
         run: |
-          python -m unittest tests/test_build_spotify_browse_catalogue.py -v
+          python -m py_compile build_spotify_browse_catalogue.py spotify_counter_integrity.py repair_spotify_counter_integrity.py spotify_performance_store.py
+          python -m unittest tests/test_build_spotify_browse_catalogue.py tests/test_spotify_counter_integrity.py tests/test_repair_spotify_counter_integrity.py -v
+          python repair_spotify_counter_integrity.py --performance Spotify_Performance_data.js --browse Spotify_Browse_Catalogue_data.js --check
           node --check spotify/dashboard.js
           node --check spotify/player.js
           node --check spotify/coverage.js
@@ -119,6 +129,8 @@ jobs:
           node tests/test_spotify_public_strict_projection.js
           node tests/test_spotify_track_analytics_interactions.js
           node tests/test_spotify_daily_chart_integrity.js
+          node tests/test_spotify_counter_integrity.js
+          node tests/test_spotify_data_through.js
           git diff --check
 
       - name: Publish only when the catalogue changed

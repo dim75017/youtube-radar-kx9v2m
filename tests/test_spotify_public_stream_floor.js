@@ -122,6 +122,9 @@ const context = {
   normalizeCounterHistory(points) {
     return Array.isArray(points) ? points : [];
   },
+  sanitizeTrackCounterHistory(points) {
+    return Array.isArray(points) ? points : [];
+  },
 };
 vm.runInNewContext(
   `${dashboard.slice(preparationStart, preparationEnd)};

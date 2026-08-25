@@ -66,10 +66,10 @@ assert.match(index, /Spotify_Browse_Catalogue_data\.js\?payload=/);
 assert.match(index, /discovery\.css\?v=20260722-unified-catalogue-v1/);
 assert.match(index, /player\.css\?v=20260821-custom-preview-v1/);
 assert.match(index, /player\.js\?v=20260821-custom-preview-v1/);
-assert.match(index, /dashboard\.js\?v=20260821-custom-preview-v1/);
+assert.match(index, /dashboard\.js\?v=20260825-counter-integrity-v1/);
 const previewDataIndex = index.indexOf('../Spotify_Preview_Audio_data.js?v=20260821-custom-preview-v1');
 const customPlayerIndex = index.indexOf('player.js?v=20260821-custom-preview-v1');
-const dashboardIndex = index.indexOf('dashboard.js?v=20260821-custom-preview-v1');
+const dashboardIndex = index.indexOf('dashboard.js?v=20260825-counter-integrity-v1');
 assert.ok(previewDataIndex >= 0 && customPlayerIndex > previewDataIndex && dashboardIndex > customPlayerIndex,
   'the local preview map loads before the custom audio player and dashboard');
 assert.doesNotMatch(index, /https:\/\/sdk\.scdn\.co\/spotify-player\.js|(?:^|["'])auth\.js(?:\?|["'])/m,

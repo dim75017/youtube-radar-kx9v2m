@@ -125,7 +125,24 @@ const T = s => LANG === 'fr' ? s : (EN_MAP[s] !== undefined ? EN_MAP[s] : s);
 const HOT = 500000;                       // seuil de mise en évidence
 const MIN_TRACK_LIFETIME_STREAMS = 100000; // seuil public inclusif demandé par Dim
 const RATE = 0.0035;                      // $/stream Spotify all-in (Duetti/Loud&Clear 2025-26, fourchette 0.003-0.005)
-const TODAY = new Date(D.t + 'T00:00:00');
+function factualDay(value){
+  const day=String(value||'').slice(0,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(day)) return '';
+  const parsed=new Date(day+'T00:00:00Z');
+  return Number.isFinite(parsed.getTime())&&parsed.toISOString().slice(0,10)===day?day:'';
+}
+function latestTrackDataDay(){
+  const performance=window.SPOTIFY_PERFORMANCE||{}, soundcharts=window.SPOTIFY_SOUNDCHARTS||{};
+  const explicit=[
+    performance.freshness&&performance.freshness.tracks_catalogue_at,
+    performance.freshness&&performance.freshness.tracks_at,
+    soundcharts.freshness&&soundcharts.freshness.tracks_at,
+  ].map(factualDay).filter(Boolean).sort();
+  const candidates=(explicit.length?explicit:[soundcharts.generated_at,D.t].map(factualDay).filter(Boolean)).sort();
+  return candidates[candidates.length-1]||'1970-01-01';
+}
+const TRACK_DATA_THROUGH=latestTrackDataDay();
+const TODAY = new Date(TRACK_DATA_THROUGH + 'T00:00:00Z');
 function money(n){
   if (n==null||n<0) return '?';
   if (n>=1e6) return '$'+(n/1e6).toFixed(n>=1e7?0:1)+'M';
@@ -1144,11 +1161,12 @@ const HIST = Object.assign({}, D.hist || {}); // tid -> [[dateISO, compteur cumu
 for (const [tid,entry] of Object.entries(PERF_TRACKS)){
   const pts = perfHistory(entry); if (pts.length) HIST[tid] = pts;
 }
+for(const tid of Object.keys(HIST)) HIST[tid]=sanitizeTrackCounterHistory(HIST[tid]);
 /* Lifetime streams must follow the newest observed cumulative counter. This
    only updates tracks that already belong to the rendered catalogue: an entry
    present solely in the performance export is never promoted into R. */
 function latestPerformanceTrackCounter(entry){
-  const points=normalizeCounterHistory(perfHistory(entry));
+  const points=sanitizeTrackCounterHistory(perfHistory(entry));
   if(!points.length) return null;
   const value=Number(points[points.length-1][1]);
   return Number.isFinite(value)&&value>=0?value:null;
@@ -1325,7 +1343,7 @@ function fmtFull(n){ return n===-1?'?':n.toLocaleString('fr-FR'); }
 function monthsSince(d){
   if(!d) return null;
   const raw=String(d);
-  const parsed=new Date(raw.includes('T')?raw:raw+'T00:00:00');
+  const parsed=new Date(raw.includes('T')?raw:raw+'T00:00:00Z');
   if(!Number.isFinite(parsed.getTime())) return null;
   const days = (TODAY - parsed)/864e5;
   return days<0 ? null : Math.max(days/30.4368,1);
@@ -1340,21 +1358,97 @@ function normalizeCounterHistory(raw){
     const d = Array.isArray(p) ? p[0] : (p&&p.date);
     const rawValue = Array.isArray(p) ? p[1] : (p&&p.value);
     if(rawValue==null || (typeof rawValue==='string' && rawValue.trim()==='')) continue;
+    if(typeof rawValue==='boolean') continue;
     const v = Number(rawValue);
     const day = (d||'').toString().slice(0,10);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(day) && Number.isFinite(v)) daily.set(day,v);
+    const parsedDay=new Date(day+'T00:00:00Z');
+    const validDay=/^\d{4}-\d{2}-\d{2}$/.test(day)
+      &&Number.isFinite(parsedDay.getTime())&&parsedDay.toISOString().slice(0,10)===day;
+    if (validDay && Number.isFinite(v) && v>=0) daily.set(day,v);
   }
   return [...daily.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
 }
+function dayGap(a,b){
+  const x=new Date(a+'T00:00:00Z').getTime(), y=new Date(b+'T00:00:00Z').getTime();
+  return Math.round((y-x)/864e5);
+}
+function trackCounterDiscontinuity(previous,current){
+  const before=Number(previous),after=Number(current);
+  if(!Number.isFinite(before)||!Number.isFinite(after)||before<=0||after<0||before===after) return false;
+  const shift=Math.abs(after-before),ratio=Math.max(before,after)/Math.max(1,Math.min(before,after));
+  return (shift>=1000000&&ratio>=5)||(shift>=50000000&&ratio>=1.5);
+}
+function trackCounterTransitionDiscontinuity(points,index){
+  if(index<=0||index>=points.length) return false;
+  const previous=points[index-1],current=points[index],gap=dayGap(previous[0],current[0]);
+  if(gap!==1&&gap!==2) return false;
+  if(trackCounterDiscontinuity(previous[1],current[1])) return true;
+  const flow=Math.abs(Number(current[1])-Number(previous[1]))/gap;
+  if(flow<100000) return false;
+  const prior=[];
+  for(let cursor=Math.max(1,index-30);cursor<index;cursor++){
+    const priorGap=dayGap(points[cursor-1][0],points[cursor][0]);
+    if(priorGap!==1&&priorGap!==2) continue;
+    prior.push(Math.abs(Number(points[cursor][1])-Number(points[cursor-1][1]))/priorGap);
+  }
+  if(prior.length<14) return false;
+  prior.sort((a,b)=>a-b);
+  const middle=Math.floor(prior.length/2),median=prior.length%2?prior[middle]:(prior[middle-1]+prior[middle])/2;
+  return flow>=median*100&&flow>=prior[prior.length-1]*50;
+}
+function trackCounterIntegrity(raw){
+  let points=normalizeCounterHistory(raw).map(point=>[point[0],point[1]]);
+  const events=[];
+  let changed=true;
+  while(changed&&points.length>=3){
+    changed=false;
+    const cleaned=[];
+    for(let index=0;index<points.length;index++){
+      if(index>0&&index<points.length-1){
+        const previous=points[index-1],current=points[index],following=points[index+1];
+        const span=dayGap(previous[0],following[0]);
+        const endpointsAgree=Math.abs(Number(following[1])-Number(previous[1]))<=Math.max(250000,Math.max(Number(previous[1]),Number(following[1]))*.15);
+        if(span>=1&&span<=3
+          &&trackCounterTransitionDiscontinuity(points,index)
+          &&trackCounterTransitionDiscontinuity(points,index+1)&&endpointsAgree){
+          events.push({type:'isolated_glitch_removed',previous:[...previous],removed:[...current],following:[...following]});
+          changed=true;
+          continue;
+        }
+      }
+      cleaned.push(points[index]);
+    }
+    points=cleaned;
+  }
+  for(let index=1;index<points.length;index++){
+    const previous=points[index-1],current=points[index];
+    if(!trackCounterTransitionDiscontinuity(points,index)) continue;
+    const shift=Math.abs(Number(current[1])-Number(previous[1])),followup=[];
+    for(let cursor=index+1;cursor<Math.min(points.length,index+6);cursor++){
+      const gap=dayGap(points[cursor-1][0],points[cursor][0]);
+      if(gap!==1&&gap!==2) continue;
+      followup.push(Math.abs(Number(points[cursor][1])-Number(points[cursor-1][1]))/gap);
+    }
+    if(followup.length>=2){
+      const sorted=[...followup].sort((a,b)=>a-b),middle=Math.floor(sorted.length/2);
+      const median=sorted.length%2?sorted[middle]:(sorted[middle-1]+sorted[middle])/2;
+      if(median>Math.max(100000,shift*.05)) continue;
+    }
+    events.push({type:'unconfirmed_discontinuity_quarantined',previous:[...previous],candidate:[...current],quarantinedPoints:points.slice(index).map(point=>[...point])});
+    points=points.slice(0,index);
+    break;
+  }
+  const types=new Set(events.map(event=>event.type));
+  const status=types.has('unconfirmed_discontinuity_quarantined')?'spike_quarantined'
+    :types.has('isolated_glitch_removed')?'isolated_glitch_removed':'ok';
+  return {history:points,status,changed:events.length>0,events};
+}
+function sanitizeTrackCounterHistory(raw){return trackCounterIntegrity(raw).history;}
 function shiftDay(day,offset){
   const d = new Date(day+'T00:00:00Z');
   if (!Number.isFinite(d.getTime())) return '';
   d.setUTCDate(d.getUTCDate()+offset);
   return d.toISOString().slice(0,10);
-}
-function dayGap(a,b){
-  const x=new Date(a+'T00:00:00Z').getTime(), y=new Date(b+'T00:00:00Z').getTime();
-  return Math.round((y-x)/864e5);
 }
 /* Une fenêtre n'est valide que si les baselines existent aux dates exactes D-N et D-2N.
    Le T0 seul ne produit donc jamais un faux zéro et aucun trou n'est extrapolé. */
@@ -3241,14 +3335,14 @@ function arReleaseAgeDays(opportunity){
   return Number.isFinite(value)?Math.max(0,value):null;
 }
 function arOpportunityMetric(opportunity,days){
-  if(days===1&&opportunity.delta24!=null) return opportunity.delta24;
-  if(days===7&&opportunity.streams7!=null) return opportunity.streams7;
-  if(days===30&&opportunity.streams30!=null) return opportunity.streams30;
   const track=arTrackRowById(opportunity.spotifyId);
   if(track){
     const window=trackWindow(track,days);
     if(window&&window.currentReady&&window.current!=null) return window.current;
   }
+  if(days===1&&opportunity.delta24!=null) return opportunity.delta24;
+  if(days===7&&opportunity.streams7!=null) return opportunity.streams7;
+  if(days===30&&opportunity.streams30!=null) return opportunity.streams30;
   return null;
 }
 function arOpportunityTotal(opportunity){

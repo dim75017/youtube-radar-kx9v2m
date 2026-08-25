@@ -151,6 +151,21 @@ encore tous les garde-fous externes (genre, instrumentalité, IA, droits,
 identités et 100 000 streams). Le simple fait d'exister dans le staging privé
 ne lui accorde jamais cette provenance.
 
+## Intégrité des compteurs Spotify
+
+Un compteur lifetime Soundcharts n'est fusionné que lorsque le plot porte
+l'identifiant Spotify exact de la piste (ID, URI ou URL délimitée). Un plot
+unique générique ou attribué à une autre piste est inutilisable.
+
+Chaque historique est comparé à sa propre cadence récente. Une rupture extrême,
+positive ou négative, est conservée comme événement d'audit mais reste hors des
+totaux, deltas, courbes, agrégats et simulations de rachat. Un point aberrant
+isolé entre deux compteurs cohérents est retiré. Une rebase calme et persistante
+n'est jamais assimilée automatiquement à un changement d'identité : seule une
+correction explicite du mapping Soundcharts peut repartir sur la nouvelle base.
+Les valeurs Browse (total, date et delta D-1 exact) sont publiées atomiquement,
+et la publication échoue si elles divergent de l'historique Performance sûr.
+
 ## Règle de maintenance
 
 Ne jamais sécuriser A&R en vidant le catalogue de navigation. Les formes suivantes constituent une régression :

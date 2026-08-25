@@ -6,6 +6,8 @@ on:
     paths:
       - 'refresh_soundcharts_daily.py'
       - 'spotify_performance_store.py'
+      - 'spotify_counter_integrity.py'
+      - 'repair_spotify_counter_integrity.py'
       - 'Spotify_Performance_loader.js'
       - 'scan_soundcharts_fal_phase1.py'
       - 'data_freshness_watchdog.py'
@@ -30,6 +32,11 @@ on:
       - 'SPOTIFY_RADAR_POLICY.md'
       - 'tests/test_refresh_soundcharts_daily.py'
       - 'tests/test_spotify_performance_store.py'
+      - 'tests/test_spotify_counter_integrity.py'
+      - 'tests/test_repair_spotify_counter_integrity.py'
+      - 'tests/spotify_counter_integrity_cases.json'
+      - 'tests/test_spotify_counter_integrity.js'
+      - 'tests/test_spotify_data_through.js'
       - 'tests/test_spotify_performance_loader.js'
       - 'tests/test_scan_soundcharts_fal_phase1.py'
       - 'tests/test_soundcharts_fal_workflow_guardrails.py'
@@ -76,6 +83,8 @@ on:
     paths:
       - 'refresh_soundcharts_daily.py'
       - 'spotify_performance_store.py'
+      - 'spotify_counter_integrity.py'
+      - 'repair_spotify_counter_integrity.py'
       - 'Spotify_Performance_loader.js'
       - 'scan_soundcharts_fal_phase1.py'
       - 'data_freshness_watchdog.py'
@@ -100,6 +109,11 @@ on:
       - 'SPOTIFY_RADAR_POLICY.md'
       - 'tests/test_refresh_soundcharts_daily.py'
       - 'tests/test_spotify_performance_store.py'
+      - 'tests/test_spotify_counter_integrity.py'
+      - 'tests/test_repair_spotify_counter_integrity.py'
+      - 'tests/spotify_counter_integrity_cases.json'
+      - 'tests/test_spotify_counter_integrity.js'
+      - 'tests/test_spotify_data_through.js'
       - 'tests/test_spotify_performance_loader.js'
       - 'tests/test_scan_soundcharts_fal_phase1.py'
       - 'tests/test_soundcharts_fal_workflow_guardrails.py'
@@ -262,6 +276,8 @@ jobs:
           python -m unittest
           tests/test_refresh_soundcharts_daily.py
           tests/test_spotify_performance_store.py
+          tests/test_spotify_counter_integrity.py
+          tests/test_repair_spotify_counter_integrity.py
           tests/test_scan_soundcharts_fal_phase1.py
           tests/test_soundcharts_fal_workflow_guardrails.py
           tests/test_playlist_follower_daily_integrity.py
@@ -280,7 +296,7 @@ jobs:
 
       - name: Validate production source syntax
         run: |
-          python -m py_compile refresh_soundcharts_daily.py spotify_performance_store.py scan_soundcharts_fal_phase1.py playlist_follower_daily_status.py validate_playlist_snapshot_transition.py discover_soundcharts_playlists.py expand_soundcharts_instrumental_pool.py spotify_rights.py build_spotify_browse_catalogue.py build_spotify_selection_contacts.py enrich_public_artist_contacts.py sync_soundcharts_opportunities.py prepare_soundcharts_snapshot.py
+          python -m py_compile refresh_soundcharts_daily.py spotify_performance_store.py spotify_counter_integrity.py repair_spotify_counter_integrity.py scan_soundcharts_fal_phase1.py playlist_follower_daily_status.py validate_playlist_snapshot_transition.py discover_soundcharts_playlists.py expand_soundcharts_instrumental_pool.py spotify_rights.py build_spotify_browse_catalogue.py build_spotify_selection_contacts.py enrich_public_artist_contacts.py sync_soundcharts_opportunities.py prepare_soundcharts_snapshot.py
           node --check spotify/dashboard.js
           node --check spotify/player.js
           node tests/test_spotify_performance_loader.js
@@ -300,6 +316,8 @@ jobs:
           node tests/test_spotify_catalogue_layers.js
           node tests/test_spotify_catalogue_archives.js
           node tests/test_spotify_performance_lifetime.js
+          node tests/test_spotify_counter_integrity.js
+          node tests/test_spotify_data_through.js
           node tests/test_spotify_update_status.js
           node tests/test_spotify_track_analytics_interactions.js
           node tests/test_spotify_daily_chart_integrity.js
@@ -736,6 +754,12 @@ jobs:
           --priority-artists spotify-selection-artist-seeds.json
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
 
+      - name: Reject unexplained Spotify counter discontinuities
+        run: >-
+          python repair_spotify_counter_integrity.py
+          --performance Spotify_Performance_data.js
+          --check
+
       - name: Classify pending playlist tracks from exact Soundcharts song genres
         if: steps.plan.outputs.scope == 'classification'
         env:
@@ -1127,6 +1151,10 @@ jobs:
             --trusted-artist-seeds spotify-catalogue-baseline.json \
             --exclusions spotify-catalogue-exclusions.json \
             --protected-review-cohorts spotify-protected-review-cohorts.json
+          python repair_spotify_counter_integrity.py \
+            --performance Spotify_Performance_data.js \
+            --browse Spotify_Browse_Catalogue_data.js \
+            --check
           python validate_playlist_snapshot_transition.py \
             --previous "${{ steps.playlist_baseline.outputs.path }}" \
             --candidate Spotify_Playlists_canonical_data.js

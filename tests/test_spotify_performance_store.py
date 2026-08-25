@@ -83,6 +83,34 @@ class SpotifyPerformanceStoreTests(unittest.TestCase):
                 with self.assertRaises(subject.PerformanceStoreError):
                     subject.read_performance_payload(root)
 
+    def test_terminal_windows_crlf_is_validated_as_canonical_lf(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "Spotify_Performance_data.js"
+            subject.write_performance_payload(root, sample_payload(), shard_count=2)
+            stored_root = subject._read_root(root)
+            descriptor = next(
+                item for item in stored_root["track_shards"]["shards"] if item["tracks"]
+            )
+            shard = root.parent / descriptor["path"]
+            canonical = shard.read_bytes()
+            self.assertTrue(canonical.endswith(b"\n"))
+            self.assertFalse(canonical.endswith(b"\r\n"))
+
+            shard.write_bytes(canonical[:-1] + b"\r\n")
+            self.assertEqual(shard.stat().st_size, descriptor["bytes"] + 1)
+            hydrated = subject.read_performance_payload(root)
+            self.assertEqual(hydrated["tracks"], sample_payload()["tracks"])
+
+            stored_root["track_shards"]["shards"][
+                stored_root["track_shards"]["shards"].index(descriptor)
+            ]["bytes"] += 1
+            subject._atomic_write(root, subject._root_bytes(stored_root))
+            with self.assertRaisesRegex(
+                subject.PerformanceStoreError,
+                "byte count mismatch",
+            ):
+                subject.read_performance_payload(root)
+
     def test_duplicate_manifest_bucket_fails_closed(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "Spotify_Performance_data.js"
@@ -91,6 +119,20 @@ class SpotifyPerformanceStoreTests(unittest.TestCase):
             stored_root["track_shards"]["shards"][1]["bucket"] = stored_root["track_shards"]["shards"][0]["bucket"]
             subject._atomic_write(root, subject._root_bytes(stored_root))
             with self.assertRaisesRegex(subject.PerformanceStoreError, "duplicate or invalid buckets"):
+                subject.read_performance_payload(root)
+
+    def test_stale_root_summary_fails_closed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "Spotify_Performance_data.js"
+            subject.write_performance_payload(root, sample_payload(), shard_count=2)
+            stored_root = subject._read_root(root)
+            stored_root["tracks"]["track-a"]["history"] = [["2026-07-31", 999_999]]
+            subject._atomic_write(root, subject._root_bytes(stored_root))
+
+            with self.assertRaisesRegex(
+                subject.PerformanceStoreError,
+                "root summary is stale",
+            ):
                 subject.read_performance_payload(root)
 
     def test_root_switch_is_atomic_when_manifest_write_fails(self):

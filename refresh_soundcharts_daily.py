@@ -37,6 +37,7 @@ from spotify_performance_store import (
     validate_performance_store,
     write_performance_payload,
 )
+from spotify_counter_integrity import sanitize_counter_history
 
 
 API_BASE = "https://customer.api.soundcharts.com"
@@ -616,7 +617,9 @@ def _identifier_matches(identifier: str, spotify_id: str) -> bool:
     if not spotify_id:
         return False
     identifier = identifier.strip()
-    return identifier == spotify_id or identifier.endswith(spotify_id)
+    return identifier == spotify_id or any(
+        identifier.endswith(separator + spotify_id) for separator in ("/", ":", "=")
+    )
 
 
 def extract_song_audience_points(
@@ -642,9 +645,10 @@ def extract_song_audience_points(
             continue
         exact = [(identifier, value) for identifier, value in numeric if _identifier_matches(identifier, spotify_id)]
         chosen: tuple[str, int] | None = exact[-1] if exact else None
-        if chosen is None and not require_identifier_match and len(numeric) == 1:
+        identifier_required = bool(spotify_id) or require_identifier_match
+        if chosen is None and not identifier_required and len(numeric) == 1:
             chosen = numeric[0]
-        if chosen is None and not require_identifier_match:
+        if chosen is None and not identifier_required:
             spotify_named = [(identifier, value) for identifier, value in numeric if identifier.lower() == "spotify"]
             chosen = spotify_named[-1] if spotify_named else None
         if chosen is None:
@@ -1526,11 +1530,6 @@ def refresh_tracks(
                 )
                 continue
             row = target.get("row")
-            latest_day, latest_value = points[-1]
-            by_day = {day: value for day, value in points}
-            prior_day = previous_day(latest_day)
-            prior_value = by_day.get(prior_day)
-            delta = latest_value - prior_value if prior_value is not None else None
             entry = store.setdefault(key, {})
             if not isinstance(entry, dict):
                 entry = {}
@@ -1543,7 +1542,32 @@ def refresh_tracks(
             # jumps and gaps in the public chart. Keep only source-backed
             # points returned for the new UUID and record the reset for audit.
             previous_history = None if identity_changed else entry.get("history")
-            entry["history"] = merge_history(previous_history, points)
+            merged_history = merge_history(previous_history, points)
+            integrity = sanitize_counter_history(merged_history)
+            entry["history"] = integrity["history"]
+            if not entry["history"]:
+                outcome.items.append(
+                    {
+                        "entity": "track",
+                        "id": key,
+                        "ok": True,
+                        "usable": False,
+                        "counter_integrity_status": integrity["status"],
+                    }
+                )
+                continue
+            latest_day, latest_value = entry["history"][-1]
+            by_day = {day: value for day, value in entry["history"]}
+            prior_day = previous_day(latest_day)
+            prior_value = by_day.get(prior_day)
+            delta = latest_value - prior_value if prior_value is not None else None
+            if integrity["changed"]:
+                entry["counter_integrity"] = {
+                    "version": 1,
+                    "status": integrity["status"],
+                    "checked_at": now,
+                    "events": integrity["events"],
+                }
             if identity_changed:
                 entry["previous_soundcharts_uuid"] = previous_uuid
                 entry["identity_reset_at"] = now
@@ -1569,10 +1593,11 @@ def refresh_tracks(
                     "value": latest_value,
                     "date": latest_day,
                     "delta_24h": delta,
-                    "points": len(points),
+                    "points": len(entry["history"]),
                     "ok": True,
                     "usable": True,
                     "performance_only": bool(target.get("performance_only")),
+                    "counter_integrity_status": integrity["status"],
                 }
             )
 

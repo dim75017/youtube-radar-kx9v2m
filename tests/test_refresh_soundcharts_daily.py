@@ -249,6 +249,42 @@ class RefreshSoundchartsTests(unittest.TestCase):
         }
         self.assertEqual(subject.extract_song_audience_points(response, 'track-1'), [['2026-07-20', 100], ['2026-07-21', 130]])
 
+    def test_song_audience_parser_rejects_single_mismatched_spotify_identifier(self):
+        response = {
+            'object': {
+                'items': [
+                    {'date': '2026-07-20', 'plots': [{'identifier': 'other-track', 'value': 100}]},
+                    {'date': '2026-07-21', 'plots': [{'identifier': 'other-track', 'value': 130}]},
+                ]
+            }
+        }
+
+        self.assertEqual(subject.extract_song_audience_points(response, 'track-1'), [])
+
+    def test_song_audience_parser_requires_a_delimited_exact_spotify_identity(self):
+        rejected = ('spotify', 'prefixtrack-1', 'other-track')
+        for identifier in rejected:
+            with self.subTest(identifier=identifier):
+                response = {
+                    'items': [
+                        {'date': '2026-07-20', 'plots': [{'identifier': identifier, 'value': 100}]}
+                    ]
+                }
+                self.assertEqual(subject.extract_song_audience_points(response, 'track-1'), [])
+
+        accepted = ('track-1', 'spotify:track:track-1', 'https://open.spotify.com/track/track-1')
+        for identifier in accepted:
+            with self.subTest(identifier=identifier):
+                response = {
+                    'items': [
+                        {'date': '2026-07-20', 'plots': [{'identifier': identifier, 'value': 100}]}
+                    ]
+                }
+                self.assertEqual(
+                    subject.extract_song_audience_points(response, 'track-1'),
+                    [['2026-07-20', 100]],
+                )
+
     def test_merge_history_deduplicates_and_keeps_new_value(self):
         merged = subject.merge_history(
             [['2026-07-19', 90], ['2026-07-20', 100]],
@@ -428,6 +464,39 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertEqual(subject.field(row, schema, 'delta'), 35)
         self.assertEqual(subject.field(row, schema, 'source_date'), '2026-07-21')
         self.assertEqual(performance['tracks']['track-1']['history'], [['2026-07-20', 100], ['2026-07-21', 135]])
+
+    def test_refresh_tracks_quarantines_reverie_batch_jump_before_export(self):
+        start = dt.date(2026, 7, 19)
+        stable = [
+            [(start + dt.timedelta(days=index)).isoformat(), 145_208 + index * 2_000]
+            for index in range(31)
+        ]
+        payload = {
+            'schemas': {
+                'tracks': ['soundcharts_uuid', 'spotify_id', 'title', 'streams', 'delta', 'source_date']
+            },
+            'tracks': [['song-uuid', 'track-1', 'Rêverie, CD 76', 241_582_598, 241_377_390, '2026-08-19']],
+        }
+        performance = {
+            'tracks': {
+                'track-1': {'soundcharts_uuid': 'song-uuid', 'history': stable}
+            }
+        }
+        response = {
+            'items': [
+                {'date': '2026-08-19', 'plots': [{'identifier': 'track-1', 'value': 241_582_598}]}
+            ]
+        }
+
+        outcome = subject.refresh_tracks(payload, performance, FakeClient(response), 1, 10, 95)
+
+        entry = performance['tracks']['track-1']
+        self.assertEqual(entry['history'][-1], ['2026-08-18', 205_208])
+        self.assertEqual(entry['counter_integrity']['status'], 'spike_quarantined')
+        self.assertEqual(subject.field(payload['tracks'][0], payload['schemas']['tracks'], 'streams'), 205_208)
+        self.assertEqual(subject.field(payload['tracks'][0], payload['schemas']['tracks'], 'delta'), 2_000)
+        self.assertEqual(subject.field(payload['tracks'][0], payload['schemas']['tracks'], 'source_date'), '2026-08-18')
+        self.assertEqual(outcome.items[0]['counter_integrity_status'], 'spike_quarantined')
 
     def test_full_track_refresh_updates_performance_only_uuid_without_promoting_it(self):
         payload = {

@@ -36,6 +36,7 @@ from prepare_soundcharts_snapshot import (
     SUPPORTED_SOUNDCHARTS_EVIDENCE_CONTRACTS,
     has_contractual_instrumental_no_lyrics_evidence,
 )
+from spotify_counter_integrity import sanitize_counter_history
 from spotify_rights import reconciled_label, reconcile_rights
 
 SOUNDCHARTS_PREFIX = "window.SPOTIFY_SOUNDCHARTS="
@@ -198,27 +199,15 @@ def _finite_number(value: Any) -> float | None:
 
 
 def _latest_performance_point(entry: Any) -> tuple[str, float] | None:
-    """Return the newest factual cumulative stream point from Performance."""
+    """Return the newest integrity-checked cumulative Performance point."""
 
     if not isinstance(entry, Mapping):
         return None
-    latest: tuple[dt.date, float] | None = None
-    history = entry.get("history")
-    for point in history if isinstance(history, list) else []:
-        if not isinstance(point, (list, tuple)) or len(point) < 2:
-            continue
-        try:
-            day = dt.date.fromisoformat(str(point[0])[:10])
-        except ValueError:
-            continue
-        total = _finite_number(point[1])
-        if total is None or total < 0:
-            continue
-        if latest is None or day > latest[0]:
-            latest = (day, total)
-    if latest is None:
+    history = sanitize_counter_history(entry.get("history"))["history"]
+    if not history:
         return None
-    return latest[0].isoformat(), latest[1]
+    latest_day, latest_total = history[-1]
+    return str(latest_day), float(latest_total)
 
 
 def _overlay_latest_performance_streams(
@@ -251,20 +240,44 @@ def _overlay_latest_performance_streams(
             uuid_matches = by_soundcharts.get(soundcharts_uuid, [])
             if len(uuid_matches) == 1:
                 entry = uuid_matches[0]
-        latest = _latest_performance_point(entry)
-        if latest is None:
+        if not isinstance(entry, Mapping):
             continue
-        latest_day, latest_total = latest
+        integrity = sanitize_counter_history(entry.get("history"))
+        history = integrity["history"]
+        if not history:
+            continue
+        latest_day, raw_latest_total = history[-1]
+        latest_total = float(raw_latest_total)
         source_day = str(
             row.get("streams_source_date") or row.get("source_date") or ""
         )[:10]
+        persisted_integrity = entry.get("counter_integrity")
+        persisted_status = (
+            str(persisted_integrity.get("status") or "")
+            if isinstance(persisted_integrity, Mapping)
+            else ""
+        )
+        quarantined = (
+            integrity["status"] == "spike_quarantined"
+            or persisted_status == "spike_quarantined"
+        )
         # A newer source snapshot wins.  On the same day Performance is the
-        # authoritative history used by every Analytics surface.
-        if source_day and source_day > latest_day:
+        # authoritative history used by every Analytics surface. An integrity
+        # quarantine is the exception: the source's newer point is precisely
+        # the unconfirmed discontinuity, so the last stable total must win.
+        if source_day and source_day > latest_day and not quarantined:
             continue
         row["streams"] = int(latest_total) if latest_total.is_integer() else latest_total
         if "streams_source_date" in row:
             row["streams_source_date"] = latest_day
+        previous_day = (dt.date.fromisoformat(latest_day) - dt.timedelta(days=1)).isoformat()
+        by_day = {str(day): value for day, value in history}
+        previous_total = by_day.get(previous_day)
+        # Never keep a stale delta from an older snapshot beside a refreshed
+        # lifetime counter. Only an exact sanitized D-1 baseline is factual.
+        row["streams_delta_24h"] = (
+            raw_latest_total - previous_total if previous_total is not None else None
+        )
         applied += 1
     return applied
 

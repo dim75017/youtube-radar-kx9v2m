@@ -85,16 +85,32 @@ def _safe_shard_path(root: Path, relative: Any) -> Path:
     return path
 
 
-def _parse_shard(path: Path, expected_hash: str) -> dict[str, Any]:
+def _parse_shard(
+    path: Path,
+    expected_hash: str,
+    expected_bytes: Any,
+) -> dict[str, Any]:
     try:
         raw = path.read_bytes()
     except OSError as exc:
         raise PerformanceStoreError(f"Missing performance shard {path}") from exc
-    observed_hash = hashlib.sha256(raw).hexdigest()
+    canonical = raw
+    observed_hash = hashlib.sha256(canonical).hexdigest()
+    if expected_hash and observed_hash != expected_hash and raw.endswith(b"\r\n"):
+        # Git may materialize the writer's single terminal LF as CRLF on a
+        # Windows checkout. Accept only that exact terminal conversion, and
+        # only when restoring LF reproduces the content-addressed manifest
+        # hash. Internal or additional EOL changes remain checksum failures.
+        lf_candidate = raw[:-2] + b"\n"
+        if hashlib.sha256(lf_candidate).hexdigest() == expected_hash:
+            canonical = lf_candidate
+            observed_hash = expected_hash
     if not expected_hash or observed_hash != expected_hash:
         raise PerformanceStoreError(f"Performance shard checksum mismatch for {path}")
+    if not isinstance(expected_bytes, int) or len(canonical) != expected_bytes:
+        raise PerformanceStoreError(f"Performance shard byte count mismatch for {path}")
     try:
-        text = raw.decode("utf-8")
+        text = canonical.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise PerformanceStoreError(f"Performance shard is not UTF-8: {path}") from exc
     if not text.startswith(TRACK_SHARD_PREFIX) or not text.endswith(TRACK_SHARD_SUFFIX):
@@ -150,14 +166,16 @@ def _validate_manifest(root: Path, payload: Mapping[str, Any], *, hydrate: bool)
             raise PerformanceStoreError("Performance manifest contains duplicate or invalid buckets")
         seen_buckets.add(bucket)
         shard_path = _safe_shard_path(root, descriptor.get("path"))
-        shard = _parse_shard(shard_path, str(descriptor.get("sha256") or ""))
+        shard = _parse_shard(
+            shard_path,
+            str(descriptor.get("sha256") or ""),
+            descriptor.get("bytes"),
+        )
         tracks = shard.get("tracks")
         if shard.get("version") != TRACK_SHARD_STORE_VERSION or shard.get("bucket") != bucket:
             raise PerformanceStoreError(f"Performance shard identity mismatch for {shard_path}")
         if len(tracks) != descriptor.get("tracks"):
             raise PerformanceStoreError(f"Performance shard track count mismatch for {shard_path}")
-        if shard_path.stat().st_size != descriptor.get("bytes"):
-            raise PerformanceStoreError(f"Performance shard byte count mismatch for {shard_path}")
         for track_id, entry in tracks.items():
             track_id = str(track_id)
             if _track_bucket(track_id, shard_count) != bucket:
@@ -167,7 +185,7 @@ def _validate_manifest(root: Path, payload: Mapping[str, Any], *, hydrate: bool)
             if hydrate:
                 hydrated[track_id] = entry
         total_tracks += len(tracks)
-        total_bytes += shard_path.stat().st_size
+        total_bytes += descriptor["bytes"]
     expected_total = manifest.get("tracks_total")
     if not isinstance(expected_total, int) or total_tracks != expected_total:
         raise PerformanceStoreError("Performance manifest total track count is inconsistent")
@@ -176,6 +194,12 @@ def _validate_manifest(root: Path, payload: Mapping[str, Any], *, hydrate: bool)
         raise PerformanceStoreError("Performance root summaries do not match the shard catalogue")
     if hydrate and set(summaries) != set(hydrated):
         raise PerformanceStoreError("Performance root and shards contain different track identities")
+    if hydrate:
+        for track_id, entry in hydrated.items():
+            if summaries.get(track_id) != _summary_entry(entry):
+                raise PerformanceStoreError(
+                    f"Performance root summary is stale for track: {track_id}"
+                )
     return {
         "status": "sharded",
         "tracks": hydrated if hydrate else None,
