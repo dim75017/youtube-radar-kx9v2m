@@ -1,14 +1,14 @@
 {
   "version": 1,
   "cadenceHours": 24,
-  "lastAttemptAt": "2026-08-25T04:56:40.694Z",
+  "lastAttemptAt": "2026-08-25T16:57:07.511Z",
   "lastSuccessfulAt": "2026-08-19T04:54:32.018Z",
-  "nextScheduledAt": "2026-08-26T04:56:40.694Z",
+  "nextScheduledAt": "2026-08-26T16:57:07.511Z",
   "status": "degraded",
-  "runId": "32810852481",
-  "runUrl": "https://github.com/dim75017/lofi-social-radar-preview/actions/runs/32810852481",
+  "runId": "32874877359",
+  "runUrl": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/32874877359",
   "discoveryAudit": {
-    "scannedAt": "2026-08-25T04:56:40.694Z",
+    "scannedAt": "2026-08-25T16:57:07.511Z",
     "complete": false,
     "candidateCount": 56,
     "qualifiedInventoryCount": 30,
@@ -63,12 +63,12 @@
       "https://www.tiktok.com/@stillwatersfishing/video/7640578773078904077",
       "https://www.youtube.com/watch?v=8NMfCCSlOQY",
       "https://www.youtube.com/watch?v=9jdcFujd_Bc",
-      "https://www.youtube.com/watch?v=AeQGdLtdB8Y",
       "https://www.youtube.com/watch?v=L8ZnXgbyUuc",
       "https://www.youtube.com/watch?v=LhXU84j3ufQ",
       "https://www.youtube.com/watch?v=MT-4Bk1Lw8g",
       "https://www.youtube.com/watch?v=PAqRSLysEE4",
       "https://www.youtube.com/watch?v=VAuXlNR544Q",
+      "https://www.youtube.com/watch?v=WNUjyPtfOdg",
       "https://www.youtube.com/watch?v=eBylfiYNMpk",
       "https://www.youtube.com/watch?v=is8UDe2PhKQ",
       "https://www.youtube.com/watch?v=oW-f6RYSwBI",
@@ -286,12 +286,12 @@
         "candidateUrls": [
           "https://www.youtube.com/watch?v=8NMfCCSlOQY",
           "https://www.youtube.com/watch?v=9jdcFujd_Bc",
-          "https://www.youtube.com/watch?v=AeQGdLtdB8Y",
           "https://www.youtube.com/watch?v=L8ZnXgbyUuc",
           "https://www.youtube.com/watch?v=LhXU84j3ufQ",
           "https://www.youtube.com/watch?v=MT-4Bk1Lw8g",
           "https://www.youtube.com/watch?v=PAqRSLysEE4",
           "https://www.youtube.com/watch?v=VAuXlNR544Q",
+          "https://www.youtube.com/watch?v=WNUjyPtfOdg",
           "https://www.youtube.com/watch?v=eBylfiYNMpk",
           "https://www.youtube.com/watch?v=is8UDe2PhKQ",
           "https://www.youtube.com/watch?v=oW-f6RYSwBI",
@@ -308,7 +308,7 @@
         "candidateUrls": []
       }
     ],
-    "reachabilityCheckedAt": "2026-08-25T04:56:40.694Z",
+    "reachabilityCheckedAt": "2026-08-25T16:57:07.511Z",
     "availablePosts": 152,
     "unavailablePosts": 1,
     "unavailablePostUrls": [
@@ -321,7 +321,7 @@
       "label": "Buffer · TikTok",
       "platform": "tiktok",
       "status": "success",
-      "checkedAt": "2026-08-25T04:56:40.694Z",
+      "checkedAt": "2026-08-25T16:57:07.511Z",
       "candidatesMatched": 15
     },
     {
@@ -329,7 +329,7 @@
       "label": "Later · Instagram Reels",
       "platform": "instagram",
       "status": "success",
-      "checkedAt": "2026-08-25T04:56:40.694Z",
+      "checkedAt": "2026-08-25T16:57:07.511Z",
       "candidatesMatched": 16
     },
     {
@@ -337,7 +337,7 @@
       "label": "SocialPilot · TikTok",
       "platform": "tiktok",
       "status": "success",
-      "checkedAt": "2026-08-25T04:56:40.694Z",
+      "checkedAt": "2026-08-25T16:57:07.511Z",
       "candidatesMatched": 18
     },
     {
@@ -345,7 +345,7 @@
       "label": "SocialPilot · Instagram Reels",
       "platform": "instagram",
       "status": "success",
-      "checkedAt": "2026-08-25T04:56:40.694Z",
+      "checkedAt": "2026-08-25T16:57:07.511Z",
       "candidatesMatched": 17
     },
     {
@@ -353,7 +353,7 @@
       "label": "Tokchart · sons TikTok",
       "platform": "tiktok",
       "status": "failed",
-      "checkedAt": "2026-08-25T04:56:40.694Z",
+      "checkedAt": "2026-08-25T16:57:07.511Z",
       "candidatesMatched": 0
     },
     {
@@ -361,7 +361,7 @@
       "label": "TrendVideosHub · YouTube Shorts",
       "platform": "youtube",
       "status": "success",
-      "checkedAt": "2026-08-25T04:56:40.694Z",
+      "checkedAt": "2026-08-25T16:57:07.511Z",
       "candidatesMatched": 5
     },
     {
@@ -369,7 +369,7 @@
       "label": "X · tendances France",
       "platform": "x",
       "status": "failed",
-      "checkedAt": "2026-08-25T04:56:40.694Z",
+      "checkedAt": "2026-08-25T16:57:07.511Z",
       "candidatesMatched": 0
     }
   ],
