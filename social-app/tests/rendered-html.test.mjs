@@ -125,7 +125,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(component, /initialCommentOpportunityFeed/);
   assert.match(component, /CommentOpportunitiesView/);
   assert.match(component, /Total followers/);
-  assert.match(component, /Évolution des followers/);
+  assert.match(component, /Évolution quotidienne des followers/);
   assert.match(component, /Taux d’engagement/);
   assert.match(component, /className="audience-platform-grid"/);
   const audienceDashboard = component.slice(
@@ -136,14 +136,31 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(audienceDashboard, /aria-label="P.riode du tableau de bord"/);
   assert.match(audienceDashboard, /AUDIENCE_PERIODS\.map/);
   assert.match(audienceDashboard, /engagementByPeriod\[periodKey\]/);
+  assert.match(audienceDashboard, /useState<string \| null>\(null\)/);
+  assert.match(audienceDashboard, /setClientNow\(new Date\(\)\.toISOString\(\)\)/);
+  assert.match(audienceDashboard, /Collecte planifiée/);
+  assert.match(audienceDashboard, /contiguousExactAudienceSuffix\(points\)/);
+  assert.match(audienceDashboard, /audienceGrowthForExactSuffix\(exactSuffix\)/);
   assert.match(
     audienceDashboard,
-    /audienceGrowth\(platformHistory, \{[\s\S]*?days: period\.days/,
+    /audiencePointsForPeriod\(platformHistory, periodEndAt, period\.days\)/,
   );
-  assert.match(
-    audienceDashboard,
-    /audiencePointsForPeriod\(platformHistory, latest, period\.days\)/,
+  assert.match(audienceDashboard, /periodEndAt = history\?\.generatedAt/);
+  assert.match(audienceDashboard, /formatAudienceAge\(latestAgeDays\)/);
+  assert.match(audienceDashboard, /<AudienceGrowthChart/);
+  const audienceChart = component.slice(
+    component.indexOf("function AudienceGrowthChart"),
+    component.indexOf("function audiencePointsForPeriod"),
   );
+  assert.match(audienceChart, /role="img"/);
+  assert.equal((audienceChart.match(/tabIndex=\{0\}/g) ?? []).length, 1);
+  assert.match(audienceChart, /<title>/);
+  assert.match(audienceChart, /<desc>/);
+  assert.match(audienceChart, /audience-chart-line-gap/);
+  assert.match(audienceChart, /formatAudienceAxisValue\(line\.value, hasOnlyApproximatePoints\)/);
+  assert.match(audienceChart, /trailingGapDays/);
+  assert.doesNotMatch(audienceChart, /className="audience-chart-point"[\s\S]{0,180}tabIndex/);
+  assert.doesNotMatch(component, /audience-spark-bars|sampleAudiencePoints/);
   assert.doesNotMatch(
     audienceDashboard,
     /\?\?\s*audienceGrowth\(platformHistory\)|\|\|\s*audienceGrowth\(platformHistory\)/,
@@ -471,6 +488,10 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(styles, /\.audience-period-tabs\s*\{/);
   assert.match(styles, /\.audience-platform-logo\s*\{/);
   assert.match(styles, /\.audience-platform-logo img\s*\{/);
+  assert.match(styles, /\.audience-chart-viewport\s*\{[\s\S]*?overflow-x:\s*auto/);
+  assert.match(styles, /\.audience-line-chart svg\s*\{[\s\S]*?min-width:\s*640px/);
+  assert.match(styles, /\.audience-chart-grid text,[\s\S]*?font-size:\s*14px/);
+  assert.doesNotMatch(styles, /\.audience-chart-point:focus/);
   const topRankingControlDeclarations = [
     ...styles.matchAll(/\.top-ranking-controls\s*\{([^}]*)\}/g),
   ].map((match) => match[1]);

@@ -325,6 +325,7 @@ function assertPlatformHistory(
   }
 
   const capturedTimes = new Set<string>();
+  const capturedDays = new Set<string>();
   let previousTime = Number.NEGATIVE_INFINITY;
   for (const [index, candidate] of history.observations.entries()) {
     const observation = record(
@@ -339,6 +340,11 @@ function assertPlatformHistory(
       throw new Error(`${platform} contient deux relevés au même instant.`);
     }
     capturedTimes.add(capturedAt);
+    const capturedDay = parisCalendarDay(capturedAt);
+    if (capturedDays.has(capturedDay)) {
+      throw new Error(`${platform} contient deux relevés le même jour (Europe/Paris).`);
+    }
+    capturedDays.add(capturedDay);
     const capturedTime = Date.parse(capturedAt);
     if (capturedTime < previousTime) {
       throw new Error(`${platform}.observations doit être trié chronologiquement.`);
@@ -450,6 +456,15 @@ export function emptyEngagementByPeriod(): Record<AudiencePeriodKey, null> {
   return Object.fromEntries(
     AUDIENCE_PERIODS.map((period) => [period.key, null]),
   ) as Record<AudiencePeriodKey, null>;
+}
+
+function parisCalendarDay(value: string) {
+  return new Intl.DateTimeFormat("fr-CA", {
+    timeZone: "Europe/Paris",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(value));
 }
 
 function record(value: unknown, message: string): Record<string, unknown> {

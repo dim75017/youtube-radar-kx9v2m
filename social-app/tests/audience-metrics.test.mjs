@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import {
   AUDIENCE_ENGAGEMENT_FORMULA,
   AUDIENCE_PERIODS,
@@ -12,6 +16,8 @@ import {
   recalculateAudienceEngagement,
 } from "../lib/audience-metrics.ts";
 import {
+  AUDIENCE_COLLECTORS,
+  audienceFreshnessError,
   collectAudienceHistory,
   compactCount,
 } from "../scripts/collect-audience-history.mjs";
@@ -41,7 +47,7 @@ test("validates the real version 2 snapshot, its five periods and plausible late
       AUDIENCE_PERIODS.map((period) => period.key).sort(),
     );
   }
-  assertLatestObservation("youtube", 10_000_000, "platform-rounded");
+  assertLatestObservation("youtube", 10_000_000, ["exact", "platform-rounded"]);
   assertLatestObservation("instagram", 1_000_000, "exact");
   assertLatestObservation("tiktok", 1_000_000, "exact");
   assertLatestObservation("x", 100_000, ["exact", "platform-rounded"]);
@@ -230,7 +236,11 @@ test("a partial daily collection appends successes and preserves failed platform
   const nextYouTube = latestAudienceObservation(history.platforms.youtube).followers + 1;
   const nextTikTok = latestAudienceObservation(history.platforms.tiktok).followers + 1;
   const collectors = {
-    youtube: async () => observation(capturedAt, nextYouTube, "platform-rounded"),
+    youtube: async () => observation(
+      capturedAt,
+      nextYouTube,
+      latestAudienceObservation(history.platforms.youtube).precision,
+    ),
     instagram: async () => { throw new Error("Meta indisponible"); },
     tiktok: async () => observation(capturedAt, nextTikTok, "exact"),
     x: async () => { throw new Error("X indisponible"); },
@@ -305,7 +315,7 @@ test("rejects an implausible same-day follower collapse and keeps the last good 
         platform === "youtube"
           ? 498_000
           : latestAudienceObservation(history.platforms[platform]).followers,
-        platform === "youtube" || platform === "x" ? "platform-rounded" : "exact",
+        latestAudienceObservation(history.platforms[platform]).precision,
       ),
     ]),
   );
@@ -323,6 +333,202 @@ test("rejects an implausible same-day follower collapse and keeps the last good 
     latestAudienceObservation(result.history.platforms.youtube).followers,
     previousYouTube.followers,
   );
+});
+
+test("rejects two observations on the same Paris calendar day", () => {
+  const duplicate = structuredClone(history);
+  const latest = latestAudienceObservation(duplicate.platforms.youtube);
+  duplicate.platforms.youtube.observations.push({
+    ...latest,
+    capturedAt: new Date(Date.parse(latest.capturedAt) + 60 * 60 * 1_000).toISOString(),
+    followers: latest.followers + 1,
+  });
+  duplicate.generatedAt = duplicate.platforms.youtube.observations.at(-1).capturedAt;
+  for (const platform of ["youtube", "instagram", "tiktok", "x"]) {
+    for (const engagement of Object.values(duplicate.platforms[platform].engagementByPeriod)) {
+      if (engagement) engagement.calculatedAt = duplicate.generatedAt;
+    }
+  }
+
+  assert.throws(() => assertAudienceHistory(duplicate), /même jour.*Europe\/Paris/i);
+});
+
+test("uses the exact YouTube Studio count before any public rounded fallback", async () => {
+  const capturedAt = "2026-08-25T09:30:00.000Z";
+  const result = await AUDIENCE_COLLECTORS.youtube({
+    capturedAt,
+    env: { YOUTUBE_STUDIO_SUBSCRIBER_COUNT: "15820270" },
+    fetchImpl: async () => {
+      throw new Error("The public source must not be queried when Studio is available.");
+    },
+  });
+
+  assert.deepEqual(result, {
+    capturedAt,
+    followers: 15_820_270,
+    precision: "exact",
+    sourceUrl: "https://studio.youtube.com/artist/a_lcagLDIDJj5/analytics/tab-overview/period-default/total_reach-all",
+    label: "YouTube Studio · compteur d’abonnés exact vérifié",
+  });
+});
+
+test("never replaces a same-day exact audience point with a rounded counter", async () => {
+  const previousYouTube = latestAudienceObservation(history.platforms.youtube);
+  assert.equal(previousYouTube.precision, "exact");
+  const capturedAt = new Date(
+    Date.parse(previousYouTube.capturedAt) + 60 * 60 * 1_000,
+  ).toISOString();
+  assert.equal(parisCalendarDay(capturedAt), parisCalendarDay(previousYouTube.capturedAt));
+  const collectors = {
+    youtube: async () => observation(capturedAt, 15_800_000, "platform-rounded"),
+    instagram: async () => { throw new Error("ignoré"); },
+    tiktok: async () => { throw new Error("ignoré"); },
+    x: async () => { throw new Error("ignoré"); },
+  };
+  const result = await collectAudienceHistory({
+    historyPath,
+    postsPath,
+    collectors,
+    now: capturedAt,
+    write: false,
+  });
+
+  assert.ok(result.failures.some((item) =>
+    item.platform === "youtube" && /ne peut pas remplacer/i.test(item.error)));
+  assert.deepEqual(
+    latestAudienceObservation(result.history.platforms.youtube),
+    previousYouTube,
+  );
+});
+
+test("accepts a rounded observation on a later Paris day after an exact point", async () => {
+  const previousYouTube = latestAudienceObservation(history.platforms.youtube);
+  const previousLength = history.platforms.youtube.observations.length;
+  const capturedAt = new Date(
+    Date.parse(previousYouTube.capturedAt) + 24 * 60 * 60 * 1_000,
+  ).toISOString();
+  assert.notEqual(parisCalendarDay(capturedAt), parisCalendarDay(previousYouTube.capturedAt));
+  const collectors = {
+    youtube: async () => observation(capturedAt, 15_800_000, "platform-rounded"),
+    instagram: async () => { throw new Error("ignoré"); },
+    tiktok: async () => { throw new Error("ignoré"); },
+    x: async () => { throw new Error("ignoré"); },
+  };
+  const result = await collectAudienceHistory({
+    historyPath,
+    postsPath,
+    collectors,
+    now: capturedAt,
+    write: false,
+  });
+
+  assert.ok(result.successes.some((item) => item.platform === "youtube"));
+  assert.equal(
+    result.history.platforms.youtube.observations.length,
+    previousLength + 1,
+  );
+  assert.equal(
+    latestAudienceObservation(result.history.platforms.youtube).precision,
+    "platform-rounded",
+  );
+  assert.equal(audienceFreshnessError(result.history, "youtube", capturedAt), null);
+});
+
+test("replaces a same-day rounded observation with a later exact Studio point", async () => {
+  const previousYouTube = latestAudienceObservation(history.platforms.youtube);
+  const roundedAt = new Date(
+    Date.parse(previousYouTube.capturedAt) + 24 * 60 * 60 * 1_000,
+  ).toISOString();
+  const exactAt = new Date(Date.parse(roundedAt) + 60 * 60 * 1_000).toISOString();
+  assert.equal(parisCalendarDay(roundedAt), parisCalendarDay(exactAt));
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), "lofi-audience-precision-"));
+  const temporaryHistoryPath = join(temporaryDirectory, "audience-history.json");
+  const skippedCollectors = {
+    instagram: async () => { throw new Error("ignoré"); },
+    tiktok: async () => { throw new Error("ignoré"); },
+    x: async () => { throw new Error("ignoré"); },
+  };
+
+  try {
+    const rounded = await collectAudienceHistory({
+      historyPath,
+      postsPath,
+      outputPath: temporaryHistoryPath,
+      collectors: {
+        youtube: async () => observation(roundedAt, 15_800_000, "platform-rounded"),
+        ...skippedCollectors,
+      },
+      now: roundedAt,
+    });
+    const exact = await collectAudienceHistory({
+      historyPath: temporaryHistoryPath,
+      postsPath,
+      collectors: {
+        youtube: async () => observation(exactAt, 15_820_300, "exact"),
+        ...skippedCollectors,
+      },
+      now: exactAt,
+      write: false,
+    });
+
+    assert.equal(
+      exact.history.platforms.youtube.observations.length,
+      rounded.history.platforms.youtube.observations.length,
+    );
+    assert.deepEqual(latestAudienceObservation(exact.history.platforms.youtube), {
+      capturedAt: exactAt,
+      followers: 15_820_300,
+      precision: "exact",
+      sourceUrl: "https://example.com/source",
+      label: "Relevé réel de test",
+    });
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test("reports a missing required platform for the requested Paris day", () => {
+  const latest = latestAudienceObservation(history.platforms.youtube);
+  const nextDay = new Date(Date.parse(latest.capturedAt) + 24 * 60 * 60 * 1_000).toISOString();
+
+  assert.equal(audienceFreshnessError(history, "youtube", latest.capturedAt), null);
+  assert.match(
+    audienceFreshnessError(history, "youtube", nextDay),
+    /Aucun relevé youtube.*Europe\/Paris/i,
+  );
+});
+
+test("rejects an invalid explicit YouTube Studio CLI count before collection", () => {
+  const scriptPath = fileURLToPath(
+    new URL("../scripts/collect-audience-history.mjs", import.meta.url),
+  );
+  for (const invalidArguments of [
+    ["--youtube-studio-count", "not-a-number"],
+    ["--youtube-studio-count", "0"],
+    ["--youtube-studio-count"],
+  ]) {
+    const child = spawnSync(
+      process.execPath,
+      ["--experimental-strip-types", scriptPath, ...invalidArguments],
+      { encoding: "utf8" },
+    );
+    assert.notEqual(child.status, 0);
+    assert.match(child.stderr, /youtube-studio-count.*entier strictement positif/i);
+    assert.doesNotMatch(child.stdout, /"successes"/);
+  }
+});
+
+test("the daily workflow enforces a fresh YouTube point on both scheduled passes", async () => {
+  const workflow = await readFile(
+    new URL("../../.github/workflows/social-update-audience-history.yml", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(workflow, /cron: "37 6 \* \* \*"/);
+  assert.match(workflow, /cron: "37 18 \* \* \*"/);
+  assert.match(workflow, /--require-fresh-platform youtube/);
+  assert.match(workflow, /Two daily collection passes/);
+  assert.doesNotMatch(workflow, /catch-up pass/i);
 });
 
 test("parses only explicit compact follower counters", () => {

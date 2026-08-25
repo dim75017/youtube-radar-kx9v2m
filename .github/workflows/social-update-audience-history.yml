@@ -3,8 +3,9 @@ name: Social · Update audience history daily
 on:
   workflow_dispatch:
   schedule:
-    # 08:37 in Paris during summer time, after the overnight post collectors.
+    # Two daily collection passes, one in the morning and one in the evening UTC.
     - cron: "37 6 * * *"
+    - cron: "37 18 * * *"
 
 permissions:
   contents: write
@@ -40,7 +41,7 @@ jobs:
           INSTAGRAM_API_VERSION: ${{ vars.INSTAGRAM_API_VERSION }}
           TIKTOK_ACCESS_TOKEN: ${{ secrets.TIKTOK_ACCESS_TOKEN }}
           X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
-        run: node --experimental-strip-types scripts/collect-audience-history.mjs
+        run: node --experimental-strip-types scripts/collect-audience-history.mjs --require-fresh-platform youtube
 
       - name: Validate audience history and calculations
         run: node --experimental-strip-types --test tests/audience-metrics.test.mjs

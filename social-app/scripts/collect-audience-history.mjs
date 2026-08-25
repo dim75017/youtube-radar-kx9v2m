@@ -79,6 +79,22 @@ export async function collectAudienceHistory(options = {}) {
       });
       continue;
     }
+    const replacesSameParisDay = Boolean(
+      latest &&
+      parisCalendarDay(latest.capturedAt) ===
+        parisCalendarDay(result.value.observation.capturedAt),
+    );
+    if (
+      latest &&
+      replacesSameParisDay &&
+      audiencePrecisionRank(result.value.observation.precision) < audiencePrecisionRank(latest.precision)
+    ) {
+      failures.push({
+        platform,
+        error: `Le relevé ${result.value.observation.precision} ne peut pas remplacer le dernier relevé ${latest.precision}.`,
+      });
+      continue;
+    }
     const plausibilityError = audienceObservationPlausibilityError(
       latest,
       result.value.observation,
@@ -87,7 +103,7 @@ export async function collectAudienceHistory(options = {}) {
       failures.push({ platform, error: plausibilityError });
       continue;
     }
-    if (latest && parisCalendarDay(latest.capturedAt) === parisCalendarDay(result.value.observation.capturedAt)) {
+    if (latest && replacesSameParisDay) {
       const latestIndex = next.platforms[platform].observations.findIndex(
         (item) => item.capturedAt === latest.capturedAt,
       );
@@ -131,6 +147,19 @@ export function audienceObservationPlausibilityError(previous, current) {
 }
 
 async function collectYouTube({ env, fetchImpl, capturedAt }) {
+  const studioFollowers = strictPositiveInteger(
+    nonempty(env.YOUTUBE_STUDIO_SUBSCRIBER_COUNT),
+  );
+  if (studioFollowers !== null) {
+    return observation({
+      capturedAt,
+      followers: studioFollowers,
+      precision: "exact",
+      sourceUrl: "https://studio.youtube.com/artist/a_lcagLDIDJj5/analytics/tab-overview/period-default/total_reach-all",
+      label: "YouTube Studio · compteur d’abonnés exact vérifié",
+    });
+  }
+
   if (nonempty(env.YOUTUBE_API_KEY)) {
     const request = new URL("https://www.googleapis.com/youtube/v3/channels");
     request.searchParams.set("part", "statistics");
@@ -461,6 +490,33 @@ function parisCalendarDay(value) {
   }).format(new Date(value));
 }
 
+function audiencePrecisionRank(precision) {
+  return {
+    milestone: 1,
+    "platform-rounded": 2,
+    exact: 3,
+  }[precision] ?? 0;
+}
+
+function cliArgument(name) {
+  const index = process.argv.indexOf(name);
+  return index >= 0 ? process.argv[index + 1] ?? null : null;
+}
+
+export function audienceFreshnessError(history, platform, capturedAt) {
+  if (!AUDIENCE_PLATFORMS.includes(platform)) {
+    return `Plateforme inconnue : ${platform}.`;
+  }
+  const targetDay = parisCalendarDay(capturedAt);
+  const observations = history?.platforms?.[platform]?.observations;
+  const hasFreshObservation = Array.isArray(observations) && observations.some(
+    (item) => parisCalendarDay(item.capturedAt) === targetDay,
+  );
+  return hasFreshObservation
+    ? null
+    : `Aucun relevé ${platform} conservé pour le ${targetDay} (Europe/Paris).`;
+}
+
 async function readJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
 }
@@ -477,9 +533,62 @@ function errorMessage(error) {
 
 const invokedPath = process.argv[1] ? resolve(process.argv[1]) : "";
 if (invokedPath && invokedPath.toLowerCase() === fileURLToPath(import.meta.url).toLowerCase()) {
-  collectAudienceHistory()
-    .then(({ successes, failures }) => {
+  const youtubeStudioCountWasProvided = process.argv.includes("--youtube-studio-count");
+  const youtubeStudioCount = cliArgument("--youtube-studio-count");
+  const onlyPlatform = cliArgument("--only-platform");
+  const requiredFreshPlatform = cliArgument("--require-fresh-platform");
+  const capturedAt = cliArgument("--captured-at");
+  if (onlyPlatform && !AUDIENCE_PLATFORMS.includes(onlyPlatform)) {
+    throw new Error(`Plateforme inconnue : ${onlyPlatform}.`);
+  }
+  if (requiredFreshPlatform && !AUDIENCE_PLATFORMS.includes(requiredFreshPlatform)) {
+    throw new Error(`Plateforme inconnue : ${requiredFreshPlatform}.`);
+  }
+  const parsedYouTubeStudioCount = youtubeStudioCountWasProvided
+    ? strictPositiveInteger(youtubeStudioCount)
+    : null;
+  if (youtubeStudioCountWasProvided && parsedYouTubeStudioCount === null) {
+    throw new Error(
+      "--youtube-studio-count doit être un entier strictement positif et sûr.",
+    );
+  }
+  const requestedCapturedAt = capturedAt ?? new Date().toISOString();
+  const cliCollectors = onlyPlatform
+    ? Object.fromEntries(AUDIENCE_PLATFORMS.map((platform) => [
+        platform,
+        platform === onlyPlatform
+          ? AUDIENCE_COLLECTORS[platform]
+          : async () => {
+              throw new Error("Plateforme volontairement ignorée par cette collecte ciblée.");
+            },
+      ]))
+    : AUDIENCE_COLLECTORS;
+  collectAudienceHistory({
+    collectors: cliCollectors,
+    env: parsedYouTubeStudioCount !== null
+      ? {
+          ...process.env,
+          YOUTUBE_STUDIO_SUBSCRIBER_COUNT: String(parsedYouTubeStudioCount),
+        }
+      : process.env,
+    now: requestedCapturedAt,
+  })
+    .then(({ history, successes, failures }) => {
       process.stdout.write(`${JSON.stringify({ successes, failures }, null, 2)}\n`);
+      if (onlyPlatform && !successes.some((item) => item.platform === onlyPlatform)) {
+        process.exitCode = 1;
+      }
+      if (requiredFreshPlatform) {
+        const freshnessError = audienceFreshnessError(
+          history,
+          requiredFreshPlatform,
+          requestedCapturedAt,
+        );
+        if (freshnessError) {
+          process.stderr.write(`${freshnessError}\n`);
+          process.exitCode = 1;
+        }
+      }
     })
     .catch((error) => {
       process.stderr.write(`${errorMessage(error)}\n`);

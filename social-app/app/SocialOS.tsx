@@ -2,11 +2,10 @@
 
 /* eslint-disable @next/next/no-img-element -- thumbnails come from live social sources with dynamic hosts. */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   AUDIENCE_PERIODS,
-  audienceGrowth,
   audiencePeriod,
   latestAudienceObservation,
   type AudienceHistory,
@@ -1762,7 +1761,15 @@ export function SocialOS({
 
 function AudienceDashboard({ history }: { history: AudienceHistory | null }) {
   const [periodKey, setPeriodKey] = useState<AudiencePeriodKey>("30d");
+  const [clientNow, setClientNow] = useState<string | null>(null);
   const period = audiencePeriod(periodKey);
+
+  useEffect(() => {
+    const refreshClock = () => setClientNow(new Date().toISOString());
+    refreshClock();
+    const interval = window.setInterval(refreshClock, 60 * 60 * 1_000);
+    return () => window.clearInterval(interval);
+  }, []);
 
   return (
     <section className="audience-dashboard" aria-labelledby="audience-dashboard-title">
@@ -1772,7 +1779,7 @@ function AudienceDashboard({ history }: { history: AudienceHistory | null }) {
           <h2 id="audience-dashboard-title">Tableau de bord</h2>
         </div>
         <span className="audience-refresh-label">
-          ↻ Suivi quotidien{history ? ` · ${formatAudienceDate(history.generatedAt)}` : ""}
+          ↻ Collecte planifiée
         </span>
       </header>
 
@@ -1804,20 +1811,21 @@ function AudienceDashboard({ history }: { history: AudienceHistory | null }) {
           const latest = platformHistory
             ? latestAudienceObservation(platformHistory)
             : null;
-          const growth = platformHistory
-            ? period.days === null
-              ? audienceGrowth(platformHistory)
-              : audienceGrowth(platformHistory, {
-                  days: period.days,
-                })
-            : null;
           const engagement = platformHistory?.engagementByPeriod[periodKey] ?? null;
-          const points = sampleAudiencePoints(
-            audiencePointsForPeriod(platformHistory, latest, period.days),
-          );
-          const values = points.map((point) => point.followers);
-          const minimum = values.length ? Math.min(...values) : 0;
-          const maximum = values.length ? Math.max(...values) : 0;
+          const periodEndAt = history?.generatedAt ?? null;
+          const points = audiencePointsForPeriod(platformHistory, periodEndAt, period.days);
+          const exactSuffix = contiguousExactAudienceSuffix(points);
+          const growth = audienceGrowthForExactSuffix(exactSuffix);
+          const periodStartAt = periodEndAt
+            ? period.days === null
+              ? points[0]?.capturedAt ?? periodEndAt
+              : new Date(Date.parse(periodEndAt) - period.days * 24 * 60 * 60 * 1_000).toISOString()
+            : null;
+          const ageReferenceAt = clientNow ?? history?.generatedAt ?? null;
+          const latestAgeDays = latest && ageReferenceAt
+            ? elapsedCalendarDays(latest.capturedAt, ageReferenceAt)
+            : null;
+          const latestPoint = points.at(-1) ?? null;
 
           return (
             <article className={`audience-platform-card tone-${meta.tone}`} key={platform}>
@@ -1829,8 +1837,13 @@ function AudienceDashboard({ history }: { history: AudienceHistory | null }) {
                   <span className="section-kicker">@{platform === "youtube" ? "LofiGirl" : "lofigirl"}</span>
                   <h3>{meta.label}</h3>
                 </div>
-                <time dateTime={latest?.capturedAt}>
-                  {latest ? formatAudienceDate(latest.capturedAt) : "En attente"}
+                <time
+                  className={latestAgeDays !== null && latestAgeDays > 1 ? "stale" : ""}
+                  dateTime={latest?.capturedAt}
+                >
+                  {latest
+                    ? `${formatAudienceDate(latest.capturedAt)} · ${formatAudienceAge(latestAgeDays)}`
+                    : "En attente"}
                 </time>
               </header>
 
@@ -1850,32 +1863,30 @@ function AudienceDashboard({ history }: { history: AudienceHistory | null }) {
 
               <div className="audience-evolution-block">
                 <div className="audience-metric-heading">
-                  <span>Évolution des followers</span>
+                  <span>Évolution quotidienne des followers</span>
                   <b className={growth && growth.followersDelta < 0 ? "negative" : "positive"}>
                     {growth ? `${growth.followersDelta >= 0 ? "↗" : "↘"} ${formatAudienceDelta(growth.followersDelta)}` : "—"}
                   </b>
                 </div>
-                <div className="audience-spark-bars" aria-hidden="true">
-                  {points.map((point) => {
-                    const height = maximum === minimum
-                      ? 62
-                      : 24 + ((point.followers - minimum) / (maximum - minimum)) * 76;
-                    return (
-                      <i
-                        key={`${point.capturedAt}:${point.followers}`}
-                        style={{ "--audience-bar-height": `${height}%` } as CSSProperties}
-                      />
-                    );
-                  })}
-                </div>
+                <AudienceGrowthChart
+                  points={points}
+                  periodLabel={period.label}
+                  platformLabel={meta.label}
+                  periodStartAt={periodStartAt}
+                  periodEndAt={periodEndAt}
+                />
                 <small>
                   {growth
-                    ? `${formatAudiencePercent(growth.ratePercent)} depuis le ${formatAudienceDate(growth.from.capturedAt)}`
-                    : latest
-                      ? period.days === null
-                        ? `Suivi démarré le ${formatAudienceDate(latest.capturedAt)}`
-                        : `Historique ${period.label.toLowerCase()} en cours · ${points.length} relevé${points.length > 1 ? "s" : ""}`
-                      : "Suivi pas encore démarré"}
+                    ? `${formatAudiencePercent(growth.ratePercent)} depuis le ${formatAudienceDate(growth.from.capturedAt)} · ${exactSuffix.length} relevés exacts consécutifs`
+                    : points.length === 0
+                      ? `Aucun relevé réel sur ${period.label.toLowerCase()}`
+                      : exactSuffix.length === 1
+                        ? `Série exacte reprise le ${formatAudienceDate(exactSuffix[0].capturedAt)} · delta disponible après deux jours consécutifs`
+                        : latestPoint?.precision === "platform-rounded"
+                          ? "Delta non calculé · dernier compteur arrondi par la plateforme"
+                          : latestPoint?.precision === "milestone"
+                            ? "Delta non calculé · dernier point disponible sous forme de jalon"
+                            : "Suivi exact pas encore démarré"}
                 </small>
               </div>
 
@@ -1899,28 +1910,286 @@ function AudienceDashboard({ history }: { history: AudienceHistory | null }) {
   );
 }
 
+function AudienceGrowthChart({
+  points,
+  periodLabel,
+  platformLabel,
+  periodStartAt,
+  periodEndAt,
+}: {
+  points: AudienceObservation[];
+  periodLabel: string;
+  platformLabel: string;
+  periodStartAt: string | null;
+  periodEndAt: string | null;
+}) {
+  if (points.length === 0) {
+    return (
+      <div className="audience-chart-empty" role="status">
+        Aucun relevé réel sur {periodLabel.toLowerCase()}.
+      </div>
+    );
+  }
+
+  if (points.length === 1) {
+    return (
+      <div className="audience-chart-empty audience-chart-single" role="status">
+        <b>1 relevé réel</b>
+        <span>La courbe apparaîtra au prochain relevé comparable.</span>
+      </div>
+    );
+  }
+
+  const width = 680;
+  const height = 250;
+  const plotLeft = 18;
+  const plotRight = 594;
+  const plotTop = 18;
+  const plotBottom = 190;
+  const times = points.map((point) => Date.parse(point.capturedAt));
+  const values = points.map((point) => point.followers);
+  const firstObservedTime = Math.min(...times);
+  const lastObservedTime = Math.max(...times);
+  const requestedStartTime = periodStartAt ? Date.parse(periodStartAt) : Number.NaN;
+  const requestedEndTime = periodEndAt ? Date.parse(periodEndAt) : Number.NaN;
+  const firstTime = Number.isFinite(requestedStartTime)
+    ? Math.min(requestedStartTime, firstObservedTime)
+    : firstObservedTime;
+  const lastTime = Number.isFinite(requestedEndTime)
+    ? Math.max(requestedEndTime, lastObservedTime)
+    : lastObservedTime;
+  const timeSpan = Math.max(lastTime - firstTime, 1);
+  const rawMinimum = Math.min(...values);
+  const rawMaximum = Math.max(...values);
+  const valueSpan = rawMaximum - rawMinimum;
+  const padding = valueSpan === 0
+    ? Math.max(1, rawMaximum * 0.00005)
+    : valueSpan * 0.14;
+  const minimum = Math.max(0, rawMinimum - padding);
+  const maximum = rawMaximum + padding;
+  const chartValueSpan = Math.max(maximum - minimum, 1);
+  const x = (timestamp: number) =>
+    plotLeft + ((timestamp - firstTime) / timeSpan) * (plotRight - plotLeft);
+  const y = (value: number) =>
+    plotBottom - ((value - minimum) / chartValueSpan) * (plotBottom - plotTop);
+  const coordinates = points.map((point, index) => ({
+    point,
+    x: x(times[index]),
+    y: y(point.followers),
+  }));
+  const gridLines = Array.from({ length: 4 }, (_, index) => {
+    const ratio = index / 3;
+    return {
+      value: maximum - ratio * chartValueSpan,
+      y: plotTop + ratio * (plotBottom - plotTop),
+    };
+  });
+  const tickCount = Math.min(5, Math.max(2, points.length));
+  const dateTicks = Array.from({ length: tickCount }, (_, index) => {
+    const ratio = tickCount === 1 ? 0 : index / (tickCount - 1);
+    const timestamp = firstTime + ratio * timeSpan;
+    return {
+      timestamp,
+      x: plotLeft + ratio * (plotRight - plotLeft),
+    };
+  });
+  const hasRoundedPoints = points.some((point) => point.precision !== "exact");
+  const hasOnlyApproximatePoints = points.every((point) => point.precision !== "exact");
+  const segments = coordinates.slice(1).map((coordinate, index) => {
+    const previous = coordinates[index];
+    const gapHours = (times[index + 1] - times[index]) / (60 * 60 * 1_000);
+    return {
+      coordinate,
+      previous,
+      interrupted:
+        gapHours > 36 ||
+        previous.point.precision !== coordinate.point.precision,
+    };
+  });
+  const hasInterruptedSegments = segments.some((segment) => segment.interrupted);
+  const trailingGapDays = periodEndAt
+    ? elapsedCalendarDays(points.at(-1)!.capturedAt, periodEndAt)
+    : 0;
+  const chartNotes = [
+    trailingGapDays > 1 ? `Fin de période sans relevé · ${trailingGapDays} j` : null,
+    hasInterruptedSegments ? "Pointillés : trou de collecte ou précision différente" : null,
+    hasRoundedPoints ? "≈ indique un compteur arrondi" : null,
+  ].filter((note): note is string => Boolean(note));
+  if (chartNotes.length === 0) {
+    chartNotes.push("Chaque point correspond à un relevé quotidien exact");
+  }
+  const firstPoint = points[0];
+  const lastPoint = points.at(-1)!;
+
+  return (
+    <div className="audience-line-chart">
+      <div className="audience-chart-viewport">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          role="img"
+          tabIndex={0}
+        >
+          <title>{`Évolution quotidienne des followers ${platformLabel}`}</title>
+          <desc>{`${points.length} relevés réels sur ${periodLabel.toLowerCase()}, du ${formatAudienceDate(firstPoint.capturedAt)} (${formatAudiencePointValue(firstPoint)}) au ${formatAudienceDate(lastPoint.capturedAt)} (${formatAudiencePointValue(lastPoint)}). ${chartNotes.join(". ")}.`}</desc>
+          {gridLines.map((line, index) => (
+            <g className="audience-chart-grid" key={line.y}>
+              <line x1={plotLeft} x2={plotRight} y1={line.y} y2={line.y} />
+              <text x={plotRight + 12} y={line.y + 4}>
+                {hasOnlyApproximatePoints && valueSpan === 0 && index !== 1
+                  ? ""
+                  : formatAudienceAxisValue(line.value, hasOnlyApproximatePoints)}
+              </text>
+            </g>
+          ))}
+          {segments.map(({ coordinate, previous, interrupted }) => {
+            return (
+              <line
+                className={interrupted
+                  ? "audience-chart-line audience-chart-line-gap"
+                  : "audience-chart-line"}
+                key={`${previous.point.capturedAt}:${coordinate.point.capturedAt}`}
+                x1={previous.x}
+                x2={coordinate.x}
+                y1={previous.y}
+                y2={coordinate.y}
+              />
+            );
+          })}
+          {coordinates.map((coordinate) => {
+            const tooltipX = Math.min(Math.max(coordinate.x - 74, plotLeft), plotRight - 148);
+            const tooltipY = coordinate.y < 70 ? coordinate.y + 14 : coordinate.y - 58;
+            const formattedValue = formatAudiencePointValue(coordinate.point);
+            return (
+              <g
+                className="audience-chart-point"
+                key={`${coordinate.point.capturedAt}:${coordinate.point.followers}`}
+              >
+                <title>{`${formatAudienceDate(coordinate.point.capturedAt)} : ${formattedValue} followers`}</title>
+                <circle cx={coordinate.x} cy={coordinate.y} r="4" />
+                <g className="audience-chart-tooltip" aria-hidden="true">
+                  <rect x={tooltipX} y={tooltipY} width="148" height="44" rx="8" />
+                  <text x={tooltipX + 10} y={tooltipY + 17}>
+                    {formatAudienceChartDate(coordinate.point.capturedAt, false)}
+                  </text>
+                  <text className="audience-chart-tooltip-value" x={tooltipX + 10} y={tooltipY + 35}>
+                    {formattedValue}
+                  </text>
+                </g>
+              </g>
+            );
+          })}
+          {dateTicks.map((tick, index) => (
+            <text
+              className="audience-chart-date"
+              key={tick.timestamp}
+              x={tick.x}
+              y="222"
+              textAnchor={index === 0 ? "start" : index === dateTicks.length - 1 ? "end" : "middle"}
+            >
+              {formatAudienceChartDate(new Date(tick.timestamp).toISOString(), timeSpan > 500 * 24 * 60 * 60 * 1_000)}
+            </text>
+          ))}
+        </svg>
+      </div>
+      <div className="audience-chart-caption">
+        <span>{points.length} relevé{points.length > 1 ? "s" : ""} réel{points.length > 1 ? "s" : ""}</span>
+        <span>{chartNotes.join(" · ")}</span>
+      </div>
+    </div>
+  );
+}
+
 function audiencePointsForPeriod(
   platformHistory: AudienceHistory["platforms"][Platform] | null,
-  latest: AudienceObservation | null,
+  periodEndAt: string | null,
   days: number | null,
 ) {
-  if (!platformHistory || !latest) return [];
-  const latestTime = Date.parse(latest.capturedAt);
+  if (!platformHistory || !periodEndAt) return [];
+  const periodEndTime = Date.parse(periodEndAt);
+  if (!Number.isFinite(periodEndTime)) return [];
   const minimumTime = days === null
     ? Number.NEGATIVE_INFINITY
-    : latestTime - days * 24 * 60 * 60 * 1_000;
+    : periodEndTime - days * 24 * 60 * 60 * 1_000;
   return platformHistory.observations.filter((observation) => {
     const capturedTime = Date.parse(observation.capturedAt);
-    return capturedTime >= minimumTime && capturedTime <= latestTime;
+    return capturedTime >= minimumTime && capturedTime <= periodEndTime;
   });
 }
 
-function sampleAudiencePoints(points: AudienceObservation[], maximum = 24) {
-  if (points.length <= maximum) return points;
-  return Array.from({ length: maximum }, (_, index) => {
-    const sourceIndex = Math.round((index * (points.length - 1)) / (maximum - 1));
-    return points[sourceIndex];
-  });
+function contiguousExactAudienceSuffix(points: AudienceObservation[]) {
+  const suffix: AudienceObservation[] = [];
+  for (let index = points.length - 1; index >= 0; index -= 1) {
+    const point = points[index];
+    if (point.precision !== "exact") break;
+    const next = suffix[0];
+    if (next && elapsedCalendarDays(point.capturedAt, next.capturedAt) !== 1) break;
+    suffix.unshift(point);
+  }
+  return suffix;
+}
+
+function audienceGrowthForExactSuffix(exactSuffix: AudienceObservation[]) {
+  if (exactSuffix.length < 2) return null;
+  const from = exactSuffix[0];
+  const to = exactSuffix.at(-1)!;
+  const followersDelta = to.followers - from.followers;
+  return {
+    from,
+    to,
+    followersDelta,
+    ratePercent: (followersDelta / from.followers) * 100,
+  };
+}
+
+function elapsedCalendarDays(from: string, to: string) {
+  const fromDay = audienceParisDay(from);
+  const toDay = audienceParisDay(to);
+  return Math.max(0, Math.round((Date.parse(`${toDay}T12:00:00Z`) - Date.parse(`${fromDay}T12:00:00Z`)) / (24 * 60 * 60 * 1_000)));
+}
+
+function audienceParisDay(value: string) {
+  return new Intl.DateTimeFormat("fr-CA", {
+    timeZone: "Europe/Paris",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(value));
+}
+
+function formatAudienceAge(days: number | null) {
+  if (days === null) return "âge indisponible";
+  if (days === 0) return "aujourd’hui";
+  if (days === 1) return "hier";
+  return `il y a ${days} j`;
+}
+
+function formatAudienceAxisValue(value: number, approximate: boolean) {
+  if (approximate) return `≈ ${formatAudienceRoundedValue(value)}`;
+  return new Intl.NumberFormat("fr-FR", {
+    maximumFractionDigits: 0,
+  }).format(Math.round(value));
+}
+
+function formatAudienceRoundedValue(value: number) {
+  return new Intl.NumberFormat("fr-FR", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(Math.round(value));
+}
+
+function formatAudiencePointValue(observation: AudienceObservation) {
+  if (observation.precision === "exact") {
+    return new Intl.NumberFormat("fr-FR").format(observation.followers);
+  }
+  return `≈ ${formatAudienceRoundedValue(observation.followers)}`;
+}
+
+function formatAudienceChartDate(value: string, yearOnly: boolean) {
+  const date = new Date(value);
+  return new Intl.DateTimeFormat("fr-FR", yearOnly
+    ? { timeZone: "Europe/Paris", month: "short", year: "2-digit" }
+    : { timeZone: "Europe/Paris", day: "2-digit", month: "short" }
+  ).format(date).replace(".", "");
 }
 
 function formatAudienceFollowers(observation: AudienceObservation) {
