@@ -3910,11 +3910,8 @@ function PostDetailsModal({
   const firstPoint = timelinePoints[0];
   const lastPoint = timelinePoints.at(-1);
   const firstValue = primaryMetric && firstPoint ? firstPoint[primaryMetric] : null;
-  const lastValue = primaryMetric && lastPoint ? lastPoint[primaryMetric] : null;
-  const totalDelta = firstValue !== null && lastValue !== null ? lastValue - firstValue : null;
   const nearLaunch = isNearLaunchObservation(post, firstPoint?.captured_at);
   const detailTheme = postLabel(post, editorialAnalysis);
-  const editorialAnalysisId = `details-editorial-${post.platform}-${post.external_post_id.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
   const precisionLabel = post.published_at_precision === "exact"
     ? "Date exacte"
     : post.published_at_precision === "approximate"
@@ -4000,83 +3997,6 @@ function PostDetailsModal({
             <small>{history.length} point{history.length > 1 ? "s" : ""} de mesure conservé{history.length > 1 ? "s" : ""}</small>
           </div>
         </div>
-
-        <section className="metric-evolution" aria-labelledby="metric-evolution-title">
-          <div className="details-section-heading">
-            <div>
-              <span className="section-kicker">Évolution mesurée</span>
-              <h3 id="metric-evolution-title">
-                {primaryMetric ? `${METRIC_META[primaryMetric].icon} ${METRIC_META[primaryMetric].label}` : "Aucune métrique publique"}
-              </h3>
-            </div>
-            {totalDelta !== null && timelinePoints.length > 1 ? (
-              <span className={`metric-delta ${totalDelta >= 0 ? "positive" : "negative"}`}>
-                {totalDelta >= 0 ? "+" : ""}{formatNumber(totalDelta)} depuis le premier relevé
-              </span>
-            ) : null}
-          </div>
-          {timelinePoints.length > 1 && primaryMetric ? (
-            <div className="metric-timeline">
-              {timelinePoints.slice(-8).map((point, index, points) => {
-                const value = point[primaryMetric];
-                const previousValue = index > 0 ? points[index - 1][primaryMetric] : null;
-                const delta = value !== null && previousValue !== null ? value - previousValue : null;
-                return (
-                  <div key={`${point.source}:${point.captured_at}`}>
-                    <span>{formatDetailedDate(point.captured_at)}</span>
-                    <b>{formatNumber(value)}</b>
-                    <small>
-                      {delta === null || index === 0
-                        ? "Premier point affiché"
-                        : `${delta >= 0 ? "+" : ""}${formatNumber(delta)}`}
-                    </small>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="metric-history-empty">
-              <span>📍</span>
-              <div>
-                <b>Un seul relevé disponible pour l’instant</b>
-                <p>La progression s’affichera automatiquement dès le prochain scan. Le radar ne reconstruit pas une courbe passée qu’il n’a pas observée.</p>
-              </div>
-            </div>
-          )}
-        </section>
-
-        {editorialAnalysis ? (
-          <section
-            className={`editorial-why details-editorial-why status-${editorialAnalysis.status}`}
-            aria-labelledby={editorialAnalysisId}
-          >
-            <div className="editorial-why-heading">
-              <span id={editorialAnalysisId}>🧠 Pourquoi ça ressort</span>
-              <small>
-                {editorialAnalysis.status === "no-differentiator"
-                  ? "Différence non isolée"
-                  : editorialAnalysis.confidence === "medium"
-                    ? "Comparaison étayée"
-                    : "Hypothèse prudente"}
-              </small>
-            </div>
-            <h4>{editorialAnalysis.headline}</h4>
-            <p>{editorialAnalysis.mechanism}</p>
-            <div className="editorial-why-comparison">
-              <b>Ce qui le différencie</b>
-              <span>{editorialAnalysis.comparison}</span>
-            </div>
-            <div className="editorial-why-lesson">
-              <b>À reproduire</b>
-              <span>{editorialAnalysis.transferableLesson}</span>
-            </div>
-            {editorialAnalysis.limitations[0] ? (
-              <small className="editorial-why-limit">
-                Périmètre : {editorialAnalysis.limitations[0]}
-              </small>
-            ) : null}
-          </section>
-        ) : null}
 
         <footer>
           <span>Données publiques réellement observées · aucune trajectoire inventée</span>

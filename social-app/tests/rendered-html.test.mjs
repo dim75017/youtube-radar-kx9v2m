@@ -475,11 +475,11 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.doesNotMatch(postCard, /Pourquoi ça ressort/);
   assert.doesNotMatch(postCard, /score_explanation|performance_score|\/100/);
   const detailsModal = component.slice(component.indexOf("function PostDetailsModal"));
-  assert.match(detailsModal, /Pourquoi ça ressort/);
-  assert.match(detailsModal, /aria-labelledby=\{editorialAnalysisId\}/);
-  assert.match(detailsModal, /editorialAnalysis\.mechanism/);
-  assert.match(detailsModal, /editorialAnalysis\.comparison/);
-  assert.match(detailsModal, /editorialAnalysis\.transferableLesson/);
+  assert.doesNotMatch(
+    detailsModal,
+    /Évolution mesurée|Un seul relevé disponible|Pourquoi ça ressort|Différence non isolée|Ce qui le différencie|À reproduire|Périmètre\s*:/,
+  );
+  assert.doesNotMatch(detailsModal, /metric-evolution|details-editorial-why|editorialAnalysis\.(mechanism|comparison|transferableLesson)/);
   assert.match(component, /parsePostRaw\(post\.raw_json\)/);
   assert.match(component, /raw\.pollVotes = post\.poll_votes/);
   assert.match(socialMedia, /youtube-nocookie\.com\/embed/);
