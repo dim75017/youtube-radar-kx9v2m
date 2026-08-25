@@ -8,6 +8,7 @@ on:
     - cron: "37 18 * * *"
 
 permissions:
+  actions: write
   contents: write
 
 concurrency:
@@ -47,6 +48,8 @@ jobs:
         run: node --experimental-strip-types --test tests/audience-metrics.test.mjs
 
       - name: Commit only the audience snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "lofi-social-radar-bot"
           git config user.email "lofi-social-radar-bot@users.noreply.github.com"
@@ -54,3 +57,4 @@ jobs:
           git diff --cached --quiet || git commit -m "Update audience history"
           git pull --rebase origin main
           git push origin HEAD:main
+          gh workflow run deploy-pages.yml --ref main

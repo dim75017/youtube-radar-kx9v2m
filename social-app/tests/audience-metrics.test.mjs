@@ -528,6 +528,8 @@ test("the daily workflow enforces a fresh YouTube point on both scheduled passes
   assert.match(workflow, /cron: "37 18 \* \* \*"/);
   assert.match(workflow, /--require-fresh-platform youtube/);
   assert.match(workflow, /Two daily collection passes/);
+  assert.match(workflow, /actions:\s*write/);
+  assert.match(workflow, /gh workflow run deploy-pages\.yml --ref main/);
   assert.doesNotMatch(workflow, /catch-up pass/i);
 });
 
