@@ -23,25 +23,6 @@
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
-<script src="../Spotify_Radar_data.js"></script>
-<script src="../Spotify_Labels_data.js"></script>
-<script src="../Spotify_Playlist_Covers_data.js?v=20260724-playlist-covers-v1"></script>
-<script>
-(()=>{
-  const stamp=Date.now();
-  [
-    '../Spotify_Playlists_canonical_data.js?payload='+stamp,
-    /* 2026-07-25 recovery: keep the last reviewed instrumental snapshot active.
-       The next snapshot must pass the comparative retention/classification gate
-       before this pointer can move, so partial or broad vocal scans stay staged. */
-    '../Spotify_Soundcharts_data_20260819T232812Z.js?payload='+stamp,
-    '../Spotify_Browse_Catalogue_data.js?payload='+stamp,
-    '../Spotify_Selection_Contacts_data.js?payload='+stamp,
-    '../Spotify_Performance_data.js?payload='+stamp
-  ].forEach(src=>document.write('<script src="'+src+'"><\/script>'));
-})();
-</script>
-<script src="../Spotify_Performance_loader.js?v=20260731-sharded-store-v1"></script>
 <link rel="stylesheet" href="dashboard.css?v=20260825-platform-header-v2">
 <link rel="stylesheet" href="player.css?v=20260821-custom-preview-v1">
 <link rel="stylesheet" href="discovery.css?v=20260722-unified-catalogue-v1">
@@ -90,7 +71,7 @@
       <a class="social" href="../social/" aria-label="Socials"><img src="../assets/platform-instagram.svg" alt=""> <span>Socials</span></a>
     </div>
   </header>
-  <div id="view"></div>
+  <div id="view"><div class="instant-loader" aria-live="polite"><span></span><span></span><span></span></div></div>
 </main>
 
 <div id="track-modal" class="tmodal" style="display:none" onclick="if(event.target===this)closeTrack()">
@@ -109,9 +90,40 @@
   <div class="tmbox estimate-box" id="estimate-body"></div>
 </div>
 
-<script src="../Spotify_Preview_Audio_data.js?v=20260821-custom-preview-v1"></script>
-<script src="player.js?v=20260821-custom-preview-v1"></script>
-<script src="dashboard.js?v=20260825-counter-integrity-v1&amp;editorial=10k-v1"></script>
-<script src="coverage.js?v=20260801-track-floor-100k-v1"></script>
+<script>
+(()=>{
+  const load=src=>new Promise((resolve,reject)=>{
+    const script=document.createElement('script');
+    script.src=src; script.onload=resolve; script.onerror=reject;
+    document.body.appendChild(script);
+  });
+  const dataSources=[
+    '../Spotify_Radar_data.js',
+    '../Spotify_Labels_data.js',
+    '../Spotify_Playlist_Covers_data.js?v=20260724-playlist-covers-v1',
+    '../Spotify_Playlists_canonical_data.js',
+    '../Spotify_Soundcharts_data_20260819T232812Z.js',
+    '../Spotify_Browse_Catalogue_data.js',
+    '../Spotify_Selection_Contacts_data.js',
+    '../Spotify_Performance_data.js',
+    '../Spotify_Preview_Audio_data.js?v=20260821-custom-preview-v1'
+  ];
+  const start=()=>Promise.all(dataSources.map(load))
+    .then(()=>load('../Spotify_Performance_loader.js?v=20260731-sharded-store-v1'))
+    .then(()=>load('player.js?v=20260821-custom-preview-v1'))
+    .then(()=>load('dashboard.js?v=20260825-instant-nav-v1&editorial=10k-v1'))
+    .then(()=>load('coverage.js?v=20260801-track-floor-100k-v1'))
+    .catch(error=>{
+      console.error('Spotify Radar bootstrap failed',error);
+      const view=document.getElementById('view');
+      if(view) view.innerHTML='<p class="instant-load-error">Chargement impossible. Réessayez dans un instant.</p>';
+    });
+  /* Two frames guarantee that the navigation and page structure paint before
+     large datasets are parsed on a cold visit. Stable URLs make these payloads
+     reusable by the browser and by cross-platform prerendering. */
+  if(document.prerendering) start();
+  else requestAnimationFrame(()=>requestAnimationFrame(start));
+})();
+</script>
 </body>
 </html>

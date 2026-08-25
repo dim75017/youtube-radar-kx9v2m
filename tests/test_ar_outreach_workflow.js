@@ -81,7 +81,7 @@ assert.match(spotifyNav, /data-v="labels" data-fr="Labels"><span class="emo">ðŸ
 assert.doesNotMatch(spotifyNav, /Ma liste A&R/, 'The previous A&R list naming must be removed');
 assert.doesNotMatch(spotifyNav, /SÃ©lection A&R/, 'The sidebar must not retain the old A&R selection label');
 assert.doesNotMatch(youtubeNav, /id:'watch'/, 'YouTube watchlist navigation must be removed');
-const contactPayloadIndex=spotifyNav.indexOf('../Spotify_Selection_Contacts_data.js?payload=');
+const contactPayloadIndex=spotifyNav.indexOf('../Spotify_Selection_Contacts_data.js');
 const dashboardScriptIndex=spotifyNav.indexOf('dashboard.js?v=');
 assert.ok(contactPayloadIndex>=0&&dashboardScriptIndex>contactPayloadIndex, 'The Selection contact directory must load before the dashboard logic.');
 assert.match(spotify, /window\.SPOTIFY_SELECTION_CONTACTS/, 'Selection must consume its dedicated public-contact directory.');

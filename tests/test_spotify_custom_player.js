@@ -397,7 +397,7 @@ function restoreGlobal(name, value) {
 
   const previewScriptIndex = index.indexOf('../Spotify_Preview_Audio_data.js?v=20260821-custom-preview-v1');
   const playerScriptIndex = index.indexOf('player.js?v=20260821-custom-preview-v1');
-  const dashboardScriptIndex = index.indexOf('dashboard.js?v=20260825-counter-integrity-v1');
+  const dashboardScriptIndex = index.indexOf('dashboard.js?v=20260825-instant-nav-v1');
   assert.ok(previewScriptIndex >= 0 && playerScriptIndex > previewScriptIndex && dashboardScriptIndex > playerScriptIndex,
     'preview data, custom player, then dashboard load in dependency order');
   assert.doesNotMatch(index, /auth\.js|sdk\.scdn\.co\/spotify-player\.js|open\.spotify\.com\/embed\/iframe-api/i,

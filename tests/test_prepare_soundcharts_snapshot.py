@@ -1065,7 +1065,7 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
             index.write_text(
                 "<script>const urls=['../"
                 + old_name
-                + "?payload='+stamp];</script>\n",
+                + "'];</script>\n",
                 encoding="utf-8",
             )
 

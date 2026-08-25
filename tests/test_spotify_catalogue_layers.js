@@ -12,14 +12,18 @@ const browseWorkflow = fs.readFileSync('.github/workflows/refresh-spotify-browse
 const soundchartsWorkflow = fs.readFileSync('.github/workflows/refresh-soundcharts.yml', 'utf8');
 const baselineCsv = fs.readFileSync('spotify-catalogue-baseline.csv', 'utf8');
 
-const activeSnapshotMatch = index.match(/\.\.\/(Spotify_Soundcharts_data_[^?'"\\]+\.js)\?payload=/);
+const activeSnapshotMatch = index.match(/\.\.\/(Spotify_Soundcharts_data_[^?'"\\]+\.js)(?:\?[^'"\\]*)?/);
 assert.ok(activeSnapshotMatch, 'the active Soundcharts snapshot must be explicit in the page shell');
 const activeSnapshot = fs.readFileSync(activeSnapshotMatch[1], 'utf8').toLowerCase();
 assert.equal(activeSnapshot.includes('corbon amodio'), false,
   'a manually quarantined vocal artist must never remain in the active public snapshot');
 
-assert.match(index, /Spotify_Browse_Catalogue_data\.js\?payload=/,
+assert.match(index, /Spotify_Browse_Catalogue_data\.js/,
   'the broad catalogue must load independently from the strict Soundcharts snapshot');
+assert.doesNotMatch(index, /(?:Date\.now\(\)|\?payload=)/,
+  'large Spotify payload URLs must remain stable so prerender and browser cache can be reused');
+assert.match(index, /if\(document\.prerendering\) start\(\)/,
+  'Spotify data must hydrate during prerender instead of waiting for page activation');
 assert.ok(index.indexOf('Spotify_Browse_Catalogue_data.js') < index.indexOf('dashboard.js'),
   'the broad catalogue must load before the dashboard bundle');
 assert.match(dashboard, /const BROWSE = window\.SPOTIFY_BROWSE_CATALOGUE \|\| \{\};/);

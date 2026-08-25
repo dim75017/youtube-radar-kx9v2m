@@ -62,14 +62,14 @@ assert.ok(radarStart >= 0 && radarEnd > radarStart, 'A&R render section must exi
 assert.match(dashboard.slice(radarStart, radarEnd), /id="radar-q"/, 'A&R search bar is available beside the genre filter');
 assert.match(coverage, /Catalogue actif/);
 assert.match(coverage, /minimumLifetimeStreams = 100000/);
-assert.match(index, /Spotify_Browse_Catalogue_data\.js\?payload=/);
+assert.match(index, /Spotify_Browse_Catalogue_data\.js/);
 assert.match(index, /discovery\.css\?v=20260722-unified-catalogue-v1/);
 assert.match(index, /player\.css\?v=20260821-custom-preview-v1/);
 assert.match(index, /player\.js\?v=20260821-custom-preview-v1/);
-assert.match(index, /dashboard\.js\?v=20260825-counter-integrity-v1/);
+assert.match(index, /dashboard\.js\?v=20260825-instant-nav-v1/);
 const previewDataIndex = index.indexOf('../Spotify_Preview_Audio_data.js?v=20260821-custom-preview-v1');
 const customPlayerIndex = index.indexOf('player.js?v=20260821-custom-preview-v1');
-const dashboardIndex = index.indexOf('dashboard.js?v=20260825-counter-integrity-v1');
+const dashboardIndex = index.indexOf('dashboard.js?v=20260825-instant-nav-v1');
 assert.ok(previewDataIndex >= 0 && customPlayerIndex > previewDataIndex && dashboardIndex > customPlayerIndex,
   'the local preview map loads before the custom audio player and dashboard');
 assert.doesNotMatch(index, /https:\/\/sdk\.scdn\.co\/spotify-player\.js|(?:^|["'])auth\.js(?:\?|["'])/m,

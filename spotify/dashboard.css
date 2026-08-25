@@ -6,6 +6,12 @@
   --green:#4ade80; --amber:#fbbf24; --red:#fb7185; --cyan:#86efac; --blue:#7dd3fc; --violet:#a78bfa;
   --r:16px; --sidebar:238px;
 }
+
+.instant-loader{min-height:42vh;display:flex;align-items:center;justify-content:center;gap:7px}
+.instant-loader span{width:7px;height:7px;border-radius:50%;background:#1db954;animation:instant-pulse .9s ease-in-out infinite alternate}
+.instant-loader span:nth-child(2){animation-delay:.15s}.instant-loader span:nth-child(3){animation-delay:.3s}
+.instant-load-error{margin:48px 0;color:#b42318;font-weight:600}
+@keyframes instant-pulse{from{opacity:.28;transform:translateY(2px)}to{opacity:1;transform:translateY(-2px)}}
 *{margin:0;padding:0;box-sizing:border-box}
 html{scrollbar-color:#243a2c var(--bg)}
 html,body{width:100%;max-width:100%;overflow-x:hidden}
