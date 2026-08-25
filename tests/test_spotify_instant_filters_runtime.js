@@ -259,4 +259,17 @@ for(const artist of catalogue.artists){
 const playlistIndex=Object.fromEntries(catalogue.schemas.playlists.map((field,index)=>[field,index]));
 assert.ok(catalogue.playlists.some(row=>row[playlistIndex.growth_30d]===null),'missing playlist growth must remain null instead of becoming a fabricated zero');
 
+const instantCss = fs.readFileSync(path.join(root,'spotify','instant.css'),'utf8');
+assert.match(
+  instantCss,
+  /\.fast-toolbar\{[^}]*display:grid;[^}]*grid-template-columns:minmax\(210px,280px\) minmax\(0,1fr\) auto auto/,
+  'the desktop toolbar must reserve columns for search, filters, runtime state, and right-aligned sorting',
+);
+assert.match(instantCss,/\.fast-search\{[^}]*grid-column:1;grid-row:1/,'search must stay first and leftmost');
+assert.match(instantCss,/\.fast-filters\{[^}]*grid-column:2;grid-row:1/,'desktop filters must share the search row');
+assert.match(instantCss,/\.fast-runtime-state\{[^}]*grid-column:3;grid-row:1/,'runtime state must stay between filters and sorting');
+assert.match(instantCss,/\.fast-sort\{[^}]*grid-column:4;grid-row:1;justify-self:end/,'sorting must stay at the far right');
+assert.doesNotMatch(instantCss,/\.fast-filters\{[^}]*order:4/,'filters must not be forced onto a second desktop row');
+assert.doesNotMatch(instantCss,/\.fast-filters\{[^}]*flex:1 0 100%/,'filters must not reserve a full toolbar row on desktop');
+
 console.log('Spotify instant catalogue filters: OK');
