@@ -1121,9 +1121,7 @@ export function SocialOS({
 
       <aside className={`sidebar ${mobileOpen ? "open" : ""}`}>
         <div className="brand">
-          <div className="brand-mark" aria-hidden="true">
-            ◉<span />
-          </div>
+          <img className="brand-mark" src="../assets/lofi-radar-logo.jpg" alt="" aria-hidden="true" />
           <div className="brand-copy">
             <h1>
               Lofi <span>Radar</span>

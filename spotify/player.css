@@ -93,3 +93,11 @@
 @media(max-width:520px){.spotify-radar-player{border-radius:14px!important}}
 @media(prefers-reduced-motion:reduce){.spotify-radar-player *{scroll-behavior:auto!important;transition:none!important}.spotify-radar-player-glyph[data-icon="loading"]{animation-duration:1.8s}}
 @media(forced-colors:active){.spotify-radar-player,.spotify-radar-player-attribution{border-color:ButtonText!important}.spotify-radar-player-toggle:focus-visible,.spotify-radar-player-volume-toggle:focus-visible,.spotify-radar-player-attribution:focus-visible,.spotify-radar-player-volume-range:focus-visible{outline-color:Highlight}}
+
+/* Match the shared Radar editorial system: flat, compact and data-first. */
+.spotify-radar-player{border-color:var(--radar-border)!important;border-radius:var(--radar-radius)!important;background:var(--radar-panel)!important;box-shadow:none!important}
+.spotify-radar-player::before{display:none}
+.spotify-radar-player-cover{border-radius:var(--radar-radius-control);background:var(--radar-panel-raised)}
+.spotify-radar-player-copy strong{font-size:13px;font-weight:650}.spotify-radar-player-copy small,.spotify-radar-player-current,.spotify-radar-player-duration{font-size:11px}
+.spotify-radar-player-toggle{box-shadow:none}.spotify-radar-player[data-state="playing"]{box-shadow:inset 2px 0 0 #1ed760!important}
+@media(max-width:520px){.spotify-radar-player{border-radius:var(--radar-radius)!important}}

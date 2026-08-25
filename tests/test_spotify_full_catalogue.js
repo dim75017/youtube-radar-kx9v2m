@@ -64,7 +64,7 @@ assert.match(coverage, /Catalogue actif/);
 assert.match(coverage, /minimumLifetimeStreams = 100000/);
 assert.match(index, /Spotify_Browse_Catalogue_data\.js/);
 assert.match(index, /discovery\.css\?v=20260722-unified-catalogue-v1/);
-assert.match(index, /player\.css\?v=20260821-custom-preview-v1/);
+assert.match(index, /player\.css\?v=20260825-da-v1/);
 assert.match(index, /player\.js\?v=20260821-custom-preview-v1/);
 assert.match(index, /dashboard\.js\?v=20260825-instant-nav-v1/);
 const previewDataIndex = index.indexOf('../Spotify_Preview_Audio_data.js?v=20260821-custom-preview-v1');

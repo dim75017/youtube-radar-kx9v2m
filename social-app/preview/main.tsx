@@ -1,7 +1,9 @@
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { SocialOS, type WorkspacePayload } from "../app/SocialOS";
+import "../../assets/css/radar-foundation.css";
 import "../app/globals.css";
+import "../app/editorial.css";
 import audienceHistoryJson from "../data/audience-history.json";
 import audioTrendFeedJson from "../data/audio-trends/feed.json";
 import audioTrendScanStatusJson from "../data/audio-trends/refresh-status.json";

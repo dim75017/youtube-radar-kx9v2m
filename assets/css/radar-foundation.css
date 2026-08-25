@@ -1,0 +1,26 @@
+/* Lofi Radar shared visual foundation.
+   Platform colour is local; hierarchy, spacing and surfaces are global. */
+:root{
+  --radar-font:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --radar-bg:#0b0c0f;
+  --radar-bg-elevated:#0d0f13;
+  --radar-panel:#111318;
+  --radar-panel-raised:#15181e;
+  --radar-border:rgba(232,235,242,.09);
+  --radar-border-strong:rgba(232,235,242,.17);
+  --radar-text:#f0f1f3;
+  --radar-muted:#a2a6ae;
+  --radar-dim:#70757f;
+  --radar-sidebar:224px;
+  --radar-gutter:clamp(22px,3vw,54px);
+  --radar-radius:10px;
+  --radar-radius-control:7px;
+  --radar-page-title:27px;
+  --radar-section-title:15px;
+  --radar-card-title:13px;
+  --radar-body:13px;
+  --radar-meta:11px;
+}
+
+body,
+body :where(*):not(code):not(pre):not(kbd){font-family:var(--radar-font)!important}

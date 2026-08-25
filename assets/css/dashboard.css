@@ -819,3 +819,27 @@ body{background:var(--bg);font-size:13px;letter-spacing:.005em}
 .radar-switch a.yt.on{color:#fff;background:rgba(255,0,51,.18);box-shadow:inset 0 0 0 1px rgba(255,0,51,.35);border-bottom-color:transparent}
 @media(max-width:900px){#main{--content-gutter:16px}}
 @media(max-width:640px){#main{--content-gutter:12px}.platform-header{padding:14px calc(var(--content-gutter) + 46px)}}
+
+/* ---------- Shared Radar editorial system ---------- */
+:root{
+  --bg:var(--radar-bg);--bg2:var(--radar-bg-elevated);--panel:var(--radar-panel);--panel2:var(--radar-panel-raised);
+  --border:var(--radar-border);--border2:var(--radar-border-strong);--text:var(--radar-text);
+  --muted:var(--radar-muted);--dim:var(--radar-dim);--r:var(--radar-radius);--sidebar:var(--radar-sidebar);
+}
+body{font-family:var(--radar-font);font-size:var(--radar-body);line-height:1.5;background:var(--radar-bg)}
+#sidebar{width:var(--radar-sidebar);padding:20px 12px 14px;background:var(--radar-bg-elevated);border-right-color:var(--radar-border)}
+.logo{padding:2px 8px 24px}.logo .mark{width:36px;height:36px;box-shadow:none}.logo h1{font-family:var(--radar-font);font-size:15px;letter-spacing:0}
+.logo small{font-family:var(--radar-font);font-size:10px;letter-spacing:1.5px}
+.nav{gap:1px}.nav-label{padding:18px 10px 7px;font-size:9px;letter-spacing:1.45px}
+.nav button{min-height:38px;padding:9px 10px;border-radius:var(--radar-radius-control);font-size:13px;font-weight:500}
+.nav button.active{background:#181b21;box-shadow:inset 2px 0 0 #ff385f}
+#main{--content-gutter:var(--radar-gutter);margin-left:var(--radar-sidebar);padding:0 var(--content-gutter) 70px}
+.platform-header{margin-bottom:12px;background:rgba(8,10,15,.96)}
+.radar-switch a{font-family:var(--radar-font);font-size:12px;padding:9px 12px}
+.topbar{padding:32px 0 20px}.topbar h2{font-family:var(--radar-font);font-size:var(--radar-page-title);font-weight:650;line-height:1.2;letter-spacing:-.025em}
+.panel{border-radius:var(--radar-radius);background:var(--radar-panel);box-shadow:none}
+.panel h3{font-family:var(--radar-font);font-size:var(--radar-section-title);font-weight:650;line-height:1.3;letter-spacing:-.01em}
+.kpi .k-val,.stream-number,.delta-main{font-family:var(--radar-font)}
+.seg button,.search,select.ctl,.ctl-btn,.xdd-btn,.dw-open,.load-more{border-radius:var(--radar-radius-control)}
+@media(max-width:900px){:root{--radar-sidebar:64px}#main{--content-gutter:16px}}
+@media(max-width:640px){:root{--radar-sidebar:min(88vw,300px)}#main{margin-left:0;--content-gutter:12px}.platform-header{padding:14px calc(var(--content-gutter) + 46px)}}
