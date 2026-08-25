@@ -62,8 +62,11 @@ function assertSpotifyLightBootstrap(index) {
   const criticalJavaScriptBytes = instantDataBytes + instantRuntimeBytes;
   assert.ok(instantDataBytes <= 200_000,
     `Spotify first-paint data budget exceeded: ${instantDataBytes} bytes > 200000`);
-  assert.ok(instantRuntimeBytes <= 40_000,
-    `Spotify lightweight runtime budget exceeded: ${instantRuntimeBytes} bytes > 40000`);
+  // The restored catalogue filters add client logic while the first-paint row
+  // snapshot was reduced from 160 to 100. Keep the combined JavaScript cap
+  // strict and allow the renderer itself only the measured 45 kB envelope.
+  assert.ok(instantRuntimeBytes <= 45_000,
+    `Spotify lightweight runtime budget exceeded: ${instantRuntimeBytes} bytes > 45000`);
   assert.ok(criticalJavaScriptBytes <= 225_000,
     `Spotify critical JavaScript budget exceeded: ${criticalJavaScriptBytes} bytes > 225000`);
 }

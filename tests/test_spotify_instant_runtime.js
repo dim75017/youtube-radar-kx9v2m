@@ -74,8 +74,8 @@ for (const payload of [instant, catalogue]) {
 assert.equal(JSON.stringify(instant.counts), JSON.stringify(catalogue.counts),
   'first paint and hydrated catalogue must describe the same source snapshot');
 assert.equal(instant.source_hash, catalogue.source_hash);
-assert.ok(instant.tracks.length <= 160 && instant.tracks.length > 0);
-assert.ok(instant.radar.length <= 160 && instant.radar.length > 0);
+assert.ok(instant.tracks.length <= 100 && instant.tracks.length > 0);
+assert.ok(instant.radar.length <= 100 && instant.radar.length > 0);
 assert.ok(instant.artists.length <= 100 && instant.artists.length > 0);
 assert.ok(instant.playlists.length <= 100 && instant.playlists.length > 0);
 assert.ok(instant.labels.length <= 100 && instant.labels.length > 0);

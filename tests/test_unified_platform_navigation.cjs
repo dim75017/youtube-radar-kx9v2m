@@ -19,15 +19,15 @@ test("YouTube, Spotify and Socials expose the same centered header order", () =>
   const surfaces = [
     {
       source: read("index.html"),
-      hrefs: ["./", "spotify/?app=20260825-instant-v2#opportunities", "social/"],
+      hrefs: ["./", "spotify/?app=20260825-filters-v1#opportunities", "social/"],
     },
     {
       source: read("spotify/index.html"),
-      hrefs: ["../", "./?app=20260825-instant-v2#opportunities", "../social/"],
+      hrefs: ["../", "./?app=20260825-filters-v1#opportunities", "../social/"],
     },
     {
       source: read("social-app/app/SocialOS.tsx"),
-      hrefs: ["../", "../spotify/?app=20260825-instant-v2#opportunities", "./"],
+      hrefs: ["../", "../spotify/?app=20260825-filters-v1#opportunities", "./"],
     },
   ];
 
@@ -56,9 +56,9 @@ test("every platform prerenders both destinations for instant switching", () => 
   const spotify = read("spotify/index.html");
   const socials = read("social-app/preview/index.html");
 
-  assert.match(youtube, /"urls":\["spotify\/\?app=20260825-instant-v2#opportunities","social\/"\]/);
+  assert.match(youtube, /"urls":\["spotify\/\?app=20260825-filters-v1#opportunities","social\/"\]/);
   assert.match(spotify, /"urls":\["\.\.\/","\.\.\/social\/"\]/);
-  assert.match(socials, /"urls":\["\/youtube-radar-kx9v2m\/","\/youtube-radar-kx9v2m\/spotify\/\?app=20260825-instant-v2#opportunities"\]/);
+  assert.match(socials, /"urls":\["\/youtube-radar-kx9v2m\/","\/youtube-radar-kx9v2m\/spotify\/\?app=20260825-filters-v1#opportunities"\]/);
   for (const source of [youtube, spotify, socials]) {
     assert.match(source, /"eagerness":"immediate"/);
   }

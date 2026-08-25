@@ -70,6 +70,7 @@ jobs:
             /social-app/
             /tests/spotify_light_bootstrap_contract.js
             /tests/test_spotify_instant_runtime.js
+            /tests/test_spotify_instant_filters_runtime.js
             /tests/test_spotify_track_analytics_runtime.js
             /tests/test_unified_design_system.cjs
             /tests/test_unified_platform_navigation.cjs
@@ -202,6 +203,7 @@ jobs:
           test -f Spotify_Instant_data.js
           test -f Spotify_Catalogue_data.js
           node tests/test_spotify_instant_runtime.js
+          node tests/test_spotify_instant_filters_runtime.js
           node tests/test_spotify_track_analytics_runtime.js
 
       - name: Build the Social Radar runtime

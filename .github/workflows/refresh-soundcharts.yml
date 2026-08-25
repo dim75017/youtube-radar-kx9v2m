@@ -23,6 +23,8 @@ on:
       - 'spotify_rights.py'
       - 'build_spotify_browse_catalogue.py'
       - 'build_spotify_instant_runtime.js'
+      - 'Spotify_Radar_data.js'
+      - 'Spotify_Lofi_Relations_data.js'
       - 'build_spotify_selection_contacts.py'
       - 'enrich_public_artist_contacts.py'
       - 'sync_soundcharts_opportunities.py'
@@ -63,6 +65,7 @@ on:
       - 'tests/test_spotify_track_analytics_interactions.js'
       - 'tests/test_spotify_daily_chart_integrity.js'
       - 'tests/test_spotify_instant_runtime.js'
+      - 'tests/test_spotify_instant_filters_runtime.js'
       - 'tests/test_spotify_track_analytics_runtime.js'
       - 'tests/test_spotify_playlist_follower_windows.js'
       - 'tests/test_spotify_binary_ownership_status.js'
@@ -78,6 +81,7 @@ on:
       - 'spotify/index.html'
       - 'spotify/dashboard.js'
       - 'spotify/instant.js'
+      - 'spotify/instant.css'
       - 'spotify/track-analytics.js'
       - 'spotify/track-analytics.css'
       - 'spotify/dashboard.css'
@@ -106,6 +110,8 @@ on:
       - 'spotify_rights.py'
       - 'build_spotify_browse_catalogue.py'
       - 'build_spotify_instant_runtime.js'
+      - 'Spotify_Radar_data.js'
+      - 'Spotify_Lofi_Relations_data.js'
       - 'build_spotify_selection_contacts.py'
       - 'enrich_public_artist_contacts.py'
       - 'sync_soundcharts_opportunities.py'
@@ -146,6 +152,7 @@ on:
       - 'tests/test_spotify_track_analytics_interactions.js'
       - 'tests/test_spotify_daily_chart_integrity.js'
       - 'tests/test_spotify_instant_runtime.js'
+      - 'tests/test_spotify_instant_filters_runtime.js'
       - 'tests/test_spotify_track_analytics_runtime.js'
       - 'tests/test_spotify_playlist_follower_windows.js'
       - 'tests/test_spotify_binary_ownership_status.js'
@@ -161,6 +168,7 @@ on:
       - 'spotify/index.html'
       - 'spotify/dashboard.js'
       - 'spotify/instant.js'
+      - 'spotify/instant.css'
       - 'spotify/track-analytics.js'
       - 'spotify/track-analytics.css'
       - 'spotify/dashboard.css'
@@ -336,6 +344,7 @@ jobs:
           node tests/test_spotify_track_analytics_interactions.js
           node tests/test_spotify_daily_chart_integrity.js
           node tests/test_spotify_instant_runtime.js
+          node tests/test_spotify_instant_filters_runtime.js
           node tests/test_spotify_track_analytics_runtime.js
           git diff --check
 
@@ -1003,7 +1012,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           node build_spotify_instant_runtime.js
-          git add -A -- Spotify_Playlists_canonical_data.js Spotify_Performance_data.js Spotify_Performance_tracks Spotify_Instant_data.js Spotify_Catalogue_data.js soundcharts-history
+          git add -A -- Spotify_Playlists_canonical_data.js Spotify_Performance_data.js Spotify_Performance_tracks Spotify_Lofi_Relations_data.js Spotify_Instant_data.js Spotify_Catalogue_data.js soundcharts-history
           git diff --cached --quiet && exit 0
           git commit -m "data: refresh Soundcharts playlist covers"
           for attempt in 1 2 3; do
@@ -1182,6 +1191,7 @@ jobs:
             Spotify_Playlists_canonical_data.js \
             Spotify_Performance_data.js \
             Spotify_Performance_tracks \
+            Spotify_Lofi_Relations_data.js \
             Spotify_Instant_data.js \
             Spotify_Catalogue_data.js \
             Spotify_Selection_Contacts_data.js \
