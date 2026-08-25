@@ -15,7 +15,7 @@ function platformBlock(source) {
   return match[0];
 }
 
-test("YouTube, Spotify and Social expose the same centered header order", () => {
+test("YouTube, Spotify and Socials expose the same centered header order", () => {
   const surfaces = [
     {
       source: read("index.html"),
@@ -37,7 +37,7 @@ test("YouTube, Spotify and Social expose the same centered header order", () => 
     assert.match(source, /<header class(?:Name)?="platform-header">/);
     assert.ok(sidebarEnd >= 0, "missing sidebar boundary");
     assert.ok(source.indexOf(block) > sidebarEnd, "platform navigation must live in the page header, not the sidebar");
-    const positions = ["YouTube", "Spotify", "Social"].map((label) =>
+    const positions = ["YouTube", "Spotify", "Socials"].map((label) =>
       block.indexOf(label),
     );
     assert.ok(positions.every((position) => position >= 0));
@@ -48,6 +48,19 @@ test("YouTube, Spotify and Social expose the same centered header order", () => 
     assert.equal((block.match(/aria-current=/g) ?? []).length, 1);
     assert.doesNotMatch(block, /target=["']_blank["']/);
     assert.equal((block.match(/<img\b/g) ?? []).length, 3);
+  }
+});
+
+test("every platform prerenders both destinations for instant switching", () => {
+  const youtube = read("index.html");
+  const spotify = read("spotify/index.html");
+  const socials = read("social-app/preview/index.html");
+
+  assert.match(youtube, /"urls":\["spotify\/","social\/"\]/);
+  assert.match(spotify, /"urls":\["\.\.\/","\.\.\/social\/"\]/);
+  assert.match(socials, /"urls":\["\/youtube-radar-kx9v2m\/","\/youtube-radar-kx9v2m\/spotify\/"\]/);
+  for (const source of [youtube, spotify, socials]) {
+    assert.match(source, /"eagerness":"immediate"/);
   }
 });
 

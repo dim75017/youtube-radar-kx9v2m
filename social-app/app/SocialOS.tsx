@@ -1282,9 +1282,9 @@ export function SocialOS({
               />
               <span className="platform-label">Spotify</span>
             </a>
-            <a className="social on" href="./" aria-current="page" aria-label="Social">
+            <a className="social on" href="./" aria-current="page" aria-label="Socials">
               <img src="platforms/instagram.svg" alt="" />
-              <span className="platform-label">Social</span>
+              <span className="platform-label">Socials</span>
             </a>
           </div>
         </header>
