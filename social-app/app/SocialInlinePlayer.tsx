@@ -296,21 +296,17 @@ export function SocialInlinePlayer({
 
   if (platform === "instagram") {
     return (
-      <div className="inline-video-frame social-inline-player-frame is-instagram-preview-only" role="status">
+      <div className="inline-video-frame social-inline-player-frame is-instagram-embed">
         <iframe
           id={frameId}
           ref={iframeRef}
           src={embedUrl}
-          title={`${title} · aperçu indisponible`}
-          aria-hidden="true"
-          tabIndex={-1}
+          title={title}
+          allow="encrypted-media; picture-in-picture; fullscreen"
           referrerPolicy="strict-origin-when-cross-origin"
           loading="eager"
+          allowFullScreen
         />
-        <div className="inline-instagram-refresh-message">
-          <b>Vidéo momentanément indisponible</b>
-          <span>Le lien de lecture sera renouvelé au prochain relevé.</span>
-        </div>
         <button className="inline-player-close" type="button" aria-label="Fermer le lecteur" onClick={onClose}>×</button>
       </div>
     );

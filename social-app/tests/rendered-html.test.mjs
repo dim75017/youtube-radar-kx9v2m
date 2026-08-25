@@ -47,7 +47,7 @@ test("server-renders the live Social Radar shell", async () => {
   assert.doesNotMatch(html, /<div[^>]*id="recommendations-subnav"[^>]*\shidden\b/);
   assert.doesNotMatch(html, /Données publiques réelles|Snapshot public interactif|Générer les idées/);
   assert.match(html, /Instagram, X, TikTok et YouTube/);
-  assert.doesNotMatch(html, /<iframe\b/i);
+  assert.doesNotMatch(html, /<(?:iframe|video|audio)\b/i);
   assert.doesNotMatch(html, /🧪 Démo|Données de démonstration|codex-preview|react-loading-skeleton/i);
 });
 
@@ -450,8 +450,12 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.doesNotMatch(directInstagramPlayer, /<iframe/);
   assert.match(audioTrendView, /playbackUrl=\{trend\.referenceVideo\.playbackUrl\}/);
   assert.match(audioTrendView, /playbackExpiresAt=\{trend\.referenceVideo\.playbackExpiresAt\}/);
-  assert.match(socialInlinePlayer, /is-instagram-preview-only/);
-  assert.match(styles, /is-instagram-preview-only iframe\s*\{[\s\S]*?pointer-events:\s*none/);
+  assert.match(socialInlinePlayer, /is-instagram-embed/);
+  assert.match(socialInlinePlayer, /is-instagram-embed[\s\S]*?<iframe[\s\S]*?title=\{title\}[\s\S]*?allowFullScreen/);
+  assert.doesNotMatch(socialInlinePlayer, /aria-hidden|tabIndex=\{-1\}|autoPlay|allow="[^"]*autoplay/);
+  assert.doesNotMatch(socialInlinePlayer, /Vidéo momentanément indisponible|renouvelé au prochain relevé|is-instagram-preview-only/);
+  assert.match(styles, /is-instagram-embed iframe\s*\{[\s\S]*?pointer-events:\s*auto/);
+  assert.doesNotMatch(styles, /is-instagram-preview-only|inline-instagram-refresh-message/);
   assert.match(audioTrendModel, /usageObservations/);
   assert.match(audioTrendModel, /same canonical source/i);
   const parsedAudioTrendFeed = JSON.parse(audioTrendFeed);

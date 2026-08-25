@@ -5691,38 +5691,8 @@ a {
   object-fit: cover;
 }
 
-.social-inline-player-frame.is-instagram-preview-only iframe {
-  pointer-events: none;
-  filter: brightness(0.52) saturate(0.72);
-}
-
-.inline-instagram-refresh-message {
-  position: absolute;
-  z-index: 4;
-  left: 50%;
-  bottom: 18px;
-  display: grid;
-  width: min(84%, 310px);
-  gap: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 14px;
-  background: rgba(7, 8, 13, 0.9);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.42);
-  padding: 11px 13px;
-  color: #fff;
-  text-align: center;
-  transform: translateX(-50%);
-  backdrop-filter: blur(10px);
-}
-
-.inline-instagram-refresh-message b {
-  font-size: 12px;
-}
-
-.inline-instagram-refresh-message span {
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 11px;
-  line-height: 1.35;
+.social-inline-player-frame.is-instagram-embed iframe {
+  pointer-events: auto;
 }
 
 .inline-player-sound-fallback {

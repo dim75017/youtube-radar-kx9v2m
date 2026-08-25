@@ -169,6 +169,7 @@ test("Social media never starts audible playback automatically", () => {
   const sourceFiles = [
     "social-app/app/SocialInlinePlayer.tsx",
     "social-app/app/SocialOS.tsx",
+    "social-app/app/AudioTrendFeedView.tsx",
     "social-app/app/CommentOpportunitiesView.tsx",
     "social-app/lib/social-inline-player.ts",
     "social-app/lib/social-media.ts",
