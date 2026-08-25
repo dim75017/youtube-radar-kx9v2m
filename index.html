@@ -7,15 +7,15 @@
 <title>Lofi Radar — YouTube · Scan</title>
 <link rel="icon" type="image/png" href="assets/lofi-radar-favicon.png">
 <script type="speculationrules">
-{"prerender":[{"source":"list","urls":["spotify/","social/"],"eagerness":"immediate"}]}
+{"prerender":[{"source":"list","urls":["spotify/?app=20260825-instant-v2#opportunities","social/"],"eagerness":"immediate"}]}
 </script>
 <script>
 (()=>{
   window.__RADAR_WAS_PRERENDERED=!!document.prerendering;
   if(!(HTMLScriptElement.supports&&HTMLScriptElement.supports('speculationrules'))){
-    ['spotify/','Spotify_Radar_data.js','Spotify_Playlists_canonical_data.js','Spotify_Labels_data.js','Spotify_Soundcharts_data_20260720T0217_editorial_strict.js?v=0217editorialstrict'].forEach(href=>{
+    ['spotify/?app=20260825-instant-v2#opportunities','Spotify_Instant_data.js?v=20260825-light-v5','spotify/instant.js?v=20260825-light-v5','spotify/instant.css?v=20260825-light-v5'].forEach(href=>{
       const hint=document.createElement('link');
-      hint.rel='prefetch';hint.href=href;if(/\.js(?:\?|$)/.test(href))hint.as='script';
+      hint.rel='prefetch';hint.href=href;if(/\.js(?:\?|$)/.test(href))hint.as='script';if(/\.css(?:\?|$)/.test(href))hint.as='style';
       document.head.appendChild(hint);
     });
   }
@@ -93,7 +93,7 @@ window.__radarRecommendationPoolReady=window.__loadRadarRecommendationPool(true)
   <header class="platform-header">
     <div class="radar-switch" role="navigation" aria-label="Changer de site Lofi Radar">
       <a class="yt on" href="./" aria-current="page" aria-label="YouTube"><img src="assets/platform-youtube.svg" alt=""> <span>YouTube</span></a>
-      <a class="sp" href="spotify/" aria-label="Spotify"><img src="https://storage.googleapis.com/pr-newsroom-wp/1/2023/05/Spotify_Primary_Logo_RGB_Green.png" width="22" height="22" alt=""> <span>Spotify</span></a>
+      <a class="sp" href="spotify/?app=20260825-instant-v2#opportunities" aria-label="Spotify"><img src="assets/platform-spotify.svg" width="22" height="22" alt=""> <span>Spotify</span></a>
       <a class="social" href="social/" aria-label="Socials"><img src="assets/platform-instagram.svg" alt=""> <span>Socials</span></a>
     </div>
   </header>

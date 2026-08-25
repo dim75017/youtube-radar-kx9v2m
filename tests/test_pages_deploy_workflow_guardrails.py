@@ -91,20 +91,30 @@ class PagesDeployWorkflowGuardrailsTests(unittest.TestCase):
             "!/soundcharts-instrumental-cache.json",
             "/assets/",
             "/spotify/",
-            "/Spotify_Performance_tracks/",
             "/video_history/",
             "/youtube_recommendation_ledger/manifest.json",
             "/prune_pages_artifact.py",
         ):
             with self.subTest(pattern=pattern):
                 self.assertIn(pattern, BUILD_JOB)
+        for excluded_legacy in (
+            "!/Spotify_Performance_data.js",
+            "!/Spotify_Radar_data.js",
+            "!/Spotify_Selection_Contacts_data.js",
+            "!/Spotify_Performance_loader.js",
+        ):
+            with self.subTest(excluded_legacy=excluded_legacy):
+                self.assertIn(excluded_legacy, BUILD_JOB)
+        self.assertNotIn("/Spotify_Performance_tracks/", BUILD_JOB)
         for private_tree in (
             "/soundcharts-history/",
             "/sr-prospects/",
-            "/tests/",
         ):
             with self.subTest(private_tree=private_tree):
                 self.assertNotIn(private_tree, BUILD_JOB)
+        self.assertNotIn("\n            /tests/\n", BUILD_JOB)
+        self.assertIn("/tests/spotify_light_bootstrap_contract.js", BUILD_JOB)
+        self.assertIn("/tests/test_spotify_instant_runtime.js", BUILD_JOB)
         self.assertNotIn(
             "\n            /youtube_recommendation_ledger/\n",
             BUILD_JOB,

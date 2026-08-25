@@ -3,6 +3,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
+const {assertSpotifyLightBootstrap} = require('./spotify_light_bootstrap_contract');
 
 const dashboard = fs.readFileSync('spotify/dashboard.js', 'utf8');
 const css = fs.readFileSync('spotify/dashboard.css', 'utf8');
@@ -93,8 +94,6 @@ assert.ok(composer.includes('arSelectionEconomicsHtml(group)'), 'Financial estim
 assert.ok(composer.includes('id="ar-composer-economics"'), 'The composer estimate must have a targeted refresh container.');
 assert.match(dashboard, /function arRefreshComposerEconomics\(artistKey\)/, 'Offer changes must refresh the composer estimate without rebuilding the message.');
 assert.match(dashboard, /arRefreshComposerEconomics\(artistKey\)/, 'Artist-specific offer and horizon setters must refresh the open composer.');
-assert.match(index, /id="estimate-modal"/);
-assert.match(index, /id="estimate-body"/);
 const paybackStart = dashboard.indexOf('function selectionPaybackTxt(months){');
 const paybackEnd = dashboard.indexOf('\nfunction paybackClass(months){', paybackStart);
 const context = {T:value=>value};
@@ -102,6 +101,6 @@ vm.runInNewContext(dashboard.slice(paybackStart, paybackEnd), context);
 assert.equal(context.selectionPaybackTxt(1.9*12), '2 ans', '1.9 years must display as 2 whole years in Selection.');
 assert.equal(context.selectionPaybackTxt(2.8*12), '3 ans', '2.8 years must display as 3 whole years in Selection.');
 assert.ok(dashboard.slice(dashboard.indexOf('function arSelectionEconomicsHtml(group){'), modalStart).includes('selectionPaybackTxt(economics.payback)'), 'Selection must use the whole-year formatter.');
-assert.match(index, /dashboard\.js\?v=20260825-instant-nav-v1/);
+assertSpotifyLightBootstrap(index);
 
 console.log('spotify selection artist offers/status: OK');

@@ -135,9 +135,26 @@ class PrunePagesArtifactTests(unittest.TestCase):
                 "no snapshot reference", encoding="utf-8"
             )
             (site / "Spotify_Soundcharts_data_20260806T080000Z.js").unlink()
-            with self.assertRaisesRegex(ValueError, "no versioned"):
-                pages_artifact.prune_pages_artifact(site)
-            self.assertTrue(private.is_file())
+            result = pages_artifact.prune_pages_artifact(site)
+            self.assertEqual(result.kept_snapshots, ())
+            self.assertFalse(private.exists())
+
+    def test_lightweight_runtime_removes_all_unreferenced_soundcharts_snapshots(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            site = self.make_site(Path(temporary), ())
+            names = (
+                "Spotify_Soundcharts_data_20260805T080000Z.js",
+                "Spotify_Soundcharts_data_20260806T080000Z.js",
+            )
+            for name in names:
+                (site / name).write_text("unused", encoding="utf-8")
+
+            result = pages_artifact.prune_pages_artifact(site)
+
+            self.assertEqual(result.kept_snapshots, ())
+            self.assertEqual(result.removed_snapshots, names)
+            for name in names:
+                self.assertFalse((site / name).exists())
 
     def test_workflow_prunes_after_build_and_before_upload(self):
         build = DEPLOY.index("actions/jekyll-build-pages@v1")

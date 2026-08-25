@@ -2,6 +2,7 @@
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const {assertSpotifyLightBootstrap} = require('./spotify_light_bootstrap_contract');
 const spotify = fs.readFileSync('spotify/dashboard.js', 'utf8');
 const spotifyNav = fs.readFileSync('spotify/index.html', 'utf8');
 const youtubeNav = fs.readFileSync('assets/js/dashboard-02-helpers.js', 'utf8');
@@ -73,17 +74,15 @@ const cardEnd = spotify.indexOf('\nfunction arScoreLine', cardStart);
 assert.doesNotMatch(spotify.slice(cardStart, cardEnd), /arContactHtml\(opportunity,true\)/, 'Card previews must not render contact platforms');
 assert.doesNotMatch(spotifyNav, /data-v="watch"/, 'Spotify watchlist navigation must be removed');
 assert.match(spotifyNav, /data-v="ar-list" data-fr="Sélection"><span class="emo">⭐<\/span>Sélection/, 'The star selection uses the simplified label');
-assert.match(spotifyNav, /data-v="radar" data-fr="Opportunités"><span class="emo">💎<\/span>Opportunités/, 'The opportunities view uses the simplified label');
-assert.match(spotifyNav, /data-v="opps" class="active" data-fr="Pistes"><span class="emo">🎶<\/span>Pistes/, 'Spotify navigation uses the compact tracks label');
+assert.match(spotifyNav, /data-v="radar" class="active" data-fr="Opportunités"><span class="emo">💎<\/span>Opportunités/, 'Spotify must open on the simplified Opportunities view');
+assert.match(spotifyNav, /data-v="opps" data-fr="Pistes"><span class="emo">🎶<\/span>Pistes/, 'Spotify navigation uses the compact tracks label without making it the default');
 assert.match(spotifyNav, /data-v="artists" data-fr="Artistes"><span class="emo">🎸<\/span>Artistes/, 'Spotify navigation uses the compact artists label');
 assert.match(spotifyNav, /data-v="playlists" data-fr="Playlists"><span class="emo">📻<\/span>Playlists/, 'Spotify navigation uses the compact playlists label');
 assert.match(spotifyNav, /data-v="labels" data-fr="Labels"><span class="emo">🏷️<\/span>Labels/, 'Spotify navigation uses the compact labels label');
 assert.doesNotMatch(spotifyNav, /Ma liste A&R/, 'The previous A&R list naming must be removed');
 assert.doesNotMatch(spotifyNav, /Sélection A&R/, 'The sidebar must not retain the old A&R selection label');
 assert.doesNotMatch(youtubeNav, /id:'watch'/, 'YouTube watchlist navigation must be removed');
-const contactPayloadIndex=spotifyNav.indexOf('../Spotify_Selection_Contacts_data.js');
-const dashboardScriptIndex=spotifyNav.indexOf('dashboard.js?v=');
-assert.ok(contactPayloadIndex>=0&&dashboardScriptIndex>contactPayloadIndex, 'The Selection contact directory must load before the dashboard logic.');
+assertSpotifyLightBootstrap(spotifyNav);
 assert.match(spotify, /window\.SPOTIFY_SELECTION_CONTACTS/, 'Selection must consume its dedicated public-contact directory.');
 
 assert.match(spotify, /function arOpenSelectionArtistProfile\(/, 'Selection must open the internal artist profile');

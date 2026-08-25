@@ -3,6 +3,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
+const {assertSpotifyLightBootstrap} = require('./spotify_light_bootstrap_contract');
 
 const dashboard = fs.readFileSync('spotify/dashboard.js', 'utf8');
 const index = fs.readFileSync('spotify/index.html', 'utf8');
@@ -65,8 +66,7 @@ assert.equal(rows.some(row => row[6] === 'performance-only-track'), false,
   'performance-only entries remain outside the catalogue');
 assert.equal(rows.some(row => row[6] === 'below-floor-track'), false,
   'a current catalogue counter below 100,000 remains outside public views');
-assert.match(index, /dashboard\.js\?v=20260825-instant-nav-v1/,
-  'the lifetime correction must be cache-busted in production');
+assertSpotifyLightBootstrap(index);
 
 console.log('Spotify lifetime counters follow real performance history: OK');
 

@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const {assertSpotifyLightBootstrap} = require('./spotify_light_bootstrap_contract');
 
 const root = path.join(__dirname, '..');
 const playerPath = path.join(root, 'spotify', 'player.js');
@@ -395,11 +396,7 @@ function restoreGlobal(name, value) {
   assert.doesNotMatch(playArTrack, /window\.open|location\.|target="_blank"|open\.spotify\.com/,
     'A&R row Play never leaves the Radar');
 
-  const previewScriptIndex = index.indexOf('../Spotify_Preview_Audio_data.js?v=20260821-custom-preview-v1');
-  const playerScriptIndex = index.indexOf('player.js?v=20260821-custom-preview-v1');
-  const dashboardScriptIndex = index.indexOf('dashboard.js?v=20260825-instant-nav-v1');
-  assert.ok(previewScriptIndex >= 0 && playerScriptIndex > previewScriptIndex && dashboardScriptIndex > playerScriptIndex,
-    'preview data, custom player, then dashboard load in dependency order');
+  assertSpotifyLightBootstrap(index);
   assert.doesNotMatch(index, /auth\.js|sdk\.scdn\.co\/spotify-player\.js|open\.spotify\.com\/embed\/iframe-api/i,
     'the page loads neither auth, Web Playback SDK, nor Spotify iframe API');
 

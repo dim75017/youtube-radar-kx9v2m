@@ -1948,7 +1948,7 @@ function arKnownContact(name){
 
 /* ---------- état ---------- */
 const S = {
-  view:'opps', back:null, palier:'100/0', paybackYears:2, sel:new Set(), publishing:false, metricMode:'streams',
+  view:'radar', back:null, palier:'100/0', paybackYears:2, sel:new Set(), publishing:false, metricMode:'streams',
   q:'', statut:'all', min:0, period:'all', artist:-1, rel:'all', genres:new Set(),
   sort:{k:3, dir:-1}, shown:100,
   aq:'', asort:'streams', adir:-1, shownA:60, aseg:'all', agenres:new Set(),

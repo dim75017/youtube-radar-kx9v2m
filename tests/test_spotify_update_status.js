@@ -2,6 +2,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
+const {assertSpotifyLightBootstrap} = require('./spotify_light_bootstrap_contract');
 
 const dashboard = fs.readFileSync('spotify/dashboard.js', 'utf8');
 const css = fs.readFileSync('spotify/dashboard.css', 'utf8');
@@ -36,8 +37,7 @@ assert.match(dashboard, /performanceFreshness\.artists_catalogue_at\|\|performan
 assert.match(dashboard, /const playlistsAt=spotifyOldestUpdateTimestamp\(/);
 assert.match(dashboard, /const labelsAt=tracksAt;/,
   'labels inherit track freshness because their index is derived from active tracks');
-assert.match(index, /dashboard\.js\?v=/,
-  'the browser loads a versioned dashboard script');
+assertSpotifyLightBootstrap(index);
 
 const statusStart = dashboard.indexOf('function spotifyUpdateTimestamp');
 const statusEnd = dashboard.indexOf('function refreshSpotifyUpdateStatus', statusStart);

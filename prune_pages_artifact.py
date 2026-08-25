@@ -107,11 +107,14 @@ def prune_pages_artifact(site_dir: str | Path) -> PruneResult:
             + ", ".join(unsafe_snapshots)
         )
     timestamped = [path.name for path in timestamped_paths]
-    if not timestamped:
+    if referenced and not timestamped:
         raise ValueError("no versioned Spotify Soundcharts snapshot found in _site")
 
-    latest = timestamped[-1]
-    kept_snapshots = referenced | {latest}
+    # The lightweight Spotify runtime no longer publishes Soundcharts exports.
+    # When no public HTML references one, remove every historical snapshot
+    # instead of retaining a multi-megabyte file that the browser never uses.
+    latest = timestamped[-1] if timestamped else None
+    kept_snapshots = referenced | ({latest} if referenced and latest else set())
     removed_snapshots = tuple(
         name for name in timestamped if name not in kept_snapshots
     )

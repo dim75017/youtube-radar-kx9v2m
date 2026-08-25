@@ -54,15 +54,22 @@ jobs:
             /*.js
             /*.json
             !/Spotify_Soundcharts_data_*.js
+            !/Spotify_Performance_data.js
+            !/Spotify_Radar_data.js
+            !/Spotify_Selection_Contacts_data.js
+            !/Spotify_Preview_Audio_data.js
+            !/Spotify_Playlist_Covers_data.js
+            !/Spotify_Performance_loader.js
             !/soundcharts-instrumental-cache.json
             /assets/
             /spotify/
-            /Spotify_Performance_tracks/
             /video_history/
             /youtube_recommendation_ledger/manifest.json
             /prune_pages_artifact.py
             /_config.yml
             /social-app/
+            /tests/spotify_light_bootstrap_contract.js
+            /tests/test_spotify_instant_runtime.js
 
       - id: revision
         name: Resolve and require one immutable Pages revision
@@ -124,8 +131,8 @@ jobs:
             grep -oE "$snapshot_reference_re" spotify/index.html | sort -u
           )
           if (( ${#referenced_snapshots[@]} == 0 )); then
-            echo "spotify/index.html does not reference a versioned Soundcharts snapshot." >&2
-            exit 1
+            echo "The lightweight Spotify runtime does not publish a Soundcharts snapshot; nothing to materialize."
+            exit 0
           fi
 
           # The pruning/recovery contract keeps the newest staged snapshot in
@@ -174,6 +181,15 @@ jobs:
       - name: Enable pnpm
         shell: bash
         run: corepack enable
+
+      - name: Build the lightweight Spotify runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          node build_spotify_instant_runtime.js
+          test -f Spotify_Instant_data.js
+          test -f Spotify_Catalogue_data.js
+          node tests/test_spotify_instant_runtime.js
 
       - name: Build the Social Radar runtime
         working-directory: social-app

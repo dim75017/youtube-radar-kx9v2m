@@ -1270,13 +1270,8 @@ export function SocialOS({
               <img src="platforms/youtube.svg" alt="" />
               <span className="platform-label">YouTube</span>
             </a>
-            <a className="spotify" href="../spotify/" aria-label="Spotify">
-              <img
-                src="https://storage.googleapis.com/pr-newsroom-wp/1/2023/05/Spotify_Primary_Logo_RGB_Green.png"
-                width="22"
-                height="22"
-                alt=""
-              />
+            <a className="spotify" href="../spotify/?app=20260825-instant-v2#opportunities" aria-label="Spotify">
+              <img src="platforms/spotify.svg" width="22" height="22" alt="" />
               <span className="platform-label">Spotify</span>
             </a>
             <a className="social on" href="./" aria-current="page" aria-label="Socials">

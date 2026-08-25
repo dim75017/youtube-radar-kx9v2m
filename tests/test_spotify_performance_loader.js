@@ -2,6 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const {assertSpotifyLightBootstrap} = require('./spotify_light_bootstrap_contract');
 
 const root = path.resolve(__dirname, '..');
 const loader = fs.readFileSync(path.join(root, 'Spotify_Performance_loader.js'), 'utf8');
@@ -74,9 +75,6 @@ assert.strictEqual(incomplete.SPOTIFY_PERFORMANCE_STORE_READY, false);
 assert.strictEqual(incomplete.SPOTIFY_PERFORMANCE.freshness.tracks_catalogue_at, null);
 assert.match(incomplete.SPOTIFY_PERFORMANCE_STORE_ERROR, /incomplete/i);
 
-assert.ok(
-  index.indexOf('Spotify_Performance_loader.js') < index.indexOf('dashboard.js'),
-  'the manifest loader must finish before dashboard.js snapshots PERF_TRACKS',
-);
+assertSpotifyLightBootstrap(index);
 
 console.log('spotify performance loader tests passed');

@@ -13,20 +13,21 @@
 (()=>{
   window.__RADAR_WAS_PRERENDERED=!!document.prerendering;
   if(!(HTMLScriptElement.supports&&HTMLScriptElement.supports('speculationrules'))){
-    ['../','../Lofi_Radar_data.js','../Lofi_Radar_channel_avatars.js','../Lofi_Radar_new_channel_avatars.js','../Lofi_Radar_studio.js','../Lofi_Radar_chx.js','../Lofi_Radar_subs2.js','../Lofi_Radar_cmt.js','../Lofi_Radar_sbm.js','../Lofi_Radar_seo.js'].forEach(href=>{
+    ['../','../social/'].forEach(href=>{
       const hint=document.createElement('link');
-      hint.rel='prefetch';hint.href=href;if(/\.js(?:\?|$)/.test(href))hint.as='script';
+      hint.rel='prefetch';hint.href=href;
       document.head.appendChild(hint);
     });
   }
 })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+<link rel="preload" as="script" href="../Spotify_Instant_data.js?v=20260825-light-v5">
 <link rel="stylesheet" href="dashboard.css?v=20260825-da-v2">
-<link rel="stylesheet" href="player.css?v=20260825-da-v1">
-<link rel="stylesheet" href="discovery.css?v=20260722-unified-catalogue-v1">
 <link rel="stylesheet" href="../assets/css/radar-foundation.css?v=20260825-da-v1">
+<link rel="stylesheet" href="instant.css?v=20260825-light-v5">
 </head>
 <body>
 
@@ -40,9 +41,9 @@
   </div>
   <nav class="nav" id="nav">
     <div class="nav-label" data-fr="Analyse">Analyse</div>
-    <button data-v="radar" data-fr="Opportunités"><span class="emo">💎</span>Opportunités<span class="count" id="c-radar"></span></button>
+    <button data-v="radar" class="active" data-fr="Opportunités"><span class="emo">💎</span>Opportunités<span class="count" id="c-radar"></span></button>
     <button data-v="ar-list" data-fr="Sélection"><span class="emo">⭐</span>Sélection<span class="count" id="c-ar-list"></span></button>
-    <button data-v="opps" class="active" data-fr="Pistes"><span class="emo">🎶</span>Pistes<span class="count" id="c-opps"></span></button>
+    <button data-v="opps" data-fr="Pistes"><span class="emo">🎶</span>Pistes<span class="count" id="c-opps"></span></button>
     <button data-v="artists" data-fr="Artistes"><span class="emo">🎸</span>Artistes<span class="count" id="c-art"></span></button>
     <button data-v="playlists" data-fr="Playlists"><span class="emo">📻</span>Playlists<span class="count" id="c-pl"></span></button>
     <button data-v="labels" data-fr="Labels"><span class="emo">🏷️</span>Labels<span class="count" id="c-lb"></span></button>
@@ -68,63 +69,18 @@
   <header class="platform-header">
     <div class="radar-switch" role="navigation" aria-label="Changer de site Lofi Radar">
       <a class="yt" href="../" aria-label="YouTube"><img src="../assets/platform-youtube.svg" alt=""> <span>YouTube</span></a>
-      <a class="sp on" href="./" aria-current="page" aria-label="Spotify"><img src="https://storage.googleapis.com/pr-newsroom-wp/1/2023/05/Spotify_Primary_Logo_RGB_Green.png" width="22" height="22" alt=""> <span>Spotify</span></a>
+      <a class="sp on" href="./?app=20260825-instant-v2#opportunities" aria-current="page" aria-label="Spotify"><img src="../assets/platform-spotify.svg" width="22" height="22" alt=""> <span>Spotify</span></a>
       <a class="social" href="../social/" aria-label="Socials"><img src="../assets/platform-instagram.svg" alt=""> <span>Socials</span></a>
     </div>
   </header>
   <div id="view"><div class="instant-loader" aria-live="polite"><span></span><span></span><span></span></div></div>
 </main>
 
-<div id="track-modal" class="tmodal" style="display:none" onclick="if(event.target===this)closeTrack()">
+<div id="track-modal" class="tmodal" style="display:none">
   <div class="tmbox" id="tmbox"></div>
 </div>
 
-<div id="artist-modal" class="tmodal amodal" style="display:none" onclick="if(event.target===this)closeArtistModal()">
-  <div class="tmbox ambox" id="am-body"></div>
-</div>
-
-<div id="ar-modal" class="tmodal amodal" style="display:none" onclick="if(event.target===this)closeArModal()">
-  <div class="tmbox ambox" id="ar-body"></div>
-</div>
-
-<div id="estimate-modal" class="tmodal estimate-modal" style="display:none" onclick="if(event.target===this)closeArSelectionEstimate()">
-  <div class="tmbox estimate-box" id="estimate-body"></div>
-</div>
-
-<script>
-(()=>{
-  const load=src=>new Promise((resolve,reject)=>{
-    const script=document.createElement('script');
-    script.src=src; script.onload=resolve; script.onerror=reject;
-    document.body.appendChild(script);
-  });
-  const dataSources=[
-    '../Spotify_Radar_data.js',
-    '../Spotify_Labels_data.js',
-    '../Spotify_Playlist_Covers_data.js?v=20260724-playlist-covers-v1',
-    '../Spotify_Playlists_canonical_data.js',
-    '../Spotify_Soundcharts_data_20260819T232812Z.js',
-    '../Spotify_Browse_Catalogue_data.js',
-    '../Spotify_Selection_Contacts_data.js',
-    '../Spotify_Performance_data.js',
-    '../Spotify_Preview_Audio_data.js?v=20260821-custom-preview-v1'
-  ];
-  const start=()=>Promise.all(dataSources.map(load))
-    .then(()=>load('../Spotify_Performance_loader.js?v=20260731-sharded-store-v1'))
-    .then(()=>load('player.js?v=20260821-custom-preview-v1'))
-    .then(()=>load('dashboard.js?v=20260825-instant-nav-v1&editorial=10k-v1'))
-    .then(()=>load('coverage.js?v=20260801-track-floor-100k-v1'))
-    .catch(error=>{
-      console.error('Spotify Radar bootstrap failed',error);
-      const view=document.getElementById('view');
-      if(view) view.innerHTML='<p class="instant-load-error">Chargement impossible. Réessayez dans un instant.</p>';
-    });
-  /* Two frames guarantee that the navigation and page structure paint before
-     large datasets are parsed on a cold visit. Stable URLs make these payloads
-     reusable by the browser and by cross-platform prerendering. */
-  if(document.prerendering) start();
-  else requestAnimationFrame(()=>requestAnimationFrame(start));
-})();
-</script>
+<script src="../Spotify_Instant_data.js?v=20260825-light-v5"></script>
+<script src="instant.js?v=20260825-light-v5"></script>
 </body>
 </html>
