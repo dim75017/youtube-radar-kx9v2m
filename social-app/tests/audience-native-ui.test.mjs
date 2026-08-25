@@ -2,35 +2,45 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("renders selectable native analytics without inventing missing daily values", async () => {
+test("consolidates audience analytics into one truthful selectable chart", async () => {
   const [component, styles] = await Promise.all([
     readFile(new URL("../app/SocialOS.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
-  const nativeSection = component.slice(
+  const explorer = component.slice(
     component.indexOf("type NativeAnalyticsMetricMeta"),
-    component.indexOf("function AudienceGrowthChart"),
+    component.indexOf("function TrendFeedView"),
   );
 
   assert.match(component, /audienceAnalytics\?: AudienceAnalytics \| null/);
   assert.match(component, /analytics=\{audienceAnalytics\}/);
-  assert.match(nativeSection, /Activité quotidienne par plateforme/);
-  assert.match(nativeSection, /Total followers/);
-  assert.match(nativeSection, /Variation nette des followers/);
-  assert.match(nativeSection, /stock à une date donnée/);
-  assert.match(nativeSection, /gains moins pertes/);
-  assert.match(nativeSection, /audience-native-metric-grid/);
-  assert.match(nativeSection, /aria-pressed=\{metric === activeMetric\}/);
-  assert.match(nativeSection, /periodKey: AudiencePeriodKey/);
-  assert.match(nativeSection, /periodDays: number \| null/);
-  assert.match(nativeSection, /point\.metrics\[metric\]/);
-  assert.match(nativeSection, /isNativeAnalyticsValue/);
-  assert.match(nativeSection, /elapsedDays === 1/);
-  assert.match(nativeSection, /Valeurs nulles ignorées · aucune interpolation/);
-  assert.doesNotMatch(nativeSection, /fillMissing|interpolate|interpolation linéaire/i);
+  assert.match(explorer, /function AudienceAnalyticsExplorer/);
+  assert.match(explorer, /useState<Platform>\("youtube"\)/);
+  assert.match(explorer, /aria-label="Plateforme du graphique"/);
+  assert.match(explorer, /PLATFORM_ORDER\.map/);
+  assert.match(explorer, /aria-pressed=\{platform === activePlatform\}/);
+  assert.match(explorer, /aria-label=\{`Métrique du graphique/);
+  assert.match(explorer, /availableMetrics\.map/);
+  assert.match(explorer, /aria-pressed=\{metric === activeMetric\}/);
+  assert.equal((component.match(/<AudienceNativeMetricChart\b/g) ?? []).length, 1);
+  assert.doesNotMatch(component, /function AudienceGrowthChart/);
+  assert.doesNotMatch(component, /function AudienceNativePlatformCard/);
+  assert.doesNotMatch(component, /audience-native-platform-grid/);
+  assert.doesNotMatch(component, /audience-evolution-block/);
 
-  assert.match(styles, /\.audience-native-metric-grid\s*\{[\s\S]*?grid-template-columns:/);
+  assert.match(explorer, /function audienceMetricSeries/);
+  assert.match(explorer, /metric === "followersTotal"/);
+  assert.match(explorer, /historyPoints/);
+  assert.match(explorer, /point\.metrics\[metric\]/);
+  assert.match(explorer, /byDate\.set\(date/);
+  assert.match(explorer, /elapsedDays === 1 && comparablePrecision/);
+  assert.match(explorer, /Données réelles · jours absents non reliés/);
+  assert.doesNotMatch(explorer, /fillMissing|interpolate|interpolation linéaire/i);
+
+  assert.match(styles, /\.audience-platform-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(4/);
+  assert.match(styles, /\.audience-explorer-platform-tabs/);
+  assert.match(styles, /\.audience-explorer-metrics/);
   assert.match(styles, /\.audience-native-chart-viewport\s*\{[\s\S]*?overflow-x:\s*auto/);
-  assert.match(styles, /@media \(max-width: 640px\)[\s\S]*?\.audience-native-metric-grid/);
-  assert.match(styles, /@media \(max-width: 420px\)[\s\S]*?grid-template-columns:\s*1fr/);
+  assert.match(styles, /@media \(max-width: 640px\)[\s\S]*?\.audience-platform-grid/);
+  assert.doesNotMatch(styles, /\.audience-chart-viewport|\.audience-native-platform-grid/);
 });

@@ -13,13 +13,11 @@ import {
   type AudiencePeriodKey,
 } from "../lib/audience-metrics";
 import {
-  AUDIENCE_ANALYTICS_METRIC_KEYS,
   type AudienceAnalytics,
   type AudienceAnalyticsDailyPoint,
   type AudienceAnalyticsMetricKey,
   type AudienceAnalyticsPeriodKey,
   type AudienceAnalyticsPeriodSnapshot,
-  type AudienceAnalyticsPlatformSnapshot,
 } from "../lib/audience-analytics";
 
 import {
@@ -1799,18 +1797,28 @@ function AudienceDashboard({
           const engagement = platformHistory?.engagementByPeriod[periodKey] ?? null;
           const periodEndAt = history?.generatedAt ?? null;
           const points = audiencePointsForPeriod(platformHistory, periodEndAt, period.days);
-          const exactSuffix = contiguousExactAudienceSuffix(points);
-          const growth = audienceGrowthForExactSuffix(exactSuffix);
-          const periodStartAt = periodEndAt
-            ? period.days === null
-              ? points[0]?.capturedAt ?? periodEndAt
-              : new Date(Date.parse(periodEndAt) - period.days * 24 * 60 * 60 * 1_000).toISOString()
+          const growth = audienceGrowthFromObservedPoints(points);
+          const analyticsPlatform = analytics?.platforms[platform] ?? null;
+          const analyticsEndDate = audienceParisDay(
+            analytics?.generatedAt ?? history?.generatedAt ?? new Date().toISOString(),
+          );
+          const nativeDaily = analyticsPlatform
+            ? nativeAnalyticsDailyForPeriod(analyticsPlatform.daily, analyticsEndDate, period.days)
+            : [];
+          const nativePeriodKey = NATIVE_PERIOD_BY_DASHBOARD_PERIOD[periodKey];
+          const nativePeriod = analyticsPlatform && nativePeriodKey
+            ? analyticsPlatform.periods[nativePeriodKey]
             : null;
+          const nativeGrowth = nativeAnalyticsMetricSummary(
+            "followersNet",
+            nativeDaily,
+            nativePeriod,
+          );
+          const followersDelta = nativeGrowth?.value ?? growth?.followersDelta ?? null;
           const ageReferenceAt = clientNow ?? history?.generatedAt ?? null;
           const latestAgeDays = latest && ageReferenceAt
             ? elapsedCalendarDays(latest.capturedAt, ageReferenceAt)
             : null;
-          const latestPoint = points.at(-1) ?? null;
 
           return (
             <article className={`audience-platform-card tone-${meta.tone}`} key={platform}>
@@ -1835,71 +1843,38 @@ function AudienceDashboard({
               <div className="audience-total-block">
                 <span>Total followers</span>
                 <strong>{latest ? formatAudienceFollowers(latest) : "—"}</strong>
-                <small>
-                  {latest
-                    ? latest.precision === "exact"
-                      ? "Compteur public exact"
-                      : latest.precision === "platform-rounded"
-                        ? "Compteur arrondi par la plateforme"
-                        : "Jalon public vérifié"
-                    : "Premier relevé à effectuer"}
-                </small>
               </div>
 
-              <div className="audience-evolution-block">
-                <div className="audience-metric-heading">
-                  <span>Évolution quotidienne des followers</span>
-                  <b className={growth && growth.followersDelta < 0 ? "negative" : "positive"}>
-                    {growth ? `${growth.followersDelta >= 0 ? "↗" : "↘"} ${formatAudienceDelta(growth.followersDelta)}` : "—"}
-                  </b>
+              <div className="audience-kpi-row">
+                <div className="audience-kpi">
+                  <span>Évolution</span>
+                  <strong className={followersDelta !== null && followersDelta < 0 ? "negative" : "positive"}>
+                    {followersDelta !== null ? formatAudienceDelta(followersDelta) : "—"}
+                  </strong>
+                  <small>{period.label}</small>
                 </div>
-                <AudienceGrowthChart
-                  points={points}
-                  periodLabel={period.label}
-                  platformLabel={meta.label}
-                  periodStartAt={periodStartAt}
-                  periodEndAt={periodEndAt}
-                />
-                <small>
-                  {growth
-                    ? `${formatAudiencePercent(growth.ratePercent)} depuis le ${formatAudienceDate(growth.from.capturedAt)} · ${exactSuffix.length} relevés exacts consécutifs`
-                    : points.length === 0
-                      ? `Aucun relevé réel sur ${period.label.toLowerCase()}`
-                      : exactSuffix.length === 1
-                        ? `Série exacte reprise le ${formatAudienceDate(exactSuffix[0].capturedAt)} · delta disponible après deux jours consécutifs`
-                        : latestPoint?.precision === "platform-rounded"
-                          ? "Delta non calculé · dernier compteur arrondi par la plateforme"
-                          : latestPoint?.precision === "milestone"
-                            ? "Delta non calculé · dernier point disponible sous forme de jalon"
-                            : "Suivi exact pas encore démarré"}
-                </small>
-              </div>
-
-              <div
-                className="audience-engagement-block"
-                title={`Moyenne des likes et commentaires des posts mesurables sur ${period.label.toLowerCase()}, divisée par le nombre actuel de followers.`}
-              >
-                <span>Taux d’engagement</span>
-                <strong>{engagement ? formatAudiencePercent(engagement.ratePercent) : "—"}</strong>
-                <small>
-                  {engagement
-                    ? `${engagement.sampleSize} posts mesurables · ${period.label}`
-                    : `Aucun post mesurable · ${period.label}`}
-                </small>
+                <div
+                  className="audience-kpi"
+                  title={`Moyenne des likes et commentaires des posts mesurables sur ${period.label.toLowerCase()}, divisée par le nombre actuel de followers.`}
+                >
+                  <span>Taux d’engagement</span>
+                  <strong>{engagement ? formatAudiencePercent(engagement.ratePercent) : "—"}</strong>
+                  <small>{engagement ? `${engagement.sampleSize} posts` : period.label}</small>
+                </div>
               </div>
             </article>
           );
         })}
       </div>
 
-      {analytics ? (
-        <AudienceNativeAnalytics
-          analytics={analytics}
-          periodKey={periodKey}
-          periodLabel={period.label}
-          periodDays={period.days}
-        />
-      ) : null}
+      <AudienceAnalyticsExplorer
+        analytics={analytics}
+        clientNow={clientNow}
+        history={history}
+        periodKey={periodKey}
+        periodLabel={period.label}
+        periodDays={period.days}
+      />
     </section>
   );
 }
@@ -2020,65 +1995,42 @@ const NATIVE_ANALYTICS_METRIC_META: Record<AudienceAnalyticsMetricKey, NativeAna
 
 const NATIVE_ANALYTICS_PRIORITY: Record<Platform, readonly AudienceAnalyticsMetricKey[]> = {
   youtube: [
+    "followersTotal",
+    "followersNet",
     "contentViews",
     "watchTimeSeconds",
-    "followersNet",
-    "followersTotal",
     "impressions",
     "engagements",
-    "newFollowers",
-    "likes",
-    "comments",
-    "shares",
   ],
   instagram: [
+    "followersTotal",
     "reach",
     "accountsEngaged",
     "contentViews",
-    "followersNet",
-    "followersTotal",
-    "profileActivity",
     "profileVisits",
-    "externalLinkTaps",
-    "impressions",
     "engagements",
-    "newFollowers",
-    "unfollows",
-    "likes",
-    "comments",
-    "shares",
-    "bookmarks",
   ],
   tiktok: [
+    "followersTotal",
+    "followersNet",
     "contentViews",
     "profileVisits",
-    "followersNet",
-    "followersTotal",
-    "mediaViews",
     "engagements",
-    "newFollowers",
-    "likes",
-    "comments",
-    "shares",
   ],
   x: [
+    "followersTotal",
+    "followersNet",
     "impressions",
     "engagements",
-    "followersNet",
-    "followersTotal",
     "profileVisits",
-    "newFollowers",
-    "likes",
-    "replies",
-    "reposts",
   ],
 };
 
 const NATIVE_ANALYTICS_DEFAULT_METRIC: Record<Platform, AudienceAnalyticsMetricKey> = {
-  youtube: "contentViews",
-  instagram: "reach",
-  tiktok: "contentViews",
-  x: "impressions",
+  youtube: "followersTotal",
+  instagram: "followersTotal",
+  tiktok: "followersTotal",
+  x: "followersTotal",
 };
 
 const NATIVE_PERIOD_BY_DASHBOARD_PERIOD: Record<
@@ -2092,119 +2044,132 @@ const NATIVE_PERIOD_BY_DASHBOARD_PERIOD: Record<
   all: "all",
 };
 
-function AudienceNativeAnalytics({
+type AudienceMetricSeriesPoint = {
+  date: string;
+  value: number;
+  capturedAt: string;
+  precision: AudienceObservation["precision"] | null;
+  sourceUrl: string;
+};
+
+function AudienceAnalyticsExplorer({
   analytics,
+  clientNow,
+  history,
   periodKey,
   periodLabel,
   periodDays,
 }: {
-  analytics: AudienceAnalytics;
+  analytics: AudienceAnalytics | null;
+  clientNow: string | null;
+  history: AudienceHistory | null;
   periodKey: AudiencePeriodKey;
   periodLabel: string;
   periodDays: number | null;
 }) {
-  const endDate = audienceParisDay(analytics.generatedAt);
-
-  return (
-    <section className="audience-native-section" aria-labelledby="audience-native-title">
-      <header className="audience-native-heading">
-        <div>
-          <span className="section-kicker">Analytics natifs</span>
-          <h2 id="audience-native-title">Activité quotidienne par plateforme</h2>
-          <p>
-            Données issues des espaces analytics officiels. Les jours sans valeur restent vides :
-            aucun point n’est reconstruit.
-          </p>
-        </div>
-        <div className="audience-native-distinction">
-          <b>Total followers</b>
-          <span>stock à une date donnée</span>
-          <b>Variation nette</b>
-          <span>gains moins pertes sur {periodLabel.toLowerCase()}</span>
-        </div>
-      </header>
-
-      <div className="audience-native-platform-grid">
-        {PLATFORM_ORDER.map((platform) => (
-          <AudienceNativePlatformCard
-            analytics={analytics.platforms[platform]}
-            endDate={endDate}
-            periodDays={periodDays}
-            periodKey={periodKey}
-            periodLabel={periodLabel}
-            platform={platform}
-            key={platform}
-          />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function AudienceNativePlatformCard({
-  analytics,
-  endDate,
-  periodDays,
-  periodKey,
-  periodLabel,
-  platform,
-}: {
-  analytics: AudienceAnalyticsPlatformSnapshot;
-  endDate: string;
-  periodDays: number | null;
-  periodKey: AudiencePeriodKey;
-  periodLabel: string;
-  platform: Platform;
-}) {
+  const [activePlatform, setActivePlatform] = useState<Platform>("youtube");
   const [requestedMetric, setRequestedMetric] = useState<AudienceAnalyticsMetricKey>(
-    NATIVE_ANALYTICS_DEFAULT_METRIC[platform],
+    NATIVE_ANALYTICS_DEFAULT_METRIC.youtube,
   );
-  const meta = PLATFORM_META[platform];
-  const daily = nativeAnalyticsDailyForPeriod(analytics.daily, endDate, periodDays);
+  if (!analytics && !history) return null;
+
+  const meta = PLATFORM_META[activePlatform];
+  const generatedAt = latestIsoTimestamp(analytics?.generatedAt, history?.generatedAt)
+    ?? "1970-01-01T00:00:00.000Z";
+  const endDate = audienceParisDay(generatedAt);
+  const analyticsPlatform = analytics?.platforms[activePlatform] ?? null;
+  const platformHistory = history?.platforms[activePlatform] ?? null;
+  const daily = nativeAnalyticsDailyForPeriod(
+    analyticsPlatform?.daily ?? [],
+    endDate,
+    periodDays,
+  );
+  const historyPoints = audiencePointsForPeriod(platformHistory, generatedAt, periodDays);
   const nativePeriodKey = NATIVE_PERIOD_BY_DASHBOARD_PERIOD[periodKey];
-  const periodSnapshot = nativePeriodKey ? analytics.periods[nativePeriodKey] : null;
-  const orderedMetrics = nativeAnalyticsMetricOrder(platform);
-  const availableMetrics = orderedMetrics.filter((metric) =>
-    nativeAnalyticsMetricSummary(metric, daily, periodSnapshot) !== null,
-  );
+  const periodSnapshot = analyticsPlatform && nativePeriodKey
+    ? analyticsPlatform.periods[nativePeriodKey]
+    : null;
+  const orderedMetrics = nativeAnalyticsMetricOrder(activePlatform);
+  const availableMetrics = orderedMetrics.filter((metric) => {
+    const series = audienceMetricSeries(metric, daily, historyPoints);
+    return series.length > 0 || nativeAnalyticsMetricSummary(metric, daily, periodSnapshot) !== null;
+  });
   const activeMetric = availableMetrics.includes(requestedMetric)
     ? requestedMetric
     : availableMetrics[0] ?? null;
-  const activeSummary = activeMetric
-    ? nativeAnalyticsMetricSummary(activeMetric, daily, periodSnapshot)
-    : null;
+  const activeSeries = activeMetric
+    ? audienceMetricSeries(activeMetric, daily, historyPoints)
+    : [];
+  const activeSummary = activeMetric === "followersTotal"
+    ? audienceFollowersMetricSummary(activeSeries)
+      ?? nativeAnalyticsMetricSummary(activeMetric, daily, periodSnapshot)
+    : activeMetric
+      ? nativeAnalyticsMetricSummary(activeMetric, daily, periodSnapshot)
+      : null;
   const activeMeta = activeMetric ? NATIVE_ANALYTICS_METRIC_META[activeMetric] : null;
-  const latestImportAge = analytics.lastSuccessfulImportAt
-    ? elapsedCalendarDays(analytics.lastSuccessfulImportAt, `${endDate}T12:00:00.000Z`)
+  const latestHistory = platformHistory ? latestAudienceObservation(platformHistory) : null;
+  const latestUpdateAt = latestIsoTimestamp(
+    analyticsPlatform?.lastSuccessfulImportAt,
+    latestHistory?.capturedAt,
+  );
+  const latestUpdateAge = latestUpdateAt
+    ? elapsedCalendarDays(latestUpdateAt, clientNow ?? generatedAt)
     : null;
 
   return (
-    <article className={`audience-native-platform-card tone-${meta.tone}`}>
-      <header className="audience-native-platform-head">
-        <span className="audience-platform-logo" aria-hidden="true">
-          <img src={`platforms/${platform}.svg`} alt="" width="24" height="24" />
-        </span>
+    <section className={`audience-explorer tone-${meta.tone}`} aria-labelledby="audience-explorer-title">
+      <header className="audience-explorer-heading">
         <div>
-          <span className="section-kicker">Analytics officiels</span>
-          <h3>{meta.label}</h3>
+          <span className="section-kicker">Analyse détaillée</span>
+          <h2 id="audience-explorer-title">Une seule courbe, toutes les données</h2>
         </div>
-        <span className={latestImportAge !== null && latestImportAge > 1 ? "stale" : ""}>
-          {analytics.lastSuccessfulImportAt
-            ? `Import ${formatAudienceDate(analytics.lastSuccessfulImportAt)} · ${formatAudienceAge(latestImportAge)}`
-            : "Import natif en attente"}
+        <span className={latestUpdateAge !== null && latestUpdateAge > 1 ? "stale" : ""}>
+          {latestUpdateAt
+            ? `Mis à jour ${formatAudienceDate(latestUpdateAt)} · ${formatAudienceAge(latestUpdateAge)}`
+            : "Collecte en attente"}
         </span>
       </header>
+
+      <div
+        className="audience-explorer-platform-tabs"
+        role="group"
+        aria-label="Plateforme du graphique"
+      >
+        {PLATFORM_ORDER.map((platform) => {
+          const platformMeta = PLATFORM_META[platform];
+          return (
+            <button
+              className={platform === activePlatform ? "active" : ""}
+              type="button"
+              aria-pressed={platform === activePlatform}
+              onClick={() => {
+                setActivePlatform(platform);
+                setRequestedMetric(NATIVE_ANALYTICS_DEFAULT_METRIC[platform]);
+              }}
+              key={platform}
+            >
+              <img src={`platforms/${platform}.svg`} alt="" width="20" height="20" />
+              {platformMeta.label}
+            </button>
+          );
+        })}
+      </div>
 
       {availableMetrics.length > 0 && activeMetric && activeMeta && activeSummary ? (
         <>
           <div
-            className="audience-native-metric-grid"
+            className="audience-explorer-metrics"
             role="group"
-            aria-label={`Métrique quotidienne ${meta.label}`}
+            aria-label={`Métrique du graphique ${meta.label}`}
           >
             {availableMetrics.map((metric) => {
               const metricMeta = NATIVE_ANALYTICS_METRIC_META[metric];
-              const summary = nativeAnalyticsMetricSummary(metric, daily, periodSnapshot)!;
+              const series = audienceMetricSeries(metric, daily, historyPoints);
+              const summary = metric === "followersTotal"
+                ? audienceFollowersMetricSummary(series)
+                  ?? nativeAnalyticsMetricSummary(metric, daily, periodSnapshot)
+                : nativeAnalyticsMetricSummary(metric, daily, periodSnapshot);
+              if (!summary) return null;
               return (
                 <button
                   className={metric === activeMetric ? "active" : ""}
@@ -2216,7 +2181,6 @@ function AudienceNativePlatformCard({
                 >
                   <span>{metricMeta.label}</span>
                   <strong>{formatNativeAnalyticsMetric(summary.value, metric, true)}</strong>
-                  <small>{nativeAnalyticsMetricBasis(metric, summary, periodLabel)}</small>
                 </button>
               );
             })}
@@ -2225,8 +2189,8 @@ function AudienceNativePlatformCard({
           <div className="audience-native-chart-shell">
             <header className="audience-native-chart-heading">
               <div>
-                <span>Évolution quotidienne</span>
-                <h4>{activeMeta.label}</h4>
+                <span>{activeSeries.length > 1 ? "Évolution quotidienne" : "Valeur disponible"}</span>
+                <h4>{meta.label} · {activeMeta.label}</h4>
               </div>
               <div>
                 <strong>{formatNativeAnalyticsMetric(activeSummary.value, activeMetric, false)}</strong>
@@ -2235,33 +2199,82 @@ function AudienceNativePlatformCard({
             </header>
 
             <AudienceNativeMetricChart
-              daily={daily}
               endDate={endDate}
               metric={activeMetric}
               periodDays={periodDays}
               periodLabel={periodLabel}
               platformLabel={meta.label}
+              points={activeSeries}
             />
 
             <footer className="audience-native-chart-caption">
               <span>
-                {activeSummary.basis === "period" || activeSummary.observedCount === 0
-                  ? `Agrégat natif · ${periodLabel}`
-                  : `${activeSummary.observedCount} jour${activeSummary.observedCount > 1 ? "s" : ""} mesuré${activeSummary.observedCount > 1 ? "s" : ""}`}
+                {activeSeries.length > 0
+                  ? `${activeSeries.length} point${activeSeries.length > 1 ? "s" : ""} réel${activeSeries.length > 1 ? "s" : ""}`
+                  : `Agrégat officiel · ${periodLabel}`}
               </span>
-              <span>Valeurs nulles ignorées · aucune interpolation</span>
+              <span>Données réelles · jours absents non reliés</span>
               <span>{activeSummary.provenance.provider}</span>
             </footer>
           </div>
         </>
       ) : (
         <div className="audience-native-empty" role="status">
-          <b>Aucune métrique native sur {periodLabel.toLowerCase()}</b>
-          <span>La carte apparaîtra dès qu’un import officiel contiendra une valeur mesurable.</span>
+          Aucune donnée mesurable sur {periodLabel.toLowerCase()}.
         </div>
       )}
-    </article>
+    </section>
   );
+}
+
+function audienceMetricSeries(
+  metric: AudienceAnalyticsMetricKey,
+  daily: readonly AudienceAnalyticsDailyPoint[],
+  historyPoints: readonly AudienceObservation[],
+): AudienceMetricSeriesPoint[] {
+  const byDate = new Map<string, AudienceMetricSeriesPoint>();
+  for (const point of daily) {
+    const value = point.metrics[metric];
+    if (!isNativeAnalyticsValue(value)) continue;
+    byDate.set(point.date, {
+      date: point.date,
+      value,
+      capturedAt: `${point.date}T12:00:00.000Z`,
+      precision: null,
+      sourceUrl: point.provenance.sourceUrl,
+    });
+  }
+  if (metric === "followersTotal") {
+    for (const point of historyPoints) {
+      const date = audienceParisDay(point.capturedAt);
+      byDate.set(date, {
+        date,
+        value: point.followers,
+        capturedAt: point.capturedAt,
+        precision: point.precision,
+        sourceUrl: point.sourceUrl,
+      });
+    }
+  }
+  return [...byDate.values()].sort((left, right) => left.date.localeCompare(right.date));
+}
+
+function audienceFollowersMetricSummary(
+  points: readonly AudienceMetricSeriesPoint[],
+): NativeAnalyticsMetricSummary | null {
+  const latest = points.at(-1);
+  if (!latest) return null;
+  return {
+    value: latest.value,
+    observedCount: points.length,
+    basis: "latest",
+    provenance: {
+      provider: "Suivi followers",
+      collectedAt: latest.capturedAt,
+      sourceUrl: latest.sourceUrl,
+      basis: latest.precision ? `Compteur ${latest.precision}` : "Analytics officiel",
+    },
+  };
 }
 
 type NativeAnalyticsMetricSummary = {
@@ -2272,11 +2285,7 @@ type NativeAnalyticsMetricSummary = {
 };
 
 function nativeAnalyticsMetricOrder(platform: Platform): AudienceAnalyticsMetricKey[] {
-  const preferred = new Set(NATIVE_ANALYTICS_PRIORITY[platform]);
-  return [
-    ...NATIVE_ANALYTICS_PRIORITY[platform],
-    ...AUDIENCE_ANALYTICS_METRIC_KEYS.filter((metric) => !preferred.has(metric)),
-  ];
+  return [...NATIVE_ANALYTICS_PRIORITY[platform]];
 }
 
 function nativeAnalyticsDailyForPeriod(
@@ -2328,36 +2337,21 @@ function nativeAnalyticsMetricSummary(
   };
 }
 
-function nativeAnalyticsMetricBasis(
-  metric: AudienceAnalyticsMetricKey,
-  summary: NativeAnalyticsMetricSummary,
-  periodLabel: string,
-) {
-  if (metric === "followersTotal") return "Stock au dernier relevé";
-  if (metric === "followersNet") return `Flux net · ${periodLabel}`;
-  if (summary.basis === "period") return `Total natif · ${periodLabel}`;
-  return `${summary.observedCount} jour${summary.observedCount > 1 ? "s" : ""} observé${summary.observedCount > 1 ? "s" : ""}`;
-}
-
 function AudienceNativeMetricChart({
-  daily,
   endDate,
   metric,
   periodDays,
   periodLabel,
   platformLabel,
+  points,
 }: {
-  daily: readonly AudienceAnalyticsDailyPoint[];
   endDate: string;
   metric: AudienceAnalyticsMetricKey;
   periodDays: number | null;
   periodLabel: string;
   platformLabel: string;
+  points: readonly AudienceMetricSeriesPoint[];
 }) {
-  const points = daily.flatMap((point) => {
-    const value = point.metrics[metric];
-    return isNativeAnalyticsValue(value) ? [{ point, value }] : [];
-  });
   const metricLabel = NATIVE_ANALYTICS_METRIC_META[metric].label;
 
   if (points.length === 0) {
@@ -2374,8 +2368,8 @@ function AudienceNativeMetricChart({
   const plotRight = 842;
   const plotTop = 18;
   const plotBottom = 218;
-  const observedTimes = points.map(({ point }) => nativeAnalyticsDateTime(point.date));
-  const observedValues = points.map(({ value }) => value);
+  const observedTimes = points.map((point) => nativeAnalyticsDateTime(point.date));
+  const observedValues = points.map((point) => point.value);
   const requestedEndTime = nativeAnalyticsDateTime(endDate);
   const requestedStartTime = periodDays === null
     ? observedTimes[0]
@@ -2399,17 +2393,21 @@ function AudienceNativeMetricChart({
     plotLeft + ((timestamp - firstTime) / timeSpan) * (plotRight - plotLeft);
   const y = (value: number) =>
     plotBottom - ((value - minimum) / valueSpan) * (plotBottom - plotTop);
-  const coordinates = points.map(({ point, value }, index) => ({
+  const coordinates = points.map((point, index) => ({
     point,
-    value,
+    value: point.value,
     time: observedTimes[index],
     x: x(observedTimes[index]),
-    y: y(value),
+    y: y(point.value),
   }));
   const segments = coordinates.slice(1).flatMap((coordinate, index) => {
     const previous = coordinates[index];
     const elapsedDays = Math.round((coordinate.time - previous.time) / (24 * 60 * 60 * 1_000));
-    return elapsedDays === 1 ? [{ previous, coordinate }] : [];
+    const comparablePrecision =
+      !previous.point.precision ||
+      !coordinate.point.precision ||
+      previous.point.precision === coordinate.point.precision;
+    return elapsedDays === 1 && comparablePrecision ? [{ previous, coordinate }] : [];
   });
   const gridLines = Array.from({ length: 4 }, (_, index) => {
     const ratio = index / 3;
@@ -2466,7 +2464,7 @@ function AudienceNativeMetricChart({
               className="audience-native-chart-point"
               key={`${coordinate.point.date}:${coordinate.value}`}
             >
-              <title>{`${formatNativeAnalyticsDate(coordinate.point.date)} : ${formatNativeAnalyticsMetric(coordinate.value, metric, false)}`}</title>
+              <title>{`${formatNativeAnalyticsDate(coordinate.point.date)} : ${formatAudienceSeriesValue(coordinate.point, metric, false)}`}</title>
               <circle cx={coordinate.x} cy={coordinate.y} r="4" />
             </g>
           ))}
@@ -2530,194 +2528,6 @@ function formatNativeAnalyticsMetric(
   return value < 0 ? `−${formatted}` : formatted;
 }
 
-function AudienceGrowthChart({
-  points,
-  periodLabel,
-  platformLabel,
-  periodStartAt,
-  periodEndAt,
-}: {
-  points: AudienceObservation[];
-  periodLabel: string;
-  platformLabel: string;
-  periodStartAt: string | null;
-  periodEndAt: string | null;
-}) {
-  if (points.length === 0) {
-    return (
-      <div className="audience-chart-empty" role="status">
-        Aucun relevé réel sur {periodLabel.toLowerCase()}.
-      </div>
-    );
-  }
-
-  if (points.length === 1) {
-    return (
-      <div className="audience-chart-empty audience-chart-single" role="status">
-        <b>1 relevé réel</b>
-        <span>La courbe apparaîtra au prochain relevé comparable.</span>
-      </div>
-    );
-  }
-
-  const width = 680;
-  const height = 250;
-  const plotLeft = 18;
-  const plotRight = 594;
-  const plotTop = 18;
-  const plotBottom = 190;
-  const times = points.map((point) => Date.parse(point.capturedAt));
-  const values = points.map((point) => point.followers);
-  const firstObservedTime = Math.min(...times);
-  const lastObservedTime = Math.max(...times);
-  const requestedStartTime = periodStartAt ? Date.parse(periodStartAt) : Number.NaN;
-  const requestedEndTime = periodEndAt ? Date.parse(periodEndAt) : Number.NaN;
-  const firstTime = Number.isFinite(requestedStartTime)
-    ? Math.min(requestedStartTime, firstObservedTime)
-    : firstObservedTime;
-  const lastTime = Number.isFinite(requestedEndTime)
-    ? Math.max(requestedEndTime, lastObservedTime)
-    : lastObservedTime;
-  const timeSpan = Math.max(lastTime - firstTime, 1);
-  const rawMinimum = Math.min(...values);
-  const rawMaximum = Math.max(...values);
-  const valueSpan = rawMaximum - rawMinimum;
-  const padding = valueSpan === 0
-    ? Math.max(1, rawMaximum * 0.00005)
-    : valueSpan * 0.14;
-  const minimum = Math.max(0, rawMinimum - padding);
-  const maximum = rawMaximum + padding;
-  const chartValueSpan = Math.max(maximum - minimum, 1);
-  const x = (timestamp: number) =>
-    plotLeft + ((timestamp - firstTime) / timeSpan) * (plotRight - plotLeft);
-  const y = (value: number) =>
-    plotBottom - ((value - minimum) / chartValueSpan) * (plotBottom - plotTop);
-  const coordinates = points.map((point, index) => ({
-    point,
-    x: x(times[index]),
-    y: y(point.followers),
-  }));
-  const gridLines = Array.from({ length: 4 }, (_, index) => {
-    const ratio = index / 3;
-    return {
-      value: maximum - ratio * chartValueSpan,
-      y: plotTop + ratio * (plotBottom - plotTop),
-    };
-  });
-  const tickCount = Math.min(5, Math.max(2, points.length));
-  const dateTicks = Array.from({ length: tickCount }, (_, index) => {
-    const ratio = tickCount === 1 ? 0 : index / (tickCount - 1);
-    const timestamp = firstTime + ratio * timeSpan;
-    return {
-      timestamp,
-      x: plotLeft + ratio * (plotRight - plotLeft),
-    };
-  });
-  const hasRoundedPoints = points.some((point) => point.precision !== "exact");
-  const hasOnlyApproximatePoints = points.every((point) => point.precision !== "exact");
-  const segments = coordinates.slice(1).map((coordinate, index) => {
-    const previous = coordinates[index];
-    const gapHours = (times[index + 1] - times[index]) / (60 * 60 * 1_000);
-    return {
-      coordinate,
-      previous,
-      interrupted:
-        gapHours > 36 ||
-        previous.point.precision !== coordinate.point.precision,
-    };
-  });
-  const hasInterruptedSegments = segments.some((segment) => segment.interrupted);
-  const trailingGapDays = periodEndAt
-    ? elapsedCalendarDays(points.at(-1)!.capturedAt, periodEndAt)
-    : 0;
-  const chartNotes = [
-    trailingGapDays > 1 ? `Fin de période sans relevé · ${trailingGapDays} j` : null,
-    hasInterruptedSegments ? "Pointillés : trou de collecte ou précision différente" : null,
-    hasRoundedPoints ? "≈ indique un compteur arrondi" : null,
-  ].filter((note): note is string => Boolean(note));
-  if (chartNotes.length === 0) {
-    chartNotes.push("Chaque point correspond à un relevé quotidien exact");
-  }
-  const firstPoint = points[0];
-  const lastPoint = points.at(-1)!;
-
-  return (
-    <div className="audience-line-chart">
-      <div className="audience-chart-viewport">
-        <svg
-          viewBox={`0 0 ${width} ${height}`}
-          role="img"
-          tabIndex={0}
-        >
-          <title>{`Évolution quotidienne des followers ${platformLabel}`}</title>
-          <desc>{`${points.length} relevés réels sur ${periodLabel.toLowerCase()}, du ${formatAudienceDate(firstPoint.capturedAt)} (${formatAudiencePointValue(firstPoint)}) au ${formatAudienceDate(lastPoint.capturedAt)} (${formatAudiencePointValue(lastPoint)}). ${chartNotes.join(". ")}.`}</desc>
-          {gridLines.map((line, index) => (
-            <g className="audience-chart-grid" key={line.y}>
-              <line x1={plotLeft} x2={plotRight} y1={line.y} y2={line.y} />
-              <text x={plotRight + 12} y={line.y + 4}>
-                {hasOnlyApproximatePoints && valueSpan === 0 && index !== 1
-                  ? ""
-                  : formatAudienceAxisValue(line.value, hasOnlyApproximatePoints)}
-              </text>
-            </g>
-          ))}
-          {segments.map(({ coordinate, previous, interrupted }) => {
-            return (
-              <line
-                className={interrupted
-                  ? "audience-chart-line audience-chart-line-gap"
-                  : "audience-chart-line"}
-                key={`${previous.point.capturedAt}:${coordinate.point.capturedAt}`}
-                x1={previous.x}
-                x2={coordinate.x}
-                y1={previous.y}
-                y2={coordinate.y}
-              />
-            );
-          })}
-          {coordinates.map((coordinate) => {
-            const tooltipX = Math.min(Math.max(coordinate.x - 74, plotLeft), plotRight - 148);
-            const tooltipY = coordinate.y < 70 ? coordinate.y + 14 : coordinate.y - 58;
-            const formattedValue = formatAudiencePointValue(coordinate.point);
-            return (
-              <g
-                className="audience-chart-point"
-                key={`${coordinate.point.capturedAt}:${coordinate.point.followers}`}
-              >
-                <title>{`${formatAudienceDate(coordinate.point.capturedAt)} : ${formattedValue} followers`}</title>
-                <circle cx={coordinate.x} cy={coordinate.y} r="4" />
-                <g className="audience-chart-tooltip" aria-hidden="true">
-                  <rect x={tooltipX} y={tooltipY} width="148" height="44" rx="8" />
-                  <text x={tooltipX + 10} y={tooltipY + 17}>
-                    {formatAudienceChartDate(coordinate.point.capturedAt, false)}
-                  </text>
-                  <text className="audience-chart-tooltip-value" x={tooltipX + 10} y={tooltipY + 35}>
-                    {formattedValue}
-                  </text>
-                </g>
-              </g>
-            );
-          })}
-          {dateTicks.map((tick, index) => (
-            <text
-              className="audience-chart-date"
-              key={tick.timestamp}
-              x={tick.x}
-              y="222"
-              textAnchor={index === 0 ? "start" : index === dateTicks.length - 1 ? "end" : "middle"}
-            >
-              {formatAudienceChartDate(new Date(tick.timestamp).toISOString(), timeSpan > 500 * 24 * 60 * 60 * 1_000)}
-            </text>
-          ))}
-        </svg>
-      </div>
-      <div className="audience-chart-caption">
-        <span>{points.length} relevé{points.length > 1 ? "s" : ""} réel{points.length > 1 ? "s" : ""}</span>
-        <span>{chartNotes.join(" · ")}</span>
-      </div>
-    </div>
-  );
-}
 
 function audiencePointsForPeriod(
   platformHistory: AudienceHistory["platforms"][Platform] | null,
@@ -2729,29 +2539,18 @@ function audiencePointsForPeriod(
   if (!Number.isFinite(periodEndTime)) return [];
   const minimumTime = days === null
     ? Number.NEGATIVE_INFINITY
-    : periodEndTime - days * 24 * 60 * 60 * 1_000;
+    : periodEndTime - Math.max(0, days - 1) * 24 * 60 * 60 * 1_000;
   return platformHistory.observations.filter((observation) => {
     const capturedTime = Date.parse(observation.capturedAt);
     return capturedTime >= minimumTime && capturedTime <= periodEndTime;
   });
 }
 
-function contiguousExactAudienceSuffix(points: AudienceObservation[]) {
-  const suffix: AudienceObservation[] = [];
-  for (let index = points.length - 1; index >= 0; index -= 1) {
-    const point = points[index];
-    if (point.precision !== "exact") break;
-    const next = suffix[0];
-    if (next && elapsedCalendarDays(point.capturedAt, next.capturedAt) !== 1) break;
-    suffix.unshift(point);
-  }
-  return suffix;
-}
-
-function audienceGrowthForExactSuffix(exactSuffix: AudienceObservation[]) {
-  if (exactSuffix.length < 2) return null;
-  const from = exactSuffix[0];
-  const to = exactSuffix.at(-1)!;
+function audienceGrowthFromObservedPoints(points: AudienceObservation[]) {
+  const exactPoints = points.filter((point) => point.precision === "exact");
+  if (exactPoints.length < 2) return null;
+  const from = exactPoints[0];
+  const to = exactPoints.at(-1)!;
   const followersDelta = to.followers - from.followers;
   return {
     from,
@@ -2759,6 +2558,12 @@ function audienceGrowthForExactSuffix(exactSuffix: AudienceObservation[]) {
     followersDelta,
     ratePercent: (followersDelta / from.followers) * 100,
   };
+}
+
+function latestIsoTimestamp(left: string | null | undefined, right: string | null | undefined) {
+  if (!left) return right ?? null;
+  if (!right) return left;
+  return Date.parse(right) > Date.parse(left) ? right : left;
 }
 
 function elapsedCalendarDays(from: string, to: string) {
@@ -2783,25 +2588,15 @@ function formatAudienceAge(days: number | null) {
   return `il y a ${days} j`;
 }
 
-function formatAudienceAxisValue(value: number, approximate: boolean) {
-  if (approximate) return `≈ ${formatAudienceRoundedValue(value)}`;
-  return new Intl.NumberFormat("fr-FR", {
-    maximumFractionDigits: 0,
-  }).format(Math.round(value));
-}
-
-function formatAudienceRoundedValue(value: number) {
-  return new Intl.NumberFormat("fr-FR", {
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(Math.round(value));
-}
-
-function formatAudiencePointValue(observation: AudienceObservation) {
-  if (observation.precision === "exact") {
-    return new Intl.NumberFormat("fr-FR").format(observation.followers);
-  }
-  return `≈ ${formatAudienceRoundedValue(observation.followers)}`;
+function formatAudienceSeriesValue(
+  point: AudienceMetricSeriesPoint,
+  metric: AudienceAnalyticsMetricKey,
+  compact: boolean,
+) {
+  const value = formatNativeAnalyticsMetric(point.value, metric, compact);
+  return metric === "followersTotal" && point.precision && point.precision !== "exact"
+    ? `≈ ${value}`
+    : value;
 }
 
 function formatAudienceChartDate(value: string, yearOnly: boolean) {
