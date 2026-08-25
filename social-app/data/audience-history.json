@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-08-25T12:31:41.157Z",
+  "generatedAt": "2026-08-25T13:10:46.681Z",
   "platforms": {
     "youtube": {
       "profileUrl": "https://www.youtube.com/@LofiGirl",
@@ -156,7 +156,7 @@
       "engagementByPeriod": {
         "30d": {
           "period": "30d",
-          "calculatedAt": "2026-08-25T12:31:41.157Z",
+          "calculatedAt": "2026-08-25T13:10:46.681Z",
           "formula": "mean(likes+comments)/followers*100",
           "followers": 15820270,
           "followersObservedAt": "2026-08-25T12:31:41.157Z",
@@ -169,7 +169,7 @@
         },
         "90d": {
           "period": "90d",
-          "calculatedAt": "2026-08-25T12:31:41.157Z",
+          "calculatedAt": "2026-08-25T13:10:46.681Z",
           "formula": "mean(likes+comments)/followers*100",
           "followers": 15820270,
           "followersObservedAt": "2026-08-25T12:31:41.157Z",
@@ -182,7 +182,7 @@
         },
         "180d": {
           "period": "180d",
-          "calculatedAt": "2026-08-25T12:31:41.157Z",
+          "calculatedAt": "2026-08-25T13:10:46.681Z",
           "formula": "mean(likes+comments)/followers*100",
           "followers": 15820270,
           "followersObservedAt": "2026-08-25T12:31:41.157Z",
@@ -195,7 +195,7 @@
         },
         "365d": {
           "period": "365d",
-          "calculatedAt": "2026-08-25T12:31:41.157Z",
+          "calculatedAt": "2026-08-25T13:10:46.681Z",
           "formula": "mean(likes+comments)/followers*100",
           "followers": 15820270,
           "followersObservedAt": "2026-08-25T12:31:41.157Z",
@@ -208,7 +208,7 @@
         },
         "all": {
           "period": "all",
-          "calculatedAt": "2026-08-25T12:31:41.157Z",
+          "calculatedAt": "2026-08-25T13:10:46.681Z",
           "formula": "mean(likes+comments)/followers*100",
           "followers": 15820270,
           "followersObservedAt": "2026-08-25T12:31:41.157Z",
@@ -284,7 +284,7 @@
       "engagementByPeriod": {
         "30d": {
           "period": "30d",
-          "calculatedAt": "2026-08-25T12:31:41.157Z",
+          "calculatedAt": "2026-08-25T13:10:46.681Z",
           "formula": "mean(likes+comments)/followers*100",
           "followers": 1429801,
           "followersObservedAt": "2026-08-22T06:02:00.687Z",
@@ -297,7 +297,7 @@
         },
         "90d": {
           "period": "90d",
-          "calculatedAt": "2026-08-25T12:31:41.157Z",
+          "calculatedAt": "2026-08-25T13:10:46.681Z",
           "formula": "mean(likes+comments)/followers*100",
           "followers": 1429801,
           "followersObservedAt": "2026-08-22T06:02:00.687Z",
@@ -310,7 +310,7 @@
         },
         "180d": {
           "period": "180d",
-          "calculatedAt": "2026-08-25T12:31:41.157Z",
+          "calculatedAt": "2026-08-25T13:10:46.681Z",
           "formula": "mean(likes+comments)/followers*100",
           "followers": 1429801,
           "followersObservedAt": "2026-08-22T06:02:00.687Z",
@@ -323,7 +323,7 @@
         },
         "365d": {
           "period": "365d",
-          "calculatedAt": "2026-08-25T12:31:41.157Z",
+          "calculatedAt": "2026-08-25T13:10:46.681Z",
           "formula": "mean(likes+comments)/followers*100",
           "followers": 1429801,
           "followersObservedAt": "2026-08-22T06:02:00.687Z",
@@ -336,7 +336,7 @@
         },
         "all": {
           "period": "all",
-          "calculatedAt": "2026-08-25T12:31:41.157Z",
+          "calculatedAt": "2026-08-25T13:10:46.681Z",
           "formula": "mean(likes+comments)/followers*100",
           "followers": 1429801,
           "followersObservedAt": "2026-08-22T06:02:00.687Z",
@@ -465,8 +465,8 @@
           "label": "Métadonnée publique TikTok statsV2"
         },
         {
-          "capturedAt": "2026-08-25T07:26:45.145Z",
-          "followers": 1545983,
+          "capturedAt": "2026-08-25T13:10:46.681Z",
+          "followers": 1545960,
           "precision": "exact",
           "sourceUrl": "https://www.tiktok.com/@lofigirl",
           "label": "Métadonnée publique TikTok statsV2"
@@ -475,66 +475,66 @@
       "engagementByPeriod": {
         "30d": {
           "period": "30d",
-          "calculatedAt": "2026-08-25T12:31:41.157Z",
+          "calculatedAt": "2026-08-25T13:10:46.681Z",
           "formula": "mean(likes+comments)/followers*100",
-          "followers": 1545983,
-          "followersObservedAt": "2026-08-25T07:26:45.145Z",
+          "followers": 1545960,
+          "followersObservedAt": "2026-08-25T13:10:46.681Z",
           "followersPrecision": "exact",
           "sampleSize": 4,
           "averageInteractions": 42156.75,
-          "ratePercent": 2.726857,
+          "ratePercent": 2.726898,
           "oldestPostAt": "2026-07-28T18:16:42.000Z",
           "newestPostAt": "2026-08-03T19:04:00.000Z"
         },
         "90d": {
           "period": "90d",
-          "calculatedAt": "2026-08-25T12:31:41.157Z",
+          "calculatedAt": "2026-08-25T13:10:46.681Z",
           "formula": "mean(likes+comments)/followers*100",
-          "followers": 1545983,
-          "followersObservedAt": "2026-08-25T07:26:45.145Z",
+          "followers": 1545960,
+          "followersObservedAt": "2026-08-25T13:10:46.681Z",
           "followersPrecision": "exact",
           "sampleSize": 30,
           "averageInteractions": 6906.6,
-          "ratePercent": 0.446745,
+          "ratePercent": 0.446752,
           "oldestPostAt": "2026-05-27T21:09:29.000Z",
           "newestPostAt": "2026-08-03T19:04:00.000Z"
         },
         "180d": {
           "period": "180d",
-          "calculatedAt": "2026-08-25T12:31:41.157Z",
+          "calculatedAt": "2026-08-25T13:10:46.681Z",
           "formula": "mean(likes+comments)/followers*100",
-          "followers": 1545983,
-          "followersObservedAt": "2026-08-25T07:26:45.145Z",
+          "followers": 1545960,
+          "followersObservedAt": "2026-08-25T13:10:46.681Z",
           "followersPrecision": "exact",
           "sampleSize": 78,
           "averageInteractions": 3607.666667,
-          "ratePercent": 0.233357,
+          "ratePercent": 0.233361,
           "oldestPostAt": "2026-02-27T08:39:48.000Z",
           "newestPostAt": "2026-08-03T19:04:00.000Z"
         },
         "365d": {
           "period": "365d",
-          "calculatedAt": "2026-08-25T12:31:41.157Z",
+          "calculatedAt": "2026-08-25T13:10:46.681Z",
           "formula": "mean(likes+comments)/followers*100",
-          "followers": 1545983,
-          "followersObservedAt": "2026-08-25T07:26:45.145Z",
+          "followers": 1545960,
+          "followersObservedAt": "2026-08-25T13:10:46.681Z",
           "followersPrecision": "exact",
           "sampleSize": 143,
           "averageInteractions": 19078.706294,
-          "ratePercent": 1.234083,
+          "ratePercent": 1.234101,
           "oldestPostAt": "2025-08-28T18:13:22.000Z",
           "newestPostAt": "2026-08-03T19:04:00.000Z"
         },
         "all": {
           "period": "all",
-          "calculatedAt": "2026-08-25T12:31:41.157Z",
+          "calculatedAt": "2026-08-25T13:10:46.681Z",
           "formula": "mean(likes+comments)/followers*100",
-          "followers": 1545983,
-          "followersObservedAt": "2026-08-25T07:26:45.145Z",
+          "followers": 1545960,
+          "followersObservedAt": "2026-08-25T13:10:46.681Z",
           "followersPrecision": "exact",
           "sampleSize": 386,
           "averageInteractions": 72168.624352,
-          "ratePercent": 4.668138,
+          "ratePercent": 4.668208,
           "oldestPostAt": "2022-04-06T17:39:03.000Z",
           "newestPostAt": "2026-08-03T19:04:00.000Z"
         }
@@ -624,7 +624,7 @@
       "engagementByPeriod": {
         "30d": {
           "period": "30d",
-          "calculatedAt": "2026-08-25T12:31:41.157Z",
+          "calculatedAt": "2026-08-25T13:10:46.681Z",
           "formula": "mean(likes+comments)/followers*100",
           "followers": 260831,
           "followersObservedAt": "2026-08-20T07:24:38.606Z",
@@ -637,7 +637,7 @@
         },
         "90d": {
           "period": "90d",
-          "calculatedAt": "2026-08-25T12:31:41.157Z",
+          "calculatedAt": "2026-08-25T13:10:46.681Z",
           "formula": "mean(likes+comments)/followers*100",
           "followers": 260831,
           "followersObservedAt": "2026-08-20T07:24:38.606Z",
@@ -650,7 +650,7 @@
         },
         "180d": {
           "period": "180d",
-          "calculatedAt": "2026-08-25T12:31:41.157Z",
+          "calculatedAt": "2026-08-25T13:10:46.681Z",
           "formula": "mean(likes+comments)/followers*100",
           "followers": 260831,
           "followersObservedAt": "2026-08-20T07:24:38.606Z",
@@ -663,7 +663,7 @@
         },
         "365d": {
           "period": "365d",
-          "calculatedAt": "2026-08-25T12:31:41.157Z",
+          "calculatedAt": "2026-08-25T13:10:46.681Z",
           "formula": "mean(likes+comments)/followers*100",
           "followers": 260831,
           "followersObservedAt": "2026-08-20T07:24:38.606Z",
@@ -676,7 +676,7 @@
         },
         "all": {
           "period": "all",
-          "calculatedAt": "2026-08-25T12:31:41.157Z",
+          "calculatedAt": "2026-08-25T13:10:46.681Z",
           "formula": "mean(likes+comments)/followers*100",
           "followers": 260831,
           "followersObservedAt": "2026-08-20T07:24:38.606Z",
