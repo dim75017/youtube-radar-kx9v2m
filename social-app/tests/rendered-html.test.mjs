@@ -337,7 +337,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     component,
     /selectGirlFirstSocialTrends\([\s\S]*actionableTrends\.filter\(\(trend\) => trend\.referencePost\?\.mediaType === "video"\)[\s\S]*50/,
   );
-  assert.match(component, /platformFilter === "all" && characterFilter === "all"/);
+  assert.match(component, /platformFilter === "all"/);
   assert.match(component, /return orderedVideoTrends/);
   assert.doesNotMatch(component, /\{selectedVideoTrends\.length\} cartes/);
   assert.doesNotMatch(component, /proposalCount/);
@@ -345,10 +345,8 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(component, /trend-proposal-tabs/);
   assert.match(component, /dailyRotationIndex/);
   assert.match(component, /trend-card-source-title/);
-  assert.match(component, /TREND_CHARACTER_FILTERS/);
   assert.match(component, /TREND_CHARACTER_META/);
-  assert.match(component, /characterFilter/);
-  assert.match(component, /aria-label="Filtrer par univers"/);
+  assert.doesNotMatch(component, /TREND_CHARACTER_FILTERS|characterFilter|Filtrer par univers|Tout l’univers/);
   assert.match(component, /label: "Lofi Girl"/);
   assert.match(component, /label: "Lofi Boy"/);
   assert.match(component, /Lofi Boy \/ Synthwave Boy/);
@@ -365,6 +363,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(component, /trend-duration-badge/);
   assert.match(component, /post-grid top-ranking-grid trend-shorts-grid/);
   assert.match(styles, /\.trend-shorts-grid\s*\{[^}]*minmax\(300px,\s*1fr\)/);
+  assert.match(styles, /\.trend-feed-controls\s*\{[^}]*grid-template-columns:\s*1fr;/);
   assert.match(styles, /\.trend-card-body \.post-card-title h3\s*\{[^}]*display:\s*block;[^}]*overflow:\s*visible;[^}]*-webkit-line-clamp:\s*unset;/);
   assert.match(styles, /\.trend-card-source-title\s*\{[^}]*overflow:\s*visible;[^}]*white-space:\s*normal;/);
   assert.match(styles, /\.audio-card-title h3\s*\{[^}]*display:\s*block;[^}]*overflow:\s*visible;[^}]*-webkit-line-clamp:\s*unset;/);

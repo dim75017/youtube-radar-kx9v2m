@@ -89,7 +89,6 @@ type View = "overview" | "top" | "comments" | "trends" | "audio-trends" | "ideas
 type IdeaStatusFilter = "all" | "pending" | IdeaDecision;
 type PostSort = "popular" | "recent";
 type TrendPlatformFilter = TrendPlatform | "all";
-type TrendCharacterFilter = TrendCharacter | "all";
 
 type MetricSnapshot = {
   captured_at: string;
@@ -243,16 +242,6 @@ const TREND_PLATFORM_FILTERS: Array<{
   { key: "tiktok", emoji: "🎵", label: "TikTok" },
   { key: "youtube", emoji: "▶️", label: "YouTube Shorts" },
   { key: "x", emoji: "𝕏", label: "X" },
-];
-
-const TREND_CHARACTER_FILTERS: Array<{
-  key: TrendCharacterFilter;
-  emoji: string;
-  label: string;
-}> = [
-  { key: "all", emoji: "🌐", label: "Tout l’univers" },
-  { key: "lofi-girl", emoji: "🎧", label: "Lofi Girl" },
-  { key: "lofi-boy", emoji: "🎮", label: "Lofi Boy" },
 ];
 
 const TREND_CHARACTER_META: Record<
@@ -2218,7 +2207,6 @@ function TrendFeedView({
   error: string;
 }) {
   const [platformFilter, setPlatformFilter] = useState<TrendPlatformFilter>("all");
-  const [characterFilter, setCharacterFilter] = useState<TrendCharacterFilter>("all");
   const [activeTrend, setActiveTrend] = useState<SocialTrend | null>(null);
   const [activePlayerId, setActivePlayerId] = useState<string | null>(null);
   const actionableTrends = useMemo(
@@ -2247,19 +2235,18 @@ function TrendFeedView({
   );
   const visibleTrends = useMemo(
     () => {
-      if (platformFilter === "all" && characterFilter === "all") {
+      if (platformFilter === "all") {
         return orderedVideoTrends;
       }
       const filtered = filterSocialTrends(selectedVideoTrends, {
         platform: platformFilter,
-        character: characterFilter,
       });
       return [
         ...filtered.filter((trend) => matchedTrendIds.has(trend.id)),
         ...filtered.filter((trend) => !matchedTrendIds.has(trend.id)),
       ];
     },
-    [characterFilter, matchedTrendIds, orderedVideoTrends, platformFilter, selectedVideoTrends],
+    [matchedTrendIds, orderedVideoTrends, platformFilter, selectedVideoTrends],
   );
   return (
     <div className="trend-feed-view">
@@ -2279,25 +2266,6 @@ function TrendFeedView({
                 onClick={() => {
                   setActivePlayerId(null);
                   setPlatformFilter(option.key);
-                }}
-                key={option.key}
-              >
-                {option.emoji} {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="trend-filter-group">
-          <span>Univers</span>
-          <div className="trend-filter-tabs" role="group" aria-label="Filtrer par univers">
-            {TREND_CHARACTER_FILTERS.map((option) => (
-              <button
-                className={characterFilter === option.key ? "active" : ""}
-                type="button"
-                aria-pressed={characterFilter === option.key}
-                onClick={() => {
-                  setActivePlayerId(null);
-                  setCharacterFilter(option.key);
                 }}
                 key={option.key}
               >

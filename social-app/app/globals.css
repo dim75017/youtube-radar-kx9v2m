@@ -1483,7 +1483,7 @@ a {
   z-index: 20;
   top: 16px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+  grid-template-columns: 1fr;
   gap: 12px;
   border: 1px solid var(--border);
   border-radius: 14px;
