@@ -364,6 +364,14 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.doesNotMatch(trendModalSource, /Créateurs vérifiés|D’où vient le signal|Ce qui se répète|Bon moment|À produire/);
   assert.match(component, /trend-duration-badge/);
   assert.match(component, /post-grid top-ranking-grid trend-shorts-grid/);
+  assert.match(styles, /\.trend-shorts-grid\s*\{[^}]*minmax\(300px,\s*1fr\)/);
+  assert.match(styles, /\.trend-card-body \.post-card-title h3\s*\{[^}]*display:\s*block;[^}]*overflow:\s*visible;[^}]*-webkit-line-clamp:\s*unset;/);
+  assert.match(styles, /\.trend-card-source-title\s*\{[^}]*overflow:\s*visible;[^}]*white-space:\s*normal;/);
+  assert.match(styles, /\.audio-card-title h3\s*\{[^}]*display:\s*block;[^}]*overflow:\s*visible;[^}]*-webkit-line-clamp:\s*unset;/);
+  assert.match(styles, /\.audio-proposal-copy\s*\{[^}]*display:\s*block;[^}]*overflow:\s*visible;[^}]*-webkit-line-clamp:\s*unset;/);
+  assert.match(component, /activeProposal\?\.concept\s*\?\?\s*trend\.whyLofi/);
+  assert.match(audioTrendView, /activeProposal\.concept/);
+  assert.match(audioTrendView, /activeProposal\.copy/);
   assert.match(audioTrendView, /<h2>Trends audio<\/h2>/);
   assert.match(audioTrendView, /deriveAudioTrendGrowth/);
   assert.doesNotMatch(audioTrendView, /\{feed\.trends\.length\} cartes/);
@@ -524,7 +532,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(styles, /\.reco-card-main\s*>\s*h3\s*\{[\s\S]*?font-size:\s*18px/);
   assert.match(styles, /\.reco-proof-preview\s*\{/);
   assert.match(styles, /\.trend-feed-view\s*\{/);
-  assert.match(styles, /\.trend-shorts-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(260px,\s*1fr\)\)/);
+  assert.match(styles, /\.trend-shorts-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(300px,\s*1fr\)\)/);
   assert.match(styles, /\.trend-shorts-grid \.trend-reference-visual\s*\{[\s\S]*?aspect-ratio:\s*1\s*\/\s*1/);
   assert.match(styles, /\.trend-card-source-title\s*\{/);
   assert.match(styles, /\.trend-reuse-creators\s*\{[\s\S]*?grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(170px,\s*1fr\)\)/);
