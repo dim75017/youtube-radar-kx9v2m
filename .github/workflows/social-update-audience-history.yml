@@ -27,7 +27,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
-          fetch-depth: 0
+          # The unified repository contains large historical media snapshots.
+          # This job needs only the Social runtime and its own workflow tests.
+          fetch-depth: 2
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /social-app/
+            /.github/workflows/social-update-audience-history.yml
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

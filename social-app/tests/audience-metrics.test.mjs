@@ -526,6 +526,9 @@ test("the daily workflow enforces a fresh YouTube point on both scheduled passes
 
   assert.match(workflow, /cron: "37 6 \* \* \*"/);
   assert.match(workflow, /cron: "37 18 \* \* \*"/);
+  assert.match(workflow, /filter:\s*blob:none/);
+  assert.match(workflow, /sparse-checkout:[\s\S]*?\/social-app\//);
+  assert.match(workflow, /\.github\/workflows\/social-update-audience-history\.yml/);
   assert.match(workflow, /--require-fresh-platform youtube/);
   assert.match(workflow, /Two daily collection passes/);
   assert.match(workflow, /actions:\s*write/);
