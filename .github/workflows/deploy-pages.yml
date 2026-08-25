@@ -70,6 +70,8 @@ jobs:
             /social-app/
             /tests/spotify_light_bootstrap_contract.js
             /tests/test_spotify_instant_runtime.js
+            /tests/test_unified_design_system.cjs
+            /tests/test_unified_platform_navigation.cjs
 
       - id: revision
         name: Resolve and require one immutable Pages revision
@@ -182,6 +184,13 @@ jobs:
         shell: bash
         run: corepack enable
 
+      - name: Validate the shared Radar header
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tests/test_unified_design_system.cjs
+          node tests/test_unified_platform_navigation.cjs
+
       - name: Build the lightweight Spotify runtime
         shell: bash
         run: |
@@ -202,6 +211,12 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm build:preview
           test -f ../social/index.html
+          test -f ../social/platforms/spotify.svg
+          cmp -s ../assets/platform-spotify.svg ../social/platforms/spotify.svg
+          grep -F 'rel="preload" as="style"' ../social/index.html
+          grep -F "this.rel='stylesheet'" ../social/index.html
+          grep -F '<noscript><link' ../social/index.html
+          grep -R -F 'platforms/spotify.svg?v=20260825-logo-v2' ../social/assets
           test -f ../social/data/trends/feed.json
           test -f ../social/data/audio-trends/feed.json
           test -f ../social/data/comment-opportunities/feed.json
@@ -246,6 +261,12 @@ jobs:
           test -f ./_site/index.html
           test -f ./_site/spotify/index.html
           test -f ./_site/social/index.html
+          test -f ./_site/assets/platform-spotify.svg
+          test -f ./_site/social/platforms/spotify.svg
+          cmp -s ./_site/assets/platform-spotify.svg ./_site/social/platforms/spotify.svg
+          grep -F 'platform-spotify.svg?v=20260825-logo-v2' ./_site/index.html
+          grep -F 'platform-spotify.svg?v=20260825-logo-v2' ./_site/spotify/index.html
+          grep -R -F 'platforms/spotify.svg?v=20260825-logo-v2' ./_site/social/assets
           test ! -e ./_site/social-app
           if grep -R -F 'https://dim75017.github.io/lofi-social-radar-preview/' ./_site/social || \
              grep -R -F 'raw.githubusercontent.com/dim75017/lofi-social-radar-preview/main/' ./_site/social; then

@@ -7,6 +7,7 @@ const test = require('node:test');
 const youtubeHtml = fs.readFileSync('index.html', 'utf8');
 const spotifyHtml = fs.readFileSync('spotify/index.html', 'utf8');
 const socialLayout = fs.readFileSync('social-app/app/layout.tsx', 'utf8');
+const socialPreviewHtml = fs.readFileSync('social-app/preview/index.html', 'utf8');
 const socialPreview = fs.readFileSync('social-app/preview/main.tsx', 'utf8');
 const socialShell = fs.readFileSync('social-app/app/SocialOS.tsx', 'utf8');
 const foundation = fs.readFileSync('assets/css/radar-foundation.css', 'utf8');
@@ -20,10 +21,12 @@ test('all three Radar surfaces load the same visual foundation and Inter family'
   assert.match(socialLayout, /\.\.\/assets\/css\/radar-foundation\.css\?v=20260825-da-v1/);
   assert.match(socialPreview, /\.\.\/\.\.\/assets\/css\/radar-foundation\.css/);
   assert.match(socialPreview, /\.\.\/app\/editorial\.css/);
-  for (const html of [youtubeHtml, spotifyHtml, socialLayout]) {
+  for (const html of [youtubeHtml, spotifyHtml, socialLayout, socialPreviewHtml]) {
     assert.match(html, /family=Inter:wght@400;500;600;700;800/);
     assert.doesNotMatch(html, /family=Sora|&family=Sora/);
   }
+  assert.match(socialPreviewHtml, /rel="preload" as="style"[^>]*family=Inter:wght@400;500;600;700;800[^>]*onload=/);
+  assert.match(socialPreviewHtml, /<noscript><link[^>]*family=Inter:wght@400;500;600;700;800/);
   assert.match(foundation, /--radar-page-title:27px/);
   assert.match(foundation, /--radar-section-title:15px/);
   assert.match(foundation, /--radar-sidebar:224px/);
@@ -38,6 +41,10 @@ test('platform styles map their shell, titles and panels to the shared tokens', 
     assert.match(css, /var\(--radar-panel\)/);
   }
   assert.match(socialShell, /className="brand-mark" src="\.\.\/assets\/lofi-radar-logo\.jpg"/);
+  assert.match(
+    socialCss,
+    /\.radar-switch a\{[^}]*font-family:var\(--radar-font\)[^}]*font-size:12px[^}]*font-weight:750[^}]*letter-spacing:\.15px/,
+  );
 });
 
 test('Spotify keeps desktop tables intact and mobile cards auto-sized', () => {

@@ -15,7 +15,7 @@ body{font-size:var(--radar-body);line-height:1.5;background:var(--radar-bg)}
 .nav-emoji{font-size:15px}.nav-submenu{margin-left:18px;border-left-color:var(--radar-border-strong);padding-left:8px}.nav-submenu button{min-height:34px;border-radius:6px;font-size:12px}
 .main{--content-gutter:var(--radar-gutter);margin-left:var(--radar-sidebar);padding:0 var(--content-gutter) 70px}
 .platform-header{margin-bottom:12px;background:rgba(8,10,15,.96);padding:14px var(--content-gutter)}
-.radar-switch a{padding:9px 12px;font-size:12px}.radar-switch .on{background:rgba(214,41,118,.16);box-shadow:inset 0 0 0 1px rgba(214,41,118,.34)}
+.radar-switch a{font-family:var(--radar-font);padding:9px 12px;font-size:12px;font-weight:750;letter-spacing:.15px}.radar-switch .on{background:rgba(214,41,118,.16);box-shadow:inset 0 0 0 1px rgba(214,41,118,.34)}
 .topbar{padding:32px 0 20px}.topbar h2,.trend-feed-heading h2,.audience-dashboard-heading h2,.recommendations-heading h2,.roadmap-heading h2,.comment-feed-heading h2{font-size:var(--radar-page-title);font-weight:650;line-height:1.2;letter-spacing:-.025em}
 .section-heading h3,.panel-head h3,.all-posts-heading h2,.category-results-header h2,.audience-platform-head h3,.details-section-heading h3{font-size:var(--radar-section-title);font-weight:650;line-height:1.3;letter-spacing:-.01em}
 .trend-card h3,.social-post-card h3,.post-card-title h3,.audio-card-title h3,.reco-card-main>h3,.idea-main h3,.approved-card h3,.brief-copy h3,.connector-title h3{font-size:var(--radar-card-title);font-weight:650;line-height:1.4}

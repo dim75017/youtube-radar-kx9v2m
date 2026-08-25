@@ -67,13 +67,19 @@ test("every platform prerenders both destinations for instant switching", () => 
 test("platform headers use the official Spotify mark and a centered three-column layout", () => {
   const youtube = read("assets/platform-youtube.svg");
   const instagram = read("assets/platform-instagram.svg");
+  const spotify = read("assets/platform-spotify.svg");
+  const socialSpotify = read("social-app/public/platforms/spotify.svg");
   const localSpotifyMark = /(?:assets\/platform-spotify\.svg|platforms\/spotify\.svg)/;
   assert.match(youtube, /fill="#FFFFFF"/);
   assert.match(instagram, /stroke="#FFFFFF"/);
+  assert.equal(spotify, socialSpotify, "both published Spotify marks must stay byte-identical");
+  assert.match(spotify, /Zm\.16-4\.25C/);
+  assert.doesNotMatch(spotify, /Zm1\.16-4\.25C/);
 
   for (const sourcePath of ["index.html", "spotify/index.html", "social-app/app/SocialOS.tsx"]) {
     const block = platformBlock(read(sourcePath));
     assert.match(block, localSpotifyMark);
+    assert.match(block, /platform-spotify\.svg\?v=20260825-logo-v2|platforms\/spotify\.svg\?v=20260825-logo-v2/);
     assert.doesNotMatch(block, /storage\.googleapis\.com\/pr-newsroom/);
   }
 
