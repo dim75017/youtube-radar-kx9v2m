@@ -3618,10 +3618,6 @@ function PostCard({
   const postCopy = post.text || post.title || "Publication sans légende";
   const choices = post.format === "community_poll" ? pollChoices(post) : [];
   const publishedDate = formatCardPublishedDate(post.published_at);
-  const [isTextExpanded, setIsTextExpanded] = useState(false);
-  const canExpandText =
-    postCopy.length > (hasMediaPreview ? 70 : 120) ||
-    postCopy.split(/\r?\n/).length > 2;
   const footerMetrics = [
     post.views !== null ? { icon: metricEmoji("views", post.platform), label: "vues", value: post.views } : null,
     post.likes !== null ? { icon: metricEmoji("likes", post.platform), label: "likes", value: post.likes } : null,
@@ -3649,40 +3645,18 @@ function PostCard({
         <div className="post-card-title">
           <div>
             {hasMediaPreview ? (
-              <div className={`post-media-caption ${isTextExpanded ? "is-expanded" : ""}`}>
+              <div className="post-media-caption">
                 <h3>
                   <a href={post.url} target="_blank" rel="noreferrer">
                     {postCopy}
                   </a>
                 </h3>
-                {canExpandText ? (
-                  <button
-                    className="post-text-expand"
-                    type="button"
-                    aria-expanded={isTextExpanded}
-                    aria-label={isTextExpanded ? "Réduire la légende" : "Voir toute la légende"}
-                    onClick={() => setIsTextExpanded((value) => !value)}
-                  >
-                    {isTextExpanded ? "Voir moins" : "… Voir plus"}
-                  </button>
-                ) : null}
               </div>
             ) : (
-              <div className={`post-text-content ${isTextExpanded ? "is-expanded" : ""}`}>
+              <div className="post-text-content">
                 <a href={post.url} target="_blank" rel="noreferrer">
                   {postCopy}
                 </a>
-                {canExpandText ? (
-                  <button
-                    className="post-text-expand"
-                    type="button"
-                    aria-expanded={isTextExpanded}
-                    aria-label={isTextExpanded ? "Réduire le texte" : "Voir tout le texte"}
-                    onClick={() => setIsTextExpanded((value) => !value)}
-                  >
-                    {isTextExpanded ? "Voir moins" : "… Voir plus"}
-                  </button>
-                ) : null}
               </div>
             )}
           </div>

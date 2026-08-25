@@ -482,6 +482,8 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   );
   assert.doesNotMatch(postCard, /Pourquoi ça ressort/);
   assert.doesNotMatch(postCard, /score_explanation|performance_score|\/100/);
+  assert.doesNotMatch(postCard, /Voir plus|Voir moins|post-text-expand|isTextExpanded|canExpandText/);
+  assert.doesNotMatch(styles, /\.post-text-expand|\.post-media-caption\.is-expanded|\.post-text-content\.is-expanded/);
   const detailsModal = component.slice(component.indexOf("function PostDetailsModal"));
   assert.doesNotMatch(
     detailsModal,

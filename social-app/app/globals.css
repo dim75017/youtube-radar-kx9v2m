@@ -5691,14 +5691,6 @@ a {
   min-width: 0;
 }
 
-.post-media-caption.is-expanded h3 {
-  display: block;
-  min-height: 0;
-  overflow: visible;
-  overflow-wrap: anywhere;
-  -webkit-line-clamp: unset;
-}
-
 .post-card-title h3 a {
   color: inherit;
   text-decoration: none;
@@ -5763,43 +5755,6 @@ a {
 .post-text-content a:hover,
 .post-text-content a:focus-visible {
   color: var(--accent-2);
-}
-
-.post-text-content.is-expanded a {
-  display: block;
-  overflow: visible;
-  -webkit-line-clamp: unset;
-}
-
-.post-text-expand {
-  display: inline-flex;
-  min-height: 28px;
-  align-items: center;
-  justify-content: center;
-  margin-top: 5px;
-  border: 0;
-  border-radius: 7px;
-  background: rgba(154, 168, 255, 0.08);
-  padding: 4px 8px;
-  color: var(--accent-2);
-  font-size: 12px;
-  font-weight: 780;
-  line-height: 1.2;
-}
-
-.post-text-expand:hover,
-.post-text-expand:focus-visible {
-  color: #fff;
-  outline: none;
-}
-
-.post-text-content.is-expanded .post-text-expand {
-  position: static;
-  margin-top: 7px;
-  border: 1px solid rgba(154, 168, 255, 0.2);
-  background: rgba(154, 168, 255, 0.08);
-  padding: 4px 8px;
-  font-size: 11px;
 }
 
 .social-post-card.text-only .metric-row {
