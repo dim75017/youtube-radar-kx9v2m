@@ -250,6 +250,11 @@ a {
   object-fit: contain;
 }
 
+.radar-switch a.spotify img {
+  width: 24px;
+  height: 24px;
+}
+
 .radar-switch a:hover,
 .radar-switch a:focus-visible {
   background: rgba(255, 255, 255, 0.06);

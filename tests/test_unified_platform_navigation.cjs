@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
@@ -73,13 +74,25 @@ test("platform headers use the official Spotify mark and a centered three-column
   assert.match(youtube, /fill="#FFFFFF"/);
   assert.match(instagram, /stroke="#FFFFFF"/);
   assert.equal(spotify, socialSpotify, "both published Spotify marks must stay byte-identical");
-  assert.match(spotify, /Zm\.16-4\.25C/);
-  assert.doesNotMatch(spotify, /Zm1\.16-4\.25C/);
+  const spotifyAssetHash = crypto
+    .createHash("sha256")
+    .update(spotify.replace(/\r\n/g, "\n").trimEnd())
+    .digest("hex");
+  assert.equal(
+    spotifyAssetHash,
+    "ead72f82725038389cca09f439fdb7807640e122500c934f2500c7036bf40dbb",
+    "the vendored mark must remain the approved official Spotify asset",
+  );
+  assert.match(spotify, /viewBox="0 0 236\.05 225\.25"/);
+  assert.match(spotify, /m122\.37,3\.31C61\.99\.91,11\.1,47\.91,8\.71,108\.29/);
+  assert.match(spotify, /fill:#1ed760/);
+  assert.doesNotMatch(spotify, /<(?:circle|script|image)\b|M17\.52 16\.63|\b(?:href|xlink:href)=/);
 
   for (const sourcePath of ["index.html", "spotify/index.html", "social-app/app/SocialOS.tsx"]) {
     const block = platformBlock(read(sourcePath));
     assert.match(block, localSpotifyMark);
-    assert.match(block, /platform-spotify\.svg\?v=20260825-logo-v2|platforms\/spotify\.svg\?v=20260825-logo-v2/);
+    assert.match(block, /platform-spotify\.svg\?v=20260825-logo-v3|platforms\/spotify\.svg\?v=20260825-logo-v3/);
+    assert.match(block, /width="24" height="24"/);
     assert.doesNotMatch(block, /storage\.googleapis\.com\/pr-newsroom/);
   }
 
@@ -93,6 +106,10 @@ test("platform headers use the official Spotify mark and a centered three-column
     assert.match(css, /\.platform-header\s*\{[\s\S]*?width:\s*calc\(100% \+ var\(--content-gutter\) \+ var\(--content-gutter\)\)/);
     assert.match(css, /\.radar-switch\s*\{[\s\S]*?grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
   }
+
+  assert.match(read("assets/css/dashboard.css"), /\.radar-switch a\.sp img\{width:24px;height:24px\}/);
+  assert.match(read("spotify/dashboard.css"), /\.radar-switch a\.sp img\{width:24px;height:24px\}/);
+  assert.match(read("social-app/app/globals.css"), /\.radar-switch a\.spotify img\s*\{[\s\S]*?width:\s*24px;[\s\S]*?height:\s*24px;/);
 });
 
 test("Social runtime is built into Pages without publishing its source tree", () => {
