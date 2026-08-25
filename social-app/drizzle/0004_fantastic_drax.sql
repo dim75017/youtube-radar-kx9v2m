@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `idx_editorial_schedule_platform_date` ON `editorial_schedule` (`platform`,`scheduled_for`);

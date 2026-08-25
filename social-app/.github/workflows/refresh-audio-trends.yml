@@ -1,0 +1,87 @@
+name: Refresh audio trends
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "27 5 * * *"
+    - cron: "27 17 * * *"
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: refresh-audio-trends
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Refresh the 50-audio public catalog
+        id: scan
+        continue-on-error: true
+        run: npm run audio-trends:refresh
+
+      - name: Validate inventory, provenance and refreshed assets
+        id: validation
+        if: steps.scan.outcome == 'success'
+        continue-on-error: true
+        run: node --experimental-strip-types --test tests/audio-trends.test.mjs tests/audio-trends-refresh.test.mjs
+
+      - name: Publish the refreshed snapshot
+        id: commit
+        if: steps.scan.outcome == 'success' && steps.validation.outcome == 'success'
+        run: |
+          if git diff --quiet -- data/audio-trends/feed.json data/audio-trends/refresh-status.json; then
+            echo "No validated audio changes to publish."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "lofi-social-radar-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/audio-trends/feed.json data/audio-trends/refresh-status.json
+          git commit -m "Refresh audio trends"
+          for attempt in 1 2 3; do
+            if git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              echo "changed=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          exit 1
+
+      - name: Dispatch the public dashboard publisher
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run publish-public-preview.yml --ref main
+
+      - name: Preserve a failed-attempt status
+        if: steps.scan.outcome == 'failure'
+        run: |
+          git config user.name "lofi-social-radar-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/audio-trends/refresh-status.json
+          git diff --cached --quiet || git commit -m "Record failed audio trend refresh"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Publish the failed-attempt status on the dashboard
+        if: steps.scan.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run publish-public-preview.yml --ref main
+
+      - name: Mark an invalid or failed scan
+        if: steps.scan.outcome == 'failure' || steps.validation.outcome == 'failure'
+        run: exit 1

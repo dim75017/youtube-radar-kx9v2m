@@ -1,0 +1,808 @@
+{
+  "version": 1,
+  "attemptedAt": "2026-08-25T05:52:58.355Z",
+  "status": "failed",
+  "published": false,
+  "inventory": {
+    "requiredDistinctTrends": 50,
+    "totalTrends": 50,
+    "distinctTrendIds": 50,
+    "distinctAudioUrls": 50,
+    "distinctReferenceUrls": 50,
+    "publishableReferenceVideos": 50,
+    "unpublishableReferenceTrendIds": [],
+    "publishable": true
+  },
+  "discoveryAudit": {
+    "scannedAt": "2026-08-25T05:52:58.355Z",
+    "status": "incomplete",
+    "complete": false,
+    "candidateCount": 164,
+    "qualifiedInventoryCount": 1,
+    "currentMatchedCount": 1,
+    "newCandidateCount": 163,
+    "added": [
+      "https://www.instagram.com/reels/audio/1006119841436928",
+      "https://www.instagram.com/reels/audio/1040129337188935",
+      "https://www.instagram.com/reels/audio/1047770533202108",
+      "https://www.instagram.com/reels/audio/1055079623617495",
+      "https://www.instagram.com/reels/audio/1066931830157201",
+      "https://www.instagram.com/reels/audio/1074068028223837",
+      "https://www.instagram.com/reels/audio/1115494040787732",
+      "https://www.instagram.com/reels/audio/1116722757315034",
+      "https://www.instagram.com/reels/audio/1134440541871679",
+      "https://www.instagram.com/reels/audio/1163544479135221",
+      "https://www.instagram.com/reels/audio/1176610871006162",
+      "https://www.instagram.com/reels/audio/1226647965481387",
+      "https://www.instagram.com/reels/audio/1244261080207881",
+      "https://www.instagram.com/reels/audio/1279574933274134",
+      "https://www.instagram.com/reels/audio/1309090040908747",
+      "https://www.instagram.com/reels/audio/1321809524522174",
+      "https://www.instagram.com/reels/audio/1336013760489689",
+      "https://www.instagram.com/reels/audio/1353000056123698",
+      "https://www.instagram.com/reels/audio/1356236634516969",
+      "https://www.instagram.com/reels/audio/1366353098874410",
+      "https://www.instagram.com/reels/audio/1384409688878850",
+      "https://www.instagram.com/reels/audio/1392969992841787",
+      "https://www.instagram.com/reels/audio/1404238250634252",
+      "https://www.instagram.com/reels/audio/1433652788352081",
+      "https://www.instagram.com/reels/audio/1442567383520183",
+      "https://www.instagram.com/reels/audio/1456694622381601",
+      "https://www.instagram.com/reels/audio/1457616852393704",
+      "https://www.instagram.com/reels/audio/1460390505443280",
+      "https://www.instagram.com/reels/audio/1467234368070031",
+      "https://www.instagram.com/reels/audio/1485190032675488",
+      "https://www.instagram.com/reels/audio/1492753392644819",
+      "https://www.instagram.com/reels/audio/1494662545202817",
+      "https://www.instagram.com/reels/audio/1526221591722544",
+      "https://www.instagram.com/reels/audio/1576942649432181",
+      "https://www.instagram.com/reels/audio/1580438116655562",
+      "https://www.instagram.com/reels/audio/168538230666796",
+      "https://www.instagram.com/reels/audio/1715351118547270",
+      "https://www.instagram.com/reels/audio/1749292175761306",
+      "https://www.instagram.com/reels/audio/1765294231067484",
+      "https://www.instagram.com/reels/audio/1844093005638456",
+      "https://www.instagram.com/reels/audio/1881039849486413",
+      "https://www.instagram.com/reels/audio/1896755513744102",
+      "https://www.instagram.com/reels/audio/1908594629696645",
+      "https://www.instagram.com/reels/audio/1917632528803914",
+      "https://www.instagram.com/reels/audio/1957736051613126",
+      "https://www.instagram.com/reels/audio/1976253089934877",
+      "https://www.instagram.com/reels/audio/2009703713207872",
+      "https://www.instagram.com/reels/audio/202891871734130",
+      "https://www.instagram.com/reels/audio/209276599691212",
+      "https://www.instagram.com/reels/audio/2106756196490611",
+      "https://www.instagram.com/reels/audio/2195704350892729",
+      "https://www.instagram.com/reels/audio/2206590442923471",
+      "https://www.instagram.com/reels/audio/220983215198366",
+      "https://www.instagram.com/reels/audio/2232168290889562",
+      "https://www.instagram.com/reels/audio/2234283286830203",
+      "https://www.instagram.com/reels/audio/2247629331920224",
+      "https://www.instagram.com/reels/audio/2415922182221309",
+      "https://www.instagram.com/reels/audio/2422397121605345",
+      "https://www.instagram.com/reels/audio/242667523150430",
+      "https://www.instagram.com/reels/audio/2491165237591989",
+      "https://www.instagram.com/reels/audio/24985539141095254",
+      "https://www.instagram.com/reels/audio/25000425346301372",
+      "https://www.instagram.com/reels/audio/25088393870839949",
+      "https://www.instagram.com/reels/audio/25147386098265653",
+      "https://www.instagram.com/reels/audio/25182047148134995",
+      "https://www.instagram.com/reels/audio/25258614587143683",
+      "https://www.instagram.com/reels/audio/25297444073251557",
+      "https://www.instagram.com/reels/audio/25373541205611069",
+      "https://www.instagram.com/reels/audio/25402855699407252",
+      "https://www.instagram.com/reels/audio/25459784500359604",
+      "https://www.instagram.com/reels/audio/25507657612234997",
+      "https://www.instagram.com/reels/audio/25559395583748280",
+      "https://www.instagram.com/reels/audio/25617592177942740",
+      "https://www.instagram.com/reels/audio/25652157387712151",
+      "https://www.instagram.com/reels/audio/25707406555517981",
+      "https://www.instagram.com/reels/audio/25788885124122934",
+      "https://www.instagram.com/reels/audio/25843690791914452",
+      "https://www.instagram.com/reels/audio/26018556917802399",
+      "https://www.instagram.com/reels/audio/26047585514865525",
+      "https://www.instagram.com/reels/audio/26052374901064226",
+      "https://www.instagram.com/reels/audio/261062298414489",
+      "https://www.instagram.com/reels/audio/26255719747423171",
+      "https://www.instagram.com/reels/audio/26327415146919911",
+      "https://www.instagram.com/reels/audio/26328089280158460",
+      "https://www.instagram.com/reels/audio/26386920184265226",
+      "https://www.instagram.com/reels/audio/26424954220520529",
+      "https://www.instagram.com/reels/audio/26525437267097889",
+      "https://www.instagram.com/reels/audio/26532927786309828",
+      "https://www.instagram.com/reels/audio/26557961990540242",
+      "https://www.instagram.com/reels/audio/26644584355225677",
+      "https://www.instagram.com/reels/audio/26666333036383246",
+      "https://www.instagram.com/reels/audio/26690253330662551",
+      "https://www.instagram.com/reels/audio/26868761529403213",
+      "https://www.instagram.com/reels/audio/26885590624412674",
+      "https://www.instagram.com/reels/audio/26923322580669821",
+      "https://www.instagram.com/reels/audio/2702836633382221",
+      "https://www.instagram.com/reels/audio/27043767605285229",
+      "https://www.instagram.com/reels/audio/27070461759205089",
+      "https://www.instagram.com/reels/audio/27173910075612553",
+      "https://www.instagram.com/reels/audio/27195721543447334",
+      "https://www.instagram.com/reels/audio/27435154212849943",
+      "https://www.instagram.com/reels/audio/27505661812392374",
+      "https://www.instagram.com/reels/audio/27587126967609168",
+      "https://www.instagram.com/reels/audio/275967263283018",
+      "https://www.instagram.com/reels/audio/27661000323550483",
+      "https://www.instagram.com/reels/audio/27669710879352765",
+      "https://www.instagram.com/reels/audio/2767482896732660",
+      "https://www.instagram.com/reels/audio/276863736527927",
+      "https://www.instagram.com/reels/audio/27738988309042529",
+      "https://www.instagram.com/reels/audio/28003889949202868",
+      "https://www.instagram.com/reels/audio/28302681646015420",
+      "https://www.instagram.com/reels/audio/32945215041760659",
+      "https://www.instagram.com/reels/audio/3301077486734950",
+      "https://www.instagram.com/reels/audio/33765302366393920",
+      "https://www.instagram.com/reels/audio/34291922853755802",
+      "https://www.instagram.com/reels/audio/357391828186054",
+      "https://www.instagram.com/reels/audio/35981693481446045",
+      "https://www.instagram.com/reels/audio/3762108120781128",
+      "https://www.instagram.com/reels/audio/3927839087485325",
+      "https://www.instagram.com/reels/audio/400025130573041",
+      "https://www.instagram.com/reels/audio/407484960012624",
+      "https://www.instagram.com/reels/audio/456609875082993",
+      "https://www.instagram.com/reels/audio/483068785447716",
+      "https://www.instagram.com/reels/audio/500331368617006",
+      "https://www.instagram.com/reels/audio/512327612541048",
+      "https://www.instagram.com/reels/audio/515371218997711",
+      "https://www.instagram.com/reels/audio/559505360249889",
+      "https://www.instagram.com/reels/audio/580559312417594",
+      "https://www.instagram.com/reels/audio/591634857982189",
+      "https://www.instagram.com/reels/audio/606249493080048",
+      "https://www.instagram.com/reels/audio/655541191561685",
+      "https://www.instagram.com/reels/audio/657451619378044",
+      "https://www.instagram.com/reels/audio/658302541207417",
+      "https://www.instagram.com/reels/audio/670134739446990",
+      "https://www.instagram.com/reels/audio/678525704610829",
+      "https://www.instagram.com/reels/audio/681011926995400",
+      "https://www.instagram.com/reels/audio/696487887387706",
+      "https://www.instagram.com/reels/audio/697437963384996",
+      "https://www.instagram.com/reels/audio/712456295295826",
+      "https://www.instagram.com/reels/audio/722903805204295",
+      "https://www.instagram.com/reels/audio/742606544766523",
+      "https://www.instagram.com/reels/audio/763532366565728",
+      "https://www.instagram.com/reels/audio/764432093247105",
+      "https://www.instagram.com/reels/audio/774763791792545",
+      "https://www.instagram.com/reels/audio/786337480831231",
+      "https://www.instagram.com/reels/audio/792019707128778",
+      "https://www.instagram.com/reels/audio/794894963508261",
+      "https://www.instagram.com/reels/audio/799620932740531",
+      "https://www.instagram.com/reels/audio/801721905756844",
+      "https://www.instagram.com/reels/audio/804208024981355",
+      "https://www.instagram.com/reels/audio/804774288727471",
+      "https://www.instagram.com/reels/audio/809457898519774",
+      "https://www.instagram.com/reels/audio/826718636931575",
+      "https://www.instagram.com/reels/audio/837297009242922",
+      "https://www.instagram.com/reels/audio/850453497286512",
+      "https://www.instagram.com/reels/audio/860202682923975",
+      "https://www.instagram.com/reels/audio/873992975157650",
+      "https://www.instagram.com/reels/audio/875716383095111",
+      "https://www.instagram.com/reels/audio/879178747518812",
+      "https://www.instagram.com/reels/audio/943133291523067",
+      "https://www.instagram.com/reels/audio/954122087366261",
+      "https://www.instagram.com/reels/audio/9573873819403156",
+      "https://www.instagram.com/reels/audio/993398866388191"
+    ],
+    "removed": [
+      "https://www.tiktok.com/music/Pocketful-of-Sunshine-6696420561934878722",
+      "https://www.tiktok.com/music/petal-7668507565575964673",
+      "https://www.tiktok.com/music/original-sound-7653201595181665038",
+      "https://www.tiktok.com/music/original-sound-7643191632304671518",
+      "https://www.tiktok.com/music/original-sound-7627517043541068566",
+      "https://www.tiktok.com/music/sonido-original-7651806743999073040",
+      "https://www.tiktok.com/music/original-sound-7642453200225815309",
+      "https://www.youtube.com/source/yaDcdlYhW-A/shorts",
+      "https://www.instagram.com/reels/audio/1850093231958659/",
+      "https://www.instagram.com/reels/audio/1344931484516320/",
+      "https://www.youtube.com/source/MexTmo_3naU/shorts",
+      "https://www.instagram.com/reels/audio/1537700161324079/",
+      "https://www.instagram.com/reels/audio/2815231028840352/",
+      "https://www.instagram.com/reels/audio/1544636237314027/",
+      "https://www.tiktok.com/music/fulfill-the-prophecy-7406872980187401003",
+      "https://www.tiktok.com/music/original-sound-7647999030882634509",
+      "https://www.tiktok.com/music/original-sound-7627238272384633631",
+      "https://www.tiktok.com/music/on-a-mission-7274043399086426113",
+      "https://www.tiktok.com/music/original-sound-7385248336640150304",
+      "https://www.tiktok.com/music/original-sound-7649038378872228638",
+      "https://www.tiktok.com/music/choosin-texas-7559312683885201425",
+      "https://www.tiktok.com/music/u-me-3-7649983963347896336",
+      "https://www.tiktok.com/music/original-sound-7642492753208757014",
+      "https://www.tiktok.com/music/dracula-jennie-remix-7603221525400455169",
+      "https://www.tiktok.com/music/let-down-7520755827558959894",
+      "https://www.tiktok.com/music/original-sound-7654835361444530974",
+      "https://www.tiktok.com/music/original-sound-7057703190136998703",
+      "https://www.tiktok.com/music/original-sound-7109091048936262442",
+      "https://www.tiktok.com/music/original-sound-7653092863365892886",
+      "https://www.tiktok.com/music/original-sound-7666712105047493389",
+      "https://www.tiktok.com/music/original-sound-7627692912205187861",
+      "https://www.tiktok.com/music/original-sound-limemation-7670928229259021078",
+      "https://www.tiktok.com/music/original-sound-7598369392350530335",
+      "https://www.tiktok.com/music/original-sound-6942717379948792582",
+      "https://www.tiktok.com/music/wrap-it-up-7208649829264837422",
+      "https://www.tiktok.com/music/Welp-Didn-t-Expect-That-6883042606616414210",
+      "https://www.tiktok.com/music/Call-It-What-You-Like-7478404064235030545",
+      "https://www.tiktok.com/music/original-sound-6816009995457465094",
+      "https://www.tiktok.com/music/original-sound-7479485074191223595",
+      "https://www.tiktok.com/music/%E3%82%AA%E3%83%AA%E3%82%B7-%E3%83%8A%E3%83%AB%E6%A5%BD%E6%9B%B2-%E3%81%97%E3%82%85%E3%82%93%E3%81%B2-7396305337546312449",
+      "https://www.tiktok.com/music/original-sound-7278773667109161734",
+      "https://www.youtube.com/source/tbi6urWo0Oo/shorts",
+      "https://www.tiktok.com/music/Stress-tension-suspense-mystery-6817565543474661378",
+      "https://www.tiktok.com/music/syrup-by-solomon-7133051944632847146",
+      "https://www.tiktok.com/music/original-sound-7533445459421252365",
+      "https://www.tiktok.com/music/original-sound-7670682860105288479",
+      "https://www.tiktok.com/music/Originalton-7668692025151769377",
+      "https://www.tiktok.com/music/Cinnamon-toast-crunch-beat-7484768502110440214",
+      "https://www.tiktok.com/music/son-original-7649860736952388384"
+    ],
+    "retainedIds": [
+      "stupid-song-montage"
+    ],
+    "candidateAudioUrls": [
+      "https://www.instagram.com/reels/audio/1006119841436928",
+      "https://www.instagram.com/reels/audio/1040129337188935",
+      "https://www.instagram.com/reels/audio/1047770533202108",
+      "https://www.instagram.com/reels/audio/1055079623617495",
+      "https://www.instagram.com/reels/audio/1066931830157201",
+      "https://www.instagram.com/reels/audio/1074068028223837",
+      "https://www.instagram.com/reels/audio/1115494040787732",
+      "https://www.instagram.com/reels/audio/1116722757315034",
+      "https://www.instagram.com/reels/audio/1134440541871679",
+      "https://www.instagram.com/reels/audio/1163544479135221",
+      "https://www.instagram.com/reels/audio/1176610871006162",
+      "https://www.instagram.com/reels/audio/1226647965481387",
+      "https://www.instagram.com/reels/audio/1244261080207881",
+      "https://www.instagram.com/reels/audio/1279574933274134",
+      "https://www.instagram.com/reels/audio/1309090040908747",
+      "https://www.instagram.com/reels/audio/1321809524522174",
+      "https://www.instagram.com/reels/audio/1332050085528695",
+      "https://www.instagram.com/reels/audio/1336013760489689",
+      "https://www.instagram.com/reels/audio/1353000056123698",
+      "https://www.instagram.com/reels/audio/1356236634516969",
+      "https://www.instagram.com/reels/audio/1366353098874410",
+      "https://www.instagram.com/reels/audio/1384409688878850",
+      "https://www.instagram.com/reels/audio/1392969992841787",
+      "https://www.instagram.com/reels/audio/1404238250634252",
+      "https://www.instagram.com/reels/audio/1433652788352081",
+      "https://www.instagram.com/reels/audio/1442567383520183",
+      "https://www.instagram.com/reels/audio/1456694622381601",
+      "https://www.instagram.com/reels/audio/1457616852393704",
+      "https://www.instagram.com/reels/audio/1460390505443280",
+      "https://www.instagram.com/reels/audio/1467234368070031",
+      "https://www.instagram.com/reels/audio/1485190032675488",
+      "https://www.instagram.com/reels/audio/1492753392644819",
+      "https://www.instagram.com/reels/audio/1494662545202817",
+      "https://www.instagram.com/reels/audio/1526221591722544",
+      "https://www.instagram.com/reels/audio/1576942649432181",
+      "https://www.instagram.com/reels/audio/1580438116655562",
+      "https://www.instagram.com/reels/audio/168538230666796",
+      "https://www.instagram.com/reels/audio/1715351118547270",
+      "https://www.instagram.com/reels/audio/1749292175761306",
+      "https://www.instagram.com/reels/audio/1765294231067484",
+      "https://www.instagram.com/reels/audio/1844093005638456",
+      "https://www.instagram.com/reels/audio/1881039849486413",
+      "https://www.instagram.com/reels/audio/1896755513744102",
+      "https://www.instagram.com/reels/audio/1908594629696645",
+      "https://www.instagram.com/reels/audio/1917632528803914",
+      "https://www.instagram.com/reels/audio/1957736051613126",
+      "https://www.instagram.com/reels/audio/1976253089934877",
+      "https://www.instagram.com/reels/audio/2009703713207872",
+      "https://www.instagram.com/reels/audio/202891871734130",
+      "https://www.instagram.com/reels/audio/209276599691212",
+      "https://www.instagram.com/reels/audio/2106756196490611",
+      "https://www.instagram.com/reels/audio/2195704350892729",
+      "https://www.instagram.com/reels/audio/2206590442923471",
+      "https://www.instagram.com/reels/audio/220983215198366",
+      "https://www.instagram.com/reels/audio/2232168290889562",
+      "https://www.instagram.com/reels/audio/2234283286830203",
+      "https://www.instagram.com/reels/audio/2247629331920224",
+      "https://www.instagram.com/reels/audio/2415922182221309",
+      "https://www.instagram.com/reels/audio/2422397121605345",
+      "https://www.instagram.com/reels/audio/242667523150430",
+      "https://www.instagram.com/reels/audio/2491165237591989",
+      "https://www.instagram.com/reels/audio/24985539141095254",
+      "https://www.instagram.com/reels/audio/25000425346301372",
+      "https://www.instagram.com/reels/audio/25088393870839949",
+      "https://www.instagram.com/reels/audio/25147386098265653",
+      "https://www.instagram.com/reels/audio/25182047148134995",
+      "https://www.instagram.com/reels/audio/25258614587143683",
+      "https://www.instagram.com/reels/audio/25297444073251557",
+      "https://www.instagram.com/reels/audio/25373541205611069",
+      "https://www.instagram.com/reels/audio/25402855699407252",
+      "https://www.instagram.com/reels/audio/25459784500359604",
+      "https://www.instagram.com/reels/audio/25507657612234997",
+      "https://www.instagram.com/reels/audio/25559395583748280",
+      "https://www.instagram.com/reels/audio/25617592177942740",
+      "https://www.instagram.com/reels/audio/25652157387712151",
+      "https://www.instagram.com/reels/audio/25707406555517981",
+      "https://www.instagram.com/reels/audio/25788885124122934",
+      "https://www.instagram.com/reels/audio/25843690791914452",
+      "https://www.instagram.com/reels/audio/26018556917802399",
+      "https://www.instagram.com/reels/audio/26047585514865525",
+      "https://www.instagram.com/reels/audio/26052374901064226",
+      "https://www.instagram.com/reels/audio/261062298414489",
+      "https://www.instagram.com/reels/audio/26255719747423171",
+      "https://www.instagram.com/reels/audio/26327415146919911",
+      "https://www.instagram.com/reels/audio/26328089280158460",
+      "https://www.instagram.com/reels/audio/26386920184265226",
+      "https://www.instagram.com/reels/audio/26424954220520529",
+      "https://www.instagram.com/reels/audio/26525437267097889",
+      "https://www.instagram.com/reels/audio/26532927786309828",
+      "https://www.instagram.com/reels/audio/26557961990540242",
+      "https://www.instagram.com/reels/audio/26644584355225677",
+      "https://www.instagram.com/reels/audio/26666333036383246",
+      "https://www.instagram.com/reels/audio/26690253330662551",
+      "https://www.instagram.com/reels/audio/26868761529403213",
+      "https://www.instagram.com/reels/audio/26885590624412674",
+      "https://www.instagram.com/reels/audio/26923322580669821",
+      "https://www.instagram.com/reels/audio/2702836633382221",
+      "https://www.instagram.com/reels/audio/27043767605285229",
+      "https://www.instagram.com/reels/audio/27070461759205089",
+      "https://www.instagram.com/reels/audio/27173910075612553",
+      "https://www.instagram.com/reels/audio/27195721543447334",
+      "https://www.instagram.com/reels/audio/27435154212849943",
+      "https://www.instagram.com/reels/audio/27505661812392374",
+      "https://www.instagram.com/reels/audio/27587126967609168",
+      "https://www.instagram.com/reels/audio/275967263283018",
+      "https://www.instagram.com/reels/audio/27661000323550483",
+      "https://www.instagram.com/reels/audio/27669710879352765",
+      "https://www.instagram.com/reels/audio/2767482896732660",
+      "https://www.instagram.com/reels/audio/276863736527927",
+      "https://www.instagram.com/reels/audio/27738988309042529",
+      "https://www.instagram.com/reels/audio/28003889949202868",
+      "https://www.instagram.com/reels/audio/28302681646015420",
+      "https://www.instagram.com/reels/audio/32945215041760659",
+      "https://www.instagram.com/reels/audio/3301077486734950",
+      "https://www.instagram.com/reels/audio/33765302366393920",
+      "https://www.instagram.com/reels/audio/34291922853755802",
+      "https://www.instagram.com/reels/audio/357391828186054",
+      "https://www.instagram.com/reels/audio/35981693481446045",
+      "https://www.instagram.com/reels/audio/3762108120781128",
+      "https://www.instagram.com/reels/audio/3927839087485325",
+      "https://www.instagram.com/reels/audio/400025130573041",
+      "https://www.instagram.com/reels/audio/407484960012624",
+      "https://www.instagram.com/reels/audio/456609875082993",
+      "https://www.instagram.com/reels/audio/483068785447716",
+      "https://www.instagram.com/reels/audio/500331368617006",
+      "https://www.instagram.com/reels/audio/512327612541048",
+      "https://www.instagram.com/reels/audio/515371218997711",
+      "https://www.instagram.com/reels/audio/559505360249889",
+      "https://www.instagram.com/reels/audio/580559312417594",
+      "https://www.instagram.com/reels/audio/591634857982189",
+      "https://www.instagram.com/reels/audio/606249493080048",
+      "https://www.instagram.com/reels/audio/655541191561685",
+      "https://www.instagram.com/reels/audio/657451619378044",
+      "https://www.instagram.com/reels/audio/658302541207417",
+      "https://www.instagram.com/reels/audio/670134739446990",
+      "https://www.instagram.com/reels/audio/678525704610829",
+      "https://www.instagram.com/reels/audio/681011926995400",
+      "https://www.instagram.com/reels/audio/696487887387706",
+      "https://www.instagram.com/reels/audio/697437963384996",
+      "https://www.instagram.com/reels/audio/712456295295826",
+      "https://www.instagram.com/reels/audio/722903805204295",
+      "https://www.instagram.com/reels/audio/742606544766523",
+      "https://www.instagram.com/reels/audio/763532366565728",
+      "https://www.instagram.com/reels/audio/764432093247105",
+      "https://www.instagram.com/reels/audio/774763791792545",
+      "https://www.instagram.com/reels/audio/786337480831231",
+      "https://www.instagram.com/reels/audio/792019707128778",
+      "https://www.instagram.com/reels/audio/794894963508261",
+      "https://www.instagram.com/reels/audio/799620932740531",
+      "https://www.instagram.com/reels/audio/801721905756844",
+      "https://www.instagram.com/reels/audio/804208024981355",
+      "https://www.instagram.com/reels/audio/804774288727471",
+      "https://www.instagram.com/reels/audio/809457898519774",
+      "https://www.instagram.com/reels/audio/826718636931575",
+      "https://www.instagram.com/reels/audio/837297009242922",
+      "https://www.instagram.com/reels/audio/850453497286512",
+      "https://www.instagram.com/reels/audio/860202682923975",
+      "https://www.instagram.com/reels/audio/873992975157650",
+      "https://www.instagram.com/reels/audio/875716383095111",
+      "https://www.instagram.com/reels/audio/879178747518812",
+      "https://www.instagram.com/reels/audio/943133291523067",
+      "https://www.instagram.com/reels/audio/954122087366261",
+      "https://www.instagram.com/reels/audio/9573873819403156",
+      "https://www.instagram.com/reels/audio/993398866388191"
+    ],
+    "candidateReferences": [
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1006119841436928",
+        "referenceUrl": "https://www.instagram.com/reel/DQmw63kDgpG"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1040129337188935",
+        "referenceUrl": "https://www.instagram.com/reel/DQNBOfYDO2Y"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1047770533202108",
+        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1055079623617495",
+        "referenceUrl": "https://www.instagram.com/reel/Dbl74zoSjm3"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1074068028223837",
+        "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1176610871006162",
+        "referenceUrl": "https://www.instagram.com/reel/DQmw63kDgpG"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1226647965481387",
+        "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1332050085528695",
+        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1356236634516969",
+        "referenceUrl": "https://www.instagram.com/reel/DQ7xEBVEddX"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1366353098874410",
+        "referenceUrl": "https://www.instagram.com/reel/DbWQg0Voaj0"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1404238250634252",
+        "referenceUrl": "https://www.instagram.com/reel/DQ7xEBVEddX"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1433652788352081",
+        "referenceUrl": "https://www.instagram.com/reel/DQ7xEBVEddX"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1442567383520183",
+        "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1457616852393704",
+        "referenceUrl": "https://www.instagram.com/reel/DUnmzGeimeE"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1467234368070031",
+        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1492753392644819",
+        "referenceUrl": "https://www.instagram.com/reel/DbgY9H1oXnY"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1494662545202817",
+        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1526221591722544",
+        "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1576942649432181",
+        "referenceUrl": "https://www.instagram.com/reel/DQmw63kDgpG"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1580438116655562",
+        "referenceUrl": "https://www.instagram.com/reel/DQmw63kDgpG"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1749292175761306",
+        "referenceUrl": "https://www.instagram.com/reel/DUnmzGeimeE"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1765294231067484",
+        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1881039849486413",
+        "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1908594629696645",
+        "referenceUrl": "https://www.instagram.com/reel/DQ7xEBVEddX"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1957736051613126",
+        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/1976253089934877",
+        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/2195704350892729",
+        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/220983215198366",
+        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/24985539141095254",
+        "referenceUrl": "https://www.instagram.com/reel/DQ7xEBVEddX"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/25373541205611069",
+        "referenceUrl": "https://www.instagram.com/reel/DR47mFxEbmf"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/25707406555517981",
+        "referenceUrl": "https://www.instagram.com/reel/DR47mFxEbmf"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/25843690791914452",
+        "referenceUrl": "https://www.instagram.com/reel/DUnmzGeimeE"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/26018556917802399",
+        "referenceUrl": "https://www.instagram.com/reel/DUnmzGeimeE"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/26047585514865525",
+        "referenceUrl": "https://www.instagram.com/reel/DR47mFxEbmf"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/26525437267097889",
+        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/26644584355225677",
+        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/27070461759205089",
+        "referenceUrl": "https://www.instagram.com/reel/DbtLDTcKkQm"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/2767482896732660",
+        "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/32945215041760659",
+        "referenceUrl": "https://www.instagram.com/reel/DQ7xEBVEddX"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/3301077486734950",
+        "referenceUrl": "https://www.instagram.com/reel/DQmw63kDgpG"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/357391828186054",
+        "referenceUrl": "https://www.instagram.com/reel/DQ7xEBVEddX"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/3927839087485325",
+        "referenceUrl": "https://www.instagram.com/reel/Db3OnskP8PN"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/407484960012624",
+        "referenceUrl": "https://www.instagram.com/reel/DbgY9H1oXnY"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/483068785447716",
+        "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/512327612541048",
+        "referenceUrl": "https://www.instagram.com/reel/DQNBOfYDO2Y"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/515371218997711",
+        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/559505360249889",
+        "referenceUrl": "https://www.instagram.com/reel/Db6LPxaODiT"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/580559312417594",
+        "referenceUrl": "https://www.instagram.com/reel/DUnmzGeimeE"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/712456295295826",
+        "referenceUrl": "https://www.instagram.com/reel/Dbnn9oFMXbx"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/722903805204295",
+        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/742606544766523",
+        "referenceUrl": "https://www.instagram.com/reel/DQmw63kDgpG"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/764432093247105",
+        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/786337480831231",
+        "referenceUrl": "https://www.instagram.com/reel/DUnmzGeimeE"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/794894963508261",
+        "referenceUrl": "https://www.instagram.com/reel/DQmw63kDgpG"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/804774288727471",
+        "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/809457898519774",
+        "referenceUrl": "https://www.instagram.com/reel/DQNBOfYDO2Y"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/826718636931575",
+        "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/837297009242922",
+        "referenceUrl": "https://www.instagram.com/reel/DQNBOfYDO2Y"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/860202682923975",
+        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/954122087366261",
+        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+      }
+    ],
+    "sourceBreakdown": [
+      {
+        "id": "buffer-tiktok-trends",
+        "label": "Buffer · tendances et sons TikTok",
+        "url": "https://buffer.com/resources/how-to-find-trending-tiktok-sounds/",
+        "status": "success",
+        "candidateCount": 0,
+        "referenceCandidateCount": 0,
+        "error": null
+      },
+      {
+        "id": "later-instagram-reels-trends",
+        "label": "Later · tendances Reels Instagram",
+        "url": "https://later.com/blog/instagram-reels-trends/",
+        "status": "success",
+        "candidateCount": 131,
+        "referenceCandidateCount": 36,
+        "error": null
+      },
+      {
+        "id": "socialpilot-tiktok-trends",
+        "label": "SocialPilot · tendances TikTok",
+        "url": "https://www.socialpilot.co/blog/tiktok-trends",
+        "status": "success",
+        "candidateCount": 0,
+        "referenceCandidateCount": 0,
+        "error": null
+      },
+      {
+        "id": "socialpilot-instagram-reels-trends",
+        "label": "SocialPilot · tendances Reels Instagram",
+        "url": "https://www.socialpilot.co/blog/instagram-reels-trends",
+        "status": "success",
+        "candidateCount": 34,
+        "referenceCandidateCount": 24,
+        "error": null
+      }
+    ]
+  },
+  "coverage": {
+    "totalChecked": 47,
+    "totalMatched": 0,
+    "requiredTotal": 36,
+    "ratio": 0,
+    "providersPassed": false,
+    "publishable": false,
+    "catalogPublishable": true,
+    "instagramPlaybackChecked": 6,
+    "instagramPlaybackMatched": 6,
+    "instagramPlaybackComplete": true,
+    "tiktokThumbnailChecked": 41,
+    "tiktokThumbnailMatched": 40,
+    "tiktokThumbnailCoverage": 0.975609756097561,
+    "tiktokThumbnailComplete": false,
+    "thumbnailPublishable": false,
+    "assetPublishable": false,
+    "discoveryPublishable": false,
+    "counterPublishable": false
+  },
+  "providers": [
+    {
+      "platform": "instagram",
+      "checked": 6,
+      "matched": 0,
+      "updated": 6,
+      "requiredMatched": 5,
+      "coverage": 0,
+      "thumbnailChecked": 0,
+      "thumbnailMatched": 0,
+      "thumbnailCoverage": 0,
+      "thumbnailComplete": false,
+      "status": "failed",
+      "errors": [
+        "young-and-beautiful: compteur public non lie a cette identite audio",
+        "less-than-a-lover: compteur public non lie a cette identite audio",
+        "sirens-cinematic-tension: compteur public non lie a cette identite audio",
+        "odysseus-heroic-edit: compteur public non lie a cette identite audio",
+        "freaked-out-list: compteur public non lie a cette identite audio",
+        "stupid-song-montage: compteur public non lie a cette identite audio",
+        "couverture insuffisante: 0/6, minimum 5"
+      ]
+    },
+    {
+      "platform": "tiktok",
+      "checked": 41,
+      "matched": 0,
+      "updated": 40,
+      "requiredMatched": 29,
+      "coverage": 0,
+      "thumbnailChecked": 41,
+      "thumbnailMatched": 40,
+      "thumbnailCoverage": 0.975609756097561,
+      "thumbnailComplete": false,
+      "status": "failed",
+      "errors": [
+        "pocketful-of-sunshine: compteur public non lie a cette identite audio",
+        "petal-soft-chaos: compteur public non lie a cette identite audio",
+        "baby-just-wanna-dance: compteur public non lie a cette identite audio",
+        "saxophones-getting-louder: oEmbed TikTok non attribuable a la video de reference; compteur public non lie a cette identite audio",
+        "ghosting-you-montage: compteur public non lie a cette identite audio",
+        "te-extrano-motivation: compteur public non lie a cette identite audio",
+        "obsession-nice-date: compteur public non lie a cette identite audio",
+        "tiktok-two-personalities-401003: compteur public non lie a cette identite audio",
+        "tiktok-kumar-method-634509: compteur public non lie a cette identite audio",
+        "tiktok-not-very-nonchalant-633631: compteur public non lie a cette identite audio",
+        "tiktok-netflix-documentary-confessional-426113: compteur public non lie a cette identite audio",
+        "tiktok-pain-oh-no-spain-150304: compteur public non lie a cette identite audio",
+        "tiktok-bangladesh-absurd-complaint-228638: compteur public non lie a cette identite audio",
+        "tiktok-choosin-texas-western-reveal-201425: compteur public non lie a cette identite audio",
+        "tiktok-u-me-love-timeline-896336: compteur public non lie a cette identite audio",
+        "tiktok-ss26-editorial-transition-757014: compteur public non lie a cette identite audio",
+        "tiktok-dracula-jennie-remix-455169: compteur public non lie a cette identite audio",
+        "tiktok-let-down-emotional-rescue-959894: compteur public non lie a cette identite audio",
+        "tiktok-broken-rules-temptation-530974: compteur public non lie a cette identite audio",
+        "tiktok-viral-moment-backstory-998703: compteur public non lie a cette identite audio",
+        "tiktok-different-lives-split-262442: compteur public non lie a cette identite audio",
+        "tiktok-rush-hour-understand-me-892886: compteur public non lie a cette identite audio",
+        "tiktok-suspect-hidden-plain-sight-493389: compteur public non lie a cette identite audio",
+        "tiktok-video-game-main-menu-187861: compteur public non lie a cette identite audio",
+        "tiktok-backrooms-stay-in-character-lofi-boy-021078: compteur public non lie a cette identite audio",
+        "tiktok-study-until-they-text-aging-530335: compteur public non lie a cette identite audio",
+        "tiktok-deadline-tomorrow-turbo-792582: compteur public non lie a cette identite audio",
+        "tiktok-wrap-it-up-procrastination-837422: compteur public non lie a cette identite audio",
+        "tiktok-social-battery-solo-mode-414210: compteur public non lie a cette identite audio",
+        "tiktok-choose-your-lofi-character-030545: compteur public non lie a cette identite audio",
+        "tiktok-choose-your-lofi-character-465094: compteur public non lie a cette identite audio",
+        "tiktok-social-battery-solo-mode-223595: compteur public non lie a cette identite audio",
+        "tiktok-ice-melting-study-challenge-312449: compteur public non lie a cette identite audio",
+        "tiktok-social-battery-solo-mode-161734: compteur public non lie a cette identite audio",
+        "tiktok-explaining-game-lore-661378: compteur public non lie a cette identite audio",
+        "tiktok-study-hours-scoreboard-847146: compteur public non lie a cette identite audio",
+        "tiktok-study-hours-scoreboard-252365: compteur public non lie a cette identite audio",
+        "tiktok-explaining-game-lore-288479: compteur public non lie a cette identite audio",
+        "tiktok-gaming-setup-night-reveal-769377: compteur public non lie a cette identite audio",
+        "tiktok-discord-eh-les-copains-440214: compteur public non lie a cette identite audio",
+        "tiktok-twins-at-the-carousel-388384: compteur public non lie a cette identite audio",
+        "couverture insuffisante: 0/41, minimum 29",
+        "couverture miniatures insuffisante: 40/41, minimum 41"
+      ]
+    },
+    {
+      "platform": "youtube",
+      "checked": 0,
+      "matched": 0,
+      "updated": 0,
+      "requiredMatched": 0,
+      "coverage": 0,
+      "thumbnailChecked": 0,
+      "thumbnailMatched": 0,
+      "thumbnailCoverage": 0,
+      "thumbnailComplete": false,
+      "status": "limited",
+      "errors": [
+        "YouTube n'expose pas de compteur global d'utilisations audio comparable."
+      ]
+    }
+  ]
+}

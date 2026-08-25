@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "minimumParsedSources": 3,
+  "sources": [
+    {
+      "id": "buffer-tiktok",
+      "label": "Buffer · TikTok",
+      "platform": "tiktok",
+      "kind": "editorial",
+      "url": "https://buffer.com/resources/trending-songs-tiktok/",
+      "requiredMarkers": [
+        "trending tiktok songs and sounds",
+        "updated august 2026"
+      ]
+    },
+    {
+      "id": "later-instagram",
+      "label": "Later · Instagram Reels",
+      "platform": "instagram",
+      "kind": "editorial",
+      "url": "https://later.com/blog/instagram-reels-trends/",
+      "requiredMarkers": [
+        "trending reels",
+        "august 2026 roundup"
+      ]
+    },
+    {
+      "id": "socialpilot-tiktok",
+      "label": "SocialPilot · TikTok",
+      "platform": "tiktok",
+      "kind": "editorial",
+      "url": "https://www.socialpilot.co/blog/tiktok-trends",
+      "requiredMarkers": [
+        "trending tiktok",
+        "viral trends"
+      ]
+    },
+    {
+      "id": "socialpilot-instagram",
+      "label": "SocialPilot · Instagram Reels",
+      "platform": "instagram",
+      "kind": "editorial",
+      "url": "https://www.socialpilot.co/blog/instagram-reels-trends",
+      "requiredMarkers": [
+        "instagram reels trends",
+        "trending audio"
+      ]
+    },
+    {
+      "id": "tokchart-public",
+      "label": "Tokchart · sons TikTok",
+      "platform": "tiktok",
+      "kind": "tracker",
+      "url": "https://tokchart.com/dashboard/tiktok-trending-sounds",
+      "requiredMarkers": [
+        "top trending sounds on tiktok right now",
+        "tokchart score"
+      ]
+    },
+    {
+      "id": "youtube-shorts-daily",
+      "label": "TrendVideosHub · YouTube Shorts",
+      "platform": "youtube",
+      "kind": "tracker",
+      "url": "https://trendvideoshub.com/",
+      "requiredMarkers": [
+        "trending youtube videos",
+        "updated daily shorts"
+      ]
+    },
+    {
+      "id": "x-france-trends",
+      "label": "X · tendances France",
+      "platform": "x",
+      "kind": "x-api",
+      "url": "https://api.x.com/2/trends/by/woeid/23424819?max_trends=50",
+      "requiredMarkers": []
+    }
+  ]
+}

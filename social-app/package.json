@@ -1,0 +1,50 @@
+{
+  "name": "lofi-social-radar",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "vinext dev",
+    "build": "vinext build",
+    "build:preview": "vite build --config preview/vite.config.ts && node scripts/build-public-preview-data.mjs",
+    "start": "vinext start",
+    "test": "vinext build && node --test tests/rendered-html.test.mjs tests/public-history-scope.test.mjs tests/live-metric-history.test.mjs tests/social-duration.test.mjs tests/social-editorial-analysis.test.mjs tests/social-formats.test.mjs tests/social-ideas.test.mjs tests/editorial-workflow.test.mjs tests/social-media.test.mjs tests/social-inline-player.test.mjs tests/daily-rotation.test.mjs tests/social-ranking.test.mjs tests/social-score.test.mjs tests/social-trends.test.mjs tests/social-trends-refresh.test.mjs tests/audio-trends.test.mjs tests/audio-trends-refresh.test.mjs tests/trends-health.test.mjs tests/trend-scan-status.test.mjs tests/audience-metrics.test.mjs tests/comment-opportunities.test.mjs tests/comment-radar-refresh.test.mjs tests/comment-drop-alerts.test.mjs tests/lofi-voice.test.mjs tests/well-formed-unicode.test.mjs tests/instagram-embed-import.test.mjs",
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern work --ignore-pattern outputs",
+    "db:generate": "drizzle-kit generate",
+    "trends:refresh": "node --experimental-strip-types scripts/refresh-social-trends.mjs",
+    "audio-trends:refresh": "node --experimental-strip-types scripts/refresh-audio-trends.mjs",
+    "audience:refresh": "node --experimental-strip-types scripts/collect-audience-history.mjs",
+    "comments:refresh": "node --experimental-strip-types scripts/refresh-comment-opportunities.mjs --lane=fast",
+    "comments:refresh:deep": "node --experimental-strip-types scripts/refresh-comment-opportunities.mjs --lane=deep",
+    "comments:alert": "node --experimental-strip-types scripts/notify-comment-drops.mjs",
+    "comments:watchlist": "node scripts/resolve-watchlist-channels.mjs",
+    "comments:validate": "node --experimental-strip-types --test tests/comment-opportunities.test.mjs tests/comment-radar-refresh.test.mjs tests/comment-drop-alerts.test.mjs tests/lofi-voice.test.mjs"
+  },
+  "dependencies": {
+    "drizzle-orm": "0.45.2",
+    "next": "16.2.6",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.37.1",
+    "@tailwindcss/postcss": "4.2.1",
+    "@types/node": "22.19.19",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.2",
+    "@vitejs/plugin-rsc": "0.5.26",
+    "drizzle-kit": "0.31.10",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.2.6",
+    "react-server-dom-webpack": "19.2.6",
+    "tailwindcss": "4.2.1",
+    "typescript": "5.9.3",
+    "vinext": "0.0.50",
+    "vite": "8.0.13",
+    "wrangler": "4.92.0"
+  },
+  "type": "module"
+}

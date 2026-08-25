@@ -1,0 +1,693 @@
+{
+  "version": 2,
+  "generatedAt": "2026-08-25T07:26:45.145Z",
+  "platforms": {
+    "youtube": {
+      "profileUrl": "https://www.youtube.com/@LofiGirl",
+      "observations": [
+        {
+          "capturedAt": "2020-04-09T12:00:00.000Z",
+          "followers": 5000000,
+          "precision": "milestone",
+          "sourceUrl": "https://www.instagram.com/lofigirl/p/B-xH2fCIqKu/",
+          "label": "Publication officielle : 5 millions d’abonnés YouTube"
+        },
+        {
+          "capturedAt": "2022-02-03T21:05:27.000Z",
+          "followers": 10000000,
+          "precision": "milestone",
+          "sourceUrl": "https://x.com/lofigirl/status/1489344303918989322",
+          "label": "Publication officielle : 10 millions d’abonnés YouTube"
+        },
+        {
+          "capturedAt": "2022-07-20T12:00:00.000Z",
+          "followers": 11000000,
+          "precision": "milestone",
+          "sourceUrl": "https://www.instagram.com/lofigirl/reel/CgPeUGcIkkK/",
+          "label": "Publication officielle : 11 millions d’abonnés YouTube"
+        },
+        {
+          "capturedAt": "2023-02-19T20:42:56.000Z",
+          "followers": 12000000,
+          "precision": "milestone",
+          "sourceUrl": "https://x.com/lofigirl/status/1627408414526562305",
+          "label": "Publication officielle : 12 millions d’abonnés YouTube"
+        },
+        {
+          "capturedAt": "2023-06-20T16:02:46.000Z",
+          "followers": 13000000,
+          "precision": "milestone",
+          "sourceUrl": "https://x.com/lofigirl/status/1671186839368073216",
+          "label": "Publication officielle : 13 millions d’abonnés YouTube"
+        },
+        {
+          "capturedAt": "2024-02-29T18:42:45.000Z",
+          "followers": 14000000,
+          "precision": "milestone",
+          "sourceUrl": "https://x.com/lofigirl/status/1763273619033952531",
+          "label": "Publication officielle : 14 millions d’abonnés YouTube"
+        },
+        {
+          "capturedAt": "2026-08-11T09:43:44.143Z",
+          "followers": 15800000,
+          "precision": "platform-rounded",
+          "sourceUrl": "https://www.youtube.com/@LofiGirl",
+          "label": "Profil public YouTube : 15,8 millions d’abonnés affichés"
+        },
+        {
+          "capturedAt": "2026-08-12T12:38:46.616Z",
+          "followers": 15800000,
+          "precision": "platform-rounded",
+          "sourceUrl": "https://www.youtube.com/@LofiGirl",
+          "label": "Profil public YouTube · 15.8M"
+        },
+        {
+          "capturedAt": "2026-08-13T18:13:14.452Z",
+          "followers": 15800000,
+          "precision": "platform-rounded",
+          "sourceUrl": "https://www.youtube.com/@LofiGirl",
+          "label": "Profil public YouTube · 15,8 M d’abonnés affichés"
+        },
+        {
+          "capturedAt": "2026-08-14T09:46:28.590Z",
+          "followers": 15800000,
+          "precision": "platform-rounded",
+          "sourceUrl": "https://www.youtube.com/@LofiGirl",
+          "label": "Profil public YouTube · 15.8M"
+        },
+        {
+          "capturedAt": "2026-08-15T07:49:03.422Z",
+          "followers": 15800000,
+          "precision": "platform-rounded",
+          "sourceUrl": "https://www.youtube.com/@LofiGirl",
+          "label": "Profil public YouTube · 15.8M"
+        },
+        {
+          "capturedAt": "2026-08-16T07:53:31.380Z",
+          "followers": 15800000,
+          "precision": "platform-rounded",
+          "sourceUrl": "https://www.youtube.com/@LofiGirl",
+          "label": "Profil public YouTube · 15.8M"
+        },
+        {
+          "capturedAt": "2026-08-17T07:35:04.781Z",
+          "followers": 15800000,
+          "precision": "platform-rounded",
+          "sourceUrl": "https://www.youtube.com/@LofiGirl",
+          "label": "Profil public YouTube · 15.8M"
+        },
+        {
+          "capturedAt": "2026-08-18T07:22:03.263Z",
+          "followers": 15800000,
+          "precision": "platform-rounded",
+          "sourceUrl": "https://www.youtube.com/@LofiGirl",
+          "label": "Profil public YouTube · 15.8M"
+        },
+        {
+          "capturedAt": "2026-08-19T07:21:58.202Z",
+          "followers": 15800000,
+          "precision": "platform-rounded",
+          "sourceUrl": "https://www.youtube.com/@LofiGirl",
+          "label": "Profil public YouTube · 15.8M"
+        },
+        {
+          "capturedAt": "2026-08-20T07:24:38.606Z",
+          "followers": 15800000,
+          "precision": "platform-rounded",
+          "sourceUrl": "https://www.youtube.com/@LofiGirl",
+          "label": "Profil public YouTube · 15.8M"
+        },
+        {
+          "capturedAt": "2026-08-21T07:25:33.966Z",
+          "followers": 15800000,
+          "precision": "platform-rounded",
+          "sourceUrl": "https://www.youtube.com/@LofiGirl",
+          "label": "Profil public YouTube · 15.8M"
+        },
+        {
+          "capturedAt": "2026-08-22T07:10:26.822Z",
+          "followers": 15800000,
+          "precision": "platform-rounded",
+          "sourceUrl": "https://www.youtube.com/@LofiGirl",
+          "label": "Profil public YouTube · 15.8M"
+        },
+        {
+          "capturedAt": "2026-08-23T07:11:43.423Z",
+          "followers": 15800000,
+          "precision": "platform-rounded",
+          "sourceUrl": "https://www.youtube.com/@LofiGirl",
+          "label": "Profil public YouTube · 15.8M"
+        },
+        {
+          "capturedAt": "2026-08-24T07:39:59.555Z",
+          "followers": 15800000,
+          "precision": "platform-rounded",
+          "sourceUrl": "https://www.youtube.com/@LofiGirl",
+          "label": "Profil public YouTube · 15.8M"
+        },
+        {
+          "capturedAt": "2026-08-25T07:26:45.145Z",
+          "followers": 15800000,
+          "precision": "platform-rounded",
+          "sourceUrl": "https://www.youtube.com/@LofiGirl",
+          "label": "Profil public YouTube · 15.8M"
+        }
+      ],
+      "engagementByPeriod": {
+        "30d": {
+          "period": "30d",
+          "calculatedAt": "2026-08-25T07:26:45.145Z",
+          "formula": "mean(likes+comments)/followers*100",
+          "followers": 15800000,
+          "followersObservedAt": "2026-08-25T07:26:45.145Z",
+          "followersPrecision": "platform-rounded",
+          "sampleSize": 18,
+          "averageInteractions": 2964.722222,
+          "ratePercent": 0.018764,
+          "oldestPostAt": "2026-07-27T00:00:00.000Z",
+          "newestPostAt": "2026-08-04T14:33:28.403Z"
+        },
+        "90d": {
+          "period": "90d",
+          "calculatedAt": "2026-08-25T07:26:45.145Z",
+          "formula": "mean(likes+comments)/followers*100",
+          "followers": 15800000,
+          "followersObservedAt": "2026-08-25T07:26:45.145Z",
+          "followersPrecision": "platform-rounded",
+          "sampleSize": 164,
+          "averageInteractions": 4648.664634,
+          "ratePercent": 0.029422,
+          "oldestPostAt": "2026-05-27T21:16:54.000Z",
+          "newestPostAt": "2026-08-04T14:33:28.403Z"
+        },
+        "180d": {
+          "period": "180d",
+          "calculatedAt": "2026-08-25T07:26:45.145Z",
+          "formula": "mean(likes+comments)/followers*100",
+          "followers": 15800000,
+          "followersObservedAt": "2026-08-25T07:26:45.145Z",
+          "followersPrecision": "platform-rounded",
+          "sampleSize": 333,
+          "averageInteractions": 4766.321321,
+          "ratePercent": 0.030167,
+          "oldestPostAt": "2026-02-28T17:46:11.000Z",
+          "newestPostAt": "2026-08-04T14:33:28.403Z"
+        },
+        "365d": {
+          "period": "365d",
+          "calculatedAt": "2026-08-25T07:26:45.145Z",
+          "formula": "mean(likes+comments)/followers*100",
+          "followers": 15800000,
+          "followersObservedAt": "2026-08-25T07:26:45.145Z",
+          "followersPrecision": "platform-rounded",
+          "sampleSize": 590,
+          "averageInteractions": 5031.198305,
+          "ratePercent": 0.031843,
+          "oldestPostAt": "2025-08-28T18:19:38.000Z",
+          "newestPostAt": "2026-08-04T14:33:28.403Z"
+        },
+        "all": {
+          "period": "all",
+          "calculatedAt": "2026-08-25T07:26:45.145Z",
+          "formula": "mean(likes+comments)/followers*100",
+          "followers": 15800000,
+          "followersObservedAt": "2026-08-25T07:26:45.145Z",
+          "followersPrecision": "platform-rounded",
+          "sampleSize": 1956,
+          "averageInteractions": 15112.899284,
+          "ratePercent": 0.095651,
+          "oldestPostAt": "2019-08-06T15:13:28.403Z",
+          "newestPostAt": "2026-08-04T14:33:28.403Z"
+        }
+      }
+    },
+    "instagram": {
+      "profileUrl": "https://www.instagram.com/lofigirl/",
+      "observations": [
+        {
+          "capturedAt": "2023-05-19T12:00:00.000Z",
+          "followers": 1000000,
+          "precision": "milestone",
+          "sourceUrl": "https://www.instagram.com/lofigirl/p/Csbj6m-gqbi/",
+          "label": "Publication officielle : 1 million d’abonnés Instagram"
+        },
+        {
+          "capturedAt": "2026-08-11T18:11:24.826Z",
+          "followers": 1427888,
+          "precision": "exact",
+          "sourceUrl": "https://www.instagram.com/lofigirl/",
+          "label": "Profil public Instagram · compteur entier exposé par la page"
+        },
+        {
+          "capturedAt": "2026-08-12T20:53:27.478Z",
+          "followers": 1428196,
+          "precision": "exact",
+          "sourceUrl": "https://www.instagram.com/lofigirl/",
+          "label": "Profil public Instagram · compteur entier exposé par la page"
+        },
+        {
+          "capturedAt": "2026-08-13T18:13:44.387Z",
+          "followers": 1429195,
+          "precision": "exact",
+          "sourceUrl": "https://www.instagram.com/lofigirl/",
+          "label": "Profil public Instagram · compteur entier exposé par la page"
+        },
+        {
+          "capturedAt": "2026-08-18T18:06:11.261Z",
+          "followers": 1429625,
+          "precision": "exact",
+          "sourceUrl": "https://www.instagram.com/lofigirl/",
+          "label": "Profil public Instagram · compteur entier exposé par la page"
+        },
+        {
+          "capturedAt": "2026-08-19T19:11:16.816Z",
+          "followers": 1429687,
+          "precision": "exact",
+          "sourceUrl": "https://www.instagram.com/lofigirl/",
+          "label": "Profil public Instagram · compteur entier exposé par la page"
+        },
+        {
+          "capturedAt": "2026-08-20T13:21:13.375Z",
+          "followers": 1429639,
+          "precision": "exact",
+          "sourceUrl": "https://www.instagram.com/lofigirl/",
+          "label": "Profil public Instagram · compteur entier exposé par la page"
+        },
+        {
+          "capturedAt": "2026-08-22T06:02:00.687Z",
+          "followers": 1429801,
+          "precision": "exact",
+          "sourceUrl": "https://www.instagram.com/lofigirl/",
+          "label": "Profil public Instagram · compteur entier exposé par la page"
+        }
+      ],
+      "engagementByPeriod": {
+        "30d": {
+          "period": "30d",
+          "calculatedAt": "2026-08-25T07:26:45.145Z",
+          "formula": "mean(likes+comments)/followers*100",
+          "followers": 1429801,
+          "followersObservedAt": "2026-08-22T06:02:00.687Z",
+          "followersPrecision": "exact",
+          "sampleSize": 13,
+          "averageInteractions": 15082.307692,
+          "ratePercent": 1.054854,
+          "oldestPostAt": "2026-07-26T12:00:00.000Z",
+          "newestPostAt": "2026-08-05T12:00:00.000Z"
+        },
+        "90d": {
+          "period": "90d",
+          "calculatedAt": "2026-08-25T07:26:45.145Z",
+          "formula": "mean(likes+comments)/followers*100",
+          "followers": 1429801,
+          "followersObservedAt": "2026-08-22T06:02:00.687Z",
+          "followersPrecision": "exact",
+          "sampleSize": 86,
+          "averageInteractions": 5230.744186,
+          "ratePercent": 0.365837,
+          "oldestPostAt": "2026-05-27T12:00:00.000Z",
+          "newestPostAt": "2026-08-05T12:00:00.000Z"
+        },
+        "180d": {
+          "period": "180d",
+          "calculatedAt": "2026-08-25T07:26:45.145Z",
+          "formula": "mean(likes+comments)/followers*100",
+          "followers": 1429801,
+          "followersObservedAt": "2026-08-22T06:02:00.687Z",
+          "followersPrecision": "exact",
+          "sampleSize": 190,
+          "averageInteractions": 4308.410526,
+          "ratePercent": 0.301329,
+          "oldestPostAt": "2026-02-26T12:00:00.000Z",
+          "newestPostAt": "2026-08-05T12:00:00.000Z"
+        },
+        "365d": {
+          "period": "365d",
+          "calculatedAt": "2026-08-25T07:26:45.145Z",
+          "formula": "mean(likes+comments)/followers*100",
+          "followers": 1429801,
+          "followersObservedAt": "2026-08-22T06:02:00.687Z",
+          "followersPrecision": "exact",
+          "sampleSize": 372,
+          "averageInteractions": 8650.413978,
+          "ratePercent": 0.605008,
+          "oldestPostAt": "2025-08-25T12:00:00.000Z",
+          "newestPostAt": "2026-08-05T12:00:00.000Z"
+        },
+        "all": {
+          "period": "all",
+          "calculatedAt": "2026-08-25T07:26:45.145Z",
+          "formula": "mean(likes+comments)/followers*100",
+          "followers": 1429801,
+          "followersObservedAt": "2026-08-22T06:02:00.687Z",
+          "followersPrecision": "exact",
+          "sampleSize": 1675,
+          "averageInteractions": 15838.410746,
+          "ratePercent": 1.107735,
+          "oldestPostAt": "2019-06-05T12:00:00.000Z",
+          "newestPostAt": "2026-08-05T12:00:00.000Z"
+        }
+      }
+    },
+    "tiktok": {
+      "profileUrl": "https://www.tiktok.com/@lofigirl",
+      "observations": [
+        {
+          "capturedAt": "2023-01-26T21:14:08.000Z",
+          "followers": 100000,
+          "precision": "milestone",
+          "sourceUrl": "https://www.tiktok.com/@lofigirl/video/7193072263476858118",
+          "label": "Publication officielle : 100 000 abonnés TikTok"
+        },
+        {
+          "capturedAt": "2025-03-22T18:18:31.000Z",
+          "followers": 1000000,
+          "precision": "milestone",
+          "sourceUrl": "https://www.tiktok.com/@lofigirl/video/7484699951037943062",
+          "label": "Publication officielle : 1 million d’abonnés TikTok"
+        },
+        {
+          "capturedAt": "2026-08-11T18:11:24.826Z",
+          "followers": 1548818,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/@lofigirl",
+          "label": "Métadonnée publique TikTok statsV2"
+        },
+        {
+          "capturedAt": "2026-08-12T20:53:27.478Z",
+          "followers": 1548659,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/@lofigirl",
+          "label": "Métadonnée publique TikTok statsV2"
+        },
+        {
+          "capturedAt": "2026-08-13T18:13:55.292Z",
+          "followers": 1548556,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/@lofigirl",
+          "label": "Métadonnée publique TikTok statsV2"
+        },
+        {
+          "capturedAt": "2026-08-14T09:46:28.590Z",
+          "followers": 1547519,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/@lofigirl",
+          "label": "Métadonnée publique TikTok statsV2"
+        },
+        {
+          "capturedAt": "2026-08-15T07:49:03.422Z",
+          "followers": 1547430,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/@lofigirl",
+          "label": "Métadonnée publique TikTok statsV2"
+        },
+        {
+          "capturedAt": "2026-08-16T07:53:31.380Z",
+          "followers": 1547258,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/@lofigirl",
+          "label": "Métadonnée publique TikTok statsV2"
+        },
+        {
+          "capturedAt": "2026-08-17T07:35:04.781Z",
+          "followers": 1547133,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/@lofigirl",
+          "label": "Métadonnée publique TikTok statsV2"
+        },
+        {
+          "capturedAt": "2026-08-18T18:06:11.261Z",
+          "followers": 1547911,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/@lofigirl",
+          "label": "Métadonnée publique TikTok statsV2"
+        },
+        {
+          "capturedAt": "2026-08-19T19:11:16.816Z",
+          "followers": 1547780,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/@lofigirl",
+          "label": "Métadonnée publique TikTok statsV2"
+        },
+        {
+          "capturedAt": "2026-08-20T13:21:13.375Z",
+          "followers": 1547668,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/@lofigirl",
+          "label": "Métadonnée publique TikTok statsV2"
+        },
+        {
+          "capturedAt": "2026-08-21T07:25:33.966Z",
+          "followers": 1546590,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/@lofigirl",
+          "label": "Métadonnée publique TikTok statsV2"
+        },
+        {
+          "capturedAt": "2026-08-22T07:10:26.822Z",
+          "followers": 1546453,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/@lofigirl",
+          "label": "Métadonnée publique TikTok statsV2"
+        },
+        {
+          "capturedAt": "2026-08-23T07:11:43.423Z",
+          "followers": 1546277,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/@lofigirl",
+          "label": "Métadonnée publique TikTok statsV2"
+        },
+        {
+          "capturedAt": "2026-08-24T07:39:59.555Z",
+          "followers": 1546150,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/@lofigirl",
+          "label": "Métadonnée publique TikTok statsV2"
+        },
+        {
+          "capturedAt": "2026-08-25T07:26:45.145Z",
+          "followers": 1545983,
+          "precision": "exact",
+          "sourceUrl": "https://www.tiktok.com/@lofigirl",
+          "label": "Métadonnée publique TikTok statsV2"
+        }
+      ],
+      "engagementByPeriod": {
+        "30d": {
+          "period": "30d",
+          "calculatedAt": "2026-08-25T07:26:45.145Z",
+          "formula": "mean(likes+comments)/followers*100",
+          "followers": 1545983,
+          "followersObservedAt": "2026-08-25T07:26:45.145Z",
+          "followersPrecision": "exact",
+          "sampleSize": 4,
+          "averageInteractions": 42156.75,
+          "ratePercent": 2.726857,
+          "oldestPostAt": "2026-07-28T18:16:42.000Z",
+          "newestPostAt": "2026-08-03T19:04:00.000Z"
+        },
+        "90d": {
+          "period": "90d",
+          "calculatedAt": "2026-08-25T07:26:45.145Z",
+          "formula": "mean(likes+comments)/followers*100",
+          "followers": 1545983,
+          "followersObservedAt": "2026-08-25T07:26:45.145Z",
+          "followersPrecision": "exact",
+          "sampleSize": 30,
+          "averageInteractions": 6906.6,
+          "ratePercent": 0.446745,
+          "oldestPostAt": "2026-05-27T21:09:29.000Z",
+          "newestPostAt": "2026-08-03T19:04:00.000Z"
+        },
+        "180d": {
+          "period": "180d",
+          "calculatedAt": "2026-08-25T07:26:45.145Z",
+          "formula": "mean(likes+comments)/followers*100",
+          "followers": 1545983,
+          "followersObservedAt": "2026-08-25T07:26:45.145Z",
+          "followersPrecision": "exact",
+          "sampleSize": 78,
+          "averageInteractions": 3607.666667,
+          "ratePercent": 0.233357,
+          "oldestPostAt": "2026-02-27T08:39:48.000Z",
+          "newestPostAt": "2026-08-03T19:04:00.000Z"
+        },
+        "365d": {
+          "period": "365d",
+          "calculatedAt": "2026-08-25T07:26:45.145Z",
+          "formula": "mean(likes+comments)/followers*100",
+          "followers": 1545983,
+          "followersObservedAt": "2026-08-25T07:26:45.145Z",
+          "followersPrecision": "exact",
+          "sampleSize": 143,
+          "averageInteractions": 19078.706294,
+          "ratePercent": 1.234083,
+          "oldestPostAt": "2025-08-28T18:13:22.000Z",
+          "newestPostAt": "2026-08-03T19:04:00.000Z"
+        },
+        "all": {
+          "period": "all",
+          "calculatedAt": "2026-08-25T07:26:45.145Z",
+          "formula": "mean(likes+comments)/followers*100",
+          "followers": 1545983,
+          "followersObservedAt": "2026-08-25T07:26:45.145Z",
+          "followersPrecision": "exact",
+          "sampleSize": 386,
+          "averageInteractions": 72168.624352,
+          "ratePercent": 4.668138,
+          "oldestPostAt": "2022-04-06T17:39:03.000Z",
+          "newestPostAt": "2026-08-03T19:04:00.000Z"
+        }
+      }
+    },
+    "x": {
+      "profileUrl": "https://x.com/lofigirl",
+      "observations": [
+        {
+          "capturedAt": "2022-03-10T10:18:58.000Z",
+          "followers": 100000,
+          "precision": "milestone",
+          "sourceUrl": "https://x.com/lofigirl/status/1501865186046660608",
+          "label": "Publication officielle : 100 000 abonnés X"
+        },
+        {
+          "capturedAt": "2026-08-11T09:43:44.143Z",
+          "followers": 260800,
+          "precision": "platform-rounded",
+          "sourceUrl": "https://x.com/lofigirl",
+          "label": "Profil public X : 260 800 abonnés affichés"
+        },
+        {
+          "capturedAt": "2026-08-12T12:38:46.616Z",
+          "followers": 260846,
+          "precision": "exact",
+          "sourceUrl": "https://api.x.com/2/users/by/username/lofigirl",
+          "label": "X API v2 User Lookup · public_metrics.followers_count"
+        },
+        {
+          "capturedAt": "2026-08-13T18:14:06.330Z",
+          "followers": 260903,
+          "precision": "exact",
+          "sourceUrl": "https://x.com/lofigirl",
+          "label": "Profil public X · schéma ProfilePage FollowAction exact"
+        },
+        {
+          "capturedAt": "2026-08-14T09:46:28.590Z",
+          "followers": 260843,
+          "precision": "exact",
+          "sourceUrl": "https://api.x.com/2/users/by/username/lofigirl",
+          "label": "X API v2 User Lookup · public_metrics.followers_count"
+        },
+        {
+          "capturedAt": "2026-08-15T07:49:03.422Z",
+          "followers": 260862,
+          "precision": "exact",
+          "sourceUrl": "https://api.x.com/2/users/by/username/lofigirl",
+          "label": "X API v2 User Lookup · public_metrics.followers_count"
+        },
+        {
+          "capturedAt": "2026-08-16T07:53:31.380Z",
+          "followers": 260857,
+          "precision": "exact",
+          "sourceUrl": "https://api.x.com/2/users/by/username/lofigirl",
+          "label": "X API v2 User Lookup · public_metrics.followers_count"
+        },
+        {
+          "capturedAt": "2026-08-17T07:35:04.781Z",
+          "followers": 260820,
+          "precision": "exact",
+          "sourceUrl": "https://api.x.com/2/users/by/username/lofigirl",
+          "label": "X API v2 User Lookup · public_metrics.followers_count"
+        },
+        {
+          "capturedAt": "2026-08-18T07:22:03.263Z",
+          "followers": 260689,
+          "precision": "exact",
+          "sourceUrl": "https://api.x.com/2/users/by/username/lofigirl",
+          "label": "X API v2 User Lookup · public_metrics.followers_count"
+        },
+        {
+          "capturedAt": "2026-08-19T07:21:58.202Z",
+          "followers": 260814,
+          "precision": "exact",
+          "sourceUrl": "https://api.x.com/2/users/by/username/lofigirl",
+          "label": "X API v2 User Lookup · public_metrics.followers_count"
+        },
+        {
+          "capturedAt": "2026-08-20T07:24:38.606Z",
+          "followers": 260831,
+          "precision": "exact",
+          "sourceUrl": "https://api.x.com/2/users/by/username/lofigirl",
+          "label": "X API v2 User Lookup · public_metrics.followers_count"
+        }
+      ],
+      "engagementByPeriod": {
+        "30d": {
+          "period": "30d",
+          "calculatedAt": "2026-08-25T07:26:45.145Z",
+          "formula": "mean(likes+comments)/followers*100",
+          "followers": 260831,
+          "followersObservedAt": "2026-08-20T07:24:38.606Z",
+          "followersPrecision": "exact",
+          "sampleSize": 201,
+          "averageInteractions": 78.004975,
+          "ratePercent": 0.029906,
+          "oldestPostAt": "2026-07-26T15:30:34.000Z",
+          "newestPostAt": "2026-08-19T21:02:25.000Z"
+        },
+        "90d": {
+          "period": "90d",
+          "calculatedAt": "2026-08-25T07:26:45.145Z",
+          "formula": "mean(likes+comments)/followers*100",
+          "followers": 260831,
+          "followersObservedAt": "2026-08-20T07:24:38.606Z",
+          "followersPrecision": "exact",
+          "sampleSize": 805,
+          "averageInteractions": 57.002484,
+          "ratePercent": 0.021854,
+          "oldestPostAt": "2026-05-27T09:35:21.000Z",
+          "newestPostAt": "2026-08-19T21:02:25.000Z"
+        },
+        "180d": {
+          "period": "180d",
+          "calculatedAt": "2026-08-25T07:26:45.145Z",
+          "formula": "mean(likes+comments)/followers*100",
+          "followers": 260831,
+          "followersObservedAt": "2026-08-20T07:24:38.606Z",
+          "followersPrecision": "exact",
+          "sampleSize": 1419,
+          "averageInteractions": 60.752643,
+          "ratePercent": 0.023292,
+          "oldestPostAt": "2026-02-26T08:51:08.000Z",
+          "newestPostAt": "2026-08-19T21:02:25.000Z"
+        },
+        "365d": {
+          "period": "365d",
+          "calculatedAt": "2026-08-25T07:26:45.145Z",
+          "formula": "mean(likes+comments)/followers*100",
+          "followers": 260831,
+          "followersObservedAt": "2026-08-20T07:24:38.606Z",
+          "followersPrecision": "exact",
+          "sampleSize": 2073,
+          "averageInteractions": 169.255186,
+          "ratePercent": 0.064891,
+          "oldestPostAt": "2025-08-25T09:38:50.000Z",
+          "newestPostAt": "2026-08-19T21:02:25.000Z"
+        },
+        "all": {
+          "period": "all",
+          "calculatedAt": "2026-08-25T07:26:45.145Z",
+          "formula": "mean(likes+comments)/followers*100",
+          "followers": 260831,
+          "followersObservedAt": "2026-08-20T07:24:38.606Z",
+          "followersPrecision": "exact",
+          "sampleSize": 5241,
+          "averageInteractions": 429.067354,
+          "ratePercent": 0.1645,
+          "oldestPostAt": "2015-04-16T19:30:17.000Z",
+          "newestPostAt": "2026-08-19T21:02:25.000Z"
+        }
+      }
+    }
+  }
+}

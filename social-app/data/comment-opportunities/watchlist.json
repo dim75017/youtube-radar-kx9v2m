@@ -1,0 +1,686 @@
+{
+  "version": 1,
+  "note": "Comptes dont une simple publication est déjà un événement culturel. La voie rapide lit leur flux Atom YouTube toutes les 15 minutes. `accountTier` décrit le poids habituel du compte, il ne remplace jamais la mesure réelle d'audience : un post d'un compte s-tier qui ne décolle pas reste classé sur ses compteurs observés.",
+  "resolvedAt": "2026-08-13T07:51:04.942Z",
+  "accounts": [
+    {
+      "handle": "@A24",
+      "name": "A24",
+      "category": "cinema",
+      "accountTier": "s",
+      "youtubeChannelId": "UCuPivVjnfNo4mb3Oog_frZg"
+    },
+    {
+      "handle": "@AniplexUSA",
+      "name": "Aniplex USA",
+      "category": "cinema",
+      "accountTier": "b",
+      "youtubeChannelId": "UCDb0peSmF5rLX7BvuTcJfCw"
+    },
+    {
+      "handle": "@AppleTV",
+      "name": "Apple TV",
+      "category": "cinema",
+      "accountTier": "b",
+      "youtubeChannelId": "UC1Myj674wRVXB9I4c6Hm5zA"
+    },
+    {
+      "handle": "@Crunchyroll",
+      "name": "Crunchyroll",
+      "category": "cinema",
+      "accountTier": "s",
+      "youtubeChannelId": "UC6pGDc4bFGD1_36IKv3FnYg"
+    },
+    {
+      "handle": "@DC",
+      "name": "DC",
+      "category": "cinema",
+      "accountTier": "a",
+      "youtubeChannelId": "UCb5dKvci-z2VYkfZOIXx6qQ"
+    },
+    {
+      "handle": "@DisneyPlus",
+      "name": "Disney+",
+      "category": "cinema",
+      "accountTier": "a",
+      "youtubeChannelId": "UCIrgJInjLS2BhlHOMDW7v0g"
+    },
+    {
+      "handle": "@focusfeatures",
+      "name": "Focus Features",
+      "category": "cinema",
+      "accountTier": "b",
+      "youtubeChannelId": "UCU4SM3j_9TNWaSu8KdGV50g"
+    },
+    {
+      "handle": "@hbomax",
+      "name": "HBO Max",
+      "category": "cinema",
+      "accountTier": "a",
+      "youtubeChannelId": "UCx-KWLTKlB83hDI6UKECtJQ"
+    },
+    {
+      "handle": "@LionsgateMovies",
+      "name": "Lionsgate",
+      "category": "cinema",
+      "accountTier": "b",
+      "youtubeChannelId": "UCJ6nMHaJPZvsJ-HmUmj1SeA"
+    },
+    {
+      "handle": "@Marvel",
+      "name": "Marvel Entertainment",
+      "category": "cinema",
+      "accountTier": "s",
+      "youtubeChannelId": "UCvC4D8onUfXzvjTOM-dBfEA"
+    },
+    {
+      "handle": "@NEONrated",
+      "name": "NEON",
+      "category": "cinema",
+      "accountTier": "b",
+      "youtubeChannelId": "UCpy5dRhZd-JbZP4NsrnLt1w"
+    },
+    {
+      "handle": "@Netflix",
+      "name": "Netflix",
+      "category": "cinema",
+      "accountTier": "s",
+      "youtubeChannelId": "UCWOA1ZGywLbqmigxE4Qlvuw"
+    },
+    {
+      "handle": "@ParamountPictures",
+      "name": "Paramount Pictures",
+      "category": "cinema",
+      "accountTier": "a",
+      "youtubeChannelId": "UCF9imwPMSGz4Vq1NiTWCC7g"
+    },
+    {
+      "handle": "@Pixar",
+      "name": "Pixar",
+      "category": "cinema",
+      "accountTier": "a",
+      "youtubeChannelId": "UC_IRYSp4auq7hKLvziWVH6w"
+    },
+    {
+      "handle": "@PrimeVideo",
+      "name": "Prime Video",
+      "category": "cinema",
+      "accountTier": "a",
+      "youtubeChannelId": "UCQJWtTnAHhEG5w4uN0udnUQ"
+    },
+    {
+      "handle": "@sonypictures",
+      "name": "Sony Pictures",
+      "category": "cinema",
+      "accountTier": "a",
+      "youtubeChannelId": "UCz97F7dMxBNOfGYu3rx8aCw"
+    },
+    {
+      "handle": "@StarWars",
+      "name": "Star Wars",
+      "category": "cinema",
+      "accountTier": "a",
+      "youtubeChannelId": "UCZGYJFUizSax-yElQaFDp5Q"
+    },
+    {
+      "handle": "@studioghibli",
+      "name": "Studio Ghibli",
+      "category": "cinema",
+      "accountTier": "a",
+      "youtubeChannelId": "UCJFJuVpRDvqVIkmCSgKlenQ"
+    },
+    {
+      "handle": "@ToeiAnimation",
+      "name": "Toei Animation",
+      "category": "cinema",
+      "accountTier": "b",
+      "youtubeChannelId": "UCTTv0NxWnJsNzAY3Ivj61zg"
+    },
+    {
+      "handle": "@UniversalPictures",
+      "name": "Universal Pictures",
+      "category": "cinema",
+      "accountTier": "a",
+      "youtubeChannelId": "UCq0OueAsdxH6b8nyAspwViw"
+    },
+    {
+      "handle": "@warnerbros",
+      "name": "Warner Bros. Pictures",
+      "category": "cinema",
+      "accountTier": "a",
+      "youtubeChannelId": "UCjmJDM5pRKbUlVIzDYYWb6g"
+    },
+    {
+      "handle": "@annapurnainteractive",
+      "name": "Annapurna Interactive",
+      "category": "gaming",
+      "accountTier": "b",
+      "youtubeChannelId": "UCoztP3NSW03Kd69KjQEIxeg"
+    },
+    {
+      "handle": "@Bethesda",
+      "name": "Bethesda",
+      "category": "gaming",
+      "accountTier": "a",
+      "youtubeChannelId": "UCvZHe-SP3xC7DdOk4Ri8QBw"
+    },
+    {
+      "handle": "@CallofDuty",
+      "name": "Call of Duty",
+      "category": "gaming",
+      "accountTier": "a",
+      "youtubeChannelId": "UC9YydG57epLqxA9cTzZXSeQ"
+    },
+    {
+      "handle": "@CDPROJEKTRED",
+      "name": "CD Projekt Red",
+      "category": "gaming",
+      "accountTier": "a",
+      "youtubeChannelId": "UCuCtanBJXOPAEIAUXf9944g"
+    },
+    {
+      "handle": "@devolverdigital",
+      "name": "Devolver Digital",
+      "category": "gaming",
+      "accountTier": "b",
+      "youtubeChannelId": "UCSc6s-ZJXKlSQr51dsox34g"
+    },
+    {
+      "handle": "@EA",
+      "name": "Electronic Arts",
+      "category": "gaming",
+      "accountTier": "a",
+      "youtubeChannelId": "UCTxDDUZ5RB5K8kme9DdbOqQ"
+    },
+    {
+      "handle": "@fortnite",
+      "name": "Fortnite",
+      "category": "gaming",
+      "accountTier": "a",
+      "youtubeChannelId": "UClG8odDC8TS6Zpqk9CGVQiQ"
+    },
+    {
+      "handle": "@HoYoverse",
+      "name": "HoYoverse",
+      "category": "gaming",
+      "accountTier": "a",
+      "youtubeChannelId": "UCPbogzM__JiYQmU3uOQ-BOw"
+    },
+    {
+      "handle": "@IGN",
+      "name": "IGN",
+      "category": "gaming",
+      "accountTier": "a",
+      "youtubeChannelId": "UCKy1dAqELo0zrOtPkf0eTMw"
+    },
+    {
+      "handle": "@larianstudios",
+      "name": "Larian Studios",
+      "category": "gaming",
+      "accountTier": "b",
+      "youtubeChannelId": "UCQ-AAXSt0M5Gx0-A9UGut8g"
+    },
+    {
+      "handle": "@LeagueofLegends",
+      "name": "League of Legends",
+      "category": "gaming",
+      "accountTier": "a",
+      "youtubeChannelId": "UC2t5bjwHdUX4vM2g8TRDq5g"
+    },
+    {
+      "handle": "@minecraft",
+      "name": "Minecraft",
+      "category": "gaming",
+      "accountTier": "a",
+      "youtubeChannelId": "UC1sELGmy5jp5fQUugmuYlXQ"
+    },
+    {
+      "handle": "@NintendoAmerica",
+      "name": "Nintendo of America",
+      "category": "gaming",
+      "accountTier": "s",
+      "youtubeChannelId": "UCGIY_O-8vW4rfX98KlMkvRg"
+    },
+    {
+      "handle": "@PlayStation",
+      "name": "PlayStation",
+      "category": "gaming",
+      "accountTier": "s",
+      "youtubeChannelId": "UC-2Y8dQb0S6DtpxNgAKoJKA"
+    },
+    {
+      "handle": "@riotgames",
+      "name": "Riot Games",
+      "category": "gaming",
+      "accountTier": "a",
+      "youtubeChannelId": "UCJEGvSZnQ1pkVfHO8s5G8hA"
+    },
+    {
+      "handle": "@Roblox",
+      "name": "Roblox",
+      "category": "gaming",
+      "accountTier": "b",
+      "youtubeChannelId": "UCjiPEaapiHbJMoAdi_L8fNA"
+    },
+    {
+      "handle": "@rockstargames",
+      "name": "Rockstar Games",
+      "category": "gaming",
+      "accountTier": "s",
+      "youtubeChannelId": "UC6VcWc1rAoWdBCM0JxrRQ3A"
+    },
+    {
+      "handle": "@SEGA",
+      "name": "SEGA",
+      "category": "gaming",
+      "accountTier": "b",
+      "youtubeChannelId": "UCVkqs_Q88BDmyaWwjYJ8_Ig"
+    },
+    {
+      "handle": "@SquareEnix",
+      "name": "Square Enix",
+      "category": "gaming",
+      "accountTier": "a",
+      "youtubeChannelId": "UC6SmH9mR82nj28_NNg_rZvA"
+    },
+    {
+      "handle": "@thegameawards",
+      "name": "The Game Awards",
+      "category": "gaming",
+      "accountTier": "s",
+      "youtubeChannelId": "UCqDS7KWjAPKv-7ZSlro9OiQ"
+    },
+    {
+      "handle": "@ThePokemonCompany",
+      "name": "The Pokémon Company",
+      "category": "gaming",
+      "accountTier": "a",
+      "youtubeChannelId": "UCuCUkH3bX_FNqTKy67KS4-Q"
+    },
+    {
+      "handle": "@ubisoft",
+      "name": "Ubisoft",
+      "category": "gaming",
+      "accountTier": "a",
+      "youtubeChannelId": "UC0KU8F9jJqSLS11LRXvFWmg"
+    },
+    {
+      "handle": "@Valve",
+      "name": "Valve",
+      "category": "gaming",
+      "accountTier": "a",
+      "youtubeChannelId": "UCg0FSqPeiGD_lIiPaaAehQg"
+    },
+    {
+      "handle": "@Xbox",
+      "name": "Xbox",
+      "category": "gaming",
+      "accountTier": "s",
+      "youtubeChannelId": "UCjBp_7RuDBUYbd1LegWEJ8g"
+    },
+    {
+      "handle": "@DudePerfect",
+      "name": "Dude Perfect",
+      "category": "internet",
+      "accountTier": "b",
+      "youtubeChannelId": "UCRijo3ddMTht_IHyNSNXpNQ"
+    },
+    {
+      "handle": "@IShowSpeed",
+      "name": "IShowSpeed",
+      "category": "internet",
+      "accountTier": "a",
+      "youtubeChannelId": "UCWsDFcIhY2DBi3GB5uykGXA"
+    },
+    {
+      "handle": "@jacksepticeye",
+      "name": "Jacksepticeye",
+      "category": "internet",
+      "accountTier": "b",
+      "youtubeChannelId": "UCYzPXprvl5Y-Sf0g4vX-m6g"
+    },
+    {
+      "handle": "@Jerma985",
+      "name": "Jerma985",
+      "category": "internet",
+      "accountTier": "b",
+      "youtubeChannelId": "UCK3kaNXbB57CLcyhtccV_yw"
+    },
+    {
+      "handle": "@KaiCenat",
+      "name": "Kai Cenat",
+      "category": "internet",
+      "accountTier": "a",
+      "youtubeChannelId": "UCoEmptob-eEGKk18c2VplJg"
+    },
+    {
+      "handle": "@Ludwig",
+      "name": "Ludwig",
+      "category": "internet",
+      "accountTier": "b",
+      "youtubeChannelId": "UCrPseYLGpNygVi34QpGNqpA"
+    },
+    {
+      "handle": "@markiplier",
+      "name": "Markiplier",
+      "category": "internet",
+      "accountTier": "a",
+      "youtubeChannelId": "UC7_YxT-KID8kRbqZo7MyscQ"
+    },
+    {
+      "handle": "@MrBeast",
+      "name": "MrBeast",
+      "category": "internet",
+      "accountTier": "s",
+      "youtubeChannelId": "UCX6OQ3DkcsbYNE6H8uQQuVA"
+    },
+    {
+      "handle": "@Mrwhosetheboss",
+      "name": "Mrwhosetheboss",
+      "category": "internet",
+      "accountTier": "b",
+      "youtubeChannelId": "UCMiJRAwDNSNzuYeN2uWa0pA"
+    },
+    {
+      "handle": "@PewDiePie",
+      "name": "PewDiePie",
+      "category": "internet",
+      "accountTier": "a",
+      "youtubeChannelId": "UC-lHJZR3Gqxm24_Vd_AJ5Yw"
+    },
+    {
+      "handle": "@ryan",
+      "name": "Ryan Trahan",
+      "category": "internet",
+      "accountTier": "b",
+      "youtubeChannelId": "UCnmGIkw-KdI0W5siakKPKog"
+    },
+    {
+      "handle": "@Sidemen",
+      "name": "Sidemen",
+      "category": "internet",
+      "accountTier": "b",
+      "youtubeChannelId": "UCDogdKl7t7NHzQ95aEwkdMw"
+    },
+    {
+      "handle": "@ArianaGrande",
+      "name": "Ariana Grande",
+      "category": "music",
+      "accountTier": "b",
+      "youtubeChannelId": "UC9CoOnJkIBMdeijd9qYoT_g"
+    },
+    {
+      "handle": "@BillieEilish",
+      "name": "Billie Eilish",
+      "category": "music",
+      "accountTier": "s",
+      "youtubeChannelId": "UCiGm_E4ZwYSHV3bcW1pnSeQ"
+    },
+    {
+      "handle": "@BLACKPINK",
+      "name": "BLACKPINK",
+      "category": "music",
+      "accountTier": "a",
+      "youtubeChannelId": "UCOmHUn--16B90oW2L6FRR3A"
+    },
+    {
+      "handle": "@boilerroom",
+      "name": "Boiler Room",
+      "category": "music",
+      "accountTier": "a",
+      "youtubeChannelId": "UCGBpxWJr9FNOcFYA5GkKrMg"
+    },
+    {
+      "handle": "@BTS",
+      "name": "BTS",
+      "category": "music",
+      "accountTier": "a",
+      "youtubeChannelId": "UCLkAepWjdylmXSltofFvsYQ"
+    },
+    {
+      "handle": "@coachella",
+      "name": "Coachella",
+      "category": "music",
+      "accountTier": "a",
+      "youtubeChannelId": "UCHF66aWLOxBW4l6VkSrS3cQ"
+    },
+    {
+      "handle": "@COLORSxSTUDIOS",
+      "name": "COLORS",
+      "category": "music",
+      "accountTier": "s",
+      "youtubeChannelId": "UC2Qw1dzXDBAZPwS7zm37g8g"
+    },
+    {
+      "handle": "@DualLipa",
+      "name": "Dua Lipa",
+      "category": "music",
+      "accountTier": "b",
+      "youtubeChannelId": "UCn4A1YkY50sQzPigl1IU-ug"
+    },
+    {
+      "handle": "@Genius",
+      "name": "Genius",
+      "category": "music",
+      "accountTier": "b",
+      "youtubeChannelId": "UCyFZMEnm1il5Wv3a6tPscbA"
+    },
+    {
+      "handle": "@grammys",
+      "name": "Recording Academy / GRAMMYs",
+      "category": "music",
+      "accountTier": "a",
+      "youtubeChannelId": "UCq4isO8ZYOZfmvGJ-_1UdIA"
+    },
+    {
+      "handle": "@HYBELABELS",
+      "name": "HYBE LABELS",
+      "category": "music",
+      "accountTier": "a",
+      "youtubeChannelId": "UC3IZKseVpdzPSBaWxBxundA"
+    },
+    {
+      "handle": "@KendrickLamar",
+      "name": "Kendrick Lamar",
+      "category": "music",
+      "accountTier": "a",
+      "youtubeChannelId": "UC3lBXcrKFnFAFkfVk5WuKcQ"
+    },
+    {
+      "handle": "@LadyGaga",
+      "name": "Lady Gaga",
+      "category": "music",
+      "accountTier": "b",
+      "youtubeChannelId": "UCNL1ZadSjHpjm4q9j2sVtOA"
+    },
+    {
+      "handle": "@nprmusic",
+      "name": "NPR Music / Tiny Desk",
+      "category": "music",
+      "accountTier": "s",
+      "youtubeChannelId": "UC4eYXhJI4-7wSWc8UNRwD4A"
+    },
+    {
+      "handle": "@spotify",
+      "name": "Spotify",
+      "category": "music",
+      "accountTier": "b",
+      "youtubeChannelId": "UCRMqQWxCWE0VMvtUElm-rEA"
+    },
+    {
+      "handle": "@SZA",
+      "name": "SZA",
+      "category": "music",
+      "accountTier": "b",
+      "youtubeChannelId": "UCO5IQ70V7l-XpHW40HwaGsw"
+    },
+    {
+      "handle": "@taylorswift",
+      "name": "Taylor Swift",
+      "category": "music",
+      "accountTier": "s",
+      "youtubeChannelId": "UCqECaJ8Gagnn7YCbPEzWH6g"
+    },
+    {
+      "handle": "@TheWeeknd",
+      "name": "The Weeknd",
+      "category": "music",
+      "accountTier": "a",
+      "youtubeChannelId": "UC0WP5P-ufpRfjbNrmOWwLBQ"
+    },
+    {
+      "handle": "@tylerthecreator",
+      "name": "Tyler, The Creator",
+      "category": "music",
+      "accountTier": "a",
+      "youtubeChannelId": "UCsQBsZJltmLzlsJNG7HevBg"
+    },
+    {
+      "handle": "@FIFA",
+      "name": "FIFA",
+      "category": "sport",
+      "accountTier": "a",
+      "youtubeChannelId": "UCpcTrCXblq78GZrTUTLWeBw"
+    },
+    {
+      "handle": "@Formula1",
+      "name": "Formula 1",
+      "category": "sport",
+      "accountTier": "b",
+      "youtubeChannelId": "UCB_qr75-ydFVKSF9Dmo6izg"
+    },
+    {
+      "handle": "@NBA",
+      "name": "NBA",
+      "category": "sport",
+      "accountTier": "b",
+      "youtubeChannelId": "UCWJ2lWNubArHWmf3FIHbfcQ"
+    },
+    {
+      "handle": "@NFL",
+      "name": "NFL",
+      "category": "sport",
+      "accountTier": "b",
+      "youtubeChannelId": "UCDVYQ4Zhbm3S2dlz7P1GBDg"
+    },
+    {
+      "handle": "@olympics",
+      "name": "Olympics",
+      "category": "sport",
+      "accountTier": "a",
+      "youtubeChannelId": "UCTl3QQTvqHFjurroKxexy2Q"
+    },
+    {
+      "handle": "@uefa",
+      "name": "UEFA",
+      "category": "sport",
+      "accountTier": "b",
+      "youtubeChannelId": "UCyGa1YEx9ST66rYrJTGIKOw"
+    },
+    {
+      "handle": "@anthropic-ai",
+      "name": "Anthropic",
+      "category": "tech",
+      "accountTier": "a",
+      "youtubeChannelId": "UCrDwWp7EBBv4NwvScIpBDOA"
+    },
+    {
+      "handle": "@Apple",
+      "name": "Apple",
+      "category": "tech",
+      "accountTier": "s",
+      "youtubeChannelId": "UCE_M8A5yxnLfW0KghEeajjw"
+    },
+    {
+      "handle": "@BostonDynamics",
+      "name": "Boston Dynamics",
+      "category": "tech",
+      "accountTier": "b",
+      "youtubeChannelId": "UC7vVhkEfw4nOGp8TyDk7RcQ"
+    },
+    {
+      "handle": "@Google",
+      "name": "Google",
+      "category": "tech",
+      "accountTier": "a",
+      "youtubeChannelId": "UCK8sQmJBp8GCxrOtXWBpyEA"
+    },
+    {
+      "handle": "@kurzgesagt",
+      "name": "Kurzgesagt",
+      "category": "tech",
+      "accountTier": "a",
+      "youtubeChannelId": "UCsXVk37bltHxD1rDPwtNM8Q"
+    },
+    {
+      "handle": "@LinusTechTips",
+      "name": "Linus Tech Tips",
+      "category": "tech",
+      "accountTier": "b",
+      "youtubeChannelId": "UCXuqSBlHAE6Xw-yeJA0Tunw"
+    },
+    {
+      "handle": "@mkbhd",
+      "name": "Marques Brownlee",
+      "category": "tech",
+      "accountTier": "a",
+      "youtubeChannelId": "UCBJycsmduvYEL83R_U4JriQ"
+    },
+    {
+      "handle": "@NASA",
+      "name": "NASA",
+      "category": "tech",
+      "accountTier": "a",
+      "youtubeChannelId": "UCLA_DiR1FfKNvjuUpBHmylQ"
+    },
+    {
+      "handle": "@NVIDIA",
+      "name": "NVIDIA",
+      "category": "tech",
+      "accountTier": "a",
+      "youtubeChannelId": "UCHuiy8bXnmK5nisYHUd1J5g"
+    },
+    {
+      "handle": "@OpenAI",
+      "name": "OpenAI",
+      "category": "tech",
+      "accountTier": "s",
+      "youtubeChannelId": "UCXZCJLdBC09xxGZ6gcdrc6A"
+    },
+    {
+      "handle": "@Samsung",
+      "name": "Samsung",
+      "category": "tech",
+      "accountTier": "b",
+      "youtubeChannelId": "UCWwgaK7x0_FR1goeSRazfsQ"
+    },
+    {
+      "handle": "@SpaceX",
+      "name": "SpaceX",
+      "category": "tech",
+      "accountTier": "a",
+      "youtubeChannelId": "UCtI0Hodo5o5dUb67FeUjDeA"
+    },
+    {
+      "handle": "@Tesla",
+      "name": "Tesla",
+      "category": "tech",
+      "accountTier": "b",
+      "youtubeChannelId": "UC5WjFrtBdufl6CZojX3D8dQ"
+    },
+    {
+      "handle": "@veritasium",
+      "name": "Veritasium",
+      "category": "tech",
+      "accountTier": "b",
+      "youtubeChannelId": "UCHnyfMqiRRG1u-2MsSQLbXA"
+    },
+    {
+      "handle": "@Vsauce",
+      "name": "Vsauce",
+      "category": "tech",
+      "accountTier": "b",
+      "youtubeChannelId": "UC6nSFpj9HTCZ5t-N3Rm3-HA"
+    }
+  ]
+}
