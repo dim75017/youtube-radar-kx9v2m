@@ -22,35 +22,39 @@ assert.match(rootIndex, /Spotify_Instant_data\.js\?v=[A-Za-z0-9._-]+/,
   'the YouTube shell must prefetch the compact Spotify snapshot');
 assert.doesNotMatch(rootIndex, /Spotify_Soundcharts_data_[^'"\s]+/,
   'cross-platform navigation must not prefetch a historical Spotify payload');
-const youtubeSpotifyHref = rootIndex.match(/href="(spotify\/\?app=[A-Za-z0-9._-]+#opportunities)"/);
-const socialsSpotifyHref = socialSource.match(/href="(\.\.\/spotify\/\?app=[A-Za-z0-9._-]+#opportunities)"/);
-const selfSpotifyHref = spotifyIndex.match(/href="(\.\/\?app=[A-Za-z0-9._-]+#opportunities)"/);
-assert.ok(youtubeSpotifyHref, 'the YouTube switch must open Spotify directly on Opportunities');
-assert.ok(socialsSpotifyHref, 'the Socials switch must open Spotify directly on Opportunities');
-assert.ok(selfSpotifyHref, 'the Spotify switch itself must return to Opportunities');
+const youtubeSpotifyHref = rootIndex.match(/href="(spotify\/\?app=[A-Za-z0-9._-]+#dashboard)"/);
+const socialsSpotifyHref = socialSource.match(/href="(\.\.\/spotify\/\?app=[A-Za-z0-9._-]+#dashboard)"/);
+const selfSpotifyHref = spotifyIndex.match(/href="(\.\/\?app=[A-Za-z0-9._-]+#dashboard)"/);
+assert.ok(youtubeSpotifyHref, 'the YouTube switch must open Spotify directly on Dashboard');
+assert.ok(socialsSpotifyHref, 'the Socials switch must open Spotify directly on Dashboard');
+assert.ok(selfSpotifyHref, 'the Spotify switch itself must return to Dashboard');
 const routeSuffix = youtubeSpotifyHref[1].slice('spotify/'.length);
 assert.equal(socialsSpotifyHref[1].slice('../spotify/'.length), routeSuffix,
-  'YouTube and Socials must use the exact same versioned Spotify route');
+  'YouTube and Socials must use the exact same versioned Spotify Dashboard route');
 assert.equal(selfSpotifyHref[1].slice('./'.length), routeSuffix,
   'the Spotify self-link must use the exact same versioned route');
 assert.ok(rootIndex.includes(`"urls":["spotify/${routeSuffix}","social/"]`),
-  'YouTube prerender must target the same versioned Opportunities URL as its button');
+  'YouTube prerender must target the same versioned Dashboard URL as its button');
 assert.ok(read('social-app/preview/index.html').includes(`/youtube-radar-kx9v2m/spotify/${routeSuffix}`),
   'Socials prerender must target the same versioned Opportunities URL as its button');
-assert.match(instantRuntime, /view:routeToView\[initialRoute\]\|\|'radar'/,
-  'an unqualified Spotify URL must default to Opportunities');
-assert.match(instantRuntime, /if\(!validViews\.has\(state\.view\)\)state\.view='radar'/,
-  'an invalid Spotify route must fail safe to Opportunities');
+assert.match(instantRuntime, /view:routeToView\[initialRoute\]\|\|'dashboard'/,
+  'an unqualified Spotify URL must default to Dashboard');
+assert.match(instantRuntime, /if\(!validViews\.has\(state\.view\)\)state\.view='dashboard'/,
+  'an invalid Spotify route must fail safe to Dashboard');
 assert.match(instantRuntime, /window\.addEventListener\('hashchange'/,
   'same-document Spotify navigation must update the rendered section immediately');
 assert.match(instantRuntime, /opportunities:'radar'/,
   'the canonical Opportunities route must resolve to the Opportunities view');
+assert.match(instantRuntime, /dashboard:'dashboard'/,
+  'the canonical Dashboard route must resolve to the Dashboard view');
 assert.match(instantRuntime, /tracks:'opps'/,
   'the explicit Tracks route must remain available without becoming the default');
-assert.match(spotifyIndex, /data-v="radar" class="active" data-fr="Opportunités"/,
-  'Opportunities must already be active in the initial HTML to avoid a flash of Tracks');
+assert.match(spotifyIndex, /data-v="dashboard" class="active" data-fr="Tableau de bord"/,
+  'Dashboard must already be active in the initial HTML to avoid a flash of Opportunities');
+assert.ok(spotifyIndex.indexOf('data-v="dashboard"') < spotifyIndex.indexOf('data-v="radar"'),
+  'Dashboard must be the first Spotify navigation tab');
 assert.equal((spotifyIndex.match(/class="active"/g) || []).length, 1,
-  'only Opportunities may be active before the lightweight runtime starts');
+  'only Dashboard may be active before the lightweight runtime starts');
 
 function evaluate(source, globalName) {
   const context = { window: {} };

@@ -12,8 +12,8 @@
     return;
   }
 
-  const routeToView={opportunities:'radar',radar:'radar',opps:'radar',tracks:'opps','ar-list':'ar-list',artists:'artists',playlists:'playlists',labels:'labels'};
-  const viewToRoute={opps:'tracks',radar:'opportunities','ar-list':'ar-list',artists:'artists',playlists:'playlists',labels:'labels'};
+  const routeToView={dashboard:'dashboard',overview:'dashboard',opportunities:'radar',radar:'radar',opps:'radar',tracks:'opps','ar-list':'ar-list',artists:'artists',playlists:'playlists',labels:'labels'};
+  const viewToRoute={dashboard:'dashboard',opps:'tracks',radar:'opportunities','ar-list':'ar-list',artists:'artists',playlists:'playlists',labels:'labels'};
   const validViews=new Set(Object.values(routeToView));
   const schema={};
   for(const [name,fields] of Object.entries(boot.schemas))schema[name]=Object.fromEntries(fields.map((field,index)=>[field,index]));
@@ -36,7 +36,7 @@
   try{lang=localStorage.getItem('sr_lang')||'fr';}catch(error){}
   const initialRoute=location.hash.slice(1);
   const state={
-    view:routeToView[initialRoute]||'radar',
+    view:routeToView[initialRoute]||'dashboard',
     query:'',shown:100,
     sort:{opps:'streams',radar:'velocity',artists:'streams',playlists:'followers',labels:'streams'},
     filters:{
@@ -48,11 +48,11 @@
     },
     openFilter:'',
   };
-  if(!validViews.has(state.view))state.view='radar';
+  if(!validViews.has(state.view))state.view='dashboard';
 
   const words={
     fr:{
-      opportunities:'Opportunités',selection:'Sélection',tracks:'Pistes',artists:'Artistes',playlists:'Playlists',labels:'Labels',
+      dashboard:'Tableau de bord',opportunities:'Opportunités',selection:'Sélection',tracks:'Pistes',artists:'Artistes',playlists:'Playlists',labels:'Labels',
       allTracks:'Toutes les pistes',allArtists:'Tous les artistes',allPlaylists:'Toutes les playlists',allLabels:'Tous les labels',
       radarTitle:'Opportunités',selectionTitle:'Sélection',search:'Rechercher',artist:'Artiste',track:'Piste',release:'Sortie',
       streams:'Streams',velocity:'24 h',rights:'Droits',genre:'Genre',followers:'Followers',owner:'Propriétaire',catalogue:'Catalogue',
@@ -68,7 +68,7 @@
       editorial:'Éditoriales',independentCurators:'Indépendantes',toContact:'À contacter',contacted:'Contacté',negotiating:'En négociation',validated:'Validé',refused:'Refusé',alreadySelected:'Déjà dans la sélection',
     },
     en:{
-      opportunities:'Opportunities',selection:'Selection',tracks:'Tracks',artists:'Artists',playlists:'Playlists',labels:'Labels',
+      dashboard:'Dashboard',opportunities:'Opportunities',selection:'Selection',tracks:'Tracks',artists:'Artists',playlists:'Playlists',labels:'Labels',
       allTracks:'All tracks',allArtists:'All artists',allPlaylists:'All playlists',allLabels:'All labels',
       radarTitle:'Opportunities',selectionTitle:'Selection',search:'Search',artist:'Artist',track:'Track',release:'Released',
       streams:'Streams',velocity:'24 h',rights:'Rights',genre:'Genre',followers:'Followers',owner:'Owner',catalogue:'Catalogue',
@@ -252,6 +252,56 @@
   function more(total){
     if(state.shown>=total)return '';
     return `<div class="fast-more-wrap"><button class="fast-more" type="button" data-action="more">${esc(w('loadMore'))}<span>${fullNumber(total-state.shown)}</span></button></div>`;
+  }
+  const facetRows=name=>Array.isArray(boot.facets&&boot.facets[name])?boot.facets[name]:[];
+  const facetCount=(name,key)=>{const row=facetRows(name).find(item=>Array.isArray(item)&&String(item[0])===String(key));return row?Number(row[1])||0:0;};
+  const percent=(value,total)=>!Number(total)?'0 %':new Intl.NumberFormat(lang==='fr'?'fr-FR':'en-GB',{maximumFractionDigits:1}).format(value/total*100)+' %';
+  const dashboardStage=value=>{const key=String(value||'to_contact').trim().toLowerCase();if(key==='closed')return 'validated';if(key==='follow_up')return 'contacted';if(key==='negotiation')return 'negotiating';return ['to_contact','contacted','negotiating','validated','refused'].includes(key)?key:'to_contact';};
+  const dashboardWidth=value=>Math.max(0,Math.min(100,Number(value)||0));
+  function renderDashboard(){
+    const counts=boot.counts||{},fr=lang==='fr';
+    const copy=fr?{
+      title:'Tableau de bord',subtitle:'Lecture rapide du catalogue, des signaux et du pipeline A&R.',updated:'Snapshot assemblé le',
+      opportunities:'Opportunités',tracks:'Pistes',artists:'Artistes',playlists:'Playlists',selection:'Sélection',catalogueShare:'du catalogue',instrumentalCatalogue:'catalogue instrumental public',indieArtists:'artistes indépendants',editorialPlaylists:'playlists éditoriales',validated:'validées',
+      signals:'Signaux les plus rapides',signalsHint:'Opportunités classées par progression sur 24 h',measured:'mesure au',seeAll:'Tout voir',streamTotal:'Streams',daily:'24 h',
+      pipeline:'Pipeline A&R',pipelineHint:'État de la sélection enregistrée dans ce navigateur',toContact:'À contacter',contacted:'Contacté',negotiating:'En négociation',approved:'Validé',refused:'Refusé',
+      genres:'Genres classifiés',genresHint:'Répartition des pistes dont le genre musical est renseigné',classified:'pistes classifiées sur',
+      independence:'Indépendance',independenceHint:'Propriété des artistes et des sorties',indie:'Indépendants',labelArtists:'Artistes label',selfReleased:'Autoéditées',indieLabels:'Labels indépendants',reference:'Catalogue de référence',majors:'Majors',unknown:'À confirmer',
+      playlistWatch:'Veille playlists',playlistHint:'Curateurs suivis, tous à 10k followers minimum',editorial:'Éditoriales',independentCurators:'Indépendantes',emptySignals:'Aucun signal disponible.',emptySelection:'Aucune piste sélectionnée pour le moment.',openSelection:'Ouvrir la sélection',
+    }:{
+      title:'Dashboard',subtitle:'A quick read of the catalogue, signals and A&R pipeline.',updated:'Snapshot built on',
+      opportunities:'Opportunities',tracks:'Tracks',artists:'Artists',playlists:'Playlists',selection:'Selection',catalogueShare:'of catalogue',instrumentalCatalogue:'public instrumental catalogue',indieArtists:'independent artists',editorialPlaylists:'editorial playlists',validated:'validated',
+      signals:'Fastest signals',signalsHint:'Opportunities ranked by 24-hour growth',measured:'measured through',seeAll:'View all',streamTotal:'Streams',daily:'24 h',
+      pipeline:'A&R pipeline',pipelineHint:'Status of the selection stored in this browser',toContact:'To contact',contacted:'Contacted',negotiating:'Negotiating',approved:'Validated',refused:'Refused',
+      genres:'Classified genres',genresHint:'Distribution of tracks with a musical genre',classified:'classified tracks out of',
+      independence:'Independence',independenceHint:'Artist and release ownership',indie:'Independent',labelArtists:'Label artists',selfReleased:'Self-released',indieLabels:'Independent labels',reference:'Reference catalogue',majors:'Majors',unknown:'To confirm',
+      playlistWatch:'Playlist watch',playlistHint:'Monitored curators, all with at least 10k followers',editorial:'Editorial',independentCurators:'Independent',emptySignals:'No signal available.',emptySelection:'No track selected yet.',openSelection:'Open selection',
+    };
+    const selected=Object.values(selectionGet()),stageLabels={to_contact:copy.toContact,contacted:copy.contacted,negotiating:copy.negotiating,validated:copy.approved,refused:copy.refused};
+    const stageCounts=Object.fromEntries(Object.keys(stageLabels).map(key=>[key,selected.filter(entry=>dashboardStage(entry&&entry.status)===key).length]));
+    const indieArtists=facetCount('artist_ownership','indie'),labelArtists=facetCount('artist_ownership','label');
+    const editorialPlaylists=facetCount('playlist_curators','editorial'),independentPlaylists=facetCount('playlist_curators','independent');
+    const metric=(target,icon,label,value,sub,tone)=>`<button class="fast-dashboard-kpi ${tone}" type="button" data-dashboard-view="${target}"><span class="fast-dashboard-kpi-icon" aria-hidden="true">${icon}</span><span class="fast-dashboard-kpi-label">${esc(label)}</span><strong>${value}</strong><small>${esc(sub)}</small></button>`;
+    const metrics=[
+      metric('radar','💎',copy.opportunities,fullNumber(counts.opportunities),`${percent(counts.opportunities,counts.tracks)} ${copy.catalogueShare}`,'signal'),
+      metric('opps','🎶',copy.tracks,fullNumber(counts.tracks),copy.instrumentalCatalogue,'catalogue'),
+      metric('artists','🎸',copy.artists,fullNumber(counts.artists),`${fullNumber(indieArtists)} ${copy.indieArtists}`,'artists'),
+      metric('playlists','📻',copy.playlists,fullNumber(counts.playlists),`${fullNumber(editorialPlaylists)} ${copy.editorialPlaylists}`,'playlists'),
+      metric('ar-list','⭐',copy.selection,fullNumber(selected.length),`${fullNumber(stageCounts.validated)} ${copy.validated}`,'selection'),
+    ].join('');
+    const signals=source('radar').slice().sort((left,right)=>(Number(right[T.delta_24h])||0)-(Number(left[T.delta_24h])||0)).slice(0,6);
+    const signalRows=signals.map(row=>{const id=String(row[T.spotify_id]||''),selectedTrack=selectionHas(id);return `<article class="fast-dashboard-signal">${image(row[T.image_url])}<button class="fast-dashboard-signal-main" type="button" data-open-track="${esc(id)}"><strong>${esc(row[T.title]||'—')}</strong><span>${esc(row[T.credit_name]||'—')} · ${esc(genreLabel(row[T.genre]))}</span></button><div class="fast-dashboard-signal-metric"><span>${esc(copy.streamTotal)}</span><strong>${compact(row[T.streams])}</strong></div><div class="fast-dashboard-signal-metric fast-dashboard-signal-delta"><span>${esc(copy.daily)}</span><strong>${delta(row[T.delta_24h])}</strong></div><button type="button" class="fast-select ${selectedTrack?'on':''}" data-selection-add="${esc(id)}" aria-label="${esc(copy.selection)}" ${selectedTrack?'disabled':''}>${selectedTrack?'✓':'＋'}</button></article>`;}).join('');
+    const signalFreshness=signals.length&&signals[0][T.updated_at]?` · ${copy.measured} ${date(signals[0][T.updated_at])}`:'';
+    const stageMax=Math.max(1,...Object.values(stageCounts));
+    const pipelineRows=Object.entries(stageLabels).map(([key,label])=>`<div class="fast-dashboard-progress-row"><div><span>${esc(label)}</span><strong>${fullNumber(stageCounts[key])}</strong></div><i><b style="width:${dashboardWidth(stageCounts[key]/stageMax*100)}%"></b></i></div>`).join('');
+    const groupedGenres=new Map();
+    for(const item of facetRows('track_genres')){if(!Array.isArray(item))continue;const key=genreKey(item[0]);if(['trusted_catalogue','catalogue_trusted','unclassified'].includes(key))continue;groupedGenres.set(key,(groupedGenres.get(key)||0)+(Number(item[1])||0));}
+    const genreRows=[...groupedGenres].sort((a,b)=>b[1]-a[1]).slice(0,7),classifiedTotal=[...groupedGenres.values()].reduce((sum,value)=>sum+value,0),genreMax=Math.max(1,...genreRows.map(item=>item[1]));
+    const genreBars=genreRows.map(([key,value])=>`<div class="fast-dashboard-bar-row"><span>${esc(genreLabel(key))}</span><i><b style="width:${dashboardWidth(value/genreMax*100)}%"></b></i><strong>${fullNumber(value)}</strong></div>`).join('');
+    const rights=[[copy.selfReleased,facetCount('track_rights','self_released'),'self'],[copy.indieLabels,facetCount('track_rights','independent_label'),'label'],[copy.reference,facetCount('track_rights','catalogue_trusted'),'reference'],[copy.majors,facetCount('track_rights','major'),'major'],[copy.unknown,facetCount('track_rights','unknown'),'unknown']],rightsMax=Math.max(1,...rights.map(item=>item[1]));
+    const rightsRows=rights.map(([label,value,tone])=>`<div class="fast-dashboard-bar-row ${tone}"><span>${esc(label)}</span><i><b style="width:${dashboardWidth(value/rightsMax*100)}%"></b></i><strong>${fullNumber(value)}</strong></div>`).join('');
+    const artistTotal=Math.max(1,indieArtists+labelArtists),playlistTotal=Math.max(1,editorialPlaylists+independentPlaylists);
+    view.innerHTML=`<div class="page-head fast-page-head fast-dashboard-head"><div><h2>${esc(copy.title)}</h2><p>${esc(copy.subtitle)}</p></div><span class="fast-dashboard-fresh"><i></i>${esc(copy.updated)} ${date(boot.generated_at)}</span></div><section class="fast-dashboard-kpis" aria-label="${esc(copy.title)}">${metrics}</section><div class="fast-dashboard-primary"><section class="fast-dashboard-panel"><header><div><h3>${esc(copy.signals)}</h3><p>${esc(copy.signalsHint+signalFreshness)}</p></div><button type="button" data-dashboard-view="radar">${esc(copy.seeAll)} →</button></header>${signalRows||`<div class="fast-dashboard-empty">${esc(copy.emptySignals)}</div>`}</section><section class="fast-dashboard-panel fast-dashboard-pipeline"><header><div><h3>${esc(copy.pipeline)}</h3><p>${esc(copy.pipelineHint)}</p></div><button type="button" data-dashboard-view="ar-list">${esc(copy.openSelection)} →</button></header>${pipelineRows}${selected.length?'':`<div class="fast-dashboard-empty compact">${esc(copy.emptySelection)}</div>`}</section></div><div class="fast-dashboard-secondary"><section class="fast-dashboard-panel"><header><div><h3>${esc(copy.genres)}</h3><p>${esc(copy.genresHint)}</p></div><button type="button" data-dashboard-view="opps">${esc(copy.seeAll)} →</button></header><div class="fast-dashboard-bars">${genreBars}</div><small class="fast-dashboard-note">${fullNumber(classifiedTotal)} ${esc(copy.classified)} ${fullNumber(counts.tracks)}</small></section><section class="fast-dashboard-panel"><header><div><h3>${esc(copy.independence)}</h3><p>${esc(copy.independenceHint)}</p></div><button type="button" data-dashboard-view="artists">${esc(copy.seeAll)} →</button></header><div class="fast-dashboard-split" aria-hidden="true"><i style="width:${dashboardWidth(indieArtists/artistTotal*100)}%"></i><b style="width:${dashboardWidth(labelArtists/artistTotal*100)}%"></b></div><div class="fast-dashboard-legend"><span><i class="indie"></i>${esc(copy.indie)}<strong>${fullNumber(indieArtists)}</strong></span><span><i class="label"></i>${esc(copy.labelArtists)}<strong>${fullNumber(labelArtists)}</strong></span></div><div class="fast-dashboard-bars rights">${rightsRows}</div></section><section class="fast-dashboard-panel"><header><div><h3>${esc(copy.playlistWatch)}</h3><p>${esc(copy.playlistHint)}</p></div><button type="button" data-dashboard-view="playlists">${esc(copy.seeAll)} →</button></header><div class="fast-dashboard-playlist-total"><strong>${fullNumber(counts.playlists)}</strong><span>${esc(copy.playlists)}</span></div><div class="fast-dashboard-split playlists" aria-hidden="true"><i style="width:${dashboardWidth(editorialPlaylists/playlistTotal*100)}%"></i><b style="width:${dashboardWidth(independentPlaylists/playlistTotal*100)}%"></b></div><div class="fast-dashboard-legend"><span><i class="editorial"></i>${esc(copy.editorial)}<strong>${fullNumber(editorialPlaylists)}</strong></span><span><i class="curators"></i>${esc(copy.independentCurators)}<strong>${fullNumber(independentPlaylists)}</strong></span></div></section></div>`;
   }
   function coverCell(row){return `<td class="fast-cover-cell">${image(row[T.image_url])}</td>`;}
   function trackRows(rows,opportunity=false){
@@ -449,7 +499,8 @@
     const started=window.performance&&window.performance.now?window.performance.now():Date.now();
     document.documentElement.lang=lang;
     document.querySelectorAll('#nav button').forEach(button=>button.classList.toggle('active',button.dataset.v===state.view));
-    if(state.view==='radar')renderTracks(true);
+    if(state.view==='dashboard')renderDashboard();
+    else if(state.view==='radar')renderTracks(true);
     else if(state.view==='opps')renderTracks(false);
     else if(state.view==='artists')renderArtists();
     else if(state.view==='playlists')renderPlaylists();
@@ -555,7 +606,7 @@
     set('c-radar',counts.opportunities);set('c-opps',counts.tracks);set('c-art',counts.artists);set('c-pl',counts.playlists);set('c-lb',counts.labels);set('c-ar-list',Object.keys(selectionGet()).length);
   }
   function updateStaticLanguage(){
-    const labels={radar:w('opportunities'),'ar-list':w('selection'),opps:w('tracks'),artists:w('artists'),playlists:w('playlists'),labels:w('labels')};
+    const labels={dashboard:w('dashboard'),radar:w('opportunities'),'ar-list':w('selection'),opps:w('tracks'),artists:w('artists'),playlists:w('playlists'),labels:w('labels')};
     document.querySelectorAll('#nav button').forEach(button=>{
       const textNode=[...button.childNodes].find(node=>node.nodeType===Node.TEXT_NODE&&node.nodeValue.trim());
       if(textNode)textNode.nodeValue=labels[button.dataset.v]||textNode.nodeValue;
@@ -596,11 +647,13 @@
     state.view=button.dataset.v;state.query='';state.shown=100;render();window.scrollTo(0,0);
   });
   window.addEventListener('hashchange',()=>{
-    const requested=routeToView[location.hash.slice(1)]||'radar';
+    const requested=routeToView[location.hash.slice(1)]||'dashboard';
     if(requested===state.view)return;
     state.view=requested;state.query='';state.shown=100;render();window.scrollTo(0,0);
   });
   view.addEventListener('click',event=>{
+    const dashboardButton=event.target.closest('[data-dashboard-view]');
+    if(dashboardButton){state.view=dashboardButton.dataset.dashboardView;state.query='';state.shown=100;render();window.scrollTo(0,0);return;}
     const stageButton=event.target.closest('[data-selection-stage]');
     if(stageButton){state.filters.selection.stage=stageButton.dataset.selectionStage;render();return;}
     const moreButton=event.target.closest('[data-action="more"]');

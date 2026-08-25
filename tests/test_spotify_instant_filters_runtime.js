@@ -70,7 +70,6 @@ let menuAction = null;
 const performance = {now:()=>0,mark() {}};
 const windowObject = {
   SPOTIFY_INSTANT: payload,
-  SPOTIFY_CATALOGUE: payload,
   __SPOTIFY_FILTER_TEST__: true,
   performance,
   innerWidth: 1280, innerHeight: 720,
@@ -108,6 +107,25 @@ const api = windowObject.SPOTIFY_FILTER_TEST_API;
 assert.ok(api, 'the filter test API must be exposed only for the isolated runtime fixture');
 
 const renderView = name => { api.state.view=name;api.render();return view.innerHTML; };
+const dashboard = renderView('dashboard');
+assert.match(dashboard,/Tableau de bord/);
+assert.match(dashboard,/fast-dashboard-kpis/);
+assert.match(dashboard,/Opportunités/);
+assert.match(dashboard,/Signaux les plus rapides/);
+assert.match(dashboard,/Pipeline A&amp;R/);
+assert.match(dashboard,/Genres classifiés/);
+assert.match(dashboard,/Indépendance/);
+assert.match(dashboard,/Veille playlists/);
+assert.match(dashboard,/data-dashboard-view="radar"/);
+assert.match(dashboard,/data-dashboard-view="opps"/);
+assert.match(dashboard,/data-dashboard-view="artists"/);
+assert.match(dashboard,/data-dashboard-view="playlists"/);
+assert.doesNotMatch(dashboard,/NaN|undefined/,'dashboard metrics must never expose fabricated or missing JavaScript values');
+assert.equal(api.state.view,'dashboard');
+const dashboardTarget={dataset:{dashboardView:'playlists'},closest(selector){return selector==='[data-dashboard-view]'?this:null;}};
+viewListeners.click({target:dashboardTarget});
+assert.equal(api.state.view,'playlists','dashboard shortcuts must open the related Spotify tab');
+
 api.state.view = 'opps';
 api.state.query = 'ete alpha';
 assert.match(renderView('opps'), /Été calme/);
