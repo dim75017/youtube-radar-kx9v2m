@@ -329,10 +329,8 @@ function histChart(pts,unit,showMeta,coverage){
   if(segment.length)segments.push(segment);
   const pathFor=part=>part.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+' '+Y(p[1]).toFixed(1)).join(' ');
   const line=segments.map(pathFor).join(' ');
-  const area=segments.filter(part=>part.length>1).map(part=>pathFor(part)+' L'+X(part[part.length-1][0]).toFixed(1)+' '+(H-P)+' L'+X(part[0][0]).toFixed(1)+' '+(H-P)+' Z').join(' ');
   const liveViewers=u==='viewers';
-  const chartFill=liveViewers?'rgba(167,139,250,.18)':'rgba(154,168,255,.16)';
-  const chartStroke=liveViewers?'#a78bfa':'#9aa8ff';
+  const chartStroke=liveViewers?'#ef6a70':'#8fa5c5';
   const days=Math.max((x1-x0)/86400000,0.5);
   const perDay=pts.length>1?(pts[pts.length-1][1]-pts[0][1])/days:0;
   const meta=u==='viewers'
@@ -347,9 +345,9 @@ function histChart(pts,unit,showMeta,coverage){
   return (showMeta===false?'':'<div class="hist-meta">'+meta+'</div>')+gapMeta+
     '<div class="hist-wrap'+(liveViewers?' hist-live':'')+'" data-hid="'+hid+'">'+
     '<svg class="hist-svg" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'+
-    '<path d="'+area+'" fill="'+chartFill+'"/>'+
-    '<path d="'+line+'" fill="none" stroke="'+chartStroke+'" stroke-width="2"/>'+
-    pts.map(p=>'<circle cx="'+X(p[0]).toFixed(1)+'" cy="'+Y(p[1]).toFixed(1)+'" r="'+(liveViewers?3.4:2.6)+'" fill="'+chartStroke+'"/>').join('')+
+    '<line x1="'+P+'" y1="'+(H-P)+'" x2="'+(W-P)+'" y2="'+(H-P)+'" class="hist-grid-line"/>'+
+    '<line x1="'+P+'" y1="'+(H/2)+'" x2="'+(W-P)+'" y2="'+(H/2)+'" class="hist-grid-line"/>'+
+    '<path d="'+line+'" fill="none" stroke="'+chartStroke+'" stroke-width="1.5" vector-effect="non-scaling-stroke" stroke-linecap="square" stroke-linejoin="miter"/>'+
     '</svg>'+
     '<div class="hist-guide"></div><div class="hist-dot"></div><div class="hist-tip"></div>'+
     '</div>'+
@@ -1091,20 +1089,13 @@ function dashHTML(){
   const gcount={};A.forEach(v=>{if(v.genre)gcount[v.genre]=(gcount[v.genre]||0)+1;});
   const gsorted=Object.entries(gcount).sort((a,b)=>b[1]-a[1]);
   const gmax=gsorted.length?gsorted[0][1]:1;
-  const vel={};T.forEach(v=>{if(v.genre)(vel[v.genre]=vel[v.genre]||[]).push(v.vpm||0);});
-  const vsorted=Object.entries(vel).map(([k,a])=>[k,median(a)||0]).sort((a,b)=>b[1]-a[1]);
-  const vmax=vsorted.length?vsorted[0][1]:1;
-  const vbars=(rows,max,colorFn,fmt)=>'<div class="vchart">'+rows.map(([k,n])=>{
-    const c=colorFn(k);
-    return '<div class="vcol" title="'+esc(k)+' — '+fmtInt(n)+'"><span class="vval">'+(fmt?fmtN(n):fmtInt(n))+'</span>'+
-      '<div class="vbar" style="--f:'+(n/max)+';background:linear-gradient(180deg,'+c+','+c+'99)"></div>'+
-      '<span class="vlbl">'+esc(String(k).split('/')[0].trim())+'</span></div>';
-  }).join('')+'</div>';
-  const chartp=(t,sub,body)=>'<div class="panel chartp"><h3>'+t+'</h3><div class="psub">'+sub+'</div>'+body+'</div>';
-  h+='<div class="dash-grid">'+
-    chartp('Genre distribution','Number of audited videos per genre · full history, ≥1M views',vbars(gsorted,gmax,gcolor))+
-    chartp('Velocity by genre','Median views/month per genre · videos from the last 12 months',vbars(vsorted,vmax,gcolor,true))+
-  '</div>';
+  const genreRows=gsorted.map(([k,n],index)=>'<div class="genre-row">'+
+    '<span class="genre-rank">'+String(index+1).padStart(2,'0')+'</span><span class="genre-name">'+esc(k)+'</span>'+
+    '<span class="genre-track"><i style="width:'+Math.max(3,n/gmax*100)+'%;--gc:'+gcolor(k)+'"></i></span>'+
+    '<strong>'+fmtInt(n)+'</strong></div>').join('');
+  h+='<div class="dash-overview"><div class="panel genre-panel"><h3>Genre distribution</h3>'+
+    '<div class="psub">Number of audited videos per genre · full history, ≥1M views</div>'+
+    '<div class="genre-list">'+genreRows+'</div></div></div>';
 
   const hot=[...T].sort((a,b)=>{
     const av=videoUiMetrics(a).period.value,bv=videoUiMetrics(b).period.value;
