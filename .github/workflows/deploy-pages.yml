@@ -73,6 +73,7 @@ jobs:
             /tests/test_spotify_instant_runtime.js
             /tests/test_unified_design_system.cjs
             /tests/test_unified_platform_navigation.cjs
+            /tests/test_youtube_genre_vertical_bars.cjs
 
       - id: revision
         name: Resolve and require one immutable Pages revision
@@ -185,12 +186,13 @@ jobs:
         shell: bash
         run: corepack enable
 
-      - name: Validate the shared Radar header
+      - name: Validate the Radar interface
         shell: bash
         run: |
           set -euo pipefail
           node tests/test_unified_design_system.cjs
           node tests/test_unified_platform_navigation.cjs
+          node tests/test_youtube_genre_vertical_bars.cjs
 
       - name: Build the lightweight Spotify runtime
         shell: bash

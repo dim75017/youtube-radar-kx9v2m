@@ -1089,13 +1089,15 @@ function dashHTML(){
   const gcount={};A.forEach(v=>{if(v.genre)gcount[v.genre]=(gcount[v.genre]||0)+1;});
   const gsorted=Object.entries(gcount).sort((a,b)=>b[1]-a[1]);
   const gmax=gsorted.length?gsorted[0][1]:1;
-  const genreRows=gsorted.map(([k,n],index)=>'<div class="genre-row">'+
-    '<span class="genre-rank">'+String(index+1).padStart(2,'0')+'</span><span class="genre-name">'+esc(k)+'</span>'+
-    '<span class="genre-track"><i style="width:'+Math.max(3,n/gmax*100)+'%;--gc:'+gcolor(k)+'"></i></span>'+
-    '<strong>'+fmtInt(n)+'</strong></div>').join('');
-  h+='<div class="dash-overview"><div class="panel genre-panel"><h3>Genre distribution</h3>'+
-    '<div class="psub">Number of audited videos per genre · full history, ≥1M views</div>'+
-    '<div class="genre-list">'+genreRows+'</div></div></div>';
+  const genreColumns=Math.max(1,gsorted.length);
+  const genreBars=gsorted.map(([k,n])=>'<li class="genre-bar" title="'+esc(k)+' · '+fmtInt(n)+'">'+
+    '<span class="genre-name">'+esc(k)+'</span>'+
+    '<strong class="genre-value">'+fmtInt(n)+'</strong>'+
+    '<span class="genre-column" aria-hidden="true"><i style="--genre-height:'+Math.max(2,n/gmax*100)+'%;--gc:'+gcolor(k)+'"></i></span>'+
+    '</li>').join('');
+  h+='<div class="dash-overview"><section class="panel genre-panel" aria-labelledby="genre-distribution-title" aria-describedby="genre-distribution-description"><h3 id="genre-distribution-title">Genre distribution</h3>'+
+    '<div class="psub" id="genre-distribution-description">Number of audited videos per genre · full history, ≥1M views</div>'+
+    '<div class="genre-chart-scroll"><ol class="genre-chart" style="--genre-columns:'+genreColumns+';--genre-chart-min:'+Math.max(660,genreColumns*68)+'px">'+genreBars+'</ol></div></section></div>';
 
   const hot=[...T].sort((a,b)=>{
     const av=videoUiMetrics(a).period.value,bv=videoUiMetrics(b).period.value;
