@@ -12,9 +12,12 @@ from generate_youtube_recommendation_pool import (
     GENERATOR_VERSION,
     JS_SAFE_INTEGER,
     POOL_PREFIX,
+    RECIPE_VERSION,
     SCORING_VERSION,
     TITLE_FALLBACK_HOOKS,
     TITLE_GENRE_FALLBACK_HOOKS,
+    TITLE_HOOK_VARIANTS,
+    TITLE_MEASURED_DETAIL_THEMES,
     TITLE_MEASURED_THEMES,
     TITLE_RECIPE_VERSION,
     _apply_feedback,
@@ -381,7 +384,7 @@ class RecommendationPoolTests(unittest.TestCase):
         )
         self.assertTrue(all(abs(row["n"]) <= JS_SAFE_INTEGER for row in first))
         self.assertTrue(all(row["_generatorVersion"] == 4 for row in first))
-        self.assertTrue(all(row["_recipeVersion"] == 2 for row in first))
+        self.assertTrue(all(row["_recipeVersion"] == RECIPE_VERSION for row in first))
 
     def test_model_revision_changes_without_rewriting_stable_v4_ledger_identity(self):
         original = generate_recommendation_pool(self.source_data(40), max_items=80)
@@ -987,7 +990,10 @@ class RecommendationPoolTests(unittest.TestCase):
                 continue
             self.assertTrue(generated, title)
             self.assertNotIn(title.casefold(), generated[0]["title"].casefold())
-            self.assertEqual(generated[0]["_topicKey"], "ambient mix")
+            self.assertEqual(generated[0]["_topicFamilyKey"], "ambient mix")
+            self.assertIn(generated[0]["_topicKey"], {
+                value.casefold() for value in TITLE_HOOK_VARIANTS["Ambient Mix"]
+            })
 
     def test_style_selection_is_deterministically_distributed_over_analyse_supported_styles(self):
         sources = [
@@ -1135,35 +1141,88 @@ class RecommendationPoolTests(unittest.TestCase):
         }), "relax")
 
     def test_measured_theme_labels_never_add_rain_or_water_without_evidence(self):
-        self.assertEqual(_title_hook("Calm cello instrumental for sleep", "sleep", "classical"), "Calm Cello")
-        self.assertEqual(_title_hook("Cello with rain for sleep", "sleep", "classical"), "Cello & Rain")
-        self.assertEqual(_title_hook("Piano with water sounds", "sleep", "piano"), "Piano & Water Sounds")
-        self.assertEqual(_title_hook("Piano and rain sounds", "sleep", "piano"), "Piano & Rain")
-        self.assertEqual(_title_hook("Zen meditation ambient", "relax", "ambient"), "Meditation Ambient")
-        self.assertEqual(_title_hook("Water meditation ambient", "relax", "ambient"), "Water Meditation")
-        self.assertEqual(_title_hook("Coffee shop jazz", "study", "jazz"), "Coffee Jazz")
-        self.assertEqual(_title_hook("Jazz for the night", "relax", "jazz"), "Night Jazz")
-        self.assertEqual(_title_hook("Midnight jazz", "relax", "jazz"), "Midnight Jazz")
-        self.assertEqual(_title_hook("Late at night piano", "study", "piano"), "Night Piano")
-        self.assertEqual(_title_hook("Piano for sleep", "sleep", "piano"), "Deep Sleep Piano")
-        self.assertEqual(_title_hook("Sunset house mix", "relax", "house"), "Sunset House")
-        self.assertEqual(_title_hook("Summer house mix", "relax", "house"), "Summer House")
-        self.assertEqual(_title_hook("Cricket sounds", "sleep", "nature"), "Cricket Sounds")
-        self.assertEqual(_title_hook("Summer night cricket sounds", "sleep", "nature"), "Summer Night Crickets")
-        self.assertEqual(_title_hook("Delta waves ambient", "sleep", "ambient"), "Delta Waves")
-        self.assertEqual(_title_hook("Alpha waves ambient", "sleep", "ambient"), "Alpha Waves")
-        self.assertEqual(_title_hook("Slow jazz for the evening", "relax", "jazz"), "Slow Jazz")
-        self.assertEqual(_title_hook("Jazz noir", "relax", "jazz"), "Jazz Noir")
-        self.assertEqual(_title_hook("Atmospheric drum and bass", "relax", "dnb"), "Atmospheric Drum & Bass")
-        self.assertEqual(_title_hook("Liquid drum and bass", "relax", "dnb"), "Liquid Drum & Bass")
-        self.assertEqual(
-            _compose_candidate_title({"title": "winter ambient mix"}, "ambient", "season", "direct"),
-            "Ambient Mix 🌌",
+        def hook_choices(label):
+            return set(TITLE_HOOK_VARIANTS.get(label) or (label,))
+
+        cases = (
+            ("Calm cello instrumental for sleep", "sleep", "classical", "Calm Cello"),
+            ("Cello with rain for sleep", "sleep", "classical", "Cello & Rain"),
+            ("Piano with water sounds", "sleep", "piano", "Piano & Water Sounds"),
+            ("Piano and rain sounds", "sleep", "piano", "Piano & Rain"),
+            ("Zen meditation ambient", "relax", "ambient", "Meditation Ambient"),
+            ("Water meditation ambient", "relax", "ambient", "Water Meditation"),
+            ("Coffee shop jazz", "study", "jazz", "Coffee Jazz"),
+            ("Jazz for the night", "relax", "jazz", "Night Jazz"),
+            ("Midnight jazz", "relax", "jazz", "Midnight Jazz"),
+            ("Late at night piano", "study", "piano", "Night Piano"),
+            ("Piano for sleep", "sleep", "piano", "Deep Sleep Piano"),
+            ("Sunset house mix", "relax", "house", "Sunset House"),
+            ("Summer house mix", "relax", "house", "Summer House"),
+            ("Cricket sounds", "sleep", "nature", "Cricket Sounds"),
+            ("Summer night cricket sounds", "sleep", "nature", "Summer Night Crickets"),
+            ("Delta waves ambient", "sleep", "ambient", "Delta Waves"),
+            ("Alpha waves ambient", "sleep", "ambient", "Alpha Waves"),
+            ("Slow jazz for the evening", "relax", "jazz", "Slow Jazz"),
+            ("Jazz noir", "relax", "jazz", "Jazz Noir"),
+            ("Atmospheric drum and bass", "relax", "dnb", "Atmospheric Drum & Bass"),
+            ("Liquid drum and bass", "relax", "dnb", "Liquid Drum & Bass"),
         )
-        self.assertEqual(
-            _compose_candidate_title({"title": "atmospheric drum and bass"}, "dnb", "relax", "direct"),
-            "Atmospheric Drum & Bass 🥁",
+        for source_title, purpose, genre, measured_family in cases:
+            with self.subTest(source_title=source_title):
+                self.assertIn(_title_hook(source_title, purpose, genre), hook_choices(measured_family))
+
+        winter = _compose_candidate_title({"title": "winter ambient mix"}, "ambient", "season", "direct")
+        self.assertIn("Winter Stillness", winter)
+        self.assertRegex(winter, r"(?i)season")
+        atmospheric = _compose_candidate_title(
+            {"title": "atmospheric drum and bass"}, "dnb", "relax", "direct",
         )
+        self.assertTrue(any(hook in atmospheric for hook in hook_choices("Atmospheric Drum & Bass")))
+        self.assertRegex(atmospheric, r"(?i)drum & bass")
+
+    def test_generated_hook_never_contradicts_the_declared_use_case(self):
+        cases = (
+            (
+                {"vid": "piano-mixed-use", "title": "Beautiful Piano Music | Relaxing Music for Focus, Sleep & Relaxation"},
+                "piano", "sleep", r"(?i)\bfocus\b",
+            ),
+            (
+                {"vid": "jazz-mixed-use", "title": "3:30 a.m. jazzhop mix [Study / Sleep / Homework Music]"},
+                "jazz", "sleep", r"(?i)\b(?:focus|work|task|study)\b",
+            ),
+            (
+                {"vid": "lofi-library", "title": "Cozy Library Lofi — Deep Focus to Work, Study & Relax"},
+                "lofi", "reading", r"(?i)\b(?:deep work|deadline|focus block)\b",
+            ),
+        )
+        for source, genre, purpose, contradiction in cases:
+            with self.subTest(source=source["title"]):
+                title = _compose_candidate_title(source, genre, purpose, "direct")
+                self.assertNotRegex(title, contradiction)
+
+    def test_relax_fallback_never_invents_a_work_or_reading_hook(self):
+        title = _compose_candidate_title(
+            {"vid": "generic-relax", "title": "Endless Sunday 😌 [Chillhop / instrumental beats]"},
+            "lofi", "relax", "signature",
+        )
+        self.assertNotRegex(title, r"(?i)\b(?:deadline|focus|work|chapter|reading)\b")
+
+    def test_title_does_not_repeat_the_genre_as_both_hook_and_tail(self):
+        cases = (
+            ({"vid": "repeat-jazz", "title": "Just One More Drink -- Jazz Noir"}, "jazz", "relax", "jazz"),
+            ({"vid": "repeat-lofi", "title": "summer lofi chill beats"}, "lofi", "season", "lofi"),
+            ({"vid": "repeat-piano", "title": "Piano and rain sounds"}, "piano", "sleep", "piano"),
+            (
+                {"vid": "repeat-guitar", "title": "Beautiful Instrumental Music - Best Acoustic Guitar - Best Relaxing Music"},
+                "guitar", "relax", "guitar",
+            ),
+            ({"vid": "repeat-house", "title": "night drive house mix"}, "house", "relax", "house"),
+            ({"vid": "repeat-synthwave", "title": "midnight synthwave mix"}, "synthwave", "relax", "synthwave"),
+        )
+        for source, genre, purpose, genre_word in cases:
+            with self.subTest(genre=genre):
+                title = _compose_candidate_title(source, genre, purpose, "direct")
+                self.assertLessEqual(title.casefold().count(genre_word), 1, title)
 
     def test_real_snapshot_generation_has_only_allowlisted_hooks_and_verified_genres(self):
         root = Path(__file__).resolve().parents[1]
@@ -1173,13 +1232,51 @@ class RecommendationPoolTests(unittest.TestCase):
 
         allowed_hooks = {
             label.casefold()
-            for themes in TITLE_MEASURED_THEMES.values()
+            for themes in (*TITLE_MEASURED_DETAIL_THEMES.values(), *TITLE_MEASURED_THEMES.values())
             for _pattern, label in themes
         } | {
             label.casefold()
             for label in (*TITLE_GENRE_FALLBACK_HOOKS.values(), *TITLE_FALLBACK_HOOKS.values())
+        } | {
+            value.casefold()
+            for variants in TITLE_HOOK_VARIANTS.values()
+            for value in variants
         }
         self.assertTrue(all(str(row.get("_topicKey") or "").casefold() in allowed_hooks for row in rows))
+        self.assertTrue(all(row.get("_topicFamilyKey") for row in rows))
+        self.assertTrue(all(row.get("_titleTemplateKey") for row in rows))
+        self.assertTrue(all(row.get("_hookOrigin") in {"measured_detail", "measured_theme", "editorial_fallback"} for row in rows))
+        self.assertTrue(all(int(row.get("_specificityScore") or 0) >= 2 for row in rows))
+
+        qualified = [row for row in rows if int(row.get("score") or 0) >= 78]
+        generic_families = {
+            value.casefold() for value in TITLE_GENRE_FALLBACK_HOOKS.values()
+        }
+        generic_count = sum(
+            str(row.get("_topicFamilyKey") or "").casefold() in generic_families
+            for row in qualified
+        )
+        with self.subTest(quality="generic-family-cap"):
+            self.assertLessEqual(
+                generic_count,
+                len(qualified) // 5,
+                f"too many qualified titles still come from generic genre-only families: {generic_count}/{len(qualified)}",
+            )
+        with self.subTest(quality="measured-hook-required"):
+            self.assertFalse(
+                [row["title"] for row in qualified if row.get("_hookOrigin") == "editorial_fallback"],
+                "qualified ideas must have a measured hook instead of an editorial filler premise",
+            )
+        with self.subTest(quality="reference-purpose"):
+            self.assertFalse(
+                [
+                    (row["title"], row.get("_titleReference"))
+                    for row in qualified
+                    if row.get("_titleReference")
+                    and row.get("_titleReferencePurposeKey") != row.get("_purposeKey")
+                ],
+                "title references must match both the musical genre and the candidate use case",
+            )
 
         forbidden = re.compile(
             r"(?i)\b(?:hobbit|lord of the rings|polar express|skyrim|zora|bon iver|st\.? vincent|"

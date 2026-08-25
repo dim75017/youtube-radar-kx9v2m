@@ -111,8 +111,12 @@ assert.match(dashboardCards, /fmtN\(m\.views\)/,
   'Dashboard discovery mini-cards compact total views');
 
 const index = fs.readFileSync('index.html', 'utf8');
-for (const asset of ['dashboard-02-helpers.js', 'dashboard-03-keywords.js', 'dashboard-04-recommendations.js']) {
-  assert.ok(index.includes(asset+'?v=20260813-card-compact-v1'), asset+' cache version is current');
+for (const [asset, version] of [
+  ['dashboard-02-helpers.js', '20260825-reco-daily-v6'],
+  ['dashboard-03-keywords.js', '20260813-card-compact-v1'],
+  ['dashboard-04-recommendations.js', '20260825-reco-daily-v6'],
+]) {
+  assert.ok(index.includes(asset+'?v='+version), asset+' cache version is current');
 }
 
 const visibleStart = videos.indexOf('let VISIBLE_VIDEO_HISTORY_PROMISE');

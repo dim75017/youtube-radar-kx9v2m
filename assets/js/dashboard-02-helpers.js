@@ -1029,7 +1029,10 @@ function viewMarkupForRoute(currentRoute){
   if(currentRoute==='kw')return {title:'Keywords',html:kwHTML()};
   return {title:'',html:''};
 }
-function viewCacheKey(currentRoute){return currentRoute+'|'+(typeof LANG!=='undefined'?LANG:'en');}
+function viewCacheKey(currentRoute){
+  const day=currentRoute==='recos'&&typeof recoDayKey==='function'?'|'+recoDayKey():'';
+  return currentRoute+'|'+(typeof LANG!=='undefined'?LANG:'en')+day;
+}
 function viewMarkupWithLanguage(currentRoute){
   const output=viewMarkupForRoute(currentRoute);
   if(typeof LANG!=='undefined'&&LANG==='fr'&&typeof frz==='function')return {title:frz(output.title),html:frz(output.html)};

@@ -115,13 +115,12 @@ function fixedDateClass(timestamp) {
   };
 }
 
-function recommendationContext({recos, ownedRows, measuredSeeds, snapshotTime}) {
+function recommendationContext({recos, ownedRows, measuredSeeds, snapshotTime, stored = new Map()}) {
   const source = fs.readFileSync(RECOMMENDATION_SOURCE, 'utf8');
   const start = source.indexOf('const GENERATED_RECO_DECISIONS_KEY=');
   const end = source.indexOf('function ensureRecommendationPerformanceHistory()', start);
   assert.ok(start >= 0 && end > start, 'recommendation learning helpers must remain available');
 
-  const stored = new Map();
   const context = {
     DATA: {recos: recos.map(row => Object.assign({}, row))},
     LANG: 'fr',
@@ -191,6 +190,8 @@ assert.match(String(poolPayload.buildId || ''), /^[a-f0-9]{24}$/,
 assert.match(String(poolPayload.ledgerRevision || ''), /^[a-f0-9]{64}$/,
   'the projection must expose its exact ledger revision');
 if (isLearnedV4) {
+  assert.equal(poolPayload.titleRecipeVersion, 4,
+    'the learned pool must use the specific-title recipe deployed with daily rotation');
   assert.match(String(poolPayload.modelRevision || ''), /^[a-f0-9]{64}$/,
     'the learned projection must expose the exact title/performance model revision');
 }
@@ -212,12 +213,20 @@ for (const row of generated) {
   if (isLearnedV4) {
     assert.equal(row._generatorVersion, 4,
       `learned pool row ${row.n} must use generator V4 without leaking legacy proposals`);
-    assert.match(String(row._ideaKey || ''), /^g4\|r2\|/,
+    assert.match(String(row._ideaKey || ''), /^g4\|r3\|/,
       `learned pool row ${row.n} must expose its stable V4 recipe key`);
-    assert.equal(row._recipeVersion, 2, `learned pool row ${row.n} must use recipe schema 2`);
+    assert.equal(row._recipeVersion, 3, `learned pool row ${row.n} must use recipe schema 3`);
     assert.equal(row._scoringVersion, 5, `learned pool row ${row.n} must use scoring V5`);
-    assert.ok(row._conceptFamily && row._titleStyleKey && row._titleFamily,
+    assert.ok(row._conceptFamily && row._titleStyleKey && row._titleFamily && row._titleTemplateKey,
       `learned pool row ${row.n} must expose its evidence-bound title model`);
+    assert.ok(Number(row._specificityScore) >= 2,
+      `learned pool row ${row.n} must pass the specific-title gate`);
+    assert.ok(['measured_detail', 'measured_theme', 'editorial_fallback'].includes(row._hookOrigin),
+      `learned pool row ${row.n} must classify its title hook provenance`);
+    if (row._titleReference) {
+      assert.equal(row._titleReferencePurposeKey, row._purposeKey,
+        `learned pool row ${row.n} must use a same-purpose title reference`);
+    }
     assert.equal(Boolean(row._settingKey), false,
       `learned pool row ${row.n} must never require an invented location`);
   } else {
@@ -306,10 +315,18 @@ const day = new Intl.DateTimeFormat('en-CA', {
 }).format(new Date(snapshotTime));
 const qualified = generated
   .map(row => ({row, score: Number(context.scoreForTest(row, profile, day))}))
+  .filter(item => item.row._hookOrigin !== 'editorial_fallback')
   .filter(item => Number.isFinite(item.score) && item.score >= context.minimumScoreForTest)
   .sort((a, b) => b.score - a.score || Number(a.row.n) - Number(b.row.n));
 assert.ok(qualified.length > 0,
   'the real measured reservoir and channel analytics must yield at least one quality-qualified idea');
+if (isLearnedV4) {
+  const qualifiedTopics = new Set(qualified.map(item => item.row._topicKey).filter(Boolean));
+  assert.ok(qualifiedTopics.size >= 100,
+    'the real pool must hold enough qualified topics for two fully different 50-card days');
+  assert.ok(qualified.every(item => item.row._hookOrigin !== 'editorial_fallback'),
+    'genre-only editorial fallbacks must remain below the daily quality gate');
+}
 assert.ok(qualified.every((item, index) => index === 0 || qualified[index - 1].score >= item.score),
   'the quality-qualified real reservoir must be rankable by the daily score');
 const realDailyBatch = Array.from(context.dailySetForTest());
@@ -324,6 +341,25 @@ if (isLearnedV4) {
     'the real V4 daily batch must contain each normalized global hook/topic at most once');
   assert.equal(new Set(normalizedGenreTopics).size, realDailyBatch.length,
     'the real V4 daily batch must contain each genre×topic combination at most once');
+  const rotationStorage = new Map();
+  const dayOneContext = recommendationContext({
+    recos: (dataPayload.d.recos || []).concat(generated), ownedRows, measuredSeeds: generated,
+    snapshotTime, stored: rotationStorage,
+  });
+  const dayTwoContext = recommendationContext({
+    recos: (dataPayload.d.recos || []).concat(generated), ownedRows, measuredSeeds: generated,
+    snapshotTime: snapshotTime + 86400000, stored: rotationStorage,
+  });
+  const dayOne = Array.from(dayOneContext.dailySetForTest());
+  const dayTwo = Array.from(dayTwoContext.dailySetForTest());
+  assert.equal(dayOne.length, 50, 'the real qualified pool supplies a complete first daily lot');
+  assert.equal(dayTwo.length, 50, 'the real qualified pool supplies a complete next-day lot');
+  const dayOneIds = new Set(dayOne.map(row => Number(row.n)));
+  const dayOneTopics = new Set(dayOne.map(row => dayOneContext.topicForTest(row)));
+  assert.equal(dayTwo.filter(row => dayOneIds.has(Number(row.n))).length, 0,
+    'the real pool has zero recommendation-ID overlap on consecutive Paris days');
+  assert.equal(dayTwo.filter(row => dayOneTopics.has(dayTwoContext.topicForTest(row))).length, 0,
+    'the real pool has zero topic overlap on consecutive Paris days');
 } else {
   assert.equal(realDailyBatch.length, 0,
     'the checked-in V3 migration input fails closed until a learned V4 projection is loaded');

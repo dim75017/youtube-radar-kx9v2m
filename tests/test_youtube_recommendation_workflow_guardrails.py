@@ -66,12 +66,33 @@ class YoutubeRecommendationWorkflowGuardrailTests(unittest.TestCase):
         self.assertIn('test_youtube_recommendation_shared_state.js', validate)
         self.assertIn('test_youtube_recommendation_published_link.js', validate)
 
+    def test_open_tab_daily_cache_guard_is_part_of_strict_validation(self):
+        validate = self.workflow.split('  validate:\n', 1)[1].split('  publish:\n', 1)[0]
+        self.assertIn('node tests/test_youtube_instant_tabs.js', validate)
+        self.assertGreaterEqual(
+            self.workflow.count("- 'tests/test_youtube_instant_tabs.js'"),
+            2,
+            'push and pull-request path filters must both notice this guardrail',
+        )
+
     def test_pages_verification_compares_the_exact_pool_and_ledger_revision(self):
         verify = self.workflow.split('Verify Pages serves the exact pool and ledger revision', 1)[1]
         self.assertIn('--validate-only', verify)
         self.assertIn('--verify-base-url https://dim75017.github.io/youtube-radar-kx9v2m/', verify)
         self.assertIn('--verify-timeout 900', verify)
         self.assertIn('--verify-interval 15', verify)
+
+    def test_publish_pushes_then_waits_for_pages_before_public_verification(self):
+        publish = self.workflow.split('      - id: publish\n', 1)[1]
+        push = publish.index('git push origin HEAD:main')
+        dispatch = publish.index('python trigger_pages_deployment.py')
+        wait = publish.index('--wait-for-completion')
+        verify = publish.index('Verify Pages serves the exact pool and ledger revision')
+        self.assertLess(push, dispatch)
+        self.assertLess(dispatch, wait)
+        self.assertLess(wait, verify)
+        self.assertIn('--sha "$published_sha"', publish)
+        self.assertIn('--run-timeout 1800', publish)
 
     def test_workflow_is_cheap_and_write_permission_is_publish_only(self):
         global_permissions = self.workflow.split('permissions:\n', 1)[1].split('concurrency:\n', 1)[0]

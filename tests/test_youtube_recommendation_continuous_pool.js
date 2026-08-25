@@ -208,6 +208,18 @@ vm.runInNewContext(`${recommendations.slice(overlayStart, overlayEnd)}
   this.consumedLimitForTest = RECO_CONSUMED_LIMIT;`, rotationContext);
 rotationContext.mergePoolForTest(rotationContext.DATA);
 
+const reprojectedSeed = Object.assign({}, rotationContext.window.LOFI_RECOMMENDATION_POOL.items[0], {
+  title: 'Rainy Pages · Deep Focus',
+  score: 93,
+});
+rotationContext.window.LOFI_RECOMMENDATION_POOL.items[0] = reprojectedSeed;
+rotationContext.mergePoolForTest(rotationContext.DATA);
+const reprojectedRow = rotationContext.DATA.recos.find(row => row.n === reprojectedSeed.n);
+assert.equal(reprojectedRow.title, reprojectedSeed.title,
+  'a no-store pool refresh updates an existing generated row with the same stable ID');
+assert.equal(reprojectedRow.score, 93,
+  'the in-memory recommendation projection receives the refreshed evidence score');
+
 const firstProfile = rotationContext.profileForTest();
 assert.equal(firstProfile.feedbackGenre.lofi, undefined,
   'a Roadmap placement without an explicit title decision is neutral');

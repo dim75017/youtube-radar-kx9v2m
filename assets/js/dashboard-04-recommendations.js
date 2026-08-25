@@ -378,11 +378,26 @@ function mergeGeneratedRecommendationPool(data){
   const storedVariants=storedContinuousRecommendationRows();
   if((!Array.isArray(source)||!source.length)&&!storedVariants.length)return data;
   const recos=data.recos||(data.recos=[]),decisions=generatedRecommendationDecisions();let migratedDecisions=false;
-  const ids=new Set(recos.map(row=>String(row&&row.n))),titles=new Set(recos.map(row=>normalizedRecommendationTitle(row&&row.title)).filter(Boolean));
+  const byId=new Map(recos.map(row=>[String(row&&row.n),row])),ids=new Set(byId.keys()),titles=new Set(recos.map(row=>normalizedRecommendationTitle(row&&row.title)).filter(Boolean));
   const append=(raw,guardTitle)=>{
     if(!raw||raw.n==null||!raw.title)return;
     const id=String(raw.n),title=normalizedRecommendationTitle(raw.title);
-    if(ids.has(id)||(guardTitle&&titles.has(title)))return;
+    const existing=byId.get(id);
+    if(existing){
+      // A no-store pool refresh can retitle/re-score a stable idea after new
+      // Analyse or review evidence. Update generated rows in place so an open
+      // tab does not keep yesterday's projection; explicit decisions/edits
+      // are reapplied below and remain authoritative.
+      if(existing._generated){
+        const localValid=String(existing.valid||''),shared=sharedRecommendationEffectiveItem(id),decision=decisions[id];
+        Object.assign(existing,raw,{_generated:true});
+        if(shared)existing.valid=String(shared.valid||'');
+        else if(decision&&typeof decision.value==='string')existing.valid=decision.value;
+        else existing.valid=localValid;
+      }
+      return;
+    }
+    if(guardTitle&&titles.has(title))return;
     const row=Object.assign({},raw,{_generated:true});
     const legacyId=raw._legacyN!=null?String(raw._legacyN):'',shared=sharedRecommendationEffectiveItem(id),decision=decisions[id]||(legacyId&&decisions[legacyId]);
     if(shared)row.valid=String(shared.valid||'');
@@ -390,7 +405,7 @@ function mergeGeneratedRecommendationPool(data){
       row.valid=decision.value;
       if(!decisions[id]){decisions[id]=Object.assign({},decision,{migratedFrom:legacyId});migratedDecisions=true;}
     }
-    recos.push(row);ids.add(id);titles.add(title);
+    recos.push(row);byId.set(id,row);ids.add(id);titles.add(title);
   };
   (Array.isArray(source)?source:[]).forEach(raw=>append(raw,true));
   storedVariants.forEach(raw=>append(raw,false));
@@ -486,6 +501,7 @@ const RECO_MIN_DAILY_SCORE=78;
 // appends. Fifty thousand entries cover many full ledgers while staying well
 // below normal localStorage quotas; only the oldest consumed IDs can age out.
 const RECO_CONSUMED_LIMIT=50000;
+const RECO_DAILY_HISTORY_DAYS=30;
 // V4 resets only the stale seen/queue rotation after the full-history learning
 // launch. Decisions, edits and Roadmap placements use separate stores.
 const RECO_ROTATION_KEY='lofi_radar_reco_rotation_v4';
@@ -494,6 +510,9 @@ let RECO_DERIVED_REVISION=0;
 let RECO_DAILY_CACHE=null;
 const RECO_TAB_MARKUP_CACHE=new Map();
 let RECO_TAB_WARMUP_TOKEN=0;
+let RECO_ACTIVE_DAY_KEY=null;
+let RECO_DAY_ROLLOVER_TIMER=null;
+let RECO_POOL_REFRESH_PROMISE=null;
 function invalidateRecommendationDerivedData(){
   RECO_DERIVED_REVISION++;
   if(typeof recommendationStatusSnapshot==='function')recommendationStatusSnapshot._cache=null;
@@ -501,10 +520,51 @@ function invalidateRecommendationDerivedData(){
   RECO_TAB_MARKUP_CACHE.clear();
   RECO_TAB_WARMUP_TOKEN++;
 }
-function recoDayKey(){
-  const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+function recoDayKey(value){
+  const date=value==null?new Date():new Date(value);
+  const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date);
   const get=t=>p.find(x=>x.type===t).value;
   return get('year')+'-'+get('month')+'-'+get('day');
+}
+function recoDayOrdinal(day){
+  const parts=String(day||'').split('-').map(Number);
+  return parts.length===3&&parts.every(Number.isFinite)?Math.floor(Date.UTC(parts[0],parts[1]-1,parts[2])/86400000):0;
+}
+function recoNextParisDayDelay(){
+  const now=Date.now(),day=recoDayKey(now);let low=now,high=now+30*60*60*1000;
+  while(high-low>1000){const middle=Math.floor((low+high)/2);if(recoDayKey(middle)===day)low=middle;else high=middle;}
+  return Math.max(1000,high-now+250);
+}
+function clearRecommendationViewCache(){
+  if(typeof VIEW_CACHE==='undefined'||!VIEW_CACHE||typeof VIEW_CACHE.keys!=='function')return;
+  [...VIEW_CACHE.keys()].forEach(key=>{if(/^recos\|/.test(String(key)))VIEW_CACHE.delete(key);});
+}
+function refreshRecommendationPoolForDay(){
+  if(RECO_POOL_REFRESH_PROMISE||typeof window==='undefined'||typeof window.__loadRadarRecommendationPool!=='function')return RECO_POOL_REFRESH_PROMISE||Promise.resolve(null);
+  RECO_POOL_REFRESH_PROMISE=window.__loadRadarRecommendationPool(true).then(pool=>{
+    if(!pool||typeof DATA==='undefined'||!DATA)return pool;
+    mergeGeneratedRecommendationPool(DATA);applyRecommendationEdits(DATA);invalidateRecommendationDerivedData();clearRecommendationViewCache();
+    if(typeof route!=='undefined'&&route==='recos'&&typeof rerenderRecos==='function')rerenderRecos();
+    else if(typeof renderNav==='function')renderNav();
+    return pool;
+  }).catch(()=>null).finally(()=>{RECO_POOL_REFRESH_PROMISE=null;});
+  return RECO_POOL_REFRESH_PROMISE;
+}
+function handleRecommendationDayRollover(){
+  const day=recoDayKey();
+  if(RECO_ACTIVE_DAY_KEY==null){RECO_ACTIVE_DAY_KEY=day;return false;}
+  if(day===RECO_ACTIVE_DAY_KEY)return false;
+  RECO_ACTIVE_DAY_KEY=day;invalidateRecommendationDerivedData();clearRecommendationViewCache();
+  if(typeof route!=='undefined'&&route==='recos'&&typeof rerenderRecos==='function')rerenderRecos();
+  else if(typeof renderNav==='function')renderNav();
+  refreshRecommendationPoolForDay();
+  return true;
+}
+function scheduleRecommendationDayRollover(){
+  if(typeof setTimeout!=='function')return;
+  if(RECO_DAY_ROLLOVER_TIMER&&typeof clearTimeout==='function')clearTimeout(RECO_DAY_ROLLOVER_TIMER);
+  RECO_ACTIVE_DAY_KEY=recoDayKey();
+  RECO_DAY_ROLLOVER_TIMER=setTimeout(()=>{RECO_DAY_ROLLOVER_TIMER=null;handleRecommendationDayRollover();scheduleRecommendationDayRollover();},recoNextParisDayDelay());
 }
 function recoHash(v){let h=2166136261;const s=String(v);for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
 const RECO_VARIANT_MOMENTS=[
@@ -637,6 +697,7 @@ function normalizeRecoRotationHistory(history){
   // changed, which made ideas explicitly discarded by Refresh reappear.
   append(history._seen);append(history._consumed);append(history._recent&&history._recent.ids);
   history._consumed=ordered.slice(-RECO_CONSUMED_LIMIT);
+  history._topics=history._topics&&typeof history._topics==='object'&&!Array.isArray(history._topics)?history._topics:{};
   delete history._seen;delete history._recent;
   return history;
 }
@@ -644,11 +705,49 @@ function recoRotationHistory(){try{return normalizeRecoRotationHistory(JSON.pars
 function saveRecoRotation(h){
   try{const history=normalizeRecoRotationHistory(h),pool=recoPoolIdentity();if(pool)history._pool=pool;localStorage.setItem(RECO_ROTATION_KEY,JSON.stringify(history));}catch(e){}
 }
-function recoSeenIds(history){
+function recoPreviousDayKey(history,day){
+  return Object.keys(history||{}).filter(key=>!key.startsWith('_')&&key<day&&Array.isArray(history[key])&&history[key].length).sort().pop()||'';
+}
+function recoSeenIds(history,day){
   history=normalizeRecoRotationHistory(history);
   const seen=new Set((history._consumed||[]).map(Number).filter(Number.isFinite));
-  Object.entries(history||{}).forEach(([key,ids])=>{if(!key.startsWith('_')&&Array.isArray(ids))ids.forEach(id=>{id=Number(id);if(Number.isFinite(id))seen.add(id);});});
+  const dayKeys=day?[recoPreviousDayKey(history,day)]:Object.keys(history||{}).filter(key=>!key.startsWith('_'));
+  dayKeys.forEach(key=>(Array.isArray(history[key])?history[key]:[]).forEach(id=>{id=Number(id);if(Number.isFinite(id))seen.add(id);}));
   return seen;
+}
+function recoPreviousTopicKeys(history,day,candidates){
+  const previousDay=recoPreviousDayKey(history,day);if(!previousDay)return new Set();
+  const stored=history&&history._topics&&Array.isArray(history._topics[previousDay])?history._topics[previousDay]:null;
+  if(stored)return new Set(stored.map(recoFeatureText).filter(Boolean));
+  const byId=new Map((candidates||[]).map(row=>[Number(row&&row.n),row]));
+  return new Set((history[previousDay]||[]).map(id=>byId.get(Number(id))).filter(Boolean).map(recoNormalizedTopicKey).filter(Boolean));
+}
+function recoRecentUsePenalty(history,day,id){
+  const today=recoDayOrdinal(day);let last=null;
+  Object.keys(history||{}).filter(key=>!key.startsWith('_')&&key<day&&Array.isArray(history[key])).forEach(key=>{
+    if(history[key].some(value=>Number(value)===Number(id)))last=Math.max(last==null?-Infinity:last,recoDayOrdinal(key));
+  });
+  if(last==null)return 0;
+  const age=Math.max(1,today-last);return Math.max(0,6-age*.65);
+}
+function recoDailyRotationWindow(items,day,limit){
+  const groups=new Map();
+  (items||[]).forEach(item=>{
+    const topic=recoNormalizedTopicKey(item&&item.r),key=topic?'topic:'+topic:'id:'+String(item&&item.r&&item.r.n);
+    if(!groups.has(key))groups.set(key,[]);groups.get(key).push(item);
+  });
+  const ordered=[...groups.entries()].sort((a,b)=>{
+    const left=recoHash('daily-topic-window-v6|'+a[0]),right=recoHash('daily-topic-window-v6|'+b[0]);
+    return left-right||a[0].localeCompare(b[0]);
+  });
+  if(!ordered.length)return [];
+  const target=Math.min(limit,ordered.length),start=(recoDayOrdinal(day)*target)%ordered.length,out=[];
+  // Rotate whole topic groups, not raw rows. With 100 qualified topics this
+  // mathematically yields two adjacent 50-card days with zero topic/ID overlap
+  // even in a fresh browser that has no local rotation history yet.
+  for(let offset=0;offset<target;offset++)out.push(...ordered[(start+offset)%ordered.length][1]);
+  out._target=target;
+  return out;
 }
 function rememberRecoIds(history,ids){
   history=normalizeRecoRotationHistory(history);
@@ -886,6 +985,9 @@ function dailyRecommendationSet(){
   const hasSnapshot=typeof recommendationStatusSnapshot==='function';
   const status=hasSnapshot?recommendationStatusSnapshot():null;
   const candidateSource=status?status.pending:(DATA.recos||[]);
+  const activePoolItems=typeof window!=='undefined'&&window.LOFI_RECOMMENDATION_POOL&&Array.isArray(window.LOFI_RECOMMENDATION_POOL.items)
+    ?window.LOFI_RECOMMENDATION_POOL.items:null;
+  const activePoolIds=activePoolItems?new Set(activePoolItems.map(row=>Number(row&&row.n)).filter(Number.isFinite)):null;
   const activeGeneratorVersion=activeRecommendationGeneratorVersion();
   // Loading failures and stale V3 payloads are not an empty editorial lot.
   // Return before writing rotation state so a later V4 fetch can recover in
@@ -919,6 +1021,12 @@ function dailyRecommendationSet(){
     // proposals. Their explicit X/- decisions remain in DATA for learning and
     // in the corresponding history tabs.
     .filter(r=>activeGeneratorVersion===4&&Number(r&&r._generatorVersion)===4)
+    // A background no-store refresh can replace the whole recipe while the
+    // page stays open. Keep old rows in DATA for decisions/audit, but never
+    // let a neutral row absent from the current server projection re-enter a
+    // new daily lot.
+    .filter(r=>activePoolIds===null||activePoolIds.has(Number(r&&r.n)))
+    .filter(r=>String(r&&r._hookOrigin||'')!=='editorial_fallback')
     .filter(r=>{const family=recoGeneratedFamilyKey(r,'_conceptFamily');return !family||!blockedConceptFamilies.has(family);})
     .filter(r=>{const topic=recoNormalizedTopicKey(r);return !topic||!refusedTopics.has(topic);});
   const decorate=rows=>rows.map(r=>{
@@ -934,8 +1042,17 @@ function dailyRecommendationSet(){
     const evidencePotential=recoPotentialForScore(visibleScore);
     return Object.assign({},r,{scoreAdj:visibleScore,pot:evidencePotential,_dailyScore:dailyScore,_dailyPotential:recoPotentialForScore(dailyScore),_dailyReasons:recoReasons(r,profile,day),_dailyProfile:profile});
   });
-  const todayIds=Array.isArray(history[day])?history[day]:[];
-  const hasStoredDailyQueue=Array.isArray(history[day]);
+  let todayIds=Array.isArray(history[day])?history[day]:[];
+  let hasStoredDailyQueue=Array.isArray(history[day]);
+  // A title-recipe rollout can replace every stable idea ID at once. If none
+  // of a stored lot resolves in the new pool, rebuild it immediately instead
+  // of showing an empty panel until tomorrow.
+  if(hasStoredDailyQueue&&todayIds.length&&recoPoolIdentityKey(history._pool)!==poolKey){
+    const candidateIds=new Set(candidates.map(row=>Number(row.n)));
+    if(!todayIds.some(id=>candidateIds.has(Number(id)))){
+      delete history[day];if(history._topics)delete history._topics[day];todayIds=[];hasStoredDailyQueue=false;
+    }
+  }
   // A previous version could preserve a larger queue after the daily target
   // was changed. Keep the stored queue stable, but never show more than the
   // current daily limit.
@@ -949,20 +1066,27 @@ function dailyRecommendationSet(){
     const byId=new Map(candidates.map(r=>[Number(r.n),r]));
     const resolved=activeTodayIds.map(n=>byId.get(Number(n))).filter(Boolean);
     const retained=recoUniqueTopicRows(resolved);
-    if(retained.length!==resolved.length){history[day]=retained.map(row=>row.n);saveRecoRotation(history);}
+    const fullLotTopics=[...new Set(activeTodayIds.map(n=>byId.get(Number(n))).filter(Boolean).map(recoNormalizedTopicKey).filter(Boolean))];
+    if(retained.length!==resolved.length){history[day]=retained.map(row=>row.n);}
+    if(retained.length!==resolved.length||!history._topics||!Array.isArray(history._topics[day])){
+      history._topics=history._topics||{};history._topics[day]=fullLotTopics;saveRecoRotation(history);
+    }
     const rows=decorate(retained);
     if(typeof RECO_DAILY_CACHE!=='undefined')RECO_DAILY_CACHE={data:DATA,revision,day,lang,poolIdentityKey:poolKey,rows,sources:retained};
     return rows;
   }
-  const seen=recoSeenIds(history);
-  const available=candidates.filter(r=>!seen.has(Number(r.n)))
+  const seen=recoSeenIds(history,day),previousTopics=recoPreviousTopicKeys(history,day,candidates),consumedIds=new Set((history._consumed||[]).map(Number));
+  const qualified=candidates.filter(r=>!consumedIds.has(Number(r.n)))
     // Recency is a separate ordering prior, not evidence for the objective
     // market score/tier. It can break a close call without hiding a much
     // stronger evergreen source.
-    .map(r=>{const score=recoDailyScore(r,profile,day);return {r,score,rankScore:score+recoSourceRecencyBoost(r)};})
+    .map(r=>{const score=recoDailyScore(r,profile,day);return {r,score,rankScore:score+recoSourceRecencyBoost(r)-recoRecentUsePenalty(history,day,r.n)};})
     .filter(item=>item.score>=RECO_MIN_DAILY_SCORE);
+  const eligibleQualified=qualified.filter(item=>!seen.has(Number(item.r.n))&&(!recoNormalizedTopicKey(item.r)||!previousTopics.has(recoNormalizedTopicKey(item.r))));
+  const rotated=recoDailyRotationWindow(eligibleQualified,day,RECO_DAILY_LIMIT),target=Number(rotated._target)||Math.min(RECO_DAILY_LIMIT,rotated.length);
+  const available=rotated.slice();
   const picked=[],genres={},purposes={},sources={},combos={},settings={},titleHooks={},strictGenreTopics=new Set(),strictGlobalTopics=new Set();
-  while(picked.length<RECO_DAILY_LIMIT&&available.length){
+  while(picked.length<target&&available.length){
     const eligible=available.filter(item=>{
       const topic=recoNormalizedTopicKey(item.r),genreTopic=topic?recoGenreKey(item.r.genre,item.r)+'|'+topic:'';
       return !topic||(!strictGenreTopics.has(genreTopic)&&!strictGlobalTopics.has(topic));
@@ -986,9 +1110,11 @@ function dailyRecommendationSet(){
     picked.push(r);genres[g]=(genres[g]||0)+1;purposes[purpose]=(purposes[purpose]||0)+1;combos[combo]=(combos[combo]||0)+1;if(source)sources[source]=(sources[source]||0)+1;if(setting)settings[setting]=(settings[setting]||0)+1;if(titleHook)titleHooks[titleHook]=(titleHooks[titleHook]||0)+1;
   }
   history[day]=[...new Set(picked.map(r=>r.n))].slice(0,RECO_DAILY_LIMIT);
+  history._topics=history._topics||{};history._topics[day]=[...new Set(picked.map(recoNormalizedTopicKey).filter(Boolean))];
   if(recommendationPerformanceHistoryReady())history._profileReadyDay=day;else delete history._profileReadyDay;
   setActiveContinuousRecommendationVariants([]);
-  Object.keys(history).filter(key=>!key.startsWith('_')).sort().slice(0,-14).forEach(k=>delete history[k]);saveRecoRotation(history);
+  const retainedDays=Object.keys(history).filter(key=>!key.startsWith('_')).sort();
+  retainedDays.slice(0,-RECO_DAILY_HISTORY_DAYS).forEach(k=>{delete history[k];if(history._topics)delete history._topics[k];});saveRecoRotation(history);
   const rows=decorate(picked);
   if(typeof RECO_DAILY_CACHE!=='undefined')RECO_DAILY_CACHE={data:DATA,revision,day,lang,poolIdentityKey:poolKey,rows,sources:picked};
   return rows;
@@ -1000,7 +1126,7 @@ function refreshDailyRecommendations(ev){
   if(ev)ev.stopPropagation();
   const day=recoDayKey(),history=recoRotationHistory(),current=Array.isArray(history[day])?history[day].slice(0,RECO_DAILY_LIMIT):[];
   rememberRecoIds(history,current);
-  delete history[day];
+  delete history[day];if(history._topics)delete history._topics[day];
   saveRecoRotation(history);
   setActiveContinuousRecommendationVariants([]);
   invalidateRecommendationDerivedData();
@@ -3199,6 +3325,14 @@ const responsiveTableObserver=new MutationObserver(mutations=>{
   mutations.forEach(m=>m.addedNodes.forEach(node=>{if(node.nodeType===1)labelResponsiveTables(node);}));
 });
 responsiveTableObserver.observe(document.getElementById('view'),{childList:true,subtree:true});
+
+if(typeof window!=='undefined'&&typeof window.addEventListener==='function'){
+  window.addEventListener('focus',()=>{handleRecommendationDayRollover();scheduleRecommendationDayRollover();});
+}
+if(typeof document!=='undefined'&&typeof document.addEventListener==='function'){
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden){handleRecommendationDayRollover();scheduleRecommendationDayRollover();}});
+}
+scheduleRecommendationDayRollover();
 
 mountLangBtn();
 

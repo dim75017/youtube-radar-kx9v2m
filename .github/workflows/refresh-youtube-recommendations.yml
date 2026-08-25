@@ -21,6 +21,7 @@ on:
       - 'assets/js/dashboard-04-recommendations.js'
       - 'tests/test_generate_youtube_recommendation_pool.py'
       - 'tests/test_youtube_recommendation_*.js'
+      - 'tests/test_youtube_instant_tabs.js'
       - 'tests/test_recommendation_validated_archive.js'
       - 'tests/test_roadmap_context_actions.js'
       - 'tests/test_roadmap_slot_scheduling.js'
@@ -36,6 +37,7 @@ on:
       - 'assets/js/dashboard-04-recommendations.js'
       - 'tests/test_generate_youtube_recommendation_pool.py'
       - 'tests/test_youtube_recommendation_*.js'
+      - 'tests/test_youtube_instant_tabs.js'
       - 'tests/test_recommendation_validated_archive.js'
       - 'tests/test_roadmap_context_actions.js'
       - 'tests/test_roadmap_slot_scheduling.js'
@@ -69,6 +71,7 @@ jobs:
           python -m unittest tests.test_generate_youtube_recommendation_pool tests.test_youtube_recommendation_workflow_guardrails
           node tests/test_youtube_new_video_view_floor.js
           node tests/test_youtube_channel_update_status.js
+          node tests/test_youtube_instant_tabs.js
           node tests/test_youtube_age_normalized_analysis.js
           node tests/test_youtube_recommendation_published_link.js
           node tests/test_youtube_daily_recommendations.js

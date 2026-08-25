@@ -81,7 +81,16 @@ assert.doesNotMatch(css, /\.reco-tab\.archive(?:\.|\{|,)/,
   'the old archive-tab styling must not return');
 assert.match(css, /\.reco-tab\{display:grid;grid-template-columns:minmax\(0,1fr\) auto minmax\(0,1fr\)/,
   'status labels remain geometrically centered even with a count badge');
-assert.ok(index.includes('dashboard-04-recommendations.js?v=20260813-card-compact-v1'),
-  'Recommendation script cache version is stale');
+const recommendationAsset = index.match(/dashboard-04-recommendations\.js\?v=([^"']+)/);
+const helperAsset = index.match(/dashboard-02-helpers\.js\?v=([^"']+)/);
+assert.ok(recommendationAsset && helperAsset, 'the recommendation runtime assets must remain explicitly versioned');
+assert.equal(recommendationAsset[1], '20260825-reco-daily-v6',
+  'the daily-rotation recommendation runtime must bypass the previous browser cache');
+assert.equal(helperAsset[1], recommendationAsset[1],
+  'the route-cache helper and recommendation runtime must deploy under the same cache revision');
+assert.match(index, /window\.__loadRadarRecommendationPool=force=>/,
+  'the page must expose a reusable recommendation-pool loader for an open-tab rollover');
+assert.match(index, /fetch\('Lofi_Radar_recommendation_pool\.js\?payload='\+Date\.now\(\),\{cache:'no-store'\}\)/,
+  'every recommendation-pool refresh must bypass HTTP and Pages caches');
 
 console.log('youtube recommendation status tabs: ok');

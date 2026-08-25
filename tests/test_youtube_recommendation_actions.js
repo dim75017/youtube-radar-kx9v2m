@@ -110,7 +110,7 @@ assert.match(css, /\.sched-cal-nav\{width:26px;height:26px/,
   'calendar month navigation uses compact previous/next controls');
 assert.match(css, /\.sched-day-popover\{position:absolute/,
   'the release detail is a mini popover instead of a block below the calendar');
-assert.match(source, /const hasStoredDailyQueue=Array\.isArray\(history\[day\]\)/,
+assert.match(source, /let hasStoredDailyQueue=Array\.isArray\(history\[day\]\)/,
   'the daily queue distinguishes an existing empty lot from a missing lot');
 assert.match(source, /if\(hasStoredDailyQueue\)\{/,
   'an existing daily lot returns only its still-pending cards without replenishment');

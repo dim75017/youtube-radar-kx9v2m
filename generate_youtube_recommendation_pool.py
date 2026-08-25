@@ -32,8 +32,8 @@ POOL_PREFIX = "window.LOFI_RECOMMENDATION_POOL="
 GENERATOR_VERSION = 4
 LEDGER_SCHEMA_VERSION = 1
 BROWSER_SCHEMA_VERSION = 3
-RECIPE_VERSION = 2
-TITLE_RECIPE_VERSION = 3
+RECIPE_VERSION = 3
+TITLE_RECIPE_VERSION = 4
 CURRENT_VARIANTS_PER_SOURCE = 1
 V3_VARIANTS_PER_SOURCE = 8
 LEGACY_VARIANTS_PER_SOURCE = 3
@@ -53,6 +53,8 @@ MIN_SOURCE_VPM = 30_000
 SOURCE_SCORE_FLOOR = 68
 SOURCE_SCORE_SPAN = 27
 SOURCE_FRESHNESS_RANK_WEIGHT = 45.0
+DAILY_RECOMMENDATION_SCORE_FLOOR = 78
+MIN_ADJACENT_DAILY_TOPICS = 100
 PUBLISHED_WINDOW_WEIGHTS = {"0-3m": 1.0, "3-6m": 0.55, "6-12m": 0.28, "12m+": 0.10}
 
 
@@ -333,6 +335,172 @@ TITLE_GENRE_FALLBACK_HOOKS = {
     "house": "Chill House Mix", "dnb": "Drum & Bass Mix",
 }
 
+# A fallback must still read like an editorial premise, never like a keyword
+# placeholder. These hook families are adapted from the strongest Lofi Girl
+# uploads and explicit validations (short memorable lead, then one clear use
+# case), and never introduce a location.
+TITLE_HOOK_VARIANTS = {
+    "Lofi Mix": ("Quiet Hours", "Nothing Urgent", "One More Chapter", "Deadline Mode", "Slow Afternoon", "Mind on Mute", "Stay Awhile", "Soft Reset"),
+    "Ambient Mix": ("Weightless Hours", "The Long Exhale", "Drift Without a Map", "Stillness in Motion", "Signals in the Dark", "Between Thoughts", "Slow Orbit", "Quiet Frequency"),
+    "Nature Sounds": ("Nature, Uninterrupted", "Only Natural Sound", "A Long Nature Loop", "Field Recordings for Stillness", "The Sound Between Things", "Outside, Undisturbed"),
+    "Relaxing Jazz": ("After-Hours Jazz", "Velvet Jazz", "The Last Set", "Jazz on Low", "Slow-Burning Jazz", "One More Song"),
+    "Peaceful Piano": ("Quiet Keys", "Piano in Soft Focus", "An Unhurried Piano Hour", "The Last Notes of the Day", "Piano, Then Silence", "A Softer Kind of Focus"),
+    "Classical Essentials": ("Quiet Chamber", "Strings After Hours", "An Unhurried Adagio", "The Long Prelude", "Classical in Soft Focus", "Strings, Then Silence"),
+    "Relaxing Guitar": ("Six Strings, No Rush", "Guitar in Soft Focus", "An Unhurried Guitar Hour", "The Last Chord of the Day", "Slow Fingerstyle", "Quiet Guitar"),
+    "Synthwave Mix": ("Analog Afterglow", "Neon on Repeat", "Signals After Midnight", "The Last Save Point", "Retro Future", "Night Mode"),
+    "Chill House Mix": ("Golden-Hour House", "House on Low", "The Long Sunset", "Slow-Burning House", "Afterglow House", "Last Light"),
+    "Drum & Bass Mix": ("Liquid Momentum", "Breaks After Dark", "Night-Shift DnB", "Weightless Breaks", "The Long Rush", "Afterimage"),
+    "Night Jazz": ("After-Hours Jazz", "Jazz After Midnight", "The Last Jazz Set", "Midnight Jazz"),
+    "Coffee Jazz": ("First Coffee Jazz", "Coffee Before Noon", "Coffee & Soft Jazz", "The First Cup"),
+    "Morning Jazz": ("First-Light Jazz", "A Slow Jazz Morning", "Morning Jazz", "Jazz Before Noon"),
+    "Romantic Jazz": ("Slow-Dance Jazz", "Jazz for Two", "Romantic Saxophone", "The Last Slow Dance"),
+    "Focus Jazz": ("Jazz in Focus", "The Quiet Work Block", "Jazz for the Long Task", "Soft Focus Jazz"),
+    "Piano & Rain": ("Piano Under Rain", "Rain Between the Notes", "Piano While It Rains", "Rain on the Keys"),
+    "Piano & Water Sounds": ("Piano by the Water", "Water Between the Notes", "Piano & Running Water", "Quiet Keys, Moving Water"),
+    "Night Piano": ("Piano After Midnight", "The Last Nocturne", "Night Keys", "Piano Before Sleep"),
+    "Morning Piano": ("First-Light Piano", "Piano Before the Day Starts", "A Quiet Piano Morning", "Morning Keys"),
+    "Deep Sleep Piano": ("Piano Before Sleep", "Lights-Out Piano", "The Last Notes Before Bed", "All-Night Piano"),
+    "White Noise": ("Pure White Noise", "White Noise, Nothing Else", "Unbroken White Noise", "The White Noise Loop"),
+    "Brown Noise": ("Deep Brown Noise", "Brown Noise, Unbroken", "The Brown Noise Block", "Low Brown Noise"),
+    "Forest Rain": ("Rain Through the Trees", "Forest Rain, All Night", "Rain on Forest Leaves", "A Long Forest Storm"),
+    "Rain on the Window": ("Rain Against the Glass", "Window Rain, All Night", "The Rain Won't Stop", "Rain on the Window"),
+    "Rain & Thunder": ("Rain Before Thunder", "A Long Thunderstorm", "Thunder Through the Rain", "Rain & Distant Thunder"),
+    "Crackling Fireplace": ("Firelight & Crackle", "The Long Fireplace Loop", "Crackling Fire, Nothing Else", "Fireplace After Dark"),
+    "Ocean Waves": ("Ocean, On Repeat", "The Long Wave Loop", "Waves Through the Night", "Unbroken Ocean"),
+    "Flowing Water": ("Water in Motion", "The Long Stream", "Running Water, Unbroken", "A Steady Water Loop"),
+    "Rainy Lofi": ("Rainy Hours", "Lofi While It Rains", "The Rainy-Night Loop", "Rain on Repeat"),
+    "Deep Work": ("Deadline Mode", "Deep Work", "The Long Focus Block", "Focus Until It Clicks"),
+    "Bedtime Lofi": ("Lights Out", "Bedtime Lofi", "Mind Off", "One More Dream"),
+    "Chill Lofi": ("Nothing Urgent", "Slow Afternoon", "Lofi on Low", "Take the Long Way"),
+    "Atmospheric Drum & Bass": ("Weightless Breaks", "Atmospheric Rush", "Breaks in Slow Motion", "Afterimage DnB"),
+    "Liquid Drum & Bass": ("Liquid Momentum", "The Long Break", "Drift in Double Time", "Liquid After Dark"),
+    "Acoustic Guitar": ("Six Strings, No Rush", "Quiet Fingerstyle", "The Last Chord", "Guitar in Soft Focus", "Strings at Ease", "Unhurried Guitar"),
+    "Deep Focus": ("Deadline Mode", "The Long Focus Block", "Focus Until It Clicks", "No Distractions", "One Task Left", "Locked In"),
+    "Deep Sleep": ("Lights Out", "All Night, Uninterrupted", "The Long Night", "Mind Off", "Until Morning", "Sleep Without a Clock"),
+    "Meditation Ambient": ("The Long Exhale", "Stillness in Motion", "Mind on Mute", "Quiet Frequency", "A Slower Pulse", "Let the Noise Go"),
+    "Quiet Hours": ("Quiet Hours", "Low-Volume Thoughts", "A Softer Pace", "Unhurried", "Everything Can Wait", "Room to Breathe"),
+    "Relaxing Lofi": ("Nothing Urgent", "Slow Afternoon", "Lofi on Low", "Take the Long Way", "Soft Reset", "Stay Awhile"),
+}
+
+# More specific combinations are evaluated before the broad measured-theme
+# map. Every phrase is triggered by evidence present in the source title.
+TITLE_MEASURED_DETAIL_THEMES = {
+    "lofi": (
+        (r"\bblue hour\b", "Blue Hour Lofi"),
+        (r"\b(?:pomodoro|study with me)\b", "One More Focus Block"),
+        (r"\b(?:book|reading|chapter|library)\b", "One More Chapter"),
+        (r"\b(?:sunday|weekend)\b", "Sunday on Slow"),
+        (r"\b(?:lonely|alone)\b", "Lonely Day"),
+        (r"\b(?:dreamy|dream)\b", "Drift Away"),
+        (r"\b(?:quiet|silence)\b", "Quiet Hours"),
+        (r"\b(?:night|after dark|midnight)\b", "Lofi After Midnight"),
+    ),
+    "ambient": (
+        (r"\b(?:space|cosmic|orbit|sci[ -]?fi)\b", "Slow Orbit"),
+        (r"\bwinter\b", "Winter Stillness"),
+        (r"\bforest\b", "Forest Stillness"),
+        (r"\b(?:dark|mysterious)\b", "Signals in the Dark"),
+        (r"\b(?:writing|creativity|creative)\b", "Creative Drift"),
+    ),
+    "nature": (
+        (r"\b(?:bamboo)\b.*\bwater\b|\bwater\b.*\bbamboo\b", "Bamboo Water"),
+        (r"\b(?:meadow|spring nature)\b", "Spring Field Recordings"),
+        (r"\b(?:lake|lakeside)\b.*\b(?:nature|water|campfire)\b", "Lakeside Field Recordings"),
+        (r"\blibrary\b.*\bwhite noise\b", "Library White Noise"),
+        (r"\bairplane\b.*\bbrown noise\b", "Airplane Brown Noise"),
+        (r"\b(?:ocean|sea|beach|waves?)\b", "Ocean Waves"),
+        (r"\bforest\b", "Forest Field Recordings"),
+    ),
+    "jazz": (
+        (r"\b(?:[1-5](?::\d{2})?\s*a\.?m\.?)\b", "Jazz After Midnight"),
+        (r"\bromantic\b.*\b(?:sax|saxophone)\b|\b(?:sax|saxophone)\b.*\bromantic\b", "Romantic Saxophone"),
+        (r"\b(?:night|midnight|after dark)\b.*\b(?:sax|saxophone)\b|\b(?:sax|saxophone)\b.*\b(?:night|midnight)\b", "Saxophone After Midnight"),
+        (r"\b(?:winter|snow)\b", "Winter After Hours"),
+        (r"\b(?:autumn|fall)\b", "Autumn Jazz"),
+        (r"\bsmooth jazz\b", "Velvet Jazz"),
+    ),
+    "piano": (
+        (r"\b(?:night|midnight)\b.*\brain\b|\brain\b.*\b(?:night|midnight)\b", "Midnight Rain Piano"),
+        (r"\b(?:quiet heart|quiet playlist)\b", "Quiet Heart"),
+        (r"\b(?:focus|study|deep work)\b", "Piano in Focus"),
+        (r"\b(?:fireplace|snowfall|snow fall)\b", "Snowfall Piano"),
+        (r"\b(?:misty|mist)\b.*\bmorning\b", "Misty Morning Piano"),
+        (r"\bnocturnes?\b", "The Last Nocturne"),
+    ),
+    "classical": (
+        (r"\b(?:piano)\b.*\bcello\b|\bcello\b.*\bpiano\b", "Cello & Piano"),
+        (r"\b(?:winter|four seasons)\b", "Winter Strings"),
+        (r"\b(?:study|focus)\b", "Strings in Focus"),
+        (r"\b(?:reading|book)\b", "Strings for One More Chapter"),
+        (r"\bromantic\b", "Romantic Strings"),
+        (r"\bviolin\b", "Quiet Violin"),
+    ),
+    "guitar": (
+        (r"\b(?:spanish|flamenco)\b.*\b(?:oud|guitar)\b", "Flamenco & Oud"),
+        (r"\b(?:autumn|fall)\b", "Autumn Guitar"),
+        (r"\bfingerstyle\b", "Slow Fingerstyle"),
+    ),
+    "house": (
+        (r"\b(?:tropical|island)\b", "Tropical Afterglow"),
+        (r"\bnight drive\b", "House After Dark"),
+        (r"\baugust\b", "Late-Summer House"),
+    ),
+    "dnb": (
+        (r"\b(?:jungle|breakcore)\b", "Breaks in Motion"),
+        (r"\b(?:live|set)\b", "The Long DnB Set"),
+    ),
+    "synthwave": (
+        (r"\b(?:deep work|focus|concentration|coding|programming|program)\b", "Focus in Neon"),
+        (r"\b(?:80'?s|1987)\b.*\b(?:morning|memory|memories|nostalgi)\b", "Morning Drive Memories"),
+        (r"\b(?:80'?s|1987)\b", "Back to Analog"),
+        (r"\b(?:night city|nighttime city)\b", "Signals After Midnight"),
+        (r"\b(?:morning|sunrise)\b", "Analog Morning"),
+        (r"\bnostalgi", "Analog Memories"),
+    ),
+}
+
+# Hooks that communicate one explicit use must never be paired with a
+# contradictory suffix merely because a source title lists several SEO use
+# cases. Unlisted hooks are descriptive moods/sounds and remain compatible
+# with every purpose supported by their measured source.
+TITLE_HOOK_PURPOSES = {
+    "One More Focus Block": frozenset({"study"}),
+    "Piano in Focus": frozenset({"study"}),
+    "Strings in Focus": frozenset({"study"}),
+    "Focus Jazz": frozenset({"study"}),
+    "Deep Focus": frozenset({"study"}),
+    "Deep Work": frozenset({"study"}),
+    "Coding Session": frozenset({"study"}),
+    "Focus in Neon": frozenset({"study"}),
+    "One More Chapter": frozenset({"reading"}),
+    "Strings for One More Chapter": frozenset({"reading"}),
+    "Deep Sleep Piano": frozenset({"sleep"}),
+    "Deep Sleep": frozenset({"sleep"}),
+    "Bedtime Lofi": frozenset({"sleep"}),
+}
+TITLE_HOOK_PURPOSE_VARIANTS = {
+    ("Quiet Hours", "study"): ("Quiet Hours", "Low-Volume Thoughts", "A Softer Pace", "Room to Breathe"),
+    ("Quiet Hours", "reading"): ("Quiet Hours", "Low-Volume Thoughts", "A Softer Pace", "Room to Breathe"),
+}
+
+TITLE_GENRE_COPY_LABELS = {
+    "lofi": "lofi beats", "ambient": "ambient", "nature": "nature sounds", "jazz": "jazz",
+    "piano": "piano", "classical": "classical music", "guitar": "acoustic guitar",
+    "house": "chill house", "dnb": "drum & bass", "synthwave": "synthwave",
+}
+TITLE_PURPOSE_TAILS = {
+    "sleep": ("for deep sleep", "for a full night's sleep", "to sleep through the night", "for bedtime"),
+    "study": ("for deep focus", "for a long study session", "for quiet work", "to stay focused"),
+    "reading": ("for one more chapter", "for quiet reading", "to read into the night", "for slow pages"),
+    "season": ("for the changing season", "for a seasonal slow-down", "for slow seasonal days", "for this season on repeat"),
+    "fantasy": ("for imaginary worlds", "for worldbuilding", "for a distant-world journey", "for writing another world"),
+    "relax": ("to slow down", "for doing absolutely nothing", "to unwind", "for a quiet reset"),
+}
+TITLE_GENERIC_HOOK_FAMILIES = frozenset(str(value).casefold() for value in TITLE_GENRE_FALLBACK_HOOKS.values())
+TITLE_GENERIC_HOOKS = TITLE_GENERIC_HOOK_FAMILIES | frozenset({
+    "acoustic guitar", "deep focus", "deep sleep", "meditation ambient", "quiet hours", "relaxing lofi",
+})
+
 # Each label is selected only when its expression is present in the measured
 # source title. This converts SEO-heavy packaging into a concise premise
 # without inventing a location, character or story.
@@ -420,8 +588,8 @@ TITLE_MEASURED_THEMES = {
         (r"\bmidnight blues\b", "Midnight Blues"),
         (r"\bblues\b", "Blues Guitar"),
         (r"\bfingerstyle\b", "Fingerstyle Guitar"),
-        (r"\bacoustic\b", "Acoustic Guitar"),
         (r"\b(?:sea|ocean|coast)\b", "Seaside Guitar"),
+        (r"\bacoustic\b", "Acoustic Guitar"),
         (r"\bguitar\b", "Relaxing Guitar"),
     ),
     "synthwave": (
@@ -710,17 +878,36 @@ def _title_style_key(value: object) -> str:
     return "direct"
 
 
+def _title_hook_variant(label: str, source_title: object, purpose_key: str, genre_key: str | None) -> str:
+    choices = TITLE_HOOK_PURPOSE_VARIANTS.get((label, purpose_key)) or TITLE_HOOK_VARIANTS.get(label) or (label,)
+    seed = f"hook-v{TITLE_RECIPE_VERSION}|{genre_key or ''}|{purpose_key}|{_normal(source_title)}|{label}"
+    return choices[_stable_int(seed) % len(choices)]
+
+
+def _fallback_title_hook(source_title: object, purpose_key: str, genre_key: str | None) -> str:
+    label = TITLE_GENRE_FALLBACK_HOOKS.get(genre_key or "") or TITLE_FALLBACK_HOOKS.get(purpose_key, "Quiet Hours")
+    return _title_hook_variant(label, source_title, purpose_key, genre_key)
+
+
+def _title_hook_purpose_compatible(label: str, purpose_key: str) -> bool:
+    allowed = TITLE_HOOK_PURPOSES.get(label)
+    return not allowed or purpose_key in allowed
+
+
 def _title_hook(value: object, purpose_key: str = "relax", genre_key: str | None = None) -> str:
     """Extract a concise measured premise without manufacturing a setting."""
     original = re.sub(r"https?://\S+", " ", str(value or ""))
     normalized = _normal(original)
+    for pattern, label in TITLE_MEASURED_DETAIL_THEMES.get(genre_key or "", ()):
+        if re.search(pattern, normalized, re.I) and _title_hook_purpose_compatible(label, purpose_key):
+            return _title_hook_variant(label, original, purpose_key, genre_key)
     for pattern, label in TITLE_MEASURED_THEMES.get(genre_key or "", ()):
-        if re.search(pattern, normalized, re.I):
-            return label
+        if re.search(pattern, normalized, re.I) and _title_hook_purpose_compatible(label, purpose_key):
+            return _title_hook_variant(label, original, purpose_key, genre_key)
     if genre_key:
-        # Generated premises are allowlisted above. An unmapped competitor
-        # fragment is never copied: use a truthful neutral genre hook instead.
-        return TITLE_GENRE_FALLBACK_HOOKS.get(genre_key) or TITLE_FALLBACK_HOOKS.get(purpose_key, "Quiet Hours")
+        # Unmapped competitor fragments are never copied. The fallback is a
+        # varied, proven editorial hook rather than a genre keyword placeholder.
+        return _fallback_title_hook(original, purpose_key, genre_key)
     text = original
     text = re.sub(r"^\s*pov\s*:\s*", "", text, flags=re.I)
     text = re.sub(r"\[[^\]]*\]", " ", text)
@@ -767,7 +954,7 @@ def _title_hook(value: object, purpose_key: str = "relax", genre_key: str | None
         text = " ".join(words[:6]).rstrip(" ,:;-–—")
     generic = _normal(text)
     if re.search(r"^(?:a playlist|playlist|ultimate|best of|top \d+|compilation|collection)\b", generic):
-        return TITLE_GENRE_FALLBACK_HOOKS.get(genre_key) or TITLE_FALLBACK_HOOKS.get(purpose_key, "Quiet Hours")
+        return _fallback_title_hook(original, purpose_key, genre_key)
     if (
         re.search(
             r"\b(?:blade runner|harry potter|hogwarts|hobbit|lord of the rings|polar express|"
@@ -784,13 +971,67 @@ def _title_hook(value: object, purpose_key: str = "relax", genre_key: str | None
         or len(words) <= 1
         or len(words) > 5
     ):
-        return TITLE_GENRE_FALLBACK_HOOKS.get(genre_key) or TITLE_FALLBACK_HOOKS.get(purpose_key, "Quiet Hours")
+        return _fallback_title_hook(original, purpose_key, genre_key)
     if not text or generic in {
         "music", "relaxing music", "sleep music", "study music", "lofi", "lofi music",
         "ambient music", "jazz music", "piano music", "nature sounds", "instrumental music",
     }:
         return TITLE_FALLBACK_HOOKS.get(purpose_key, "Quiet Hours")
     return text
+
+
+def _title_hook_origin(value: object, purpose_key: str, genre_key: str | None) -> str:
+    normalized = _normal(value)
+    for pattern, label in TITLE_MEASURED_DETAIL_THEMES.get(genre_key or "", ()):
+        if re.search(pattern, normalized, re.I) and _title_hook_purpose_compatible(label, purpose_key):
+            return "measured_detail"
+    for pattern, label in TITLE_MEASURED_THEMES.get(genre_key or "", ()):
+        if re.search(pattern, normalized, re.I) and _title_hook_purpose_compatible(label, purpose_key):
+            return "editorial_fallback" if _normal(label) in TITLE_GENERIC_HOOK_FAMILIES else "measured_theme"
+    return "editorial_fallback"
+
+
+def _title_hook_family(value: object, purpose_key: str, genre_key: str | None) -> str:
+    normalized = _normal(value)
+    for pattern, label in TITLE_MEASURED_DETAIL_THEMES.get(genre_key or "", ()):
+        if re.search(pattern, normalized, re.I) and _title_hook_purpose_compatible(label, purpose_key):
+            return _normal(label)
+    for pattern, label in TITLE_MEASURED_THEMES.get(genre_key or "", ()):
+        if re.search(pattern, normalized, re.I) and _title_hook_purpose_compatible(label, purpose_key):
+            return _normal(label)
+    return _normal(TITLE_GENRE_FALLBACK_HOOKS.get(genre_key or "") or TITLE_FALLBACK_HOOKS.get(purpose_key, "Quiet Hours"))
+
+
+def _title_clause_index(source: dict, genre_key: str, purpose_key: str) -> int:
+    choices = TITLE_PURPOSE_TAILS.get(purpose_key) or TITLE_PURPOSE_TAILS["relax"]
+    seed = f"clause-v{TITLE_RECIPE_VERSION}|{source.get('vid')}|{source.get('title')}|{genre_key}|{purpose_key}"
+    return _stable_int(seed) % len(choices)
+
+
+def _title_purpose_clause(source: dict, genre_key: str, purpose_key: str) -> str:
+    choices = TITLE_PURPOSE_TAILS.get(purpose_key) or TITLE_PURPOSE_TAILS["relax"]
+    tail = choices[_title_clause_index(source, genre_key, purpose_key)]
+    return f"{TITLE_GENRE_COPY_LABELS.get(genre_key, 'instrumental music')} {tail}"
+
+
+def _title_specificity_score(title: object, hook: object) -> int:
+    hook_key = _title_fingerprint(hook)
+    if not hook_key or hook_key in TITLE_GENERIC_HOOKS:
+        return 0
+    generic_tokens = {
+        "a", "an", "the", "of", "for", "to", "with", "and", "music", "mix", "session", "hours",
+        "hour", "relaxing", "relax", "calm", "soft", "peaceful", "chill", "lofi", "hip", "hop", "beats",
+        "ambient", "nature", "sounds", "jazz", "piano", "classical", "guitar", "house", "drum", "bass",
+        "dnb", "synthwave", "instrumental", "deep", "slow",
+    }
+    distinctive = {token for token in hook_key.split() if len(token) > 2 and token not in generic_tokens}
+    score = min(8, len(distinctive) * 2)
+    if re.search(r"\b(?:white|brown) noise\b|\b(?:rain|thunder|fireplace|ocean|waves|water|crickets?|birds?|fan)\b", hook_key):
+        score = max(score, 4)
+    normalized = _title_fingerprint(title)
+    if re.search(r"\b(?:cozy ambience to sleep chill to|relaxing piano music|seasonal (?:jazz|classical) mix|beats to relax study to)\b", normalized):
+        score -= 3
+    return max(0, min(10, score))
 
 
 def _editorial_concept_key(row: dict) -> str:
@@ -1148,7 +1389,7 @@ def _potential_for_score(score: int) -> str:
         return "S - Rente potentielle"
     if score >= 88:
         return "A - Fort"
-    if score >= 78:
+    if score >= DAILY_RECOMMENDATION_SCORE_FLOOR:
         return "B - Solide"
     return "C - À tester"
 
@@ -1217,49 +1458,69 @@ def _title_model(
     market_values_by_genre = {key: sorted(values) for key, values in market_values_by_genre.items()}
     style_scores: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
     references: dict[str, dict[str, tuple[float, str, dict]]] = defaultdict(dict)
+    purpose_style_scores: dict[tuple[str, str], dict[str, float]] = defaultdict(lambda: defaultdict(float))
+    purpose_references: dict[tuple[str, str], dict[str, tuple[float, str, dict]]] = defaultdict(dict)
     genre_observations: dict[str, list[tuple[float, float]]] = defaultdict(list)
     supported_styles: dict[str, set[str]] = defaultdict(set)
+    purpose_supported_styles: dict[tuple[str, str], set[str]] = defaultdict(set)
 
     for row in owned_rows:
         genre_key = _title_model_genre_key(row)
         if genre_key is None:
             continue
         style = _title_style_key(row.get("title"))
+        purpose_key = _purpose_key(row)
         comparables = owned_values_by_genre.get(genre_key) or owned_values
         percentile = _percentile(comparables, _title_performance_value(row))
         evidence = percentile * 0.72 + _freshness_weight(row.get("ageM")) * 0.28
         # Published Lofi Girl titles are the main authority for packaging.
         style_scores[genre_key][style] += 1.2 + evidence * 3.8
+        purpose_style_scores[(genre_key, purpose_key)][style] += 1.2 + evidence * 3.8
         supported_styles[genre_key].add(style)
+        purpose_supported_styles[(genre_key, purpose_key)].add(style)
         global_percentile = _percentile(owned_values, _title_performance_value(row))
         observation_weight = 0.35 + _freshness_weight(row.get("ageM")) * 0.65
         genre_observations[genre_key].append((global_percentile, observation_weight))
         current = references[genre_key].get(style)
         if current is None or evidence > current[0]:
             references[genre_key][style] = (evidence, "analyse", row)
+        purpose_current = purpose_references[(genre_key, purpose_key)].get(style)
+        if purpose_current is None or evidence > purpose_current[0]:
+            purpose_references[(genre_key, purpose_key)][style] = (evidence, "analyse", row)
 
     for row in sources:
         genre_key = _profile_key(row)
         if genre_key is None:
             continue
         style = _title_style_key(row.get("title"))
+        purpose_key = _purpose_key(row)
         comparables = market_values_by_genre.get(genre_key) or market_values
         percentile = _percentile(comparables, _title_performance_value(row))
         evidence = percentile * 0.80 + _freshness_weight(row.get("ageM")) * 0.20
         # Market structure is useful, but never outweighs the channel's style.
         style_scores[genre_key][style] += 0.25 + evidence * 0.75
+        purpose_style_scores[(genre_key, purpose_key)][style] += 0.25 + evidence * 0.75
         current = references[genre_key].get(style)
         if current is None:
             references[genre_key][style] = (evidence * 0.25, "market", row)
+        purpose_current = purpose_references[(genre_key, purpose_key)].get(style)
+        if purpose_current is None:
+            purpose_references[(genre_key, purpose_key)][style] = (evidence * 0.25, "market", row)
 
     for genre_key, rows in feedback_profile.get("acceptedReferences", {}).items():
         for row in rows:
             style = _title_style_key(row.get("title"))
+            purpose_key = _purpose_key(row)
             style_scores[genre_key][style] += 5.0
+            purpose_style_scores[(genre_key, purpose_key)][style] += 5.0
             supported_styles[genre_key].add(style)
+            purpose_supported_styles[(genre_key, purpose_key)].add(style)
             current = references[genre_key].get(style)
             if current is None or current[0] < 1.1:
                 references[genre_key][style] = (1.1, "validated", row)
+            purpose_current = purpose_references[(genre_key, purpose_key)].get(style)
+            if purpose_current is None or purpose_current[0] < 1.1:
+                purpose_references[(genre_key, purpose_key)][style] = (1.1, "validated", row)
 
     model = {}
     all_observations = [observation for rows in genre_observations.values() for observation in rows]
@@ -1290,6 +1551,23 @@ def _title_model(
         )
         support = min(1.0, total_weight / 3.0)
         genre_signal = max(-1.0, min(1.0, (genre_mean - global_mean) * 2 * support))
+        by_purpose = {}
+        purpose_keys = {
+            purpose for candidate_genre, purpose in set(purpose_style_scores) | set(purpose_references)
+            if candidate_genre == genre_key
+        }
+        for purpose_key in purpose_keys:
+            scores = purpose_style_scores[(genre_key, purpose_key)]
+            purpose_ranked = sorted(TITLE_STYLE_KEYS, key=lambda style: (-scores.get(style, 0.0), TITLE_STYLE_KEYS.index(style)))
+            by_purpose[purpose_key] = {
+                "styles": purpose_ranked,
+                "scores": dict(scores),
+                "supportedStyles": purpose_supported_styles.get((genre_key, purpose_key), set()),
+                "references": {
+                    style: {"type": reference_type, "row": row}
+                    for style, (_score, reference_type, row) in purpose_references[(genre_key, purpose_key)].items()
+                },
+            }
         model[genre_key] = {
             "styles": ranked,
             "blocked": set(),
@@ -1299,6 +1577,7 @@ def _title_model(
                 for style, (_score, reference_type, row) in references[genre_key].items()
             },
             "supportedStyles": supported_styles.get(genre_key, set()),
+            "byPurpose": by_purpose,
             "genreSignal": genre_signal,
         }
     return model
@@ -1317,8 +1596,9 @@ def _style_compatible(style: str, source: dict, purpose_key: str) -> bool:
 
 def _select_title_style(source: dict, model: dict, genre_key: str, purpose_key: str) -> str | None:
     genre_model = model.get(genre_key) or {}
-    ranked = genre_model.get("styles") or TITLE_STYLE_KEYS
-    supported = set(genre_model.get("supportedStyles") or ())
+    purpose_model = (genre_model.get("byPurpose") or {}).get(purpose_key) or {}
+    ranked = purpose_model.get("styles") or genre_model.get("styles") or TITLE_STYLE_KEYS
+    supported = set(purpose_model.get("supportedStyles") or genre_model.get("supportedStyles") or ())
     eligible = [
         style for style in ranked
         if style in supported and _style_compatible(style, source, purpose_key)
@@ -1327,7 +1607,7 @@ def _select_title_style(source: dict, model: dict, genre_key: str, purpose_key: 
         # Weighted deterministic sampling prevents a tiny score lead from
         # forcing one structure on every proposal while keeping Analyse/X as
         # the only reusable style authorities.
-        scores = genre_model.get("scores") or {}
+        scores = purpose_model.get("scores") or genre_model.get("scores") or {}
         weights = [max(1, round(math.sqrt(max(0.0, float(scores.get(style) or 0.0))) * 100)) for style in eligible]
         ticket = _stable_int(f"title-style|{source.get('vid')}|{genre_key}") % sum(weights)
         for style, weight in zip(eligible, weights):
@@ -1367,60 +1647,56 @@ def _sentence_case_hook(value: str, lowercase: bool = False) -> str:
     return value[0].upper() + value[1:]
 
 
+def _hook_names_genre(hook: object, genre_key: str) -> bool:
+    value = _title_fingerprint(hook)
+    patterns = {
+        "lofi": r"\blo[ -]?fi\b",
+        "ambient": r"\bambient\b",
+        "nature": r"\bnature\b",
+        "jazz": r"\bjazz\b",
+        "piano": r"\bpiano\b",
+        "classical": r"\bclassical\b",
+        "guitar": r"\bguitar\b",
+        "house": r"\bhouse\b",
+        "dnb": r"\b(?:dnb|drum (?:and|&) bass)\b",
+        "synthwave": r"\bsynthwave\b",
+    }
+    return bool(re.search(patterns.get(genre_key, r"$^"), value, re.I))
+
+
 def _compose_candidate_title(source: dict, genre_key: str, purpose_key: str, style: str) -> str:
     genre_label, emoji = TITLE_GENRE_LABELS[genre_key]
     hook = _title_hook(source.get("title"), purpose_key, genre_key)
-    purpose_clause = TITLE_PURPOSE_CLAUSES.get(genre_key, TITLE_PURPOSE_CLAUSES["default"]).get(
-        purpose_key,
-        TITLE_PURPOSE_CLAUSES["default"][purpose_key],
-    )
+    purpose_tail = (TITLE_PURPOSE_TAILS.get(purpose_key) or TITLE_PURPOSE_TAILS["relax"])[
+        _title_clause_index(source, genre_key, purpose_key)
+    ]
+    hook_names_genre = _hook_names_genre(hook, genre_key)
+    purpose_clause = purpose_tail if hook_names_genre else _title_purpose_clause(source, genre_key, purpose_key)
     if style == "pov":
-        title = f"pov: {_sentence_case_hook(hook, lowercase=True)} {emoji}"
+        title = f"pov: {_sentence_case_hook(hook, lowercase=True)} {emoji} · {purpose_clause}"
     elif style == "duration":
         source_duration = float(source.get("durH") or 0)
         hours = max(2, min(12, round(source_duration))) if source_duration >= 2 else (8 if purpose_key == "sleep" else 3)
-        if genre_key == "nature":
-            title = f"{hours} hours of {hook.lower()} {emoji} cozy ambience to sleep/chill to"
-        elif genre_key == "ambient":
-            title = f"{_sentence_case_hook(hook)} {emoji} {hours} hours of ambient mix"
-        elif genre_key == "piano":
-            title = f"{_sentence_case_hook(hook)} {emoji} {hours} hours of relaxing piano music"
-        elif genre_key == "jazz":
-            title = f"{_sentence_case_hook(hook)} {emoji} {hours} hours of relaxing jazz"
-        elif genre_key == "synthwave":
-            title = f"{_sentence_case_hook(hook)} {emoji} {hours} hours of synthwave music"
-        else:
-            title = f"{_sentence_case_hook(hook)} {emoji} {hours} hours of {purpose_clause}"
+        title = (
+            f"{_sentence_case_hook(hook)} {emoji} · {hours} hours {purpose_tail}"
+            if hook_names_genre else
+            f"{_sentence_case_hook(hook)} {emoji} · {hours} hours of {purpose_clause}"
+        )
     elif style == "pipe":
         title = f"{_sentence_case_hook(hook)} | {purpose_clause}"
     elif style == "signature":
-        title = f"{_sentence_case_hook(hook)} {emoji} [{genre_label}]"
+        title = f"{_sentence_case_hook(hook)} {emoji}" + ("" if hook_names_genre else f" [{genre_label}]") + f" · {purpose_tail}"
     elif style == "series":
-        title = f"{_sentence_case_hook(hook)} {emoji} [{genre_label}]"
+        title = f"{_sentence_case_hook(hook)} {emoji}" + ("" if hook_names_genre else f" [{genre_label}]") + f" · {purpose_tail}"
     elif style == "use_case":
         title = f"{_sentence_case_hook(hook, lowercase=True)} {emoji} {purpose_clause}"
     else:
-        direct_suffix = {
-            "nature": "cozy ambience to sleep/chill to" if purpose_key == "sleep" else purpose_clause,
-            "piano": "relaxing piano music",
-            "ambient": "ambient mix" if purpose_key == "sleep" else purpose_clause,
-            "jazz": "[jazz lofi]",
-            "classical": "calm classical music",
-            "guitar": "relaxing acoustic guitar",
-            "house": "chill house mix",
-            "dnb": "atmospheric drum & bass mix",
-            "synthwave": "synthwave music",
-        }.get(genre_key, "")
-        hook_tokens = set(_title_fingerprint(hook).split())
-        suffix_tokens = set(_title_fingerprint(direct_suffix).split())
-        if len(hook_tokens) >= 2 and hook_tokens.issubset(suffix_tokens):
-            direct_suffix = ""
-        title = f"{_sentence_case_hook(hook)} {emoji}" + (f" {direct_suffix}" if direct_suffix else "")
+        title = f"{_sentence_case_hook(hook)} {emoji} · {purpose_clause}"
     title = re.sub(r"\s+", " ", title).strip()
     # Never copy a competitor title verbatim. The fallback remains a known
     # Lofi Girl signature structure and still does not add a setting.
     if _title_fingerprint(title) == _title_fingerprint(source.get("title")):
-        title = f"{_sentence_case_hook(hook)} {emoji} [{genre_label}]"
+        title = f"{_sentence_case_hook(hook)} {emoji}" + ("" if hook_names_genre else f" [{genre_label}]") + f" · {purpose_tail}"
     return title
 
 
@@ -1681,15 +1957,23 @@ def _build_v3_item(
     if not style:
         return None
     title = _compose_candidate_title(source, profile_key, purpose_key, style)
-    topic_key = _normal(_title_hook(source.get("title"), purpose_key, profile_key))
+    hook = _title_hook(source.get("title"), purpose_key, profile_key)
+    hook_family = _title_hook_family(source.get("title"), purpose_key, profile_key)
+    hook_origin = _title_hook_origin(source.get("title"), purpose_key, profile_key)
+    specificity = _title_specificity_score(title, hook)
+    if specificity < 2:
+        return None
+    topic_key = _normal(hook)
     concept_family = "|".join((profile_key, purpose_key, topic_key)) if topic_key else ""
     topic_family = "|".join((profile_key, topic_key)) if topic_key else ""
     refused_hook = _canonical_refusal_hook(topic_key)
+    refused_hook_family = _canonical_refusal_hook(hook_family)
     if (
         not concept_family
         or concept_family in feedback_profile.get("refusedConcepts", set())
         or topic_family in feedback_profile.get("refusedTopics", set())
         or refused_hook in feedback_profile.get("refusedHooks", set())
+        or refused_hook_family in feedback_profile.get("refusedHooks", set())
         or (profile_key, purpose_key) in feedback_profile.get("blockedCombos", set())
     ):
         return None
@@ -1700,13 +1984,20 @@ def _build_v3_item(
     feedback_affinity = _feedback_affinity(feedback_profile, profile_key, purpose_key)
     title_style_affinity = float(feedback_profile.get("titleStyle", {}).get((profile_key, style), 0.0))
     genre_model = title_model.get(profile_key) or {}
+    purpose_model = (genre_model.get("byPurpose") or {}).get(purpose_key) or {}
     owned_genre_affinity = float(genre_model.get("genreSignal") or 0.0)
     score = _idea_score(source_score, owned_genre_affinity, feedback_affinity, title_style_affinity)
+    # Genre-only matches and unmapped competitor copy stay in the auditable
+    # reservoir, but can never clear the 78-point daily quality gate. This
+    # preserves deterministic identities/tests without disguising filler as a
+    # recommendation worth reviewing.
+    if hook_origin == "editorial_fallback":
+        score = min(score, 77)
     duration = "8h" if purpose_key == "sleep" else "3h" if purpose_key in {"study", "reading"} else "2h"
     views = _format_metric(source.get("views"))
     vpm = _format_metric(source.get("_recentVpm") or source.get("vpm"))
     source_title = re.sub(r"\s+", " ", str(source.get("title") or "")).strip()
-    reference_evidence = (genre_model.get("references") or {}).get(style) or {}
+    reference_evidence = (purpose_model.get("references") or {}).get(style) or {}
     reference_type = str(reference_evidence.get("type") or "").strip()
     reference = reference_evidence.get("row") if isinstance(reference_evidence.get("row"), dict) else {}
     reference_title = re.sub(r"\s+", " ", str(reference.get("title") or "")).strip()
@@ -1758,12 +2049,17 @@ def _build_v3_item(
         "_genreKey": profile_key,
         "_purposeKey": purpose_key,
         "_topicKey": topic_key,
+        "_topicFamilyKey": hook_family,
         "_conceptFamily": concept_family,
         "_titleStyleKey": style,
-        "_titleFamily": "|".join((profile_key, style)),
+        "_titleTemplateKey": "|".join((profile_key, purpose_key, style, str(_title_clause_index(source, profile_key, purpose_key)))),
+        "_titleFamily": "|".join((profile_key, purpose_key, style, str(_title_clause_index(source, profile_key, purpose_key)))),
+        "_hookOrigin": hook_origin,
+        "_specificityScore": specificity,
         "_titleReference": reference_title,
         "_titleReferenceVideoId": reference_video_id,
         "_titleReferenceType": reference_type,
+        "_titleReferencePurposeKey": _purpose_key(reference) if reference else "",
         "_ownedGenreAffinity": round(owned_genre_affinity, 4),
         "_editorialTitleAffinity": round(title_style_affinity, 4),
         "_sourceRecentVpm": round(float(source.get("_recentVpm")), 4) if source.get("_recentVpm") is not None else None,
@@ -2528,6 +2824,8 @@ def validate_recommendation_reservoir(
     manifest, entries = validate_ledger_manifest(ledger_dir)
     if int(payload.get("schema") or 0) != BROWSER_SCHEMA_VERSION or int(payload.get("version") or 0) != GENERATOR_VERSION:
         raise ValueError("recommendation browser pool schema is invalid")
+    if int(payload.get("titleRecipeVersion") or 0) != TITLE_RECIPE_VERSION:
+        raise ValueError("recommendation title recipe is stale")
     if int(payload.get("sourceT") or 0) != int(data.get("videoMetricsT") or 0):
         raise ValueError("recommendation browser pool is stale relative to the snapshot")
     if str(payload.get("ledgerRevision") or "") != str(manifest.get("revision") or ""):
@@ -2542,6 +2840,7 @@ def validate_recommendation_reservoir(
     ledger_ids = {int(entry["n"]) for entry in entries}
     ids: set[int] = set()
     titles: set[str] = set()
+    qualified_topics: set[str] = set()
     for item in items:
         reco_id = int(item.get("n"))
         title = _title_fingerprint(item.get("title"))
@@ -2555,14 +2854,34 @@ def validate_recommendation_reservoir(
             raise ValueError("browser-fabricated recommendation reached the server pool")
         if int(item.get("_generatorVersion") or 0) != GENERATOR_VERSION:
             raise ValueError(f"legacy recommendation leaked into the active projection: {reco_id}")
+        if int(item.get("_recipeVersion") or 0) != RECIPE_VERSION:
+            raise ValueError(f"stale recommendation recipe leaked into the active projection: {reco_id}")
         if not item.get("_ideaKey") or not item.get("_sourceVideoId") or not item.get("noteData"):
             raise ValueError(f"current recommendation lacks provenance: {reco_id}")
-        if not item.get("_titleStyleKey") or not item.get("_conceptFamily"):
+        if not item.get("_titleStyleKey") or not item.get("_titleTemplateKey") or not item.get("_conceptFamily"):
             raise ValueError(f"current recommendation lacks title-learning evidence: {reco_id}")
+        if item.get("_hookOrigin") not in {"measured_detail", "measured_theme", "editorial_fallback"}:
+            raise ValueError(f"current recommendation lacks a classified hook origin: {reco_id}")
+        if int(item.get("_specificityScore") or 0) < 2:
+            raise ValueError(f"current recommendation title is too generic: {reco_id}")
+        if item.get("_titleReference") and item.get("_titleReferencePurposeKey") != item.get("_purposeKey"):
+            raise ValueError(f"recommendation title reference has a conflicting purpose: {reco_id}")
+        if int(item.get("score") or 0) >= DAILY_RECOMMENDATION_SCORE_FLOOR:
+            if item.get("_hookOrigin") == "editorial_fallback":
+                raise ValueError(f"generic editorial fallback cleared the daily quality gate: {reco_id}")
+            topic = _normal(item.get("_topicKey"))
+            if topic:
+                qualified_topics.add(topic)
         ids.add(reco_id)
         titles.add(title)
+    if int(browser_limit) >= MIN_ADJACENT_DAILY_TOPICS and len(qualified_topics) < MIN_ADJACENT_DAILY_TOPICS:
+        raise ValueError(
+            "recommendation browser pool cannot supply two fully distinct daily lots: "
+            f"{len(qualified_topics)} qualified topics, {MIN_ADJACENT_DAILY_TOPICS} required"
+        )
     return {
         "recommendations": len(items),
+        "qualifiedTopics": len(qualified_topics),
         "ledger": len(entries),
         "sourceT": int(payload.get("sourceT") or 0),
         "buildId": str(payload.get("buildId") or ""),

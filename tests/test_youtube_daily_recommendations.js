@@ -14,7 +14,7 @@ const DEFAULT_V4_POOL = {
   sourceT: 0, feedbackT: 0,
 };
 
-function makeContext(recos, stored, ownedRows, pool) {
+function makeContext(recos, stored, ownedRows, pool, dateCtor = Date) {
   let rerenders = 0;
   const usesDefaultV4Pool = pool === undefined;
   if (usesDefaultV4Pool) {
@@ -26,7 +26,8 @@ function makeContext(recos, stored, ownedRows, pool) {
   const context = {
     DATA: {recos},
     LANG: 'fr',
-    Date,
+    route: 'recos',
+    Date: dateCtor,
     Intl,
     Set,
     Map,
@@ -62,7 +63,9 @@ function makeContext(recos, stored, ownedRows, pool) {
     this.recoPerformanceSignal = recoPerformanceSignal;
     this.recoHorizonWeight = recoHorizonWeight;
     this.recoSourceRecencyBoost = recoSourceRecencyBoost;
-    this.recoVideoFields = recoVideoFields;`, context);
+    this.recoVideoFields = recoVideoFields;
+    this.recoDayKey = recoDayKey;
+    this.handleRecommendationDayRollover = handleRecommendationDayRollover;`, context);
   context.recoGenreKey = context.recoGenreKey || vm.runInNewContext('recoGenreKey', context);
   context.recoPurposeKey = context.recoPurposeKey || vm.runInNewContext('recoPurposeKey', context);
   context.recoNormalizedTopicKey = context.recoNormalizedTopicKey || vm.runInNewContext('recoNormalizedTopicKey', context);
@@ -124,8 +127,103 @@ assert.ok(context.recoHorizonWeight(72).weight < context.recoHorizonWeight(36).w
   'evergreen results remain available with the smallest positive weight');
 assert.equal(context.recoHorizonWeight(72).id, 'evergreen',
   'videos older than five years enter the evergreen history bucket');
+
+// An already-open tab must notice the Paris calendar-day boundary and rerender
+// without waiting for a navigation or a full page reload.
+let rolloverNow = Date.parse('2026-08-25T10:00:00Z');
+class RolloverDate extends Date {
+  constructor(...args) { super(...(args.length ? args : [rolloverNow])); }
+  static now() { return rolloverNow; }
+}
+const rolloverContext = makeContext([], new Map(), [], undefined, RolloverDate);
+assert.equal(rolloverContext.handleRecommendationDayRollover(), false,
+  'the first rollover check records the active Paris day without rebuilding the lot');
+rolloverNow = Date.parse('2026-08-26T10:00:00Z');
+assert.equal(rolloverContext.handleRecommendationDayRollover(), true,
+  'returning after the Paris day boundary invalidates and rerenders recommendations');
+assert.equal(rolloverContext.rerenderCount(), 1,
+  'an open recommendation view receives exactly one rollover rerender');
 assert.equal(context.recoHorizonWeight(null), null,
   'a missing publication age never enters performance learning');
+
+// A large, quality-qualified reservoir must produce a complete, stable lot
+// for one Paris day, then replace every card on each following day. The third
+// day catches regressions where every historical lot is excluded forever and
+// the reservoir progressively collapses below 50.
+let rotationNow = Date.parse('2026-08-24T10:00:00Z');
+class RotationDate extends Date {
+  constructor(...args) { super(...(args.length ? args : [rotationNow])); }
+  static now() { return rotationNow; }
+}
+const rotationRows = Array.from({length: 120}, (_, index) => ({
+  n: 70000 + index,
+  title: `Specific daily hook ${index + 1}`,
+  genre: index % 2 ? 'Lofi' : 'Ambient',
+  perso: 'Lofi Girl',
+  concept: `Measured direction ${index + 1}`,
+  score: 90,
+  valid: '',
+  _generatorVersion: 4,
+  _topicKey: `specific topic ${index + 1}`,
+  _conceptFamily: `daily|focus|specific topic ${index + 1}`,
+  _titleFamily: `daily-title-${index + 1}`,
+  _sourceVideoId: `daily-source-${index + 1}`,
+}));
+const rotationStore = new Map();
+const rotationContext = makeContext(rotationRows, rotationStore, [], undefined, RotationDate);
+const dailyRows = () => Array.from(rotationContext.dailyRecommendationSet());
+const dailyIds = () => dailyRows().map(row => Number(row.n));
+const overlap = (left, right) => {
+  const rightIds = new Set(right);
+  return left.filter(id => rightIds.has(id));
+};
+
+const rotationDayOneKey = rotationContext.recoDayKey();
+const rotationDayOneRows = dailyRows();
+const rotationDayOne = rotationDayOneRows.map(row => Number(row.n));
+assert.equal(rotationDayOne.length, 50,
+  'a sufficient qualified reservoir produces exactly 50 cards');
+assert.deepEqual(dailyIds(), rotationDayOne,
+  'the exact 50-card lot remains stable throughout the same Paris day');
+
+rotationNow = Date.parse('2026-08-25T10:00:00Z');
+const rotationDayTwoKey = rotationContext.recoDayKey();
+const rotationDayTwoRows = dailyRows();
+const rotationDayTwo = rotationDayTwoRows.map(row => Number(row.n));
+assert.equal(rotationDayTwo.length, 50,
+  'the next Paris day still produces a complete 50-card lot');
+assert.equal(overlap(rotationDayOne, rotationDayTwo).length, 0,
+  'every card changes between consecutive Paris days when the reservoir is sufficient');
+const firstTopics = new Set(rotationDayOneRows.map(row => rotationContext.recoNormalizedTopicKey(row)));
+assert.ok(rotationDayTwoRows.every(row => !firstTopics.has(rotationContext.recoNormalizedTopicKey(row))),
+  'a different stable ID cannot disguise yesterday\'s semantic topic as a new card');
+assert.deepEqual(dailyIds(), rotationDayTwo,
+  'the replacement lot also remains stable until the next Paris day');
+const persistedRotation = JSON.parse(rotationStore.get('lofi_radar_reco_rotation_v4'));
+assert.equal(persistedRotation._topics[rotationDayOneKey].length, 50,
+  'the first daily lot persists semantic fingerprints for cross-day exclusion');
+assert.equal(persistedRotation._topics[rotationDayTwoKey].length, 50,
+  'the replacement lot persists its own semantic fingerprints');
+
+rotationNow = Date.parse('2026-08-26T10:00:00Z');
+const rotationDayThree = dailyIds();
+assert.equal(rotationDayThree.length, 50,
+  'rotation does not exhaust the reservoir after two complete daily lots');
+assert.equal(overlap(rotationDayTwo, rotationDayThree).length, 0,
+  'zero adjacent-day overlap remains true after the first rollover');
+assert.ok(overlap(rotationDayOne, rotationDayThree).length > 0,
+  'older qualified cards may return after one fully different intervening day');
+
+rotationNow = Date.parse('2026-08-24T10:00:00Z');
+const freshDayOneContext = makeContext(rotationRows.map(row => Object.assign({}, row)), new Map(), []);
+freshDayOneContext.Date = RotationDate;
+const freshDayOne = Array.from(freshDayOneContext.dailyRecommendationSet(), row => Number(row.n));
+rotationNow = Date.parse('2026-08-25T10:00:00Z');
+const freshDayTwoContext = makeContext(rotationRows.map(row => Object.assign({}, row)), new Map(), []);
+freshDayTwoContext.Date = RotationDate;
+const freshDayTwo = Array.from(freshDayTwoContext.dailyRecommendationSet(), row => Number(row.n));
+assert.equal(overlap(freshDayOne, freshDayTwo).length, 0,
+  'the deterministic topic windows also change every card when browser history is unavailable');
 assert.ok(context.recoSourceRecencyBoost({_sourceAgeM: 1}) > context.recoSourceRecencyBoost({_sourceAgeM: 4}),
   'the 0-3 month source window receives the strongest ranking prior');
 assert.ok(context.recoSourceRecencyBoost({_sourceAgeM: 4}) > context.recoSourceRecencyBoost({_sourceAgeM: 8}),
@@ -191,6 +289,22 @@ const recoveryRows = [{
   n: -3050, title: 'Recovered V4 idea', genre: 'Lofi', score: 90, valid: '',
   _generated: true, _generatorVersion: 4, _sourceVideoId: 'recovery-source',
 }];
+
+const staleProjectionRow = {
+  n: -3048, title: 'Yesterday generic projection', genre: 'Lofi', score: 99, valid: '',
+  _generated: true, _generatorVersion: 4, _sourceVideoId: 'stale-projection-source',
+};
+const currentProjectionRow = {
+  n: -3049, title: 'Current measured projection', genre: 'Ambient', score: 90, valid: '',
+  _generated: true, _generatorVersion: 4, _sourceVideoId: 'current-projection-source',
+};
+const projectionContext = makeContext(
+  [staleProjectionRow, currentProjectionRow], new Map(), [],
+  Object.assign({}, DEFAULT_V4_POOL, {items: [currentProjectionRow]}),
+);
+assert.deepEqual(Array.from(projectionContext.dailyRecommendationSet(), row => row.n), [-3049],
+  'a background pool refresh cannot revive a neutral row absent from the current server projection');
+
 const recoveryStorage = new Map();
 const recoveryContext = makeContext(recoveryRows, recoveryStorage, [], {
   schema: 3, version: 3, buildId: 'failed-v3', ledgerRevision: 'failed-ledger', modelRevision: '',
@@ -569,6 +683,16 @@ assert.ok(sparseDaily.every(row => row.score === 90),
 assert.ok(sparseDaily.every(row => row._titleFamily === 'single-small-pool-family'),
   'a broad shared title family never shrinks a small qualified pool');
 
+const fallbackGateRows = [
+  {n: 1801, title: 'Measured specific hook', genre: 'Lofi', score: 90, valid: '', _hookOrigin: 'measured_theme'},
+  {n: 1802, title: 'Genre-only synonym', genre: 'Ambient', score: 99, valid: '', _hookOrigin: 'editorial_fallback'},
+];
+assert.deepEqual(
+  Array.from(makeContext(fallbackGateRows, new Map(), []).dailyRecommendationSet(), row => row.n),
+  [1801],
+  'an editorial fallback stays out of the daily lot even if adaptive signals could lift its score',
+);
+
 const emptyStored = new Map([['lofi_radar_reco_rotation_v4', JSON.stringify({[todayKey]: [], _pool: DEFAULT_V4_POOL})]]);
 const emptyContext = makeContext(regressionRecos, emptyStored, []);
 assert.equal(emptyContext.dailyRecommendationSet().length, 0,
@@ -584,7 +708,10 @@ const familyRecos = Array.from({length: 130}, (_, index) => ({
   _conceptFamily: index < 2 ? 'shared-concept-family' : `safe-concept-family-${index}`,
   _titleFamily: `family-guard-title-${index}`,
 }));
-const familyContext = makeContext(familyRecos, new Map(), []);
+const familyStored = new Map([['lofi_radar_reco_rotation_v4', JSON.stringify({
+  [todayKey]: familyRecos.slice(0, 50).map(row => row.n),
+})]]);
+const familyContext = makeContext(familyRecos, familyStored, []);
 const familyInitial = familyContext.dailyRecommendationSet();
 assert.ok(familyInitial.some(row => row.n === 4000) && familyInitial.some(row => row.n === 4001),
   'the fixture begins with two pending sisters from the same concept family');
@@ -609,7 +736,10 @@ const hookRecos = Array.from({length: 130}, (_, index) => ({
   _conceptFamily: index < 2 ? `jazz|${index ? 'reading' : 'relax'}|night jazz` : `safe-hook-family-${index}`,
   _titleFamily: `hook-guard-title-${index}`,
 }));
-const hookContext = makeContext(hookRecos, new Map(), []);
+const hookStored = new Map([['lofi_radar_reco_rotation_v4', JSON.stringify({
+  [todayKey]: [5000, ...hookRecos.slice(2, 51).map(row => row.n)],
+})]]);
+const hookContext = makeContext(hookRecos, hookStored, []);
 assert.ok(hookContext.dailyRecommendationSet().some(row => row.n === 5000),
   'the fixture initially exposes the strongest variant of a repeated hook');
 assert.ok(!hookContext.dailyRecommendationSet().some(row => row.n === 5001),
