@@ -318,11 +318,18 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(component, /TrendDetailsModal/);
   assert.match(component, /trend-reference-card/);
   assert.match(component, /<h2>Trends vid.os<\/h2>/);
-  assert.match(component, /Veille éditoriale quotidienne · focus Lofi Girl/);
-  assert.match(component, /Repris par \{reuseCount\}\+ créateurs/);
-  assert.match(component, /Vraie trend, pas simple post viral/);
-  assert.match(component, /Preuve de reprise par plusieurs créateurs/);
+  assert.doesNotMatch(component, /Veille éditoriale quotidienne · focus Lofi Girl/);
+  assert.doesNotMatch(component, /Repris par \{reuseCount\}\+ créateurs/);
+  assert.doesNotMatch(component, /Vraie trend, pas simple post viral/);
+  assert.doesNotMatch(component, /Preuve de reprise par plusieurs créateurs/);
+  assert.doesNotMatch(component, /Nouveaux signaux vidéo détectés au dernier scan/);
+  assert.doesNotMatch(component, /Dernier lot complet/);
+  assert.doesNotMatch(component, /Retrouvée dans le scan du jour/);
   assert.match(component, /reuseEvidence\.posts\.map/);
+  assert.match(component, /trendExampleSearchLinks\(trend\)\.map/);
+  assert.match(component, /className="trend-example-section"/);
+  assert.match(component, /platforms\/\$\{post\.platform\}\.svg/);
+  assert.doesNotMatch(component, /reuseEvidence\.posts\.slice\(0,\s*3\)/);
   assert.match(component, /isActionableSocialTrend/);
   assert.match(component, /selectGirlFirstSocialTrends/);
   assert.match(component, /referencePost\?\.mediaType === "video"/);
@@ -332,8 +339,8 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   );
   assert.match(component, /platformFilter === "all" && characterFilter === "all"/);
   assert.match(component, /return orderedVideoTrends/);
-  assert.match(component, /\{selectedVideoTrends\.length\} cartes/);
-  assert.match(component, /\{proposalCount\} adaptations/);
+  assert.doesNotMatch(component, /\{selectedVideoTrends\.length\} cartes/);
+  assert.doesNotMatch(component, /proposalCount/);
   assert.match(component, /trend\.proposals\.map/);
   assert.match(component, /trend-proposal-tabs/);
   assert.match(component, /dailyRotationIndex/);
@@ -345,14 +352,23 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(component, /label: "Lofi Girl"/);
   assert.match(component, /label: "Lofi Boy"/);
   assert.match(component, /Lofi Boy \/ Synthwave Boy/);
-  assert.match(component, /character\.emoji.*character\.label.*trend\.territory/);
+  assert.doesNotMatch(component, /character\.emoji.*character\.label.*trend\.territory/);
   assert.doesNotMatch(component, /Potentiel Lofi Girl|Adaptation Lofi Girl|Pourquoi Lofi Girl/);
+  const trendModalSource = component.slice(
+    component.indexOf("function TrendDetailsModal"),
+    component.indexOf("function trendPlatformLabel"),
+  );
+  assert.ok(trendModalSource.indexOf("trend-lofi-adaptation") < trendModalSource.indexOf("post-details-summary"));
+  assert.ok(trendModalSource.indexOf("trend-tone-tabs") < trendModalSource.indexOf("post-details-summary"));
+  assert.doesNotMatch(trendModalSource, /post-observation-grid|trend-detail-grid|trend-tags|trend-proof-section|trend-caveat/);
+  assert.doesNotMatch(trendModalSource, /Créateurs vérifiés|D’où vient le signal|Ce qui se répète|Bon moment|À produire/);
   assert.match(component, /trend-duration-badge/);
   assert.match(component, /post-grid top-ranking-grid trend-shorts-grid/);
   assert.match(audioTrendView, /<h2>Trends audio<\/h2>/);
   assert.match(audioTrendView, /deriveAudioTrendGrowth/);
-  assert.match(audioTrendView, /\{feed\.trends\.length\} cartes/);
+  assert.doesNotMatch(audioTrendView, /\{feed\.trends\.length\} cartes/);
   assert.doesNotMatch(audioTrendView, /proposalCount/);
+  assert.doesNotMatch(audioTrendView, /Nouveaux sons détectés au dernier scan|Son candidat|Dernier lot complet|Retrouvé dans le scan du jour/);
   assert.match(audioTrendView, /compareAudioTrends\(left, right, freshnessCutoff\)/);
   assert.match(audioTrendView, /recentGrowth/);
   assert.match(audioTrendView, /currentRank/);
@@ -511,8 +527,8 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(styles, /\.trend-shorts-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(260px,\s*1fr\)\)/);
   assert.match(styles, /\.trend-shorts-grid \.trend-reference-visual\s*\{[\s\S]*?aspect-ratio:\s*1\s*\/\s*1/);
   assert.match(styles, /\.trend-card-source-title\s*\{/);
-  assert.match(styles, /\.trend-reuse-pill\s*\{/);
-  assert.match(styles, /\.trend-reuse-creators\s*\{[\s\S]*?grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(styles, /\.trend-reuse-creators\s*\{[\s\S]*?grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(170px,\s*1fr\)\)/);
+  assert.match(styles, /\.trend-example-section\s*\{/);
   assert.match(styles, /\.trend-feed-heading\s*\{/);
   assert.match(styles, /\.trend-snapshot-pill\.is-late\s*\{/);
   assert.match(styles, /\.trend-duration-badge\s*\{/);
@@ -580,7 +596,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   );
 });
 
-test("makes editorial trend freshness visible and checks it without reading media", async () => {
+test("checks editorial trend freshness in the pipeline without exposing scan internals", async () => {
   const [
     socialComponent,
     audioTrendView,
@@ -604,12 +620,9 @@ test("makes editorial trend freshness visible and checks it without reading medi
     socialComponent.indexOf("function TrendDetailsModal"),
   );
   for (const view of [videoTrendView, audioTrendView]) {
-    assert.match(view, /isTrendEditorialScanLate/);
     assert.match(view, /feed\?\.capturedAt|feed\.capturedAt/);
-    assert.match(view, /Dernier lot complet/);
-    assert.match(view, /Scan quotidien/);
-    assert.match(view, /scan du jour|candidats/);
-    assert.doesNotMatch(view, /Actualisé/);
+    assert.doesNotMatch(view, /isTrendEditorialScanLate/);
+    assert.doesNotMatch(view, /Dernier lot complet|Scan quotidien|scan du jour|candidats|Actualisé/);
   }
   assert.match(trendHealthModel, /TREND_EDITORIAL_SCAN_MAX_AGE_HOURS = 26/);
   assert.match(healthScript, /discoveryAudit\.candidateCount doit être >=/);

@@ -7454,72 +7454,49 @@ a {
 
 .trend-details-modal .trend-lofi-adaptation,
 .trend-details-modal .trend-modal-copy-section,
-.trend-details-modal .trend-detail-grid,
-.trend-details-modal .trend-tags,
-.trend-details-modal .trend-reuse-proof,
-.trend-details-modal .trend-proof-section,
-.trend-details-modal .trend-caveat {
+.trend-details-modal .trend-example-section {
   margin-top: 12px;
 }
 
-.trend-reuse-proof {
+.trend-example-section {
   display: grid;
   gap: 12px;
-  border: 1px solid rgba(251, 191, 36, 0.26);
+  border: 1px solid rgba(154, 168, 255, 0.22);
   border-radius: 15px;
-  background:
-    radial-gradient(circle at 95% 0%, rgba(251, 191, 36, 0.1), transparent 36%),
-    rgba(7, 8, 13, 0.38);
+  background: rgba(7, 8, 13, 0.38);
   padding: 14px;
 }
 
-.trend-reuse-proof > header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.trend-reuse-proof h4,
-.trend-reuse-proof p {
+.trend-example-section h4 {
   margin: 0;
-}
-
-.trend-reuse-proof h4 {
-  margin-top: 3px;
   font-family: Sora, Inter, sans-serif;
   font-size: 16px;
 }
 
-.trend-reuse-proof > header time {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 760;
-  white-space: nowrap;
-}
-
-.trend-reuse-proof > p {
-  color: var(--muted);
-  font-size: var(--fs-meta);
-  line-height: 1.55;
-}
-
 .trend-reuse-creators {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 8px;
 }
 
 .trend-reuse-creators a {
   display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
   min-width: 0;
-  gap: 4px;
+  column-gap: 8px;
+  row-gap: 3px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 11px;
   background: rgba(255, 255, 255, 0.035);
   padding: 10px;
   color: var(--text);
   text-decoration: none;
+}
+
+.trend-reuse-creators img {
+  grid-row: 1 / span 2;
+  align-self: center;
+  object-fit: contain;
 }
 
 .trend-reuse-creators a:hover,
@@ -7531,6 +7508,7 @@ a {
 
 .trend-reuse-creators b,
 .trend-reuse-creators small {
+  grid-column: 2;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -7543,6 +7521,11 @@ a {
 .trend-reuse-creators small {
   color: var(--muted);
   font-size: 11px;
+}
+
+.trend-reuse-creators .trend-more-examples-link {
+  border-style: dashed;
+  background: rgba(154, 168, 255, 0.045);
 }
 
 .trend-modal-copy-section {

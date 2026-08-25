@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element -- platform logos and social thumbnails are public assets. */
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   deriveAudioTrendGrowth,
@@ -14,10 +14,7 @@ import {
   type AudioTrendType,
 } from "../lib/audio-trends";
 import { dailyRotationIndex } from "../lib/daily-rotation";
-import { isTrendEditorialScanLate } from "../lib/trend-health";
 import {
-  isScanLate,
-  type AudioTrendCandidateReference,
   type AudioTrendScanStatus,
 } from "../lib/trend-scan-status";
 import { SocialInlinePlayer } from "./SocialInlinePlayer";
@@ -69,7 +66,6 @@ export function AudioTrendFeedView({
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [activePlayerId, setActivePlayerId] = useState<string | null>(null);
-  const [freshnessCheckedAt, setFreshnessCheckedAt] = useState(Date.now);
   const matchedAudioUrls = useMemo(
     () => new Set((scanStatus?.discoveryAudit.candidateAudioUrls ?? []).map(canonicalUrl)),
     [scanStatus?.discoveryAudit.candidateAudioUrls],
@@ -87,62 +83,11 @@ export function AudioTrendFeedView({
         return compareAudioTrends(left, right, freshnessCutoff);
       });
   }, [feed?.cadenceHours, feed?.capturedAt, feed?.trends, matchedAudioUrls, platformFilter, typeFilter]);
-  const editorialScanDate = feed ? formatRefreshDate(feed.capturedAt) : null;
-  const editorialScanIsLate = isTrendEditorialScanLate(feed?.capturedAt, freshnessCheckedAt);
-  const dailyScanDate = formatRefreshDate(
-    scanStatus?.discoveryAudit.scannedAt ?? scanStatus?.attemptedAt ?? "",
-  );
-  const dailyScanIsLate = isScanLate(
-    scanStatus?.discoveryAudit.scannedAt ?? scanStatus?.attemptedAt,
-    freshnessCheckedAt,
-  );
-
-  useEffect(() => {
-    const interval = window.setInterval(
-      () => setFreshnessCheckedAt(Date.now()),
-      60 * 60 * 1_000,
-    );
-    return () => window.clearInterval(interval);
-  }, []);
-
   return (
     <div className="trend-feed-view audio-trend-view">
       <header className="trend-feed-heading">
-        <div>
-          <span className="section-kicker">Veille éditoriale quotidienne · focus Lofi Girl</span>
-          <h2>Trends audio</h2>
-          <p>
-            Les sons et musiques à reprendre maintenant, avec leur volume d’utilisation,
-            leur vraie croissance et une vidéo de référence.
-          </p>
-        </div>
-        {scanStatus && dailyScanDate ? (
-          <span className={`trend-snapshot-pill ${dailyScanIsLate ? "is-late" : ""}`}>
-            Scan 24 h : {scanStatus.discoveryAudit.candidateCount} sons · {scanStatus.discoveryAudit.qualifiedInventoryCount} carte retrouvée · {dailyScanDate}
-          </span>
-        ) : null}
+        <h2>Trends audio</h2>
       </header>
-
-      {feed && editorialScanDate ? (
-        <div className={`trend-scan-summary ${editorialScanIsLate ? "is-degraded" : ""}`} role="status">
-          <div>
-            <b>{dailyScanIsLate ? "Scan quotidien en retard" : "Scan quotidien effectué"}</b>
-            <span>Dernier lot complet : {editorialScanDate} · {feed.trends.length} cartes</span>
-          </div>
-          <p>
-            {editorialScanIsLate
-              ? `${scanStatus?.discoveryAudit.qualifiedInventoryCount ?? 0}/50 cartes ont été reliées au scan du jour. Les ${scanStatus?.discoveryAudit.newCandidateCount ?? 0} nouveaux sons restent candidats tant que leurs reprises, likes et durée ne sont pas prouvés.`
-              : "Le lot affiché a passé les contrôles multi-créateurs, métriques et durée."}
-          </p>
-        </div>
-      ) : null}
-
-      {scanStatus?.discoveryAudit.candidateReferences.length ? (
-        <AudioCandidateLinks
-          references={scanStatus.discoveryAudit.candidateReferences}
-          total={scanStatus.discoveryAudit.candidateCount}
-        />
-      ) : null}
 
       <div className="audio-trend-controls" aria-label="Filtres des trends audio">
         <div className="trend-filter-group">
@@ -212,7 +157,6 @@ export function AudioTrendFeedView({
               active={activePlayerId === trend.id}
               onActivate={() => setActivePlayerId(trend.id)}
               onClose={() => setActivePlayerId(null)}
-              scanMatched={matchedAudioUrls.has(canonicalUrl(trend.audioUrl))}
               feedCapturedAt={feed.capturedAt}
               key={`${trend.id}:${feed.capturedAt.slice(0, 10)}`}
             />
@@ -240,50 +184,12 @@ export function AudioTrendFeedView({
   );
 }
 
-function AudioCandidateLinks({
-  references,
-  total,
-}: {
-  references: readonly AudioTrendCandidateReference[];
-  total: number;
-}) {
-  const visibleReferences = references.slice(0, 12);
-  return (
-    <section className="trend-candidate-panel" aria-label="Nouveaux sons détectés au dernier scan">
-      <div className="trend-candidate-panel-heading">
-        <div>
-          <b>Nouveaux sons détectés au dernier scan</b>
-          <span>À qualifier : trois créateurs, métriques publiques et durée doivent encore être vérifiés.</span>
-        </div>
-        <span>{total} détectés</span>
-      </div>
-      <div className="trend-candidate-links">
-        {visibleReferences.map((candidate, index) => {
-          const platform = audioCandidatePlatform(candidate.referenceUrl);
-          return (
-            <a href={candidate.referenceUrl} target="_blank" rel="noreferrer" key={`${candidate.audioUrl}:${candidate.referenceUrl}`}>
-              {platform ? (
-                <img src={`platforms/${platform}.svg`} alt="" width="17" height="17" />
-              ) : null}
-              Son candidat {index + 1}
-            </a>
-          );
-        })}
-        {total > visibleReferences.length ? (
-          <span className="trend-candidate-overflow">+{total - visibleReferences.length} autres</span>
-        ) : null}
-      </div>
-    </section>
-  );
-}
-
 function AudioTrendCard({
   trend,
   rank,
   active,
   onActivate,
   onClose,
-  scanMatched,
   feedCapturedAt,
 }: {
   trend: AudioTrend;
@@ -291,7 +197,6 @@ function AudioTrendCard({
   active: boolean;
   onActivate: () => void;
   onClose: () => void;
-  scanMatched: boolean;
   feedCapturedAt: string;
 }) {
   const derivedGrowth = deriveAudioTrendGrowth(trend.usageObservations);
@@ -366,14 +271,9 @@ function AudioTrendCard({
           )}
         </div>
 
-        <span className={`trend-scan-card-state ${scanMatched ? "is-current" : "is-retained"}`}>
-          {scanMatched ? "Retrouvé dans le scan du jour" : "Conservé du dernier lot complet"}
-        </span>
-
         <div className="post-card-title audio-card-title">
           <div className="post-media-caption">
             <span className="trend-card-source-title">{trend.title} · {trend.author}</span>
-            <span className="trend-proposal-title">{activeProposal.title}</span>
             <h3>{activeProposal.concept}</h3>
             <p className="audio-proposal-copy">“{activeProposal.copy}”</p>
           </div>
@@ -459,18 +359,6 @@ function canonicalUrl(candidate: string) {
     return url.toString();
   } catch {
     return candidate;
-  }
-}
-
-function audioCandidatePlatform(candidate: string): AudioTrendPlatform | null {
-  try {
-    const host = new URL(candidate).hostname.toLowerCase();
-    if (host === "instagram.com" || host.endsWith(".instagram.com")) return "instagram";
-    if (host === "tiktok.com" || host.endsWith(".tiktok.com")) return "tiktok";
-    if (host === "youtube.com" || host.endsWith(".youtube.com") || host === "youtu.be") return "youtube";
-    return null;
-  } catch {
-    return null;
   }
 }
 
@@ -575,16 +463,4 @@ function formatDuration(seconds: number) {
   const minutes = Math.floor(rounded / 60);
   const remaining = rounded % 60;
   return minutes ? `${minutes}:${String(remaining).padStart(2, "0")}` : `0:${String(remaining).padStart(2, "0")}`;
-}
-
-function formatRefreshDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat("fr-FR", {
-    timeZone: "Europe/Paris",
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
 }

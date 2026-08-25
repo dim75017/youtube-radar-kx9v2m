@@ -792,7 +792,15 @@ test("ranking and feed filters surface the strongest opportunities by platform a
 
   const instagram = filterSocialTrends(feed.trends, { platform: "instagram" });
   assert.ok(instagram.length > 0);
-  assert.ok(instagram.every((trend) => trend.platforms.includes("instagram")));
+  assert.ok(instagram.every((trend) => trend.referencePost?.platform === "instagram"));
+
+  for (const platform of ["instagram", "tiktok", "youtube", "x"]) {
+    const platformTrends = filterSocialTrends(feed.trends, { platform });
+    assert.ok(
+      platformTrends.every((trend) => trend.referencePost?.platform === platform),
+      `the ${platform} filter must never render another platform's reference post`,
+    );
+  }
 
   const lofiBoy = filterSocialTrends(feed.trends, { character: "lofi-boy" });
   assert.ok(lofiBoy.length >= 8);

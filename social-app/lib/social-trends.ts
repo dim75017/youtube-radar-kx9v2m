@@ -453,7 +453,7 @@ export function filterSocialTrends(
   const character = options.character ?? "all";
   return rankSocialTrends(
     trends.filter((trend) => {
-      if (platform !== "all" && !trend.platforms.includes(platform)) return false;
+      if (platform !== "all" && trend.referencePost?.platform !== platform) return false;
       if (character !== "all" && trend.character !== character) return false;
       if (lifecycle === "priority") {
         return trendPriorityScore(trend) >= TREND_PRIORITY_THRESHOLD;

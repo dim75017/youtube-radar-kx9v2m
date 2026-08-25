@@ -59,7 +59,6 @@ import {
   filterSocialTrends,
   isActionableSocialTrend,
   selectGirlFirstSocialTrends,
-  trendPriorityScore,
   type SocialTrend,
   type SocialTrendFeed,
   type TrendCharacter,
@@ -77,9 +76,7 @@ import {
   type AudioTrendFeed,
 } from "../lib/audio-trends";
 import { dailyRotationIndex } from "../lib/daily-rotation";
-import { isTrendEditorialScanLate } from "../lib/trend-health";
 import {
-  isScanLate,
   type AudioTrendScanStatus,
   type VideoTrendScanStatus,
 } from "../lib/trend-scan-status";
@@ -228,7 +225,6 @@ const RECOMMENDATION_NAV: Array<{
 
 const EDITORIAL_WORKFLOW_STORAGE_KEY = "lofi-social-radar:editorial-workflow:v2";
 const POSTS_PAGE_SIZE = 48;
-const TREND_CANDIDATE_PREVIEW_LIMIT = 12;
 const PLATFORM_ORDER: Platform[] = ["youtube", "instagram", "tiktok", "x"];
 const DEFAULT_FORMAT_FILTER: Record<Platform, SocialFormatFilter> = {
   youtube: "short",
@@ -526,19 +522,6 @@ function formatCardPublishedDate(value: string | null | undefined): string | nul
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-  }).format(date);
-}
-
-function formatTrendEditorialScanDate(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat("fr-FR", {
-    timeZone: "Europe/Paris",
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
   }).format(date);
 }
 
@@ -2238,7 +2221,6 @@ function TrendFeedView({
   const [characterFilter, setCharacterFilter] = useState<TrendCharacterFilter>("all");
   const [activeTrend, setActiveTrend] = useState<SocialTrend | null>(null);
   const [activePlayerId, setActivePlayerId] = useState<string | null>(null);
-  const [freshnessCheckedAt, setFreshnessCheckedAt] = useState(Date.now);
   const actionableTrends = useMemo(
     () => (feed?.trends ?? []).filter(
       (trend) => isActionableSocialTrend(trend) && trend.referencePost?.mediaType === "video",
@@ -2263,10 +2245,6 @@ function TrendFeedView({
     ],
     [matchedTrendIds, selectedVideoTrends],
   );
-  const proposalCount = useMemo(
-    () => selectedVideoTrends.reduce((total, trend) => total + trend.proposals.length, 0),
-    [selectedVideoTrends],
-  );
   const visibleTrends = useMemo(
     () => {
       if (platformFilter === "all" && characterFilter === "all") {
@@ -2283,56 +2261,11 @@ function TrendFeedView({
     },
     [characterFilter, matchedTrendIds, orderedVideoTrends, platformFilter, selectedVideoTrends],
   );
-  const editorialScanDate = formatTrendEditorialScanDate(feed?.capturedAt);
-  const refreshIsLate = isTrendEditorialScanLate(feed?.capturedAt, freshnessCheckedAt);
-  const dailyScanDate = formatTrendEditorialScanDate(scanStatus?.discoveryAudit.scannedAt);
-  const dailyScanIsLate = isScanLate(scanStatus?.discoveryAudit.scannedAt, freshnessCheckedAt);
-
-  useEffect(() => {
-    const interval = window.setInterval(
-      () => setFreshnessCheckedAt(Date.now()),
-      60 * 60 * 1_000,
-    );
-    return () => window.clearInterval(interval);
-  }, []);
-
   return (
     <div className="trend-feed-view">
       <header className="trend-feed-heading">
-        <div>
-          <span className="section-kicker">Veille éditoriale quotidienne · focus Lofi Girl</span>
-          <h2>Trends vidéos</h2>
-          <p>
-            Un exemple performant par trend, uniquement si la même mécanique a été reprise par plusieurs créateurs. Lofi Girl reste prioritaire.
-          </p>
-        </div>
-        {scanStatus && dailyScanDate ? (
-          <span className={`trend-snapshot-pill ${dailyScanIsLate ? "is-late" : ""}`}>
-            Scan 24 h : {scanStatus.discoveryAudit.candidateCount} signaux · {scanStatus.discoveryAudit.qualifiedInventoryCount} cartes retrouvées · {dailyScanDate}
-          </span>
-        ) : null}
+        <h2>Trends vidéos</h2>
       </header>
-
-      {feed && editorialScanDate ? (
-        <div className={`trend-scan-summary ${refreshIsLate ? "is-degraded" : ""}`} role="status">
-          <div>
-            <b>{dailyScanIsLate ? "Scan quotidien en retard" : "Scan quotidien effectué"}</b>
-            <span>Dernier lot complet : {editorialScanDate} · {selectedVideoTrends.length} cartes · {proposalCount} adaptations</span>
-          </div>
-          <p>
-            {refreshIsLate
-              ? `${scanStatus?.discoveryAudit.qualifiedInventoryCount ?? 0}/50 cartes de l’inventaire ont été retrouvées dans les sources du jour. Le lot complet précédent reste affiché pour ne pas présenter des candidats non qualifiés comme des trends.`
-              : "Le lot affiché a passé les contrôles multi-créateurs, métriques et durée."}
-          </p>
-        </div>
-      ) : null}
-
-      {scanStatus?.discoveryAudit.candidateUrls.length ? (
-        <DailyCandidateLinks
-          title="Nouveaux signaux vidéo détectés au dernier scan"
-          urls={scanStatus.discoveryAudit.candidateUrls}
-        />
-      ) : null}
 
       <div className="trend-feed-controls" aria-label="Filtres des tendances">
         <div className="trend-filter-group">
@@ -2407,7 +2340,6 @@ function TrendFeedView({
               playerActive={activePlayerId === trend.id}
               onActivatePlayer={() => setActivePlayerId(trend.id)}
               onClosePlayer={() => setActivePlayerId(null)}
-              scanMatched={matchedTrendIds.has(trend.id)}
               feedCapturedAt={feed.capturedAt}
               key={`${trend.id}:${feed.capturedAt.slice(0, 10)}`}
             />
@@ -2441,50 +2373,6 @@ function TrendFeedView({
   );
 }
 
-function DailyCandidateLinks({ title, urls }: { title: string; urls: readonly string[] }) {
-  const visibleUrls = urls.slice(0, TREND_CANDIDATE_PREVIEW_LIMIT);
-  return (
-    <section className="trend-candidate-panel" aria-label={title}>
-      <div className="trend-candidate-panel-heading">
-        <div>
-          <b>{title}</b>
-          <span>Ces liens sont des candidats récents, pas encore des trends qualifiées.</span>
-        </div>
-        <span>{urls.length} détectés</span>
-      </div>
-      <div className="trend-candidate-links">
-        {visibleUrls.map((url, index) => {
-          const platform = trendPlatformFromUrl(url);
-          return (
-            <a href={url} target="_blank" rel="noreferrer" key={url}>
-              {platform ? (
-                <img src={`platforms/${platform}.svg`} alt="" width="17" height="17" />
-              ) : null}
-              Signal {index + 1}
-            </a>
-          );
-        })}
-        {urls.length > visibleUrls.length ? (
-          <span className="trend-candidate-overflow">+{urls.length - visibleUrls.length} autres</span>
-        ) : null}
-      </div>
-    </section>
-  );
-}
-
-function trendPlatformFromUrl(candidate: string): TrendPlatform | null {
-  try {
-    const host = new URL(candidate).hostname.toLowerCase();
-    if (host === "instagram.com" || host.endsWith(".instagram.com")) return "instagram";
-    if (host === "tiktok.com" || host.endsWith(".tiktok.com")) return "tiktok";
-    if (host === "youtube.com" || host.endsWith(".youtube.com") || host === "youtu.be") return "youtube";
-    if (host === "x.com" || host.endsWith(".x.com") || host === "twitter.com") return "x";
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 function TrendFeedCard({
   trend,
   rank,
@@ -2492,7 +2380,6 @@ function TrendFeedCard({
   playerActive,
   onActivatePlayer,
   onClosePlayer,
-  scanMatched,
   feedCapturedAt,
 }: {
   trend: SocialTrend;
@@ -2501,11 +2388,9 @@ function TrendFeedCard({
   playerActive: boolean;
   onActivatePlayer: () => void;
   onClosePlayer: () => void;
-  scanMatched: boolean;
   feedCapturedAt: string;
 }) {
   const lifecycle = TREND_LIFECYCLE_META[trend.lifecycle];
-  const character = TREND_CHARACTER_META[trend.character];
   const referencePost = trend.referencePost;
   const [activeProposalIndex, setActiveProposalIndex] = useState(() =>
     dailyRotationIndex(trend.id, feedCapturedAt, trend.proposals.length),
@@ -2514,7 +2399,6 @@ function TrendFeedCard({
   const publishedDate = formatCardPublishedDate(referencePost.publishedAt);
   const footerMetrics = trendReferenceFooterMetrics(referencePost);
   const activeProposal = trend.proposals[activeProposalIndex] ?? trend.proposals[0];
-  const reuseCount = trend.reuseEvidence?.posts.length ?? 0;
 
   return (
     <article className={`social-post-card trend-reference-card has-media tone-${lifecycle.tone}`}>
@@ -2530,20 +2414,10 @@ function TrendFeedCard({
           <span>
             {trendPlatformEmoji(referencePost.platform)} {referencePost.author ?? trendPlatformLabel(referencePost.platform)}
           </span>
-          <span className={`status-badge tone-${lifecycle.tone}`}>
-            {lifecycle.emoji} {lifecycle.label}
-          </span>
         </div>
-        <span className="trend-reuse-pill">
-          🔥 Repris par {reuseCount}+ créateurs
-        </span>
-        <span className={`trend-scan-card-state ${scanMatched ? "is-current" : "is-retained"}`}>
-          {scanMatched ? "Retrouvée dans le scan du jour" : "Conservée du dernier lot complet"}
-        </span>
         <div className="post-card-title">
           <div className="post-media-caption">
-            <span className="trend-card-source-title">{character.emoji} {character.label} · {trend.territory}</span>
-            <span className="trend-proposal-title">{activeProposal?.title ?? trend.title}</span>
+            <span className="trend-card-source-title">{trend.title}</span>
             <h3>{activeProposal?.concept ?? trend.whyLofi}</h3>
           </div>
         </div>
@@ -2770,11 +2644,7 @@ function TrendDetailsModal({
         ref={modalRef}
       >
         <header>
-          <div>
-            <span>{trendPlatformEmoji(referencePost.platform)} Fiche trend · {lifecycle.emoji} {lifecycle.label}</span>
-            <h2 id={titleId}>{trend.title}</h2>
-            <small className="details-theme-label">{character.emoji} {character.detailLabel} · potentiel {trendPriorityScore(trend)}/100</small>
-          </div>
+          <h2 id={titleId}>{trend.title}</h2>
           <button
             className="post-details-close"
             type="button"
@@ -2785,70 +2655,6 @@ function TrendDetailsModal({
             ✕
           </button>
         </header>
-
-        <div className={`post-details-summary ${referencePost.thumbnailUrl ? "has-thumbnail" : ""}`}>
-          {referencePost.thumbnailUrl ? <img src={referencePost.thumbnailUrl} alt="" /> : null}
-          <div>
-            <span className="section-kicker">Post de référence · {referencePost.author ?? trendPlatformLabel(referencePost.platform)}</span>
-            <p>{referencePost.caption}</p>
-            {referenceMetrics.length ? (
-              <div className="metric-row details-current-metrics">
-                {referenceMetrics.map((metric) => <span key={metric}>{metric}</span>)}
-              </div>
-            ) : null}
-            <a className="trend-original-link" href={referencePost.url} target="_blank" rel="noreferrer">
-              Voir le post original ↗
-            </a>
-          </div>
-        </div>
-
-        <div className="post-observation-grid">
-          <div>
-            <span>Publié</span>
-            <b>{formatDetailedDate(referencePost.publishedAt)}</b>
-            <small>{referencePost.selectionLabel}</small>
-          </div>
-          <div>
-            <span>Potentiel</span>
-            <b>{trendPriorityScore(trend)}/100</b>
-            <small>Momentum, fit avec l’univers Lofi et saturation</small>
-          </div>
-          <div>
-            <span>Stade</span>
-            <b>{lifecycle.emoji} {lifecycle.label}</b>
-            <small>{trend.timing}</small>
-          </div>
-          <div>
-            <span>Créateurs vérifiés</span>
-            <b>🔥 {reuseEvidence?.posts.length ?? 0}</b>
-            <small>Adaptations natives distinctes</small>
-          </div>
-        </div>
-
-        {reuseEvidence ? (
-          <section className="trend-reuse-proof" aria-label="Preuve de reprise par plusieurs créateurs">
-            <header>
-              <div>
-                <span className="section-kicker">Vraie trend, pas simple post viral</span>
-                <h4>🔥 Reprise par plusieurs créateurs</h4>
-              </div>
-              <time dateTime={reuseEvidence.verifiedAt}>{formatDetailedDate(reuseEvidence.verifiedAt)}</time>
-            </header>
-            <p>{reuseEvidence.summary}</p>
-            <div className="trend-reuse-creators">
-              {reuseEvidence.posts.map((post) => {
-                const isReference = post.url === referencePost.url;
-                return (
-                  <a href={post.url} target="_blank" rel="noreferrer" key={`${post.platform}:${post.url}`}>
-                    <span>{trendPlatformEmoji(post.platform)}</span>
-                    <b>{post.author}</b>
-                    <small>{isReference ? "Exemple principal" : "Reprise vérifiée"} ↗</small>
-                  </a>
-                );
-              })}
-            </div>
-          </section>
-        ) : null}
 
         <section className="trend-lofi-adaptation" aria-label={`Adaptation ${character.detailLabel} proposée`}>
           <span>{character.emoji} Adaptation {character.detailLabel}</span>
@@ -2889,42 +2695,43 @@ function TrendDetailsModal({
           </section>
         ) : null}
 
-        <div className="trend-detail-grid">
-          <section><span>🧩 Ce qui se répète</span><p>{trend.mechanic}</p></section>
-          <section><span>{character.emoji} Pourquoi {character.detailLabel}</span><p>{trend.whyLofi}</p></section>
-          <section><span>⏱️ Bon moment</span><p>{trend.timing}</p></section>
-          <section><span>🎬 À produire</span><p>{trend.production}</p></section>
+        <div className={`post-details-summary ${referencePost.thumbnailUrl ? "has-thumbnail" : ""}`}>
+          {referencePost.thumbnailUrl ? <img src={referencePost.thumbnailUrl} alt="" /> : null}
+          <div>
+            <span className="section-kicker">Post de référence · {referencePost.author ?? trendPlatformLabel(referencePost.platform)}</span>
+            <p>{referencePost.caption}</p>
+            {referenceMetrics.length ? (
+              <div className="metric-row details-current-metrics">
+                {referenceMetrics.map((metric) => <span key={metric}>{metric}</span>)}
+              </div>
+            ) : null}
+            <a className="trend-original-link" href={referencePost.url} target="_blank" rel="noreferrer">
+              Voir le post original ↗
+            </a>
+          </div>
         </div>
 
-        <div className="trend-tags" aria-label="Mots-clés observés">
-          <span>{trendTypeLabel(trend.type)}</span>
-          {trend.keywords.map((keyword) => <span key={keyword}>#{keyword.replace(/^#/, "")}</span>)}
-        </div>
-
-        <section className="trend-proof-section">
-          <header>
-            <div><span className="section-kicker">Preuves observées</span><h4>🔎 D’où vient le signal</h4></div>
-          </header>
-          <ul className="trend-proof-list">
-            {trend.observations.map((observation) => {
-              const observationMetrics = trendObservationMetrics(observation);
-              return (
-                <li key={observation.id}>
-                  <div>
-                    <span className="trend-proof-platform">{trendPlatformEmoji(observation.platform)} {trendPlatformLabel(observation.platform)}</span>
-                    <span className="trend-proof-window">{observation.windowLabel}</span>
-                    <span className={`trend-proof-exactness exactness-${observation.exactness}`}>{trendObservationEvidenceLabel(observation.exactness)}</span>
-                  </div>
-                  <p>{observation.signal}</p>
-                  {observationMetrics.length ? <div className="trend-proof-metrics">{observationMetrics.map((metric) => <span key={metric}>{metric}</span>)}</div> : null}
-                  <a href={observation.sourceUrl} target="_blank" rel="noreferrer">{observation.sourceLabel} ↗</a>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-
-        <p className="trend-caveat">ℹ️ {trend.caveat}</p>
+        {reuseEvidence ? (
+          <section className="trend-example-section" aria-label="Exemples de la trend">
+            <h4>Exemples</h4>
+            <div className="trend-reuse-creators">
+              {reuseEvidence.posts.map((post) => (
+                <a href={post.url} target="_blank" rel="noreferrer" key={`${post.platform}:${post.url}`}>
+                  <img src={`platforms/${post.platform}.svg`} alt="" width="20" height="20" />
+                  <b>{post.author}</b>
+                  <small>Voir l’exemple ↗</small>
+                </a>
+              ))}
+              {trendExampleSearchLinks(trend).map((link) => (
+                <a className="trend-more-examples-link" href={link.url} target="_blank" rel="noreferrer" key={`more:${link.platform}`}>
+                  <img src={`platforms/${link.platform}.svg`} alt="" width="20" height="20" />
+                  <b>Plus d’exemples</b>
+                  <small>{link.label} ↗</small>
+                </a>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </section>
     </div>
   );
@@ -2939,16 +2746,40 @@ function trendPlatformEmoji(platform: TrendPlatform) {
   return PLATFORM_META[platform].emoji;
 }
 
-function trendTypeLabel(type: SocialTrend["type"]) {
-  const labels: Record<SocialTrend["type"], string> = {
-    hashtag: "Hashtag",
-    sound: "Son",
-    "spoken-audio": "Audio parlé",
-    "meme-template": "Mème",
-    format: "Format",
-    moment: "Moment culturel",
-  };
-  return labels[type];
+function trendExampleSearchLinks(trend: SocialTrend) {
+  const platforms = new Set<TrendPlatform>(trend.platforms);
+  if (trend.referencePost) platforms.add(trend.referencePost.platform);
+  const query = [trend.title, ...trend.keywords.slice(0, 2)].join(" ");
+  const encodedQuery = encodeURIComponent(query);
+
+  return [...platforms].map((platform) => {
+    if (platform === "instagram") {
+      return {
+        platform,
+        label: "Instagram",
+        url: `https://www.instagram.com/explore/search/keyword/?q=${encodedQuery}`,
+      };
+    }
+    if (platform === "tiktok") {
+      return {
+        platform,
+        label: "TikTok",
+        url: `https://www.tiktok.com/search?q=${encodedQuery}`,
+      };
+    }
+    if (platform === "youtube") {
+      return {
+        platform,
+        label: "YouTube Shorts",
+        url: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${query} shorts`)}`,
+      };
+    }
+    return {
+      platform,
+      label: "X",
+      url: `https://x.com/search?q=${encodedQuery}&src=typed_query&f=top`,
+    };
+  });
 }
 
 function trendReferenceMetrics(referencePost: TrendReferencePost) {
@@ -2987,23 +2818,6 @@ function trendReferenceFooterMetrics(referencePost: TrendReferencePost) {
       ? { icon: metricEmoji("comments", referencePost.platform), label: "commentaires", value: referencePost.metrics.comments }
       : null,
   ].filter(Boolean) as Array<{ icon: string; label: string; value: number }>;
-}
-
-function trendObservationMetrics(observation: SocialTrend["observations"][number]) {
-  return [
-    observation.rank !== null ? `Rang #${formatNumber(observation.rank)}` : null,
-    observation.posts !== null ? `${formatNumber(observation.posts)} posts` : null,
-    observation.views !== null ? `${formatNumber(observation.views)} vues` : null,
-    observation.uses !== null ? `${formatNumber(observation.uses)} utilisations` : null,
-  ].filter((metric): metric is string => metric !== null);
-}
-
-function trendObservationEvidenceLabel(
-  exactness: SocialTrend["observations"][number]["exactness"],
-) {
-  if (exactness === "exact") return "Mesure plateforme";
-  if (exactness === "platform-estimate") return "Compteur public arrondi";
-  return "Signal éditorial sourcé";
 }
 
 async function copyText(value: string) {
