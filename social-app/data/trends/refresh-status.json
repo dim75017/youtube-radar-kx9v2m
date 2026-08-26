@@ -1,17 +1,17 @@
 {
   "version": 1,
   "cadenceHours": 24,
-  "lastAttemptAt": "2026-08-26T05:50:16.658Z",
+  "lastAttemptAt": "2026-08-26T17:01:16.885Z",
   "lastSuccessfulAt": "2026-08-19T04:54:32.018Z",
-  "nextScheduledAt": "2026-08-27T05:50:16.658Z",
+  "nextScheduledAt": "2026-08-27T17:01:16.885Z",
   "status": "degraded",
-  "runId": "local-2026-08-26",
-  "runUrl": null,
+  "runId": "32991617397",
+  "runUrl": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/32991617397",
   "discoveryAudit": {
-    "scannedAt": "2026-08-26T05:50:16.658Z",
+    "scannedAt": "2026-08-26T17:01:16.885Z",
     "complete": false,
     "candidateCount": 56,
-    "qualifiedInventoryCount": 29,
+    "qualifiedInventoryCount": 30,
     "currentMatchedCount": 30,
     "added": 56,
     "removed": 0,
@@ -62,17 +62,17 @@
       "https://www.tiktok.com/@romero.szee/video/7660435196302363934",
       "https://www.tiktok.com/@stillwatersfishing/video/7640578773078904077",
       "https://www.youtube.com/watch?v=2X-Lc35kpB8",
-      "https://www.youtube.com/watch?v=9jdcFujd_Bc",
-      "https://www.youtube.com/watch?v=AeQGdLtdB8Y",
-      "https://www.youtube.com/watch?v=L8ZnXgbyUuc",
+      "https://www.youtube.com/watch?v=7uCaEyUPGoM",
+      "https://www.youtube.com/watch?v=Ho2YA-n9ykE",
+      "https://www.youtube.com/watch?v=JkW7pfiqtns",
       "https://www.youtube.com/watch?v=LhXU84j3ufQ",
       "https://www.youtube.com/watch?v=MT-4Bk1Lw8g",
-      "https://www.youtube.com/watch?v=VAuXlNR544Q",
-      "https://www.youtube.com/watch?v=eBylfiYNMpk",
+      "https://www.youtube.com/watch?v=UG4Rox2Bcck",
+      "https://www.youtube.com/watch?v=WNUjyPtfOdg",
+      "https://www.youtube.com/watch?v=afSgBNwmZrQ",
       "https://www.youtube.com/watch?v=fpfwKak_jxg",
       "https://www.youtube.com/watch?v=is8UDe2PhKQ",
-      "https://www.youtube.com/watch?v=oW-f6RYSwBI",
-      "https://www.youtube.com/watch?v=r01zeFtwHoA"
+      "https://www.youtube.com/watch?v=oW-f6RYSwBI"
     ],
     "matchedTrendIds": [
       "baby-just-wanna-dance",
@@ -278,6 +278,7 @@
         "candidateCount": 12,
         "matchedTrendIds": [
           "just-say-here-bro",
+          "petal-soft-chaos",
           "social-battery-solo-mode",
           "explaining-game-lore",
           "video-game-main-menu",
@@ -286,17 +287,17 @@
         ],
         "candidateUrls": [
           "https://www.youtube.com/watch?v=2X-Lc35kpB8",
-          "https://www.youtube.com/watch?v=9jdcFujd_Bc",
-          "https://www.youtube.com/watch?v=AeQGdLtdB8Y",
-          "https://www.youtube.com/watch?v=L8ZnXgbyUuc",
+          "https://www.youtube.com/watch?v=7uCaEyUPGoM",
+          "https://www.youtube.com/watch?v=Ho2YA-n9ykE",
+          "https://www.youtube.com/watch?v=JkW7pfiqtns",
           "https://www.youtube.com/watch?v=LhXU84j3ufQ",
           "https://www.youtube.com/watch?v=MT-4Bk1Lw8g",
-          "https://www.youtube.com/watch?v=VAuXlNR544Q",
-          "https://www.youtube.com/watch?v=eBylfiYNMpk",
+          "https://www.youtube.com/watch?v=UG4Rox2Bcck",
+          "https://www.youtube.com/watch?v=WNUjyPtfOdg",
+          "https://www.youtube.com/watch?v=afSgBNwmZrQ",
           "https://www.youtube.com/watch?v=fpfwKak_jxg",
           "https://www.youtube.com/watch?v=is8UDe2PhKQ",
-          "https://www.youtube.com/watch?v=oW-f6RYSwBI",
-          "https://www.youtube.com/watch?v=r01zeFtwHoA"
+          "https://www.youtube.com/watch?v=oW-f6RYSwBI"
         ]
       },
       {
@@ -309,11 +310,10 @@
         "candidateUrls": []
       }
     ],
-    "reachabilityCheckedAt": "2026-08-26T05:50:16.658Z",
-    "availablePosts": 151,
-    "unavailablePosts": 2,
+    "reachabilityCheckedAt": "2026-08-26T17:01:16.885Z",
+    "availablePosts": 152,
+    "unavailablePosts": 1,
     "unavailablePostUrls": [
-      "https://www.tiktok.com/@inesstitaa/video/7670161263544257814",
       "https://www.tiktok.com/@tokay0ff/video/7665806228362120480"
     ]
   },
@@ -323,7 +323,7 @@
       "label": "Buffer · TikTok",
       "platform": "tiktok",
       "status": "success",
-      "checkedAt": "2026-08-26T05:50:16.658Z",
+      "checkedAt": "2026-08-26T17:01:16.885Z",
       "candidatesMatched": 15
     },
     {
@@ -331,7 +331,7 @@
       "label": "Later · Instagram Reels",
       "platform": "instagram",
       "status": "success",
-      "checkedAt": "2026-08-26T05:50:16.658Z",
+      "checkedAt": "2026-08-26T17:01:16.885Z",
       "candidatesMatched": 16
     },
     {
@@ -339,7 +339,7 @@
       "label": "SocialPilot · TikTok",
       "platform": "tiktok",
       "status": "success",
-      "checkedAt": "2026-08-26T05:50:16.658Z",
+      "checkedAt": "2026-08-26T17:01:16.885Z",
       "candidatesMatched": 18
     },
     {
@@ -347,7 +347,7 @@
       "label": "SocialPilot · Instagram Reels",
       "platform": "instagram",
       "status": "success",
-      "checkedAt": "2026-08-26T05:50:16.658Z",
+      "checkedAt": "2026-08-26T17:01:16.885Z",
       "candidatesMatched": 17
     },
     {
@@ -355,7 +355,7 @@
       "label": "Tokchart · sons TikTok",
       "platform": "tiktok",
       "status": "failed",
-      "checkedAt": "2026-08-26T05:50:16.658Z",
+      "checkedAt": "2026-08-26T17:01:16.885Z",
       "candidatesMatched": 0
     },
     {
@@ -363,24 +363,24 @@
       "label": "TrendVideosHub · YouTube Shorts",
       "platform": "youtube",
       "status": "success",
-      "checkedAt": "2026-08-26T05:50:16.658Z",
-      "candidatesMatched": 6
+      "checkedAt": "2026-08-26T17:01:16.885Z",
+      "candidatesMatched": 7
     },
     {
       "id": "x-france-trends",
       "label": "X · tendances France",
       "platform": "x",
       "status": "failed",
-      "checkedAt": "2026-08-26T05:50:16.658Z",
+      "checkedAt": "2026-08-26T17:01:16.885Z",
       "candidatesMatched": 0
     }
   ],
   "counts": {
     "checkedSources": 5,
-    "matchedSignals": 72,
+    "matchedSignals": 73,
     "actionable": 51,
     "lofiGirl": 44,
     "lofiBoy": 7
   },
-  "message": "Seulement 29/51 trends ont conservé trois reprises natives accessibles; minimum 50."
+  "message": "Seulement 30/51 trends ont conservé trois reprises natives accessibles; minimum 50."
 }
