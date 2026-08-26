@@ -1,18 +1,18 @@
 {
   "version": 2,
-  "capturedAt": "2026-08-22T09:19:21.424Z",
-  "nextRefreshAt": "2026-08-22T15:19:21.424Z",
+  "capturedAt": "2026-08-26T06:06:22.774Z",
+  "nextRefreshAt": "2026-08-26T12:06:22.774Z",
   "cadenceHours": 6,
   "fastLaneMinutes": 15,
-  "fastLaneCheckedAt": "2026-08-22T09:19:21.424Z",
+  "fastLaneCheckedAt": "2026-08-26T06:06:22.774Z",
   "watchlistAccountCount": 97,
   "sourceChecks": [
     {
       "id": "youtube-watchlist-atom",
       "platform": "youtube",
-      "status": "success",
-      "checkedAt": "2026-08-22T09:19:21.424Z",
-      "label": "YouTube · 97/97 flux Atom de la watchlist lus"
+      "status": "limited",
+      "checkedAt": "2026-08-26T06:06:22.774Z",
+      "label": "YouTube · 2/97 flux Atom de la watchlist lus, 95 injoignables"
     },
     {
       "id": "instagram-reels-public",
@@ -37,6 +37,189 @@
     }
   ],
   "opportunities": [
+    {
+      "id": "yt-mt4bk1lw8g-4ced59",
+      "platform": "youtube",
+      "category": "music",
+      "author": "HYBE LABELS",
+      "title": "ENHYPEN (엔하이픈) 'Bloody Paradise' Official MV",
+      "caption": "ENHYPEN (엔하이픈) 'Bloody Paradise' Official MV\n\nWelcome to THE SIN : BLISS \nhttps://enhypen.lnk.to/THESINBLISS \n\nEXECUTIVE PRODUCER KIM TAEHO\nDirected by HATTRICK\n\nⓒ BELIFT LAB Inc. All Rights Reserved\n\nConnect with ENHYPEN\nOFFICIAL WEBSITE https://ENHYPEN.com\nENHYPEN Weverse https://www.weverse.io/enhypen\nOFFICIAL YOUTUBE https://www.youtube.com/ENHYPENOFFICIAL\nOFFICIAL X (TWITTER) https://twitter.com/ENHYPEN\nENHYPEN X (TWITTER) https://twitter.com/ENHYPEN_members\nOFFICIAL JAPAN X (TWITTER) https://twitter.com/ENHYPEN_JP\nOFFICIAL FACEBOOK https://www.facebook.com/officialENHYPEN\nOFFICIAL INSTAGRAM https://www.instagram.com/enhypen\nOFFICIAL TIKTOK  https://www.tiktok.com/@enhypen\nOFFICIAL WEIBO https://weibo.com/ENHYPEN\nOFFICIAL BILIBILI https://space.bilibili.com/3493119035181246\nOFFICIAL DOUYIN https://v.douyin.com/TLfWnNVDBP8/\n\n#ENHYPEN #엔하이픈 #THE_SIN_BLISS #BloodyParadise",
+      "url": "https://www.youtube.com/watch?v=MT-4Bk1Lw8g",
+      "mediaType": "video",
+      "durationSeconds": null,
+      "thumbnailUrl": "https://i2.ytimg.com/vi/MT-4Bk1Lw8g/hqdefault.jpg",
+      "publishedAt": "2026-08-20T03:11:10.000Z",
+      "capturedAt": "2026-08-22T08:46:04.829Z",
+      "status": "surging",
+      "momentTier": "s",
+      "discovery": {
+        "source": "watchlist",
+        "accountHandle": "@HYBELABELS",
+        "accountTier": "a"
+      },
+      "velocity": {
+        "metric": "views",
+        "perHour": 738024,
+        "windowHours": 1.62,
+        "fromCapturedAt": "2026-08-22T07:08:59.721Z",
+        "toCapturedAt": "2026-08-22T08:46:04.829Z"
+      },
+      "lofiFitScore": 83,
+      "commentabilityScore": 67,
+      "priorityScore": 76,
+      "whyNow": "Publié par HYBE LABELS il y a 54 h. +738 024 vues/h mesurés sur 1.62 h. La section va saturer vite.",
+      "risk": {
+        "level": "low",
+        "note": "Aucun sujet sensible détecté dans les métadonnées publiques."
+      },
+      "metrics": {
+        "views": 8446295,
+        "likes": null,
+        "comments": null,
+        "shares": null
+      },
+      "observations": [
+        {
+          "capturedAt": "2026-08-21T13:30:22.626Z",
+          "views": 26,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T15:01:45.174Z",
+          "views": 62264,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T16:22:55.222Z",
+          "views": 507229,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T17:38:27.068Z",
+          "views": 714097,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T18:53:54.170Z",
+          "views": 1015412,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T20:17:01.715Z",
+          "views": 1361960,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T21:46:24.624Z",
+          "views": 1848467,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T22:48:03.668Z",
+          "views": 2114999,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-22T00:22:28.880Z",
+          "views": 2504114,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-22T05:19:51.730Z",
+          "views": 5821571,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-22T07:08:59.721Z",
+          "views": 7252109,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-22T08:46:04.829Z",
+          "views": 8446295,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
+          "exactness": "exact"
+        }
+      ],
+      "comments": [
+        {
+          "tone": "funny",
+          "label": "Drôle",
+          "text": "Bloody Paradise just turned the study playlist into a full cinematic emergency."
+        },
+        {
+          "tone": "smart",
+          "label": "Smart",
+          "text": "THE SIN : BLISS makes contradiction feel like an entire visual language."
+        },
+        {
+          "tone": "complice",
+          "label": "Complice",
+          "text": "HATTRICK directed this; our untouched notes can direct complaints elsewhere."
+        }
+      ],
+      "commentsSource": "curated",
+      "alertedAt": null
+    },
     {
       "id": "yt-aa4pyww2cyc-33e8bb",
       "platform": "youtube",
@@ -274,328 +457,145 @@
       "alertedAt": null
     },
     {
-      "id": "yt-mt4bk1lw8g-4ced59",
+      "id": "yt-bhyr1bpbyy-300fc3",
       "platform": "youtube",
       "category": "music",
-      "author": "HYBE LABELS",
-      "title": "ENHYPEN (엔하이픈) 'Bloody Paradise' Official MV",
-      "caption": "ENHYPEN (엔하이픈) 'Bloody Paradise' Official MV\n\nWelcome to THE SIN : BLISS \nhttps://enhypen.lnk.to/THESINBLISS \n\nEXECUTIVE PRODUCER KIM TAEHO\nDirected by HATTRICK\n\nⓒ BELIFT LAB Inc. All Rights Reserved\n\nConnect with ENHYPEN\nOFFICIAL WEBSITE https://ENHYPEN.com\nENHYPEN Weverse https://www.weverse.io/enhypen\nOFFICIAL YOUTUBE https://www.youtube.com/ENHYPENOFFICIAL\nOFFICIAL X (TWITTER) https://twitter.com/ENHYPEN\nENHYPEN X (TWITTER) https://twitter.com/ENHYPEN_members\nOFFICIAL JAPAN X (TWITTER) https://twitter.com/ENHYPEN_JP\nOFFICIAL FACEBOOK https://www.facebook.com/officialENHYPEN\nOFFICIAL INSTAGRAM https://www.instagram.com/enhypen\nOFFICIAL TIKTOK  https://www.tiktok.com/@enhypen\nOFFICIAL WEIBO https://weibo.com/ENHYPEN\nOFFICIAL BILIBILI https://space.bilibili.com/3493119035181246\nOFFICIAL DOUYIN https://v.douyin.com/TLfWnNVDBP8/\n\n#ENHYPEN #엔하이픈 #THE_SIN_BLISS #BloodyParadise",
-      "url": "https://www.youtube.com/watch?v=MT-4Bk1Lw8g",
+      "author": "BANGTANTV",
+      "title": "BTS FIFA World Cup 2026 Final Halftime Show Sketch",
+      "caption": "#BTS #방탄소년단 #FIFAWorldCup \n\nConnect with BTS:\nhttps://ibighit.com/bts\nhttps://x.com/bts_bighit\nhttps://x.com/BTS_twt\nhttp://www.facebook.com/bangtan.official\nhttps://www.youtube.com/user/BANGTANTV\nhttp://instagram.com/BTS.bighitofficial\nhttps://www.tiktok.com/@bts_official_bighit\nhttps://go.weverse.io/qt3S/ti7qve0j\nhttps://www.weibo.com/BTSbighit",
+      "url": "https://www.youtube.com/watch?v=_bhYr1BpByY",
       "mediaType": "video",
       "durationSeconds": null,
-      "thumbnailUrl": "https://i2.ytimg.com/vi/MT-4Bk1Lw8g/hqdefault.jpg",
-      "publishedAt": "2026-08-20T03:11:10.000Z",
-      "capturedAt": "2026-08-22T08:46:04.829Z",
-      "status": "surging",
-      "momentTier": "s",
-      "discovery": {
-        "source": "watchlist",
-        "accountHandle": "@HYBELABELS",
-        "accountTier": "a"
-      },
-      "velocity": {
-        "metric": "views",
-        "perHour": 738024,
-        "windowHours": 1.62,
-        "fromCapturedAt": "2026-08-22T07:08:59.721Z",
-        "toCapturedAt": "2026-08-22T08:46:04.829Z"
-      },
-      "lofiFitScore": 83,
-      "commentabilityScore": 67,
-      "priorityScore": 76,
-      "whyNow": "Publié par HYBE LABELS il y a 54 h. +738 024 vues/h mesurés sur 1.62 h. La section va saturer vite.",
-      "risk": {
-        "level": "low",
-        "note": "Aucun sujet sensible détecté dans les métadonnées publiques."
-      },
-      "metrics": {
-        "views": 8446295,
-        "likes": null,
-        "comments": null,
-        "shares": null
-      },
-      "observations": [
-        {
-          "capturedAt": "2026-08-21T13:30:22.626Z",
-          "views": 26,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T15:01:45.174Z",
-          "views": 62264,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T16:22:55.222Z",
-          "views": 507229,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T17:38:27.068Z",
-          "views": 714097,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T18:53:54.170Z",
-          "views": 1015412,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T20:17:01.715Z",
-          "views": 1361960,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T21:46:24.624Z",
-          "views": 1848467,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T22:48:03.668Z",
-          "views": 2114999,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-22T00:22:28.880Z",
-          "views": 2504114,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-22T05:19:51.730Z",
-          "views": 5821571,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-22T07:08:59.721Z",
-          "views": 7252109,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-22T08:46:04.829Z",
-          "views": 8446295,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de HYBE LABELS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC3IZKseVpdzPSBaWxBxundA",
-          "exactness": "exact"
-        }
-      ],
-      "comments": [
-        {
-          "tone": "funny",
-          "label": "Drôle",
-          "text": "Bloody Paradise just turned the study playlist into a full cinematic emergency."
-        },
-        {
-          "tone": "smart",
-          "label": "Smart",
-          "text": "THE SIN : BLISS makes contradiction feel like an entire visual language."
-        },
-        {
-          "tone": "complice",
-          "label": "Complice",
-          "text": "HATTRICK directed this; our untouched notes can direct complaints elsewhere."
-        }
-      ],
-      "commentsSource": "curated",
-      "alertedAt": null
-    },
-    {
-      "id": "yt-nna95q3pzto-513663",
-      "platform": "youtube",
-      "category": "internet",
-      "author": "Dude Perfect",
-      "title": "Can a NBA Star Make This Impossible Shot?",
-      "caption": "Can a NBA Star Make This Impossible Shot?",
-      "url": "https://www.youtube.com/watch?v=Nna95q3pZTo",
-      "mediaType": "video",
-      "durationSeconds": null,
-      "thumbnailUrl": "https://i3.ytimg.com/vi/Nna95q3pZTo/hqdefault.jpg",
-      "publishedAt": "2026-08-21T21:03:07.000Z",
+      "thumbnailUrl": "https://i4.ytimg.com/vi/_bhYr1BpByY/hqdefault.jpg",
+      "publishedAt": "2026-08-20T11:00:01.000Z",
       "capturedAt": "2026-08-22T08:46:04.829Z",
       "status": "surging",
       "momentTier": "a",
       "discovery": {
         "source": "watchlist",
-        "accountHandle": "@DudePerfect",
-        "accountTier": "b"
+        "accountHandle": "@BTS",
+        "accountTier": "a"
       },
       "velocity": {
         "metric": "views",
-        "perHour": 26329,
-        "windowHours": 1.03,
-        "fromCapturedAt": "2026-08-22T07:44:25.956Z",
+        "perHour": 10784,
+        "windowHours": 1.62,
+        "fromCapturedAt": "2026-08-22T07:08:59.721Z",
         "toCapturedAt": "2026-08-22T08:46:04.829Z"
       },
-      "lofiFitScore": 64,
-      "commentabilityScore": 67,
-      "priorityScore": 65,
-      "whyNow": "Publié par Dude Perfect il y a 12 h. +26 329 vues/h mesurés sur 1.03 h.",
+      "lofiFitScore": 83,
+      "commentabilityScore": 59,
+      "priorityScore": 72,
+      "whyNow": "Publié par BANGTANTV il y a 46 h. +10 784 vues/h mesurés sur 1.62 h.",
       "risk": {
         "level": "low",
         "note": "Aucun sujet sensible détecté dans les métadonnées publiques."
       },
       "metrics": {
-        "views": 499911,
+        "views": 1631890,
         "likes": null,
         "comments": null,
         "shares": null
       },
       "observations": [
         {
-          "capturedAt": "2026-08-21T21:16:06.897Z",
-          "views": 9176,
+          "capturedAt": "2026-08-21T14:03:17.805Z",
+          "views": 1353593,
           "likes": null,
           "comments": null,
           "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "sourceLabel": "YouTube · flux Atom public de BTS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCLkAepWjdylmXSltofFvsYQ",
           "exactness": "exact"
         },
         {
-          "capturedAt": "2026-08-21T21:46:24.624Z",
-          "views": 62461,
+          "capturedAt": "2026-08-21T15:49:55.772Z",
+          "views": 1395797,
           "likes": null,
           "comments": null,
           "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "sourceLabel": "YouTube · flux Atom public de BTS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCLkAepWjdylmXSltofFvsYQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T16:59:52.766Z",
+          "views": 1426027,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de BTS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCLkAepWjdylmXSltofFvsYQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T18:01:41.391Z",
+          "views": 1450013,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de BTS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCLkAepWjdylmXSltofFvsYQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T19:20:06.932Z",
+          "views": 1475343,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de BTS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCLkAepWjdylmXSltofFvsYQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T20:46:54.072Z",
+          "views": 1496483,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de BTS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCLkAepWjdylmXSltofFvsYQ",
           "exactness": "exact"
         },
         {
           "capturedAt": "2026-08-21T22:15:27.337Z",
-          "views": 96881,
+          "views": 1512008,
           "likes": null,
           "comments": null,
           "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T22:48:03.668Z",
-          "views": 116620,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "sourceLabel": "YouTube · flux Atom public de BTS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCLkAepWjdylmXSltofFvsYQ",
           "exactness": "exact"
         },
         {
           "capturedAt": "2026-08-21T23:16:07.047Z",
-          "views": 131397,
+          "views": 1524346,
           "likes": null,
           "comments": null,
           "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T23:45:50.016Z",
-          "views": 150363,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-22T00:22:28.880Z",
-          "views": 176727,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "sourceLabel": "YouTube · flux Atom public de BTS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCLkAepWjdylmXSltofFvsYQ",
           "exactness": "exact"
         },
         {
           "capturedAt": "2026-08-22T07:08:59.721Z",
-          "views": 448551,
+          "views": 1614440,
           "likes": null,
           "comments": null,
           "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-22T07:44:25.956Z",
-          "views": 472859,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "sourceLabel": "YouTube · flux Atom public de BTS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCLkAepWjdylmXSltofFvsYQ",
           "exactness": "exact"
         },
         {
           "capturedAt": "2026-08-22T08:46:04.829Z",
-          "views": 499911,
+          "views": 1631890,
           "likes": null,
           "comments": null,
           "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "sourceLabel": "YouTube · flux Atom public de BTS",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCLkAepWjdylmXSltofFvsYQ",
           "exactness": "exact"
         }
       ],
@@ -603,17 +603,17 @@
         {
           "tone": "funny",
           "label": "Drôle",
-          "text": "An NBA star attempting the impossible shot while my pencil misses the cup."
+          "text": "A World Cup final halftime sketch just benched my entire weekly schedule."
         },
         {
           "tone": "smart",
           "label": "Smart",
-          "text": "Calling it an impossible shot turns one attempt into a complete suspense engine."
+          "text": "BTS turning a global final into a sketch is scale meeting playfulness."
         },
         {
           "tone": "complice",
           "label": "Complice",
-          "text": "Dude Perfect found the one shot worth pausing the study timer for."
+          "text": "2026 suddenly feels very real when this is already on the timeline."
         }
       ],
       "commentsSource": "curated",
@@ -827,6 +827,312 @@
           "tone": "complice",
           "label": "Complice",
           "text": "Season three is exactly when ‘one more episode’ becomes structurally impossible."
+        }
+      ],
+      "commentsSource": "curated",
+      "alertedAt": null
+    },
+    {
+      "id": "yt-qawbxet88o-89d8d9",
+      "platform": "youtube",
+      "category": "internet",
+      "author": "Dude Perfect",
+      "title": "Can Bryson DeChambeau Make This Chip? 😱",
+      "caption": "NEXT LEVEL STUFF\n-------------------------------------------\n🎒 NEW Merch - http://bit.ly/dudeperfectmerch\n📱 Text YTDUDE to 398294 to keep up with us\n🔔 Hit the bell next to Subscribe so you don't miss a video!\n📕 Read our NEW Book - \"Operation Trick Shot\" - https://book.dudeperfect.com/\n\n5 best friends and a panda. Dude Perfect is Tyler Toney, Cody Jones, Garrett Hilbert, Coby Cotton, and Cory Cotton — best known for trick shots, stereotypes, battles, bottle flips, ping pong, and all-around competitive fun. If you like sports and comedy, come join the Dude Perfect team! We pride ourselves on making the absolute best family-friendly entertainment possible. Welcome to the crew.\n\nBusiness or Media: Dude@DudePerfect.com\n\nGo Big and God Bless\nPound it 👊🏻 Noggin 🙇🏻‍♂️\n- Dude Perfect",
+      "url": "https://www.youtube.com/watch?v=qawb_xEt88o",
+      "mediaType": "video",
+      "durationSeconds": null,
+      "thumbnailUrl": "https://i2.ytimg.com/vi/qawb_xEt88o/hqdefault.jpg",
+      "publishedAt": "2026-08-20T22:13:30.000Z",
+      "capturedAt": "2026-08-22T08:46:04.829Z",
+      "status": "surging",
+      "momentTier": "a",
+      "discovery": {
+        "source": "watchlist",
+        "accountHandle": "@DudePerfect",
+        "accountTier": "b"
+      },
+      "velocity": {
+        "metric": "views",
+        "perHour": 7315,
+        "windowHours": 1.62,
+        "fromCapturedAt": "2026-08-22T07:08:59.721Z",
+        "toCapturedAt": "2026-08-22T08:46:04.829Z"
+      },
+      "lofiFitScore": 74,
+      "commentabilityScore": 59,
+      "priorityScore": 67,
+      "whyNow": "Publié par Dude Perfect il y a 35 h. +7 315 vues/h mesurés sur 1.62 h.",
+      "risk": {
+        "level": "low",
+        "note": "Aucun sujet sensible détecté dans les métadonnées publiques."
+      },
+      "metrics": {
+        "views": 1353702,
+        "likes": null,
+        "comments": null,
+        "shares": null
+      },
+      "observations": [
+        {
+          "capturedAt": "2026-08-21T16:59:52.766Z",
+          "views": 998371,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T18:01:41.391Z",
+          "views": 1035410,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T19:20:06.932Z",
+          "views": 1085472,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T20:46:54.072Z",
+          "views": 1144512,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T22:15:27.337Z",
+          "views": 1192841,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T23:16:07.047Z",
+          "views": 1226820,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-22T07:08:59.721Z",
+          "views": 1341866,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-22T08:46:04.829Z",
+          "views": 1353702,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "exactness": "exact"
+        }
+      ],
+      "comments": [
+        {
+          "tone": "funny",
+          "label": "Drôle",
+          "text": "That chip has more suspense than checking whether the assignment uploaded."
+        },
+        {
+          "tone": "smart",
+          "label": "Smart",
+          "text": "Dude Perfect knows a single question mark can carry an entire setup."
+        },
+        {
+          "tone": "complice",
+          "label": "Complice",
+          "text": "Bryson and that chip are exactly why the break keeps getting longer."
+        }
+      ],
+      "commentsSource": "curated",
+      "alertedAt": null
+    },
+    {
+      "id": "yt-nna95q3pzto-513663",
+      "platform": "youtube",
+      "category": "internet",
+      "author": "Dude Perfect",
+      "title": "Can a NBA Star Make This Impossible Shot?",
+      "caption": "Can a NBA Star Make This Impossible Shot?",
+      "url": "https://www.youtube.com/watch?v=Nna95q3pZTo",
+      "mediaType": "video",
+      "durationSeconds": null,
+      "thumbnailUrl": "https://i3.ytimg.com/vi/Nna95q3pZTo/hqdefault.jpg",
+      "publishedAt": "2026-08-21T21:03:07.000Z",
+      "capturedAt": "2026-08-22T08:46:04.829Z",
+      "status": "surging",
+      "momentTier": "a",
+      "discovery": {
+        "source": "watchlist",
+        "accountHandle": "@DudePerfect",
+        "accountTier": "b"
+      },
+      "velocity": {
+        "metric": "views",
+        "perHour": 26329,
+        "windowHours": 1.03,
+        "fromCapturedAt": "2026-08-22T07:44:25.956Z",
+        "toCapturedAt": "2026-08-22T08:46:04.829Z"
+      },
+      "lofiFitScore": 64,
+      "commentabilityScore": 67,
+      "priorityScore": 65,
+      "whyNow": "Publié par Dude Perfect il y a 12 h. +26 329 vues/h mesurés sur 1.03 h.",
+      "risk": {
+        "level": "low",
+        "note": "Aucun sujet sensible détecté dans les métadonnées publiques."
+      },
+      "metrics": {
+        "views": 499911,
+        "likes": null,
+        "comments": null,
+        "shares": null
+      },
+      "observations": [
+        {
+          "capturedAt": "2026-08-21T21:16:06.897Z",
+          "views": 9176,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T21:46:24.624Z",
+          "views": 62461,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T22:15:27.337Z",
+          "views": 96881,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T22:48:03.668Z",
+          "views": 116620,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T23:16:07.047Z",
+          "views": 131397,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T23:45:50.016Z",
+          "views": 150363,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-22T00:22:28.880Z",
+          "views": 176727,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-22T07:08:59.721Z",
+          "views": 448551,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-22T07:44:25.956Z",
+          "views": 472859,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-22T08:46:04.829Z",
+          "views": 499911,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
+          "exactness": "exact"
+        }
+      ],
+      "comments": [
+        {
+          "tone": "funny",
+          "label": "Drôle",
+          "text": "An NBA star attempting the impossible shot while my pencil misses the cup."
+        },
+        {
+          "tone": "smart",
+          "label": "Smart",
+          "text": "Calling it an impossible shot turns one attempt into a complete suspense engine."
+        },
+        {
+          "tone": "complice",
+          "label": "Complice",
+          "text": "Dude Perfect found the one shot worth pausing the study timer for."
         }
       ],
       "commentsSource": "curated",
@@ -1100,129 +1406,6 @@
           "tone": "complice",
           "label": "Complice",
           "text": "Call of Duty, Mortal Shell II, then Forza; there goes the quiet study break."
-        }
-      ],
-      "commentsSource": "curated",
-      "alertedAt": null
-    },
-    {
-      "id": "yt-f0qgxeaike-ed7481",
-      "platform": "youtube",
-      "category": "cinema",
-      "author": "Crunchyroll",
-      "title": "Bachiko's Natural Enemy | Welcome to Demon School! Iruma-kun Season 4",
-      "caption": "Episode 17: Well, it's clear that they don't get along. Watch Welcome to Demon School! Iruma-kun on Crunchyroll! https://got.cr/cc-wtdsiks4\n\nABOUT WELCOME TO DEMON SCHOOL! IRUMA-KUN\nSuzuki Iruma, human, 14, one day finds himself taken against his will into the world of demons. To add to his predicament, his doting owner and self-appointed \"Grandpa\" is the chair-demon at his new school. In order to survive, Iruma must deal with a haughty student who challenges him to a duel, a girl with adjustment issues, and so many more scary beings! Can this ultimate pacifist dodge the slings and arrows that are flung his way? As he struggles frantically, Iruma's innate kindness begins to win over enemies.\n\nABOUT CRUNCHYROLL\nCrunchyroll is the place to watch all your favorite anime! Stream new anime, full episodes, movies, OVAs, music, openings, endings, trailers and all the best moments in anime, subb",
-      "url": "https://www.youtube.com/watch?v=_f0qGXEAiKE",
-      "mediaType": "video",
-      "durationSeconds": null,
-      "thumbnailUrl": "https://i4.ytimg.com/vi/_f0qGXEAiKE/hqdefault.jpg",
-      "publishedAt": "2026-08-22T00:00:20.000Z",
-      "capturedAt": "2026-08-22T09:19:21.424Z",
-      "status": "surging",
-      "momentTier": "b",
-      "discovery": {
-        "source": "watchlist",
-        "accountHandle": "@Crunchyroll",
-        "accountTier": "s"
-      },
-      "velocity": {
-        "metric": "views",
-        "perHour": 855,
-        "windowHours": 0.55,
-        "fromCapturedAt": "2026-08-22T08:46:04.829Z",
-        "toCapturedAt": "2026-08-22T09:19:21.424Z"
-      },
-      "lofiFitScore": 72,
-      "commentabilityScore": 63,
-      "priorityScore": 68,
-      "whyNow": "Publié par Crunchyroll il y a 9 h. +855 vues/h mesurés sur 0.55 h.",
-      "risk": {
-        "level": "low",
-        "note": "Aucun sujet sensible détecté dans les métadonnées publiques."
-      },
-      "metrics": {
-        "views": 12074,
-        "likes": null,
-        "comments": null,
-        "shares": null
-      },
-      "observations": [
-        {
-          "capturedAt": "2026-08-22T00:22:28.880Z",
-          "views": 672,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Crunchyroll",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC6pGDc4bFGD1_36IKv3FnYg",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-22T05:19:51.730Z",
-          "views": 7813,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Crunchyroll",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC6pGDc4bFGD1_36IKv3FnYg",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-22T07:08:59.721Z",
-          "views": 9677,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Crunchyroll",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC6pGDc4bFGD1_36IKv3FnYg",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-22T07:44:25.956Z",
-          "views": 10446,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Crunchyroll",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC6pGDc4bFGD1_36IKv3FnYg",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-22T08:46:04.829Z",
-          "views": 11600,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Crunchyroll",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC6pGDc4bFGD1_36IKv3FnYg",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-22T09:19:21.424Z",
-          "views": 12074,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Crunchyroll",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC6pGDc4bFGD1_36IKv3FnYg",
-          "exactness": "exact"
-        }
-      ],
-      "comments": [
-        {
-          "tone": "funny",
-          "label": "Drôle",
-          "text": "Bachiko meeting her natural enemy has more tension than my untouched deadline."
-        },
-        {
-          "tone": "smart",
-          "label": "Smart",
-          "text": "A natural enemy is the fastest way to turn one lesson into a rivalry."
-        },
-        {
-          "tone": "complice",
-          "label": "Complice",
-          "text": "Season four gave Bachiko a problem; our study group immediately took notes."
         }
       ],
       "commentsSource": "curated",
@@ -1988,185 +2171,105 @@
       "alertedAt": null
     },
     {
-      "id": "yt-mfmdxpt7nam-89978d",
+      "id": "yt-f0qgxeaike-ed7481",
       "platform": "youtube",
-      "category": "tech",
-      "author": "Marques Brownlee",
-      "title": "I Said Yes to Every Email for a Month! (Again)",
-      "caption": "I said yes to every review request I got for an entire month. I'm sorry? You're welcome?\n\nThanks Best Buy for sponsoring this video. You can find the tech upgrades you need to elevate your daily life at https://www.bestbuy.com/discover\n\nMKBHD Merch: http://shop.MKBHD.com\n\n(Affiliate Links):\nCLIRASS Smart Toilet: https://geni.us/eieuqu\nXbook 3-Screen Laptop: https://geni.us/0a14\nGarmin CIRQA: https://geni.us/RBC1\nCasana Smart Seat: https://geni.us/IMswJ\nBusy Bar: https://geni.us/9UZHwXS\nMondo Robotics Beni: https://geni.us/aUf2ty\nNoctua Feinmann FO1 Gaming Mouse: https://geni.us/sXA3H\nKardia Mobile 6L Max: https://geni.us/lhtE\nHonor Robot Phone: https://geni.us/YYL2QC\nHbada X7 Smart Chair: https://geni.us/EEvPUm\nSkullcandy Crusher 1080 ANC Headphones: https://geni.us/JRJEqd\nGrant Sinclair Gamer Card: https://geni.us/ey7SZ6\nSony Bravia 9 II True RGB TV: https://howl.link/169mvm5ydtyv0\n\nPla",
-      "url": "https://www.youtube.com/watch?v=mfmdXPT7nAM",
+      "category": "cinema",
+      "author": "Crunchyroll",
+      "title": "Bachiko's Natural Enemy | Welcome to Demon School! Iruma-kun Season 4",
+      "caption": "Episode 17: Well, it's clear that they don't get along. Watch Welcome to Demon School! Iruma-kun on Crunchyroll! https://got.cr/cc-wtdsiks4\n\nABOUT WELCOME TO DEMON SCHOOL! IRUMA-KUN\nSuzuki Iruma, human, 14, one day finds himself taken against his will into the world of demons. To add to his predicament, his doting owner and self-appointed \"Grandpa\" is the chair-demon at his new school. In order to survive, Iruma must deal with a haughty student who challenges him to a duel, a girl with adjustment issues, and so many more scary beings! Can this ultimate pacifist dodge the slings and arrows that are flung his way? As he struggles frantically, Iruma's innate kindness begins to win over enemies.\n\nABOUT CRUNCHYROLL\nCrunchyroll is the place to watch all your favorite anime! Stream new anime, full episodes, movies, OVAs, music, openings, endings, trailers and all the best moments in anime, subb",
+      "url": "https://www.youtube.com/watch?v=_f0qGXEAiKE",
       "mediaType": "video",
       "durationSeconds": null,
-      "thumbnailUrl": "https://i2.ytimg.com/vi/mfmdXPT7nAM/hqdefault.jpg",
-      "publishedAt": "2026-08-21T18:53:07.000Z",
-      "capturedAt": "2026-08-22T08:46:04.829Z",
+      "thumbnailUrl": "https://i4.ytimg.com/vi/_f0qGXEAiKE/hqdefault.jpg",
+      "publishedAt": "2026-08-22T00:00:20.000Z",
+      "capturedAt": "2026-08-22T09:19:21.424Z",
       "status": "surging",
-      "momentTier": "a",
+      "momentTier": "b",
       "discovery": {
         "source": "watchlist",
-        "accountHandle": "@mkbhd",
-        "accountTier": "a"
+        "accountHandle": "@Crunchyroll",
+        "accountTier": "s"
       },
       "velocity": {
         "metric": "views",
-        "perHour": 39775,
-        "windowHours": 1.62,
-        "fromCapturedAt": "2026-08-22T07:08:59.721Z",
-        "toCapturedAt": "2026-08-22T08:46:04.829Z"
+        "perHour": 855,
+        "windowHours": 0.55,
+        "fromCapturedAt": "2026-08-22T08:46:04.829Z",
+        "toCapturedAt": "2026-08-22T09:19:21.424Z"
       },
-      "lofiFitScore": 63,
-      "commentabilityScore": 59,
-      "priorityScore": 61,
-      "whyNow": "Publié par Marques Brownlee il y a 14 h. +39 775 vues/h mesurés sur 1.62 h.",
+      "lofiFitScore": 72,
+      "commentabilityScore": 63,
+      "priorityScore": 68,
+      "whyNow": "Publié par Crunchyroll il y a 9 h. +855 vues/h mesurés sur 0.55 h.",
       "risk": {
         "level": "low",
         "note": "Aucun sujet sensible détecté dans les métadonnées publiques."
       },
       "metrics": {
-        "views": 694477,
+        "views": 12074,
         "likes": null,
         "comments": null,
         "shares": null
       },
       "observations": [
         {
-          "capturedAt": "2026-08-21T19:20:06.932Z",
-          "views": 25192,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T19:43:30.652Z",
-          "views": 47007,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T20:17:01.715Z",
-          "views": 82256,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T20:46:54.072Z",
-          "views": 111981,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T21:16:06.897Z",
-          "views": 144590,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T21:46:24.624Z",
-          "views": 164584,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T22:15:27.337Z",
-          "views": 205244,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T22:48:03.668Z",
-          "views": 243646,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T23:16:07.047Z",
-          "views": 273043,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T23:45:50.016Z",
-          "views": 299494,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
-          "exactness": "exact"
-        },
-        {
           "capturedAt": "2026-08-22T00:22:28.880Z",
-          "views": 333265,
+          "views": 672,
           "likes": null,
           "comments": null,
           "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
+          "sourceLabel": "YouTube · flux Atom public de Crunchyroll",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC6pGDc4bFGD1_36IKv3FnYg",
           "exactness": "exact"
         },
         {
           "capturedAt": "2026-08-22T05:19:51.730Z",
-          "views": 563702,
+          "views": 7813,
           "likes": null,
           "comments": null,
           "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
+          "sourceLabel": "YouTube · flux Atom public de Crunchyroll",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC6pGDc4bFGD1_36IKv3FnYg",
           "exactness": "exact"
         },
         {
           "capturedAt": "2026-08-22T07:08:59.721Z",
-          "views": 630117,
+          "views": 9677,
           "likes": null,
           "comments": null,
           "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
+          "sourceLabel": "YouTube · flux Atom public de Crunchyroll",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC6pGDc4bFGD1_36IKv3FnYg",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-22T07:44:25.956Z",
+          "views": 10446,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Crunchyroll",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC6pGDc4bFGD1_36IKv3FnYg",
           "exactness": "exact"
         },
         {
           "capturedAt": "2026-08-22T08:46:04.829Z",
-          "views": 694477,
+          "views": 11600,
           "likes": null,
           "comments": null,
           "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
+          "sourceLabel": "YouTube · flux Atom public de Crunchyroll",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC6pGDc4bFGD1_36IKv3FnYg",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-22T09:19:21.424Z",
+          "views": 12074,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Crunchyroll",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UC6pGDc4bFGD1_36IKv3FnYg",
           "exactness": "exact"
         }
       ],
@@ -2174,180 +2277,17 @@
         {
           "tone": "funny",
           "label": "Drôle",
-          "text": "One month of saying yes to every email is inbox horror with a calendar."
+          "text": "Bachiko meeting her natural enemy has more tension than my untouched deadline."
         },
         {
           "tone": "smart",
           "label": "Smart",
-          "text": "Repeating the experiment proves one month can turn availability into a full-time system."
+          "text": "A natural enemy is the fastest way to turn one lesson into a rivalry."
         },
         {
           "tone": "complice",
           "label": "Complice",
-          "text": "We saw ‘again’ and knew the inbox had already won once."
-        }
-      ],
-      "commentsSource": "curated",
-      "alertedAt": null
-    },
-    {
-      "id": "yt-bhyr1bpbyy-300fc3",
-      "platform": "youtube",
-      "category": "music",
-      "author": "BANGTANTV",
-      "title": "BTS FIFA World Cup 2026 Final Halftime Show Sketch",
-      "caption": "#BTS #방탄소년단 #FIFAWorldCup \n\nConnect with BTS:\nhttps://ibighit.com/bts\nhttps://x.com/bts_bighit\nhttps://x.com/BTS_twt\nhttp://www.facebook.com/bangtan.official\nhttps://www.youtube.com/user/BANGTANTV\nhttp://instagram.com/BTS.bighitofficial\nhttps://www.tiktok.com/@bts_official_bighit\nhttps://go.weverse.io/qt3S/ti7qve0j\nhttps://www.weibo.com/BTSbighit",
-      "url": "https://www.youtube.com/watch?v=_bhYr1BpByY",
-      "mediaType": "video",
-      "durationSeconds": null,
-      "thumbnailUrl": "https://i4.ytimg.com/vi/_bhYr1BpByY/hqdefault.jpg",
-      "publishedAt": "2026-08-20T11:00:01.000Z",
-      "capturedAt": "2026-08-22T08:46:04.829Z",
-      "status": "surging",
-      "momentTier": "a",
-      "discovery": {
-        "source": "watchlist",
-        "accountHandle": "@BTS",
-        "accountTier": "a"
-      },
-      "velocity": {
-        "metric": "views",
-        "perHour": 10784,
-        "windowHours": 1.62,
-        "fromCapturedAt": "2026-08-22T07:08:59.721Z",
-        "toCapturedAt": "2026-08-22T08:46:04.829Z"
-      },
-      "lofiFitScore": 83,
-      "commentabilityScore": 59,
-      "priorityScore": 72,
-      "whyNow": "Publié par BANGTANTV il y a 46 h. +10 784 vues/h mesurés sur 1.62 h.",
-      "risk": {
-        "level": "low",
-        "note": "Aucun sujet sensible détecté dans les métadonnées publiques."
-      },
-      "metrics": {
-        "views": 1631890,
-        "likes": null,
-        "comments": null,
-        "shares": null
-      },
-      "observations": [
-        {
-          "capturedAt": "2026-08-21T14:03:17.805Z",
-          "views": 1353593,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de BTS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCLkAepWjdylmXSltofFvsYQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T15:49:55.772Z",
-          "views": 1395797,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de BTS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCLkAepWjdylmXSltofFvsYQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T16:59:52.766Z",
-          "views": 1426027,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de BTS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCLkAepWjdylmXSltofFvsYQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T18:01:41.391Z",
-          "views": 1450013,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de BTS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCLkAepWjdylmXSltofFvsYQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T19:20:06.932Z",
-          "views": 1475343,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de BTS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCLkAepWjdylmXSltofFvsYQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T20:46:54.072Z",
-          "views": 1496483,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de BTS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCLkAepWjdylmXSltofFvsYQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T22:15:27.337Z",
-          "views": 1512008,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de BTS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCLkAepWjdylmXSltofFvsYQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T23:16:07.047Z",
-          "views": 1524346,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de BTS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCLkAepWjdylmXSltofFvsYQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-22T07:08:59.721Z",
-          "views": 1614440,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de BTS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCLkAepWjdylmXSltofFvsYQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-22T08:46:04.829Z",
-          "views": 1631890,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de BTS",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCLkAepWjdylmXSltofFvsYQ",
-          "exactness": "exact"
-        }
-      ],
-      "comments": [
-        {
-          "tone": "funny",
-          "label": "Drôle",
-          "text": "A World Cup final halftime sketch just benched my entire weekly schedule."
-        },
-        {
-          "tone": "smart",
-          "label": "Smart",
-          "text": "BTS turning a global final into a sketch is scale meeting playfulness."
-        },
-        {
-          "tone": "complice",
-          "label": "Complice",
-          "text": "2026 suddenly feels very real when this is already on the timeline."
+          "text": "Season four gave Bachiko a problem; our study group immediately took notes."
         }
       ],
       "commentsSource": "curated",
@@ -2631,6 +2571,209 @@
           "tone": "complice",
           "label": "Complice",
           "text": "ENHYPEN is going straight between the focus tracks tonight."
+        }
+      ],
+      "commentsSource": "curated",
+      "alertedAt": null
+    },
+    {
+      "id": "yt-mfmdxpt7nam-89978d",
+      "platform": "youtube",
+      "category": "tech",
+      "author": "Marques Brownlee",
+      "title": "I Said Yes to Every Email for a Month! (Again)",
+      "caption": "I said yes to every review request I got for an entire month. I'm sorry? You're welcome?\n\nThanks Best Buy for sponsoring this video. You can find the tech upgrades you need to elevate your daily life at https://www.bestbuy.com/discover\n\nMKBHD Merch: http://shop.MKBHD.com\n\n(Affiliate Links):\nCLIRASS Smart Toilet: https://geni.us/eieuqu\nXbook 3-Screen Laptop: https://geni.us/0a14\nGarmin CIRQA: https://geni.us/RBC1\nCasana Smart Seat: https://geni.us/IMswJ\nBusy Bar: https://geni.us/9UZHwXS\nMondo Robotics Beni: https://geni.us/aUf2ty\nNoctua Feinmann FO1 Gaming Mouse: https://geni.us/sXA3H\nKardia Mobile 6L Max: https://geni.us/lhtE\nHonor Robot Phone: https://geni.us/YYL2QC\nHbada X7 Smart Chair: https://geni.us/EEvPUm\nSkullcandy Crusher 1080 ANC Headphones: https://geni.us/JRJEqd\nGrant Sinclair Gamer Card: https://geni.us/ey7SZ6\nSony Bravia 9 II True RGB TV: https://howl.link/169mvm5ydtyv0\n\nPla",
+      "url": "https://www.youtube.com/watch?v=mfmdXPT7nAM",
+      "mediaType": "video",
+      "durationSeconds": null,
+      "thumbnailUrl": "https://i2.ytimg.com/vi/mfmdXPT7nAM/hqdefault.jpg",
+      "publishedAt": "2026-08-21T18:53:07.000Z",
+      "capturedAt": "2026-08-22T08:46:04.829Z",
+      "status": "surging",
+      "momentTier": "a",
+      "discovery": {
+        "source": "watchlist",
+        "accountHandle": "@mkbhd",
+        "accountTier": "a"
+      },
+      "velocity": {
+        "metric": "views",
+        "perHour": 39775,
+        "windowHours": 1.62,
+        "fromCapturedAt": "2026-08-22T07:08:59.721Z",
+        "toCapturedAt": "2026-08-22T08:46:04.829Z"
+      },
+      "lofiFitScore": 63,
+      "commentabilityScore": 59,
+      "priorityScore": 61,
+      "whyNow": "Publié par Marques Brownlee il y a 14 h. +39 775 vues/h mesurés sur 1.62 h.",
+      "risk": {
+        "level": "low",
+        "note": "Aucun sujet sensible détecté dans les métadonnées publiques."
+      },
+      "metrics": {
+        "views": 694477,
+        "likes": null,
+        "comments": null,
+        "shares": null
+      },
+      "observations": [
+        {
+          "capturedAt": "2026-08-21T19:20:06.932Z",
+          "views": 25192,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T19:43:30.652Z",
+          "views": 47007,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T20:17:01.715Z",
+          "views": 82256,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T20:46:54.072Z",
+          "views": 111981,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T21:16:06.897Z",
+          "views": 144590,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T21:46:24.624Z",
+          "views": 164584,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T22:15:27.337Z",
+          "views": 205244,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T22:48:03.668Z",
+          "views": 243646,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T23:16:07.047Z",
+          "views": 273043,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-21T23:45:50.016Z",
+          "views": 299494,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-22T00:22:28.880Z",
+          "views": 333265,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-22T05:19:51.730Z",
+          "views": 563702,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-22T07:08:59.721Z",
+          "views": 630117,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-22T08:46:04.829Z",
+          "views": 694477,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Marques Brownlee",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCBJycsmduvYEL83R_U4JriQ",
+          "exactness": "exact"
+        }
+      ],
+      "comments": [
+        {
+          "tone": "funny",
+          "label": "Drôle",
+          "text": "One month of saying yes to every email is inbox horror with a calendar."
+        },
+        {
+          "tone": "smart",
+          "label": "Smart",
+          "text": "Repeating the experiment proves one month can turn availability into a full-time system."
+        },
+        {
+          "tone": "complice",
+          "label": "Complice",
+          "text": "We saw ‘again’ and knew the inbox had already won once."
         }
       ],
       "commentsSource": "curated",
@@ -3057,149 +3200,6 @@
           "tone": "complice",
           "label": "Complice",
           "text": "Free Switch 2 upgrade means our study break just grew another shell."
-        }
-      ],
-      "commentsSource": "curated",
-      "alertedAt": null
-    },
-    {
-      "id": "yt-qawbxet88o-89d8d9",
-      "platform": "youtube",
-      "category": "internet",
-      "author": "Dude Perfect",
-      "title": "Can Bryson DeChambeau Make This Chip? 😱",
-      "caption": "NEXT LEVEL STUFF\n-------------------------------------------\n🎒 NEW Merch - http://bit.ly/dudeperfectmerch\n📱 Text YTDUDE to 398294 to keep up with us\n🔔 Hit the bell next to Subscribe so you don't miss a video!\n📕 Read our NEW Book - \"Operation Trick Shot\" - https://book.dudeperfect.com/\n\n5 best friends and a panda. Dude Perfect is Tyler Toney, Cody Jones, Garrett Hilbert, Coby Cotton, and Cory Cotton — best known for trick shots, stereotypes, battles, bottle flips, ping pong, and all-around competitive fun. If you like sports and comedy, come join the Dude Perfect team! We pride ourselves on making the absolute best family-friendly entertainment possible. Welcome to the crew.\n\nBusiness or Media: Dude@DudePerfect.com\n\nGo Big and God Bless\nPound it 👊🏻 Noggin 🙇🏻‍♂️\n- Dude Perfect",
-      "url": "https://www.youtube.com/watch?v=qawb_xEt88o",
-      "mediaType": "video",
-      "durationSeconds": null,
-      "thumbnailUrl": "https://i2.ytimg.com/vi/qawb_xEt88o/hqdefault.jpg",
-      "publishedAt": "2026-08-20T22:13:30.000Z",
-      "capturedAt": "2026-08-22T08:46:04.829Z",
-      "status": "surging",
-      "momentTier": "a",
-      "discovery": {
-        "source": "watchlist",
-        "accountHandle": "@DudePerfect",
-        "accountTier": "b"
-      },
-      "velocity": {
-        "metric": "views",
-        "perHour": 7315,
-        "windowHours": 1.62,
-        "fromCapturedAt": "2026-08-22T07:08:59.721Z",
-        "toCapturedAt": "2026-08-22T08:46:04.829Z"
-      },
-      "lofiFitScore": 74,
-      "commentabilityScore": 59,
-      "priorityScore": 67,
-      "whyNow": "Publié par Dude Perfect il y a 35 h. +7 315 vues/h mesurés sur 1.62 h.",
-      "risk": {
-        "level": "low",
-        "note": "Aucun sujet sensible détecté dans les métadonnées publiques."
-      },
-      "metrics": {
-        "views": 1353702,
-        "likes": null,
-        "comments": null,
-        "shares": null
-      },
-      "observations": [
-        {
-          "capturedAt": "2026-08-21T16:59:52.766Z",
-          "views": 998371,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T18:01:41.391Z",
-          "views": 1035410,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T19:20:06.932Z",
-          "views": 1085472,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T20:46:54.072Z",
-          "views": 1144512,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T22:15:27.337Z",
-          "views": 1192841,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-21T23:16:07.047Z",
-          "views": 1226820,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-22T07:08:59.721Z",
-          "views": 1341866,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-22T08:46:04.829Z",
-          "views": 1353702,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Dude Perfect",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCRijo3ddMTht_IHyNSNXpNQ",
-          "exactness": "exact"
-        }
-      ],
-      "comments": [
-        {
-          "tone": "funny",
-          "label": "Drôle",
-          "text": "That chip has more suspense than checking whether the assignment uploaded."
-        },
-        {
-          "tone": "smart",
-          "label": "Smart",
-          "text": "Dude Perfect knows a single question mark can carry an entire setup."
-        },
-        {
-          "tone": "complice",
-          "label": "Complice",
-          "text": "Bryson and that chip are exactly why the break keeps getting longer."
         }
       ],
       "commentsSource": "curated",
