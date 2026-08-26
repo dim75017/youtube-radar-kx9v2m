@@ -26,6 +26,7 @@ test("keeps follower values integral and fits the chart inside the remaining vie
   assert.match(formatters, /metric === "followersNet"/);
   assert.match(formatters, /metric === "newFollowers"/);
   assert.match(formatters, /metric === "unfollows"/);
+  assert.match(formatters, /metric === "followersNet" \|\| metric === "newFollowers"/);
   assert.match(formatters, /Math\.round\(Math\.abs\(value\)\)/);
   assert.match(formatters, /maximumFractionDigits: 0/);
   assert.doesNotMatch(

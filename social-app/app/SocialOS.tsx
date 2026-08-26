@@ -2955,7 +2955,9 @@ function formatNativeAnalyticsMetric(
     const formattedFollowers = new Intl.NumberFormat("fr-FR", {
       maximumFractionDigits: 0,
     }).format(Math.round(Math.abs(value)));
-    if (metric === "followersNet") return `${value >= 0 ? "+" : "−"}${formattedFollowers}`;
+    if (metric === "followersNet" || metric === "newFollowers") {
+      return `${value >= 0 ? "+" : "−"}${formattedFollowers}`;
+    }
     return value < 0 ? `−${formattedFollowers}` : formattedFollowers;
   }
   if (metric === "watchTimeSeconds") {
