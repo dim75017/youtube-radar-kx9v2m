@@ -40,6 +40,11 @@ test("keeps follower values integral and fits the chart inside the remaining vie
   assert.match(styles, /\.audience-native-chart-tooltip-date\s*\{[\s\S]*?font-size:\s*8px/);
   assert.match(styles, /\.audience-native-chart-tooltip-value\s*\{[\s\S]*?font-size:\s*11px/);
   assert.match(styles, /\.audience-native-chart-heading strong\s*\{[\s\S]*?font-size:\s*clamp\(15px, 1\.35vw, 18px\)/);
+  assert.match(styles, /\.audience-dashboard-toolbar\s*\{[\s\S]*?margin-bottom:\s*12px/);
+  assert.match(styles, /\.audience-platform-grid\s*\{[\s\S]*?gap:\s*10px/);
+  assert.match(styles, /\.audience-explorer\s*\{[\s\S]*?margin-top:\s*12px[\s\S]*?padding:\s*12px 14px/);
+  assert.match(styles, /\.audience-native-chart-shell\s*\{[\s\S]*?margin-top:\s*8px/);
+  assert.match(styles, /\.audience-demographics\s*\{[\s\S]*?margin-top:\s*10px/);
 });
 
 test("syncs the clickable platform cards with an honest follower-change default", async () => {
