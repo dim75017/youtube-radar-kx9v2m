@@ -152,6 +152,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(audienceDashboard, /className="audience-explorer-summary"/);
   assert.match(audienceDashboard, /className="audience-explorer-profile"/);
   assert.equal((audienceDashboard.match(/className="audience-explorer-summary-kpi"/g) ?? []).length, 3);
+  assert.match(audienceDashboard, /className="audience-demographics-breakdowns" role="group" aria-label="Âge et genre"/);
   assert.match(audienceDashboard, /calculatePlatformEngagementWindow\([\s\S]*?periodDays/);
   assert.match(audienceDashboard, /useState<string \| null>\(null\)/);
   assert.match(audienceDashboard, /setClientNow\(new Date\(\)\.toISOString\(\)\)/);

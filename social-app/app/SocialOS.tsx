@@ -2197,7 +2197,15 @@ function AudienceAnalyticsExplorer({
         </div>
         <div className="audience-explorer-summary-kpi">
           <span>{activePlatform === "instagram" ? "Nouveaux followers" : "Variation followers"}</span>
-          <strong className={followersDelta !== null && followersDelta < 0 ? "negative" : "positive"}>
+          <strong
+            className={
+              followersDelta === null || followersDelta === 0
+                ? undefined
+                : followersDelta < 0
+                  ? "negative"
+                  : "positive"
+            }
+          >
             {followersDelta !== null ? formatAudienceDelta(followersDelta) : "—"}
           </strong>
           <small>{followersDeltaPeriodLabel}</small>
@@ -2253,7 +2261,7 @@ function AudienceAnalyticsExplorer({
 
             <AudienceNativeMetricChart
               key={`${activePlatform}:${activeMetric}:${periodKey}:${endDate}`}
-              bottomReserve={370}
+              bottomReserve={380}
               endDate={endDate}
               metric={activeMetric}
               periodDays={periodDays}
@@ -2331,18 +2339,20 @@ function AudienceDemographicsPanel({
           kind="countries"
           title="Top pays"
         />
-        <AudienceDemographicCard
-          dimension={snapshot?.ages ?? null}
-          emptyLabel={`Âge non disponible pour ${meta.label}`}
-          kind="ages"
-          title="Répartition par âge"
-        />
-        <AudienceDemographicCard
-          dimension={snapshot?.genders ?? null}
-          emptyLabel={`Genre non disponible pour ${meta.label}`}
-          kind="genders"
-          title="Répartition par genre"
-        />
+        <div className="audience-demographics-breakdowns" role="group" aria-label="Âge et genre">
+          <AudienceDemographicCard
+            dimension={snapshot?.ages ?? null}
+            emptyLabel={`Âge non disponible pour ${meta.label}`}
+            kind="ages"
+            title="Répartition par âge"
+          />
+          <AudienceDemographicCard
+            dimension={snapshot?.genders ?? null}
+            emptyLabel={`Genre non disponible pour ${meta.label}`}
+            kind="genders"
+            title="Répartition par genre"
+          />
+        </div>
       </div>
     </section>
   );
@@ -2636,7 +2646,7 @@ function AudienceNativeMetricChart({
       );
       const height = window.innerWidth <= 900
         ? 180
-        : Math.max(80, Math.min(280, availableHeight));
+        : Math.max(80, Math.min(170, availableHeight));
       setChartDimensions((current) => (
         current.width === width && current.height === height
           ? current

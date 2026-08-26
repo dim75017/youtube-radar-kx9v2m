@@ -104,7 +104,9 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(styles, /\.audience-explorer-metrics/);
   assert.match(styles, /\.audience-native-chart-empty,[\s\S]*?min-height:\s*150px/);
   assert.match(styles, /\.audience-native-chart-viewport\s*\{[\s\S]*?overflow-x:\s*auto/);
-  assert.match(styles, /\.audience-demographics-grid\s*\{[\s\S]*?grid-template-columns:\s*1\.35fr 1fr 0\.75fr/);
+  assert.match(explorer, /className="audience-demographics-breakdowns" role="group" aria-label="Âge et genre"/);
+  assert.match(styles, /\.audience-demographics-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /\.audience-demographics-breakdowns\s*\{[\s\S]*?grid-template-rows:\s*minmax\(0, 1fr\) auto/);
   assert.doesNotMatch(styles, /\.audience-chart-viewport|\.audience-native-platform-grid/);
 });
 
@@ -146,7 +148,7 @@ test("keeps the audience curve clean and reveals the exact hovered value instant
   assert.match(chart, /const plotTop = 12/);
   assert.match(chart, /const plotBottom = height - 40/);
   assert.match(chart, /bottomReserve/);
-  assert.match(chart, /Math\.max\(80, Math\.min\(280, availableHeight\)\)/);
+  assert.match(chart, /Math\.max\(80, Math\.min\(170, availableHeight\)\)/);
   assert.match(styles, /\.main\.main-dashboard\s*\{[\s\S]*?padding-bottom:\s*8px/);
 
   // Les cinq filtres exacts du graphe restent disponibles après l'amélioration du survol.
@@ -193,8 +195,10 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(explorer, /55–64 et 65\+ regroupés dans 55\+/);
   assert.match(styles, /\.audience-demographic-card\.kind-ages \.audience-demographic-list\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
   assert.doesNotMatch(styles, /\.audience-demographic-card\.kind-ages \.audience-demographic-list\s*\{[^}]*repeat\(2/);
-  assert.match(styles, /\.audience-demographic-card\.kind-countries \.audience-demographic-list\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.audience-demographics-grid\s*\{[\s\S]*?repeat\(2/);
+  assert.match(styles, /\.audience-demographic-card\.kind-countries \.audience-demographic-list\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.doesNotMatch(styles, /\.audience-demographic-card\.kind-countries \.audience-demographic-list\s*\{[^}]*repeat\(2/);
+  assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.audience-demographics-grid\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.audience-demographics-breakdowns\s*\{[\s\S]*?grid-template-rows:\s*auto auto/);
 });
 
 test("keeps sparse Instagram observations truthful and falls back without fabricating a curve", async () => {

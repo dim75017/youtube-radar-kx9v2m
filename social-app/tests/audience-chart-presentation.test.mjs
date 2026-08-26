@@ -19,7 +19,7 @@ test("keeps follower values integral and fits the chart inside the remaining vie
   assert.match(chart, /chartViewportRef/);
   assert.match(chart, /new ResizeObserver\(resizeChart\)/);
   assert.match(chart, /window\.innerHeight - viewport\.getBoundingClientRect\(\)\.top - bottomReserve - 34/);
-  assert.match(chart, /Math\.max\(80, Math\.min\(280, availableHeight\)\)/);
+  assert.match(chart, /Math\.max\(80, Math\.min\(170, availableHeight\)\)/);
   assert.match(chart, /style=\{\{ height: `\$\{height\}px` \}\}/);
   assert.match(chart, /buildAudienceChartAxis\(paddedMinimum, paddedMaximum/);
   assert.match(chart, /const gridLines = axis\.ticks\.map/);
@@ -57,7 +57,7 @@ test("keeps follower values integral and fits the chart inside the remaining vie
   assert.match(styles, /\.audience-demographic-card\s*\{[\s\S]*?min-height:\s*178px[\s\S]*?padding:\s*12px/);
   assert.match(styles, /\.audience-demographic-list li\s*\{[\s\S]*?min-height:\s*20px[\s\S]*?font-size:\s*clamp\(11px, 0\.78vw, 12px\)/);
   assert.match(styles, /\.audience-demographic-bar\s*\{[\s\S]*?height:\s*5px/);
-  assert.match(component, /bottomReserve=\{370\}/);
+  assert.match(component, /bottomReserve=\{380\}/);
   assert.match(styles, /@media \(min-width: 901px\) and \(max-height: 940px\)/);
   assert.match(styles, /@media \(min-width: 901px\) and \(max-height: 820px\)[\s\S]*?\.main\.main-dashboard\s*\{[\s\S]*?padding-bottom:\s*0/);
 });
@@ -107,9 +107,13 @@ test("syncs the single platform selector with the active account summary and fol
   assert.match(explorer, /calculatePlatformEngagementWindow\([\s\S]*?periodDays/);
   assert.match(explorer, /audiencePointsForPeriod\([\s\S]*?periodDays/);
   assert.match(explorer, /followersDeltaPeriodLabel = followerChangeSummary[\s\S]*?periodLabel/);
+  assert.match(explorer, /followersDelta === null \|\| followersDelta === 0[\s\S]*?followersDelta < 0[\s\S]*?"negative"[\s\S]*?"positive"/);
   assert.doesNotMatch(explorer, /const \[chartPeriodKey|setChartPeriodKey|Période du graphique/);
 
   assert.match(styles, /\.audience-explorer-platform-tabs button\.active/);
   assert.match(styles, /\.audience-explorer-platform-tabs button:focus-visible/);
   assert.match(styles, /\.audience-explorer-summary-kpi\s*\{/);
+  assert.match(styles, /\.audience-explorer-summary-kpi > strong\s*\{[\s\S]*?color:\s*#fff/);
+  assert.match(styles, /\.audience-explorer-summary-kpi > strong\.positive\s*\{[\s\S]*?color:\s*#8ee7ae/);
+  assert.match(styles, /\.audience-explorer-summary-kpi > strong\.negative\s*\{[\s\S]*?color:\s*var\(--red\)/);
 });
