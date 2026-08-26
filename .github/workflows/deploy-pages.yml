@@ -72,6 +72,7 @@ jobs:
             /tests/test_spotify_instant_runtime.js
             /tests/test_spotify_instant_filters_runtime.js
             /tests/test_spotify_track_analytics_runtime.js
+            /tests/test_spotify_playlist_analytics_runtime.js
             /tests/test_unified_design_system.cjs
             /tests/test_unified_platform_navigation.cjs
             /tests/test_youtube_genre_vertical_bars.cjs
@@ -205,6 +206,7 @@ jobs:
           node tests/test_spotify_instant_runtime.js
           node tests/test_spotify_instant_filters_runtime.js
           node tests/test_spotify_track_analytics_runtime.js
+          node tests/test_spotify_playlist_analytics_runtime.js
 
       - name: Build the Social Radar runtime
         working-directory: social-app
@@ -270,6 +272,9 @@ jobs:
           test -f ./_site/spotify/index.html
           test -f ./_site/spotify/track-analytics.js
           test -f ./_site/spotify/track-analytics.css
+          test -f ./_site/spotify/playlist-analytics.js
+          test -f ./_site/spotify/playlist-analytics.css
+          test -f ./_site/Spotify_Playlist_Analytics_data.js
           test -d ./_site/Spotify_Performance_tracks
           test ! -e ./_site/Spotify_Performance_data.js
           test ! -e ./_site/Spotify_Preview_Audio_data.js

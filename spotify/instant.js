@@ -1,6 +1,3 @@
-/* Spotify Radar lightweight public runtime.
-   The complete analytical exports remain build inputs; this browser runtime
-   only hydrates the compact catalogue and never loads histories at startup. */
 (()=>{
   'use strict';
 
@@ -31,6 +28,7 @@
   let refreshWaiting=false;
   let refreshFocus='';
   let trackAnalyticsPromise=null;
+  let playlistAnalyticsPromise=null;
   let modalRequest=0;
   let lang='fr';
   try{lang=localStorage.getItem('sr_lang')||'fr';}catch(error){}
@@ -229,6 +227,7 @@
     return Array.isArray(data[name])?data[name]:[];
   }
   function findTrack(id){return source('tracks').find(row=>row[T.spotify_id]===id)||source('radar').find(row=>row[T.spotify_id]===id)||boot.tracks.find(row=>row[T.spotify_id]===id)||boot.radar.find(row=>row[T.spotify_id]===id);}
+  function findPlaylist(id){return source('playlists').find(row=>row[P.spotify_id]===id)||boot.playlists.find(row=>row[P.spotify_id]===id);}
   function normalize(value){return String(value||'').toLocaleLowerCase(lang==='fr'?'fr':'en').normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
   function matchesQuery(query,values){const terms=normalize(query).trim().split(/\s+/).filter(Boolean);if(!terms.length)return true;const haystack=normalize(values.flat(Infinity).join(' '));return terms.every(term=>haystack.includes(term));}
   function includesQuery(values){return matchesQuery(state.query,values);}
@@ -425,25 +424,32 @@
       &&(filter.genre==='all'||row[P.genre]===filter.genre));
     const sort=state.sort.playlists;
     rows=rows.slice().sort((left,right)=>{
-      if(sort==='growth')return (right[P.growth_30d]||0)-(left[P.growth_30d]||0);
+      if(sort==='growth24')return (right[P.growth_24h]||0)-(left[P.growth_24h]||0);
+      if(sort==='growth7')return (right[P.growth_7d]||0)-(left[P.growth_7d]||0);
+      if(sort==='growth30')return (right[P.growth_30d]||0)-(left[P.growth_30d]||0);
+      if(sort==='fit')return (right[P.fit]||0)-(left[P.fit]||0);
       if(sort==='tracks')return (right[P.tracks]||0)-(left[P.tracks]||0);
       if(sort==='name')return String(left[P.name]||'').localeCompare(String(right[P.name]||''));
       return (right[P.followers]||0)-(left[P.followers]||0);
     });
     const total=fullReady?rows.length:boot.counts.playlists;
-    const body=rows.slice(0,state.shown).map(row=>`<tr>
+    const body=rows.slice(0,state.shown).map(row=>`<tr data-open-playlist="${esc(row[P.spotify_id])}" tabindex="0">
       <td class="fast-cover-cell">${image(row[P.image_url])}</td>
-      <td><a class="fast-primary" href="https://open.spotify.com/playlist/${encodeURIComponent(row[P.spotify_id])}" target="_blank" rel="noopener">${esc(row[P.name]||'—')}</a></td>
+      <td><button type="button" class="fast-primary" data-open-playlist="${esc(row[P.spotify_id])}">${esc(row[P.name]||'—')}</button></td>
       <td class="fast-secondary">${esc(row[P.owner]||'—')}</td>
       <td class="num"><strong>${compact(row[P.followers])}</strong></td>
+      <td class="num">${delta(row[P.growth_24h])}</td>
+      <td class="num">${delta(row[P.growth_7d])}</td>
+      <td class="num">${delta(row[P.growth_30d])}</td>
+      <td class="num">${fullNumber(row[P.fit])}</td>
       <td class="num">${fullNumber(row[P.tracks])}</td>
       <td>${esc(genre(row[P.genre]))}</td>
       <td>${esc(row[P.use_case]||'—')}</td>
       <td class="fast-date">${date(row[P.last_seen])}</td>
     </tr>`).join('');
     view.innerHTML=heading(w('allPlaylists'),total)+toolbar([
-      ['followers',w('followers')],['growth',w('growth')],['tracks',w('tracks')],['name',w('playlists')],
-    ],playlistFilters())+(rows.length?`<div class="fast-table-wrap"><table class="fast-table"><thead><tr><th></th><th>${esc(w('playlists'))}</th><th>${esc(w('owner'))}</th><th class="num">${esc(w('followers'))}</th><th class="num">${esc(w('tracks'))}</th><th>${esc(w('genre'))}</th><th>Usage</th><th>${esc(w('updated'))}</th></tr></thead><tbody>${body}</tbody></table></div>`:`<div class="fast-empty">${esc(w('empty'))}</div>`)+more(fullReady?rows.length:total);
+      ['followers',w('followers')],['growth24','24 h'],['growth7',lang==='fr'?'7 j':'7 d'],['growth30',lang==='fr'?'30 j':'30 d'],['fit','Fit score'],['tracks',w('tracks')],['name',w('playlists')],
+    ],playlistFilters())+(rows.length?`<div class="fast-table-wrap"><table class="fast-table"><thead><tr><th></th><th>${esc(w('playlists'))}</th><th>${esc(w('owner'))}</th><th class="num">${esc(w('followers'))}</th><th class="num">24 h</th><th class="num">${esc(lang==='fr'?'7 j':'7 d')}</th><th class="num">${esc(lang==='fr'?'30 j':'30 d')}</th><th class="num">Fit</th><th class="num">${esc(w('tracks'))}</th><th>${esc(w('genre'))}</th><th>Usage</th><th>${esc(w('updated'))}</th></tr></thead><tbody>${body}</tbody></table></div>`:`<div class="fast-empty">${esc(w('empty'))}</div>`)+more(fullReady?rows.length:total);
     bindToolbar();
   }
 
@@ -564,6 +570,20 @@
     return trackAnalyticsPromise;
   }
 
+  function loadPlaylistAnalytics(){
+    if(window.SpotifyPlaylistAnalytics)return Promise.resolve(window.SpotifyPlaylistAnalytics);
+    if(playlistAnalyticsPromise)return playlistAnalyticsPromise;
+    playlistAnalyticsPromise=new Promise((resolve,reject)=>{
+      const script=document.createElement('script');
+      script.src=`playlist-analytics.js?v=${encodeURIComponent(boot.source_hash||'playlist-analytics-v1')}`;
+      script.async=true;
+      script.onload=()=>window.SpotifyPlaylistAnalytics?resolve(window.SpotifyPlaylistAnalytics):reject(new Error('Spotify playlist analytics did not initialize'));
+      script.onerror=()=>reject(new Error('Spotify playlist analytics failed to load'));
+      document.head.appendChild(script);
+    }).catch(error=>{playlistAnalyticsPromise=null;throw error;});
+    return playlistAnalyticsPromise;
+  }
+
   async function openTrack(id){
     const initialRow=findTrack(id);if(!initialRow)return;
     const request=++modalRequest;
@@ -591,11 +611,34 @@
       box.innerHTML=`<button class="fast-modal-close" type="button" data-close-modal aria-label="${esc(w('close'))}">×</button><div class="fast-empty"><strong>${esc(lang==='fr'?"La vue analytique n'a pas pu être chargée.":'Track analytics could not be loaded.')}</strong><span>${esc(lang==='fr'?'Réessaie dans un instant.':'Please try again in a moment.')}</span></div>`;
     }
   }
+  async function openPlaylist(id){
+    const row=findPlaylist(id);if(!row)return;
+    const request=++modalRequest;
+    const modal=document.getElementById('track-modal');
+    const box=document.getElementById('tmbox');
+    box.className='tmbox playlist-analytics-box';
+    box.innerHTML=`<button class="fast-modal-close" type="button" data-close-modal aria-label="${esc(w('close'))}">×</button><div class="fast-modal-head">${image(row[P.image_url],'modal-cover')}<div><span class="fast-kicker">${esc(lang==='fr'?'Fiche Analytics':'Analytics')}</span><h3>${esc(row[P.name]||'—')}</h3><p>${esc(row[P.owner]||'—')}</p></div></div><div class="track-analytics-loading">${esc(lang==='fr'?"Chargement de l'historique quotidien…":'Loading daily history…')}</div>`;
+    modal.style.display='flex';
+    try{
+      const analyticsModule=await loadPlaylistAnalytics();
+      if(request!==modalRequest||modal.style.display==='none')return;
+      await analyticsModule.open({
+        spotifyId:id,row,schema:data.schemas.playlists,box,language:lang,
+        assetVersion:`${boot.source_hash||'playlist-analytics-v1'}-playlist-v1`,
+      });
+    }catch(error){
+      console.error(error);
+      if(request!==modalRequest)return;
+      box.className='tmbox';
+      box.innerHTML=`<button class="fast-modal-close" type="button" data-close-modal aria-label="${esc(w('close'))}">×</button><div class="fast-empty"><strong>${esc(lang==='fr'?"La vue analytique de cette playlist n'a pas pu être chargée.":'Playlist analytics could not be loaded.')}</strong><span>${esc(lang==='fr'?'Réessaie dans un instant.':'Please try again in a moment.')}</span></div>`;
+    }
+  }
   function closeModal(){
     modalRequest+=1;
     const modal=document.getElementById('track-modal');
     const box=document.getElementById('tmbox');
     if(window.SpotifyTrackAnalytics)window.SpotifyTrackAnalytics.close(modal);
+    if(window.SpotifyPlaylistAnalytics)window.SpotifyPlaylistAnalytics.close(modal);
     if(modal)modal.style.display='none';
     if(box)box.className='tmbox';
   }
@@ -666,6 +709,14 @@
     if(selectionButton){event.stopPropagation();selectionToggle(selectionButton.dataset.selectTrack);return;}
     const trackButton=event.target.closest('[data-open-track]');
     if(trackButton){openTrack(trackButton.dataset.openTrack);return;}
+    const playlistButton=event.target.closest('[data-open-playlist]');
+    if(playlistButton){openPlaylist(playlistButton.dataset.openPlaylist);return;}
+  });
+  view.addEventListener('keydown',event=>{
+    if(event.key!=='Enter'&&event.key!==' ')return;
+    const playlistRow=event.target.closest('tr[data-open-playlist]');
+    if(!playlistRow||event.target.closest('button,a,input,select'))return;
+    event.preventDefault();openPlaylist(playlistRow.dataset.openPlaylist);
   });
   view.addEventListener('contextmenu',event=>{
     const target=event.target&&typeof event.target.closest==='function'?event.target:null;if(!target)return;

@@ -1088,6 +1088,29 @@ class PrepareSoundchartsSnapshotTests(unittest.TestCase):
                 )
             self.assertTrue(old_export.is_file())
 
+    def test_browse_catalogue_resolves_its_reviewed_source_without_public_html(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source_name = "Spotify_Soundcharts_data_20260819T232812Z.js"
+            (root / source_name).write_text(wrapped(minimal_payload()), encoding="utf-8")
+            catalogue = root / "Spotify_Browse_Catalogue_data.js"
+            catalogue.write_text(
+                subject.BROWSE_CATALOGUE_PREFIX
+                + json.dumps({"source_snapshot": source_name})
+                + ";\n",
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                subject.browse_source_snapshot_name(catalogue), source_name
+            )
+
+            (root / source_name).unlink()
+            with self.assertRaisesRegex(
+                subject.CompareAndSwapError, "browse source export is missing"
+            ):
+                subject.browse_source_snapshot_name(catalogue)
+
     def test_activate_refuses_missing_new_file_without_touching_index(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

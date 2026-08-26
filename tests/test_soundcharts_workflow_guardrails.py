@@ -47,6 +47,18 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         section = self.workflow[prepare:validate]
         self.assertIn('--previous "${{ steps.snapshot.outputs.old }}"', section)
 
+    def test_compact_catalogue_owns_the_active_snapshot_pointer(self):
+        candidate = self.workflow[
+            self.workflow.index("Create an isolated Soundcharts candidate") :
+            self.workflow.index("Verify Soundcharts authentication and response contracts")
+        ]
+        self.assertIn("prepare_soundcharts_snapshot.py browse-source", candidate)
+        self.assertIn("Spotify_Browse_Catalogue_data.js", candidate)
+        activation = self.workflow[
+            self.workflow.index("Activate snapshot only after remote validation") :
+        ]
+        self.assertNotIn("prepare_soundcharts_snapshot.py activate", activation)
+
     def test_completed_collection_is_checkpointed_before_snapshot_guards(self):
         checkpoint = self.workflow.index(
             "Preserve completed collection before publication guards"

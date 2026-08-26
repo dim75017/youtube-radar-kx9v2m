@@ -36,14 +36,19 @@ def payload() -> dict:
 
 
 class PlaylistSnapshotTransitionTests(unittest.TestCase):
-    def test_dashboard_loads_only_the_canonical_playlist_export(self):
+    def test_dashboard_projects_the_canonical_export_off_the_critical_path(self):
         spotify_index = (ROOT / "spotify" / "index.html").read_text(encoding="utf-8")
         root_index = (ROOT / "index.html").read_text(encoding="utf-8")
+        compact_builder = (ROOT / "build_spotify_instant_runtime.js").read_text(
+            encoding="utf-8"
+        )
 
-        self.assertIn("Spotify_Playlists_canonical_data.js", spotify_index)
-        self.assertIn("Spotify_Playlists_canonical_data.js", root_index)
-        self.assertNotIn("Spotify_Playlists_data.js", spotify_index)
-        self.assertNotIn("Spotify_Playlists_data.js", root_index)
+        self.assertIn("Spotify_Instant_data.js", spotify_index)
+        self.assertIn("Spotify_Instant_data.js", root_index)
+        for public_index in (spotify_index, root_index):
+            self.assertNotIn("Spotify_Playlists_canonical_data.js", public_index)
+            self.assertNotIn("Spotify_Playlists_data.js", public_index)
+        self.assertIn("Spotify_Playlists_canonical_data.js", compact_builder)
 
     def test_newer_additive_snapshot_is_accepted(self):
         previous = payload()

@@ -24,6 +24,8 @@ on:
       - 'spotify/instant.css'
       - 'spotify/track-analytics.js'
       - 'spotify/track-analytics.css'
+      - 'spotify/playlist-analytics.js'
+      - 'spotify/playlist-analytics.css'
       - 'spotify/player.js'
       - 'spotify/player.css'
       - 'tests/test_build_spotify_browse_catalogue.py'
@@ -43,6 +45,7 @@ on:
       - 'tests/test_spotify_instant_runtime.js'
       - 'tests/test_spotify_instant_filters_runtime.js'
       - 'tests/test_spotify_track_analytics_runtime.js'
+      - 'tests/test_spotify_playlist_analytics_runtime.js'
       - '.github/workflows/refresh-spotify-browse-catalogue.yml'
   schedule:
     - cron: '20 3 * * *'
@@ -107,7 +110,7 @@ jobs:
         run: |
           set -euo pipefail
           git pull --ff-only origin main
-          current="$(python prepare_soundcharts_snapshot.py current --index spotify/index.html)"
+          current="$(python prepare_soundcharts_snapshot.py browse-source --catalogue Spotify_Browse_Catalogue_data.js)"
           args=(
             --source "$current"
             --existing Spotify_Browse_Catalogue_data.js
@@ -128,6 +131,7 @@ jobs:
           python -m unittest tests/test_build_spotify_browse_catalogue.py tests/test_spotify_counter_integrity.py tests/test_repair_spotify_counter_integrity.py -v
           python repair_spotify_counter_integrity.py --performance Spotify_Performance_data.js --browse Spotify_Browse_Catalogue_data.js --check
           node build_spotify_instant_runtime.js
+          node tests/test_spotify_playlist_analytics_runtime.js
           node --check spotify/dashboard.js
           node --check spotify/instant.js
           node --check spotify/track-analytics.js

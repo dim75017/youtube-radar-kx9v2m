@@ -30,6 +30,7 @@ from spotify_rights import reconciled_label, reconcile_rights
 
 
 SOUNDCHARTS_PREFIX = "window.SPOTIFY_SOUNDCHARTS="
+BROWSE_CATALOGUE_PREFIX = "window.SPOTIFY_BROWSE_CATALOGUE="
 SNAPSHOT_BASENAME_RE = re.compile(
     r"^Spotify_Soundcharts_data(?:_[A-Za-z0-9_-]+)?\.js$"
 )
@@ -2419,6 +2420,29 @@ def current_snapshot_name(index_path: Path | str) -> str:
     return current_name
 
 
+def browse_source_snapshot_name(catalogue_path: Path | str) -> str:
+    """Return the validated source snapshot recorded by the compact catalogue."""
+
+    catalogue = Path(catalogue_path).resolve()
+    text = catalogue.read_text(encoding="utf-8")
+    if not text.startswith(BROWSE_CATALOGUE_PREFIX):
+        raise CompareAndSwapError(
+            f"{catalogue} does not start with {BROWSE_CATALOGUE_PREFIX!r}"
+        )
+    json_text = text[len(BROWSE_CATALOGUE_PREFIX) :].strip().rstrip(";")
+    try:
+        payload = json.loads(json_text)
+    except json.JSONDecodeError as exc:
+        raise CompareAndSwapError(f"invalid browse catalogue JSON: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise CompareAndSwapError("browse catalogue payload must be a JSON object")
+    source_name = _validate_snapshot_basename(payload.get("source_snapshot", ""), "browse source")
+    source = (catalogue.parent / source_name).resolve()
+    if not source.is_file():
+        raise CompareAndSwapError(f"browse source export is missing: {source}")
+    return source_name
+
+
 def _collection_identity_set(
     payload: Mapping[str, Any], collection: str
 ) -> set[str]:
@@ -2676,6 +2700,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "current", help="print the existing Soundcharts snapshot referenced by the index"
     )
     current.add_argument("--index", required=True, type=Path)
+    browse_source = subparsers.add_parser(
+        "browse-source", help="print the Soundcharts snapshot used by the compact catalogue"
+    )
+    browse_source.add_argument("--catalogue", required=True, type=Path)
     return parser
 
 
@@ -2704,6 +2732,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         if args.mode == "current":
             print(current_snapshot_name(args.index))
+            return 0
+
+        if args.mode == "browse-source":
+            print(browse_source_snapshot_name(args.catalogue))
             return 0
 
         activated = activate_snapshot(

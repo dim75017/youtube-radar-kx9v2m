@@ -10,7 +10,7 @@ const source = fs.readFileSync(path.join(root, 'spotify', 'instant.js'), 'utf8')
 const schemas = {
   tracks: ['spotify_id','title','credit_name','release_date','streams','delta_24h','rights_status','label','copyright','genre','image_url','playlist_count','playlist_best_position','playlist_followers_total','opportunity_eligible','artist_spotify_id','updated_at','preview_hash','performance_bucket','performance_available','editorial_placements','instrumental_status','instrumental_confidence','ai_risk','ai_risk_score','genre_confidence','subgenres'],
   artists: ['spotify_id','name','monthly_listeners','genre','image_url','track_count','catalogue_streams','delta_24h','latest_release','ownership_status','lofi_track_count'],
-  playlists: ['spotify_id','name','owner','curator_category','followers','tracks','first_seen','last_seen','genre','use_case','fit','image_url','growth_30d','growth_days'],
+  playlists: ['spotify_id','name','owner','curator_category','followers','tracks','first_seen','last_seen','genre','use_case','fit','image_url','growth_24h','growth_7d','growth_30d','growth_days'],
   labels: ['key','name','tracks','streams','since','artist_count','logo','email'],
 };
 const track = (id,title,artist,date,streams,rights,genre,artistId,eligible,placements=[]) => [
@@ -29,8 +29,8 @@ const artists = [
   ['a3','Gamma',10_000,'piano','',1,50_000,100,'2026-08-20','label',0],
 ];
 const playlists = [
-  ['p1','Ambient Focus','Spotify','editorial',20_000,40,'2026-01-01','2026-08-25','Ambient','Focus',90,'',null,null],
-  ['p2','Jazz Study','Curator','independent',50_000,70,'2026-01-01','2026-08-25','Jazz / bossa','Study',80,'',null,null],
+  ['p1','Ambient Focus','Spotify','editorial',20_000,40,'2026-01-01','2026-08-25','Ambient','Focus',90,'',20,120,500,30],
+  ['p2','Jazz Study','Curator','independent',50_000,70,'2026-01-01','2026-08-25','Jazz / bossa','Study',80,'',-5,-30,-90,30],
 ];
 const payload = {
   version: 3,
@@ -168,6 +168,10 @@ assert.match(view.innerHTML, /Gamma/);
 
 api.state.filters.playlists.curator = 'editorial';
 assert.match(renderView('playlists'), /Ambient Focus/);
+assert.match(view.innerHTML, />24 h<\/th>/, 'playlist table must restore its 24-hour analytics column');
+assert.match(view.innerHTML, />7 j<\/th>/, 'playlist table must restore its 7-day analytics column');
+assert.match(view.innerHTML, />30 j<\/th>/, 'playlist table must restore its 30-day analytics column');
+assert.match(view.innerHTML, />Fit<\/th>/, 'playlist table must restore its fit-score column');
 assert.doesNotMatch(view.innerHTML, /Jazz Study/);
 api.state.filters.playlists.curator = 'all';
 api.state.filters.playlists.genre = 'Jazz / bossa';

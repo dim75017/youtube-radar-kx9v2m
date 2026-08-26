@@ -79,7 +79,10 @@ jobs:
         if: steps.coverage_before.outputs.complete != 'true' || inputs.force == true
         shell: bash
         run: |
-          active="$(python prepare_soundcharts_snapshot.py current --index spotify/index.html)"
+          # The lightweight public page no longer points at a multi-megabyte
+          # Soundcharts export. Resolve the reviewed source recorded by the
+          # compact browse catalogue instead of scraping the public HTML.
+          active="$(python prepare_soundcharts_snapshot.py browse-source --catalogue Spotify_Browse_Catalogue_data.js)"
           candidate="$RUNNER_TEMP/Spotify_Soundcharts_playlist_candidate.js"
           cp -- "$active" "$candidate"
           echo "path=$candidate" >> "$GITHUB_OUTPUT"
@@ -128,6 +131,15 @@ jobs:
           --previous "${{ steps.playlist_baseline.outputs.path }}"
           --candidate Spotify_Playlists_canonical_data.js
 
+      - name: Build the lazy playlist analytics payload
+        id: playlist_analytics
+        if: steps.coverage_before.outputs.complete != 'true' || inputs.force == true
+        continue-on-error: true
+        run: >-
+          python build_spotify_playlist_analytics.py
+          --playlists Spotify_Playlists_canonical_data.js
+          --output Spotify_Playlist_Analytics_data.js
+
       - name: Publish follower history independently
         if: steps.coverage_before.outputs.complete != 'true' || inputs.force == true
         env:
@@ -136,7 +148,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A -- Spotify_Playlists_canonical_data.js Spotify_Performance_data.js Spotify_Performance_tracks soundcharts-history
+          git add -A -- Spotify_Playlists_canonical_data.js Spotify_Playlist_Analytics_data.js Spotify_Performance_data.js Spotify_Performance_tracks soundcharts-history
           git diff --cached --quiet && exit 0
           git commit -m "data: refresh daily playlist followers"
           for attempt in 1 2 3; do
@@ -160,6 +172,12 @@ jobs:
             --playlists Spotify_Playlists_canonical_data.js \
             --day "$day" \
             --require-complete
+
+      - name: Require a fresh playlist analytics projection
+        if: (steps.coverage_before.outputs.complete != 'true' || inputs.force == true) && steps.playlist_analytics.outcome != 'success'
+        run: |
+          echo "Daily follower points were published, but the lazy analytics projection failed to build."
+          exit 1
 
       - name: Report a healthy no-op
         if: steps.coverage_before.outputs.complete == 'true' && inputs.force != true

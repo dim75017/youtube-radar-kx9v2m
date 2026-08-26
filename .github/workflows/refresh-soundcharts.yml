@@ -68,6 +68,7 @@ on:
       - 'tests/test_spotify_instant_filters_runtime.js'
       - 'tests/test_spotify_track_analytics_runtime.js'
       - 'tests/test_spotify_playlist_follower_windows.js'
+      - 'tests/test_spotify_playlist_analytics_runtime.js'
       - 'tests/test_spotify_binary_ownership_status.js'
       - 'tests/test_spotify_selection_artist_offers_status.js'
       - 'tests/test_spotify_selection_contact_state_machine.js'
@@ -84,6 +85,8 @@ on:
       - 'spotify/instant.css'
       - 'spotify/track-analytics.js'
       - 'spotify/track-analytics.css'
+      - 'spotify/playlist-analytics.js'
+      - 'spotify/playlist-analytics.css'
       - 'spotify/dashboard.css'
       - 'spotify/player.js'
       - 'spotify/player.css'
@@ -155,6 +158,7 @@ on:
       - 'tests/test_spotify_instant_filters_runtime.js'
       - 'tests/test_spotify_track_analytics_runtime.js'
       - 'tests/test_spotify_playlist_follower_windows.js'
+      - 'tests/test_spotify_playlist_analytics_runtime.js'
       - 'tests/test_spotify_binary_ownership_status.js'
       - 'tests/test_spotify_selection_artist_offers_status.js'
       - 'tests/test_spotify_selection_contact_state_machine.js'
@@ -171,6 +175,8 @@ on:
       - 'spotify/instant.css'
       - 'spotify/track-analytics.js'
       - 'spotify/track-analytics.css'
+      - 'spotify/playlist-analytics.js'
+      - 'spotify/playlist-analytics.css'
       - 'spotify/dashboard.css'
       - 'spotify/player.js'
       - 'spotify/player.css'
@@ -517,7 +523,7 @@ jobs:
         if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         shell: bash
         run: |
-          old_snapshot="$(python prepare_soundcharts_snapshot.py current --index spotify/index.html)"
+          old_snapshot="$(python prepare_soundcharts_snapshot.py browse-source --catalogue Spotify_Browse_Catalogue_data.js)"
           candidate="$RUNNER_TEMP/Spotify_Soundcharts_candidate.js"
           cp -- "$old_snapshot" "$candidate"
           echo "old=$old_snapshot" >> "$GITHUB_OUTPUT"
@@ -1012,7 +1018,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           node build_spotify_instant_runtime.js
-          git add -A -- Spotify_Playlists_canonical_data.js Spotify_Performance_data.js Spotify_Performance_tracks Spotify_Lofi_Relations_data.js Spotify_Instant_data.js Spotify_Catalogue_data.js soundcharts-history
+          python build_spotify_playlist_analytics.py --playlists Spotify_Playlists_canonical_data.js --output Spotify_Playlist_Analytics_data.js
+          node tests/test_spotify_playlist_analytics_runtime.js
+          git add -A -- Spotify_Playlists_canonical_data.js Spotify_Playlist_Analytics_data.js Spotify_Performance_data.js Spotify_Performance_tracks Spotify_Lofi_Relations_data.js Spotify_Instant_data.js Spotify_Catalogue_data.js soundcharts-history
           git diff --cached --quiet && exit 0
           git commit -m "data: refresh Soundcharts playlist covers"
           for attempt in 1 2 3; do
@@ -1161,10 +1169,6 @@ jobs:
           local_blob="$(git hash-object "$SNAPSHOT_NAME")"
           staged_blob="$(git rev-parse "$STAGED_SHA:$SNAPSHOT_NAME")"
           test "$local_blob" = "$staged_blob"
-          python prepare_soundcharts_snapshot.py activate \
-            --index spotify/index.html \
-            --expected-old "$OLD_SNAPSHOT" \
-            --new "$SNAPSHOT_NAME"
           python build_spotify_browse_catalogue.py \
             --source "$SNAPSHOT_NAME" \
             --existing Spotify_Browse_Catalogue_data.js \
@@ -1185,10 +1189,12 @@ jobs:
             --previous "${{ steps.playlist_baseline.outputs.path }}" \
             --candidate Spotify_Playlists_canonical_data.js
           node build_spotify_instant_runtime.js
+          python build_spotify_playlist_analytics.py --playlists Spotify_Playlists_canonical_data.js --output Spotify_Playlist_Analytics_data.js
+          node tests/test_spotify_playlist_analytics_runtime.js
           git add -A -- \
-            spotify/index.html \
             Spotify_Browse_Catalogue_data.js \
             Spotify_Playlists_canonical_data.js \
+            Spotify_Playlist_Analytics_data.js \
             Spotify_Performance_data.js \
             Spotify_Performance_tracks \
             Spotify_Lofi_Relations_data.js \

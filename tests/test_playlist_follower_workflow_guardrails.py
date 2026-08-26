@@ -86,6 +86,15 @@ class PlaylistFollowerWorkflowGuardrailsTests(unittest.TestCase):
         self.assertLess(validation, publication)
         self.assertNotIn("git add Spotify_Playlists_data.js", self.workflow)
 
+    def test_candidate_uses_the_reviewed_compact_catalogue_source(self):
+        candidate = self.workflow[
+            self.workflow.index("Create isolated read-only Soundcharts candidate") :
+            self.workflow.index("Size the request budget from the published cohort")
+        ]
+        self.assertIn("prepare_soundcharts_snapshot.py browse-source", candidate)
+        self.assertIn("Spotify_Browse_Catalogue_data.js", candidate)
+        self.assertNotIn("prepare_soundcharts_snapshot.py current --index", candidate)
+
     def test_partial_real_points_are_published_before_incomplete_coverage_alerts(self):
         publish = self.workflow.index("Publish follower history independently")
         strict_guard = self.workflow.index("Require 100 percent daily follower coverage")

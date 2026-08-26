@@ -58,6 +58,36 @@ function maxDate(...values) {
   return values.filter(Boolean).map(String).sort().pop() || '';
 }
 
+function normalizeCounterHistory(raw) {
+  const daily = new Map();
+  for (const point of Array.isArray(raw) ? raw : []) {
+    const day = text(Array.isArray(point) ? point[0] : point && point.date).slice(0, 10);
+    const rawAmount = Array.isArray(point) ? point[1] : point && point.value;
+    const amount = typeof rawAmount === 'boolean' ? null : finite(rawAmount);
+    const parsed = new Date(`${day}T00:00:00Z`);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(day) && amount != null && amount >= 0 &&
+        Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === day) {
+      daily.set(day, amount);
+    }
+  }
+  return [...daily.entries()].sort((left, right) => left[0].localeCompare(right[0]));
+}
+
+function shiftDay(day, offset) {
+  const parsed = new Date(`${day}T00:00:00Z`);
+  if (!Number.isFinite(parsed.getTime())) return '';
+  parsed.setUTCDate(parsed.getUTCDate() + offset);
+  return parsed.toISOString().slice(0, 10);
+}
+
+function counterDelta(raw, days) {
+  const points = normalizeCounterHistory(raw);
+  if (!points.length) return null;
+  const latest = points[points.length - 1];
+  const baseline = new Map(points).get(shiftDay(latest[0], -days));
+  return baseline == null ? null : latest[1] - baseline;
+}
+
 function facet(rows, index) {
   const counts = new Map();
   for (const row of rows) {
@@ -244,7 +274,7 @@ function main() {
   const playlistSchema = [
     'spotify_id', 'name', 'owner', 'curator_category', 'followers', 'tracks',
     'first_seen', 'last_seen', 'genre', 'use_case', 'fit', 'image_url',
-    'growth_30d', 'growth_days',
+    'growth_24h', 'growth_7d', 'growth_30d', 'growth_days',
   ];
   const labelSchema = [
     'key', 'name', 'tracks', 'streams', 'since', 'artist_count', 'logo', 'email',
@@ -338,13 +368,19 @@ function main() {
 
   const playlists = playlistsSource.rows
     .filter(row => Array.isArray(row) && row[p.big10k])
-    .map(row => [
-      text(row[p.id]), text(row[p.name]), text(row[p.owner]), text(row[p.curatorCat]),
-      finite(row[p.followers]), finite(row[p.tracks]), text(row[p.first_seen]),
-      text(row[p.last_seen]), text(row[p.genre]), text(row[p.use_case]),
-      finite(row[p.fit]), text(row[p.image_url]), finite(row[p.growth30]),
-      finite(row[p.growth30Days]),
-    ]);
+    .map(row => {
+      const history = playlistsSource.hist && playlistsSource.hist[text(row[p.id])];
+      const growth24 = counterDelta(history, 1);
+      const growth7 = counterDelta(history, 7);
+      const growth30 = counterDelta(history, 30);
+      return [
+        text(row[p.id]), text(row[p.name]), text(row[p.owner]), text(row[p.curatorCat]),
+        finite(row[p.followers]), finite(row[p.tracks]), text(row[p.first_seen]),
+        text(row[p.last_seen]), text(row[p.genre]), text(row[p.use_case]),
+        finite(row[p.fit]), text(row[p.image_url]), growth24, growth7, growth30,
+        growth30 == null ? finite(row[p.growth30Days]) : 30,
+      ];
+    });
 
   const labels = labelsSource.rows
     .filter(Array.isArray)
@@ -406,6 +442,7 @@ function main() {
     analytics: {
       editorial_min_followers: 10_000,
       preview_duration_seconds: finite(previewSource.duration_seconds) || 30,
+      playlist_followers_status: playlistsSource.meta && playlistsSource.meta.playlist_followers_status || {},
       performance: {
         version: performanceManifest.version,
         algorithm: performanceManifest.algorithm,
