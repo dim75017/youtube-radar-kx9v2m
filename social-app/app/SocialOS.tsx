@@ -5,7 +5,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
-  AUDIENCE_PERIODS,
   audiencePeriod,
   latestAudienceObservation,
   type AudienceHistory,
@@ -1743,7 +1742,7 @@ function AudienceDashboard({
   history: AudienceHistory | null;
   analytics: AudienceAnalytics | null;
 }) {
-  const [periodKey, setPeriodKey] = useState<AudiencePeriodKey>("30d");
+  const periodKey: AudiencePeriodKey = "30d";
   const [activePlatform, setActivePlatform] = useState<Platform>("youtube");
   const [requestedMetric, setRequestedMetric] = useState<AudienceAnalyticsMetricKey>(
     NATIVE_ANALYTICS_DEFAULT_METRIC.youtube,
@@ -1771,31 +1770,7 @@ function AudienceDashboard({
             <span className="section-kicker">Audience & engagement</span>
             <h2 id="audience-dashboard-title">Tableau de bord</h2>
           </div>
-          <span className="audience-refresh-label">
-            ↻ Collecte planifiée
-          </span>
         </header>
-
-        <div className="audience-period-control">
-          <span className="section-kicker">Durée</span>
-          <div
-            className="format-filter-tabs audience-period-tabs"
-            role="group"
-            aria-label="Période du tableau de bord"
-          >
-            {AUDIENCE_PERIODS.map((option) => (
-              <button
-                className={periodKey === option.key ? "active" : ""}
-                type="button"
-                aria-pressed={periodKey === option.key}
-                onClick={() => setPeriodKey(option.key)}
-                key={option.key}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       <div className="audience-platform-grid">
@@ -2092,6 +2067,7 @@ const NATIVE_PERIOD_BY_DASHBOARD_PERIOD: Record<
 const AUDIENCE_CHART_PERIODS = [
   { key: "30d", label: "30 jours", days: 30, snapshotKey: "30d" },
   { key: "90d", label: "90 jours", days: 90, snapshotKey: "90d" },
+  { key: "180d", label: "180 jours", days: 180, snapshotKey: null },
   { key: "360d", label: "360 jours", days: 360, snapshotKey: null },
   { key: "all", label: "All time", days: null, snapshotKey: "all" },
 ] as const satisfies readonly {

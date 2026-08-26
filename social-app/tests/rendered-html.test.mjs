@@ -138,13 +138,14 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     component.indexOf("function AudienceDashboard"),
     component.indexOf("function formatAudienceFollowers"),
   );
-  assert.match(audienceDashboard, /useState<AudiencePeriodKey>\("30d"\)/);
-  assert.match(audienceDashboard, /aria-label="P.riode du tableau de bord"/);
-  assert.match(audienceDashboard, /AUDIENCE_PERIODS\.map/);
+  assert.match(audienceDashboard, /const periodKey: AudiencePeriodKey = "30d"/);
   assert.match(audienceDashboard, /engagementByPeriod\[periodKey\]/);
   assert.match(audienceDashboard, /useState<string \| null>\(null\)/);
   assert.match(audienceDashboard, /setClientNow\(new Date\(\)\.toISOString\(\)\)/);
-  assert.match(audienceDashboard, /Collecte planifiée/);
+  assert.doesNotMatch(audienceDashboard, /Collecte planifiée/);
+  assert.doesNotMatch(audienceDashboard, /audience-period-control/);
+  assert.doesNotMatch(audienceDashboard, /audience-period-tabs/);
+  assert.doesNotMatch(audienceDashboard, /aria-label="P.riode du tableau de bord"/);
   assert.match(audienceDashboard, /audienceGrowthFromObservedPoints\(points\)/);
   assert.match(
     audienceDashboard,

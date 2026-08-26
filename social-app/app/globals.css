@@ -4253,7 +4253,7 @@ a {
 
 .audience-dashboard-toolbar {
   display: grid;
-  grid-template-columns: minmax(390px, 0.8fr) minmax(520px, 1.2fr);
+  grid-template-columns: 1fr;
   align-items: end;
   gap: 16px;
   margin-bottom: 6px;

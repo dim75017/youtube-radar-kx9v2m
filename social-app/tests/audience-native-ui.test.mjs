@@ -11,6 +11,10 @@ test("consolidates audience analytics into one truthful selectable chart", async
     component.indexOf("type NativeAnalyticsMetricMeta"),
     component.indexOf("function TrendFeedView"),
   );
+  const dashboard = component.slice(
+    component.indexOf("function AudienceDashboard"),
+    component.indexOf("type NativeAnalyticsMetricMeta"),
+  );
 
   assert.match(component, /audienceAnalytics\?: AudienceAnalytics \| null/);
   assert.match(component, /analytics=\{audienceAnalytics\}/);
@@ -23,10 +27,19 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(explorer, /PLATFORM_ORDER\.map/);
   assert.match(explorer, /aria-pressed=\{platform === activePlatform\}/);
   assert.match(explorer, /const AUDIENCE_CHART_PERIODS = \[/);
-  assert.match(explorer, /key: "30d", label: "30 jours", days: 30/);
-  assert.match(explorer, /key: "90d", label: "90 jours", days: 90/);
-  assert.match(explorer, /key: "360d", label: "360 jours", days: 360/);
-  assert.match(explorer, /key: "all", label: "All time", days: null/);
+  const periodDeclarations = explorer
+    .match(/const AUDIENCE_CHART_PERIODS = \[([\s\S]*?)\] as const/)?.[1]
+    ?.matchAll(/\{ key: "([^"]+)", label: "([^"]+)", days: (\d+|null), snapshotKey:/g);
+  assert.deepEqual(
+    [...(periodDeclarations ?? [])].map((match) => [match[1], match[2], match[3]]),
+    [
+      ["30d", "30 jours", "30"],
+      ["90d", "90 jours", "90"],
+      ["180d", "180 jours", "180"],
+      ["360d", "360 jours", "360"],
+      ["all", "All time", "null"],
+    ],
+  );
   assert.match(explorer, /useState<AudienceChartPeriodKey>\("30d"\)/);
   assert.match(explorer, /aria-label="Période du graphique"/);
   assert.match(explorer, /aria-pressed=\{option\.key === chartPeriodKey\}/);
@@ -38,6 +51,10 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.doesNotMatch(component, /function AudienceNativePlatformCard/);
   assert.doesNotMatch(component, /audience-native-platform-grid/);
   assert.doesNotMatch(component, /audience-evolution-block/);
+  assert.doesNotMatch(dashboard, /Collecte planifiée/);
+  assert.doesNotMatch(dashboard, /audience-period-control/);
+  assert.doesNotMatch(dashboard, /audience-period-tabs/);
+  assert.doesNotMatch(dashboard, /aria-label="Période du tableau de bord"/);
 
   assert.match(explorer, /function audienceMetricSeries/);
   assert.match(explorer, /function audienceMetricEndDate/);
@@ -105,9 +122,10 @@ test("keeps the audience curve clean and reveals the exact hovered value instant
   assert.match(chart, /Math\.max\(180, Math\.min\(360, availableHeight\)\)/);
   assert.match(styles, /\.main\.main-dashboard\s*\{[\s\S]*?padding-bottom:\s*8px/);
 
-  // Les quatre filtres du graphe restent disponibles après l'amélioration du survol.
+  // Les cinq filtres exacts du graphe restent disponibles après l'amélioration du survol.
   assert.match(component, /key: "30d", label: "30 jours", days: 30/);
   assert.match(component, /key: "90d", label: "90 jours", days: 90/);
+  assert.match(component, /key: "180d", label: "180 jours", days: 180/);
   assert.match(component, /key: "360d", label: "360 jours", days: 360/);
   assert.match(component, /key: "all", label: "All time", days: null/);
 });
