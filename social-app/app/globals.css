@@ -5001,7 +5001,7 @@ a {
 }
 
 .audience-demographic-card.kind-ages .audience-demographic-list {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .audience-demographic-list li {
@@ -5075,6 +5075,21 @@ a {
   color: var(--dim);
   font-size: 9px;
   line-height: 1.35;
+}
+
+.audience-demographic-country-residual {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 7px;
+}
+
+.audience-demographic-country-residual strong {
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
 }
 
 .audience-demographic-empty {
@@ -5177,10 +5192,6 @@ a {
   }
 
   .audience-demographics-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .audience-demographic-card.kind-ages .audience-demographic-list {
     grid-template-columns: 1fr;
   }
 

@@ -165,7 +165,7 @@ test("shows native demographic dimensions below the chart and follows the select
     explorer.indexOf("<AudienceDemographicsPanel") > explorer.indexOf("audience-native-chart-shell"),
     "the demographic section must remain below the curve",
   );
-  assert.match(explorer, /Principaux pays/);
+  assert.match(explorer, /Top pays/);
   assert.match(explorer, /Répartition par âge/);
   assert.match(explorer, /Répartition par genre/);
   assert.match(explorer, /flags\/\$\{entry\.countryCode\?\.toLowerCase\(\) \?\? "globe"\}\.svg/);
@@ -177,9 +177,13 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.doesNotMatch(explorer, /audience-demographic-empty" role="status"/);
   assert.match(explorer, /<span className="audience-demographic-bar" aria-hidden="true">/);
   assert.match(explorer, /audienceDemographicDisplayEntries\(dimension\.entries, kind\)/);
+  assert.match(explorer, /allDisplayEntries\.filter\(\(entry\) => entry\.countryCode !== null\)/);
+  assert.match(explorer, /countryEntries\.slice\(0, 10\)/);
+  assert.match(explorer, /audience-demographic-country-residual/);
   assert.match(explorer, /entry\.share === null \? "—"/);
   assert.match(explorer, /55–64 et 65\+ regroupés dans 55\+/);
-  assert.match(styles, /\.audience-demographic-card\.kind-ages \.audience-demographic-list\s*\{[\s\S]*?repeat\(2/);
+  assert.match(styles, /\.audience-demographic-card\.kind-ages \.audience-demographic-list\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.doesNotMatch(styles, /\.audience-demographic-card\.kind-ages \.audience-demographic-list\s*\{[^}]*repeat\(2/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.audience-demographics-grid\s*\{[\s\S]*?repeat\(2/);
 });
 

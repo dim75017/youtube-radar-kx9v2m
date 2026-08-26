@@ -2373,7 +2373,7 @@ function AudienceDemographicsPanel({
           dimension={snapshot?.countries ?? null}
           emptyLabel={`Localisation non disponible pour ${meta.label}`}
           kind="countries"
-          title="Principaux pays"
+          title="Top pays"
         />
         <AudienceDemographicCard
           dimension={snapshot?.ages ?? null}
@@ -2406,11 +2406,17 @@ function AudienceDemographicCard({
   const allDisplayEntries = dimension
     ? audienceDemographicDisplayEntries(dimension.entries, kind)
     : [];
+  const countryEntries = kind === "countries"
+    ? allDisplayEntries.filter((entry) => entry.countryCode !== null)
+    : [];
+  const countryAggregateEntry = kind === "countries"
+    ? allDisplayEntries.find((entry) => entry.countryCode === null) ?? null
+    : null;
   const visibleEntries = kind === "countries"
-    ? allDisplayEntries.slice(0, 5)
+    ? countryEntries.slice(0, 10)
     : allDisplayEntries;
   const hiddenCountryCount = dimension && kind === "countries"
-    ? Math.max(0, allDisplayEntries.length - visibleEntries.length)
+    ? Math.max(0, countryEntries.length - visibleEntries.length)
     : 0;
   const unreportedAgeCount = kind === "ages"
     ? visibleEntries.filter((entry) => !entry.reported).length
@@ -2451,6 +2457,16 @@ function AudienceDemographicCard({
               </li>
             ))}
           </ul>
+          {countryAggregateEntry ? (
+            <p className="audience-demographic-note audience-demographic-country-residual">
+              <span>{countryAggregateEntry.label}</span>
+              <strong>
+                {countryAggregateEntry.share === null
+                  ? "—"
+                  : formatAudienceDemographicShare(countryAggregateEntry.share)}
+              </strong>
+            </p>
+          ) : null}
           {unreportedAgeCount > 0 || usesMerged55Plus ? (
             <p className="audience-demographic-note">
               {unreportedAgeCount > 0 ? "— = non fourni" : null}
