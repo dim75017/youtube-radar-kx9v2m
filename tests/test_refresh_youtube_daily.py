@@ -3187,6 +3187,61 @@ class DailyHistoryTests(unittest.TestCase):
             )
             self.assertEqual(recovery_history["d"][missing_id][-1], [third, 201])
 
+    def test_cookie_free_oembed_404_quarantines_in_one_complete_scan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "snapshot.js"
+            output = root / "youtube-shard-0.json"
+            manifest = root / "tracked.json"
+            public_id = "abcdefghijk"
+            unavailable_id = "zyxwvutsrqp"
+            radar.write_snapshot(snapshot, {
+                "d": {
+                    "all": [
+                        {"vid": public_id, "title": "Public"},
+                        {"vid": unavailable_id, "title": "Gone"},
+                    ],
+                    "trends": [], "news": [], "ours": [], "kids": [], "lives": [],
+                }
+            })
+            manifest.write_text(json.dumps({
+                "version": 1,
+                "scan_scope": "standard",
+                "ids": [public_id, unavailable_id],
+                "quarantine_ids": [],
+            }), encoding="utf-8")
+
+            def tracked(video_id, now_ms):
+                if video_id == unavailable_id:
+                    return None
+                return {"vid": video_id, "views": 100_001, "pub": 1_700_000_000_000}
+
+            with patch.dict(radar.os.environ, {"YOUTUBE_API_KEY": ""}), patch.object(
+                radar, "MIN_TRACK_RATIO", 0.0
+            ), patch.object(
+                radar, "fetch_owned_ydl_rows", return_value={}
+            ), patch.object(
+                radar, "fetch_one_video", side_effect=tracked
+            ), patch.object(
+                radar, "query_specs", return_value=[]
+            ), patch.object(
+                radar,
+                "public_oembed_confirms_unavailable",
+                side_effect=lambda video_id: video_id == unavailable_id,
+            ) as probe:
+                artifact = radar.run_shard(
+                    snapshot,
+                    output,
+                    0,
+                    1,
+                    tracked_manifest=manifest,
+                    scan_scope="standard",
+                )
+
+        self.assertEqual(artifact["tracked_failed_ids"], [unavailable_id])
+        self.assertEqual(artifact["tracked_unavailable_ids"], [unavailable_id])
+        probe.assert_called_once_with(unavailable_id)
+
     def test_fallback_single_miss_then_success_never_quarantines(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -2125,6 +2125,41 @@ def fetch_one_video(video_id: str, now_ms: int) -> dict | None:
     return info_to_row(info or {}, now_ms)
 
 
+def public_oembed_confirms_unavailable(video_id: str) -> bool:
+    """Return true only when YouTube's public, cookie-free oEmbed endpoint says 404.
+
+    yt-dlp deliberately uses ``ignoreerrors`` for the large daily refresh, so a
+    deleted/private video and a transient extractor failure both surface as a
+    missing row.  The former can be quarantined immediately, while the latter
+    must keep the existing two-scan fail-closed policy.  A public oEmbed 404 is
+    a narrow, authoritative signal that the video is no longer publicly
+    addressable; every other response or network error remains inconclusive.
+    """
+    if not VIDEO_ID.match(str(video_id or "")):
+        return False
+    watch_url = f"https://www.youtube.com/watch?v={video_id}"
+    endpoint = "https://www.youtube.com/oembed?" + urllib.parse.urlencode({
+        "url": watch_url,
+        "format": "json",
+    })
+    request = urllib.request.Request(
+        endpoint,
+        headers={
+            "Accept": "application/json",
+            "Accept-Language": "en",
+            "User-Agent": "Mozilla/5.0 (compatible; LofiRadar/1.0)",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            response.read(1)
+        return False
+    except urllib.error.HTTPError as exc:
+        return exc.code == 404
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return False
+
+
 def fetch_search(spec: dict, now_ms: int) -> tuple[list[dict], int, int]:
     # Current yt-dlp releases no longer expose ``ytsearchdate``.  Use the
     # actual YouTube "This month" search filter; known catalogue videos are
@@ -3340,8 +3375,22 @@ def run_shard(
 
     tracked_fresh_ids = sorted(set(ids) & set(fresh))
     tracked_failed_ids = sorted(set(ids) - set(tracked_fresh_ids))
-    tracked_unavailable_ids = tracked_failed_ids if api_key else []
+    if api_key:
+        tracked_unavailable_ids = tracked_failed_ids
+    else:
+        tracked_unavailable_ids = sorted(
+            video_id
+            for video_id in tracked_failed_ids
+            if public_oembed_confirms_unavailable(video_id)
+        )
     tracked_recovered_ids = sorted(set(quarantine_ids) & set(fresh))
+    if tracked_unavailable_ids:
+        print(
+            f"INFO shard {shard}: {len(tracked_unavailable_ids)} tracked IDs "
+            "confirmed publicly unavailable by YouTube oEmbed: "
+            + ", ".join(tracked_unavailable_ids[:24]),
+            file=sys.stderr,
+        )
     if tracked_failed_ids:
         print(
             f"WARN shard {shard}: {len(tracked_failed_ids)} tracked IDs missing: "
