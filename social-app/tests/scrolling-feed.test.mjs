@@ -43,18 +43,26 @@ const expectedSources = new Map([
   ["DZRlrpLSBC2", { author: "finding.unforgettable.songs", likes: 18_300 }],
   ["Dce3sikyoqt", { author: "theangelicanero", likes: 268_800 }],
   ["DcEN_awjpoC", { author: "edmmusic", likes: 50_800 }],
+  ["DcXA1WNCCNO", { author: "nature_aroundclock", likes: 102_000 }],
+  ["Dcf8s00gWRD", { author: "winxclub", likes: 81_800 }],
+  ["Db89Cn4hrAX", { author: "subtronics", likes: 37_700 }],
+  ["DcgN-zooXp4", { author: "cyberpunkgame", likes: 26_200 }],
+  ["DcfW6l-iHAF", { author: "thescenicgamerofficial", likes: 23_700 }],
+  ["DcJuyWRvjnK", { author: "rebbford", likes: 10_600 }],
 ]);
 
-test("the connected Instagram snapshot preserves the initial and extended private runs", () => {
+test("the connected Instagram snapshot preserves all three private runs", () => {
   assert.match(feed.capturedAt, /^2026-08-26/u);
   assert.equal(feed.minimumLikes, SCROLLING_MINIMUM_LIKES);
-  assert.equal(feed.runs.length, 2);
-  assert.equal(feed.items.length, 24);
+  assert.equal(feed.runs.length, 3);
+  assert.equal(feed.items.length, 30);
 
   const initialRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26");
   const extendedRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26-extended");
+  const eveningRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26-evening");
   assert.ok(initialRun);
   assert.ok(extendedRun);
+  assert.ok(eveningRun);
   assert.equal(initialRun.platform, "instagram");
   assert.equal(initialRun.surface, "home");
   assert.equal(initialRun.browserContext, SCROLLING_BROWSER_CONTEXT);
@@ -67,6 +75,14 @@ test("the connected Instagram snapshot preserves the initial and extended privat
   assert.equal(extendedRun.sponsoredCount, 0);
   assert.equal(feed.items.filter((item) => item.runId === extendedRun.id).length, 16);
   assert.ok(feed.items.filter((item) => item.runId === extendedRun.id).length < extendedRun.qualifyingCount);
+  assert.equal(eveningRun.browserContext, SCROLLING_BROWSER_CONTEXT);
+  assert.equal(eveningRun.seenCount, 151);
+  assert.equal(eveningRun.qualifyingCount, 53);
+  assert.equal(eveningRun.sponsoredCount, 0);
+  assert.equal(feed.items.filter((item) => item.runId === eveningRun.id).length, 6);
+  assert.ok(feed.items.filter((item) => item.runId === eveningRun.id).length < eveningRun.qualifyingCount);
+  assert.ok(Date.parse(eveningRun.capturedAt) > Date.parse(extendedRun.capturedAt));
+  assert.equal(feed.capturedAt, eveningRun.capturedAt);
 
   let likes = 0;
   for (const item of feed.items) {
@@ -84,17 +100,27 @@ test("the connected Instagram snapshot preserves the initial and extended privat
     assert.ok(item.source.metrics.likes >= SCROLLING_MINIMUM_LIKES);
     likes += item.source.metrics.likes;
   }
-  assert.equal(likes, 2_539_500);
+  assert.equal(likes, [...expectedSources.values()].reduce((sum, source) => sum + source.likes, 0));
 });
 
 test("the exploration taxonomy is broad and distinguishes observed lenses from future probes", () => {
   assert.equal(themes.explorationLenses.length, 30);
   assert.deepEqual(themes.explorationLenses, feed.explorationLenses);
-  assert.equal(feed.explorationLenses.filter((lens) => lens.observedInSnapshot).length, 17);
+  assert.equal(feed.explorationLenses.filter((lens) => lens.observedInSnapshot).length, 20);
   assert.equal(
     feed.explorationLenses.find((lens) => lens.id === "animal-companions")?.observedInSnapshot,
     true,
   );
+  for (const newlyObserved of [
+    "lore-pov-mini-episodes",
+    "easter-eggs-and-alternate-rooms",
+    "cozy-games-rpg-worlds",
+  ]) {
+    assert.equal(
+      feed.explorationLenses.find((lens) => lens.id === newlyObserved)?.observedInSnapshot,
+      true,
+    );
+  }
   for (const required of [
     "study-exams-pomodoro",
     "adhd-focus-rituals",

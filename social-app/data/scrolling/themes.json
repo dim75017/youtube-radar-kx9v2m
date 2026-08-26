@@ -191,7 +191,7 @@
       "group": "storytelling",
       "specialty": "Continuité narrative, points de vue et épisodes courts",
       "description": "Formats sérialisables qui enrichissent l’univers par un détail canonique, un POV ou une micro-intrigue.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["L’épisode fonctionne seul et enrichit le lore", "Le POV est annoncé dès l’ouverture"],
       "adaptationAngles": ["Une journée depuis le POV du chat ou du chien", "Trois pièces alternatives reliées par un objet"],
       "rejectIf": ["Contredit le canon ou dépend d’une longue exposition"]
@@ -367,7 +367,7 @@
       "group": "community",
       "specialty": "Détails cachés, variantes de décor et canon",
       "description": "Formats qui récompensent l’attention par des détails cohérents et invitent au revisionnage.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["Le détail caché est vérifiable", "La variante enrichit le monde sans casser le canon"],
       "adaptationAngles": ["Cacher le chien dans plusieurs pièces de Boy", "Faire évoluer un objet de la chambre de Girl"],
       "rejectIf": ["Secret mensonger, faux indice ou incohérence canonique"]
@@ -378,7 +378,7 @@
       "group": "community",
       "specialty": "Taverne fantasy, espace, cyberpunk et quêtes calmes",
       "description": "Variations de monde inspirées des codes du jeu sans copier une licence.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["Le monde suit une règle visuelle simple", "La quête reste calme et contemplative"],
       "adaptationAngles": ["Girl dans une taverne fantasy avec le chat", "Boy et le chien entre station spatiale et ruelle cyberpunk"],
       "rejectIf": ["Reproduit personnages, interfaces ou décors protégés"]

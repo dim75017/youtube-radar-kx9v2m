@@ -1,15 +1,16 @@
 {
   "version": 1,
-  "capturedAt": "2026-08-26T15:53:21+02:00",
+  "capturedAt": "2026-08-26T23:04:54+02:00",
   "minimumLikes": 10000,
-  "methodology": "Deux lectures de l’accueil Instagram ont été réalisées dans l’unique fenêtre de navigation privée explicitement confiée à @lofi.radar, audio muet et sans interaction d’engagement. Le lot étendu déduplique 504 URL de posts et relève 236 compteurs publics d’au moins 10 000 likes ; 16 sources seulement sont retenues pour leur compatibilité éditoriale, en plus des huit sources du test initial. Chaque source reste séparée de son adaptation Lofi : ce snapshot organique ne démontre ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire.",
+  "methodology": "Trois lectures de l’accueil Instagram ont été réalisées dans l’unique fenêtre de navigation privée explicitement confiée à @lofi.radar, audio muet et sans interaction d’engagement. Le run du soir a observé 151 URL uniques dans son propre lot et relevé 53 compteurs publics d’au moins 10 000 likes ; six sources seulement sont retenues après revue humaine. Le radar contient désormais 30 cartes éditoriales : huit du test initial, seize du lot étendu et six du run du soir. Chaque source reste séparée de son adaptation Lofi : ces snapshots organiques ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire.",
   "limitations": [
     "Les compteurs de likes ont été relevés tels qu’affichés par Instagram et sont conservés avec une précision platform-rounded.",
     "Les vues, commentaires, partages, enregistrements et dates de publication non observés restent à null plutôt que d’être estimés.",
     "Le snapshot ne contient aucun cookie, jeton, identifiant de connexion, donnée de session ou média signé éphémère.",
     "Le décompte 504 / 236 est conservateur : un lot intermédiaire non restitué par le contrôleur et les cartes virtualisées par Instagram sont exclus plutôt qu’estimés.",
     "Zéro carte n’affichait la mention Sponsorisé ; cela décrit ce flux organique observé et ne prouve pas l’absence de campagnes payantes ailleurs.",
-    "Le flux s’est progressivement élargi hors de la musique ; les cartes hors univers et les contenus signalés IA ont été écartés de la sélection éditoriale."
+    "Le flux s’est progressivement élargi hors de la musique ; les cartes hors univers et les contenus signalés IA ont été écartés de la sélection éditoriale.",
+    "Le run du soir compte 151 URL uniques et 53 publications au seuil dans ce lot uniquement ; les volumes des trois runs ne sont pas additionnés comme un total dédupliqué entre passages."
   ],
   "explorationLenses": [
     {
@@ -202,7 +203,7 @@
       "group": "storytelling",
       "specialty": "Continuité narrative, points de vue et épisodes courts",
       "description": "Formats sérialisables qui enrichissent l’univers par un détail canonique, un POV ou une micro-intrigue.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["L’épisode fonctionne seul et enrichit le lore", "Le POV est annoncé dès l’ouverture"],
       "adaptationAngles": ["Une journée depuis le POV du chat ou du chien", "Trois pièces alternatives reliées par un objet"],
       "rejectIf": ["Contredit le canon ou dépend d’une longue exposition"]
@@ -378,7 +379,7 @@
       "group": "community",
       "specialty": "Détails cachés, variantes de décor et canon",
       "description": "Formats qui récompensent l’attention par des détails cohérents et invitent au revisionnage.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["Le détail caché est vérifiable", "La variante enrichit le monde sans casser le canon"],
       "adaptationAngles": ["Cacher le chien dans plusieurs pièces de Boy", "Faire évoluer un objet de la chambre de Girl"],
       "rejectIf": ["Secret mensonger, faux indice ou incohérence canonique"]
@@ -389,7 +390,7 @@
       "group": "community",
       "specialty": "Taverne fantasy, espace, cyberpunk et quêtes calmes",
       "description": "Variations de monde inspirées des codes du jeu sans copier une licence.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["Le monde suit une règle visuelle simple", "La quête reste calme et contemplative"],
       "adaptationAngles": ["Girl dans une taverne fantasy avec le chat", "Boy et le chien entre station spatiale et ruelle cyberpunk"],
       "rejectIf": ["Reproduit personnages, interfaces ou décors protégés"]
@@ -461,6 +462,32 @@
         "Le seuil qualifie un compteur visible, pas une pertinence Lofi : seuls 16 exemples sont détaillés après revue humaine.",
         "Aucune mention Sponsorisé n’a été rencontrée ; ce run reste un scan de formats organiques, pas une bibliothèque publicitaire.",
         "Lecture seule et audio muet : aucun like, enregistrement, abonnement ou commentaire n’a été effectué pendant ce lot."
+      ]
+    },
+    {
+      "id": "instagram-home-2026-08-26-evening",
+      "platform": "instagram",
+      "surface": "home",
+      "browserContext": "incognito-explicitly-delegated",
+      "capturedAt": "2026-08-26T23:04:54+02:00",
+      "seenCount": 151,
+      "qualifyingCount": 53,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "animal-companions",
+        "lore-pov-mini-episodes",
+        "releases-artist-collabs",
+        "fan-art-and-spotlights",
+        "visual-formats-lab",
+        "easter-eggs-and-alternate-rooms",
+        "cozy-games-rpg-worlds"
+      ],
+      "limitations": [
+        "Comptage conservateur après déduplication des URL visibles pendant ce passage ; les cartes virtualisées non restituées ne sont pas estimées.",
+        "Le seuil de 10 000 likes qualifie un compteur public visible, pas une pertinence Lofi : six exemples seulement sont détaillés après revue humaine.",
+        "Aucune mention Sponsorisé n’a été rencontrée ; ce run reste un scan de formats organiques et ne constitue pas une bibliothèque exhaustive de publicités.",
+        "Lecture seule, audio muet et zéro interaction sociale : aucun like, enregistrement, abonnement, commentaire, message ou partage.",
+        "Les contenus hors univers, ambigus ou explicitement signalés comme générés par IA ont été exclus de la sélection éditoriale."
       ]
     }
   ],
@@ -1621,6 +1648,282 @@
           "Production 100 % humaine : interview, montage, illustration et musique fournis ou réalisés par les ayants droit et l’équipe.",
           "Aucune image, vidéo, voix ou musique générée par IA.",
           "Dates, crédits, fichiers et effets de carrière doivent être confirmés par l’artiste avant publication."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "moon-flower-forced-perspective",
+      "runId": "instagram-home-2026-08-26-evening",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcXA1WNCCNO/",
+        "postId": "DcXA1WNCCNO",
+        "author": "nature_aroundclock",
+        "sourceLabel": "Fleur tenue en perspective devant la lune",
+        "capturedAt": "2026-08-26T23:04:54+02:00",
+        "publishedAt": "2026-08-22T22:45:06.000Z",
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 102000, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["visual-formats-lab"],
+        "hook": "Un objet minuscule semble toucher la lune grâce à un alignement physique immédiatement lisible.",
+        "mechanic": "La main cherche l’alignement parfait, le tient une seconde, puis un léger déplacement révèle la perspective forcée.",
+        "visualCue": "La silhouette de la fleur se centre sur le disque lunaire avec une profondeur réelle entre premier plan et ciel.",
+        "reasonToStop": "Le spectateur attend la seconde exacte où les deux formes vont coïncider.",
+        "whyRelevant": "La fenêtre iconique de Girl permet une illusion céleste propriétaire et un rôle comique naturel pour le chat.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "La fleur qui attrape la lune",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Girl aligne une fleur pressée avec la lune depuis sa fenêtre ; au moment parfait, le chat pousse doucement son poignet et l’ombre des pétales devient une constellation dessinée.",
+        "openingText": "Attends… encore un millimètre.",
+        "sequence": [
+          "Girl lève une fleur pressée devant la fenêtre.",
+          "Trois micro-ajustements rapprochent la fleur et la lune.",
+          "L’alignement tient une seconde, puis le chat touche son poignet.",
+          "La fleur rate la lune mais ses pétales dessinent une constellation originale."
+        ],
+        "caption": "Pas exactement le plan. Peut-être mieux. 🌙",
+        "audioDirection": "Piste nocturne originale du catalogue, avec un carillon joué et enregistré par un musicien humain au moment de l’alignement.",
+        "productionGuardrails": [
+          "Production 100 % humaine : fleur réelle ou dessinée, layout, animation et compositing réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Ne pas reprendre le cadrage ni l’image de la source ; construire une perspective originale dans la chambre canonique."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "lofi-world-vertical-trailer",
+      "runId": "instagram-home-2026-08-26-evening",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/Dcf8s00gWRD/",
+        "postId": "Dcf8s00gWRD",
+        "author": "winxclub",
+        "sourceLabel": "Trailer vertical explorant plusieurs lieux reconnaissables d’un univers de jeu",
+        "capturedAt": "2026-08-26T23:04:54+02:00",
+        "publishedAt": "2026-08-26T10:01:14.000Z",
+        "format": "video",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 81800, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["lore-pov-mini-episodes", "cozy-games-rpg-worlds", "easter-eggs-and-alternate-rooms", "visual-formats-lab"],
+        "hook": "Une porte s’ouvre immédiatement sur un premier lieu iconique et promet une visite complète du monde.",
+        "mechanic": "Un trailer vertical enchaîne plusieurs lieux cohérents et donne à chaque décor un détail qui invite à revoir la séquence.",
+        "visualCue": "Les transitions plein cadre et une architecture distincte par lieu rendent la progression compréhensible sans le son.",
+        "reasonToStop": "Le spectateur veut voir le prochain décor et comprendre le fil qui relie les mondes.",
+        "whyRelevant": "Le Lofi universe peut élargir son lore sans licence tierce ni exposition longue.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Trois portes après minuit",
+        "cast": { "character": "both", "companion": "cat-and-dog" },
+        "concept": "Un trailer original fait traverser à Girl, Boy, au chat et au chien trois variantes du Lofi universe : observatoire calme, train suspendu et taverne musicale ; une étoile de papier relie les lieux.",
+        "openingText": "Après minuit, certaines portes changent de destination.",
+        "sequence": [
+          "Le chat pousse une porte de la chambre vers un observatoire original.",
+          "L’étoile de papier s’envole dans un train nocturne où Boy et le chien la suivent.",
+          "Le train ouvre directement sur une taverne musicale dessinée par l’équipe.",
+          "L’étoile revient sous la porte de la chambre, prête pour un épisode suivant."
+        ],
+        "caption": "Observatoire, train ou taverne : quelle porte on rouvre ?",
+        "audioDirection": "Un même motif original, réorchestré par des musiciens humains pour chaque lieu : célesta, rythme de train puis trio acoustique.",
+        "productionGuardrails": [
+          "Production 100 % humaine : concept art, storyboard, décors, animation et compositing par des artistes crédités.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Aucun personnage, sort, décor, logo ou interface repris de Winx ou d’un jeu existant."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "animal-pun-release-key-art",
+      "runId": "instagram-home-2026-08-26-evening",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/Db89Cn4hrAX/",
+        "postId": "Db89Cn4hrAX",
+        "author": "subtronics",
+        "sourceLabel": "Illustration Bird Phone et jeu de mots utilisés pour annoncer une sortie",
+        "capturedAt": "2026-08-26T23:04:54+02:00",
+        "publishedAt": "2026-08-12T19:52:58.000Z",
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 37700, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["releases-artist-collabs", "animal-companions", "visual-formats-lab"],
+        "hook": "Une seule illustration absurde et un jeu de mots livrent à la fois le gag et l’annonce de sortie.",
+        "mechanic": "L’animal interagit littéralement avec un objet lié au son ; la punchline conduit vers l’information de sortie.",
+        "visualCue": "La silhouette animale, l’accessoire sonore central et la typographie courte se lisent dans le même regard.",
+        "reasonToStop": "Le visuel se comprend avant la légende puis la phrase ajoute un second niveau.",
+        "whyRelevant": "Le chien de Boy peut porter une annonce musicale attachante sans répéter le portrait d’artiste déjà présent.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Il avait déjà le morceau dans l’oreille",
+        "cast": { "character": "lofi-boy", "companion": "dog" },
+        "concept": "Illustration unique : le chien colle une oreille au pavillon d’un gramophone original tandis que l’autre vise Boy ; la date du nouveau titre apparaît sur l’étiquette du disque.",
+        "openingText": "Il l’a entendu avant tout le monde.",
+        "sequence": [
+          "Plan fixe sur le chien et le gramophone dessinés à la main.",
+          "Son oreille se relève au premier accord original.",
+          "Boy comprend qu’il a été devancé et retourne le disque.",
+          "L’étiquette révèle titre, crédits et date vérifiés."
+        ],
+        "caption": "Le contrôle qualité a quatre pattes. Nouveau titre vendredi — crédits et lien en bio.",
+        "audioDirection": "Extrait masterisé du titre réellement annoncé, limité au segment autorisé ; petit bruit de pavillon enregistré humainement.",
+        "productionGuardrails": [
+          "Production 100 % humaine : illustration, lettering et micro-animation réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "N’annoncer que des crédits et une date validés ; créer un jeu de mots original sans reprendre Bird Phone."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "hand-painted-lofi-console",
+      "runId": "instagram-home-2026-08-26-evening",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcgN-zooXp4/",
+        "postId": "DcgN-zooXp4",
+        "author": "cyberpunkgame",
+        "sourceLabel": "Ordinateur rétro peint à la main, révélé par des gros plans de fabrication",
+        "capturedAt": "2026-08-26T23:04:54+02:00",
+        "publishedAt": "2026-08-26T12:34:43.000Z",
+        "format": "video",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 26200, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["cozy-games-rpg-worlds", "visual-formats-lab", "fan-art-and-spotlights"],
+        "hook": "Le premier gros plan prouve immédiatement que l’objet a été peint à la main.",
+        "mechanic": "Un making-of tactile montre croquis, couches de peinture, détails cachés puis reveal de l’objet entier avec crédit artiste.",
+        "visualCue": "Traces de pinceau, masquage, texture et imperfections volontaires précèdent le plan final.",
+        "reasonToStop": "Le spectateur veut comprendre comment les petits détails vont former un objet cohérent.",
+        "whyRelevant": "Un objet Lofi réel valorise les artistes humains et peut enrichir le lore sans devenir un simple mockup numérique.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Study Station 88 — peinte à la main",
+        "cast": { "character": "both", "companion": "cat-and-dog" },
+        "concept": "Un artiste mandaté transforme un lecteur cassette ou boîtier rétro légalement acquis en objet original Lofi : Girl et le chat côté nuit, Boy et le chien côté aube, reliés par une ville inventée.",
+        "openingText": "Pas un render. Chaque lumière est un coup de pinceau.",
+        "sequence": [
+          "Macro du croquis et signature de l’artiste humain.",
+          "Couches de peinture montrant séparément nuit, aube et ville originale.",
+          "Ajout de quatre easter eggs Lofi documentés.",
+          "Reveal à 360° de l’objet fini, puis crédit plein écran."
+        ],
+        "caption": "Des heures de pinceau dans quelques centimètres de ville. Artiste : [crédit validé].",
+        "audioDirection": "Beat original construit avec des sons réels de pinceau, ruban et boutons enregistrés par l’équipe.",
+        "productionGuardrails": [
+          "Production 100 % humaine : objet peint physiquement, captation macro et montage par l’équipe ; accord et crédit de l’artiste documentés.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Univers graphique entièrement original : ne reprendre aucun logo, nom, interface ou motif Cyberpunk ou Commodore protégé."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "retro-console-in-the-park",
+      "runId": "instagram-home-2026-08-26-evening",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcfW6l-iHAF/",
+        "postId": "DcfW6l-iHAF",
+        "author": "thescenicgamerofficial",
+        "sourceLabel": "Console et écran CRT rétro installés dans un parc",
+        "capturedAt": "2026-08-26T23:04:54+02:00",
+        "publishedAt": "2026-08-26T04:31:03.000Z",
+        "format": "video",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 23700, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["cozy-games-rpg-worlds", "visual-formats-lab"],
+        "hook": "Un objet rétro placé dans un décor où il ne devrait pas être crée une question immédiate.",
+        "mechanic": "Le contraste intérieur-extérieur, une partie très courte et un incident inattendu retournent la scène.",
+        "visualCue": "Un petit écran carré au milieu d’un grand plan de parc rend l’incongruité immédiatement visible.",
+        "reasonToStop": "Le spectateur attend de voir si l’installation fonctionne et ce qui va perturber la partie.",
+        "whyRelevant": "Boy, son chien et un jeu pixel original permettent un gag outdoor distinct de la session musicale au lac.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Touch grass — niveau secret",
+        "cast": { "character": "lofi-boy", "companion": "dog" },
+        "concept": "Dans une scène entièrement animée, Boy installe au parc un écran rétro diffusant un mini-jeu pixel original ; le chien touche une grande commande factice et ouvre un niveau qui reproduit le paysage réel.",
+        "openingText": "Il a pris « jouer dehors » un peu trop littéralement.",
+        "sequence": [
+          "Plan large animé : écran rétro original sur une table de pique-nique.",
+          "Boy joue un niveau pixel conçu par l’équipe tandis que le chien observe.",
+          "Le chien touche spontanément la commande adaptée et déclenche un passage secret.",
+          "Le paysage pixel devient le parc réel ; Boy et le chien partent explorer."
+        ],
+        "caption": "Niveau secret débloqué : aller vraiment se promener. 🎮🌿",
+        "audioDirection": "Chiptune Lofi original composé par un musicien humain, puis transition vers des ambiances de parc captées par l’équipe.",
+        "productionGuardrails": [
+          "Production 100 % humaine : pixel art, animation, accessoires et compositing originaux ; aucune marque ni ROM tierce.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Tout animer pour éviter matériel fragile, câbles, météo ou mise en danger animale ; ne jamais forcer une interaction du chien."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "back-in-the-booth-human-proof",
+      "runId": "instagram-home-2026-08-26-evening",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcJuyWRvjnK/",
+        "postId": "DcJuyWRvjnK",
+        "author": "rebbford",
+        "sourceLabel": "Selfie simple sous le micro pour signaler un retour au booth",
+        "capturedAt": "2026-08-26T23:04:54+02:00",
+        "publishedAt": "2026-08-17T18:55:47.000Z",
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 10600, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["releases-artist-collabs"],
+        "hook": "Une preuve de présence très simple rend le retour crédible avant toute bande-annonce produite.",
+        "mechanic": "Un selfie humain, une phrase de reprise et un détail de production visible limitent la promesse au travail réellement commencé.",
+        "visualCue": "Micro, casque et feuille de session restent lisibles sans rendre le setup artificiellement parfait.",
+        "reasonToStop": "L’authenticité basse production fait sentir qu’un nouveau chapitre vient réellement de démarrer.",
+        "whyRelevant": "Lofi peut annoncer un retour de collaborateur par une preuve humaine, différente du portrait rétrospectif déjà présent.",
+        "confidence": "medium"
+      },
+      "adaptation": {
+        "title": "De retour derrière le micro",
+        "cast": { "character": "lofi-boy", "companion": "dog" },
+        "concept": "Un vrai collaborateur se photographie dans le booth avec le storyboard d’un mini-épisode Boy et chien ; le post annonce uniquement le début d’une session de voix humaine et de bruitages, pas une date non verrouillée.",
+        "openingText": "Une scène à la fois, de retour derrière le micro.",
+        "sequence": [
+          "Selfie naturel du collaborateur humain devant le micro.",
+          "Le storyboard Boy et chien apparaît au bord du cadre sans révéler l’épisode entier.",
+          "Deux secondes de captation montrent un bruitage ou une ligne enregistrée par la personne.",
+          "Carton final : en production, crédits complets, date à confirmer."
+        ],
+        "caption": "On recommence par une scène, une vraie voix et beaucoup de café. Plus bientôt — quand ce sera prêt.",
+        "audioDirection": "Voix et bruitages enregistrés par des humains au booth ; musique originale du catalogue avec droits confirmés, sans clonage vocal.",
+        "productionGuardrails": [
+          "Production 100 % humaine : selfie, voix, bruitages, storyboard et montage créés par les collaborateurs crédités.",
+          "Aucune image, vidéo, voix ou musique générée par IA ; aucun clonage vocal ni voix synthétique.",
+          "Obtenir consentement, contrat voix et image et crédits ; ne promettre ni rôle, date ni sortie avant validation."
         ]
       },
       "editorialStatus": "new"
