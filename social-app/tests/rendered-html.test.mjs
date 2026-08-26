@@ -589,7 +589,11 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     (match) => Number(match[1]),
   );
   assert.ok(explicitFontSizes.length > 100);
-  assert.ok(explicitFontSizes.every((size) => size >= 11));
+  assert.ok(explicitFontSizes.every((size) => size >= 8));
+  assert.deepEqual(
+    [...new Set(explicitFontSizes.filter((size) => size < 11))].sort((left, right) => left - right),
+    [8, 9],
+  );
   assert.doesNotMatch(component, /tous affichés/i);
   assert.match(durations, /All time/);
   assert.match(durations, /180d/);

@@ -6,6 +6,7 @@ import test from "node:test";
 import {
   importOwnerAudienceAnalytics,
   parseCsv,
+  parseMetaInsightsCsv,
 } from "../scripts/import-owner-audience-analytics.mjs";
 
 const PROFILES = {
@@ -194,16 +195,126 @@ test("l'import natif normalise les jours sans interpolation ni décalage de date
   assert.deepEqual(repeated.analytics, increment.analytics);
 });
 
-function emptyAnalytics() {
-  const periods = Object.fromEntries(
-    ["7d", "28d", "30d", "60d", "90d", "365d", "all"].map((key) => [key, null]),
+test("parseMetaInsightsCsv ignore l'enveloppe à trois lignes de Meta Business Suite", () => {
+  const rows = parseMetaInsightsCsv(
+    'sep=,\n"Instagram follows"\n"Date","Primary"\n"2026-08-24T00:00:00","691"\n',
   );
+  assert.deepEqual(rows, [{ Date: "2026-08-24T00:00:00", Primary: "691" }]);
+});
+
+test("l'import Meta Instagram fusionne les métriques quotidiennes sans reconstruire les followers", async () => {
+  const root = await mkdtemp(resolve(tmpdir(), "audience-meta-instagram-"));
+  const paths = {
+    analytics: resolve(root, "audience-analytics.json"),
+    history: resolve(root, "audience-history.json"),
+    posts: resolve(root, "public-history.json"),
+    manifest: resolve(root, "manifest.json"),
+  };
+  const csvPaths = Object.fromEntries([
+    ["contentViews", "views.csv"],
+    ["reach", "reach.csv"],
+    ["engagements", "interactions.csv"],
+    ["externalLinkTaps", "links.csv"],
+    ["profileVisits", "visits.csv"],
+    ["newFollowers", "follows.csv"],
+  ].map(([metric, file]) => [metric, resolve(root, file)]));
+  const analytics = emptyAnalytics();
+  analytics.platforms.instagram.periods["30d"] = nativePeriod({
+    followersTotal: 1_430_107,
+    accountsEngaged: 362_098,
+    profileActivity: 124_882,
+    contentViews: 9_999,
+    profileVisits: 999,
+  });
+  const native30d = structuredClone(analytics.platforms.instagram.periods["30d"]);
+
+  await Promise.all([
+    writeFile(paths.analytics, JSON.stringify(analytics), "utf8"),
+    writeFile(paths.history, JSON.stringify(emptyHistory()), "utf8"),
+    writeFile(paths.posts, JSON.stringify({ posts: [] }), "utf8"),
+    writeFile(csvPaths.contentViews, metaCsvUtf16("Views", [["2026-08-24", 10], ["2026-08-25", 20]])),
+    writeFile(csvPaths.reach, metaCsv("Reach", [["2026-08-24", 11], ["2026-08-25", 21]]), "utf8"),
+    writeFile(csvPaths.engagements, metaCsv("Content interactions", [["2026-08-24", 12], ["2026-08-25", 22]]), "utf8"),
+    writeFile(csvPaths.externalLinkTaps, metaCsv("Instagram link clicks", [["2026-08-24", 1], ["2026-08-25", 2]]), "utf8"),
+    writeFile(csvPaths.profileVisits, metaCsv("Instagram profile visits", [["2026-08-24", 3], ["2026-08-25", 4]]), "utf8"),
+    writeFile(csvPaths.newFollowers, metaCsv("Instagram follows", [["2026-08-24", 5], ["2026-08-25", 6]]), "utf8"),
+  ]);
+
+  await writeFile(paths.manifest, JSON.stringify({
+    collectedAt: "2026-08-26T11:00:00.000Z",
+    platforms: {
+      instagram: {
+        provider: "meta-business-suite-export",
+        sourceUrl: "https://business.facebook.com/latest/insights/overview",
+        dailyCsvs: Object.fromEntries(Object.entries(csvPaths).map(([metric, path]) => [
+          metric,
+          { path: path.split(/[\\/]/).at(-1) },
+        ])),
+      },
+    },
+  }), "utf8");
+
+  const first = await importOwnerAudienceAnalytics({
+    manifestPath: paths.manifest,
+    analyticsPath: paths.analytics,
+    historyPath: paths.history,
+    postsPath: paths.posts,
+  });
+  const august25 = first.analytics.platforms.instagram.daily.at(-1);
+  assert.deepEqual(august25.metrics, nativeMetrics({
+    contentViews: 20,
+    reach: 21,
+    engagements: 22,
+    externalLinkTaps: 2,
+    profileVisits: 4,
+    newFollowers: 6,
+  }));
+  assert.equal(august25.metrics.followersTotal, null);
+  assert.equal(august25.metrics.followersNet, null);
+  assert.equal(Number.isInteger(august25.metrics.newFollowers), true);
+  assert.deepEqual(first.analytics.platforms.instagram.periods["30d"], native30d);
+  assert.equal(first.analytics.platforms.instagram.periods["7d"].metrics.contentViews, 30);
+  assert.equal(first.analytics.platforms.instagram.periods["7d"].metrics.profileVisits, 7);
+  assert.equal(first.analytics.platforms.instagram.periods["7d"].metrics.newFollowers, 11);
+  assert.equal(first.analytics.platforms.instagram.periods.all.metrics.contentViews, 30);
+
+  await writeFile(csvPaths.newFollowers, metaCsv("Instagram follows", [["2026-08-25", 7]]), "utf8");
+  await writeFile(paths.manifest, JSON.stringify({
+    collectedAt: "2026-08-26T12:00:00.000Z",
+    platforms: {
+      instagram: {
+        provider: "meta-business-suite-export",
+        sourceUrl: "https://business.facebook.com/latest/insights/overview",
+        dailyCsvs: { newFollowers: { path: "follows.csv" } },
+      },
+    },
+  }), "utf8");
+  const increment = await importOwnerAudienceAnalytics({
+    manifestPath: paths.manifest,
+    analyticsPath: paths.analytics,
+    historyPath: paths.history,
+    postsPath: paths.posts,
+  });
+  assert.equal(increment.analytics.platforms.instagram.daily.at(-1).metrics.contentViews, 20);
+  assert.equal(increment.analytics.platforms.instagram.daily.at(-1).metrics.newFollowers, 7);
+  assert.deepEqual(increment.analytics.platforms.instagram.periods["30d"], native30d);
+  assert.equal(increment.analytics.platforms.instagram.periods["7d"].metrics.newFollowers, 11);
+});
+
+function emptyAnalytics() {
   return {
     version: 1,
-    generatedAt: "2026-08-24T00:00:00.000Z",
+    generatedAt: "2026-08-26T00:00:00.000Z",
     platforms: Object.fromEntries(Object.entries(PROFILES).map(([platform, profileUrl]) => [
       platform,
-      { profileUrl, lastSuccessfulImportAt: null, daily: [], periods },
+      {
+        profileUrl,
+        lastSuccessfulImportAt: null,
+        daily: [],
+        periods: Object.fromEntries(
+          ["7d", "28d", "30d", "60d", "90d", "365d", "all"].map((key) => [key, null]),
+        ),
+      },
     ])),
   };
 }
@@ -233,5 +344,37 @@ function emptyHistory() {
         engagementByPeriod,
       },
     ])),
+  };
+}
+
+function metaCsv(title, values) {
+  return `sep=,\n"${title}"\n"Date","Primary"\n${values.map(([date, value]) => `"${date}T00:00:00","${value}"`).join("\n")}\n`;
+}
+
+function metaCsvUtf16(title, values) {
+  return Buffer.from(`\uFEFF${metaCsv(title, values)}`, "utf16le");
+}
+
+function nativeMetrics(partial = {}) {
+  return Object.fromEntries([
+    "followersTotal", "followersNet", "contentViews", "impressions", "reach",
+    "profileVisits", "engagements", "likes", "comments", "shares", "bookmarks",
+    "replies", "reposts", "newFollowers", "unfollows", "mediaViews",
+    "watchTimeSeconds", "accountsEngaged", "profileActivity", "externalLinkTaps",
+    "contentPublished",
+  ].map((key) => [key, Object.hasOwn(partial, key) ? partial[key] : null]));
+}
+
+function nativePeriod(partial) {
+  return {
+    startDate: "2026-07-27",
+    endDate: "2026-08-25",
+    metrics: nativeMetrics(partial),
+    provenance: {
+      provider: "instagram-insights",
+      collectedAt: "2026-08-25T10:00:00.000Z",
+      sourceUrl: "https://www.instagram.com/accounts/insights/",
+      basis: "native-period-aggregate",
+    },
   };
 }

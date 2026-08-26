@@ -4645,7 +4645,7 @@ a {
 .audience-native-chart-heading small {
   display: block;
   color: var(--dim);
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 700;
   line-height: 1.35;
   text-transform: uppercase;
@@ -4656,7 +4656,7 @@ a {
   margin: 1px 0 0;
   color: var(--text);
   font-family: Sora, Inter, sans-serif;
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.25;
 }
 
@@ -4669,7 +4669,7 @@ a {
   display: block;
   color: rgb(var(--platform-rgb));
   font-family: Sora, Inter, sans-serif;
-  font-size: clamp(18px, 1.9vw, 23px);
+  font-size: clamp(15px, 1.35vw, 18px);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.045em;
   line-height: 1.1;
@@ -4724,7 +4724,7 @@ a {
 .audience-native-chart-date {
   fill: var(--dim);
   font-family: Inter, sans-serif;
-  font-size: 12px;
+  font-size: 9px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -4784,13 +4784,13 @@ a {
 
 .audience-native-chart-tooltip-date {
   fill: var(--muted);
-  font-size: 11px;
+  font-size: 8px;
   font-weight: 650;
 }
 
 .audience-native-chart-tooltip-value {
   fill: #fff;
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -4821,7 +4821,7 @@ a {
   gap: 4px 10px;
   margin-top: -1px;
   color: var(--dim);
-  font-size: 11px;
+  font-size: 9px;
   line-height: 1.35;
 }
 

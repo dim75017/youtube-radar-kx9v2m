@@ -98,12 +98,11 @@ test("keeps the audience curve clean and reveals the exact hovered value instant
   assert.match(tooltipSource, /formatAudienceSeriesValue\(/);
   assert.match(tooltipSource, /audience-native-chart-tooltip/);
 
-  // Le tracé gagne de la hauteur, sans devenir un panneau qui casse le dashboard compact.
-  const height = Number(chart.match(/const height = (\d+);/)?.[1]);
-  const plotTop = Number(chart.match(/const plotTop = (\d+);/)?.[1]);
-  const plotBottom = Number(chart.match(/const plotBottom = (\d+);/)?.[1]);
-  assert.ok(Number.isFinite(height) && height > 156 && height <= 260);
-  assert.ok(Number.isFinite(plotTop) && Number.isFinite(plotBottom) && plotBottom - plotTop >= 108);
+  // Le tracé exploite la hauteur disponible au lieu de figer un petit viewBox.
+  assert.match(chart, /useState\(\{ width: 940, height: 180 \}\)/);
+  assert.match(chart, /const plotTop = 12/);
+  assert.match(chart, /const plotBottom = height - 40/);
+  assert.match(chart, /Math\.max\(180, availableHeight\)/);
   assert.match(styles, /\.main\.main-dashboard\s*\{[\s\S]*?padding-bottom:\s*8px/);
 
   // Les quatre filtres du graphe restent disponibles après l'amélioration du survol.
@@ -111,4 +110,77 @@ test("keeps the audience curve clean and reveals the exact hovered value instant
   assert.match(component, /key: "90d", label: "90 jours", days: 90/);
   assert.match(component, /key: "360d", label: "360 jours", days: 360/);
   assert.match(component, /key: "all", label: "All time", days: null/);
+});
+
+test("keeps sparse Instagram observations truthful and falls back without fabricating a curve", async () => {
+  const [component, analyticsRaw, historyRaw] = await Promise.all([
+    readFile(new URL("../app/SocialOS.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../data/audience-analytics.json", import.meta.url), "utf8"),
+    readFile(new URL("../data/audience-history.json", import.meta.url), "utf8"),
+  ]);
+  const analytics = JSON.parse(analyticsRaw);
+  const history = JSON.parse(historyRaw);
+  const explorer = component.slice(
+    component.indexOf("type NativeAnalyticsMetricMeta"),
+    component.indexOf("function TrendFeedView"),
+  );
+  const instagramDaily = analytics.platforms.instagram.daily;
+
+  for (const [index, point] of instagramDaily.entries()) {
+    assert.match(point.date, /^\d{4}-\d{2}-\d{2}$/, `Instagram daily row ${index} needs a real date`);
+    assert.ok(
+      Object.values(point.metrics).some((value) => value !== null),
+      `Instagram daily row ${index} cannot be an empty synthetic placeholder`,
+    );
+    for (const metric of ["followersTotal", "followersNet", "newFollowers", "unfollows"]) {
+      const value = point.metrics[metric];
+      assert.ok(
+        value === null || Number.isInteger(value),
+        `Instagram ${metric} must be an integer or null`,
+      );
+    }
+    assert.ok(point.provenance?.provider);
+    assert.ok(point.provenance?.collectedAt);
+    assert.ok(point.provenance?.sourceUrl);
+    assert.ok(point.provenance?.basis);
+  }
+
+  const dailyDates = instagramDaily.map((point) => point.date);
+  assert.equal(new Set(dailyDates).size, dailyDates.length, "Instagram daily dates must stay unique");
+  assert.deepEqual(dailyDates, dailyDates.toSorted(), "Instagram daily rows must stay chronological");
+  for (const observation of history.platforms.instagram.observations) {
+    assert.ok(Number.isInteger(observation.followers));
+    assert.ok(observation.precision, "every displayed Instagram point needs observed precision");
+    assert.ok(observation.sourceUrl, "every displayed Instagram point needs its native source");
+  }
+
+  if (instagramDaily.length === 0) {
+    assert.ok(analytics.platforms.instagram.periods["30d"]);
+    assert.ok(analytics.platforms.instagram.periods["90d"]);
+  }
+  assert.match(
+    explorer,
+    /activeSeries\.length === 0 && activeSummary\.basis === "period"/,
+    "a real aggregate remains available when no daily curve exists",
+  );
+  assert.match(explorer, /La plateforme ne fournit pas de courbe quotidienne exportable/);
+  assert.match(explorer, /elapsedDays === 1 && comparablePrecision/);
+  assert.doesNotMatch(explorer, /fillMissing|interpolat(?:e|ion)|syntheticPoint/i);
+});
+
+test("uses the native daily Instagram follows series as the default Instagram curve", async () => {
+  const component = await readFile(new URL("../app/SocialOS.tsx", import.meta.url), "utf8");
+  assert.match(
+    component,
+    /instagram:\s*\[\s*"newFollowers",\s*"followersTotal"/,
+  );
+  assert.match(
+    component,
+    /instagram:\s*"newFollowers"/,
+  );
+  assert.match(
+    component,
+    /elapsedCalendarDays\(growth\.from\.capturedAt, growth\.to\.capturedAt\)/,
+  );
+  assert.match(component, /jour\$\{observedGrowthDays > 1 \? "s" : ""\} observé/);
 });

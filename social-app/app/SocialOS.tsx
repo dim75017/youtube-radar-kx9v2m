@@ -1817,6 +1817,14 @@ function AudienceDashboard({
             nativePeriod,
           );
           const followersDelta = nativeGrowth?.value ?? growth?.followersDelta ?? null;
+          const observedGrowthDays = growth
+            ? elapsedCalendarDays(growth.from.capturedAt, growth.to.capturedAt)
+            : null;
+          const followersDeltaPeriodLabel = nativeGrowth
+            ? period.label
+            : observedGrowthDays !== null
+              ? `${observedGrowthDays} jour${observedGrowthDays > 1 ? "s" : ""} observé${observedGrowthDays > 1 ? "s" : ""}`
+              : period.label;
           const ageReferenceAt = clientNow ?? history?.generatedAt ?? null;
           const latestAgeDays = latest && ageReferenceAt
             ? elapsedCalendarDays(latest.capturedAt, ageReferenceAt)
@@ -1853,7 +1861,7 @@ function AudienceDashboard({
                   <strong className={followersDelta !== null && followersDelta < 0 ? "negative" : "positive"}>
                     {followersDelta !== null ? formatAudienceDelta(followersDelta) : "—"}
                   </strong>
-                  <small>{period.label}</small>
+                  <small>{followersDeltaPeriodLabel}</small>
                 </div>
                 <div
                   className="audience-kpi"
@@ -2002,6 +2010,7 @@ const NATIVE_ANALYTICS_PRIORITY: Record<Platform, readonly AudienceAnalyticsMetr
     "engagements",
   ],
   instagram: [
+    "newFollowers",
     "followersTotal",
     "reach",
     "accountsEngaged",
@@ -2027,7 +2036,7 @@ const NATIVE_ANALYTICS_PRIORITY: Record<Platform, readonly AudienceAnalyticsMetr
 
 const NATIVE_ANALYTICS_DEFAULT_METRIC: Record<Platform, AudienceAnalyticsMetricKey> = {
   youtube: "followersNet",
-  instagram: "followersTotal",
+  instagram: "newFollowers",
   tiktok: "followersTotal",
   x: "followersNet",
 };
@@ -2458,15 +2467,44 @@ function AudienceNativeMetricChart({
   platformLabel: string;
   points: readonly AudienceMetricSeriesPoint[];
 }) {
+  const chartViewportRef = useRef<HTMLDivElement>(null);
   const [hoveredPointIndex, setHoveredPointIndex] = useState<number | null>(null);
+  const [chartDimensions, setChartDimensions] = useState({ width: 940, height: 180 });
   const metricLabel = NATIVE_ANALYTICS_METRIC_META[metric].label;
+
+  useEffect(() => {
+    const viewport = chartViewportRef.current;
+    if (!viewport) return;
+
+    const resizeChart = () => {
+      const width = Math.max(700, Math.round(viewport.clientWidth));
+      const availableHeight = Math.floor(window.innerHeight - viewport.getBoundingClientRect().top - 38);
+      const height = window.innerWidth <= 900
+        ? 180
+        : Math.max(180, availableHeight);
+      setChartDimensions((current) => (
+        current.width === width && current.height === height
+          ? current
+          : { width, height }
+      ));
+    };
+
+    resizeChart();
+    const resizeObserver = new ResizeObserver(resizeChart);
+    resizeObserver.observe(viewport);
+    window.addEventListener("resize", resizeChart);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", resizeChart);
+    };
+  }, []);
+
   const geometry = useMemo(() => {
-    const width = 940;
-    const height = 180;
+    const { width, height } = chartDimensions;
     const plotLeft = 24;
-    const plotRight = 842;
+    const plotRight = width - 82;
     const plotTop = 12;
-    const plotBottom = 132;
+    const plotBottom = height - 40;
     if (points.length === 0) return null;
 
     const observedTimes = points.map((point) => nativeAnalyticsDateTime(point.date));
@@ -2551,7 +2589,7 @@ function AudienceNativeMetricChart({
       width,
       zeroY,
     };
-  }, [endDate, metric, periodDays, points]);
+  }, [chartDimensions, endDate, metric, periodDays, points]);
 
   if (!geometry) {
     return (
@@ -2583,22 +2621,23 @@ function AudienceNativeMetricChart({
   const hoveredCoordinate = hoveredPointIndex === null
     ? null
     : coordinates[hoveredPointIndex] ?? null;
-  const tooltipWidth = 176;
-  const tooltipHeight = 52;
+  const tooltipWidth = 132;
+  const tooltipHeight = 40;
   const tooltipX = hoveredCoordinate
     ? Math.min(plotRight - tooltipWidth, Math.max(plotLeft, hoveredCoordinate.x - tooltipWidth / 2))
     : 0;
   const tooltipY = hoveredCoordinate
-    ? hoveredCoordinate.y - tooltipHeight - 12 >= 2
-      ? hoveredCoordinate.y - tooltipHeight - 12
-      : hoveredCoordinate.y + 12
+    ? hoveredCoordinate.y - tooltipHeight - 9 >= 2
+      ? hoveredCoordinate.y - tooltipHeight - 9
+      : hoveredCoordinate.y + 9
     : 0;
 
   return (
     <div className="audience-native-line-chart">
-      <div className="audience-native-chart-viewport">
+      <div className="audience-native-chart-viewport" ref={chartViewportRef}>
         <svg
           viewBox={`0 0 ${width} ${height}`}
+          style={{ height: `${height}px` }}
           role="img"
           aria-label={`${metricLabel} par jour · ${platformLabel}`}
           tabIndex={0}
@@ -2671,17 +2710,17 @@ function AudienceNativeMetricChart({
                 y1={plotTop}
                 y2={plotBottom}
               />
-              <circle cx={hoveredCoordinate.x} cy={hoveredCoordinate.y} r="4" />
+              <circle cx={hoveredCoordinate.x} cy={hoveredCoordinate.y} r="3" />
               <g
                 className="audience-native-chart-tooltip"
                 role="tooltip"
                 transform={`translate(${tooltipX} ${tooltipY})`}
               >
-                <rect width={tooltipWidth} height={tooltipHeight} rx="8" />
-                <text className="audience-native-chart-tooltip-date" x="12" y="19">
+                <rect width={tooltipWidth} height={tooltipHeight} rx="7" />
+                <text className="audience-native-chart-tooltip-date" x="10" y="15">
                   {formatNativeAnalyticsDate(hoveredCoordinate.point.date)}
                 </text>
-                <text className="audience-native-chart-tooltip-value" x="12" y="40">
+                <text className="audience-native-chart-tooltip-value" x="10" y="31">
                   {formatAudienceSeriesValue(hoveredCoordinate.point, metric, false)}
                 </text>
               </g>
@@ -2692,7 +2731,7 @@ function AudienceNativeMetricChart({
               className="audience-native-chart-date"
               key={tick.timestamp}
               x={tick.x}
-              y="160"
+              y={height - 10}
               textAnchor={index === 0 ? "start" : index === dateTicks.length - 1 ? "end" : "middle"}
             >
               {formatAudienceChartDate(
@@ -2729,6 +2768,18 @@ function formatNativeAnalyticsMetric(
   metric: AudienceAnalyticsMetricKey,
   compact: boolean,
 ) {
+  if (
+    metric === "followersTotal" ||
+    metric === "followersNet" ||
+    metric === "newFollowers" ||
+    metric === "unfollows"
+  ) {
+    const formattedFollowers = new Intl.NumberFormat("fr-FR", {
+      maximumFractionDigits: 0,
+    }).format(Math.round(Math.abs(value)));
+    if (metric === "followersNet") return `${value >= 0 ? "+" : "−"}${formattedFollowers}`;
+    return value < 0 ? `−${formattedFollowers}` : formattedFollowers;
+  }
   if (metric === "watchTimeSeconds") {
     const hours = value / 3_600;
     if (Math.abs(hours) >= 1) {
@@ -2743,7 +2794,6 @@ function formatNativeAnalyticsMetric(
     notation: compact && Math.abs(value) >= 10_000 ? "compact" : "standard",
     maximumFractionDigits: compact ? 1 : 0,
   }).format(Math.abs(value));
-  if (metric === "followersNet") return `${value >= 0 ? "+" : "−"}${formatted}`;
   return value < 0 ? `−${formatted}` : formatted;
 }
 
@@ -2837,11 +2887,9 @@ function formatAudienceFollowers(observation: AudienceObservation) {
 }
 
 function formatAudienceDelta(value: number) {
-  const absolute = Math.abs(value);
   const formatted = new Intl.NumberFormat("fr-FR", {
-    notation: absolute >= 1_000_000 ? "compact" : "standard",
-    maximumFractionDigits: 1,
-  }).format(absolute);
+    maximumFractionDigits: 0,
+  }).format(Math.round(Math.abs(value)));
   return `${value >= 0 ? "+" : "−"}${formatted}`;
 }
 
