@@ -1,14 +1,14 @@
 {
   "version": 1,
   "cadenceHours": 24,
-  "lastAttemptAt": "2026-08-26T04:57:29.561Z",
+  "lastAttemptAt": "2026-08-26T05:50:16.658Z",
   "lastSuccessfulAt": "2026-08-19T04:54:32.018Z",
-  "nextScheduledAt": "2026-08-27T04:57:29.561Z",
+  "nextScheduledAt": "2026-08-27T05:50:16.658Z",
   "status": "degraded",
-  "runId": "32932086874",
-  "runUrl": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/32932086874",
+  "runId": "local-2026-08-26",
+  "runUrl": null,
   "discoveryAudit": {
-    "scannedAt": "2026-08-26T04:57:29.561Z",
+    "scannedAt": "2026-08-26T05:50:16.658Z",
     "complete": false,
     "candidateCount": 56,
     "qualifiedInventoryCount": 29,
@@ -309,7 +309,7 @@
         "candidateUrls": []
       }
     ],
-    "reachabilityCheckedAt": "2026-08-26T04:57:29.561Z",
+    "reachabilityCheckedAt": "2026-08-26T05:50:16.658Z",
     "availablePosts": 151,
     "unavailablePosts": 2,
     "unavailablePostUrls": [
@@ -323,7 +323,7 @@
       "label": "Buffer · TikTok",
       "platform": "tiktok",
       "status": "success",
-      "checkedAt": "2026-08-26T04:57:29.561Z",
+      "checkedAt": "2026-08-26T05:50:16.658Z",
       "candidatesMatched": 15
     },
     {
@@ -331,7 +331,7 @@
       "label": "Later · Instagram Reels",
       "platform": "instagram",
       "status": "success",
-      "checkedAt": "2026-08-26T04:57:29.561Z",
+      "checkedAt": "2026-08-26T05:50:16.658Z",
       "candidatesMatched": 16
     },
     {
@@ -339,7 +339,7 @@
       "label": "SocialPilot · TikTok",
       "platform": "tiktok",
       "status": "success",
-      "checkedAt": "2026-08-26T04:57:29.561Z",
+      "checkedAt": "2026-08-26T05:50:16.658Z",
       "candidatesMatched": 18
     },
     {
@@ -347,7 +347,7 @@
       "label": "SocialPilot · Instagram Reels",
       "platform": "instagram",
       "status": "success",
-      "checkedAt": "2026-08-26T04:57:29.561Z",
+      "checkedAt": "2026-08-26T05:50:16.658Z",
       "candidatesMatched": 17
     },
     {
@@ -355,7 +355,7 @@
       "label": "Tokchart · sons TikTok",
       "platform": "tiktok",
       "status": "failed",
-      "checkedAt": "2026-08-26T04:57:29.561Z",
+      "checkedAt": "2026-08-26T05:50:16.658Z",
       "candidatesMatched": 0
     },
     {
@@ -363,7 +363,7 @@
       "label": "TrendVideosHub · YouTube Shorts",
       "platform": "youtube",
       "status": "success",
-      "checkedAt": "2026-08-26T04:57:29.561Z",
+      "checkedAt": "2026-08-26T05:50:16.658Z",
       "candidatesMatched": 6
     },
     {
@@ -371,7 +371,7 @@
       "label": "X · tendances France",
       "platform": "x",
       "status": "failed",
-      "checkedAt": "2026-08-26T04:57:29.561Z",
+      "checkedAt": "2026-08-26T05:50:16.658Z",
       "candidatesMatched": 0
     }
   ],

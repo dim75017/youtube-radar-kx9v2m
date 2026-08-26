@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-25T15:56:31.959Z",
+  "generatedAt": "2026-08-26T06:00:05.295Z",
   "platforms": {
     "youtube": {
       "profileUrl": "https://www.youtube.com/@LofiGirl",
@@ -11923,22 +11923,22 @@
     },
     "instagram": {
       "profileUrl": "https://www.instagram.com/lofigirl/",
-      "lastSuccessfulImportAt": "2026-08-25T15:56:31.959Z",
+      "lastSuccessfulImportAt": "2026-08-26T06:00:05.295Z",
       "daily": [],
       "periods": {
         "7d": null,
         "28d": null,
         "30d": {
-          "startDate": "2026-07-27",
-          "endDate": "2026-08-25",
+          "startDate": "2026-07-28",
+          "endDate": "2026-08-26",
           "metrics": {
-            "followersTotal": 1430003,
+            "followersTotal": 1430107,
             "followersNet": null,
-            "contentViews": 8210017,
+            "contentViews": 8210054,
             "impressions": null,
             "reach": 3127573,
             "profileVisits": 124882,
-            "engagements": 571125,
+            "engagements": 571118,
             "likes": null,
             "comments": null,
             "shares": null,
@@ -11956,23 +11956,23 @@
           },
           "provenance": {
             "provider": "instagram-insights",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
             "sourceUrl": "https://www.instagram.com/accounts/insights/",
             "basis": "native-period-aggregate"
           }
         },
         "60d": null,
         "90d": {
-          "startDate": "2026-05-28",
-          "endDate": "2026-08-25",
+          "startDate": "2026-05-29",
+          "endDate": "2026-08-26",
           "metrics": {
-            "followersTotal": 1430006,
+            "followersTotal": 1430107,
             "followersNet": null,
-            "contentViews": 16142905,
+            "contentViews": 16142944,
             "impressions": null,
             "reach": 4413185,
             "profileVisits": 217836,
-            "engagements": 903708,
+            "engagements": 903701,
             "likes": null,
             "comments": null,
             "shares": null,
@@ -11990,7 +11990,7 @@
           },
           "provenance": {
             "provider": "instagram-insights",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
             "sourceUrl": "https://www.instagram.com/accounts/insights/",
             "basis": "native-period-aggregate"
           }
@@ -12001,7 +12001,7 @@
     },
     "tiktok": {
       "profileUrl": "https://www.tiktok.com/@lofigirl",
-      "lastSuccessfulImportAt": "2026-08-25T15:56:31.959Z",
+      "lastSuccessfulImportAt": "2026-08-26T06:00:05.295Z",
       "daily": [
         {
           "date": "2025-08-24",
@@ -23495,7 +23495,7 @@
           "date": "2026-08-18",
           "metrics": {
             "followersTotal": 1547882,
-            "followersNet": -127,
+            "followersNet": null,
             "contentViews": 9548,
             "impressions": null,
             "reach": null,
@@ -23518,7 +23518,7 @@
           },
           "provenance": {
             "provider": "tiktok-studio-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
             "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
             "basis": "native-daily-metric"
           }
@@ -23550,7 +23550,7 @@
           },
           "provenance": {
             "provider": "tiktok-studio-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
             "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
             "basis": "native-daily-metric"
           }
@@ -23582,7 +23582,7 @@
           },
           "provenance": {
             "provider": "tiktok-studio-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
             "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
             "basis": "native-daily-metric"
           }
@@ -23614,7 +23614,7 @@
           },
           "provenance": {
             "provider": "tiktok-studio-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
             "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
             "basis": "native-daily-metric"
           }
@@ -23646,7 +23646,7 @@
           },
           "provenance": {
             "provider": "tiktok-studio-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
             "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
             "basis": "native-daily-metric"
           }
@@ -23678,7 +23678,39 @@
           },
           "provenance": {
             "provider": "tiktok-studio-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
+            "basis": "native-daily-metric"
+          }
+        },
+        {
+          "date": "2026-08-24",
+          "metrics": {
+            "followersTotal": 1547019,
+            "followersNet": -141,
+            "contentViews": 7562,
+            "impressions": null,
+            "reach": null,
+            "profileVisits": 890,
+            "engagements": null,
+            "likes": 537,
+            "comments": 6,
+            "shares": 24,
+            "bookmarks": null,
+            "replies": null,
+            "reposts": null,
+            "newFollowers": null,
+            "unfollows": null,
+            "mediaViews": null,
+            "watchTimeSeconds": null,
+            "accountsEngaged": null,
+            "profileActivity": null,
+            "externalLinkTaps": null,
+            "contentPublished": null
+          },
+          "provenance": {
+            "provider": "tiktok-studio-export",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
             "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
             "basis": "native-daily-metric"
           }
@@ -23686,19 +23718,19 @@
       ],
       "periods": {
         "7d": {
-          "startDate": "2026-08-17",
-          "endDate": "2026-08-23",
+          "startDate": "2026-08-18",
+          "endDate": "2026-08-24",
           "metrics": {
-            "followersTotal": 1547160,
-            "followersNet": -980,
-            "contentViews": 69714,
+            "followersTotal": 1547019,
+            "followersNet": -863,
+            "contentViews": 67072,
             "impressions": null,
             "reach": null,
-            "profileVisits": 8214,
+            "profileVisits": 7482,
             "engagements": null,
-            "likes": 5484,
-            "comments": 95,
-            "shares": 276,
+            "likes": 5329,
+            "comments": 93,
+            "shares": 260,
             "bookmarks": null,
             "replies": null,
             "reposts": null,
@@ -23713,25 +23745,25 @@
           },
           "provenance": {
             "provider": "tiktok-studio-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
             "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
             "basis": "native-daily-aggregate"
           }
         },
         "28d": {
-          "startDate": "2026-07-27",
-          "endDate": "2026-08-23",
+          "startDate": "2026-08-18",
+          "endDate": "2026-08-24",
           "metrics": {
-            "followersTotal": 1547160,
-            "followersNet": 7246,
-            "contentViews": 1426124,
+            "followersTotal": 1547019,
+            "followersNet": -863,
+            "contentViews": 67072,
             "impressions": null,
             "reach": null,
-            "profileVisits": 70627,
+            "profileVisits": 7482,
             "engagements": null,
-            "likes": 218791,
-            "comments": 1782,
-            "shares": 18186,
+            "likes": 5329,
+            "comments": 93,
+            "shares": 260,
             "bookmarks": null,
             "replies": null,
             "reposts": null,
@@ -23746,25 +23778,25 @@
           },
           "provenance": {
             "provider": "tiktok-studio-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
             "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
             "basis": "native-daily-aggregate"
           }
         },
         "30d": {
-          "startDate": "2026-07-25",
-          "endDate": "2026-08-23",
+          "startDate": "2026-08-18",
+          "endDate": "2026-08-24",
           "metrics": {
-            "followersTotal": 1547160,
-            "followersNet": 6870,
-            "contentViews": 1458633,
+            "followersTotal": 1547019,
+            "followersNet": -863,
+            "contentViews": 67072,
             "impressions": null,
             "reach": null,
-            "profileVisits": 72717,
+            "profileVisits": 7482,
             "engagements": null,
-            "likes": 219706,
-            "comments": 1782,
-            "shares": 18212,
+            "likes": 5329,
+            "comments": 93,
+            "shares": 260,
             "bookmarks": null,
             "replies": null,
             "reposts": null,
@@ -23779,25 +23811,25 @@
           },
           "provenance": {
             "provider": "tiktok-studio-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
             "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
             "basis": "native-daily-aggregate"
           }
         },
         "60d": {
-          "startDate": "2026-06-25",
-          "endDate": "2026-08-23",
+          "startDate": "2026-08-18",
+          "endDate": "2026-08-24",
           "metrics": {
-            "followersTotal": 1547160,
-            "followersNet": 3534,
-            "contentViews": 2259505,
+            "followersTotal": 1547019,
+            "followersNet": -863,
+            "contentViews": 67072,
             "impressions": null,
             "reach": null,
-            "profileVisits": 161048,
+            "profileVisits": 7482,
             "engagements": null,
-            "likes": 254791,
-            "comments": 1931,
-            "shares": 19511,
+            "likes": 5329,
+            "comments": 93,
+            "shares": 260,
             "bookmarks": null,
             "replies": null,
             "reposts": null,
@@ -23812,25 +23844,25 @@
           },
           "provenance": {
             "provider": "tiktok-studio-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
             "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
             "basis": "native-daily-aggregate"
           }
         },
         "90d": {
-          "startDate": "2026-05-26",
-          "endDate": "2026-08-23",
+          "startDate": "2026-08-18",
+          "endDate": "2026-08-24",
           "metrics": {
-            "followersTotal": 1547160,
-            "followersNet": 1120,
-            "contentViews": 2996033,
+            "followersTotal": 1547019,
+            "followersNet": -863,
+            "contentViews": 67072,
             "impressions": null,
             "reach": null,
-            "profileVisits": 260126,
+            "profileVisits": 7482,
             "engagements": null,
-            "likes": 288535,
-            "comments": 2047,
-            "shares": 20505,
+            "likes": 5329,
+            "comments": 93,
+            "shares": 260,
             "bookmarks": null,
             "replies": null,
             "reposts": null,
@@ -23845,25 +23877,25 @@
           },
           "provenance": {
             "provider": "tiktok-studio-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
             "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
             "basis": "native-daily-aggregate"
           }
         },
         "365d": {
-          "startDate": "2025-08-24",
-          "endDate": "2026-08-23",
+          "startDate": "2026-08-18",
+          "endDate": "2026-08-24",
           "metrics": {
-            "followersTotal": 1547160,
-            "followersNet": 97176,
-            "contentViews": 36979037,
+            "followersTotal": 1547019,
+            "followersNet": -863,
+            "contentViews": 67072,
             "impressions": null,
             "reach": null,
-            "profileVisits": 1806204,
+            "profileVisits": 7482,
             "engagements": null,
-            "likes": 3438724,
-            "comments": 16615,
-            "shares": 191994,
+            "likes": 5329,
+            "comments": 93,
+            "shares": 260,
             "bookmarks": null,
             "replies": null,
             "reposts": null,
@@ -23878,25 +23910,25 @@
           },
           "provenance": {
             "provider": "tiktok-studio-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
             "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
             "basis": "native-daily-aggregate"
           }
         },
         "all": {
-          "startDate": "2025-08-24",
-          "endDate": "2026-08-23",
+          "startDate": "2026-08-18",
+          "endDate": "2026-08-24",
           "metrics": {
-            "followersTotal": 1547160,
-            "followersNet": 97176,
-            "contentViews": 36979037,
+            "followersTotal": 1547019,
+            "followersNet": -863,
+            "contentViews": 67072,
             "impressions": null,
             "reach": null,
-            "profileVisits": 1806204,
+            "profileVisits": 7482,
             "engagements": null,
-            "likes": 3438724,
-            "comments": 16615,
-            "shares": 191994,
+            "likes": 5329,
+            "comments": 93,
+            "shares": 260,
             "bookmarks": null,
             "replies": null,
             "reposts": null,
@@ -23911,7 +23943,7 @@
           },
           "provenance": {
             "provider": "tiktok-studio-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
             "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics",
             "basis": "native-daily-aggregate"
           }
@@ -23920,7 +23952,7 @@
     },
     "x": {
       "profileUrl": "https://x.com/lofigirl",
-      "lastSuccessfulImportAt": "2026-08-25T15:56:31.959Z",
+      "lastSuccessfulImportAt": "2026-08-26T06:00:05.295Z",
       "daily": [
         {
           "date": "2025-08-26",
@@ -23981,8 +24013,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24013,8 +24045,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24045,8 +24077,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24077,8 +24109,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24109,8 +24141,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24141,8 +24173,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24173,8 +24205,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24205,8 +24237,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24237,8 +24269,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24269,8 +24301,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24301,8 +24333,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24333,8 +24365,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24365,8 +24397,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24397,8 +24429,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24429,8 +24461,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24461,8 +24493,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24493,8 +24525,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24525,8 +24557,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24557,8 +24589,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24589,8 +24621,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24621,8 +24653,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24653,8 +24685,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24685,8 +24717,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24717,8 +24749,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24749,8 +24781,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24781,8 +24813,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24813,8 +24845,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24845,8 +24877,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24877,8 +24909,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24909,8 +24941,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24941,8 +24973,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -24973,8 +25005,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25005,8 +25037,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25037,8 +25069,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25069,8 +25101,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25101,8 +25133,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25133,8 +25165,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25165,8 +25197,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25197,8 +25229,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25229,8 +25261,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25261,8 +25293,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25293,8 +25325,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25325,8 +25357,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25357,8 +25389,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25389,8 +25421,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25421,8 +25453,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25453,8 +25485,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25485,8 +25517,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25517,8 +25549,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25549,8 +25581,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25581,8 +25613,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25613,8 +25645,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25645,8 +25677,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25677,8 +25709,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25709,8 +25741,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25741,8 +25773,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25773,8 +25805,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25805,8 +25837,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25837,8 +25869,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25869,8 +25901,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25901,8 +25933,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25933,8 +25965,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25965,8 +25997,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -25997,8 +26029,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26029,8 +26061,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26061,8 +26093,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26093,8 +26125,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26125,8 +26157,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26157,8 +26189,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26189,8 +26221,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26221,8 +26253,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26253,8 +26285,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26285,8 +26317,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26317,8 +26349,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26349,8 +26381,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26381,8 +26413,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26413,8 +26445,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26445,8 +26477,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26477,8 +26509,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26509,8 +26541,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26541,8 +26573,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26573,8 +26605,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26605,8 +26637,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26637,8 +26669,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26669,8 +26701,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26701,8 +26733,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26733,8 +26765,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26765,8 +26797,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26797,8 +26829,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26829,8 +26861,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26861,8 +26893,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26893,8 +26925,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26925,8 +26957,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26957,8 +26989,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -26989,8 +27021,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27021,8 +27053,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27053,8 +27085,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27085,8 +27117,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27117,8 +27149,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27149,8 +27181,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27181,8 +27213,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27213,8 +27245,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27245,8 +27277,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27277,8 +27309,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27309,8 +27341,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27341,8 +27373,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27373,8 +27405,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27405,8 +27437,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27437,8 +27469,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27469,8 +27501,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27501,8 +27533,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27533,8 +27565,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27565,8 +27597,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27597,8 +27629,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27629,8 +27661,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27661,8 +27693,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27693,8 +27725,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27725,8 +27757,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27757,8 +27789,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27789,8 +27821,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27821,8 +27853,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27853,8 +27885,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27885,8 +27917,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27917,8 +27949,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27949,8 +27981,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -27981,8 +28013,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28013,8 +28045,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28045,8 +28077,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28077,8 +28109,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28109,8 +28141,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28141,8 +28173,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28173,8 +28205,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28205,8 +28237,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28237,8 +28269,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28269,8 +28301,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28301,8 +28333,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28333,8 +28365,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28365,8 +28397,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28397,8 +28429,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28429,8 +28461,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28461,8 +28493,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28493,8 +28525,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28525,8 +28557,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28557,8 +28589,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28589,8 +28621,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28621,8 +28653,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28653,8 +28685,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28685,8 +28717,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28717,8 +28749,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28749,8 +28781,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28781,8 +28813,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28813,8 +28845,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28845,8 +28877,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28877,8 +28909,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28909,8 +28941,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28941,8 +28973,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -28973,8 +29005,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29005,8 +29037,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29037,8 +29069,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29069,8 +29101,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29101,8 +29133,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29133,8 +29165,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29165,8 +29197,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29197,8 +29229,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29229,8 +29261,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29261,8 +29293,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29293,8 +29325,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29325,8 +29357,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29357,8 +29389,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29389,8 +29421,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29421,8 +29453,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29453,8 +29485,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29485,8 +29517,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29517,8 +29549,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29549,8 +29581,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29581,8 +29613,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29613,8 +29645,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29645,8 +29677,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29677,8 +29709,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29709,8 +29741,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29741,8 +29773,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29773,8 +29805,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29805,8 +29837,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29837,8 +29869,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29869,8 +29901,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29901,8 +29933,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29933,8 +29965,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29965,8 +29997,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -29997,8 +30029,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30029,8 +30061,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30061,8 +30093,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30093,8 +30125,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30125,8 +30157,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30157,8 +30189,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30189,8 +30221,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30221,8 +30253,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30253,8 +30285,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30285,8 +30317,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30317,8 +30349,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30349,8 +30381,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30381,8 +30413,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30413,8 +30445,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30445,8 +30477,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30477,8 +30509,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30509,8 +30541,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30541,8 +30573,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30573,8 +30605,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30605,8 +30637,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30637,8 +30669,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30669,8 +30701,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30701,8 +30733,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30733,8 +30765,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30765,8 +30797,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30797,8 +30829,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30829,8 +30861,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30861,8 +30893,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30893,8 +30925,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30925,8 +30957,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30957,8 +30989,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -30989,8 +31021,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31021,8 +31053,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31053,8 +31085,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31085,8 +31117,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31117,8 +31149,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31149,8 +31181,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31181,8 +31213,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31213,8 +31245,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31245,8 +31277,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31277,8 +31309,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31309,8 +31341,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31341,8 +31373,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31373,8 +31405,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31405,8 +31437,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31437,8 +31469,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31469,8 +31501,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31501,8 +31533,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31533,8 +31565,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31565,8 +31597,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31597,8 +31629,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31629,8 +31661,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31661,8 +31693,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31693,8 +31725,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31725,8 +31757,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31757,8 +31789,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31789,8 +31821,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31821,8 +31853,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31853,8 +31885,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31885,8 +31917,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31917,8 +31949,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31949,8 +31981,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -31981,8 +32013,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32013,8 +32045,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32045,8 +32077,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32077,8 +32109,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32109,8 +32141,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32141,8 +32173,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32173,8 +32205,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32205,8 +32237,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32237,8 +32269,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32269,8 +32301,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32301,8 +32333,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32333,8 +32365,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32365,8 +32397,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32397,8 +32429,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32429,8 +32461,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32461,8 +32493,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32493,8 +32525,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32525,8 +32557,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32557,8 +32589,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32589,8 +32621,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32621,8 +32653,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32653,8 +32685,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32685,8 +32717,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32717,8 +32749,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32749,8 +32781,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32781,8 +32813,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32813,8 +32845,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32845,8 +32877,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32877,8 +32909,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32909,8 +32941,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32941,8 +32973,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -32973,8 +33005,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33005,8 +33037,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33037,8 +33069,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33069,8 +33101,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33101,8 +33133,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33133,8 +33165,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33165,8 +33197,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33197,8 +33229,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33229,8 +33261,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33261,8 +33293,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33293,8 +33325,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33325,8 +33357,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33357,8 +33389,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33389,8 +33421,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33421,8 +33453,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33453,8 +33485,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33485,8 +33517,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33517,8 +33549,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33549,8 +33581,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33581,8 +33613,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33613,8 +33645,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33645,8 +33677,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33677,8 +33709,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33709,8 +33741,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33741,8 +33773,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33773,8 +33805,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33805,8 +33837,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33837,8 +33869,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33869,8 +33901,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33901,8 +33933,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33933,8 +33965,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33965,8 +33997,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -33997,8 +34029,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34029,8 +34061,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34061,8 +34093,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34093,8 +34125,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34125,8 +34157,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34157,8 +34189,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34189,8 +34221,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34221,8 +34253,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34253,8 +34285,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34285,8 +34317,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34317,8 +34349,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34349,8 +34381,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34381,8 +34413,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34413,8 +34445,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34445,8 +34477,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34477,8 +34509,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34509,8 +34541,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34541,8 +34573,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34573,8 +34605,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34605,8 +34637,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34637,8 +34669,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34669,8 +34701,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34701,8 +34733,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34733,8 +34765,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34765,8 +34797,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34797,8 +34829,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34829,8 +34861,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34861,8 +34893,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34893,8 +34925,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34925,8 +34957,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34957,8 +34989,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -34989,8 +35021,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -35021,8 +35053,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -35053,8 +35085,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -35085,8 +35117,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -35117,8 +35149,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -35149,8 +35181,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -35181,8 +35213,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -35213,8 +35245,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -35245,8 +35277,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -35277,8 +35309,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -35309,8 +35341,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -35341,8 +35373,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -35373,8 +35405,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -35405,8 +35437,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -35437,8 +35469,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -35469,8 +35501,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -35501,8 +35533,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -35533,8 +35565,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -35565,8 +35597,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         },
@@ -35574,20 +35606,52 @@
           "date": "2026-08-25",
           "metrics": {
             "followersTotal": null,
-            "followersNet": 8,
+            "followersNet": 2,
             "contentViews": 0,
-            "impressions": 10963,
+            "impressions": 18454,
             "reach": null,
-            "profileVisits": 19,
-            "engagements": 183,
-            "likes": 141,
+            "profileVisits": 24,
+            "engagements": 402,
+            "likes": 321,
             "comments": null,
-            "shares": 0,
-            "bookmarks": 4,
-            "replies": 5,
-            "reposts": 14,
-            "newFollowers": 14,
-            "unfollows": 6,
+            "shares": 3,
+            "bookmarks": 20,
+            "replies": 8,
+            "reposts": 26,
+            "newFollowers": 21,
+            "unfollows": 19,
+            "mediaViews": 0,
+            "watchTimeSeconds": null,
+            "accountsEngaged": null,
+            "profileActivity": null,
+            "externalLinkTaps": null,
+            "contentPublished": 1
+          },
+          "provenance": {
+            "provider": "x-analytics-export",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
+            "basis": "native-daily-metric"
+          }
+        },
+        {
+          "date": "2026-08-26",
+          "metrics": {
+            "followersTotal": null,
+            "followersNet": 11,
+            "contentViews": 0,
+            "impressions": 3779,
+            "reach": null,
+            "profileVisits": 9,
+            "engagements": 183,
+            "likes": 149,
+            "comments": null,
+            "shares": 2,
+            "bookmarks": 17,
+            "replies": 0,
+            "reposts": 6,
+            "newFollowers": 13,
+            "unfollows": 2,
             "mediaViews": 0,
             "watchTimeSeconds": null,
             "accountsEngaged": null,
@@ -35597,65 +35661,65 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-metric"
           }
         }
       ],
       "periods": {
         "7d": {
-          "startDate": "2026-08-19",
-          "endDate": "2026-08-25",
+          "startDate": "2026-08-20",
+          "endDate": "2026-08-26",
           "metrics": {
             "followersTotal": null,
-            "followersNet": 4,
+            "followersNet": -3,
             "contentViews": 0,
-            "impressions": 130433,
+            "impressions": 113858,
             "reach": null,
-            "profileVisits": 191,
-            "engagements": 1891,
-            "likes": 1518,
+            "profileVisits": 138,
+            "engagements": 1964,
+            "likes": 1610,
             "comments": null,
-            "shares": 2,
-            "bookmarks": 76,
-            "replies": 40,
-            "reposts": 64,
-            "newFollowers": 112,
-            "unfollows": 108,
+            "shares": 7,
+            "bookmarks": 98,
+            "replies": 37,
+            "reposts": 74,
+            "newFollowers": 108,
+            "unfollows": 111,
             "mediaViews": 0,
             "watchTimeSeconds": null,
             "accountsEngaged": null,
             "profileActivity": null,
             "externalLinkTaps": null,
-            "contentPublished": 10
+            "contentPublished": 9
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-aggregate"
           }
         },
         "28d": {
-          "startDate": "2026-07-29",
-          "endDate": "2026-08-25",
+          "startDate": "2026-07-30",
+          "endDate": "2026-08-26",
           "metrics": {
             "followersTotal": null,
-            "followersNet": 147,
+            "followersNet": 146,
             "contentViews": 0,
-            "impressions": 820687,
+            "impressions": 812516,
             "reach": null,
-            "profileVisits": 1777,
-            "engagements": 20676,
-            "likes": 17232,
+            "profileVisits": 1759,
+            "engagements": 20861,
+            "likes": 17400,
             "comments": null,
-            "shares": 62,
-            "bookmarks": 693,
+            "shares": 65,
+            "bookmarks": 715,
             "replies": 202,
-            "reposts": 710,
-            "newFollowers": 598,
-            "unfollows": 451,
+            "reposts": 720,
+            "newFollowers": 594,
+            "unfollows": 448,
             "mediaViews": 0,
             "watchTimeSeconds": null,
             "accountsEngaged": null,
@@ -35665,63 +35729,63 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-aggregate"
           }
         },
         "30d": {
-          "startDate": "2026-07-27",
-          "endDate": "2026-08-25",
+          "startDate": "2026-07-28",
+          "endDate": "2026-08-26",
           "metrics": {
             "followersTotal": null,
-            "followersNet": 136,
+            "followersNet": 147,
             "contentViews": 0,
-            "impressions": 873240,
+            "impressions": 857154,
             "reach": null,
-            "profileVisits": 1886,
-            "engagements": 21462,
-            "likes": 17860,
+            "profileVisits": 1850,
+            "engagements": 21395,
+            "likes": 17803,
             "comments": null,
-            "shares": 64,
-            "bookmarks": 708,
-            "replies": 217,
-            "reposts": 727,
-            "newFollowers": 632,
-            "unfollows": 496,
+            "shares": 67,
+            "bookmarks": 732,
+            "replies": 210,
+            "reposts": 733,
+            "newFollowers": 638,
+            "unfollows": 491,
             "mediaViews": 0,
             "watchTimeSeconds": null,
             "accountsEngaged": null,
             "profileActivity": null,
             "externalLinkTaps": null,
-            "contentPublished": 53
+            "contentPublished": 52
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-aggregate"
           }
         },
         "60d": {
-          "startDate": "2026-06-27",
-          "endDate": "2026-08-25",
+          "startDate": "2026-06-28",
+          "endDate": "2026-08-26",
           "metrics": {
             "followersTotal": null,
-            "followersNet": 150,
+            "followersNet": 135,
             "contentViews": 0,
-            "impressions": 1576026,
+            "impressions": 1568449,
             "reach": null,
-            "profileVisits": 3822,
-            "engagements": 36549,
-            "likes": 29309,
+            "profileVisits": 3777,
+            "engagements": 36570,
+            "likes": 29362,
             "comments": null,
-            "shares": 184,
-            "bookmarks": 1208,
-            "replies": 590,
-            "reposts": 1436,
-            "newFollowers": 1184,
-            "unfollows": 1034,
+            "shares": 185,
+            "bookmarks": 1230,
+            "replies": 584,
+            "reposts": 1432,
+            "newFollowers": 1175,
+            "unfollows": 1040,
             "mediaViews": 0,
             "watchTimeSeconds": null,
             "accountsEngaged": null,
@@ -35731,63 +35795,63 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-aggregate"
           }
         },
         "90d": {
-          "startDate": "2026-05-28",
-          "endDate": "2026-08-25",
+          "startDate": "2026-05-29",
+          "endDate": "2026-08-26",
           "metrics": {
             "followersTotal": null,
-            "followersNet": 998,
+            "followersNet": 903,
             "contentViews": 0,
-            "impressions": 3239218,
+            "impressions": 3194214,
             "reach": null,
-            "profileVisits": 9674,
-            "engagements": 65436,
-            "likes": 49379,
+            "profileVisits": 9447,
+            "engagements": 64156,
+            "likes": 48546,
             "comments": null,
-            "shares": 319,
-            "bookmarks": 2172,
-            "replies": 1229,
-            "reposts": 2663,
-            "newFollowers": 2626,
-            "unfollows": 1628,
+            "shares": 317,
+            "bookmarks": 2159,
+            "replies": 1107,
+            "reposts": 2580,
+            "newFollowers": 2515,
+            "unfollows": 1612,
             "mediaViews": 0,
             "watchTimeSeconds": null,
             "accountsEngaged": null,
             "profileActivity": null,
             "externalLinkTaps": null,
-            "contentPublished": 170
+            "contentPublished": 169
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-aggregate"
           }
         },
         "365d": {
-          "startDate": "2025-08-26",
-          "endDate": "2026-08-25",
+          "startDate": "2025-08-27",
+          "endDate": "2026-08-26",
           "metrics": {
             "followersTotal": null,
-            "followersNet": 9638,
+            "followersNet": 9625,
             "contentViews": 0,
-            "impressions": 13071586,
+            "impressions": 13059304,
             "reach": null,
-            "profileVisits": 75636,
-            "engagements": 497918,
-            "likes": 372688,
+            "profileVisits": 75578,
+            "engagements": 497537,
+            "likes": 372380,
             "comments": null,
             "shares": 2207,
-            "bookmarks": 18096,
-            "replies": 4839,
-            "reposts": 24452,
-            "newFollowers": 16531,
-            "unfollows": 6893,
+            "bookmarks": 18104,
+            "replies": 4831,
+            "reposts": 24437,
+            "newFollowers": 16512,
+            "unfollows": 6887,
             "mediaViews": 0,
             "watchTimeSeconds": null,
             "accountsEngaged": null,
@@ -35797,30 +35861,30 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-aggregate"
           }
         },
         "all": {
-          "startDate": "2025-08-26",
-          "endDate": "2026-08-25",
+          "startDate": "2025-08-27",
+          "endDate": "2026-08-26",
           "metrics": {
             "followersTotal": null,
-            "followersNet": 9638,
+            "followersNet": 9625,
             "contentViews": 0,
-            "impressions": 13071586,
+            "impressions": 13059304,
             "reach": null,
-            "profileVisits": 75636,
-            "engagements": 497918,
-            "likes": 372688,
+            "profileVisits": 75578,
+            "engagements": 497537,
+            "likes": 372380,
             "comments": null,
             "shares": 2207,
-            "bookmarks": 18096,
-            "replies": 4839,
-            "reposts": 24452,
-            "newFollowers": 16531,
-            "unfollows": 6893,
+            "bookmarks": 18104,
+            "replies": 4831,
+            "reposts": 24437,
+            "newFollowers": 16512,
+            "unfollows": 6887,
             "mediaViews": 0,
             "watchTimeSeconds": null,
             "accountsEngaged": null,
@@ -35830,8 +35894,8 @@
           },
           "provenance": {
             "provider": "x-analytics-export",
-            "collectedAt": "2026-08-25T15:56:31.959Z",
-            "sourceUrl": "https://studio.x.com/analytics",
+            "collectedAt": "2026-08-26T06:00:05.295Z",
+            "sourceUrl": "https://x.com/i/account_analytics",
             "basis": "native-daily-aggregate"
           }
         }
