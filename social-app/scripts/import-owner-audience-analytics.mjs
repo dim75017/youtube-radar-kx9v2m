@@ -71,16 +71,13 @@ export async function importOwnerAudienceAnalytics(options = {}) {
     : assertAudienceAnalytics(analyticsValue);
   const history = assertAudienceHistory(historyValue);
   const incoming = emptyAnalyticsSnapshot(collectedAt);
+  const dailyAggregationSources = new Map();
 
   if (manifest.platforms.youtube?.dailySubscribersCsv) {
     const source = manifest.platforms.youtube.dailySubscribersCsv;
     const rows = parseCsv(await readFile(resolveManifestPath(manifestPath, source.path), "utf8"));
     incoming.platforms.youtube.daily = parseYouTubeSubscribers(rows, source, collectedAt);
-    incoming.platforms.youtube.periods = aggregateDailyPeriods(
-      incoming.platforms.youtube.daily,
-      source,
-      collectedAt,
-    );
+    dailyAggregationSources.set("youtube", source);
     incoming.platforms.youtube.lastSuccessfulImportAt = collectedAt;
   }
 
@@ -126,11 +123,7 @@ export async function importOwnerAudienceAnalytics(options = {}) {
       platform,
       collectedAt,
     );
-    incoming.platforms.tiktok.periods = aggregateDailyPeriods(
-      incoming.platforms.tiktok.daily,
-      platform,
-      collectedAt,
-    );
+    dailyAggregationSources.set("tiktok", platform);
     incoming.platforms.tiktok.lastSuccessfulImportAt = collectedAt;
   }
 
@@ -140,15 +133,31 @@ export async function importOwnerAudienceAnalytics(options = {}) {
       await readFile(resolveManifestPath(manifestPath, platform.dailyCsv.path), "utf8"),
     );
     incoming.platforms.x.daily = parseXDaily(rows, platform, collectedAt);
-    incoming.platforms.x.periods = aggregateDailyPeriods(
-      incoming.platforms.x.daily,
-      platform,
-      collectedAt,
-    );
+    dailyAggregationSources.set("x", platform);
     incoming.platforms.x.lastSuccessfulImportAt = collectedAt;
   }
 
+  if (dailyAggregationSources.has("tiktok")) {
+    recalculateTikTokFollowerNet(analytics.platforms.tiktok.daily);
+    alignIncomingTikTokFollowerNet(
+      incoming.platforms.tiktok.daily,
+      analytics.platforms.tiktok.daily,
+    );
+  }
   const mergedAnalytics = mergeAudienceAnalytics(analytics, incoming);
+  if (dailyAggregationSources.has("tiktok")) {
+    recalculateTikTokFollowerNet(mergedAnalytics.platforms.tiktok.daily);
+  }
+  // A short incremental export must not shrink the derived 30/90/365/all
+  // aggregates. Recompute them from the complete merged daily series. Native
+  // period-only snapshots (currently Instagram) remain untouched.
+  for (const [platform, source] of dailyAggregationSources) {
+    mergedAnalytics.platforms[platform].periods = aggregateDailyPeriods(
+      mergedAnalytics.platforms[platform].daily,
+      source,
+      collectedAt,
+    );
+  }
   const nextHistory = structuredClone(history);
 
   for (const platform of AUDIENCE_PLATFORMS) {
@@ -268,6 +277,40 @@ function parseTikTokDaily(followerRows, overviewRows, platform, collectedAt) {
       daily[index].metrics.followersTotal - daily[index - 1].metrics.followersTotal;
   }
   return daily;
+}
+
+function recalculateTikTokFollowerNet(daily) {
+  for (let index = 1; index < daily.length; index += 1) {
+    const previous = daily[index - 1];
+    const current = daily[index];
+    const previousTime = Date.parse(`${previous.date}T00:00:00.000Z`);
+    const currentTime = Date.parse(`${current.date}T00:00:00.000Z`);
+    if (currentTime - previousTime !== DAY_MS) continue;
+    if (
+      previous.metrics.followersTotal === null ||
+      current.metrics.followersTotal === null
+    ) continue;
+    current.metrics.followersNet =
+      current.metrics.followersTotal - previous.metrics.followersTotal;
+  }
+}
+
+function alignIncomingTikTokFollowerNet(incoming, current) {
+  const totalsByDate = new Map();
+  for (const point of [...current, ...incoming]) {
+    if (point.metrics.followersTotal !== null) {
+      totalsByDate.set(point.date, point.metrics.followersTotal);
+    }
+  }
+  for (const point of incoming) {
+    if (point.metrics.followersTotal === null) continue;
+    const previousDate = new Date(
+      Date.parse(`${point.date}T00:00:00.000Z`) - DAY_MS,
+    ).toISOString().slice(0, 10);
+    const previousTotal = totalsByDate.get(previousDate);
+    if (previousTotal === undefined) continue;
+    point.metrics.followersNet = point.metrics.followersTotal - previousTotal;
+  }
 }
 
 function parseXDaily(rows, platform, collectedAt) {

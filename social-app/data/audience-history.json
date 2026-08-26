@@ -2959,9 +2959,9 @@
         {
           "capturedAt": "2026-08-26T07:29:01.410Z",
           "followers": 1500000,
-          "precision": "exact",
+          "precision": "platform-rounded",
           "sourceUrl": "https://www.tiktok.com/embed/@lofigirl",
-          "label": "TikTok creator embed · followerCount entier statsV2"
+          "label": "TikTok creator embed · compteur public arrondi"
         }
       ],
       "engagementByPeriod": {
@@ -2971,7 +2971,7 @@
           "formula": "mean(likes+comments)/followers*100",
           "followers": 1500000,
           "followersObservedAt": "2026-08-26T07:29:01.410Z",
-          "followersPrecision": "exact",
+          "followersPrecision": "platform-rounded",
           "sampleSize": 4,
           "averageInteractions": 42156.75,
           "ratePercent": 2.81045,
@@ -2984,7 +2984,7 @@
           "formula": "mean(likes+comments)/followers*100",
           "followers": 1500000,
           "followersObservedAt": "2026-08-26T07:29:01.410Z",
-          "followersPrecision": "exact",
+          "followersPrecision": "platform-rounded",
           "sampleSize": 29,
           "averageInteractions": 7069.896552,
           "ratePercent": 0.471326,
@@ -2997,7 +2997,7 @@
           "formula": "mean(likes+comments)/followers*100",
           "followers": 1500000,
           "followersObservedAt": "2026-08-26T07:29:01.410Z",
-          "followersPrecision": "exact",
+          "followersPrecision": "platform-rounded",
           "sampleSize": 78,
           "averageInteractions": 3607.666667,
           "ratePercent": 0.240511,
@@ -3010,7 +3010,7 @@
           "formula": "mean(likes+comments)/followers*100",
           "followers": 1500000,
           "followersObservedAt": "2026-08-26T07:29:01.410Z",
-          "followersPrecision": "exact",
+          "followersPrecision": "platform-rounded",
           "sampleSize": 143,
           "averageInteractions": 19078.706294,
           "ratePercent": 1.271914,
@@ -3023,7 +3023,7 @@
           "formula": "mean(likes+comments)/followers*100",
           "followers": 1500000,
           "followersObservedAt": "2026-08-26T07:29:01.410Z",
-          "followersPrecision": "exact",
+          "followersPrecision": "platform-rounded",
           "sampleSize": 386,
           "averageInteractions": 72168.624352,
           "ratePercent": 4.811242,

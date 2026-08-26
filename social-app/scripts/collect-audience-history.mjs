@@ -291,11 +291,13 @@ async function collectTikTok({ env, fetchImpl, capturedAt }) {
       url: PROFILE_URLS.tiktok,
       sourceUrl: PROFILE_URLS.tiktok,
       label: "Métadonnée publique TikTok statsV2",
+      precision: "exact",
     },
     {
       url: "https://www.tiktok.com/embed/@lofigirl",
       sourceUrl: "https://www.tiktok.com/embed/@lofigirl",
-      label: "TikTok creator embed · followerCount entier statsV2",
+      label: "TikTok creator embed · compteur public arrondi",
+      precision: "platform-rounded",
     },
   ];
   for (const source of publicSources) {
@@ -313,7 +315,7 @@ async function collectTikTok({ env, fetchImpl, capturedAt }) {
       return observation({
         capturedAt,
         followers,
-        precision: "exact",
+        precision: source.precision,
         sourceUrl: source.sourceUrl,
         label: source.label,
       });

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   AUDIENCE_ANALYTICS_METRIC_KEYS,
@@ -17,6 +18,22 @@ const PROFILE_URLS = {
   tiktok: "https://www.tiktok.com/@lofigirl",
   x: "https://x.com/lofigirl",
 };
+
+test("keeps the maximum truthful native history in the published snapshot", async () => {
+  const snapshot = assertAudienceAnalytics(JSON.parse(
+    await readFile(new URL("../data/audience-analytics.json", import.meta.url), "utf8"),
+  ));
+
+  assert.ok(snapshot.platforms.youtube.daily.length >= 7_000);
+  assert.equal(snapshot.platforms.youtube.daily[0].date, "2007-04-01");
+  assert.equal(snapshot.platforms.youtube.periods.all.startDate, "2007-04-01");
+  assert.equal(snapshot.platforms.youtube.daily.at(-1)?.date, "2026-08-24");
+  assert.equal(snapshot.platforms.tiktok.daily.length, 366);
+  assert.equal(snapshot.platforms.x.daily.length, 366);
+  assert.equal(snapshot.platforms.instagram.daily.length, 0);
+  assert.ok(snapshot.platforms.instagram.periods["30d"]);
+  assert.ok(snapshot.platforms.instagram.periods["90d"]);
+});
 
 test("validates a complete closed version 1 analytics snapshot", () => {
   const snapshot = fixture();

@@ -125,6 +125,73 @@ test("l'import natif normalise les jours sans interpolation ni décalage de date
 
   const persisted = JSON.parse(await readFile(paths.analytics, "utf8"));
   assert.equal(persisted.platforms.x.daily.at(-1).date, "2026-08-25");
+
+  await Promise.all([
+    writeFile(
+      paths.followers,
+      '"Date","Followers","Difference in followers from previous day"\n"25 August","107","-3"\n"26 August","111","0"\n',
+      "utf8",
+    ),
+    writeFile(
+      paths.overview,
+      '"Date","Video Views","Profile Views","Likes","Comments","Shares"\n"25 August","31","7","10","3","3"\n"26 August","40","8","12","4","4"\n',
+      "utf8",
+    ),
+    writeFile(
+      paths.manifest,
+      JSON.stringify({
+        collectedAt: "2026-08-26T16:00:00.000Z",
+        platforms: {
+          tiktok: {
+            provider: "tiktok-studio-export",
+            sourceUrl: "https://www.tiktok.com/tiktokstudio/analytics",
+            firstDate: "2026-08-25",
+            followersCsv: { path: "followers.csv" },
+            overviewCsv: { path: "overview.csv" },
+          },
+        },
+      }),
+      "utf8",
+    ),
+  ]);
+
+  const increment = await importOwnerAudienceAnalytics({
+    manifestPath: paths.manifest,
+    analyticsPath: paths.analytics,
+    historyPath: paths.history,
+    postsPath: paths.posts,
+  });
+
+  assert.deepEqual(
+    increment.analytics.platforms.tiktok.daily.map((point) => point.date),
+    ["2026-08-23", "2026-08-24", "2026-08-25", "2026-08-26"],
+  );
+  assert.deepEqual(
+    increment.analytics.platforms.tiktok.daily.map(
+      (point) => point.metrics.followersNet,
+    ),
+    [null, 10, -3, 4],
+  );
+  assert.equal(
+    increment.analytics.platforms.tiktok.periods.all.startDate,
+    "2026-08-23",
+  );
+  assert.equal(
+    increment.analytics.platforms.tiktok.periods.all.endDate,
+    "2026-08-26",
+  );
+  assert.deepEqual(
+    increment.analytics.platforms.instagram.periods["30d"],
+    result.analytics.platforms.instagram.periods["30d"],
+  );
+
+  const repeated = await importOwnerAudienceAnalytics({
+    manifestPath: paths.manifest,
+    analyticsPath: paths.analytics,
+    historyPath: paths.history,
+    postsPath: paths.posts,
+  });
+  assert.deepEqual(repeated.analytics, increment.analytics);
 });
 
 function emptyAnalytics() {

@@ -1244,7 +1244,7 @@ export function SocialOS({
         </div>
       </aside>
 
-      <main className="main">
+      <main className={`main ${view === "overview" ? "main-dashboard" : ""}`}>
         <header className="platform-header">
           <div className="radar-switch" role="navigation" aria-label="Changer de site Lofi Radar">
             <a className="youtube" href="../" aria-label="YouTube">
@@ -1756,34 +1756,36 @@ function AudienceDashboard({
 
   return (
     <section className="audience-dashboard" aria-labelledby="audience-dashboard-title">
-      <header className="audience-dashboard-heading">
-        <div>
-          <span className="section-kicker">Audience & engagement</span>
-          <h2 id="audience-dashboard-title">Tableau de bord</h2>
-        </div>
-        <span className="audience-refresh-label">
-          ↻ Collecte planifiée
-        </span>
-      </header>
+      <div className="audience-dashboard-toolbar">
+        <header className="audience-dashboard-heading">
+          <div>
+            <span className="section-kicker">Audience & engagement</span>
+            <h2 id="audience-dashboard-title">Tableau de bord</h2>
+          </div>
+          <span className="audience-refresh-label">
+            ↻ Collecte planifiée
+          </span>
+        </header>
 
-      <div className="audience-period-control">
-        <span className="section-kicker">Durée</span>
-        <div
-          className="format-filter-tabs audience-period-tabs"
-          role="group"
-          aria-label="Période du tableau de bord"
-        >
-          {AUDIENCE_PERIODS.map((option) => (
-            <button
-              className={periodKey === option.key ? "active" : ""}
-              type="button"
-              aria-pressed={periodKey === option.key}
-              onClick={() => setPeriodKey(option.key)}
-              key={option.key}
-            >
-              {option.label}
-            </button>
-          ))}
+        <div className="audience-period-control">
+          <span className="section-kicker">Durée</span>
+          <div
+            className="format-filter-tabs audience-period-tabs"
+            role="group"
+            aria-label="Période du tableau de bord"
+          >
+            {AUDIENCE_PERIODS.map((option) => (
+              <button
+                className={periodKey === option.key ? "active" : ""}
+                type="button"
+                aria-pressed={periodKey === option.key}
+                onClick={() => setPeriodKey(option.key)}
+                key={option.key}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1871,9 +1873,6 @@ function AudienceDashboard({
         analytics={analytics}
         clientNow={clientNow}
         history={history}
-        periodKey={periodKey}
-        periodLabel={period.label}
-        periodDays={period.days}
       />
     </section>
   );
@@ -2027,10 +2026,10 @@ const NATIVE_ANALYTICS_PRIORITY: Record<Platform, readonly AudienceAnalyticsMetr
 };
 
 const NATIVE_ANALYTICS_DEFAULT_METRIC: Record<Platform, AudienceAnalyticsMetricKey> = {
-  youtube: "followersTotal",
+  youtube: "followersNet",
   instagram: "followersTotal",
   tiktok: "followersTotal",
-  x: "followersTotal",
+  x: "followersNet",
 };
 
 const NATIVE_PERIOD_BY_DASHBOARD_PERIOD: Record<
@@ -2044,6 +2043,20 @@ const NATIVE_PERIOD_BY_DASHBOARD_PERIOD: Record<
   all: "all",
 };
 
+const AUDIENCE_CHART_PERIODS = [
+  { key: "30d", label: "30 jours", days: 30, snapshotKey: "30d" },
+  { key: "90d", label: "90 jours", days: 90, snapshotKey: "90d" },
+  { key: "360d", label: "360 jours", days: 360, snapshotKey: null },
+  { key: "all", label: "All time", days: null, snapshotKey: "all" },
+] as const satisfies readonly {
+  key: string;
+  label: string;
+  days: number | null;
+  snapshotKey: AudienceAnalyticsPeriodKey | null;
+}[];
+
+type AudienceChartPeriodKey = (typeof AUDIENCE_CHART_PERIODS)[number]["key"];
+
 type AudienceMetricSeriesPoint = {
   date: string;
   value: number;
@@ -2056,47 +2069,56 @@ function AudienceAnalyticsExplorer({
   analytics,
   clientNow,
   history,
-  periodKey,
-  periodLabel,
-  periodDays,
 }: {
   analytics: AudienceAnalytics | null;
   clientNow: string | null;
   history: AudienceHistory | null;
-  periodKey: AudiencePeriodKey;
-  periodLabel: string;
-  periodDays: number | null;
 }) {
   const [activePlatform, setActivePlatform] = useState<Platform>("youtube");
+  const [chartPeriodKey, setChartPeriodKey] = useState<AudienceChartPeriodKey>("30d");
   const [requestedMetric, setRequestedMetric] = useState<AudienceAnalyticsMetricKey>(
     NATIVE_ANALYTICS_DEFAULT_METRIC.youtube,
   );
   if (!analytics && !history) return null;
 
+  const chartPeriod = AUDIENCE_CHART_PERIODS.find((option) => option.key === chartPeriodKey)
+    ?? AUDIENCE_CHART_PERIODS[0];
+  const periodDays = chartPeriod.days;
+  const periodLabel = chartPeriod.label;
   const meta = PLATFORM_META[activePlatform];
   const generatedAt = latestIsoTimestamp(analytics?.generatedAt, history?.generatedAt)
     ?? "1970-01-01T00:00:00.000Z";
-  const endDate = audienceParisDay(generatedAt);
   const analyticsPlatform = analytics?.platforms[activePlatform] ?? null;
   const platformHistory = history?.platforms[activePlatform] ?? null;
-  const daily = nativeAnalyticsDailyForPeriod(
-    analyticsPlatform?.daily ?? [],
-    endDate,
-    periodDays,
+  const allDaily = analyticsPlatform?.daily ?? [];
+  const allHistoryPoints = audienceHistoryPointsForPeriod(
+    platformHistory,
+    audienceParisDay(generatedAt),
+    null,
   );
-  const historyPoints = audiencePointsForPeriod(platformHistory, generatedAt, periodDays);
-  const nativePeriodKey = NATIVE_PERIOD_BY_DASHBOARD_PERIOD[periodKey];
+  const nativePeriodKey = chartPeriod.snapshotKey;
   const periodSnapshot = analyticsPlatform && nativePeriodKey
     ? analyticsPlatform.periods[nativePeriodKey]
     : null;
   const orderedMetrics = nativeAnalyticsMetricOrder(activePlatform);
   const availableMetrics = orderedMetrics.filter((metric) => {
-    const series = audienceMetricSeries(metric, daily, historyPoints);
-    return series.length > 0 || nativeAnalyticsMetricSummary(metric, daily, periodSnapshot) !== null;
+    const series = audienceMetricSeries(metric, allDaily, allHistoryPoints);
+    return series.length > 0 || nativeAnalyticsMetricSummary(metric, [], periodSnapshot) !== null;
   });
   const activeMetric = availableMetrics.includes(requestedMetric)
     ? requestedMetric
     : availableMetrics[0] ?? null;
+  const endDate = activeMetric
+    ? audienceMetricEndDate(
+      activeMetric,
+      allDaily,
+      allHistoryPoints,
+      periodSnapshot,
+      audienceParisDay(generatedAt),
+    )
+    : audienceParisDay(generatedAt);
+  const daily = nativeAnalyticsDailyForPeriod(allDaily, endDate, periodDays);
+  const historyPoints = audienceHistoryPointsForPeriod(platformHistory, endDate, periodDays);
   const activeSeries = activeMetric
     ? audienceMetricSeries(activeMetric, daily, historyPoints)
     : [];
@@ -2130,29 +2152,49 @@ function AudienceAnalyticsExplorer({
         </span>
       </header>
 
-      <div
-        className="audience-explorer-platform-tabs"
-        role="group"
-        aria-label="Plateforme du graphique"
-      >
-        {PLATFORM_ORDER.map((platform) => {
-          const platformMeta = PLATFORM_META[platform];
-          return (
+      <div className="audience-explorer-controls">
+        <div
+          className="audience-explorer-platform-tabs"
+          role="group"
+          aria-label="Plateforme du graphique"
+        >
+          {PLATFORM_ORDER.map((platform) => {
+            const platformMeta = PLATFORM_META[platform];
+            return (
+              <button
+                className={platform === activePlatform ? "active" : ""}
+                type="button"
+                aria-pressed={platform === activePlatform}
+                onClick={() => {
+                  setActivePlatform(platform);
+                  setRequestedMetric(NATIVE_ANALYTICS_DEFAULT_METRIC[platform]);
+                }}
+                key={platform}
+              >
+                <img src={`platforms/${platform}.svg`} alt="" width="20" height="20" />
+                {platformMeta.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div
+          className="audience-chart-period-tabs"
+          role="group"
+          aria-label="Période du graphique"
+        >
+          {AUDIENCE_CHART_PERIODS.map((option) => (
             <button
-              className={platform === activePlatform ? "active" : ""}
+              className={option.key === chartPeriodKey ? "active" : ""}
               type="button"
-              aria-pressed={platform === activePlatform}
-              onClick={() => {
-                setActivePlatform(platform);
-                setRequestedMetric(NATIVE_ANALYTICS_DEFAULT_METRIC[platform]);
-              }}
-              key={platform}
+              aria-pressed={option.key === chartPeriodKey}
+              onClick={() => setChartPeriodKey(option.key)}
+              key={option.key}
             >
-              <img src={`platforms/${platform}.svg`} alt="" width="20" height="20" />
-              {platformMeta.label}
+              {option.label}
             </button>
-          );
-        })}
+          ))}
+        </div>
       </div>
 
       {availableMetrics.length > 0 && activeMetric && activeMeta && activeSummary ? (
@@ -2164,11 +2206,28 @@ function AudienceAnalyticsExplorer({
           >
             {availableMetrics.map((metric) => {
               const metricMeta = NATIVE_ANALYTICS_METRIC_META[metric];
-              const series = audienceMetricSeries(metric, daily, historyPoints);
+              const metricEndDate = audienceMetricEndDate(
+                metric,
+                allDaily,
+                allHistoryPoints,
+                periodSnapshot,
+                audienceParisDay(generatedAt),
+              );
+              const metricDaily = nativeAnalyticsDailyForPeriod(
+                allDaily,
+                metricEndDate,
+                periodDays,
+              );
+              const metricHistory = audienceHistoryPointsForPeriod(
+                platformHistory,
+                metricEndDate,
+                periodDays,
+              );
+              const series = audienceMetricSeries(metric, metricDaily, metricHistory);
               const summary = metric === "followersTotal"
                 ? audienceFollowersMetricSummary(series)
-                  ?? nativeAnalyticsMetricSummary(metric, daily, periodSnapshot)
-                : nativeAnalyticsMetricSummary(metric, daily, periodSnapshot);
+                  ?? nativeAnalyticsMetricSummary(metric, metricDaily, periodSnapshot)
+                : nativeAnalyticsMetricSummary(metric, metricDaily, periodSnapshot);
               if (!summary) return null;
               return (
                 <button
@@ -2205,6 +2264,7 @@ function AudienceAnalyticsExplorer({
               periodLabel={periodLabel}
               platformLabel={meta.label}
               points={activeSeries}
+              aggregateOnly={activeSeries.length === 0 && activeSummary.basis === "period"}
             />
 
             <footer className="audience-native-chart-caption">
@@ -2213,7 +2273,11 @@ function AudienceAnalyticsExplorer({
                   ? `${activeSeries.length} point${activeSeries.length > 1 ? "s" : ""} réel${activeSeries.length > 1 ? "s" : ""}`
                   : `Agrégat officiel · ${periodLabel}`}
               </span>
-              <span>Données réelles · jours absents non reliés</span>
+              <span>
+                {chartPeriodKey === "all"
+                  ? "Toute la plage native importée"
+                  : "Données réelles · jours absents non reliés"}
+              </span>
               <span>{activeSummary.provenance.provider}</span>
             </footer>
           </div>
@@ -2303,6 +2367,45 @@ function nativeAnalyticsDailyForPeriod(
   });
 }
 
+function audienceHistoryPointsForPeriod(
+  platformHistory: AudienceHistory["platforms"][Platform] | null,
+  endDate: string,
+  periodDays: number | null,
+) {
+  if (!platformHistory) return [];
+  const endTime = nativeAnalyticsDateTime(endDate);
+  const minimumTime = periodDays === null
+    ? Number.NEGATIVE_INFINITY
+    : endTime - Math.max(0, periodDays - 1) * 24 * 60 * 60 * 1_000;
+  return platformHistory.observations.filter((point) => {
+    const time = nativeAnalyticsDateTime(audienceParisDay(point.capturedAt));
+    return Number.isFinite(time) && time >= minimumTime && time <= endTime;
+  });
+}
+
+function audienceMetricEndDate(
+  metric: AudienceAnalyticsMetricKey,
+  daily: readonly AudienceAnalyticsDailyPoint[],
+  historyPoints: readonly AudienceObservation[],
+  periodSnapshot: AudienceAnalyticsPeriodSnapshot | null,
+  fallbackDate: string,
+) {
+  const dates = daily
+    .filter((point) => isNativeAnalyticsValue(point.metrics[metric]))
+    .map((point) => point.date);
+  if (metric === "followersTotal") {
+    dates.push(...historyPoints.map((point) => audienceParisDay(point.capturedAt)));
+  }
+  if (
+    dates.length === 0 &&
+    periodSnapshot &&
+    isNativeAnalyticsValue(periodSnapshot.metrics[metric])
+  ) {
+    dates.push(periodSnapshot.endDate);
+  }
+  return dates.sort().at(-1) ?? fallbackDate;
+}
+
 function nativeAnalyticsMetricSummary(
   metric: AudienceAnalyticsMetricKey,
   daily: readonly AudienceAnalyticsDailyPoint[],
@@ -2338,6 +2441,7 @@ function nativeAnalyticsMetricSummary(
 }
 
 function AudienceNativeMetricChart({
+  aggregateOnly,
   endDate,
   metric,
   periodDays,
@@ -2345,6 +2449,7 @@ function AudienceNativeMetricChart({
   platformLabel,
   points,
 }: {
+  aggregateOnly: boolean;
   endDate: string;
   metric: AudienceAnalyticsMetricKey;
   periodDays: number | null;
@@ -2357,17 +2462,22 @@ function AudienceNativeMetricChart({
   if (points.length === 0) {
     return (
       <div className="audience-native-chart-empty" role="status">
-        Aucune valeur quotidienne pour {metricLabel.toLowerCase()}.
+        <strong>{aggregateOnly ? `Agrégat officiel · ${periodLabel}` : "Série quotidienne indisponible"}</strong>
+        <span>
+          {aggregateOnly
+            ? `La plateforme ne fournit pas de courbe quotidienne exportable pour ${metricLabel.toLowerCase()}.`
+            : `Aucune valeur quotidienne réelle pour ${metricLabel.toLowerCase()} sur cette période.`}
+        </span>
       </div>
     );
   }
 
   const width = 940;
-  const height = 286;
+  const height = 156;
   const plotLeft = 24;
   const plotRight = 842;
-  const plotTop = 18;
-  const plotBottom = 218;
+  const plotTop = 12;
+  const plotBottom = 96;
   const observedTimes = points.map((point) => nativeAnalyticsDateTime(point.date));
   const observedValues = points.map((point) => point.value);
   const requestedEndTime = nativeAnalyticsDateTime(endDate);
@@ -2473,7 +2583,7 @@ function AudienceNativeMetricChart({
               className="audience-native-chart-date"
               key={tick.timestamp}
               x={tick.x}
-              y="252"
+              y="132"
               textAnchor={index === 0 ? "start" : index === dateTicks.length - 1 ? "end" : "middle"}
             >
               {formatAudienceChartDate(

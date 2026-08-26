@@ -16,9 +16,20 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(component, /analytics=\{audienceAnalytics\}/);
   assert.match(explorer, /function AudienceAnalyticsExplorer/);
   assert.match(explorer, /useState<Platform>\("youtube"\)/);
+  assert.match(explorer, /youtube: "followersNet"/);
+  assert.match(explorer, /tiktok: "followersTotal"/);
+  assert.match(explorer, /x: "followersNet"/);
   assert.match(explorer, /aria-label="Plateforme du graphique"/);
   assert.match(explorer, /PLATFORM_ORDER\.map/);
   assert.match(explorer, /aria-pressed=\{platform === activePlatform\}/);
+  assert.match(explorer, /const AUDIENCE_CHART_PERIODS = \[/);
+  assert.match(explorer, /key: "30d", label: "30 jours", days: 30/);
+  assert.match(explorer, /key: "90d", label: "90 jours", days: 90/);
+  assert.match(explorer, /key: "360d", label: "360 jours", days: 360/);
+  assert.match(explorer, /key: "all", label: "All time", days: null/);
+  assert.match(explorer, /useState<AudienceChartPeriodKey>\("30d"\)/);
+  assert.match(explorer, /aria-label="Période du graphique"/);
+  assert.match(explorer, /aria-pressed=\{option\.key === chartPeriodKey\}/);
   assert.match(explorer, /aria-label=\{`Métrique du graphique/);
   assert.match(explorer, /availableMetrics\.map/);
   assert.match(explorer, /aria-pressed=\{metric === activeMetric\}/);
@@ -29,6 +40,11 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.doesNotMatch(component, /audience-evolution-block/);
 
   assert.match(explorer, /function audienceMetricSeries/);
+  assert.match(explorer, /function audienceMetricEndDate/);
+  assert.match(explorer, /function audienceHistoryPointsForPeriod/);
+  assert.match(explorer, /const endDate = activeMetric/);
+  assert.match(explorer, /Toute la plage native importée/);
+  assert.match(explorer, /Agrégat officiel · \$\{periodLabel\}/);
   assert.match(explorer, /metric === "followersTotal"/);
   assert.match(explorer, /historyPoints/);
   assert.match(explorer, /point\.metrics\[metric\]/);
@@ -38,8 +54,12 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.doesNotMatch(explorer, /fillMissing|interpolate|interpolation linéaire/i);
 
   assert.match(styles, /\.audience-platform-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(4/);
+  assert.match(styles, /\.main\.main-dashboard\s*\{[\s\S]*?padding-bottom:\s*8px/);
+  assert.match(styles, /\.audience-dashboard-toolbar\s*\{[\s\S]*?grid-template-columns:/);
   assert.match(styles, /\.audience-explorer-platform-tabs/);
+  assert.match(styles, /\.audience-chart-period-tabs/);
   assert.match(styles, /\.audience-explorer-metrics/);
+  assert.match(styles, /\.audience-native-chart-empty,[\s\S]*?min-height:\s*150px/);
   assert.match(styles, /\.audience-native-chart-viewport\s*\{[\s\S]*?overflow-x:\s*auto/);
   assert.match(styles, /@media \(max-width: 640px\)[\s\S]*?\.audience-platform-grid/);
   assert.doesNotMatch(styles, /\.audience-chart-viewport|\.audience-native-platform-grid/);

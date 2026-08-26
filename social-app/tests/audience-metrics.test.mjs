@@ -49,7 +49,7 @@ test("validates the real version 2 snapshot, its five periods and plausible late
   }
   assertLatestObservation("youtube", 10_000_000, ["exact", "platform-rounded"]);
   assertLatestObservation("instagram", 1_000_000, "exact");
-  assertLatestObservation("tiktok", 1_000_000, "exact");
+  assertLatestObservation("tiktok", 1_000_000, ["exact", "platform-rounded"]);
   assertLatestObservation("x", 100_000, ["exact", "platform-rounded"]);
 });
 
@@ -370,6 +370,24 @@ test("uses the exact YouTube Studio count before any public rounded fallback", a
     sourceUrl: "https://studio.youtube.com/artist/a_lcagLDIDJj5/analytics/tab-overview/period-default/total_reach-all",
     label: "YouTube Studio · compteur d’abonnés exact vérifié",
   });
+});
+
+test("keeps the TikTok creator embed counter rounded instead of claiming exactness", async () => {
+  const capturedAt = "2026-08-26T08:00:00.000Z";
+  const result = await AUDIENCE_COLLECTORS.tiktok({
+    capturedAt,
+    env: {},
+    fetchImpl: async (url) => url === "https://www.tiktok.com/@lofigirl"
+      ? new Response("", { status: 403 })
+      : new Response('<script>{"statsV2":{"followerCount":"1500000"}}</script>', {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      }),
+  });
+
+  assert.equal(result.followers, 1_500_000);
+  assert.equal(result.precision, "platform-rounded");
+  assert.match(result.label, /arrondi/);
 });
 
 test("never replaces a same-day exact audience point with a rounded counter", async () => {
