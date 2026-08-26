@@ -21,6 +21,7 @@ import {
   type AudienceDemographicDimension,
   type AudienceDemographics,
 } from "../lib/audience-demographics";
+import { buildAudienceChartAxis } from "../lib/audience-chart-axis.mjs";
 
 import {
   generateSocialIdeas,
@@ -2688,8 +2689,21 @@ function AudienceNativeMetricChart({
     const padding = rawSpan === 0
       ? Math.max(1, Math.abs(domainMaximum) * 0.08)
       : rawSpan * 0.12;
-    const minimum = signed ? domainMinimum - padding : Math.max(0, domainMinimum - padding);
-    const maximum = domainMaximum + padding;
+    const paddedMinimum = signed ? domainMinimum - padding : Math.max(0, domainMinimum - padding);
+    const paddedMaximum = domainMaximum + padding;
+    const maximumAbsoluteValue = Math.max(Math.abs(paddedMinimum), Math.abs(paddedMaximum));
+    const axisUnit = metric === "watchTimeSeconds"
+      ? maximumAbsoluteValue >= 3_600
+        ? 3_600
+        : 60
+      : 1;
+    const axis = buildAudienceChartAxis(paddedMinimum, paddedMaximum, {
+      targetIntervals: 4,
+      unit: axisUnit,
+      minimumStep: 1,
+    });
+    const minimum = axis.minimum;
+    const maximum = axis.maximum;
     const valueSpan = Math.max(maximum - minimum, 1);
     const x = (timestamp: number) =>
       plotLeft + ((timestamp - firstTime) / timeSpan) * (plotRight - plotLeft);
@@ -2724,13 +2738,7 @@ function AudienceNativeMetricChart({
       activePath = move;
     });
     if (activePath.includes(" L ")) paths.push(activePath);
-    const gridLines = Array.from({ length: 4 }, (_, index) => {
-      const ratio = index / 3;
-      return {
-        value: maximum - ratio * valueSpan,
-        y: plotTop + ratio * (plotBottom - plotTop),
-      };
-    });
+    const gridLines = axis.ticks.map((value) => ({ value, y: y(value) }));
     const tickCount = periodDays === null && timeSpan > 500 * 24 * 60 * 60 * 1_000 ? 4 : 5;
     const dateTicks = Array.from({ length: tickCount }, (_, index) => {
       const ratio = index / (tickCount - 1);
@@ -2739,6 +2747,7 @@ function AudienceNativeMetricChart({
     });
     const zeroY = minimum <= 0 && maximum >= 0 ? y(0) : null;
     return {
+      axisStep: axis.step,
       coordinates,
       dateTicks,
       gridLines,
@@ -2768,6 +2777,7 @@ function AudienceNativeMetricChart({
   }
 
   const {
+    axisStep,
     coordinates,
     dateTicks,
     gridLines,
@@ -2844,7 +2854,7 @@ function AudienceNativeMetricChart({
             <g className="audience-native-chart-grid" key={line.y}>
               <line x1={plotLeft} x2={plotRight} y1={line.y} y2={line.y} />
               <text x={plotRight + 14} y={line.y + 4}>
-                {formatNativeAnalyticsMetric(line.value, metric, true)}
+                {formatAudienceAxisTick(line.value, metric, axisStep)}
               </text>
             </g>
           ))}
@@ -2960,6 +2970,45 @@ function formatNativeAnalyticsMetric(
     maximumFractionDigits: compact ? 1 : 0,
   }).format(Math.abs(value));
   return value < 0 ? `−${formatted}` : formatted;
+}
+
+function formatAudienceAxisTick(
+  value: number,
+  metric: AudienceAnalyticsMetricKey,
+  step: number,
+) {
+  const normalizedValue = Object.is(Math.round(value), -0) ? 0 : Math.round(value);
+  if (metric === "watchTimeSeconds") {
+    const divisor = Math.max(Math.abs(value), Math.abs(step)) >= 3_600 ? 3_600 : 60;
+    const unit = divisor === 3_600 ? "h" : "min";
+    const unitValue = value / divisor;
+    const unitStep = Math.abs(step / divisor);
+    const maximumFractionDigits = unitStep >= 1 ? 0 : unitStep >= 0.1 ? 1 : 2;
+    return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits }).format(unitValue)} ${unit}`;
+  }
+
+  const absolute = Math.abs(normalizedValue);
+  const isFollowerMetric =
+    metric === "followersTotal" ||
+    metric === "followersNet" ||
+    metric === "newFollowers" ||
+    metric === "unfollows";
+  let formatted: string;
+  if (isFollowerMetric || absolute < 10_000) {
+    formatted = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(absolute);
+  } else {
+    const divisor = absolute >= 1_000_000 ? 1_000_000 : 1_000;
+    const normalizedStep = Math.abs(step) / divisor;
+    const maximumFractionDigits = normalizedStep >= 1 ? 0 : normalizedStep >= 0.1 ? 1 : 2;
+    formatted = new Intl.NumberFormat("fr-FR", {
+      notation: "compact",
+      maximumFractionDigits,
+    }).format(absolute);
+  }
+
+  if (normalizedValue === 0) return "0";
+  if (normalizedValue < 0) return `−${formatted}`;
+  return metric === "followersNet" || metric === "newFollowers" ? `+${formatted}` : formatted;
 }
 
 

@@ -21,6 +21,11 @@ test("keeps follower values integral and fits the chart inside the remaining vie
   assert.match(chart, /window\.innerHeight - viewport\.getBoundingClientRect\(\)\.top - bottomReserve - 34/);
   assert.match(chart, /Math\.max\(120, Math\.min\(280, availableHeight\)\)/);
   assert.match(chart, /style=\{\{ height: `\$\{height\}px` \}\}/);
+  assert.match(chart, /buildAudienceChartAxis\(paddedMinimum, paddedMaximum/);
+  assert.match(chart, /const gridLines = axis\.ticks\.map/);
+  assert.match(chart, /axisStep: axis\.step/);
+  assert.match(chart, /formatAudienceAxisTick\(line\.value, metric, axisStep\)/);
+  assert.doesNotMatch(chart, /maximum - ratio \* valueSpan/);
 
   assert.match(formatters, /metric === "followersTotal"/);
   assert.match(formatters, /metric === "followersNet"/);
@@ -29,6 +34,9 @@ test("keeps follower values integral and fits the chart inside the remaining vie
   assert.match(formatters, /metric === "followersNet" \|\| metric === "newFollowers"/);
   assert.match(formatters, /Math\.round\(Math\.abs\(value\)\)/);
   assert.match(formatters, /maximumFractionDigits: 0/);
+  assert.match(formatters, /function formatAudienceAxisTick/);
+  assert.match(formatters, /if \(normalizedValue === 0\) return "0"/);
+  assert.match(formatters, /metric === "followersNet" \|\| metric === "newFollowers" \? `\+\$\{formatted\}`/);
   assert.doesNotMatch(
     formatters.slice(formatters.indexOf("function formatAudienceDelta")),
     /notation:\s*absolute >= 1_000_000 \? "compact"/,
