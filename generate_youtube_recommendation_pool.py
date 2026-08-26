@@ -15,7 +15,7 @@ from __future__ import annotations
 import argparse
 import bisect
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import hashlib
 import json
 import math
@@ -26,21 +26,27 @@ import unicodedata
 from pathlib import Path
 from urllib.parse import urljoin
 from urllib.request import Request, urlopen
+from zoneinfo import ZoneInfo
 
 
 POOL_PREFIX = "window.LOFI_RECOMMENDATION_POOL="
 GENERATOR_VERSION = 4
 LEDGER_SCHEMA_VERSION = 1
 BROWSER_SCHEMA_VERSION = 3
-RECIPE_VERSION = 3
-TITLE_RECIPE_VERSION = 4
-CURRENT_VARIANTS_PER_SOURCE = 1
+RECIPE_VERSION = 4
+TITLE_RECIPE_VERSION = 5
+# Each Paris day opens a fresh, deterministic slice of the evidence-led title
+# grammar. The browser still receives a bounded projection; the append-only
+# ledger is the durable anti-repeat memory.
+CURRENT_VARIANTS_PER_SOURCE = 24
+PERPETUAL_DAILY_APPEND_TARGET = 100
+GENERATION_TIMEZONE = ZoneInfo("Europe/Paris")
 V3_VARIANTS_PER_SOURCE = 8
 LEGACY_VARIANTS_PER_SOURCE = 3
 LEGACY_DEFAULT_MAX_ITEMS = 3_000
-DEFAULT_BROWSER_POOL_LIMIT = 2_500
-DEFAULT_RESERVE_LOW_WATER = 1_500
-DEFAULT_RESERVE_HIGH_WATER = 3_500
+DEFAULT_BROWSER_POOL_LIMIT = 400
+DEFAULT_RESERVE_LOW_WATER = 400
+DEFAULT_RESERVE_HIGH_WATER = 800
 DEFAULT_LEDGER_DIR = Path("youtube_recommendation_ledger")
 JS_SAFE_INTEGER = 9_007_199_254_740_991
 V3_ID_BASE = 3_000_000_000_000
@@ -620,6 +626,44 @@ def _stable_int(value: str) -> int:
     return int.from_bytes(hashlib.sha256(value.encode("utf-8")).digest()[:8], "big")
 
 
+def _generation_epoch(generated_ms: int) -> str:
+    """Return the stable editorial generation day in the product timezone."""
+    return datetime.fromtimestamp(int(generated_ms) / 1000, GENERATION_TIMEZONE).date().isoformat()
+
+
+def _generation_ordinal(generation_epoch: object) -> int:
+    try:
+        return date.fromisoformat(str(generation_epoch or "")).toordinal()
+    except (TypeError, ValueError):
+        return 0
+
+
+def _variant_offset(
+    component: str,
+    source_identity: object,
+    generation_epoch: object,
+    variant: int,
+    size: int,
+) -> int:
+    """Select one deterministic component without coupling all title axes.
+
+    `variant` walks the grammar while the daily epoch rotates its starting
+    point. Different axes use independent hashes, so a new day does not merely
+    rename the same idea with a different recommendation ID.
+    """
+    if size <= 0:
+        return 0
+    epoch = str(generation_epoch or "baseline")
+    seed = f"{component}|v{TITLE_RECIPE_VERSION}|{epoch}|{source_identity}"
+    start = _stable_int(seed) % size
+    stride = 1 + (_stable_int(seed + "|stride") % max(1, size - 1)) if size > 1 else 1
+    # Guarantee a full cycle even when the first hash proposed a non-coprime
+    # stride. This is an enumerator, not random filler.
+    while size > 1 and math.gcd(stride, size) != 1:
+        stride = 1 + (stride % (size - 1))
+    return (start + max(0, int(variant)) * stride) % size
+
+
 def _normal(value: object) -> str:
     return re.sub(r"\s+", " ", str(value or "")).strip().casefold()
 
@@ -878,15 +922,31 @@ def _title_style_key(value: object) -> str:
     return "direct"
 
 
-def _title_hook_variant(label: str, source_title: object, purpose_key: str, genre_key: str | None) -> str:
+def _title_hook_variant(
+    label: str,
+    source_title: object,
+    purpose_key: str,
+    genre_key: str | None,
+    generation_epoch: object = "",
+    variant: int = 0,
+) -> str:
     choices = TITLE_HOOK_PURPOSE_VARIANTS.get((label, purpose_key)) or TITLE_HOOK_VARIANTS.get(label) or (label,)
-    seed = f"hook-v{TITLE_RECIPE_VERSION}|{genre_key or ''}|{purpose_key}|{_normal(source_title)}|{label}"
-    return choices[_stable_int(seed) % len(choices)]
+    if not generation_epoch and int(variant) == 0:
+        seed = f"hook-v4|{genre_key or ''}|{purpose_key}|{_normal(source_title)}|{label}"
+        return choices[_stable_int(seed) % len(choices)]
+    identity = f"{genre_key or ''}|{purpose_key}|{_normal(source_title)}|{label}"
+    return choices[_variant_offset("hook", identity, generation_epoch, variant, len(choices))]
 
 
-def _fallback_title_hook(source_title: object, purpose_key: str, genre_key: str | None) -> str:
+def _fallback_title_hook(
+    source_title: object,
+    purpose_key: str,
+    genre_key: str | None,
+    generation_epoch: object = "",
+    variant: int = 0,
+) -> str:
     label = TITLE_GENRE_FALLBACK_HOOKS.get(genre_key or "") or TITLE_FALLBACK_HOOKS.get(purpose_key, "Quiet Hours")
-    return _title_hook_variant(label, source_title, purpose_key, genre_key)
+    return _title_hook_variant(label, source_title, purpose_key, genre_key, generation_epoch, variant)
 
 
 def _title_hook_purpose_compatible(label: str, purpose_key: str) -> bool:
@@ -894,20 +954,26 @@ def _title_hook_purpose_compatible(label: str, purpose_key: str) -> bool:
     return not allowed or purpose_key in allowed
 
 
-def _title_hook(value: object, purpose_key: str = "relax", genre_key: str | None = None) -> str:
+def _title_hook(
+    value: object,
+    purpose_key: str = "relax",
+    genre_key: str | None = None,
+    generation_epoch: object = "",
+    variant: int = 0,
+) -> str:
     """Extract a concise measured premise without manufacturing a setting."""
     original = re.sub(r"https?://\S+", " ", str(value or ""))
     normalized = _normal(original)
     for pattern, label in TITLE_MEASURED_DETAIL_THEMES.get(genre_key or "", ()):
         if re.search(pattern, normalized, re.I) and _title_hook_purpose_compatible(label, purpose_key):
-            return _title_hook_variant(label, original, purpose_key, genre_key)
+            return _title_hook_variant(label, original, purpose_key, genre_key, generation_epoch, variant)
     for pattern, label in TITLE_MEASURED_THEMES.get(genre_key or "", ()):
         if re.search(pattern, normalized, re.I) and _title_hook_purpose_compatible(label, purpose_key):
-            return _title_hook_variant(label, original, purpose_key, genre_key)
+            return _title_hook_variant(label, original, purpose_key, genre_key, generation_epoch, variant)
     if genre_key:
         # Unmapped competitor fragments are never copied. The fallback is a
         # varied, proven editorial hook rather than a genre keyword placeholder.
-        return _fallback_title_hook(original, purpose_key, genre_key)
+        return _fallback_title_hook(original, purpose_key, genre_key, generation_epoch, variant)
     text = original
     text = re.sub(r"^\s*pov\s*:\s*", "", text, flags=re.I)
     text = re.sub(r"\[[^\]]*\]", " ", text)
@@ -954,7 +1020,7 @@ def _title_hook(value: object, purpose_key: str = "relax", genre_key: str | None
         text = " ".join(words[:6]).rstrip(" ,:;-–—")
     generic = _normal(text)
     if re.search(r"^(?:a playlist|playlist|ultimate|best of|top \d+|compilation|collection)\b", generic):
-        return _fallback_title_hook(original, purpose_key, genre_key)
+        return _fallback_title_hook(original, purpose_key, genre_key, generation_epoch, variant)
     if (
         re.search(
             r"\b(?:blade runner|harry potter|hogwarts|hobbit|lord of the rings|polar express|"
@@ -971,7 +1037,7 @@ def _title_hook(value: object, purpose_key: str = "relax", genre_key: str | None
         or len(words) <= 1
         or len(words) > 5
     ):
-        return _fallback_title_hook(original, purpose_key, genre_key)
+        return _fallback_title_hook(original, purpose_key, genre_key, generation_epoch, variant)
     if not text or generic in {
         "music", "relaxing music", "sleep music", "study music", "lofi", "lofi music",
         "ambient music", "jazz music", "piano music", "nature sounds", "instrumental music",
@@ -1002,15 +1068,30 @@ def _title_hook_family(value: object, purpose_key: str, genre_key: str | None) -
     return _normal(TITLE_GENRE_FALLBACK_HOOKS.get(genre_key or "") or TITLE_FALLBACK_HOOKS.get(purpose_key, "Quiet Hours"))
 
 
-def _title_clause_index(source: dict, genre_key: str, purpose_key: str) -> int:
+def _title_clause_index(
+    source: dict,
+    genre_key: str,
+    purpose_key: str,
+    generation_epoch: object = "",
+    variant: int = 0,
+) -> int:
     choices = TITLE_PURPOSE_TAILS.get(purpose_key) or TITLE_PURPOSE_TAILS["relax"]
-    seed = f"clause-v{TITLE_RECIPE_VERSION}|{source.get('vid')}|{source.get('title')}|{genre_key}|{purpose_key}"
-    return _stable_int(seed) % len(choices)
+    if not generation_epoch and int(variant) == 0:
+        seed = f"clause-v4|{source.get('vid')}|{source.get('title')}|{genre_key}|{purpose_key}"
+        return _stable_int(seed) % len(choices)
+    identity = f"{source.get('vid')}|{source.get('title')}|{genre_key}|{purpose_key}"
+    return _variant_offset("purpose-tail", identity, generation_epoch, variant // 2, len(choices))
 
 
-def _title_purpose_clause(source: dict, genre_key: str, purpose_key: str) -> str:
+def _title_purpose_clause(
+    source: dict,
+    genre_key: str,
+    purpose_key: str,
+    generation_epoch: object = "",
+    variant: int = 0,
+) -> str:
     choices = TITLE_PURPOSE_TAILS.get(purpose_key) or TITLE_PURPOSE_TAILS["relax"]
-    tail = choices[_title_clause_index(source, genre_key, purpose_key)]
+    tail = choices[_title_clause_index(source, genre_key, purpose_key, generation_epoch, variant)]
     return f"{TITLE_GENRE_COPY_LABELS.get(genre_key, 'instrumental music')} {tail}"
 
 
@@ -1594,7 +1675,14 @@ def _style_compatible(style: str, source: dict, purpose_key: str) -> bool:
     return True
 
 
-def _select_title_style(source: dict, model: dict, genre_key: str, purpose_key: str) -> str | None:
+def _select_title_style(
+    source: dict,
+    model: dict,
+    genre_key: str,
+    purpose_key: str,
+    generation_epoch: object = "",
+    variant: int = 0,
+) -> str | None:
     genre_model = model.get(genre_key) or {}
     purpose_model = (genre_model.get("byPurpose") or {}).get(purpose_key) or {}
     ranked = purpose_model.get("styles") or genre_model.get("styles") or TITLE_STYLE_KEYS
@@ -1609,7 +1697,13 @@ def _select_title_style(source: dict, model: dict, genre_key: str, purpose_key: 
         # the only reusable style authorities.
         scores = purpose_model.get("scores") or genre_model.get("scores") or {}
         weights = [max(1, round(math.sqrt(max(0.0, float(scores.get(style) or 0.0))) * 100)) for style in eligible]
-        ticket = _stable_int(f"title-style|{source.get('vid')}|{genre_key}") % sum(weights)
+        ticket_seed = (
+            f"title-style|{source.get('vid')}|{genre_key}"
+            if not generation_epoch and int(variant) == 0 else
+            f"title-style-v{TITLE_RECIPE_VERSION}|{generation_epoch or 'baseline'}|"
+            f"{variant}|{source.get('vid')}|{genre_key}|{purpose_key}"
+        )
+        ticket = _stable_int(ticket_seed) % sum(weights)
         for style, weight in zip(eligible, weights):
             if ticket < weight:
                 return style
@@ -1664,19 +1758,40 @@ def _hook_names_genre(hook: object, genre_key: str) -> bool:
     return bool(re.search(patterns.get(genre_key, r"$^"), value, re.I))
 
 
-def _compose_candidate_title(source: dict, genre_key: str, purpose_key: str, style: str) -> str:
+def _compose_candidate_title(
+    source: dict,
+    genre_key: str,
+    purpose_key: str,
+    style: str,
+    generation_epoch: object = "",
+    variant: int = 0,
+) -> str:
     genre_label, emoji = TITLE_GENRE_LABELS[genre_key]
-    hook = _title_hook(source.get("title"), purpose_key, genre_key)
+    hook = _title_hook(source.get("title"), purpose_key, genre_key, generation_epoch, variant)
+    clause_index = _title_clause_index(source, genre_key, purpose_key, generation_epoch, variant)
     purpose_tail = (TITLE_PURPOSE_TAILS.get(purpose_key) or TITLE_PURPOSE_TAILS["relax"])[
-        _title_clause_index(source, genre_key, purpose_key)
+        clause_index
     ]
     hook_names_genre = _hook_names_genre(hook, genre_key)
-    purpose_clause = purpose_tail if hook_names_genre else _title_purpose_clause(source, genre_key, purpose_key)
+    purpose_clause = purpose_tail if hook_names_genre else _title_purpose_clause(
+        source, genre_key, purpose_key, generation_epoch, variant,
+    )
     if style == "pov":
         title = f"pov: {_sentence_case_hook(hook, lowercase=True)} {emoji} · {purpose_clause}"
     elif style == "duration":
         source_duration = float(source.get("durH") or 0)
-        hours = max(2, min(12, round(source_duration))) if source_duration >= 2 else (8 if purpose_key == "sleep" else 3)
+        duration_choices = (
+            (8, 10, 12) if purpose_key == "sleep" else
+            (2, 3, 4) if purpose_key in {"study", "reading"} else
+            (2, 3, 4, 6)
+        )
+        measured_hours = max(2, min(12, round(source_duration))) if source_duration >= 2 else None
+        if measured_hours is not None and measured_hours not in duration_choices:
+            duration_choices = (measured_hours,) + duration_choices
+        duration_identity = f"{source.get('vid')}|{source.get('title')}|{genre_key}|{purpose_key}"
+        hours = duration_choices[
+            _variant_offset("duration", duration_identity, generation_epoch, variant, len(duration_choices))
+        ]
         title = (
             f"{_sentence_case_hook(hook)} {emoji} · {hours} hours {purpose_tail}"
             if hook_names_genre else
@@ -1920,10 +2035,11 @@ def _rehydrate_presentation(item: dict) -> dict:
     updated["_titleFamily"] = _title_family(profile, purpose_key, pattern_index)
     return updated
 
-def _idea_key(source: dict, variant: int) -> str:
+def _idea_key(source: dict, variant: int, generation_epoch: object = "") -> str:
     return "|".join((
         f"g{GENERATOR_VERSION}",
         f"r{RECIPE_VERSION}",
+        f"e{generation_epoch or 'baseline'}",
         str(source.get("vid") or ""),
         str(_profile_key(source) or ""),
         _purpose_key(source),
@@ -1944,6 +2060,7 @@ def _build_v3_item(
     feedback_profile: dict,
     score_context: dict,
     title_model: dict,
+    generation_epoch: object = "",
 ) -> dict | None:
     profile_key = _profile_key(source)
     source_window = _source_window(source)
@@ -1952,19 +2069,34 @@ def _build_v3_item(
         return None
     profile = PROFILES[profile_key]
     purpose_key = _purpose_key(source)
-    idea_key = _idea_key(source, variant)
-    style = _select_title_style(source, title_model, profile_key, purpose_key)
+    idea_key = _idea_key(source, variant, generation_epoch)
+    style = _select_title_style(
+        source, title_model, profile_key, purpose_key, generation_epoch, variant,
+    )
     if not style:
         return None
-    title = _compose_candidate_title(source, profile_key, purpose_key, style)
-    hook = _title_hook(source.get("title"), purpose_key, profile_key)
+    title = _compose_candidate_title(
+        source, profile_key, purpose_key, style, generation_epoch, variant,
+    )
+    hook = _title_hook(source.get("title"), purpose_key, profile_key, generation_epoch, variant)
     hook_family = _title_hook_family(source.get("title"), purpose_key, profile_key)
     hook_origin = _title_hook_origin(source.get("title"), purpose_key, profile_key)
     specificity = _title_specificity_score(title, hook)
     if specificity < 2:
         return None
+    title_duration_match = re.search(r"\b(\d{1,2})\s+hours?\b", title, re.I)
+    title_duration_key = title_duration_match.group(1) if title_duration_match else ""
     topic_key = _normal(hook)
-    concept_family = "|".join((profile_key, purpose_key, topic_key)) if topic_key else ""
+    clause_index = _title_clause_index(source, profile_key, purpose_key, generation_epoch, variant)
+    premise_key = "|".join((profile_key, purpose_key, _normal(hook_family))) if hook_family else ""
+    concept_family = "|".join((
+        profile_key,
+        purpose_key,
+        topic_key,
+        style,
+        str(clause_index),
+        title_duration_key,
+    )) if topic_key else ""
     topic_family = "|".join((profile_key, topic_key)) if topic_key else ""
     refused_hook = _canonical_refusal_hook(topic_key)
     refused_hook_family = _canonical_refusal_hook(hook_family)
@@ -1993,7 +2125,12 @@ def _build_v3_item(
     # recommendation worth reviewing.
     if hook_origin == "editorial_fallback":
         score = min(score, 77)
-    duration = "8h" if purpose_key == "sleep" else "3h" if purpose_key in {"study", "reading"} else "2h"
+    duration = (
+        f"{int(title_duration_key)}h" if title_duration_key else
+        "8h" if purpose_key == "sleep" else
+        "3h" if purpose_key in {"study", "reading"} else
+        "2h"
+    )
     views = _format_metric(source.get("views"))
     vpm = _format_metric(source.get("_recentVpm") or source.get("vpm"))
     source_title = re.sub(r"\s+", " ", str(source.get("title") or "")).strip()
@@ -2049,11 +2186,14 @@ def _build_v3_item(
         "_genreKey": profile_key,
         "_purposeKey": purpose_key,
         "_topicKey": topic_key,
+        "_expressionTopicKey": _title_fingerprint(title),
         "_topicFamilyKey": hook_family,
+        "_premiseKey": premise_key,
+        "_expressionKey": concept_family,
         "_conceptFamily": concept_family,
         "_titleStyleKey": style,
-        "_titleTemplateKey": "|".join((profile_key, purpose_key, style, str(_title_clause_index(source, profile_key, purpose_key)))),
-        "_titleFamily": "|".join((profile_key, purpose_key, style, str(_title_clause_index(source, profile_key, purpose_key)))),
+        "_titleTemplateKey": "|".join((profile_key, purpose_key, style, str(clause_index))),
+        "_titleFamily": "|".join((profile_key, purpose_key, style, str(clause_index))),
         "_hookOrigin": hook_origin,
         "_specificityScore": specificity,
         "_titleReference": reference_title,
@@ -2068,6 +2208,8 @@ def _build_v3_item(
         "_ideaKey": idea_key,
         "_recipeVersion": RECIPE_VERSION,
         "_recipeIndex": variant,
+        "_generationEpoch": str(generation_epoch or "baseline"),
+        "_generationOrdinal": _generation_ordinal(generation_epoch),
         "_generatorVersion": GENERATOR_VERSION,
     }
     if reference_type == "analyse" and reference_title:
@@ -2080,6 +2222,8 @@ def _v3_candidates(
     data: dict,
     feedback_profile: dict,
     history: dict[str, list[list[float]]] | None = None,
+    generation_epoch: object = "",
+    variants_per_source: int = 1,
 ) -> list[tuple[dict, dict]]:
     sources = _source_rows(data, feedback_profile, history)
     if not sources:
@@ -2087,9 +2231,14 @@ def _v3_candidates(
     score_context = _source_score_context(sources)
     title_model = _title_model(data, sources, feedback_profile, history)
     rows: list[tuple[dict, dict]] = []
-    for source in sources:
-        for variant in range(CURRENT_VARIANTS_PER_SOURCE):
-            item = _build_v3_item(source, variant, feedback_profile, score_context, title_model)
+    # Round-robin the creative serial first. A high-ranked source gets one
+    # hypothesis before any source gets a second, which preserves market
+    # diversity while still allowing a perpetually expanding expression space.
+    for variant in range(max(1, int(variants_per_source))):
+        for source in sources:
+            item = _build_v3_item(
+                source, variant, feedback_profile, score_context, title_model, generation_epoch,
+            )
             if item is not None:
                 rows.append((item, source))
     # Keep every evidence-bound source eligible, but present one hypothesis per
@@ -2113,6 +2262,7 @@ def generate_recommendation_pool(
     *,
     max_items: int | None = None,
     history: dict[str, list[list[float]]] | None = None,
+    generation_epoch: object = "",
 ) -> list[dict]:
     """Pure deterministic evidence-led generation used by tests and callers."""
     target = DEFAULT_BROWSER_POOL_LIMIT if max_items is None else max(0, int(max_items))
@@ -2124,7 +2274,7 @@ def generate_recommendation_pool(
     used_semantics: set[str] = set()
     used_concepts: set[str] = set()
     used_ids: dict[int, str] = {}
-    for item, _source in _v3_candidates(data, feedback_profile, history):
+    for item, _source in _v3_candidates(data, feedback_profile, history, generation_epoch, 1):
         title_key = _title_fingerprint(item.get("title"))
         semantic_key = _semantic_fingerprint(item)
         concept_key = _concept_family(item)
@@ -2426,6 +2576,7 @@ def _ledger_record(item: dict, source: dict | None, *, created_ms: int, source_t
         "sourceT": int(source_t),
         "generatorVersion": int(item.get("_generatorVersion") or (2 if legacy else GENERATOR_VERSION)),
         "recipeVersion": int(item.get("_recipeVersion") or 0),
+        "generationEpoch": str(item.get("_generationEpoch") or ""),
         "sourceVideoIds": source_ids,
         "sourceSnapshot": source_snapshot,
         "titleFingerprint": _title_fingerprint(item.get("title")),
@@ -2582,6 +2733,8 @@ def _build_id(payload: dict) -> str:
     # invalidates browser caches even though recommendation IDs stay stable.
     if "titleRecipeVersion" in payload:
         identity["titleRecipeVersion"] = int(payload.get("titleRecipeVersion") or 0)
+    if "generationEpoch" in payload:
+        identity["generationEpoch"] = str(payload.get("generationEpoch") or "")
     canonical = json.dumps(identity, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:24]
 
@@ -2624,10 +2777,13 @@ def sync_recommendation_reservoir(
     reserve_high_water: int = DEFAULT_RESERVE_HIGH_WATER,
 ) -> dict:
     generated_ms = int(generated_ms or time.time() * 1000)
+    generation_epoch = _generation_epoch(generated_ms)
     source_t = int(data.get("videoMetricsT") or 0)
     feedback = feedback or {"t": 0, "rows": []}
+    previous_payload: dict = {}
     if output.exists():
-        previous_feedback_t = int(read_recommendation_pool(output).get("feedbackT") or 0)
+        previous_payload = read_recommendation_pool(output)
+        previous_feedback_t = int(previous_payload.get("feedbackT") or 0)
         current_feedback_t = int(feedback.get("t") or 0)
         if previous_feedback_t and current_feedback_t < previous_feedback_t:
             raise ValueError("recommendation feedback snapshot regressed; prior pool was preserved")
@@ -2655,69 +2811,145 @@ def sync_recommendation_reservoir(
         if _feedback_valid(decisions.get(int(entry["n"])))
         and (entry.get("conceptFingerprint") or _concept_family(entry["item"]))
     }
-    all_current_candidates = _v3_candidates(data, feedback_profile, history)
-    existing_current_keys = {
-        str(entry.get("ideaKey") or "")
-        for entry in entries
-        if int(entry.get("generatorVersion") or 0) == GENERATOR_VERSION
+    all_current_candidates = _v3_candidates(
+        data, feedback_profile, history, generation_epoch, CURRENT_VARIANTS_PER_SOURCE,
+    )
+    current_by_key = {
+        str(item.get("_ideaKey") or ""): (item, source)
+        for item, source in all_current_candidates
+        if item.get("_ideaKey")
     }
-    ranked_scope = all_current_candidates[:reserve_high_water] if reserve_high_water > 0 else all_current_candidates
-    current_candidates: list[tuple[dict, dict]] = []
-    for item, source in ranked_scope:
-        idea_key = str(item.get("_ideaKey") or "")
-        if idea_key in existing_current_keys or reserve_high_water > 0:
-            current_candidates.append((item, source))
-    pending_candidates: list[tuple[dict, dict]] = []
-    pending_keys: set[str] = set()
-    pending_titles: set[str] = set()
-    pending_semantics: set[str] = set()
-    pending_concepts: set[str] = set()
-    for item, source in current_candidates:
-        idea_key = str(item.get("_ideaKey") or "")
-        concept_family = _concept_family(item)
-        title_key = _title_fingerprint(item.get("title"))
-        semantic_key = _semantic_fingerprint(item)
+    current_source_ids = {
+        str(item.get("_sourceVideoId") or "")
+        for item, _source in all_current_candidates
+        if item.get("_sourceVideoId")
+    }
+
+    def entry_is_pending(entry: dict) -> bool:
+        item = entry.get("item") or {}
         if (
-            not idea_key
-            or idea_key in pending_keys
-            or title_key in pending_titles
-            or semantic_key in pending_semantics
-            or concept_family in pending_concepts
-            or _feedback_valid(decisions.get(int(item["n"])))
-            or (concept_family and concept_family in resolved_families)
+            int(entry.get("generatorVersion") or 0) != GENERATOR_VERSION
+            or int(entry.get("recipeVersion") or 0) != RECIPE_VERSION
+            or _feedback_valid(decisions.get(int(entry.get("n") or 0)))
         ):
-            continue
-        pending_keys.add(idea_key)
-        pending_titles.add(title_key)
-        pending_semantics.add(semantic_key)
-        pending_concepts.add(concept_family)
-        pending_candidates.append((item, source))
+            return False
+        concept = str(entry.get("conceptFingerprint") or _concept_family(item))
+        source_id = str(item.get("_sourceVideoId") or "")
+        return not (
+            (concept and concept in resolved_families)
+            or source_id in blocked_source_ids
+            or (source_id and current_source_ids and source_id not in current_source_ids)
+        )
+
+    pending_entries_before = [entry for entry in entries if entry_is_pending(entry)]
+    epoch_already_materialized = any(
+        int(entry.get("generatorVersion") or 0) == GENERATOR_VERSION
+        and int(entry.get("recipeVersion") or 0) == RECIPE_VERSION
+        and str(entry.get("generationEpoch") or (entry.get("item") or {}).get("_generationEpoch") or "") == generation_epoch
+        for entry in entries
+    )
+    append_target = 0
+    if reserve_high_water > 0:
+        previous_high_water = int((previous_payload.get("ledger") or {}).get("reserveHighWater") or 0)
+        may_refill = not epoch_already_materialized or reserve_high_water > previous_high_water
+        if may_refill and len(pending_entries_before) < reserve_low_water:
+            append_target = max(0, reserve_high_water - len(pending_entries_before))
+        if not epoch_already_materialized:
+            append_target = max(
+                append_target,
+                min(PERPETUAL_DAILY_APPEND_TARGET, reserve_high_water),
+            )
+
     appended: list[dict] = []
     used_keys = {str(entry["ideaKey"]) for entry in entries}
     used_ids = {int(entry["n"]): str(entry["ideaKey"]) for entry in entries}
-    for item, source in pending_candidates:
+    used_titles = {
+        str(entry.get("titleFingerprint") or _title_fingerprint((entry.get("item") or {}).get("title")))
+        for entry in entries
+    }
+    used_semantics = {
+        str(entry.get("semanticFingerprint") or _semantic_fingerprint(entry.get("item") or {}))
+        for entry in entries
+    }
+    used_concepts = {
+        str(entry.get("conceptFingerprint") or _concept_family(entry.get("item") or {}))
+        for entry in entries
+    }
+    batch_keys: set[str] = set()
+    batch_titles: set[str] = set()
+    batch_semantics: set[str] = set()
+    batch_concepts: set[str] = set()
+    for item, source in all_current_candidates:
+        if len(appended) >= append_target:
+            break
         idea_key = str(item["_ideaKey"])
         reco_id = int(item["n"])
-        if idea_key in used_keys:
+        title_key = _title_fingerprint(item.get("title"))
+        semantic_key = _semantic_fingerprint(item)
+        concept_key = _concept_family(item)
+        if (
+            not idea_key
+            or idea_key in used_keys
+            or idea_key in batch_keys
+            or not title_key
+            or title_key in used_titles
+            or title_key in batch_titles
+            or not semantic_key
+            or semantic_key in used_semantics
+            or semantic_key in batch_semantics
+            or not concept_key
+            or concept_key in used_concepts
+            or concept_key in batch_concepts
+            or _feedback_valid(decisions.get(reco_id))
+            or concept_key in resolved_families
+        ):
             continue
         if reco_id in used_ids and used_ids[reco_id] != idea_key:
             raise ValueError(f"stable recommendation id collision: {reco_id}")
         record = _ledger_record(item, source, created_ms=generated_ms, source_t=source_t)
         appended.append(record)
+        batch_keys.add(idea_key)
+        batch_titles.add(title_key)
+        batch_semantics.add(semantic_key)
+        batch_concepts.add(concept_key)
         used_keys.add(idea_key)
+        used_titles.add(title_key)
+        used_semantics.add(semantic_key)
+        used_concepts.add(concept_key)
         used_ids[reco_id] = idea_key
     _append_ledger_records(ledger_dir, appended, generated_ms)
     if appended:
         entries.extend(appended)
     manifest = write_ledger_manifest(ledger_dir, generated_ms=generated_ms, source_t=source_t)
+    pending_entries = [entry for entry in entries if entry_is_pending(entry)]
     selected: list[dict] = []
     selected_titles: set[str] = set()
-    for current_item, _source in pending_candidates:
-        item = _apply_feedback(_rehydrate_presentation(current_item), decisions.get(int(current_item["n"])))
+    selected_semantics: set[str] = set()
+    selected_concepts: set[str] = set()
+    # New cohorts enter the bounded browser window first. Within one cohort,
+    # ledger order follows the round-robin market ranking above.
+    indexed_entries = list(enumerate(pending_entries))
+    indexed_entries.sort(key=lambda pair: (-int(pair[1].get("createdAt") or 0), pair[0]))
+    for _index, entry in indexed_entries:
+        stored_item = entry.get("item") or {}
+        current_pair = current_by_key.get(str(entry.get("ideaKey") or ""))
+        current_item = current_pair[0] if current_pair else stored_item
+        item = _apply_feedback(_rehydrate_presentation(current_item), decisions.get(int(entry["n"])))
         title_key = _title_fingerprint(item.get("title"))
-        if title_key in selected_titles:
+        semantic_key = _semantic_fingerprint(item)
+        concept_key = _concept_family(item)
+        if (
+            not title_key
+            or title_key in selected_titles
+            or not semantic_key
+            or semantic_key in selected_semantics
+            or not concept_key
+            or concept_key in selected_concepts
+        ):
             continue
         selected_titles.add(title_key)
+        selected_semantics.add(semantic_key)
+        selected_concepts.add(concept_key)
         selected.append(item)
         if len(selected) >= browser_limit:
             break
@@ -2728,12 +2960,16 @@ def sync_recommendation_reservoir(
         "feedbackT": int(feedback.get("t") or 0),
         "version": GENERATOR_VERSION,
         "titleRecipeVersion": TITLE_RECIPE_VERSION,
+        "generationEpoch": generation_epoch,
         "ledgerRevision": manifest["revision"],
         "modelRevision": _model_revision(selected),
         "ledger": {
             "total": len(entries),
-            "pending": len(pending_candidates),
+            "pending": len(pending_entries),
             "appended": len(appended),
+            "dailyTarget": min(PERPETUAL_DAILY_APPEND_TARGET, reserve_high_water) if reserve_high_water > 0 else 0,
+            "reserveLowWater": reserve_low_water,
+            "reserveHighWater": reserve_high_water,
         },
         "sources": _selected_sources(data, selected),
         "items": selected,
@@ -2756,6 +2992,7 @@ def write_recommendation_pool(
     reserve_low_water: int = DEFAULT_RESERVE_LOW_WATER,
     reserve_high_water: int = DEFAULT_RESERVE_HIGH_WATER,
 ) -> dict:
+    effective_generated_ms = int(generated_ms or time.time() * 1000)
     if ledger_dir is not None:
         return sync_recommendation_reservoir(
             data,
@@ -2764,19 +3001,26 @@ def write_recommendation_pool(
             bootstrap_pool=bootstrap_pool,
             feedback=feedback,
             history=history,
-            generated_ms=generated_ms,
+            generated_ms=effective_generated_ms,
             browser_limit=DEFAULT_BROWSER_POOL_LIMIT if max_items is None else max_items,
             reserve_low_water=reserve_low_water,
             reserve_high_water=reserve_high_water,
         )
-    items = generate_recommendation_pool(data, max_items=max_items, history=history)
+    generation_epoch = _generation_epoch(effective_generated_ms)
+    items = generate_recommendation_pool(
+        data,
+        max_items=max_items,
+        history=history,
+        generation_epoch=generation_epoch,
+    )
     payload = {
         "schema": BROWSER_SCHEMA_VERSION,
-        "t": int(generated_ms or time.time() * 1000),
+        "t": effective_generated_ms,
         "sourceT": int(data.get("videoMetricsT") or 0),
         "feedbackT": 0,
         "version": GENERATOR_VERSION,
         "titleRecipeVersion": TITLE_RECIPE_VERSION,
+        "generationEpoch": generation_epoch,
         "ledgerRevision": "",
         "modelRevision": _model_revision(items),
         "ledger": {"total": len(items), "pending": len(items), "appended": len(items)},
@@ -2826,6 +3070,8 @@ def validate_recommendation_reservoir(
         raise ValueError("recommendation browser pool schema is invalid")
     if int(payload.get("titleRecipeVersion") or 0) != TITLE_RECIPE_VERSION:
         raise ValueError("recommendation title recipe is stale")
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(payload.get("generationEpoch") or "")):
+        raise ValueError("recommendation generation epoch is missing or invalid")
     if int(payload.get("sourceT") or 0) != int(data.get("videoMetricsT") or 0):
         raise ValueError("recommendation browser pool is stale relative to the snapshot")
     if str(payload.get("ledgerRevision") or "") != str(manifest.get("revision") or ""):
@@ -2856,6 +3102,8 @@ def validate_recommendation_reservoir(
             raise ValueError(f"legacy recommendation leaked into the active projection: {reco_id}")
         if int(item.get("_recipeVersion") or 0) != RECIPE_VERSION:
             raise ValueError(f"stale recommendation recipe leaked into the active projection: {reco_id}")
+        if str(item.get("_generationEpoch") or "") == "":
+            raise ValueError(f"current recommendation lacks a generation epoch: {reco_id}")
         if not item.get("_ideaKey") or not item.get("_sourceVideoId") or not item.get("noteData"):
             raise ValueError(f"current recommendation lacks provenance: {reco_id}")
         if not item.get("_titleStyleKey") or not item.get("_titleTemplateKey") or not item.get("_conceptFamily"):

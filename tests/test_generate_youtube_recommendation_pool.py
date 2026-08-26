@@ -523,7 +523,12 @@ class RecommendationPoolTests(unittest.TestCase):
                 reserve_high_water=3_100,
             )
             expected = len(generate_recommendation_pool(data, max_items=3_100))
-            self.assertEqual(payload["ledger"]["total"], expected)
+            self.assertGreater(
+                payload["ledger"]["total"],
+                expected,
+                "the perpetual reservoir must materialize more than the former one-expression-per-source baseline",
+            )
+            self.assertLessEqual(payload["ledger"]["total"], 3_100)
             self.assertEqual(len(payload["items"]), min(75, expected))
             self.assertEqual(len(load_recommendation_ledger(ledger)), payload["ledger"]["total"])
             validate_recommendation_reservoir(snapshot, output, ledger, browser_limit=75)

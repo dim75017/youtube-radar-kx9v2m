@@ -69,6 +69,9 @@ function makeContext(recos, stored, ownedRows, pool, dateCtor = Date, sharedHydr
     this.recoSourceRecencyBoost = recoSourceRecencyBoost;
     this.recoVideoFields = recoVideoFields;
     this.recoDayKey = recoDayKey;
+    this.recoSeenIds = recoSeenIds;
+    this.recoPreviousTopicKeys = recoPreviousTopicKeys;
+    this.recoDailyHistoryDays = RECO_DAILY_HISTORY_DAYS;
     this.invalidateRecommendationDerivedData = invalidateRecommendationDerivedData;
     this.handleRecommendationDayRollover = handleRecommendationDayRollover;`, context);
   context.recoGenreKey = context.recoGenreKey || vm.runInNewContext('recoGenreKey', context);
@@ -152,15 +155,15 @@ assert.equal(context.recoHorizonWeight(null), null,
   'a missing publication age never enters performance learning');
 
 // A large, quality-qualified reservoir must produce a complete, stable lot
-// for one Paris day, then replace every card on each following day. The third
-// day catches regressions where every historical lot is excluded forever and
-// the reservoir progressively collapses below 50.
+// for one Paris day, then replace every card on each following day. Reviewed
+// or merely surfaced ideas are historical material: they must not return a few
+// days later under either the same ID or a cosmetically different title.
 let rotationNow = Date.parse('2026-08-24T10:00:00Z');
 class RotationDate extends Date {
   constructor(...args) { super(...(args.length ? args : [rotationNow])); }
   static now() { return rotationNow; }
 }
-const rotationRows = Array.from({length: 120}, (_, index) => ({
+const rotationRows = Array.from({length: 400}, (_, index) => ({
   n: 70000 + index,
   title: `Specific daily hook ${index + 1}`,
   genre: index % 2 ? 'Lofi' : 'Ambient',
@@ -209,15 +212,76 @@ assert.equal(persistedRotation._topics[rotationDayOneKey].length, 50,
   'the first daily lot persists semantic fingerprints for cross-day exclusion');
 assert.equal(persistedRotation._topics[rotationDayTwoKey].length, 50,
   'the replacement lot persists its own semantic fingerprints');
+assert.ok(rotationContext.recoDailyHistoryDays >= 56,
+  'daily recommendation memory retains at least eight full weeks');
+const retainedSeenIds = rotationContext.recoSeenIds(persistedRotation, '2026-08-26');
+assert.ok(rotationDayOne.every(id => retainedSeenIds.has(id)) && rotationDayTwo.every(id => retainedSeenIds.has(id)),
+  'ID exclusion covers every retained historical daily lot, not only yesterday');
+const retainedSeenTopics = rotationContext.recoPreviousTopicKeys(persistedRotation, '2026-08-26', rotationRows);
+assert.ok([...firstTopics].every(topic => retainedSeenTopics.has(topic)),
+  'semantic exclusion covers topics from older retained daily lots');
 
 rotationNow = Date.parse('2026-08-26T10:00:00Z');
-const rotationDayThree = dailyIds();
+const rotationDayThreeRows = dailyRows();
+const rotationDayThree = rotationDayThreeRows.map(row => Number(row.n));
 assert.equal(rotationDayThree.length, 50,
   'rotation does not exhaust the reservoir after two complete daily lots');
 assert.equal(overlap(rotationDayTwo, rotationDayThree).length, 0,
   'zero adjacent-day overlap remains true after the first rollover');
-assert.ok(overlap(rotationDayOne, rotationDayThree).length > 0,
-  'older qualified cards may return after one fully different intervening day');
+assert.equal(overlap(rotationDayOne, rotationDayThree).length, 0,
+  'an older surfaced card cannot return after one intervening day');
+const firstTwoTopics = new Set([...rotationDayOneRows, ...rotationDayTwoRows]
+  .map(row => rotationContext.recoNormalizedTopicKey(row)));
+assert.ok(rotationDayThreeRows.every(row => !firstTwoTopics.has(rotationContext.recoNormalizedTopicKey(row))),
+  'an older semantic topic cannot return under a different recommendation ID');
+
+const weekIds = new Set([...rotationDayOne, ...rotationDayTwo, ...rotationDayThree]);
+const weekTopics = new Set([...rotationDayOneRows, ...rotationDayTwoRows, ...rotationDayThreeRows]
+  .map(row => rotationContext.recoNormalizedTopicKey(row)));
+for (const day of [27, 28, 29, 30]) {
+  rotationNow = Date.parse(`2026-08-${day}T10:00:00Z`);
+  const rows = dailyRows();
+  assert.equal(rows.length, 50,
+    `the perpetual reservoir keeps a complete lot on 2026-08-${day}`);
+  for (const row of rows) {
+    assert.ok(!weekIds.has(Number(row.n)),
+      `a recommendation ID cannot repeat during the same review week: ${row.n}`);
+    const topic = rotationContext.recoNormalizedTopicKey(row);
+    assert.ok(!weekTopics.has(topic),
+      `a semantic topic cannot repeat during the same review week: ${topic}`);
+    weekIds.add(Number(row.n));
+    weekTopics.add(topic);
+  }
+}
+assert.equal(weekIds.size, 350,
+  'seven Paris days expose 350 different recommendation identities');
+
+// A queue persisted by the former J-1-only client is repaired in place. The
+// current day cannot keep an older card merely because it was already stored
+// before durable history exclusion shipped.
+let durableMigrationNow = Date.parse('2026-08-26T10:00:00Z');
+class DurableMigrationDate extends Date {
+  constructor(...args) { super(...(args.length ? args : [durableMigrationNow])); }
+  static now() { return durableMigrationNow; }
+}
+const oldPersistedIds = rotationRows.slice(0, 50).map(row => row.n);
+const durableMigrationStore = new Map([['lofi_radar_reco_rotation_v4', JSON.stringify({
+  '2026-08-24': oldPersistedIds,
+  '2026-08-25': rotationRows.slice(50, 100).map(row => row.n),
+  '2026-08-26': oldPersistedIds,
+})]]);
+const durableMigrationContext = makeContext(
+  rotationRows.map(row => Object.assign({}, row)),
+  durableMigrationStore,
+  [],
+  undefined,
+  DurableMigrationDate,
+);
+const migratedDurableLot = Array.from(durableMigrationContext.dailyRecommendationSet());
+assert.equal(migratedDurableLot.length, 50,
+  'a legacy repeated current lot is rebuilt to the complete daily target');
+assert.ok(migratedDurableLot.every(row => !oldPersistedIds.includes(Number(row.n))),
+  'the rebuilt lot excludes IDs surfaced more than one day ago');
 
 rotationNow = Date.parse('2026-08-24T10:00:00Z');
 const freshDayOneContext = makeContext(rotationRows.map(row => Object.assign({}, row)), new Map(), []);

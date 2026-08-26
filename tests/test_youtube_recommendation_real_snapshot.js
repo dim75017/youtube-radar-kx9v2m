@@ -181,7 +181,7 @@ assert.equal(poolPayload.schema, 3, 'the recommendation browser projection must 
 const isLearnedV4 = Number(poolPayload.version) === 4;
 assert.ok(isLearnedV4 || Number(poolPayload.version) === 3,
   'the checked-in reservoir must be either the migration input V3 or the learned V4 projection');
-assert.ok(generated.length > 0 && generated.length <= 2500,
+assert.ok(generated.length > 0 && generated.length <= 400,
   'the real browser projection is non-empty, bounded and never padded with filler');
 assert.ok(poolPayload.ledger && Number(poolPayload.ledger.total) >= generated.length,
   'the append-only ledger must be larger than or equal to the bounded browser projection');
@@ -190,8 +190,10 @@ assert.match(String(poolPayload.buildId || ''), /^[a-f0-9]{24}$/,
 assert.match(String(poolPayload.ledgerRevision || ''), /^[a-f0-9]{64}$/,
   'the projection must expose its exact ledger revision');
 if (isLearnedV4) {
-  assert.equal(poolPayload.titleRecipeVersion, 4,
+  assert.equal(poolPayload.titleRecipeVersion, 5,
     'the learned pool must use the specific-title recipe deployed with daily rotation');
+  assert.match(String(poolPayload.generationEpoch || ''), /^\d{4}-\d{2}-\d{2}$/,
+    'the learned pool must expose its deterministic Paris generation epoch');
   assert.match(String(poolPayload.modelRevision || ''), /^[a-f0-9]{64}$/,
     'the learned projection must expose the exact title/performance model revision');
 }
@@ -213,9 +215,11 @@ for (const row of generated) {
   if (isLearnedV4) {
     assert.equal(row._generatorVersion, 4,
       `learned pool row ${row.n} must use generator V4 without leaking legacy proposals`);
-    assert.match(String(row._ideaKey || ''), /^g4\|r3\|/,
+    assert.match(String(row._ideaKey || ''), /^g4\|r4\|e\d{4}-\d{2}-\d{2}\|/,
       `learned pool row ${row.n} must expose its stable V4 recipe key`);
-    assert.equal(row._recipeVersion, 3, `learned pool row ${row.n} must use recipe schema 3`);
+    assert.equal(row._recipeVersion, 4, `learned pool row ${row.n} must use recipe schema 4`);
+    assert.match(String(row._generationEpoch || ''), /^\d{4}-\d{2}-\d{2}$/,
+      `learned pool row ${row.n} must preserve its immutable daily generation cohort`);
     assert.equal(row._scoringVersion, 5, `learned pool row ${row.n} must use scoring V5`);
     assert.ok(row._conceptFamily && row._titleStyleKey && row._titleFamily && row._titleTemplateKey,
       `learned pool row ${row.n} must expose its evidence-bound title model`);
