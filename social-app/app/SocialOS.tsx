@@ -2358,6 +2358,29 @@ function AudienceDemographicsPanel({
   );
 }
 
+const AUDIENCE_DEMOGRAPHIC_PIE_COLORS: Record<string, string> = {
+  age_13_17: "#ff9ccf",
+  age_18_24: "#f36eb8",
+  age_25_34: "#df55c6",
+  age_35_44: "#b56fe0",
+  age_45_54: "#827cf0",
+  age_55_64: "#5aa7e8",
+  age_55_plus: "#5aa7e8",
+  age_65_plus: "#42c6c4",
+  female: "#ff75bd",
+  male: "#62a7ff",
+  user_specified: "#f2c75c",
+  other: "#9aa5bc",
+};
+
+const AUDIENCE_DEMOGRAPHIC_PIE_FALLBACKS = [
+  "#ff75bd",
+  "#8f7df2",
+  "#62a7ff",
+  "#42c6c4",
+  "#f2c75c",
+];
+
 function AudienceDemographicCard({
   dimension,
   emptyLabel,
@@ -2375,19 +2398,46 @@ function AudienceDemographicCard({
   const countryEntries = kind === "countries"
     ? allDisplayEntries.filter((entry) => entry.countryCode !== null)
     : [];
-  const countryAggregateEntry = kind === "countries"
+  const countryAggregateFromSource = kind === "countries"
     ? allDisplayEntries.find((entry) => entry.countryCode === null) ?? null
     : null;
+  const countryReportedShare = countryEntries.reduce(
+    (total, entry) => total + (entry.share ?? 0),
+    0,
+  );
+  const countryResidualShare = Math.max(0, Math.min(1, 1 - countryReportedShare));
+  const countryAggregateEntry = countryAggregateFromSource ?? (
+    kind === "countries" && countryEntries.length > 0 && countryResidualShare >= 0.005
+      ? {
+          key: "other_countries",
+          label: "Autres pays",
+          share: countryResidualShare,
+          countryCode: null,
+          reported: true,
+        }
+      : null
+  );
+  const visibleCountryEntries = countryEntries.slice(0, 14);
   const visibleEntries = kind === "countries"
-    ? countryEntries.slice(0, 10)
+    ? countryAggregateEntry
+      ? [...visibleCountryEntries, countryAggregateEntry]
+      : visibleCountryEntries
     : allDisplayEntries;
   const hiddenCountryCount = dimension && kind === "countries"
-    ? Math.max(0, countryEntries.length - visibleEntries.length)
+    ? Math.max(0, countryEntries.length - visibleCountryEntries.length)
     : 0;
   const unreportedAgeCount = kind === "ages"
     ? visibleEntries.filter((entry) => !entry.reported).length
     : 0;
   const usesMerged55Plus = kind === "ages" && visibleEntries.some((entry) => entry.key === "age_55_plus");
+  const pieGradient = kind === "countries"
+    ? null
+    : audienceDemographicPieGradient(visibleEntries);
+  const pieAriaLabel = kind === "countries"
+    ? undefined
+    : `${title} : ${visibleEntries.map((entry) => (
+      `${entry.label} ${entry.share === null ? "non fourni" : formatAudienceDemographicShare(entry.share)}`
+    )).join(", ")}`;
 
   return (
     <article className={`audience-demographic-card kind-${kind}`}>
@@ -2397,14 +2447,10 @@ function AudienceDemographicCard({
       </header>
       {dimension ? (
         <>
-          <ul className="audience-demographic-list">
-            {visibleEntries.map((entry) => (
-              <li
-                className={entry.reported ? undefined : "unavailable"}
-                aria-label={entry.reported ? undefined : `${entry.label} : non fourni par la plateforme`}
-                key={entry.key}
-              >
-                {kind === "countries" ? (
+          {kind === "countries" ? (
+            <ul className="audience-demographic-list">
+              {visibleEntries.map((entry) => (
+                <li key={entry.key}>
                   <img
                     src={`flags/${entry.countryCode?.toLowerCase() ?? "globe"}.svg`}
                     alt=""
@@ -2412,27 +2458,45 @@ function AudienceDemographicCard({
                     height="15"
                     aria-hidden="true"
                   />
-                ) : null}
-                <span>{entry.label}</span>
-                <span className="audience-demographic-bar" aria-hidden="true">
-                  {entry.share !== null ? (
-                    <span style={{ width: `${Math.max(0, Math.min(100, entry.share * 100))}%` }} />
-                  ) : null}
-                </span>
-                <strong>{entry.share === null ? "—" : formatAudienceDemographicShare(entry.share)}</strong>
-              </li>
-            ))}
-          </ul>
-          {countryAggregateEntry ? (
-            <p className="audience-demographic-note audience-demographic-country-residual">
-              <span>{countryAggregateEntry.label}</span>
-              <strong>
-                {countryAggregateEntry.share === null
-                  ? "—"
-                  : formatAudienceDemographicShare(countryAggregateEntry.share)}
-              </strong>
-            </p>
-          ) : null}
+                  <span>{entry.label}</span>
+                  <span className="audience-demographic-bar" aria-hidden="true">
+                    {entry.share !== null ? (
+                      <span style={{ width: `${Math.max(0, Math.min(100, entry.share * 100))}%` }} />
+                    ) : null}
+                  </span>
+                  <strong>{entry.share === null ? "—" : formatAudienceDemographicShare(entry.share)}</strong>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="audience-demographic-pie-layout">
+              <div
+                className="audience-demographic-pie"
+                role="img"
+                aria-label={pieAriaLabel}
+                style={{ background: pieGradient ?? undefined }}
+              >
+                <span>{kind === "ages" ? "Âge" : "Genre"}</span>
+              </div>
+              <ul className="audience-demographic-pie-legend">
+                {visibleEntries.map((entry, index) => (
+                  <li
+                    className={entry.reported ? undefined : "unavailable"}
+                    aria-label={entry.reported ? undefined : `${entry.label} : non fourni par la plateforme`}
+                    key={entry.key}
+                  >
+                    <span
+                      className="audience-demographic-pie-swatch"
+                      style={{ backgroundColor: audienceDemographicPieColor(entry.key, index) }}
+                      aria-hidden="true"
+                    />
+                    <span>{entry.label}</span>
+                    <strong>{entry.share === null ? "—" : formatAudienceDemographicShare(entry.share)}</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {unreportedAgeCount > 0 || usesMerged55Plus ? (
             <p className="audience-demographic-note">
               {unreportedAgeCount > 0 ? "— = non fourni" : null}
@@ -2460,6 +2524,30 @@ function formatAudienceDemographicShare(share: number) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 1,
   }).format(share);
+}
+
+function audienceDemographicPieColor(key: string, index: number) {
+  return AUDIENCE_DEMOGRAPHIC_PIE_COLORS[key]
+    ?? AUDIENCE_DEMOGRAPHIC_PIE_FALLBACKS[index % AUDIENCE_DEMOGRAPHIC_PIE_FALLBACKS.length];
+}
+
+function audienceDemographicPieGradient(
+  entries: ReadonlyArray<{ key: string; share: number | null }>,
+) {
+  const slices = entries.filter(
+    (entry): entry is { key: string; share: number } => entry.share !== null && entry.share > 0,
+  );
+  const total = slices.reduce((sum, entry) => sum + entry.share, 0);
+  if (total <= 0) return "conic-gradient(rgba(255, 255, 255, 0.08) 0 100%)";
+
+  let start = 0;
+  const stops = slices.map((entry, index) => {
+    const end = start + (entry.share / total) * 100;
+    const stop = `${audienceDemographicPieColor(entry.key, index)} ${start.toFixed(3)}% ${end.toFixed(3)}%`;
+    start = end;
+    return stop;
+  });
+  return `conic-gradient(${stops.join(", ")})`;
 }
 
 function audienceMetricSeries(
