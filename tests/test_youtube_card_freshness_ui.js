@@ -114,7 +114,7 @@ const index = fs.readFileSync('index.html', 'utf8');
 for (const [asset, version] of [
   ['dashboard-02-helpers.js', '20260825-genre-bars-v1'],
   ['dashboard-03-keywords.js', '20260813-card-compact-v1'],
-  ['dashboard-04-recommendations.js', '20260825-editorial-v1'],
+  ['dashboard-04-recommendations.js', '20260826-hydration-v1'],
 ]) {
   assert.ok(index.includes(asset+'?v='+version), asset+' cache version is current');
 }

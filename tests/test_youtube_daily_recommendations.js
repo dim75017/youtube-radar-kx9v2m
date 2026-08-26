@@ -14,7 +14,7 @@ const DEFAULT_V4_POOL = {
   sourceT: 0, feedbackT: 0,
 };
 
-function makeContext(recos, stored, ownedRows, pool, dateCtor = Date) {
+function makeContext(recos, stored, ownedRows, pool, dateCtor = Date, sharedHydration = {ready: true}) {
   let rerenders = 0;
   const usesDefaultV4Pool = pool === undefined;
   if (usesDefaultV4Pool) {
@@ -47,6 +47,8 @@ function makeContext(recos, stored, ownedRows, pool, dateCtor = Date) {
     isValidated: value => /^X/.test(value || ''),
     isRefused: value => /^-/.test(value || ''),
     recommendationRoadmapEntry: () => null,
+    sharedRecommendationStateHydrated: () => sharedHydration.ready,
+    sharedRecommendationReviewedIdsSince: ids => (sharedHydration.reviewedIds || []).filter(id => ids.includes(id)),
     setActiveContinuousRecommendationVariants: () => {},
     rerenderRecos: () => { rerenders += 1; },
     anaRows: () => ownedRows,
@@ -65,6 +67,7 @@ function makeContext(recos, stored, ownedRows, pool, dateCtor = Date) {
     this.recoSourceRecencyBoost = recoSourceRecencyBoost;
     this.recoVideoFields = recoVideoFields;
     this.recoDayKey = recoDayKey;
+    this.invalidateRecommendationDerivedData = invalidateRecommendationDerivedData;
     this.handleRecommendationDayRollover = handleRecommendationDayRollover;`, context);
   context.recoGenreKey = context.recoGenreKey || vm.runInNewContext('recoGenreKey', context);
   context.recoPurposeKey = context.recoPurposeKey || vm.runInNewContext('recoPurposeKey', context);
@@ -617,6 +620,114 @@ assert.equal(regressionContext.finalizeDailyRecommendationHistoryProfile(lazyHis
   'late performance history does not rebuild a queue after review has started');
 assert.deepEqual(lazyHistory[todayKey], originalQueue,
   'late performance history preserves every identity in the reviewed daily lot');
+
+const legacyHydrationRecos = Array.from({length: 130}, (_, index) => ({
+  n: -7000 - index,
+  title: `Legacy hydration concept ${index + 1}`,
+  genre: index % 2 ? 'Lofi' : 'Ambient',
+  perso: 'Lofi Girl',
+  concept: `Legacy hydration direction ${index + 1}`,
+  score: 90,
+  valid: index < 28 ? '-' : '',
+  _generatorVersion: 4,
+  _topicKey: `legacy hydration topic ${index + 1}`,
+  _conceptFamily: `legacy-hydration-family-${index + 1}`,
+  _titleFamily: `legacy-hydration-title-${index + 1}`,
+}));
+const legacyHydrationQueue = legacyHydrationRecos.slice(0, 50).map(row => row.n);
+const legacyHydrationStore = new Map([['lofi_radar_reco_rotation_v4', JSON.stringify({
+  [todayKey]: legacyHydrationQueue,
+  _pool: Object.assign({}, DEFAULT_V4_POOL, {buildId: 'previous-partial-build'}),
+})]]);
+const repairedLegacyHydration = makeContext(legacyHydrationRecos, legacyHydrationStore, []).dailyRecommendationSet();
+assert.equal(repairedLegacyHydration.length, 50,
+  'the deployed migration repairs an already-persisted 22-card hydration remainder');
+assert.ok(repairedLegacyHydration.every(row => !row.valid),
+  'the migration never reintroduces one of the 28 historical decisions');
+
+// Shared decisions can arrive after the recommendation view has already
+// painted. That first, pre-hydration draw is provisional: once the central
+// state lands, rebuild it once from the remaining qualified reserve instead
+// of freezing the 50-card queue at 22 visible cards. After that one rebuild,
+// decisions made during the actual review must retain the finite-queue rule.
+const hydrationState = {ready: false};
+const hydrationRecos = Array.from({length: 130}, (_, index) => ({
+  n: -8000 - index,
+  title: `Hydration race concept ${index + 1}`,
+  genre: index % 2 ? 'Lofi' : 'Ambient',
+  perso: 'Lofi Girl',
+  concept: `Hydration race direction ${index + 1}`,
+  score: 90,
+  valid: '',
+  _generatorVersion: 4,
+  _topicKey: `hydration topic ${index + 1}`,
+  _conceptFamily: `hydration-family-${index + 1}`,
+  _titleFamily: `hydration-title-${index + 1}`,
+}));
+const hydrationStored = new Map();
+const hydrationContext = makeContext(
+  hydrationRecos,
+  hydrationStored,
+  [],
+  undefined,
+  Date,
+  hydrationState,
+);
+const provisionalHydrationBatch = hydrationContext.dailyRecommendationSet();
+assert.equal(provisionalHydrationBatch.length, 50,
+  'the recommendation view paints a complete provisional batch without waiting for the shared request');
+const hydratedVetoIds = new Set(provisionalHydrationBatch.slice(0, 28).map(row => row.n));
+hydrationRecos.filter(row => hydratedVetoIds.has(row.n)).forEach(row => { row.valid = '-'; });
+hydrationState.ready = true;
+const finalizedHydrationBatch = hydrationContext.dailyRecommendationSet();
+assert.equal(finalizedHydrationBatch.length, 50,
+  'the first shared-state hydration replaces a stale 22-card remainder with a complete qualified batch');
+assert.ok(finalizedHydrationBatch.every(row => !hydratedVetoIds.has(row.n)),
+  'the rebuilt batch excludes every concept vetoed by the hydrated shared state');
+const finalizedHydrationIds = Array.from(finalizedHydrationBatch, row => row.n);
+hydrationRecos.find(row => row.n === finalizedHydrationIds[0]).valid = 'X';
+const afterHydratedDecision = hydrationContext.dailyRecommendationSet();
+assert.equal(afterHydratedDecision.length, 49,
+  'a genuine decision after hydration reduces the finalized lot without implicit backfill');
+assert.deepEqual(
+  Array.from(afterHydratedDecision, row => row.n),
+  finalizedHydrationIds.slice(1),
+  'the remaining finalized cards keep their order after a genuine decision',
+);
+
+const inFlightHydrationState = {ready: false, reviewedIds: []};
+const inFlightHydrationRecos = hydrationRecos.map((row, index) => Object.assign({}, row, {
+  n: -9000 - index,
+  valid: '',
+  _topicKey: `in-flight hydration topic ${index + 1}`,
+  _conceptFamily: `in-flight-hydration-family-${index + 1}`,
+}));
+const inFlightHydrationStore = new Map();
+const inFlightHydrationContext = makeContext(
+  inFlightHydrationRecos,
+  inFlightHydrationStore,
+  [],
+  undefined,
+  Date,
+  inFlightHydrationState,
+);
+const inFlightProvisional = inFlightHydrationContext.dailyRecommendationSet();
+const reviewedDuringHydration = inFlightProvisional[0].n;
+inFlightHydrationState.reviewedIds = [reviewedDuringHydration];
+inFlightProvisional.slice(0, 28).forEach(row => {
+  inFlightHydrationRecos.find(candidate => candidate.n === row.n).valid = '-';
+});
+inFlightHydrationState.ready = true;
+const inFlightFinalized = inFlightHydrationContext.dailyRecommendationSet();
+assert.equal(inFlightFinalized.length, 49,
+  'a decision made during hydration is counted once instead of being silently replaced');
+const inFlightHistory = JSON.parse(inFlightHydrationStore.get('lofi_radar_reco_rotation_v4'));
+assert.ok(inFlightHistory[todayKey].includes(reviewedDuringHydration),
+  'the finalized lot keeps an in-flight reviewed ID so Restore can bring it back');
+inFlightHydrationRecos.find(row => row.n === reviewedDuringHydration).valid = '';
+inFlightHydrationContext.invalidateRecommendationDerivedData();
+assert.equal(inFlightHydrationContext.dailyRecommendationSet().length, 50,
+  'restoring an in-flight decision returns its original slot without drawing a new candidate');
 
 const untouchedRecos = Array.from({length: 50}, (_, index) => ({
   n: 6000 + index,

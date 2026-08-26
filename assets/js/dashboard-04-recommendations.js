@@ -121,6 +121,7 @@ const SHARED_RECO_QUEUE_KEY='lofi_radar_shared_reco_queue_v1';
 const SHARED_RECO_STATE_VERSION=2;
 let SHARED_RECO_STATE={version:SHARED_RECO_STATE_VERSION,updatedAt:0,items:[]};
 let SHARED_RECO_STATE_BY_ID=new Map(),SHARED_RECO_STATE_NETWORK_READY=false,SHARED_RECO_STATE_LOAD_PROMISE=null;
+let SHARED_RECO_STATE_HYDRATED=false;
 let SHARED_RECO_FLUSH_PROMISE=null,SHARED_RECO_FLUSH_TIMER=null,SHARED_RECO_UI_TIMER=null;
 let SHARED_RECO_MUTATION_SEQUENCE=0,SHARED_RECO_QUEUE_CACHE=null;
 function sharedRecommendationNumericId(value){const n=Number(value);return Number.isFinite(n)?n:null;}
@@ -135,7 +136,18 @@ function replaceSharedRecommendationState(payload,networkReady){
   const items=Array.isArray(payload&&payload.items)?payload.items.filter(item=>item&&sharedRecommendationNumericId(item.n)!=null):[];
   SHARED_RECO_STATE={version:SHARED_RECO_STATE_VERSION,updatedAt:Number(payload&&payload.updatedAt)||0,items};
   SHARED_RECO_STATE_BY_ID=new Map(items.map(item=>[String(sharedRecommendationNumericId(item.n)),Object.assign({},item,{n:sharedRecommendationNumericId(item.n)})]));
+  SHARED_RECO_STATE_HYDRATED=true;
   if(networkReady){SHARED_RECO_STATE_NETWORK_READY=true;saveSharedRecommendationCachedState();}
+}
+function sharedRecommendationStateHydrated(){return SHARED_RECO_STATE_HYDRATED;}
+function sharedRecommendationStateRevision(){return Number(SHARED_RECO_STATE&&SHARED_RECO_STATE.updatedAt)||0;}
+function sharedRecommendationReviewedIdsSince(ids,since){
+  const wanted=new Set((ids||[]).map(value=>String(sharedRecommendationNumericId(value)))),reviewed=new Set(),minimum=Number(since)||0;
+  sharedRecommendationEffectiveItems().forEach(item=>{
+    if(!item||!wanted.has(String(sharedRecommendationNumericId(item.n)))||Number(item.updatedAt||0)<minimum)return;
+    if(isValidated(item.valid)||isRefused(item.valid)||item.roadmapState==='active')reviewed.add(Number(item.n));
+  });
+  return [...reviewed];
 }
 function sharedRecommendationQueue(){
   if(SHARED_RECO_QUEUE_CACHE)return SHARED_RECO_QUEUE_CACHE.slice();
@@ -266,7 +278,7 @@ async function loadSharedRecommendationState(force){
   if(!force&&SHARED_RECO_STATE_NETWORK_READY)return SHARED_RECO_STATE;
   if(SHARED_RECO_STATE_LOAD_PROMISE)return SHARED_RECO_STATE_LOAD_PROMISE;
   const cached=sharedRecommendationCachedState();if(cached&&!SHARED_RECO_STATE.items.length)replaceSharedRecommendationState(cached,false);
-  if(typeof fetch!=='function')return SHARED_RECO_STATE;
+  if(typeof fetch!=='function'){SHARED_RECO_STATE_HYDRATED=true;return SHARED_RECO_STATE;}
   SHARED_RECO_STATE_LOAD_PROMISE=(async()=>{
     let controller=null,timeoutId=null;
     try{
@@ -278,7 +290,15 @@ async function loadSharedRecommendationState(force){
       const response=await fetch(WRITE_URL+'?op=state&k='+encodeURIComponent(WRITE_KEY),options),payload=await response.json();
       if(!response.ok||!payload.ok||Number(payload.version)!==SHARED_RECO_STATE_VERSION||!Array.isArray(payload.items))throw new Error(payload.err||('HTTP '+response.status));
       replaceSharedRecommendationState(payload,true);migrateLocalRecommendationState();scheduleSharedRecommendationUiRefresh();return SHARED_RECO_STATE;
-    }catch(e){console.warn('Shared recommendation state unavailable; using the offline fallback',e);if(typeof setTimeout==='function')setTimeout(()=>loadSharedRecommendationState(true),30000);return SHARED_RECO_STATE;}
+    }catch(e){
+      console.warn('Shared recommendation state unavailable; using the offline fallback',e);
+      // The dashboard must stay instant offline. Finalise the provisional lot
+      // against the available cache now; a later successful retry can still
+      // rebase historical decisions that predate the lot.
+      SHARED_RECO_STATE_HYDRATED=true;scheduleSharedRecommendationUiRefresh();
+      if(typeof setTimeout==='function')setTimeout(()=>loadSharedRecommendationState(true),30000);
+      return SHARED_RECO_STATE;
+    }
     finally{if(timeoutId!=null&&typeof clearTimeout==='function')clearTimeout(timeoutId);SHARED_RECO_STATE_LOAD_PROMISE=null;}
   })();
   return SHARED_RECO_STATE_LOAD_PROMISE;
@@ -502,6 +522,7 @@ const RECO_MIN_DAILY_SCORE=78;
 // below normal localStorage quotas; only the oldest consumed IDs can age out.
 const RECO_CONSUMED_LIMIT=50000;
 const RECO_DAILY_HISTORY_DAYS=30;
+const RECO_DAILY_META_VERSION=1;
 // V4 resets only the stale seen/queue rotation after the full-history learning
 // launch. Decisions, edits and Roadmap placements use separate stores.
 const RECO_ROTATION_KEY='lofi_radar_reco_rotation_v4';
@@ -555,6 +576,11 @@ function handleRecommendationDayRollover(){
   if(RECO_ACTIVE_DAY_KEY==null){RECO_ACTIVE_DAY_KEY=day;return false;}
   if(day===RECO_ACTIVE_DAY_KEY)return false;
   RECO_ACTIVE_DAY_KEY=day;invalidateRecommendationDerivedData();clearRecommendationViewCache();
+  // The state that finalised yesterday's lot is not sufficient for a new
+  // Paris day. Keep first paint non-blocking, but mark the new lot provisional
+  // until a fresh shared-state request succeeds or falls back offline.
+  if(typeof SHARED_RECO_STATE_HYDRATED!=='undefined')SHARED_RECO_STATE_HYDRATED=false;
+  if(typeof loadSharedRecommendationState==='function')Promise.resolve(loadSharedRecommendationState(true)).catch(()=>{});
   if(typeof route!=='undefined'&&route==='recos'&&typeof rerenderRecos==='function')rerenderRecos();
   else if(typeof renderNav==='function')renderNav();
   refreshRecommendationPoolForDay();
@@ -698,12 +724,29 @@ function normalizeRecoRotationHistory(history){
   append(history._seen);append(history._consumed);append(history._recent&&history._recent.ids);
   history._consumed=ordered.slice(-RECO_CONSUMED_LIMIT);
   history._topics=history._topics&&typeof history._topics==='object'&&!Array.isArray(history._topics)?history._topics:{};
+  history._dailyMeta=history._dailyMeta&&typeof history._dailyMeta==='object'&&!Array.isArray(history._dailyMeta)?history._dailyMeta:{};
   delete history._seen;delete history._recent;
   return history;
 }
 function recoRotationHistory(){try{return normalizeRecoRotationHistory(JSON.parse(localStorage.getItem(RECO_ROTATION_KEY)||'{}')||{});}catch(e){return normalizeRecoRotationHistory({});}}
 function saveRecoRotation(h){
   try{const history=normalizeRecoRotationHistory(h),pool=recoPoolIdentity();if(pool)history._pool=pool;localStorage.setItem(RECO_ROTATION_KEY,JSON.stringify(history));}catch(e){}
+}
+function recoSharedStateHydrated(){return typeof sharedRecommendationStateHydrated!=='function'||sharedRecommendationStateHydrated();}
+function recoSharedStateRevision(){return typeof sharedRecommendationStateRevision==='function'?Number(sharedRecommendationStateRevision())||0:0;}
+function recoReviewedIdsSince(ids,since){
+  if(typeof sharedRecommendationReviewedIdsSince!=='function')return [];
+  try{return sharedRecommendationReviewedIdsSince(ids,since).map(Number).filter(Number.isFinite);}catch(e){return [];}
+}
+function recoDayStartTimestamp(day){
+  let high=Date.now(),low=high-36*60*60*1000;
+  if(recoDayKey(high)!==day)return high;
+  while(high-low>1000){const middle=Math.floor((low+high)/2);if(recoDayKey(middle)<day)low=middle;else high=middle;}
+  return high;
+}
+function recoDailyMeta(history,day){
+  const value=history&&history._dailyMeta&&history._dailyMeta[day];
+  return value&&typeof value==='object'&&!Array.isArray(value)?value:null;
 }
 function recoPreviousDayKey(history,day){
   return Object.keys(history||{}).filter(key=>!key.startsWith('_')&&key<day&&Array.isArray(history[key])&&history[key].length).sort().pop()||'';
@@ -1044,13 +1087,16 @@ function dailyRecommendationSet(){
   });
   let todayIds=Array.isArray(history[day])?history[day]:[];
   let hasStoredDailyQueue=Array.isArray(history[day]);
+  let dailyMeta=recoDailyMeta(history,day),dailyCreatedAt=Number(dailyMeta&&dailyMeta.createdAt)||Date.now();
+  let dailyReviewedIds=new Set((dailyMeta&&Array.isArray(dailyMeta.reviewedIds)?dailyMeta.reviewedIds:[]).map(Number).filter(Number.isFinite));
+  let selectionLimit=RECO_DAILY_LIMIT;
   // A title-recipe rollout can replace every stable idea ID at once. If none
   // of a stored lot resolves in the new pool, rebuild it immediately instead
   // of showing an empty panel until tomorrow.
   if(hasStoredDailyQueue&&todayIds.length&&recoPoolIdentityKey(history._pool)!==poolKey){
     const candidateIds=new Set(candidates.map(row=>Number(row.n)));
     if(!todayIds.some(id=>candidateIds.has(Number(id)))){
-      delete history[day];if(history._topics)delete history._topics[day];todayIds=[];hasStoredDailyQueue=false;
+      delete history[day];if(history._topics)delete history._topics[day];if(history._dailyMeta)delete history._dailyMeta[day];todayIds=[];hasStoredDailyQueue=false;dailyMeta=null;
     }
   }
   // A previous version could preserve a larger queue after the daily target
@@ -1066,14 +1112,38 @@ function dailyRecommendationSet(){
     const byId=new Map(candidates.map(r=>[Number(r.n),r]));
     const resolved=activeTodayIds.map(n=>byId.get(Number(n))).filter(Boolean);
     const retained=recoUniqueTopicRows(resolved);
-    const fullLotTopics=[...new Set(activeTodayIds.map(n=>byId.get(Number(n))).filter(Boolean).map(recoNormalizedTopicKey).filter(Boolean))];
-    if(retained.length!==resolved.length){history[day]=retained.map(row=>row.n);}
-    if(retained.length!==resolved.length||!history._topics||!Array.isArray(history._topics[day])){
-      history._topics=history._topics||{};history._topics[day]=fullLotTopics;saveRecoRotation(history);
+    const sharedReady=recoSharedStateHydrated(),sharedRevision=recoSharedStateRevision();
+    const provisionalReady=!!dailyMeta&&dailyMeta.hydrated!==true&&sharedReady;
+    const historicalRevisionArrived=!!dailyMeta&&dailyMeta.hydrated===true&&sharedReady&&retained.length<Number(dailyMeta.target||RECO_DAILY_LIMIT)&&sharedRevision>0&&sharedRevision!==Number(dailyMeta.sharedStateRevision||0)&&sharedRevision<=dailyCreatedAt;
+    // One-time migration for a lot persisted by the old client before its
+    // asynchronous shared-state request completed. Requiring the exact pool
+    // identity and a full stored queue avoids mistaking a deliberately small
+    // quality-gated batch for the hydration race.
+    const legacyHydrationRace=!dailyMeta&&sharedReady&&activeTodayIds.length===RECO_DAILY_LIMIT&&
+      !!poolKey&&!!recoPoolIdentityKey(history._pool)&&retained.length<RECO_DAILY_LIMIT&&candidates.length>=RECO_DAILY_LIMIT;
+    if(provisionalReady||historicalRevisionArrived||legacyHydrationRace){
+      if(legacyHydrationRace)dailyCreatedAt=recoDayStartTimestamp(day);
+      recoReviewedIdsSince(activeTodayIds,dailyCreatedAt).forEach(id=>dailyReviewedIds.add(id));
+      selectionLimit=Math.max(0,RECO_DAILY_LIMIT-dailyReviewedIds.size);
+      delete history[day];if(history._topics)delete history._topics[day];
+      history._dailyMeta=history._dailyMeta||{};delete history._dailyMeta[day];
+      todayIds=[];hasStoredDailyQueue=false;dailyMeta=null;
     }
-    const rows=decorate(retained);
-    if(typeof RECO_DAILY_CACHE!=='undefined')RECO_DAILY_CACHE={data:DATA,revision,day,lang,poolIdentityKey:poolKey,rows,sources:retained};
-    return rows;
+    if(hasStoredDailyQueue){
+      if(!dailyMeta&&sharedReady){
+        history._dailyMeta=history._dailyMeta||{};
+        history._dailyMeta[day]={version:RECO_DAILY_META_VERSION,createdAt:Date.now(),finalizedAt:Date.now(),hydrated:true,sharedStateRevision:sharedRevision,poolIdentityKey:poolKey,target:activeTodayIds.length,reviewedIds:[]};
+        saveRecoRotation(history);
+      }
+      const fullLotTopics=[...new Set(activeTodayIds.map(n=>byId.get(Number(n))).filter(Boolean).map(recoNormalizedTopicKey).filter(Boolean))];
+      if(retained.length!==resolved.length){history[day]=retained.map(row=>row.n);}
+      if(retained.length!==resolved.length||!history._topics||!Array.isArray(history._topics[day])){
+        history._topics=history._topics||{};history._topics[day]=fullLotTopics;saveRecoRotation(history);
+      }
+      const rows=decorate(retained);
+      if(typeof RECO_DAILY_CACHE!=='undefined')RECO_DAILY_CACHE={data:DATA,revision,day,lang,poolIdentityKey:poolKey,rows,sources:retained};
+      return rows;
+    }
   }
   const seen=recoSeenIds(history,day),previousTopics=recoPreviousTopicKeys(history,day,candidates),consumedIds=new Set((history._consumed||[]).map(Number));
   const qualified=candidates.filter(r=>!consumedIds.has(Number(r.n)))
@@ -1083,7 +1153,7 @@ function dailyRecommendationSet(){
     .map(r=>{const score=recoDailyScore(r,profile,day);return {r,score,rankScore:score+recoSourceRecencyBoost(r)-recoRecentUsePenalty(history,day,r.n)};})
     .filter(item=>item.score>=RECO_MIN_DAILY_SCORE);
   const eligibleQualified=qualified.filter(item=>!seen.has(Number(item.r.n))&&(!recoNormalizedTopicKey(item.r)||!previousTopics.has(recoNormalizedTopicKey(item.r))));
-  const rotated=recoDailyRotationWindow(eligibleQualified,day,RECO_DAILY_LIMIT),target=Number(rotated._target)||Math.min(RECO_DAILY_LIMIT,rotated.length);
+  const rotated=recoDailyRotationWindow(eligibleQualified,day,selectionLimit),target=Number(rotated._target)||Math.min(selectionLimit,rotated.length);
   const available=rotated.slice();
   const picked=[],genres={},purposes={},sources={},combos={},settings={},titleHooks={},strictGenreTopics=new Set(),strictGlobalTopics=new Set();
   while(picked.length<target&&available.length){
@@ -1109,12 +1179,17 @@ function dailyRecommendationSet(){
     const strictTopic=recoNormalizedTopicKey(r);if(strictTopic){strictGenreTopics.add(g+'|'+strictTopic);strictGlobalTopics.add(strictTopic);}
     picked.push(r);genres[g]=(genres[g]||0)+1;purposes[purpose]=(purposes[purpose]||0)+1;combos[combo]=(combos[combo]||0)+1;if(source)sources[source]=(sources[source]||0)+1;if(setting)settings[setting]=(settings[setting]||0)+1;if(titleHook)titleHooks[titleHook]=(titleHooks[titleHook]||0)+1;
   }
-  history[day]=[...new Set(picked.map(r=>r.n))].slice(0,RECO_DAILY_LIMIT);
-  history._topics=history._topics||{};history._topics[day]=[...new Set(picked.map(recoNormalizedTopicKey).filter(Boolean))];
+  const storedLotIds=[...new Set([...picked.map(r=>Number(r.n)),...dailyReviewedIds])].slice(0,RECO_DAILY_LIMIT);
+  const storedRowsById=new Map(((DATA&&DATA.recos)||[]).map(row=>[Number(row&&row.n),row]));
+  history[day]=storedLotIds;
+  history._topics=history._topics||{};history._topics[day]=[...new Set(storedLotIds.map(id=>storedRowsById.get(Number(id))).filter(Boolean).map(recoNormalizedTopicKey).filter(Boolean))];
+  const sharedReady=recoSharedStateHydrated();
+  history._dailyMeta=history._dailyMeta||{};
+  history._dailyMeta[day]={version:RECO_DAILY_META_VERSION,createdAt:dailyCreatedAt,finalizedAt:sharedReady?Date.now():0,hydrated:sharedReady,sharedStateRevision:recoSharedStateRevision(),poolIdentityKey:poolKey,target:selectionLimit,reviewedIds:[...dailyReviewedIds]};
   if(recommendationPerformanceHistoryReady())history._profileReadyDay=day;else delete history._profileReadyDay;
   setActiveContinuousRecommendationVariants([]);
   const retainedDays=Object.keys(history).filter(key=>!key.startsWith('_')).sort();
-  retainedDays.slice(0,-RECO_DAILY_HISTORY_DAYS).forEach(k=>{delete history[k];if(history._topics)delete history._topics[k];});saveRecoRotation(history);
+  retainedDays.slice(0,-RECO_DAILY_HISTORY_DAYS).forEach(k=>{delete history[k];if(history._topics)delete history._topics[k];if(history._dailyMeta)delete history._dailyMeta[k];});saveRecoRotation(history);
   const rows=decorate(picked);
   if(typeof RECO_DAILY_CACHE!=='undefined')RECO_DAILY_CACHE={data:DATA,revision,day,lang,poolIdentityKey:poolKey,rows,sources:picked};
   return rows;
@@ -1126,7 +1201,7 @@ function refreshDailyRecommendations(ev){
   if(ev)ev.stopPropagation();
   const day=recoDayKey(),history=recoRotationHistory(),current=Array.isArray(history[day])?history[day].slice(0,RECO_DAILY_LIMIT):[];
   rememberRecoIds(history,current);
-  delete history[day];if(history._topics)delete history._topics[day];
+  delete history[day];if(history._topics)delete history._topics[day];if(history._dailyMeta)delete history._dailyMeta[day];
   saveRecoRotation(history);
   setActiveContinuousRecommendationVariants([]);
   invalidateRecommendationDerivedData();

@@ -17,7 +17,7 @@ assert.match(index, /window\.__loadRadarLiveData=/,
   'the compact snapshot can be loaded lazily after a non-Livestreams boot');
 assert.match(index, /dashboard-02-helpers\.js\?v=20260825-genre-bars-v1/,
   'the helper asset cache key changes with official live discovery');
-assert.match(index, /dashboard-04-recommendations\.js\?v=20260825-editorial-v1/,
+assert.match(index, /dashboard-04-recommendations\.js\?v=20260826-hydration-v1/,
   'the live rendering asset cache key changes with official live discovery');
 assert.match(helpers, /const liveBootstrap=await window\.__radarLiveDataReady/,
   'cold Livestreams waits for the compact asset, not the multi-megabyte radar assets');

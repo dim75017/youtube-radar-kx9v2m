@@ -134,6 +134,10 @@ const context = {
   recoRotationHistory: () => ({
     '2026-07-28': [1, 54, 55, 56, 59],
   }),
+  recoDailyMeta: () => null,
+  recoSharedStateHydrated: () => true,
+  recoSharedStateRevision: () => 0,
+  recoReviewedIdsSince: () => [],
   rememberRecoIds: history => history,
   recoSeenIds: () => new Set(),
   saveRecoRotation: () => {},
@@ -167,6 +171,7 @@ vm.runInNewContext(
 vm.runInNewContext(
   `const RECO_DAILY_LIMIT=50;
    const RECO_MIN_DAILY_SCORE=78;
+   const RECO_DAILY_META_VERSION=1;
    ${source.slice(dailyStart, dailyEnd)}
    this.dailyRecommendationSetForTest=dailyRecommendationSet;`,
   context,

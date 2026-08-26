@@ -84,7 +84,7 @@ assert.match(css, /\.reco-tab\{display:grid;grid-template-columns:minmax\(0,1fr\
 const recommendationAsset = index.match(/dashboard-04-recommendations\.js\?v=([^"']+)/);
 const helperAsset = index.match(/dashboard-02-helpers\.js\?v=([^"']+)/);
 assert.ok(recommendationAsset && helperAsset, 'the recommendation runtime assets must remain explicitly versioned');
-assert.equal(recommendationAsset[1], '20260825-editorial-v1',
+assert.equal(recommendationAsset[1], '20260826-hydration-v1',
   'the recommendation runtime must bypass the previous browser cache');
 assert.equal(helperAsset[1], '20260825-genre-bars-v1',
   'the route-cache helper must deploy under its current independent cache revision');
