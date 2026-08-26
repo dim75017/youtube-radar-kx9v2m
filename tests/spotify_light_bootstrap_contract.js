@@ -66,11 +66,13 @@ function assertSpotifyLightBootstrap(index) {
     `Spotify first-paint data budget exceeded: ${instantDataBytes} bytes > 200000`);
   // Dashboard is now the first view and renders from the same compact snapshot,
   // without a third request or catalogue hydration. Keep its complete renderer
-  // inside a measured 65 kB envelope while the combined JavaScript cap stays strict.
-  assert.ok(instantRuntimeBytes <= 65_000,
-    `Spotify lightweight runtime budget exceeded: ${instantRuntimeBytes} bytes > 65000`);
+  // inside a measured 68 kB envelope, including the three lazy analytics
+  // routers, while the stricter combined JavaScript cap stays unchanged.
+  assert.ok(instantRuntimeBytes <= 68_000,
+    `Spotify lightweight runtime budget exceeded: ${instantRuntimeBytes} bytes > 68000`);
   assert.ok(criticalJavaScriptBytes <= 225_000,
     `Spotify critical JavaScript budget exceeded: ${criticalJavaScriptBytes} bytes > 225000`);
 }
 
 module.exports = { assertSpotifyLightBootstrap };
+
