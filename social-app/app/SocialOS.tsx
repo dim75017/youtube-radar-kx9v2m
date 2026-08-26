@@ -18,6 +18,10 @@ import {
   type AudienceAnalyticsPeriodKey,
   type AudienceAnalyticsPeriodSnapshot,
 } from "../lib/audience-analytics";
+import {
+  type AudienceDemographicDimension,
+  type AudienceDemographics,
+} from "../lib/audience-demographics";
 
 import {
   generateSocialIdeas,
@@ -529,6 +533,7 @@ export function SocialOS({
   initialCommentOpportunityFeed = null,
   initialAudienceHistory = null,
   audienceAnalytics = null,
+  audienceDemographics = null,
   previewMode = false,
   publicCounts,
   publicFormatCounts,
@@ -543,6 +548,7 @@ export function SocialOS({
   initialCommentOpportunityFeed?: CommentOpportunityFeed | null;
   initialAudienceHistory?: AudienceHistory | null;
   audienceAnalytics?: AudienceAnalytics | null;
+  audienceDemographics?: AudienceDemographics | null;
   previewMode?: boolean;
   publicCounts?: Partial<Record<Platform, number>>;
   publicFormatCounts?: Partial<Record<Platform, Record<string, number>>>;
@@ -1295,6 +1301,7 @@ export function SocialOS({
           <AudienceDashboard
             history={initialAudienceHistory}
             analytics={audienceAnalytics}
+            demographics={audienceDemographics}
           />
         ) : null}
 
@@ -1738,9 +1745,11 @@ export function SocialOS({
 function AudienceDashboard({
   history,
   analytics,
+  demographics,
 }: {
   history: AudienceHistory | null;
   analytics: AudienceAnalytics | null;
+  demographics: AudienceDemographics | null;
 }) {
   const periodKey: AudiencePeriodKey = "30d";
   const [activePlatform, setActivePlatform] = useState<Platform>("youtube");
@@ -1889,6 +1898,7 @@ function AudienceDashboard({
         activePlatform={activePlatform}
         analytics={analytics}
         clientNow={clientNow}
+        demographics={demographics}
         history={history}
         onSelectMetric={setRequestedMetric}
         onSelectPlatform={selectAudiencePlatform}
@@ -2091,6 +2101,7 @@ function AudienceAnalyticsExplorer({
   activePlatform,
   analytics,
   clientNow,
+  demographics,
   history,
   onSelectMetric,
   onSelectPlatform,
@@ -2099,6 +2110,7 @@ function AudienceAnalyticsExplorer({
   activePlatform: Platform;
   analytics: AudienceAnalytics | null;
   clientNow: string | null;
+  demographics: AudienceDemographics | null;
   history: AudienceHistory | null;
   onSelectMetric: (metric: AudienceAnalyticsMetricKey) => void;
   onSelectPlatform: (platform: Platform) => void;
@@ -2115,6 +2127,7 @@ function AudienceAnalyticsExplorer({
   const generatedAt = latestIsoTimestamp(analytics?.generatedAt, history?.generatedAt)
     ?? "1970-01-01T00:00:00.000Z";
   const analyticsPlatform = analytics?.platforms[activePlatform] ?? null;
+  const demographicPlatform = demographics?.platforms[activePlatform] ?? null;
   const platformHistory = history?.platforms[activePlatform] ?? null;
   const allDaily = analyticsPlatform?.daily ?? [];
   const allHistoryPoints = audienceHistoryPointsForPeriod(
@@ -2286,6 +2299,7 @@ function AudienceAnalyticsExplorer({
 
             <AudienceNativeMetricChart
               key={`${activePlatform}:${activeMetric}:${chartPeriodKey}:${endDate}`}
+              bottomReserve={148}
               endDate={endDate}
               metric={activeMetric}
               periodDays={periodDays}
@@ -2309,6 +2323,11 @@ function AudienceAnalyticsExplorer({
               <span>{activeSummary.provenance.provider}</span>
             </footer>
           </div>
+
+          <AudienceDemographicsPanel
+            platform={activePlatform}
+            snapshot={demographicPlatform}
+          />
         </>
       ) : (
         <div className="audience-native-empty" role="status">
@@ -2317,6 +2336,147 @@ function AudienceAnalyticsExplorer({
       )}
     </section>
   );
+}
+
+function AudienceDemographicsPanel({
+  platform,
+  snapshot,
+}: {
+  platform: Platform;
+  snapshot: AudienceDemographics["platforms"][Platform] | null;
+}) {
+  const meta = PLATFORM_META[platform];
+  const dimensions = [snapshot?.countries, snapshot?.ages, snapshot?.genders]
+    .filter((dimension): dimension is AudienceDemographicDimension => Boolean(dimension));
+  const latestObservedAt = dimensions.reduce<string | null>(
+    (latest, dimension) => latestIsoTimestamp(latest, dimension.provenance.collectedAt),
+    null,
+  );
+
+  return (
+    <section
+      className="audience-demographics"
+      aria-labelledby="audience-demographics-title"
+    >
+      <header className="audience-demographics-heading">
+        <div>
+          <span className="section-kicker">Démographie</span>
+          <h3 id="audience-demographics-title">Audience {meta.label}</h3>
+        </div>
+        <span>
+          {latestObservedAt
+            ? `Données natives · ${formatAudienceDate(latestObservedAt)}`
+            : "Donnée native non disponible"}
+        </span>
+      </header>
+
+      <div className="audience-demographics-grid">
+        <AudienceDemographicCard
+          dimension={snapshot?.countries ?? null}
+          emptyLabel={`Localisation non disponible pour ${meta.label}`}
+          kind="countries"
+          title="Principaux pays"
+        />
+        <AudienceDemographicCard
+          dimension={snapshot?.ages ?? null}
+          emptyLabel={`Âge non disponible pour ${meta.label}`}
+          kind="ages"
+          title="Répartition par âge"
+        />
+        <AudienceDemographicCard
+          dimension={snapshot?.genders ?? null}
+          emptyLabel={`Genre non disponible pour ${meta.label}`}
+          kind="genders"
+          title="Répartition par genre"
+        />
+      </div>
+    </section>
+  );
+}
+
+function AudienceDemographicCard({
+  dimension,
+  emptyLabel,
+  kind,
+  title,
+}: {
+  dimension: AudienceDemographicDimension | null;
+  emptyLabel: string;
+  kind: "countries" | "ages" | "genders";
+  title: string;
+}) {
+  const visibleEntries = dimension
+    ? kind === "countries"
+      ? dimension.entries.slice(0, 5)
+      : dimension.entries
+    : [];
+  const hiddenCountryCount = dimension && kind === "countries"
+    ? Math.max(0, dimension.entries.length - visibleEntries.length)
+    : 0;
+
+  return (
+    <article className={`audience-demographic-card kind-${kind}`}>
+      <header>
+        <h4>{title}</h4>
+        {dimension ? <span>{dimension.provenance.periodLabel ?? "Snapshot actuel"}</span> : null}
+      </header>
+      {dimension ? (
+        <>
+          {kind !== "countries" ? (
+            <div className="audience-demographic-stack" aria-hidden="true">
+              {visibleEntries.map((entry, index) => (
+                <span
+                  key={entry.key}
+                  style={{
+                    flexGrow: entry.share,
+                    opacity: Math.max(0.38, 1 - index * 0.1),
+                  }}
+                />
+              ))}
+            </div>
+          ) : null}
+          <ul className="audience-demographic-list">
+            {visibleEntries.map((entry) => (
+              <li key={entry.key}>
+                {kind === "countries" ? (
+                  <img
+                    src={`flags/${entry.countryCode?.toLowerCase() ?? "globe"}.svg`}
+                    alt=""
+                    width="20"
+                    height="15"
+                    aria-hidden="true"
+                  />
+                ) : null}
+                <span>{entry.label}</span>
+                {kind === "countries" ? (
+                  <span className="audience-demographic-bar" aria-hidden="true">
+                    <span style={{ width: `${Math.max(0, Math.min(100, entry.share * 100))}%` }} />
+                  </span>
+                ) : null}
+                <strong>{formatAudienceDemographicShare(entry.share)}</strong>
+              </li>
+            ))}
+          </ul>
+          <footer>
+            <span>{dimension.provenance.provider}</span>
+            {hiddenCountryCount > 0 ? <span>+{hiddenCountryCount} pays</span> : null}
+          </footer>
+        </>
+      ) : (
+        <div className="audience-demographic-empty" role="status">
+          {emptyLabel}
+        </div>
+      )}
+    </article>
+  );
+}
+
+function formatAudienceDemographicShare(share: number) {
+  return new Intl.NumberFormat("fr-FR", {
+    style: "percent",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
+  }).format(share);
 }
 
 function audienceMetricSeries(
@@ -2470,6 +2630,7 @@ function nativeAnalyticsMetricSummary(
 
 function AudienceNativeMetricChart({
   aggregateOnly,
+  bottomReserve,
   endDate,
   metric,
   periodDays,
@@ -2478,6 +2639,7 @@ function AudienceNativeMetricChart({
   points,
 }: {
   aggregateOnly: boolean;
+  bottomReserve: number;
   endDate: string;
   metric: AudienceAnalyticsMetricKey;
   periodDays: number | null;
@@ -2496,10 +2658,12 @@ function AudienceNativeMetricChart({
 
     const resizeChart = () => {
       const width = Math.max(700, Math.round(viewport.clientWidth));
-      const availableHeight = Math.floor(window.innerHeight - viewport.getBoundingClientRect().top - 38);
+      const availableHeight = Math.floor(
+        window.innerHeight - viewport.getBoundingClientRect().top - bottomReserve - 34,
+      );
       const height = window.innerWidth <= 900
         ? 180
-        : Math.max(180, Math.min(360, availableHeight));
+        : Math.max(120, Math.min(280, availableHeight));
       setChartDimensions((current) => (
         current.width === width && current.height === height
           ? current
@@ -2515,7 +2679,7 @@ function AudienceNativeMetricChart({
       resizeObserver.disconnect();
       window.removeEventListener("resize", resizeChart);
     };
-  }, []);
+  }, [bottomReserve]);
 
   const geometry = useMemo(() => {
     const { width, height } = chartDimensions;

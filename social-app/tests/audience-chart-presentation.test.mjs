@@ -18,8 +18,8 @@ test("keeps follower values integral and fits the chart inside the remaining vie
 
   assert.match(chart, /chartViewportRef/);
   assert.match(chart, /new ResizeObserver\(resizeChart\)/);
-  assert.match(chart, /window\.innerHeight - viewport\.getBoundingClientRect\(\)\.top - 38/);
-  assert.match(chart, /Math\.max\(180, Math\.min\(360, availableHeight\)\)/);
+  assert.match(chart, /window\.innerHeight - viewport\.getBoundingClientRect\(\)\.top - bottomReserve - 34/);
+  assert.match(chart, /Math\.max\(120, Math\.min\(280, availableHeight\)\)/);
   assert.match(chart, /style=\{\{ height: `\$\{height\}px` \}\}/);
 
   assert.match(formatters, /metric === "followersTotal"/);

@@ -17,7 +17,9 @@ test("consolidates audience analytics into one truthful selectable chart", async
   );
 
   assert.match(component, /audienceAnalytics\?: AudienceAnalytics \| null/);
+  assert.match(component, /audienceDemographics\?: AudienceDemographics \| null/);
   assert.match(component, /analytics=\{audienceAnalytics\}/);
+  assert.match(component, /demographics=\{audienceDemographics\}/);
   assert.match(explorer, /function AudienceAnalyticsExplorer/);
   assert.match(component, /useState<Platform>\("youtube"\)/);
   assert.match(explorer, /youtube: "followersNet"/);
@@ -78,6 +80,7 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(styles, /\.audience-explorer-metrics/);
   assert.match(styles, /\.audience-native-chart-empty,[\s\S]*?min-height:\s*150px/);
   assert.match(styles, /\.audience-native-chart-viewport\s*\{[\s\S]*?overflow-x:\s*auto/);
+  assert.match(styles, /\.audience-demographics-grid\s*\{[\s\S]*?grid-template-columns:\s*1\.12fr 1fr 0\.84fr/);
   assert.match(styles, /@media \(max-width: 640px\)[\s\S]*?\.audience-platform-grid/);
   assert.doesNotMatch(styles, /\.audience-chart-viewport|\.audience-native-platform-grid/);
 });
@@ -119,7 +122,8 @@ test("keeps the audience curve clean and reveals the exact hovered value instant
   assert.match(chart, /useState\(\{ width: 940, height: 180 \}\)/);
   assert.match(chart, /const plotTop = 12/);
   assert.match(chart, /const plotBottom = height - 40/);
-  assert.match(chart, /Math\.max\(180, Math\.min\(360, availableHeight\)\)/);
+  assert.match(chart, /bottomReserve/);
+  assert.match(chart, /Math\.max\(120, Math\.min\(280, availableHeight\)\)/);
   assert.match(styles, /\.main\.main-dashboard\s*\{[\s\S]*?padding-bottom:\s*8px/);
 
   // Les cinq filtres exacts du graphe restent disponibles après l'amélioration du survol.
@@ -128,6 +132,35 @@ test("keeps the audience curve clean and reveals the exact hovered value instant
   assert.match(component, /key: "180d", label: "180 jours", days: 180/);
   assert.match(component, /key: "360d", label: "360 jours", days: 360/);
   assert.match(component, /key: "all", label: "All time", days: null/);
+});
+
+test("shows native demographic dimensions below the chart and follows the selected platform", async () => {
+  const [component, styles] = await Promise.all([
+    readFile(new URL("../app/SocialOS.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+  const explorer = component.slice(
+    component.indexOf("function AudienceAnalyticsExplorer"),
+    component.indexOf("function audienceMetricSeries"),
+  );
+
+  assert.match(explorer, /const demographicPlatform = demographics\?\.platforms\[activePlatform\] \?\? null/);
+  assert.match(explorer, /<AudienceDemographicsPanel/);
+  assert.match(explorer, /snapshot=\{demographicPlatform\}/);
+  assert.ok(
+    explorer.indexOf("<AudienceDemographicsPanel") > explorer.indexOf("audience-native-chart-shell"),
+    "the demographic section must remain below the curve",
+  );
+  assert.match(explorer, /Principaux pays/);
+  assert.match(explorer, /Répartition par âge/);
+  assert.match(explorer, /Répartition par genre/);
+  assert.match(explorer, /flags\/\$\{entry\.countryCode\?\.toLowerCase\(\) \?\? "globe"\}\.svg/);
+  assert.match(explorer, /Localisation non disponible pour/);
+  assert.match(explorer, /Âge non disponible pour/);
+  assert.match(explorer, /Genre non disponible pour/);
+  assert.match(styles, /\.audience-demographics\s*\{/);
+  assert.match(styles, /\.audience-demographic-stack\s*\{/);
+  assert.match(styles, /\.audience-demographic-card\.kind-ages \.audience-demographic-list\s*\{[\s\S]*?repeat\(2/);
 });
 
 test("keeps sparse Instagram observations truthful and falls back without fabricating a curve", async () => {

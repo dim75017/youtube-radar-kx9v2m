@@ -6,6 +6,7 @@ import "../app/globals.css";
 import "../app/editorial.css";
 import audienceHistoryJson from "../data/audience-history.json";
 import audienceAnalyticsJson from "../data/audience-analytics.json";
+import audienceDemographicsJson from "../data/audience-demographics.json";
 import audioTrendFeedJson from "../data/audio-trends/feed.json";
 import audioTrendScanStatusJson from "../data/audio-trends/refresh-status.json";
 import commentOpportunityFeedJson from "../data/comment-opportunities/feed.json";
@@ -20,6 +21,10 @@ import {
   assertAudienceAnalytics,
   type AudienceAnalytics,
 } from "../lib/audience-analytics";
+import {
+  assertAudienceDemographics,
+  type AudienceDemographics,
+} from "../lib/audience-demographics";
 import {
   assertAudioTrendFeed,
   type AudioTrendFeed,
@@ -61,6 +66,9 @@ const fallbackAudienceHistory = assertAudienceHistory(
 const fallbackAudienceAnalytics = assertAudienceAnalytics(
   audienceAnalyticsJson as AudienceAnalytics,
 );
+const fallbackAudienceDemographics = assertAudienceDemographics(
+  audienceDemographicsJson as AudienceDemographics,
+);
 const fallbackAudioTrendFeed = assertAudioTrendFeed(
   audioTrendFeedJson as AudioTrendFeed,
 );
@@ -81,6 +89,7 @@ const RAW_VIDEO_TREND_STATUS_URL = `${liveDataBaseUrl}/trends/refresh-status.jso
 const RAW_AUDIO_TREND_STATUS_URL = `${liveDataBaseUrl}/audio-trends/refresh-status.json`;
 const RAW_AUDIENCE_HISTORY_URL = `${liveDataBaseUrl}/audience-history.json`;
 const RAW_AUDIENCE_ANALYTICS_URL = `${liveDataBaseUrl}/audience-analytics.json`;
+const RAW_AUDIENCE_DEMOGRAPHICS_URL = `${liveDataBaseUrl}/audience-demographics.json`;
 const RAW_COMMENT_OPPORTUNITIES_URL = `${liveDataBaseUrl}/comment-opportunities/feed.json`;
 const emptySnapshot: PublicHistorySnapshot = {
   generatedAt: publicHistorySummary.generatedAt,
@@ -108,6 +117,7 @@ function PublicPreview() {
   const [audioTrendScanStatus, setAudioTrendScanStatus] = useState(fallbackAudioTrendScanStatus);
   const [audienceHistory, setAudienceHistory] = useState(fallbackAudienceHistory);
   const [audienceAnalytics, setAudienceAnalytics] = useState(fallbackAudienceAnalytics);
+  const [audienceDemographics, setAudienceDemographics] = useState(fallbackAudienceDemographics);
   const [commentOpportunityFeed, setCommentOpportunityFeed] = useState(fallbackCommentOpportunityFeed);
   const [pendingPlatforms, setPendingPlatforms] = useState<SocialPlatform[]>([
     ...PLATFORM_ORDER,
@@ -153,6 +163,55 @@ function PublicPreview() {
 
     refreshTrendFeed();
     const hourlyRefresh = window.setInterval(refreshTrendFeed, 60 * 60 * 1_000);
+    document.addEventListener("visibilitychange", refreshOnReturn);
+
+    return () => {
+      active = false;
+      window.clearInterval(hourlyRefresh);
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+      controller.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+
+    const refreshAudienceDemographics = () => {
+      void fetch(`${RAW_AUDIENCE_DEMOGRAPHICS_URL}?v=${Date.now()}`, {
+        cache: "no-store",
+        signal: controller.signal,
+        headers: { Accept: "application/json" },
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error(`Actualisation démographie impossible (${response.status}).`);
+          }
+          return assertAudienceDemographics(
+            (await response.json()) as AudienceDemographics,
+          );
+        })
+        .then((snapshot) => {
+          if (!active) return;
+          const incomingAt = Date.parse(snapshot.generatedAt);
+          if (!Number.isFinite(incomingAt)) return;
+          setAudienceDemographics((current) =>
+            incomingAt >= Date.parse(current.generatedAt) ? snapshot : current,
+          );
+        })
+        .catch(() => {
+          // Le dernier snapshot démographique validé reste visible hors ligne.
+        });
+    };
+    const refreshOnReturn = () => {
+      if (document.visibilityState === "visible") refreshAudienceDemographics();
+    };
+
+    refreshAudienceDemographics();
+    const hourlyRefresh = window.setInterval(
+      refreshAudienceDemographics,
+      60 * 60 * 1_000,
+    );
     document.addEventListener("visibilitychange", refreshOnReturn);
 
     return () => {
@@ -508,6 +567,7 @@ function PublicPreview() {
       initialCommentOpportunityFeed={commentOpportunityFeed}
       initialAudienceHistory={audienceHistory}
       audienceAnalytics={audienceAnalytics}
+      audienceDemographics={audienceDemographics}
       previewMode
       publicCounts={publicHistorySummary.platformCounts}
       publicFormatCounts={publicHistorySummary.formatCounts}

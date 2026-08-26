@@ -69,6 +69,8 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     audienceHistory,
     audienceAnalyticsModel,
     audienceAnalyticsSnapshot,
+    audienceDemographicsModel,
+    audienceDemographicsSnapshot,
     publicPreviewBuilder,
     youtubeLogo,
     instagramLogo,
@@ -99,6 +101,8 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     readFile(new URL("../data/audience-history.json", import.meta.url), "utf8"),
     readFile(new URL("../lib/audience-analytics.ts", import.meta.url), "utf8"),
     readFile(new URL("../data/audience-analytics.json", import.meta.url), "utf8"),
+    readFile(new URL("../lib/audience-demographics.ts", import.meta.url), "utf8"),
+    readFile(new URL("../data/audience-demographics.json", import.meta.url), "utf8"),
     readFile(new URL("../scripts/build-public-preview-data.mjs", import.meta.url), "utf8"),
     readFile(new URL("../public/platforms/youtube.svg", import.meta.url), "utf8"),
     readFile(new URL("../public/platforms/instagram.svg", import.meta.url), "utf8"),
@@ -288,6 +292,20 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   );
   assert.match(audienceAnalyticsModel, /assertAudienceAnalytics/);
   assert.equal(JSON.parse(audienceAnalyticsSnapshot).version, 1);
+  assert.match(previewEntry, /RAW_AUDIENCE_DEMOGRAPHICS_URL/);
+  assert.match(previewEntry, /audienceDemographics=\{audienceDemographics\}/);
+  assert.match(previewEntry, /refreshAudienceDemographics/);
+  assert.match(
+    previewEntry,
+    /RAW_AUDIENCE_DEMOGRAPHICS_URL = `\$\{liveDataBaseUrl\}\/audience-demographics\.json`/,
+  );
+  assert.match(publicPreviewBuilder, /assertAudienceDemographics\(audienceDemographics\)/);
+  assert.match(
+    publicPreviewBuilder,
+    /writeJson\(resolve\(output, "audience-demographics\.json"\), audienceDemographics\)/,
+  );
+  assert.match(audienceDemographicsModel, /assertAudienceDemographics/);
+  assert.equal(JSON.parse(audienceDemographicsSnapshot).version, 1);
   assert.match(previewEntry, /raw\.githubusercontent\.com\/dim75017\/youtube-radar-kx9v2m\/main\/social-app\/data/);
   assert.match(previewEntry, /RAW_AUDIO_TREND_FEED_URL = `\$\{liveDataBaseUrl\}\/audio-trends\/feed\.json`/);
   assert.match(previewEntry, /RAW_TREND_FEED_URL = `\$\{liveDataBaseUrl\}\/trends\/feed\.json`/);
@@ -593,7 +611,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.ok(explicitFontSizes.every((size) => size >= 8));
   assert.deepEqual(
     [...new Set(explicitFontSizes.filter((size) => size < 11))].sort((left, right) => left - right),
-    [8, 9],
+    [8, 9, 10],
   );
   assert.doesNotMatch(component, /tous affichés/i);
   assert.match(durations, /All time/);
