@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "updatedAt": "2026-08-26T07:54:12.000Z",
+  "source": "user-provided",
+  "seeds": [
+    {
+      "id": "instagram-dujaodvgkkr",
+      "platform": "instagram",
+      "shortcode": "DUjAoDvgKKr",
+      "url": "https://www.instagram.com/p/DUjAoDvgKKr/",
+      "expectedAuthor": "chillghostrecords",
+      "expectedProductType": "ad",
+      "enabled": true,
+      "addedAt": "2026-08-26T07:54:12.000Z"
+    },
+    {
+      "id": "instagram-dqevwh-alin",
+      "platform": "instagram",
+      "shortcode": "DQevwh_ALiN",
+      "url": "https://www.instagram.com/p/DQevwh_ALiN/",
+      "expectedAuthor": "chillghostrecords",
+      "expectedProductType": "ad",
+      "enabled": true,
+      "addedAt": "2026-08-26T07:54:12.000Z"
+    },
+    {
+      "id": "instagram-dmgeebdmcuu",
+      "platform": "instagram",
+      "shortcode": "DMgEeBDMCUu",
+      "url": "https://www.instagram.com/p/DMgEeBDMCUu/",
+      "expectedAuthor": "zen.members",
+      "expectedProductType": "ad",
+      "enabled": true,
+      "addedAt": "2026-08-26T07:54:12.000Z"
+    },
+    {
+      "id": "instagram-dmgec7-sw-g",
+      "platform": "instagram",
+      "shortcode": "DMgEc7_sw-G",
+      "url": "https://www.instagram.com/p/DMgEc7_sw-G/",
+      "expectedAuthor": "zen.members",
+      "expectedProductType": "ad",
+      "enabled": true,
+      "addedAt": "2026-08-26T07:54:12.000Z"
+    },
+    {
+      "id": "instagram-dnf3cragzjb",
+      "platform": "instagram",
+      "shortcode": "DNf3CrAgzjb",
+      "url": "https://www.instagram.com/p/DNf3CrAgzjb/",
+      "expectedAuthor": "chillghostrecords",
+      "expectedProductType": "ad",
+      "enabled": true,
+      "addedAt": "2026-08-26T07:54:12.000Z"
+    },
+    {
+      "id": "instagram-dvn4p70jjnz",
+      "platform": "instagram",
+      "shortcode": "DVn4p70jJnZ",
+      "url": "https://www.instagram.com/p/DVn4p70jJnZ/",
+      "expectedAuthor": "akasha.unity",
+      "expectedProductType": "ad",
+      "enabled": true,
+      "addedAt": "2026-08-26T07:54:12.000Z"
+    },
+    {
+      "id": "instagram-dldyqsnsxuj",
+      "platform": "instagram",
+      "shortcode": "DLDyqsnsxuJ",
+      "url": "https://www.instagram.com/p/DLDyqsnsxuJ/",
+      "expectedAuthor": "zen.members",
+      "expectedProductType": "ad",
+      "enabled": true,
+      "addedAt": "2026-08-26T07:54:12.000Z"
+    },
+    {
+      "id": "instagram-dwgklgzapfq",
+      "platform": "instagram",
+      "shortcode": "DWgklGZAPfq",
+      "url": "https://www.instagram.com/p/DWgklGZAPfq/",
+      "expectedAuthor": "soothingoasis.sleep",
+      "expectedProductType": "ad",
+      "enabled": true,
+      "addedAt": "2026-08-26T07:54:12.000Z"
+    },
+    {
+      "id": "instagram-dldyuqvsyne",
+      "platform": "instagram",
+      "shortcode": "DLDyuqVsyNE",
+      "url": "https://www.instagram.com/p/DLDyuqVsyNE/",
+      "expectedAuthor": "zen.members",
+      "expectedProductType": "ad",
+      "enabled": true,
+      "addedAt": "2026-08-26T07:54:12.000Z"
+    }
+  ]
+}

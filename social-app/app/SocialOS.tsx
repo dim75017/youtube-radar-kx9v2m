@@ -82,6 +82,10 @@ import {
   assertAudioTrendFeed,
   type AudioTrendFeed,
 } from "../lib/audio-trends";
+import {
+  assertPlaylistPromoFeed,
+  type PlaylistPromoFeed,
+} from "../lib/playlist-promos";
 import { dailyRotationIndex } from "../lib/daily-rotation";
 import {
   type AudioTrendScanStatus,
@@ -89,10 +93,11 @@ import {
 } from "../lib/trend-scan-status";
 import { AudioTrendFeedView } from "./AudioTrendFeedView";
 import { CommentOpportunitiesView } from "./CommentOpportunitiesView";
+import { PlaylistPromoFeedView } from "./PlaylistPromoFeedView";
 import { SocialInlinePlayer } from "./SocialInlinePlayer";
 
 type Platform = "youtube" | "instagram" | "tiktok" | "x";
-type View = "overview" | "top" | "comments" | "trends" | "audio-trends" | "ideas" | "planning" | "all" | "sources";
+type View = "overview" | "top" | "comments" | "trends" | "audio-trends" | "playlist-promos" | "ideas" | "planning" | "all" | "sources";
 type IdeaStatusFilter = "all" | "pending" | IdeaDecision;
 type PostSort = "popular" | "recent";
 type TrendPlatformFilter = TrendPlatform | "all";
@@ -219,12 +224,13 @@ const NAV: Array<{
 ];
 
 const RECOMMENDATION_NAV: Array<{
-  id: Extract<View, "ideas" | "comments" | "trends" | "audio-trends">;
+  id: Extract<View, "ideas" | "comments" | "trends" | "audio-trends" | "playlist-promos">;
   emoji: string;
   label: string;
 }> = [
   { id: "trends", emoji: "🔥", label: "Trends vidéos" },
   { id: "audio-trends", emoji: "🎧", label: "Trends audio" },
+  { id: "playlist-promos", emoji: "🎯", label: "Pubs playlists" },
   { id: "ideas", emoji: "📝", label: "Posts recommandés" },
   { id: "comments", emoji: "💬", label: "Commentaires" },
 ];
@@ -525,6 +531,7 @@ export function SocialOS({
   initialWorkspace = null,
   initialTrendFeed = null,
   initialAudioTrendFeed = null,
+  initialPlaylistPromoFeed = null,
   initialVideoTrendScanStatus = null,
   initialAudioTrendScanStatus = null,
   initialCommentOpportunityFeed = null,
@@ -539,6 +546,7 @@ export function SocialOS({
   initialWorkspace?: WorkspacePayload | null;
   initialTrendFeed?: SocialTrendFeed | null;
   initialAudioTrendFeed?: AudioTrendFeed | null;
+  initialPlaylistPromoFeed?: PlaylistPromoFeed | null;
   initialVideoTrendScanStatus?: VideoTrendScanStatus | null;
   initialAudioTrendScanStatus?: AudioTrendScanStatus | null;
   initialCommentOpportunityFeed?: CommentOpportunityFeed | null;
@@ -558,6 +566,9 @@ export function SocialOS({
   const [audioTrendFeed, setAudioTrendFeed] = useState<AudioTrendFeed | null>(initialAudioTrendFeed);
   const [audioTrendsLoading, setAudioTrendsLoading] = useState(!previewMode && !initialAudioTrendFeed);
   const [audioTrendsError, setAudioTrendsError] = useState("");
+  const [playlistPromoFeed, setPlaylistPromoFeed] = useState<PlaylistPromoFeed | null>(initialPlaylistPromoFeed);
+  const [playlistPromosLoading, setPlaylistPromosLoading] = useState(!previewMode && !initialPlaylistPromoFeed);
+  const [playlistPromosError, setPlaylistPromosError] = useState("");
   const [commentOpportunityFeed, setCommentOpportunityFeed] = useState<CommentOpportunityFeed | null>(initialCommentOpportunityFeed);
   const [commentsLoading, setCommentsLoading] = useState(!previewMode && !initialCommentOpportunityFeed);
   const [commentsError, setCommentsError] = useState("");
@@ -639,6 +650,17 @@ export function SocialOS({
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
+      setPlaylistPromoFeed(initialPlaylistPromoFeed);
+      if (initialPlaylistPromoFeed || previewMode) {
+        setPlaylistPromosLoading(false);
+        setPlaylistPromosError("");
+      }
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [initialPlaylistPromoFeed, previewMode]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
       setCommentOpportunityFeed(initialCommentOpportunityFeed);
       if (initialCommentOpportunityFeed || previewMode) {
         setCommentsLoading(false);
@@ -679,6 +701,43 @@ export function SocialOS({
     };
 
     void loadTrendFeed();
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [previewMode]);
+
+  useEffect(() => {
+    if (previewMode) return;
+    const controller = new AbortController();
+    let active = true;
+
+    const loadPlaylistPromoFeed = async () => {
+      setPlaylistPromosLoading(true);
+      setPlaylistPromosError("");
+      try {
+        const response = await fetch("/api/playlist-promos", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const payload = (await response.json()) as PlaylistPromoFeed & { error?: string };
+        if (!response.ok) {
+          throw new Error(payload.error || "Le benchmark Pubs playlists n’est pas disponible pour le moment.");
+        }
+        if (active) setPlaylistPromoFeed(assertPlaylistPromoFeed(payload));
+      } catch (loadError) {
+        if (!active || controller.signal.aborted) return;
+        setPlaylistPromosError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Le benchmark Pubs playlists n’est pas disponible pour le moment.",
+        );
+      } finally {
+        if (active) setPlaylistPromosLoading(false);
+      }
+    };
+
+    void loadPlaylistPromoFeed();
     return () => {
       active = false;
       controller.abort();
@@ -1118,7 +1177,7 @@ export function SocialOS({
               {NAV.filter((item) => item.group === group).map((item) => {
                 const isPostsParent = item.id === "top";
                 const isRecommendationsParent = item.id === "ideas";
-                const isRecommendationsView = view === "ideas" || view === "comments" || view === "trends" || view === "audio-trends";
+                const isRecommendationsView = view === "ideas" || view === "comments" || view === "trends" || view === "audio-trends" || view === "playlist-promos";
                 const isActive = isPostsParent
                   ? view === "all"
                   : !isRecommendationsParent && view === item.id;
@@ -1322,6 +1381,14 @@ export function SocialOS({
             scanStatus={initialAudioTrendScanStatus}
             loading={audioTrendsLoading}
             error={audioTrendsError}
+          />
+        ) : null}
+
+        {view === "playlist-promos" ? (
+          <PlaylistPromoFeedView
+            feed={playlistPromoFeed}
+            loading={playlistPromosLoading}
+            error={playlistPromosError}
           />
         ) : null}
 

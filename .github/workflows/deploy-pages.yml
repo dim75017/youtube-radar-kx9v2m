@@ -4,8 +4,14 @@ on:
   push:
     branches: [main]
     paths-ignore:
+      - "social-app/data/trends/feed.json"
+      - "social-app/data/trends/refresh-status.json"
+      - "social-app/data/audio-trends/feed.json"
+      - "social-app/data/audio-trends/refresh-status.json"
       - "social-app/data/comment-opportunities/feed.json"
       - "social-app/data/comment-opportunities/refresh-status.json"
+      - "social-app/data/playlist-promos/feed.json"
+      - "social-app/data/playlist-promos/refresh-status.json"
   workflow_dispatch:
     inputs:
       requested_sha:
@@ -227,6 +233,8 @@ jobs:
           grep -R -F 'platforms/spotify.svg?v=20260825-logo-v3' ../social/assets
           test -f ../social/data/trends/feed.json
           test -f ../social/data/audio-trends/feed.json
+          test -f ../social/data/playlist-promos/feed.json
+          test -f ../social/data/playlist-promos/refresh-status.json
           test -f ../social/data/comment-opportunities/feed.json
           test -f ../social/data/audience-history.json
           test -f ../social/data/audience-analytics.json

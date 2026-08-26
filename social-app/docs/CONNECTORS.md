@@ -11,6 +11,12 @@
 
 Ces sources publiques sont volontairement présentées comme des couvertures limitées et susceptibles d’évoluer. Une erreur sur un réseau ne supprime pas les résultats déjà collectés sur les autres.
 
+## Benchmark « Pubs playlists »
+
+La veille concurrentielle utilise un inventaire séparé des comptes officiels Lofi Girl. Les URLs Instagram connues sont revalidées directement et échouent fermé si Meta retire une métrique. La découverte à grande échelle doit passer par les surfaces autorisées : Business Discovery et Hashtag Search pour Instagram, Commercial Content API ou partenaire licencié pour TikTok, et Search + Videos API pour YouTube. Les bibliothèques paid n’exposant pas les likes, le radar classe leur portée et leur longévité dans une voie distincte au lieu d’inventer une équivalence.
+
+Voir [PLAYLIST_PROMOS_FEED.md](PLAYLIST_PROMOS_FEED.md) pour le protocole complet.
+
 ## Accès officiels à brancher ensuite
 
 - YouTube Data API : <https://developers.google.com/youtube/v3/getting-started>

@@ -39,6 +39,7 @@ test("server-renders the live Social Radar shell", async () => {
   assert.match(html, /Posts recommandés/);
   assert.match(html, /Trends vid.os/);
   assert.match(html, /Trends audio/);
+  assert.match(html, /Pubs playlists/);
   assert.match(html, /Recommandations/);
   assert.match(html, /Roadmap/);
   assert.match(html, /id="posts-platform-subnav"/);
@@ -82,6 +83,9 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     audioTrendFeed,
     socialInlinePlayer,
     socialInlinePlayerModel,
+    playlistPromoView,
+    playlistPromoModel,
+    playlistPromoFeed,
   ] = await Promise.all([
     readFile(new URL("../vite.config.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
@@ -112,6 +116,9 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     readFile(new URL("../data/audio-trends/feed.json", import.meta.url), "utf8"),
     readFile(new URL("../app/SocialInlinePlayer.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/social-inline-player.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/PlaylistPromoFeedView.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/playlist-promos.ts", import.meta.url), "utf8"),
+    readFile(new URL("../data/playlist-promos/feed.json", import.meta.url), "utf8"),
   ]);
 
   assert.match(viteConfig, /const d1 = "DB"/);
@@ -184,7 +191,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   );
   assert.match(
     recommendationNavSource,
-    /id: "trends"[\s\S]*?id: "audio-trends"[\s\S]*?id: "ideas"[\s\S]*?id: "comments"/,
+    /id: "trends"[\s\S]*?id: "audio-trends"[\s\S]*?id: "playlist-promos"[\s\S]*?id: "ideas"[\s\S]*?id: "comments"/,
   );
   assert.match(component, /posts-platform-subnav/);
   assert.match(component, /recommendations-subnav/);
@@ -219,7 +226,8 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(component, /view === "comments"[\s\S]*?<CommentOpportunitiesView/);
   assert.match(component, /view === "trends"[\s\S]*?<TrendFeedView/);
   assert.match(component, /view === "audio-trends"[\s\S]*?<AudioTrendFeedView/);
-  assert.match(component, /view === "ideas" \|\| view === "comments" \|\| view === "trends" \|\| view === "audio-trends"/);
+  assert.match(component, /view === "playlist-promos"[\s\S]*?<PlaylistPromoFeedView/);
+  assert.match(component, /view === "ideas" \|\| view === "comments" \|\| view === "trends" \|\| view === "audio-trends" \|\| view === "playlist-promos"/);
   assert.match(component, /workspace && view === "ideas"[\s\S]*?<h2>Posts recommandés<\/h2>/);
   assert.match(component, /className="reco-status-tabs"/);
   assert.match(component, /🟡 À valider/);
@@ -290,6 +298,9 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(previewEntry, /raw\.githubusercontent\.com\/dim75017\/youtube-radar-kx9v2m\/main\/social-app\/data/);
   assert.match(previewEntry, /RAW_AUDIO_TREND_FEED_URL = `\$\{liveDataBaseUrl\}\/audio-trends\/feed\.json`/);
   assert.match(previewEntry, /RAW_TREND_FEED_URL = `\$\{liveDataBaseUrl\}\/trends\/feed\.json`/);
+  assert.match(previewEntry, /RAW_PLAYLIST_PROMO_FEED_URL = `\$\{liveDataBaseUrl\}\/playlist-promos\/feed\.json`/);
+  assert.match(previewEntry, /window\.setInterval\(refreshPlaylistPromoFeed, 60 \* 60 \* 1_000\)/);
+  assert.match(previewEntry, /initialPlaylistPromoFeed=\{playlistPromoFeed\}/);
   assert.match(previewEntry, /window\.setInterval\(refreshTrendFeed, 60 \* 60 \* 1_000\)/);
   assert.match(previewEntry, /visibilitychange/);
   assert.match(previewEntry, /RAW_COMMENT_OPPORTUNITIES_URL/);
@@ -424,6 +435,13 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(audioTrendView, /audio-reference-fallback/);
   assert.match(audioTrendView, /audio-reference-waveform/);
   assert.match(audioTrendView, /Frame momentanément indisponible/);
+  assert.match(playlistPromoView, /<h2>Pubs playlists<\/h2>/);
+  assert.match(playlistPromoView, /10k likes/);
+  assert.match(playlistPromoView, /Assets vid.o . produire/);
+  assert.match(playlistPromoView, /<SocialInlinePlayer/);
+  assert.doesNotMatch(playlistPromoView, /\bautoPlay\b|autoplay=1|<video/i);
+  assert.match(playlistPromoModel, /PLAYLIST_PROMO_MINIMUM_ORGANIC_LIKES = 10_000/);
+  assert.equal(JSON.parse(playlistPromoFeed).items.length, 9);
   const inactiveAudioPreview = audioTrendView.slice(
     audioTrendView.indexOf('className="audio-reference-trigger"'),
     audioTrendView.indexOf('</button>', audioTrendView.indexOf('className="audio-reference-trigger"')),

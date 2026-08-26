@@ -1,0 +1,662 @@
+{
+  "version": 1,
+  "capturedAt": "2026-08-26T07:54:12.000Z",
+  "nextRefreshAt": "2026-08-27T07:54:12.000Z",
+  "cadenceHours": 24,
+  "minimumOrganicLikes": 10000,
+  "methodology": "V1 fondée sur neuf URLs fournies par Dim. Les compteurs exacts viennent du JSON public gql_data.shortcode_media des embeds Instagram. Une création est qualifiée à partir de 10 000 likes sur le post natif. Le statut publicitaire est un axe indépendant : product_type=ad place la création dans la lane paid, mais les likes, vues et commentaires restent du social proof natif et ne mesurent ni les impressions payées, ni les clics, ni les conversions.",
+  "limitations": [
+    "La V1 enrichit une liste connue ; elle ne prétend pas découvrir exhaustivement toutes les publicités Instagram.",
+    "product_type=ad prouve que le média a été identifié comme publicité dans les métadonnées publiques, pas que la campagne est encore active au moment du scan.",
+    "Les bibliothèques publicitaires publiques n'exposent généralement pas les likes du post, le budget, les clics ou les conversions.",
+    "Les destinations sont marquées selon leur niveau de preuve et ne sont jamais présentées comme certaines lorsqu'aucun lien post-level n'est exposé.",
+    "Une limitation, un challenge ou une réponse partielle conserve intégralement le dernier bon feed."
+  ],
+  "sourceChecks": [
+    {
+      "id": "instagram-known-embeds",
+      "platform": "instagram",
+      "lane": "paid",
+      "status": "success",
+      "checkedAt": "2026-08-26T07:54:12.000Z",
+      "label": "Instagram · embeds publics des neuf URLs connues",
+      "sourceUrl": "https://www.instagram.com/",
+      "note": "9/9 médias attribués ; compteurs exacts, durée, dimensions et product_type=ad vérifiés."
+    },
+    {
+      "id": "meta-ads-library",
+      "platform": "facebook",
+      "lane": "paid",
+      "status": "limited",
+      "checkedAt": "2026-08-26T07:54:12.000Z",
+      "label": "Meta Ads Library",
+      "sourceUrl": "https://www.facebook.com/ads/library/",
+      "note": "Bonne source de découverte de publicités commerciales ; les likes et conversions ne sont pas exposés."
+    },
+    {
+      "id": "tiktok-commercial-content",
+      "platform": "tiktok",
+      "lane": "paid",
+      "status": "pending",
+      "checkedAt": null,
+      "label": "TikTok Commercial Content API",
+      "sourceUrl": "https://developers.tiktok.com/products/commercial-content-api",
+      "note": "Accès applicatif à obtenir ; la couverture publique documentée est centrée sur l'UE et les métriques paid sont des bandes de reach, pas des likes."
+    },
+    {
+      "id": "tiktok-organic-discovery",
+      "platform": "tiktok",
+      "lane": "organic",
+      "status": "pending",
+      "checkedAt": null,
+      "label": "TikTok · découverte organique",
+      "sourceUrl": "https://developers.tiktok.com/products/display-api/",
+      "note": "L'API officielle sert surtout les comptes autorisés ; une source partenaire licenciée est nécessaire pour une veille large."
+    },
+    {
+      "id": "youtube-organic-search",
+      "platform": "youtube",
+      "lane": "organic",
+      "status": "pending",
+      "checkedAt": null,
+      "label": "YouTube Data API",
+      "sourceUrl": "https://developers.google.com/youtube/v3/docs/search/list",
+      "note": "La recherche et videos.list permettent une découverte automatisée avec vues, likes et commentaires officiels."
+    },
+    {
+      "id": "google-ads-transparency",
+      "platform": "youtube",
+      "lane": "paid",
+      "status": "limited",
+      "checkedAt": "2026-08-26T07:54:12.000Z",
+      "label": "Google Ads Transparency Center",
+      "sourceUrl": "https://adstransparency.google.com/",
+      "note": "Permet d'identifier des créations paid, sans likes ni conversions publiques."
+    },
+    {
+      "id": "pinterest-ads-repository",
+      "platform": "pinterest",
+      "lane": "paid",
+      "status": "limited",
+      "checkedAt": "2026-08-26T07:54:12.000Z",
+      "label": "Pinterest Ads Repository",
+      "sourceUrl": "https://ads.pinterest.com/ads-repository/",
+      "note": "Source complémentaire possible ; la comparaison doit utiliser saves, impressions et clics plutôt que des likes."
+    }
+  ],
+  "items": [
+    {
+      "id": "instagram-dujaodvgkkr",
+      "platform": "instagram",
+      "lane": "paid",
+      "paidStatus": "verified-paid",
+      "productType": "ad",
+      "paidEvidence": "Instagram embed public : gql_data.shortcode_media.product_type=ad.",
+      "author": "chillghostrecords",
+      "title": "Jazz house dans un lobby d'hôtel",
+      "caption": "Curated Jazz House Hotel Lounge Music",
+      "url": "https://www.instagram.com/p/DUjAoDvgKKr/",
+      "publishedOn": "2026-02-09",
+      "durationSeconds": 13.5,
+      "thumbnailUrl": "media/playlist-promos/DUjAoDvgKKr.jpg",
+      "destination": "spotify",
+      "destinationUrl": "https://open.spotify.com/playlist/5GrWuliLODvT0KtZTDhYKT",
+      "destinationConfidence": "likely",
+      "destinationEvidence": "La promesse Jazz House / hotel lounge correspond directement à la playlist publique Jazz House du catalogue Chill Ghost ; le lien post-level n'est pas exposé.",
+      "adLibraryId": null,
+      "reachBand": null,
+      "tags": ["jazz-house", "hotel-lounge", "aspiration", "reaction"],
+      "creative": {
+        "family": "reaction",
+        "hook": "Le sax du lobby devient soudain le meilleur moment du séjour.",
+        "mechanic": "Décor aspirationnel puis réaction humaine immédiate, avec une phrase très spécifique à l'écran.",
+        "cta": "Écouter la playlist Jazz House.",
+        "lofiAdaptation": "Tourner une vraie scène au Lofi Café avec un musicien et une réaction jouée, entièrement produite par l'équipe.",
+        "riskNote": "Ne pas reprendre d'extrait de film, de série ou de créateur tiers sans licence.",
+        "assetBriefId": "cafe-sax-hit"
+      },
+      "observations": [
+        {
+          "capturedAt": "2026-08-26T07:54:12.000Z",
+          "likes": 65581,
+          "comments": 400,
+          "views": 1509383,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DUjAoDvgKKr/"
+        }
+      ]
+    },
+    {
+      "id": "instagram-dqevwh-alin",
+      "platform": "instagram",
+      "lane": "paid",
+      "paidStatus": "verified-paid",
+      "productType": "ad",
+      "paidEvidence": "Instagram embed public : gql_data.shortcode_media.product_type=ad.",
+      "author": "chillghostrecords",
+      "title": "Le moment wine bar parfait",
+      "caption": "Love berlioz, dublon, & jazzy house beats that feel timeless? Dive into our warm blend of jazz and house music.",
+      "url": "https://www.instagram.com/p/DQevwh_ALiN/",
+      "publishedOn": "2025-10-31",
+      "durationSeconds": 15.1,
+      "thumbnailUrl": "media/playlist-promos/DQevwh_ALiN.jpg",
+      "destination": "spotify",
+      "destinationUrl": "https://open.spotify.com/playlist/5GrWuliLODvT0KtZTDhYKT",
+      "destinationConfidence": "likely",
+      "destinationEvidence": "Les références berlioz, dublon et jazz house correspondent à la playlist publique Jazz House du catalogue Chill Ghost ; le CTA post-level reste indisponible.",
+      "adLibraryId": null,
+      "reachBand": null,
+      "tags": ["jazz-house", "wine-bar", "cultural-markers", "pov"],
+      "creative": {
+        "family": "relatable-meme",
+        "hook": "POV : la playlist du bar et l'ambiance frappent au même moment.",
+        "mechanic": "Référence culturelle précise, décor sombre premium et réaction expressive.",
+        "cta": "Ouvrir la playlist Jazz House.",
+        "lofiAdaptation": "Filmer un vrai service du soir au Lofi Café avec figurants et performance originale.",
+        "riskNote": "Éviter toute séquence empruntée à une œuvre audiovisuelle.",
+        "assetBriefId": "cafe-sax-hit"
+      },
+      "observations": [
+        {
+          "capturedAt": "2026-08-26T07:54:12.000Z",
+          "likes": 20181,
+          "comments": 150,
+          "views": 574685,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DQevwh_ALiN/"
+        }
+      ]
+    },
+    {
+      "id": "instagram-dmgeebdmcuu",
+      "platform": "instagram",
+      "lane": "paid",
+      "paidStatus": "verified-paid",
+      "productType": "ad",
+      "paidEvidence": "Instagram embed public : gql_data.shortcode_media.product_type=ad.",
+      "author": "zen.members",
+      "title": "Preuve playlist pour s'endormir",
+      "caption": "fall asleep to this calming Spotify playlist 😴 😴",
+      "url": "https://www.instagram.com/p/DMgEeBDMCUu/",
+      "publishedOn": "2025-07-24",
+      "durationSeconds": 13.744,
+      "thumbnailUrl": "media/playlist-promos/DMgEeBDMCUu.jpg",
+      "destination": "spotify",
+      "destinationUrl": "https://open.spotify.com/playlist/3AQjqe3GLROVtW8xssG0oK",
+      "destinationConfidence": "likely",
+      "destinationEvidence": "La copy exacte est associée publiquement à la landing page ADHD Sleep par AdScan ; le lien n'est pas exposé directement dans l'embed Instagram.",
+      "adLibraryId": "1255473129652675",
+      "reachBand": null,
+      "tags": ["sleep", "spotify-ui", "playlist-proof", "variant-a"],
+      "creative": {
+        "family": "playlist-proof",
+        "hook": "Une playlist Spotify calme à lancer au coucher.",
+        "mechanic": "Capture d'écran de la playlist et bénéfice lisible dès la première seconde.",
+        "cta": "Écouter maintenant.",
+        "lofiAdaptation": "Montrer uniquement la vraie interface et les vrais chiffres d'une playlist Lofi Girl, avec capture et montage humains.",
+        "riskNote": "Ne jamais fabriquer un nombre d'enregistrements, d'écoutes ou d'abonnés.",
+        "assetBriefId": "real-playlist-proof"
+      },
+      "observations": [
+        {
+          "capturedAt": "2026-08-26T07:54:12.000Z",
+          "likes": 100483,
+          "comments": 747,
+          "views": 2674086,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DMgEeBDMCUu/"
+        }
+      ]
+    },
+    {
+      "id": "instagram-dmgec7-sw-g",
+      "platform": "instagram",
+      "lane": "paid",
+      "paidStatus": "verified-paid",
+      "productType": "ad",
+      "paidEvidence": "Instagram embed public : gql_data.shortcode_media.product_type=ad.",
+      "author": "zen.members",
+      "title": "Scène nocturne, même promesse sleep",
+      "caption": "fall asleep to this calming Spotify playlist 😴 😴",
+      "url": "https://www.instagram.com/p/DMgEc7_sw-G/",
+      "publishedOn": "2025-07-24",
+      "durationSeconds": 13.744,
+      "thumbnailUrl": "media/playlist-promos/DMgEc7_sw-G.jpg",
+      "destination": "spotify",
+      "destinationUrl": "https://open.spotify.com/playlist/3AQjqe3GLROVtW8xssG0oK",
+      "destinationConfidence": "likely",
+      "destinationEvidence": "Même compte, même date, même copy et même durée que la variante associée publiquement à ADHD Sleep ; destination post-level non exposée.",
+      "adLibraryId": "1255473129652675",
+      "reachBand": null,
+      "tags": ["sleep", "night-scene", "mood", "variant-b"],
+      "creative": {
+        "family": "mood-scene",
+        "hook": "Une scène de nuit suffit à installer le calme avant le CTA.",
+        "mechanic": "Univers cyan et magenta, mouvement lent puis invitation à écouter.",
+        "cta": "Écouter maintenant.",
+        "lofiAdaptation": "Créer une courte animation originale de Lofi Boy la nuit, dessinée et animée par le studio.",
+        "riskNote": "Rester sur une promesse d'ambiance ; ne pas promettre un résultat médical ou un temps d'endormissement garanti.",
+        "assetBriefId": "night-drive-mode"
+      },
+      "observations": [
+        {
+          "capturedAt": "2026-08-26T07:54:12.000Z",
+          "likes": 58663,
+          "comments": 464,
+          "views": 1613361,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DMgEc7_sw-G/"
+        }
+      ]
+    },
+    {
+      "id": "instagram-dnf3cragzjb",
+      "platform": "instagram",
+      "lane": "paid",
+      "paidStatus": "verified-paid",
+      "productType": "ad",
+      "paidEvidence": "Instagram embed public : gql_data.shortcode_media.product_type=ad.",
+      "author": "chillghostrecords",
+      "title": "Mème du sommeil en repeat",
+      "caption": "The ultimate lofi sleep playlist",
+      "url": "https://www.instagram.com/p/DNf3CrAgzjb/",
+      "publishedOn": "2025-08-18",
+      "durationSeconds": 13.166,
+      "thumbnailUrl": "media/playlist-promos/DNf3CrAgzjb.jpg",
+      "destination": "spotify",
+      "destinationUrl": "https://open.spotify.com/playlist/3Y662wcMKDmZLX2XoqBOUf",
+      "destinationConfidence": "likely",
+      "destinationEvidence": "La caption et le catalogue Chill Ghost pointent vers Deep Sleep Lofi Sleep ; aucun lien post-level n'est exposé.",
+      "adLibraryId": null,
+      "reachBand": null,
+      "tags": ["sleep", "relatable", "repeat", "meme"],
+      "creative": {
+        "family": "relatable-meme",
+        "hook": "Comment je dors quand ma playlist deep sleep tourne en boucle.",
+        "mechanic": "Situation très reconnaissable, une seule phrase et une image chaleureuse.",
+        "cta": "Lancer la playlist du soir.",
+        "lofiAdaptation": "Animer une routine originale de Lofi Girl au coucher avec un gag visuel discret.",
+        "riskNote": "Ne pas présenter la playlist comme un traitement du sommeil.",
+        "assetBriefId": "sleep-one-tap"
+      },
+      "observations": [
+        {
+          "capturedAt": "2026-08-26T07:54:12.000Z",
+          "likes": 41387,
+          "comments": 203,
+          "views": 3735384,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DNf3CrAgzjb/"
+        }
+      ]
+    },
+    {
+      "id": "instagram-dvn4p70jjnz",
+      "platform": "instagram",
+      "lane": "paid",
+      "paidStatus": "verified-paid",
+      "productType": "ad",
+      "paidEvidence": "Instagram embed public : gql_data.shortcode_media.product_type=ad.",
+      "author": "akasha.unity",
+      "title": "CTA direct pour enregistrer la playlist",
+      "caption": "Baisser le Cortisol Playlist (Enregistre)",
+      "url": "https://www.instagram.com/p/DVn4p70jJnZ/",
+      "publishedOn": "2026-03-08",
+      "durationSeconds": 8.52,
+      "thumbnailUrl": "media/playlist-promos/DVn4p70jJnZ.jpg",
+      "destination": "spotify",
+      "destinationUrl": "https://open.spotify.com/playlist/5voGAjRsfq2lSwEcVtvkEU",
+      "destinationConfidence": "likely",
+      "destinationEvidence": "Le smartlink public actuel d'Akasha mène à Deep Sleep ; il ne prouve pas la destination historique exacte de ce post.",
+      "adLibraryId": null,
+      "reachBand": null,
+      "tags": ["sleep", "direct-cta", "save", "wellbeing-claim"],
+      "creative": {
+        "family": "direct-benefit",
+        "hook": "Garde cette playlist pour ta routine du soir.",
+        "mechanic": "Visuel central très simple, injonction d'enregistrement et logo DSP.",
+        "cta": "Enregistrer sur Spotify.",
+        "lofiAdaptation": "Utiliser une animation originale du studio et reformuler la promesse autour du calme, sans claim physiologique.",
+        "riskNote": "La baisse du cortisol est une allégation santé non prouvée et ne doit pas être reprise.",
+        "assetBriefId": "bedroom-routine"
+      },
+      "observations": [
+        {
+          "capturedAt": "2026-08-26T07:54:12.000Z",
+          "likes": 89057,
+          "comments": 2322,
+          "views": 7937590,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DVn4p70jJnZ/"
+        }
+      ]
+    },
+    {
+      "id": "instagram-dldyqsnsxuj",
+      "platform": "instagram",
+      "lane": "paid",
+      "paidStatus": "verified-paid",
+      "productType": "ad",
+      "paidEvidence": "Instagram embed public : gql_data.shortcode_media.product_type=ad.",
+      "author": "zen.members",
+      "title": "Une playlist personnelle pour les overthinkers",
+      "caption": "if you have Spotify Premium & need help falling asleep, I made this playlist for you 😴",
+      "url": "https://www.instagram.com/p/DLDyqsnsxuJ/",
+      "publishedOn": "2025-06-18",
+      "durationSeconds": 19.285,
+      "thumbnailUrl": "media/playlist-promos/DLDyqsnsxuJ.jpg",
+      "destination": "spotify",
+      "destinationUrl": null,
+      "destinationConfidence": "confirmed",
+      "destinationEvidence": "La caption nomme explicitement Spotify Premium, mais l'URL de la playlist n'est pas exposée.",
+      "adLibraryId": null,
+      "reachBand": null,
+      "tags": ["sleep", "overthinking", "spotify-ui", "personal-voice", "variant-a"],
+      "creative": {
+        "family": "playlist-proof",
+        "hook": "Je l'ai faite pour les soirs où ton cerveau ne s'arrête pas.",
+        "mechanic": "Voix personnelle, cible explicite puis preuve par la vraie interface playlist.",
+        "cta": "Mettre la playlist.",
+        "lofiAdaptation": "Capturer la vraie playlist Lofi Girl et l'intégrer à une séquence originale dessinée par le studio.",
+        "riskNote": "Parler d'une routine qui aide à se poser, jamais d'un résultat de sommeil garanti.",
+        "assetBriefId": "real-playlist-proof"
+      },
+      "observations": [
+        {
+          "capturedAt": "2026-08-26T07:54:12.000Z",
+          "likes": 147173,
+          "comments": 1744,
+          "views": 6211803,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DLDyqsnsxuJ/"
+        }
+      ]
+    },
+    {
+      "id": "instagram-dwgklgzapfq",
+      "platform": "instagram",
+      "lane": "paid",
+      "paidStatus": "verified-paid",
+      "productType": "ad",
+      "paidEvidence": "Instagram embed public : gql_data.shortcode_media.product_type=ad.",
+      "author": "soothingoasis.sleep",
+      "title": "Routine chambre chaleureuse",
+      "caption": "Tired of tossing and turning at night? Fall asleep in just 5 minutes with this sleep music playlist 💤",
+      "url": "https://www.instagram.com/p/DWgklGZAPfq/",
+      "publishedOn": "2026-03-30",
+      "durationSeconds": 11.608,
+      "thumbnailUrl": "media/playlist-promos/DWgklGZAPfq.jpg",
+      "destination": "spotify",
+      "destinationUrl": "https://open.spotify.com/playlist/5FI8rn340FgsOB7B8Ic0DZ",
+      "destinationConfidence": "likely",
+      "destinationEvidence": "La landing publique de Soothing Oasis met en avant Sleep Music for Deep Sleeping ; le lien propre à ce post n'est pas exposé.",
+      "adLibraryId": null,
+      "reachBand": null,
+      "tags": ["sleep", "bedroom", "problem-solution", "time-claim"],
+      "creative": {
+        "family": "problem-solution",
+        "hook": "Tu tournes encore dans ton lit ? Lance ta bande-son du soir.",
+        "mechanic": "Problème immédiat, chambre chaleureuse puis geste simple sur Play.",
+        "cta": "Lancer la playlist.",
+        "lofiAdaptation": "Filmer ou animer humainement une vraie routine du coucher avec un geste unique et lisible.",
+        "riskNote": "Ne pas reprendre la promesse non prouvée d'endormissement en cinq minutes.",
+        "assetBriefId": "bedroom-routine"
+      },
+      "observations": [
+        {
+          "capturedAt": "2026-08-26T07:54:12.000Z",
+          "likes": 187830,
+          "comments": 639,
+          "views": 8856621,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DWgklGZAPfq/"
+        }
+      ]
+    },
+    {
+      "id": "instagram-dldyuqvsyne",
+      "platform": "instagram",
+      "lane": "paid",
+      "paidStatus": "verified-paid",
+      "productType": "ad",
+      "paidEvidence": "Instagram embed public : gql_data.shortcode_media.product_type=ad.",
+      "author": "zen.members",
+      "title": "Tracklist Spotify en mouvement",
+      "caption": "",
+      "url": "https://www.instagram.com/p/DLDyuqVsyNE/",
+      "publishedOn": "2025-06-18",
+      "durationSeconds": 19.178,
+      "thumbnailUrl": "media/playlist-promos/DLDyuqVsyNE.jpg",
+      "destination": "spotify",
+      "destinationUrl": null,
+      "destinationConfidence": "likely",
+      "destinationEvidence": "La création montre une interface de tracklist Spotify, mais la caption et le lien de destination ne sont pas exposés publiquement.",
+      "adLibraryId": null,
+      "reachBand": null,
+      "tags": ["sleep", "spotify-ui", "tracklist", "variant-b"],
+      "creative": {
+        "family": "playlist-proof",
+        "hook": "Faire défiler les morceaux pour rendre la playlist immédiatement concrète.",
+        "mechanic": "Capture verticale de tracklist, mouvement continu et lecture très rapide du contenu.",
+        "cta": "Ouvrir la playlist.",
+        "lofiAdaptation": "Utiliser une vraie capture autorisée de la playlist Lofi Girl avec habillage et montage réalisés en interne.",
+        "riskNote": "Masquer toute donnée personnelle et n'afficher que des titres, pochettes et chiffres dont les droits et l'exactitude sont vérifiés.",
+        "assetBriefId": "real-playlist-proof"
+      },
+      "observations": [
+        {
+          "capturedAt": "2026-08-26T07:54:12.000Z",
+          "likes": 22915,
+          "comments": 399,
+          "views": 2120672,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DLDyuqVsyNE/"
+        }
+      ]
+    }
+  ],
+  "assetBriefs": [
+    {
+      "id": "sleep-one-tap",
+      "title": "Un clic, le soir peut commencer",
+      "priority": 1,
+      "playlistUseCase": "Playlist sleep / deep sleep Lofi Girl",
+      "character": "lofi-girl",
+      "durationSeconds": 11,
+      "hook": "Ton cerveau à 2 h 13, puis un clic plus tard.",
+      "shotList": [
+        "Plan serré dessiné à la main : Lofi Girl éveillée, horloge à 2 h 13 et petits éléments agités autour du bureau.",
+        "Un doigt appuie sur Play dans la vraie interface de la playlist.",
+        "La lumière se réchauffe, les mouvements ralentissent et le chat se pose.",
+        "Packshot playlist et CTA pendant les deux dernières secondes."
+      ],
+      "onScreenCopy": "Ton cerveau à 2 h 13 / un clic plus tard",
+      "cta": "Lance Sleep Lofi",
+      "requiredAssets": [
+        "Animation originale dessinée par le studio Lofi Girl",
+        "Capture réelle et autorisée de la playlist",
+        "Titre Lofi Records cleared pour l'usage publicitaire",
+        "Déclinaisons 9:16 sans et avec sous-titres"
+      ],
+      "guardrails": [
+        "Production, illustration, animation et montage 100 % humains.",
+        "Aucune image, vidéo, voix ou musique générée par IA.",
+        "Ne promettre ni guérison, ni réduction physiologique, ni délai d'endormissement.",
+        "Ne montrer que des statistiques réelles et datées."
+      ]
+    },
+    {
+      "id": "cafe-sax-hit",
+      "title": "Quand le sax du café règle la soirée",
+      "priority": 1,
+      "playlistUseCase": "Jazz lofi / Lofi Café",
+      "character": "lofi-cafe",
+      "durationSeconds": 13,
+      "hook": "Quand le sax du café règle toute la soirée.",
+      "shotList": [
+        "Plan réel d'entrée dans le Lofi Café au début du service du soir.",
+        "Cut sur un musicien interprétant le motif sax autorisé.",
+        "Réaction jouée d'un client qui s'arrête, sourit puis montre son téléphone.",
+        "Pochette Jazz Lofi et CTA en surimpression."
+      ],
+      "onScreenCopy": "Quand le sax du café règle toute la soirée",
+      "cta": "Ouvre Jazz Lofi",
+      "requiredAssets": [
+        "Tournage original au Lofi Café",
+        "Musicien, figurant et droits à l'image signés",
+        "Titre Lofi Records cleared pour l'usage publicitaire",
+        "Pochette et lockup officiels"
+      ],
+      "guardrails": [
+        "Production et montage 100 % humains.",
+        "Aucun extrait de film, série, meme vidéo ou créateur tiers sans licence.",
+        "Aucune génération IA visuelle, sonore ou vocale.",
+        "Le CTA doit rester lisible sans masquer la performance."
+      ]
+    },
+    {
+      "id": "real-playlist-proof",
+      "title": "La vraie playlist comme preuve",
+      "priority": 1,
+      "playlistUseCase": "Déclinable sur sleep, focus et jazz",
+      "character": "lofi-girl",
+      "durationSeconds": 14,
+      "hook": "Pas de promesse abstraite : montrer exactement ce que l'utilisateur va ouvrir.",
+      "shotList": [
+        "Bénéfice en une ligne sur fond de scène originale Lofi Girl.",
+        "Transition vers une capture réelle de la playlist et de ses premiers titres.",
+        "Zoom sur un signal de preuve uniquement s'il est exact et vérifié le jour du rendu.",
+        "Retour à la pochette avec bouton Save ou Listen."
+      ],
+      "onScreenCopy": "Ta prochaine bande-son est déjà prête",
+      "cta": "Enregistre la playlist",
+      "requiredAssets": [
+        "Capture réelle Spotify, Apple Music ou YouTube Music selon la destination",
+        "Pochette officielle",
+        "Animation de transition produite en interne",
+        "Fiche de vérification des chiffres affichés"
+      ],
+      "guardrails": [
+        "Création et montage 100 % humains, sans IA générative.",
+        "Ne jamais inventer followers, saves, écoutes, rang ou avis.",
+        "Respecter les règles de marque et d'interface du DSP.",
+        "Masquer toute donnée de compte personnelle."
+      ]
+    },
+    {
+      "id": "study-deadline-switch",
+      "title": "Du chaos au mode focus",
+      "priority": 2,
+      "playlistUseCase": "Study / focus Lofi Girl",
+      "character": "lofi-girl",
+      "durationSeconds": 12,
+      "hook": "Deadline demain. Ton cerveau a besoin d'un bouton Focus.",
+      "shotList": [
+        "Notifications et feuilles s'accumulent autour d'un bureau dessiné à la main.",
+        "Lofi Girl active la playlist Focus et lance un minuteur.",
+        "Les distractions disparaissent tandis que le plan se stabilise.",
+        "Pochette playlist, titre et CTA final."
+      ],
+      "onScreenCopy": "Deadline demain / passe en mode Focus",
+      "cta": "Lance Focus Lofi",
+      "requiredAssets": [
+        "Animation originale du studio",
+        "Capture réelle de la playlist Focus",
+        "Design de notifications génériques créé en interne",
+        "Titre cleared pour paid social"
+      ],
+      "guardrails": [
+        "Illustration, animation, musique et montage 100 % humains.",
+        "Aucune IA générative visuelle, sonore ou vocale.",
+        "Aucune promesse de performance scolaire ou cognitive garantie.",
+        "Aucune marque d'application tierce inutile.",
+        "Le contraste du texte doit rester lisible sur mobile."
+      ]
+    },
+    {
+      "id": "night-drive-mode",
+      "title": "Passe en mode nuit",
+      "priority": 2,
+      "playlistUseCase": "Synthwave / night drive Lofi Boy",
+      "character": "lofi-boy",
+      "durationSeconds": 10,
+      "hook": "La ville baisse le volume, la playlist prend le relais.",
+      "shotList": [
+        "Plan vertical dessiné à la main sur une rue bleu nuit et magenta.",
+        "Lofi Boy traverse le cadre avec un mouvement lent de caméra.",
+        "Le nom de la playlist apparaît au rythme d'un changement de lumière.",
+        "Pochette et CTA sur un dernier plan très simple."
+      ],
+      "onScreenCopy": "Passe en mode nuit",
+      "cta": "Écoute Night Lofi",
+      "requiredAssets": [
+        "Décor et animation originaux du studio",
+        "Titre synthwave Lofi Records cleared",
+        "Pochette officielle de la playlist",
+        "Versions 9:16 de 10 et 15 secondes"
+      ],
+      "guardrails": [
+        "Création visuelle et sonore 100 % humaine.",
+        "Aucune IA générative à quelque étape de production que ce soit.",
+        "Ne pas utiliser de footage urbain ou automobile sans licence.",
+        "Préserver une zone sûre pour les overlays des plateformes."
+      ]
+    },
+    {
+      "id": "bedroom-routine",
+      "title": "Le geste simple avant de dormir",
+      "priority": 2,
+      "playlistUseCase": "Routine du soir / sleep Lofi Girl",
+      "character": "lofi-girl",
+      "durationSeconds": 10,
+      "hook": "Un dernier geste avant d'éteindre.",
+      "shotList": [
+        "POV humain ou animation originale d'une chambre chaleureuse.",
+        "La main pose le téléphone, active la playlist puis baisse la lumière.",
+        "Le chat se roule en boule pendant que le cadre devient calme.",
+        "Pochette playlist et CTA d'enregistrement."
+      ],
+      "onScreenCopy": "Un dernier geste avant d'éteindre",
+      "cta": "Garde la playlist pour ce soir",
+      "requiredAssets": [
+        "Décor réel ou animation originale produits en interne",
+        "Capture réelle de la playlist",
+        "Titre Lofi Records cleared",
+        "Plan de droits à l'image et aux objets visibles"
+      ],
+      "guardrails": [
+        "Tournage, illustration, animation et montage 100 % humains.",
+        "Aucune image, vidéo, voix ou musique générée par IA.",
+        "Éviter toute promesse médicale ou délai d'endormissement.",
+        "Ne pas présenter la playlist comme un traitement."
+      ]
+    }
+  ]
+}

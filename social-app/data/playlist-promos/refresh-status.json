@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "status": "success",
+  "lastAttemptAt": "2026-08-26T07:54:12.000Z",
+  "lastSuccessfulAt": "2026-08-26T07:54:12.000Z",
+  "nextRefreshAt": "2026-08-27T07:54:12.000Z",
+  "seedCount": 9,
+  "checkedCount": 9,
+  "matchedCount": 9,
+  "qualifiedCount": 9,
+  "updatedCount": 9,
+  "failedCount": 0,
+  "preservedLastGoodFeed": false,
+  "errors": [],
+  "note": "Les neuf embeds publics ont été attribués exactement. Les compteurs sont ceux des posts natifs ; product_type=ad qualifie séparément le statut paid."
+}
