@@ -27,8 +27,7 @@
   let fullPromise=null;
   let refreshWaiting=false;
   let refreshFocus='';
-  let trackAnalyticsPromise=null;
-  let playlistAnalyticsPromise=null;
+  const analyticsPromises={};
   let modalRequest=0;
   let lang='fr';
   try{lang=localStorage.getItem('sr_lang')||'fr';}catch(error){}
@@ -556,33 +555,22 @@
     if(reset)reset.addEventListener('click',()=>{clearFilters(state.view);refreshWithFull();});
   }
 
-  function loadTrackAnalytics(){
-    if(window.SpotifyTrackAnalytics)return Promise.resolve(window.SpotifyTrackAnalytics);
-    if(trackAnalyticsPromise)return trackAnalyticsPromise;
-    trackAnalyticsPromise=new Promise((resolve,reject)=>{
+  function loadAnalytics(kind){
+    const key=`Spotify${kind}Analytics`,name=kind.toLowerCase();
+    if(window[key])return Promise.resolve(window[key]);
+    if(analyticsPromises[kind])return analyticsPromises[kind];
+    analyticsPromises[kind]=new Promise((resolve,reject)=>{
       const script=document.createElement('script');
-      script.src=`track-analytics.js?v=${encodeURIComponent(boot.source_hash||'track-analytics-v1')}`;
+      script.src=`${name}-analytics.js?v=${encodeURIComponent(boot.source_hash||`${name}-analytics-v1`)}`;
       script.async=true;
-      script.onload=()=>window.SpotifyTrackAnalytics?resolve(window.SpotifyTrackAnalytics):reject(new Error('Spotify track analytics did not initialize'));
-      script.onerror=()=>reject(new Error('Spotify track analytics failed to load'));
+      script.onload=()=>window[key]?resolve(window[key]):reject(new Error(`Spotify ${name} analytics did not initialize`));
+      script.onerror=()=>reject(new Error(`Spotify ${name} analytics failed to load`));
       document.head.appendChild(script);
-    }).catch(error=>{trackAnalyticsPromise=null;throw error;});
-    return trackAnalyticsPromise;
+    }).catch(error=>{analyticsPromises[kind]=null;throw error;});
+    return analyticsPromises[kind];
   }
-
-  function loadPlaylistAnalytics(){
-    if(window.SpotifyPlaylistAnalytics)return Promise.resolve(window.SpotifyPlaylistAnalytics);
-    if(playlistAnalyticsPromise)return playlistAnalyticsPromise;
-    playlistAnalyticsPromise=new Promise((resolve,reject)=>{
-      const script=document.createElement('script');
-      script.src=`playlist-analytics.js?v=${encodeURIComponent(boot.source_hash||'playlist-analytics-v1')}`;
-      script.async=true;
-      script.onload=()=>window.SpotifyPlaylistAnalytics?resolve(window.SpotifyPlaylistAnalytics):reject(new Error('Spotify playlist analytics did not initialize'));
-      script.onerror=()=>reject(new Error('Spotify playlist analytics failed to load'));
-      document.head.appendChild(script);
-    }).catch(error=>{playlistAnalyticsPromise=null;throw error;});
-    return playlistAnalyticsPromise;
-  }
+  function loadTrackAnalytics(){return loadAnalytics('Track');}
+  function loadPlaylistAnalytics(){return loadAnalytics('Playlist');}
 
   async function openTrack(id){
     const initialRow=findTrack(id);if(!initialRow)return;
