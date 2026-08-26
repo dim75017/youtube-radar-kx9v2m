@@ -1,6 +1,12 @@
 name: Refresh Spotify playlist followers daily
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/refresh-playlist-followers.yml'
+      - 'build_spotify_playlist_analytics.py'
+      - 'prepare_soundcharts_snapshot.py'
   schedule:
     # Primary cloud pass after the large A&R workflow, plus an independent
     # same-day catch-up. Neither requires Dim's computer to be awake.

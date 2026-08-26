@@ -34,6 +34,13 @@ class PlaylistFollowerWorkflowGuardrailsTests(unittest.TestCase):
         )
         self.assertIn("workflow_dispatch:", self.workflow)
 
+    def test_collector_changes_trigger_an_immediate_guarded_verification(self):
+        self.assertIn("push:", self.workflow)
+        self.assertIn("branches: [main]", self.workflow)
+        self.assertIn(".github/workflows/refresh-playlist-followers.yml", self.workflow)
+        self.assertIn("build_spotify_playlist_analytics.py", self.workflow)
+        self.assertIn("prepare_soundcharts_snapshot.py", self.workflow)
+
     def test_skip_gate_uses_real_visible_history_for_the_paris_day(self):
         self.assertRegex(self.workflow, r"ZoneInfo\(['\"]Europe/Paris['\"]\)")
         self.assertIn("Spotify_Playlists_canonical_data.js", self.workflow)
