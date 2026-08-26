@@ -1,17 +1,17 @@
 {
   "version": 1,
   "cadenceHours": 24,
-  "lastAttemptAt": "2026-08-25T16:57:07.511Z",
+  "lastAttemptAt": "2026-08-26T04:57:29.561Z",
   "lastSuccessfulAt": "2026-08-19T04:54:32.018Z",
-  "nextScheduledAt": "2026-08-26T16:57:07.511Z",
+  "nextScheduledAt": "2026-08-27T04:57:29.561Z",
   "status": "degraded",
-  "runId": "32874877359",
-  "runUrl": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/32874877359",
+  "runId": "32932086874",
+  "runUrl": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/32932086874",
   "discoveryAudit": {
-    "scannedAt": "2026-08-25T16:57:07.511Z",
+    "scannedAt": "2026-08-26T04:57:29.561Z",
     "complete": false,
     "candidateCount": 56,
-    "qualifiedInventoryCount": 30,
+    "qualifiedInventoryCount": 29,
     "currentMatchedCount": 30,
     "added": 56,
     "removed": 0,
@@ -61,15 +61,15 @@
       "https://www.tiktok.com/@panthers/video/7666533142194359565",
       "https://www.tiktok.com/@romero.szee/video/7660435196302363934",
       "https://www.tiktok.com/@stillwatersfishing/video/7640578773078904077",
-      "https://www.youtube.com/watch?v=8NMfCCSlOQY",
+      "https://www.youtube.com/watch?v=2X-Lc35kpB8",
       "https://www.youtube.com/watch?v=9jdcFujd_Bc",
+      "https://www.youtube.com/watch?v=AeQGdLtdB8Y",
       "https://www.youtube.com/watch?v=L8ZnXgbyUuc",
       "https://www.youtube.com/watch?v=LhXU84j3ufQ",
       "https://www.youtube.com/watch?v=MT-4Bk1Lw8g",
-      "https://www.youtube.com/watch?v=PAqRSLysEE4",
       "https://www.youtube.com/watch?v=VAuXlNR544Q",
-      "https://www.youtube.com/watch?v=WNUjyPtfOdg",
       "https://www.youtube.com/watch?v=eBylfiYNMpk",
+      "https://www.youtube.com/watch?v=fpfwKak_jxg",
       "https://www.youtube.com/watch?v=is8UDe2PhKQ",
       "https://www.youtube.com/watch?v=oW-f6RYSwBI",
       "https://www.youtube.com/watch?v=r01zeFtwHoA"
@@ -277,6 +277,7 @@
         "status": "success",
         "candidateCount": 12,
         "matchedTrendIds": [
+          "just-say-here-bro",
           "social-battery-solo-mode",
           "explaining-game-lore",
           "video-game-main-menu",
@@ -284,15 +285,15 @@
           "obsession-nice-date-lofi-boy"
         ],
         "candidateUrls": [
-          "https://www.youtube.com/watch?v=8NMfCCSlOQY",
+          "https://www.youtube.com/watch?v=2X-Lc35kpB8",
           "https://www.youtube.com/watch?v=9jdcFujd_Bc",
+          "https://www.youtube.com/watch?v=AeQGdLtdB8Y",
           "https://www.youtube.com/watch?v=L8ZnXgbyUuc",
           "https://www.youtube.com/watch?v=LhXU84j3ufQ",
           "https://www.youtube.com/watch?v=MT-4Bk1Lw8g",
-          "https://www.youtube.com/watch?v=PAqRSLysEE4",
           "https://www.youtube.com/watch?v=VAuXlNR544Q",
-          "https://www.youtube.com/watch?v=WNUjyPtfOdg",
           "https://www.youtube.com/watch?v=eBylfiYNMpk",
+          "https://www.youtube.com/watch?v=fpfwKak_jxg",
           "https://www.youtube.com/watch?v=is8UDe2PhKQ",
           "https://www.youtube.com/watch?v=oW-f6RYSwBI",
           "https://www.youtube.com/watch?v=r01zeFtwHoA"
@@ -308,10 +309,11 @@
         "candidateUrls": []
       }
     ],
-    "reachabilityCheckedAt": "2026-08-25T16:57:07.511Z",
-    "availablePosts": 152,
-    "unavailablePosts": 1,
+    "reachabilityCheckedAt": "2026-08-26T04:57:29.561Z",
+    "availablePosts": 151,
+    "unavailablePosts": 2,
     "unavailablePostUrls": [
+      "https://www.tiktok.com/@inesstitaa/video/7670161263544257814",
       "https://www.tiktok.com/@tokay0ff/video/7665806228362120480"
     ]
   },
@@ -321,7 +323,7 @@
       "label": "Buffer · TikTok",
       "platform": "tiktok",
       "status": "success",
-      "checkedAt": "2026-08-25T16:57:07.511Z",
+      "checkedAt": "2026-08-26T04:57:29.561Z",
       "candidatesMatched": 15
     },
     {
@@ -329,7 +331,7 @@
       "label": "Later · Instagram Reels",
       "platform": "instagram",
       "status": "success",
-      "checkedAt": "2026-08-25T16:57:07.511Z",
+      "checkedAt": "2026-08-26T04:57:29.561Z",
       "candidatesMatched": 16
     },
     {
@@ -337,7 +339,7 @@
       "label": "SocialPilot · TikTok",
       "platform": "tiktok",
       "status": "success",
-      "checkedAt": "2026-08-25T16:57:07.511Z",
+      "checkedAt": "2026-08-26T04:57:29.561Z",
       "candidatesMatched": 18
     },
     {
@@ -345,7 +347,7 @@
       "label": "SocialPilot · Instagram Reels",
       "platform": "instagram",
       "status": "success",
-      "checkedAt": "2026-08-25T16:57:07.511Z",
+      "checkedAt": "2026-08-26T04:57:29.561Z",
       "candidatesMatched": 17
     },
     {
@@ -353,7 +355,7 @@
       "label": "Tokchart · sons TikTok",
       "platform": "tiktok",
       "status": "failed",
-      "checkedAt": "2026-08-25T16:57:07.511Z",
+      "checkedAt": "2026-08-26T04:57:29.561Z",
       "candidatesMatched": 0
     },
     {
@@ -361,24 +363,24 @@
       "label": "TrendVideosHub · YouTube Shorts",
       "platform": "youtube",
       "status": "success",
-      "checkedAt": "2026-08-25T16:57:07.511Z",
-      "candidatesMatched": 5
+      "checkedAt": "2026-08-26T04:57:29.561Z",
+      "candidatesMatched": 6
     },
     {
       "id": "x-france-trends",
       "label": "X · tendances France",
       "platform": "x",
       "status": "failed",
-      "checkedAt": "2026-08-25T16:57:07.511Z",
+      "checkedAt": "2026-08-26T04:57:29.561Z",
       "candidatesMatched": 0
     }
   ],
   "counts": {
     "checkedSources": 5,
-    "matchedSignals": 71,
+    "matchedSignals": 72,
     "actionable": 51,
     "lofiGirl": 44,
     "lofiBoy": 7
   },
-  "message": "Seulement 30/51 trends ont conservé trois reprises natives accessibles; minimum 50."
+  "message": "Seulement 29/51 trends ont conservé trois reprises natives accessibles; minimum 50."
 }
