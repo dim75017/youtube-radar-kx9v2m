@@ -11,6 +11,7 @@ import {
   assertAudienceHistory,
   audienceGrowth,
   calculatePlatformEngagement,
+  calculatePlatformEngagementWindow,
   emptyEngagementByPeriod,
   latestAudienceObservation,
   recalculateAudienceEngagement,
@@ -184,6 +185,36 @@ test("uses every measurable post in each calendar period and defaults to 30 days
     calculatePlatformEngagement("youtube", posts, latest, calculatedAt),
     byPeriod["30d"],
     "the calculation must default to the last 30 calendar days",
+  );
+});
+
+test("calculates the dashboard's exact 360-day engagement window without using the 365-day snapshot", () => {
+  const latest = observation("2026-08-11T00:00:00.000Z", 1_000, "exact");
+  const calculatedAt = "2026-08-11T12:00:00.000Z";
+  const calculatedTime = Date.parse(calculatedAt);
+  const daysAgo = (days) => new Date(
+    calculatedTime - days * 24 * 60 * 60 * 1_000,
+  ).toISOString();
+  const posts = [
+    { platform: "youtube", format: "short", publishedAt: daysAgo(359), likes: 9, comments: 1 },
+    { platform: "youtube", format: "short", publishedAt: daysAgo(361), likes: 999, comments: 1 },
+  ];
+
+  const engagement = calculatePlatformEngagementWindow(
+    "youtube",
+    posts,
+    latest,
+    calculatedAt,
+    360,
+  );
+
+  assert.ok(engagement);
+  assert.equal(engagement.sampleSize, 1);
+  assert.equal(engagement.averageInteractions, 10);
+  assert.equal(engagement.ratePercent, 1);
+  assert.throws(
+    () => calculatePlatformEngagementWindow("youtube", posts, latest, calculatedAt, 0),
+    /entier positif/i,
   );
 });
 

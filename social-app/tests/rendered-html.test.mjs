@@ -142,14 +142,14 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     component.indexOf("function AudienceDashboard"),
     component.indexOf("function formatAudienceFollowers"),
   );
-  assert.match(audienceDashboard, /const periodKey: AudiencePeriodKey = "30d"/);
-  assert.match(audienceDashboard, /engagementByPeriod\[periodKey\]/);
+  assert.match(audienceDashboard, /const \[periodKey, setPeriodKey\] = useState<AudienceChartPeriodKey>\("30d"\)/);
+  assert.match(audienceDashboard, /calculatePlatformEngagementWindow\([\s\S]*?period\.days/);
   assert.match(audienceDashboard, /useState<string \| null>\(null\)/);
   assert.match(audienceDashboard, /setClientNow\(new Date\(\)\.toISOString\(\)\)/);
   assert.doesNotMatch(audienceDashboard, /Collecte planifiée/);
-  assert.doesNotMatch(audienceDashboard, /audience-period-control/);
-  assert.doesNotMatch(audienceDashboard, /audience-period-tabs/);
-  assert.doesNotMatch(audienceDashboard, /aria-label="P.riode du tableau de bord"/);
+  assert.match(audienceDashboard, /audience-period-control/);
+  assert.match(audienceDashboard, /audience-period-tabs/);
+  assert.match(audienceDashboard, /aria-label="P.riode du tableau de bord"/);
   assert.match(audienceDashboard, /audienceGrowthFromObservedPoints\(points\)/);
   assert.match(
     audienceDashboard,
@@ -157,7 +157,8 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   );
   assert.match(audienceDashboard, /periodEndAt = history\?\.generatedAt/);
   assert.match(audienceDashboard, /formatAudienceAge\(latestAgeDays\)/);
-  assert.match(audienceDashboard, /<AudienceAnalyticsExplorer/);
+  assert.match(audienceDashboard, /<AudienceAnalyticsExplorer[\s\S]*?periodKey=\{periodKey\}/);
+  assert.doesNotMatch(audienceDashboard, /Période du graphique|audience-chart-period-tabs|setChartPeriodKey/);
   assert.doesNotMatch(audienceDashboard, /<AudienceGrowthChart/);
   const audienceChart = component.slice(
     component.indexOf("function AudienceNativeMetricChart"),

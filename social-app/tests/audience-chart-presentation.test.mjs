@@ -57,6 +57,8 @@ test("syncs the clickable platform cards with an honest follower-change default"
   );
 
   assert.match(dashboard, /useState<Platform>\("youtube"\)/);
+  assert.match(dashboard, /const \[periodKey, setPeriodKey\] = useState<AudienceChartPeriodKey>\("30d"\)/);
+  assert.match(dashboard, /aria-label="Période du tableau de bord"/);
   assert.match(dashboard, /selectAudiencePlatform/);
   assert.match(dashboard, /setRequestedMetric\(NATIVE_ANALYTICS_DEFAULT_METRIC\[platform\]\)/);
   assert.match(dashboard, /<button[\s\S]*?audience-platform-card/);
@@ -67,8 +69,11 @@ test("syncs the clickable platform cards with an honest follower-change default"
   assert.match(dashboard, /platform === "instagram" \? null : growth\?\.followersDelta/);
   assert.match(dashboard, /audienceMetricEndDate\([\s\S]*?followerChangeMetric/);
   assert.match(dashboard, /nativeAnalyticsDailyForPeriod\([\s\S]*?followerChangeEndDate/);
+  assert.match(dashboard, /calculatePlatformEngagementWindow\([\s\S]*?period\.days/);
+  assert.match(dashboard, /followersDeltaPeriodLabel = nativeGrowth[\s\S]*?period\.label/);
   assert.match(dashboard, /activePlatform=\{activePlatform\}/);
   assert.match(dashboard, /onSelectPlatform=\{selectAudiencePlatform\}/);
+  assert.match(dashboard, /periodKey=\{periodKey\}/);
 
   assert.match(component, /youtube:\s*\[\s*"followersNet",\s*"followersTotal"/);
   assert.match(component, /instagram:\s*\[\s*"newFollowers",\s*"followersTotal"/);
@@ -78,9 +83,9 @@ test("syncs the clickable platform cards with an honest follower-change default"
   assert.match(component, /instagram:\s*"newFollowers"/);
   assert.match(component, /tiktok:\s*"followersNet"/);
   assert.match(component, /x:\s*"followersNet"/);
-  assert.match(explorer, /availableMetrics\.includes\(requestedMetric\)/);
-  assert.match(explorer, /availableMetrics\[0\] \?\? null/);
+  assert.match(explorer, /availableMetricWindows\.find\(\(window\) => window\.metric === requestedMetric\)/);
   assert.match(explorer, /onClick=\{\(\) => onSelectPlatform\(platform\)\}/);
+  assert.doesNotMatch(explorer, /const \[chartPeriodKey|setChartPeriodKey|Période du graphique/);
 
   assert.match(styles, /\.audience-platform-card\.active\s*\{/);
   assert.match(styles, /\.audience-platform-card\.active::after\s*\{[\s\S]*?opacity:\s*1/);

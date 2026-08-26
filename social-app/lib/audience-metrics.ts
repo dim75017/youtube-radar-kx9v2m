@@ -46,6 +46,8 @@ export type AudienceEngagement = {
   newestPostAt: string;
 };
 
+export type AudienceEngagementWindow = Omit<AudienceEngagement, "period">;
+
 export type AudiencePlatformHistory = {
   profileUrl: string;
   observations: AudienceObservation[];
@@ -192,13 +194,38 @@ export function calculatePlatformEngagement(
   calculatedAt = new Date().toISOString(),
   period: AudiencePeriodKey = "30d",
 ): AudienceEngagement | null {
+  const periodMeta = audiencePeriod(period);
+  const engagement = calculatePlatformEngagementWindow(
+    platform,
+    posts,
+    latestObservation,
+    calculatedAt,
+    periodMeta.days,
+  );
+  return engagement ? { period, ...engagement } : null;
+}
+
+/**
+ * Calculate an exact UI window without forcing it into the persisted period
+ * enum. This keeps a 360-day dashboard filter truthful while the historical
+ * snapshot continues to retain its native 365-day aggregate.
+ */
+export function calculatePlatformEngagementWindow(
+  platform: AudiencePlatform,
+  posts: readonly AudiencePost[],
+  latestObservation: AudienceObservation | null,
+  calculatedAt = new Date().toISOString(),
+  days: number | null = 30,
+): AudienceEngagementWindow | null {
   if (!latestObservation) return null;
   assertTimestamp(calculatedAt, "calculatedAt");
-  const periodMeta = audiencePeriod(period);
+  if (days !== null && (!Number.isInteger(days) || days < 1)) {
+    throw new Error("La fenêtre d’engagement doit contenir un nombre entier positif de jours ou null.");
+  }
   const calculatedTime = Date.parse(calculatedAt);
-  const minimumPublishedTime = periodMeta.days === null
+  const minimumPublishedTime = days === null
     ? Number.NEGATIVE_INFINITY
-    : calculatedTime - periodMeta.days * DAY_MS;
+    : calculatedTime - days * DAY_MS;
 
   const eligible = posts
     .flatMap((post, inputIndex) => {
@@ -240,7 +267,6 @@ export function calculatePlatformEngagement(
   const oldestPostAt = eligible.at(-1)!.publishedAt;
 
   return {
-    period,
     calculatedAt: new Date(calculatedAt).toISOString(),
     formula: AUDIENCE_ENGAGEMENT_FORMULA,
     followers: latestObservation.followers,

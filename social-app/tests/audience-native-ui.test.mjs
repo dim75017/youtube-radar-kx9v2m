@@ -15,6 +15,10 @@ test("consolidates audience analytics into one truthful selectable chart", async
     component.indexOf("function AudienceDashboard"),
     component.indexOf("type NativeAnalyticsMetricMeta"),
   );
+  const toolbar = dashboard.slice(
+    dashboard.indexOf('className="audience-dashboard-toolbar"'),
+    dashboard.indexOf('className="audience-platform-grid"'),
+  );
 
   assert.match(component, /audienceAnalytics\?: AudienceAnalytics \| null/);
   assert.match(component, /audienceDemographics\?: AudienceDemographics \| null/);
@@ -29,7 +33,7 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(explorer, /PLATFORM_ORDER\.map/);
   assert.match(explorer, /aria-pressed=\{platform === activePlatform\}/);
   assert.match(explorer, /const AUDIENCE_CHART_PERIODS = \[/);
-  const periodDeclarations = explorer
+  const periodDeclarations = component
     .match(/const AUDIENCE_CHART_PERIODS = \[([\s\S]*?)\] as const/)?.[1]
     ?.matchAll(/\{ key: "([^"]+)", label: "([^"]+)", days: (\d+|null), snapshotKey:/g);
   assert.deepEqual(
@@ -42,11 +46,20 @@ test("consolidates audience analytics into one truthful selectable chart", async
       ["all", "All time", "null"],
     ],
   );
-  assert.match(explorer, /useState<AudienceChartPeriodKey>\("30d"\)/);
-  assert.match(explorer, /aria-label="Période du graphique"/);
-  assert.match(explorer, /aria-pressed=\{option\.key === chartPeriodKey\}/);
+  assert.match(dashboard, /const \[periodKey, setPeriodKey\] = useState<AudienceChartPeriodKey>\("30d"\)/);
+  assert.match(toolbar, /className="audience-period-control"/);
+  assert.match(toolbar, /className="audience-period-tabs"/);
+  assert.match(toolbar, /aria-label="Période du tableau de bord"/);
+  assert.match(toolbar, /AUDIENCE_CHART_PERIODS\.map/);
+  assert.match(toolbar, /aria-pressed=\{option\.key === periodKey\}/);
+  assert.match(toolbar, /onClick=\{\(\) => setPeriodKey\(option\.key\)\}/);
+  assert.ok(toolbar.indexOf("audience-dashboard-heading") < toolbar.indexOf("audience-period-control"));
+  assert.doesNotMatch(explorer, /useState<AudienceChartPeriodKey>|setChartPeriodKey|Période du graphique|audience-chart-period-tabs/);
+  assert.match(dashboard, /<AudienceAnalyticsExplorer[\s\S]*?periodKey=\{periodKey\}/);
+  assert.match(explorer, /periodKey: AudienceChartPeriodKey/);
+  assert.match(explorer, /AUDIENCE_CHART_PERIODS\.find\(\(option\) => option\.key === periodKey\)/);
   assert.match(explorer, /aria-label=\{`Métrique du graphique/);
-  assert.match(explorer, /availableMetrics\.map/);
+  assert.match(explorer, /availableMetricWindows\.map/);
   assert.match(explorer, /aria-pressed=\{metric === activeMetric\}/);
   assert.equal((component.match(/<AudienceNativeMetricChart\b/g) ?? []).length, 1);
   assert.doesNotMatch(component, /function AudienceGrowthChart/);
@@ -54,14 +67,14 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.doesNotMatch(component, /audience-native-platform-grid/);
   assert.doesNotMatch(component, /audience-evolution-block/);
   assert.doesNotMatch(dashboard, /Collecte planifiée/);
-  assert.doesNotMatch(dashboard, /audience-period-control/);
-  assert.doesNotMatch(dashboard, /audience-period-tabs/);
-  assert.doesNotMatch(dashboard, /aria-label="Période du tableau de bord"/);
+  assert.match(dashboard, /calculatePlatformEngagementWindow\([\s\S]*?period\.days/);
+  assert.match(dashboard, /audiencePointsForPeriod\(platformHistory, periodEndAt, period\.days\)/);
+  assert.match(dashboard, /nativeAnalyticsDailyForPeriod\([\s\S]*?period\.days/);
 
   assert.match(explorer, /function audienceMetricSeries/);
   assert.match(explorer, /function audienceMetricEndDate/);
   assert.match(explorer, /function audienceHistoryPointsForPeriod/);
-  assert.match(explorer, /const endDate = activeMetric/);
+  assert.match(explorer, /const endDate = activeWindow\?\.endDate/);
   assert.match(explorer, /Toute la plage native importée/);
   assert.match(explorer, /Agrégat officiel · \$\{periodLabel\}/);
   assert.match(explorer, /metric === "followersTotal"/);
@@ -74,9 +87,10 @@ test("consolidates audience analytics into one truthful selectable chart", async
 
   assert.match(styles, /\.audience-platform-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(4/);
   assert.match(styles, /\.main\.main-dashboard\s*\{[\s\S]*?padding-bottom:\s*8px/);
-  assert.match(styles, /\.audience-dashboard-toolbar\s*\{[\s\S]*?grid-template-columns:/);
+  assert.match(styles, /\.audience-dashboard-toolbar\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) auto/);
+  assert.match(styles, /\.audience-period-control\s*\{[\s\S]*?justify-content:\s*flex-end/);
+  assert.match(styles, /\.audience-period-tabs/);
   assert.match(styles, /\.audience-explorer-platform-tabs/);
-  assert.match(styles, /\.audience-chart-period-tabs/);
   assert.match(styles, /\.audience-explorer-metrics/);
   assert.match(styles, /\.audience-native-chart-empty,[\s\S]*?min-height:\s*150px/);
   assert.match(styles, /\.audience-native-chart-viewport\s*\{[\s\S]*?overflow-x:\s*auto/);
