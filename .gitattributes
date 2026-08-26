@@ -1,2 +1,5 @@
 Spotify_Performance_data.js text eol=lf
 Spotify_Performance_tracks/*.js text eol=lf
+Lofi_Radar_recommendation_pool.js text eol=lf
+youtube_recommendation_ledger/manifest.json text eol=lf
+youtube_recommendation_ledger/shards/*.jsonl text eol=lf
