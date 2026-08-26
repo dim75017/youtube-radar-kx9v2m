@@ -240,15 +240,17 @@ function PlaylistPromoCard({
   onClose: () => void;
 }) {
   const observation = latestPlaylistPromoObservation(item);
-  const canPlayInline = item.platform === "instagram" || item.platform === "tiktok" || item.platform === "youtube";
+  const inlinePlatform = item.platform === "instagram" || item.platform === "tiktok" || item.platform === "youtube"
+    ? item.platform
+    : null;
 
   return (
     <article className="social-post-card trend-reference-card playlist-promo-card has-media">
       <div className={`trend-reference-visual audio-reference-visual platform-${item.platform}`}>
-        {active && canPlayInline ? (
+        {active && inlinePlatform ? (
           <SocialInlinePlayer
             active
-            platform={item.platform}
+            platform={inlinePlatform}
             sourceUrl={item.url}
             title={`Création de référence de ${item.author}`}
             onClose={onClose}
@@ -257,9 +259,9 @@ function PlaylistPromoCard({
           <button
             className="audio-reference-trigger playlist-promo-trigger"
             type="button"
-            aria-label={canPlayInline ? `Lire la création de ${item.author}` : `Ouvrir la création de ${item.author}`}
+            aria-label={inlinePlatform ? `Lire la création de ${item.author}` : `Ouvrir la création de ${item.author}`}
             onClick={() => {
-              if (canPlayInline) onActivate();
+              if (inlinePlatform) onActivate();
               else window.open(item.url, "_blank", "noopener,noreferrer");
             }}
           >

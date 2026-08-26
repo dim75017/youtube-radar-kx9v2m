@@ -86,6 +86,10 @@ import {
   assertPlaylistPromoFeed,
   type PlaylistPromoFeed,
 } from "../lib/playlist-promos";
+import {
+  assertScrollingFeed,
+  type ScrollingFeed,
+} from "../lib/scrolling";
 import { dailyRotationIndex } from "../lib/daily-rotation";
 import {
   type AudioTrendScanStatus,
@@ -94,10 +98,11 @@ import {
 import { AudioTrendFeedView } from "./AudioTrendFeedView";
 import { CommentOpportunitiesView } from "./CommentOpportunitiesView";
 import { PlaylistPromoFeedView } from "./PlaylistPromoFeedView";
+import { ScrollingFeedView } from "./ScrollingFeedView";
 import { SocialInlinePlayer } from "./SocialInlinePlayer";
 
 type Platform = "youtube" | "instagram" | "tiktok" | "x";
-type View = "overview" | "top" | "comments" | "trends" | "audio-trends" | "playlist-promos" | "ideas" | "planning" | "all" | "sources";
+type View = "overview" | "top" | "comments" | "trends" | "audio-trends" | "scrolling" | "playlist-promos" | "ideas" | "planning" | "all" | "sources";
 type IdeaStatusFilter = "all" | "pending" | IdeaDecision;
 type PostSort = "popular" | "recent";
 type TrendPlatformFilter = TrendPlatform | "all";
@@ -224,12 +229,13 @@ const NAV: Array<{
 ];
 
 const RECOMMENDATION_NAV: Array<{
-  id: Extract<View, "ideas" | "comments" | "trends" | "audio-trends" | "playlist-promos">;
+  id: Extract<View, "ideas" | "comments" | "trends" | "audio-trends" | "scrolling" | "playlist-promos">;
   emoji: string;
   label: string;
 }> = [
   { id: "trends", emoji: "🔥", label: "Trends vidéos" },
   { id: "audio-trends", emoji: "🎧", label: "Trends audio" },
+  { id: "scrolling", emoji: "🧭", label: "Scrolling" },
   { id: "playlist-promos", emoji: "🎯", label: "Pubs playlists" },
   { id: "ideas", emoji: "📝", label: "Posts recommandés" },
   { id: "comments", emoji: "💬", label: "Commentaires" },
@@ -531,6 +537,7 @@ export function SocialOS({
   initialWorkspace = null,
   initialTrendFeed = null,
   initialAudioTrendFeed = null,
+  initialScrollingFeed = null,
   initialPlaylistPromoFeed = null,
   initialVideoTrendScanStatus = null,
   initialAudioTrendScanStatus = null,
@@ -546,6 +553,7 @@ export function SocialOS({
   initialWorkspace?: WorkspacePayload | null;
   initialTrendFeed?: SocialTrendFeed | null;
   initialAudioTrendFeed?: AudioTrendFeed | null;
+  initialScrollingFeed?: ScrollingFeed | null;
   initialPlaylistPromoFeed?: PlaylistPromoFeed | null;
   initialVideoTrendScanStatus?: VideoTrendScanStatus | null;
   initialAudioTrendScanStatus?: AudioTrendScanStatus | null;
@@ -566,6 +574,9 @@ export function SocialOS({
   const [audioTrendFeed, setAudioTrendFeed] = useState<AudioTrendFeed | null>(initialAudioTrendFeed);
   const [audioTrendsLoading, setAudioTrendsLoading] = useState(!previewMode && !initialAudioTrendFeed);
   const [audioTrendsError, setAudioTrendsError] = useState("");
+  const [scrollingFeed, setScrollingFeed] = useState<ScrollingFeed | null>(initialScrollingFeed);
+  const [scrollingLoading, setScrollingLoading] = useState(!previewMode && !initialScrollingFeed);
+  const [scrollingError, setScrollingError] = useState("");
   const [playlistPromoFeed, setPlaylistPromoFeed] = useState<PlaylistPromoFeed | null>(initialPlaylistPromoFeed);
   const [playlistPromosLoading, setPlaylistPromosLoading] = useState(!previewMode && !initialPlaylistPromoFeed);
   const [playlistPromosError, setPlaylistPromosError] = useState("");
@@ -650,6 +661,17 @@ export function SocialOS({
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
+      setScrollingFeed(initialScrollingFeed);
+      if (initialScrollingFeed || previewMode) {
+        setScrollingLoading(false);
+        setScrollingError("");
+      }
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [initialScrollingFeed, previewMode]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
       setPlaylistPromoFeed(initialPlaylistPromoFeed);
       if (initialPlaylistPromoFeed || previewMode) {
         setPlaylistPromosLoading(false);
@@ -701,6 +723,43 @@ export function SocialOS({
     };
 
     void loadTrendFeed();
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [previewMode]);
+
+  useEffect(() => {
+    if (previewMode) return;
+    const controller = new AbortController();
+    let active = true;
+
+    const loadScrollingFeed = async () => {
+      setScrollingLoading(true);
+      setScrollingError("");
+      try {
+        const response = await fetch("/api/scrolling", {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const payload = (await response.json()) as ScrollingFeed & { error?: string };
+        if (!response.ok) {
+          throw new Error(payload.error || "Les inspirations Scrolling ne sont pas disponibles pour le moment.");
+        }
+        if (active) setScrollingFeed(assertScrollingFeed(payload));
+      } catch (loadError) {
+        if (!active || controller.signal.aborted) return;
+        setScrollingError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Les inspirations Scrolling ne sont pas disponibles pour le moment.",
+        );
+      } finally {
+        if (active) setScrollingLoading(false);
+      }
+    };
+
+    void loadScrollingFeed();
     return () => {
       active = false;
       controller.abort();
@@ -1177,7 +1236,7 @@ export function SocialOS({
               {NAV.filter((item) => item.group === group).map((item) => {
                 const isPostsParent = item.id === "top";
                 const isRecommendationsParent = item.id === "ideas";
-                const isRecommendationsView = view === "ideas" || view === "comments" || view === "trends" || view === "audio-trends" || view === "playlist-promos";
+                const isRecommendationsView = view === "ideas" || view === "comments" || view === "trends" || view === "audio-trends" || view === "scrolling" || view === "playlist-promos";
                 const isActive = isPostsParent
                   ? view === "all"
                   : !isRecommendationsParent && view === item.id;
@@ -1381,6 +1440,14 @@ export function SocialOS({
             scanStatus={initialAudioTrendScanStatus}
             loading={audioTrendsLoading}
             error={audioTrendsError}
+          />
+        ) : null}
+
+        {view === "scrolling" ? (
+          <ScrollingFeedView
+            feed={scrollingFeed}
+            loading={scrollingLoading}
+            error={scrollingError}
           />
         ) : null}
 
