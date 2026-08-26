@@ -173,8 +173,11 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(explorer, /Âge non disponible pour/);
   assert.match(explorer, /Genre non disponible pour/);
   assert.match(styles, /\.audience-demographics\s*\{/);
-  assert.match(styles, /\.audience-demographic-stack\s*\{/);
+  assert.doesNotMatch(explorer, /audience-demographic-stack/);
+  assert.doesNotMatch(explorer, /audience-demographic-empty" role="status"/);
+  assert.match(explorer, /<span className="audience-demographic-bar" aria-hidden="true">/);
   assert.match(styles, /\.audience-demographic-card\.kind-ages \.audience-demographic-list\s*\{[\s\S]*?repeat\(2/);
+  assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.audience-demographics-grid\s*\{[\s\S]*?repeat\(2/);
 });
 
 test("keeps sparse Instagram observations truthful and falls back without fabricating a curve", async () => {

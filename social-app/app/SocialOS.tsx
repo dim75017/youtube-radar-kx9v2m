@@ -2295,7 +2295,7 @@ function AudienceAnalyticsExplorer({
 
             <AudienceNativeMetricChart
               key={`${activePlatform}:${activeMetric}:${periodKey}:${endDate}`}
-              bottomReserve={148}
+              bottomReserve={300}
               endDate={endDate}
               metric={activeMetric}
               periodDays={periodDays}
@@ -2418,19 +2418,6 @@ function AudienceDemographicCard({
       </header>
       {dimension ? (
         <>
-          {kind !== "countries" ? (
-            <div className="audience-demographic-stack" aria-hidden="true">
-              {visibleEntries.map((entry, index) => (
-                <span
-                  key={entry.key}
-                  style={{
-                    flexGrow: entry.share,
-                    opacity: Math.max(0.38, 1 - index * 0.1),
-                  }}
-                />
-              ))}
-            </div>
-          ) : null}
           <ul className="audience-demographic-list">
             {visibleEntries.map((entry) => (
               <li key={entry.key}>
@@ -2444,11 +2431,9 @@ function AudienceDemographicCard({
                   />
                 ) : null}
                 <span>{entry.label}</span>
-                {kind === "countries" ? (
-                  <span className="audience-demographic-bar" aria-hidden="true">
-                    <span style={{ width: `${Math.max(0, Math.min(100, entry.share * 100))}%` }} />
-                  </span>
-                ) : null}
+                <span className="audience-demographic-bar" aria-hidden="true">
+                  <span style={{ width: `${Math.max(0, Math.min(100, entry.share * 100))}%` }} />
+                </span>
                 <strong>{formatAudienceDemographicShare(entry.share)}</strong>
               </li>
             ))}
@@ -2459,7 +2444,7 @@ function AudienceDemographicCard({
           </footer>
         </>
       ) : (
-        <div className="audience-demographic-empty" role="status">
+        <div className="audience-demographic-empty">
           {emptyLabel}
         </div>
       )}

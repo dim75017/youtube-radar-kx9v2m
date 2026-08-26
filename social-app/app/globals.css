@@ -4885,35 +4885,40 @@ a {
 }
 
 .audience-demographics {
-  margin-top: 10px;
+  margin-top: 14px;
   border: 1px solid rgba(var(--platform-rgb), 0.18);
-  border-radius: 14px;
+  border-radius: 16px;
   background:
     linear-gradient(125deg, rgba(var(--platform-rgb), 0.055), transparent 45%),
     rgba(6, 8, 14, 0.42);
-  padding: 9px 10px 10px;
+  padding: 14px 16px 16px;
 }
 
 .audience-demographics-heading {
   display: flex;
   min-width: 0;
-  align-items: flex-end;
-  justify-content: flex-start;
-  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.audience-demographics .section-kicker {
+  margin-bottom: 3px;
+  font-size: 9px;
 }
 
 .audience-demographics-heading h3 {
   margin: 0;
   color: var(--text);
   font-family: Sora, Inter, sans-serif;
-  font-size: 12px;
+  font-size: clamp(15px, 1.15vw, 17px);
   letter-spacing: -0.025em;
   line-height: 1.2;
 }
 
 .audience-demographics-heading > span {
   color: var(--dim);
-  font-size: 9px;
+  font-size: 10px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -4921,16 +4926,20 @@ a {
 .audience-demographics-grid {
   display: grid;
   grid-template-columns: 1.12fr 1fr 0.84fr;
-  gap: 8px;
-  margin-top: 7px;
+  align-items: stretch;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .audience-demographic-card {
+  display: flex;
   min-width: 0;
+  min-height: 178px;
+  flex-direction: column;
   border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 10px;
+  border-radius: 12px;
   background: rgba(8, 10, 18, 0.5);
-  padding: 7px;
+  padding: 12px;
 }
 
 .audience-demographic-card > header,
@@ -4939,14 +4948,22 @@ a {
   min-width: 0;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
+  gap: 8px;
+}
+
+.audience-demographic-card > header {
+  flex-wrap: wrap;
+}
+
+.audience-demographic-card > header > span {
+  flex-basis: 100%;
 }
 
 .audience-demographic-card h4 {
   margin: 0;
   color: var(--text);
   font-family: Sora, Inter, sans-serif;
-  font-size: 10px;
+  font-size: clamp(12px, 0.9vw, 14px);
   letter-spacing: -0.015em;
   line-height: 1.2;
 }
@@ -4954,8 +4971,8 @@ a {
 .audience-demographic-card > header > span,
 .audience-demographic-card > footer {
   color: var(--dim);
-  font-size: 8px;
-  line-height: 1.25;
+  font-size: 9px;
+  line-height: 1.3;
 }
 
 .audience-demographic-card > header > span {
@@ -4965,7 +4982,8 @@ a {
 }
 
 .audience-demographic-card > footer {
-  margin-top: 4px;
+  margin-top: auto;
+  padding-top: 8px;
 }
 
 .audience-demographic-card > footer span {
@@ -4976,8 +4994,8 @@ a {
 
 .audience-demographic-list {
   display: grid;
-  gap: 2px 8px;
-  margin: 4px 0 0;
+  gap: 5px 10px;
+  margin: 8px 0 0;
   padding: 0;
   list-style: none;
 }
@@ -4989,21 +5007,21 @@ a {
 .audience-demographic-list li {
   display: grid;
   min-width: 0;
-  min-height: 14px;
+  min-height: 20px;
   align-items: center;
-  gap: 5px;
+  gap: 7px;
   color: var(--muted);
-  font-size: 10px;
-  line-height: 1.2;
+  font-size: clamp(11px, 0.78vw, 12px);
+  line-height: 1.3;
 }
 
 .audience-demographic-card.kind-countries .audience-demographic-list li {
-  grid-template-columns: 18px minmax(58px, 0.82fr) minmax(34px, 1fr) auto;
+  grid-template-columns: 22px minmax(66px, 0.82fr) minmax(42px, 1fr) auto;
 }
 
 .audience-demographic-card.kind-ages .audience-demographic-list li,
 .audience-demographic-card.kind-genders .audience-demographic-list li {
-  grid-template-columns: minmax(48px, 1fr) auto;
+  grid-template-columns: minmax(34px, 0.68fr) minmax(28px, 1fr) auto;
 }
 
 .audience-demographic-list li > span:first-of-type {
@@ -5014,8 +5032,8 @@ a {
 
 .audience-demographic-list img {
   display: block;
-  width: 18px;
-  height: 13.5px;
+  width: 22px;
+  height: 16.5px;
   border-radius: 2px;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
   object-fit: cover;
@@ -5023,7 +5041,7 @@ a {
 
 .audience-demographic-list strong {
   color: #fff;
-  font-size: 10px;
+  font-size: clamp(11px, 0.78vw, 12px);
   font-variant-numeric: tabular-nums;
   line-height: 1;
   text-align: right;
@@ -5031,7 +5049,7 @@ a {
 
 .audience-demographic-bar {
   display: block;
-  height: 3px;
+  height: 5px;
   overflow: hidden;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.075);
@@ -5041,22 +5059,6 @@ a {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: rgb(var(--platform-rgb));
-}
-
-.audience-demographic-stack {
-  display: flex;
-  width: 100%;
-  height: 5px;
-  gap: 1px;
-  overflow: hidden;
-  margin-top: 5px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.075);
-}
-
-.audience-demographic-stack span {
-  min-width: 1px;
   background: rgb(var(--platform-rgb));
 }
 
@@ -5160,6 +5162,10 @@ a {
   }
 
   .audience-demographics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .audience-demographic-card.kind-ages .audience-demographic-list {
     grid-template-columns: 1fr;
   }
 
