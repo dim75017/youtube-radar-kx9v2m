@@ -22,6 +22,7 @@ import {
   type AudienceDemographics,
 } from "../lib/audience-demographics";
 import { buildAudienceChartAxis } from "../lib/audience-chart-axis.mjs";
+import { audienceDemographicDisplayEntries } from "../lib/audience-demographic-display.mjs";
 
 import {
   generateSocialIdeas,
@@ -2402,14 +2403,19 @@ function AudienceDemographicCard({
   kind: "countries" | "ages" | "genders";
   title: string;
 }) {
-  const visibleEntries = dimension
-    ? kind === "countries"
-      ? dimension.entries.slice(0, 5)
-      : dimension.entries
+  const allDisplayEntries = dimension
+    ? audienceDemographicDisplayEntries(dimension.entries, kind)
     : [];
+  const visibleEntries = kind === "countries"
+    ? allDisplayEntries.slice(0, 5)
+    : allDisplayEntries;
   const hiddenCountryCount = dimension && kind === "countries"
-    ? Math.max(0, dimension.entries.length - visibleEntries.length)
+    ? Math.max(0, allDisplayEntries.length - visibleEntries.length)
     : 0;
+  const unreportedAgeCount = kind === "ages"
+    ? visibleEntries.filter((entry) => !entry.reported).length
+    : 0;
+  const usesMerged55Plus = kind === "ages" && visibleEntries.some((entry) => entry.key === "age_55_plus");
 
   return (
     <article className={`audience-demographic-card kind-${kind}`}>
@@ -2421,7 +2427,11 @@ function AudienceDemographicCard({
         <>
           <ul className="audience-demographic-list">
             {visibleEntries.map((entry) => (
-              <li key={entry.key}>
+              <li
+                className={entry.reported ? undefined : "unavailable"}
+                aria-label={entry.reported ? undefined : `${entry.label} : non fourni par la plateforme`}
+                key={entry.key}
+              >
                 {kind === "countries" ? (
                   <img
                     src={`flags/${entry.countryCode?.toLowerCase() ?? "globe"}.svg`}
@@ -2433,12 +2443,21 @@ function AudienceDemographicCard({
                 ) : null}
                 <span>{entry.label}</span>
                 <span className="audience-demographic-bar" aria-hidden="true">
-                  <span style={{ width: `${Math.max(0, Math.min(100, entry.share * 100))}%` }} />
+                  {entry.share !== null ? (
+                    <span style={{ width: `${Math.max(0, Math.min(100, entry.share * 100))}%` }} />
+                  ) : null}
                 </span>
-                <strong>{formatAudienceDemographicShare(entry.share)}</strong>
+                <strong>{entry.share === null ? "—" : formatAudienceDemographicShare(entry.share)}</strong>
               </li>
             ))}
           </ul>
+          {unreportedAgeCount > 0 || usesMerged55Plus ? (
+            <p className="audience-demographic-note">
+              {unreportedAgeCount > 0 ? "— = non fourni" : null}
+              {unreportedAgeCount > 0 && usesMerged55Plus ? " · " : null}
+              {usesMerged55Plus ? "55–64 et 65+ regroupés dans 55+" : null}
+            </p>
+          ) : null}
           <footer>
             <span>{dimension.provenance.provider}</span>
             {hiddenCountryCount > 0 ? <span>+{hiddenCountryCount} pays</span> : null}

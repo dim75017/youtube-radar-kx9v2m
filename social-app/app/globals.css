@@ -5047,6 +5047,14 @@ a {
   text-align: right;
 }
 
+.audience-demographic-list li.unavailable {
+  color: var(--dim);
+}
+
+.audience-demographic-list li.unavailable .audience-demographic-bar {
+  opacity: 0.45;
+}
+
 .audience-demographic-bar {
   display: block;
   height: 5px;
@@ -5060,6 +5068,13 @@ a {
   height: 100%;
   border-radius: inherit;
   background: rgb(var(--platform-rgb));
+}
+
+.audience-demographic-note {
+  margin: 7px 0 0;
+  color: var(--dim);
+  font-size: 9px;
+  line-height: 1.35;
 }
 
 .audience-demographic-empty {
