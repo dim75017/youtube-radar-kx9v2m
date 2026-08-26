@@ -29,7 +29,7 @@ assert.deepEqual(
 
 const index = fs.readFileSync('index.html', 'utf8');
 assert.ok(
-  index.includes('dashboard-02-helpers.js?v=20260825-reco-daily-v6'),
+  index.includes('dashboard-02-helpers.js?v=20260825-genre-bars-v1'),
   'the browser cache key must include the current helper revision'
 );
 

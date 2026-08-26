@@ -173,7 +173,7 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         write_youtube_fixture(self.root, stamp=stamp, day="2026-07-29")
         write(
             self.root / "Lofi_Radar_recommendation_pool.js",
-            'window.LOFI_RECOMMENDATION_POOL={"schema":3,"version":3,'
+            f'window.LOFI_RECOMMENDATION_POOL={{"schema":3,"version":{subject.GENERATOR_VERSION},'
             f'"sourceT":{stamp},"feedbackT":{stamp},"buildId":"build-current",'
             '"ledgerRevision":"ledger-current","ledger":{"total":0,"pending":0,"appended":0},"items":[]};',
         )
@@ -182,7 +182,7 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
             json.dumps(
                 {
                     "schema": 1,
-                    "generatorVersion": 3,
+                    "generatorVersion": subject.GENERATOR_VERSION,
                     "sourceT": stamp,
                     "updatedAt": "2026-07-29T06:00:00Z",
                     "count": 0,
@@ -718,7 +718,9 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
     def test_recommendations_are_due_on_generator_or_ledger_mismatch(self):
         pool = self.root / "Lofi_Radar_recommendation_pool.js"
         raw = pool.read_text(encoding="utf-8")
-        pool.write_text(raw.replace('"version":3', '"version":2'), encoding="utf-8")
+        current = f'"version":{subject.GENERATOR_VERSION}'
+        self.assertIn(current, raw)
+        pool.write_text(raw.replace(current, '"version":2'), encoding="utf-8")
         version = subject.assess(self.root, datetime(2026, 7, 29, 11, tzinfo=timezone.utc), ["youtube_recommendations"])[0]
         self.assertTrue(version.due)
         self.assertIn("generator version", version.reason)
@@ -731,7 +733,9 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
     def test_malformed_recommendation_metadata_is_due_instead_of_crashing(self):
         pool = self.root / "Lofi_Radar_recommendation_pool.js"
         raw = pool.read_text(encoding="utf-8")
-        pool.write_text(raw.replace('"version":3', '"version":"broken"'), encoding="utf-8")
+        current = f'"version":{subject.GENERATOR_VERSION}'
+        self.assertIn(current, raw)
+        pool.write_text(raw.replace(current, '"version":"broken"'), encoding="utf-8")
         row = subject.assess(self.root, datetime(2026, 7, 29, 11, tzinfo=timezone.utc), ["youtube_recommendations"])[0]
         self.assertTrue(row.due)
         self.assertIn("invalid recommendation state", row.reason)

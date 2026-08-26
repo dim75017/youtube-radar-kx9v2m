@@ -84,10 +84,10 @@ assert.match(css, /\.reco-tab\{display:grid;grid-template-columns:minmax\(0,1fr\
 const recommendationAsset = index.match(/dashboard-04-recommendations\.js\?v=([^"']+)/);
 const helperAsset = index.match(/dashboard-02-helpers\.js\?v=([^"']+)/);
 assert.ok(recommendationAsset && helperAsset, 'the recommendation runtime assets must remain explicitly versioned');
-assert.equal(recommendationAsset[1], '20260825-reco-daily-v6',
-  'the daily-rotation recommendation runtime must bypass the previous browser cache');
-assert.equal(helperAsset[1], recommendationAsset[1],
-  'the route-cache helper and recommendation runtime must deploy under the same cache revision');
+assert.equal(recommendationAsset[1], '20260825-editorial-v1',
+  'the recommendation runtime must bypass the previous browser cache');
+assert.equal(helperAsset[1], '20260825-genre-bars-v1',
+  'the route-cache helper must deploy under its current independent cache revision');
 assert.match(index, /window\.__loadRadarRecommendationPool=force=>/,
   'the page must expose a reusable recommendation-pool loader for an open-tab rollover');
 assert.match(index, /fetch\('Lofi_Radar_recommendation_pool\.js\?payload='\+Date\.now\(\),\{cache:'no-store'\}\)/,
