@@ -4348,8 +4348,11 @@ a {
 .audience-explorer.tone-blue { --platform-rgb: 125, 211, 252; }
 
 .audience-platform-card {
+  position: relative;
   min-width: 0;
+  width: 100%;
   overflow: hidden;
+  appearance: none;
   border: 1px solid rgba(var(--platform-rgb), 0.22);
   border-radius: 14px;
   background:
@@ -4357,6 +4360,47 @@ a {
     linear-gradient(155deg, rgba(22, 26, 43, 0.96), rgba(11, 13, 22, 0.96));
   padding: 8px;
   box-shadow: 0 22px 60px -50px rgba(var(--platform-rgb), 0.78);
+  color: var(--text);
+  text-align: left;
+  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+}
+
+.audience-platform-card::after {
+  position: absolute;
+  inset: 8px auto 8px 0;
+  width: 3px;
+  border-radius: 0 999px 999px 0;
+  background: rgb(var(--platform-rgb));
+  box-shadow: 0 0 14px rgba(var(--platform-rgb), 0.72);
+  content: "";
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.audience-platform-card:hover {
+  border-color: rgba(var(--platform-rgb), 0.46);
+  background:
+    radial-gradient(circle at 92% -12%, rgba(var(--platform-rgb), 0.2), transparent 42%),
+    linear-gradient(155deg, rgba(24, 29, 47, 0.98), rgba(11, 13, 22, 0.98));
+}
+
+.audience-platform-card.active {
+  border-color: rgba(var(--platform-rgb), 0.7);
+  background:
+    radial-gradient(circle at 92% -12%, rgba(var(--platform-rgb), 0.25), transparent 44%),
+    linear-gradient(155deg, rgba(var(--platform-rgb), 0.12), rgba(11, 13, 22, 0.98));
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--platform-rgb), 0.2),
+    0 18px 42px -34px rgba(var(--platform-rgb), 0.88);
+}
+
+.audience-platform-card.active::after {
+  opacity: 1;
+}
+
+.audience-platform-card:focus-visible {
+  outline: 2px solid rgba(var(--platform-rgb), 0.82);
+  outline-offset: 2px;
 }
 
 .audience-platform-head {

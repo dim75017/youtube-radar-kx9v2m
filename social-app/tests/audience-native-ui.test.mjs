@@ -15,9 +15,9 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(component, /audienceAnalytics\?: AudienceAnalytics \| null/);
   assert.match(component, /analytics=\{audienceAnalytics\}/);
   assert.match(explorer, /function AudienceAnalyticsExplorer/);
-  assert.match(explorer, /useState<Platform>\("youtube"\)/);
+  assert.match(component, /useState<Platform>\("youtube"\)/);
   assert.match(explorer, /youtube: "followersNet"/);
-  assert.match(explorer, /tiktok: "followersTotal"/);
+  assert.match(explorer, /tiktok: "followersNet"/);
   assert.match(explorer, /x: "followersNet"/);
   assert.match(explorer, /aria-label="Plateforme du graphique"/);
   assert.match(explorer, /PLATFORM_ORDER\.map/);
@@ -102,7 +102,7 @@ test("keeps the audience curve clean and reveals the exact hovered value instant
   assert.match(chart, /useState\(\{ width: 940, height: 180 \}\)/);
   assert.match(chart, /const plotTop = 12/);
   assert.match(chart, /const plotBottom = height - 40/);
-  assert.match(chart, /Math\.max\(180, availableHeight\)/);
+  assert.match(chart, /Math\.max\(180, Math\.min\(360, availableHeight\)\)/);
   assert.match(styles, /\.main\.main-dashboard\s*\{[\s\S]*?padding-bottom:\s*8px/);
 
   // Les quatre filtres du graphe restent disponibles après l'amélioration du survol.

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("keeps follower values integral and lets the chart fill the remaining viewport", async () => {
+test("keeps follower values integral and fits the chart inside the remaining viewport", async () => {
   const [component, styles] = await Promise.all([
     readFile(new URL("../app/SocialOS.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
@@ -19,7 +19,7 @@ test("keeps follower values integral and lets the chart fill the remaining viewp
   assert.match(chart, /chartViewportRef/);
   assert.match(chart, /new ResizeObserver\(resizeChart\)/);
   assert.match(chart, /window\.innerHeight - viewport\.getBoundingClientRect\(\)\.top - 38/);
-  assert.match(chart, /Math\.max\(180, availableHeight\)/);
+  assert.match(chart, /Math\.max\(180, Math\.min\(360, availableHeight\)\)/);
   assert.match(chart, /style=\{\{ height: `\$\{height\}px` \}\}/);
 
   assert.match(formatters, /metric === "followersTotal"/);
@@ -40,4 +40,49 @@ test("keeps follower values integral and lets the chart fill the remaining viewp
   assert.match(styles, /\.audience-native-chart-tooltip-date\s*\{[\s\S]*?font-size:\s*8px/);
   assert.match(styles, /\.audience-native-chart-tooltip-value\s*\{[\s\S]*?font-size:\s*11px/);
   assert.match(styles, /\.audience-native-chart-heading strong\s*\{[\s\S]*?font-size:\s*clamp\(15px, 1\.35vw, 18px\)/);
+});
+
+test("syncs the clickable platform cards with an honest follower-change default", async () => {
+  const [component, styles] = await Promise.all([
+    readFile(new URL("../app/SocialOS.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+  const dashboard = component.slice(
+    component.indexOf("function AudienceDashboard"),
+    component.indexOf("type NativeAnalyticsMetricMeta"),
+  );
+  const explorer = component.slice(
+    component.indexOf("function AudienceAnalyticsExplorer"),
+    component.indexOf("function audienceMetricSeries"),
+  );
+
+  assert.match(dashboard, /useState<Platform>\("youtube"\)/);
+  assert.match(dashboard, /selectAudiencePlatform/);
+  assert.match(dashboard, /setRequestedMetric\(NATIVE_ANALYTICS_DEFAULT_METRIC\[platform\]\)/);
+  assert.match(dashboard, /<button[\s\S]*?audience-platform-card/);
+  assert.match(dashboard, /aria-controls="audience-explorer"/);
+  assert.match(dashboard, /aria-pressed=\{platform === activePlatform\}/);
+  assert.match(dashboard, /onClick=\{\(\) => selectAudiencePlatform\(platform\)\}/);
+  assert.match(dashboard, /platform === "instagram" \? "Nouveaux followers" : "Variation followers"/);
+  assert.match(dashboard, /platform === "instagram" \? null : growth\?\.followersDelta/);
+  assert.match(dashboard, /audienceMetricEndDate\([\s\S]*?followerChangeMetric/);
+  assert.match(dashboard, /nativeAnalyticsDailyForPeriod\([\s\S]*?followerChangeEndDate/);
+  assert.match(dashboard, /activePlatform=\{activePlatform\}/);
+  assert.match(dashboard, /onSelectPlatform=\{selectAudiencePlatform\}/);
+
+  assert.match(component, /youtube:\s*\[\s*"followersNet",\s*"followersTotal"/);
+  assert.match(component, /instagram:\s*\[\s*"newFollowers",\s*"followersTotal"/);
+  assert.match(component, /tiktok:\s*\[\s*"followersNet",\s*"followersTotal"/);
+  assert.match(component, /x:\s*\[\s*"followersNet",\s*"followersTotal"/);
+  assert.match(component, /youtube:\s*"followersNet"/);
+  assert.match(component, /instagram:\s*"newFollowers"/);
+  assert.match(component, /tiktok:\s*"followersNet"/);
+  assert.match(component, /x:\s*"followersNet"/);
+  assert.match(explorer, /availableMetrics\.includes\(requestedMetric\)/);
+  assert.match(explorer, /availableMetrics\[0\] \?\? null/);
+  assert.match(explorer, /onClick=\{\(\) => onSelectPlatform\(platform\)\}/);
+
+  assert.match(styles, /\.audience-platform-card\.active\s*\{/);
+  assert.match(styles, /\.audience-platform-card\.active::after\s*\{[\s\S]*?opacity:\s*1/);
+  assert.match(styles, /\.audience-platform-card:focus-visible\s*\{/);
 });

@@ -1744,8 +1744,17 @@ function AudienceDashboard({
   analytics: AudienceAnalytics | null;
 }) {
   const [periodKey, setPeriodKey] = useState<AudiencePeriodKey>("30d");
+  const [activePlatform, setActivePlatform] = useState<Platform>("youtube");
+  const [requestedMetric, setRequestedMetric] = useState<AudienceAnalyticsMetricKey>(
+    NATIVE_ANALYTICS_DEFAULT_METRIC.youtube,
+  );
   const [clientNow, setClientNow] = useState<string | null>(null);
   const period = audiencePeriod(periodKey);
+
+  const selectAudiencePlatform = useCallback((platform: Platform) => {
+    setActivePlatform(platform);
+    setRequestedMetric(NATIVE_ANALYTICS_DEFAULT_METRIC[platform]);
+  }, []);
 
   useEffect(() => {
     const refreshClock = () => setClientNow(new Date().toISOString());
@@ -1804,19 +1813,35 @@ function AudienceDashboard({
           const analyticsEndDate = audienceParisDay(
             analytics?.generatedAt ?? history?.generatedAt ?? new Date().toISOString(),
           );
-          const nativeDaily = analyticsPlatform
-            ? nativeAnalyticsDailyForPeriod(analyticsPlatform.daily, analyticsEndDate, period.days)
-            : [];
           const nativePeriodKey = NATIVE_PERIOD_BY_DASHBOARD_PERIOD[periodKey];
           const nativePeriod = analyticsPlatform && nativePeriodKey
             ? analyticsPlatform.periods[nativePeriodKey]
             : null;
+          const followerChangeMetric = NATIVE_ANALYTICS_DEFAULT_METRIC[platform];
+          const followerChangeEndDate = analyticsPlatform
+            ? audienceMetricEndDate(
+              followerChangeMetric,
+              analyticsPlatform.daily,
+              [],
+              nativePeriod,
+              analyticsEndDate,
+            )
+            : analyticsEndDate;
+          const nativeDaily = analyticsPlatform
+            ? nativeAnalyticsDailyForPeriod(
+              analyticsPlatform.daily,
+              followerChangeEndDate,
+              period.days,
+            )
+            : [];
           const nativeGrowth = nativeAnalyticsMetricSummary(
-            "followersNet",
+            followerChangeMetric,
             nativeDaily,
             nativePeriod,
           );
-          const followersDelta = nativeGrowth?.value ?? growth?.followersDelta ?? null;
+          const followersDelta = nativeGrowth?.value
+            ?? (platform === "instagram" ? null : growth?.followersDelta)
+            ?? null;
           const observedGrowthDays = growth
             ? elapsedCalendarDays(growth.from.capturedAt, growth.to.capturedAt)
             : null;
@@ -1831,7 +1856,15 @@ function AudienceDashboard({
             : null;
 
           return (
-            <article className={`audience-platform-card tone-${meta.tone}`} key={platform}>
+            <button
+              className={`audience-platform-card tone-${meta.tone} ${platform === activePlatform ? "active" : ""}`}
+              type="button"
+              aria-controls="audience-explorer"
+              aria-label={`Afficher ${meta.label} dans l’analyse détaillée`}
+              aria-pressed={platform === activePlatform}
+              onClick={() => selectAudiencePlatform(platform)}
+              key={platform}
+            >
               <header className="audience-platform-head">
                 <span className="audience-platform-logo" aria-hidden="true">
                   <img src={`platforms/${platform}.svg`} alt="" width="24" height="24" />
@@ -1857,7 +1890,7 @@ function AudienceDashboard({
 
               <div className="audience-kpi-row">
                 <div className="audience-kpi">
-                  <span>Évolution</span>
+                  <span>{platform === "instagram" ? "Nouveaux followers" : "Variation followers"}</span>
                   <strong className={followersDelta !== null && followersDelta < 0 ? "negative" : "positive"}>
                     {followersDelta !== null ? formatAudienceDelta(followersDelta) : "—"}
                   </strong>
@@ -1872,15 +1905,19 @@ function AudienceDashboard({
                   <small>{engagement ? `${engagement.sampleSize} posts` : period.label}</small>
                 </div>
               </div>
-            </article>
+            </button>
           );
         })}
       </div>
 
       <AudienceAnalyticsExplorer
+        activePlatform={activePlatform}
         analytics={analytics}
         clientNow={clientNow}
         history={history}
+        onSelectMetric={setRequestedMetric}
+        onSelectPlatform={selectAudiencePlatform}
+        requestedMetric={requestedMetric}
       />
     </section>
   );
@@ -2002,8 +2039,8 @@ const NATIVE_ANALYTICS_METRIC_META: Record<AudienceAnalyticsMetricKey, NativeAna
 
 const NATIVE_ANALYTICS_PRIORITY: Record<Platform, readonly AudienceAnalyticsMetricKey[]> = {
   youtube: [
-    "followersTotal",
     "followersNet",
+    "followersTotal",
     "contentViews",
     "watchTimeSeconds",
     "impressions",
@@ -2019,15 +2056,15 @@ const NATIVE_ANALYTICS_PRIORITY: Record<Platform, readonly AudienceAnalyticsMetr
     "engagements",
   ],
   tiktok: [
-    "followersTotal",
     "followersNet",
+    "followersTotal",
     "contentViews",
     "profileVisits",
     "engagements",
   ],
   x: [
-    "followersTotal",
     "followersNet",
+    "followersTotal",
     "impressions",
     "engagements",
     "profileVisits",
@@ -2037,7 +2074,7 @@ const NATIVE_ANALYTICS_PRIORITY: Record<Platform, readonly AudienceAnalyticsMetr
 const NATIVE_ANALYTICS_DEFAULT_METRIC: Record<Platform, AudienceAnalyticsMetricKey> = {
   youtube: "followersNet",
   instagram: "newFollowers",
-  tiktok: "followersTotal",
+  tiktok: "followersNet",
   x: "followersNet",
 };
 
@@ -2075,19 +2112,23 @@ type AudienceMetricSeriesPoint = {
 };
 
 function AudienceAnalyticsExplorer({
+  activePlatform,
   analytics,
   clientNow,
   history,
+  onSelectMetric,
+  onSelectPlatform,
+  requestedMetric,
 }: {
+  activePlatform: Platform;
   analytics: AudienceAnalytics | null;
   clientNow: string | null;
   history: AudienceHistory | null;
+  onSelectMetric: (metric: AudienceAnalyticsMetricKey) => void;
+  onSelectPlatform: (platform: Platform) => void;
+  requestedMetric: AudienceAnalyticsMetricKey;
 }) {
-  const [activePlatform, setActivePlatform] = useState<Platform>("youtube");
   const [chartPeriodKey, setChartPeriodKey] = useState<AudienceChartPeriodKey>("30d");
-  const [requestedMetric, setRequestedMetric] = useState<AudienceAnalyticsMetricKey>(
-    NATIVE_ANALYTICS_DEFAULT_METRIC.youtube,
-  );
   if (!analytics && !history) return null;
 
   const chartPeriod = AUDIENCE_CHART_PERIODS.find((option) => option.key === chartPeriodKey)
@@ -2148,7 +2189,11 @@ function AudienceAnalyticsExplorer({
     : null;
 
   return (
-    <section className={`audience-explorer tone-${meta.tone}`} aria-labelledby="audience-explorer-title">
+    <section
+      className={`audience-explorer tone-${meta.tone}`}
+      id="audience-explorer"
+      aria-labelledby="audience-explorer-title"
+    >
       <header className="audience-explorer-heading">
         <div>
           <span className="section-kicker">Analyse détaillée</span>
@@ -2174,10 +2219,7 @@ function AudienceAnalyticsExplorer({
                 className={platform === activePlatform ? "active" : ""}
                 type="button"
                 aria-pressed={platform === activePlatform}
-                onClick={() => {
-                  setActivePlatform(platform);
-                  setRequestedMetric(NATIVE_ANALYTICS_DEFAULT_METRIC[platform]);
-                }}
+                onClick={() => onSelectPlatform(platform)}
                 key={platform}
               >
                 <img src={`platforms/${platform}.svg`} alt="" width="20" height="20" />
@@ -2244,7 +2286,7 @@ function AudienceAnalyticsExplorer({
                   type="button"
                   aria-pressed={metric === activeMetric}
                   title={metricMeta.description}
-                  onClick={() => setRequestedMetric(metric)}
+                  onClick={() => onSelectMetric(metric)}
                   key={metric}
                 >
                   <span>{metricMeta.label}</span>
@@ -2481,7 +2523,7 @@ function AudienceNativeMetricChart({
       const availableHeight = Math.floor(window.innerHeight - viewport.getBoundingClientRect().top - 38);
       const height = window.innerWidth <= 900
         ? 180
-        : Math.max(180, availableHeight);
+        : Math.max(180, Math.min(360, availableHeight));
       setChartDimensions((current) => (
         current.width === width && current.height === height
           ? current
