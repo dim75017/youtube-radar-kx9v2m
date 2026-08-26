@@ -19,7 +19,7 @@ test("keeps follower values integral and fits the chart inside the remaining vie
   assert.match(chart, /chartViewportRef/);
   assert.match(chart, /new ResizeObserver\(resizeChart\)/);
   assert.match(chart, /window\.innerHeight - viewport\.getBoundingClientRect\(\)\.top - bottomReserve - 34/);
-  assert.match(chart, /Math\.max\(120, Math\.min\(280, availableHeight\)\)/);
+  assert.match(chart, /Math\.max\(80, Math\.min\(280, availableHeight\)\)/);
   assert.match(chart, /style=\{\{ height: `\$\{height\}px` \}\}/);
   assert.match(chart, /buildAudienceChartAxis\(paddedMinimum, paddedMaximum/);
   assert.match(chart, /const gridLines = axis\.ticks\.map/);
@@ -50,17 +50,19 @@ test("keeps follower values integral and fits the chart inside the remaining vie
   assert.match(styles, /\.audience-native-chart-tooltip-value\s*\{[\s\S]*?font-size:\s*11px/);
   assert.match(styles, /\.audience-native-chart-heading strong\s*\{[\s\S]*?font-size:\s*clamp\(15px, 1\.35vw, 18px\)/);
   assert.match(styles, /\.audience-dashboard-toolbar\s*\{[\s\S]*?margin-bottom:\s*12px/);
-  assert.match(styles, /\.audience-platform-grid\s*\{[\s\S]*?gap:\s*10px/);
-  assert.match(styles, /\.audience-explorer\s*\{[\s\S]*?margin-top:\s*12px[\s\S]*?padding:\s*12px 14px/);
+  assert.match(styles, /\.audience-explorer-summary\s*\{[\s\S]*?grid-template-columns:\s*minmax\(230px, 1\.25fr\) repeat\(3, minmax\(135px, 0\.8fr\)\)/);
+  assert.match(styles, /\.audience-explorer\s*\{[\s\S]*?margin-top:\s*0[\s\S]*?padding:\s*12px 14px/);
   assert.match(styles, /\.audience-native-chart-shell\s*\{[\s\S]*?margin-top:\s*8px/);
   assert.match(styles, /\.audience-demographics\s*\{[\s\S]*?margin-top:\s*14px[\s\S]*?padding:\s*14px 16px 16px/);
   assert.match(styles, /\.audience-demographic-card\s*\{[\s\S]*?min-height:\s*178px[\s\S]*?padding:\s*12px/);
   assert.match(styles, /\.audience-demographic-list li\s*\{[\s\S]*?min-height:\s*20px[\s\S]*?font-size:\s*clamp\(11px, 0\.78vw, 12px\)/);
   assert.match(styles, /\.audience-demographic-bar\s*\{[\s\S]*?height:\s*5px/);
-  assert.match(component, /bottomReserve=\{300\}/);
+  assert.match(component, /bottomReserve=\{370\}/);
+  assert.match(styles, /@media \(min-width: 901px\) and \(max-height: 940px\)/);
+  assert.match(styles, /@media \(min-width: 901px\) and \(max-height: 820px\)[\s\S]*?\.main\.main-dashboard\s*\{[\s\S]*?padding-bottom:\s*0/);
 });
 
-test("syncs the clickable platform cards with an honest follower-change default", async () => {
+test("syncs the single platform selector with the active account summary and follower-change default", async () => {
   const [component, styles] = await Promise.all([
     readFile(new URL("../app/SocialOS.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
@@ -79,16 +81,7 @@ test("syncs the clickable platform cards with an honest follower-change default"
   assert.match(dashboard, /aria-label="Période du tableau de bord"/);
   assert.match(dashboard, /selectAudiencePlatform/);
   assert.match(dashboard, /setRequestedMetric\(NATIVE_ANALYTICS_DEFAULT_METRIC\[platform\]\)/);
-  assert.match(dashboard, /<button[\s\S]*?audience-platform-card/);
-  assert.match(dashboard, /aria-controls="audience-explorer"/);
-  assert.match(dashboard, /aria-pressed=\{platform === activePlatform\}/);
-  assert.match(dashboard, /onClick=\{\(\) => selectAudiencePlatform\(platform\)\}/);
-  assert.match(dashboard, /platform === "instagram" \? "Nouveaux followers" : "Variation followers"/);
-  assert.match(dashboard, /platform === "instagram" \? null : growth\?\.followersDelta/);
-  assert.match(dashboard, /audienceMetricEndDate\([\s\S]*?followerChangeMetric/);
-  assert.match(dashboard, /nativeAnalyticsDailyForPeriod\([\s\S]*?followerChangeEndDate/);
-  assert.match(dashboard, /calculatePlatformEngagementWindow\([\s\S]*?period\.days/);
-  assert.match(dashboard, /followersDeltaPeriodLabel = nativeGrowth[\s\S]*?period\.label/);
+  assert.doesNotMatch(dashboard, /audience-platform-grid|audience-platform-card/);
   assert.match(dashboard, /activePlatform=\{activePlatform\}/);
   assert.match(dashboard, /onSelectPlatform=\{selectAudiencePlatform\}/);
   assert.match(dashboard, /periodKey=\{periodKey\}/);
@@ -101,11 +94,22 @@ test("syncs the clickable platform cards with an honest follower-change default"
   assert.match(component, /instagram:\s*"newFollowers"/);
   assert.match(component, /tiktok:\s*"followersNet"/);
   assert.match(component, /x:\s*"followersNet"/);
+  assert.equal((component.match(/aria-label="Plateforme du graphique"/g) ?? []).length, 1);
+  assert.equal((component.match(/className="audience-explorer-platform-tabs"/g) ?? []).length, 1);
+  assert.match(explorer, /aria-pressed=\{platform === activePlatform\}/);
   assert.match(explorer, /availableMetricWindows\.find\(\(window\) => window\.metric === requestedMetric\)/);
   assert.match(explorer, /onClick=\{\(\) => onSelectPlatform\(platform\)\}/);
+  assert.match(explorer, /className="audience-explorer-summary"/);
+  assert.match(explorer, /className="audience-explorer-profile"/);
+  assert.equal((explorer.match(/className="audience-explorer-summary-kpi"/g) ?? []).length, 3);
+  assert.match(explorer, /activePlatform === "instagram" \? "Nouveaux followers" : "Variation followers"/);
+  assert.match(explorer, /activePlatform === "instagram" \? null : observedFollowerGrowth\?\.followersDelta/);
+  assert.match(explorer, /calculatePlatformEngagementWindow\([\s\S]*?periodDays/);
+  assert.match(explorer, /audiencePointsForPeriod\([\s\S]*?periodDays/);
+  assert.match(explorer, /followersDeltaPeriodLabel = followerChangeSummary[\s\S]*?periodLabel/);
   assert.doesNotMatch(explorer, /const \[chartPeriodKey|setChartPeriodKey|Période du graphique/);
 
-  assert.match(styles, /\.audience-platform-card\.active\s*\{/);
-  assert.match(styles, /\.audience-platform-card\.active::after\s*\{[\s\S]*?opacity:\s*1/);
-  assert.match(styles, /\.audience-platform-card:focus-visible\s*\{/);
+  assert.match(styles, /\.audience-explorer-platform-tabs button\.active/);
+  assert.match(styles, /\.audience-explorer-platform-tabs button:focus-visible/);
+  assert.match(styles, /\.audience-explorer-summary-kpi\s*\{/);
 });

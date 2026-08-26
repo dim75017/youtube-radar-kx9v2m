@@ -137,25 +137,33 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(component, /Total followers/);
   assert.match(component, /Évolution/);
   assert.match(component, /Taux d’engagement/);
-  assert.match(component, /className="audience-platform-grid"/);
   const audienceDashboard = component.slice(
     component.indexOf("function AudienceDashboard"),
     component.indexOf("function formatAudienceFollowers"),
   );
+  const audienceDashboardShell = component.slice(
+    component.indexOf("function AudienceDashboard"),
+    component.indexOf("type NativeAnalyticsMetricMeta"),
+  );
   assert.match(audienceDashboard, /const \[periodKey, setPeriodKey\] = useState<AudienceChartPeriodKey>\("30d"\)/);
-  assert.match(audienceDashboard, /calculatePlatformEngagementWindow\([\s\S]*?period\.days/);
+  assert.doesNotMatch(audienceDashboardShell, /audience-platform-grid|audience-platform-card/);
+  assert.equal((audienceDashboard.match(/aria-label="Plateforme du graphique"/g) ?? []).length, 1);
+  assert.equal((audienceDashboard.match(/className="audience-explorer-platform-tabs"/g) ?? []).length, 1);
+  assert.match(audienceDashboard, /className="audience-explorer-summary"/);
+  assert.match(audienceDashboard, /className="audience-explorer-profile"/);
+  assert.equal((audienceDashboard.match(/className="audience-explorer-summary-kpi"/g) ?? []).length, 3);
+  assert.match(audienceDashboard, /calculatePlatformEngagementWindow\([\s\S]*?periodDays/);
   assert.match(audienceDashboard, /useState<string \| null>\(null\)/);
   assert.match(audienceDashboard, /setClientNow\(new Date\(\)\.toISOString\(\)\)/);
   assert.doesNotMatch(audienceDashboard, /Collecte planifiée/);
   assert.match(audienceDashboard, /audience-period-control/);
   assert.match(audienceDashboard, /audience-period-tabs/);
   assert.match(audienceDashboard, /aria-label="P.riode du tableau de bord"/);
-  assert.match(audienceDashboard, /audienceGrowthFromObservedPoints\(points\)/);
+  assert.match(audienceDashboard, /audienceGrowthFromObservedPoints\(observedFollowerPoints\)/);
   assert.match(
     audienceDashboard,
-    /audiencePointsForPeriod\(platformHistory, periodEndAt, period\.days\)/,
+    /audiencePointsForPeriod\([\s\S]*?periodDays/,
   );
-  assert.match(audienceDashboard, /periodEndAt = history\?\.generatedAt/);
   assert.match(audienceDashboard, /formatAudienceAge\(latestAgeDays\)/);
   assert.match(audienceDashboard, /<AudienceAnalyticsExplorer[\s\S]*?periodKey=\{periodKey\}/);
   assert.doesNotMatch(audienceDashboard, /Période du graphique|audience-chart-period-tabs|setChartPeriodKey/);
@@ -178,7 +186,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.equal((component.match(/<AudienceNativeMetricChart\b/g) ?? []).length, 1);
   assert.match(
     audienceDashboard,
-    /<img src=\{`platforms\/\$\{platform\}\.svg`\} alt="" width="24" height="24" \/>/,
+    /<img src=\{`platforms\/\$\{activePlatform\}\.svg`\} alt="" width="24" height="24" \/>/,
   );
   assert.doesNotMatch(audienceDashboard, /meta\.emoji/);
   assert.doesNotMatch(component, /Couverture maintenant|Analyse éditoriale|Posts à retenir|Comparaisons honnêtes/);
@@ -558,8 +566,8 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(styles, /\.post-details-modal/);
   assert.match(styles, /\.audience-period-control\s*\{/);
   assert.match(styles, /\.audience-period-tabs\s*\{/);
-  assert.match(styles, /\.audience-platform-logo\s*\{/);
-  assert.match(styles, /\.audience-platform-logo img\s*\{/);
+  assert.match(styles, /\.audience-explorer-profile-logo\s*\{/);
+  assert.match(styles, /\.audience-explorer-profile-logo img\s*\{/);
   assert.match(styles, /\.audience-explorer-platform-tabs/);
   assert.match(styles, /\.audience-explorer-metrics/);
   assert.match(styles, /\.audience-native-chart-viewport\s*\{[\s\S]*?overflow-x:\s*auto/);

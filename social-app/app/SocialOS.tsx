@@ -1761,10 +1761,6 @@ function AudienceDashboard({
     NATIVE_ANALYTICS_DEFAULT_METRIC.youtube,
   );
   const [clientNow, setClientNow] = useState<string | null>(null);
-  const period = AUDIENCE_CHART_PERIODS.find((option) => option.key === periodKey)
-    ?? AUDIENCE_CHART_PERIODS[0];
-  const calculatedAt = latestIsoTimestamp(analytics?.generatedAt, history?.generatedAt)
-    ?? "1970-01-01T00:00:00.000Z";
 
   const selectAudiencePlatform = useCallback((platform: Platform) => {
     setActivePlatform(platform);
@@ -1809,124 +1805,6 @@ function AudienceDashboard({
         </div>
       </div>
 
-      <div className="audience-platform-grid">
-        {PLATFORM_ORDER.map((platform) => {
-          const meta = PLATFORM_META[platform];
-          const platformHistory = history?.platforms[platform] ?? null;
-          const latest = platformHistory
-            ? latestAudienceObservation(platformHistory)
-            : null;
-          const engagement = calculatePlatformEngagementWindow(
-            platform,
-            posts,
-            latest,
-            calculatedAt,
-            period.days,
-          );
-          const periodEndAt = history?.generatedAt ?? null;
-          const points = audiencePointsForPeriod(platformHistory, periodEndAt, period.days);
-          const growth = audienceGrowthFromObservedPoints(points);
-          const analyticsPlatform = analytics?.platforms[platform] ?? null;
-          const analyticsEndDate = audienceParisDay(
-            analytics?.generatedAt ?? history?.generatedAt ?? new Date().toISOString(),
-          );
-          const nativePeriodKey = period.snapshotKey;
-          const nativePeriod = analyticsPlatform && nativePeriodKey
-            ? analyticsPlatform.periods[nativePeriodKey]
-            : null;
-          const followerChangeMetric = NATIVE_ANALYTICS_DEFAULT_METRIC[platform];
-          const followerChangeEndDate = analyticsPlatform
-            ? audienceMetricEndDate(
-              followerChangeMetric,
-              analyticsPlatform.daily,
-              [],
-              nativePeriod,
-              analyticsEndDate,
-            )
-            : analyticsEndDate;
-          const nativeDaily = analyticsPlatform
-            ? nativeAnalyticsDailyForPeriod(
-              analyticsPlatform.daily,
-              followerChangeEndDate,
-              period.days,
-            )
-            : [];
-          const nativeGrowth = nativeAnalyticsMetricSummary(
-            followerChangeMetric,
-            nativeDaily,
-            nativePeriod,
-          );
-          const followersDelta = nativeGrowth?.value
-            ?? (platform === "instagram" ? null : growth?.followersDelta)
-            ?? null;
-          const observedGrowthDays = growth
-            ? elapsedCalendarDays(growth.from.capturedAt, growth.to.capturedAt)
-            : null;
-          const followersDeltaPeriodLabel = nativeGrowth
-            ? period.label
-            : observedGrowthDays !== null
-              ? `${observedGrowthDays} jour${observedGrowthDays > 1 ? "s" : ""} observé${observedGrowthDays > 1 ? "s" : ""}`
-              : period.label;
-          const ageReferenceAt = clientNow ?? history?.generatedAt ?? null;
-          const latestAgeDays = latest && ageReferenceAt
-            ? elapsedCalendarDays(latest.capturedAt, ageReferenceAt)
-            : null;
-
-          return (
-            <button
-              className={`audience-platform-card tone-${meta.tone} ${platform === activePlatform ? "active" : ""}`}
-              type="button"
-              aria-controls="audience-explorer"
-              aria-label={`Afficher ${meta.label} dans l’analyse détaillée`}
-              aria-pressed={platform === activePlatform}
-              onClick={() => selectAudiencePlatform(platform)}
-              key={platform}
-            >
-              <header className="audience-platform-head">
-                <span className="audience-platform-logo" aria-hidden="true">
-                  <img src={`platforms/${platform}.svg`} alt="" width="24" height="24" />
-                </span>
-                <div>
-                  <span className="section-kicker">@{platform === "youtube" ? "LofiGirl" : "lofigirl"}</span>
-                  <h3>{meta.label}</h3>
-                </div>
-                <time
-                  className={latestAgeDays !== null && latestAgeDays > 1 ? "stale" : ""}
-                  dateTime={latest?.capturedAt}
-                >
-                  {latest
-                    ? `${formatAudienceDate(latest.capturedAt)} · ${formatAudienceAge(latestAgeDays)}`
-                    : "En attente"}
-                </time>
-              </header>
-
-              <div className="audience-total-block">
-                <span>Total followers</span>
-                <strong>{latest ? formatAudienceFollowers(latest) : "—"}</strong>
-              </div>
-
-              <div className="audience-kpi-row">
-                <div className="audience-kpi">
-                  <span>{platform === "instagram" ? "Nouveaux followers" : "Variation followers"}</span>
-                  <strong className={followersDelta !== null && followersDelta < 0 ? "negative" : "positive"}>
-                    {followersDelta !== null ? formatAudienceDelta(followersDelta) : "—"}
-                  </strong>
-                  <small>{followersDeltaPeriodLabel}</small>
-                </div>
-                <div
-                  className="audience-kpi"
-                  title={`Moyenne des likes et commentaires des posts mesurables sur ${period.label.toLowerCase()}, divisée par le nombre actuel de followers.`}
-                >
-                  <span>Taux d’engagement</span>
-                  <strong>{engagement ? formatAudiencePercent(engagement.ratePercent) : "—"}</strong>
-                  <small>{engagement ? `${engagement.sampleSize} posts` : period.label}</small>
-                </div>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-
       <AudienceAnalyticsExplorer
         activePlatform={activePlatform}
         analytics={analytics}
@@ -1936,6 +1814,7 @@ function AudienceDashboard({
         onSelectMetric={setRequestedMetric}
         onSelectPlatform={selectAudiencePlatform}
         periodKey={periodKey}
+        posts={posts}
         requestedMetric={requestedMetric}
       />
     </section>
@@ -2129,6 +2008,7 @@ function AudienceAnalyticsExplorer({
   onSelectMetric,
   onSelectPlatform,
   periodKey,
+  posts,
   requestedMetric,
 }: {
   activePlatform: Platform;
@@ -2139,6 +2019,7 @@ function AudienceAnalyticsExplorer({
   onSelectMetric: (metric: AudienceAnalyticsMetricKey) => void;
   onSelectPlatform: (platform: Platform) => void;
   periodKey: AudienceChartPeriodKey;
+  posts: readonly SocialPost[];
   requestedMetric: AudienceAnalyticsMetricKey;
 }) {
   if (!analytics && !history) return null;
@@ -2153,6 +2034,7 @@ function AudienceAnalyticsExplorer({
   const analyticsPlatform = analytics?.platforms[activePlatform] ?? null;
   const demographicPlatform = demographics?.platforms[activePlatform] ?? null;
   const platformHistory = history?.platforms[activePlatform] ?? null;
+  const latestHistory = platformHistory ? latestAudienceObservation(platformHistory) : null;
   const allDaily = analyticsPlatform?.daily ?? [];
   const allHistoryPoints = audienceHistoryPointsForPeriod(
     platformHistory,
@@ -2204,7 +2086,39 @@ function AudienceAnalyticsExplorer({
   const activeSeries = activeWindow?.series ?? [];
   const activeSummary = activeWindow?.summary ?? null;
   const activeMeta = activeMetric ? NATIVE_ANALYTICS_METRIC_META[activeMetric] : null;
-  const latestHistory = platformHistory ? latestAudienceObservation(platformHistory) : null;
+  const engagement = calculatePlatformEngagementWindow(
+    activePlatform,
+    posts,
+    latestHistory,
+    generatedAt,
+    periodDays,
+  );
+  const observedFollowerPoints = audiencePointsForPeriod(
+    platformHistory,
+    history?.generatedAt ?? null,
+    periodDays,
+  );
+  const observedFollowerGrowth = audienceGrowthFromObservedPoints(observedFollowerPoints);
+  const followerChangeSummary = metricWindows.find(
+    (window) => window.metric === NATIVE_ANALYTICS_DEFAULT_METRIC[activePlatform],
+  )?.summary ?? null;
+  const followersDelta = followerChangeSummary?.value
+    ?? (activePlatform === "instagram" ? null : observedFollowerGrowth?.followersDelta)
+    ?? null;
+  const observedGrowthDays = observedFollowerGrowth
+    ? elapsedCalendarDays(
+      observedFollowerGrowth.from.capturedAt,
+      observedFollowerGrowth.to.capturedAt,
+    )
+    : null;
+  const followersDeltaPeriodLabel = followerChangeSummary
+    ? periodLabel
+    : observedGrowthDays !== null
+      ? `${observedGrowthDays} jour${observedGrowthDays > 1 ? "s" : ""} observé${observedGrowthDays > 1 ? "s" : ""}`
+      : periodLabel;
+  const latestAgeDays = latestHistory
+    ? elapsedCalendarDays(latestHistory.capturedAt, clientNow ?? generatedAt)
+    : null;
   const latestUpdateAt = latestIsoTimestamp(
     analyticsPlatform?.lastSuccessfulImportAt,
     latestHistory?.capturedAt,
@@ -2256,6 +2170,48 @@ function AudienceAnalyticsExplorer({
 
       </div>
 
+      <div className="audience-explorer-summary" aria-label={`Synthèse ${meta.label}`}>
+        <div className="audience-explorer-profile">
+          <span className="audience-explorer-profile-logo" aria-hidden="true">
+            <img src={`platforms/${activePlatform}.svg`} alt="" width="24" height="24" />
+          </span>
+          <div>
+            <span className="section-kicker">
+              @{activePlatform === "youtube" ? "LofiGirl" : "lofigirl"}
+            </span>
+            <h3>{meta.label}</h3>
+          </div>
+          <time
+            className={latestAgeDays !== null && latestAgeDays > 1 ? "stale" : ""}
+            dateTime={latestHistory?.capturedAt}
+          >
+            {latestHistory
+              ? `${formatAudienceDate(latestHistory.capturedAt)} · ${formatAudienceAge(latestAgeDays)}`
+              : "En attente"}
+          </time>
+        </div>
+
+        <div className="audience-explorer-summary-kpi">
+          <span>Total followers</span>
+          <strong>{latestHistory ? formatAudienceFollowers(latestHistory) : "—"}</strong>
+        </div>
+        <div className="audience-explorer-summary-kpi">
+          <span>{activePlatform === "instagram" ? "Nouveaux followers" : "Variation followers"}</span>
+          <strong className={followersDelta !== null && followersDelta < 0 ? "negative" : "positive"}>
+            {followersDelta !== null ? formatAudienceDelta(followersDelta) : "—"}
+          </strong>
+          <small>{followersDeltaPeriodLabel}</small>
+        </div>
+        <div
+          className="audience-explorer-summary-kpi"
+          title={`Moyenne des likes et commentaires des posts mesurables sur ${periodLabel.toLowerCase()}, divisée par le nombre actuel de followers.`}
+        >
+          <span>Taux d’engagement</span>
+          <strong>{engagement ? formatAudiencePercent(engagement.ratePercent) : "—"}</strong>
+          <small>{engagement ? `${engagement.sampleSize} posts` : periodLabel}</small>
+        </div>
+      </div>
+
       {availableMetrics.length > 0 && activeMetric && activeMeta && activeSummary ? (
         <>
           <div
@@ -2297,7 +2253,7 @@ function AudienceAnalyticsExplorer({
 
             <AudienceNativeMetricChart
               key={`${activePlatform}:${activeMetric}:${periodKey}:${endDate}`}
-              bottomReserve={300}
+              bottomReserve={370}
               endDate={endDate}
               metric={activeMetric}
               periodDays={periodDays}
@@ -2680,7 +2636,7 @@ function AudienceNativeMetricChart({
       );
       const height = window.innerWidth <= 900
         ? 180
-        : Math.max(120, Math.min(280, availableHeight));
+        : Math.max(80, Math.min(280, availableHeight));
       setChartDimensions((current) => (
         current.width === width && current.height === height
           ? current

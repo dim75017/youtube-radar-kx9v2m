@@ -30,6 +30,13 @@ test("validates the closed public demographic snapshot", async () => {
     "genders",
   ]);
   assert.equal(snapshot.platforms.youtube.genders.entries[0].share, 0.303);
+  const youtubeCountries = snapshot.platforms.youtube.countries.entries;
+  assert.equal(youtubeCountries.length, 10);
+  assert.ok(youtubeCountries.every((entry) => entry.countryCode !== null));
+  assert.deepEqual(
+    youtubeCountries.map((entry) => entry.countryCode),
+    ["US", "BR", "IN", "FR", "CA", "GB", "RU", "DE", "JP", "ID"],
+  );
   assert.equal(snapshot.platforms.instagram.ages.entries[1].share, 0.438);
   assert.equal(snapshot.platforms.tiktok.countries.entries.at(-1).countryCode, null);
   assert.equal(snapshot.platforms.x.status, "unavailable");

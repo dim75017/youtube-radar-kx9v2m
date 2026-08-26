@@ -17,7 +17,7 @@ test("consolidates audience analytics into one truthful selectable chart", async
   );
   const toolbar = dashboard.slice(
     dashboard.indexOf('className="audience-dashboard-toolbar"'),
-    dashboard.indexOf('className="audience-platform-grid"'),
+    dashboard.indexOf("<AudienceAnalyticsExplorer"),
   );
 
   assert.match(component, /audienceAnalytics\?: AudienceAnalytics \| null/);
@@ -30,6 +30,8 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(explorer, /tiktok: "followersNet"/);
   assert.match(explorer, /x: "followersNet"/);
   assert.match(explorer, /aria-label="Plateforme du graphique"/);
+  assert.equal((component.match(/aria-label="Plateforme du graphique"/g) ?? []).length, 1);
+  assert.equal((component.match(/className="audience-explorer-platform-tabs"/g) ?? []).length, 1);
   assert.match(explorer, /PLATFORM_ORDER\.map/);
   assert.match(explorer, /aria-pressed=\{platform === activePlatform\}/);
   assert.match(explorer, /const AUDIENCE_CHART_PERIODS = \[/);
@@ -66,10 +68,17 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.doesNotMatch(component, /function AudienceNativePlatformCard/);
   assert.doesNotMatch(component, /audience-native-platform-grid/);
   assert.doesNotMatch(component, /audience-evolution-block/);
+  assert.doesNotMatch(dashboard, /audience-platform-grid|audience-platform-card/);
   assert.doesNotMatch(dashboard, /Collecte planifiée/);
-  assert.match(dashboard, /calculatePlatformEngagementWindow\([\s\S]*?period\.days/);
-  assert.match(dashboard, /audiencePointsForPeriod\(platformHistory, periodEndAt, period\.days\)/);
-  assert.match(dashboard, /nativeAnalyticsDailyForPeriod\([\s\S]*?period\.days/);
+  assert.match(explorer, /className="audience-explorer-summary"/);
+  assert.match(explorer, /className="audience-explorer-profile"/);
+  assert.equal((explorer.match(/className="audience-explorer-summary-kpi"/g) ?? []).length, 3);
+  assert.match(explorer, /Total followers/);
+  assert.match(explorer, /activePlatform === "instagram" \? "Nouveaux followers" : "Variation followers"/);
+  assert.match(explorer, /Taux d’engagement/);
+  assert.match(explorer, /calculatePlatformEngagementWindow\([\s\S]*?periodDays/);
+  assert.match(explorer, /audiencePointsForPeriod\([\s\S]*?periodDays/);
+  assert.match(explorer, /nativeAnalyticsDailyForPeriod\([\s\S]*?periodDays/);
 
   assert.match(explorer, /function audienceMetricSeries/);
   assert.match(explorer, /function audienceMetricEndDate/);
@@ -85,17 +94,17 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(explorer, /Données réelles · jours absents non reliés/);
   assert.doesNotMatch(explorer, /fillMissing|interpolate|interpolation linéaire/i);
 
-  assert.match(styles, /\.audience-platform-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(4/);
   assert.match(styles, /\.main\.main-dashboard\s*\{[\s\S]*?padding-bottom:\s*8px/);
   assert.match(styles, /\.audience-dashboard-toolbar\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) auto/);
   assert.match(styles, /\.audience-period-control\s*\{[\s\S]*?justify-content:\s*flex-end/);
   assert.match(styles, /\.audience-period-tabs/);
   assert.match(styles, /\.audience-explorer-platform-tabs/);
+  assert.match(styles, /\.audience-explorer-summary\s*\{[\s\S]*?grid-template-columns:\s*minmax\(230px, 1\.25fr\) repeat\(3, minmax\(135px, 0\.8fr\)\)/);
+  assert.match(styles, /\.audience-explorer-summary-kpi\s*\{/);
   assert.match(styles, /\.audience-explorer-metrics/);
   assert.match(styles, /\.audience-native-chart-empty,[\s\S]*?min-height:\s*150px/);
   assert.match(styles, /\.audience-native-chart-viewport\s*\{[\s\S]*?overflow-x:\s*auto/);
-  assert.match(styles, /\.audience-demographics-grid\s*\{[\s\S]*?grid-template-columns:\s*1\.12fr 1fr 0\.84fr/);
-  assert.match(styles, /@media \(max-width: 640px\)[\s\S]*?\.audience-platform-grid/);
+  assert.match(styles, /\.audience-demographics-grid\s*\{[\s\S]*?grid-template-columns:\s*1\.35fr 1fr 0\.75fr/);
   assert.doesNotMatch(styles, /\.audience-chart-viewport|\.audience-native-platform-grid/);
 });
 
@@ -137,7 +146,7 @@ test("keeps the audience curve clean and reveals the exact hovered value instant
   assert.match(chart, /const plotTop = 12/);
   assert.match(chart, /const plotBottom = height - 40/);
   assert.match(chart, /bottomReserve/);
-  assert.match(chart, /Math\.max\(120, Math\.min\(280, availableHeight\)\)/);
+  assert.match(chart, /Math\.max\(80, Math\.min\(280, availableHeight\)\)/);
   assert.match(styles, /\.main\.main-dashboard\s*\{[\s\S]*?padding-bottom:\s*8px/);
 
   // Les cinq filtres exacts du graphe restent disponibles après l'amélioration du survol.
@@ -184,6 +193,7 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(explorer, /55–64 et 65\+ regroupés dans 55\+/);
   assert.match(styles, /\.audience-demographic-card\.kind-ages \.audience-demographic-list\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
   assert.doesNotMatch(styles, /\.audience-demographic-card\.kind-ages \.audience-demographic-list\s*\{[^}]*repeat\(2/);
+  assert.match(styles, /\.audience-demographic-card\.kind-countries \.audience-demographic-list\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.audience-demographics-grid\s*\{[\s\S]*?repeat\(2/);
 });
 
@@ -255,7 +265,7 @@ test("uses the native daily Instagram follows series as the default Instagram cu
   );
   assert.match(
     component,
-    /elapsedCalendarDays\(growth\.from\.capturedAt, growth\.to\.capturedAt\)/,
+    /elapsedCalendarDays\(\s*observedFollowerGrowth\.from\.capturedAt,\s*observedFollowerGrowth\.to\.capturedAt/,
   );
   assert.match(component, /jour\$\{observedGrowthDays > 1 \? "s" : ""\} observé/);
 });

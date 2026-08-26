@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-26T10:25:00.000Z",
+  "generatedAt": "2026-08-26T13:39:50.685Z",
   "platforms": {
     "youtube": {
       "profileUrl": "https://www.youtube.com/@LofiGirl",
@@ -11,13 +11,18 @@
           { "key": "brazil", "label": "Brésil", "share": 0.053, "countryCode": "BR" },
           { "key": "india", "label": "Inde", "share": 0.045, "countryCode": "IN" },
           { "key": "france", "label": "France", "share": 0.033, "countryCode": "FR" },
-          { "key": "canada", "label": "Canada", "share": 0.031, "countryCode": "CA" }
+          { "key": "canada", "label": "Canada", "share": 0.031, "countryCode": "CA" },
+          { "key": "united_kingdom", "label": "Royaume-Uni", "share": 0.029, "countryCode": "GB" },
+          { "key": "russia", "label": "Russie", "share": 0.029, "countryCode": "RU" },
+          { "key": "germany", "label": "Allemagne", "share": 0.028, "countryCode": "DE" },
+          { "key": "japan", "label": "Japon", "share": 0.026, "countryCode": "JP" },
+          { "key": "indonesia", "label": "Indonésie", "share": 0.018, "countryCode": "ID" }
         ],
         "provenance": {
           "provider": "youtube-studio",
-          "sourceUrl": "https://studio.youtube.com/artist/a_lcagLDIDJj5/analytics/tab-build_audience/period-default/total_reach-all?theme=dark",
-          "collectedAt": "2026-08-26T10:24:57.000Z",
-          "basis": "native-audience-dashboard",
+          "sourceUrl": "https://studio.youtube.com/artist/a_lcagLDIDJj5/analytics/tab-build_audience/period-default/total_reach-all/explore?theme=dark&entity_type=ARTIST&entity_id=a_lcagLDIDJj5&time_period=4_weeks&total_reach_state=all&explore_type=TABLE_AND_CHART&metric=EXTERNAL_VIEWS&granularity=DAY&t_metrics=EXTERNAL_VIEWS&t_metrics=AVERAGE_WATCH_TIME&t_metrics=EXTERNAL_WATCH_TIME&dimension=COUNTRY&o_column=EXTERNAL_VIEWS&o_direction=ANALYTICS_ORDER_DIRECTION_DESC",
+          "collectedAt": "2026-08-26T13:39:50.685Z",
+          "basis": "native-audience-advanced-report-views",
           "periodLabel": "28 derniers jours"
         }
       },
