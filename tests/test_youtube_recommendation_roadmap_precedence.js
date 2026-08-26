@@ -136,6 +136,7 @@ const context = {
   }),
   recoDailyMeta: () => null,
   recoSharedStateHydrated: () => true,
+  recoSharedStateNetworkReady: () => true,
   recoSharedStateRevision: () => 0,
   recoReviewedIdsSince: () => [],
   rememberRecoIds: history => history,

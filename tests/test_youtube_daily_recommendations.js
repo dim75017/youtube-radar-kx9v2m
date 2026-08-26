@@ -48,6 +48,8 @@ function makeContext(recos, stored, ownedRows, pool, dateCtor = Date, sharedHydr
     isRefused: value => /^-/.test(value || ''),
     recommendationRoadmapEntry: () => null,
     sharedRecommendationStateHydrated: () => sharedHydration.ready,
+    sharedRecommendationStateNetworkReady: () => sharedHydration.networkReady == null ? sharedHydration.ready : sharedHydration.networkReady,
+    sharedRecommendationStateRevision: () => sharedHydration.revision || 0,
     sharedRecommendationReviewedIdsSince: ids => (sharedHydration.reviewedIds || []).filter(id => ids.includes(id)),
     setActiveContinuousRecommendationVariants: () => {},
     rerenderRecos: () => { rerenders += 1; },
@@ -650,7 +652,7 @@ assert.ok(repairedLegacyHydration.every(row => !row.valid),
 // state lands, rebuild it once from the remaining qualified reserve instead
 // of freezing the 50-card queue at 22 visible cards. After that one rebuild,
 // decisions made during the actual review must retain the finite-queue rule.
-const hydrationState = {ready: false};
+const hydrationState = {ready: false, networkReady: false};
 const hydrationRecos = Array.from({length: 130}, (_, index) => ({
   n: -8000 - index,
   title: `Hydration race concept ${index + 1}`,
@@ -679,6 +681,7 @@ assert.equal(provisionalHydrationBatch.length, 50,
 const hydratedVetoIds = new Set(provisionalHydrationBatch.slice(0, 28).map(row => row.n));
 hydrationRecos.filter(row => hydratedVetoIds.has(row.n)).forEach(row => { row.valid = '-'; });
 hydrationState.ready = true;
+hydrationState.networkReady = true;
 const finalizedHydrationBatch = hydrationContext.dailyRecommendationSet();
 assert.equal(finalizedHydrationBatch.length, 50,
   'the first shared-state hydration replaces a stale 22-card remainder with a complete qualified batch');
@@ -695,7 +698,7 @@ assert.deepEqual(
   'the remaining finalized cards keep their order after a genuine decision',
 );
 
-const inFlightHydrationState = {ready: false, reviewedIds: []};
+const inFlightHydrationState = {ready: false, networkReady: false, reviewedIds: []};
 const inFlightHydrationRecos = hydrationRecos.map((row, index) => Object.assign({}, row, {
   n: -9000 - index,
   valid: '',
@@ -718,6 +721,7 @@ inFlightProvisional.slice(0, 28).forEach(row => {
   inFlightHydrationRecos.find(candidate => candidate.n === row.n).valid = '-';
 });
 inFlightHydrationState.ready = true;
+inFlightHydrationState.networkReady = true;
 const inFlightFinalized = inFlightHydrationContext.dailyRecommendationSet();
 assert.equal(inFlightFinalized.length, 49,
   'a decision made during hydration is counted once instead of being silently replaced');
@@ -728,6 +732,37 @@ inFlightHydrationRecos.find(row => row.n === reviewedDuringHydration).valid = ''
 inFlightHydrationContext.invalidateRecommendationDerivedData();
 assert.equal(inFlightHydrationContext.dailyRecommendationSet().length, 50,
   'restoring an in-flight decision returns its original slot without drawing a new candidate');
+
+// A cache/offline fallback is not the same as a confirmed network snapshot.
+// Even when the later server revision is newer than the lot (for example due
+// to an unrelated mutation), the first successful network response must still
+// repair historical exclusions that would otherwise leave only 22 cards.
+const delayedNetworkState = {ready: true, networkReady: false, revision: 1000, reviewedIds: []};
+const delayedNetworkRecos = hydrationRecos.map((row, index) => Object.assign({}, row, {
+  n: -10000 - index,
+  valid: '',
+  _topicKey: `delayed network topic ${index + 1}`,
+  _conceptFamily: `delayed-network-family-${index + 1}`,
+}));
+const delayedNetworkContext = makeContext(
+  delayedNetworkRecos,
+  new Map(),
+  [],
+  undefined,
+  Date,
+  delayedNetworkState,
+);
+const cachedFallbackBatch = delayedNetworkContext.dailyRecommendationSet();
+cachedFallbackBatch.slice(0, 28).forEach(row => {
+  delayedNetworkRecos.find(candidate => candidate.n === row.n).valid = '-';
+});
+delayedNetworkState.networkReady = true;
+delayedNetworkState.revision = Date.now() + 60_000;
+const delayedNetworkFinalized = delayedNetworkContext.dailyRecommendationSet();
+assert.equal(delayedNetworkFinalized.length, 50,
+  'the first late network confirmation repairs 22 cards even when its global revision is newer than the lot');
+assert.ok(delayedNetworkFinalized.every(row => !row.valid),
+  'the late-network rebuild keeps every historical exclusion out of the repaired lot');
 
 const untouchedRecos = Array.from({length: 50}, (_, index) => ({
   n: 6000 + index,
