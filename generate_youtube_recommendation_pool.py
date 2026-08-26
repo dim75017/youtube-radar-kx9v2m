@@ -2668,6 +2668,26 @@ def write_ledger_manifest(ledger_dir: Path, *, generated_ms: int, source_t: int)
     }
     ledger_dir.mkdir(parents=True, exist_ok=True)
     target = ledger_dir / "manifest.json"
+    if target.exists():
+        try:
+            previous = json.loads(target.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            previous = None
+        if isinstance(previous, dict) and all(
+            previous.get(field) == manifest.get(field)
+            for field in (
+                "schema",
+                "generatorVersion",
+                "sourceT",
+                "count",
+                "shards",
+                "revision",
+            )
+        ):
+            # The timestamp describes the latest material ledger change, not a
+            # scheduler heartbeat. Preserving the existing manifest keeps a
+            # same-day refresh byte-for-byte idempotent.
+            return previous
     temporary = target.with_name(target.name + ".tmp")
     temporary.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     temporary.replace(target)
@@ -2975,7 +2995,13 @@ def sync_recommendation_reservoir(
         "items": selected,
     }
     payload["buildId"] = _build_id(payload)
-    _write_pool_payload(payload, output)
+    # A workflow heartbeat later in the same Paris day must still report that
+    # it appended nothing, while leaving the published artifact untouched.
+    # buildId covers the source, feedback, model, ledger, epoch and projected
+    # IDs, so equality means the browser-visible recommendation state is
+    # identical even though this call has a newer wall-clock timestamp.
+    if str(previous_payload.get("buildId") or "") != payload["buildId"]:
+        _write_pool_payload(payload, output)
     return payload
 
 

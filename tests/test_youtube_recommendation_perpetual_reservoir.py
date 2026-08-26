@@ -45,6 +45,13 @@ class PerpetualRecommendationReservoirTests(unittest.TestCase):
             root = Path(folder)
             first = self.sync(root, generated_ms=self.day_one)
             first_entries = load_recommendation_ledger(root / "ledger")
+            first_pool_bytes = (root / "pool.js").read_bytes()
+            first_manifest_bytes = (root / "ledger" / "manifest.json").read_bytes()
+            first_shard_bytes = {
+                shard.relative_to(root / "ledger").as_posix(): shard.read_bytes()
+                for shard in sorted((root / "ledger" / "shards").glob("*.jsonl"))
+            }
+            self.assertTrue(first_shard_bytes, "the first cohort must be persisted in at least one ledger shard")
 
             self.assertGreaterEqual(
                 sum(int(entry["item"].get("score") or 0) >= DAILY_RECOMMENDATION_SCORE_FLOOR for entry in first_entries),
@@ -63,6 +70,24 @@ class PerpetualRecommendationReservoirTests(unittest.TestCase):
                 "same inputs and the same daily generation epoch must reproduce the same projection",
             )
             self.assertEqual(same_day_entries, first_entries)
+            self.assertEqual(
+                (root / "pool.js").read_bytes(),
+                first_pool_bytes,
+                "an idempotent same-day sync must preserve the browser pool byte for byte",
+            )
+            self.assertEqual(
+                (root / "ledger" / "manifest.json").read_bytes(),
+                first_manifest_bytes,
+                "an idempotent same-day sync must preserve the ledger manifest byte for byte",
+            )
+            self.assertEqual(
+                {
+                    shard.relative_to(root / "ledger").as_posix(): shard.read_bytes()
+                    for shard in sorted((root / "ledger" / "shards").glob("*.jsonl"))
+                },
+                first_shard_bytes,
+                "an idempotent same-day sync must preserve every append-only shard byte for byte",
+            )
 
             following_day = self.sync(root, generated_ms=self.day_one + DAY_MS)
             following_entries = load_recommendation_ledger(root / "ledger")
