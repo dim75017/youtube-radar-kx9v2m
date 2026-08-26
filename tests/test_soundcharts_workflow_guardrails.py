@@ -90,8 +90,10 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("git add -A --", self.workflow)
         self.assertIn("Spotify_Performance_tracks", self.workflow)
 
-    def test_complete_sync_runs_daily_without_cancelling_a_live_run(self):
+    def test_quota_bounded_maintenance_runs_daily_without_cancelling_a_live_run(self):
         self.assertIn("- cron: '17 10 * * *'", self.workflow)
+        self.assertIn('scope="maintenance"', self.workflow)
+        self.assertIn('expansion_requests="0"', self.workflow)
         self.assertNotIn("2-57/5", self.workflow)
         self.assertIn("cancel-in-progress: false", self.workflow)
 
@@ -156,10 +158,39 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
             self.workflow,
         )
 
+    def test_maintenance_never_repeats_completed_discovery_or_pool_scans(self):
+        paid_lanes = (
+            (
+                "Refresh playlist follower history every 24 hours",
+                "Refresh published playlist covers from Soundcharts",
+            ),
+            (
+                "Discover tracks and artist catalogues from editorial playlists",
+                "Discover a rotating batch of independent background playlists",
+            ),
+            (
+                "Discover a rotating batch of independent background playlists",
+                "Discover every Dark Ambient playlist and their artist catalogues",
+            ),
+            (
+                "Classify new direct and playlist tracks in every catalogue refresh",
+                "Expand and measure the target instrumental pool",
+            ),
+            (
+                "Expand and measure the target instrumental pool",
+                "Refresh the complete performance artist catalogue every week",
+            ),
+        )
+        for start_name, end_name in paid_lanes:
+            section = self.workflow[
+                self.workflow.index(start_name) : self.workflow.index(end_name)
+            ]
+            self.assertNotIn("scope == 'maintenance'", section, start_name)
+
     def test_full_sync_refreshes_each_dashboard_source_and_daily_playlist_followers(self):
         self.assertIn("full_sync", self.workflow)
-        self.assertIn("Refresh adaptive performance track coverage every 24 hours", self.workflow)
-        self.assertIn("Refresh the complete performance artist catalogue every 24 hours", self.workflow)
+        self.assertIn("Refresh adaptive priority and rotating track coverage every 24 hours", self.workflow)
+        self.assertIn("Refresh the complete performance artist catalogue every week", self.workflow)
         self.assertIn("Refresh playlist follower history every 24 hours", self.workflow)
         self.assertIn("playlist_followers_due", self.workflow)
         self.assertIn(
@@ -203,28 +234,34 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         activation = self.workflow.index("Activate snapshot only after remote validation")
         self.assertIn("Spotify_Selection_Contacts_data.js", self.workflow[activation:])
 
-    def test_scheduled_rebaseline_refreshes_complete_performance_catalogue_once_due(self):
+    def test_scheduled_maintenance_fits_the_developer_plan(self):
         self.assertIn('performance_catalogue_due="false"', self.workflow)
-        self.assertIn("is_due('tracks_catalogue_at')", self.workflow)
-        self.assertIn("is_due('artists_catalogue_at')", self.workflow)
-        self.assertIn("dt.timedelta(hours=24)", self.workflow)
-        self.assertIn('performance_artist_data_cap="15000"', self.workflow)
-        self.assertIn('performance_track_data_cap="35000"', self.workflow)
+        self.assertIn('scope="maintenance"', self.workflow)
+        self.assertIn('performance_artist_data_cap="12000"', self.workflow)
+        self.assertIn('performance_track_data_cap="6000"', self.workflow)
+        self.assertIn('full_sync_track_data_cap="35000"', self.workflow)
+        self.assertIn("dt.timedelta(hours=156)", self.workflow)
         self.assertIn('playlist_data_cap="3000"', self.workflow)
         self.assertIn('"$FRESHNESS_GATE" == "true"', self.workflow)
         self.assertIn('performance_tracks_due="true"', self.workflow)
-        self.assertIn('performance_artists_due="true"', self.workflow)
-        self.assertIn('--target spotify_followers --print-due', self.workflow)
         self.assertIn(
-            "steps.plan.outputs.scope == 'strict_rebaseline' && "
+            "steps.plan.outputs.scope == 'maintenance' && "
             "steps.plan.outputs.performance_artists_due == 'true'",
             self.workflow,
         )
         self.assertIn(
-            "steps.plan.outputs.scope == 'strict_rebaseline' && "
+            "steps.plan.outputs.scope == 'maintenance' && "
             "steps.plan.outputs.performance_tracks_due == 'true'",
             self.workflow,
         )
+        maintenance_start = self.workflow.index('if [[ "$scope" == "maintenance" ]]')
+        strict_watchdog = self.workflow.index(
+            'elif [[ "${{ github.event_name }}" == "workflow_dispatch"',
+            maintenance_start,
+        )
+        maintenance_plan = self.workflow[maintenance_start:strict_watchdog]
+        self.assertNotIn("spotify_followers", maintenance_plan)
+        self.assertIn('expansion_requests="0"', self.workflow)
         self.assertEqual(self.workflow.count("--include-performance-catalogue"), 2)
         self.assertIn("--browse-catalogue Spotify_Browse_Catalogue_data.js", self.workflow)
         self.assertIn('performance_track_data_cap="$REQUESTED_MAX_REQUESTS"', self.workflow)

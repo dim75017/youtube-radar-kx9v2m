@@ -50,7 +50,7 @@ TARGETS: dict[str, Target] = {
         "spotify_core",
         "refresh-soundcharts.yml",
         180,
-        {"scope": "strict_rebaseline", "max_requests": "6000", "freshness_gate": "true"},
+        {"scope": "maintenance", "max_requests": "6000", "freshness_gate": "true"},
     ),
     "spotify_followers": Target(
         "spotify_followers",
@@ -601,9 +601,110 @@ def assess_youtube_recommendations(root: Path, now: datetime, ignore_deadline: b
     )
 
 
-def performance_freshness(root: Path) -> dict[str, datetime | int | None | str]:
+def exact_int(mapping: Mapping[str, Any] | None, key: str) -> int | None:
+    """Read an explicit integer proof without turning missing/invalid data into zero."""
+
+    if not isinstance(mapping, Mapping) or key not in mapping:
+        return None
+    raw = mapping.get(key)
+    if isinstance(raw, bool):
+        return None
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return None
+    if isinstance(raw, float) and raw != value:
+        return None
+    if isinstance(raw, str) and not re.fullmatch(r"-?\d+", raw.strip()):
+        return None
+    return value
+
+
+def count_triplet_problem(
+    mapping: Mapping[str, Any] | None,
+    label: str,
+) -> tuple[str | None, tuple[int, int, int] | None]:
+    expected = exact_int(mapping, "expected_requests")
+    selected = exact_int(mapping, "selected_requests")
+    missing = exact_int(mapping, "missing_requests")
+    if expected is None or selected is None or missing is None:
+        return f"{label} is missing explicit request counters", None
+    if expected < 0 or selected < 0 or selected > expected or missing != expected - selected:
+        return f"{label} request counters are incoherent", None
+    return None, (expected, selected, missing)
+
+
+def spotify_track_policy_problem(policy: Mapping[str, Any] | None, max_requests: int) -> str | None:
+    if not isinstance(policy, Mapping):
+        return "missing Spotify adaptive track maintenance policy"
+    version = exact_int(policy, "version")
+    request_cap = exact_int(policy, "request_cap")
+    if version is None or version < 3 or policy.get("selection_mode") != "adaptive_daily":
+        return "Spotify track maintenance policy is unsupported or incoherent"
+    if request_cap is None or request_cap <= 0 or request_cap > max_requests:
+        return "Spotify track maintenance request cap is missing or exceeds the dispatch cap"
+
+    problem, totals = count_triplet_problem(policy, "Spotify track maintenance policy")
+    if problem:
+        return problem
+    assert totals is not None
+    _expected, selected, _missing = totals
+    if selected <= 0 or selected > request_cap:
+        return "Spotify track maintenance policy proves no bounded selection"
+
+    bucket_count = exact_int(policy, "rotation_bucket_count")
+    daily_bucket = exact_int(policy, "daily_rotation_bucket")
+    weekly_due = exact_int(policy, "weekly_due_requests")
+    weekly_selected = exact_int(policy, "weekly_selected_requests")
+    weekly_missing_alias = exact_int(policy, "weekly_missing")
+    weekly_missing = exact_int(policy, "weekly_missing_requests")
+    if bucket_count != 7 or daily_bucket is None or not 0 <= daily_bucket < bucket_count:
+        return "Spotify track maintenance has no coherent seven-day rotation"
+    if (
+        weekly_due is None
+        or weekly_selected is None
+        or weekly_missing is None
+        or weekly_due < 0
+        or weekly_selected < 0
+        or weekly_selected > weekly_due
+        or weekly_missing != weekly_due - weekly_selected
+        or weekly_missing_alias != weekly_missing
+    ):
+        return "Spotify weekly rotation counters are missing or incoherent"
+    rotation = policy.get("rotation_coverage")
+    if not isinstance(rotation, Mapping):
+        return "Spotify weekly rotation coverage is missing"
+    expected_sum = 0
+    selected_sum = 0
+    for bucket in range(bucket_count):
+        row = rotation.get(str(bucket), rotation.get(bucket))
+        bucket_expected = exact_int(row, "expected_requests")
+        bucket_selected = exact_int(row, "selected_requests")
+        if (
+            bucket_expected is None
+            or bucket_selected is None
+            or bucket_expected < 0
+            or bucket_selected < 0
+            or bucket_selected > bucket_expected
+        ):
+            return "Spotify weekly rotation coverage is incoherent"
+        expected_sum += bucket_expected
+        selected_sum += bucket_selected
+        # The daily bucket also contains mandatory priority rows. The explicit
+        # weekly counters cover only non-mandatory rotation rows, so the bucket
+        # totals may be larger but can never be smaller.
+        if bucket == daily_bucket and (
+            bucket_expected < weekly_due or bucket_selected < weekly_selected
+        ):
+            return "Spotify daily rotation bucket does not match weekly counters"
+    if expected_sum != totals[0] or selected_sum != selected:
+        return "Spotify rotation coverage does not match maintenance totals"
+    return None
+
+
+def performance_freshness(root: Path) -> dict[str, Any]:
     text = read_edge(root / "Spotify_Performance_data.js", tail=96_000)
-    values: dict[str, datetime | int | None | str] = {}
+    values: dict[str, Any] = {}
     for key in ("tracks_catalogue_at", "artists_catalogue_at", "playlists_at"):
         values[key] = parse_timestamp(regex_value(text, rf'"{key}"\s*:\s*"([^"]+)"'))
     try:
@@ -616,38 +717,7 @@ def performance_freshness(root: Path) -> dict[str, datetime | int | None | str]:
         coverage = payload.get("maintenance_coverage")
         tracks = coverage.get("tracks") if isinstance(coverage, Mapping) else None
         policy = tracks.get("policy") if isinstance(tracks, Mapping) else None
-        reasons = policy.get("reason_coverage") if isinstance(policy, Mapping) else None
-        published = reasons.get("published_public") if isinstance(reasons, Mapping) else None
-        if isinstance(published, Mapping):
-            values["published_public_expected"] = int(published.get("expected_requests") or 0)
-            values["published_public_selected"] = int(published.get("selected_requests") or 0)
-            values["published_public_missing"] = int(published.get("missing_requests") or 0)
-        else:
-            values["published_public_expected"] = None
-            values["published_public_selected"] = None
-            values["published_public_missing"] = None
-        entities = policy.get("published_public_entity_coverage") if isinstance(policy, Mapping) else None
-        if isinstance(entities, Mapping):
-            for key in (
-                "public_entities",
-                "resolvable_entities",
-                "unresolved_entities",
-                "selected_entities",
-                "missing_selected_entities",
-                "current_source_entities",
-                "lagging_source_entities",
-            ):
-                output_key = (
-                    "published_public_entities"
-                    if key == "public_entities"
-                    else f"published_public_{key}"
-                )
-                values[output_key] = int(entities.get(key) or 0)
-        else:
-            values["published_public_resolvable_entities"] = None
-            values["published_public_selected_entities"] = None
-            values["published_public_current_source_entities"] = None
-            values["published_public_lagging_source_entities"] = None
+        values["track_policy"] = policy if isinstance(policy, Mapping) else None
     except PerformanceStoreError as exc:
         values["store_error"] = str(exc)
     return values
@@ -658,76 +728,152 @@ def assess_spotify_core(root: Path, now: datetime, ignore_deadline: bool = False
     values = performance_freshness(root)
     if values.get("store_error"):
         return freshness_row(target, True, f"Spotify performance store invalid: {values['store_error']}", None)
-    required = [values.get("tracks_catalogue_at"), values.get("artists_catalogue_at")]
-    if any(value is None for value in required):
+    tracks_observed = values.get("tracks_catalogue_at")
+    artists_observed = values.get("artists_catalogue_at")
+    if not isinstance(tracks_observed, datetime) or not isinstance(artists_observed, datetime):
         return freshness_row(target, True, "missing Spotify catalogue freshness timestamp", None)
-    oldest = min(value for value in required if value is not None)
     today = now.astimezone(PARIS).date()
-    if now - oldest > timedelta(hours=36):
-        return freshness_row(target, True, "Spotify catalogue is older than 36 hours", oldest)
-    if local_day(oldest) < today and (ignore_deadline or after_local_deadline(now, time(13, 45))):
-        return freshness_row(target, True, f"no complete Spotify catalogue pass for Paris day {today}", oldest)
-    public_expected = values.get("published_public_expected")
-    public_selected = values.get("published_public_selected")
-    public_missing = values.get("published_public_missing")
-    if public_expected is None:
+    if now - tracks_observed > timedelta(hours=36):
+        return freshness_row(target, True, "Spotify track catalogue is older than 36 hours", tracks_observed)
+    if local_day(tracks_observed) < today and (ignore_deadline or after_local_deadline(now, time(13, 45))):
+        return freshness_row(target, True, f"no complete Spotify track pass for Paris day {today}", tracks_observed)
+    if now - artists_observed > timedelta(hours=180):
+        return freshness_row(target, True, "Spotify artist catalogue is older than 180 hours", artists_observed)
+
+    policy = values.get("track_policy")
+    max_requests = int(target.inputs["max_requests"])
+    policy_problem = spotify_track_policy_problem(
+        policy if isinstance(policy, Mapping) else None,
+        max_requests,
+    )
+    if policy_problem:
+        return freshness_row(target, True, policy_problem, tracks_observed)
+    assert isinstance(policy, Mapping)
+    if exact_int(policy, "daily_rotation_bucket") != today.toordinal() % 7:
         return freshness_row(
             target,
             True,
-            "missing proof that the public Spotify track cohort was scheduled",
-            oldest,
+            "Spotify daily rotation bucket does not match the current Paris day",
+            tracks_observed,
         )
-    if public_selected != public_expected or public_missing != 0:
+
+    reasons = policy.get("reason_coverage")
+    published = reasons.get("published_public") if isinstance(reasons, Mapping) else None
+    published_problem, published_counts = count_triplet_problem(
+        published if isinstance(published, Mapping) else None,
+        "public Spotify track scheduling proof",
+    )
+    if published_problem:
+        return freshness_row(target, True, published_problem, tracks_observed)
+    assert published_counts is not None
+    public_expected, public_selected, _public_missing = published_counts
+    if public_expected <= 0:
         return freshness_row(
             target,
             True,
-            f"public Spotify track coverage is partial at {public_selected}/{public_expected}",
-            oldest,
+            "public Spotify track request cohort is unexpectedly empty",
+            tracks_observed,
         )
-    resolvable = values.get("published_public_resolvable_entities")
-    public_entities = values.get("published_public_entities")
-    selected_entities = values.get("published_public_selected_entities")
-    current_entities = values.get("published_public_current_source_entities")
-    lagging_entities = values.get("published_public_lagging_source_entities")
-    if resolvable is None or current_entities is None:
+    if public_selected <= 0:
         return freshness_row(
             target,
             True,
-            "missing proof that public Spotify histories reached a recent source day",
-            oldest,
+            "public Spotify track rotation selected no request",
+            tracks_observed,
         )
-    if not isinstance(public_entities, int) or public_entities <= 0:
+
+    entities = policy.get("published_public_entity_coverage")
+    public_entities = exact_int(entities if isinstance(entities, Mapping) else None, "public_entities")
+    resolvable = exact_int(entities if isinstance(entities, Mapping) else None, "resolvable_entities")
+    unresolved = exact_int(entities if isinstance(entities, Mapping) else None, "unresolved_entities")
+    selected_entities = exact_int(entities if isinstance(entities, Mapping) else None, "selected_entities")
+    missing_selected = exact_int(
+        entities if isinstance(entities, Mapping) else None,
+        "missing_selected_entities",
+    )
+    if None in (public_entities, resolvable, unresolved, selected_entities, missing_selected):
+        return freshness_row(
+            target,
+            True,
+            "missing explicit public Spotify entity coverage proof",
+            tracks_observed,
+        )
+    assert isinstance(public_entities, int)
+    assert isinstance(resolvable, int)
+    assert isinstance(unresolved, int)
+    assert isinstance(selected_entities, int)
+    assert isinstance(missing_selected, int)
+    if public_entities <= 0 or resolvable <= 0:
         return freshness_row(
             target,
             True,
             "public Spotify track cohort is unexpectedly empty",
-            oldest,
+            tracks_observed,
         )
-    if selected_entities != resolvable:
+    if (
+        resolvable > public_entities
+        or unresolved != public_entities - resolvable
+        or selected_entities < 0
+        or selected_entities > resolvable
+        or missing_selected != resolvable - selected_entities
+    ):
         return freshness_row(
             target,
             True,
-            f"public Spotify entity scheduling is partial at {selected_entities}/{resolvable}",
-            oldest,
+            "public Spotify entity coverage counters are incoherent",
+            tracks_observed,
         )
-    allowed_source_lag = max(10, (int(resolvable) + 99) // 100)
-    if int(lagging_entities or 0) > allowed_source_lag:
+    if selected_entities <= 0:
         return freshness_row(
             target,
             True,
-            f"public Spotify histories are current for only {current_entities}/{resolvable}",
-            oldest,
+            "public Spotify track rotation selected no entity",
+            tracks_observed,
         )
-    unresolved = int(values.get("published_public_unresolved_entities") or 0)
+
+    source_age_limit = exact_int(entities, "source_age_limit_days")
+    stale_entities = exact_int(entities, "stale_source_entities")
+    try:
+        freshness_cutoff = date.fromisoformat(str(entities.get("freshness_cutoff") or ""))
+    except ValueError:
+        freshness_cutoff = None
+    expected_cutoff = today - timedelta(days=7)
+    if source_age_limit != 7 or stale_entities is None or freshness_cutoff != expected_cutoff:
+        return freshness_row(
+            target,
+            True,
+            "missing or incoherent seven-day public Spotify source-age proof",
+            tracks_observed,
+        )
+    if stale_entities < 0 or stale_entities > resolvable:
+        return freshness_row(
+            target,
+            True,
+            "public Spotify stale-source counters are incoherent",
+            tracks_observed,
+        )
+    allowed_source_lag = max(10, (resolvable + 99) // 100)
+    if stale_entities > allowed_source_lag:
+        return freshness_row(
+            target,
+            True,
+            (
+                f"public Spotify histories are current for only "
+                f"{resolvable - stale_entities}/{resolvable} within seven days"
+            ),
+            tracks_observed,
+        )
     return freshness_row(
         target,
         False,
         (
-            f"Spotify catalogue day {local_day(oldest)} is healthy; "
-            f"public histories current at {current_entities}/{resolvable}, "
+            f"Spotify track day {local_day(tracks_observed)} is healthy; "
+            f"artists are {int((now - artists_observed).total_seconds() // 3600)}h old; "
+            f"public weekly rotation selected {selected_entities}/{resolvable}, "
+            f"histories within seven days {resolvable - stale_entities}/{resolvable}, "
             f"unresolved identities {unresolved}"
         ),
-        oldest,
+        tracks_observed,
     )
 
 

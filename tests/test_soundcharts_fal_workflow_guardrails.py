@@ -14,11 +14,12 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
         cls.workflow = WORKFLOW.read_text(encoding="utf-8")
         cls.main_workflow = MAIN_WORKFLOW.read_text(encoding="utf-8")
 
-    def test_manual_start_and_cloud_resume_are_enabled(self):
+    def test_completed_fal_scan_is_manual_only(self):
         self.assertIn("workflow_dispatch:", self.workflow)
-        self.assertIn("- cron: '23 9 * * *'", self.workflow)
-        self.assertIn("branches: [main]", self.workflow)
-        self.assertIn("'build_soundcharts_fal_seed_ledger.py'", self.workflow)
+        self.assertNotIn("schedule:", self.workflow)
+        self.assertNotIn("cron:", self.workflow)
+        self.assertNotIn("push:", self.workflow)
+        self.assertNotIn("branches: [main]", self.workflow)
         self.assertNotIn("*/2", self.workflow)
         self.assertIn("default: '40000'", self.workflow)
         self.assertIn('max_requests="${REQUESTED_MAX_REQUESTS:-40000}"', self.workflow)

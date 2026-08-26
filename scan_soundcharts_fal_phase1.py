@@ -36,7 +36,8 @@ from refresh_soundcharts_daily import (
     SoundchartsError,
     SoundchartsQuotaReserveError,
     SoundchartsRequestLimitError,
-    extract_artist_spotify_metric,
+    artist_spotify_listening_path,
+    extract_artist_spotify_listening_points,
     read_js_payload,
 )
 from prepare_soundcharts_snapshot import NORMALISED_PUBLIC_ARTIST_BLACKLIST
@@ -1567,12 +1568,18 @@ class Phase1Scanner:
             ).fetchall()
         if not rows:
             return False
-        tasks = [(row["soundcharts_uuid"], f"/api/v2/artist/{urllib.parse.quote(row['soundcharts_uuid'])}/current/stats") for row in rows]
+        tasks = [
+            (
+                row["soundcharts_uuid"],
+                artist_spotify_listening_path(row["soundcharts_uuid"], today=self.as_of),
+            )
+            for row in rows
+        ]
         results, errors = self._fetch_batch(tasks)
         by_uuid = {row["soundcharts_uuid"]: row for row in rows}
         for uuid, response in results.items():
-            metric = extract_artist_spotify_metric(response)
-            listeners = finite_int(metric.get("value")) if isinstance(metric, Mapping) else None
+            points = extract_artist_spotify_listening_points(response)
+            listeners = finite_int(points[-1][1]) if points else None
             if listeners is None:
                 status, reason = "review_audience_unknown", "spotify_monthly_listeners_missing"
             elif listeners < self.min_audience:
@@ -1587,7 +1594,7 @@ class Phase1Scanner:
             row = by_uuid[uuid]
             if code == "unavailable":
                 self.connection.execute(
-                    "UPDATE candidates SET status='review_audience_unavailable',reason='soundcharts_stats_unavailable',error_code=?,updated_at=? WHERE soundcharts_uuid=?",
+                    "UPDATE candidates SET status='review_audience_unavailable',reason='soundcharts_spotify_listening_unavailable',error_code=?,updated_at=? WHERE soundcharts_uuid=?",
                     (code, utc_now(), uuid),
                 )
                 self._record_error("audience", uuid, code)

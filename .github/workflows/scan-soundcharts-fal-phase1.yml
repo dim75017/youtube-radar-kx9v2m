@@ -1,20 +1,6 @@
 name: Scan Soundcharts Fans Also Like phase 1
 
 on:
-  schedule:
-    # This is the only scheduled root of the FAL chain. Downstream phases are
-    # workflow_run-driven so GitHub's single pending concurrency slot cannot
-    # replace one phase with an overlapping recovery cron.
-    - cron: '23 9 * * *'
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/scan-soundcharts-fal-phase1.yml'
-      - 'build_soundcharts_fal_seed_ledger.py'
-      - 'scan_soundcharts_fal_phase1.py'
-      - 'tests/test_build_soundcharts_fal_seed_ledger.py'
-      - 'tests/test_scan_soundcharts_fal_phase1.py'
-      - 'tests/test_soundcharts_fal_workflow_guardrails.py'
   workflow_dispatch:
     inputs:
       max_requests:
@@ -23,9 +9,9 @@ on:
         default: '40000'
         type: string
 
-# This phase only reads the repository and Soundcharts. Its SQLite checkpoint
-# and reports live exclusively in private Actions artifacts until Dim reviews
-# the complete staging inventory.
+# The historical FAL inventory is complete, so this expensive chain is manual
+# recovery only. Its SQLite checkpoint and reports remain exclusively in
+# private Actions artifacts until Dim deliberately relaunches it.
 permissions:
   actions: write
   contents: read

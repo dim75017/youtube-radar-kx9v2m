@@ -184,23 +184,23 @@ on:
       - 'spotify/coverage.js'
   schedule:
     # Run after Soundcharts has normally published the current source day.
-    # Bulk FAL work is scheduled around this maintenance-first window.
+    # The scheduled lane is quota-bounded for the Developer 500k plan.
     - cron: '17 10 * * *'
   workflow_dispatch:
     inputs:
       scope:
         description: 'Collection scope'
         required: true
-        default: 'strict_rebaseline'
+        default: 'maintenance'
         type: choice
-        options: [strict_rebaseline, full_sync, dark_ambient, dark_ambient_catalogues, explicit_artists, classification, artists, playlist_covers, smoke]
+        options: [maintenance, strict_rebaseline, full_sync, dark_ambient, dark_ambient_catalogues, explicit_artists, classification, artists, playlist_covers, smoke]
       max_requests:
         description: 'Data-call cap (full sync: 1-35000; classification: 1-8230; other scopes: 1-6000)'
         required: true
         default: '6000'
         type: string
       freshness_gate:
-        description: 'Skip strict rebaseline when the published Paris-day data is already healthy'
+        description: 'Skip maintenance when the published Paris-day data is already healthy'
         required: false
         default: false
         type: boolean
@@ -363,13 +363,12 @@ jobs:
           FRESHNESS_GATE: ${{ inputs.freshness_gate }}
         run: |
           artist_data_cap="350"
-          # Existing performance histories have their own daily budget. Track
-          # maintenance preflights the complete catalogue, then applies a
-          # deterministic adaptive priority/weekly rotation under this cap.
-          performance_artist_data_cap="15000"
-          # 35k/day preserves the maintenance envelope through the next quota
-          # reset while the separate FAL scan consumes only its scan budget.
-          performance_track_data_cap="35000"
+          # Developer-plan maintenance prioritizes active A&R rows every day,
+          # rotates the wider public track catalogue across the week, and
+          # refreshes the complete artist catalogue once per week.
+          performance_artist_data_cap="12000"
+          performance_track_data_cap="6000"
+          full_sync_track_data_cap="35000"
           # Enough for the entire public dashboard playlist set, while the
           # collector itself prioritizes those visible rows over backlog-only
           # discovery records.
@@ -392,11 +391,14 @@ jobs:
               full_sync) expansion_limit="" ;;
               dark_ambient_catalogues|explicit_artists) expansion_limit="" ;;
               classification) expansion_limit="" ;;
-              artists|playlist_covers|smoke) expansion_limit="" ;;
+              maintenance|artists|playlist_covers|smoke) expansion_limit="" ;;
               *) echo "Unsupported scope: $scope" >&2; exit 1 ;;
             esac
             request_cap="$expansion_data_cap"
-            if [[ "$scope" == "full_sync" ]]; then request_cap="$performance_track_data_cap"; fi
+            if [[ "$scope" == "full_sync" ]]; then
+              request_cap="$full_sync_track_data_cap"
+              performance_track_data_cap="$full_sync_track_data_cap"
+            fi
             if [[ "$scope" == "classification" ]]; then request_cap="$classification_data_cap"; fi
             if [[ "$scope" == "playlist_covers" ]]; then request_cap="$playlist_data_cap"; fi
             if [[ ! "$REQUESTED_MAX_REQUESTS" =~ ^[1-9][0-9]{0,4}$ ]] || (( 10#$REQUESTED_MAX_REQUESTS > request_cap )); then
@@ -404,11 +406,17 @@ jobs:
               exit 1
             fi
             expansion_requests="$REQUESTED_MAX_REQUESTS"
+            if [[ "$scope" == "maintenance" ]]; then
+              # The manual watchdog ceiling is the track-maintenance ceiling;
+              # maintenance never spends it on discovery or pool expansion.
+              performance_track_data_cap="$REQUESTED_MAX_REQUESTS"
+              expansion_requests="0"
+            fi
             if [[ "$GITHUB_REF" == "refs/heads/main" && "$scope" != "smoke" ]]; then publish="true"; else publish="false"; fi
           elif [[ "${{ github.event_name }}" == "schedule" ]]; then
-            scope="strict_rebaseline"
-            expansion_limit="2500"
-            expansion_requests="$expansion_data_cap"
+            scope="maintenance"
+            expansion_limit=""
+            expansion_requests="0"
             publish="true"
           else
             echo "Unsupported event: ${{ github.event_name }}" >&2
@@ -435,23 +443,41 @@ jobs:
             # discovered 100k+ rows before the browse catalogue is rebuilt.
             classification_requests="$daily_classification_data_cap"
           fi
-          if [[ "${{ github.event_name }}" == "schedule" || ( "${{ github.event_name }}" == "workflow_dispatch" && "$FRESHNESS_GATE" == "true" && "$scope" == "strict_rebaseline" ) ]]; then
-            # A scheduled/watchdog repair is the authoritative daily maintenance
-            # pass. Tracks above the cap are covered by explicit priorities and
-            # a deterministic seven-day rotation. Followers run only if their
-            # full Paris-day cohort is not already complete.
-            follower_schedule_arg=""
-            if [[ "${{ github.event_name }}" == "schedule" ]]; then follower_schedule_arg="--scheduled-check"; fi
-            playlist_followers_due="$(python data_freshness_watchdog.py --target spotify_followers $follower_schedule_arg --print-due)"
+          if [[ "$scope" == "maintenance" ]]; then
+            # Tracks use a daily priority/rotation pass. Artist listening is a
+            # complete weekly pass, retried on the next maintenance run if it
+            # did not publish successfully. Playlist analytics have their own
+            # guarded daily workflow and are never duplicated here.
+            performance_catalogue_due="true"
+            performance_tracks_due="true"
+            performance_artists_due="$(python - <<'PY'
+          import datetime as dt
+          import json
+          from pathlib import Path
+
+          path = Path('Spotify_Performance_data.js')
+          prefix = 'window.SPOTIFY_PERFORMANCE='
+          try:
+              raw = path.read_text(encoding='utf-8')
+              payload = json.loads(raw[len(prefix):].strip().removesuffix(';'))
+              freshness = payload.get('freshness') if isinstance(payload.get('freshness'), dict) else {}
+              observed = dt.datetime.fromisoformat(
+                  str(freshness.get('artists_catalogue_at')).replace('Z', '+00:00')
+              )
+              if observed.tzinfo is None:
+                  observed = observed.replace(tzinfo=dt.timezone.utc)
+              due = dt.datetime.now(dt.timezone.utc) - observed.astimezone(dt.timezone.utc) >= dt.timedelta(hours=156)
+          except Exception:
+              due = True
+          print(str(due).lower())
+          PY
+            )"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "$FRESHNESS_GATE" == "true" && "$scope" == "strict_rebaseline" ]]; then
+            playlist_followers_due="$(python data_freshness_watchdog.py --target spotify_followers --print-due)"
             performance_catalogue_due="true"
             performance_tracks_due="true"
             performance_artists_due="true"
-            if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-              # A watchdog repair must respect its explicit paid-call ceiling.
-              # The normal scheduled pass keeps the larger 35k maintenance
-              # budget, while a delayed-source retry remains bounded.
-              performance_track_data_cap="$REQUESTED_MAX_REQUESTS"
-            fi
+            performance_track_data_cap="$REQUESTED_MAX_REQUESTS"
           elif [[ "$scope" == "full_sync" ]]; then
             playlist_followers_due="true"
           elif [[ "$scope" == "strict_rebaseline" ]]; then
@@ -520,7 +546,7 @@ jobs:
 
       - name: Create an isolated Soundcharts candidate
         id: snapshot
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'maintenance' || steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         shell: bash
         run: |
           old_snapshot="$(python prepare_soundcharts_snapshot.py browse-source --catalogue Spotify_Browse_Catalogue_data.js)"
@@ -749,10 +775,10 @@ jobs:
             --soundcharts "${{ steps.snapshot.outputs.candidate }}" \
             "${args[@]}"
 
-      - name: Refresh the complete performance artist catalogue every 24 hours
+      - name: Refresh the complete performance artist catalogue every week
         # Run after discovery and pool expansion so artists added during this
         # very synchronization receive their first real metric immediately.
-        if: steps.plan.outputs.scope == 'full_sync' || (steps.plan.outputs.scope == 'strict_rebaseline' && steps.plan.outputs.performance_artists_due == 'true')
+        if: steps.plan.outputs.scope == 'full_sync' || (steps.plan.outputs.scope == 'maintenance' && steps.plan.outputs.performance_artists_due == 'true') || (steps.plan.outputs.scope == 'strict_rebaseline' && steps.plan.outputs.performance_artists_due == 'true')
         env:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
@@ -767,8 +793,8 @@ jobs:
           --include-performance-catalogue
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
 
-      - name: Refresh adaptive performance track coverage every 24 hours
-        if: steps.plan.outputs.scope == 'full_sync' || (steps.plan.outputs.scope == 'strict_rebaseline' && steps.plan.outputs.performance_tracks_due == 'true')
+      - name: Refresh adaptive priority and rotating track coverage every 24 hours
+        if: steps.plan.outputs.scope == 'full_sync' || (steps.plan.outputs.scope == 'maintenance' && steps.plan.outputs.performance_tracks_due == 'true') || (steps.plan.outputs.scope == 'strict_rebaseline' && steps.plan.outputs.performance_tracks_due == 'true')
         env:
           PYTHONUNBUFFERED: '1'
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
@@ -827,7 +853,7 @@ jobs:
           --output Spotify_Selection_Contacts_data.js
 
       - name: Recalculate actionable A&R opportunities
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'maintenance' || steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         run: >-
           python sync_soundcharts_opportunities.py
           --soundcharts "${{ steps.snapshot.outputs.candidate }}"
@@ -844,7 +870,7 @@ jobs:
           --candidate Spotify_Playlists_canonical_data.js
 
       - name: Preserve completed collection before publication guards
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'maintenance' || steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         uses: actions/upload-artifact@v4
         with:
           name: soundcharts-refresh-checkpoint-${{ github.run_id }}-${{ github.run_attempt }}
@@ -862,7 +888,7 @@ jobs:
 
       - name: Prepare public-safe dated snapshot
         id: prepared
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'maintenance' || steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         shell: bash
         run: |
           result="$RUNNER_TEMP/soundcharts-snapshot-result.json"
@@ -875,7 +901,7 @@ jobs:
           echo "name=$snapshot" >> "$GITHUB_OUTPUT"
 
       - name: Validate generated business outputs
-        if: steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
+        if: steps.plan.outputs.scope == 'maintenance' || steps.plan.outputs.scope == 'strict_rebaseline' || steps.plan.outputs.scope == 'full_sync' || steps.plan.outputs.scope == 'dark_ambient' || steps.plan.outputs.scope == 'dark_ambient_catalogues' || steps.plan.outputs.scope == 'explicit_artists' || steps.plan.outputs.scope == 'classification' || steps.plan.outputs.scope == 'artists'
         env:
           SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
           RUN_SCOPE: ${{ steps.plan.outputs.scope }}
