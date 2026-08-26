@@ -160,7 +160,11 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   );
   assert.match(audienceChart, /role="img"/);
   assert.equal((audienceChart.match(/tabIndex=\{0\}/g) ?? []).length, 1);
-  assert.match(audienceChart, /<title>/);
+  assert.match(
+    audienceChart,
+    /aria-label=\{`\$\{metricLabel\} par jour · \$\{platformLabel\}`\}/,
+  );
+  assert.doesNotMatch(audienceChart, /<title>/);
   assert.match(audienceChart, /<desc>/);
   assert.match(audienceChart, /elapsedDays === 1 && comparablePrecision/);
   assert.doesNotMatch(audienceChart, /className="audience-native-chart-point"[\s\S]{0,180}tabIndex/);

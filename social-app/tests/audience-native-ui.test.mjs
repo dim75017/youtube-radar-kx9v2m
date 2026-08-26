@@ -64,3 +64,51 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(styles, /@media \(max-width: 640px\)[\s\S]*?\.audience-platform-grid/);
   assert.doesNotMatch(styles, /\.audience-chart-viewport|\.audience-native-platform-grid/);
 });
+
+test("keeps the audience curve clean and reveals the exact hovered value instantly", async () => {
+  const [component, styles] = await Promise.all([
+    readFile(new URL("../app/SocialOS.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+  const chart = component.slice(
+    component.indexOf("function AudienceNativeMetricChart"),
+    component.indexOf("function isNativeAnalyticsValue"),
+  );
+
+  assert.match(
+    chart,
+    /const \[hovered(?:Point)?Index, setHovered(?:Point)?Index\] = useState<number \| null>\(null\)/,
+  );
+  assert.match(chart, /onPointerMove=/);
+  assert.match(chart, /onPointerLeave=/);
+  assert.match(chart, /setHovered(?:Point)?Index\(null\)/);
+  assert.match(chart, /getBoundingClientRect\(\)/);
+  assert.match(chart, /event\.clientX/);
+
+  // La courbe reste lisible : aucun marqueur permanent pour chaque observation.
+  assert.equal((chart.match(/<circle\b/g) ?? []).length, 1);
+  assert.doesNotMatch(chart, /coordinates\.map\([\s\S]{0,600}<circle\b/);
+  assert.match(chart, /hoveredCoordinate \?[\s\S]*?<circle\b/);
+
+  // Le seul point visible accompagne un popup qui expose la date et la valeur réelles.
+  const tooltipStart = chart.indexOf('role="tooltip"');
+  assert.ok(tooltipStart >= 0, "the hovered point must expose a semantic tooltip");
+  const tooltipSource = chart.slice(Math.max(0, tooltipStart - 1_400), tooltipStart + 2_000);
+  assert.match(tooltipSource, /formatNativeAnalyticsDate\(/);
+  assert.match(tooltipSource, /formatAudienceSeriesValue\(/);
+  assert.match(tooltipSource, /audience-native-chart-tooltip/);
+
+  // Le tracé gagne de la hauteur, sans devenir un panneau qui casse le dashboard compact.
+  const height = Number(chart.match(/const height = (\d+);/)?.[1]);
+  const plotTop = Number(chart.match(/const plotTop = (\d+);/)?.[1]);
+  const plotBottom = Number(chart.match(/const plotBottom = (\d+);/)?.[1]);
+  assert.ok(Number.isFinite(height) && height > 156 && height <= 260);
+  assert.ok(Number.isFinite(plotTop) && Number.isFinite(plotBottom) && plotBottom - plotTop >= 108);
+  assert.match(styles, /\.main\.main-dashboard\s*\{[\s\S]*?padding-bottom:\s*8px/);
+
+  // Les quatre filtres du graphe restent disponibles après l'amélioration du survol.
+  assert.match(component, /key: "30d", label: "30 jours", days: 30/);
+  assert.match(component, /key: "90d", label: "90 jours", days: 90/);
+  assert.match(component, /key: "360d", label: "360 jours", days: 360/);
+  assert.match(component, /key: "all", label: "All time", days: null/);
+});

@@ -4735,23 +4735,63 @@ a {
 }
 
 .audience-native-chart-line {
+  fill: none;
   stroke: rgb(var(--platform-rgb));
-  stroke-width: 2.5;
+  stroke-width: 2.25;
   stroke-linecap: round;
+  stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
 
-.audience-native-chart-point circle {
-  fill: #0f1420;
+.audience-native-chart-hit-area {
+  fill: transparent;
+  pointer-events: all;
+}
+
+.audience-native-chart-hover {
+  pointer-events: none;
+}
+
+.audience-native-chart-hover-guide {
+  stroke: rgba(var(--platform-rgb), 0.34);
+  stroke-dasharray: 3 4;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.audience-native-chart-hover circle {
+  fill: rgb(var(--platform-rgb));
   stroke: rgb(var(--platform-rgb));
   stroke-width: 2;
-  transition: r 120ms ease, fill 120ms ease;
   vector-effect: non-scaling-stroke;
 }
 
-.audience-native-chart-point:hover circle {
-  r: 6px;
-  fill: rgb(var(--platform-rgb));
+.audience-native-chart-tooltip {
+  pointer-events: none;
+}
+
+.audience-native-chart-tooltip rect {
+  fill: rgba(8, 10, 17, 0.96);
+  stroke: rgba(var(--platform-rgb), 0.5);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.audience-native-chart-tooltip text {
+  font-family: Inter, sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.audience-native-chart-tooltip-date {
+  fill: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.audience-native-chart-tooltip-value {
+  fill: #fff;
+  font-size: 14px;
+  font-weight: 800;
 }
 
 .audience-native-chart-empty,

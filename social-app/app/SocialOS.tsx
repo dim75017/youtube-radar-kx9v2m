@@ -2258,6 +2258,7 @@ function AudienceAnalyticsExplorer({
             </header>
 
             <AudienceNativeMetricChart
+              key={`${activePlatform}:${activeMetric}:${chartPeriodKey}:${endDate}`}
               endDate={endDate}
               metric={activeMetric}
               periodDays={periodDays}
@@ -2457,9 +2458,102 @@ function AudienceNativeMetricChart({
   platformLabel: string;
   points: readonly AudienceMetricSeriesPoint[];
 }) {
+  const [hoveredPointIndex, setHoveredPointIndex] = useState<number | null>(null);
   const metricLabel = NATIVE_ANALYTICS_METRIC_META[metric].label;
+  const geometry = useMemo(() => {
+    const width = 940;
+    const height = 180;
+    const plotLeft = 24;
+    const plotRight = 842;
+    const plotTop = 12;
+    const plotBottom = 132;
+    if (points.length === 0) return null;
 
-  if (points.length === 0) {
+    const observedTimes = points.map((point) => nativeAnalyticsDateTime(point.date));
+    const observedValues = points.map((point) => point.value);
+    const requestedEndTime = nativeAnalyticsDateTime(endDate);
+    const requestedStartTime = periodDays === null
+      ? observedTimes[0]
+      : requestedEndTime - Math.max(0, periodDays - 1) * 24 * 60 * 60 * 1_000;
+    const firstTime = Math.min(requestedStartTime, observedTimes[0]);
+    const lastTime = Math.max(requestedEndTime, observedTimes.at(-1)!);
+    const timeSpan = Math.max(lastTime - firstTime, 1);
+    const rawMinimum = Math.min(...observedValues);
+    const rawMaximum = Math.max(...observedValues);
+    const signed = metric === "followersNet" || rawMinimum < 0;
+    const domainMinimum = signed ? Math.min(0, rawMinimum) : rawMinimum;
+    const domainMaximum = signed ? Math.max(0, rawMaximum) : rawMaximum;
+    const rawSpan = domainMaximum - domainMinimum;
+    const padding = rawSpan === 0
+      ? Math.max(1, Math.abs(domainMaximum) * 0.08)
+      : rawSpan * 0.12;
+    const minimum = signed ? domainMinimum - padding : Math.max(0, domainMinimum - padding);
+    const maximum = domainMaximum + padding;
+    const valueSpan = Math.max(maximum - minimum, 1);
+    const x = (timestamp: number) =>
+      plotLeft + ((timestamp - firstTime) / timeSpan) * (plotRight - plotLeft);
+    const y = (value: number) =>
+      plotBottom - ((value - minimum) / valueSpan) * (plotBottom - plotTop);
+    const coordinates = points.map((point, index) => ({
+      point,
+      value: point.value,
+      time: observedTimes[index],
+      x: x(observedTimes[index]),
+      y: y(point.value),
+    }));
+    const paths: string[] = [];
+    let activePath = "";
+    coordinates.forEach((coordinate, index) => {
+      const previous = coordinates[index - 1];
+      const move = `M ${coordinate.x.toFixed(2)} ${coordinate.y.toFixed(2)}`;
+      if (!previous) {
+        activePath = move;
+        return;
+      }
+      const elapsedDays = Math.round((coordinate.time - previous.time) / (24 * 60 * 60 * 1_000));
+      const comparablePrecision =
+        !previous.point.precision ||
+        !coordinate.point.precision ||
+        previous.point.precision === coordinate.point.precision;
+      if (elapsedDays === 1 && comparablePrecision) {
+        activePath += ` L ${coordinate.x.toFixed(2)} ${coordinate.y.toFixed(2)}`;
+        return;
+      }
+      if (activePath.includes(" L ")) paths.push(activePath);
+      activePath = move;
+    });
+    if (activePath.includes(" L ")) paths.push(activePath);
+    const gridLines = Array.from({ length: 4 }, (_, index) => {
+      const ratio = index / 3;
+      return {
+        value: maximum - ratio * valueSpan,
+        y: plotTop + ratio * (plotBottom - plotTop),
+      };
+    });
+    const tickCount = periodDays === null && timeSpan > 500 * 24 * 60 * 60 * 1_000 ? 4 : 5;
+    const dateTicks = Array.from({ length: tickCount }, (_, index) => {
+      const ratio = index / (tickCount - 1);
+      const timestamp = firstTime + ratio * timeSpan;
+      return { timestamp, x: plotLeft + ratio * (plotRight - plotLeft) };
+    });
+    const zeroY = minimum <= 0 && maximum >= 0 ? y(0) : null;
+    return {
+      coordinates,
+      dateTicks,
+      gridLines,
+      height,
+      paths,
+      plotBottom,
+      plotLeft,
+      plotRight,
+      plotTop,
+      timeSpan,
+      width,
+      zeroY,
+    };
+  }, [endDate, metric, periodDays, points]);
+
+  if (!geometry) {
     return (
       <div className="audience-native-chart-empty" role="status">
         <strong>{aggregateOnly ? `Agrégat officiel · ${periodLabel}` : "Série quotidienne indisponible"}</strong>
@@ -2472,76 +2566,78 @@ function AudienceNativeMetricChart({
     );
   }
 
-  const width = 940;
-  const height = 156;
-  const plotLeft = 24;
-  const plotRight = 842;
-  const plotTop = 12;
-  const plotBottom = 96;
-  const observedTimes = points.map((point) => nativeAnalyticsDateTime(point.date));
-  const observedValues = points.map((point) => point.value);
-  const requestedEndTime = nativeAnalyticsDateTime(endDate);
-  const requestedStartTime = periodDays === null
-    ? observedTimes[0]
-    : requestedEndTime - Math.max(0, periodDays - 1) * 24 * 60 * 60 * 1_000;
-  const firstTime = Math.min(requestedStartTime, observedTimes[0]);
-  const lastTime = Math.max(requestedEndTime, observedTimes.at(-1)!);
-  const timeSpan = Math.max(lastTime - firstTime, 1);
-  const rawMinimum = Math.min(...observedValues);
-  const rawMaximum = Math.max(...observedValues);
-  const signed = metric === "followersNet" || rawMinimum < 0;
-  const domainMinimum = signed ? Math.min(0, rawMinimum) : rawMinimum;
-  const domainMaximum = signed ? Math.max(0, rawMaximum) : rawMaximum;
-  const rawSpan = domainMaximum - domainMinimum;
-  const padding = rawSpan === 0
-    ? Math.max(1, Math.abs(domainMaximum) * 0.08)
-    : rawSpan * 0.12;
-  const minimum = signed ? domainMinimum - padding : Math.max(0, domainMinimum - padding);
-  const maximum = domainMaximum + padding;
-  const valueSpan = Math.max(maximum - minimum, 1);
-  const x = (timestamp: number) =>
-    plotLeft + ((timestamp - firstTime) / timeSpan) * (plotRight - plotLeft);
-  const y = (value: number) =>
-    plotBottom - ((value - minimum) / valueSpan) * (plotBottom - plotTop);
-  const coordinates = points.map((point, index) => ({
-    point,
-    value: point.value,
-    time: observedTimes[index],
-    x: x(observedTimes[index]),
-    y: y(point.value),
-  }));
-  const segments = coordinates.slice(1).flatMap((coordinate, index) => {
-    const previous = coordinates[index];
-    const elapsedDays = Math.round((coordinate.time - previous.time) / (24 * 60 * 60 * 1_000));
-    const comparablePrecision =
-      !previous.point.precision ||
-      !coordinate.point.precision ||
-      previous.point.precision === coordinate.point.precision;
-    return elapsedDays === 1 && comparablePrecision ? [{ previous, coordinate }] : [];
-  });
-  const gridLines = Array.from({ length: 4 }, (_, index) => {
-    const ratio = index / 3;
-    return {
-      value: maximum - ratio * valueSpan,
-      y: plotTop + ratio * (plotBottom - plotTop),
-    };
-  });
-  const tickCount = periodDays === null && timeSpan > 500 * 24 * 60 * 60 * 1_000 ? 4 : 5;
-  const dateTicks = Array.from({ length: tickCount }, (_, index) => {
-    const ratio = index / (tickCount - 1);
-    const timestamp = firstTime + ratio * timeSpan;
-    return { timestamp, x: plotLeft + ratio * (plotRight - plotLeft) };
-  });
-  const zeroY = minimum <= 0 && maximum >= 0 ? y(0) : null;
+  const {
+    coordinates,
+    dateTicks,
+    gridLines,
+    height,
+    paths,
+    plotBottom,
+    plotLeft,
+    plotRight,
+    plotTop,
+    timeSpan,
+    width,
+    zeroY,
+  } = geometry;
+  const hoveredCoordinate = hoveredPointIndex === null
+    ? null
+    : coordinates[hoveredPointIndex] ?? null;
+  const tooltipWidth = 176;
+  const tooltipHeight = 52;
+  const tooltipX = hoveredCoordinate
+    ? Math.min(plotRight - tooltipWidth, Math.max(plotLeft, hoveredCoordinate.x - tooltipWidth / 2))
+    : 0;
+  const tooltipY = hoveredCoordinate
+    ? hoveredCoordinate.y - tooltipHeight - 12 >= 2
+      ? hoveredCoordinate.y - tooltipHeight - 12
+      : hoveredCoordinate.y + 12
+    : 0;
 
   return (
     <div className="audience-native-line-chart">
       <div className="audience-native-chart-viewport">
-        <svg viewBox={`0 0 ${width} ${height}`} role="img" tabIndex={0}>
-          <title>{`${metricLabel} par jour · ${platformLabel}`}</title>
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          role="img"
+          aria-label={`${metricLabel} par jour · ${platformLabel}`}
+          tabIndex={0}
+          onPointerMove={(event) => {
+            const bounds = event.currentTarget.getBoundingClientRect();
+            const pointerX = ((event.clientX - bounds.left) / bounds.width) * width;
+            if (pointerX < plotLeft || pointerX > plotRight) {
+              setHoveredPointIndex(null);
+              return;
+            }
+            let low = 0;
+            let high = coordinates.length - 1;
+            while (low < high) {
+              const middle = Math.floor((low + high) / 2);
+              if (coordinates[middle].x < pointerX) low = middle + 1;
+              else high = middle;
+            }
+            const rightIndex = low;
+            const leftIndex = Math.max(0, rightIndex - 1);
+            const closestIndex =
+              Math.abs(coordinates[leftIndex].x - pointerX) <=
+              Math.abs(coordinates[rightIndex].x - pointerX)
+                ? leftIndex
+                : rightIndex;
+            setHoveredPointIndex((current) => current === closestIndex ? current : closestIndex);
+          }}
+          onPointerLeave={() => setHoveredPointIndex(null)}
+          onBlur={() => setHoveredPointIndex(null)}
+        >
           <desc>
             {`${points.length} valeurs réelles sur ${periodLabel.toLowerCase()}. Les dates absentes et les valeurs nulles ne sont ni reliées ni interpolées.`}
           </desc>
+          <rect
+            className="audience-native-chart-hit-area"
+            x={plotLeft}
+            y={plotTop}
+            width={plotRight - plotLeft}
+            height={plotBottom - plotTop}
+          />
           {gridLines.map((line) => (
             <g className="audience-native-chart-grid" key={line.y}>
               <line x1={plotLeft} x2={plotRight} y1={line.y} y2={line.y} />
@@ -2559,31 +2655,44 @@ function AudienceNativeMetricChart({
               y2={zeroY}
             />
           ) : null}
-          {segments.map(({ previous, coordinate }) => (
-            <line
+          {paths.map((path, index) => (
+            <path
               className="audience-native-chart-line"
-              key={`${previous.point.date}:${coordinate.point.date}`}
-              x1={previous.x}
-              x2={coordinate.x}
-              y1={previous.y}
-              y2={coordinate.y}
+              d={path}
+              key={`${index}:${path.slice(0, 32)}`}
             />
           ))}
-          {coordinates.map((coordinate) => (
-            <g
-              className="audience-native-chart-point"
-              key={`${coordinate.point.date}:${coordinate.value}`}
-            >
-              <title>{`${formatNativeAnalyticsDate(coordinate.point.date)} : ${formatAudienceSeriesValue(coordinate.point, metric, false)}`}</title>
-              <circle cx={coordinate.x} cy={coordinate.y} r="4" />
+          {hoveredCoordinate ? (
+            <g className="audience-native-chart-hover">
+              <line
+                className="audience-native-chart-hover-guide"
+                x1={hoveredCoordinate.x}
+                x2={hoveredCoordinate.x}
+                y1={plotTop}
+                y2={plotBottom}
+              />
+              <circle cx={hoveredCoordinate.x} cy={hoveredCoordinate.y} r="4" />
+              <g
+                className="audience-native-chart-tooltip"
+                role="tooltip"
+                transform={`translate(${tooltipX} ${tooltipY})`}
+              >
+                <rect width={tooltipWidth} height={tooltipHeight} rx="8" />
+                <text className="audience-native-chart-tooltip-date" x="12" y="19">
+                  {formatNativeAnalyticsDate(hoveredCoordinate.point.date)}
+                </text>
+                <text className="audience-native-chart-tooltip-value" x="12" y="40">
+                  {formatAudienceSeriesValue(hoveredCoordinate.point, metric, false)}
+                </text>
+              </g>
             </g>
-          ))}
+          ) : null}
           {dateTicks.map((tick, index) => (
             <text
               className="audience-native-chart-date"
               key={tick.timestamp}
               x={tick.x}
-              y="132"
+              y="160"
               textAnchor={index === 0 ? "start" : index === dateTicks.length - 1 ? "end" : "middle"}
             >
               {formatAudienceChartDate(
