@@ -27,20 +27,46 @@ const expectedSources = new Map([
   ["Davd2wNtfmU", { author: "djnamedpaul", likes: 75_900 }],
   ["DZAFvCNp226", { author: "edmhouse.us", likes: 65_100 }],
   ["DaMlY1vs5Yu", { author: "iavrilspain", likes: 24_100 }],
+  ["DcD1rswtT6U", { author: "edmhousenetwork", likes: 17_400 }],
+  ["DabIJvSzbdq", { author: "_morphflex", likes: 75_800 }],
+  ["DcJYmaNupbm", { author: "edmmusic", likes: 27_900 }],
+  ["DcYi4EjDBXq", { author: "armadamusic", likes: 12_200 }],
+  ["DZ7c-mFsOji", { author: "maddixmusic", likes: 71_400 }],
+  ["DcWN5YevqHv", { author: "travelwithsidd14", likes: 597_200 }],
+  ["DbG5osCg9QE", { author: "the_galixx", likes: 38_500 }],
+  ["DbtJiXXxfjW", { author: "royyschneider", likes: 74_500 }],
+  ["DbYSNmZItaC", { author: "annikaverwest", likes: 180_700 }],
+  ["DcBfcbAIXvC", { author: "wildlife.ayush", likes: 39_300 }],
+  ["DbV5t3Eqz_j", { author: "llama.5060060", likes: 28_700 }],
+  ["DZR-b4sIhTR", { author: "condsty", likes: 108_400 }],
+  ["DcdlfsWoorn", { author: "bloodytincture", likes: 21_300 }],
+  ["DZRlrpLSBC2", { author: "finding.unforgettable.songs", likes: 18_300 }],
+  ["Dce3sikyoqt", { author: "theangelicanero", likes: 268_800 }],
+  ["DcEN_awjpoC", { author: "edmmusic", likes: 50_800 }],
 ]);
 
-test("the connected Instagram snapshot preserves the real run and eight qualified sources", () => {
-  assert.equal(feed.capturedAt, "2026-08-26");
+test("the connected Instagram snapshot preserves the initial and extended private runs", () => {
+  assert.match(feed.capturedAt, /^2026-08-26/u);
   assert.equal(feed.minimumLikes, SCROLLING_MINIMUM_LIKES);
-  assert.equal(feed.runs.length, 1);
-  assert.equal(feed.items.length, 8);
+  assert.equal(feed.runs.length, 2);
+  assert.equal(feed.items.length, 24);
 
-  const [run] = feed.runs;
-  assert.equal(run.platform, "instagram");
-  assert.equal(run.surface, "home");
-  assert.equal(run.browserContext, SCROLLING_BROWSER_CONTEXT);
-  assert.equal(run.seenCount, 28);
-  assert.equal(run.qualifyingCount, 8);
+  const initialRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26");
+  const extendedRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26-extended");
+  assert.ok(initialRun);
+  assert.ok(extendedRun);
+  assert.equal(initialRun.platform, "instagram");
+  assert.equal(initialRun.surface, "home");
+  assert.equal(initialRun.browserContext, SCROLLING_BROWSER_CONTEXT);
+  assert.equal(initialRun.seenCount, 28);
+  assert.equal(initialRun.qualifyingCount, 8);
+  assert.equal(initialRun.sponsoredCount, 0);
+  assert.equal(extendedRun.browserContext, SCROLLING_BROWSER_CONTEXT);
+  assert.equal(extendedRun.seenCount, 504);
+  assert.equal(extendedRun.qualifyingCount, 236);
+  assert.equal(extendedRun.sponsoredCount, 0);
+  assert.equal(feed.items.filter((item) => item.runId === extendedRun.id).length, 16);
+  assert.ok(feed.items.filter((item) => item.runId === extendedRun.id).length < extendedRun.qualifyingCount);
 
   let likes = 0;
   for (const item of feed.items) {
@@ -54,20 +80,20 @@ test("the connected Instagram snapshot preserves the real run and eight qualifie
     assert.equal(item.source.metrics.shares, null);
     assert.equal(item.source.metrics.saves, null);
     assert.equal(item.source.thumbnailUrl, null);
-    assert.equal(item.source.sponsored, null);
+    assert.ok(item.source.sponsored === null || item.source.sponsored === false);
     assert.ok(item.source.metrics.likes >= SCROLLING_MINIMUM_LIKES);
     likes += item.source.metrics.likes;
   }
-  assert.equal(likes, 908_300);
+  assert.equal(likes, 2_539_500);
 });
 
 test("the exploration taxonomy is broad and distinguishes observed lenses from future probes", () => {
   assert.equal(themes.explorationLenses.length, 30);
   assert.deepEqual(themes.explorationLenses, feed.explorationLenses);
-  assert.equal(feed.explorationLenses.filter((lens) => lens.observedInSnapshot).length, 6);
+  assert.equal(feed.explorationLenses.filter((lens) => lens.observedInSnapshot).length, 17);
   assert.equal(
     feed.explorationLenses.find((lens) => lens.id === "animal-companions")?.observedInSnapshot,
-    false,
+    true,
   );
   for (const required of [
     "study-exams-pomodoro",
@@ -152,8 +178,22 @@ test("the feed and themes catalogue cannot silently diverge", () => {
   );
 
   const wrongObservation = structuredClone(feed);
-  wrongObservation.explorationLenses.find((lens) => lens.id === "animal-companions").observedInSnapshot = true;
+  wrongObservation.explorationLenses.find((lens) => lens.id === "anxiety-and-overthinking").observedInSnapshot = true;
   assert.throws(() => assertScrollingFeed(wrongObservation), /observedInSnapshot incohérent/u);
+});
+
+test("the validator separates observed, qualified, retained and sponsored counts", () => {
+  const tooManyRetained = structuredClone(feed);
+  tooManyRetained.runs.find((run) => run.id.endsWith("extended")).qualifyingCount = 15;
+  assert.throws(() => assertScrollingFeed(tooManyRetained), /Plus d’idées retenues/u);
+
+  const impossibleSponsoredCount = structuredClone(feed);
+  impossibleSponsoredCount.runs.find((run) => run.id.endsWith("extended")).sponsoredCount = 505;
+  assert.throws(() => assertScrollingFeed(impossibleSponsoredCount), /sponsoredCount invalide/u);
+
+  const uncountedSponsoredSource = structuredClone(feed);
+  uncountedSponsoredSource.items.find((item) => item.runId.endsWith("extended")).source.sponsored = true;
+  assert.throws(() => assertScrollingFeed(uncountedSponsoredSource), /sources sponsorisées retenues qu’observées/u);
 });
 
 test("the API route validates both snapshots, disables caching and refuses writes", async () => {

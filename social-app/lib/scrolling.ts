@@ -37,6 +37,7 @@ export type ScrollingRun = {
   capturedAt: string;
   seenCount: number;
   qualifyingCount: number;
+  sponsoredCount: number;
   themeIds: string[];
   limitations: string[];
 };
@@ -252,7 +253,7 @@ function assertRun(value: unknown, knownLensIds: Set<string>, label: string): as
   if (!isObject(value)) throw new TypeError(`${label}: objet attendu.`);
   assertOnlyKeys(
     value,
-    ["id", "platform", "surface", "browserContext", "capturedAt", "seenCount", "qualifyingCount", "themeIds", "limitations"],
+    ["id", "platform", "surface", "browserContext", "capturedAt", "seenCount", "qualifyingCount", "sponsoredCount", "themeIds", "limitations"],
     label,
   );
   if (!isText(value.id) || !SLUG.test(value.id)) throw new TypeError(`${label}: id invalide.`);
@@ -265,6 +266,9 @@ function assertRun(value: unknown, knownLensIds: Set<string>, label: string): as
   if (!isCount(value.seenCount) || value.seenCount === 0) throw new TypeError(`${label}: seenCount invalide.`);
   if (!isCount(value.qualifyingCount) || value.qualifyingCount > value.seenCount) {
     throw new TypeError(`${label}: qualifyingCount invalide.`);
+  }
+  if (!isCount(value.sponsoredCount) || value.sponsoredCount > value.seenCount) {
+    throw new TypeError(`${label}: sponsoredCount invalide.`);
   }
   assertThemeIds(value.themeIds, knownLensIds, `${label}.themeIds`);
   assertTextArray(value.limitations, `${label}.limitations`);
@@ -404,7 +408,11 @@ export function assertScrollingFeed(value: unknown, catalog?: unknown): Scrollin
   const itemIds = new Set<string>();
   const sourceUrls = new Set<string>();
   const itemCountByRun = new Map<string, number>();
+  const sponsoredItemCountByRun = new Map<string, number>();
   const observedLensIds = new Set<string>();
+  for (const run of runById.values()) {
+    for (const themeId of run.themeIds) observedLensIds.add(themeId);
+  }
   value.items.forEach((item, index) => {
     assertItem(item, knownLensIds, `feed.items[${index}]`);
     if (itemIds.has(item.id)) throw new TypeError(`Item Scrolling dupliqué ${item.id}.`);
@@ -426,11 +434,17 @@ export function assertScrollingFeed(value: unknown, catalog?: unknown): Scrollin
       observedLensIds.add(themeId);
     }
     itemCountByRun.set(run.id, (itemCountByRun.get(run.id) ?? 0) + 1);
+    if (item.source.sponsored === true) {
+      sponsoredItemCountByRun.set(run.id, (sponsoredItemCountByRun.get(run.id) ?? 0) + 1);
+    }
   });
 
   for (const run of runById.values()) {
-    if ((itemCountByRun.get(run.id) ?? 0) !== run.qualifyingCount) {
-      throw new TypeError(`qualifyingCount incohérent pour ${run.id}.`);
+    if ((itemCountByRun.get(run.id) ?? 0) > run.qualifyingCount) {
+      throw new TypeError(`Plus d’idées retenues que de sources qualifiées pour ${run.id}.`);
+    }
+    if ((sponsoredItemCountByRun.get(run.id) ?? 0) > run.sponsoredCount) {
+      throw new TypeError(`Plus de sources sponsorisées retenues qu’observées pour ${run.id}.`);
     }
   }
   for (const lens of lensById.values()) {

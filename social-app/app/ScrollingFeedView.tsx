@@ -102,16 +102,12 @@ export function ScrollingFeedView({
   }, [feed?.explorationLenses, feed?.items]);
 
   const visibleItems = useMemo(() => [...(feed?.items ?? [])]
+    .filter((item) => item.editorialStatus !== "dismissed")
     .filter((item) => theme === "all" || item.analysis.themeIds.includes(theme))
     .filter((item) => character === "all" || item.adaptation.cast.character === character)
     .filter((item) => format === "all" || item.source.format === format)
     .filter((item) => relevance === "all" || item.analysis.confidence === relevance)
     .sort(compareItems), [character, feed?.items, format, relevance, theme]);
-
-  const qualifyingCount = useMemo(() => (feed?.items ?? []).filter((item) => {
-    const likes = item.source.metrics.likes;
-    return likes !== null && likes >= (feed?.minimumLikes ?? 10_000);
-  }).length, [feed?.items, feed?.minimumLikes]);
 
   const resetFilters = () => {
     setTheme("all");
@@ -148,10 +144,11 @@ export function ScrollingFeedView({
             <Kpi value={String(latestRun.seenCount)} label="contenus observés" />
             <Kpi value={String(latestRun.qualifyingCount)} label={`compteurs ≥ ${formatCompact(feed.minimumLikes)}`} />
             <Kpi value={String(latestRunItemCount)} label="idées retenues" />
+            <Kpi value={String(latestRun.sponsoredCount)} label="marqués sponsorisés" />
             <Kpi value={String(latestRun.themeIds.length)} label="thèmes touchés" />
           </div>
           <p className="scrolling-threshold-note">
-            <b>{qualifyingCount} source{qualifyingCount === 1 ? "" : "s"} au seuil public.</b>{" "}
+            <b>{latestRunItemCount} source{latestRunItemCount === 1 ? "" : "s"} retenue{latestRunItemCount === 1 ? "" : "s"} sur {latestRun.qualifyingCount} au seuil public.</b>{" "}
             Quand Instagram masque les likes, la carte reste une inspiration observée et n’est jamais présentée comme une performance prouvée.
           </p>
           <p className="scrolling-production-rule">

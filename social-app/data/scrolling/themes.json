@@ -127,7 +127,7 @@
       "group": "lifestyle",
       "specialty": "Chat de Lofi Girl, chien de Lofi Boy et comportements attachants",
       "description": "Piste dédiée aux mécaniques animales observables et adaptables sans humaniser excessivement ni mettre un animal en difficulté.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": [
         "Le comportement naturel de l’animal crée le hook",
         "La relation avec le personnage reste tendre et lisible",
@@ -202,7 +202,7 @@
       "group": "lifestyle",
       "specialty": "Révisions, sessions minutées et petites victoires",
       "description": "Situations de révision réalistes, cycles de concentration et pauses, sans promesse de résultat scolaire.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["Le minuteur ou l’objectif est atteignable", "La pause fait partie du récit"],
       "adaptationAngles": ["Pomodoro où le chat réclame exactement la pause", "Boy coche une seule étape avant un examen"],
       "rejectIf": ["Promet une note, banalise le manque de sommeil ou culpabilise"]
@@ -224,7 +224,7 @@
       "group": "lifestyle",
       "specialty": "Rituels nocturnes, écrans tardifs et ambiance de nuit",
       "description": "Scènes de coucher et de veille nocturne qui offrent de la compagnie sans promettre de résoudre l’insomnie.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["L’heure tardive est lisible par la lumière et le rythme", "Le rituel finit par une transition calme"],
       "adaptationAngles": ["Le chat éteint indirectement la dernière distraction", "Le chien accompagne Boy dans une marche nocturne"],
       "rejectIf": ["Garantit l’endormissement ou formule une allégation de santé"]
@@ -235,7 +235,7 @@
       "group": "lifestyle",
       "specialty": "Transitions météo, lumière et détails saisonniers",
       "description": "Boucles où la météo modifie réellement le comportement des personnages et l’atmosphère.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["Plusieurs indices rendent la météo lisible", "La saison change une routine"],
       "adaptationAngles": ["La fenêtre de Girl évolue de la première pluie au rayon", "Le chien négocie une promenade sous plusieurs météos"],
       "rejectIf": ["Ajoute seulement un filtre météo sans conséquence narrative"]
@@ -268,7 +268,7 @@
       "group": "lifestyle",
       "specialty": "Fenêtres en mouvement, attente et destinations",
       "description": "Scènes où paysage, reflet et son transforment un trajet en moment narratif.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["La fenêtre ou le son rend le déplacement clair", "Un événement donne début et fin au trajet"],
       "adaptationAngles": ["Girl et le chat traversent plusieurs paysages en train", "Boy et le chien attendent un bus de nuit"],
       "rejectIf": ["Le voyage est décoratif ou affiche des données personnelles"]
@@ -301,7 +301,7 @@
       "group": "music",
       "specialty": "Objets musicaux, gestes et texture sonore",
       "description": "Hooks tactiles fondés sur un instrument, un disque ou une manipulation sonore authentique.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["Le geste produit vraiment le son", "La matière de l’objet est visible"],
       "adaptationAngles": ["Le chat choisit parmi des pochettes originales", "Boy répare puis rejoue un petit instrument"],
       "rejectIf": ["L’objet est accessoire ou la synchronisation est fausse"]
@@ -312,7 +312,7 @@
       "group": "music",
       "specialty": "Sous-genres et pédagogie musicale brève",
       "description": "Formats qui rendent une différence musicale audible avec des exemples sourcés, sans étiquetage arbitraire.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["La différence de texture est audible", "Les termes sont contextualisés"],
       "adaptationAngles": ["Trois microgenres du catalogue sur une même scène", "La ville de Boy change selon chaque texture"],
       "rejectIf": ["Classement faux, méprisant ou fondé sur des extraits sans droits"]
@@ -323,7 +323,7 @@
       "group": "music",
       "specialty": "Nouveautés, portraits, collaborations et merch",
       "description": "Annonces montrant la personne, le processus ou l’objet réel derrière une sortie.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["Une preuve concrète du processus est visible", "Date, crédits et disponibilité sont exacts"],
       "adaptationAngles": ["Présenter un artiste par trois objets de studio", "Révéler collab ou merch par sa fabrication"],
       "rejectIf": ["Crédits, disponibilité, stock ou droits non vérifiés"]
@@ -334,7 +334,7 @@
       "group": "community",
       "specialty": "Créations de fans et mise en avant consentie",
       "description": "Formats de reconnaissance où l’auteur, son accord et son œuvre sont clairement identifiés.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["Le crédit est visible partout", "L’autorisation de repartage est documentée"],
       "adaptationAngles": ["Girl visite une galerie de fan arts autorisés", "Plusieurs œuvres liées par un détail canonique"],
       "rejectIf": ["Le créateur n’a pas donné son accord ou son crédit est secondaire"]
@@ -345,7 +345,7 @@
       "group": "community",
       "specialty": "Décisions binaires, classements et réponses visibles",
       "description": "Questions aux options claires, réellement actionnables et suivies d’un résultat.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["Les choix se comprennent seuls", "Le résultat a une conséquence réelle"],
       "adaptationAngles": ["Choisir la prochaine pièce de Girl et du chat", "Décider de l’instrument de Boy"],
       "rejectIf": ["Le vote est factice, biaisé ou sans suite"]
@@ -389,7 +389,7 @@
       "group": "community",
       "specialty": "Boucle, split-screen, pixel art, VHS et 3D",
       "description": "Grammaires visuelles au service d’une idée, avec production originale et lisible.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["Le format ajoute un point de vue utile", "La boucle raccorde proprement début et fin"],
       "adaptationAngles": ["Girl et Boy en split-screen à la même heure", "Une pièce revisitée en pixel, VHS ou 3D par des artistes humains"],
       "rejectIf": ["Effet illisible, sans idée ou reposant sur une génération IA"]
