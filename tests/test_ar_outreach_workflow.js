@@ -74,7 +74,7 @@ const cardEnd = spotify.indexOf('\nfunction arScoreLine', cardStart);
 assert.doesNotMatch(spotify.slice(cardStart, cardEnd), /arContactHtml\(opportunity,true\)/, 'Card previews must not render contact platforms');
 assert.doesNotMatch(spotifyNav, /data-v="watch"/, 'Spotify watchlist navigation must be removed');
 assert.match(spotifyNav, /data-v="ar-list" data-fr="Sélection"><span class="emo">⭐<\/span>Sélection/, 'The star selection uses the simplified label');
-assert.match(spotifyNav, /data-v="radar" class="active" data-fr="Opportunités"><span class="emo">💎<\/span>Opportunités/, 'Spotify must open on the simplified Opportunities view');
+assert.match(spotifyNav, /data-v="radar" data-fr="Opportunités"><span class="emo">💎<\/span>Opportunités/, 'Spotify navigation uses the simplified Opportunities label without making it the default');
 assert.match(spotifyNav, /data-v="opps" data-fr="Pistes"><span class="emo">🎶<\/span>Pistes/, 'Spotify navigation uses the compact tracks label without making it the default');
 assert.match(spotifyNav, /data-v="artists" data-fr="Artistes"><span class="emo">🎸<\/span>Artistes/, 'Spotify navigation uses the compact artists label');
 assert.match(spotifyNav, /data-v="playlists" data-fr="Playlists"><span class="emo">📻<\/span>Playlists/, 'Spotify navigation uses the compact playlists label');

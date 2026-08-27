@@ -3,7 +3,7 @@ import json
 import tempfile
 import unittest
 from contextlib import redirect_stdout
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import data_freshness_watchdog as subject
@@ -13,6 +13,59 @@ import spotify_performance_store
 def write(path: Path, value: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(value, encoding="utf-8")
+
+
+def valid_spotify_track_policy(
+    *,
+    today: date = date(2026, 7, 29),
+    public_entities: int = 700,
+    selected_entities: int = 100,
+    stale_source_entities: int = 0,
+) -> dict:
+    daily_bucket = today.toordinal() % 7
+    expected_per_bucket = public_entities // 7
+    remainder = public_entities % 7
+    rotation_coverage = {}
+    for bucket in range(7):
+        expected = expected_per_bucket + (1 if bucket < remainder else 0)
+        rotation_coverage[str(bucket)] = {
+            "expected_requests": expected,
+            "selected_requests": expected if bucket == daily_bucket else 0,
+        }
+    weekly_due = rotation_coverage[str(daily_bucket)]["expected_requests"]
+    selected_requests = weekly_due
+    return {
+        "version": 3,
+        "selection_mode": "adaptive_daily",
+        "request_cap": 6000,
+        "expected_requests": public_entities,
+        "selected_requests": selected_requests,
+        "missing_requests": public_entities - selected_requests,
+        "daily_rotation_bucket": daily_bucket,
+        "rotation_bucket_count": 7,
+        "weekly_due_requests": weekly_due,
+        "weekly_selected_requests": weekly_due,
+        "weekly_missing": 0,
+        "weekly_missing_requests": 0,
+        "rotation_coverage": rotation_coverage,
+        "reason_coverage": {
+            "published_public": {
+                "expected_requests": public_entities,
+                "selected_requests": selected_requests,
+                "missing_requests": public_entities - selected_requests,
+            }
+        },
+        "published_public_entity_coverage": {
+            "public_entities": public_entities,
+            "resolvable_entities": public_entities,
+            "unresolved_entities": 0,
+            "selected_entities": selected_entities,
+            "missing_selected_entities": public_entities - selected_entities,
+            "source_age_limit_days": 7,
+            "stale_source_entities": stale_source_entities,
+            "freshness_cutoff": (today - timedelta(days=7)).isoformat(),
+        },
+    }
 
 
 def write_youtube_fixture(
@@ -141,24 +194,7 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
                 },
                 "maintenance_coverage": {
                     "tracks": {
-                        "policy": {
-                            "reason_coverage": {
-                                "published_public": {
-                                    "expected_requests": 0,
-                                    "selected_requests": 0,
-                                    "missing_requests": 0,
-                                }
-                            },
-                            "published_public_entity_coverage": {
-                                "public_entities": 1,
-                                "resolvable_entities": 1,
-                                "unresolved_entities": 0,
-                                "selected_entities": 1,
-                                "missing_selected_entities": 0,
-                                "current_source_entities": 1,
-                                "lagging_source_entities": 0,
-                            },
-                        }
+                        "policy": valid_spotify_track_policy()
                     }
                 },
             },
@@ -237,24 +273,7 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
                 },
                 "maintenance_coverage": {
                     "tracks": {
-                        "policy": {
-                            "reason_coverage": {
-                                "published_public": {
-                                    "expected_requests": 0,
-                                    "selected_requests": 0,
-                                    "missing_requests": 0,
-                                }
-                            },
-                            "published_public_entity_coverage": {
-                                "public_entities": 1,
-                                "resolvable_entities": 1,
-                                "unresolved_entities": 0,
-                                "selected_entities": 1,
-                                "missing_selected_entities": 0,
-                                "current_source_entities": 1,
-                                "lagging_source_entities": 0,
-                            },
-                        }
+                        "policy": valid_spotify_track_policy()
                     }
                 },
             },
@@ -266,6 +285,86 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
             ["spotify_core"],
         )[0]
         self.assertFalse(before_deadline.due)
+
+    def test_spotify_core_dispatch_contract_is_bounded_developer_maintenance(self):
+        self.assertEqual(
+            subject.TARGETS["spotify_core"].inputs,
+            {
+                "scope": "maintenance",
+                "max_requests": "6000",
+                "freshness_gate": "true",
+            },
+        )
+
+    def test_spotify_policy_allows_mandatory_rows_inside_the_daily_rotation_bucket(self):
+        policy = valid_spotify_track_policy()
+        daily_bucket = str(policy["daily_rotation_bucket"])
+        policy["rotation_coverage"][daily_bucket]["expected_requests"] += 5
+        policy["rotation_coverage"][daily_bucket]["selected_requests"] += 5
+        policy["expected_requests"] += 5
+        policy["selected_requests"] += 5
+
+        self.assertIsNone(subject.spotify_track_policy_problem(policy, 6000))
+
+    def test_spotify_core_allows_artists_to_age_for_180_hours(self):
+        performance = spotify_performance_store.read_performance_payload(
+            self.root / "Spotify_Performance_data.js"
+        )
+        performance["freshness"]["artists_catalogue_at"] = "2026-07-22T00:00:00Z"
+        spotify_performance_store.write_performance_payload(
+            self.root / "Spotify_Performance_data.js",
+            performance,
+            shard_count=1,
+        )
+
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["spotify_core"],
+        )[0]
+
+        self.assertFalse(row.due, row.reason)
+        self.assertIn("artists are 179h old", row.reason)
+
+    def test_spotify_core_retries_after_artist_age_exceeds_180_hours(self):
+        performance = spotify_performance_store.read_performance_payload(
+            self.root / "Spotify_Performance_data.js"
+        )
+        performance["freshness"]["artists_catalogue_at"] = "2026-07-21T21:59:59Z"
+        spotify_performance_store.write_performance_payload(
+            self.root / "Spotify_Performance_data.js",
+            performance,
+            shard_count=1,
+        )
+
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["spotify_core"],
+        )[0]
+
+        self.assertTrue(row.due)
+        self.assertIn("older than 180 hours", row.reason)
+
+    def test_spotify_core_retries_when_track_catalogue_exceeds_36_hours(self):
+        performance = spotify_performance_store.read_performance_payload(
+            self.root / "Spotify_Performance_data.js"
+        )
+        performance["freshness"]["tracks_catalogue_at"] = "2026-07-27T22:59:59Z"
+        spotify_performance_store.write_performance_payload(
+            self.root / "Spotify_Performance_data.js",
+            performance,
+            shard_count=1,
+        )
+
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["spotify_core"],
+        )[0]
+
+        self.assertTrue(row.due)
+        self.assertIn("older than 36 hours", row.reason)
 
     def test_missing_performance_shard_is_never_reported_green(self):
         performance = {
@@ -314,19 +413,46 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         )[0]
 
         self.assertTrue(row.due)
-        self.assertIn("public Spotify track cohort", row.reason)
+        self.assertIn("maintenance policy", row.reason)
 
-    def test_spotify_core_retries_partial_public_track_scheduling(self):
+    def test_spotify_core_accepts_partial_daily_public_selection_with_weekly_rotation(self):
         performance = spotify_performance_store.read_performance_payload(
             self.root / "Spotify_Performance_data.js"
         )
-        performance["maintenance_coverage"]["tracks"]["policy"]["reason_coverage"][
-            "published_public"
-        ] = {
-            "expected_requests": 100,
-            "selected_requests": 99,
-            "missing_requests": 1,
-        }
+        policy = valid_spotify_track_policy(
+            public_entities=700,
+            selected_entities=100,
+        )
+        # Public priorities may consume the daily cap before the explicit
+        # weekly lane; source-age proof still demonstrates weekly coverage.
+        policy["weekly_selected_requests"] = 0
+        policy["weekly_missing"] = policy["weekly_due_requests"]
+        policy["weekly_missing_requests"] = policy["weekly_due_requests"]
+        performance["maintenance_coverage"]["tracks"]["policy"] = policy
+        spotify_performance_store.write_performance_payload(
+            self.root / "Spotify_Performance_data.js",
+            performance,
+            shard_count=1,
+        )
+
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["spotify_core"],
+        )[0]
+
+        self.assertFalse(row.due, row.reason)
+        self.assertIn("weekly rotation selected 100/700", row.reason)
+
+    def test_spotify_core_retries_when_too_many_public_histories_are_over_seven_days_old(self):
+        performance = spotify_performance_store.read_performance_payload(
+            self.root / "Spotify_Performance_data.js"
+        )
+        performance["maintenance_coverage"]["tracks"]["policy"] = valid_spotify_track_policy(
+            public_entities=1000,
+            selected_entities=143,
+            stale_source_entities=11,
+        )
         spotify_performance_store.write_performance_payload(
             self.root / "Spotify_Performance_data.js",
             performance,
@@ -340,27 +466,75 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         )[0]
 
         self.assertTrue(row.due)
-        self.assertIn("99/100", row.reason)
+        self.assertIn("989/1000", row.reason)
 
-    def test_spotify_core_retries_when_public_history_source_days_remain_stale(self):
+    def test_spotify_core_accepts_ten_stale_public_histories_at_the_floor(self):
         performance = spotify_performance_store.read_performance_payload(
             self.root / "Spotify_Performance_data.js"
         )
-        policy = performance["maintenance_coverage"]["tracks"]["policy"]
-        policy["reason_coverage"]["published_public"] = {
-            "expected_requests": 100,
-            "selected_requests": 100,
-            "missing_requests": 0,
-        }
-        policy["published_public_entity_coverage"] = {
-            "public_entities": 100,
-            "resolvable_entities": 100,
-            "unresolved_entities": 0,
-            "selected_entities": 100,
-            "missing_selected_entities": 0,
-            "current_source_entities": 80,
-            "lagging_source_entities": 20,
-        }
+        performance["maintenance_coverage"]["tracks"]["policy"] = valid_spotify_track_policy(
+            public_entities=100,
+            selected_entities=15,
+            stale_source_entities=10,
+        )
+        spotify_performance_store.write_performance_payload(
+            self.root / "Spotify_Performance_data.js",
+            performance,
+            shard_count=1,
+        )
+
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["spotify_core"],
+        )[0]
+
+        self.assertFalse(row.due, row.reason)
+
+    def test_spotify_core_accepts_one_percent_stale_for_a_larger_public_cohort(self):
+        performance = spotify_performance_store.read_performance_payload(
+            self.root / "Spotify_Performance_data.js"
+        )
+        performance["maintenance_coverage"]["tracks"]["policy"] = valid_spotify_track_policy(
+            public_entities=2100,
+            selected_entities=300,
+            stale_source_entities=21,
+        )
+        spotify_performance_store.write_performance_payload(
+            self.root / "Spotify_Performance_data.js",
+            performance,
+            shard_count=1,
+        )
+
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["spotify_core"],
+        )[0]
+
+        self.assertFalse(row.due, row.reason)
+
+    def test_spotify_core_rejects_a_policy_without_any_selection(self):
+        performance = spotify_performance_store.read_performance_payload(
+            self.root / "Spotify_Performance_data.js"
+        )
+        policy = valid_spotify_track_policy()
+        policy["selected_requests"] = 0
+        policy["missing_requests"] = policy["expected_requests"]
+        for bucket in policy["rotation_coverage"].values():
+            bucket["selected_requests"] = 0
+        policy["weekly_selected_requests"] = 0
+        policy["weekly_missing"] = policy["weekly_due_requests"]
+        policy["weekly_missing_requests"] = policy["weekly_due_requests"]
+        policy["reason_coverage"]["published_public"]["selected_requests"] = 0
+        policy["reason_coverage"]["published_public"]["missing_requests"] = policy[
+            "reason_coverage"
+        ]["published_public"]["expected_requests"]
+        policy["published_public_entity_coverage"]["selected_entities"] = 0
+        policy["published_public_entity_coverage"]["missing_selected_entities"] = policy[
+            "published_public_entity_coverage"
+        ]["resolvable_entities"]
+        performance["maintenance_coverage"]["tracks"]["policy"] = policy
         spotify_performance_store.write_performance_payload(
             self.root / "Spotify_Performance_data.js",
             performance,
@@ -374,22 +548,49 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         )[0]
 
         self.assertTrue(row.due)
-        self.assertIn("80/100", row.reason)
+        self.assertIn("no bounded selection", row.reason)
+
+    def test_spotify_core_requires_explicit_seven_day_source_age_proof(self):
+        performance = spotify_performance_store.read_performance_payload(
+            self.root / "Spotify_Performance_data.js"
+        )
+        entities = performance["maintenance_coverage"]["tracks"]["policy"][
+            "published_public_entity_coverage"
+        ]
+        entities.pop("stale_source_entities")
+        spotify_performance_store.write_performance_payload(
+            self.root / "Spotify_Performance_data.js",
+            performance,
+            shard_count=1,
+        )
+
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 29, 11, tzinfo=timezone.utc),
+            ["spotify_core"],
+        )[0]
+
+        self.assertTrue(row.due)
+        self.assertIn("seven-day", row.reason)
 
     def test_spotify_core_rejects_an_empty_public_cohort(self):
         performance = spotify_performance_store.read_performance_payload(
             self.root / "Spotify_Performance_data.js"
         )
-        policy = performance["maintenance_coverage"]["tracks"]["policy"]
-        policy["published_public_entity_coverage"] = {
-            "public_entities": 0,
-            "resolvable_entities": 0,
-            "unresolved_entities": 0,
-            "selected_entities": 0,
-            "missing_selected_entities": 0,
-            "current_source_entities": 0,
-            "lagging_source_entities": 0,
-        }
+        policy = valid_spotify_track_policy(
+            public_entities=7,
+            selected_entities=1,
+        )
+        policy["published_public_entity_coverage"].update(
+            {
+                "public_entities": 0,
+                "resolvable_entities": 0,
+                "unresolved_entities": 0,
+                "selected_entities": 0,
+                "missing_selected_entities": 0,
+            }
+        )
+        performance["maintenance_coverage"]["tracks"]["policy"] = policy
         spotify_performance_store.write_performance_payload(
             self.root / "Spotify_Performance_data.js",
             performance,

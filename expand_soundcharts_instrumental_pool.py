@@ -8,10 +8,10 @@ identifier and up to 90 daily cumulative stream points.  This collector turns
 that editorial universe into real, measurable Spotify tracks, enriches rights and
 artist identity once, and appends exact histories to ``Spotify_Performance_data.js``.
 
-The script is designed for a 4M request/month plan:
+The script is designed around an explicit bounded request budget:
 
 * audience history is refreshed for the full target pool every production run;
-* song metadata and artist identifiers/stats are cached and refreshed slowly;
+* song metadata and artist identifiers/listening are cached and refreshed slowly;
 * HTTP success without usable Spotify points never advances freshness;
 * no missing daily point is extrapolated.
 """
@@ -37,6 +37,8 @@ from refresh_soundcharts_daily import (
     SoundchartsHttpError,
     SoundchartsQuotaReserveError,
     SoundchartsRequestLimitError,
+    artist_spotify_listening_path,
+    extract_artist_spotify_listening_points,
 )
 from scan_soundcharts_fal_phase1 import extract_evidence
 from spotify_performance_store import (
@@ -2291,31 +2293,26 @@ def parse_artist_identifiers(response: Any) -> dict[str, Any]:
 
 
 def parse_artist_stats(response: Any) -> dict[str, Any]:
-    result: dict[str, Any] = {
-        "monthly_listeners": None,
-        "monthly_listeners_change": None,
-        "monthly_listeners_date": None,
-        "spotify_followers": None,
+    points = extract_artist_spotify_listening_points(response)
+    if not points:
+        return {}
+    latest_day, latest_value = points[-1]
+    previous_value = None
+    if len(points) >= 2:
+        previous_day, candidate_value = points[-2]
+        if (
+            dt.date.fromisoformat(latest_day) - dt.date.fromisoformat(previous_day)
+            == dt.timedelta(days=1)
+        ):
+            previous_value = candidate_value
+    return {
+        "monthly_listeners": int(latest_value),
+        "monthly_listeners_change": (
+            int(latest_value) - int(previous_value) if previous_value is not None else None
+        ),
+        "monthly_listeners_date": latest_day,
+        "monthly_listeners_source": "soundcharts_artist_streaming_spotify_listening",
     }
-    if not isinstance(response, dict):
-        return result
-    for section, output_name in (("streaming", "monthly_listeners"), ("social", "spotify_followers")):
-        values = response.get(section)
-        if not isinstance(values, list):
-            continue
-        for item in values:
-            if not isinstance(item, dict) or str(item.get("platform") or "").casefold() != "spotify":
-                continue
-            value = finite_number(item.get("value"))
-            if value is None:
-                continue
-            result[output_name] = int(value)
-            if section == "streaming":
-                change = finite_number(item.get("evolution"))
-                result["monthly_listeners_change"] = int(change) if change is not None else None
-                result["monthly_listeners_date"] = normalize_day(item.get("date"))
-            break
-    return result
 
 
 class RequestBudget:
@@ -2663,7 +2660,12 @@ def expand_instrumental_pool(
         if not cached or is_stale(cached.get("identifiers_fetched_at"), metadata_refresh_days):
             identifier_tasks.append((uuid, f"/api/v2/artist/{urllib.parse.quote(uuid)}/identifiers?offset=0&limit=100"))
         if not cached or is_stale(cached.get("stats_fetched_at"), artist_refresh_days):
-            stats_tasks.append((uuid, f"/api/v2/artist/{urllib.parse.quote(uuid)}/current/stats"))
+            stats_tasks.append(
+                (
+                    uuid,
+                    artist_spotify_listening_path(uuid, period_days, today=today),
+                )
+            )
         if uuid not in cache_artists:
             cache_artists[uuid] = {"name": name}
 
@@ -2676,13 +2678,18 @@ def expand_instrumental_pool(
     stats_responses, stats_failures = parallel_requests(client, stats_tasks, budget, workers)
     for uuid, response in stats_responses.items():
         entry = cache_artists.setdefault(uuid, {})
-        entry.update(parse_artist_stats(response))
+        parsed_stats = parse_artist_stats(response)
+        if parsed_stats:
+            entry.update(parsed_stats)
+            entry["stats_fetched_at"] = utc_now()
+        else:
+            stats_failures += 1
         related = response.get("related") if isinstance(response, dict) else None
         if isinstance(related, dict):
-            entry["name"] = str(related.get("name") or entry.get("name") or "")
-            entry["image_url"] = str(related.get("imageUrl") or entry.get("image_url") or "")
-            entry["soundcharts_url"] = str(related.get("appUrl") or entry.get("soundcharts_url") or "")
-        entry["stats_fetched_at"] = utc_now()
+            related_artist = related.get("artist") if isinstance(related.get("artist"), dict) else related
+            entry["name"] = str(related_artist.get("name") or entry.get("name") or "")
+            entry["image_url"] = str(related_artist.get("imageUrl") or entry.get("image_url") or "")
+            entry["soundcharts_url"] = str(related_artist.get("appUrl") or entry.get("soundcharts_url") or "")
 
     performance_tracks = performance.setdefault("tracks", {})
     if not isinstance(performance_tracks, dict):

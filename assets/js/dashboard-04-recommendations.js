@@ -522,7 +522,10 @@ const RECO_MIN_DAILY_SCORE=78;
 // appends. Fifty thousand entries cover many full ledgers while staying well
 // below normal localStorage quotas; only the oldest consumed IDs can age out.
 const RECO_CONSUMED_LIMIT=50000;
-const RECO_DAILY_HISTORY_DAYS=30;
+// Keep twelve weeks of surfaced lots locally. This is deliberately longer
+// than the eight-week editorial no-repeat contract so an occasional missed
+// scan cannot shorten the effective memory below that floor.
+const RECO_DAILY_HISTORY_DAYS=84;
 const RECO_DAILY_META_VERSION=1;
 // V4 resets only the stale seen/queue rotation after the full-history learning
 // launch. Decisions, edits and Roadmap placements use separate stores.
@@ -704,7 +707,7 @@ function recoPoolIdentity(){
   return {
     schema:Number(pool.schema)||0,version:Number(pool.version)||0,buildId:String(pool.buildId||''),
     ledgerRevision:String(pool.ledgerRevision||''),modelRevision:String(pool.modelRevision||''),
-    sourceT:Number(pool.sourceT)||0,feedbackT:Number(pool.feedbackT)||0
+    sourceT:Number(pool.sourceT)||0,feedbackT:Number(pool.feedbackT)||0,generationEpoch:String(pool.generationEpoch||'')
   };
 }
 function activeRecommendationGeneratorVersion(){
@@ -714,7 +717,7 @@ function activeRecommendationGeneratorVersion(){
 }
 function recoPoolIdentityKey(identity){
   if(!identity||typeof identity!=='object')return '';
-  return [identity.schema,identity.version,identity.buildId,identity.ledgerRevision,identity.modelRevision,identity.sourceT,identity.feedbackT].map(value=>String(value==null?'':value)).join('|');
+  return [identity.schema,identity.version,identity.buildId,identity.ledgerRevision,identity.modelRevision,identity.sourceT,identity.feedbackT,identity.generationEpoch].map(value=>String(value==null?'':value)).join('|');
 }
 function normalizeRecoRotationHistory(history){
   history=history&&typeof history==='object'&&!Array.isArray(history)?history:{};
@@ -754,19 +757,25 @@ function recoDailyMeta(history,day){
 function recoPreviousDayKey(history,day){
   return Object.keys(history||{}).filter(key=>!key.startsWith('_')&&key<day&&Array.isArray(history[key])&&history[key].length).sort().pop()||'';
 }
+function recoHistoricalDayKeys(history,day){
+  return Object.keys(history||{}).filter(key=>!key.startsWith('_')&&Array.isArray(history[key])&&(!day||key<day)).sort();
+}
 function recoSeenIds(history,day){
   history=normalizeRecoRotationHistory(history);
   const seen=new Set((history._consumed||[]).map(Number).filter(Number.isFinite));
-  const dayKeys=day?[recoPreviousDayKey(history,day)]:Object.keys(history||{}).filter(key=>!key.startsWith('_'));
+  const dayKeys=recoHistoricalDayKeys(history,day);
   dayKeys.forEach(key=>(Array.isArray(history[key])?history[key]:[]).forEach(id=>{id=Number(id);if(Number.isFinite(id))seen.add(id);}));
   return seen;
 }
 function recoPreviousTopicKeys(history,day,candidates){
-  const previousDay=recoPreviousDayKey(history,day);if(!previousDay)return new Set();
-  const stored=history&&history._topics&&Array.isArray(history._topics[previousDay])?history._topics[previousDay]:null;
-  if(stored)return new Set(stored.map(recoFeatureText).filter(Boolean));
+  const dayKeys=recoHistoricalDayKeys(history,day),topics=new Set();if(!dayKeys.length)return topics;
   const byId=new Map((candidates||[]).map(row=>[Number(row&&row.n),row]));
-  return new Set((history[previousDay]||[]).map(id=>byId.get(Number(id))).filter(Boolean).map(recoNormalizedTopicKey).filter(Boolean));
+  dayKeys.forEach(key=>{
+    const stored=history&&history._topics&&Array.isArray(history._topics[key])?history._topics[key]:null;
+    if(stored){stored.map(recoFeatureText).filter(Boolean).forEach(topic=>topics.add(topic));return;}
+    (history[key]||[]).map(id=>byId.get(Number(id))).filter(Boolean).map(recoNormalizedTopicKey).filter(Boolean).forEach(topic=>topics.add(topic));
+  });
+  return topics;
 }
 function recoRecentUsePenalty(history,day,id){
   const today=recoDayOrdinal(day);let last=null;
@@ -862,7 +871,7 @@ function recoTitleHookKey(row){
   return recoFeatureText(raw).split(/\s+/).filter(Boolean).slice(0,3).join(' ');
 }
 function recoNormalizedTopicKey(row){
-  let raw=String(row&&row._topicKey||'');
+  let raw=String(row&&row._expressionTopicKey||row&&row._topicKey||'');
   if(!raw){
     const family=String(row&&row._conceptFamily||'').split('|');
     if(family.length>=3)raw=family.slice(2).join(' ');
@@ -1088,6 +1097,7 @@ function dailyRecommendationSet(){
     const evidencePotential=recoPotentialForScore(visibleScore);
     return Object.assign({},r,{scoreAdj:visibleScore,pot:evidencePotential,_dailyScore:dailyScore,_dailyPotential:recoPotentialForScore(dailyScore),_dailyReasons:recoReasons(r,profile,day),_dailyProfile:profile});
   });
+  const seen=recoSeenIds(history,day),historicalTopics=recoPreviousTopicKeys(history,day,candidates),consumedIds=new Set((history._consumed||[]).map(Number));
   let todayIds=Array.isArray(history[day])?history[day]:[];
   let hasStoredDailyQueue=Array.isArray(history[day]);
   let dailyMeta=recoDailyMeta(history,day),dailyCreatedAt=Number(dailyMeta&&dailyMeta.createdAt)||Date.now();
@@ -1116,6 +1126,13 @@ function dailyRecommendationSet(){
     const resolved=activeTodayIds.map(n=>byId.get(Number(n))).filter(Boolean);
     const retained=recoUniqueTopicRows(resolved);
     const sharedReady=recoSharedStateHydrated(),networkReady=recoSharedStateNetworkReady(),sharedRevision=recoSharedStateRevision();
+    // Migrate a queue created by the former J-1-only client. A repeated card
+    // or semantic topic is never grandfathered into today's lot merely because
+    // it was persisted before this durable-history rule shipped.
+    const historicalRepeat=resolved.some(row=>{
+      const topic=recoNormalizedTopicKey(row);
+      return seen.has(Number(row.n))||(topic&&historicalTopics.has(topic));
+    });
     const provisionalReady=!!dailyMeta&&dailyMeta.hydrated!==true&&sharedReady;
     const firstNetworkConfirmation=!!dailyMeta&&dailyMeta.networkConfirmed!==true&&networkReady;
     const networkConfirmationNeedsRebuild=firstNetworkConfirmation&&retained.length<Number(dailyMeta.target||RECO_DAILY_LIMIT);
@@ -1126,7 +1143,7 @@ function dailyRecommendationSet(){
     // quality-gated batch for the hydration race.
     const legacyHydrationRace=!dailyMeta&&sharedReady&&activeTodayIds.length===RECO_DAILY_LIMIT&&
       !!poolKey&&!!recoPoolIdentityKey(history._pool)&&retained.length<RECO_DAILY_LIMIT&&candidates.length>=RECO_DAILY_LIMIT;
-    if(provisionalReady||networkConfirmationNeedsRebuild||historicalRevisionArrived||legacyHydrationRace){
+    if(historicalRepeat||provisionalReady||networkConfirmationNeedsRebuild||historicalRevisionArrived||legacyHydrationRace){
       if(legacyHydrationRace)dailyCreatedAt=recoDayStartTimestamp(day);
       recoReviewedIdsSince(activeTodayIds,dailyCreatedAt).forEach(id=>dailyReviewedIds.add(id));
       selectionLimit=Math.max(0,RECO_DAILY_LIMIT-dailyReviewedIds.size);
@@ -1152,14 +1169,13 @@ function dailyRecommendationSet(){
       return rows;
     }
   }
-  const seen=recoSeenIds(history,day),previousTopics=recoPreviousTopicKeys(history,day,candidates),consumedIds=new Set((history._consumed||[]).map(Number));
   const qualified=candidates.filter(r=>!consumedIds.has(Number(r.n)))
     // Recency is a separate ordering prior, not evidence for the objective
     // market score/tier. It can break a close call without hiding a much
     // stronger evergreen source.
     .map(r=>{const score=recoDailyScore(r,profile,day);return {r,score,rankScore:score+recoSourceRecencyBoost(r)-recoRecentUsePenalty(history,day,r.n)};})
     .filter(item=>item.score>=RECO_MIN_DAILY_SCORE);
-  const eligibleQualified=qualified.filter(item=>!seen.has(Number(item.r.n))&&(!recoNormalizedTopicKey(item.r)||!previousTopics.has(recoNormalizedTopicKey(item.r))));
+  const eligibleQualified=qualified.filter(item=>!seen.has(Number(item.r.n))&&(!recoNormalizedTopicKey(item.r)||!historicalTopics.has(recoNormalizedTopicKey(item.r))));
   const rotated=recoDailyRotationWindow(eligibleQualified,day,selectionLimit),target=Number(rotated._target)||Math.min(selectionLimit,rotated.length);
   const available=rotated.slice();
   const picked=[],genres={},purposes={},sources={},combos={},settings={},titleHooks={},strictGenreTopics=new Set(),strictGlobalTopics=new Set();

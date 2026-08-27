@@ -32,12 +32,14 @@ const analyticsRuntime = read('spotify/playlist-analytics.js');
 // source only after a user opens a playlist.
 assert.doesNotMatch(index, /playlist-analytics\.js|Spotify_Playlist_Analytics_data\.js|Spotify_Playlists_canonical_data\.js/,
   'playlist analytics and follower history must remain lazy on first paint');
-assert.match(instantRuntime, /let playlistAnalyticsPromise=null/,
-  'the lightweight runtime must cache one lazy playlist-analytics request');
+assert.match(instantRuntime, /const analyticsPromises=\{\}/,
+  'the lightweight runtime must cache lazy analytics requests');
+assert.match(instantRuntime, /analyticsPromises\[kind\]/,
+  'the shared loader must cache one request per analytics kind');
 assert.match(instantRuntime, /function loadPlaylistAnalytics\(\)/,
   'the visible playlist tab must be able to load its analytics renderer');
-assert.match(instantRuntime, /window\.SpotifyPlaylistAnalytics/,
-  'the lazy loader must resolve the playlist analytics module');
+assert.match(instantRuntime, /const key=`Spotify\$\{kind\}Analytics`/,
+  'the lazy loader must resolve each analytics module from its browser global');
 assert.match(instantRuntime, /async function openPlaylist\(id\)/,
   'clicking a visible playlist must have an internal detail action');
 assert.match(instantRuntime, /analyticsModule\.open\(/,

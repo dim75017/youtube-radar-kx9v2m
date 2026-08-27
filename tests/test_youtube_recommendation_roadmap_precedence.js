@@ -141,6 +141,10 @@ const context = {
   recoReviewedIdsSince: () => [],
   rememberRecoIds: history => history,
   recoSeenIds: () => new Set(),
+  // This fixture has only a current-day queue, so there is no older semantic
+  // history to exclude. Supply the real selector's new dependency explicitly
+  // instead of bypassing dailyRecommendationSet itself.
+  recoPreviousTopicKeys: () => new Set(),
   saveRecoRotation: () => {},
   recoPoolIdentity: () => ({version: 4, buildId: 'roadmap-test'}),
   recoPoolIdentityKey: identity => identity ? `${identity.version}|${identity.buildId}` : '',

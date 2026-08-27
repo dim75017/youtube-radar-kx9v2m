@@ -3,6 +3,7 @@ import datetime as dt
 import tempfile
 import threading
 import unittest
+import urllib.parse
 from pathlib import Path
 from unittest.mock import patch
 
@@ -165,15 +166,17 @@ def identifiers_response():
 
 def stats_response():
     return {
-        "related": {"name": "Nova Issue", "imageUrl": "https://assets.test/nova.jpg"},
-        "social": [{"platform": "spotify", "value": 2196, "date": "2026-07-21"}],
-        "streaming": [
-            {
-                "platform": "spotify",
-                "value": 1_283_880,
-                "date": "2026-07-21",
-                "evolution": 49_489,
-            }
+        "related": {
+            "artist": {
+                "name": "Nova Issue",
+                "imageUrl": "https://assets.test/nova.jpg",
+                "appUrl": "https://app.soundcharts.com/app/artist/nova",
+            },
+            "platform": "spotify",
+        },
+        "items": [
+            {"date": "2026-07-20T00:00:00+00:00", "value": 1_234_391},
+            {"date": "2026-07-21T00:00:00+00:00", "value": 1_283_880},
         ],
     }
 
@@ -1074,7 +1077,7 @@ class InstrumentalPoolTests(unittest.TestCase):
                 "/audience/spotify?": audience_response(),
                 "/api/v2.25/song/song-uuid": song_detail(),
                 "/artist/artist-uuid/identifiers": identifiers_response(),
-                "/artist/artist-uuid/current/stats": stats_response(),
+                "/artist/artist-uuid/streaming/spotify/listening?": stats_response(),
             }
         )
         soundcharts = payload()
@@ -1113,6 +1116,56 @@ class InstrumentalPoolTests(unittest.TestCase):
         self.assertEqual(
             subject.field(artist, artist_schema, "public_contacts"),
             [{"platform": "instagram", "url": "https://instagram.com/novaissue"}],
+        )
+        listening_paths = [
+            path for path in client.paths if "/streaming/spotify/listening?" in path
+        ]
+        self.assertEqual(len(listening_paths), 1)
+        self.assertFalse(any("/current/stats" in path for path in client.paths))
+        parsed = urllib.parse.urlsplit(listening_paths[0])
+        self.assertEqual(
+            urllib.parse.parse_qs(parsed.query),
+            {
+                "startDate": ["2026-04-23"],
+                "endDate": ["2026-07-21"],
+                "limit": ["100"],
+                "sort": ["asc"],
+            },
+        )
+        self.assertEqual(
+            cache["artists"]["artist-uuid"]["monthly_listeners_source"],
+            "soundcharts_artist_streaming_spotify_listening",
+        )
+
+    def test_artist_stats_parser_uses_latest_valid_listening_point(self):
+        response = stats_response()
+        response["items"].extend(
+            [
+                {"date": "invalid", "value": 9_999_999},
+                {"date": "2026-07-22", "value": True},
+                {"date": "2026-07-21T23:00:00+00:00", "value": 1_284_000},
+            ]
+        )
+
+        self.assertEqual(
+            subject.parse_artist_stats(response),
+            {
+                "monthly_listeners": 1_284_000,
+                "monthly_listeners_change": 49_609,
+                "monthly_listeners_date": "2026-07-21",
+                "monthly_listeners_source": "soundcharts_artist_streaming_spotify_listening",
+            },
+        )
+        self.assertEqual(subject.parse_artist_stats({"items": []}), {})
+        self.assertIsNone(
+            subject.parse_artist_stats(
+                {
+                    "items": [
+                        {"date": "2026-07-18", "value": 1_200_000},
+                        {"date": "2026-07-21", "value": 1_284_000},
+                    ]
+                }
+            )["monthly_listeners_change"]
         )
 
     def test_weak_candidate_refresh_preserves_existing_strict_track_evidence(self):

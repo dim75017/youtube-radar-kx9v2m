@@ -4,6 +4,7 @@ import inspect
 import sqlite3
 import tempfile
 import unittest
+import urllib.parse
 from pathlib import Path
 
 from scan_soundcharts_fal_phase1 import (
@@ -275,14 +276,19 @@ class FalPhase1Tests(unittest.TestCase):
         self.assertEqual(evidence["ai_risk"], "unknown")
         self.assertIsNone(evidence_decision(evidence)[0])
 
-    def test_audience_uses_current_stats_value_and_50k_floor(self):
+    def test_audience_uses_standard_spotify_listening_value_and_50k_floor(self):
         connection = self.state()
         self.insert_candidate(connection, "candidate-ok")
         self.insert_candidate(connection, "candidate-low")
 
         def respond(path):
             value = 60_000 if "candidate-ok" in path else 49_999
-            return {"object": {"streaming": [{"platform": "spotify", "value": value, "date": "2026-07-29"}]}}
+            return {
+                "items": [
+                    {"date": "2026-07-28T00:00:00+00:00", "value": value - 100},
+                    {"date": "2026-07-29T00:00:00+00:00", "value": value},
+                ]
+            }
 
         client = FakeClient(respond)
         scanner = Phase1Scanner(
@@ -307,7 +313,19 @@ class FalPhase1Tests(unittest.TestCase):
         self.assertEqual(rows["candidate-ok"]["status"], "activity_pending")
         self.assertEqual(rows["candidate-low"]["status"], "blocked_audience_low")
         self.assertEqual(rows["candidate-low"]["reason"], "below_50000_monthly_listeners")
-        self.assertTrue(all("/current/stats" in path for path in client.paths))
+        self.assertFalse(any("/current/stats" in path for path in client.paths))
+        for path in client.paths:
+            parsed = urllib.parse.urlsplit(path)
+            self.assertTrue(parsed.path.endswith("/streaming/spotify/listening"))
+            self.assertEqual(
+                urllib.parse.parse_qs(parsed.query),
+                {
+                    "startDate": ["2026-05-01"],
+                    "endDate": ["2026-07-29"],
+                    "limit": ["100"],
+                    "sort": ["asc"],
+                },
+            )
 
     def test_vocal_track_is_blocked_individually_and_catalogue_continues(self):
         connection = self.state()

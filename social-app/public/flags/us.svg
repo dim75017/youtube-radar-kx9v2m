@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 90" aria-hidden="true" focusable="false">
+  <defs>
+    <pattern id="stars" width="9" height="9" patternUnits="userSpaceOnUse">
+      <circle cx="2.25" cy="2.25" r="1.05" fill="#fff"/>
+      <circle cx="6.75" cy="6.75" r="1.05" fill="#fff"/>
+    </pattern>
+  </defs>
+  <rect width="120" height="90" fill="#b22234"/>
+  <g fill="#fff">
+    <rect y="6.923" width="120" height="6.923"/>
+    <rect y="20.769" width="120" height="6.923"/>
+    <rect y="34.615" width="120" height="6.923"/>
+    <rect y="48.462" width="120" height="6.923"/>
+    <rect y="62.308" width="120" height="6.923"/>
+    <rect y="76.154" width="120" height="6.923"/>
+  </g>
+  <rect width="54" height="48.462" fill="#3c3b6e"/>
+  <rect x="2" y="2" width="50" height="44.462" fill="url(#stars)"/>
+</svg>

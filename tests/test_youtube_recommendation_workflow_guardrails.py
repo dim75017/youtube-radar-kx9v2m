@@ -36,9 +36,9 @@ class YoutubeRecommendationWorkflowGuardrailTests(unittest.TestCase):
         self.assertLess(validated, staged)
         self.assertIn('--ledger-dir youtube_recommendation_ledger', publish)
         self.assertIn('--history-dir video_history', publish)
-        self.assertIn('--browser-limit 2500', publish)
-        self.assertIn('--reserve-low-water 1500', publish)
-        self.assertIn('--reserve-high-water 3500', publish)
+        self.assertIn('--browser-limit 400', publish)
+        self.assertIn('--reserve-low-water 400', publish)
+        self.assertIn('--reserve-high-water 800', publish)
 
     def test_each_push_retry_regenerates_from_the_latest_main(self):
         publish = self.workflow.split('      - id: publish\n', 1)[1]
@@ -65,6 +65,17 @@ class YoutubeRecommendationWorkflowGuardrailTests(unittest.TestCase):
         validate = self.workflow.split('  validate:\n', 1)[1].split('  publish:\n', 1)[0]
         self.assertIn('test_youtube_recommendation_shared_state.js', validate)
         self.assertIn('test_youtube_recommendation_published_link.js', validate)
+
+    def test_perpetual_reservoir_contract_is_strict_and_triggers_ci(self):
+        validate = self.workflow.split('  validate:\n', 1)[1].split('  publish:\n', 1)[0]
+        module = 'tests.test_youtube_recommendation_perpetual_reservoir'
+        path = "- 'tests/test_youtube_recommendation_perpetual_reservoir.py'"
+        self.assertIn(module, validate)
+        self.assertEqual(
+            self.workflow.count(path),
+            2,
+            'push and pull-request path filters must both notice the perpetual reservoir contract',
+        )
 
     def test_open_tab_daily_cache_guard_is_part_of_strict_validation(self):
         validate = self.workflow.split('  validate:\n', 1)[1].split('  publish:\n', 1)[0]

@@ -30,7 +30,15 @@ test("keeps the maximum truthful native history in the published snapshot", asyn
   assert.equal(snapshot.platforms.youtube.daily.at(-1)?.date, "2026-08-24");
   assert.equal(snapshot.platforms.tiktok.daily.length, 366);
   assert.equal(snapshot.platforms.x.daily.length, 366);
-  assert.equal(snapshot.platforms.instagram.daily.length, 0);
+  assert.equal(snapshot.platforms.instagram.daily.length, 1_128);
+  assert.equal(snapshot.platforms.instagram.daily[0].date, "2023-07-26");
+  assert.equal(snapshot.platforms.instagram.daily.at(-1)?.date, "2026-08-26");
+  assert.equal(
+    snapshot.platforms.instagram.daily.filter((point) => point.metrics.newFollowers !== null).length,
+    370,
+  );
+  assert.ok(snapshot.platforms.instagram.daily.every((point) => point.metrics.followersTotal === null));
+  assert.ok(snapshot.platforms.instagram.daily.every((point) => point.metrics.followersNet === null));
   assert.ok(snapshot.platforms.instagram.periods["30d"]);
   assert.ok(snapshot.platforms.instagram.periods["90d"]);
 });
@@ -166,6 +174,53 @@ test("accepts signed follower net changes but rejects other negatives and non-fi
     snapshot.platforms.instagram.daily[0].metrics[metric] = value;
     assert.throws(() => assertAudienceAnalytics(snapshot), expected);
   }
+});
+
+test("requires every follower count metric to be an integer", () => {
+  for (const metric of [
+    "followersTotal",
+    "followersNet",
+    "newFollowers",
+    "unfollows",
+  ]) {
+    const daily = fixture();
+    daily.platforms.instagram.daily.push(dailyPoint(
+      "2026-08-24",
+      "2026-08-25T09:00:00.000Z",
+      { [metric]: metric === "followersNet" ? -12.5 : 12.5 },
+    ));
+    assert.throws(
+      () => assertAudienceAnalytics(daily),
+      new RegExp(`${metric}.*entier`, "i"),
+      `${metric} cannot represent a fraction of a follower in a daily row`,
+    );
+
+    const period = fixture();
+    period.platforms.instagram.periods["30d"] = periodSnapshot(
+      "2026-07-26",
+      "2026-08-24",
+      "2026-08-25T09:00:00.000Z",
+      { [metric]: metric === "followersNet" ? -12.5 : 12.5 },
+    );
+    assert.throws(
+      () => assertAudienceAnalytics(period),
+      new RegExp(`${metric}.*entier`, "i"),
+      `${metric} cannot represent a fraction of a follower in a period snapshot`,
+    );
+  }
+
+  const integerCounts = fixture();
+  integerCounts.platforms.instagram.daily.push(dailyPoint(
+    "2026-08-24",
+    "2026-08-25T09:00:00.000Z",
+    {
+      followersTotal: 1_430_107,
+      followersNet: -12,
+      newFollowers: 34,
+      unfollows: 46,
+    },
+  ));
+  assert.doesNotThrow(() => assertAudienceAnalytics(integerCounts));
 });
 
 test("requires real unique ascending daily dates and ordered period bounds", () => {

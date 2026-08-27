@@ -27,8 +27,7 @@
   let fullPromise=null;
   let refreshWaiting=false;
   let refreshFocus='';
-  let trackAnalyticsPromise=null;
-  let playlistAnalyticsPromise=null;
+  const analyticsPromises={};
   let modalRequest=0;
   let lang='fr';
   try{lang=localStorage.getItem('sr_lang')||'fr';}catch(error){}
@@ -228,6 +227,7 @@
   }
   function findTrack(id){return source('tracks').find(row=>row[T.spotify_id]===id)||source('radar').find(row=>row[T.spotify_id]===id)||boot.tracks.find(row=>row[T.spotify_id]===id)||boot.radar.find(row=>row[T.spotify_id]===id);}
   function findPlaylist(id){return source('playlists').find(row=>row[P.spotify_id]===id)||boot.playlists.find(row=>row[P.spotify_id]===id);}
+  function findLabel(key){return source('labels').find(row=>row[L.key]===key)||boot.labels.find(row=>row[L.key]===key);}
   function normalize(value){return String(value||'').toLocaleLowerCase(lang==='fr'?'fr':'en').normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
   function matchesQuery(query,values){const terms=normalize(query).trim().split(/\s+/).filter(Boolean);if(!terms.length)return true;const haystack=normalize(values.flat(Infinity).join(' '));return terms.every(term=>haystack.includes(term));}
   function includesQuery(values){return matchesQuery(state.query,values);}
@@ -463,9 +463,9 @@
       return (right[L.streams]||0)-(left[L.streams]||0);
     });
     const total=fullReady?rows.length:boot.counts.labels;
-    const body=rows.slice(0,state.shown).map(row=>`<tr>
+    const body=rows.slice(0,state.shown).map(row=>`<tr data-open-label="${esc(row[L.key])}" tabindex="0">
       <td class="fast-cover-cell">${image(row[L.logo],'label-logo')}</td>
-      <td><span class="fast-primary">${esc(row[L.name]||'—')}</span>${row[L.email]?`<a class="fast-email" href="mailto:${esc(row[L.email])}">${esc(row[L.email])}</a>`:''}</td>
+      <td><button type="button" class="fast-primary" data-open-label="${esc(row[L.key])}">${esc(row[L.name]||'—')}</button>${row[L.email]?`<a class="fast-email" href="mailto:${esc(row[L.email])}">${esc(row[L.email])}</a>`:''}</td>
       <td class="num"><strong>${compact(row[L.streams])}</strong></td>
       <td class="num">${fullNumber(row[L.tracks])}</td>
       <td class="num">${fullNumber(row[L.artist_count])}</td>
@@ -556,33 +556,23 @@
     if(reset)reset.addEventListener('click',()=>{clearFilters(state.view);refreshWithFull();});
   }
 
-  function loadTrackAnalytics(){
-    if(window.SpotifyTrackAnalytics)return Promise.resolve(window.SpotifyTrackAnalytics);
-    if(trackAnalyticsPromise)return trackAnalyticsPromise;
-    trackAnalyticsPromise=new Promise((resolve,reject)=>{
+  function loadAnalytics(kind){
+    const key=`Spotify${kind}Analytics`,name=kind.toLowerCase();
+    if(window[key])return Promise.resolve(window[key]);
+    if(analyticsPromises[kind])return analyticsPromises[kind];
+    analyticsPromises[kind]=new Promise((resolve,reject)=>{
       const script=document.createElement('script');
-      script.src=`track-analytics.js?v=${encodeURIComponent(boot.source_hash||'track-analytics-v1')}`;
+      script.src=`${name}-analytics.js?v=${encodeURIComponent(boot.source_hash||`${name}-analytics-v1`)}`;
       script.async=true;
-      script.onload=()=>window.SpotifyTrackAnalytics?resolve(window.SpotifyTrackAnalytics):reject(new Error('Spotify track analytics did not initialize'));
-      script.onerror=()=>reject(new Error('Spotify track analytics failed to load'));
+      script.onload=()=>window[key]?resolve(window[key]):reject(new Error(`Spotify ${name} analytics did not initialize`));
+      script.onerror=()=>reject(new Error(`Spotify ${name} analytics failed to load`));
       document.head.appendChild(script);
-    }).catch(error=>{trackAnalyticsPromise=null;throw error;});
-    return trackAnalyticsPromise;
+    }).catch(error=>{analyticsPromises[kind]=null;throw error;});
+    return analyticsPromises[kind];
   }
-
-  function loadPlaylistAnalytics(){
-    if(window.SpotifyPlaylistAnalytics)return Promise.resolve(window.SpotifyPlaylistAnalytics);
-    if(playlistAnalyticsPromise)return playlistAnalyticsPromise;
-    playlistAnalyticsPromise=new Promise((resolve,reject)=>{
-      const script=document.createElement('script');
-      script.src=`playlist-analytics.js?v=${encodeURIComponent(boot.source_hash||'playlist-analytics-v1')}`;
-      script.async=true;
-      script.onload=()=>window.SpotifyPlaylistAnalytics?resolve(window.SpotifyPlaylistAnalytics):reject(new Error('Spotify playlist analytics did not initialize'));
-      script.onerror=()=>reject(new Error('Spotify playlist analytics failed to load'));
-      document.head.appendChild(script);
-    }).catch(error=>{playlistAnalyticsPromise=null;throw error;});
-    return playlistAnalyticsPromise;
-  }
+  function loadTrackAnalytics(){return loadAnalytics('Track');}
+  function loadPlaylistAnalytics(){return loadAnalytics('Playlist');}
+  function loadLabelAnalytics(){return loadAnalytics('Label');}
 
   async function openTrack(id){
     const initialRow=findTrack(id);if(!initialRow)return;
@@ -633,12 +623,41 @@
       box.innerHTML=`<button class="fast-modal-close" type="button" data-close-modal aria-label="${esc(w('close'))}">×</button><div class="fast-empty"><strong>${esc(lang==='fr'?"La vue analytique de cette playlist n'a pas pu être chargée.":'Playlist analytics could not be loaded.')}</strong><span>${esc(lang==='fr'?'Réessaie dans un instant.':'Please try again in a moment.')}</span></div>`;
     }
   }
+  async function openLabel(key){
+    const initialRow=findLabel(key);if(!initialRow)return;
+    const request=++modalRequest;
+    const modal=document.getElementById('track-modal');
+    const box=document.getElementById('tmbox');
+    box.className='tmbox label-analytics-box';
+    box.innerHTML=`<button class="fast-modal-close" type="button" data-close-modal aria-label="${esc(w('close'))}">×</button><div class="fast-modal-head">${image(initialRow[L.logo],'modal-cover')}<div><span class="fast-kicker">${esc(lang==='fr'?'Fiche Analytics':'Analytics')}</span><h3>${esc(initialRow[L.name]||'—')}</h3><p>${fullNumber(initialRow[L.tracks])} ${esc(lang==='fr'?'pistes':'tracks')}</p></div></div><div class="track-analytics-loading">${esc(lang==='fr'?"Chargement des performances du label…":'Loading label performance…')}</div>`;
+    modal.style.display='flex';
+    try{
+      const [catalogue,analyticsModule]=await Promise.all([loadFullCatalogue(),loadLabelAnalytics()]);
+      if(request!==modalRequest||modal.style.display==='none')return;
+      const labelFields=catalogue&&catalogue.schemas&&catalogue.schemas.labels||boot.schemas.labels;
+      const labelPositions=Object.fromEntries(labelFields.map((field,index)=>[field,index]));
+      const row=(catalogue&&Array.isArray(catalogue.labels)?catalogue.labels:[]).find(item=>item[labelPositions.key]===key)||initialRow;
+      await analyticsModule.open({
+        key,row,schema:labelFields,
+        tracks:catalogue&&Array.isArray(catalogue.tracks)?catalogue.tracks:[],
+        trackSchema:catalogue&&catalogue.schemas&&catalogue.schemas.tracks||boot.schemas.tracks,
+        box,language:lang,onOpenTrack:openTrack,
+        assetVersion:`${boot.source_hash||'label-analytics-v1'}-label-v1`,
+      });
+    }catch(error){
+      console.error(error);
+      if(request!==modalRequest)return;
+      box.className='tmbox';
+      box.innerHTML=`<button class="fast-modal-close" type="button" data-close-modal aria-label="${esc(w('close'))}">×</button><div class="fast-empty"><strong>${esc(lang==='fr'?"La vue analytique de ce label n'a pas pu être chargée.":'Label analytics could not be loaded.')}</strong><span>${esc(lang==='fr'?'Réessaie dans un instant.':'Please try again in a moment.')}</span></div>`;
+    }
+  }
   function closeModal(){
     modalRequest+=1;
     const modal=document.getElementById('track-modal');
     const box=document.getElementById('tmbox');
     if(window.SpotifyTrackAnalytics)window.SpotifyTrackAnalytics.close(modal);
     if(window.SpotifyPlaylistAnalytics)window.SpotifyPlaylistAnalytics.close(modal);
+    if(window.SpotifyLabelAnalytics)window.SpotifyLabelAnalytics.close(modal);
     if(modal)modal.style.display='none';
     if(box)box.className='tmbox';
   }
@@ -711,12 +730,18 @@
     if(trackButton){openTrack(trackButton.dataset.openTrack);return;}
     const playlistButton=event.target.closest('[data-open-playlist]');
     if(playlistButton){openPlaylist(playlistButton.dataset.openPlaylist);return;}
+    const labelButton=event.target.closest('[data-open-label]');
+    if(labelButton&&!event.target.closest('a')){openLabel(labelButton.dataset.openLabel);return;}
   });
   view.addEventListener('keydown',event=>{
     if(event.key!=='Enter'&&event.key!==' ')return;
     const playlistRow=event.target.closest('tr[data-open-playlist]');
-    if(!playlistRow||event.target.closest('button,a,input,select'))return;
-    event.preventDefault();openPlaylist(playlistRow.dataset.openPlaylist);
+    if(playlistRow&&!event.target.closest('button,a,input,select')){
+      event.preventDefault();openPlaylist(playlistRow.dataset.openPlaylist);return;
+    }
+    const labelRow=event.target.closest('tr[data-open-label]');
+    if(!labelRow||event.target.closest('button,a,input,select'))return;
+    event.preventDefault();openLabel(labelRow.dataset.openLabel);
   });
   view.addEventListener('contextmenu',event=>{
     const target=event.target&&typeof event.target.closest==='function'?event.target:null;if(!target)return;
@@ -762,3 +787,4 @@
   document.documentElement.dataset.spotifyReady='true';
   document.documentElement.dataset.spotifyBootMs=(window.performance&&window.performance.now?window.performance.now():0).toFixed(1);
 })();
+

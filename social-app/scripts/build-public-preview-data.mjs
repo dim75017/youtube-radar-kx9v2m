@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertAudienceAnalytics } from "../lib/audience-analytics.ts";
+import { assertAudienceDemographics } from "../lib/audience-demographics.ts";
 import { assertAudienceHistory } from "../lib/audience-metrics.ts";
 import { assertAudioTrendFeed } from "../lib/audio-trends.ts";
 import { assertCommentOpportunityFeed } from "../lib/comment-opportunities.ts";
@@ -29,6 +30,7 @@ const [
   audioTrendScanStatus,
   audienceHistory,
   audienceAnalytics,
+  audienceDemographics,
   commentOpportunityFeed,
   playlistPromoFeed,
   playlistPromoStatus,
@@ -42,6 +44,7 @@ const [
   readJson(resolve(root, "data", "audio-trends", "refresh-status.json")),
   readJson(resolve(root, "data", "audience-history.json")),
   readJson(resolve(root, "data", "audience-analytics.json")),
+  readJson(resolve(root, "data", "audience-demographics.json")),
   readJson(resolve(root, "data", "comment-opportunities", "feed.json")),
   readJson(resolve(root, "data", "playlist-promos", "feed.json")),
   readJson(resolve(root, "data", "playlist-promos", "refresh-status.json")),
@@ -60,6 +63,7 @@ assertAudioTrendFeed(audioTrendFeed);
 assertAudioTrendScanStatus(audioTrendScanStatus);
 assertAudienceHistory(audienceHistory);
 assertAudienceAnalytics(audienceAnalytics);
+assertAudienceDemographics(audienceDemographics);
 assertCommentOpportunityFeed(commentOpportunityFeed);
 assertPlaylistPromoFeed(playlistPromoFeed);
 assertScrollingFeed(scrollingFeed);
@@ -82,6 +86,7 @@ await writeJson(resolve(output, "public-history-summary.json"), summary);
 await writeJson(resolve(output, "public-history.json"), snapshot);
 await writeJson(resolve(output, "audience-history.json"), audienceHistory);
 await writeJson(resolve(output, "audience-analytics.json"), audienceAnalytics);
+await writeJson(resolve(output, "audience-demographics.json"), audienceDemographics);
 await writeJson(resolve(output, "trends", "feed.json"), trendFeed);
 await writeJson(resolve(output, "trends", "refresh-status.json"), videoTrendScanStatus);
 await writeJson(resolve(output, "audio-trends", "feed.json"), audioTrendFeed);

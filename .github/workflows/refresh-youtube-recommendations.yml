@@ -20,6 +20,7 @@ on:
       - 'assets/js/dashboard-02-helpers.js'
       - 'assets/js/dashboard-04-recommendations.js'
       - 'tests/test_generate_youtube_recommendation_pool.py'
+      - 'tests/test_youtube_recommendation_perpetual_reservoir.py'
       - 'tests/test_youtube_recommendation_*.js'
       - 'tests/test_youtube_instant_tabs.js'
       - 'tests/test_recommendation_validated_archive.js'
@@ -36,6 +37,7 @@ on:
       - 'assets/js/dashboard-02-helpers.js'
       - 'assets/js/dashboard-04-recommendations.js'
       - 'tests/test_generate_youtube_recommendation_pool.py'
+      - 'tests/test_youtube_recommendation_perpetual_reservoir.py'
       - 'tests/test_youtube_recommendation_*.js'
       - 'tests/test_youtube_instant_tabs.js'
       - 'tests/test_recommendation_validated_archive.js'
@@ -68,7 +70,7 @@ jobs:
         run: pip install --disable-pip-version-check openpyxl
       - name: Test generator, learning, decisions and Roadmap links
         run: |
-          python -m unittest tests.test_generate_youtube_recommendation_pool tests.test_youtube_recommendation_workflow_guardrails
+          python -m unittest tests.test_generate_youtube_recommendation_pool tests.test_youtube_recommendation_perpetual_reservoir tests.test_youtube_recommendation_workflow_guardrails
           node tests/test_youtube_new_video_view_floor.js
           node tests/test_youtube_channel_update_status.js
           node tests/test_youtube_instant_tabs.js
@@ -132,9 +134,9 @@ jobs:
               --ledger-dir youtube_recommendation_ledger \
               --bootstrap-pool Lofi_Radar_recommendation_pool.js \
               --feedback "$FEEDBACK_URL" \
-              --browser-limit 2500 \
-              --reserve-low-water 1500 \
-              --reserve-high-water 3500; then
+              --browser-limit 400 \
+              --reserve-low-water 400 \
+              --reserve-high-water 800; then
               if [ "$attempt" -lt 3 ]; then sleep 10; continue; fi
               exit 1
             fi
@@ -144,7 +146,7 @@ jobs:
               --history-dir video_history \
               --output Lofi_Radar_recommendation_pool.js \
               --ledger-dir youtube_recommendation_ledger \
-              --browser-limit 2500
+              --browser-limit 400
             node tests/test_youtube_recommendation_continuous_pool.js
             node tests/test_youtube_recommendation_quality.js
             node tests/test_youtube_recommendation_real_snapshot.js
@@ -178,7 +180,7 @@ jobs:
           --history-dir video_history
           --output Lofi_Radar_recommendation_pool.js
           --ledger-dir youtube_recommendation_ledger
-          --browser-limit 2500
+          --browser-limit 400
           --verify-base-url https://dim75017.github.io/youtube-radar-kx9v2m/
           --verify-timeout 900
           --verify-interval 15

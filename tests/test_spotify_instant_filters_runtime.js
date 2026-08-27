@@ -279,7 +279,8 @@ for(const artist of catalogue.artists){
   if(artist[artistIndex.ownership_status]==='indie')assert.ok((tracksByArtist.get(artist[artistIndex.spotify_id])||[]).every(row=>row[trackIndex.rights_status]==='self_released'),'an Indie artist must be entirely self-released');
 }
 const playlistIndex=Object.fromEntries(catalogue.schemas.playlists.map((field,index)=>[field,index]));
-assert.ok(catalogue.playlists.some(row=>row[playlistIndex.growth_30d]===null),'missing playlist growth must remain null instead of becoming a fabricated zero');
+const playlistsWithoutExactThirtyDayWindow=catalogue.playlists.filter(row=>row[playlistIndex.growth_days]!==30);
+assert.ok(playlistsWithoutExactThirtyDayWindow.every(row=>row[playlistIndex.growth_30d]===null),'missing playlist growth must remain null instead of becoming a fabricated zero');
 
 const instantCss = fs.readFileSync(path.join(root,'spotify','instant.css'),'utf8');
 assert.match(

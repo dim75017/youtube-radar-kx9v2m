@@ -71,6 +71,8 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     audienceHistory,
     audienceAnalyticsModel,
     audienceAnalyticsSnapshot,
+    audienceDemographicsModel,
+    audienceDemographicsSnapshot,
     publicPreviewBuilder,
     youtubeLogo,
     instagramLogo,
@@ -104,6 +106,8 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     readFile(new URL("../data/audience-history.json", import.meta.url), "utf8"),
     readFile(new URL("../lib/audience-analytics.ts", import.meta.url), "utf8"),
     readFile(new URL("../data/audience-analytics.json", import.meta.url), "utf8"),
+    readFile(new URL("../lib/audience-demographics.ts", import.meta.url), "utf8"),
+    readFile(new URL("../data/audience-demographics.json", import.meta.url), "utf8"),
     readFile(new URL("../scripts/build-public-preview-data.mjs", import.meta.url), "utf8"),
     readFile(new URL("../public/platforms/youtube.svg", import.meta.url), "utf8"),
     readFile(new URL("../public/platforms/instagram.svg", import.meta.url), "utf8"),
@@ -141,26 +145,37 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(component, /Total followers/);
   assert.match(component, /Évolution/);
   assert.match(component, /Taux d’engagement/);
-  assert.match(component, /className="audience-platform-grid"/);
   const audienceDashboard = component.slice(
     component.indexOf("function AudienceDashboard"),
     component.indexOf("function formatAudienceFollowers"),
   );
-  assert.match(audienceDashboard, /useState<AudiencePeriodKey>\("30d"\)/);
-  assert.match(audienceDashboard, /aria-label="P.riode du tableau de bord"/);
-  assert.match(audienceDashboard, /AUDIENCE_PERIODS\.map/);
-  assert.match(audienceDashboard, /engagementByPeriod\[periodKey\]/);
+  const audienceDashboardShell = component.slice(
+    component.indexOf("function AudienceDashboard"),
+    component.indexOf("type NativeAnalyticsMetricMeta"),
+  );
+  assert.match(audienceDashboard, /const \[periodKey, setPeriodKey\] = useState<AudienceChartPeriodKey>\("30d"\)/);
+  assert.doesNotMatch(audienceDashboardShell, /audience-platform-grid|audience-platform-card/);
+  assert.equal((audienceDashboard.match(/aria-label="Plateforme du graphique"/g) ?? []).length, 1);
+  assert.equal((audienceDashboard.match(/className="audience-explorer-platform-tabs"/g) ?? []).length, 1);
+  assert.match(audienceDashboard, /className="audience-explorer-summary"/);
+  assert.match(audienceDashboard, /className="audience-explorer-profile"/);
+  assert.equal((audienceDashboard.match(/className="audience-explorer-summary-kpi"/g) ?? []).length, 3);
+  assert.match(audienceDashboard, /className="audience-demographics-breakdowns" role="group" aria-label="Âge et genre"/);
+  assert.match(audienceDashboard, /calculatePlatformEngagementWindow\([\s\S]*?periodDays/);
   assert.match(audienceDashboard, /useState<string \| null>\(null\)/);
   assert.match(audienceDashboard, /setClientNow\(new Date\(\)\.toISOString\(\)\)/);
-  assert.match(audienceDashboard, /Collecte planifiée/);
-  assert.match(audienceDashboard, /audienceGrowthFromObservedPoints\(points\)/);
+  assert.doesNotMatch(audienceDashboard, /Collecte planifiée/);
+  assert.match(audienceDashboard, /audience-period-control/);
+  assert.match(audienceDashboard, /audience-period-tabs/);
+  assert.match(audienceDashboard, /aria-label="P.riode du tableau de bord"/);
+  assert.match(audienceDashboard, /audienceGrowthFromObservedPoints\(observedFollowerPoints\)/);
   assert.match(
     audienceDashboard,
-    /audiencePointsForPeriod\(platformHistory, periodEndAt, period\.days\)/,
+    /audiencePointsForPeriod\([\s\S]*?periodDays/,
   );
-  assert.match(audienceDashboard, /periodEndAt = history\?\.generatedAt/);
   assert.match(audienceDashboard, /formatAudienceAge\(latestAgeDays\)/);
-  assert.match(audienceDashboard, /<AudienceAnalyticsExplorer/);
+  assert.match(audienceDashboard, /<AudienceAnalyticsExplorer[\s\S]*?periodKey=\{periodKey\}/);
+  assert.doesNotMatch(audienceDashboard, /Période du graphique|audience-chart-period-tabs|setChartPeriodKey/);
   assert.doesNotMatch(audienceDashboard, /<AudienceGrowthChart/);
   const audienceChart = component.slice(
     component.indexOf("function AudienceNativeMetricChart"),
@@ -180,7 +195,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.equal((component.match(/<AudienceNativeMetricChart\b/g) ?? []).length, 1);
   assert.match(
     audienceDashboard,
-    /<img src=\{`platforms\/\$\{platform\}\.svg`\} alt="" width="24" height="24" \/>/,
+    /<img src=\{`platforms\/\$\{activePlatform\}\.svg`\} alt="" width="24" height="24" \/>/,
   );
   assert.doesNotMatch(audienceDashboard, /meta\.emoji/);
   assert.doesNotMatch(component, /Couverture maintenant|Analyse éditoriale|Posts à retenir|Comparaisons honnêtes/);
@@ -297,6 +312,20 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   );
   assert.match(audienceAnalyticsModel, /assertAudienceAnalytics/);
   assert.equal(JSON.parse(audienceAnalyticsSnapshot).version, 1);
+  assert.match(previewEntry, /RAW_AUDIENCE_DEMOGRAPHICS_URL/);
+  assert.match(previewEntry, /audienceDemographics=\{audienceDemographics\}/);
+  assert.match(previewEntry, /refreshAudienceDemographics/);
+  assert.match(
+    previewEntry,
+    /RAW_AUDIENCE_DEMOGRAPHICS_URL = `\$\{liveDataBaseUrl\}\/audience-demographics\.json`/,
+  );
+  assert.match(publicPreviewBuilder, /assertAudienceDemographics\(audienceDemographics\)/);
+  assert.match(
+    publicPreviewBuilder,
+    /writeJson\(resolve\(output, "audience-demographics\.json"\), audienceDemographics\)/,
+  );
+  assert.match(audienceDemographicsModel, /assertAudienceDemographics/);
+  assert.equal(JSON.parse(audienceDemographicsSnapshot).version, 1);
   assert.match(previewEntry, /raw\.githubusercontent\.com\/dim75017\/youtube-radar-kx9v2m\/main\/social-app\/data/);
   assert.match(previewEntry, /RAW_AUDIO_TREND_FEED_URL = `\$\{liveDataBaseUrl\}\/audio-trends\/feed\.json`/);
   assert.match(previewEntry, /RAW_TREND_FEED_URL = `\$\{liveDataBaseUrl\}\/trends\/feed\.json`/);
@@ -561,8 +590,8 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(styles, /\.post-details-modal/);
   assert.match(styles, /\.audience-period-control\s*\{/);
   assert.match(styles, /\.audience-period-tabs\s*\{/);
-  assert.match(styles, /\.audience-platform-logo\s*\{/);
-  assert.match(styles, /\.audience-platform-logo img\s*\{/);
+  assert.match(styles, /\.audience-explorer-profile-logo\s*\{/);
+  assert.match(styles, /\.audience-explorer-profile-logo img\s*\{/);
   assert.match(styles, /\.audience-explorer-platform-tabs/);
   assert.match(styles, /\.audience-explorer-metrics/);
   assert.match(styles, /\.audience-native-chart-viewport\s*\{[\s\S]*?overflow-x:\s*auto/);
@@ -612,7 +641,11 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     (match) => Number(match[1]),
   );
   assert.ok(explicitFontSizes.length > 100);
-  assert.ok(explicitFontSizes.every((size) => size >= 11));
+  assert.ok(explicitFontSizes.every((size) => size >= 8));
+  assert.deepEqual(
+    [...new Set(explicitFontSizes.filter((size) => size < 11))].sort((left, right) => left - right),
+    [8, 9, 10],
+  );
   assert.doesNotMatch(component, /tous affichés/i);
   assert.match(durations, /All time/);
   assert.match(durations, /180d/);

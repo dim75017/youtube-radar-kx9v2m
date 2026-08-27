@@ -50,6 +50,14 @@ const ADDITIVE_METRICS = new Set([
   "reposts", "newFollowers", "unfollows", "mediaViews", "watchTimeSeconds",
   "accountsEngaged", "profileActivity", "externalLinkTaps", "contentPublished",
 ]);
+const INSTAGRAM_DAILY_CSVS = [
+  { manifestKeys: ["contentViews", "views"], metric: "contentViews", label: "Instagram views" },
+  { manifestKeys: ["reach"], metric: "reach", label: "Instagram reach" },
+  { manifestKeys: ["engagements", "interactions"], metric: "engagements", label: "Instagram interactions" },
+  { manifestKeys: ["externalLinkTaps", "linkClicks"], metric: "externalLinkTaps", label: "Instagram link clicks" },
+  { manifestKeys: ["profileVisits", "visits"], metric: "profileVisits", label: "Instagram profile visits" },
+  { manifestKeys: ["newFollowers", "follows"], metric: "newFollowers", label: "Instagram follows" },
+];
 
 export async function importOwnerAudienceAnalytics(options = {}) {
   const manifestPath = options.manifestPath;
@@ -106,6 +114,22 @@ export async function importOwnerAudienceAnalytics(options = {}) {
     incoming.platforms.instagram.lastSuccessfulImportAt = collectedAt;
   }
 
+  if (manifest.platforms.instagram?.dailyCsvs) {
+    const platform = manifest.platforms.instagram;
+    const { daily, coveredMetrics, source } = await parseInstagramDailyCsvs(
+      platform,
+      manifestPath,
+      collectedAt,
+    );
+    incoming.platforms.instagram.daily = mergeDailyMetrics(
+      analytics.platforms.instagram.daily,
+      daily,
+      coveredMetrics,
+    );
+    dailyAggregationSources.set("instagram", { source, coveredMetrics });
+    incoming.platforms.instagram.lastSuccessfulImportAt = collectedAt;
+  }
+
   if (
     manifest.platforms.tiktok?.followersCsv &&
     manifest.platforms.tiktok?.overviewCsv
@@ -150,13 +174,21 @@ export async function importOwnerAudienceAnalytics(options = {}) {
   }
   // A short incremental export must not shrink the derived 30/90/365/all
   // aggregates. Recompute them from the complete merged daily series. Native
-  // period-only snapshots (currently Instagram) remain untouched.
-  for (const [platform, source] of dailyAggregationSources) {
-    mergedAnalytics.platforms[platform].periods = aggregateDailyPeriods(
+  // Instagram period snapshots remain indivisible; daily exports only fill
+  // period windows that do not already have a native snapshot.
+  for (const [platform, value] of dailyAggregationSources) {
+    const source = value?.source ?? value;
+    const derived = aggregateDailyPeriods(
       mergedAnalytics.platforms[platform].daily,
       source,
       collectedAt,
     );
+    mergedAnalytics.platforms[platform].periods = platform === "instagram"
+      ? mergeInstagramDerivedPeriods(
+        mergedAnalytics.platforms[platform].periods,
+        derived,
+      )
+      : derived;
   }
   const nextHistory = structuredClone(history);
 
@@ -277,6 +309,105 @@ function parseTikTokDaily(followerRows, overviewRows, platform, collectedAt) {
       daily[index].metrics.followersTotal - daily[index - 1].metrics.followersTotal;
   }
   return daily;
+}
+
+async function parseInstagramDailyCsvs(platform, manifestPath, collectedAt) {
+  const dailyCsvs = platform.dailyCsvs;
+  if (!dailyCsvs || typeof dailyCsvs !== "object" || Array.isArray(dailyCsvs)) {
+    throw new Error("instagram.dailyCsvs doit être un objet.");
+  }
+  const rowsByMetric = new Map();
+  let source = null;
+  for (const definition of INSTAGRAM_DAILY_CSVS) {
+    const entry = definition.manifestKeys
+      .map((key) => dailyCsvs[key])
+      .find((candidate) => candidate !== undefined);
+    if (!entry) continue;
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      throw new Error(`instagram.dailyCsvs.${definition.manifestKeys[0]} doit être un objet.`);
+    }
+    const path = nonempty(entry.path, `instagram.dailyCsvs.${definition.manifestKeys[0]}.path`);
+    const metricSource = sourceDetails(platform, entry);
+    const rows = await readMetaInsightsCsv(resolveManifestPath(manifestPath, path));
+    requireColumns(rows, ["Date", "Primary"], definition.label);
+    rowsByMetric.set(definition.metric, rows.map((row, index) => ({
+      date: parseMetaInsightsDate(row.Date, `${definition.label}[${index}].Date`),
+      value: nullableNonnegativeInteger(
+        row.Primary,
+        `${definition.label}[${index}].Primary`,
+      ),
+    })));
+    source ??= metricSource;
+    if (
+      source.provider !== metricSource.provider ||
+      source.sourceUrl !== metricSource.sourceUrl
+    ) {
+      throw new Error("Tous les CSV quotidiens Instagram doivent avoir la même provenance.");
+    }
+  }
+  if (rowsByMetric.size === 0) {
+    throw new Error("instagram.dailyCsvs ne contient aucun export reconnu.");
+  }
+
+  const pointsByDate = new Map();
+  for (const [metric, rows] of rowsByMetric) {
+    for (const row of rows) {
+      const point = pointsByDate.get(row.date) ?? metrics({});
+      point[metric] = row.value;
+      pointsByDate.set(row.date, point);
+    }
+  }
+  return {
+    daily: [...pointsByDate.entries()].map(([date, values]) => ({
+      date,
+      metrics: values,
+      provenance: provenance(source, collectedAt, "native-daily-metric"),
+    })).sort(byDate),
+    coveredMetrics: new Set(rowsByMetric.keys()),
+    source,
+  };
+}
+
+function sourceDetails(platform, entry) {
+  return {
+    provider: entry.provider ?? platform.provider,
+    sourceUrl: entry.sourceUrl ?? platform.sourceUrl,
+  };
+}
+
+function mergeDailyMetrics(current, incoming, coveredMetrics) {
+  const currentByDate = new Map(current.map((point) => [point.date, point]));
+  const merged = new Map(currentByDate);
+  for (const point of incoming) {
+    const previous = currentByDate.get(point.date);
+    if (!previous) {
+      merged.set(point.date, point);
+      continue;
+    }
+    const values = metrics({});
+    for (const key of AUDIENCE_ANALYTICS_METRIC_KEYS) {
+      values[key] = coveredMetrics.has(key)
+        ? point.metrics[key]
+        : previous.metrics[key];
+    }
+    merged.set(point.date, {
+      date: point.date,
+      metrics: values,
+      provenance: point.provenance,
+    });
+  }
+  return [...merged.values()].sort(byDate);
+}
+
+function mergeInstagramDerivedPeriods(current, derived) {
+  return Object.fromEntries(AUDIENCE_ANALYTICS_PERIOD_KEYS.map((period) => {
+    const before = current[period];
+    const after = derived[period];
+    // A period snapshot is one indivisible native observation: its range,
+    // metrics and provenance must always describe the same export. Daily CSVs
+    // only fill periods that do not already have a native snapshot.
+    return [period, before ?? after];
+  }));
 }
 
 function recalculateTikTokFollowerNet(daily) {
@@ -432,6 +563,31 @@ function datedEnglishDay(label, firstDate, index, path) {
 }
 
 export function parseCsv(text) {
+  return recordsToRows(parseCsvRecords(text), "CSV");
+}
+
+/** Parse the three-line CSV envelope exported by Meta Business Suite. */
+export function parseMetaInsightsCsv(text) {
+  const records = parseCsvRecords(text);
+  if (records[0]?.[0]?.trim().toLowerCase() === "sep=") records.shift();
+  // Meta writes a one-cell title (for example “Instagram follows”) before
+  // the regular Date / Primary header.
+  if (records[0]?.length === 1) records.shift();
+  return recordsToRows(records, "CSV Meta Business Suite");
+}
+
+async function readMetaInsightsCsv(path) {
+  const bytes = await readFile(path);
+  // Meta Business Suite's Windows export is UTF-16 LE with a BOM. Keeping
+  // decoding here makes the importer accept both that native file and UTF-8
+  // copies without relying on the caller's locale.
+  const text = bytes[0] === 0xff && bytes[1] === 0xfe
+    ? bytes.toString("utf16le")
+    : bytes.toString("utf8");
+  return parseMetaInsightsCsv(text);
+}
+
+function parseCsvRecords(text) {
   const rows = [];
   let row = [];
   let field = "";
@@ -460,11 +616,15 @@ export function parseCsv(text) {
     row.push(field.replace(/\r$/, ""));
     rows.push(row);
   }
-  const [header, ...body] = rows.filter((candidate) => candidate.some((value) => value !== ""));
+  return rows.filter((candidate) => candidate.some((value) => value !== ""));
+}
+
+function recordsToRows(records, label) {
+  const [header, ...body] = records;
   if (!header) return [];
   return body.map((values, rowIndex) => {
     if (values.length !== header.length) {
-      throw new Error(`CSV ligne ${rowIndex + 2} : ${values.length} colonnes au lieu de ${header.length}.`);
+      throw new Error(`${label} ligne ${rowIndex + 2} : ${values.length} colonnes au lieu de ${header.length}.`);
     }
     return Object.fromEntries(header.map((key, index) => [key, values[index]]));
   });
@@ -507,11 +667,20 @@ function nonnegativeInteger(value, label) {
 }
 
 function nullableNonnegativeInteger(value, label) {
+  if (String(value).trim() === "") return null;
   const parsed = integer(value, label);
   // Native dashboards can emit a negative daily correction after moderation
   // or deletion. The public non-negative metric stays absent for that day;
   // it is never coerced to zero.
   return parsed < 0 ? null : parsed;
+}
+
+function parseMetaInsightsDate(value, label) {
+  const candidate = String(value).trim();
+  if (!/^\d{4}-\d{2}-\d{2}T00:00:00(?:\.\d+)?(?:Z)?$/.test(candidate)) {
+    throw new Error(`${label} est invalide.`);
+  }
+  return assertDate(candidate.slice(0, 10), label);
 }
 
 function positiveInteger(value, label) {

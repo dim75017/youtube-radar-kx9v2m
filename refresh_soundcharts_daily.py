@@ -16,6 +16,7 @@ import datetime as dt
 import gzip
 import hashlib
 import json
+import math
 import os
 import statistics
 import threading
@@ -46,12 +47,16 @@ SOUNDCHARTS_PREFIX = "window.SPOTIFY_SOUNDCHARTS="
 BROWSE_CATALOGUE_PREFIX = "window.SPOTIFY_BROWSE_CATALOGUE="
 PLAYLISTS_PREFIX = "window.SPOTIFY_PLAYLISTS="
 AUTH_PROBE = "/api/v2/referential/platforms/streaming"
-MIN_SERVER_QUOTA_RESERVE = 500_000
+# Preserve 20% of the Developer plan's 500k monthly allowance for retries,
+# manual A&R checks, and recovery. A 500k reserve would block every request on
+# the very plan this collector is designed to use.
+MIN_SERVER_QUOTA_RESERVE = 100_000
 TRACK_ROTATION_BUCKETS = 7
 RECENT_RELEASE_DAYS = 90
 TRACK_MAINTENANCE_POLICY_VERSION = 3
 TRACK_PUBLIC_STREAM_FLOOR = 100_000
 TRACK_PROMOTION_WATCH_FLOOR = 75_000
+ARTIST_LISTENING_WINDOW_DAYS = 90
 ESTIMATED_NEW_TRACK_ENTRY_BYTES = 4_096
 ESTIMATED_DAILY_POINT_BYTES = 128
 PARIS_TIMEZONE = ZoneInfo("Europe/Paris")
@@ -611,6 +616,50 @@ def extract_artist_spotify_metric(response: Any) -> dict[str, Any] | None:
         return None
     candidates.sort(key=lambda candidate: (candidate[0], candidate[1]))
     return candidates[-1][2]
+
+
+def extract_artist_spotify_listening_points(response: Any) -> list[list[Any]]:
+    """Return dated Spotify monthly-listener observations from GlobalAudiencePlotCollection."""
+
+    daily: dict[str, int] = {}
+    for _, item in walk_dicts(response):
+        day = normalize_day(item.get("date"))
+        value = item.get("value")
+        if (
+            not day
+            or isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not math.isfinite(value)
+            or value < 0
+        ):
+            continue
+        daily[day] = int(value)
+    return [[day, daily[day]] for day in sorted(daily)]
+
+
+def artist_spotify_listening_path(
+    uuid: str,
+    history_days: int = ARTIST_LISTENING_WINDOW_DAYS,
+    *,
+    today: dt.date | None = None,
+) -> str:
+    """Build one bounded standard-plan request for Spotify monthly listeners."""
+
+    end_day = today or utc_today()
+    period_days = min(90, max(2, int(history_days)))
+    start_day = end_day - dt.timedelta(days=period_days - 1)
+    query = urllib.parse.urlencode(
+        {
+            "startDate": start_day.isoformat(),
+            "endDate": end_day.isoformat(),
+            "limit": 100,
+            "sort": "asc",
+        }
+    )
+    return (
+        f"/api/v2/artist/{urllib.parse.quote(str(uuid), safe='')}"
+        f"/streaming/spotify/listening?{query}"
+    )
 
 
 def _identifier_matches(identifier: str, spotify_id: str) -> bool:
@@ -1464,7 +1513,7 @@ def refresh_tracks(
     if len(tasks) >= safe_budget > 0:
         # The hard cap counts real HTTP attempts, including retries. Keep a
         # small bounded margin so one transient 429/5xx cannot invalidate an
-        # otherwise useful 35k maintenance pass at the very last request.
+        # otherwise useful bounded maintenance pass at the very last request.
         retry_headroom = max(1, safe_budget // 50)
         planning_budget = max(1, safe_budget - retry_headroom)
     metadata = build_track_maintenance_metadata(payload, public_catalogue)
@@ -1613,9 +1662,11 @@ def refresh_tracks(
         for target in task.get("targets", [])
         if str(target.get("spotify_id") or "").strip() in public_spotify_ids
     }
-    current_cutoff = utc_today() - dt.timedelta(days=1)
+    daily_cutoff = utc_today() - dt.timedelta(days=1)
+    weekly_cutoff = utc_today() - dt.timedelta(days=7)
     usable_public_ids: set[str] = set()
-    current_public_ids: set[str] = set()
+    daily_current_public_ids: set[str] = set()
+    weekly_current_public_ids: set[str] = set()
     latest_public_days: list[dt.date] = []
     for spotify_id in task_public_ids:
         entry = store.get(spotify_id)
@@ -1628,8 +1679,11 @@ def refresh_tracks(
         except (TypeError, ValueError):
             continue
         latest_public_days.append(latest_day)
-        if latest_day >= current_cutoff:
-            current_public_ids.add(spotify_id)
+        if latest_day >= daily_cutoff:
+            daily_current_public_ids.add(spotify_id)
+        if latest_day >= weekly_cutoff:
+            weekly_current_public_ids.add(spotify_id)
+    weekly_stale_entities = max(0, len(task_public_ids) - len(weekly_current_public_ids))
     policy["published_public_entity_coverage"] = {
         "public_entities": len(public_spotify_ids),
         "resolvable_entities": len(task_public_ids),
@@ -1638,9 +1692,17 @@ def refresh_tracks(
         "missing_selected_entities": max(0, len(task_public_ids) - len(selected_public_ids)),
         "refreshed_entities": len(refreshed_public_ids),
         "usable_history_entities": len(usable_public_ids),
-        "current_source_entities": len(current_public_ids),
-        "lagging_source_entities": max(0, len(task_public_ids) - len(current_public_ids)),
-        "freshness_cutoff": current_cutoff.isoformat(),
+        # Developer-plan maintenance refreshes active A&R priorities daily and
+        # rotates the wider public cohort. Keep both windows visible so the
+        # watchdog can enforce weekly completeness without hiding daily lag.
+        "daily_current_source_entities": len(daily_current_public_ids),
+        "daily_lagging_source_entities": max(0, len(task_public_ids) - len(daily_current_public_ids)),
+        "daily_freshness_cutoff": daily_cutoff.isoformat(),
+        "source_age_limit_days": 7,
+        "current_source_entities": len(weekly_current_public_ids),
+        "lagging_source_entities": weekly_stale_entities,
+        "stale_source_entities": weekly_stale_entities,
+        "freshness_cutoff": weekly_cutoff.isoformat(),
         "latest_source_date": max(latest_public_days).isoformat() if latest_public_days else None,
     }
     return outcome
@@ -1653,6 +1715,7 @@ def refresh_artists(
     workers: int,
     budget: int,
     *,
+    history_days: int = ARTIST_LISTENING_WINDOW_DAYS,
     include_performance_catalogue: bool = False,
 ) -> Outcome:
     schema, rows = ensure_schema_fields(payload, "artists", ["monthly_listeners", "delta", "observed_at"])
@@ -1661,6 +1724,7 @@ def refresh_artists(
         raise SoundchartsError("Performance artists must be an object")
     tasks = []
     strict_uuids: set[str] = set()
+    listening_day = utc_today()
     for row in rows:
         uuid = field(row, schema, "soundcharts_uuid")
         if not uuid:
@@ -1672,7 +1736,7 @@ def refresh_artists(
                 "uuid": str(uuid),
                 "spotify_id": str(field(row, schema, "spotify_id") or ""),
                 "name": str(field(row, schema, "name") or ""),
-                "path": f"/api/v2/artist/{urllib.parse.quote(str(uuid))}/current/stats",
+                "path": artist_spotify_listening_path(str(uuid), history_days, today=listening_day),
             }
         )
     if include_performance_catalogue:
@@ -1689,7 +1753,7 @@ def refresh_artists(
                     "uuid": uuid,
                     "spotify_id": spotify_id,
                     "name": "",
-                    "path": f"/api/v2/artist/{urllib.parse.quote(uuid)}/current/stats",
+                    "path": artist_spotify_listening_path(uuid, history_days, today=listening_day),
                     "performance_only": True,
                 }
             )
@@ -1709,29 +1773,32 @@ def refresh_artists(
     )
     now = utc_now()
     for task, response in results:
-        metric = extract_artist_spotify_metric(response)
-        if not metric:
+        points = extract_artist_spotify_listening_points(response)
+        if not points:
             outcome.items.append({"entity": "artist", "id": task["uuid"], "ok": response is not None, "usable": False})
             continue
         row = task.get("row")
-        value = int(metric["value"])
+        day, value = points[-1]
+        value = int(value)
         key = task["spotify_id"] or task["name"] or task["uuid"]
         entry = store.setdefault(key, {})
         if not isinstance(entry, dict):
             entry = {}
             store[key] = entry
-        previous = field(row, schema, "monthly_listeners") if isinstance(row, list) else None
-        if not isinstance(previous, (int, float)):
-            history = normalize_history(entry.get("history") or entry.get("monthly_listeners_history"))
-            previous = history[-1][1] if history else None
-        delta = value - int(previous) if isinstance(previous, (int, float)) else metric.get("evolution")
-        day = metric.get("date") or utc_today().isoformat()
-        merged = merge_history(entry.get("history") or entry.get("monthly_listeners_history"), [[day, value]])
+        previous = None
+        historical = normalize_history(entry.get("history") or entry.get("monthly_listeners_history"))
+        prior_points = [point for point in [*historical, *points[:-1]] if point[0] < day]
+        if prior_points:
+            previous = max(prior_points, key=lambda point: point[0])[1]
+        elif isinstance(row, list):
+            previous = field(row, schema, "monthly_listeners")
+        delta = value - int(previous) if isinstance(previous, (int, float)) else None
+        merged = merge_history(historical, points)
         entry["history"] = merged
         entry["monthly_listeners_history"] = merged
         entry["soundcharts_uuid"] = task["uuid"]
         entry["observed_at"] = now
-        entry["source"] = "soundcharts_artist_current_stats"
+        entry["source"] = "soundcharts_artist_streaming_spotify_listening"
 
         if isinstance(row, list):
             set_field(row, schema, "monthly_listeners", value)
@@ -1745,6 +1812,7 @@ def refresh_artists(
                 "value": value,
                 "date": day,
                 "delta": delta,
+                "points": len(points),
                 "ok": True,
                 "usable": True,
                 "performance_only": bool(task.get("performance_only")),
@@ -2028,16 +2096,17 @@ def smoke_test(payload: dict[str, Any], client: SoundchartsClient, history_days:
     artist_schema = list(payload.get("schemas", {}).get("artists", []))
     track_schema = list(payload.get("schemas", {}).get("tracks", []))
 
-    artist_metric = None
+    artist_points: list[list[Any]] = []
     artist_requests = 0
+    artist_period_days = min(90, max(10, history_days))
     for row in payload.get("artists", [])[:50]:
         uuid = field(row, artist_schema, "soundcharts_uuid")
         if not uuid:
             continue
         artist_requests += 1
-        response = client.get(f"/api/v2/artist/{urllib.parse.quote(str(uuid))}/current/stats")
-        artist_metric = extract_artist_spotify_metric(response)
-        if artist_metric or artist_requests >= 8:
+        response = client.get(artist_spotify_listening_path(str(uuid), artist_period_days))
+        artist_points = extract_artist_spotify_listening_points(response)
+        if artist_points or artist_requests >= 8:
             break
 
     period_days = min(90, max(10, history_days))
@@ -2057,16 +2126,17 @@ def smoke_test(payload: dict[str, Any], client: SoundchartsClient, history_days:
         if track_points or track_requests >= 12:
             break
 
-    if not artist_metric:
-        raise SoundchartsError("Authentication succeeded but no Spotify artist metric could be parsed")
+    if not artist_points:
+        raise SoundchartsError("Authentication succeeded but no Spotify artist listening point could be parsed")
     if not track_points:
         raise SoundchartsError("Authentication succeeded but no Spotify song audience point could be parsed")
     return {
         "status": "success",
         "auth_mode": client.auth_mode,
         "artist_requests": artist_requests,
+        "artist_points": len(artist_points),
         "track_requests": track_requests,
-        "artist_metric_date": artist_metric.get("date"),
+        "artist_metric_date": artist_points[-1][0],
         "track_points": len(track_points),
         "latest_track_date": track_points[-1][0],
         "quota_remaining": client.quota_remaining,
@@ -2201,6 +2271,7 @@ def main() -> int:
                 client,
                 args.workers,
                 remaining,
+                history_days=args.history_days,
                 include_performance_catalogue=args.include_performance_catalogue,
             )
         elif mode == "playlists":

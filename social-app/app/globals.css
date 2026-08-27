@@ -4253,10 +4253,10 @@ a {
 
 .audience-dashboard-toolbar {
   display: grid;
-  grid-template-columns: minmax(390px, 0.8fr) minmax(520px, 1.2fr);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
   gap: 16px;
-  margin-bottom: 6px;
+  margin-bottom: 12px;
 }
 
 .audience-dashboard-heading {
@@ -4318,174 +4318,58 @@ a {
 }
 
 .audience-period-tabs button {
+  display: inline-flex;
   min-width: 72px;
   min-height: 30px;
   flex: 0 0 auto;
+  align-items: center;
   justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 999px;
+  background: rgba(7, 9, 16, 0.48);
   padding: 4px 9px;
+  color: var(--muted);
   font-size: 12px;
+  font-weight: 750;
   white-space: nowrap;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
 }
 
-.audience-platform-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+.audience-period-tabs button:hover,
+.audience-period-tabs button:focus-visible,
+.audience-period-tabs button.active {
+  border-color: rgba(var(--platform-rgb), 0.48);
+  background: rgba(var(--platform-rgb), 0.1);
+  color: #fff;
 }
 
-.audience-platform-card,
+.audience-period-tabs button:focus-visible {
+  outline: 2px solid rgba(var(--platform-rgb), 0.64);
+  outline-offset: 2px;
+}
+
 .audience-explorer {
   --platform-rgb: 154, 168, 255;
 }
 
-.audience-platform-card.tone-red,
 .audience-explorer.tone-red { --platform-rgb: 251, 113, 133; }
-.audience-platform-card.tone-pink,
 .audience-explorer.tone-pink { --platform-rgb: 244, 114, 182; }
-.audience-platform-card.tone-cyan,
 .audience-explorer.tone-cyan { --platform-rgb: 103, 232, 249; }
-.audience-platform-card.tone-blue,
 .audience-explorer.tone-blue { --platform-rgb: 125, 211, 252; }
-
-.audience-platform-card {
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid rgba(var(--platform-rgb), 0.22);
-  border-radius: 14px;
-  background:
-    radial-gradient(circle at 92% -12%, rgba(var(--platform-rgb), 0.14), transparent 42%),
-    linear-gradient(155deg, rgba(22, 26, 43, 0.96), rgba(11, 13, 22, 0.96));
-  padding: 8px;
-  box-shadow: 0 22px 60px -50px rgba(var(--platform-rgb), 0.78);
-}
-
-.audience-platform-head {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 6px;
-}
-
-.audience-platform-logo {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
-  place-items: center;
-  border: 1px solid rgba(var(--platform-rgb), 0.24);
-  border-radius: 10px;
-  background:
-    radial-gradient(circle at 30% 20%, rgba(var(--platform-rgb), 0.2), transparent 70%),
-    rgba(7, 9, 16, 0.58);
-}
-
-.audience-platform-logo img {
-  display: block;
-  width: 17px;
-  height: 17px;
-  object-fit: contain;
-}
-
-.audience-platform-head h3 {
-  margin: 0;
-  font-family: Sora, Inter, sans-serif;
-  font-size: 14px;
-  letter-spacing: -0.02em;
-}
-
-.audience-platform-head time {
-  grid-column: auto;
-  margin-top: 0;
-  color: var(--dim);
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.audience-platform-head time.stale,
 .audience-explorer-heading > span.stale {
   color: #f6b8b8;
 }
 
-.audience-total-block {
-  margin-top: 6px;
-}
-
-.audience-total-block > span,
-.audience-kpi > span {
-  display: block;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.audience-total-block strong {
-  display: block;
-  margin-top: 2px;
-  overflow: hidden;
-  color: #fff;
-  font-family: Sora, Inter, sans-serif;
-  font-size: clamp(21px, 1.9vw, 27px);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.055em;
-  line-height: 1.08;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.audience-kpi-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 6px;
-  border-top: 1px solid rgba(var(--platform-rgb), 0.14);
-  padding-top: 5px;
-}
-
-.audience-kpi {
-  min-width: 0;
-}
-
-.audience-kpi strong {
-  display: block;
-  margin-top: 2px;
-  overflow: hidden;
-  color: rgb(var(--platform-rgb));
-  font-family: Sora, Inter, sans-serif;
-  font-size: 15px;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.04em;
-  line-height: 1.1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.audience-kpi strong.positive {
-  color: #8ee7ae;
-}
-
-.audience-kpi strong.negative {
-  color: var(--red);
-}
-
-.audience-kpi small {
-  display: block;
-  margin-top: 2px;
-  color: var(--dim);
-  font-size: 11px;
-  line-height: 1.3;
-}
-
 .audience-explorer {
   min-width: 0;
-  margin-top: 6px;
+  margin-top: 0;
   overflow: hidden;
   border: 1px solid rgba(var(--platform-rgb), 0.22);
   border-radius: 16px;
   background:
     linear-gradient(180deg, rgba(var(--platform-rgb), 0.065), transparent 150px),
     rgba(13, 16, 27, 0.92);
-  padding: 8px 10px;
+  padding: 12px 14px;
 }
 
 .audience-explorer-heading {
@@ -4511,8 +4395,7 @@ a {
 }
 
 .audience-explorer-platform-tabs,
-.audience-explorer-metrics,
-.audience-chart-period-tabs {
+.audience-explorer-metrics {
   display: flex;
   min-width: 0;
   gap: 8px;
@@ -4526,26 +4409,133 @@ a {
   display: flex;
   min-width: 0;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
+  margin-top: 10px;
+}
+
+.audience-explorer-summary {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(230px, 1.25fr) repeat(3, minmax(135px, 0.8fr));
+  align-items: stretch;
   margin-top: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(var(--platform-rgb), 0.2);
+  border-radius: 12px;
+  background:
+    linear-gradient(110deg, rgba(var(--platform-rgb), 0.09), transparent 48%),
+    rgba(7, 9, 16, 0.5);
 }
 
-.audience-chart-period-tabs {
-  flex: 0 0 auto;
+.audience-explorer-profile {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px 9px;
+  padding: 9px 11px;
 }
 
-.audience-chart-period-tabs button {
-  border-radius: 999px;
-  padding: 6px 9px;
-  font-size: 11px;
-  font-weight: 750;
+.audience-explorer-profile-logo {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  grid-row: 1 / span 2;
+  place-items: center;
+  border: 1px solid rgba(var(--platform-rgb), 0.26);
+  border-radius: 10px;
+  background: rgba(7, 9, 16, 0.58);
+}
+
+.audience-explorer-profile-logo img {
+  display: block;
+  width: 19px;
+  height: 19px;
+  object-fit: contain;
+}
+
+.audience-explorer-profile .section-kicker {
+  margin: 0 0 1px;
+  color: #fff;
+  font-size: 9px;
+  letter-spacing: 0.09em;
+  text-transform: none;
+}
+
+.audience-explorer-profile h3 {
+  margin: 0;
+  color: #fff;
+  font-family: Sora, Inter, sans-serif;
+  font-size: 14px;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+.audience-explorer-profile time {
+  grid-column: 2;
+  overflow: hidden;
+  color: #fff;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.audience-explorer-profile time.stale {
+  color: #fff;
+}
+
+.audience-explorer-summary-kpi {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  border-left: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 8px 11px;
+}
+
+.audience-explorer-summary-kpi > span,
+.audience-explorer-summary-kpi > small {
+  overflow: hidden;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audience-explorer-summary-kpi > strong {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  color: #fff;
+  font-family: Sora, Inter, sans-serif;
+  font-size: clamp(15px, 1.35vw, 19px);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.045em;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audience-explorer-summary-kpi > strong.positive {
+  color: #8ee7ae;
+}
+
+.audience-explorer-summary-kpi > strong.negative {
+  color: var(--red);
+}
+
+.audience-explorer-summary-kpi > small {
+  margin-top: 2px;
+  font-weight: 500;
+}
+
 .audience-explorer-platform-tabs button,
-.audience-explorer-metrics button,
-.audience-chart-period-tabs button {
+.audience-explorer-metrics button {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
@@ -4575,24 +4565,20 @@ a {
 .audience-explorer-platform-tabs button.active,
 .audience-explorer-metrics button:hover,
 .audience-explorer-metrics button:focus-visible,
-.audience-explorer-metrics button.active,
-.audience-chart-period-tabs button:hover,
-.audience-chart-period-tabs button:focus-visible,
-.audience-chart-period-tabs button.active {
+.audience-explorer-metrics button.active {
   border-color: rgba(var(--platform-rgb), 0.48);
   background: rgba(var(--platform-rgb), 0.1);
   color: #fff;
 }
 
 .audience-explorer-platform-tabs button:focus-visible,
-.audience-explorer-metrics button:focus-visible,
-.audience-chart-period-tabs button:focus-visible {
+.audience-explorer-metrics button:focus-visible {
   outline: 2px solid rgba(var(--platform-rgb), 0.64);
   outline-offset: 2px;
 }
 
 .audience-explorer-metrics {
-  margin-top: 5px;
+  margin-top: 8px;
 }
 
 .audience-explorer-metrics button {
@@ -4627,11 +4613,11 @@ a {
 }
 
 .audience-native-chart-shell {
-  margin-top: 4px;
+  margin-top: 8px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
   background: rgba(6, 8, 14, 0.46);
-  padding: 6px 8px;
+  padding: 8px 10px;
 }
 
 .audience-native-chart-heading {
@@ -4645,7 +4631,7 @@ a {
 .audience-native-chart-heading small {
   display: block;
   color: var(--dim);
-  font-size: 11px;
+  font-size: 9px;
   font-weight: 700;
   line-height: 1.35;
   text-transform: uppercase;
@@ -4656,7 +4642,7 @@ a {
   margin: 1px 0 0;
   color: var(--text);
   font-family: Sora, Inter, sans-serif;
-  font-size: 14px;
+  font-size: 12px;
   line-height: 1.25;
 }
 
@@ -4669,7 +4655,7 @@ a {
   display: block;
   color: rgb(var(--platform-rgb));
   font-family: Sora, Inter, sans-serif;
-  font-size: clamp(18px, 1.9vw, 23px);
+  font-size: clamp(15px, 1.35vw, 18px);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.045em;
   line-height: 1.1;
@@ -4724,7 +4710,7 @@ a {
 .audience-native-chart-date {
   fill: var(--dim);
   font-family: Inter, sans-serif;
-  font-size: 12px;
+  font-size: 9px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -4784,13 +4770,13 @@ a {
 
 .audience-native-chart-tooltip-date {
   fill: var(--muted);
-  font-size: 11px;
+  font-size: 8px;
   font-weight: 650;
 }
 
 .audience-native-chart-tooltip-value {
   fill: #fff;
-  font-size: 14px;
+  font-size: 11px;
   font-weight: 800;
 }
 
@@ -4821,7 +4807,7 @@ a {
   gap: 4px 10px;
   margin-top: -1px;
   color: var(--dim);
-  font-size: 11px;
+  font-size: 9px;
   line-height: 1.35;
 }
 
@@ -4837,6 +4823,323 @@ a {
   white-space: nowrap;
 }
 
+.audience-demographics {
+  margin-top: 14px;
+  border: 1px solid rgba(var(--platform-rgb), 0.18);
+  border-radius: 16px;
+  background:
+    linear-gradient(125deg, rgba(var(--platform-rgb), 0.055), transparent 45%),
+    rgba(6, 8, 14, 0.42);
+  padding: 14px 16px 16px;
+}
+
+.audience-demographics-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.audience-demographics .section-kicker {
+  margin-bottom: 3px;
+  font-size: 9px;
+}
+
+.audience-demographics-heading h3 {
+  margin: 0;
+  color: var(--text);
+  font-family: Sora, Inter, sans-serif;
+  font-size: clamp(15px, 1.15vw, 17px);
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+.audience-demographics-heading > span {
+  color: var(--dim);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.audience-demographics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.audience-demographics-breakdowns {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  grid-template-rows: minmax(0, 1fr) auto;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  background: rgba(8, 10, 18, 0.5);
+}
+
+.audience-demographics-breakdowns .audience-demographic-card {
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.audience-demographics-breakdowns .audience-demographic-card + .audience-demographic-card {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.audience-demographic-card {
+  display: flex;
+  min-width: 0;
+  min-height: 178px;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  background: rgba(8, 10, 18, 0.5);
+  padding: 12px;
+}
+
+.audience-demographic-card > header,
+.audience-demographic-card > footer {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.audience-demographic-card > header {
+  flex-wrap: wrap;
+}
+
+.audience-demographic-card > header > span {
+  flex-basis: 100%;
+}
+
+.audience-demographic-card h4 {
+  margin: 0;
+  color: var(--text);
+  font-family: Sora, Inter, sans-serif;
+  font-size: clamp(12px, 0.9vw, 14px);
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+
+.audience-demographic-card > header > span,
+.audience-demographic-card > footer {
+  color: var(--dim);
+  font-size: 9px;
+  line-height: 1.3;
+}
+
+.audience-demographic-card > header > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audience-demographic-card > footer {
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.audience-demographic-card > footer span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audience-demographic-list {
+  display: grid;
+  flex: 1;
+  grid-auto-rows: minmax(20px, 1fr);
+  gap: 5px 10px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.audience-demographic-card.kind-countries .audience-demographic-list {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.audience-demographic-list li {
+  display: grid;
+  min-width: 0;
+  min-height: 20px;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: clamp(11px, 0.78vw, 12px);
+  line-height: 1.3;
+}
+
+.audience-demographic-card.kind-countries .audience-demographic-list li {
+  grid-template-columns: 22px minmax(44px, 0.82fr) minmax(24px, 1fr) auto;
+  gap: 5px;
+}
+
+.audience-demographic-list li > span:first-of-type {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audience-demographic-list img {
+  display: block;
+  width: 22px;
+  height: 16.5px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+  object-fit: cover;
+}
+
+.audience-demographic-list strong {
+  color: #fff;
+  font-size: clamp(11px, 0.78vw, 12px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: right;
+}
+
+.audience-demographic-list li.unavailable {
+  color: var(--dim);
+}
+
+.audience-demographic-list li.unavailable .audience-demographic-bar {
+  opacity: 0.45;
+}
+
+.audience-demographic-bar {
+  display: block;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.075);
+}
+
+.audience-demographic-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: rgb(var(--platform-rgb));
+}
+
+.audience-demographic-pie-layout {
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: clamp(78px, 7vw, 98px) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.audience-demographic-pie {
+  position: relative;
+  display: grid;
+  width: 100%;
+  max-width: 98px;
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 10px 26px rgba(0, 0, 0, 0.22);
+}
+
+.audience-demographic-pie::after {
+  position: absolute;
+  inset: 24%;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 50%;
+  background: #0b0e16;
+  box-shadow: inset 0 0 14px rgba(255, 255, 255, 0.025);
+  content: "";
+}
+
+.audience-demographic-pie > span {
+  position: relative;
+  z-index: 1;
+  color: #fff;
+  font-family: Sora, Inter, sans-serif;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.audience-demographic-pie-legend {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.audience-demographic-pie-legend li {
+  display: grid;
+  min-width: 0;
+  min-height: 16px;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: clamp(10px, 0.72vw, 11px);
+  line-height: 1.15;
+}
+
+.audience-demographic-pie-legend li > span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.audience-demographic-pie-legend strong {
+  color: #fff;
+  font-size: inherit;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: right;
+}
+
+.audience-demographic-pie-swatch {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.audience-demographic-pie-legend li.unavailable {
+  color: var(--dim);
+}
+
+.audience-demographic-pie-legend li.unavailable .audience-demographic-pie-swatch {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+.audience-demographic-note {
+  margin: 7px 0 0;
+  color: var(--dim);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.audience-demographic-empty {
+  display: grid;
+  min-height: 76px;
+  place-items: center;
+  color: var(--dim);
+  font-size: 10px;
+  line-height: 1.35;
+  text-align: center;
+}
+
 @media (max-width: 900px) {
   .audience-dashboard-toolbar {
     grid-template-columns: 1fr;
@@ -4846,18 +5149,31 @@ a {
     justify-content: flex-start;
   }
 
-  .audience-platform-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .audience-explorer-controls {
     align-items: stretch;
     flex-direction: column;
     gap: 4px;
   }
 
-  .audience-chart-period-tabs {
-    width: 100%;
+  .audience-explorer-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .audience-explorer-summary-kpi:nth-child(3) {
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .audience-explorer-summary-kpi:nth-child(4) {
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .audience-demographics-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .audience-demographics-breakdowns {
+    grid-template-rows: auto auto;
   }
 }
 
@@ -4882,25 +5198,19 @@ a {
     width: 100%;
   }
 
-  .audience-platform-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+  .audience-explorer {
+    padding: 14px;
   }
 
-  .audience-platform-card {
-    padding: 12px;
-  }
-
-  .audience-total-block strong {
-    font-size: clamp(20px, 6vw, 26px);
-  }
-
-  .audience-kpi-row {
+  .audience-explorer-summary {
     grid-template-columns: 1fr;
   }
 
-  .audience-explorer {
-    padding: 14px;
+  .audience-explorer-summary-kpi,
+  .audience-explorer-summary-kpi:nth-child(3),
+  .audience-explorer-summary-kpi:nth-child(4) {
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    border-left: 0;
   }
 
   .audience-native-chart-heading {
@@ -4915,17 +5225,365 @@ a {
   .audience-native-chart-caption span:last-child {
     max-width: 100%;
   }
-}
 
-@media (max-width: 360px) {
-  .audience-platform-grid {
+  .audience-demographics-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .audience-demographics-grid {
     grid-template-columns: 1fr;
   }
 
-  .audience-kpi-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .audience-demographic-card.kind-countries .audience-demographic-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 901px) {
+  .audience-demographic-card {
+    padding: 10px;
   }
 
+  .audience-demographics-breakdowns .audience-demographic-card {
+    padding-block: 6px;
+  }
+
+  .audience-demographic-pie-layout {
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 9px;
+  }
+
+  .audience-demographic-pie {
+    max-width: 78px;
+  }
+
+  .audience-demographic-list {
+    grid-auto-rows: minmax(16px, 1fr);
+    gap-block: 2px;
+    margin-top: 5px;
+  }
+
+  .audience-demographic-list li {
+    min-height: 16px;
+    font-size: 10px;
+    line-height: 1.15;
+  }
+
+  .audience-demographic-list strong {
+    font-size: 10px;
+  }
+
+  .audience-demographic-card > footer {
+    padding-top: 4px;
+  }
+
+  .audience-demographic-list img {
+    width: 20px;
+    height: 15px;
+  }
+}
+
+@media (min-width: 901px) and (max-height: 940px) {
+  .main-dashboard .platform-header {
+    margin-bottom: 6px;
+  }
+
+  .audience-dashboard-toolbar {
+    margin-bottom: 8px;
+  }
+
+  .audience-explorer {
+    padding: 9px 11px;
+    padding-bottom: 0;
+  }
+
+  .audience-demographics {
+    margin-top: 6px;
+    padding: 8px 10px 10px;
+  }
+
+  .audience-demographics-grid {
+    margin-top: 6px;
+  }
+
+  .audience-demographic-card {
+    padding: 10px;
+  }
+
+  .audience-demographic-list {
+    grid-auto-rows: minmax(14px, 1fr);
+    gap-block: 0;
+    margin-top: 4px;
+  }
+
+  .audience-demographic-list li {
+    min-height: 14px;
+    font-size: 10px;
+    line-height: 1.1;
+  }
+
+  .audience-demographic-list strong {
+    font-size: 10px;
+  }
+
+  .audience-demographic-card > footer {
+    padding-top: 3px;
+  }
+
+  .audience-demographic-pie-layout {
+    grid-template-columns: 70px minmax(0, 1fr);
+    gap: 8px;
+    margin-top: 3px;
+  }
+
+  .audience-demographic-pie {
+    max-width: 70px;
+  }
+
+  .audience-demographic-pie-legend {
+    gap: 1px;
+  }
+
+  .audience-demographic-pie-legend li {
+    min-height: 11px;
+    font-size: 9px;
+    line-height: 1;
+  }
+
+  .audience-demographic-list img {
+    width: 18px;
+    height: 13.5px;
+  }
+}
+
+@media (min-width: 901px) and (max-height: 820px) {
+  .main.main-dashboard {
+    padding-bottom: 0;
+  }
+
+  .main-dashboard .platform-header {
+    margin-bottom: 4px;
+    padding-block: 5px;
+  }
+
+  .main-dashboard .radar-switch a {
+    padding-block: 3px;
+  }
+
+  .audience-dashboard-toolbar {
+    margin-bottom: 5px;
+  }
+
+  .audience-dashboard-heading h2 {
+    font-size: 21px;
+  }
+
+  .audience-period-tabs button {
+    min-height: 26px;
+    padding-block: 2px;
+  }
+
+  .audience-explorer {
+    padding: 8px 10px;
+  }
+
+  .audience-explorer-heading h2 {
+    font-size: 17px;
+  }
+
+  .audience-explorer-controls {
+    margin-top: 5px;
+  }
+
+  .audience-explorer-platform-tabs button,
+  .audience-explorer-metrics button {
+    padding-block: 4px;
+  }
+
+  .audience-explorer-summary {
+    margin-top: 4px;
+  }
+
+  .audience-explorer-profile,
+  .audience-explorer-summary-kpi {
+    padding-block: 5px;
+  }
+
+  .audience-explorer-metrics,
+  .audience-native-chart-shell {
+    margin-top: 4px;
+  }
+
+  .audience-native-chart-shell {
+    padding-block: 5px;
+  }
+
+  .audience-demographics {
+    margin-top: 6px;
+    padding: 8px 10px 9px;
+  }
+
+  .audience-demographics-grid {
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .audience-demographic-card {
+    min-height: 138px;
+    padding: 8px;
+  }
+
+  .audience-demographic-card.kind-countries,
+  .audience-demographics-breakdowns {
+    min-height: 174px;
+  }
+
+  .audience-demographics-breakdowns .audience-demographic-card {
+    min-height: 0;
+    padding-block: 5px;
+  }
+
+  .audience-demographic-list {
+    grid-auto-rows: minmax(12px, 1fr);
+    gap-block: 2px;
+    margin-top: 5px;
+  }
+
+  .audience-demographic-list li {
+    min-height: 16px;
+    font-size: 10px;
+    line-height: 1.15;
+  }
+
+  .audience-demographic-list strong {
+    font-size: 10px;
+  }
+
+  .audience-demographic-card > footer {
+    padding-top: 4px;
+  }
+
+  .main-dashboard .platform-header {
+    margin-bottom: 2px;
+    padding-block: 3px;
+  }
+
+  .audience-dashboard-toolbar {
+    margin-bottom: 3px;
+  }
+
+  .audience-dashboard-heading .section-kicker,
+  .audience-explorer-heading .section-kicker,
+  .audience-demographics .section-kicker {
+    display: none;
+  }
+
+  .audience-explorer {
+    padding-block: 6px;
+    padding-bottom: 0;
+  }
+
+  .audience-explorer-controls,
+  .audience-explorer-summary,
+  .audience-explorer-metrics,
+  .audience-native-chart-shell {
+    margin-top: 3px;
+  }
+
+  .audience-explorer-profile,
+  .audience-explorer-summary-kpi {
+    padding-block: 4px;
+  }
+
+  .audience-demographics {
+    margin-top: 1px;
+    padding-block: 5px 1px;
+  }
+
+  .audience-demographics-grid {
+    margin-top: 3px;
+  }
+
+  .audience-demographic-card {
+    min-height: 132px;
+    padding-block: 6px;
+  }
+
+  .audience-demographic-card.kind-countries,
+  .audience-demographics-breakdowns {
+    min-height: 168px;
+  }
+
+  .audience-demographic-card.kind-countries .audience-demographic-list,
+  .audience-demographic-pie-legend {
+    gap-block: 0;
+  }
+
+  .audience-demographic-card.kind-countries .audience-demographic-list li,
+  .audience-demographic-card.kind-countries .audience-demographic-list strong {
+    min-height: 12px;
+    font-size: 9px;
+    line-height: 1;
+  }
+
+  .audience-demographic-pie-legend li,
+  .audience-demographic-pie-legend strong {
+    min-height: 8px;
+    font-size: 8px;
+    line-height: 1;
+  }
+
+  .audience-demographics-breakdowns .audience-demographic-card > footer {
+    display: none;
+  }
+
+  .audience-demographics-breakdowns .audience-demographic-card > header > span {
+    font-size: 9px;
+  }
+
+  .audience-demographic-note {
+    margin-top: 2px;
+    font-size: 8px;
+    line-height: 1;
+  }
+
+  .audience-demographic-card.kind-countries .audience-demographic-list img {
+    width: 18px;
+    height: 13.5px;
+  }
+
+  .audience-demographic-pie-layout {
+    grid-template-columns: 54px minmax(0, 1fr);
+    gap: 6px;
+    margin-top: 1px;
+  }
+
+  .audience-demographic-pie {
+    max-width: 54px;
+  }
+
+  .audience-demographic-pie::after {
+    inset: 26%;
+  }
+
+  .audience-demographic-pie > span {
+    font-size: 8px;
+  }
+
+  .audience-demographic-pie-legend li {
+    grid-template-columns: 6px minmax(0, 1fr) auto;
+    gap: 4px;
+  }
+
+  .audience-demographic-pie-swatch {
+    width: 6px;
+    height: 6px;
+  }
+}
+
+@media (max-width: 360px) {
   .audience-native-chart-heading {
     flex-direction: column;
   }

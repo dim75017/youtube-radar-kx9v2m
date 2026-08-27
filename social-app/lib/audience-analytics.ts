@@ -93,6 +93,12 @@ export type AudienceAnalytics = {
 const SIGNED_METRIC_KEYS = new Set<AudienceAnalyticsMetricKey>([
   "followersNet",
 ]);
+const INTEGER_METRIC_KEYS = new Set<AudienceAnalyticsMetricKey>([
+  "followersTotal",
+  "followersNet",
+  "newFollowers",
+  "unfollows",
+]);
 const PERIOD_DAYS: Record<AudienceAnalyticsPeriodKey, number | null> = {
   "7d": 7,
   "28d": 28,
@@ -313,6 +319,9 @@ function assertMetrics(value: unknown, label: string): void {
     if (metric === null) continue;
     if (typeof metric !== "number" || !Number.isFinite(metric)) {
       throw new Error(`${label}.${key} doit être un nombre fini ou null.`);
+    }
+    if (INTEGER_METRIC_KEYS.has(key) && !Number.isInteger(metric)) {
+      throw new Error(`${label}.${key} doit être un entier ou null.`);
     }
     if (!SIGNED_METRIC_KEYS.has(key) && metric < 0) {
       throw new Error(`${label}.${key} ne peut pas être négatif.`);

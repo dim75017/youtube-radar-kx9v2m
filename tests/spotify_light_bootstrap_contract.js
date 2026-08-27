@@ -54,8 +54,10 @@ function assertSpotifyLightBootstrap(index) {
     'track analytics and audio transport must remain lazy assets');
   assert.match(instantRuntime, /function loadTrackAnalytics\(\)/,
     'the lightweight renderer must expose the user-triggered analytics loader');
-  assert.match(instantRuntime, /track-analytics\.js\?v=/,
-    'opening a track must fetch the analytical renderer with a stable version');
+  assert.match(instantRuntime, /function loadTrackAnalytics\(\)\{return loadAnalytics\('Track'\);\}/,
+    'opening a track must use the shared lazy analytical renderer loader');
+  assert.match(instantRuntime, /\$\{name\}-analytics\.js\?v=/,
+    'lazy analytical renderers must use stable versioned URLs');
 
   const instantDataBytes = fs.statSync(path.join(root, 'Spotify_Instant_data.js')).size;
   const instantRuntimeBytes = fs.statSync(path.join(root, 'spotify', 'instant.js')).size;
@@ -64,11 +66,13 @@ function assertSpotifyLightBootstrap(index) {
     `Spotify first-paint data budget exceeded: ${instantDataBytes} bytes > 200000`);
   // Dashboard is now the first view and renders from the same compact snapshot,
   // without a third request or catalogue hydration. Keep its complete renderer
-  // inside a measured 65 kB envelope while the combined JavaScript cap stays strict.
-  assert.ok(instantRuntimeBytes <= 65_000,
-    `Spotify lightweight runtime budget exceeded: ${instantRuntimeBytes} bytes > 65000`);
+  // inside a measured 68 kB envelope, including the three lazy analytics
+  // routers, while the stricter combined JavaScript cap stays unchanged.
+  assert.ok(instantRuntimeBytes <= 68_000,
+    `Spotify lightweight runtime budget exceeded: ${instantRuntimeBytes} bytes > 68000`);
   assert.ok(criticalJavaScriptBytes <= 225_000,
     `Spotify critical JavaScript budget exceeded: ${criticalJavaScriptBytes} bytes > 225000`);
 }
 
 module.exports = { assertSpotifyLightBootstrap };
+
