@@ -132,12 +132,15 @@ test("Social inventory and migrated Instagram frames keep their baselines", () =
   const video = JSON.parse(read("social-app/data/trends/feed.json"));
   const audio = JSON.parse(read("social-app/data/audio-trends/feed.json"));
   const comments = JSON.parse(read("social-app/data/comment-opportunities/feed.json"));
+  const playlistPromos = JSON.parse(read("social-app/data/playlist-promos/feed.json"));
   const history = JSON.parse(read("social-app/data/public-history.json"));
   const instagramDir = path.join(root, "social-app/public/media/instagram");
 
   assert.ok(video.trends.length >= 50);
   assert.ok(audio.trends.length >= 50);
   assert.ok(comments.opportunities.length >= 20);
+  assert.equal(playlistPromos.items.length, 9);
+  assert.ok(playlistPromos.items.every((item) => item.observations.at(-1).likes >= 10000));
   assert.equal(fs.readdirSync(instagramDir).length, 1676);
 
   const migrated = history.posts.filter((post) =>
@@ -171,6 +174,7 @@ test("Social media never starts audible playback automatically", () => {
     "social-app/app/SocialOS.tsx",
     "social-app/app/AudioTrendFeedView.tsx",
     "social-app/app/CommentOpportunitiesView.tsx",
+    "social-app/app/PlaylistPromoFeedView.tsx",
     "social-app/lib/social-inline-player.ts",
     "social-app/lib/social-media.ts",
   ];

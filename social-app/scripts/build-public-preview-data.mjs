@@ -6,6 +6,8 @@ import { assertAudienceDemographics } from "../lib/audience-demographics.ts";
 import { assertAudienceHistory } from "../lib/audience-metrics.ts";
 import { assertAudioTrendFeed } from "../lib/audio-trends.ts";
 import { assertCommentOpportunityFeed } from "../lib/comment-opportunities.ts";
+import { assertPlaylistPromoFeed } from "../lib/playlist-promos.ts";
+import { assertScrollingFeed } from "../lib/scrolling.ts";
 import { assertSocialTrendFeed } from "../lib/social-trends.ts";
 import {
   assertAudioTrendScanStatus,
@@ -30,6 +32,9 @@ const [
   audienceAnalytics,
   audienceDemographics,
   commentOpportunityFeed,
+  playlistPromoFeed,
+  playlistPromoStatus,
+  scrollingFeed,
 ] = await Promise.all([
   readJson(resolve(root, "data", "public-history.json")),
   readJson(resolve(root, "data", "public-history-summary.json")),
@@ -41,6 +46,9 @@ const [
   readJson(resolve(root, "data", "audience-analytics.json")),
   readJson(resolve(root, "data", "audience-demographics.json")),
   readJson(resolve(root, "data", "comment-opportunities", "feed.json")),
+  readJson(resolve(root, "data", "playlist-promos", "feed.json")),
+  readJson(resolve(root, "data", "playlist-promos", "refresh-status.json")),
+  readJson(resolve(root, "data", "scrolling", "feed.json")),
 ]);
 
 if (snapshot.generatedAt !== summary.generatedAt) {
@@ -57,11 +65,23 @@ assertAudienceHistory(audienceHistory);
 assertAudienceAnalytics(audienceAnalytics);
 assertAudienceDemographics(audienceDemographics);
 assertCommentOpportunityFeed(commentOpportunityFeed);
+assertPlaylistPromoFeed(playlistPromoFeed);
+assertScrollingFeed(scrollingFeed);
+if (
+  playlistPromoStatus?.version !== 1 ||
+  !["success", "partial", "failed"].includes(playlistPromoStatus.status) ||
+  !Number.isFinite(Date.parse(playlistPromoStatus.lastAttemptAt)) ||
+  !Array.isArray(playlistPromoStatus.errors)
+) {
+  throw new Error("Le statut Pubs playlists est invalide.");
+}
 
 await mkdir(output, { recursive: true });
 await mkdir(resolve(output, "trends"), { recursive: true });
 await mkdir(resolve(output, "audio-trends"), { recursive: true });
 await mkdir(resolve(output, "comment-opportunities"), { recursive: true });
+await mkdir(resolve(output, "playlist-promos"), { recursive: true });
+await mkdir(resolve(output, "scrolling"), { recursive: true });
 await writeJson(resolve(output, "public-history-summary.json"), summary);
 await writeJson(resolve(output, "public-history.json"), snapshot);
 await writeJson(resolve(output, "audience-history.json"), audienceHistory);
@@ -72,6 +92,9 @@ await writeJson(resolve(output, "trends", "refresh-status.json"), videoTrendScan
 await writeJson(resolve(output, "audio-trends", "feed.json"), audioTrendFeed);
 await writeJson(resolve(output, "audio-trends", "refresh-status.json"), audioTrendScanStatus);
 await writeJson(resolve(output, "comment-opportunities", "feed.json"), commentOpportunityFeed);
+await writeJson(resolve(output, "playlist-promos", "feed.json"), playlistPromoFeed);
+await writeJson(resolve(output, "playlist-promos", "refresh-status.json"), playlistPromoStatus);
+await writeJson(resolve(output, "scrolling", "feed.json"), scrollingFeed);
 
 for (const platform of platforms) {
   const posts = snapshot.posts.filter((post) => post.platform === platform);

@@ -10,7 +10,8 @@ GitHub Pages construit puis publie l’export public servi à l’adresse ci-des
 
 ## Fonctionnalités
 
-- Recommandations séparées en **Trends vidéos**, **Trends audio**, **Posts recommandés** et **Commentaires**. Le feed audio contient au minimum 50 sons distincts (41 TikTok, 6 Instagram et 3 YouTube), affiche un exemple vidéo lisible directement, le nombre public de vidéos utilisant le son lorsqu’il est disponible, la croissance réellement mesurée et un angle Lofi Girl concret. Il est contrôlé deux fois par jour ; un lot inférieur à 50 ou privé d’une seule miniature TikTok / lecture Instagram n’est pas publié.
+- Recommandations séparées en **Trends vidéos**, **Trends audio**, **Pubs playlists**, **Posts recommandés** et **Commentaires**. « Pubs playlists » suit dans un inventaire autonome les créations promotionnelles dont le compteur natif franchit 10 000 likes, sans confondre résonance publique et rentabilité média. Chaque référence est reliée à une adaptation originale et humaine pour Lofi Girl.
+- Le feed audio contient au minimum 50 sons distincts (41 TikTok, 6 Instagram et 3 YouTube), affiche un exemple vidéo lisible directement, le nombre public de vidéos utilisant le son lorsqu’il est disponible, la croissance réellement mesurée et un angle Lofi Girl concret. Il est contrôlé deux fois par jour ; un lot inférieur à 50 ou privé d’une seule miniature TikTok / lecture Instagram n’est pas publié.
 - Navigation interactive : Tableau de bord, « Tous les posts » dépliable par plateforme, « Recommandations » dépliable en Posts recommandés, Commentaires et Trends, puis Roadmap.
 - Veille « Commentaires » : le radar surveille en continu 97 comptes dont une simple publication est un événement (gaming, ciné, séries, anime, musique, tech, créateurs, sport) et repère aussi ce qui perce ailleurs sur YouTube, Instagram, TikTok et X. Deux voies : la watchlist est relue toutes les 15 minutes via les flux Atom publics, la veille large repasse toutes les 6 heures avec un horizon de 7 jours. Chaque carte affiche le palier du moment, la vitesse réellement mesurée, le temps qu'il reste dans la fenêtre où un commentaire peut encore être lu, et trois réactions courtes dans la voix de Lofi Girl (drôle, smart, complice), avec lecture du post, copie en un clic et file locale « à commenter / fait / passé ». Un moment majeur encore dans sa fenêtre est annoncé une fois dans le salon CM sur Discord. Le radar ne poste jamais un commentaire : il propose, un humain relit et publie.
 - Tableau de bord audience : total de followers, évolution issue de relevés réels, taux d’engagement comparable et analytics natifs par plateforme. Le rattrapage propriétaire contient 365 jours de followers/vues/engagement TikTok, 365 jours d’activité X, 365 jours de variation nette des abonnés YouTube et les fenêtres 30/90 jours réellement fournies par Instagram Insights. Un filtre commun pilote les indicateurs sur 30 jours (vue par défaut), 3 mois, 6 mois, 1 an ou All time. Les jours absents restent vides et un flux net n’est jamais présenté comme un total historique.
@@ -45,6 +46,7 @@ pnpm test
 pnpm audience:refresh
 pnpm audience:native:import -- --manifest work/owner-analytics/AAAA-MM-JJ/manifest.json
 pnpm audio-trends:refresh
+pnpm playlist-promos:refresh
 pnpm comments:watchlist        # résout les identifiants de chaîne manquants
 pnpm comments:refresh          # voie rapide : watchlist, horizon 48 h
 pnpm comments:refresh:deep     # voie profonde : horizon 7 jours, élagage
@@ -61,6 +63,8 @@ python scripts/collect_public_history.py
 | `DISCORD_CM_WEBHOOK_URL` | Alerte des moments majeurs dans le salon CM | Rien n'est envoyé, le tableau reste la seule porte d'entrée |
 
 Aucun des deux n'est nécessaire pour que le scan, le classement et la publication fonctionnent.
+
+Le protocole, les limites par plateforme et la séparation entre posts natifs et bibliothèques publicitaires sont détaillés dans [docs/PLAYLIST_PROMOS_FEED.md](docs/PLAYLIST_PROMOS_FEED.md).
 
 ## Étape suivante
 

@@ -1,0 +1,82 @@
+name: Social · Refresh playlist promos
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "37 5 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: social-refresh-playlist-promos
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: social-app
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Revalidate known playlist promotions
+        id: scan
+        continue-on-error: true
+        run: node --experimental-strip-types scripts/refresh-playlist-promos.mjs
+
+      - name: Validate feed and fail-closed refresh
+        id: validation
+        if: steps.scan.outcome == 'success'
+        continue-on-error: true
+        run: node --experimental-strip-types --test tests/playlist-promos.test.mjs tests/playlist-promos-refresh.test.mjs
+
+      - name: Publish the verified snapshot
+        id: commit
+        if: steps.scan.outcome == 'success' && steps.validation.outcome == 'success'
+        shell: bash
+        run: |
+          git config user.name "lofi-social-radar-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/playlist-promos/feed.json data/playlist-promos/refresh-status.json
+          if git diff --cached --quiet; then
+            echo "No validated playlist-promo changes to publish."
+            exit 0
+          fi
+          git commit -m "Refresh playlist promos"
+          for attempt in 1 2 3; do
+            if git pull --rebase origin main && git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          exit 1
+
+      - name: Preserve failed-attempt status
+        if: steps.scan.outcome == 'failure'
+        shell: bash
+        run: |
+          git config user.name "lofi-social-radar-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/playlist-promos/refresh-status.json
+          git diff --cached --quiet || git commit -m "Record failed playlist promo refresh"
+          for attempt in 1 2 3; do
+            if git pull --rebase origin main && git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          exit 1
+
+      - name: Mark an invalid or failed scan
+        if: steps.scan.outcome == 'failure' || steps.validation.outcome == 'failure'
+        run: exit 1

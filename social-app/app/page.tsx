@@ -3,6 +3,8 @@ import audienceHistoryJson from "../data/audience-history.json";
 import audienceDemographicsJson from "../data/audience-demographics.json";
 import audioTrendScanStatusJson from "../data/audio-trends/refresh-status.json";
 import commentOpportunityFeedJson from "../data/comment-opportunities/feed.json";
+import playlistPromoFeedJson from "../data/playlist-promos/feed.json";
+import scrollingFeedJson from "../data/scrolling/feed.json";
 import videoTrendScanStatusJson from "../data/trends/refresh-status.json";
 import {
   assertAudienceHistory,
@@ -16,6 +18,14 @@ import {
   assertCommentOpportunityFeed,
   type CommentOpportunityFeed,
 } from "../lib/comment-opportunities";
+import {
+  assertPlaylistPromoFeed,
+  type PlaylistPromoFeed,
+} from "../lib/playlist-promos";
+import {
+  assertScrollingFeed,
+  type ScrollingFeed,
+} from "../lib/scrolling";
 import {
   assertAudioTrendScanStatus,
   assertVideoTrendScanStatus,
@@ -33,6 +43,12 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <SocialOS
+      initialScrollingFeed={assertScrollingFeed(
+        scrollingFeedJson as ScrollingFeed,
+      )}
+      initialPlaylistPromoFeed={assertPlaylistPromoFeed(
+        playlistPromoFeedJson as PlaylistPromoFeed,
+      )}
       initialCommentOpportunityFeed={assertCommentOpportunityFeed(
         commentOpportunityFeedJson as CommentOpportunityFeed,
       )}

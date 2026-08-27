@@ -1,0 +1,1932 @@
+{
+  "version": 1,
+  "capturedAt": "2026-08-26T23:04:54+02:00",
+  "minimumLikes": 10000,
+  "methodology": "Trois lectures de l’accueil Instagram ont été réalisées dans l’unique fenêtre de navigation privée explicitement confiée à @lofi.radar, audio muet et sans interaction d’engagement. Le run du soir a observé 151 URL uniques dans son propre lot et relevé 53 compteurs publics d’au moins 10 000 likes ; six sources seulement sont retenues après revue humaine. Le radar contient désormais 30 cartes éditoriales : huit du test initial, seize du lot étendu et six du run du soir. Chaque source reste séparée de son adaptation Lofi : ces snapshots organiques ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire.",
+  "limitations": [
+    "Les compteurs de likes ont été relevés tels qu’affichés par Instagram et sont conservés avec une précision platform-rounded.",
+    "Les vues, commentaires, partages, enregistrements et dates de publication non observés restent à null plutôt que d’être estimés.",
+    "Le snapshot ne contient aucun cookie, jeton, identifiant de connexion, donnée de session ou média signé éphémère.",
+    "Le décompte 504 / 236 est conservateur : un lot intermédiaire non restitué par le contrôleur et les cartes virtualisées par Instagram sont exclus plutôt qu’estimés.",
+    "Zéro carte n’affichait la mention Sponsorisé ; cela décrit ce flux organique observé et ne prouve pas l’absence de campagnes payantes ailleurs.",
+    "Le flux s’est progressivement élargi hors de la musique ; les cartes hors univers et les contenus signalés IA ont été écartés de la sélection éditoriale.",
+    "Le run du soir compte 151 URL uniques et 53 publications au seuil dans ce lot uniquement ; les volumes des trois runs ne sont pas additionnés comme un total dédupliqué entre passages."
+  ],
+  "explorationLenses": [
+    {
+      "id": "emotional-storytelling",
+      "label": "Récit émotionnel",
+      "group": "storytelling",
+      "specialty": "Histoires courtes, progression et mémoire affective",
+      "description": "Repérer les contenus qui créent une émotion par une chronologie lisible, des sous-titres utiles et un point de bascule humain.",
+      "observedInSnapshot": true,
+      "discoverySignals": [
+        "Une phrase d’ouverture pose immédiatement un enjeu humain",
+        "Les images d’archive racontent une progression plutôt qu’un simple best-of",
+        "Les sous-titres restent compréhensibles sans le son"
+      ],
+      "adaptationAngles": [
+        "Raconter un souvenir de la communauté Lofi à partir d’archives internes",
+        "Faire évoluer une même scène du doute vers l’apaisement"
+      ],
+      "rejectIf": [
+        "L’émotion dépend d’un drame privé, d’une manipulation ou d’une citation non vérifiable"
+      ]
+    },
+    {
+      "id": "nostalgia-time-capsule",
+      "label": "Nostalgie / capsule temporelle",
+      "group": "storytelling",
+      "specialty": "Années repères, souvenirs musicaux et avant/après",
+      "description": "Observer les contenus qui utilisent une date, une époque ou un jalon culturel comme porte d’entrée vers un souvenir collectif.",
+      "observedInSnapshot": true,
+      "discoverySignals": [
+        "Une année ou une période est lisible dès la première seconde",
+        "Le souvenir est soutenu par une archive authentique",
+        "Les commentaires peuvent compléter la mémoire collective"
+      ],
+      "adaptationAngles": [
+        "Réouvrir une ancienne chambre ou une ancienne playlist du Lofi universe",
+        "Comparer une routine d’écoute passée à celle d’aujourd’hui"
+      ],
+      "rejectIf": [
+        "La proposition nécessite une musique non licenciée ou imite servilement une œuvre tierce"
+      ]
+    },
+    {
+      "id": "live-music-energy",
+      "label": "Énergie live",
+      "group": "music",
+      "specialty": "Concerts, sessions, festivals et présence du public",
+      "description": "Identifier les moments où un geste musical, une réaction de foule ou une montée scénique suffit à rendre l’énergie immédiatement tangible.",
+      "observedInSnapshot": true,
+      "discoverySignals": [
+        "Le geste musical principal est visible sans explication",
+        "La réaction collective donne une échelle à l’instant",
+        "Le montage conserve une respiration avant le point culminant"
+      ],
+      "adaptationAngles": [
+        "Mettre en scène un mini-live original dans le Lofi universe",
+        "Montrer le passage de la solitude à une écoute partagée"
+      ],
+      "rejectIf": [
+        "La captation ou la musique ne dispose pas de droits d’utilisation clairs"
+      ]
+    },
+    {
+      "id": "nature-and-collective",
+      "label": "Nature et collectif",
+      "group": "music",
+      "specialty": "Création musicale dehors, groupe et décor naturel",
+      "description": "Chercher les performances où le lieu naturel, la lumière et la coordination du groupe deviennent une partie du récit musical.",
+      "observedInSnapshot": true,
+      "discoverySignals": [
+        "Le décor naturel est identifiable dès le plan d’ouverture",
+        "Plusieurs personnes contribuent réellement au moment musical",
+        "Le son et les gestes restent crédibles dans le lieu"
+      ],
+      "adaptationAngles": [
+        "Créer une session originale sur un toit, dans un jardin ou au bord d’un lac",
+        "Faire circuler un motif musical entre Girl, Boy et leurs compagnons"
+      ],
+      "rejectIf": [
+        "Le décor est seulement spectaculaire sans idée musicale ou relation humaine"
+      ]
+    },
+    {
+      "id": "lofi-daily-life",
+      "label": "Vie quotidienne Lofi",
+      "group": "lifestyle",
+      "specialty": "Étude, travail, transitions de saison et micro-routines",
+      "description": "Repérer les situations ordinaires immédiatement reconnaissables qui peuvent devenir un gag doux ou une petite victoire Lofi.",
+      "observedInSnapshot": true,
+      "discoverySignals": [
+        "La situation est comprise en un plan et une ligne de texte",
+        "Un détail du décor ou du personnage porte le gag",
+        "La conclusion offre une émotion calme plutôt qu’une injonction"
+      ],
+      "adaptationAngles": [
+        "Faire réagir le chat ou le chien à une routine d’étude",
+        "Transformer un retour au travail en mini-récit visuel"
+      ],
+      "rejectIf": [
+        "Le contenu culpabilise l’audience ou promet une productivité irréaliste"
+      ]
+    },
+    {
+      "id": "community-milestones",
+      "label": "Jalons de communauté",
+      "group": "community",
+      "specialty": "Paliers d’écoute, anniversaires et gratitude démontrable",
+      "description": "Observer comment un chiffre vérifiable devient une histoire de personnes, de lieux et de moments plutôt qu’un simple trophée.",
+      "observedInSnapshot": true,
+      "discoverySignals": [
+        "Le chiffre central est sourcé et lisible",
+        "La création remercie avant de se célébrer",
+        "Des archives donnent une dimension humaine au jalon"
+      ],
+      "adaptationAngles": [
+        "Relier un palier réel à une constellation de moments d’écoute",
+        "Faire traverser le chiffre par Girl, Boy et la communauté"
+      ],
+      "rejectIf": [
+        "Le chiffre n’est pas vérifiable ou suggère une performance commerciale non démontrée"
+      ]
+    },
+    {
+      "id": "animal-companions",
+      "label": "Animaux compagnons",
+      "group": "lifestyle",
+      "specialty": "Chat de Lofi Girl, chien de Lofi Boy et comportements attachants",
+      "description": "Piste dédiée aux mécaniques animales observables et adaptables sans humaniser excessivement ni mettre un animal en difficulté.",
+      "observedInSnapshot": true,
+      "discoverySignals": [
+        "Le comportement naturel de l’animal crée le hook",
+        "La relation avec le personnage reste tendre et lisible",
+        "Le gag fonctionne sans voix artificielle ni mise en danger"
+      ],
+      "adaptationAngles": [
+        "Donner au chat un contrepoint silencieux aux routines de Girl",
+        "Faire du chien le partenaire de promenade ou de pause de Boy"
+      ],
+      "rejectIf": [
+        "La scène stresse l’animal, repose sur une fausse voix ou force un comportement"
+      ]
+    },
+    {
+      "id": "introversion-social-battery",
+      "label": "Introversion / batterie sociale",
+      "group": "storytelling",
+      "specialty": "Besoin de calme après une journée sociale",
+      "description": "Micro-récits où le retour au calme est une préférence légitime, sans opposer introvertis et extravertis.",
+      "observedInSnapshot": false,
+      "discoverySignals": ["Une situation sociale précise précède le refuge", "Le soulagement passe par un geste ou une ambiance"],
+      "adaptationAngles": ["Girl retrouve sa chambre et le chat après une journée dense", "Le chien signale silencieusement une pause à Boy"],
+      "rejectIf": ["Ridiculise les interactions sociales ou pose un diagnostic"]
+    },
+    {
+      "id": "anxiety-and-overthinking",
+      "label": "Anxiété / pensées en boucle",
+      "group": "storytelling",
+      "specialty": "Surmenage mental et apaisement non médicalisé",
+      "description": "Représentations visuelles de pensées qui s’accumulent puis ralentissent, sans promesse de soin.",
+      "observedInSnapshot": false,
+      "discoverySignals": ["Les pensées deviennent objets, notes ou boucles", "La résolution reste modeste et quotidienne"],
+      "adaptationAngles": ["Les onglets mentaux de Girl deviennent des papiers que le chat fait tomber", "Le bruit visuel autour de Boy décroît pendant une marche"],
+      "rejectIf": ["Promet de guérir l’anxiété ou remplace un conseil professionnel"]
+    },
+    {
+      "id": "burnout-and-recovery",
+      "label": "Burnout / récupération",
+      "group": "storytelling",
+      "specialty": "Fatigue, limites et reprise progressive",
+      "description": "Récits qui valorisent une vraie pause et une reprise graduelle plutôt qu’une performance immédiate.",
+      "observedInSnapshot": false,
+      "discoverySignals": ["La fatigue est concrète sans dramatisation", "Le retour passe par une étape minuscule"],
+      "adaptationAngles": ["Girl ferme son cahier pour une soirée sans objectif", "Boy reprend un seul instrument après une pause"],
+      "rejectIf": ["Réduit la récupération à une astuce miracle ou culpabilisante"]
+    },
+    {
+      "id": "loneliness-and-heartbreak",
+      "label": "Solitude / cœur brisé",
+      "group": "storytelling",
+      "specialty": "Absence, séparation et présence discrète",
+      "description": "Récits où décor, musique et compagnon expriment l’absence sans romantiser la détresse.",
+      "observedInSnapshot": false,
+      "discoverySignals": ["Une place vide porte le récit", "La fin ouvre vers un lien ou une routine stable"],
+      "adaptationAngles": ["Le chat reste auprès de Girl un soir difficile", "Le chien invite Boy à sortir d’une pièce trop vide"],
+      "rejectIf": ["Exploite une rupture réelle, encourage l’isolement ou idéalise la souffrance"]
+    },
+    {
+      "id": "lore-pov-mini-episodes",
+      "label": "Lore / POV / mini-épisodes",
+      "group": "storytelling",
+      "specialty": "Continuité narrative, points de vue et épisodes courts",
+      "description": "Formats sérialisables qui enrichissent l’univers par un détail canonique, un POV ou une micro-intrigue.",
+      "observedInSnapshot": true,
+      "discoverySignals": ["L’épisode fonctionne seul et enrichit le lore", "Le POV est annoncé dès l’ouverture"],
+      "adaptationAngles": ["Une journée depuis le POV du chat ou du chien", "Trois pièces alternatives reliées par un objet"],
+      "rejectIf": ["Contredit le canon ou dépend d’une longue exposition"]
+    },
+    {
+      "id": "study-exams-pomodoro",
+      "label": "Études / examens / Pomodoro",
+      "group": "lifestyle",
+      "specialty": "Révisions, sessions minutées et petites victoires",
+      "description": "Situations de révision réalistes, cycles de concentration et pauses, sans promesse de résultat scolaire.",
+      "observedInSnapshot": true,
+      "discoverySignals": ["Le minuteur ou l’objectif est atteignable", "La pause fait partie du récit"],
+      "adaptationAngles": ["Pomodoro où le chat réclame exactement la pause", "Boy coche une seule étape avant un examen"],
+      "rejectIf": ["Promet une note, banalise le manque de sommeil ou culpabilise"]
+    },
+    {
+      "id": "adhd-focus-rituals",
+      "label": "TDAH / rituels de focus",
+      "group": "lifestyle",
+      "specialty": "Distractions, démarrage de tâche et environnement adaptable",
+      "description": "Routines de concentration présentées comme expériences personnelles, jamais comme conseil médical universel.",
+      "observedInSnapshot": false,
+      "discoverySignals": ["Une distraction est reconnue sans jugement", "Le rituel reste optionnel et personnalisable"],
+      "adaptationAngles": ["Girl prépare trois niveaux de friction avant de commencer", "Boy teste plusieurs rituels avec humour doux"],
+      "rejectIf": ["Diagnostique, prescrit ou affirme une efficacité clinique"]
+    },
+    {
+      "id": "sleep-insomnia-bedtime",
+      "label": "Sommeil / insomnie / coucher",
+      "group": "lifestyle",
+      "specialty": "Rituels nocturnes, écrans tardifs et ambiance de nuit",
+      "description": "Scènes de coucher et de veille nocturne qui offrent de la compagnie sans promettre de résoudre l’insomnie.",
+      "observedInSnapshot": true,
+      "discoverySignals": ["L’heure tardive est lisible par la lumière et le rythme", "Le rituel finit par une transition calme"],
+      "adaptationAngles": ["Le chat éteint indirectement la dernière distraction", "Le chien accompagne Boy dans une marche nocturne"],
+      "rejectIf": ["Garantit l’endormissement ou formule une allégation de santé"]
+    },
+    {
+      "id": "rain-weather-seasons",
+      "label": "Pluie / météo / saisons",
+      "group": "lifestyle",
+      "specialty": "Transitions météo, lumière et détails saisonniers",
+      "description": "Boucles où la météo modifie réellement le comportement des personnages et l’atmosphère.",
+      "observedInSnapshot": true,
+      "discoverySignals": ["Plusieurs indices rendent la météo lisible", "La saison change une routine"],
+      "adaptationAngles": ["La fenêtre de Girl évolue de la première pluie au rayon", "Le chien négocie une promenade sous plusieurs météos"],
+      "rejectIf": ["Ajoute seulement un filtre météo sans conséquence narrative"]
+    },
+    {
+      "id": "work-coding-creative-block",
+      "label": "Travail / code / panne créative",
+      "group": "lifestyle",
+      "specialty": "Démarrage, bugs, brouillon et blocage créatif",
+      "description": "Situations où le progrès naît d’un essai imparfait plutôt que d’un hack magique.",
+      "observedInSnapshot": false,
+      "discoverySignals": ["Une erreur ou page blanche matérialise le blocage", "La résolution reste plausible et limitée"],
+      "adaptationAngles": ["Le chat cause puis résout accidentellement un bug", "Une mauvaise prise débloque le morceau de Boy"],
+      "rejectIf": ["Glorifie le surtravail ou promet une productivité instantanée"]
+    },
+    {
+      "id": "reading-and-journaling",
+      "label": "Lecture / journal",
+      "group": "lifestyle",
+      "specialty": "Livres, annotations et écriture personnelle",
+      "description": "Rituels de lecture et d’écriture centrés sur le temps lent, les pages et la réflexion intime.",
+      "observedInSnapshot": false,
+      "discoverySignals": ["Un geste de page ou d’écriture porte le hook", "Le texte reste original et respectueux de la vie privée"],
+      "adaptationAngles": ["Le chat suit le marque-page de Girl", "Boy transforme une phrase en motif musical"],
+      "rejectIf": ["Reproduit un long extrait protégé ou dévoile un journal réel"]
+    },
+    {
+      "id": "cafe-train-commute-travel",
+      "label": "Café / train / trajet",
+      "group": "lifestyle",
+      "specialty": "Fenêtres en mouvement, attente et destinations",
+      "description": "Scènes où paysage, reflet et son transforment un trajet en moment narratif.",
+      "observedInSnapshot": true,
+      "discoverySignals": ["La fenêtre ou le son rend le déplacement clair", "Un événement donne début et fin au trajet"],
+      "adaptationAngles": ["Girl et le chat traversent plusieurs paysages en train", "Boy et le chien attendent un bus de nuit"],
+      "rejectIf": ["Le voyage est décoratif ou affiche des données personnelles"]
+    },
+    {
+      "id": "chores-and-cooking",
+      "label": "Corvées / cuisine",
+      "group": "lifestyle",
+      "specialty": "Rangement, cuisine simple et tâches partagées",
+      "description": "Transformations satisfaisantes et petits ratés qui rendent les tâches domestiques humaines.",
+      "observedInSnapshot": false,
+      "discoverySignals": ["Le avant/après reste honnête", "Un détail imprévu crée le récit"],
+      "adaptationAngles": ["Le chat inspecte le rangement du bureau", "Boy cuisine pendant que le chien attend à distance"],
+      "rejectIf": ["Met un animal en danger ou montre une pratique alimentaire risquée"]
+    },
+    {
+      "id": "beatmaking-process",
+      "label": "Beatmaking / processus",
+      "group": "music",
+      "specialty": "Construction de beat, sampling autorisé et couches sonores",
+      "description": "Démonstrations où chaque couche est entendue et reliée à un geste humain identifiable.",
+      "observedInSnapshot": false,
+      "discoverySignals": ["Les étapes du beat sont distinctes", "La source et les droits de chaque son sont clairs"],
+      "adaptationAngles": ["Beat créé avec les sons de la chambre de Girl", "Pas du chien enregistrés humainement comme percussion"],
+      "rejectIf": ["Le sample est non autorisé ou le processus simulé"]
+    },
+    {
+      "id": "vinyl-and-instruments",
+      "label": "Vinyle / instruments",
+      "group": "music",
+      "specialty": "Objets musicaux, gestes et texture sonore",
+      "description": "Hooks tactiles fondés sur un instrument, un disque ou une manipulation sonore authentique.",
+      "observedInSnapshot": true,
+      "discoverySignals": ["Le geste produit vraiment le son", "La matière de l’objet est visible"],
+      "adaptationAngles": ["Le chat choisit parmi des pochettes originales", "Boy répare puis rejoue un petit instrument"],
+      "rejectIf": ["L’objet est accessoire ou la synchronisation est fausse"]
+    },
+    {
+      "id": "microgenre-discovery",
+      "label": "Microgenres",
+      "group": "music",
+      "specialty": "Sous-genres et pédagogie musicale brève",
+      "description": "Formats qui rendent une différence musicale audible avec des exemples sourcés, sans étiquetage arbitraire.",
+      "observedInSnapshot": true,
+      "discoverySignals": ["La différence de texture est audible", "Les termes sont contextualisés"],
+      "adaptationAngles": ["Trois microgenres du catalogue sur une même scène", "La ville de Boy change selon chaque texture"],
+      "rejectIf": ["Classement faux, méprisant ou fondé sur des extraits sans droits"]
+    },
+    {
+      "id": "releases-artist-collabs",
+      "label": "Sorties / artistes / collaborations",
+      "group": "music",
+      "specialty": "Nouveautés, portraits, collaborations et merch",
+      "description": "Annonces montrant la personne, le processus ou l’objet réel derrière une sortie.",
+      "observedInSnapshot": true,
+      "discoverySignals": ["Une preuve concrète du processus est visible", "Date, crédits et disponibilité sont exacts"],
+      "adaptationAngles": ["Présenter un artiste par trois objets de studio", "Révéler collab ou merch par sa fabrication"],
+      "rejectIf": ["Crédits, disponibilité, stock ou droits non vérifiés"]
+    },
+    {
+      "id": "fan-art-and-spotlights",
+      "label": "Fan art / spotlight",
+      "group": "community",
+      "specialty": "Créations de fans et mise en avant consentie",
+      "description": "Formats de reconnaissance où l’auteur, son accord et son œuvre sont clairement identifiés.",
+      "observedInSnapshot": true,
+      "discoverySignals": ["Le crédit est visible partout", "L’autorisation de repartage est documentée"],
+      "adaptationAngles": ["Girl visite une galerie de fan arts autorisés", "Plusieurs œuvres liées par un détail canonique"],
+      "rejectIf": ["Le créateur n’a pas donné son accord ou son crédit est secondaire"]
+    },
+    {
+      "id": "polls-and-choices",
+      "label": "Sondages / choix",
+      "group": "community",
+      "specialty": "Décisions binaires, classements et réponses visibles",
+      "description": "Questions aux options claires, réellement actionnables et suivies d’un résultat.",
+      "observedInSnapshot": true,
+      "discoverySignals": ["Les choix se comprennent seuls", "Le résultat a une conséquence réelle"],
+      "adaptationAngles": ["Choisir la prochaine pièce de Girl et du chat", "Décider de l’instrument de Boy"],
+      "rejectIf": ["Le vote est factice, biaisé ou sans suite"]
+    },
+    {
+      "id": "challenges-and-calendar",
+      "label": "Défis / calendrier",
+      "group": "community",
+      "specialty": "Moments annuels, défis doux et rendez-vous partagés",
+      "description": "Formats participatifs liés au calendrier, accessibles sans achat ni compétence particulière.",
+      "observedInSnapshot": false,
+      "discoverySignals": ["La date motive naturellement la participation", "La difficulté reste basse et inclusive"],
+      "adaptationAngles": ["Sept jours de coins d’étude communautaires", "Calendrier de pauses musicales par Girl et Boy"],
+      "rejectIf": ["Encourage comparaison, surmenage ou collecte de données inutile"]
+    },
+    {
+      "id": "easter-eggs-and-alternate-rooms",
+      "label": "Easter eggs / pièces alternatives",
+      "group": "community",
+      "specialty": "Détails cachés, variantes de décor et canon",
+      "description": "Formats qui récompensent l’attention par des détails cohérents et invitent au revisionnage.",
+      "observedInSnapshot": true,
+      "discoverySignals": ["Le détail caché est vérifiable", "La variante enrichit le monde sans casser le canon"],
+      "adaptationAngles": ["Cacher le chien dans plusieurs pièces de Boy", "Faire évoluer un objet de la chambre de Girl"],
+      "rejectIf": ["Secret mensonger, faux indice ou incohérence canonique"]
+    },
+    {
+      "id": "cozy-games-rpg-worlds",
+      "label": "Cozy games / mondes RPG",
+      "group": "community",
+      "specialty": "Taverne fantasy, espace, cyberpunk et quêtes calmes",
+      "description": "Variations de monde inspirées des codes du jeu sans copier une licence.",
+      "observedInSnapshot": true,
+      "discoverySignals": ["Le monde suit une règle visuelle simple", "La quête reste calme et contemplative"],
+      "adaptationAngles": ["Girl dans une taverne fantasy avec le chat", "Boy et le chien entre station spatiale et ruelle cyberpunk"],
+      "rejectIf": ["Reproduit personnages, interfaces ou décors protégés"]
+    },
+    {
+      "id": "visual-formats-lab",
+      "label": "Laboratoire de formats visuels",
+      "group": "community",
+      "specialty": "Boucle, split-screen, pixel art, VHS et 3D",
+      "description": "Grammaires visuelles au service d’une idée, avec production originale et lisible.",
+      "observedInSnapshot": true,
+      "discoverySignals": ["Le format ajoute un point de vue utile", "La boucle raccorde proprement début et fin"],
+      "adaptationAngles": ["Girl et Boy en split-screen à la même heure", "Une pièce revisitée en pixel, VHS ou 3D par des artistes humains"],
+      "rejectIf": ["Effet illisible, sans idée ou reposant sur une génération IA"]
+    }
+  ],
+  "runs": [
+    {
+      "id": "instagram-home-2026-08-26",
+      "platform": "instagram",
+      "surface": "home",
+      "browserContext": "incognito-explicitly-delegated",
+      "capturedAt": "2026-08-26",
+      "seenCount": 28,
+      "qualifyingCount": 8,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "emotional-storytelling",
+        "nostalgia-time-capsule",
+        "live-music-energy",
+        "nature-and-collective",
+        "lofi-daily-life",
+        "community-milestones"
+      ],
+      "limitations": [
+        "Run ponctuel et non représentatif de l’intégralité du flux personnalisé.",
+        "Qualification limitée au compteur de likes visible et à une analyse éditoriale manuelle."
+      ]
+    },
+    {
+      "id": "instagram-home-2026-08-26-extended",
+      "platform": "instagram",
+      "surface": "home",
+      "browserContext": "incognito-explicitly-delegated",
+      "capturedAt": "2026-08-26T15:53:21+02:00",
+      "seenCount": 504,
+      "qualifyingCount": 236,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "emotional-storytelling",
+        "nostalgia-time-capsule",
+        "live-music-energy",
+        "nature-and-collective",
+        "lofi-daily-life",
+        "animal-companions",
+        "study-exams-pomodoro",
+        "sleep-insomnia-bedtime",
+        "rain-weather-seasons",
+        "cafe-train-commute-travel",
+        "vinyl-and-instruments",
+        "microgenre-discovery",
+        "releases-artist-collabs",
+        "fan-art-and-spotlights",
+        "polls-and-choices",
+        "visual-formats-lab"
+      ],
+      "limitations": [
+        "Comptage conservateur après déduplication des URL publiques ; aucun volume manquant n’est extrapolé.",
+        "Le seuil qualifie un compteur visible, pas une pertinence Lofi : seuls 16 exemples sont détaillés après revue humaine.",
+        "Aucune mention Sponsorisé n’a été rencontrée ; ce run reste un scan de formats organiques, pas une bibliothèque publicitaire.",
+        "Lecture seule et audio muet : aucun like, enregistrement, abonnement ou commentaire n’a été effectué pendant ce lot."
+      ]
+    },
+    {
+      "id": "instagram-home-2026-08-26-evening",
+      "platform": "instagram",
+      "surface": "home",
+      "browserContext": "incognito-explicitly-delegated",
+      "capturedAt": "2026-08-26T23:04:54+02:00",
+      "seenCount": 151,
+      "qualifyingCount": 53,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "animal-companions",
+        "lore-pov-mini-episodes",
+        "releases-artist-collabs",
+        "fan-art-and-spotlights",
+        "visual-formats-lab",
+        "easter-eggs-and-alternate-rooms",
+        "cozy-games-rpg-worlds"
+      ],
+      "limitations": [
+        "Comptage conservateur après déduplication des URL visibles pendant ce passage ; les cartes virtualisées non restituées ne sont pas estimées.",
+        "Le seuil de 10 000 likes qualifie un compteur public visible, pas une pertinence Lofi : six exemples seulement sont détaillés après revue humaine.",
+        "Aucune mention Sponsorisé n’a été rencontrée ; ce run reste un scan de formats organiques et ne constitue pas une bibliothèque exhaustive de publicités.",
+        "Lecture seule, audio muet et zéro interaction sociale : aucun like, enregistrement, abonnement, commentaire, message ou partage.",
+        "Les contenus hors univers, ambigus ou explicitement signalés comme générés par IA ont été exclus de la sélection éditoriale."
+      ]
+    }
+  ],
+  "items": [
+    {
+      "id": "archive-emotional-performance",
+      "runId": "instagram-home-2026-08-26",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DZia5FeumDj/",
+        "postId": "DZia5FeumDj",
+        "author": "houseofvocal",
+        "sourceLabel": "Archive de performance sous-titrée construite comme un récit émotionnel",
+        "capturedAt": "2026-08-26",
+        "publishedAt": null,
+        "format": "video",
+        "thumbnailUrl": null,
+        "sponsored": null,
+        "metrics": {
+          "likes": 350700,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": ["emotional-storytelling", "live-music-energy"],
+        "hook": "Une phrase simple transforme immédiatement une archive de scène en histoire humaine.",
+        "mechanic": "Alternance d’archives, sous-titres courts et montée émotionnelle jusqu’au moment de résolution.",
+        "visualCue": "Texte lisible sur les premiers plans puis présence physique de l’interprète et du public.",
+        "reasonToStop": "Le spectateur comprend qu’il va découvrir comment un moment musical a changé de sens avec le temps.",
+        "whyRelevant": "Lofi Girl dispose d’une mémoire visuelle forte qui peut être racontée sans reprendre l’œuvre source.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "La nuit où la chambre est devenue un refuge",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Un mini-récit composé uniquement d’archives internes montre la première nuit d’étude de Girl, puis les mêmes gestes des années plus tard pendant que le chat grandit à ses côtés.",
+        "openingText": "Au début, c’était juste une nuit de révisions.",
+        "sequence": [
+          "Plan d’archive interne : Girl allume sa lampe et le chaton saute sur le bureau.",
+          "Trois ellipses datées montrent la chambre et la communauté évoluer.",
+          "Retour au présent : le chat adulte s’endort au même endroit tandis que les fenêtres du monde s’allument.",
+          "Carton final discret : merci d’avoir étudié avec nous."
+        ],
+        "caption": "Certaines routines deviennent des souvenirs sans qu’on s’en rende compte. 🌙",
+        "audioDirection": "Composition originale du catalogue Lofi Girl, avec une progression instrumentale douce et des droits entièrement maîtrisés.",
+        "productionGuardrails": [
+          "Production 100 % humaine : montage d’archives internes, animation et motion design réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Ne reprendre ni les images, ni les sous-titres, ni la musique du post source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "nostalgia-2016-live",
+      "runId": "instagram-home-2026-08-26",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DbYjkQPtJn6/",
+        "postId": "DbYjkQPtJn6",
+        "author": "electronicmusic.official",
+        "sourceLabel": "Hook texte autour de 2016 suivi d’une archive live",
+        "capturedAt": "2026-08-26",
+        "publishedAt": null,
+        "format": "video",
+        "thumbnailUrl": null,
+        "sponsored": null,
+        "metrics": {
+          "likes": 239800,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": ["nostalgia-time-capsule", "live-music-energy"],
+        "hook": "L’année affichée en haut du cadre déclenche la reconnaissance avant même l’archive live.",
+        "mechanic": "Une date repère ouvre une capsule temporelle puis une archive concrète confirme le souvenir.",
+        "visualCue": "Texte court dans la zone haute et changement immédiat vers une scène de concert.",
+        "reasonToStop": "Le spectateur cherche instantanément ce qu’il faisait à cette époque et attend le morceau associé.",
+        "whyRelevant": "Les différentes ères du Lofi universe permettent une nostalgie propriétaire et vérifiable.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "POV : tu rouvres ta playlist de 2016",
+        "cast": { "character": "lofi-boy", "companion": "dog" },
+        "concept": "Boy retrouve un vieux lecteur portant la date 2016 ; chaque piste déclenche une courte archive animée de son ancienne chambre avant le retour au présent avec son chien.",
+        "openingText": "2016 appelait. Il a retrouvé ta playlist.",
+        "sequence": [
+          "Gros plan sur un ancien lecteur daté 2016 dans une boîte de déménagement.",
+          "Boy lance une piste du catalogue et la pièce retrouve brièvement ses anciennes couleurs.",
+          "Une archive interne originale apparaît comme un souvenir dans la fenêtre.",
+          "Le chien dépose sa balle sur le bouton replay et ramène Boy au présent."
+        ],
+        "caption": "Quel morceau te ramène instantanément dans ton ancienne chambre ?",
+        "audioDirection": "Choisir un titre Lofi Girl effectivement publié à l’époque ou une composition originale évoquant la période, après vérification des droits.",
+        "productionGuardrails": [
+          "Production 100 % humaine : animation 2D et accessoires dessinés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Ne pas utiliser le hit électronique ni l’archive live du post observé."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "collective-session-in-nature",
+      "runId": "instagram-home-2026-08-26",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DbCKZ4GBz7u/",
+        "postId": "DbCKZ4GBz7u",
+        "author": "musictravellove",
+        "sourceLabel": "Performance musicale collective dans un décor naturel",
+        "capturedAt": "2026-08-26",
+        "publishedAt": null,
+        "format": "video",
+        "thumbnailUrl": null,
+        "sponsored": null,
+        "metrics": {
+          "likes": 75400,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": ["live-music-energy", "nature-and-collective"],
+        "hook": "Le décor naturel et le groupe complet sont compris dès le premier plan large.",
+        "mechanic": "Un motif musical circule entre plusieurs interprètes pendant que le lieu donne une ampleur inattendue à la session.",
+        "visualCue": "Plan d’ensemble, instruments visibles et lumière naturelle cohérente.",
+        "reasonToStop": "La combinaison d’un vrai geste collectif et d’un décor apaisant contraste avec les performances de studio habituelles.",
+        "whyRelevant": "Girl et Boy peuvent quitter leurs chambres pour une rencontre musicale originale sans perdre l’identité cosy.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "La session du lac au coucher du soleil",
+        "cast": { "character": "both", "companion": "cat-and-dog" },
+        "concept": "Girl, Boy et trois musiciens invités construisent un beat original au bord d’un lac ; le chat déclenche un petit carillon et le chien marque involontairement le tempo avec sa queue.",
+        "openingText": "Un beat. Cinq amis. Le soleil avant qu’il disparaisse.",
+        "sequence": [
+          "Plan large dessiné ou capté par l’équipe : installation silencieuse au bord du lac.",
+          "Chaque musicien ajoute une couche sonore en un plan clairement identifiable.",
+          "Le chat touche le carillon au bon moment puis le chien rejoint le rythme.",
+          "Dernier accord sur le reflet du coucher de soleil et échange de sourires."
+        ],
+        "caption": "On devrait sortir du studio plus souvent. 🌿",
+        "audioDirection": "Session originale composée et jouée par des musiciens humains, enregistrée en stems pour un mix Lofi maîtrisé.",
+        "productionGuardrails": [
+          "Production 100 % humaine : captation réelle ou animation originale créée par l’équipe et des artistes mandatés.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Sécuriser le lieu, les autorisations des participants et le bien-être des animaux."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "back-to-work-lofi",
+      "runId": "instagram-home-2026-08-26",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/Db8r9u4D15T/",
+        "postId": "Db8r9u4D15T",
+        "author": "lofigirl",
+        "sourceLabel": "Illustration Lofi Girl et texte sur le retour au travail",
+        "capturedAt": "2026-08-26",
+        "publishedAt": null,
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": null,
+        "metrics": {
+          "likes": 53700,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": ["lofi-daily-life"],
+        "hook": "Une situation saisonnière universelle tient dans une illustration et une ligne de texte.",
+        "mechanic": "Reconnaissance immédiate de la reprise, adoucie par un détail familier du Lofi universe.",
+        "visualCue": "Bureau prêt, lumière de rentrée et texte court intégré à la composition.",
+        "reasonToStop": "Le contenu exprime une émotion très actuelle sans demander d’effort de compréhension.",
+        "whyRelevant": "Cette mécanique appartient naturellement à Lofi Girl et peut mieux intégrer le rôle du chat.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Le chat n’a pas validé la rentrée",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Girl prépare méthodiquement son bureau pour la reprise, mais le chat neutralise chaque étape en s’installant sur le cahier, le clavier puis le sac.",
+        "openingText": "Checklist de rentrée : 1. convaincre le chat.",
+        "sequence": [
+          "Girl aligne cahier, tasse et casque avec satisfaction.",
+          "Le chat s’étale sur le cahier ; elle déplace doucement son matériel.",
+          "Il réapparaît sur le clavier puis dans le sac, toujours plus confortable.",
+          "Girl renonce cinq minutes et lance une piste pendant qu’ils regardent la pluie."
+        ],
+        "caption": "La reprise commence après cette pause. Enfin… probablement. 🐈",
+        "audioDirection": "Boucle originale légère du catalogue, avec petits sons de pièce enregistrés par l’équipe.",
+        "productionGuardrails": [
+          "Production 100 % humaine : illustration et animation dessinées par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Le gag doit respecter le comportement naturel du chat et rester sans injonction productive."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "good-times-live-memory",
+      "runId": "instagram-home-2026-08-26",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcNWAhVFDnJ/",
+        "postId": "DcNWAhVFDnJ",
+        "author": "paulvandyk",
+        "sourceLabel": "Souvenir good times associé à Paul van Dyk",
+        "capturedAt": "2026-08-26",
+        "publishedAt": null,
+        "format": "video",
+        "thumbnailUrl": null,
+        "sponsored": null,
+        "metrics": {
+          "likes": 23600,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": ["nostalgia-time-capsule", "live-music-energy"],
+        "hook": "La promesse de revivre de bons moments prépare immédiatement une séquence de mémoire musicale.",
+        "mechanic": "Montage de fragments courts reliés par une sensation commune plutôt que par une chronologie exhaustive.",
+        "visualCue": "Éclats de lumière, regards et gestes de foule qui incarnent le souvenir.",
+        "reasonToStop": "Le spectateur cherche le moment personnel auquel raccrocher l’énergie du montage.",
+        "whyRelevant": "Lofi Boy peut porter une nostalgie nocturne plus contemplative, avec le chien comme lien au présent.",
+        "confidence": "medium"
+      },
+      "adaptation": {
+        "title": "Encore un morceau avant le lever du jour",
+        "cast": { "character": "lofi-boy", "companion": "dog" },
+        "concept": "Après une petite session live originale, Boy rentre à pied avec son chien ; les reflets de la ville rejouent trois instants de la soirée avant que le soleil ne se lève.",
+        "openingText": "Les bonnes nuits finissent rarement à l’heure prévue.",
+        "sequence": [
+          "Dernier accord d’une session originale filmée ou animée par l’équipe.",
+          "Boy et le chien marchent dans une rue calme, éclairés par les vitrines.",
+          "Chaque reflet révèle un bref souvenir : un sourire, une main sur le pad, un public qui balance la tête.",
+          "Le chien s’arrête devant la première lumière du matin ; Boy retire son casque."
+        ],
+        "caption": "Les meilleurs souvenirs ont parfois le son très bas.",
+        "audioDirection": "Titre nocturne original du catalogue Lofi Boy ; aucune reprise ni imitation du morceau observé.",
+        "productionGuardrails": [
+          "Production 100 % humaine : captation, animation et montage réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Ne pas utiliser l’image, la marque ou la musique de Paul van Dyk sans autorisation."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "electronic-hit-memory",
+      "runId": "instagram-home-2026-08-26",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/Davd2wNtfmU/",
+        "postId": "Davd2wNtfmU",
+        "author": "djnamedpaul",
+        "sourceLabel": "Nostalgie déclenchée par un ancien hit électronique",
+        "capturedAt": "2026-08-26",
+        "publishedAt": null,
+        "format": "video",
+        "thumbnailUrl": null,
+        "sponsored": null,
+        "metrics": {
+          "likes": 75900,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": ["nostalgia-time-capsule"],
+        "hook": "Une musique associée à une époque déclenche une mémoire avant même que le contexte soit expliqué.",
+        "mechanic": "Reconnaissance sonore, date repère et images d’époque s’additionnent en quelques secondes.",
+        "visualCue": "Objet ou interface ancienne immédiatement datable, puis transition vers le présent.",
+        "reasonToStop": "La reconnaissance crée un besoin de vérifier si les autres ont le même souvenir.",
+        "whyRelevant": "La mécanique peut être transposée avec le propre catalogue Lofi, sans emprunter le hit ni son identité.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Ce beat vivait dans ton ancien téléphone",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Girl rallume un ancien téléphone ; une piste historique du catalogue fait revenir par touches les couleurs et objets de son ancienne chambre, tandis que le chat tente d’attraper l’animation du lecteur.",
+        "openingText": "Tu reconnais l’année rien qu’au lecteur audio.",
+        "sequence": [
+          "Écran d’un téléphone dessiné avec une interface inspirée d’une époque, sans reproduire une marque.",
+          "Girl appuie sur lecture et une piste Lofi Girl licenciée démarre.",
+          "Les couleurs de l’ancienne chambre recouvrent progressivement le décor actuel.",
+          "Le chat touche l’écran ; tout revient au présent sauf une petite étoile lumineuse."
+        ],
+        "caption": "Quelle piste du catalogue te donne instantanément une date ?",
+        "audioDirection": "Utiliser une sortie historique du catalogue avec droits confirmés, ou composer une piste originale sans imiter le hit observé.",
+        "productionGuardrails": [
+          "Production 100 % humaine : design, animation et montage réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Aucun extrait du hit électronique source et aucune reproduction d’interface de marque."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "festival-live-moment",
+      "runId": "instagram-home-2026-08-26",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DZAFvCNp226/",
+        "postId": "DZAFvCNp226",
+        "author": "edmhouse.us",
+        "sourceLabel": "Point culminant d’un moment live ou festival",
+        "capturedAt": "2026-08-26",
+        "publishedAt": null,
+        "format": "video",
+        "thumbnailUrl": null,
+        "sponsored": null,
+        "metrics": {
+          "likes": 65100,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": ["live-music-energy"],
+        "hook": "Le montage arrive juste avant le point culminant et laisse la tension respirer.",
+        "mechanic": "Préparation courte, geste musical net, puis réaction collective qui donne sa valeur au moment.",
+        "visualCue": "Silhouettes, lumières et mouvement commun du public au moment du drop.",
+        "reasonToStop": "La promesse visuelle d’un basculement imminent retient jusqu’à la réaction de foule.",
+        "whyRelevant": "Un festival miniature dans l’univers animé permet de montrer la communauté sans copier une scène réelle.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Le plus petit festival du quartier",
+        "cast": { "character": "both", "companion": "cat-and-dog" },
+        "concept": "Girl et Boy installent une mini-scène sur un toit ; quelques voisins allument leurs lampes au même moment jusqu’à transformer tout le quartier en public lumineux.",
+        "openingText": "Ils pensaient jouer pour six voisins.",
+        "sequence": [
+          "Girl branche le clavier pendant que Boy vérifie un petit pad ; le chat et le chien observent.",
+          "Six silhouettes apparaissent aux fenêtres voisines pendant la montée.",
+          "Au drop original, des dizaines de lampes s’allument dans tout le quartier.",
+          "Plan large : la ville entière balance doucement, sans effets agressifs."
+        ],
+        "caption": "Même scène, autre échelle. Merci les voisins. ✨",
+        "audioDirection": "Drop Lofi original composé par un artiste humain du catalogue, mixé pour conserver une dynamique douce.",
+        "productionGuardrails": [
+          "Production 100 % humaine : storyboard, animation et musique réalisés par l’équipe et ses artistes.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Ne reproduire ni la scénographie, ni la captation, ni la musique du festival observé."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "spotify-milestone-memory",
+      "runId": "instagram-home-2026-08-26",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DaMlY1vs5Yu/",
+        "postId": "DaMlY1vs5Yu",
+        "author": "iavrilspain",
+        "sourceLabel": "Jalon de 500 millions sur Spotify raconté par la nostalgie",
+        "capturedAt": "2026-08-26",
+        "publishedAt": null,
+        "format": "video",
+        "thumbnailUrl": null,
+        "sponsored": null,
+        "metrics": {
+          "likes": 24100,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": ["community-milestones", "nostalgia-time-capsule"],
+        "hook": "Un chiffre massif est rendu concret par des souvenirs plutôt que présenté comme un trophée abstrait.",
+        "mechanic": "Annonce du palier, archives d’étapes successives puis remerciement adressé aux auditeurs.",
+        "visualCue": "Chiffre central très lisible entouré de fragments datés et humains.",
+        "reasonToStop": "Le spectateur veut comprendre comment le chiffre s’est construit et retrouver sa propre place dans l’histoire.",
+        "whyRelevant": "Les jalons vérifiés de Lofi Girl peuvent devenir des récits de communauté plutôt que de simples posts corporate.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Un chiffre fait de millions de moments calmes",
+        "cast": { "character": "both", "companion": "cat-and-dog" },
+        "concept": "Lors d’un prochain jalon réellement vérifié, chaque unité du compteur devient une petite fenêtre d’écoute : révisions, train, nuit blanche, dessin, promenade avec le chien ou sieste du chat.",
+        "openingText": "Ce nombre n’est pas un nombre. Ce sont vos moments.",
+        "sequence": [
+          "Le jalon certifié apparaît sans effet commercial, accompagné de sa source et de sa date.",
+          "Le chiffre se fragmente en fenêtres animées montrant plusieurs routines de la communauté.",
+          "Girl, Boy, le chat et le chien traversent ces fenêtres et y déposent une lumière.",
+          "Toutes les lumières forment un merci manuscrit avant de revenir au chiffre exact."
+        ],
+        "caption": "Quand le prochain jalon arrivera, il vous appartiendra d’abord. Merci. 💜",
+        "audioDirection": "Montage sur une composition originale ou un titre du catalogue dont les droits et le lien au jalon sont confirmés.",
+        "productionGuardrails": [
+          "Production 100 % humaine : animation, typographie et musique réalisées par l’équipe et ses artistes.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Ne publier qu’un chiffre certifié par la plateforme ou les données propriétaires, avec date et périmètre explicites."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "playlist-keyword-cta",
+      "runId": "instagram-home-2026-08-26-extended",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcD1rswtT6U/",
+        "postId": "DcD1rswtT6U",
+        "author": "edmhousenetwork",
+        "sourceLabel": "Mot-clé en commentaire proposé comme porte d’entrée vers une playlist",
+        "capturedAt": "2026-08-26T15:53:21+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 17400, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["polls-and-choices", "microgenre-discovery"],
+        "hook": "Une consigne à un seul mot transforme l’intérêt musical en action immédiate.",
+        "mechanic": "Le spectateur choisit une intention simple puis reçoit un chemin clair vers la playlist correspondante.",
+        "visualCue": "Le mot-clé et la promesse playlist sont lisibles dès l’ouverture, sans dépendre du son.",
+        "reasonToStop": "Le bénéfice est précis et demande moins d’effort qu’une recherche manuelle.",
+        "whyRelevant": "Lofi Girl peut relier directement un besoin réel — study ou sleep — à une playlist propriétaire.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "STUDY ou SLEEP ?",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Deux cartes apparaissent sur le bureau de Girl ; le chat pousse celle qui correspond à l’ambiance du moment et invite la communauté à choisir le même mot-clé.",
+        "openingText": "Commente STUDY ou SLEEP.",
+        "sequence": [
+          "Girl pose deux cartes illustrées à côté du casque : STUDY et SLEEP.",
+          "Le chat hésite puis pousse une carte vers la caméra.",
+          "Deux extraits originaux très courts font entendre la différence d’ambiance.",
+          "Le lien public vers les deux playlists reste disponible même sans commentaire."
+        ],
+        "caption": "Tu choisis quoi ce soir : STUDY ou SLEEP ? 🎧",
+        "audioDirection": "Deux extraits du catalogue Lofi Girl aux droits confirmés, montés sans reprendre l’audio source.",
+        "productionGuardrails": [
+          "Production 100 % humaine : illustration, animation, montage et sélection musicale réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "N’utiliser une réponse automatique que dans un parcours Meta conforme et opt-in ; conserver un lien public accessible sans engagement."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "weather-playlist-match",
+      "runId": "instagram-home-2026-08-26-extended",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DabIJvSzbdq/",
+        "postId": "DabIJvSzbdq",
+        "author": "_morphflex",
+        "sourceLabel": "Accord immédiat entre une météo marquée et la playlist du moment",
+        "capturedAt": "2026-08-26T15:53:21+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 75800, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["rain-weather-seasons", "lofi-daily-life"],
+        "hook": "La formule météo parfaite + playlist parfaite se comprend en une seconde.",
+        "mechanic": "Un changement d’atmosphère déclenche une sélection musicale immédiatement reconnaissable.",
+        "visualCue": "Fenêtre, lumière et accessoires rendent chaque météo lisible avant le titre de playlist.",
+        "reasonToStop": "Le spectateur attend de voir si l’ambiance musicale correspond à sa propre sensation du temps.",
+        "whyRelevant": "Les playlists Lofi sont déjà organisées par contexte d’écoute et peuvent devenir le dénouement naturel du format.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "La météo choisit la playlist",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Quatre météos traversent la fenêtre de Girl ; à chaque raccord, le chat pousse une cassette ou une carte playlist différente.",
+        "openingText": "Quand la météo choisit mieux que toi.",
+        "sequence": [
+          "Soleil doux : le chat pousse une carte Morning Coffee.",
+          "Première pluie : raccord animé vers Rainy Night.",
+          "Orage puis neige : deux gestes simples changent tasse, lumière et playlist.",
+          "La boucle revient au soleil avec les quatre liens listés dans la légende."
+        ],
+        "caption": "Quelle météo gagne chez toi aujourd’hui ? ☀️🌧️❄️",
+        "audioDirection": "Quatre micro-extraits autorisés du catalogue, reliés par des sons météo enregistrés ou conçus par l’équipe.",
+        "productionGuardrails": [
+          "Production 100 % humaine : décors, animation météo, montage et sound design réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Chaque playlist citée doit être active, correctement nommée et liée au moment de la publication."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "imagined-memories-song",
+      "runId": "instagram-home-2026-08-26-extended",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcJYmaNupbm/",
+        "postId": "DcJYmaNupbm",
+        "author": "edmmusic",
+        "sourceLabel": "Phrase émotionnelle sur les chansons qui ressemblent à des souvenirs jamais vécus",
+        "capturedAt": "2026-08-26T15:53:21+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 27900, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["emotional-storytelling", "nostalgia-time-capsule"],
+        "hook": "Une contradiction poétique — se souvenir de ce qu’on n’a pas vécu — ouvre immédiatement une histoire.",
+        "mechanic": "La musique relie plusieurs scènes possibles avant un retour calme au présent.",
+        "visualCue": "Des lieux ordinaires peuvent apparaître comme de brefs souvenirs sans chronologie explicative.",
+        "reasonToStop": "Le spectateur cherche la scène qui ressemble à sa propre mémoire imaginaire.",
+        "whyRelevant": "L’univers de Lofi Boy peut matérialiser ce sentiment sans reprendre le morceau ni les images observés.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Des souvenirs qu’on n’a jamais vécus",
+        "cast": { "character": "lofi-boy", "companion": "dog" },
+        "concept": "Pendant une promenade nocturne, trois lieux croisés par Boy deviennent brièvement des scènes d’une vie possible avant que le chien le ramène doucement au présent.",
+        "openingText": "Certaines chansons ressemblent à des souvenirs qui n’existent pas.",
+        "sequence": [
+          "Boy et le chien passent devant un café fermé sous la pluie.",
+          "La vitre révèle une soirée imaginaire puis redevient vide.",
+          "Un quai et un toit rejouent deux autres futurs possibles au rythme du morceau.",
+          "Le chien tire doucement sur la laisse ; Boy sourit et reprend sa marche."
+        ],
+        "caption": "Tu connais une chanson qui te rappelle une vie que tu n’as jamais eue ?",
+        "audioDirection": "Composition originale de Lofi Boy, pensée avec une progression nostalgique et produite par des musiciens humains.",
+        "productionGuardrails": [
+          "Production 100 % humaine : écriture, storyboard, animation et musique réalisés par l’équipe et ses artistes.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Ne reprendre ni la formulation complète, ni le montage, ni l’audio du post source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "old-player-nostalgia",
+      "runId": "instagram-home-2026-08-26-extended",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcYi4EjDBXq/",
+        "postId": "DcYi4EjDBXq",
+        "author": "armadamusic",
+        "sourceLabel": "Ancien lecteur audio utilisé comme déclencheur de nostalgie et de conversation musicale",
+        "capturedAt": "2026-08-26T15:53:21+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 12200, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["nostalgia-time-capsule", "vinyl-and-instruments"],
+        "hook": "Un objet audio daté suffit à promettre un voyage dans une époque précise.",
+        "mechanic": "Chaque piste réactive un détail visuel ancien puis se termine par une question personnelle.",
+        "visualCue": "Lecteur générique, écouteurs filaires et interface dessinée rendent l’époque tangible sans montrer de marque.",
+        "reasonToStop": "Le spectateur veut reconnaître sa propre génération musicale et répondre avec un titre.",
+        "whyRelevant": "Le catalogue historique de Lofi Girl fournit une mémoire réelle et maîtrisée à raconter.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Le lecteur retrouvé au fond du tiroir",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Girl rallume un lecteur audio générique ; chaque piste historique licenciée restaure un détail d’une ancienne version de sa chambre.",
+        "openingText": "Quel titre du catalogue te ramène instantanément une année ?",
+        "sequence": [
+          "Girl trouve le lecteur sous des cahiers pendant que le chat suit le câble.",
+          "Le premier titre recolore la lampe et le mur comme dans une archive interne.",
+          "Deux autres pistes font revenir un objet puis une tenue ancienne.",
+          "Le chat touche pause ; tout revient au présent sauf un autocollant sur le bureau."
+        ],
+        "caption": "Donne-nous le titre et l’année. On prépare la capsule temporelle. ⏪",
+        "audioDirection": "Titres historiques du catalogue dont les droits et dates sont vérifiés, ou composition originale si nécessaire.",
+        "productionGuardrails": [
+          "Production 100 % humaine : accessoire, design d’interface, animation et montage réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Aucune reproduction d’interface ou de marque ; chaque archive et chaque piste doivent être autorisées."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "lights-beat-sync",
+      "runId": "instagram-home-2026-08-26-extended",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DZ7c-mFsOji/",
+        "postId": "DZ7c-mFsOji",
+        "author": "maddixmusic",
+        "sourceLabel": "Synchronisation spectaculaire des lumières avec un passage musical",
+        "capturedAt": "2026-08-26T15:53:21+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 71400, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["live-music-energy", "visual-formats-lab"],
+        "hook": "La promesse d’une synchronisation parfaite crée une attente avant le premier impact lumineux.",
+        "mechanic": "Chaque élément du décor répond à une couche précise du morceau puis converge sur un temps fort.",
+        "visualCue": "Néons, fenêtres et silhouettes forment un visualizer spatial plutôt qu’un simple filtre.",
+        "reasonToStop": "L’œil cherche le prochain détail qui va rejoindre le rythme.",
+        "whyRelevant": "Lofi Boy peut porter une version nocturne et plus douce, entièrement originale, de cette satisfaction audiovisuelle.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "La ville joue le beat",
+        "cast": { "character": "lofi-boy", "companion": "dog" },
+        "concept": "Sur un toit original, Boy lance un beat Lofi-house ; néons, fenêtres et collier lumineux du chien se synchronisent progressivement.",
+        "openingText": "Attends que toute la ville trouve le tempo.",
+        "sequence": [
+          "Boy déclenche une première percussion et une seule fenêtre s’allume.",
+          "La basse anime les néons du toit, keyframés manuellement.",
+          "Le chien remue la queue et son collier rejoint le contretemps.",
+          "Au point culminant, tout le quartier pulse une fois puis revient au calme."
+        ],
+        "caption": "Quand même les fenêtres connaissent le beat. 🌃",
+        "audioDirection": "Beat Lofi-house original, composé humainement et fourni en stems pour une synchronisation image exacte.",
+        "productionGuardrails": [
+          "Production 100 % humaine : composition, animation, éclairage et keyframes réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Créer une scénographie propre à Lofi Boy sans reproduire celle du concert observé."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "rainy-hidden-gem",
+      "runId": "instagram-home-2026-08-26-extended",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcWN5YevqHv/",
+        "postId": "DcWN5YevqHv",
+        "author": "travelwithsidd14",
+        "sourceLabel": "Paysage sous la pluie présenté comme un lieu caché à découvrir",
+        "capturedAt": "2026-08-26T15:53:21+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 597200, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["rain-weather-seasons", "cafe-train-commute-travel"],
+        "hook": "Pluie, relief et promesse de hidden gem installent une destination avant toute explication.",
+        "mechanic": "Le trajet retarde légèrement la révélation du lieu et transforme l’atmosphère en récompense.",
+        "visualCue": "Fenêtre mouillée, paysage en mouvement puis plan large final donnent début, progression et arrivée.",
+        "reasonToStop": "Le spectateur veut découvrir ce qui se cache derrière le trajet brumeux.",
+        "whyRelevant": "Une playlist Rainy Journey peut être intégrée au récit plutôt qu’ajoutée comme une publicité séparée.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Le train vers la playlist cachée",
+        "cast": { "character": "both", "companion": "cat-and-dog" },
+        "concept": "Girl, Boy, le chat et le chien traversent en train plusieurs paysages pluvieux ; la destination révèle un petit lac et la playlist Rainy Journey.",
+        "openingText": "Ils n’avaient pas prévu que la pluie choisirait la destination.",
+        "sequence": [
+          "Gouttes sur la vitre et reflets de Girl, Boy et leurs compagnons.",
+          "Trois paysages originaux défilent au rythme d’une composition du catalogue.",
+          "Le chien aperçoit le lac avant les autres et se lève.",
+          "À l’arrivée, le titre et le lien de la playlist apparaissent discrètement sur le billet."
+        ],
+        "caption": "Destination : quelque part entre la pluie et le prochain morceau. 🚆",
+        "audioDirection": "Titre du catalogue Rainy Journey aux droits maîtrisés, accompagné d’ambiances de train créées ou enregistrées par l’équipe.",
+        "productionGuardrails": [
+          "Production 100 % humaine : paysages peints ou captés, animation, montage et son réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Ne montrer aucun billet réel, localisation privée ou élément identifiable d’un voyageur."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "cozy-room-transformation",
+      "runId": "instagram-home-2026-08-26-extended",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DbG5osCg9QE/",
+        "postId": "DbG5osCg9QE",
+        "author": "the_galixx",
+        "sourceLabel": "Transformation d’une pièce en refuge nocturne cosy et étoilé",
+        "capturedAt": "2026-08-26T15:53:21+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 38500, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["sleep-insomnia-bedtime", "visual-formats-lab"],
+        "hook": "Un avant/après de chambre promet une transformation satisfaisante en quelques secondes.",
+        "mechanic": "Chaque source lumineuse ajoute une couche jusqu’à créer un espace nocturne complet.",
+        "visualCue": "Lumière pratique, guirlandes et ciel projeté rendent la progression mesurable plan après plan.",
+        "reasonToStop": "Le spectateur veut voir le rendu final et identifier le détail qui change le plus l’ambiance.",
+        "whyRelevant": "La chambre de Girl est un actif iconique qui peut évoluer sans perdre son identité.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Le chat choisit la lumière de nuit",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Girl transforme réellement ou anime manuellement sa chambre par étapes ; le chat sélectionne involontairement la couleur finale.",
+        "openingText": "Une chambre, quatre lumières, un directeur artistique à moustaches.",
+        "sequence": [
+          "Plan fixe avant transformation avec la seule lampe de bureau.",
+          "Girl ajoute guirlande, lumière chaude et projection pratique, une couche par temps musical.",
+          "Le chat marche sur une télécommande factice et choisit une teinte inattendue.",
+          "Plan final silencieux : Girl lit pendant que les étoiles bougent lentement."
+        ],
+        "caption": "Le choix du chat est sans appel. ✨🐈",
+        "audioDirection": "Boucle nocturne originale très légère, mixée avec les clics et froissements enregistrés sur le décor.",
+        "productionGuardrails": [
+          "Production 100 % humaine : décor pratique ou illustration, animation et montage réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Si un animal réel est filmé, aucun éclairage agressif ni comportement forcé."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "late-night-song-question",
+      "runId": "instagram-home-2026-08-26-extended",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DbtJiXXxfjW/",
+        "postId": "DbtJiXXxfjW",
+        "author": "royyschneider",
+        "sourceLabel": "Question simple autour du meilleur morceau pour la fin de nuit",
+        "capturedAt": "2026-08-26T15:53:21+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 74500, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["sleep-insomnia-bedtime", "emotional-storytelling"],
+        "hook": "Une question superlative donne immédiatement envie de comparer son propre morceau nocturne.",
+        "mechanic": "Heure précise, silence urbain et révélation tardive du titre créent une attente calme.",
+        "visualCue": "Horloge, lumière de ville et geste hésitant vers lecture suffisent à raconter l’insomnie sans texte long.",
+        "reasonToStop": "Le spectateur attend le titre proposé puis veut donner le sien.",
+        "whyRelevant": "Lofi Boy possède naturellement une identité late-night et une relation tendre avec le chien.",
+        "confidence": "medium"
+      },
+      "adaptation": {
+        "title": "01:47 — encore un morceau",
+        "cast": { "character": "lofi-boy", "companion": "dog" },
+        "concept": "Boy hésite entre dormir et relancer une piste ; le chien pose sa tête sur ses genoux et la décision devient un moment de compagnie.",
+        "openingText": "Le meilleur morceau pour 01:47 ?",
+        "sequence": [
+          "L’horloge affiche 01:47 dans une pièce presque noire.",
+          "Boy retire puis remet son casque en regardant le bouton lecture.",
+          "Le chien pose sa tête sur ses genoux au premier accord.",
+          "Le titre original apparaît au dernier plan, suivi d’une question ouverte."
+        ],
+        "caption": "Quel morceau tu gardes pour les heures où tout le monde dort ?",
+        "audioDirection": "Titre original du catalogue Lofi Boy, choisi pour une écoute nocturne et utilisé avec ses droits confirmés.",
+        "productionGuardrails": [
+          "Production 100 % humaine : storyboard, animation, montage et sélection musicale réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Présenter une scène de compagnie, sans promesse de résoudre l’insomnie ni banaliser le manque de sommeil."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "sunset-session-memory",
+      "runId": "instagram-home-2026-08-26-extended",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DbYSNmZItaC/",
+        "postId": "DbYSNmZItaC",
+        "author": "annikaverwest",
+        "sourceLabel": "Coucher de soleil présenté comme un souvenir musical à conserver",
+        "capturedAt": "2026-08-26T15:53:21+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 180700, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["nature-and-collective", "live-music-energy"],
+        "hook": "La lumière naturelle annonce une fenêtre très courte qu’il faut regarder jusqu’au bout.",
+        "mechanic": "Quelques plans fixes laissent le soleil descendre pendant que la musique approche de son dernier accord.",
+        "visualCue": "Le ciel change réellement de couleur et les premières fenêtres de la ville prennent le relais.",
+        "reasonToStop": "Le spectateur attend l’alignement du dernier accord et de la dernière lumière.",
+        "whyRelevant": "Girl et Boy peuvent partager une session extérieure sans abandonner le rythme contemplatif de la marque.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Le dernier accord avant la nuit",
+        "cast": { "character": "both", "companion": "cat-and-dog" },
+        "concept": "Girl et Boy jouent une session acoustique originale sur un toit ; quatre plans fixes suivent le soleil jusqu’à l’allumage des premières fenêtres.",
+        "openingText": "Ils avaient exactement un morceau avant la nuit.",
+        "sequence": [
+          "Plan large du toit : instruments prêts, chat et chien installés à distance.",
+          "Deux plans resserrés montrent les gestes réels ou animés des musiciens.",
+          "Le soleil touche l’horizon sur la dernière montée.",
+          "Dernier accord : les fenêtres s’allument et les animaux se rapprochent du duo."
+        ],
+        "caption": "On gardera ce coucher de soleil dans le morceau. 🌇",
+        "audioDirection": "Session originale composée et jouée par des musiciens humains, enregistrée avec des droits entièrement maîtrisés.",
+        "productionGuardrails": [
+          "Production 100 % humaine : musique, captation ou animation et étalonnage réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Créer un lieu et une composition originaux ; sécuriser le toit et le bien-être animal si la scène est captée."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "parakeet-micro-moment",
+      "runId": "instagram-home-2026-08-26-extended",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcBfcbAIXvC/",
+        "postId": "DcBfcbAIXvC",
+        "author": "wildlife.ayush",
+        "sourceLabel": "Court moment d’observation autour d’une perruche à collier",
+        "capturedAt": "2026-08-26T15:53:21+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 39300, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["animal-companions", "lofi-daily-life"],
+        "hook": "Un animal visible dès le premier plan crée une attention douce sans mise en scène complexe.",
+        "mechanic": "Le micro-comportement de l’oiseau devient un événement partagé par le personnage et son compagnon.",
+        "visualCue": "Fenêtre, regard du chat et pause dans l’écriture composent un triangle très lisible.",
+        "reasonToStop": "Le spectateur attend la réaction du chat et la durée de cette rencontre fragile.",
+        "whyRelevant": "Le chat peut enfin porter une idée animale fondée sur l’observation plutôt que sur une fausse voix.",
+        "confidence": "medium"
+      },
+      "adaptation": {
+        "title": "Le visiteur de la fenêtre",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Un oiseau animé se pose dehors ; le chat passe d’une attention de chasseur à une présence calme quand Girl rapproche son carnet de la fenêtre.",
+        "openingText": "La session d’étude vient d’avoir un invité.",
+        "sequence": [
+          "Une ombre traverse le cahier puis l’oiseau se pose derrière la vitre.",
+          "Le chat s’immobilise, oreilles dressées, tandis que Girl arrête d’écrire.",
+          "Girl rapproche doucement son carnet et dessine le visiteur.",
+          "L’oiseau repart ; le chat reste devant le petit croquis."
+        ],
+        "caption": "Pause imprévue, mais validée. 🐈🪶",
+        "audioDirection": "Ambiance de pièce et chant d’oiseau créés ou enregistrés légalement, sur une boucle originale très discrète.",
+        "productionGuardrails": [
+          "Production 100 % humaine : observation, dessin, animation et sound design réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Privilégier l’animation ; ne jamais attirer, enfermer ou stresser un animal pour obtenir la scène."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "dog-chase-perfect-loop",
+      "runId": "instagram-home-2026-08-26-extended",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DbV5t3Eqz_j/",
+        "postId": "DbV5t3Eqz_j",
+        "author": "llama.5060060",
+        "sourceLabel": "Animal en course utilisé comme hook cinétique immédiat",
+        "capturedAt": "2026-08-26T15:53:21+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 28700, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["animal-companions", "visual-formats-lab"],
+        "hook": "Une course animale crée du mouvement avant même que l’enjeu soit expliqué.",
+        "mechanic": "Un objet léger déclenche une poursuite courte dont la fin raccorde exactement avec le début.",
+        "visualCue": "Feuille volante, trajectoire du chien et retour au pupitre rendent la boucle compréhensible sans dialogue.",
+        "reasonToStop": "Le spectateur veut savoir si l’objet sera rattrapé et peut revoir la boucle sans coupure.",
+        "whyRelevant": "Le chien de Boy peut porter une comédie physique tendre, sans lui prêter une voix artificielle.",
+        "confidence": "medium"
+      },
+      "adaptation": {
+        "title": "La partition qui refusait de rester en place",
+        "cast": { "character": "lofi-boy", "companion": "dog" },
+        "concept": "Une feuille de partition s’envole du pupitre ; le chien la poursuit dans le parc et la rapporte au point exact où la boucle recommence.",
+        "openingText": "Une rafale. Une partition. Un chien très motivé.",
+        "sequence": [
+          "La feuille quitte le pupitre au premier coup de vent.",
+          "Le chien traverse trois petits obstacles dessinés pendant que Boy suit au loin.",
+          "Il rattrape la feuille sans la mordre et revient vers le banc.",
+          "La feuille se repose sur le pupitre au même cadrage que le premier plan."
+        ],
+        "caption": "Assistant musical du mois. 🐕🍃",
+        "audioDirection": "Piste originale vive mais douce, avec bruitages dessinés et enregistrés par l’équipe.",
+        "productionGuardrails": [
+          "Production 100 % humaine : storyboard, animation, bruitages et musique réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Aucun stunt avec un animal réel ; la course et les obstacles doivent être entièrement animés."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "school-focus-kit",
+      "runId": "instagram-home-2026-08-26-extended",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DZR-b4sIhTR/",
+        "postId": "DZR-b4sIhTR",
+        "author": "condsty",
+        "sourceLabel": "School lifehack court et immédiatement compréhensible",
+        "capturedAt": "2026-08-26T15:53:21+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 108400, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["study-exams-pomodoro", "lofi-daily-life"],
+        "hook": "Le mot school lifehack promet une utilité visible en quelques secondes.",
+        "mechanic": "Un kit très limité montre ce qui reste sur le bureau et ce qui en sort avant un cycle court.",
+        "visualCue": "Eau, casque, tâche unique et minuteur composent un avant/après concret.",
+        "reasonToStop": "Le spectateur veut vérifier si la routine est réellement simple et reproductible.",
+        "whyRelevant": "Lofi Girl peut proposer une routine personnelle réaliste sans promettre de note ni de productivité miracle.",
+        "confidence": "medium"
+      },
+      "adaptation": {
+        "title": "Le kit des 25 prochaines minutes",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Girl ne garde sur son bureau que de l’eau, un casque, une tâche et un minuteur ; le chat retire les post-it superflus un par un.",
+        "openingText": "Pas toute la journée. Juste les 25 prochaines minutes.",
+        "sequence": [
+          "Le bureau déborde de listes et d’objets pendant que Girl hésite.",
+          "Elle garde une bouteille, un casque, une tâche et règle 25 minutes.",
+          "Le chat fait tomber les post-it restants dans une boîte à plus tard.",
+          "Le minuteur démarre ; la dernière carte rappelle que chacun adapte sa routine."
+        ],
+        "caption": "Une seule tâche suffit pour commencer. Le reste peut attendre.",
+        "audioDirection": "Boucle focus originale, stable et sans promesse d’effet cognitif ou scolaire.",
+        "productionGuardrails": [
+          "Production 100 % humaine : illustration, animation, montage et musique réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Présenter une expérience personnelle ; ne promettre ni concentration garantie, ni résultat scolaire, ni réduction d’un trouble."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "digicam-lyrics-day",
+      "runId": "instagram-home-2026-08-26-extended",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcdlfsWoorn/",
+        "postId": "DcdlfsWoorn",
+        "author": "bloodytincture",
+        "sourceLabel": "Esthétique digicam associée à la nostalgie et à une ligne de paroles",
+        "capturedAt": "2026-08-26T15:53:21+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 21300, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["nostalgia-time-capsule", "visual-formats-lab"],
+        "hook": "La texture digicam date instantanément le souvenir avant que le texte ne l’explique.",
+        "mechanic": "Une journée ordinaire devient capsule temporelle grâce à des images brèves reliées par une seule ligne licenciée.",
+        "visualCue": "Flash direct, date incrustée et cadrages imparfaits assument une mémoire fabriquée à la main.",
+        "reasonToStop": "Le spectateur cherche le détail banal qui lui rappelle sa propre adolescence.",
+        "whyRelevant": "Lofi Boy peut quitter l’animation continue pour un journal photo humain tout en gardant son univers.",
+        "confidence": "medium"
+      },
+      "adaptation": {
+        "title": "Une journée ordinaire, version digicam",
+        "cast": { "character": "lofi-boy", "companion": "dog" },
+        "concept": "Des photos digicam produites par l’équipe racontent une journée simple de Boy et du chien ; une courte ligne autorisée d’un titre Lofi Boy relie les images.",
+        "openingText": "Les journées ordinaires deviennent les photos qu’on garde.",
+        "sequence": [
+          "Flash du petit-déjeuner et laisse posée près de la porte.",
+          "Trois photos de trajet, de studio et de parc apparaissent sur les temps forts.",
+          "La ligne du titre se construit mot par mot sans couvrir les visages.",
+          "Retour au présent : le chien regarde les photos sur l’écran de l’appareil."
+        ],
+        "caption": "On ne sait jamais quelle journée deviendra un souvenir.",
+        "audioDirection": "Titre Lofi Boy autorisé avec paroles originales et droits de synchronisation vérifiés, ou texte écrit spécialement pour le post.",
+        "productionGuardrails": [
+          "Production 100 % humaine : prises de vue, graphisme, montage et musique réalisés ou validés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "N’utiliser aucune image du post source et vérifier séparément les droits de la ligne affichée."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "melody-through-generations",
+      "runId": "instagram-home-2026-08-26-extended",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DZRlrpLSBC2/",
+        "postId": "DZRlrpLSBC2",
+        "author": "finding.unforgettable.songs",
+        "sourceLabel": "Mélodie décrite comme un lien entre plusieurs générations",
+        "capturedAt": "2026-08-26T15:53:21+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 18300, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["nostalgia-time-capsule", "vinyl-and-instruments", "microgenre-discovery"],
+        "hook": "L’idée d’une mélodie qui traverse les générations donne une grande échelle à un motif très court.",
+        "mechanic": "Le même motif passe par trois objets d’écoute et trois arrangements sans perdre son identité.",
+        "visualCue": "Cassette, ordinateur puis instruments visibles rendent la continuité musicale concrète.",
+        "reasonToStop": "Le spectateur veut entendre ce qui reste identique et ce qui change à chaque époque.",
+        "whyRelevant": "Le catalogue Lofi peut montrer sa continuité sonore sans utiliser un morceau tiers ni affirmer une histoire non vérifiée.",
+        "confidence": "medium"
+      },
+      "adaptation": {
+        "title": "Le même motif, trois chambres",
+        "cast": { "character": "both", "companion": "cat-and-dog" },
+        "concept": "Un motif original passe d’une cassette dans une ancienne chambre de Girl à un ordinateur puis à une mini-session live avec Boy.",
+        "openingText": "Une mélodie change d’époque sans changer de cœur.",
+        "sequence": [
+          "Une cassette originale lance le motif dans une chambre d’archive dessinée.",
+          "Le son traverse un câble qui devient la timeline d’un laptop contemporain.",
+          "Girl et Boy rejouent le motif sur de vrais instruments dans un troisième décor.",
+          "Le chat et le chien se rejoignent sur le dernier accord qui boucle vers la cassette."
+        ],
+        "caption": "Quelle texture tu gardes : cassette, laptop ou live ?",
+        "audioDirection": "Un seul motif original arrangé humainement en trois textures, avec sessions et crédits documentés.",
+        "productionGuardrails": [
+          "Production 100 % humaine : composition, arrangement, instruments et animation réalisés par l’équipe et ses artistes.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Ne revendiquer aucune portée générationnelle réelle sans données ; présenter le format comme une exploration créative."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "community-musician-on-stage",
+      "runId": "instagram-home-2026-08-26-extended",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/Dce3sikyoqt/",
+        "postId": "Dce3sikyoqt",
+        "author": "theangelicanero",
+        "sourceLabel": "Musicien du public invité à rejoindre une performance sur scène",
+        "capturedAt": "2026-08-26T15:53:21+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 268800, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["fan-art-and-spotlights", "live-music-energy"],
+        "hook": "Une demande improbable devient une vraie invitation à jouer, créant surprise puis accomplissement.",
+        "mechanic": "Le contexte, l’accord de l’artiste et la courte performance forment une progression complète.",
+        "visualCue": "Signe lisible, réaction authentique et instrument partagé donnent des preuves visibles à chaque étape.",
+        "reasonToStop": "Le spectateur veut savoir si la demande sera acceptée et si le musicien saura saisir le moment.",
+        "whyRelevant": "Un événement Lofi peut offrir un spotlight réel et crédité à un musicien de la communauté.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Une place dans le morceau",
+        "cast": { "character": "both", "companion": "cat-and-dog" },
+        "concept": "Lors d’un vrai événement Lofi, un musicien de la communauté pré-sélectionné, crédité et consentant rejoint Girl et Boy sur un morceau original.",
+        "openingText": "Ce soir, une personne du public connaît déjà la prochaine partie.",
+        "sequence": [
+          "Une carte présente brièvement le musicien, son instrument et son accord de participation.",
+          "Girl ou Boy l’invite sur scène après une courte montée.",
+          "Le musicien joue une partie répétée en amont sur une composition originale.",
+          "Le crédit complet et son compte restent visibles pendant les applaudissements."
+        ],
+        "caption": "La communauté n’est pas devant la scène. Elle fait partie du morceau.",
+        "audioDirection": "Composition originale répétée et jouée par des humains, avec autorisations d’image, d’interprétation et de diffusion documentées.",
+        "productionGuardrails": [
+          "Production 100 % humaine : casting, répétition, captation, montage et musique réalisés par l’équipe et les participants.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Participant pré-sélectionné et consentant ; crédits, sécurité scénique et droits contractuels réglés avant tournage."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "track-that-changed-everything",
+      "runId": "instagram-home-2026-08-26-extended",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcEN_awjpoC/",
+        "postId": "DcEN_awjpoC",
+        "author": "edmmusic",
+        "sourceLabel": "Portrait d’artiste construit autour du titre qui a changé sa trajectoire",
+        "capturedAt": "2026-08-26T15:53:21+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 50800, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["releases-artist-collabs", "emotional-storytelling"],
+        "hook": "La question du titre qui a tout changé promet une origine précise plutôt qu’une biographie générale.",
+        "mechanic": "Première démo, note de session et témoignage humain convergent vers un morceau vérifiable.",
+        "visualCue": "Archives datées, fichiers de session et gestes de studio servent de preuves visuelles.",
+        "reasonToStop": "Le spectateur attend d’entendre la différence entre le brouillon et la version publiée.",
+        "whyRelevant": "Les artistes du catalogue peuvent raconter leur processus tout en renforçant la découverte des playlists Lofi.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Le beat qui a changé la suite",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Un producteur du catalogue raconte en interview humaine le morceau qui a changé son parcours ; Girl et le chat traversent les archives comme fil visuel.",
+        "openingText": "Tout a commencé avec ce fichier : FINAL_v3_reallyfinal.",
+        "sequence": [
+          "L’artiste montre une première démo datée et raconte son contexte en une phrase.",
+          "Deux notes ou stems autorisés révèlent ce qui a changé avant la sortie.",
+          "Girl et le chat apparaissent en transition dessinée entre les archives internes.",
+          "La version publiée, les crédits et la playlist correspondante ferment le portrait."
+        ],
+        "caption": "Derrière chaque titre, il y a un moment où tout devient possible.",
+        "audioDirection": "Démo et master utilisés uniquement avec l’accord de l’artiste, du label et des ayants droit ; interview enregistrée par l’équipe.",
+        "productionGuardrails": [
+          "Production 100 % humaine : interview, montage, illustration et musique fournis ou réalisés par les ayants droit et l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Dates, crédits, fichiers et effets de carrière doivent être confirmés par l’artiste avant publication."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "moon-flower-forced-perspective",
+      "runId": "instagram-home-2026-08-26-evening",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcXA1WNCCNO/",
+        "postId": "DcXA1WNCCNO",
+        "author": "nature_aroundclock",
+        "sourceLabel": "Fleur tenue en perspective devant la lune",
+        "capturedAt": "2026-08-26T23:04:54+02:00",
+        "publishedAt": "2026-08-22T22:45:06.000Z",
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 102000, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["visual-formats-lab"],
+        "hook": "Un objet minuscule semble toucher la lune grâce à un alignement physique immédiatement lisible.",
+        "mechanic": "La main cherche l’alignement parfait, le tient une seconde, puis un léger déplacement révèle la perspective forcée.",
+        "visualCue": "La silhouette de la fleur se centre sur le disque lunaire avec une profondeur réelle entre premier plan et ciel.",
+        "reasonToStop": "Le spectateur attend la seconde exacte où les deux formes vont coïncider.",
+        "whyRelevant": "La fenêtre iconique de Girl permet une illusion céleste propriétaire et un rôle comique naturel pour le chat.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "La fleur qui attrape la lune",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Girl aligne une fleur pressée avec la lune depuis sa fenêtre ; au moment parfait, le chat pousse doucement son poignet et l’ombre des pétales devient une constellation dessinée.",
+        "openingText": "Attends… encore un millimètre.",
+        "sequence": [
+          "Girl lève une fleur pressée devant la fenêtre.",
+          "Trois micro-ajustements rapprochent la fleur et la lune.",
+          "L’alignement tient une seconde, puis le chat touche son poignet.",
+          "La fleur rate la lune mais ses pétales dessinent une constellation originale."
+        ],
+        "caption": "Pas exactement le plan. Peut-être mieux. 🌙",
+        "audioDirection": "Piste nocturne originale du catalogue, avec un carillon joué et enregistré par un musicien humain au moment de l’alignement.",
+        "productionGuardrails": [
+          "Production 100 % humaine : fleur réelle ou dessinée, layout, animation et compositing réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Ne pas reprendre le cadrage ni l’image de la source ; construire une perspective originale dans la chambre canonique."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "lofi-world-vertical-trailer",
+      "runId": "instagram-home-2026-08-26-evening",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/Dcf8s00gWRD/",
+        "postId": "Dcf8s00gWRD",
+        "author": "winxclub",
+        "sourceLabel": "Trailer vertical explorant plusieurs lieux reconnaissables d’un univers de jeu",
+        "capturedAt": "2026-08-26T23:04:54+02:00",
+        "publishedAt": "2026-08-26T10:01:14.000Z",
+        "format": "video",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 81800, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["lore-pov-mini-episodes", "cozy-games-rpg-worlds", "easter-eggs-and-alternate-rooms", "visual-formats-lab"],
+        "hook": "Une porte s’ouvre immédiatement sur un premier lieu iconique et promet une visite complète du monde.",
+        "mechanic": "Un trailer vertical enchaîne plusieurs lieux cohérents et donne à chaque décor un détail qui invite à revoir la séquence.",
+        "visualCue": "Les transitions plein cadre et une architecture distincte par lieu rendent la progression compréhensible sans le son.",
+        "reasonToStop": "Le spectateur veut voir le prochain décor et comprendre le fil qui relie les mondes.",
+        "whyRelevant": "Le Lofi universe peut élargir son lore sans licence tierce ni exposition longue.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Trois portes après minuit",
+        "cast": { "character": "both", "companion": "cat-and-dog" },
+        "concept": "Un trailer original fait traverser à Girl, Boy, au chat et au chien trois variantes du Lofi universe : observatoire calme, train suspendu et taverne musicale ; une étoile de papier relie les lieux.",
+        "openingText": "Après minuit, certaines portes changent de destination.",
+        "sequence": [
+          "Le chat pousse une porte de la chambre vers un observatoire original.",
+          "L’étoile de papier s’envole dans un train nocturne où Boy et le chien la suivent.",
+          "Le train ouvre directement sur une taverne musicale dessinée par l’équipe.",
+          "L’étoile revient sous la porte de la chambre, prête pour un épisode suivant."
+        ],
+        "caption": "Observatoire, train ou taverne : quelle porte on rouvre ?",
+        "audioDirection": "Un même motif original, réorchestré par des musiciens humains pour chaque lieu : célesta, rythme de train puis trio acoustique.",
+        "productionGuardrails": [
+          "Production 100 % humaine : concept art, storyboard, décors, animation et compositing par des artistes crédités.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Aucun personnage, sort, décor, logo ou interface repris de Winx ou d’un jeu existant."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "animal-pun-release-key-art",
+      "runId": "instagram-home-2026-08-26-evening",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/Db89Cn4hrAX/",
+        "postId": "Db89Cn4hrAX",
+        "author": "subtronics",
+        "sourceLabel": "Illustration Bird Phone et jeu de mots utilisés pour annoncer une sortie",
+        "capturedAt": "2026-08-26T23:04:54+02:00",
+        "publishedAt": "2026-08-12T19:52:58.000Z",
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 37700, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["releases-artist-collabs", "animal-companions", "visual-formats-lab"],
+        "hook": "Une seule illustration absurde et un jeu de mots livrent à la fois le gag et l’annonce de sortie.",
+        "mechanic": "L’animal interagit littéralement avec un objet lié au son ; la punchline conduit vers l’information de sortie.",
+        "visualCue": "La silhouette animale, l’accessoire sonore central et la typographie courte se lisent dans le même regard.",
+        "reasonToStop": "Le visuel se comprend avant la légende puis la phrase ajoute un second niveau.",
+        "whyRelevant": "Le chien de Boy peut porter une annonce musicale attachante sans répéter le portrait d’artiste déjà présent.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Il avait déjà le morceau dans l’oreille",
+        "cast": { "character": "lofi-boy", "companion": "dog" },
+        "concept": "Illustration unique : le chien colle une oreille au pavillon d’un gramophone original tandis que l’autre vise Boy ; la date du nouveau titre apparaît sur l’étiquette du disque.",
+        "openingText": "Il l’a entendu avant tout le monde.",
+        "sequence": [
+          "Plan fixe sur le chien et le gramophone dessinés à la main.",
+          "Son oreille se relève au premier accord original.",
+          "Boy comprend qu’il a été devancé et retourne le disque.",
+          "L’étiquette révèle titre, crédits et date vérifiés."
+        ],
+        "caption": "Le contrôle qualité a quatre pattes. Nouveau titre vendredi — crédits et lien en bio.",
+        "audioDirection": "Extrait masterisé du titre réellement annoncé, limité au segment autorisé ; petit bruit de pavillon enregistré humainement.",
+        "productionGuardrails": [
+          "Production 100 % humaine : illustration, lettering et micro-animation réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "N’annoncer que des crédits et une date validés ; créer un jeu de mots original sans reprendre Bird Phone."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "hand-painted-lofi-console",
+      "runId": "instagram-home-2026-08-26-evening",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcgN-zooXp4/",
+        "postId": "DcgN-zooXp4",
+        "author": "cyberpunkgame",
+        "sourceLabel": "Ordinateur rétro peint à la main, révélé par des gros plans de fabrication",
+        "capturedAt": "2026-08-26T23:04:54+02:00",
+        "publishedAt": "2026-08-26T12:34:43.000Z",
+        "format": "video",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 26200, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["cozy-games-rpg-worlds", "visual-formats-lab", "fan-art-and-spotlights"],
+        "hook": "Le premier gros plan prouve immédiatement que l’objet a été peint à la main.",
+        "mechanic": "Un making-of tactile montre croquis, couches de peinture, détails cachés puis reveal de l’objet entier avec crédit artiste.",
+        "visualCue": "Traces de pinceau, masquage, texture et imperfections volontaires précèdent le plan final.",
+        "reasonToStop": "Le spectateur veut comprendre comment les petits détails vont former un objet cohérent.",
+        "whyRelevant": "Un objet Lofi réel valorise les artistes humains et peut enrichir le lore sans devenir un simple mockup numérique.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Study Station 88 — peinte à la main",
+        "cast": { "character": "both", "companion": "cat-and-dog" },
+        "concept": "Un artiste mandaté transforme un lecteur cassette ou boîtier rétro légalement acquis en objet original Lofi : Girl et le chat côté nuit, Boy et le chien côté aube, reliés par une ville inventée.",
+        "openingText": "Pas un render. Chaque lumière est un coup de pinceau.",
+        "sequence": [
+          "Macro du croquis et signature de l’artiste humain.",
+          "Couches de peinture montrant séparément nuit, aube et ville originale.",
+          "Ajout de quatre easter eggs Lofi documentés.",
+          "Reveal à 360° de l’objet fini, puis crédit plein écran."
+        ],
+        "caption": "Des heures de pinceau dans quelques centimètres de ville. Artiste : [crédit validé].",
+        "audioDirection": "Beat original construit avec des sons réels de pinceau, ruban et boutons enregistrés par l’équipe.",
+        "productionGuardrails": [
+          "Production 100 % humaine : objet peint physiquement, captation macro et montage par l’équipe ; accord et crédit de l’artiste documentés.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Univers graphique entièrement original : ne reprendre aucun logo, nom, interface ou motif Cyberpunk ou Commodore protégé."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "retro-console-in-the-park",
+      "runId": "instagram-home-2026-08-26-evening",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcfW6l-iHAF/",
+        "postId": "DcfW6l-iHAF",
+        "author": "thescenicgamerofficial",
+        "sourceLabel": "Console et écran CRT rétro installés dans un parc",
+        "capturedAt": "2026-08-26T23:04:54+02:00",
+        "publishedAt": "2026-08-26T04:31:03.000Z",
+        "format": "video",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 23700, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["cozy-games-rpg-worlds", "visual-formats-lab"],
+        "hook": "Un objet rétro placé dans un décor où il ne devrait pas être crée une question immédiate.",
+        "mechanic": "Le contraste intérieur-extérieur, une partie très courte et un incident inattendu retournent la scène.",
+        "visualCue": "Un petit écran carré au milieu d’un grand plan de parc rend l’incongruité immédiatement visible.",
+        "reasonToStop": "Le spectateur attend de voir si l’installation fonctionne et ce qui va perturber la partie.",
+        "whyRelevant": "Boy, son chien et un jeu pixel original permettent un gag outdoor distinct de la session musicale au lac.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Touch grass — niveau secret",
+        "cast": { "character": "lofi-boy", "companion": "dog" },
+        "concept": "Dans une scène entièrement animée, Boy installe au parc un écran rétro diffusant un mini-jeu pixel original ; le chien touche une grande commande factice et ouvre un niveau qui reproduit le paysage réel.",
+        "openingText": "Il a pris « jouer dehors » un peu trop littéralement.",
+        "sequence": [
+          "Plan large animé : écran rétro original sur une table de pique-nique.",
+          "Boy joue un niveau pixel conçu par l’équipe tandis que le chien observe.",
+          "Le chien touche spontanément la commande adaptée et déclenche un passage secret.",
+          "Le paysage pixel devient le parc réel ; Boy et le chien partent explorer."
+        ],
+        "caption": "Niveau secret débloqué : aller vraiment se promener. 🎮🌿",
+        "audioDirection": "Chiptune Lofi original composé par un musicien humain, puis transition vers des ambiances de parc captées par l’équipe.",
+        "productionGuardrails": [
+          "Production 100 % humaine : pixel art, animation, accessoires et compositing originaux ; aucune marque ni ROM tierce.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Tout animer pour éviter matériel fragile, câbles, météo ou mise en danger animale ; ne jamais forcer une interaction du chien."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "back-in-the-booth-human-proof",
+      "runId": "instagram-home-2026-08-26-evening",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcJuyWRvjnK/",
+        "postId": "DcJuyWRvjnK",
+        "author": "rebbford",
+        "sourceLabel": "Selfie simple sous le micro pour signaler un retour au booth",
+        "capturedAt": "2026-08-26T23:04:54+02:00",
+        "publishedAt": "2026-08-17T18:55:47.000Z",
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 10600, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["releases-artist-collabs"],
+        "hook": "Une preuve de présence très simple rend le retour crédible avant toute bande-annonce produite.",
+        "mechanic": "Un selfie humain, une phrase de reprise et un détail de production visible limitent la promesse au travail réellement commencé.",
+        "visualCue": "Micro, casque et feuille de session restent lisibles sans rendre le setup artificiellement parfait.",
+        "reasonToStop": "L’authenticité basse production fait sentir qu’un nouveau chapitre vient réellement de démarrer.",
+        "whyRelevant": "Lofi peut annoncer un retour de collaborateur par une preuve humaine, différente du portrait rétrospectif déjà présent.",
+        "confidence": "medium"
+      },
+      "adaptation": {
+        "title": "De retour derrière le micro",
+        "cast": { "character": "lofi-boy", "companion": "dog" },
+        "concept": "Un vrai collaborateur se photographie dans le booth avec le storyboard d’un mini-épisode Boy et chien ; le post annonce uniquement le début d’une session de voix humaine et de bruitages, pas une date non verrouillée.",
+        "openingText": "Une scène à la fois, de retour derrière le micro.",
+        "sequence": [
+          "Selfie naturel du collaborateur humain devant le micro.",
+          "Le storyboard Boy et chien apparaît au bord du cadre sans révéler l’épisode entier.",
+          "Deux secondes de captation montrent un bruitage ou une ligne enregistrée par la personne.",
+          "Carton final : en production, crédits complets, date à confirmer."
+        ],
+        "caption": "On recommence par une scène, une vraie voix et beaucoup de café. Plus bientôt — quand ce sera prêt.",
+        "audioDirection": "Voix et bruitages enregistrés par des humains au booth ; musique originale du catalogue avec droits confirmés, sans clonage vocal.",
+        "productionGuardrails": [
+          "Production 100 % humaine : selfie, voix, bruitages, storyboard et montage créés par les collaborateurs crédités.",
+          "Aucune image, vidéo, voix ou musique générée par IA ; aucun clonage vocal ni voix synthétique.",
+          "Obtenir consentement, contrat voix et image et crédits ; ne promettre ni rôle, date ni sortie avant validation."
+        ]
+      },
+      "editorialStatus": "new"
+    }
+  ]
+}

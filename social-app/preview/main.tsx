@@ -10,6 +10,8 @@ import audienceDemographicsJson from "../data/audience-demographics.json";
 import audioTrendFeedJson from "../data/audio-trends/feed.json";
 import audioTrendScanStatusJson from "../data/audio-trends/refresh-status.json";
 import commentOpportunityFeedJson from "../data/comment-opportunities/feed.json";
+import playlistPromoFeedJson from "../data/playlist-promos/feed.json";
+import scrollingFeedJson from "../data/scrolling/feed.json";
 import publicHistorySummaryJson from "../data/public-history-summary.json";
 import trendFeedJson from "../data/trends/feed.json";
 import videoTrendScanStatusJson from "../data/trends/refresh-status.json";
@@ -33,6 +35,14 @@ import {
   assertCommentOpportunityFeed,
   type CommentOpportunityFeed,
 } from "../lib/comment-opportunities";
+import {
+  assertPlaylistPromoFeed,
+  type PlaylistPromoFeed,
+} from "../lib/playlist-promos";
+import {
+  assertScrollingFeed,
+  type ScrollingFeed,
+} from "../lib/scrolling";
 import {
   mergeWorkspaceWithPublicHistory,
   type PublicHistorySnapshot,
@@ -81,6 +91,12 @@ const fallbackAudioTrendScanStatus = assertAudioTrendScanStatus(
 const fallbackCommentOpportunityFeed = assertCommentOpportunityFeed(
   commentOpportunityFeedJson as CommentOpportunityFeed,
 );
+const fallbackPlaylistPromoFeed = assertPlaylistPromoFeed(
+  playlistPromoFeedJson as PlaylistPromoFeed,
+);
+const fallbackScrollingFeed = assertScrollingFeed(
+  scrollingFeedJson as ScrollingFeed,
+);
 const dataBaseUrl = `${import.meta.env.BASE_URL}data`;
 const liveDataBaseUrl = "https://raw.githubusercontent.com/dim75017/youtube-radar-kx9v2m/main/social-app/data";
 const RAW_TREND_FEED_URL = `${liveDataBaseUrl}/trends/feed.json`;
@@ -91,6 +107,8 @@ const RAW_AUDIENCE_HISTORY_URL = `${liveDataBaseUrl}/audience-history.json`;
 const RAW_AUDIENCE_ANALYTICS_URL = `${liveDataBaseUrl}/audience-analytics.json`;
 const RAW_AUDIENCE_DEMOGRAPHICS_URL = `${liveDataBaseUrl}/audience-demographics.json`;
 const RAW_COMMENT_OPPORTUNITIES_URL = `${liveDataBaseUrl}/comment-opportunities/feed.json`;
+const RAW_PLAYLIST_PROMO_FEED_URL = `${liveDataBaseUrl}/playlist-promos/feed.json`;
+const RAW_SCROLLING_FEED_URL = `${liveDataBaseUrl}/scrolling/feed.json`;
 const emptySnapshot: PublicHistorySnapshot = {
   generatedAt: publicHistorySummary.generatedAt,
   coverage: publicHistorySummary.coverage,
@@ -119,10 +137,100 @@ function PublicPreview() {
   const [audienceAnalytics, setAudienceAnalytics] = useState(fallbackAudienceAnalytics);
   const [audienceDemographics, setAudienceDemographics] = useState(fallbackAudienceDemographics);
   const [commentOpportunityFeed, setCommentOpportunityFeed] = useState(fallbackCommentOpportunityFeed);
+  const [playlistPromoFeed, setPlaylistPromoFeed] = useState(fallbackPlaylistPromoFeed);
+  const [scrollingFeed, setScrollingFeed] = useState(fallbackScrollingFeed);
   const [pendingPlatforms, setPendingPlatforms] = useState<SocialPlatform[]>([
     ...PLATFORM_ORDER,
   ]);
   const [historyError, setHistoryError] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+
+    const refreshScrollingFeed = () => {
+      void fetch(`${RAW_SCROLLING_FEED_URL}?v=${Date.now()}`, {
+        cache: "no-store",
+        signal: controller.signal,
+        headers: { Accept: "application/json" },
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error(`Actualisation Scrolling impossible (${response.status}).`);
+          }
+          return assertScrollingFeed((await response.json()) as ScrollingFeed);
+        })
+        .then((snapshot) => {
+          if (!active) return;
+          const incomingAt = Date.parse(snapshot.capturedAt);
+          if (!Number.isFinite(incomingAt)) return;
+          setScrollingFeed((current) => (
+            incomingAt >= Date.parse(current.capturedAt) ? snapshot : current
+          ));
+        })
+        .catch(() => {
+          // Le dernier lot de scrolling vérifié reste visible hors ligne.
+        });
+    };
+    const refreshOnReturn = () => {
+      if (document.visibilityState === "visible") refreshScrollingFeed();
+    };
+
+    refreshScrollingFeed();
+    const hourlyRefresh = window.setInterval(refreshScrollingFeed, 60 * 60 * 1_000);
+    document.addEventListener("visibilitychange", refreshOnReturn);
+
+    return () => {
+      active = false;
+      window.clearInterval(hourlyRefresh);
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+      controller.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+
+    const refreshPlaylistPromoFeed = () => {
+      void fetch(`${RAW_PLAYLIST_PROMO_FEED_URL}?v=${Date.now()}`, {
+        cache: "no-store",
+        signal: controller.signal,
+        headers: { Accept: "application/json" },
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            throw new Error(`Actualisation Pubs playlists impossible (${response.status}).`);
+          }
+          return assertPlaylistPromoFeed((await response.json()) as PlaylistPromoFeed);
+        })
+        .then((snapshot) => {
+          if (!active) return;
+          const incomingAt = Date.parse(snapshot.capturedAt);
+          if (!Number.isFinite(incomingAt)) return;
+          setPlaylistPromoFeed((current) => (
+            incomingAt >= Date.parse(current.capturedAt) ? snapshot : current
+          ));
+        })
+        .catch(() => {
+          // Le dernier benchmark vérifié reste visible hors ligne.
+        });
+    };
+    const refreshOnReturn = () => {
+      if (document.visibilityState === "visible") refreshPlaylistPromoFeed();
+    };
+
+    refreshPlaylistPromoFeed();
+    const hourlyRefresh = window.setInterval(refreshPlaylistPromoFeed, 60 * 60 * 1_000);
+    document.addEventListener("visibilitychange", refreshOnReturn);
+
+    return () => {
+      active = false;
+      window.clearInterval(hourlyRefresh);
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+      controller.abort();
+    };
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -562,6 +670,8 @@ function PublicPreview() {
       initialWorkspace={workspace as WorkspacePayload}
       initialTrendFeed={trendFeed}
       initialAudioTrendFeed={audioTrendFeed}
+      initialScrollingFeed={scrollingFeed}
+      initialPlaylistPromoFeed={playlistPromoFeed}
       initialVideoTrendScanStatus={videoTrendScanStatus}
       initialAudioTrendScanStatus={audioTrendScanStatus}
       initialCommentOpportunityFeed={commentOpportunityFeed}
