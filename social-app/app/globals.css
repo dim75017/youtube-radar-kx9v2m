@@ -4738,24 +4738,13 @@ a {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 4px 10px;
   margin-top: -1px;
   color: var(--dim);
   font-size: 9px;
   line-height: 1.35;
-}
-
-.audience-native-chart-caption span:first-child {
-  color: rgba(var(--platform-rgb), 0.94);
-  font-weight: 750;
-}
-
-.audience-native-chart-caption span:last-child {
-  max-width: 34%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-align: right;
 }
 
 .audience-demographics {
@@ -4982,6 +4971,8 @@ a {
   aspect-ratio: 1;
   place-items: center;
   border-radius: 50%;
+  cursor: help;
+  isolation: isolate;
   box-shadow:
     0 0 0 2px rgba(255, 255, 255, 0.13),
     0 10px 26px rgba(0, 0, 0, 0.22);
@@ -4995,9 +4986,15 @@ a {
   background: #0b0e16;
   box-shadow: inset 0 0 14px rgba(255, 255, 255, 0.025);
   content: "";
+  pointer-events: none;
 }
 
-.audience-demographic-pie > span {
+.audience-demographic-pie:focus-visible {
+  outline: 2px solid rgba(var(--platform-rgb), 0.78);
+  outline-offset: 3px;
+}
+
+.audience-demographic-pie-label {
   position: relative;
   z-index: 1;
   color: #fff;
@@ -5005,6 +5002,56 @@ a {
   font-size: 10px;
   font-weight: 750;
   letter-spacing: -0.02em;
+  pointer-events: none;
+}
+
+.audience-demographic-pie-tooltip {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  left: 50%;
+  display: grid;
+  min-width: max-content;
+  grid-template-columns: 8px auto auto;
+  align-items: center;
+  gap: 5px;
+  transform: translate(-50%, calc(-100% - 8px));
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 7px;
+  background: rgba(8, 11, 18, 0.97);
+  box-shadow: 0 7px 20px rgba(0, 0, 0, 0.34);
+  padding: 5px 7px;
+  color: #fff;
+  font-size: 9px;
+  line-height: 1.1;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.audience-demographic-pie-tooltip::after {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border-right: 1px solid rgba(255, 255, 255, 0.18);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(8, 11, 18, 0.97);
+  content: "";
+}
+
+.audience-demographic-pie-tooltip > i {
+  display: block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.34);
+}
+
+.audience-demographic-pie-tooltip > strong {
+  color: #fff;
+  font-variant-numeric: tabular-nums;
 }
 
 .audience-demographic-pie-legend {
@@ -5161,15 +5208,6 @@ a {
   .audience-explorer-summary-kpi:nth-child(even) {
     border-top: 1px solid rgba(255, 255, 255, 0.07);
     border-left: 0;
-  }
-
-  .audience-native-chart-caption {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .audience-native-chart-caption span:last-child {
-    max-width: 100%;
   }
 
   .audience-demographics-heading {
@@ -5548,7 +5586,7 @@ a {
     inset: 26%;
   }
 
-  .audience-demographic-pie > span {
+  .audience-demographic-pie-label {
     font-size: 9px;
   }
 

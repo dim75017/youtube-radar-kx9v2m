@@ -166,7 +166,11 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(audienceDashboard, /Engagements/);
   assert.doesNotMatch(audienceDashboard, /Variation nette des followers|Variation followers/);
   assert.doesNotMatch(audienceDashboard, /Analyse détaillée|Une seule courbe, toutes les données/);
+  assert.doesNotMatch(audienceDashboard, /activeSummary\.provenance\.provider|dimension\.provenance\.provider/);
+  assert.doesNotMatch(audienceDashboard, /activeSeries\.length > 0[\s\S]{0,180}point\$\{/);
   assert.match(audienceDashboard, /className="audience-demographics-breakdowns" role="group" aria-label="Âge et genre"/);
+  assert.match(audienceDashboard, /className="audience-demographic-pie-tooltip"/);
+  assert.match(audienceDashboard, /audienceDemographicPieSliceAtPoint\(/);
   assert.match(audienceDashboard, /calculatePlatformEngagementWindow\([\s\S]*?periodDays/);
   assert.doesNotMatch(audienceDashboard, /clientNow|setClientNow|refreshClock/);
   assert.doesNotMatch(audienceDashboard, /Collecte planifiée/);
@@ -601,6 +605,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(styles, /\.audience-explorer-chart-controls\s*\{/);
   assert.match(styles, /\.audience-explorer-metrics/);
   assert.doesNotMatch(styles, /\.audience-native-chart-heading/);
+  assert.match(styles, /\.audience-demographic-pie-tooltip\s*\{/);
   assert.match(styles, /\.audience-native-chart-viewport\s*\{[\s\S]*?overflow-x:\s*auto/);
   assert.match(styles, /\.audience-native-chart-viewport svg\s*\{[\s\S]*?min-width:\s*700px/);
   assert.match(styles, /\.audience-native-chart-grid text,[\s\S]*?font-size:\s*13px/);

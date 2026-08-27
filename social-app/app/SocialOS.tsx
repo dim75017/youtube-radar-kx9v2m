@@ -2438,16 +2438,10 @@ function AudienceAnalyticsExplorer({
 
             <footer className="audience-native-chart-caption">
               <span>
-                {activeSeries.length > 0
-                  ? `${activeSeries.length} point${activeSeries.length > 1 ? "s" : ""} réel${activeSeries.length > 1 ? "s" : ""}`
-                  : `Agrégat officiel · ${periodLabel}`}
-              </span>
-              <span>
                 {periodKey === "all"
                   ? "Toute la plage native importée"
                   : "Données réelles · jours absents non reliés"}
               </span>
-              <span>{activeSummary.provenance.provider}</span>
             </footer>
           </div>
 
@@ -2547,6 +2541,15 @@ const AUDIENCE_DEMOGRAPHIC_PIE_FALLBACKS = [
   "#d55e00",
 ];
 
+type AudienceDemographicPieSlice = {
+  key: string;
+  label: string;
+  share: number;
+  color: string;
+  start: number;
+  end: number;
+};
+
 function AudienceDemographicCard({
   dimension,
   emptyLabel,
@@ -2558,6 +2561,11 @@ function AudienceDemographicCard({
   kind: "countries" | "ages" | "genders";
   title: string;
 }) {
+  const [pieTooltip, setPieTooltip] = useState<{
+    key: string;
+    x: number | null;
+    y: number | null;
+  } | null>(null);
   const allDisplayEntries = dimension
     ? audienceDemographicDisplayEntries(dimension.entries, kind)
     : [];
@@ -2599,6 +2607,13 @@ function AudienceDemographicCard({
   const pieGradient = kind === "countries"
     ? null
     : audienceDemographicPieGradient(visibleEntries);
+  const pieSlices = kind === "countries"
+    ? []
+    : audienceDemographicPieSlices(visibleEntries);
+  const pieTooltipEntry = pieTooltip
+    ? pieSlices.find((entry) => entry.key === pieTooltip.key) ?? null
+    : null;
+  const pieTooltipId = `audience-demographic-${kind}-tooltip`;
   const pieAriaLabel = kind === "countries"
     ? undefined
     : `${title} : ${visibleEntries.map((entry) => (
@@ -2640,15 +2655,66 @@ function AudienceDemographicCard({
                 className="audience-demographic-pie"
                 role="img"
                 aria-label={pieAriaLabel}
+                aria-describedby={pieTooltipEntry ? pieTooltipId : undefined}
                 style={{ background: pieGradient ?? undefined }}
+                tabIndex={pieSlices.length > 0 ? 0 : undefined}
+                onFocus={() => {
+                  const firstSlice = pieSlices[0];
+                  if (firstSlice) setPieTooltip({ key: firstSlice.key, x: null, y: null });
+                }}
+                onBlur={() => setPieTooltip(null)}
+                onPointerMove={(event) => {
+                  const bounds = event.currentTarget.getBoundingClientRect();
+                  const x = event.clientX - bounds.left;
+                  const y = event.clientY - bounds.top;
+                  const slice = audienceDemographicPieSliceAtPoint(
+                    pieSlices,
+                    x,
+                    y,
+                    bounds.width,
+                    bounds.height,
+                  );
+                  setPieTooltip(slice ? { key: slice.key, x, y } : null);
+                }}
+                onPointerLeave={() => setPieTooltip(null)}
               >
-                <span>{kind === "ages" ? "Âge" : "Genre"}</span>
+                <span className="audience-demographic-pie-label">
+                  {kind === "ages" ? "Âge" : "Genre"}
+                </span>
+                {pieTooltipEntry ? (
+                  <span
+                    className="audience-demographic-pie-tooltip"
+                    id={pieTooltipId}
+                    role="tooltip"
+                    style={pieTooltip && pieTooltip.x !== null && pieTooltip.y !== null
+                      ? { left: pieTooltip.x, top: pieTooltip.y }
+                      : undefined}
+                  >
+                    <i style={{ backgroundColor: pieTooltipEntry.color }} aria-hidden="true" />
+                    <span>{pieTooltipEntry.label}</span>
+                    <strong>{formatAudienceDemographicShare(pieTooltipEntry.share)}</strong>
+                  </span>
+                ) : null}
               </div>
               <ul className="audience-demographic-pie-legend">
                 {visibleEntries.map((entry, index) => (
                   <li
                     className={entry.reported ? undefined : "unavailable"}
                     aria-label={entry.reported ? undefined : `${entry.label} : non fourni par la plateforme`}
+                    aria-describedby={pieTooltipEntry?.key === entry.key ? pieTooltipId : undefined}
+                    tabIndex={entry.share !== null && entry.share > 0 ? 0 : undefined}
+                    onFocus={() => {
+                      if (entry.share !== null && entry.share > 0) {
+                        setPieTooltip({ key: entry.key, x: null, y: null });
+                      }
+                    }}
+                    onBlur={() => setPieTooltip(null)}
+                    onPointerEnter={() => {
+                      if (entry.share !== null && entry.share > 0) {
+                        setPieTooltip({ key: entry.key, x: null, y: null });
+                      }
+                    }}
+                    onPointerLeave={() => setPieTooltip(null)}
                     key={entry.key}
                   >
                     <span
@@ -2670,10 +2736,11 @@ function AudienceDemographicCard({
               {usesMerged55Plus ? "55–64 et 65+ regroupés dans 55+" : null}
             </p>
           ) : null}
-          <footer>
-            <span>{dimension.provenance.provider}</span>
-            {hiddenCountryCount > 0 ? <span>+{hiddenCountryCount} pays</span> : null}
-          </footer>
+          {hiddenCountryCount > 0 ? (
+            <footer>
+              <span>+{hiddenCountryCount} pays</span>
+            </footer>
+          ) : null}
         </>
       ) : (
         <div className="audience-demographic-empty">
@@ -2695,6 +2762,51 @@ function formatAudienceDemographicShare(share: number) {
 function audienceDemographicPieColor(key: string, index: number) {
   return AUDIENCE_DEMOGRAPHIC_PIE_COLORS[key]
     ?? AUDIENCE_DEMOGRAPHIC_PIE_FALLBACKS[index % AUDIENCE_DEMOGRAPHIC_PIE_FALLBACKS.length];
+}
+
+function audienceDemographicPieSlices(
+  entries: ReadonlyArray<{ key: string; label: string; share: number | null }>,
+): AudienceDemographicPieSlice[] {
+  const visible = entries.flatMap((entry, index) => (
+    entry.share !== null && entry.share > 0
+      ? [{
+          key: entry.key,
+          label: entry.label,
+          share: entry.share,
+          color: audienceDemographicPieColor(entry.key, index),
+        }]
+      : []
+  ));
+  const total = visible.reduce((sum, entry) => sum + entry.share, 0);
+  if (total <= 0) return [];
+
+  let start = 0;
+  return visible.map((entry) => {
+    const end = start + entry.share / total;
+    const slice = { ...entry, start, end };
+    start = end;
+    return slice;
+  });
+}
+
+function audienceDemographicPieSliceAtPoint(
+  slices: readonly AudienceDemographicPieSlice[],
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  const radius = Math.min(width, height) / 2;
+  const dx = x - width / 2;
+  const dy = y - height / 2;
+  const distance = Math.hypot(dx, dy);
+  if (radius <= 0 || distance > radius || distance < radius * 0.52) return null;
+
+  const angle = (Math.atan2(dy, dx) * 180 / Math.PI + 450) % 360;
+  const position = angle / 360;
+  return slices.find((slice) => position >= slice.start && position < slice.end)
+    ?? slices.at(-1)
+    ?? null;
 }
 
 function audienceDemographicPieGradient(

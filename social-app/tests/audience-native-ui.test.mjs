@@ -105,6 +105,8 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(explorer, /const endDate = activeWindow\?\.endDate/);
   assert.match(explorer, /Toute la plage native importée/);
   assert.match(explorer, /Agrégat officiel · \$\{periodLabel\}/);
+  assert.doesNotMatch(explorer, /activeSeries\.length > 0[\s\S]{0,180}point\$\{/);
+  assert.doesNotMatch(explorer, /activeSummary\.provenance\.provider|dimension\.provenance\.provider/);
   assert.match(explorer, /metric === "followersTotal"/);
   assert.match(explorer, /historyPoints/);
   assert.match(explorer, /point\.metrics\[metric\]/);
@@ -222,7 +224,15 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(explorer, /background: pieGradient/);
   assert.match(explorer, /className="audience-demographic-pie-legend"/);
   assert.match(explorer, /className="audience-demographic-pie-swatch"/);
+  assert.match(explorer, /className="audience-demographic-pie-tooltip"/);
+  assert.match(explorer, /role="tooltip"/);
+  assert.match(explorer, /onPointerMove=\{\(event\) =>/);
+  assert.match(explorer, /audienceDemographicPieSliceAtPoint\(/);
+  assert.match(explorer, /tabIndex=\{pieSlices\.length > 0 \? 0 : undefined\}/);
+  assert.match(explorer, /onFocus=\{\(\) => \{[\s\S]*?setPieTooltip/);
+  assert.match(explorer, /formatAudienceDemographicShare\(pieTooltipEntry\.share\)/);
   assert.match(explorer, /audienceDemographicPieGradient\(visibleEntries\)/);
+  assert.match(explorer, /audienceDemographicPieSlices\(visibleEntries\)/);
   assert.match(explorer, /entries\.flatMap\(\(entry, index\) =>/);
   assert.match(explorer, /color: audienceDemographicPieColor\(entry\.key, index\)/);
   assert.match(explorer, /entry\.share !== null && entry\.share > 0/);
@@ -236,6 +246,9 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(explorer, /55–64 et 65\+ regroupés dans 55\+/);
   assert.match(styles, /\.audience-demographic-pie-layout\s*\{[^}]*grid-template-columns:\s*clamp\(78px, 7vw, 98px\) minmax\(0, 1fr\)/);
   assert.match(styles, /\.audience-demographic-pie\s*\{[^}]*border-radius:\s*50%/);
+  assert.match(styles, /\.audience-demographic-pie-tooltip\s*\{[^}]*position:\s*absolute[^}]*background:\s*rgba\(8, 11, 18, 0\.97\)/);
+  assert.match(styles, /\.audience-demographic-pie-tooltip\s*\{[^}]*pointer-events:\s*none/);
+  assert.match(styles, /\.audience-demographic-pie:focus-visible/);
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?grid-template-columns:\s*clamp\(88px, 7\.5vw, 108px\)/);
   assert.match(styles, /\.audience-demographic-pie-legend\s*\{[^}]*display:\s*grid/);
   assert.match(styles, /\.audience-demographic-card\.kind-countries \.audience-demographic-list\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
