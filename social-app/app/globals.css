@@ -4381,6 +4381,9 @@ a {
 .audience-explorer {
   min-width: 0;
   margin-top: 0;
+}
+
+.audience-overview-screen {
   overflow: hidden;
   border: 1px solid rgba(var(--platform-rgb), 0.22);
   border-radius: 16px;
@@ -5173,6 +5176,14 @@ a {
   .audience-demographics-breakdowns {
     grid-template-rows: auto auto;
   }
+
+  .audience-demographic-pie-layout {
+    grid-template-columns: clamp(120px, 28vw, 160px) minmax(0, 1fr);
+  }
+
+  .audience-demographic-pie {
+    max-width: 160px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -5196,7 +5207,7 @@ a {
     width: 100%;
   }
 
-  .audience-explorer {
+  .audience-overview-screen {
     padding: 14px;
   }
 
@@ -5223,18 +5234,34 @@ a {
   .audience-demographic-card.kind-countries .audience-demographic-list {
     grid-template-columns: 1fr;
   }
+
+  .audience-demographic-pie-layout {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: 14px;
+  }
+
+  .audience-demographic-pie {
+    max-width: 180px;
+  }
+
+  .audience-demographic-pie-legend {
+    width: 100%;
+  }
 }
 
 @media (min-width: 901px) {
   .audience-dashboard {
-    display: flex;
-    min-height: calc(100dvh - 66px);
-    flex-direction: column;
+    min-height: 0;
   }
 
   .audience-explorer {
+    display: block;
+  }
+
+  .audience-overview-screen {
     display: flex;
-    flex: 1;
+    min-height: calc(100dvh - 118px);
     flex-direction: column;
   }
 
@@ -5242,46 +5269,137 @@ a {
     grid-template-columns: repeat(6, minmax(82px, 1fr));
   }
 
+  .audience-native-chart-shell {
+    display: flex;
+    min-height: 340px;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .audience-demographics {
+    display: flex;
+    min-height: calc(100dvh - 24px);
+    flex-direction: column;
+    margin-top: 24px;
+    padding: 24px;
+  }
+
+  .audience-demographics-heading h3 {
+    font-size: clamp(21px, 1.8vw, 28px);
+  }
+
+  .audience-demographics-heading > span {
+    font-size: 12px;
+  }
+
+  .audience-demographics-grid {
+    min-height: 0;
+    flex: 1;
+    grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
+    gap: 20px;
+    margin-top: 18px;
+  }
+
+  .audience-demographics-breakdowns {
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    border-radius: 16px;
+  }
+
   .audience-demographic-card {
-    padding: 10px;
+    min-height: 0;
+    border-radius: 16px;
+    padding: 20px;
   }
 
   .audience-demographics-breakdowns .audience-demographic-card {
-    padding-block: 6px;
+    padding: 16px 20px;
+  }
+
+  .audience-demographic-card h4 {
+    font-size: clamp(16px, 1.25vw, 20px);
+  }
+
+  .audience-demographic-card > header > span,
+  .audience-demographic-card > footer {
+    font-size: 11px;
   }
 
   .audience-demographic-pie-layout {
-    grid-template-columns: clamp(88px, 7.5vw, 108px) minmax(0, 1fr);
-    gap: 11px;
+    grid-template-columns: clamp(148px, 15vw, 216px) minmax(0, 1fr);
+    gap: clamp(18px, 2vw, 30px);
+    margin-top: 10px;
   }
 
   .audience-demographic-pie {
-    max-width: 108px;
+    max-width: 216px;
+  }
+
+  .audience-demographic-pie-label {
+    font-size: 14px;
+  }
+
+  .audience-demographic-pie-tooltip {
+    grid-template-columns: 10px auto auto;
+    gap: 7px;
+    border-radius: 9px;
+    padding: 7px 9px;
+    font-size: 12px;
   }
 
   .audience-demographic-list {
-    grid-auto-rows: minmax(16px, 1fr);
-    gap-block: 2px;
-    margin-top: 5px;
+    grid-auto-rows: minmax(24px, 1fr);
+    gap-block: 6px;
+    margin-top: 12px;
   }
 
   .audience-demographic-list li {
-    min-height: 16px;
-    font-size: 10px;
-    line-height: 1.15;
+    min-height: 24px;
+    font-size: clamp(12px, 0.95vw, 15px);
+    line-height: 1.25;
   }
 
   .audience-demographic-list strong {
-    font-size: 10px;
+    font-size: clamp(12px, 0.95vw, 15px);
   }
 
   .audience-demographic-card > footer {
-    padding-top: 4px;
+    padding-top: 10px;
   }
 
   .audience-demographic-list img {
-    width: 20px;
-    height: 15px;
+    width: 26px;
+    height: 19.5px;
+  }
+
+  .audience-demographic-card.kind-countries .audience-demographic-list li {
+    grid-template-columns: 26px minmax(60px, 0.82fr) minmax(30px, 1fr) auto;
+    gap: 8px;
+  }
+
+  .audience-demographic-bar {
+    height: 7px;
+  }
+
+  .audience-demographic-pie-legend {
+    gap: 8px;
+  }
+
+  .audience-demographic-pie-legend li {
+    min-height: 24px;
+    grid-template-columns: 12px minmax(0, 1fr) auto;
+    gap: 9px;
+    font-size: clamp(12px, 0.95vw, 15px);
+    line-height: 1.2;
+  }
+
+  .audience-demographic-pie-swatch {
+    width: 12px;
+    height: 12px;
+  }
+
+  .audience-demographic-note {
+    margin-top: 10px;
+    font-size: 11px;
   }
 }
 
@@ -5313,67 +5431,8 @@ a {
     margin-bottom: 8px;
   }
 
-  .audience-explorer {
+  .audience-overview-screen {
     padding: 9px 11px;
-    padding-bottom: 0;
-  }
-
-  .audience-demographics {
-    margin-top: 6px;
-    padding: 8px 10px 10px;
-  }
-
-  .audience-demographics-grid {
-    margin-top: 6px;
-  }
-
-  .audience-demographic-card {
-    padding: 10px;
-  }
-
-  .audience-demographic-list {
-    grid-auto-rows: minmax(14px, 1fr);
-    gap-block: 0;
-    margin-top: 4px;
-  }
-
-  .audience-demographic-list li {
-    min-height: 14px;
-    font-size: 10px;
-    line-height: 1.1;
-  }
-
-  .audience-demographic-list strong {
-    font-size: 10px;
-  }
-
-  .audience-demographic-card > footer {
-    padding-top: 3px;
-  }
-
-  .audience-demographic-pie-layout {
-    grid-template-columns: 84px minmax(0, 1fr);
-    gap: 8px;
-    margin-top: 3px;
-  }
-
-  .audience-demographic-pie {
-    max-width: 84px;
-  }
-
-  .audience-demographic-pie-legend {
-    gap: 1px;
-  }
-
-  .audience-demographic-pie-legend li {
-    min-height: 11px;
-    font-size: 9px;
-    line-height: 1;
-  }
-
-  .audience-demographic-list img {
-    width: 18px;
-    height: 13.5px;
   }
 }
 
@@ -5404,7 +5463,7 @@ a {
     padding-block: 4px;
   }
 
-  .audience-explorer {
+  .audience-overview-screen {
     padding: 8px 10px;
   }
 
@@ -5439,51 +5498,6 @@ a {
     padding-block: 5px;
   }
 
-  .audience-demographics {
-    margin-top: 6px;
-    padding: 8px 10px 9px;
-  }
-
-  .audience-demographics-grid {
-    gap: 8px;
-    margin-top: 6px;
-  }
-
-  .audience-demographic-card {
-    min-height: 138px;
-    padding: 8px;
-  }
-
-  .audience-demographic-card.kind-countries,
-  .audience-demographics-breakdowns {
-    min-height: 174px;
-  }
-
-  .audience-demographics-breakdowns .audience-demographic-card {
-    min-height: 0;
-    padding-block: 5px;
-  }
-
-  .audience-demographic-list {
-    grid-auto-rows: minmax(12px, 1fr);
-    gap-block: 2px;
-    margin-top: 5px;
-  }
-
-  .audience-demographic-list li {
-    min-height: 16px;
-    font-size: 10px;
-    line-height: 1.15;
-  }
-
-  .audience-demographic-list strong {
-    font-size: 10px;
-  }
-
-  .audience-demographic-card > footer {
-    padding-top: 4px;
-  }
-
   .main-dashboard .platform-header {
     margin-bottom: 2px;
     padding-block: 3px;
@@ -5494,14 +5508,12 @@ a {
   }
 
   .audience-dashboard-heading .section-kicker,
-  .audience-explorer-heading .section-kicker,
-  .audience-demographics .section-kicker {
+  .audience-explorer-heading .section-kicker {
     display: none;
   }
 
-  .audience-explorer {
+  .audience-overview-screen {
     padding-block: 6px;
-    padding-bottom: 0;
   }
 
   .audience-explorer-controls,
@@ -5515,90 +5527,6 @@ a {
     padding-block: 4px;
   }
 
-  .audience-demographics {
-    margin-top: 1px;
-    padding-block: 5px 1px;
-  }
-
-  .audience-demographics-grid {
-    margin-top: 3px;
-  }
-
-  .audience-demographic-card {
-    min-height: 132px;
-    padding-block: 6px;
-  }
-
-  .audience-demographic-card.kind-countries,
-  .audience-demographics-breakdowns {
-    min-height: 168px;
-  }
-
-  .audience-demographic-card.kind-countries .audience-demographic-list,
-  .audience-demographic-pie-legend {
-    gap-block: 0;
-  }
-
-  .audience-demographic-card.kind-countries .audience-demographic-list li,
-  .audience-demographic-card.kind-countries .audience-demographic-list strong {
-    min-height: 12px;
-    font-size: 9px;
-    line-height: 1;
-  }
-
-  .audience-demographic-pie-legend li,
-  .audience-demographic-pie-legend strong {
-    min-height: 8px;
-    font-size: 8px;
-    line-height: 1;
-  }
-
-  .audience-demographics-breakdowns .audience-demographic-card > footer {
-    display: none;
-  }
-
-  .audience-demographics-breakdowns .audience-demographic-card > header > span {
-    font-size: 9px;
-  }
-
-  .audience-demographic-note {
-    margin-top: 2px;
-    font-size: 8px;
-    line-height: 1;
-  }
-
-  .audience-demographic-card.kind-countries .audience-demographic-list img {
-    width: 18px;
-    height: 13.5px;
-  }
-
-  .audience-demographic-pie-layout {
-    grid-template-columns: 72px minmax(0, 1fr);
-    gap: 7px;
-    margin-top: 1px;
-  }
-
-  .audience-demographic-pie {
-    max-width: 72px;
-  }
-
-  .audience-demographic-pie::after {
-    inset: 26%;
-  }
-
-  .audience-demographic-pie-label {
-    font-size: 9px;
-  }
-
-  .audience-demographic-pie-legend li {
-    grid-template-columns: 7px minmax(0, 1fr) auto;
-    gap: 4px;
-  }
-
-  .audience-demographic-pie-swatch {
-    width: 7px;
-    height: 7px;
-  }
 }
 
 .history-proof {

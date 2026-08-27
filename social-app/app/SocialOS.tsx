@@ -2290,7 +2290,8 @@ function AudienceAnalyticsExplorer({
       id="audience-explorer"
       aria-label={`Tableau de bord ${meta.label}`}
     >
-      <div className="audience-explorer-controls">
+      <div className="audience-overview-screen">
+        <div className="audience-explorer-controls">
         <div
           className="audience-explorer-platform-tabs"
           role="group"
@@ -2313,9 +2314,9 @@ function AudienceAnalyticsExplorer({
           })}
         </div>
 
-      </div>
+        </div>
 
-      <div className="audience-explorer-summary" aria-label={`Synthèse ${meta.label}`}>
+        <div className="audience-explorer-summary" aria-label={`Synthèse ${meta.label}`}>
         <div className="audience-explorer-summary-kpi">
           <span>Total followers</span>
           <strong>{latestHistory ? formatAudienceFollowers(latestHistory) : "—"}</strong>
@@ -2384,10 +2385,10 @@ function AudienceAnalyticsExplorer({
           </strong>
           <small>{engagementsBasis}</small>
         </div>
-      </div>
+        </div>
 
-      {availableMetrics.length > 0 && activeMetric && activeSummary ? (
-        <>
+        {availableMetrics.length > 0 && activeMetric && activeSummary ? (
+          <>
           <div className="audience-explorer-chart-controls">
             <div
               className="audience-explorer-metrics"
@@ -2436,7 +2437,7 @@ function AudienceAnalyticsExplorer({
           <div className="audience-native-chart-shell">
             <AudienceNativeMetricChart
               key={`${activePlatform}:${activeMetric}:${periodKey}:${endDate}`}
-              bottomReserve={250}
+              bottomReserve={24}
               endDate={endDate}
               metric={activeMetric}
               minimumDate={curveStartDate}
@@ -2458,16 +2459,20 @@ function AudienceAnalyticsExplorer({
             </footer>
           </div>
 
-          <AudienceDemographicsPanel
-            platform={activePlatform}
-            snapshot={demographicPlatform}
-          />
-        </>
-      ) : (
-        <div className="audience-native-empty" role="status">
-          Aucune donnée mesurable sur {periodLabel.toLowerCase()}.
-        </div>
-      )}
+          </>
+        ) : (
+          <div className="audience-native-empty" role="status">
+            Aucune donnée mesurable sur {periodLabel.toLowerCase()}.
+          </div>
+        )}
+      </div>
+
+      {availableMetrics.length > 0 && activeMetric && activeSummary ? (
+        <AudienceDemographicsPanel
+          platform={activePlatform}
+          snapshot={demographicPlatform}
+        />
+      ) : null}
     </section>
   );
 }
@@ -3047,7 +3052,7 @@ function AudienceNativeMetricChart({
       );
       const height = window.innerWidth <= 900
         ? 180
-        : Math.max(120, Math.min(Math.round(window.innerHeight * 0.55), availableHeight));
+        : Math.max(180, Math.min(Math.round(window.innerHeight * 0.72), availableHeight));
       setChartDimensions((current) => (
         current.width === width && current.height === height
           ? current

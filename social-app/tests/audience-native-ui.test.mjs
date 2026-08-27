@@ -185,7 +185,7 @@ test("keeps the audience curve clean and reveals the exact hovered value instant
   assert.match(chart, /const plotTop = 12/);
   assert.match(chart, /const plotBottom = height - 40/);
   assert.match(chart, /bottomReserve/);
-  assert.match(chart, /Math\.max\(120, Math\.min\(Math\.round\(window\.innerHeight \* 0\.55\), availableHeight\)\)/);
+  assert.match(chart, /Math\.max\(180, Math\.min\(Math\.round\(window\.innerHeight \* 0\.72\), availableHeight\)\)/);
   assert.match(styles, /\.main\.main-dashboard\s*\{[\s\S]*?padding-bottom:\s*8px/);
 
   // Les cinq filtres exacts du graphe restent disponibles après l'amélioration du survol.
@@ -208,6 +208,7 @@ test("shows native demographic dimensions below the chart and follows the select
 
   assert.match(explorer, /const demographicPlatform = demographics\?\.platforms\[activePlatform\] \?\? null/);
   assert.match(explorer, /<AudienceDemographicsPanel/);
+  assert.match(explorer, /className="audience-overview-screen"/);
   assert.match(explorer, /snapshot=\{demographicPlatform\}/);
   assert.ok(
     explorer.indexOf("<AudienceDemographicsPanel") > explorer.indexOf("audience-native-chart-shell"),
@@ -260,7 +261,8 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(styles, /\.audience-demographic-pie-tooltip\s*\{[^}]*position:\s*absolute[^}]*background:\s*rgba\(8, 11, 18, 0\.97\)/);
   assert.match(styles, /\.audience-demographic-pie-tooltip\s*\{[^}]*pointer-events:\s*none/);
   assert.match(styles, /\.audience-demographic-pie:focus-visible/);
-  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?grid-template-columns:\s*clamp\(88px, 7\.5vw, 108px\)/);
+  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?grid-template-columns:\s*clamp\(148px, 15vw, 216px\)/);
+  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographics\s*\{[\s\S]*?min-height:\s*calc\(100dvh - 24px\)/);
   assert.match(styles, /\.audience-demographic-pie-legend\s*\{[^}]*display:\s*grid/);
   assert.match(styles, /\.audience-demographic-card\.kind-countries \.audience-demographic-list\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
   assert.doesNotMatch(styles, /\.audience-demographic-card\.kind-countries \.audience-demographic-list\s*\{[^}]*repeat\(2/);
