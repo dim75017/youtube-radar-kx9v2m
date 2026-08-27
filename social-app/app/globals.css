@@ -4579,8 +4579,18 @@ a {
   outline-offset: 2px;
 }
 
-.audience-explorer-metrics {
+.audience-explorer-chart-controls {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   margin-top: 8px;
+}
+
+.audience-explorer-chart-controls .audience-explorer-metrics {
+  flex: 1 1 auto;
+  margin-top: 0;
 }
 
 .audience-explorer-metrics button {
@@ -4621,32 +4631,6 @@ a {
   border-radius: 14px;
   background: rgba(6, 8, 14, 0.46);
   padding: 8px 10px;
-}
-
-.audience-native-chart-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.audience-native-chart-heading span,
-.audience-native-chart-heading small {
-  display: block;
-  color: var(--dim);
-  font-size: 9px;
-  font-weight: 700;
-  line-height: 1.35;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.audience-native-chart-heading h4 {
-  margin: 1px 0 0;
-  color: var(--text);
-  font-family: Sora, Inter, sans-serif;
-  font-size: 12px;
-  line-height: 1.25;
 }
 
 .audience-native-line-chart {
@@ -5143,6 +5127,18 @@ a {
     gap: 4px;
   }
 
+  .audience-explorer-chart-controls {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .audience-explorer-chart-controls .audience-period-control-chart {
+    width: 100%;
+    max-width: 100%;
+    flex-basis: auto;
+  }
+
   .audience-explorer-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-rows: none;
@@ -5202,17 +5198,6 @@ a {
   .audience-explorer-summary-kpi:nth-child(even) {
     border-top: 1px solid rgba(255, 255, 255, 0.07);
     border-left: 0;
-  }
-
-  .audience-native-chart-heading {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .audience-native-chart-heading .audience-period-control {
-    width: 100%;
-    max-width: 100%;
-    flex-basis: auto;
   }
 
   .audience-native-chart-caption {
@@ -5446,7 +5431,7 @@ a {
     padding-block: 5px;
   }
 
-  .audience-explorer-metrics,
+  .audience-explorer-chart-controls,
   .audience-native-chart-shell {
     margin-top: 4px;
   }
@@ -5522,7 +5507,7 @@ a {
 
   .audience-explorer-controls,
   .audience-explorer-summary,
-  .audience-explorer-metrics,
+  .audience-explorer-chart-controls,
   .audience-native-chart-shell {
     margin-top: 3px;
   }
@@ -5616,13 +5601,6 @@ a {
     width: 7px;
     height: 7px;
   }
-}
-
-@media (max-width: 360px) {
-  .audience-native-chart-heading {
-    flex-direction: column;
-  }
-
 }
 
 .history-proof {

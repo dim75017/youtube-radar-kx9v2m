@@ -61,12 +61,12 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(explorer, /periodKey: AudienceChartPeriodKey/);
   assert.match(explorer, /onSelectPeriod: \(period: AudienceChartPeriodKey\) => void/);
   assert.match(explorer, /AUDIENCE_CHART_PERIODS\.find\(\(option\) => option\.key === periodKey\)/);
-  const chartHeading = explorer.slice(
-    explorer.indexOf('className="audience-native-chart-heading"'),
-    explorer.indexOf("<AudienceNativeMetricChart"),
+  const chartControls = explorer.slice(
+    explorer.indexOf('className="audience-explorer-chart-controls"'),
+    explorer.indexOf('className="audience-native-chart-shell"'),
   );
-  assert.match(chartHeading, /audience-period-control-chart/);
-  assert.doesNotMatch(chartHeading, /formatNativeAnalyticsMetric\(activeSummary\.value|<small>\{periodLabel\}<\/small>/);
+  assert.match(chartControls, /audience-explorer-metrics[\s\S]*?audience-period-control-chart/);
+  assert.doesNotMatch(explorer, /audience-native-chart-heading|Évolution quotidienne|Valeur disponible/);
   assert.match(explorer, /aria-label=\{`Métrique du graphique/);
   assert.match(explorer, /availableMetricWindows\.map/);
   assert.match(explorer, /aria-pressed=\{metric === activeMetric\}/);
@@ -119,6 +119,8 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(styles, /\.audience-period-control-chart\s*\{[\s\S]*?max-width:\s*min\(100%, 470px\)/);
   assert.match(styles, /\.audience-period-tabs/);
   assert.match(styles, /\.audience-explorer-platform-tabs/);
+  assert.match(styles, /\.audience-explorer-chart-controls\s*\{[\s\S]*?display:\s*flex[\s\S]*?justify-content:\s*space-between/);
+  assert.doesNotMatch(styles, /\.audience-native-chart-heading/);
   assert.match(styles, /\.audience-explorer-summary\s*\{[\s\S]*?grid-template-columns:\s*minmax\(140px, 1\.15fr\) repeat\(6, minmax\(82px, 0\.82fr\)\)/);
   assert.match(styles, /@media \(min-width: 901px\) and \(max-width: 1080px\)[\s\S]*?grid-template-columns:\s*minmax\(105px, 1\.05fr\) repeat\(6, minmax\(64px, 0\.82fr\)\)/);
   assert.match(styles, /\.audience-explorer-summary-kpi\s*\{/);

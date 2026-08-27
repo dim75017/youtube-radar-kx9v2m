@@ -2236,7 +2236,6 @@ function AudienceAnalyticsExplorer({
   const endDate = activeWindow?.endDate ?? audienceParisDay(generatedAt);
   const activeSeries = activeWindow?.series ?? [];
   const activeSummary = activeWindow?.summary ?? null;
-  const activeMeta = activeMetric ? NATIVE_ANALYTICS_METRIC_META[activeMetric] : null;
   const engagement = calculatePlatformEngagementWindow(
     activePlatform,
     posts,
@@ -2408,59 +2407,54 @@ function AudienceAnalyticsExplorer({
         </div>
       </div>
 
-      {availableMetrics.length > 0 && activeMetric && activeMeta && activeSummary ? (
+      {availableMetrics.length > 0 && activeMetric && activeSummary ? (
         <>
-          <div
-            className="audience-explorer-metrics"
-            role="group"
-            aria-label={`Métrique du graphique ${meta.label}`}
-          >
-            {availableMetricWindows.map((metricWindow) => {
-              const { metric, summary } = metricWindow;
-              const metricMeta = NATIVE_ANALYTICS_METRIC_META[metric];
-              if (!summary) return null;
-              return (
-                <button
-                  className={metric === activeMetric ? "active" : ""}
-                  type="button"
-                  aria-pressed={metric === activeMetric}
-                  title={metricMeta.description}
-                  onClick={() => onSelectMetric(metric)}
-                  key={metric}
-                >
-                  <span>{metricMeta.label}</span>
-                </button>
-              );
-            })}
+          <div className="audience-explorer-chart-controls">
+            <div
+              className="audience-explorer-metrics"
+              role="group"
+              aria-label={`Métrique du graphique ${meta.label}`}
+            >
+              {availableMetricWindows.map((metricWindow) => {
+                const { metric, summary } = metricWindow;
+                const metricMeta = NATIVE_ANALYTICS_METRIC_META[metric];
+                if (!summary) return null;
+                return (
+                  <button
+                    className={metric === activeMetric ? "active" : ""}
+                    type="button"
+                    aria-pressed={metric === activeMetric}
+                    title={metricMeta.description}
+                    onClick={() => onSelectMetric(metric)}
+                    key={metric}
+                  >
+                    <span>{metricMeta.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div
+              className="audience-period-control audience-period-control-chart"
+              role="group"
+              aria-label="Période du tableau de bord"
+            >
+              <div className="audience-period-tabs">
+                {AUDIENCE_CHART_PERIODS.map((option) => (
+                  <button
+                    className={option.key === periodKey ? "active" : ""}
+                    type="button"
+                    aria-pressed={option.key === periodKey}
+                    onClick={() => onSelectPeriod(option.key)}
+                    key={option.key}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="audience-native-chart-shell">
-            <header className="audience-native-chart-heading">
-              <div>
-                <span>{activeSeries.length > 1 ? "Évolution quotidienne" : "Valeur disponible"}</span>
-                <h4>{meta.label} · {activeMeta.label}</h4>
-              </div>
-              <div
-                className="audience-period-control audience-period-control-chart"
-                role="group"
-                aria-label="Période du tableau de bord"
-              >
-                <div className="audience-period-tabs">
-                  {AUDIENCE_CHART_PERIODS.map((option) => (
-                    <button
-                      className={option.key === periodKey ? "active" : ""}
-                      type="button"
-                      aria-pressed={option.key === periodKey}
-                      onClick={() => onSelectPeriod(option.key)}
-                      key={option.key}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </header>
-
             <AudienceNativeMetricChart
               key={`${activePlatform}:${activeMetric}:${periodKey}:${endDate}`}
               bottomReserve={250}

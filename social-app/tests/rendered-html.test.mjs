@@ -143,7 +143,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(component, /initialCommentOpportunityFeed/);
   assert.match(component, /CommentOpportunitiesView/);
   assert.match(component, /Total followers/);
-  assert.match(component, /Évolution/);
+  assert.doesNotMatch(component, /Évolution quotidienne/);
   assert.match(component, /Taux d’engagement/);
   const audienceDashboard = component.slice(
     component.indexOf("function AudienceDashboard"),
@@ -599,7 +599,9 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(styles, /\.audience-period-tabs\s*\{/);
   assert.doesNotMatch(styles, /\.audience-explorer-profile-logo(?:\s|\.)/);
   assert.match(styles, /\.audience-explorer-platform-tabs/);
+  assert.match(styles, /\.audience-explorer-chart-controls\s*\{/);
   assert.match(styles, /\.audience-explorer-metrics/);
+  assert.doesNotMatch(styles, /\.audience-native-chart-heading/);
   assert.match(styles, /\.audience-native-chart-viewport\s*\{[\s\S]*?overflow-x:\s*auto/);
   assert.match(styles, /\.audience-native-chart-viewport svg\s*\{[\s\S]*?min-width:\s*700px/);
   assert.match(styles, /\.audience-native-chart-grid text,[\s\S]*?font-size:\s*13px/);
