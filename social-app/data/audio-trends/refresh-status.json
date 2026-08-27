@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "attemptedAt": "2026-08-27T06:47:59.186Z",
+  "attemptedAt": "2026-08-27T16:35:58.443Z",
   "status": "failed",
   "published": false,
   "inventory": {
@@ -14,7 +14,7 @@
     "publishable": true
   },
   "discoveryAudit": {
-    "scannedAt": "2026-08-27T06:47:59.186Z",
+    "scannedAt": "2026-08-27T16:35:58.443Z",
     "status": "incomplete",
     "complete": false,
     "candidateCount": 164,
