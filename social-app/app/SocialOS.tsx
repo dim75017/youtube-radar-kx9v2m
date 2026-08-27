@@ -2664,6 +2664,10 @@ const AUDIENCE_DEMOGRAPHIC_PIE_FALLBACKS = [
   "#d55e00",
 ];
 
+const AUDIENCE_DEMOGRAPHIC_PIE_RADIUS = 37.5;
+const AUDIENCE_DEMOGRAPHIC_PIE_STROKE_WIDTH = 25;
+const AUDIENCE_DEMOGRAPHIC_PIE_SEPARATOR_FRACTION = 0.0028;
+
 type AudienceDemographicPieSlice = {
   key: string;
   label: string;
@@ -2727,9 +2731,6 @@ function AudienceDemographicCard({
     ? visibleEntries.filter((entry) => !entry.reported).length
     : 0;
   const usesMerged55Plus = kind === "ages" && visibleEntries.some((entry) => entry.key === "age_55_plus");
-  const pieGradient = kind === "countries"
-    ? null
-    : audienceDemographicPieGradient(visibleEntries);
   const pieSlices = kind === "countries"
     ? []
     : audienceDemographicPieSlices(visibleEntries);
@@ -2779,7 +2780,6 @@ function AudienceDemographicCard({
                 role="img"
                 aria-label={pieAriaLabel}
                 aria-describedby={pieTooltipEntry ? pieTooltipId : undefined}
-                style={{ background: pieGradient ?? undefined }}
                 tabIndex={pieSlices.length > 0 ? 0 : undefined}
                 onFocus={() => {
                   const firstSlice = pieSlices[0];
@@ -2801,6 +2801,42 @@ function AudienceDemographicCard({
                 }}
                 onPointerLeave={() => setPieTooltip(null)}
               >
+                <svg
+                  className="audience-demographic-pie-svg"
+                  viewBox="0 0 100 100"
+                  aria-hidden="true"
+                  focusable="false"
+                  shapeRendering="geometricPrecision"
+                >
+                  <circle
+                    className="audience-demographic-pie-track"
+                    cx="50"
+                    cy="50"
+                    r={AUDIENCE_DEMOGRAPHIC_PIE_RADIUS}
+                    fill="none"
+                    strokeWidth={AUDIENCE_DEMOGRAPHIC_PIE_STROKE_WIDTH}
+                  />
+                  {pieSlices.map((slice) => {
+                    const stroke = audienceDemographicPieStrokeGeometry(slice, pieSlices.length);
+                    return (
+                      <circle
+                        className="audience-demographic-pie-slice"
+                        cx="50"
+                        cy="50"
+                        r={AUDIENCE_DEMOGRAPHIC_PIE_RADIUS}
+                        fill="none"
+                        pathLength="1"
+                        stroke={slice.color}
+                        strokeDasharray={stroke.dashArray}
+                        strokeDashoffset={stroke.dashOffset}
+                        strokeLinecap="butt"
+                        strokeWidth={AUDIENCE_DEMOGRAPHIC_PIE_STROKE_WIDTH}
+                        transform="rotate(-90 50 50)"
+                        key={slice.key}
+                      />
+                    );
+                  })}
+                </svg>
                 <span className="audience-demographic-pie-label">
                   {kind === "ages" ? "Âge" : "Genre"}
                 </span>
@@ -2932,38 +2968,19 @@ function audienceDemographicPieSliceAtPoint(
     ?? null;
 }
 
-function audienceDemographicPieGradient(
-  entries: ReadonlyArray<{ key: string; share: number | null }>,
+function audienceDemographicPieStrokeGeometry(
+  slice: AudienceDemographicPieSlice,
+  sliceCount: number,
 ) {
-  const slices = entries.flatMap((entry, index) => (
-    entry.share !== null && entry.share > 0
-      ? [{
-          key: entry.key,
-          share: entry.share,
-          color: audienceDemographicPieColor(entry.key, index),
-        }]
-      : []
-  ));
-  const total = slices.reduce((sum, entry) => sum + entry.share, 0);
-  if (total <= 0) return "conic-gradient(rgba(255, 255, 255, 0.08) 0 100%)";
-  if (slices.length === 1) return `conic-gradient(${slices[0].color} 0 100%)`;
-
-  let start = 0;
-  const separator = "#080b12";
-  const stops = slices.flatMap((entry) => {
-    const end = start + (entry.share / total) * 100;
-    const gap = Math.min(0.48, (end - start) * 0.18);
-    const colorStart = start + gap / 2;
-    const colorEnd = end - gap / 2;
-    const sliceStops = [
-      `${separator} ${start.toFixed(3)}% ${colorStart.toFixed(3)}%`,
-      `${entry.color} ${colorStart.toFixed(3)}% ${colorEnd.toFixed(3)}%`,
-      `${separator} ${colorEnd.toFixed(3)}% ${end.toFixed(3)}%`,
-    ];
-    start = end;
-    return sliceStops;
-  });
-  return `conic-gradient(${stops.join(", ")})`;
+  const span = Math.max(0, slice.end - slice.start);
+  const gap = sliceCount > 1
+    ? Math.min(AUDIENCE_DEMOGRAPHIC_PIE_SEPARATOR_FRACTION, span * 0.18)
+    : 0;
+  const visibleSpan = Math.max(0, span - gap);
+  return {
+    dashArray: `${visibleSpan} ${Math.max(0, 1 - visibleSpan)}`,
+    dashOffset: -(slice.start + gap / 2),
+  };
 }
 
 function audienceMetricSeries(
