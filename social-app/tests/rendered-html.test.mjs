@@ -158,7 +158,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.equal((audienceDashboard.match(/aria-label="Plateforme du graphique"/g) ?? []).length, 1);
   assert.equal((audienceDashboard.match(/className="audience-explorer-platform-tabs"/g) ?? []).length, 1);
   assert.match(audienceDashboard, /className="audience-explorer-summary"/);
-  assert.match(audienceDashboard, /className="audience-explorer-profile"/);
+  assert.doesNotMatch(audienceDashboard, /className="audience-explorer-profile"/);
   assert.equal((audienceDashboard.match(/className="audience-explorer-summary-kpi"/g) ?? []).length, 6);
   assert.match(audienceDashboard, /Nouveaux followers/);
   assert.match(audienceDashboard, /Vues \/ impressions/);
@@ -168,8 +168,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.doesNotMatch(audienceDashboard, /Analyse détaillée|Une seule courbe, toutes les données/);
   assert.match(audienceDashboard, /className="audience-demographics-breakdowns" role="group" aria-label="Âge et genre"/);
   assert.match(audienceDashboard, /calculatePlatformEngagementWindow\([\s\S]*?periodDays/);
-  assert.match(audienceDashboard, /useState<string \| null>\(null\)/);
-  assert.match(audienceDashboard, /setClientNow\(new Date\(\)\.toISOString\(\)\)/);
+  assert.doesNotMatch(audienceDashboard, /clientNow|setClientNow|refreshClock/);
   assert.doesNotMatch(audienceDashboard, /Collecte planifiée/);
   assert.match(audienceDashboard, /audience-period-control/);
   assert.match(audienceDashboard, /audience-period-tabs/);
@@ -179,7 +178,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     audienceDashboard,
     /audiencePointsForPeriod\([\s\S]*?periodDays/,
   );
-  assert.match(audienceDashboard, /formatAudienceAge\(latestAgeDays\)/);
+  assert.doesNotMatch(audienceDashboard, /formatAudienceAge|latestAgeDays/);
   assert.match(audienceDashboard, /<AudienceAnalyticsExplorer[\s\S]*?periodKey=\{periodKey\}/);
   assert.doesNotMatch(audienceDashboard, /Période du graphique|audience-chart-period-tabs|setChartPeriodKey/);
   assert.doesNotMatch(audienceDashboard, /<AudienceGrowthChart/);
@@ -597,7 +596,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(styles, /\.audience-period-control\s*\{/);
   assert.match(styles, /\.audience-period-control-chart\s*\{/);
   assert.match(styles, /\.audience-period-tabs\s*\{/);
-  assert.doesNotMatch(styles, /\.audience-explorer-profile-logo(?:\s|\.)/);
+  assert.doesNotMatch(styles, /\.audience-explorer-profile/);
   assert.match(styles, /\.audience-explorer-platform-tabs/);
   assert.match(styles, /\.audience-explorer-chart-controls\s*\{/);
   assert.match(styles, /\.audience-explorer-metrics/);

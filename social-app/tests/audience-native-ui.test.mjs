@@ -83,8 +83,8 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.doesNotMatch(dashboard, /audience-platform-grid|audience-platform-card/);
   assert.doesNotMatch(dashboard, /Collecte planifiée/);
   assert.match(explorer, /className="audience-explorer-summary"/);
-  assert.match(explorer, /className="audience-explorer-profile"/);
-  assert.doesNotMatch(explorer, /audience-explorer-profile-logo/);
+  assert.doesNotMatch(explorer, /audience-explorer-profile/);
+  assert.doesNotMatch(explorer, /@\{activePlatform === "youtube"|formatAudienceAge/);
   assert.doesNotMatch(explorer, /<img src=\{`platforms\/\$\{activePlatform\}\.svg`\}/);
   assert.equal((explorer.match(/className="audience-explorer-summary-kpi"/g) ?? []).length, 6);
   assert.match(explorer, /Total followers/);
@@ -121,8 +121,9 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(styles, /\.audience-explorer-platform-tabs/);
   assert.match(styles, /\.audience-explorer-chart-controls\s*\{[\s\S]*?display:\s*flex[\s\S]*?justify-content:\s*space-between/);
   assert.doesNotMatch(styles, /\.audience-native-chart-heading/);
-  assert.match(styles, /\.audience-explorer-summary\s*\{[\s\S]*?grid-template-columns:\s*minmax\(140px, 1\.15fr\) repeat\(6, minmax\(82px, 0\.82fr\)\)/);
-  assert.match(styles, /@media \(min-width: 901px\) and \(max-width: 1080px\)[\s\S]*?grid-template-columns:\s*minmax\(105px, 1\.05fr\) repeat\(6, minmax\(64px, 0\.82fr\)\)/);
+  assert.match(styles, /\.audience-explorer-summary\s*\{[\s\S]*?grid-template-columns:\s*repeat\(6, minmax\(82px, 1fr\)\)/);
+  assert.match(styles, /@media \(min-width: 901px\) and \(max-width: 1080px\)[\s\S]*?grid-template-columns:\s*repeat\(6, minmax\(64px, 1fr\)\)/);
+  assert.doesNotMatch(styles, /\.audience-explorer-profile/);
   assert.match(styles, /\.audience-explorer-summary-kpi\s*\{/);
   assert.match(styles, /\.audience-explorer-metrics/);
   assert.match(styles, /\.audience-native-chart-empty,[\s\S]*?min-height:\s*150px/);

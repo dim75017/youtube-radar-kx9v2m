@@ -1894,18 +1894,10 @@ function AudienceDashboard({
   const [requestedMetric, setRequestedMetric] = useState<AudienceAnalyticsMetricKey>(
     NATIVE_ANALYTICS_DEFAULT_METRIC.youtube,
   );
-  const [clientNow, setClientNow] = useState<string | null>(null);
 
   const selectAudiencePlatform = useCallback((platform: Platform) => {
     setActivePlatform(platform);
     setRequestedMetric(NATIVE_ANALYTICS_DEFAULT_METRIC[platform]);
-  }, []);
-
-  useEffect(() => {
-    const refreshClock = () => setClientNow(new Date().toISOString());
-    refreshClock();
-    const interval = window.setInterval(refreshClock, 60 * 60 * 1_000);
-    return () => window.clearInterval(interval);
   }, []);
 
   return (
@@ -1922,7 +1914,6 @@ function AudienceDashboard({
       <AudienceAnalyticsExplorer
         activePlatform={activePlatform}
         analytics={analytics}
-        clientNow={clientNow}
         demographics={demographics}
         history={history}
         onSelectMetric={setRequestedMetric}
@@ -2117,7 +2108,6 @@ type AudienceMetricSeriesPoint = {
 function AudienceAnalyticsExplorer({
   activePlatform,
   analytics,
-  clientNow,
   demographics,
   history,
   onSelectMetric,
@@ -2129,7 +2119,6 @@ function AudienceAnalyticsExplorer({
 }: {
   activePlatform: Platform;
   analytics: AudienceAnalytics | null;
-  clientNow: string | null;
   demographics: AudienceDemographics | null;
   history: AudienceHistory | null;
   onSelectMetric: (metric: AudienceAnalyticsMetricKey) => void;
@@ -2284,9 +2273,6 @@ function AudienceAnalyticsExplorer({
     : engagementsValue !== null
       ? `Likes + commentaires + partages · ${periodLabel}`
       : "Non fourni";
-  const latestAgeDays = latestHistory
-    ? elapsedCalendarDays(latestHistory.capturedAt, clientNow ?? generatedAt)
-    : null;
 
   return (
     <section
@@ -2320,23 +2306,6 @@ function AudienceAnalyticsExplorer({
       </div>
 
       <div className="audience-explorer-summary" aria-label={`Synthèse ${meta.label}`}>
-        <div className="audience-explorer-profile">
-          <div>
-            <span className="section-kicker">
-              @{activePlatform === "youtube" ? "LofiGirl" : "lofigirl"}
-            </span>
-            <h3>{meta.label}</h3>
-          </div>
-          <time
-            className={latestAgeDays !== null && latestAgeDays > 1 ? "stale" : ""}
-            dateTime={latestHistory?.capturedAt}
-          >
-            {latestHistory
-              ? `${formatAudienceDate(latestHistory.capturedAt)} · ${formatAudienceAge(latestAgeDays)}`
-              : "En attente"}
-          </time>
-        </div>
-
         <div className="audience-explorer-summary-kpi">
           <span>Total followers</span>
           <strong>{latestHistory ? formatAudienceFollowers(latestHistory) : "—"}</strong>
@@ -3363,13 +3332,6 @@ function audienceParisDay(value: string) {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date(value));
-}
-
-function formatAudienceAge(days: number | null) {
-  if (days === null) return "âge indisponible";
-  if (days === 0) return "aujourd’hui";
-  if (days === 1) return "hier";
-  return `il y a ${days} j`;
 }
 
 function formatAudienceSeriesValue(

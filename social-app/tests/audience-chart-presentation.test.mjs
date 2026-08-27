@@ -51,7 +51,7 @@ test("keeps follower values integral and fits the chart inside the remaining vie
   assert.match(styles, /\.audience-period-control-chart \.audience-period-tabs button\s*\{[\s\S]*?min-width:\s*74px[\s\S]*?font-size:\s*11px/);
   assert.match(styles, /\.audience-explorer-chart-controls\s*\{[\s\S]*?align-items:\s*center[\s\S]*?justify-content:\s*space-between/);
   assert.match(styles, /\.audience-dashboard-toolbar\s*\{[\s\S]*?margin-bottom:\s*12px/);
-  assert.match(styles, /\.audience-explorer-summary\s*\{[\s\S]*?grid-template-columns:\s*minmax\(140px, 1\.15fr\) repeat\(6, minmax\(82px, 0\.82fr\)\)/);
+  assert.match(styles, /\.audience-explorer-summary\s*\{[\s\S]*?grid-template-columns:\s*repeat\(6, minmax\(82px, 1fr\)\)/);
   assert.match(styles, /\.audience-explorer\s*\{[\s\S]*?margin-top:\s*0[\s\S]*?padding:\s*12px 14px/);
   assert.match(styles, /\.audience-native-chart-shell\s*\{[\s\S]*?margin-top:\s*8px/);
   assert.match(styles, /\.audience-demographics\s*\{[\s\S]*?margin-top:\s*14px[\s\S]*?padding:\s*14px 16px 16px/);
@@ -107,7 +107,7 @@ test("syncs the single platform selector with the active account summary and fol
   assert.match(explorer, /className="audience-explorer-chart-controls"[\s\S]*?className="audience-explorer-metrics"[\s\S]*?className="audience-period-control audience-period-control-chart"/);
   assert.doesNotMatch(explorer, /audience-native-chart-heading|Évolution quotidienne|Valeur disponible/);
   assert.match(explorer, /className="audience-explorer-summary"/);
-  assert.match(explorer, /className="audience-explorer-profile"/);
+  assert.doesNotMatch(explorer, /className="audience-explorer-profile"/);
   assert.equal((explorer.match(/className="audience-explorer-summary-kpi"/g) ?? []).length, 6);
   assert.match(explorer, /<span>Nouveaux followers<\/span>/);
   assert.match(explorer, /<span>Vues \/ impressions<\/span>/);

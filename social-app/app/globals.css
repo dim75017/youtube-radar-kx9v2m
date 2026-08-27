@@ -4435,7 +4435,7 @@ a {
 .audience-explorer-summary {
   display: grid;
   min-width: 0;
-  grid-template-columns: minmax(140px, 1.15fr) repeat(6, minmax(82px, 0.82fr));
+  grid-template-columns: repeat(6, minmax(82px, 1fr));
   grid-template-rows: minmax(58px, auto);
   align-items: stretch;
   margin-top: 8px;
@@ -4447,47 +4447,6 @@ a {
     rgba(7, 9, 16, 0.5);
 }
 
-.audience-explorer-profile {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 2px;
-  padding: 9px 11px;
-}
-
-.audience-explorer-profile .section-kicker {
-  margin: 0 0 1px;
-  color: #fff;
-  font-size: 9px;
-  letter-spacing: 0.09em;
-  text-transform: none;
-}
-
-.audience-explorer-profile h3 {
-  margin: 0;
-  color: #fff;
-  font-family: Sora, Inter, sans-serif;
-  font-size: 14px;
-  letter-spacing: -0.025em;
-  line-height: 1.15;
-}
-
-.audience-explorer-profile time {
-  overflow: hidden;
-  color: #fff;
-  font-size: 9px;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.audience-explorer-profile time.stale {
-  color: #fff;
-}
-
 .audience-explorer-summary-kpi {
   display: flex;
   min-width: 0;
@@ -4495,6 +4454,10 @@ a {
   justify-content: center;
   border-left: 1px solid rgba(255, 255, 255, 0.07);
   padding: 8px 11px;
+}
+
+.audience-explorer-summary-kpi:first-child {
+  border-left: 0;
 }
 
 .audience-explorer-summary-kpi > span,
@@ -5144,16 +5107,16 @@ a {
     grid-template-rows: none;
   }
 
-  .audience-explorer-profile {
-    grid-column: 1 / -1;
-  }
-
   .audience-explorer-summary-kpi {
     border-top: 1px solid rgba(255, 255, 255, 0.07);
   }
 
-  .audience-explorer-summary-kpi:nth-child(even) {
+  .audience-explorer-summary-kpi:nth-child(odd) {
     border-left: 0;
+  }
+
+  .audience-explorer-summary-kpi:nth-child(-n + 2) {
+    border-top: 0;
   }
 
   .audience-demographics-grid {
@@ -5238,7 +5201,7 @@ a {
   }
 
   .audience-explorer-summary {
-    grid-template-columns: minmax(140px, 1.15fr) repeat(6, minmax(82px, 0.82fr));
+    grid-template-columns: repeat(6, minmax(82px, 1fr));
   }
 
   .audience-demographic-card {
@@ -5286,10 +5249,9 @@ a {
 
 @media (min-width: 901px) and (max-width: 1080px) {
   .audience-explorer-summary {
-    grid-template-columns: minmax(105px, 1.05fr) repeat(6, minmax(64px, 0.82fr));
+    grid-template-columns: repeat(6, minmax(64px, 1fr));
   }
 
-  .audience-explorer-profile,
   .audience-explorer-summary-kpi {
     padding-inline: 7px;
   }
@@ -5426,7 +5388,6 @@ a {
     margin-top: 4px;
   }
 
-  .audience-explorer-profile,
   .audience-explorer-summary-kpi {
     padding-block: 5px;
   }
@@ -5512,7 +5473,6 @@ a {
     margin-top: 3px;
   }
 
-  .audience-explorer-profile,
   .audience-explorer-summary-kpi {
     padding-block: 4px;
   }
