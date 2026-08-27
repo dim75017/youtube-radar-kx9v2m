@@ -111,6 +111,13 @@ type IdeaStatusFilter = "all" | "pending" | IdeaDecision;
 type PostSort = "popular" | "recent";
 type TrendPlatformFilter = TrendPlatform | "all";
 
+type FilterDropdownOption<Key extends string> = {
+  key: Key;
+  emoji: string;
+  label: string;
+  count?: number;
+};
+
 type MetricSnapshot = {
   captured_at: string;
   views: number | null;
@@ -255,6 +262,11 @@ const DEFAULT_FORMAT_FILTER: Record<Platform, SocialFormatFilter> = {
   x: "static",
 };
 
+const TOP_SORT_OPTIONS: readonly FilterDropdownOption<PostSort>[] = [
+  { key: "popular", emoji: "🏆", label: "Plus populaire" },
+  { key: "recent", emoji: "🗓️", label: "Plus récent" },
+];
+
 const TREND_PLATFORM_FILTERS: Array<{
   key: TrendPlatformFilter;
   emoji: string;
@@ -294,6 +306,128 @@ const TREND_TONE_META: Record<TrendTone, { emoji: string; label: string }> = {
 
 function categoryFilters(platform: Platform) {
   return getFormatFilters(platform).filter((filter) => filter.key !== "all");
+}
+
+function FilterDropdown<Key extends string>({
+  id,
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: Key;
+  options: readonly FilterDropdownOption<Key>[];
+  onChange: (value: Key) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const selected = options.find((option) => option.key === value) ?? options[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  if (!selected) return null;
+  const listboxId = `${id}-options`;
+
+  return (
+    <div className={`top-filter-dropdown ${open ? "is-open" : ""}`} ref={containerRef}>
+      <span className="section-kicker">{label}</span>
+      <button
+        aria-controls={listboxId}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label={`${label} : ${selected.label}`}
+        className="top-filter-dropdown-trigger"
+        onClick={() => setOpen((current) => !current)}
+        onKeyDown={(event) => {
+          if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+          const focusLast = event.key === "ArrowUp";
+          event.preventDefault();
+          setOpen(true);
+          requestAnimationFrame(() => {
+            const items = menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="option"]');
+            items?.[focusLast ? items.length - 1 : 0]?.focus();
+          });
+        }}
+        ref={triggerRef}
+        type="button"
+      >
+        <span className="top-filter-dropdown-value">
+          <span aria-hidden="true">{selected.emoji}</span>
+          <span>{selected.label}</span>
+          {selected.count !== undefined ? (
+            <span className="top-filter-dropdown-count">{formatNumber(selected.count)}</span>
+          ) : null}
+        </span>
+        <span aria-hidden="true" className="top-filter-dropdown-caret">⌄</span>
+      </button>
+
+      {open ? (
+        <div
+          aria-label={label}
+          className="top-filter-dropdown-menu"
+          id={listboxId}
+          onKeyDown={(event) => {
+            const items = Array.from(
+              event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="option"]'),
+            );
+            if (!items.length) return;
+            const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
+            let nextIndex = currentIndex;
+            if (event.key === "ArrowDown") nextIndex = (currentIndex + 1) % items.length;
+            else if (event.key === "ArrowUp") nextIndex = (currentIndex - 1 + items.length) % items.length;
+            else if (event.key === "Home") nextIndex = 0;
+            else if (event.key === "End") nextIndex = items.length - 1;
+            else return;
+            event.preventDefault();
+            items[nextIndex]?.focus();
+          }}
+          ref={menuRef}
+          role="listbox"
+        >
+          {options.map((option) => (
+            <button
+              aria-selected={option.key === value}
+              className={option.key === value ? "active" : ""}
+              key={option.key}
+              onClick={() => {
+                onChange(option.key);
+                setOpen(false);
+                triggerRef.current?.focus();
+              }}
+              role="option"
+              type="button"
+            >
+              <span aria-hidden="true">{option.emoji}</span>
+              <span>{option.label}</span>
+              {option.count !== undefined ? (
+                <span className="top-filter-dropdown-count">{formatNumber(option.count)}</span>
+              ) : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function formatNumber(value: number | null | undefined) {
@@ -1574,48 +1708,26 @@ export function SocialOS({
               className={`top-ranking-controls tone-${PLATFORM_META[topPlatform].tone}`}
               aria-label="Contrôles du classement"
             >
-              <div className="top-duration-control-row">
-                <span className="section-kicker">Durée</span>
-                <div
-                  className="format-filter-tabs top-duration-tabs"
-                  aria-label="Filtrer le classement par durée"
-                >
-                  {SOCIAL_DURATION_FILTERS.map((option) => (
-                    <button
-                      className={topDuration === option.key ? "active" : ""}
-                      type="button"
-                      aria-pressed={topDuration === option.key}
-                      onClick={() => setTopDuration(option.key)}
-                      key={option.key}
-                    >
-                      {option.emoji} {option.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="top-sort-control-row">
-                <span className="section-kicker">Trier</span>
-                <div className="format-filter-tabs top-sort-tabs" role="group" aria-label="Trier les publications">
-                  <button className={topSort === "popular" ? "active" : ""} type="button" aria-pressed={topSort === "popular"} onClick={() => setTopSort("popular")}>
-                    🏆 Plus populaire
-                  </button>
-                  <button className={topSort === "recent" ? "active" : ""} type="button" aria-pressed={topSort === "recent"} onClick={() => setTopSort("recent")}>
-                    🗓️ Plus récent
-                  </button>
-                </div>
-              </div>
-
-              <div className="top-format-control-row">
-                <span className="section-kicker">
-                  Catégories {PLATFORM_META[topPlatform].label}
-                </span>
-                <div
-                  className="format-filter-tabs top-format-tabs"
-                  role="group"
-                  aria-label={`Catégories ${PLATFORM_META[topPlatform].label}`}
-                >
-                  {categoryFilters(topPlatform).map((filter) => {
+              <div className="top-ranking-dropdowns">
+                <FilterDropdown
+                  id="top-duration-filter"
+                  label="Durée"
+                  onChange={setTopDuration}
+                  options={SOCIAL_DURATION_FILTERS}
+                  value={topDuration}
+                />
+                <FilterDropdown
+                  id="top-sort-filter"
+                  label="Trier"
+                  onChange={setTopSort}
+                  options={TOP_SORT_OPTIONS}
+                  value={topSort}
+                />
+                <FilterDropdown
+                  id="top-format-filter"
+                  label={`Catégories ${PLATFORM_META[topPlatform].label}`}
+                  onChange={setTopFormatFilter}
+                  options={categoryFilters(topPlatform).map((filter) => {
                     const loadedCount = topPlatformPosts.filter((post) =>
                       matchesSocialFormatFilter(post, filter.key),
                     ).length;
@@ -1623,19 +1735,10 @@ export function SocialOS({
                       topPlatformPending && topDuration === "all"
                         ? publicFormatCounts?.[topPlatform]?.[filter.key] ?? loadedCount
                         : loadedCount;
-                    return (
-                      <button
-                        className={topFormatFilter === filter.key ? "active" : ""}
-                        type="button"
-                        aria-pressed={topFormatFilter === filter.key}
-                        onClick={() => setTopFormatFilter(filter.key)}
-                        key={filter.key}
-                      >
-                        {filter.emoji} {filter.label} <span>{count}</span>
-                      </button>
-                    );
+                    return { ...filter, count };
                   })}
-                </div>
+                  value={topFormatFilter}
+                />
               </div>
 
               {topUndatedCount > 0 ? (

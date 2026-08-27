@@ -543,6 +543,31 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     component.indexOf('{workspace && view === "top"'),
     component.indexOf('{workspace && view === "all"'),
   );
+  assert.equal((topRankingView.match(/<FilterDropdown/g) ?? []).length, 3);
+  assert.match(topRankingView, /id="top-duration-filter"[\s\S]*?label="Durée"/);
+  assert.match(topRankingView, /id="top-sort-filter"[\s\S]*?label="Trier"/);
+  assert.match(topRankingView, /id="top-format-filter"[\s\S]*?label=\{`Catégories \$\{PLATFORM_META\[topPlatform\]\.label\}`\}/);
+  assert.doesNotMatch(topRankingView, /top-duration-tabs|top-sort-tabs|top-format-tabs/);
+  assert.match(component, /aria-haspopup="listbox"/);
+  assert.match(component, /aria-expanded=\{open\}/);
+  assert.match(component, /role="listbox"/);
+  assert.match(component, /role="option"/);
+  assert.match(component, /document\.addEventListener\("pointerdown"/);
+  assert.match(component, /event\.key !== "ArrowDown" && event\.key !== "ArrowUp"/);
+  assert.match(component, /event\.key === "Home"[\s\S]*?event\.key === "End"/);
+  assert.match(component, /\{selected\.emoji\}/);
+  assert.match(component, /\{option\.emoji\}/);
+  assert.match(durations, /📅[\s\S]*?🗓️[\s\S]*?🌗[\s\S]*?📆[\s\S]*?♾️/);
+  assert.match(component, /🏆[\s\S]*?Plus populaire[\s\S]*?🗓️[\s\S]*?Plus récent/);
+  assert.match(formats, /label: "Shorts", emoji: "🎬"/);
+  assert.match(formats, /label: "Communauté · image", emoji: "🖼️"/);
+  assert.match(formats, /label: "Sondages", emoji: "🗳️"/);
+  assert.match(formats, /label: "Texte", emoji: "✍️"/);
+  assert.match(formats, /label: "Commentaires", emoji: "💭"/);
+  assert.match(styles, /\.top-ranking-dropdowns\s*\{[\s\S]*?grid-template-columns:[^;]*1\.35fr/);
+  assert.match(styles, /\.top-filter-dropdown-trigger\s*\{[\s\S]*?border-radius:\s*14px/);
+  assert.match(styles, /\.top-filter-dropdown-menu\s*\{[\s\S]*?border-radius:\s*16px/);
+  assert.match(styles, /\.top-filter-dropdown-menu button\s*\{[\s\S]*?border-radius:\s*11px/);
   const rankingControlsStart = topRankingView.indexOf("top-ranking-controls");
   const rankingControlsEnd = topRankingView.indexOf("</section>", rankingControlsStart);
   const categoryResultsStart = topRankingView.indexOf("category-results", rankingControlsEnd);
