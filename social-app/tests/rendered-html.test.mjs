@@ -546,7 +546,8 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.equal((topRankingView.match(/<FilterDropdown/g) ?? []).length, 3);
   assert.match(topRankingView, /id="top-duration-filter"[\s\S]*?label="Durée"/);
   assert.match(topRankingView, /id="top-sort-filter"[\s\S]*?label="Trier"/);
-  assert.match(topRankingView, /id="top-format-filter"[\s\S]*?label=\{`Catégories \$\{PLATFORM_META\[topPlatform\]\.label\}`\}/);
+  assert.match(topRankingView, /id="top-format-filter"[\s\S]*?label="Catégorie"/);
+  assert.doesNotMatch(topRankingView, /Catégories \$\{PLATFORM_META\[topPlatform\]\.label\}/);
   assert.doesNotMatch(topRankingView, /top-duration-tabs|top-sort-tabs|top-format-tabs/);
   assert.match(component, /aria-haspopup="listbox"/);
   assert.match(component, /aria-expanded=\{open\}/);
@@ -564,7 +565,10 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(formats, /label: "Sondages", emoji: "🗳️"/);
   assert.match(formats, /label: "Texte", emoji: "✍️"/);
   assert.match(formats, /label: "Commentaires", emoji: "💭"/);
-  assert.match(styles, /\.top-ranking-dropdowns\s*\{[\s\S]*?grid-template-columns:[^;]*1\.35fr/);
+  assert.match(styles, /\.top-ranking-controls\s*\{[^}]*position:\s*relative[^}]*z-index:\s*20[^}]*overflow:\s*visible/);
+  assert.match(styles, /\.top-ranking-dropdowns\s*\{[^}]*width:\s*50%[^}]*max-width:\s*760px[^}]*grid-template-columns:[^;]*1\.35fr[^}]*margin-left:\s*auto/);
+  assert.match(styles, /@media \(max-width: 1180px\)[\s\S]*?\.top-ranking-dropdowns\s*\{[^}]*width:\s*100%[^}]*max-width:\s*none/);
+  assert.match(styles, /\.category-results\s*\{[^}]*position:\s*relative[^}]*z-index:\s*1/);
   assert.match(styles, /\.top-filter-dropdown-trigger\s*\{[\s\S]*?border-radius:\s*14px/);
   assert.match(styles, /\.top-filter-dropdown-menu\s*\{[\s\S]*?border-radius:\s*16px/);
   assert.match(styles, /\.top-filter-dropdown-menu button\s*\{[\s\S]*?border-radius:\s*11px/);

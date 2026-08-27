@@ -1725,7 +1725,7 @@ export function SocialOS({
                 />
                 <FilterDropdown
                   id="top-format-filter"
-                  label={`Catégories ${PLATFORM_META[topPlatform].label}`}
+                  label="Catégorie"
                   onChange={setTopFormatFilter}
                   options={categoryFilters(topPlatform).map((filter) => {
                     const loadedCount = topPlatformPosts.filter((post) =>

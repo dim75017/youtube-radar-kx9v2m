@@ -5960,7 +5960,9 @@ a {
 
 .top-ranking-controls {
   --platform-rgb: 154, 168, 255;
-  position: static;
+  position: relative;
+  z-index: 20;
+  overflow: visible;
   border: 1px solid var(--border);
   border-radius: 16px;
   background: linear-gradient(150deg, rgba(20, 24, 40, 0.95), rgba(11, 13, 21, 0.97));
@@ -6017,9 +6019,12 @@ a {
 
 .top-ranking-dropdowns {
   display: grid;
-  grid-template-columns: minmax(150px, 0.8fr) minmax(170px, 0.9fr) minmax(240px, 1.35fr);
+  width: 50%;
+  max-width: 760px;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.9fr) minmax(0, 1.35fr);
   align-items: start;
   gap: 10px;
+  margin-left: auto;
 }
 
 .top-filter-dropdown {
@@ -6232,6 +6237,8 @@ a {
 
 .category-results {
   --platform-rgb: 154, 168, 255;
+  position: relative;
+  z-index: 1;
   border: 1px solid rgba(var(--platform-rgb), 0.18);
   border-radius: 18px;
   background: rgba(var(--platform-rgb), 0.025);
@@ -7217,6 +7224,11 @@ a {
     min-height: 150px;
   }
 
+  .top-ranking-dropdowns {
+    width: 100%;
+    max-width: none;
+  }
+
   .social-overview-columns,
   .post-list-grid {
     grid-template-columns: 1fr;
@@ -7233,7 +7245,7 @@ a {
   }
 
   .top-ranking-controls {
-    position: static;
+    position: relative;
   }
 
   .top-ranking-control-row {
