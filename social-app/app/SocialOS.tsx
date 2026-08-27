@@ -2638,6 +2638,8 @@ function AudienceDemographicsPanel({
   );
 }
 
+const AUDIENCE_COUNTRY_DISPLAY_LIMIT = 20;
+
 const AUDIENCE_DEMOGRAPHIC_PIE_COLORS: Record<string, string> = {
   age_13_17: "#cc79a7",
   age_18_24: "#56b4e9",
@@ -2712,7 +2714,7 @@ function AudienceDemographicCard({
           reported: true,
         }
       : null;
-  const visibleCountryEntries = countryEntries.slice(0, 14);
+  const visibleCountryEntries = countryEntries.slice(0, AUDIENCE_COUNTRY_DISPLAY_LIMIT);
   const visibleEntries = kind === "countries"
     ? countryAggregateEntry
       ? [...visibleCountryEntries, countryAggregateEntry]

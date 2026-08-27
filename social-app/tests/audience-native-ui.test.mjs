@@ -215,6 +215,7 @@ test("shows native demographic dimensions below the chart and follows the select
     "the demographic section must remain below the curve",
   );
   assert.match(explorer, /Top pays/);
+  assert.match(explorer, /const AUDIENCE_COUNTRY_DISPLAY_LIMIT = 20/);
   assert.match(explorer, /Répartition par âge/);
   assert.match(explorer, /Répartition par genre/);
   assert.match(explorer, /flags\/\$\{entry\.countryCode\?\.toLowerCase\(\) \?\? "globe"\}\.svg/);
@@ -227,7 +228,7 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(explorer, /kind === "countries"[\s\S]*?<span className="audience-demographic-bar" aria-hidden="true">/);
   assert.match(explorer, /audienceDemographicDisplayEntries\(dimension\.entries, kind\)/);
   assert.match(explorer, /allDisplayEntries\.filter\(\(entry\) => entry\.countryCode !== null\)/);
-  assert.match(explorer, /countryEntries\.slice\(0, 14\)/);
+  assert.match(explorer, /countryEntries\.slice\(0, AUDIENCE_COUNTRY_DISPLAY_LIMIT\)/);
   assert.match(explorer, /const countryResidualShare = Math\.max\(0, Math\.min\(1, 1 - countryReportedShare\)\)/);
   assert.match(explorer, /key: "other_countries"/);
   assert.match(explorer, /label: "Autres pays"/);
@@ -265,6 +266,8 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographics\s*\{[\s\S]*?min-height:\s*calc\(100dvh - 24px\)/);
   assert.match(styles, /\.audience-demographic-pie-legend\s*\{[^}]*display:\s*grid/);
   assert.match(styles, /\.audience-demographic-card\.kind-countries \.audience-demographic-list\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
+  assert.match(styles, /\.audience-demographic-list\s*\{[^}]*grid-auto-rows:\s*minmax\(20px, auto\)[^}]*align-content:\s*start/);
+  assert.match(styles, /grid-auto-rows:\s*minmax\(24px, clamp\(24px, 3\.1dvh, 34px\)\)/);
   assert.doesNotMatch(styles, /\.audience-demographic-card\.kind-countries \.audience-demographic-list\s*\{[^}]*repeat\(2/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.audience-demographics-grid\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.audience-demographics-breakdowns\s*\{[\s\S]*?grid-template-rows:\s*auto auto/);

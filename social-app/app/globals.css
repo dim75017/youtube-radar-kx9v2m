@@ -4881,8 +4881,9 @@ a {
 
 .audience-demographic-list {
   display: grid;
-  flex: 1;
-  grid-auto-rows: minmax(20px, 1fr);
+  flex: 0 1 auto;
+  grid-auto-rows: minmax(20px, auto);
+  align-content: start;
   gap: 5px 10px;
   margin: 8px 0 0;
   padding: 0;
@@ -5347,8 +5348,9 @@ a {
   }
 
   .audience-demographic-list {
-    grid-auto-rows: minmax(24px, 1fr);
-    gap-block: 6px;
+    grid-auto-rows: minmax(24px, clamp(24px, 3.1dvh, 34px));
+    align-content: start;
+    gap-block: clamp(2px, 0.5dvh, 6px);
     margin-top: 12px;
   }
 
