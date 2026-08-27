@@ -63,6 +63,11 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(explorer, /aria-label=\{`Métrique du graphique/);
   assert.match(explorer, /availableMetricWindows\.map/);
   assert.match(explorer, /aria-pressed=\{metric === activeMetric\}/);
+  const metricTabs = explorer.slice(
+    explorer.indexOf('className="audience-explorer-metrics"'),
+    explorer.indexOf('className="audience-native-chart-shell"'),
+  );
+  assert.doesNotMatch(metricTabs, /<strong>/, "metric tabs must not repeat the KPI values");
   assert.equal((component.match(/<AudienceNativeMetricChart\b/g) ?? []).length, 1);
   assert.doesNotMatch(component, /function AudienceGrowthChart/);
   assert.doesNotMatch(component, /function AudienceNativePlatformCard/);
@@ -72,10 +77,15 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.doesNotMatch(dashboard, /Collecte planifiée/);
   assert.match(explorer, /className="audience-explorer-summary"/);
   assert.match(explorer, /className="audience-explorer-profile"/);
-  assert.equal((explorer.match(/className="audience-explorer-summary-kpi"/g) ?? []).length, 3);
+  assert.equal((explorer.match(/className="audience-explorer-summary-kpi"/g) ?? []).length, 6);
   assert.match(explorer, /Total followers/);
-  assert.match(explorer, /activePlatform === "instagram" \? "Nouveaux followers" : "Variation followers"/);
+  assert.match(explorer, /Nouveaux followers/);
   assert.match(explorer, /Taux d’engagement/);
+  assert.match(explorer, /Vues \/ impressions/);
+  assert.match(explorer, /Reach/);
+  assert.match(explorer, /Engagements/);
+  assert.doesNotMatch(explorer, /Variation nette des followers|Variation followers/);
+  assert.doesNotMatch(explorer, /Analyse détaillée|Une seule courbe, toutes les données/);
   assert.match(explorer, /calculatePlatformEngagementWindow\([\s\S]*?periodDays/);
   assert.match(explorer, /audiencePointsForPeriod\([\s\S]*?periodDays/);
   assert.match(explorer, /nativeAnalyticsDailyForPeriod\([\s\S]*?periodDays/);
@@ -99,7 +109,7 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(styles, /\.audience-period-control\s*\{[\s\S]*?justify-content:\s*flex-end/);
   assert.match(styles, /\.audience-period-tabs/);
   assert.match(styles, /\.audience-explorer-platform-tabs/);
-  assert.match(styles, /\.audience-explorer-summary\s*\{[\s\S]*?grid-template-columns:\s*minmax\(230px, 1\.25fr\) repeat\(3, minmax\(135px, 0\.8fr\)\)/);
+  assert.match(styles, /\.audience-explorer-summary\s*\{[\s\S]*?grid-template-columns:\s*minmax\(205px, 1\.2fr\) repeat\(3, minmax\(105px, 0\.8fr\)\)/);
   assert.match(styles, /\.audience-explorer-summary-kpi\s*\{/);
   assert.match(styles, /\.audience-explorer-metrics/);
   assert.match(styles, /\.audience-native-chart-empty,[\s\S]*?min-height:\s*150px/);
@@ -148,7 +158,7 @@ test("keeps the audience curve clean and reveals the exact hovered value instant
   assert.match(chart, /const plotTop = 12/);
   assert.match(chart, /const plotBottom = height - 40/);
   assert.match(chart, /bottomReserve/);
-  assert.match(chart, /Math\.max\(80, Math\.min\(170, availableHeight\)\)/);
+  assert.match(chart, /Math\.max\(120, Math\.min\(Math\.round\(window\.innerHeight \* 0\.55\), availableHeight\)\)/);
   assert.match(styles, /\.main\.main-dashboard\s*\{[\s\S]*?padding-bottom:\s*8px/);
 
   // Les cinq filtres exacts du graphe restent disponibles après l'amélioration du survol.
@@ -203,10 +213,16 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(explorer, /color: audienceDemographicPieColor\(entry\.key, index\)/);
   assert.match(explorer, /entry\.share !== null && entry\.share > 0/);
   assert.match(explorer, /conic-gradient/);
+  assert.match(explorer, /const separator = "#080b12"/);
+  assert.match(explorer, /const gap = Math\.min\(0\.48, \(end - start\) \* 0\.18\)/);
+  assert.match(explorer, /age_18_24: "#56b4e9"/);
+  assert.match(explorer, /age_25_34: "#e69f00"/);
+  assert.match(explorer, /age_35_44: "#009e73"/);
   assert.match(explorer, /entry\.share === null \? "—"/);
   assert.match(explorer, /55–64 et 65\+ regroupés dans 55\+/);
   assert.match(styles, /\.audience-demographic-pie-layout\s*\{[^}]*grid-template-columns:\s*clamp\(78px, 7vw, 98px\) minmax\(0, 1fr\)/);
   assert.match(styles, /\.audience-demographic-pie\s*\{[^}]*border-radius:\s*50%/);
+  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?grid-template-columns:\s*clamp\(88px, 7\.5vw, 108px\)/);
   assert.match(styles, /\.audience-demographic-pie-legend\s*\{[^}]*display:\s*grid/);
   assert.match(styles, /\.audience-demographic-card\.kind-countries \.audience-demographic-list\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
   assert.doesNotMatch(styles, /\.audience-demographic-card\.kind-countries \.audience-demographic-list\s*\{[^}]*repeat\(2/);

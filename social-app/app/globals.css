@@ -4319,15 +4319,15 @@ a {
 
 .audience-period-tabs button {
   display: inline-flex;
-  min-width: 72px;
-  min-height: 30px;
+  min-width: 84px;
+  min-height: 34px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 999px;
   background: rgba(7, 9, 16, 0.48);
-  padding: 4px 9px;
+  padding: 5px 12px;
   color: var(--muted);
   font-size: 12px;
   font-weight: 750;
@@ -4417,7 +4417,8 @@ a {
 .audience-explorer-summary {
   display: grid;
   min-width: 0;
-  grid-template-columns: minmax(230px, 1.25fr) repeat(3, minmax(135px, 0.8fr));
+  grid-template-columns: minmax(205px, 1.2fr) repeat(3, minmax(105px, 0.8fr));
+  grid-template-rows: repeat(2, minmax(46px, auto));
   align-items: stretch;
   margin-top: 8px;
   overflow: hidden;
@@ -4432,6 +4433,7 @@ a {
   display: grid;
   min-width: 0;
   grid-template-columns: auto minmax(0, 1fr);
+  grid-row: 1 / span 2;
   align-items: center;
   gap: 7px 9px;
   padding: 9px 11px;
@@ -4496,11 +4498,15 @@ a {
   padding: 8px 11px;
 }
 
+.audience-explorer-summary-kpi:nth-child(n + 5) {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
 .audience-explorer-summary-kpi > span,
 .audience-explorer-summary-kpi > small {
   overflow: hidden;
   color: #fff;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   line-height: 1.25;
   text-overflow: ellipsis;
@@ -4547,9 +4553,10 @@ a {
 
 .audience-explorer-platform-tabs button {
   gap: 6px;
+  min-height: 36px;
   border-radius: 9px;
-  padding: 6px 9px;
-  font-size: 11px;
+  padding: 7px 12px;
+  font-size: 12px;
   font-weight: 760;
 }
 
@@ -4582,17 +4589,18 @@ a {
 }
 
 .audience-explorer-metrics button {
-  min-width: 128px;
+  min-width: 145px;
+  min-height: 36px;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 8px;
   border-radius: 9px;
-  padding: 6px 9px;
-  text-align: left;
+  padding: 8px 11px;
+  text-align: center;
 }
 
 .audience-explorer-metrics button span {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 720;
   line-height: 1.3;
 }
@@ -5048,7 +5056,7 @@ a {
   place-items: center;
   border-radius: 50%;
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 0 0 2px rgba(255, 255, 255, 0.13),
     0 10px 26px rgba(0, 0, 0, 0.22);
 }
 
@@ -5112,7 +5120,7 @@ a {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.32);
 }
 
 .audience-demographic-pie-legend li.unavailable {
@@ -5157,15 +5165,20 @@ a {
 
   .audience-explorer-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
   }
 
-  .audience-explorer-summary-kpi:nth-child(3) {
+  .audience-explorer-profile {
+    grid-row: auto;
+    grid-column: 1 / -1;
+  }
+
+  .audience-explorer-summary-kpi {
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .audience-explorer-summary-kpi:nth-child(even) {
     border-left: 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
-  }
-
-  .audience-explorer-summary-kpi:nth-child(4) {
-    border-top: 1px solid rgba(255, 255, 255, 0.07);
   }
 
   .audience-demographics-grid {
@@ -5207,8 +5220,7 @@ a {
   }
 
   .audience-explorer-summary-kpi,
-  .audience-explorer-summary-kpi:nth-child(3),
-  .audience-explorer-summary-kpi:nth-child(4) {
+  .audience-explorer-summary-kpi:nth-child(even) {
     border-top: 1px solid rgba(255, 255, 255, 0.07);
     border-left: 0;
   }
@@ -5242,6 +5254,18 @@ a {
 }
 
 @media (min-width: 901px) {
+  .audience-dashboard {
+    display: flex;
+    min-height: calc(100dvh - 66px);
+    flex-direction: column;
+  }
+
+  .audience-explorer {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+  }
+
   .audience-demographic-card {
     padding: 10px;
   }
@@ -5251,12 +5275,12 @@ a {
   }
 
   .audience-demographic-pie-layout {
-    grid-template-columns: 78px minmax(0, 1fr);
-    gap: 9px;
+    grid-template-columns: clamp(88px, 7.5vw, 108px) minmax(0, 1fr);
+    gap: 11px;
   }
 
   .audience-demographic-pie {
-    max-width: 78px;
+    max-width: 108px;
   }
 
   .audience-demographic-list {
@@ -5333,13 +5357,13 @@ a {
   }
 
   .audience-demographic-pie-layout {
-    grid-template-columns: 70px minmax(0, 1fr);
+    grid-template-columns: 84px minmax(0, 1fr);
     gap: 8px;
     margin-top: 3px;
   }
 
   .audience-demographic-pie {
-    max-width: 70px;
+    max-width: 84px;
   }
 
   .audience-demographic-pie-legend {
@@ -5381,8 +5405,8 @@ a {
   }
 
   .audience-period-tabs button {
-    min-height: 26px;
-    padding-block: 2px;
+    min-height: 30px;
+    padding-block: 4px;
   }
 
   .audience-explorer {
@@ -5399,7 +5423,8 @@ a {
 
   .audience-explorer-platform-tabs button,
   .audience-explorer-metrics button {
-    padding-block: 4px;
+    min-height: 32px;
+    padding-block: 5px;
   }
 
   .audience-explorer-summary {
@@ -5555,13 +5580,13 @@ a {
   }
 
   .audience-demographic-pie-layout {
-    grid-template-columns: 54px minmax(0, 1fr);
-    gap: 6px;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 7px;
     margin-top: 1px;
   }
 
   .audience-demographic-pie {
-    max-width: 54px;
+    max-width: 72px;
   }
 
   .audience-demographic-pie::after {
@@ -5569,17 +5594,17 @@ a {
   }
 
   .audience-demographic-pie > span {
-    font-size: 8px;
+    font-size: 9px;
   }
 
   .audience-demographic-pie-legend li {
-    grid-template-columns: 6px minmax(0, 1fr) auto;
+    grid-template-columns: 7px minmax(0, 1fr) auto;
     gap: 4px;
   }
 
   .audience-demographic-pie-swatch {
-    width: 6px;
-    height: 6px;
+    width: 7px;
+    height: 7px;
   }
 }
 

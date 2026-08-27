@@ -1968,7 +1968,7 @@ const NATIVE_ANALYTICS_METRIC_META: Record<AudienceAnalyticsMetricKey, NativeAna
     aggregation: "stock",
   },
   followersNet: {
-    label: "Variation nette des followers",
+    label: "Nouveaux followers",
     description: "Gains moins désabonnements sur la période.",
     aggregation: "flow",
   },
@@ -2211,6 +2211,40 @@ function AudienceAnalyticsExplorer({
     };
   });
   const availableMetricWindows = metricWindows.filter((window) => window.summary !== null);
+  const summaryForMetric = (metric: AudienceAnalyticsMetricKey) => {
+    const existingWindow = metricWindows.find((window) => window.metric === metric);
+    if (existingWindow) return existingWindow.summary;
+
+    const metricEndDate = audienceMetricEndDate(
+      metric,
+      allDaily,
+      allHistoryPoints,
+      periodSnapshot,
+      audienceParisDay(generatedAt),
+    );
+    const metricDaily = nativeAnalyticsDailyForPeriod(
+      allDaily,
+      metricEndDate,
+      periodDays,
+    );
+    const metricHistory = audienceHistoryPointsForPeriod(
+      platformHistory,
+      metricEndDate,
+      periodDays,
+    );
+    const series = audienceMetricSeries(metric, metricDaily, metricHistory);
+    return metric === "followersTotal"
+      ? audienceFollowersMetricSummary(series)
+        ?? nativeAnalyticsMetricSummary(metric, metricDaily, periodSnapshot)
+      : nativeAnalyticsMetricSummary(metric, metricDaily, periodSnapshot);
+  };
+  const firstMetricSummary = (metrics: readonly AudienceAnalyticsMetricKey[]) => {
+    for (const metric of metrics) {
+      const summary = summaryForMetric(metric);
+      if (summary) return { metric, summary };
+    }
+    return null;
+  };
   const activeWindow = availableMetricWindows.find((window) => window.metric === requestedMetric)
     ?? availableMetricWindows[0]
     ?? null;
@@ -2233,9 +2267,8 @@ function AudienceAnalyticsExplorer({
     periodDays,
   );
   const observedFollowerGrowth = audienceGrowthFromObservedPoints(observedFollowerPoints);
-  const followerChangeSummary = metricWindows.find(
-    (window) => window.metric === NATIVE_ANALYTICS_DEFAULT_METRIC[activePlatform],
-  )?.summary ?? null;
+  const followerChangeSummary = summaryForMetric("newFollowers")
+    ?? summaryForMetric("followersNet");
   const followersDelta = followerChangeSummary?.value
     ?? (activePlatform === "instagram" ? null : observedFollowerGrowth?.followersDelta)
     ?? null;
@@ -2250,35 +2283,35 @@ function AudienceAnalyticsExplorer({
     : observedGrowthDays !== null
       ? `${observedGrowthDays} jour${observedGrowthDays > 1 ? "s" : ""} observé${observedGrowthDays > 1 ? "s" : ""}`
       : periodLabel;
+  const viewsSummary = firstMetricSummary(
+    activePlatform === "x"
+      ? ["impressions", "contentViews", "mediaViews"]
+      : ["contentViews", "impressions", "mediaViews"],
+  );
+  const reachSummary = summaryForMetric("reach");
+  const nativeEngagementsSummary = summaryForMetric("engagements");
+  const engagementComponents = (["likes", "comments", "shares"] as const)
+    .map((metric) => summaryForMetric(metric))
+    .filter((summary): summary is NativeAnalyticsMetricSummary => summary !== null);
+  const engagementsValue = nativeEngagementsSummary?.value
+    ?? (activePlatform === "tiktok" && engagementComponents.length > 0
+      ? engagementComponents.reduce((total, summary) => total + summary.value, 0)
+      : null);
+  const engagementsBasis = nativeEngagementsSummary
+    ? periodLabel
+    : engagementsValue !== null
+      ? `Likes + commentaires + partages · ${periodLabel}`
+      : "Non fourni";
   const latestAgeDays = latestHistory
     ? elapsedCalendarDays(latestHistory.capturedAt, clientNow ?? generatedAt)
-    : null;
-  const latestUpdateAt = latestIsoTimestamp(
-    analyticsPlatform?.lastSuccessfulImportAt,
-    latestHistory?.capturedAt,
-  );
-  const latestUpdateAge = latestUpdateAt
-    ? elapsedCalendarDays(latestUpdateAt, clientNow ?? generatedAt)
     : null;
 
   return (
     <section
       className={`audience-explorer tone-${meta.tone}`}
       id="audience-explorer"
-      aria-labelledby="audience-explorer-title"
+      aria-label={`Tableau de bord ${meta.label}`}
     >
-      <header className="audience-explorer-heading">
-        <div>
-          <span className="section-kicker">Analyse détaillée</span>
-          <h2 id="audience-explorer-title">Une seule courbe, toutes les données</h2>
-        </div>
-        <span className={latestUpdateAge !== null && latestUpdateAge > 1 ? "stale" : ""}>
-          {latestUpdateAt
-            ? `Mis à jour ${formatAudienceDate(latestUpdateAt)} · ${formatAudienceAge(latestUpdateAge)}`
-            : "Collecte en attente"}
-        </span>
-      </header>
-
       <div className="audience-explorer-controls">
         <div
           className="audience-explorer-platform-tabs"
@@ -2328,9 +2361,10 @@ function AudienceAnalyticsExplorer({
         <div className="audience-explorer-summary-kpi">
           <span>Total followers</span>
           <strong>{latestHistory ? formatAudienceFollowers(latestHistory) : "—"}</strong>
+          <small>Dernier relevé</small>
         </div>
         <div className="audience-explorer-summary-kpi">
-          <span>{activePlatform === "instagram" ? "Nouveaux followers" : "Variation followers"}</span>
+          <span>Nouveaux followers</span>
           <strong
             className={
               followersDelta === null || followersDelta === 0
@@ -2351,6 +2385,46 @@ function AudienceAnalyticsExplorer({
           <span>Taux d’engagement</span>
           <strong>{engagement ? formatAudiencePercent(engagement.ratePercent) : "—"}</strong>
           <small>{engagement ? `${engagement.sampleSize} posts` : periodLabel}</small>
+        </div>
+        <div className="audience-explorer-summary-kpi">
+          <span>Vues / impressions</span>
+          <strong title={viewsSummary
+            ? formatNativeAnalyticsMetric(viewsSummary.summary.value, viewsSummary.metric, false)
+            : undefined}
+          >
+            {viewsSummary
+              ? formatNativeAnalyticsMetric(viewsSummary.summary.value, viewsSummary.metric, true)
+              : "—"}
+          </strong>
+          <small>
+            {viewsSummary
+              ? `${viewsSummary.metric === "impressions" ? "Impressions" : "Vues"} · ${periodLabel}`
+              : "Non fourni"}
+          </small>
+        </div>
+        <div className="audience-explorer-summary-kpi">
+          <span>Reach</span>
+          <strong title={reachSummary
+            ? formatNativeAnalyticsMetric(reachSummary.value, "reach", false)
+            : undefined}
+          >
+            {reachSummary
+              ? formatNativeAnalyticsMetric(reachSummary.value, "reach", true)
+              : "—"}
+          </strong>
+          <small>{reachSummary ? periodLabel : "Non fourni"}</small>
+        </div>
+        <div className="audience-explorer-summary-kpi">
+          <span>Engagements</span>
+          <strong title={engagementsValue !== null
+            ? formatNativeAnalyticsMetric(engagementsValue, "engagements", false)
+            : undefined}
+          >
+            {engagementsValue !== null
+              ? formatNativeAnalyticsMetric(engagementsValue, "engagements", true)
+              : "—"}
+          </strong>
+          <small>{engagementsBasis}</small>
         </div>
       </div>
 
@@ -2375,7 +2449,6 @@ function AudienceAnalyticsExplorer({
                   key={metric}
                 >
                   <span>{metricMeta.label}</span>
-                  <strong>{formatNativeAnalyticsMetric(summary.value, metric, true)}</strong>
                 </button>
               );
             })}
@@ -2395,7 +2468,7 @@ function AudienceAnalyticsExplorer({
 
             <AudienceNativeMetricChart
               key={`${activePlatform}:${activeMetric}:${periodKey}:${endDate}`}
-              bottomReserve={380}
+              bottomReserve={250}
               endDate={endDate}
               metric={activeMetric}
               periodDays={periodDays}
@@ -2493,26 +2566,27 @@ function AudienceDemographicsPanel({
 }
 
 const AUDIENCE_DEMOGRAPHIC_PIE_COLORS: Record<string, string> = {
-  age_13_17: "#ff9ccf",
-  age_18_24: "#f36eb8",
-  age_25_34: "#df55c6",
-  age_35_44: "#b56fe0",
-  age_45_54: "#827cf0",
-  age_55_64: "#5aa7e8",
-  age_55_plus: "#5aa7e8",
-  age_65_plus: "#42c6c4",
-  female: "#ff75bd",
-  male: "#62a7ff",
-  user_specified: "#f2c75c",
-  other: "#9aa5bc",
+  age_13_17: "#cc79a7",
+  age_18_24: "#56b4e9",
+  age_25_34: "#e69f00",
+  age_35_44: "#009e73",
+  age_45_54: "#f0e442",
+  age_55_64: "#0072b2",
+  age_55_plus: "#0072b2",
+  age_65_plus: "#d55e00",
+  female: "#e764a8",
+  male: "#56b4e9",
+  user_specified: "#f0e442",
+  other: "#aab2c5",
 };
 
 const AUDIENCE_DEMOGRAPHIC_PIE_FALLBACKS = [
-  "#ff75bd",
-  "#8f7df2",
-  "#62a7ff",
-  "#42c6c4",
-  "#f2c75c",
+  "#56b4e9",
+  "#e69f00",
+  "#009e73",
+  "#f0e442",
+  "#cc79a7",
+  "#d55e00",
 ];
 
 function AudienceDemographicCard({
@@ -2679,13 +2753,22 @@ function audienceDemographicPieGradient(
   ));
   const total = slices.reduce((sum, entry) => sum + entry.share, 0);
   if (total <= 0) return "conic-gradient(rgba(255, 255, 255, 0.08) 0 100%)";
+  if (slices.length === 1) return `conic-gradient(${slices[0].color} 0 100%)`;
 
   let start = 0;
-  const stops = slices.map((entry) => {
+  const separator = "#080b12";
+  const stops = slices.flatMap((entry) => {
     const end = start + (entry.share / total) * 100;
-    const stop = `${entry.color} ${start.toFixed(3)}% ${end.toFixed(3)}%`;
+    const gap = Math.min(0.48, (end - start) * 0.18);
+    const colorStart = start + gap / 2;
+    const colorEnd = end - gap / 2;
+    const sliceStops = [
+      `${separator} ${start.toFixed(3)}% ${colorStart.toFixed(3)}%`,
+      `${entry.color} ${colorStart.toFixed(3)}% ${colorEnd.toFixed(3)}%`,
+      `${separator} ${colorEnd.toFixed(3)}% ${end.toFixed(3)}%`,
+    ];
     start = end;
-    return stop;
+    return sliceStops;
   });
   return `conic-gradient(${stops.join(", ")})`;
 }
@@ -2874,7 +2957,7 @@ function AudienceNativeMetricChart({
       );
       const height = window.innerWidth <= 900
         ? 180
-        : Math.max(80, Math.min(170, availableHeight));
+        : Math.max(120, Math.min(Math.round(window.innerHeight * 0.55), availableHeight));
       setChartDimensions((current) => (
         current.width === width && current.height === height
           ? current

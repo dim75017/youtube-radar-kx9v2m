@@ -159,7 +159,13 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.equal((audienceDashboard.match(/className="audience-explorer-platform-tabs"/g) ?? []).length, 1);
   assert.match(audienceDashboard, /className="audience-explorer-summary"/);
   assert.match(audienceDashboard, /className="audience-explorer-profile"/);
-  assert.equal((audienceDashboard.match(/className="audience-explorer-summary-kpi"/g) ?? []).length, 3);
+  assert.equal((audienceDashboard.match(/className="audience-explorer-summary-kpi"/g) ?? []).length, 6);
+  assert.match(audienceDashboard, /Nouveaux followers/);
+  assert.match(audienceDashboard, /Vues \/ impressions/);
+  assert.match(audienceDashboard, /Reach/);
+  assert.match(audienceDashboard, /Engagements/);
+  assert.doesNotMatch(audienceDashboard, /Variation nette des followers|Variation followers/);
+  assert.doesNotMatch(audienceDashboard, /Analyse détaillée|Une seule courbe, toutes les données/);
   assert.match(audienceDashboard, /className="audience-demographics-breakdowns" role="group" aria-label="Âge et genre"/);
   assert.match(audienceDashboard, /calculatePlatformEngagementWindow\([\s\S]*?periodDays/);
   assert.match(audienceDashboard, /useState<string \| null>\(null\)/);
