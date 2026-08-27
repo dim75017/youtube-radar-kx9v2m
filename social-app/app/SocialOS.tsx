@@ -2406,8 +2406,9 @@ function AudienceDemographicCard({
     0,
   );
   const countryResidualShare = Math.max(0, Math.min(1, 1 - countryReportedShare));
-  const countryAggregateEntry = countryAggregateFromSource ?? (
-    kind === "countries" && countryEntries.length > 0 && countryResidualShare >= 0.005
+  const countryAggregateEntry = countryAggregateFromSource
+    ? { ...countryAggregateFromSource, label: "Autres pays" }
+    : kind === "countries" && countryEntries.length > 0 && countryResidualShare >= 0.005
       ? {
           key: "other_countries",
           label: "Autres pays",
@@ -2415,8 +2416,7 @@ function AudienceDemographicCard({
           countryCode: null,
           reported: true,
         }
-      : null
-  );
+      : null;
   const visibleCountryEntries = countryEntries.slice(0, 14);
   const visibleEntries = kind === "countries"
     ? countryAggregateEntry
@@ -2534,16 +2534,22 @@ function audienceDemographicPieColor(key: string, index: number) {
 function audienceDemographicPieGradient(
   entries: ReadonlyArray<{ key: string; share: number | null }>,
 ) {
-  const slices = entries.filter(
-    (entry): entry is { key: string; share: number } => entry.share !== null && entry.share > 0,
-  );
+  const slices = entries.flatMap((entry, index) => (
+    entry.share !== null && entry.share > 0
+      ? [{
+          key: entry.key,
+          share: entry.share,
+          color: audienceDemographicPieColor(entry.key, index),
+        }]
+      : []
+  ));
   const total = slices.reduce((sum, entry) => sum + entry.share, 0);
   if (total <= 0) return "conic-gradient(rgba(255, 255, 255, 0.08) 0 100%)";
 
   let start = 0;
-  const stops = slices.map((entry, index) => {
+  const stops = slices.map((entry) => {
     const end = start + (entry.share / total) * 100;
-    const stop = `${audienceDemographicPieColor(entry.key, index)} ${start.toFixed(3)}% ${end.toFixed(3)}%`;
+    const stop = `${entry.color} ${start.toFixed(3)}% ${end.toFixed(3)}%`;
     start = end;
     return stop;
   });

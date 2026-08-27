@@ -199,6 +199,8 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(explorer, /className="audience-demographic-pie-legend"/);
   assert.match(explorer, /className="audience-demographic-pie-swatch"/);
   assert.match(explorer, /audienceDemographicPieGradient\(visibleEntries\)/);
+  assert.match(explorer, /entries\.flatMap\(\(entry, index\) =>/);
+  assert.match(explorer, /color: audienceDemographicPieColor\(entry\.key, index\)/);
   assert.match(explorer, /entry\.share !== null && entry\.share > 0/);
   assert.match(explorer, /conic-gradient/);
   assert.match(explorer, /entry\.share === null \? "—"/);
