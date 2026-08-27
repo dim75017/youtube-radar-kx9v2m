@@ -2095,6 +2095,10 @@ const AUDIENCE_CHART_PERIODS = [
   snapshotKey: AudienceAnalyticsPeriodKey | null;
 }[];
 
+const AUDIENCE_PLATFORM_CURVE_START_DATE: Partial<Record<Platform, string>> = {
+  youtube: "2015-03-15",
+};
+
 type AudienceChartPeriodKey = (typeof AUDIENCE_CHART_PERIODS)[number]["key"];
 
 type AudienceMetricSeriesPoint = {
@@ -2141,11 +2145,15 @@ function AudienceAnalyticsExplorer({
   const demographicPlatform = demographics?.platforms[activePlatform] ?? null;
   const platformHistory = history?.platforms[activePlatform] ?? null;
   const latestHistory = platformHistory ? latestAudienceObservation(platformHistory) : null;
-  const allDaily = analyticsPlatform?.daily ?? [];
+  const curveStartDate = AUDIENCE_PLATFORM_CURVE_START_DATE[activePlatform] ?? null;
+  const allDaily = (analyticsPlatform?.daily ?? []).filter((point) => (
+    curveStartDate === null || point.date >= curveStartDate
+  ));
   const allHistoryPoints = audienceHistoryPointsForPeriod(
     platformHistory,
     audienceParisDay(generatedAt),
     null,
+    curveStartDate,
   );
   const nativePeriodKey = chartPeriod.snapshotKey;
   const periodSnapshot = analyticsPlatform && nativePeriodKey
@@ -2169,6 +2177,7 @@ function AudienceAnalyticsExplorer({
       platformHistory,
       metricEndDate,
       periodDays,
+      curveStartDate,
     );
     const series = audienceMetricSeries(metric, metricDaily, metricHistory);
     const summary = metric === "followersTotal"
@@ -2203,6 +2212,7 @@ function AudienceAnalyticsExplorer({
       platformHistory,
       metricEndDate,
       periodDays,
+      curveStartDate,
     );
     const series = audienceMetricSeries(metric, metricDaily, metricHistory);
     return metric === "followersTotal"
@@ -2429,6 +2439,7 @@ function AudienceAnalyticsExplorer({
               bottomReserve={250}
               endDate={endDate}
               metric={activeMetric}
+              minimumDate={curveStartDate}
               periodDays={periodDays}
               periodLabel={periodLabel}
               platformLabel={meta.label}
@@ -2439,7 +2450,9 @@ function AudienceAnalyticsExplorer({
             <footer className="audience-native-chart-caption">
               <span>
                 {periodKey === "all"
-                  ? "Toute la plage native importée"
+                  ? curveStartDate
+                    ? `Depuis le ${formatNativeAnalyticsDate(curveStartDate)}`
+                    : "Toute la plage native importée"
                   : "Données réelles · jours absents non reliés"}
               </span>
             </footer>
@@ -2923,12 +2936,17 @@ function audienceHistoryPointsForPeriod(
   platformHistory: AudienceHistory["platforms"][Platform] | null,
   endDate: string,
   periodDays: number | null,
+  minimumDate: string | null = null,
 ) {
   if (!platformHistory) return [];
   const endTime = nativeAnalyticsDateTime(endDate);
-  const minimumTime = periodDays === null
+  const periodMinimumTime = periodDays === null
     ? Number.NEGATIVE_INFINITY
     : endTime - Math.max(0, periodDays - 1) * 24 * 60 * 60 * 1_000;
+  const configuredMinimumTime = minimumDate === null
+    ? Number.NEGATIVE_INFINITY
+    : nativeAnalyticsDateTime(minimumDate);
+  const minimumTime = Math.max(periodMinimumTime, configuredMinimumTime);
   return platformHistory.observations.filter((point) => {
     const time = nativeAnalyticsDateTime(audienceParisDay(point.capturedAt));
     return Number.isFinite(time) && time >= minimumTime && time <= endTime;
@@ -2997,6 +3015,7 @@ function AudienceNativeMetricChart({
   bottomReserve,
   endDate,
   metric,
+  minimumDate,
   periodDays,
   periodLabel,
   platformLabel,
@@ -3006,6 +3025,7 @@ function AudienceNativeMetricChart({
   bottomReserve: number;
   endDate: string;
   metric: AudienceAnalyticsMetricKey;
+  minimumDate: string | null;
   periodDays: number | null;
   periodLabel: string;
   platformLabel: string;
@@ -3056,10 +3076,13 @@ function AudienceNativeMetricChart({
     const observedTimes = points.map((point) => nativeAnalyticsDateTime(point.date));
     const observedValues = points.map((point) => point.value);
     const requestedEndTime = nativeAnalyticsDateTime(endDate);
+    const minimumTime = minimumDate === null
+      ? Number.NEGATIVE_INFINITY
+      : nativeAnalyticsDateTime(minimumDate);
     const requestedStartTime = periodDays === null
-      ? observedTimes[0]
+      ? Number.isFinite(minimumTime) ? minimumTime : observedTimes[0]
       : requestedEndTime - Math.max(0, periodDays - 1) * 24 * 60 * 60 * 1_000;
-    const firstTime = Math.min(requestedStartTime, observedTimes[0]);
+    const firstTime = Math.max(minimumTime, Math.min(requestedStartTime, observedTimes[0]));
     const lastTime = Math.max(requestedEndTime, observedTimes.at(-1)!);
     const timeSpan = Math.max(lastTime - firstTime, 1);
     const rawMinimum = Math.min(...observedValues);
@@ -3143,7 +3166,7 @@ function AudienceNativeMetricChart({
       width,
       zeroY,
     };
-  }, [chartDimensions, endDate, metric, periodDays, points]);
+  }, [chartDimensions, endDate, metric, minimumDate, periodDays, points]);
 
   if (!geometry) {
     return (

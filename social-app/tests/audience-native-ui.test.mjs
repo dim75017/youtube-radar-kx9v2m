@@ -35,6 +35,10 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(explorer, /PLATFORM_ORDER\.map/);
   assert.match(explorer, /aria-pressed=\{platform === activePlatform\}/);
   assert.match(explorer, /const AUDIENCE_CHART_PERIODS = \[/);
+  assert.match(
+    explorer,
+    /const AUDIENCE_PLATFORM_CURVE_START_DATE:[\s\S]*?youtube: "2015-03-15"/,
+  );
   const periodDeclarations = component
     .match(/const AUDIENCE_CHART_PERIODS = \[([\s\S]*?)\] as const/)?.[1]
     ?.matchAll(/\{ key: "([^"]+)", label: "([^"]+)", days: (\d+|null), snapshotKey:/g);
@@ -98,10 +102,17 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(explorer, /calculatePlatformEngagementWindow\([\s\S]*?periodDays/);
   assert.match(explorer, /audiencePointsForPeriod\([\s\S]*?periodDays/);
   assert.match(explorer, /nativeAnalyticsDailyForPeriod\([\s\S]*?periodDays/);
+  assert.match(
+    explorer,
+    /const allDaily = \(analyticsPlatform\?\.daily \?\? \[\]\)\.filter\([\s\S]*?point\.date >= curveStartDate/,
+  );
+  assert.match(explorer, /minimumDate=\{curveStartDate\}/);
+  assert.match(explorer, /Depuis le \$\{formatNativeAnalyticsDate\(curveStartDate\)\}/);
 
   assert.match(explorer, /function audienceMetricSeries/);
   assert.match(explorer, /function audienceMetricEndDate/);
   assert.match(explorer, /function audienceHistoryPointsForPeriod/);
+  assert.match(explorer, /const minimumTime = Math\.max\(periodMinimumTime, configuredMinimumTime\)/);
   assert.match(explorer, /const endDate = activeWindow\?\.endDate/);
   assert.match(explorer, /Toute la plage native importée/);
   assert.match(explorer, /Agrégat officiel · \$\{periodLabel\}/);
