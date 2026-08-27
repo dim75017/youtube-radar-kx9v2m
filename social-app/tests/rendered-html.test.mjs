@@ -199,7 +199,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.doesNotMatch(audienceChart, /className="audience-native-chart-point"[\s\S]{0,180}tabIndex/);
   assert.doesNotMatch(component, /audience-spark-bars|sampleAudiencePoints/);
   assert.equal((component.match(/<AudienceNativeMetricChart\b/g) ?? []).length, 1);
-  assert.match(
+  assert.doesNotMatch(
     audienceDashboard,
     /<img src=\{`platforms\/\$\{activePlatform\}\.svg`\} alt="" width="24" height="24" \/>/,
   );
@@ -595,9 +595,9 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(styles, /\.inline-video-frame/);
   assert.match(styles, /\.post-details-modal/);
   assert.match(styles, /\.audience-period-control\s*\{/);
+  assert.match(styles, /\.audience-period-control-chart\s*\{/);
   assert.match(styles, /\.audience-period-tabs\s*\{/);
-  assert.match(styles, /\.audience-explorer-profile-logo\s*\{/);
-  assert.match(styles, /\.audience-explorer-profile-logo img\s*\{/);
+  assert.doesNotMatch(styles, /\.audience-explorer-profile-logo(?:\s|\.)/);
   assert.match(styles, /\.audience-explorer-platform-tabs/);
   assert.match(styles, /\.audience-explorer-metrics/);
   assert.match(styles, /\.audience-native-chart-viewport\s*\{[\s\S]*?overflow-x:\s*auto/);

@@ -4253,7 +4253,7 @@ a {
 
 .audience-dashboard-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: end;
   gap: 16px;
   margin-bottom: 12px;
@@ -4296,6 +4296,24 @@ a {
   gap: 12px;
   margin: 0;
   padding: 0;
+}
+
+.audience-period-control-chart {
+  max-width: min(100%, 470px);
+  flex: 0 1 470px;
+}
+
+.audience-period-control-chart .audience-period-tabs {
+  justify-content: flex-end;
+  gap: 5px;
+  padding-bottom: 0;
+}
+
+.audience-period-control-chart .audience-period-tabs button {
+  min-width: 74px;
+  min-height: 30px;
+  padding: 4px 9px;
+  font-size: 11px;
 }
 
 .audience-period-control > .section-kicker {
@@ -4417,8 +4435,8 @@ a {
 .audience-explorer-summary {
   display: grid;
   min-width: 0;
-  grid-template-columns: minmax(205px, 1.2fr) repeat(3, minmax(105px, 0.8fr));
-  grid-template-rows: repeat(2, minmax(46px, auto));
+  grid-template-columns: minmax(140px, 1.15fr) repeat(6, minmax(82px, 0.82fr));
+  grid-template-rows: minmax(58px, auto);
   align-items: stretch;
   margin-top: 8px;
   overflow: hidden;
@@ -4430,31 +4448,13 @@ a {
 }
 
 .audience-explorer-profile {
-  display: grid;
+  display: flex;
   min-width: 0;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-row: 1 / span 2;
-  align-items: center;
-  gap: 7px 9px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
   padding: 9px 11px;
-}
-
-.audience-explorer-profile-logo {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  grid-row: 1 / span 2;
-  place-items: center;
-  border: 1px solid rgba(var(--platform-rgb), 0.26);
-  border-radius: 10px;
-  background: rgba(7, 9, 16, 0.58);
-}
-
-.audience-explorer-profile-logo img {
-  display: block;
-  width: 19px;
-  height: 19px;
-  object-fit: contain;
 }
 
 .audience-explorer-profile .section-kicker {
@@ -4475,7 +4475,6 @@ a {
 }
 
 .audience-explorer-profile time {
-  grid-column: 2;
   overflow: hidden;
   color: #fff;
   font-size: 9px;
@@ -4496,10 +4495,6 @@ a {
   justify-content: center;
   border-left: 1px solid rgba(255, 255, 255, 0.07);
   padding: 8px 11px;
-}
-
-.audience-explorer-summary-kpi:nth-child(n + 5) {
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .audience-explorer-summary-kpi > span,
@@ -4630,7 +4625,7 @@ a {
 
 .audience-native-chart-heading {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
@@ -4652,21 +4647,6 @@ a {
   font-family: Sora, Inter, sans-serif;
   font-size: 12px;
   line-height: 1.25;
-}
-
-.audience-native-chart-heading > div:last-child {
-  flex: 0 0 auto;
-  text-align: right;
-}
-
-.audience-native-chart-heading strong {
-  display: block;
-  color: rgb(var(--platform-rgb));
-  font-family: Sora, Inter, sans-serif;
-  font-size: clamp(15px, 1.35vw, 18px);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.045em;
-  line-height: 1.1;
 }
 
 .audience-native-line-chart {
@@ -5169,7 +5149,6 @@ a {
   }
 
   .audience-explorer-profile {
-    grid-row: auto;
     grid-column: 1 / -1;
   }
 
@@ -5227,6 +5206,13 @@ a {
 
   .audience-native-chart-heading {
     align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .audience-native-chart-heading .audience-period-control {
+    width: 100%;
+    max-width: 100%;
+    flex-basis: auto;
   }
 
   .audience-native-chart-caption {
@@ -5264,6 +5250,10 @@ a {
     display: flex;
     flex: 1;
     flex-direction: column;
+  }
+
+  .audience-explorer-summary {
+    grid-template-columns: minmax(140px, 1.15fr) repeat(6, minmax(82px, 0.82fr));
   }
 
   .audience-demographic-card {
@@ -5306,6 +5296,26 @@ a {
   .audience-demographic-list img {
     width: 20px;
     height: 15px;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1080px) {
+  .audience-explorer-summary {
+    grid-template-columns: minmax(105px, 1.05fr) repeat(6, minmax(64px, 0.82fr));
+  }
+
+  .audience-explorer-profile,
+  .audience-explorer-summary-kpi {
+    padding-inline: 7px;
+  }
+
+  .audience-explorer-summary-kpi > span,
+  .audience-explorer-summary-kpi > small {
+    font-size: 8px;
+  }
+
+  .audience-explorer-summary-kpi > strong {
+    font-size: 14px;
   }
 }
 
@@ -5613,9 +5623,6 @@ a {
     flex-direction: column;
   }
 
-  .audience-native-chart-heading > div:last-child {
-    text-align: left;
-  }
 }
 
 .history-proof {

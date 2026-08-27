@@ -49,17 +49,24 @@ test("consolidates audience analytics into one truthful selectable chart", async
     ],
   );
   assert.match(dashboard, /const \[periodKey, setPeriodKey\] = useState<AudienceChartPeriodKey>\("30d"\)/);
-  assert.match(toolbar, /className="audience-period-control"/);
-  assert.match(toolbar, /className="audience-period-tabs"/);
-  assert.match(toolbar, /aria-label="Période du tableau de bord"/);
-  assert.match(toolbar, /AUDIENCE_CHART_PERIODS\.map/);
-  assert.match(toolbar, /aria-pressed=\{option\.key === periodKey\}/);
-  assert.match(toolbar, /onClick=\{\(\) => setPeriodKey\(option\.key\)\}/);
-  assert.ok(toolbar.indexOf("audience-dashboard-heading") < toolbar.indexOf("audience-period-control"));
+  assert.doesNotMatch(toolbar, /audience-period-control|AUDIENCE_CHART_PERIODS\.map/);
+  assert.match(explorer, /className="audience-period-control audience-period-control-chart"/);
+  assert.match(explorer, /className="audience-period-tabs"/);
+  assert.match(explorer, /aria-label="Période du tableau de bord"/);
+  assert.match(explorer, /AUDIENCE_CHART_PERIODS\.map/);
+  assert.match(explorer, /aria-pressed=\{option\.key === periodKey\}/);
+  assert.match(explorer, /onClick=\{\(\) => onSelectPeriod\(option\.key\)\}/);
   assert.doesNotMatch(explorer, /useState<AudienceChartPeriodKey>|setChartPeriodKey|Période du graphique|audience-chart-period-tabs/);
-  assert.match(dashboard, /<AudienceAnalyticsExplorer[\s\S]*?periodKey=\{periodKey\}/);
+  assert.match(dashboard, /<AudienceAnalyticsExplorer[\s\S]*?onSelectPeriod=\{setPeriodKey\}[\s\S]*?periodKey=\{periodKey\}/);
   assert.match(explorer, /periodKey: AudienceChartPeriodKey/);
+  assert.match(explorer, /onSelectPeriod: \(period: AudienceChartPeriodKey\) => void/);
   assert.match(explorer, /AUDIENCE_CHART_PERIODS\.find\(\(option\) => option\.key === periodKey\)/);
+  const chartHeading = explorer.slice(
+    explorer.indexOf('className="audience-native-chart-heading"'),
+    explorer.indexOf("<AudienceNativeMetricChart"),
+  );
+  assert.match(chartHeading, /audience-period-control-chart/);
+  assert.doesNotMatch(chartHeading, /formatNativeAnalyticsMetric\(activeSummary\.value|<small>\{periodLabel\}<\/small>/);
   assert.match(explorer, /aria-label=\{`Métrique du graphique/);
   assert.match(explorer, /availableMetricWindows\.map/);
   assert.match(explorer, /aria-pressed=\{metric === activeMetric\}/);
@@ -77,6 +84,8 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.doesNotMatch(dashboard, /Collecte planifiée/);
   assert.match(explorer, /className="audience-explorer-summary"/);
   assert.match(explorer, /className="audience-explorer-profile"/);
+  assert.doesNotMatch(explorer, /audience-explorer-profile-logo/);
+  assert.doesNotMatch(explorer, /<img src=\{`platforms\/\$\{activePlatform\}\.svg`\}/);
   assert.equal((explorer.match(/className="audience-explorer-summary-kpi"/g) ?? []).length, 6);
   assert.match(explorer, /Total followers/);
   assert.match(explorer, /Nouveaux followers/);
@@ -105,11 +114,13 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.doesNotMatch(explorer, /fillMissing|interpolate|interpolation linéaire/i);
 
   assert.match(styles, /\.main\.main-dashboard\s*\{[\s\S]*?padding-bottom:\s*8px/);
-  assert.match(styles, /\.audience-dashboard-toolbar\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) auto/);
+  assert.match(styles, /\.audience-dashboard-toolbar\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/);
   assert.match(styles, /\.audience-period-control\s*\{[\s\S]*?justify-content:\s*flex-end/);
+  assert.match(styles, /\.audience-period-control-chart\s*\{[\s\S]*?max-width:\s*min\(100%, 470px\)/);
   assert.match(styles, /\.audience-period-tabs/);
   assert.match(styles, /\.audience-explorer-platform-tabs/);
-  assert.match(styles, /\.audience-explorer-summary\s*\{[\s\S]*?grid-template-columns:\s*minmax\(205px, 1\.2fr\) repeat\(3, minmax\(105px, 0\.8fr\)\)/);
+  assert.match(styles, /\.audience-explorer-summary\s*\{[\s\S]*?grid-template-columns:\s*minmax\(140px, 1\.15fr\) repeat\(6, minmax\(82px, 0\.82fr\)\)/);
+  assert.match(styles, /@media \(min-width: 901px\) and \(max-width: 1080px\)[\s\S]*?grid-template-columns:\s*minmax\(105px, 1\.05fr\) repeat\(6, minmax\(64px, 0\.82fr\)\)/);
   assert.match(styles, /\.audience-explorer-summary-kpi\s*\{/);
   assert.match(styles, /\.audience-explorer-metrics/);
   assert.match(styles, /\.audience-native-chart-empty,[\s\S]*?min-height:\s*150px/);

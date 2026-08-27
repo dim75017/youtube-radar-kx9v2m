@@ -1917,26 +1917,6 @@ function AudienceDashboard({
             <h2 id="audience-dashboard-title">Tableau de bord</h2>
           </div>
         </header>
-
-        <div
-          className="audience-period-control"
-          role="group"
-          aria-label="Période du tableau de bord"
-        >
-          <div className="audience-period-tabs">
-            {AUDIENCE_CHART_PERIODS.map((option) => (
-              <button
-                className={option.key === periodKey ? "active" : ""}
-                type="button"
-                aria-pressed={option.key === periodKey}
-                onClick={() => setPeriodKey(option.key)}
-                key={option.key}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       <AudienceAnalyticsExplorer
@@ -1946,6 +1926,7 @@ function AudienceDashboard({
         demographics={demographics}
         history={history}
         onSelectMetric={setRequestedMetric}
+        onSelectPeriod={setPeriodKey}
         onSelectPlatform={selectAudiencePlatform}
         periodKey={periodKey}
         posts={posts}
@@ -2140,6 +2121,7 @@ function AudienceAnalyticsExplorer({
   demographics,
   history,
   onSelectMetric,
+  onSelectPeriod,
   onSelectPlatform,
   periodKey,
   posts,
@@ -2151,6 +2133,7 @@ function AudienceAnalyticsExplorer({
   demographics: AudienceDemographics | null;
   history: AudienceHistory | null;
   onSelectMetric: (metric: AudienceAnalyticsMetricKey) => void;
+  onSelectPeriod: (period: AudienceChartPeriodKey) => void;
   onSelectPlatform: (platform: Platform) => void;
   periodKey: AudienceChartPeriodKey;
   posts: readonly SocialPost[];
@@ -2339,9 +2322,6 @@ function AudienceAnalyticsExplorer({
 
       <div className="audience-explorer-summary" aria-label={`Synthèse ${meta.label}`}>
         <div className="audience-explorer-profile">
-          <span className="audience-explorer-profile-logo" aria-hidden="true">
-            <img src={`platforms/${activePlatform}.svg`} alt="" width="24" height="24" />
-          </span>
           <div>
             <span className="section-kicker">
               @{activePlatform === "youtube" ? "LofiGirl" : "lofigirl"}
@@ -2460,9 +2440,24 @@ function AudienceAnalyticsExplorer({
                 <span>{activeSeries.length > 1 ? "Évolution quotidienne" : "Valeur disponible"}</span>
                 <h4>{meta.label} · {activeMeta.label}</h4>
               </div>
-              <div>
-                <strong>{formatNativeAnalyticsMetric(activeSummary.value, activeMetric, false)}</strong>
-                <small>{periodLabel}</small>
+              <div
+                className="audience-period-control audience-period-control-chart"
+                role="group"
+                aria-label="Période du tableau de bord"
+              >
+                <div className="audience-period-tabs">
+                  {AUDIENCE_CHART_PERIODS.map((option) => (
+                    <button
+                      className={option.key === periodKey ? "active" : ""}
+                      type="button"
+                      aria-pressed={option.key === periodKey}
+                      onClick={() => onSelectPeriod(option.key)}
+                      key={option.key}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </header>
 

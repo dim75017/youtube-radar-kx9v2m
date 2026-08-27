@@ -48,9 +48,9 @@ test("keeps follower values integral and fits the chart inside the remaining vie
   assert.match(chartText, /font-size:\s*9px/);
   assert.match(styles, /\.audience-native-chart-tooltip-date\s*\{[\s\S]*?font-size:\s*8px/);
   assert.match(styles, /\.audience-native-chart-tooltip-value\s*\{[\s\S]*?font-size:\s*11px/);
-  assert.match(styles, /\.audience-native-chart-heading strong\s*\{[\s\S]*?font-size:\s*clamp\(15px, 1\.35vw, 18px\)/);
+  assert.match(styles, /\.audience-period-control-chart \.audience-period-tabs button\s*\{[\s\S]*?min-width:\s*74px[\s\S]*?font-size:\s*11px/);
   assert.match(styles, /\.audience-dashboard-toolbar\s*\{[\s\S]*?margin-bottom:\s*12px/);
-  assert.match(styles, /\.audience-explorer-summary\s*\{[\s\S]*?grid-template-columns:\s*minmax\(205px, 1\.2fr\) repeat\(3, minmax\(105px, 0\.8fr\)\)/);
+  assert.match(styles, /\.audience-explorer-summary\s*\{[\s\S]*?grid-template-columns:\s*minmax\(140px, 1\.15fr\) repeat\(6, minmax\(82px, 0\.82fr\)\)/);
   assert.match(styles, /\.audience-explorer\s*\{[\s\S]*?margin-top:\s*0[\s\S]*?padding:\s*12px 14px/);
   assert.match(styles, /\.audience-native-chart-shell\s*\{[\s\S]*?margin-top:\s*8px/);
   assert.match(styles, /\.audience-demographics\s*\{[\s\S]*?margin-top:\s*14px[\s\S]*?padding:\s*14px 16px 16px/);
@@ -79,12 +79,13 @@ test("syncs the single platform selector with the active account summary and fol
 
   assert.match(dashboard, /useState<Platform>\("youtube"\)/);
   assert.match(dashboard, /const \[periodKey, setPeriodKey\] = useState<AudienceChartPeriodKey>\("30d"\)/);
-  assert.match(dashboard, /aria-label="Période du tableau de bord"/);
+  assert.doesNotMatch(dashboard, /aria-label="Période du tableau de bord"/);
   assert.match(dashboard, /selectAudiencePlatform/);
   assert.match(dashboard, /setRequestedMetric\(NATIVE_ANALYTICS_DEFAULT_METRIC\[platform\]\)/);
   assert.doesNotMatch(dashboard, /audience-platform-grid|audience-platform-card/);
   assert.match(dashboard, /activePlatform=\{activePlatform\}/);
   assert.match(dashboard, /onSelectPlatform=\{selectAudiencePlatform\}/);
+  assert.match(dashboard, /onSelectPeriod=\{setPeriodKey\}/);
   assert.match(dashboard, /periodKey=\{periodKey\}/);
 
   assert.match(component, /youtube:\s*\[\s*"followersNet",\s*"followersTotal"/);
@@ -100,6 +101,8 @@ test("syncs the single platform selector with the active account summary and fol
   assert.match(explorer, /aria-pressed=\{platform === activePlatform\}/);
   assert.match(explorer, /availableMetricWindows\.find\(\(window\) => window\.metric === requestedMetric\)/);
   assert.match(explorer, /onClick=\{\(\) => onSelectPlatform\(platform\)\}/);
+  assert.match(explorer, /className="audience-period-control audience-period-control-chart"/);
+  assert.match(explorer, /onClick=\{\(\) => onSelectPeriod\(option\.key\)\}/);
   assert.match(explorer, /className="audience-explorer-summary"/);
   assert.match(explorer, /className="audience-explorer-profile"/);
   assert.equal((explorer.match(/className="audience-explorer-summary-kpi"/g) ?? []).length, 6);
