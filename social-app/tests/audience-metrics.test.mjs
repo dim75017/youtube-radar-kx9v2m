@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import test from "node:test";
@@ -422,32 +422,56 @@ test("keeps the TikTok creator embed counter rounded instead of claiming exactne
 });
 
 test("never replaces a same-day exact audience point with a rounded counter", async () => {
-  const previousYouTube = latestAudienceObservation(history.platforms.youtube);
-  assert.equal(previousYouTube.precision, "exact");
-  const capturedAt = new Date(
-    Date.parse(previousYouTube.capturedAt) + 60 * 60 * 1_000,
-  ).toISOString();
+  const exactAt = "2026-08-26T08:00:00.000Z";
+  const capturedAt = "2026-08-26T09:00:00.000Z";
+  const controlledHistory = {
+    version: 2,
+    generatedAt: exactAt,
+    platforms: Object.fromEntries(
+      ["youtube", "instagram", "tiktok", "x"].map((platform) => [
+        platform,
+        {
+          profileUrl: `https://example.com/${platform}`,
+          observations: [observation(exactAt, 1_000_000, "exact")],
+          engagementByPeriod: emptyEngagementByPeriod(),
+        },
+      ]),
+    ),
+  };
+  const previousYouTube = latestAudienceObservation(controlledHistory.platforms.youtube);
   assert.equal(parisCalendarDay(capturedAt), parisCalendarDay(previousYouTube.capturedAt));
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), "lofi-audience-exact-"));
+  const temporaryHistoryPath = join(temporaryDirectory, "audience-history.json");
+  const temporaryPostsPath = join(temporaryDirectory, "public-history.json");
   const collectors = {
     youtube: async () => observation(capturedAt, 15_800_000, "platform-rounded"),
     instagram: async () => { throw new Error("ignoré"); },
     tiktok: async () => { throw new Error("ignoré"); },
     x: async () => { throw new Error("ignoré"); },
   };
-  const result = await collectAudienceHistory({
-    historyPath,
-    postsPath,
-    collectors,
-    now: capturedAt,
-    write: false,
-  });
 
-  assert.ok(result.failures.some((item) =>
-    item.platform === "youtube" && /ne peut pas remplacer/i.test(item.error)));
-  assert.deepEqual(
-    latestAudienceObservation(result.history.platforms.youtube),
-    previousYouTube,
-  );
+  try {
+    await Promise.all([
+      writeFile(temporaryHistoryPath, JSON.stringify(controlledHistory), "utf8"),
+      writeFile(temporaryPostsPath, JSON.stringify({ posts: [] }), "utf8"),
+    ]);
+    const result = await collectAudienceHistory({
+      historyPath: temporaryHistoryPath,
+      postsPath: temporaryPostsPath,
+      collectors,
+      now: capturedAt,
+      write: false,
+    });
+
+    assert.ok(result.failures.some((item) =>
+      item.platform === "youtube" && /ne peut pas remplacer/i.test(item.error)));
+    assert.deepEqual(
+      latestAudienceObservation(result.history.platforms.youtube),
+      previousYouTube,
+    );
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
 });
 
 test("accepts a rounded observation on a later Paris day after an exact point", async () => {
