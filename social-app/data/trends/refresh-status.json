@@ -1,14 +1,14 @@
 {
   "version": 1,
   "cadenceHours": 24,
-  "lastAttemptAt": "2026-08-27T06:47:44.981Z",
+  "lastAttemptAt": "2026-08-27T15:17:35.431Z",
   "lastSuccessfulAt": "2026-08-19T04:54:32.018Z",
-  "nextScheduledAt": "2026-08-28T06:47:44.981Z",
+  "nextScheduledAt": "2026-08-28T15:17:35.431Z",
   "status": "degraded",
-  "runId": "33047080015",
-  "runUrl": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/33047080015",
+  "runId": "33086789033",
+  "runUrl": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/33086789033",
   "discoveryAudit": {
-    "scannedAt": "2026-08-27T06:47:44.981Z",
+    "scannedAt": "2026-08-27T15:17:35.431Z",
     "complete": false,
     "candidateCount": 56,
     "qualifiedInventoryCount": 30,
@@ -62,12 +62,12 @@
       "https://www.tiktok.com/@romero.szee/video/7660435196302363934",
       "https://www.tiktok.com/@stillwatersfishing/video/7640578773078904077",
       "https://www.youtube.com/watch?v=2X-Lc35kpB8",
-      "https://www.youtube.com/watch?v=G4OiqXl7oGM",
+      "https://www.youtube.com/watch?v=DRdz-xIl1Fc",
       "https://www.youtube.com/watch?v=L8ZnXgbyUuc",
       "https://www.youtube.com/watch?v=LhXU84j3ufQ",
       "https://www.youtube.com/watch?v=MT-4Bk1Lw8g",
-      "https://www.youtube.com/watch?v=Qq1Z14c_RyQ",
       "https://www.youtube.com/watch?v=UG4Rox2Bcck",
+      "https://www.youtube.com/watch?v=afSgBNwmZrQ",
       "https://www.youtube.com/watch?v=jQNbkZ4pRlw",
       "https://www.youtube.com/watch?v=oW-f6RYSwBI",
       "https://www.youtube.com/watch?v=r01zeFtwHoA",
@@ -278,6 +278,7 @@
         "candidateCount": 12,
         "matchedTrendIds": [
           "just-say-here-bro",
+          "petal-soft-chaos",
           "social-battery-solo-mode",
           "explaining-game-lore",
           "video-game-main-menu",
@@ -286,12 +287,12 @@
         ],
         "candidateUrls": [
           "https://www.youtube.com/watch?v=2X-Lc35kpB8",
-          "https://www.youtube.com/watch?v=G4OiqXl7oGM",
+          "https://www.youtube.com/watch?v=DRdz-xIl1Fc",
           "https://www.youtube.com/watch?v=L8ZnXgbyUuc",
           "https://www.youtube.com/watch?v=LhXU84j3ufQ",
           "https://www.youtube.com/watch?v=MT-4Bk1Lw8g",
-          "https://www.youtube.com/watch?v=Qq1Z14c_RyQ",
           "https://www.youtube.com/watch?v=UG4Rox2Bcck",
+          "https://www.youtube.com/watch?v=afSgBNwmZrQ",
           "https://www.youtube.com/watch?v=jQNbkZ4pRlw",
           "https://www.youtube.com/watch?v=oW-f6RYSwBI",
           "https://www.youtube.com/watch?v=r01zeFtwHoA",
@@ -309,7 +310,7 @@
         "candidateUrls": []
       }
     ],
-    "reachabilityCheckedAt": "2026-08-27T06:47:44.981Z",
+    "reachabilityCheckedAt": "2026-08-27T15:17:35.431Z",
     "availablePosts": 152,
     "unavailablePosts": 1,
     "unavailablePostUrls": [
@@ -322,7 +323,7 @@
       "label": "Buffer · TikTok",
       "platform": "tiktok",
       "status": "success",
-      "checkedAt": "2026-08-27T06:47:44.981Z",
+      "checkedAt": "2026-08-27T15:17:35.431Z",
       "candidatesMatched": 15
     },
     {
@@ -330,7 +331,7 @@
       "label": "Later · Instagram Reels",
       "platform": "instagram",
       "status": "success",
-      "checkedAt": "2026-08-27T06:47:44.981Z",
+      "checkedAt": "2026-08-27T15:17:35.431Z",
       "candidatesMatched": 16
     },
     {
@@ -338,7 +339,7 @@
       "label": "SocialPilot · TikTok",
       "platform": "tiktok",
       "status": "success",
-      "checkedAt": "2026-08-27T06:47:44.981Z",
+      "checkedAt": "2026-08-27T15:17:35.431Z",
       "candidatesMatched": 18
     },
     {
@@ -346,7 +347,7 @@
       "label": "SocialPilot · Instagram Reels",
       "platform": "instagram",
       "status": "success",
-      "checkedAt": "2026-08-27T06:47:44.981Z",
+      "checkedAt": "2026-08-27T15:17:35.431Z",
       "candidatesMatched": 17
     },
     {
@@ -354,7 +355,7 @@
       "label": "Tokchart · sons TikTok",
       "platform": "tiktok",
       "status": "failed",
-      "checkedAt": "2026-08-27T06:47:44.981Z",
+      "checkedAt": "2026-08-27T15:17:35.431Z",
       "candidatesMatched": 0
     },
     {
@@ -362,21 +363,21 @@
       "label": "TrendVideosHub · YouTube Shorts",
       "platform": "youtube",
       "status": "success",
-      "checkedAt": "2026-08-27T06:47:44.981Z",
-      "candidatesMatched": 6
+      "checkedAt": "2026-08-27T15:17:35.431Z",
+      "candidatesMatched": 7
     },
     {
       "id": "x-france-trends",
       "label": "X · tendances France",
       "platform": "x",
       "status": "failed",
-      "checkedAt": "2026-08-27T06:47:44.981Z",
+      "checkedAt": "2026-08-27T15:17:35.431Z",
       "candidatesMatched": 0
     }
   ],
   "counts": {
     "checkedSources": 5,
-    "matchedSignals": 72,
+    "matchedSignals": 73,
     "actionable": 51,
     "lofiGirl": 44,
     "lofiBoy": 7
