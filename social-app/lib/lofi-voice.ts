@@ -467,6 +467,91 @@ const CURATED_COMMENT_OVERRIDES: Record<
     smart: "Pairing Netflix icons with emerging talent makes legacy feel like a conversation.",
     complice: "Netflix icons meeting a new class is the crossover our watchlist needed.",
   },
+  "yt-tjbzmqjgh4k-4e05af": {
+    funny: "An extended look at GTA VI just shortened every plan I had tonight.",
+    smart: "Calling it an extended look makes patience sound like an optional game mechanic.",
+    complice: "Same desk, new GTA VI footage, absolutely no progress on the next page.",
+  },
+  "yt-zvcqhurhzwi-533a73": {
+    funny: "A Parallel World opened and my assignment apparently stayed in this one.",
+    smart: "Open Mic keeps A Parallel World focused on the performance itself.",
+    complice: "BINI made the parallel world our whole study room for tonight.",
+  },
+  "yt-opgr9gc5ozk-4bfbb2": {
+    funny: "You Just Made My Night also made tomorrow's notes considerably less complete.",
+    smart: "YOU JUST MADE MY NIGHT turns a message into the entire mood.",
+    complice: "LE SSERAFIM named exactly what happened to this late-night study session.",
+  },
+  "yt-fivctzmv4xo-54f510": {
+    funny: "Rockstar explained stealing cars; my focus disappeared without any explanation.",
+    smart: "Changing how you steal cars is a surprisingly precise GTA 6 promise.",
+    complice: "We came for Rockstar Explains and left with a postponed deadline.",
+  },
+  "yt-98fohkdonau-b5b822": {
+    funny: "Gamescom Day 2 arrived before Day 1 left my browser tabs.",
+    smart: "A Day 2 broadcast makes gamescom feel less like an event than a season.",
+    complice: "XBOX kept Day 2 rolling; our study timer quietly stopped counting.",
+  },
+  "yt-migclaow9ki-76115e": {
+    funny: "A live GTA 6 reaction has more volume than my deadline alarm.",
+    smart: "Reacting live turns the new GTA 6 trailer into a shared countdown.",
+    complice: "IShowSpeed pressed LIVE and every quiet study plan left the chat.",
+  },
+  "yt-wsm9gtuttbs-91d853": {
+    funny: "Extended gameplay, abbreviated attention span; GTA 6 did the math.",
+    smart: "Calling this official extended gameplay makes a trailer feel almost too modest.",
+    complice: "We all saw extended gameplay and moved one deadline into next week.",
+  },
+  "yt-uphthaa97ig-e9c41b": {
+    funny: "Netflix said Now Playing; my notebook heard Not Happening Tonight.",
+    smart: "Now Playing turns an extended GTA VI look into appointment viewing.",
+    complice: "GTA VI reached Netflix and somehow our study break got extended too.",
+  },
+  "yt-xe3qx0kxara-462c33": {
+    funny: "A Doomsday countdown podcast is extremely calm material for the study desk.",
+    smart: "A special look delivered as a podcast makes anticipation do the visual work.",
+    complice: "We heard Countdown to Avengers: Doomsday and immediately checked every calendar.",
+  },
+  "yt-v3qx5b0geg-e071ed": {
+    funny: "The Avengers joined a podcast and my revision team instantly lost quorum.",
+    smart: "Centering The Avengers makes the Doomsday countdown feel like a roll call.",
+    complice: "Everyone at this desk heard The Avengers and quietly joined the countdown.",
+  },
+  "yt-ghsrc0r1a2a-160ef2": {
+    funny: "SODA SODA doubled the title and halved tonight's remaining concentration.",
+    smart: "Calling it a performance film gives SODA SODA room beyond one format.",
+    complice: "TWS brought SODA SODA; the late-night study playlist made room.",
+  },
+  "yt-xwdamnfs6im-185550": {
+    funny: "The Love Hypothesis arrived right when my deadline needed peer review.",
+    smart: "A title like The Love Hypothesis makes romance sound beautifully testable.",
+    complice: "Prime Video submitted The Love Hypothesis; our study group accepts the premise.",
+  },
+  "yt-yqai0oqtt7w-202112": {
+    funny: "Dust is not what I think; neither is this revision schedule.",
+    smart: "Dust Is Not What You Think turns its own title into productive doubt.",
+    complice: "Kurzgesagt questioned dust and now every desk particle feels suspicious.",
+  },
+  "yt-q7wqli6pxpe-6d6f4a": {
+    funny: "How many bounces before this officially becomes a study-break experiment?",
+    smart: "How Many Bounces builds suspense from a question with no wasted words.",
+    complice: "Dude Perfect asked one question; this desk is waiting for the count.",
+  },
+  "yt-t6fxf4pmvvc-bf3b17": {
+    funny: "12 12 12 is either a date or my new study timer malfunction.",
+    smart: "Repeating 12 three times makes a date announcement instantly mnemonic.",
+    complice: "Apple TV gave us 12 12 12; the calendar finally feels cinematic.",
+  },
+  "yt-b3kpfdb1pw8-8ce432": {
+    funny: "MKBHD locked an iPhone; my focus remains significantly easier to steal.",
+    smart: "Taking $10,000 from a locked iPhone turns security into a very expensive puzzle.",
+    complice: "A locked iPhone, MKBHD, and $10,000 already have this desk invested.",
+  },
+  "yt-h06xkc1nju-937794": {
+    funny: "She left one sentence unfinished and somehow my entire study group needs answers.",
+    smart: "What did she mean turns missing context into the whole reason to watch.",
+    complice: "Ludwig asked the question and now nobody at this desk is moving on.",
+  },
 };
 
 export function curatedLofiComments(

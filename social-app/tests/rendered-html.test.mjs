@@ -333,6 +333,10 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     publicPreviewBuilder,
     /writeJson\(resolve\(output, "audience-demographics\.json"\), audienceDemographics\)/,
   );
+  assert.match(
+    publicPreviewBuilder,
+    /resolve\(output, "comment-opportunities", "refresh-status\.json"\)/,
+  );
   assert.match(audienceDemographicsModel, /assertAudienceDemographics/);
   assert.equal(JSON.parse(audienceDemographicsSnapshot).version, 1);
   assert.match(previewEntry, /raw\.githubusercontent\.com\/dim75017\/youtube-radar-kx9v2m\/main\/social-app\/data/);

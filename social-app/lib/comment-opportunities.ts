@@ -218,7 +218,7 @@ const MOMENT_TIER_THRESHOLDS: Record<
 
 /** A card whose subject is sensitive can never be published as low risk. */
 const SENSITIVE_SUBJECT_PATTERN =
-  /\b(?:rip|r\.i\.p|died|dies|death|dead|passed\s+away|funeral|obituary|killed|shooting|murder|terror|attack|war|invasion|bombing|genocide|hostage|earthquake|wildfire|hurricane|flood|famine|cancer|suicide|overdose|assault|lawsuit|arrested|convicted|verdict|election|president|senate|parliament|protest|riot|strike|layoffs|bankruptcy|deces|décès|mort|tuerie|attentat|guerre|séisme|seisme|incendie|inondation|proces|procès|élection|election)\b/iu;
+  /\b(?:rip|r\.i\.p|died|dies|death|dead|passed\s+away|funeral|obituary|killed|shooting|murder|terror|attack|war|invasion|bombing|unabomber|genocide|hostage|earthquake|wildfire|hurricane|flood|famine|cancer|suicide|overdose|assault|drunk|intoxicated|sleep\s+deprivation|lawsuit|arrested|convicted|verdict|election|president|senate|parliament|protest|riot|strike|layoffs|bankruptcy|deces|décès|mort|tuerie|attentat|guerre|séisme|seisme|incendie|inondation|proces|procès|élection|election)\b/iu;
 
 function isText(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;

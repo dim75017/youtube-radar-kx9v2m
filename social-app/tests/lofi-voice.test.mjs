@@ -173,6 +173,23 @@ test("current editorial overrides are specific, concise and globally unique", ()
     "yt-rrfjvp6quw-b08616": /twenty hours|h2|noise cancellation|usb-c|spatial audio|five colors/u,
     "yt-encmlxqbvra-5f2506": /tems|what you need|colors moment/u,
     "yt-zxu4v1qjssg-e24592": /new class|netflix icons|emerging talent/u,
+    "yt-tjbzmqjgh4k-4e05af": /extended look|gta vi|game mechanic/u,
+    "yt-zvcqhurhzwi-533a73": /bini|parallel world|open mic/u,
+    "yt-opgr9gc5ozk-4bfbb2": /le sserafim|you just made my night/u,
+    "yt-fivctzmv4xo-54f510": /rockstar explain|steal(?:ing)? cars|gta 6/u,
+    "yt-98fohkdonau-b5b822": /gamescom|day 2|xbox/u,
+    "yt-migclaow9ki-76115e": /ishowspeed|live|gta 6 reaction|gta 6 trailer/u,
+    "yt-wsm9gtuttbs-91d853": /extended gameplay|gta 6/u,
+    "yt-uphthaa97ig-e9c41b": /netflix|now playing|gta vi/u,
+    "yt-xe3qx0kxara-462c33": /doomsday|countdown|podcast|special look/u,
+    "yt-v3qx5b0geg-e071ed": /avengers|doomsday countdown|podcast/u,
+    "yt-ghsrc0r1a2a-160ef2": /tws|soda soda|performance film/u,
+    "yt-xwdamnfs6im-185550": /love hypothesis|prime video/u,
+    "yt-yqai0oqtt7w-202112": /dust|kurzgesagt/u,
+    "yt-q7wqli6pxpe-6d6f4a": /how many bounces|dude perfect/u,
+    "yt-t6fxf4pmvvc-bf3b17": /12 12 12|date announcement|apple tv/u,
+    "yt-b3kpfdb1pw8-8ce432": /mkbhd|locked iphone|10,000/u,
+    "yt-h06xkc1nju-937794": /what did she mean|ludwig|unfinished/u,
   };
   const allTexts = [];
   for (const [id, anchor] of Object.entries(expectedAnchors)) {

@@ -12,6 +12,7 @@ import {
   selectBoard,
 } from "../scripts/refresh-comment-opportunities.mjs";
 import { assertCommentOpportunityFeed } from "../lib/comment-opportunities.ts";
+import { commentOpportunityWhyNow } from "../lib/comment-scoring.ts";
 
 function atomFeed(channelName, entries) {
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -119,6 +120,58 @@ test("the board bar keeps ordinary uploads out and lets a real moment through", 
   assert.equal(qualifiesForBoard({ ...base, momentTier: "a", lofiFitScore: 70 }), true);
   assert.equal(qualifiesForBoard({ ...base, momentTier: "a", lofiFitScore: 40 }), false);
   assert.equal(qualifiesForBoard({ ...base, momentTier: "s", lofiFitScore: 70 }), true);
+});
+
+test("why now reports a real like counter when a public source exposes no views", () => {
+  const whyNow = commentOpportunityWhyNow({
+    author: "@Fortnite",
+    publishedAt: "2026-08-25T13:01:05.000Z",
+    capturedAt: "2026-08-28T07:59:09.037Z",
+    discovery: { source: "viral-scan", accountHandle: null, accountTier: null },
+    velocity: null,
+    metrics: { views: null, likes: 33_435, comments: 628, shares: 3_949 },
+    momentTier: "b",
+  });
+  assert.match(whyNow, /33[\s\u202f]435 likes/u);
+  assert.doesNotMatch(whyNow, /indisponibles/u);
+});
+
+test("sensitive and sponsored uploads never reach the comment board", () => {
+  const major = {
+    momentTier: "s",
+    lofiFitScore: 100,
+    metrics: { views: 9_000_000 },
+    title: "UNABOMBER | Official Trailer",
+    caption: "A new documentary trailer.",
+  };
+  assert.equal(qualifiesForBoard(major), false);
+  assert.equal(
+    qualifiesForBoard({
+      ...major,
+      title: "PlayGalaxy Cup World Final",
+      caption: "The full match. #sponsored",
+    }),
+    false,
+  );
+  const staleBoard = [
+    {
+      ...major,
+      id: "unsafe-old-card",
+      platform: "x",
+      author: "@example",
+      title: "Too sleepy to function",
+      caption: "So sleepy it feels drunk",
+      priorityScore: 100,
+      publishedAt: "2026-08-08T00:00:00.000Z",
+      capturedAt: "2026-08-18T00:00:00.000Z",
+      status: "hot",
+      risk: { level: "medium", note: "Safety review required." },
+    },
+  ];
+  assert.deepEqual(
+    selectBoard(staleBoard, Date.parse("2026-08-28T08:00:00.000Z"), "2026-08-28T08:00:00.000Z"),
+    [],
+  );
 });
 
 test("a drop is discovered, then promoted once the climb is measured", async () => {
@@ -300,6 +353,17 @@ test("an unmapped card cannot replace the last feed with generic fallbacks", asy
     previousFeed,
     "the last verified snapshot stays byte-for-byte intact",
   );
+  const status = JSON.parse(await readFile(paths.status, "utf8"));
+  assert.equal(status.status, "failed");
+  assert.equal(status.ranAt, "2026-08-13T10:10:00.000Z");
+  assert.equal(status.pendingEditorialCount, 1);
+  assert.equal(status.attemptedCards, 1);
+  assert.equal(status.published, 0);
+  assert.equal(status.retainedFeedCapturedAt, EMPTY_FEED.capturedAt);
+  assert.match(status.failureReason, /dernier snapshot conservé/u);
+  const candidates = JSON.parse(await readFile(paths.candidates, "utf8"));
+  assert.equal(candidates.updatedAt, "2026-08-13T10:10:00.000Z");
+  assert.ok(candidates.candidates.length >= 1);
 });
 
 test("a YouTube-only lane preserves the last verified cards from every other platform", async () => {

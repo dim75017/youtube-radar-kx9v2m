@@ -301,6 +301,11 @@ function opportunityFromCandidate(candidate) {
  * ever comment.
  */
 export function qualifiesForBoard(opportunity) {
+  const subject = `${opportunity.title ?? ""} ${opportunity.caption ?? ""}`;
+  if (commentOpportunityIsSensitive(opportunity)) return false;
+  if (/(?:#sponsored|\bsponsored\b|\bpaid partnership\b|\badvertisement\b)/iu.test(subject)) {
+    return false;
+  }
   if (opportunity.momentTier === "s") return opportunity.lofiFitScore >= 50;
   if (opportunity.momentTier === "a") return opportunity.lofiFitScore >= 58;
   return opportunity.lofiFitScore >= 72 && (opportunity.metrics.views ?? 0) >= 150_000;
@@ -423,6 +428,11 @@ function buildSourceChecks(previousChecks, youtubeCheck, opportunities, captured
  */
 export function selectBoard(opportunities, nowMs, referenceAt) {
   const alive = opportunities.filter((opportunity) => {
+    const subject = `${opportunity.title ?? ""} ${opportunity.caption ?? ""}`;
+    if (commentOpportunityIsSensitive(opportunity)) return false;
+    if (/(?:#sponsored|\bsponsored\b|\bpaid partnership\b|\badvertisement\b)/iu.test(subject)) {
+      return false;
+    }
     // These automated lanes only re-check YouTube. Pruning another platform
     // here would turn a source outage into silent data loss instead of keeping
     // that platform's last verified snapshot.
@@ -611,10 +621,46 @@ export async function refreshCommentOpportunities(options = {}) {
   const fallbackCount = opportunities.filter(
     (opportunity) => opportunity.commentsSource === "fallback",
   ).length;
+  const failureReason = fallbackCount > 0
+    ? `${fallbackCount} cartes sans commentaires éditoriaux spécifiques : dernier snapshot conservé.`
+    : null;
+  const status = {
+    lane,
+    ranAt: now,
+    status: fallbackCount > 0 ? (options.allowFallback === true ? "degraded" : "failed") : "success",
+    failureReason,
+    watchedAccounts: accounts.length,
+    reachedChannels: reached.length,
+    failedChannels: failed.map((result) => ({
+      handle: result.account.handle,
+      reason: result.error,
+    })),
+    discovered,
+    remeasured,
+    promoted,
+    trackedCandidates: liveCandidates.length,
+    attemptedCards: opportunities.length,
+    pendingEditorialCount: fallbackCount,
+    published: fallbackCount > 0 && options.allowFallback !== true
+      ? feed.opportunities.length
+      : opportunities.length,
+    retainedFeedCapturedAt: fallbackCount > 0 && options.allowFallback !== true
+      ? feed.capturedAt
+      : null,
+    tierCounts: countBy(opportunities, (item) => item.momentTier),
+    categoryCounts: countBy(opportunities, (item) => item.category),
+    voice: { ...voice, engine: apiKey ? "anthropic" : "absent" },
+  };
   if (fallbackCount > 0 && options.allowFallback !== true) {
-    throw new Error(
-      `${fallbackCount} cartes sans commentaires éditoriaux spécifiques : dernier snapshot conservé.`,
-    );
+    if (!options.dryRun) {
+      await writeFile(
+        paths.candidates,
+        `${JSON.stringify({ version: 1, updatedAt: now, candidates: liveCandidates })}\n`,
+        "utf8",
+      );
+      await writeFile(paths.status, `${JSON.stringify(status, null, 2)}\n`, "utf8");
+    }
+    throw new Error(failureReason);
   }
 
   const youtubeCount = opportunities.filter((item) => item.platform === "youtube").length;
@@ -642,25 +688,6 @@ export async function refreshCommentOpportunities(options = {}) {
     opportunities,
   };
   assertCommentOpportunityFeed(nextFeed);
-
-  const status = {
-    lane,
-    ranAt: now,
-    watchedAccounts: accounts.length,
-    reachedChannels: reached.length,
-    failedChannels: failed.map((result) => ({
-      handle: result.account.handle,
-      reason: result.error,
-    })),
-    discovered,
-    remeasured,
-    promoted,
-    trackedCandidates: liveCandidates.length,
-    published: nextFeed.opportunities.length,
-    tierCounts: countBy(nextFeed.opportunities, (item) => item.momentTier),
-    categoryCounts: countBy(nextFeed.opportunities, (item) => item.category),
-    voice: { ...voice, engine: apiKey ? "anthropic" : "absent" },
-  };
 
   if (!options.dryRun) {
     await writeFile(paths.feed, `${JSON.stringify(nextFeed, null, 2)}\n`, "utf8");

@@ -165,6 +165,10 @@ export function commentOpportunityWhyNow(
     );
   } else if (opportunity.metrics.views !== null) {
     parts.push(`${opportunity.metrics.views.toLocaleString("fr-FR")} vues au premier relevé, accélération pas encore mesurée.`);
+  } else if (opportunity.metrics.likes !== null) {
+    parts.push(`${opportunity.metrics.likes.toLocaleString("fr-FR")} likes au premier relevé, accélération pas encore mesurée.`);
+  } else if (opportunity.metrics.comments !== null) {
+    parts.push(`${opportunity.metrics.comments.toLocaleString("fr-FR")} commentaires au premier relevé, accélération pas encore mesurée.`);
   } else {
     parts.push("Compteurs publics indisponibles à ce relevé.");
   }

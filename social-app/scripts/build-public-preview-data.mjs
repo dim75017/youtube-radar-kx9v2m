@@ -32,6 +32,7 @@ const [
   audienceAnalytics,
   audienceDemographics,
   commentOpportunityFeed,
+  commentOpportunityStatus,
   playlistPromoFeed,
   playlistPromoStatus,
   scrollingFeed,
@@ -46,6 +47,7 @@ const [
   readJson(resolve(root, "data", "audience-analytics.json")),
   readJson(resolve(root, "data", "audience-demographics.json")),
   readJson(resolve(root, "data", "comment-opportunities", "feed.json")),
+  readJson(resolve(root, "data", "comment-opportunities", "refresh-status.json")),
   readJson(resolve(root, "data", "playlist-promos", "feed.json")),
   readJson(resolve(root, "data", "playlist-promos", "refresh-status.json")),
   readJson(resolve(root, "data", "scrolling", "feed.json")),
@@ -65,6 +67,14 @@ assertAudienceHistory(audienceHistory);
 assertAudienceAnalytics(audienceAnalytics);
 assertAudienceDemographics(audienceDemographics);
 assertCommentOpportunityFeed(commentOpportunityFeed);
+if (
+  !["fast", "deep"].includes(commentOpportunityStatus?.lane) ||
+  !Number.isFinite(Date.parse(commentOpportunityStatus.ranAt)) ||
+  !Number.isInteger(commentOpportunityStatus.watchedAccounts) ||
+  !Number.isInteger(commentOpportunityStatus.published)
+) {
+  throw new Error("Le statut Commentaires est invalide.");
+}
 assertPlaylistPromoFeed(playlistPromoFeed);
 assertScrollingFeed(scrollingFeed);
 if (
@@ -92,6 +102,10 @@ await writeJson(resolve(output, "trends", "refresh-status.json"), videoTrendScan
 await writeJson(resolve(output, "audio-trends", "feed.json"), audioTrendFeed);
 await writeJson(resolve(output, "audio-trends", "refresh-status.json"), audioTrendScanStatus);
 await writeJson(resolve(output, "comment-opportunities", "feed.json"), commentOpportunityFeed);
+await writeJson(
+  resolve(output, "comment-opportunities", "refresh-status.json"),
+  commentOpportunityStatus,
+);
 await writeJson(resolve(output, "playlist-promos", "feed.json"), playlistPromoFeed);
 await writeJson(resolve(output, "playlist-promos", "refresh-status.json"), playlistPromoStatus);
 await writeJson(resolve(output, "scrolling", "feed.json"), scrollingFeed);
