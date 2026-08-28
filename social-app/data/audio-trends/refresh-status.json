@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "attemptedAt": "2026-08-28T01:36:06.691Z",
+  "attemptedAt": "2026-08-28T17:31:13.445Z",
   "status": "failed",
   "published": false,
   "inventory": {
@@ -14,13 +14,13 @@
     "publishable": true
   },
   "discoveryAudit": {
-    "scannedAt": "2026-08-28T01:36:06.691Z",
+    "scannedAt": "2026-08-28T17:31:13.445Z",
     "status": "incomplete",
     "complete": false,
-    "candidateCount": 164,
+    "candidateCount": 166,
     "qualifiedInventoryCount": 1,
     "currentMatchedCount": 1,
-    "newCandidateCount": 163,
+    "newCandidateCount": 165,
     "added": [
       "https://www.instagram.com/reels/audio/1006119841436928",
       "https://www.instagram.com/reels/audio/1040129337188935",
@@ -131,6 +131,8 @@
       "https://www.instagram.com/reels/audio/2767482896732660",
       "https://www.instagram.com/reels/audio/276863736527927",
       "https://www.instagram.com/reels/audio/27738988309042529",
+      "https://www.instagram.com/reels/audio/27744422291886829",
+      "https://www.instagram.com/reels/audio/27846287318366012",
       "https://www.instagram.com/reels/audio/28003889949202868",
       "https://www.instagram.com/reels/audio/28302681646015420",
       "https://www.instagram.com/reels/audio/32945215041760659",
@@ -351,6 +353,8 @@
       "https://www.instagram.com/reels/audio/2767482896732660",
       "https://www.instagram.com/reels/audio/276863736527927",
       "https://www.instagram.com/reels/audio/27738988309042529",
+      "https://www.instagram.com/reels/audio/27744422291886829",
+      "https://www.instagram.com/reels/audio/27846287318366012",
       "https://www.instagram.com/reels/audio/28003889949202868",
       "https://www.instagram.com/reels/audio/28302681646015420",
       "https://www.instagram.com/reels/audio/32945215041760659",
@@ -663,7 +667,7 @@
         "label": "Later · tendances Reels Instagram",
         "url": "https://later.com/blog/instagram-reels-trends/",
         "status": "success",
-        "candidateCount": 131,
+        "candidateCount": 133,
         "referenceCandidateCount": 36,
         "error": null
       },
