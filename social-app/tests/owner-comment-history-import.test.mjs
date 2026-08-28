@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -8,25 +8,39 @@ import test from "node:test";
 const ROOT = resolve(import.meta.dirname, "..");
 const IMPORTER = resolve(ROOT, "scripts", "import_owner_comment_history.mjs");
 
-async function invokeImport(input) {
+async function invokeImport(
+  input,
+  { skipMediaCache = true, seededInstagramShortcode = null } = {},
+) {
   const directory = await mkdtemp(resolve(tmpdir(), "owner-comments-"));
   const inputPath = resolve(directory, "private-input.json");
   const historyPath = resolve(directory, "history.json");
   const summaryPath = resolve(directory, "summary.json");
+  const instagramMediaDirectory = resolve(directory, "instagram-media");
   await writeFile(inputPath, `${JSON.stringify(input, null, 2)}\n`, "utf8");
   await writeFile(historyPath, `${JSON.stringify({ generatedAt: "2026-08-27T00:00:00.000Z", coverage: [], posts: [] }, null, 2)}\n`, "utf8");
   await writeFile(summaryPath, `${JSON.stringify({ generatedAt: "2026-08-27T00:00:00.000Z", totalPostCount: 0, platformCounts: { youtube: 0, instagram: 0, tiktok: 0, x: 0 }, formatCounts: { youtube: {}, instagram: {}, tiktok: {}, x: {} }, coverage: [] }, null, 2)}\n`, "utf8");
+  if (seededInstagramShortcode) {
+    await mkdir(instagramMediaDirectory, { recursive: true });
+    await writeFile(
+      resolve(instagramMediaDirectory, `${seededInstagramShortcode}.jpg`),
+      Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(1_100)]),
+    );
+  }
 
-  const result = spawnSync(process.execPath, [IMPORTER, `--input=${inputPath}`], {
+  const arguments_ = [IMPORTER, `--input=${inputPath}`];
+  if (skipMediaCache) arguments_.push("--skip-media-cache");
+  const result = spawnSync(process.execPath, arguments_, {
     cwd: ROOT,
     encoding: "utf8",
     env: {
       ...process.env,
       PUBLIC_HISTORY_PATH: historyPath,
       PUBLIC_HISTORY_SUMMARY_PATH: summaryPath,
+      OWNER_COMMENT_INSTAGRAM_MEDIA_DIR: instagramMediaDirectory,
     },
   });
-  return { result, historyPath, summaryPath };
+  return { result, historyPath, summaryPath, instagramMediaDirectory };
 }
 
 async function runImport(input) {
@@ -76,7 +90,7 @@ test("imports a closed Instagram comment record and deduplicates native IDs", as
   assert.equal(post.text, "latest observed text");
   assert.equal(
     post.thumbnailUrl,
-    "https://www.instagram.com/p/ABC123/media/?size=l",
+    "https://dim75017.github.io/youtube-radar-kx9v2m/social/media/instagram/ABC123.jpg",
   );
   assert.equal(post.raw.commentTarget.thumbnailUrl, post.thumbnailUrl);
   assert.equal(post.raw.commentTarget.audienceValue, 12300);
@@ -116,6 +130,45 @@ test("preserves a signed thumbnail from an approved TikTok CDN", async () => {
   assert.equal(post.raw.commentTarget.thumbnailUrl, thumbnailUrl);
   assert.equal(post.raw.commentTarget.url, "https://www.tiktok.com/@creator/video/123");
   assert.equal(post.raw.commentTarget.audienceLabel, "98 k abonnés");
+});
+
+test("reuses a validated Instagram cache before publishing its same-origin URL", async () => {
+  const { result, historyPath } = await invokeImport(
+    {
+      platform: "instagram",
+      capturedAt: "2026-08-28T08:00:00.000Z",
+      comments: [{
+        id: "ig-cached-comment",
+        url: "https://www.instagram.com/p/ABC123/?comment_id=456",
+        text: "cached and cozy",
+        publishedAt: "2026-08-28T07:50:00.000Z",
+        target: {
+          contentId: "ABC123",
+          url: "https://www.instagram.com/p/ABC123/",
+          title: "Study desk",
+          thumbnailUrl: "https://scontent.cdninstagram.com/temporary.jpg",
+          authorHandle: "creator",
+          authorProfileUrl: "https://www.instagram.com/creator/",
+          audienceValue: 12_300,
+          audienceLabel: "12,3 k abonnés",
+          audiencePrecision: "platform-rounded",
+          audienceObservedAt: "2026-08-28T07:58:00.000Z",
+        },
+        metrics: { likes: 2, replies: 1 },
+      }],
+    },
+    { skipMediaCache: false, seededInstagramShortcode: "ABC123" },
+  );
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.mediaCached, 1);
+  assert.equal(report.mediaDownloaded, 0);
+  const history = JSON.parse(await readFile(historyPath, "utf8"));
+  assert.equal(
+    history.posts[0].thumbnailUrl,
+    "https://dim75017.github.io/youtube-radar-kx9v2m/social/media/instagram/ABC123.jpg",
+  );
 });
 
 test("rejects a TikTok thumbnail hosted outside approved TikTok CDNs", async () => {

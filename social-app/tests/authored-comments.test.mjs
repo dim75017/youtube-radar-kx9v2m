@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -181,20 +181,49 @@ test("keeps internal target confidence labels out of comment cards", async () =>
   assert.match(component, /<span>Date de publication<\/span>/);
   assert.doesNotMatch(component, /<span>Durée<\/span>/);
   assert.doesNotMatch(component, /Voir la conversation/);
+  assert.doesNotMatch(component, /Compte commenté/);
   assert.match(component, /<small>Likes<\/small>/);
   assert.match(component, /<small>Réponses<\/small>/);
   assert.match(component, /year: "2-digit"/);
 
   const thumbnail = component.indexOf('className="authored-comment-thumbnail"');
-  const targetStrip = component.indexOf('className="authored-comment-target-strip"', thumbnail);
-  const body = component.indexOf('className="authored-comment-body"', targetStrip);
+  const body = component.indexOf('className="authored-comment-body"', thumbnail);
+  const title = component.indexOf("<h3>{target.title}</h3>", body);
+  const targetStrip = component.indexOf('className="authored-comment-target-strip"', title);
   const quote = component.indexOf("<blockquote>", body);
   const metrics = component.indexOf('className="authored-comment-metrics"', quote);
   const quoteEnd = component.indexOf("</blockquote>", metrics);
   assert.ok(thumbnail >= 0);
-  assert.ok(targetStrip > thumbnail);
-  assert.ok(body > targetStrip);
-  assert.ok(quote > body);
+  assert.ok(body > thumbnail);
+  assert.ok(title > body);
+  assert.ok(targetStrip > title);
+  assert.ok(quote > targetStrip);
   assert.ok(metrics > quote);
   assert.ok(quoteEnd > metrics);
+});
+
+test("serves Instagram comment thumbnails from the durable same-origin cache", async () => {
+  const snapshot = JSON.parse(
+    await readFile(new URL("../data/public-history.json", import.meta.url), "utf8"),
+  );
+  const comments = snapshot.posts.filter(
+    (post) => post.platform === "instagram" && isAuthoredComment(post),
+  );
+  assert.ok(comments.length > 0);
+
+  for (const post of comments) {
+    const target = commentTarget(post);
+    assert.equal(post.thumbnailUrl, target.thumbnailUrl);
+    const thumbnail = new URL(target.thumbnailUrl);
+    assert.equal(thumbnail.origin, "https://dim75017.github.io");
+    const match = thumbnail.pathname.match(
+      /^\/youtube-radar-kx9v2m\/social\/media\/instagram\/([A-Za-z0-9_-]+)\.jpg$/,
+    );
+    assert.ok(match, target.thumbnailUrl);
+    const image = await stat(
+      new URL(`../public/media/instagram/${match[1]}.jpg`, import.meta.url),
+    );
+    assert.ok(image.isFile());
+    assert.ok(image.size > 1_000);
+  }
 });

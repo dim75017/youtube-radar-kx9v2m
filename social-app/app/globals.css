@@ -225,60 +225,57 @@
 
 .authored-comment-target-strip {
   display: grid;
-  min-height: 68px;
+  min-height: 0;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
-  border-bottom: 1px solid rgba(var(--comment-rgb), 0.14);
-  background: rgba(8, 10, 17, 0.58);
-  padding: 10px 12px;
+  gap: 8px;
+  margin: 0 0 10px;
+  border: 1px solid rgba(var(--comment-rgb), 0.13);
+  border-radius: 9px;
+  background: rgba(8, 10, 17, 0.48);
+  padding: 7px 9px;
 }
 
-.authored-comment-target-identity,
-.authored-comment-target-facts {
-  display: grid;
+.authored-comment-target-summary {
+  display: flex;
   min-width: 0;
-  gap: 3px;
+  align-items: center;
+  gap: 6px;
 }
 
-.authored-comment-target-identity > span {
-  color: var(--muted);
-  font-size: var(--fs-micro);
-  font-weight: 780;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.authored-comment-target-identity > strong,
-.authored-comment-target-identity > a {
+.authored-comment-target-summary > strong,
+.authored-comment-target-summary > a {
   overflow: hidden;
   color: var(--text);
-  font-size: var(--fs-body-small);
+  font-size: var(--fs-caption);
   font-weight: 820;
   text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.authored-comment-target-identity > a:hover,
-.authored-comment-target-identity > a:focus-visible {
+.authored-comment-target-summary > a:hover,
+.authored-comment-target-summary > a:focus-visible {
   color: rgb(var(--comment-rgb));
 }
 
-.authored-comment-target-facts {
-  justify-items: end;
+.authored-comment-target-summary > span {
+  color: var(--muted);
+  font-size: var(--fs-caption);
 }
 
-.authored-comment-target-facts > b {
+.authored-comment-target-summary > b {
+  flex: none;
   color: rgb(var(--comment-rgb));
   font-size: var(--fs-caption);
   white-space: nowrap;
 }
 
-.authored-comment-target-facts > time {
+.authored-comment-target-strip > time {
   color: var(--muted);
   font-size: var(--fs-caption);
   font-weight: 720;
+  white-space: nowrap;
 }
 
 .authored-comment-body h3 {
@@ -379,8 +376,8 @@
     flex-direction: column;
   }
 
-  .authored-comment-target-facts > b {
-    max-width: 150px;
+  .authored-comment-target-summary > b {
+    max-width: 140px;
     overflow: hidden;
     text-overflow: ellipsis;
   }

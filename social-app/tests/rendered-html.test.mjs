@@ -724,10 +724,11 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(styles, /\.authored-comment-card\s*\{[\s\S]*?display:\s*flex;[\s\S]*?height:\s*100%;[\s\S]*?flex-direction:\s*column;/);
   assert.match(styles, /\.authored-comment-thumbnail\s*\{[\s\S]*?aspect-ratio:\s*1\s*\/\s*1/);
   assert.match(styles, /\.authored-comment-target-strip\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\) auto/);
+  assert.match(styles, /\.authored-comment-target-summary\s*\{[\s\S]*?display:\s*flex;/);
   assert.match(styles, /\.authored-comment-body blockquote\s*\{[\s\S]*?grid-template-rows:\s*minmax\(0,\s*1fr\) auto/);
   assert.match(styles, /\.authored-comment-body blockquote > p\s*\{[\s\S]*?overflow:\s*hidden;[\s\S]*?-webkit-line-clamp:\s*4/);
   assert.match(styles, /\.authored-comment-metrics\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
-  assert.doesNotMatch(styles, /\.authored-comment-target-account|\.authored-comment-body footer/);
+  assert.doesNotMatch(styles, /\.authored-comment-target-account|\.authored-comment-target-identity|\.authored-comment-target-facts|\.authored-comment-body footer/);
   assert.match(styles, /\.social-post-card\.poll-card \.poll-choice-list\s*\{[\s\S]*?grid-auto-rows:\s*minmax\(36px, auto\)/);
   assert.match(styles, /\.poll-choice-list li\s*\{[\s\S]*?overflow-wrap:\s*anywhere;[\s\S]*?white-space:\s*normal/);
   assert.doesNotMatch(styles, /\.social-post-card\.poll-card \.poll-choice-list\s*\{[\s\S]*?grid-template-rows:\s*repeat\(5, 36px\)/);

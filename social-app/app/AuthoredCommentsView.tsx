@@ -221,29 +221,26 @@ function CommentCard({ post }: { post: CommentPost }) {
         </div>
       )}
 
-      <div className="authored-comment-target-strip">
-        <div className="authored-comment-target-identity">
-          <span>Compte commenté</span>
-          {target.authorProfileUrl ? (
-            <a href={target.authorProfileUrl} target="_blank" rel="noreferrer">
-              {targetAccount}
-            </a>
-          ) : (
-            <strong>{targetAccount}</strong>
-          )}
-        </div>
-        <div className="authored-comment-target-facts">
-          <b title={target.audienceObservedAt ? `Relevé le ${formatShortDate(target.audienceObservedAt)}` : undefined}>
-            👥 {audienceText(post)}
-          </b>
+      <div className="authored-comment-body">
+        <h3>{target.title}</h3>
+        <div className="authored-comment-target-strip">
+          <div className="authored-comment-target-summary">
+            {target.authorProfileUrl ? (
+              <a href={target.authorProfileUrl} target="_blank" rel="noreferrer">
+                {targetAccount}
+              </a>
+            ) : (
+              <strong>{targetAccount}</strong>
+            )}
+            <span aria-hidden="true">·</span>
+            <b title={target.audienceObservedAt ? `Relevé le ${formatShortDate(target.audienceObservedAt)}` : undefined}>
+              👥 {audienceText(post)}
+            </b>
+          </div>
           <time dateTime={post.published_at ?? undefined} title={post.published_at ?? "Date non fournie"}>
             {formatShortDate(post.published_at)}
           </time>
         </div>
-      </div>
-
-      <div className="authored-comment-body">
-        <h3>{target.title}</h3>
         <blockquote>
           <p>{post.text || "Commentaire non fourni"}</p>
           <div className="authored-comment-metrics" aria-label="Likes et réponses du commentaire">
