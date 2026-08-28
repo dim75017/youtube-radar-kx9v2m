@@ -1775,41 +1775,50 @@ export function SocialOS({
         {workspace && view === "top" ? (
           <div className="view-stack top-platform-view">
             <section
-              className={`top-ranking-controls tone-${PLATFORM_META[topPlatform].tone}`}
-              aria-label="Contrôles du classement"
+              className={`category-results tone-${PLATFORM_META[topPlatform].tone}`}
+              aria-labelledby="active-category-title"
             >
-              <div className="top-ranking-dropdowns">
-                <FilterDropdown
-                  id="top-duration-filter"
-                  label="Durée"
-                  onChange={setTopDuration}
-                  options={SOCIAL_DURATION_FILTERS}
-                  value={topDuration}
-                />
-                <FilterDropdown
-                  id="top-sort-filter"
-                  label="Trier"
-                  onChange={setTopSort}
-                  options={TOP_SORT_OPTIONS}
-                  value={topSort}
-                />
-                <FilterDropdown
-                  id="top-format-filter"
-                  label="Catégorie"
-                  onChange={setTopFormatFilter}
-                  options={categoryFilters(topPlatform).map((filter) => {
-                    const loadedCount = topPlatformPosts.filter((post) =>
-                      matchesSocialFormatFilter(post, filter.key),
-                    ).length;
-                    const count =
-                      topPlatformPending && topDuration === "all"
-                        ? publicFormatCounts?.[topPlatform]?.[filter.key] ?? loadedCount
-                        : loadedCount;
-                    return { ...filter, count };
-                  })}
-                  value={topFormatFilter}
-                />
-              </div>
+              <header className="category-results-header">
+                <div className="category-results-heading">
+                  <span className="section-kicker">Catégorie active</span>
+                  <h2 id="active-category-title">
+                    {activeTopFormat?.emoji ?? "📂"} {PLATFORM_META[topPlatform].label} · {activeTopFormat?.label ?? topFormatFilter}
+                  </h2>
+                </div>
+
+                <div className="top-ranking-dropdowns category-results-filters" aria-label="Contrôles du classement">
+                  <FilterDropdown
+                    id="top-duration-filter"
+                    label="Durée"
+                    onChange={setTopDuration}
+                    options={SOCIAL_DURATION_FILTERS}
+                    value={topDuration}
+                  />
+                  <FilterDropdown
+                    id="top-sort-filter"
+                    label="Trier"
+                    onChange={setTopSort}
+                    options={TOP_SORT_OPTIONS}
+                    value={topSort}
+                  />
+                  <FilterDropdown
+                    id="top-format-filter"
+                    label="Catégorie"
+                    onChange={setTopFormatFilter}
+                    options={categoryFilters(topPlatform).map((filter) => {
+                      const loadedCount = topPlatformPosts.filter((post) =>
+                        matchesSocialFormatFilter(post, filter.key),
+                      ).length;
+                      const count =
+                        topPlatformPending && topDuration === "all"
+                          ? publicFormatCounts?.[topPlatform]?.[filter.key] ?? loadedCount
+                          : loadedCount;
+                      return { ...filter, count };
+                    })}
+                    value={topFormatFilter}
+                  />
+                </div>
+              </header>
 
               {topUndatedCount > 0 ? (
                 <p className="top-undated-note">
@@ -1818,20 +1827,6 @@ export function SocialOS({
                   uniquement dans All time.
                 </p>
               ) : null}
-            </section>
-
-            <section
-              className={`category-results tone-${PLATFORM_META[topPlatform].tone}`}
-              aria-labelledby="active-category-title"
-            >
-              <header className="category-results-header">
-                <div>
-                  <span className="section-kicker">Catégorie active</span>
-                  <h2 id="active-category-title">
-                    {activeTopFormat?.emoji ?? "📂"} {PLATFORM_META[topPlatform].label} · {activeTopFormat?.label ?? topFormatFilter}
-                  </h2>
-                </div>
-              </header>
 
               {topPlatformPending ? (
                 <HistoryLoadingState
