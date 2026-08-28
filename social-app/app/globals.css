@@ -5517,6 +5517,13 @@ a {
   line-height: 1.35;
 }
 
+.audience-demographic-country-limit {
+  margin: 9px 0 0;
+  color: var(--dim);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
 .audience-demographic-empty {
   display: grid;
   min-height: 76px;
@@ -5708,8 +5715,13 @@ a {
   }
 
   .audience-demographics-breakdowns {
+    height: 100%;
     grid-template-rows: repeat(2, minmax(0, 1fr));
     border-radius: 16px;
+  }
+
+  .audience-demographics-grid > .audience-demographic-card {
+    height: 100%;
   }
 
   .audience-demographic-card {
@@ -5732,6 +5744,10 @@ a {
   }
 
   .audience-demographic-pie-layout {
+    align-content: start;
+    align-items: start;
+    align-self: start;
+    flex: 0 0 auto;
     grid-template-columns: clamp(148px, 15vw, 216px) minmax(0, 1fr);
     gap: clamp(18px, 2vw, 30px);
     margin-top: 10px;
@@ -5807,6 +5823,11 @@ a {
 
   .audience-demographic-note {
     margin-top: 10px;
+    font-size: 11px;
+  }
+
+  .audience-demographic-country-limit {
+    margin-top: 12px;
     font-size: 11px;
   }
 }

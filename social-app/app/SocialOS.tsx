@@ -2834,7 +2834,9 @@ function AudienceDemographicCard({
         {dimension ? (
           <span>
             {dimension.provenance.periodLabel ?? "Snapshot actuel"}
-            {kind === "countries" ? ` · ${visibleCountryEntries.length} pays fournis` : ""}
+            {kind === "countries"
+              ? ` · ${visibleCountryEntries.length}/${AUDIENCE_COUNTRY_DISPLAY_LIMIT} pays fournis`
+              : ""}
           </span>
         ) : null}
       </header>
@@ -2976,6 +2978,11 @@ function AudienceDemographicCard({
               </ul>
             </div>
           )}
+          {kind === "countries" && visibleCountryEntries.length < AUDIENCE_COUNTRY_DISPLAY_LIMIT ? (
+            <p className="audience-demographic-country-limit">
+              La source native ne fournit pas les rangs {visibleCountryEntries.length + 1}–{AUDIENCE_COUNTRY_DISPLAY_LIMIT}.
+            </p>
+          ) : null}
           {unreportedAgeCount > 0 || usesMerged55Plus ? (
             <p className="audience-demographic-note">
               {unreportedAgeCount > 0 ? "— = non fourni" : null}
@@ -3001,7 +3008,7 @@ function AudienceDemographicCard({
 function formatAudienceDemographicShare(share: number) {
   return new Intl.NumberFormat("fr-FR", {
     style: "percent",
-    minimumFractionDigits: 0,
+    minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   }).format(share);
 }

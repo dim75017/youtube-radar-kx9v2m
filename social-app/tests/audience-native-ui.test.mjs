@@ -229,6 +229,8 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(explorer, /audienceDemographicDisplayEntries\(dimension\.entries, kind\)/);
   assert.match(explorer, /allDisplayEntries\.filter\(\(entry\) => entry\.countryCode !== null\)/);
   assert.match(explorer, /countryEntries\.slice\(0, AUDIENCE_COUNTRY_DISPLAY_LIMIT\)/);
+  assert.match(explorer, /visibleCountryEntries\.length\}\/\$\{AUDIENCE_COUNTRY_DISPLAY_LIMIT\} pays fournis/);
+  assert.match(explorer, /La source native ne fournit pas les rangs/);
   assert.match(explorer, /const countryResidualShare = Math\.max\(0, Math\.min\(1, 1 - countryReportedShare\)\)/);
   assert.match(explorer, /key: "other_countries"/);
   assert.match(explorer, /label: "Autres pays"/);
@@ -272,6 +274,8 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(styles, /\.audience-demographic-pie-tooltip\s*\{[^}]*pointer-events:\s*none/);
   assert.match(styles, /\.audience-demographic-pie:focus-visible/);
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?grid-template-columns:\s*clamp\(148px, 15vw, 216px\)/);
+  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographic-pie-layout\s*\{[^}]*align-content:\s*start[^}]*align-items:\s*start[^}]*align-self:\s*start/);
+  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographics-breakdowns\s*\{[^}]*height:\s*100%[^}]*grid-template-rows:\s*repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographics\s*\{[\s\S]*?min-height:\s*calc\(100dvh - 24px\)/);
   assert.match(styles, /\.audience-demographic-pie-legend\s*\{[^}]*display:\s*grid/);
   assert.match(styles, /\.audience-demographic-card\.kind-countries \.audience-demographic-list\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
@@ -280,6 +284,7 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.doesNotMatch(styles, /\.audience-demographic-card\.kind-countries \.audience-demographic-list\s*\{[^}]*repeat\(2/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.audience-demographics-grid\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.audience-demographics-breakdowns\s*\{[\s\S]*?grid-template-rows:\s*auto auto/);
+  assert.match(explorer, /minimumFractionDigits:\s*1/);
 });
 
 test("keeps sparse Instagram observations truthful and falls back without fabricating a curve", async () => {
