@@ -5144,11 +5144,11 @@ function PostCard({
   const choices = post.format === "community_poll" ? pollChoices(post) : [];
   const publishedDate = formatCardPublishedDate(post.published_at);
   const footerMetrics = [
-    post.views !== null ? { icon: metricEmoji("views", post.platform), label: "vues", value: post.views } : null,
-    post.likes !== null ? { icon: metricEmoji("likes", post.platform), label: "likes", value: post.likes } : null,
+    { icon: metricEmoji("views", post.platform), label: "vues", value: post.views },
+    { icon: metricEmoji("likes", post.platform), label: "likes", value: post.likes },
     { icon: metricEmoji("comments", post.platform), label: "commentaires", value: post.comments },
     { icon: metricEmoji("shares", post.platform), label: "partages", value: post.shares },
-  ].filter(Boolean) as Array<{ icon: string; label: string; value: number | null }>;
+  ] satisfies Array<{ icon: string; label: string; value: number | null }>;
   const performanceScore =
     typeof post.performance_score === "number" && Number.isFinite(post.performance_score)
       ? Math.max(0, Math.min(100, Math.round(post.performance_score)))
@@ -5157,10 +5157,12 @@ function PostCard({
     performanceScore === null
       ? "is-unavailable"
       : performanceScore >= 75
-        ? "is-strong"
+        ? "is-green"
         : performanceScore >= 50
-          ? "is-solid"
-          : "is-developing";
+          ? "is-yellow"
+          : performanceScore >= 25
+            ? "is-orange"
+            : "is-red";
   const performanceScoreLabel =
     performanceScore === null
       ? "Score de performance indisponible : aucune métrique publique comparable"
@@ -5175,6 +5177,15 @@ function PostCard({
     <article
       className={`social-post-card ${compact ? "compact" : ""} ${hasMediaPreview ? "has-media" : "text-only"} ${choices.length ? "poll-card" : ""}`}
     >
+      <span
+        className={`post-performance-score ${performanceScoreTone}`}
+        aria-label={performanceScoreLabel}
+        title={performanceScoreTitle}
+      >
+        <span>Score</span>
+        <b>{performanceScore ?? "—"}</b>
+        <small>/100</small>
+      </span>
       {hasMediaPreview ? (
         <PostMediaPreview
           post={post}
@@ -5221,15 +5232,6 @@ function PostCard({
             </time>
           ) : <span />}
           <span className="post-card-footer-metrics" aria-label="Performances visibles">
-            <span
-              className={`post-performance-score ${performanceScoreTone}`}
-              aria-label={performanceScoreLabel}
-              title={performanceScoreTitle}
-            >
-              <span>Score</span>
-              <b>{performanceScore ?? "—"}</b>
-              <small>/100</small>
-            </span>
             {footerMetrics.map((metric) => (
               <span
                 className={`post-card-metric ${metric.value === null ? "is-unavailable" : ""}`}

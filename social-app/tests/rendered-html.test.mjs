@@ -612,8 +612,13 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(postCard, /post-performance-score/);
   assert.match(postCard, /Score/);
   assert.match(postCard, /\/100/);
+  assert.ok(postCard.indexOf("post-performance-score") < postCard.indexOf("<PostMediaPreview"));
+  assert.match(postCard, /performanceScore >= 75[\s\S]*?is-green[\s\S]*?performanceScore >= 50[\s\S]*?is-yellow[\s\S]*?performanceScore >= 25[\s\S]*?is-orange[\s\S]*?is-red/);
+  assert.match(postCard, /label: "vues", value: post\.views/);
+  assert.match(postCard, /label: "likes", value: post\.likes/);
   assert.match(postCard, /label: "commentaires", value: post\.comments/);
   assert.match(postCard, /label: "partages", value: post\.shares/);
+  assert.doesNotMatch(postCard, /\.filter\(Boolean\)/);
   assert.match(postCard, /metric\.value === null \? "—" : formatNumber\(metric\.value\)/);
   assert.doesNotMatch(postCard, /Voir plus|Voir moins|post-text-expand|isTextExpanded|canExpandText/);
   assert.doesNotMatch(styles, /\.post-text-expand|\.post-media-caption\.is-expanded|\.post-text-content\.is-expanded/);
@@ -655,6 +660,12 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(styles, /\.audience-native-chart-viewport\s*\{[\s\S]*?overflow-x:\s*auto/);
   assert.match(styles, /\.audience-native-chart-viewport svg\s*\{[\s\S]*?min-width:\s*700px/);
   assert.match(styles, /\.audience-native-chart-grid text,[\s\S]*?font-size:\s*13px/);
+  assert.match(styles, /\.post-card-footer-metrics\s*\{[^}]*display:\s*grid[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /\.post-performance-score\s*\{[^}]*position:\s*absolute[^}]*top:\s*11px[^}]*left:\s*11px/);
+  assert.match(styles, /\.post-performance-score\.is-green\s*\{[^}]*--score-rgb:\s*74, 222, 128/);
+  assert.match(styles, /\.post-performance-score\.is-yellow\s*\{[^}]*--score-rgb:\s*250, 204, 21/);
+  assert.match(styles, /\.post-performance-score\.is-orange\s*\{[^}]*--score-rgb:\s*251, 146, 60/);
+  assert.match(styles, /\.post-performance-score\.is-red\s*\{[^}]*--score-rgb:\s*248, 113, 113/);
   assert.doesNotMatch(styles, /\.audience-chart-viewport|\.audience-native-platform-grid/);
   const topRankingControlDeclarations = [
     ...styles.matchAll(/\.top-ranking-controls\s*\{([^}]*)\}/g),
