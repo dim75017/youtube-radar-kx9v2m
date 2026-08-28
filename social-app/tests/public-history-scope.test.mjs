@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import { mergeWorkspaceWithPublicHistory } from "../lib/public-history.ts";
+import { isAuthoredComment } from "../lib/authored-comments.ts";
 import { matchesSocialFormatFilter } from "../lib/social-formats.ts";
 
 async function snapshot() {
@@ -36,8 +37,13 @@ test("the lightweight preview summary matches the complete history", async () =>
     const posts = history.posts.filter((post) => post.platform === platform);
     assert.equal(manifest.platformCounts[platform], posts.length);
     for (const [filter, count] of Object.entries(manifest.formatCounts[platform])) {
+      const matchingPosts = filter === "comment"
+        ? posts.filter((post) => isAuthoredComment(post))
+        : posts.filter(
+          (post) => !isAuthoredComment(post) && matchesSocialFormatFilter(post, filter),
+        );
       assert.equal(
-        posts.filter((post) => matchesSocialFormatFilter(post, filter)).length,
+        matchingPosts.length,
         count,
         `${platform}:${filter}`,
       );

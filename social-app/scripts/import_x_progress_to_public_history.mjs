@@ -20,7 +20,7 @@ const QUERY = "from:lofigirl -is:retweet";
 const START_TIME = "2006-03-21T00:00:00Z";
 const COMPLETE_STATUS = "complete-api-full-archive";
 const X_ACCOUNT_URL = "https://x.com/lofigirl";
-const FORMATS = new Set(["static", "text", "video"]);
+const FORMATS = new Set(["comment", "static", "text", "video"]);
 const MEDIA_TYPES = new Set(["animated_gif", "photo", "video"]);
 
 function parseOptions(argv) {
@@ -54,6 +54,13 @@ async function readJson(path, label) {
 
 function isRecord(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isAuthoredXComment(post) {
+  return post?.platform === "x" && (
+    post.format === "comment" ||
+    /^@[A-Za-z0-9_]{1,30}\b/.test(String(post.text ?? "").trim())
+  );
 }
 
 function requireRecord(value, label) {
@@ -310,7 +317,14 @@ function normalizeApiPost(value, index, marker) {
   const media = validateMedia(row.media ?? [], `posts[${index}].media`);
   const hasVideo = media.some((item) => item.type === "video" || item.type === "animated_gif");
   const hasPhoto = media.some((item) => item.type === "photo");
-  const expectedFormat = hasVideo ? "video" : hasPhoto ? "static" : "text";
+  const expectedFormat =
+    row.format === "comment"
+      ? "comment"
+      : hasVideo
+        ? "video"
+        : hasPhoto
+          ? "static"
+          : "text";
   if (row.format !== expectedFormat) {
     throw new Error(`posts[${index}].format=${row.format}, mais les médias indiquent ${expectedFormat}.`);
   }
@@ -318,6 +332,9 @@ function normalizeApiPost(value, index, marker) {
   const raw = requireRecord(row.raw, `posts[${index}].raw`);
   if (raw.collector !== PROVIDER) {
     throw new Error(`posts[${index}] ne provient pas du collecteur officiel ${PROVIDER}.`);
+  }
+  if (row.format === "comment") {
+    requireRecord(raw.commentTarget, `posts[${index}].raw.commentTarget`);
   }
   const firstObservedAt = requireIso(raw.firstObservedAt, `posts[${index}].raw.firstObservedAt`);
   const lastObservedAt = requireIso(raw.lastObservedAt, `posts[${index}].raw.lastObservedAt`);
@@ -623,6 +640,7 @@ async function main() {
   if (nextSnapshot.posts.length < snapshot.posts.length) {
     throw new Error(`Import X refusé : le snapshot total passerait de ${snapshot.posts.length} à ${nextSnapshot.posts.length} posts.`);
   }
+  const publishedXPosts = finalXPosts.filter((post) => !isAuthoredXComment(post));
   const nextPublicSummary = {
     ...publicSummary,
     generatedAt: nextSnapshot.generatedAt,
@@ -634,9 +652,10 @@ async function main() {
     formatCounts: {
       ...publicSummary.formatCounts,
       x: {
-        static: finalXPosts.filter((post) => post.format === "static").length,
-        video: finalXPosts.filter((post) => post.format === "video").length,
-        text: finalXPosts.filter((post) => post.format === "text").length,
+        comment: finalXPosts.length - publishedXPosts.length,
+        static: publishedXPosts.filter((post) => post.format === "static").length,
+        video: publishedXPosts.filter((post) => post.format === "video").length,
+        text: publishedXPosts.filter((post) => post.format === "text").length,
       },
     },
     coverage: nextSnapshot.coverage,

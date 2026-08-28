@@ -98,8 +98,19 @@ console.log(`Commentaires YouTube publiés : ${youtubeCommentCount} · total his
 function normalizeComment(activity, observedAt, metrics) {
   if (!activity || typeof activity.url !== "string" || typeof activity.comment !== "string") return null;
   let externalId;
+  let targetUrl;
+  let targetId;
+  let thumbnailUrl;
   try {
-    externalId = new URL(activity.url).searchParams.get("lc");
+    const url = new URL(activity.url);
+    externalId = url.searchParams.get("lc");
+    url.searchParams.delete("lc");
+    targetUrl = url.toString();
+    const videoId = url.searchParams.get("v");
+    targetId = videoId ?? url.pathname.match(/^\/post\/([^/?#]+)/)?.[1] ?? null;
+    thumbnailUrl = videoId
+      ? `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg`
+      : null;
   } catch {
     return null;
   }
@@ -110,14 +121,18 @@ function normalizeComment(activity, observedAt, metrics) {
   const metricCapturedAt = validDate(metric.capturedAt);
   const likes = nonnegative(metric.likes);
   const replies = nonnegative(metric.replies);
+  const targetTitle =
+    typeof activity.target === "string" && activity.target.trim()
+      ? activity.target.trim()
+      : "Contenu YouTube commenté";
   return {
     platform: "youtube",
     externalId,
     url: activity.url,
-    title: typeof activity.target === "string" && activity.target.trim() ? activity.target.trim() : "Commentaire Lofi Girl",
+    title: targetTitle,
     text: activity.comment.trim(),
     format: "comment",
-    thumbnailUrl: null,
+    thumbnailUrl,
     publishedAt,
     views: null,
     likes,
@@ -131,6 +146,20 @@ function normalizeComment(activity, observedAt, metrics) {
       publishedAtPrecision: /\d{4}/.test(String(activity.dateLabel ?? "")) ? "exact" : "inferred-year",
       firstObservedAt: observedAt,
       lastObservedAt: observedAt,
+      commentTarget: {
+        contentId: targetId,
+        url: targetUrl,
+        title: targetTitle,
+        thumbnailUrl,
+        authorHandle: null,
+        authorName: null,
+        authorProfileUrl: null,
+        audienceValue: null,
+        audienceLabel: null,
+        audiencePrecision: "unknown",
+        audienceObservedAt: null,
+        source: "youtube-comment-permalink",
+      },
       metricHistory: metricCapturedAt
         ? [{ capturedAt: metricCapturedAt, views: null, likes, comments: replies, shares: null, saves: null, pollVotes: null, source: "youtube-direct-comment" }]
         : [],

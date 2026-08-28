@@ -110,13 +110,28 @@ async function authorizedYouTubeCommentPosts() {
     const entry = activity as AuthorizedYouTubeActivity;
     if (typeof entry.url !== "string" || typeof entry.comment !== "string") return [];
     let commentId: string | null = null;
+    let targetUrl: string | null = null;
+    let targetId: string | null = null;
+    let thumbnailUrl: string | null = null;
     try {
-      commentId = new URL(entry.url).searchParams.get("lc");
+      const url = new URL(entry.url);
+      commentId = url.searchParams.get("lc");
+      url.searchParams.delete("lc");
+      targetUrl = url.toString();
+      const videoId = url.searchParams.get("v");
+      targetId = videoId ?? url.pathname.match(/^\/post\/([^/?#]+)/)?.[1] ?? null;
+      thumbnailUrl = videoId
+        ? `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg`
+        : null;
     } catch {
       return [];
     }
     if (!commentId) return [];
     const metric = metrics[commentId];
+    const targetTitle =
+      typeof entry.target === "string" && entry.target.trim()
+        ? entry.target.trim()
+        : "Contenu YouTube commenté";
     return [{
       id: `youtube:${commentId}`,
       account_id: "lofigirl-youtube",
@@ -124,10 +139,10 @@ async function authorizedYouTubeCommentPosts() {
       external_id: commentId,
       external_post_id: commentId,
       url: entry.url,
-      title: typeof entry.target === "string" ? entry.target : "Commentaire Lofi Girl",
+      title: targetTitle,
       text: entry.comment,
       format: "comment",
-      thumbnail_url: null,
+      thumbnail_url: thumbnailUrl,
       published_at: activityDateToIso(entry.dateLabel, entry.time),
       views: null,
       likes: nonnegativeMetric(metric?.likes),
@@ -139,6 +154,20 @@ async function authorizedYouTubeCommentPosts() {
         activityType: entry.action,
         target: entry.target,
         likesStatus: "À relever sur la page YouTube du commentaire.",
+        commentTarget: {
+          contentId: targetId,
+          url: targetUrl,
+          title: targetTitle,
+          thumbnailUrl,
+          authorHandle: null,
+          authorName: null,
+          authorProfileUrl: null,
+          audienceValue: null,
+          audienceLabel: null,
+          audiencePrecision: "unknown",
+          audienceObservedAt: null,
+          source: "youtube-comment-permalink",
+        },
       }),
       source_kind: "authorized-google-my-activity",
       first_seen_at: new Date().toISOString(),

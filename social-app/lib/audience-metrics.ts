@@ -130,6 +130,39 @@ export function latestAudienceObservation(
 }
 
 /**
+ * Prefer a recent exact owner observation for the headline counter while
+ * keeping newer rounded public observations available to the chart.
+ */
+export function preferredAudienceHeadlineObservation(
+  platform: AudiencePlatformHistory,
+  maxExactAgeDays = 7,
+): AudienceObservation | null {
+  if (!Number.isFinite(maxExactAgeDays) || maxExactAgeDays < 0) {
+    throw new Error("L’âge maximal d’un relevé exact doit être positif.");
+  }
+  const latest = latestAudienceObservation(platform);
+  if (!latest) return null;
+
+  let latestExact: AudienceObservation | null = null;
+  let latestExactTime = Number.NEGATIVE_INFINITY;
+  for (const observation of platform.observations) {
+    if (observation.precision !== "exact") continue;
+    const time = Date.parse(observation.capturedAt);
+    if (Number.isFinite(time) && time > latestExactTime) {
+      latestExact = observation;
+      latestExactTime = time;
+    }
+  }
+  if (!latestExact) return latest;
+
+  const latestTime = Date.parse(latest.capturedAt);
+  const exactAge = latestTime - latestExactTime;
+  return exactAge >= 0 && exactAge <= maxExactAgeDays * DAY_MS
+    ? latestExact
+    : latest;
+}
+
+/**
  * Compare the first and last real observations available in the selected
  * period. No value is interpolated and no older fallback is used.
  */

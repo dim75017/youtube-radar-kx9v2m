@@ -36,6 +36,7 @@ const [
   playlistPromoFeed,
   playlistPromoStatus,
   scrollingFeed,
+  ownerCommentRefreshStatus,
 ] = await Promise.all([
   readJson(resolve(root, "data", "public-history.json")),
   readJson(resolve(root, "data", "public-history-summary.json")),
@@ -51,6 +52,7 @@ const [
   readJson(resolve(root, "data", "playlist-promos", "feed.json")),
   readJson(resolve(root, "data", "playlist-promos", "refresh-status.json")),
   readJson(resolve(root, "data", "scrolling", "feed.json")),
+  readJson(resolve(root, "data", "owner-comment-refresh-status.json")),
 ]);
 
 if (snapshot.generatedAt !== summary.generatedAt) {
@@ -109,6 +111,10 @@ await writeJson(
 await writeJson(resolve(output, "playlist-promos", "feed.json"), playlistPromoFeed);
 await writeJson(resolve(output, "playlist-promos", "refresh-status.json"), playlistPromoStatus);
 await writeJson(resolve(output, "scrolling", "feed.json"), scrollingFeed);
+await writeJson(
+  resolve(output, "owner-comment-refresh-status.json"),
+  ownerCommentRefreshStatus,
+);
 
 for (const platform of platforms) {
   const posts = snapshot.posts.filter((post) => post.platform === platform);

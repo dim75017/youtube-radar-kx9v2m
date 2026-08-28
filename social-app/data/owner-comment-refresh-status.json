@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "generatedAt": "2026-08-28T09:44:16.866Z",
+  "platforms": {
+    "youtube": {
+      "status": "success",
+      "attemptedAt": "2026-08-28T09:44:16.866Z",
+      "source": "owner-history-and-metadata-only-enrichment",
+      "observedComments": 2810,
+      "verifiedTargets": 2808,
+      "thumbnailTargets": 2808,
+      "audienceTargets": 2804,
+      "unavailableTargets": 2,
+      "error": null
+    },
+    "x": {
+      "status": "partial",
+      "attemptedAt": "2026-08-28T09:44:16.866Z",
+      "source": "public-archive-and-metadata-only-thread-enrichment",
+      "observedComments": 2553,
+      "verifiedTargets": 2329,
+      "thumbnailTargets": 710,
+      "audienceTargets": 2168,
+      "unavailableTargets": 224,
+      "error": "224 anciennes réponses ne permettent pas de vérifier leur cible depuis les métadonnées publiques actuelles."
+    },
+    "instagram": {
+      "status": "failed",
+      "attemptedAt": "2026-08-28T09:44:16.866Z",
+      "source": "authorized-owner-activity",
+      "observedComments": null,
+      "verifiedTargets": null,
+      "thumbnailTargets": null,
+      "audienceTargets": null,
+      "unavailableTargets": null,
+      "error": "Le contrôleur Windows a fermé son transport avant la lecture de l’onglet Instagram autorisé."
+    },
+    "tiktok": {
+      "status": "failed",
+      "attemptedAt": "2026-08-28T09:44:16.866Z",
+      "source": "authorized-owner-activity",
+      "observedComments": null,
+      "verifiedTargets": null,
+      "thumbnailTargets": null,
+      "audienceTargets": null,
+      "unavailableTargets": null,
+      "error": "Le contrôleur Windows a fermé son transport avant l’ouverture de l’historique TikTok."
+    }
+  }
+}

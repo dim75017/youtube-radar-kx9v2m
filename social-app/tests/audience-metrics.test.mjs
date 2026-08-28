@@ -14,6 +14,7 @@ import {
   calculatePlatformEngagementWindow,
   emptyEngagementByPeriod,
   latestAudienceObservation,
+  preferredAudienceHeadlineObservation,
   recalculateAudienceEngagement,
 } from "../lib/audience-metrics.ts";
 import {
@@ -52,6 +53,22 @@ test("validates the real version 2 snapshot, its five periods and plausible late
   assertLatestObservation("instagram", 1_000_000, "exact");
   assertLatestObservation("tiktok", 1_000_000, ["exact", "platform-rounded"]);
   assertLatestObservation("x", 100_000, ["exact", "platform-rounded"]);
+});
+
+test("prefers a recent exact owner count over a newer rounded public counter", () => {
+  const platform = {
+    profileUrl: "https://www.youtube.com/@LofiGirl",
+    observations: [
+      observation("2026-08-26T05:58:00.000Z", 15_820_930, "exact"),
+      observation("2026-08-28T02:18:14.370Z", 15_800_000, "platform-rounded"),
+    ],
+    engagementByPeriod: emptyEngagementByPeriod(),
+  };
+
+  assert.equal(
+    preferredAudienceHeadlineObservation(platform)?.followers,
+    15_820_930,
+  );
 });
 
 test("rejects invented zeroes, non-HTTPS sources and unknown precision", () => {

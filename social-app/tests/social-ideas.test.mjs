@@ -298,7 +298,7 @@ test("real public history yields a complete proof-first portfolio of 50 ideas", 
       ),
     ).size >= 40,
   );
-  assert.ok(plan.eligiblePostCount >= 9_000);
+  assert.ok(plan.eligiblePostCount >= 6_500);
   assert.equal(plan.winnerCount, 80);
   assert.deepEqual(
     Object.fromEntries(

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   calculatePlatformEngagementWindow,
   latestAudienceObservation,
+  preferredAudienceHeadlineObservation,
   type AudienceHistory,
   type AudienceObservation,
 } from "../lib/audience-metrics";
@@ -99,14 +100,16 @@ import {
   type AudioTrendScanStatus,
   type VideoTrendScanStatus,
 } from "../lib/trend-scan-status";
+import { isAuthoredComment } from "../lib/authored-comments";
 import { AudioTrendFeedView } from "./AudioTrendFeedView";
+import { AuthoredCommentsView } from "./AuthoredCommentsView";
 import { CommentOpportunitiesView } from "./CommentOpportunitiesView";
 import { PlaylistPromoFeedView } from "./PlaylistPromoFeedView";
 import { ScrollingFeedView } from "./ScrollingFeedView";
 import { SocialInlinePlayer } from "./SocialInlinePlayer";
 
 type Platform = "youtube" | "instagram" | "tiktok" | "x";
-type View = "overview" | "top" | "comments" | "trends" | "audio-trends" | "scrolling" | "playlist-promos" | "ideas" | "planning" | "all" | "sources";
+type View = "overview" | "top" | "all-comments" | "comments" | "trends" | "audio-trends" | "scrolling" | "playlist-promos" | "ideas" | "planning" | "all" | "sources";
 type IdeaStatusFilter = "all" | "pending" | IdeaDecision;
 type PostSort = "popular" | "recent";
 type TrendPlatformFilter = TrendPlatform | "all";
@@ -235,6 +238,7 @@ const NAV: Array<{
 }> = [
   { id: "overview", emoji: "📊", label: "Tableau de bord", group: "Pilotage" },
   { id: "top", emoji: "🏆", label: "Tous les posts", group: "Pilotage" },
+  { id: "all-comments", emoji: "💬", label: "Tous les commentaires", group: "Pilotage" },
   { id: "ideas", emoji: "💡", label: "Recommandations", group: "Pilotage" },
   { id: "planning", emoji: "🗓️", label: "Roadmap", group: "Pilotage" },
 ];
@@ -305,7 +309,9 @@ const TREND_TONE_META: Record<TrendTone, { emoji: string; label: string }> = {
 };
 
 function categoryFilters(platform: Platform) {
-  return getFormatFilters(platform).filter((filter) => filter.key !== "all");
+  return getFormatFilters(platform).filter(
+    (filter) => filter.key !== "all" && filter.key !== "comment",
+  );
 }
 
 function FilterDropdown<Key extends string>({
@@ -1112,24 +1118,38 @@ export function SocialOS({
   };
 
   const posts = useMemo(() => workspace?.posts ?? [], [workspace?.posts]);
+  const authoredComments = useMemo(
+    () => posts.filter((post) => isAuthoredComment(post)),
+    [posts],
+  );
+  const publishedPosts = useMemo(
+    () => posts.filter((post) => !isAuthoredComment(post)),
+    [posts],
+  );
   const accounts = workspace?.accounts ?? [];
   const normalizedPosts = useMemo(
-    () => posts.map(normalizedIdeaPost),
-    [posts],
+    () => publishedPosts.map(normalizedIdeaPost),
+    [publishedPosts],
   );
   const resolvedPlatformCounts = useMemo(() => {
     const counts = { youtube: 0, instagram: 0, tiktok: 0, x: 0 } satisfies Record<Platform, number>;
-    for (const post of posts) counts[post.platform] += 1;
+    for (const post of publishedPosts) counts[post.platform] += 1;
     for (const key of PLATFORM_ORDER) {
       const publishedCount = publicCounts?.[key];
-      if (publishedCount !== undefined) counts[key] = publishedCount;
+      if (publishedCount !== undefined && pendingPlatforms.includes(key)) {
+        const commentCount = publicFormatCounts?.[key]?.comment ?? 0;
+        counts[key] = Math.max(0, publishedCount - commentCount);
+      }
     }
     return counts;
-  }, [posts, publicCounts]);
+  }, [pendingPlatforms, publishedPosts, publicCounts, publicFormatCounts]);
   const historyLoading = pendingPlatforms.length > 0;
   const loadedPlatformCount = PLATFORM_ORDER.length - pendingPlatforms.length;
   const topPlatformPending = pendingPlatforms.includes(topPlatform);
-  const topPosts = useMemo(() => rankPostsByPublicMetric(posts).posts, [posts]);
+  const topPosts = useMemo(
+    () => rankPostsByPublicMetric(publishedPosts).posts,
+    [publishedPosts],
+  );
   const topDurationReference = workspace?.generatedAt ?? "";
   const durationTopPosts = useMemo(
     () =>
@@ -1905,6 +1925,13 @@ export function SocialOS({
           </div>
         ) : null}
 
+        {workspace && view === "all-comments" ? (
+          <AuthoredCommentsView
+            posts={authoredComments}
+            generatedAt={workspace.generatedAt}
+          />
+        ) : null}
+
         {workspace && view === "sources" ? (
           <div className="view-stack">
             <div className="source-notice">
@@ -2248,6 +2275,9 @@ function AudienceAnalyticsExplorer({
   const demographicPlatform = demographics?.platforms[activePlatform] ?? null;
   const platformHistory = history?.platforms[activePlatform] ?? null;
   const latestHistory = platformHistory ? latestAudienceObservation(platformHistory) : null;
+  const headlineHistory = platformHistory
+    ? preferredAudienceHeadlineObservation(platformHistory)
+    : null;
   const curveStartDate = AUDIENCE_PLATFORM_CURVE_START_DATE[activePlatform] ?? null;
   const allDaily = (analyticsPlatform?.daily ?? []).filter((point) => (
     curveStartDate === null || point.date >= curveStartDate
@@ -2422,8 +2452,14 @@ function AudienceAnalyticsExplorer({
         <div className="audience-explorer-summary" aria-label={`Synthèse ${meta.label}`}>
         <div className="audience-explorer-summary-kpi">
           <span>Total followers</span>
-          <strong>{latestHistory ? formatAudienceFollowers(latestHistory) : "—"}</strong>
-          <small>Dernier relevé</small>
+          <strong title={headlineHistory?.label}>
+            {headlineHistory ? formatAudienceFollowers(headlineHistory) : "—"}
+          </strong>
+          <small>
+            {headlineHistory
+              ? `${headlineHistory.precision === "exact" ? "Relevé exact" : "Dernier relevé"} · ${formatAudienceDate(headlineHistory.capturedAt)}`
+              : "Dernier relevé"}
+          </small>
         </div>
         <div className="audience-explorer-summary-kpi">
           <span>Nouveaux followers</span>
@@ -2617,7 +2653,7 @@ function AudienceDemographicsPanel({
           dimension={snapshot?.countries ?? null}
           emptyLabel={`Localisation non disponible pour ${meta.label}`}
           kind="countries"
-          title="Top pays"
+          title="Top 20 pays"
         />
         <div className="audience-demographics-breakdowns" role="group" aria-label="Âge et genre">
           <AudienceDemographicCard
@@ -2748,7 +2784,12 @@ function AudienceDemographicCard({
     <article className={`audience-demographic-card kind-${kind}`}>
       <header>
         <h4>{title}</h4>
-        {dimension ? <span>{dimension.provenance.periodLabel ?? "Snapshot actuel"}</span> : null}
+        {dimension ? (
+          <span>
+            {dimension.provenance.periodLabel ?? "Snapshot actuel"}
+            {kind === "countries" ? ` · ${visibleCountryEntries.length} pays fournis` : ""}
+          </span>
+        ) : null}
       </header>
       {dimension ? (
         <>

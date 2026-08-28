@@ -214,7 +214,7 @@ test("shows native demographic dimensions below the chart and follows the select
     explorer.indexOf("<AudienceDemographicsPanel") > explorer.indexOf("audience-native-chart-shell"),
     "the demographic section must remain below the curve",
   );
-  assert.match(explorer, /Top pays/);
+  assert.match(explorer, /Top 20 pays/);
   assert.match(explorer, /const AUDIENCE_COUNTRY_DISPLAY_LIMIT = 20/);
   assert.match(explorer, /Répartition par âge/);
   assert.match(explorer, /Répartition par genre/);
