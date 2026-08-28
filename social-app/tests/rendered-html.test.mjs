@@ -33,22 +33,25 @@ test("server-renders the live Social Radar shell", async () => {
 
   const html = await response.text();
   assert.match(html, /<title>Lofi Radar · Social<\/title>/i);
-  assert.match(html, /Tableau de bord/);
-  assert.match(html, /Tous les posts/);
+  assert.match(html, /Analytics/);
+  assert.match(html, /Contenu/);
   assert.match(html, /Commentaires/);
   assert.match(html, /Posts recommandés/);
   assert.match(html, /Trends vid.os/);
   assert.match(html, /Trends audio/);
   assert.match(html, /Scrolling/);
   assert.match(html, /Pubs playlists/);
-  assert.match(html, /Recommandations/);
+  assert.match(html, /Extraction/);
   assert.match(html, /Roadmap/);
+  assert.match(html, /id="analytics-platform-subnav"/);
   assert.match(html, /id="posts-platform-subnav"/);
   assert.match(html, /id="comments-platform-subnav"/);
   assert.match(html, /id="recommendations-subnav"/);
-  assert.doesNotMatch(html, /<div[^>]*id="posts-platform-subnav"[^>]*\shidden\b/);
-  assert.doesNotMatch(html, /<div[^>]*id="comments-platform-subnav"[^>]*\shidden\b/);
-  assert.doesNotMatch(html, /<div[^>]*id="recommendations-subnav"[^>]*\shidden\b/);
+  assert.match(html, /<div[^>]*id="analytics-platform-subnav"[^>]*\shidden\b/);
+  assert.match(html, /<div[^>]*id="posts-platform-subnav"[^>]*\shidden\b/);
+  assert.match(html, /<div[^>]*id="comments-platform-subnav"[^>]*\shidden\b/);
+  assert.match(html, /<div[^>]*id="recommendations-subnav"[^>]*\shidden\b/);
+  assert.equal((html.match(/aria-expanded="false"/g) ?? []).length, 4);
   assert.doesNotMatch(html, /Données publiques réelles|Snapshot public interactif|Générer les idées/);
   assert.match(html, /Instagram, X, TikTok et YouTube/);
   assert.doesNotMatch(html, /<(?:iframe|video|audio)\b/i);
@@ -140,9 +143,13 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(scanner, /instagram\.com/);
   assert.match(scanner, /tiktok\.com/);
   assert.match(scanner, /x\.com/);
-  assert.match(component, /label: "Tableau de bord"/);
+  assert.match(component, /label: "Analytics"/);
+  assert.match(component, /label: "Contenu"/);
   assert.match(component, /label: "Commentaires"/);
+  assert.match(component, /label: "Extraction"/);
+  assert.match(component, /id="analytics-platform-subnav"/);
   assert.match(component, /id="comments-platform-subnav"/);
+  assert.match(component, /chooseAudiencePlatform\(key\)/);
   assert.match(component, /chooseCommentPlatform\(key\)/);
   assert.match(component, /platform=\{commentPlatform\}/);
   assert.match(component, /initialCommentOpportunityFeed/);
@@ -160,8 +167,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   );
   assert.match(audienceDashboard, /const \[periodKey, setPeriodKey\] = useState<AudienceChartPeriodKey>\("30d"\)/);
   assert.doesNotMatch(audienceDashboardShell, /audience-platform-grid|audience-platform-card/);
-  assert.equal((audienceDashboard.match(/aria-label="Plateforme du graphique"/g) ?? []).length, 1);
-  assert.equal((audienceDashboard.match(/className="audience-explorer-platform-tabs"/g) ?? []).length, 1);
+  assert.doesNotMatch(audienceDashboard, /Plateforme du graphique|audience-explorer-platform-tabs|onSelectPlatform/);
   assert.match(audienceDashboard, /className="audience-explorer-summary"/);
   assert.doesNotMatch(audienceDashboard, /className="audience-explorer-profile"/);
   assert.equal((audienceDashboard.match(/className="audience-explorer-summary-kpi"/g) ?? []).length, 6);
@@ -181,7 +187,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.doesNotMatch(audienceDashboard, /Collecte planifiée/);
   assert.match(audienceDashboard, /audience-period-control/);
   assert.match(audienceDashboard, /audience-period-tabs/);
-  assert.match(audienceDashboard, /aria-label="P.riode du tableau de bord"/);
+  assert.match(audienceDashboard, /aria-label="P.riode d.Analytics"/);
   assert.match(audienceDashboard, /audienceGrowthFromObservedPoints\(observedFollowerPoints\)/);
   assert.match(
     audienceDashboard,
@@ -213,7 +219,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   );
   assert.doesNotMatch(audienceDashboard, /meta\.emoji/);
   assert.doesNotMatch(component, /Couverture maintenant|Analyse éditoriale|Posts à retenir|Comparaisons honnêtes/);
-  assert.match(component, /label: "Tous les posts"/);
+  assert.match(component, /label: "Contenu"/);
   assert.match(component, /label: "Posts recommandés"/);
   const recommendationNavSource = component.slice(
     component.indexOf("const RECOMMENDATION_NAV"),
@@ -225,13 +231,15 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   );
   assert.match(component, /posts-platform-subnav/);
   assert.match(component, /recommendations-subnav/);
-  assert.doesNotMatch(component, /NavSection|expandedNavSection|isExpanded/);
-  assert.doesNotMatch(component, /className="nav-caret"|hidden=\{!isExpanded\}/);
+  assert.match(component, /const \[expandedNavSection, setExpandedNavSection\] = useState<ExpandableNavView \| null>\(null\)/);
+  assert.match(component, /className="nav-caret"/);
+  assert.match(component, /hidden=\{!isExpanded\}/);
   const primaryNavSource = component.slice(
     component.indexOf('<nav className="nav"'),
     component.indexOf('<div className="sidebar-foot"'),
   );
-  assert.doesNotMatch(primaryNavSource, /aria-expanded|aria-controls/);
+  assert.match(primaryNavSource, /aria-expanded=\{isExpandable \? isExpanded : undefined\}/);
+  assert.match(primaryNavSource, /aria-controls=\{isExpandable \? NAV_SUBMENU_IDS\[item\.id\] : undefined\}/);
   assert.match(primaryNavSource, /aria-label=\{child\.label\}/);
   assert.match(primaryNavSource, /title=\{child\.label\}/);
   assert.match(component, /setView\("all"\)/);
@@ -251,7 +259,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.doesNotMatch(component, /Chercher une accroche, un format/);
   assert.doesNotMatch(component, /publicRankingLabel/);
   assert.match(component, /activeInlineVideoId/);
-  assert.match(component, /label: "Recommandations"/);
+  assert.match(component, /label: "Extraction"/);
   assert.match(component, /label: "Roadmap"/);
   assert.match(component, /view === "comments"[\s\S]*?<CommentOpportunitiesView/);
   assert.match(component, /view === "trends"[\s\S]*?<TrendFeedView/);
@@ -636,7 +644,9 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(socialRanking, /Likes décroissants/);
   assert.match(socialRanking, /Vues décroissantes · likes indisponibles/);
   assert.doesNotMatch(socialRanking, /published_at|performance_score/);
-  assert.doesNotMatch(styles, /\.nav-submenu\[hidden\]|\.nav-caret|\.nav-entry\.expanded/);
+  assert.match(styles, /\.nav-submenu\[hidden\]/);
+  assert.match(styles, /\.nav-caret/);
+  assert.match(styles, /\.nav-entry\.expanded/);
   assert.doesNotMatch(styles, /nav-meta/);
   assert.doesNotMatch(styles, /\.nav-count\b/);
   assert.match(styles, /\.nav-platform-logo\s*\{[\s\S]*?object-fit:\s*contain/);
@@ -652,7 +662,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(styles, /\.audience-period-control-chart\s*\{/);
   assert.match(styles, /\.audience-period-tabs\s*\{/);
   assert.doesNotMatch(styles, /\.audience-explorer-profile/);
-  assert.match(styles, /\.audience-explorer-platform-tabs/);
+  assert.doesNotMatch(styles, /\.audience-explorer-platform-tabs/);
   assert.match(styles, /\.audience-explorer-chart-controls\s*\{/);
   assert.match(styles, /\.audience-explorer-metrics/);
   assert.doesNotMatch(styles, /\.audience-native-chart-heading/);

@@ -69,7 +69,7 @@ test("keeps follower values integral and fits the chart inside the remaining vie
   assert.match(styles, /@media \(min-width: 901px\) and \(max-height: 820px\)[\s\S]*?\.main\.main-dashboard\s*\{[\s\S]*?padding-bottom:\s*0/);
 });
 
-test("syncs the single platform selector with the active account summary and follower-change default", async () => {
+test("syncs the sidebar platform selector with the active account summary and follower-change default", async () => {
   const [component, styles] = await Promise.all([
     readFile(new URL("../app/SocialOS.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
@@ -83,16 +83,21 @@ test("syncs the single platform selector with the active account summary and fol
     component.indexOf("function audienceMetricSeries"),
   );
 
-  assert.match(dashboard, /useState<Platform>\("youtube"\)/);
+  assert.match(component, /const \[audiencePlatform, setAudiencePlatform\] = useState<Platform>\("youtube"\)/);
   assert.match(dashboard, /const \[periodKey, setPeriodKey\] = useState<AudienceChartPeriodKey>\("30d"\)/);
   assert.doesNotMatch(dashboard, /aria-label="Période du tableau de bord"/);
-  assert.match(dashboard, /selectAudiencePlatform/);
-  assert.match(dashboard, /setRequestedMetric\(NATIVE_ANALYTICS_DEFAULT_METRIC\[platform\]\)/);
+  assert.match(dashboard, /activePlatform: Platform/);
+  assert.match(dashboard, /useState<Record<Platform, AudienceAnalyticsMetricKey>>/);
+  assert.match(dashboard, /const requestedMetric = requestedMetrics\[activePlatform\]/);
+  assert.match(dashboard, /\[activePlatform\]: metric/);
   assert.doesNotMatch(dashboard, /audience-platform-grid|audience-platform-card/);
   assert.match(dashboard, /activePlatform=\{activePlatform\}/);
-  assert.match(dashboard, /onSelectPlatform=\{selectAudiencePlatform\}/);
+  assert.doesNotMatch(dashboard, /selectAudiencePlatform|onSelectPlatform/);
   assert.match(dashboard, /onSelectPeriod=\{setPeriodKey\}/);
   assert.match(dashboard, /periodKey=\{periodKey\}/);
+  assert.match(component, /id="analytics-platform-subnav"/);
+  assert.match(component, /onClick=\{\(\) => chooseAudiencePlatform\(key\)\}/);
+  assert.match(component, /activePlatform=\{audiencePlatform\}/);
 
   assert.match(component, /youtube:\s*\[\s*"followersNet",\s*"followersTotal"/);
   assert.match(component, /instagram:\s*\[\s*"newFollowers",\s*"followersTotal"/);
@@ -102,11 +107,8 @@ test("syncs the single platform selector with the active account summary and fol
   assert.match(component, /instagram:\s*"newFollowers"/);
   assert.match(component, /tiktok:\s*"followersNet"/);
   assert.match(component, /x:\s*"followersNet"/);
-  assert.equal((component.match(/aria-label="Plateforme du graphique"/g) ?? []).length, 1);
-  assert.equal((component.match(/className="audience-explorer-platform-tabs"/g) ?? []).length, 1);
-  assert.match(explorer, /aria-pressed=\{platform === activePlatform\}/);
+  assert.doesNotMatch(component, /Plateforme du graphique|audience-explorer-platform-tabs|onSelectPlatform/);
   assert.match(explorer, /availableMetricWindows\.find\(\(window\) => window\.metric === requestedMetric\)/);
-  assert.match(explorer, /onClick=\{\(\) => onSelectPlatform\(platform\)\}/);
   assert.match(explorer, /className="audience-period-control audience-period-control-chart"/);
   assert.match(explorer, /onClick=\{\(\) => onSelectPeriod\(option\.key\)\}/);
   assert.match(explorer, /className="audience-explorer-chart-controls"[\s\S]*?className="audience-explorer-metrics"[\s\S]*?className="audience-period-control audience-period-control-chart"/);
@@ -126,8 +128,7 @@ test("syncs the single platform selector with the active account summary and fol
   assert.match(explorer, /followersDelta === null \|\| followersDelta === 0[\s\S]*?followersDelta < 0[\s\S]*?"negative"[\s\S]*?"positive"/);
   assert.doesNotMatch(explorer, /const \[chartPeriodKey|setChartPeriodKey|Période du graphique/);
 
-  assert.match(styles, /\.audience-explorer-platform-tabs button\.active/);
-  assert.match(styles, /\.audience-explorer-platform-tabs button:focus-visible/);
+  assert.doesNotMatch(styles, /\.audience-explorer-platform-tabs/);
   assert.match(styles, /\.audience-explorer-summary-kpi\s*\{/);
   assert.match(styles, /\.audience-explorer-summary-kpi > strong\s*\{[\s\S]*?color:\s*#fff/);
   assert.match(styles, /\.audience-explorer-summary-kpi > strong\.positive\s*\{[\s\S]*?color:\s*#8ee7ae/);

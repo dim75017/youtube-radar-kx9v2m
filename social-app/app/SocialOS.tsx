@@ -110,6 +110,7 @@ import { SocialInlinePlayer } from "./SocialInlinePlayer";
 
 type Platform = "youtube" | "instagram" | "tiktok" | "x";
 type View = "overview" | "top" | "all-comments" | "comments" | "trends" | "audio-trends" | "scrolling" | "playlist-promos" | "ideas" | "planning" | "all" | "sources";
+type ExpandableNavView = Extract<View, "overview" | "top" | "all-comments" | "ideas">;
 type IdeaStatusFilter = "all" | "pending" | IdeaDecision;
 type PostSort = "popular" | "recent";
 type TrendPlatformFilter = TrendPlatform | "all";
@@ -236,12 +237,23 @@ const NAV: Array<{
   label: string;
   group: "Pilotage";
 }> = [
-  { id: "overview", emoji: "📊", label: "Tableau de bord", group: "Pilotage" },
-  { id: "top", emoji: "🏆", label: "Tous les posts", group: "Pilotage" },
-  { id: "all-comments", emoji: "💬", label: "Tous les commentaires", group: "Pilotage" },
-  { id: "ideas", emoji: "💡", label: "Recommandations", group: "Pilotage" },
+  { id: "overview", emoji: "📊", label: "Analytics", group: "Pilotage" },
+  { id: "top", emoji: "🏆", label: "Contenu", group: "Pilotage" },
+  { id: "all-comments", emoji: "💬", label: "Commentaires", group: "Pilotage" },
+  { id: "ideas", emoji: "💡", label: "Extraction", group: "Pilotage" },
   { id: "planning", emoji: "🗓️", label: "Roadmap", group: "Pilotage" },
 ];
+
+const NAV_SUBMENU_IDS: Record<ExpandableNavView, string> = {
+  overview: "analytics-platform-subnav",
+  top: "posts-platform-subnav",
+  "all-comments": "comments-platform-subnav",
+  ideas: "recommendations-subnav",
+};
+
+function isExpandableNavView(view: View): view is ExpandableNavView {
+  return view === "overview" || view === "top" || view === "all-comments" || view === "ideas";
+}
 
 const RECOMMENDATION_NAV: Array<{
   id: Extract<View, "ideas" | "comments" | "trends" | "audio-trends" | "scrolling" | "playlist-promos">;
@@ -730,8 +742,10 @@ export function SocialOS({
   const [commentsLoading, setCommentsLoading] = useState(!previewMode && !initialCommentOpportunityFeed);
   const [commentsError, setCommentsError] = useState("");
   const [view, setView] = useState<View>("overview");
+  const [audiencePlatform, setAudiencePlatform] = useState<Platform>("youtube");
   const [topPlatform, setTopPlatform] = useState<Platform>("youtube");
   const [commentPlatform, setCommentPlatform] = useState<Platform | "all">("all");
+  const [expandedNavSection, setExpandedNavSection] = useState<ExpandableNavView | null>(null);
   const [topFormatFilter, setTopFormatFilter] = useState<SocialFormatFilter>("short");
   const [topDuration, setTopDuration] = useState<SocialDurationFilter>("all");
   const [topSort, setTopSort] = useState<PostSort>("popular");
@@ -1094,7 +1108,7 @@ export function SocialOS({
           );
         } else {
           setView("ideas");
-          setToast(`Recommandations recalculées sur ${workspace?.posts.length ?? 0} contenus publics`);
+          setToast(`Extraction recalculée sur ${workspace?.posts.length ?? 0} contenus publics`);
         }
         setMobileOpen(false);
         return;
@@ -1263,10 +1277,20 @@ export function SocialOS({
     setMobileOpen(false);
   };
 
+  const chooseAudiencePlatform = (target: Platform) => {
+    setView("overview");
+    setAudiencePlatform(target);
+    setMobileOpen(false);
+  };
+
   const chooseCommentPlatform = (target: Platform | "all") => {
     setView("all-comments");
     setCommentPlatform(target);
     setMobileOpen(false);
+  };
+
+  const toggleNavSection = (section: ExpandableNavView) => {
+    setExpandedNavSection((current) => current === section ? null : section);
   };
 
   const setIdeaDecision = useCallback(async (idea: SocialIdea, decision: IdeaDecision) => {
@@ -1401,44 +1425,36 @@ export function SocialOS({
             <div className="nav-group" key={group}>
               <div className="nav-label">{group}</div>
               {NAV.filter((item) => item.group === group).map((item) => {
+                const isAnalyticsParent = item.id === "overview";
                 const isPostsParent = item.id === "top";
                 const isCommentsParent = item.id === "all-comments";
                 const isRecommendationsParent = item.id === "ideas";
+                const isExpandable = isExpandableNavView(item.id);
+                const isExpanded = isExpandable && expandedNavSection === item.id;
                 const isRecommendationsView = view === "ideas" || view === "comments" || view === "trends" || view === "audio-trends" || view === "scrolling" || view === "playlist-promos";
-                const isActive = isPostsParent
-                  ? view === "all"
-                  : isCommentsParent
-                    ? view === "all-comments" && commentPlatform === "all"
-                  : !isRecommendationsParent && view === item.id;
-                const isSectionActive = isPostsParent
-                  ? view === "top"
-                  : isCommentsParent
-                    ? view === "all-comments" && commentPlatform !== "all"
-                  : isRecommendationsParent && isRecommendationsView;
+                const isActive = !isExpandable && view === item.id;
+                const isSectionActive = isAnalyticsParent
+                  ? view === "overview"
+                  : isPostsParent
+                    ? view === "top" || view === "all"
+                    : isCommentsParent
+                      ? view === "all-comments"
+                      : isRecommendationsParent && isRecommendationsView;
 
                 return (
                   <div
-                    className="nav-entry"
+                    className={`nav-entry ${isExpanded ? "expanded" : ""}`}
                     key={item.id}
                   >
                     <button
                       className={isActive ? "active" : isSectionActive ? "section-active" : ""}
                       type="button"
                       aria-current={isActive ? "page" : undefined}
-                      aria-label={isPostsParent ? "Tous les posts, toutes plateformes confondues" : undefined}
+                      aria-controls={isExpandable ? NAV_SUBMENU_IDS[item.id] : undefined}
+                      aria-expanded={isExpandable ? isExpanded : undefined}
                       onClick={() => {
-                        if (isPostsParent) {
-                          setView("all");
-                          setMobileOpen(false);
-                          return;
-                        }
-                        if (isCommentsParent) {
-                          chooseCommentPlatform("all");
-                          return;
-                        }
-                        if (isRecommendationsParent) {
-                          setView("ideas");
-                          setMobileOpen(false);
+                        if (isExpandableNavView(item.id)) {
+                          toggleNavSection(item.id);
                           return;
                         }
 
@@ -1448,15 +1464,66 @@ export function SocialOS({
                     >
                       <span className="nav-emoji">{item.emoji}</span>
                       <span className="nav-text">{item.label}</span>
+                      {isExpandable ? (
+                        <span className="nav-caret" aria-hidden="true">⌄</span>
+                      ) : null}
                     </button>
+
+                    {isAnalyticsParent ? (
+                      <div
+                        className="nav-submenu"
+                        id="analytics-platform-subnav"
+                        role="group"
+                        aria-label="Plateformes d’Analytics"
+                        hidden={!isExpanded}
+                      >
+                        {PLATFORM_ORDER.map((key) => {
+                          const meta = PLATFORM_META[key];
+                          const isPlatformActive = view === "overview" && audiencePlatform === key;
+                          return (
+                            <button
+                              className={isPlatformActive ? "active" : ""}
+                              type="button"
+                              aria-current={isPlatformActive ? "page" : undefined}
+                              aria-label={meta.label}
+                              title={meta.label}
+                              onClick={() => chooseAudiencePlatform(key)}
+                              key={key}
+                            >
+                              <img
+                                className="nav-platform-logo"
+                                src={`platforms/${key}.svg`}
+                                alt=""
+                                width="18"
+                                height="18"
+                              />
+                              <span className="nav-text">{meta.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
 
                     {isPostsParent ? (
                       <div
                         className="nav-submenu"
                         id="posts-platform-subnav"
                         role="group"
-                        aria-label="Plateformes de Tous les posts"
+                        aria-label="Plateformes de Contenu"
+                        hidden={!isExpanded}
                       >
+                        <button
+                          className={view === "all" ? "active" : ""}
+                          type="button"
+                          aria-current={view === "all" ? "page" : undefined}
+                          onClick={() => {
+                            setView("all");
+                            setMobileOpen(false);
+                          }}
+                        >
+                          <span className="nav-emoji">🌐</span>
+                          <span className="nav-text">Toutes plateformes</span>
+                        </button>
                         {PLATFORM_ORDER.map((key) => {
                           const meta = PLATFORM_META[key];
                           const isPlatformActive = view === "top" && topPlatform === key;
@@ -1489,8 +1556,18 @@ export function SocialOS({
                         className="nav-submenu"
                         id="comments-platform-subnav"
                         role="group"
-                        aria-label="Plateformes de Tous les commentaires"
+                        aria-label="Plateformes de Commentaires"
+                        hidden={!isExpanded}
                       >
+                        <button
+                          className={view === "all-comments" && commentPlatform === "all" ? "active" : ""}
+                          type="button"
+                          aria-current={view === "all-comments" && commentPlatform === "all" ? "page" : undefined}
+                          onClick={() => chooseCommentPlatform("all")}
+                        >
+                          <span className="nav-emoji">🌐</span>
+                          <span className="nav-text">Toutes plateformes</span>
+                        </button>
                         {PLATFORM_ORDER.map((key) => {
                           const meta = PLATFORM_META[key];
                           const isPlatformActive = view === "all-comments" && commentPlatform === key;
@@ -1523,7 +1600,8 @@ export function SocialOS({
                         className="nav-submenu"
                         id="recommendations-subnav"
                         role="group"
-                        aria-label="Types de recommandations"
+                        aria-label="Rubriques d’Extraction"
+                        hidden={!isExpanded}
                       >
                         {RECOMMENDATION_NAV.map((child) => {
                           const isChildActive = view === child.id;
@@ -1622,6 +1700,7 @@ export function SocialOS({
 
         {workspace && view === "overview" ? (
           <AudienceDashboard
+            activePlatform={audiencePlatform}
             history={initialAudienceHistory}
             analytics={audienceAnalytics}
             demographics={audienceDemographics}
@@ -1678,7 +1757,7 @@ export function SocialOS({
             </header>
 
             <div className="reco-controlbar">
-              <div className="reco-status-tabs" role="tablist" aria-label="Statut des recommandations">
+              <div className="reco-status-tabs" role="tablist" aria-label="Statut des contenus extraits">
                 <button
                   className={ideaStatusFilter === "pending" || ideaStatusFilter === "rework" ? "active pending" : "pending"}
                   type="button"
@@ -1873,15 +1952,15 @@ export function SocialOS({
 
         {workspace && view === "all" ? (
           <div className="view-stack all-posts-view">
-            <section className="top-ranking-controls tone-all all-posts-controls" aria-label="Contrôles de tous les posts">
+            <section className="top-ranking-controls tone-all all-posts-controls" aria-label="Contrôles du contenu">
               <div className="all-posts-heading">
                 <span className="section-kicker">Toutes plateformes confondues</span>
-                <h2>🌐 Tous les posts</h2>
+                <h2>🌐 Contenu</h2>
               </div>
 
               <div className="top-duration-control-row">
                 <span className="section-kicker">Durée</span>
-                <div className="format-filter-tabs top-duration-tabs" aria-label="Filtrer tous les posts par durée">
+                <div className="format-filter-tabs top-duration-tabs" aria-label="Filtrer le contenu par durée">
                   {SOCIAL_DURATION_FILTERS.map((option) => (
                     <button
                       className={topDuration === option.key ? "active" : ""}
@@ -1898,7 +1977,7 @@ export function SocialOS({
 
               <div className="top-sort-control-row">
                 <span className="section-kicker">Trier</span>
-                <div className="format-filter-tabs library-sort-tabs" role="group" aria-label="Trier tous les posts">
+                <div className="format-filter-tabs library-sort-tabs" role="group" aria-label="Trier le contenu">
                   <button className={librarySort === "popular" ? "active" : ""} type="button" aria-pressed={librarySort === "popular"} onClick={() => setLibrarySort("popular")}>
                     🏆 Plus populaire
                   </button>
@@ -1975,7 +2054,6 @@ export function SocialOS({
             posts={authoredComments}
             generatedAt={workspace.generatedAt}
             platform={commentPlatform}
-            onPlatformChange={chooseCommentPlatform}
           />
         ) : null}
 
@@ -2056,26 +2134,29 @@ export function SocialOS({
 }
 
 function AudienceDashboard({
+  activePlatform,
   history,
   analytics,
   demographics,
   posts,
 }: {
+  activePlatform: Platform;
   history: AudienceHistory | null;
   analytics: AudienceAnalytics | null;
   demographics: AudienceDemographics | null;
   posts: readonly SocialPost[];
 }) {
-  const [activePlatform, setActivePlatform] = useState<Platform>("youtube");
   const [periodKey, setPeriodKey] = useState<AudienceChartPeriodKey>("30d");
-  const [requestedMetric, setRequestedMetric] = useState<AudienceAnalyticsMetricKey>(
-    NATIVE_ANALYTICS_DEFAULT_METRIC.youtube,
+  const [requestedMetrics, setRequestedMetrics] = useState<Record<Platform, AudienceAnalyticsMetricKey>>(
+    () => ({ ...NATIVE_ANALYTICS_DEFAULT_METRIC }),
   );
-
-  const selectAudiencePlatform = useCallback((platform: Platform) => {
-    setActivePlatform(platform);
-    setRequestedMetric(NATIVE_ANALYTICS_DEFAULT_METRIC[platform]);
-  }, []);
+  const requestedMetric = requestedMetrics[activePlatform];
+  const selectMetric = (metric: AudienceAnalyticsMetricKey) => {
+    setRequestedMetrics((current) => ({
+      ...current,
+      [activePlatform]: metric,
+    }));
+  };
 
   return (
     <section className="audience-dashboard" aria-labelledby="audience-dashboard-title">
@@ -2083,7 +2164,7 @@ function AudienceDashboard({
         <header className="audience-dashboard-heading">
           <div>
             <span className="section-kicker">Audience & engagement</span>
-            <h2 id="audience-dashboard-title">Tableau de bord</h2>
+            <h2 id="audience-dashboard-title">Analytics</h2>
           </div>
         </header>
       </div>
@@ -2093,9 +2174,8 @@ function AudienceDashboard({
         analytics={analytics}
         demographics={demographics}
         history={history}
-        onSelectMetric={setRequestedMetric}
+        onSelectMetric={selectMetric}
         onSelectPeriod={setPeriodKey}
-        onSelectPlatform={selectAudiencePlatform}
         periodKey={periodKey}
         posts={posts}
         requestedMetric={requestedMetric}
@@ -2293,7 +2373,6 @@ function AudienceAnalyticsExplorer({
   history,
   onSelectMetric,
   onSelectPeriod,
-  onSelectPlatform,
   periodKey,
   posts,
   requestedMetric,
@@ -2304,7 +2383,6 @@ function AudienceAnalyticsExplorer({
   history: AudienceHistory | null;
   onSelectMetric: (metric: AudienceAnalyticsMetricKey) => void;
   onSelectPeriod: (period: AudienceChartPeriodKey) => void;
-  onSelectPlatform: (platform: Platform) => void;
   periodKey: AudienceChartPeriodKey;
   posts: readonly SocialPost[];
   requestedMetric: AudienceAnalyticsMetricKey;
@@ -2468,34 +2546,9 @@ function AudienceAnalyticsExplorer({
     <section
       className={`audience-explorer tone-${meta.tone}`}
       id="audience-explorer"
-      aria-label={`Tableau de bord ${meta.label}`}
+      aria-label={`Analytics ${meta.label}`}
     >
       <div className="audience-overview-screen">
-        <div className="audience-explorer-controls">
-        <div
-          className="audience-explorer-platform-tabs"
-          role="group"
-          aria-label="Plateforme du graphique"
-        >
-          {PLATFORM_ORDER.map((platform) => {
-            const platformMeta = PLATFORM_META[platform];
-            return (
-              <button
-                className={platform === activePlatform ? "active" : ""}
-                type="button"
-                aria-pressed={platform === activePlatform}
-                onClick={() => onSelectPlatform(platform)}
-                key={platform}
-              >
-                <img src={`platforms/${platform}.svg`} alt="" width="20" height="20" />
-                {platformMeta.label}
-              </button>
-            );
-          })}
-        </div>
-
-        </div>
-
         <div className="audience-explorer-summary" aria-label={`Synthèse ${meta.label}`}>
         <div className="audience-explorer-summary-kpi">
           <span>Total followers</span>
@@ -2602,7 +2655,7 @@ function AudienceAnalyticsExplorer({
             <div
               className="audience-period-control audience-period-control-chart"
               role="group"
-              aria-label="Période du tableau de bord"
+              aria-label="Période d’Analytics"
             >
               <div className="audience-period-tabs">
                 {AUDIENCE_CHART_PERIODS.map((option) => (
@@ -4930,7 +4983,7 @@ function RoadmapList({
         <span>🗓️</span>
         <h3>Aucune publication sur cette période</h3>
         <p>Valide une recommandation ou change de période.</p>
-        <button className="button primary" type="button" onClick={onOpenRecommendations}>Voir les recommandations</button>
+        <button className="button primary" type="button" onClick={onOpenRecommendations}>Voir l’extraction</button>
       </div>
     );
   }

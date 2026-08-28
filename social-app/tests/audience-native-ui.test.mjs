@@ -25,15 +25,14 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(component, /analytics=\{audienceAnalytics\}/);
   assert.match(component, /demographics=\{audienceDemographics\}/);
   assert.match(explorer, /function AudienceAnalyticsExplorer/);
-  assert.match(component, /useState<Platform>\("youtube"\)/);
+  assert.match(component, /const \[audiencePlatform, setAudiencePlatform\] = useState<Platform>\("youtube"\)/);
+  assert.match(component, /id="analytics-platform-subnav"/);
+  assert.match(component, /onClick=\{\(\) => chooseAudiencePlatform\(key\)\}/);
+  assert.match(component, /activePlatform=\{audiencePlatform\}/);
   assert.match(explorer, /youtube: "followersNet"/);
   assert.match(explorer, /tiktok: "followersNet"/);
   assert.match(explorer, /x: "followersNet"/);
-  assert.match(explorer, /aria-label="Plateforme du graphique"/);
-  assert.equal((component.match(/aria-label="Plateforme du graphique"/g) ?? []).length, 1);
-  assert.equal((component.match(/className="audience-explorer-platform-tabs"/g) ?? []).length, 1);
-  assert.match(explorer, /PLATFORM_ORDER\.map/);
-  assert.match(explorer, /aria-pressed=\{platform === activePlatform\}/);
+  assert.doesNotMatch(explorer, /Plateforme du graphique|audience-explorer-platform-tabs|onSelectPlatform/);
   assert.match(explorer, /const AUDIENCE_CHART_PERIODS = \[/);
   assert.match(
     explorer,
@@ -56,7 +55,7 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.doesNotMatch(toolbar, /audience-period-control|AUDIENCE_CHART_PERIODS\.map/);
   assert.match(explorer, /className="audience-period-control audience-period-control-chart"/);
   assert.match(explorer, /className="audience-period-tabs"/);
-  assert.match(explorer, /aria-label="Période du tableau de bord"/);
+  assert.match(explorer, /aria-label="Période d’Analytics"/);
   assert.match(explorer, /AUDIENCE_CHART_PERIODS\.map/);
   assert.match(explorer, /aria-pressed=\{option\.key === periodKey\}/);
   assert.match(explorer, /onClick=\{\(\) => onSelectPeriod\(option\.key\)\}/);
@@ -131,7 +130,7 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(styles, /\.audience-period-control\s*\{[\s\S]*?justify-content:\s*flex-end/);
   assert.match(styles, /\.audience-period-control-chart\s*\{[\s\S]*?max-width:\s*min\(100%, 470px\)/);
   assert.match(styles, /\.audience-period-tabs/);
-  assert.match(styles, /\.audience-explorer-platform-tabs/);
+  assert.doesNotMatch(styles, /\.audience-explorer-platform-tabs/);
   assert.match(styles, /\.audience-explorer-chart-controls\s*\{[\s\S]*?display:\s*flex[\s\S]*?justify-content:\s*space-between/);
   assert.doesNotMatch(styles, /\.audience-native-chart-heading/);
   assert.match(styles, /\.audience-explorer-summary\s*\{[\s\S]*?grid-template-columns:\s*repeat\(6, minmax\(82px, 1fr\)\)/);

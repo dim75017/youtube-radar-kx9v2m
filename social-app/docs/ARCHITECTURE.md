@@ -42,7 +42,7 @@ Une métrique absente est retirée du calcul et les poids restants sont renormal
 
 ## Audience et engagement
 
-Le Tableau de bord applique un filtre commun à l’évolution des followers et au taux d’engagement sur YouTube, Instagram, TikTok et X. Les périodes proposées sont 30 jours (vue par défaut), 3 mois, 6 mois, 1 an et All time.
+Analytics applique un filtre commun à l’évolution des followers et au taux d’engagement sur YouTube, Instagram, TikTok et X. Les périodes proposées sont 30 jours (vue par défaut), 3 mois, 6 mois, 1 an et All time.
 
 Pour chaque période, le taux d’engagement correspond à la moyenne des likes et commentaires de tous les posts mesurables publiés dans la fenêtre, divisée par le dernier nombre de followers réellement observé. Les commentaires YouTube publiés par Lofi Girl sont exclus de l’échantillon. Les partages et sauvegardes ne sont pas mélangés au calcul, car ils ne sont pas disponibles de façon comparable sur les quatre plateformes. L’évolution des followers s’appuie exclusivement sur les observations réelles disponibles dans la période sélectionnée, sans interpolation ni repli artificiel vers une autre période.
 

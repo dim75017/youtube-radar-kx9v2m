@@ -85,44 +85,6 @@
   box-shadow: 0 0 0 3px rgba(154, 168, 255, 0.13);
 }
 
-.authored-comment-platform-tabs {
-  display: flex;
-  grid-column: 1 / -1;
-  flex-wrap: wrap;
-  gap: 7px;
-  border-top: 1px solid rgba(154, 168, 255, 0.13);
-  padding-top: 10px;
-}
-
-.authored-comment-platform-tabs button {
-  display: inline-flex;
-  min-height: 36px;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid rgba(154, 168, 255, 0.16);
-  border-radius: 999px;
-  background: rgba(10, 12, 20, 0.66);
-  padding: 0 12px;
-  color: var(--muted);
-  font: inherit;
-  font-size: var(--fs-caption);
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.authored-comment-platform-tabs button:hover,
-.authored-comment-platform-tabs button:focus-visible,
-.authored-comment-platform-tabs button.active {
-  border-color: rgba(154, 168, 255, 0.46);
-  background: rgba(154, 168, 255, 0.12);
-  color: var(--text);
-}
-
-.authored-comment-platform-tabs b {
-  color: var(--accent-2);
-  font-size: 0.92em;
-}
-
 .authored-comment-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -712,12 +674,32 @@ a {
   white-space: normal;
 }
 
+.nav-caret {
+  width: 18px;
+  flex: none;
+  color: var(--dim);
+  font-size: 18px;
+  line-height: 1;
+  text-align: center;
+  transform: rotate(0deg);
+  transition: color 160ms ease, transform 160ms ease;
+}
+
+.nav-entry.expanded > button .nav-caret {
+  color: var(--text);
+  transform: rotate(180deg);
+}
+
 .nav-submenu {
   display: grid;
   gap: 2px;
   margin: 3px 0 8px 20px;
   border-left: 1px solid rgba(154, 168, 255, 0.2);
   padding-left: 10px;
+}
+
+.nav-submenu[hidden] {
+  display: none;
 }
 
 .nav-submenu button {
@@ -4787,7 +4769,6 @@ a {
   text-align: right;
 }
 
-.audience-explorer-platform-tabs,
 .audience-explorer-metrics {
   display: flex;
   min-width: 0;
@@ -4796,15 +4777,6 @@ a {
   overscroll-behavior-inline: contain;
   padding: 2px 2px 5px;
   scrollbar-width: thin;
-}
-
-.audience-explorer-controls {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 12px;
-  margin-top: 10px;
 }
 
 .audience-explorer-summary {
@@ -4873,7 +4845,6 @@ a {
   font-weight: 500;
 }
 
-.audience-explorer-platform-tabs button,
 .audience-explorer-metrics button {
   display: inline-flex;
   flex: 0 0 auto;
@@ -4884,35 +4855,6 @@ a {
   transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
 }
 
-.audience-explorer-platform-tabs button {
-  width: 100%;
-  min-width: 0;
-  justify-content: center;
-  gap: 6px;
-  min-height: 36px;
-  border-radius: 9px;
-  padding: 7px 12px;
-  font-size: 12px;
-  font-weight: 760;
-}
-
-.audience-explorer-platform-tabs {
-  display: grid;
-  width: min(100%, 640px);
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  overflow-x: visible;
-}
-
-.audience-explorer-platform-tabs img {
-  display: block;
-  width: 17px;
-  height: 17px;
-  object-fit: contain;
-}
-
-.audience-explorer-platform-tabs button:hover,
-.audience-explorer-platform-tabs button:focus-visible,
-.audience-explorer-platform-tabs button.active,
 .audience-explorer-metrics button:hover,
 .audience-explorer-metrics button:focus-visible,
 .audience-explorer-metrics button.active {
@@ -4921,7 +4863,6 @@ a {
   color: #fff;
 }
 
-.audience-explorer-platform-tabs button:focus-visible,
 .audience-explorer-metrics button:focus-visible {
   outline: 2px solid rgba(var(--platform-rgb), 0.64);
   outline-offset: 2px;
@@ -5546,12 +5487,6 @@ a {
     justify-content: flex-start;
   }
 
-  .audience-explorer-controls {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 4px;
-  }
-
   .audience-explorer-chart-controls {
     align-items: stretch;
     flex-direction: column;
@@ -5625,11 +5560,6 @@ a {
 
   .audience-explorer-summary {
     grid-template-columns: 1fr;
-  }
-
-  .audience-explorer-platform-tabs {
-    width: 100%;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .audience-explorer-summary-kpi,
@@ -5921,11 +5851,6 @@ a {
     font-size: 17px;
   }
 
-  .audience-explorer-controls {
-    margin-top: 5px;
-  }
-
-  .audience-explorer-platform-tabs button,
   .audience-explorer-metrics button {
     min-height: 32px;
     padding-block: 5px;
@@ -5966,7 +5891,6 @@ a {
     padding-block: 6px;
   }
 
-  .audience-explorer-controls,
   .audience-explorer-summary,
   .audience-explorer-chart-controls,
   .audience-native-chart-shell {

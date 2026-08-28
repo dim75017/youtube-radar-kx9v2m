@@ -49,13 +49,6 @@ const PLATFORM_META: Record<
   x: { emoji: "𝕏", label: "X", tone: "blue" },
 };
 
-const PLATFORM_ORDER: CommentPlatform[] = [
-  "youtube",
-  "instagram",
-  "tiktok",
-  "x",
-];
-
 function formatCompact(value: number): string {
   return new Intl.NumberFormat("fr-FR", {
     notation: "compact",
@@ -249,38 +242,23 @@ function CommentCard({ post }: { post: CommentPost }) {
 export function AuthoredCommentsView({
   posts,
   generatedAt,
-  platform: requestedPlatform,
-  onPlatformChange,
+  platform,
 }: {
   posts: readonly CommentPost[];
   generatedAt: string;
-  platform?: PlatformFilter;
-  onPlatformChange?: (platform: PlatformFilter) => void;
+  platform: PlatformFilter;
 }) {
-  const [internalPlatform, setInternalPlatform] = useState<PlatformFilter>("all");
   const [duration, setDuration] = useState<SocialDurationFilter>("all");
   const [sort, setSort] = useState<CommentSort>("recent");
   const [pagination, setPagination] = useState({ key: "", count: PAGE_SIZE });
-  const platform = requestedPlatform ?? internalPlatform;
-  const setPlatform = onPlatformChange ?? setInternalPlatform;
   const activePlatformLabel = platform === "all"
-    ? "Tous les commentaires"
+    ? "Commentaires"
     : `Commentaires ${PLATFORM_META[platform].label}`;
 
   const allComments = useMemo(
     () => posts.filter((post) => isAuthoredComment(post)),
     [posts],
   );
-  const counts = useMemo(() => {
-    const next: Record<CommentPlatform, number> = {
-      youtube: 0,
-      instagram: 0,
-      tiktok: 0,
-      x: 0,
-    };
-    for (const post of allComments) next[post.platform] += 1;
-    return next;
-  }, [allComments]);
   const filteredComments = useMemo(() => {
     const next = allComments.filter(
       (post) =>
@@ -304,7 +282,7 @@ export function AuthoredCommentsView({
 
   return (
     <div className="view-stack authored-comments-view">
-      <section className="top-ranking-controls tone-all authored-comments-controls" aria-label="Contrôles de tous les commentaires">
+      <section className="top-ranking-controls tone-all authored-comments-controls" aria-label="Contrôles des commentaires">
         <div className="all-posts-heading">
           <span className="section-kicker">Commentaires publiés par Lofi Girl</span>
           <h2>💬 {activePlatformLabel}</h2>
@@ -328,16 +306,6 @@ export function AuthoredCommentsView({
           </label>
         </div>
 
-        <div className="authored-comment-platform-tabs" aria-label="Filtrer les commentaires par plateforme">
-          <button className={platform === "all" ? "active" : ""} type="button" onClick={() => setPlatform("all")}>
-            🌐 Tous <b>{formatCompact(allComments.length)}</b>
-          </button>
-          {PLATFORM_ORDER.map((key) => (
-            <button className={platform === key ? "active" : ""} type="button" onClick={() => setPlatform(key)} key={key}>
-              {PLATFORM_META[key].emoji} {PLATFORM_META[key].label} <b>{formatCompact(counts[key])}</b>
-            </button>
-          ))}
-        </div>
       </section>
 
       <section className="category-results tone-all" aria-labelledby="all-comments-title">
