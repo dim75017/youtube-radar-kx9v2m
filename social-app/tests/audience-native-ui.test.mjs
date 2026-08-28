@@ -275,7 +275,11 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(styles, /\.audience-demographic-pie-track\s*\{[^}]*stroke:\s*#080b12/);
   assert.match(styles, /\.audience-demographic-pie-tooltip\s*\{[^}]*position:\s*absolute[^}]*background:\s*rgba\(8, 11, 18, 0\.97\)/);
   assert.match(styles, /\.audience-demographic-pie-tooltip\s*\{[^}]*pointer-events:\s*none/);
-  assert.match(styles, /\.audience-demographic-pie:focus-visible/);
+  assert.match(
+    styles,
+    /\.audience-native-chart-viewport svg:focus,[\s\S]*?\.audience-demographic-pie:focus,[\s\S]*?\.audience-demographic-pie-legend li:focus\s*\{[^}]*outline:\s*none[^}]*box-shadow:\s*none/,
+  );
+  assert.doesNotMatch(styles, /\.audience-(?:native-chart-viewport svg|demographic-pie):focus-visible\s*\{[^}]*outline:/);
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?grid-template-columns:\s*clamp\(148px, 13vw, 190px\)/);
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographic-pie-layout\s*\{[^}]*align-content:\s*start[^}]*align-items:\s*start[^}]*align-self:\s*center/);
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographics-breakdowns\s*\{[^}]*height:\s*100%[^}]*grid-template-rows:\s*repeat\(2, minmax\(0, 1fr\)\)[^}]*align-self:\s*stretch/);
