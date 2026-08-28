@@ -5183,7 +5183,8 @@ a {
   display: grid;
   min-width: 0;
   overflow: hidden;
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-content: start;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 12px;
   background: rgba(8, 10, 18, 0.5);
@@ -5692,7 +5693,7 @@ a {
 
   .audience-demographics {
     display: flex;
-    min-height: calc(100dvh - 24px);
+    min-height: 0;
     flex-direction: column;
     margin-top: 24px;
     padding: 24px;
@@ -5708,20 +5709,22 @@ a {
 
   .audience-demographics-grid {
     min-height: 0;
-    flex: 1;
+    flex: 0 0 auto;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-content: start;
     gap: 20px clamp(32px, 2.25vw, 46px);
     margin-top: 18px;
   }
 
   .audience-demographics-breakdowns {
-    height: 100%;
-    grid-template-rows: repeat(2, minmax(0, 1fr));
+    height: auto;
+    grid-template-rows: auto auto;
+    align-self: stretch;
     border-radius: 16px;
   }
 
   .audience-demographics-grid > .audience-demographic-card {
-    height: 100%;
+    align-self: stretch;
   }
 
   .audience-demographic-card {
@@ -5748,13 +5751,13 @@ a {
     align-items: start;
     align-self: start;
     flex: 0 0 auto;
-    grid-template-columns: clamp(148px, 15vw, 216px) minmax(0, 1fr);
+    grid-template-columns: clamp(148px, 13vw, 190px) minmax(0, 1fr);
     gap: clamp(18px, 2vw, 30px);
     margin-top: 10px;
   }
 
   .audience-demographic-pie {
-    max-width: 216px;
+    max-width: 190px;
   }
 
   .audience-demographic-pie-label {

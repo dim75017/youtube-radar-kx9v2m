@@ -62,9 +62,9 @@ test("keeps follower values integral and fits the chart inside the remaining vie
   assert.match(component, /className="audience-overview-screen"/);
   assert.match(component, /bottomReserve=\{24\}/);
   assert.match(styles, /\.audience-overview-screen\s*\{[\s\S]*?min-height:\s*calc\(100dvh - 118px\)/);
-  assert.match(styles, /\.audience-demographics\s*\{[\s\S]*?min-height:\s*calc\(100dvh - 24px\)/);
-  assert.match(styles, /\.audience-demographic-pie-layout\s*\{[\s\S]*?clamp\(148px, 15vw, 216px\)/);
-  assert.match(styles, /\.audience-demographic-pie\s*\{[\s\S]*?max-width:\s*216px/);
+  assert.match(styles, /\.audience-demographics\s*\{[\s\S]*?min-height:\s*0/);
+  assert.match(styles, /\.audience-demographic-pie-layout\s*\{[\s\S]*?clamp\(148px, 13vw, 190px\)/);
+  assert.match(styles, /\.audience-demographic-pie\s*\{[\s\S]*?max-width:\s*190px/);
   assert.match(styles, /@media \(min-width: 901px\) and \(max-height: 940px\)/);
   assert.match(styles, /@media \(min-width: 901px\) and \(max-height: 820px\)[\s\S]*?\.main\.main-dashboard\s*\{[\s\S]*?padding-bottom:\s*0/);
 });

@@ -2677,6 +2677,7 @@ function AudienceDemographicsPanel({
     (latest, dimension) => latestIsoTimestamp(latest, dimension.provenance.collectedAt),
     null,
   );
+  const countryDisplayLimit = AUDIENCE_COUNTRY_DISPLAY_LIMITS[platform];
 
   return (
     <section
@@ -2700,7 +2701,8 @@ function AudienceDemographicsPanel({
           dimension={snapshot?.countries ?? null}
           emptyLabel={`Localisation non disponible pour ${meta.label}`}
           kind="countries"
-          title="Top 20 pays"
+          title={`Top ${countryDisplayLimit} pays`}
+          countryDisplayLimit={countryDisplayLimit}
         />
         <div className="audience-demographics-breakdowns" role="group" aria-label="Âge et genre">
           <AudienceDemographicCard
@@ -2721,7 +2723,12 @@ function AudienceDemographicsPanel({
   );
 }
 
-const AUDIENCE_COUNTRY_DISPLAY_LIMIT = 20;
+const AUDIENCE_COUNTRY_DISPLAY_LIMITS: Record<Platform, number> = {
+  youtube: 10,
+  instagram: 20,
+  tiktok: 20,
+  x: 20,
+};
 
 const AUDIENCE_DEMOGRAPHIC_PIE_COLORS: Record<string, string> = {
   age_13_17: "#cc79a7",
@@ -2765,11 +2772,13 @@ function AudienceDemographicCard({
   emptyLabel,
   kind,
   title,
+  countryDisplayLimit = 20,
 }: {
   dimension: AudienceDemographicDimension | null;
   emptyLabel: string;
   kind: "countries" | "ages" | "genders";
   title: string;
+  countryDisplayLimit?: number;
 }) {
   const [pieTooltip, setPieTooltip] = useState<{
     key: string;
@@ -2785,31 +2794,39 @@ function AudienceDemographicCard({
   const countryAggregateFromSource = kind === "countries"
     ? allDisplayEntries.find((entry) => entry.countryCode === null) ?? null
     : null;
-  const countryReportedShare = countryEntries.reduce(
+  const countryReportedEntries = [
+    ...countryEntries,
+    ...(countryAggregateFromSource ? [countryAggregateFromSource] : []),
+  ];
+  const countryReportedShare = countryReportedEntries.reduce(
     (total, entry) => total + (entry.share ?? 0),
     0,
   );
   const countryResidualShare = Math.max(0, Math.min(1, 1 - countryReportedShare));
-  const countryAggregateEntry = countryAggregateFromSource
-    ? { ...countryAggregateFromSource, label: "Autres pays" }
-    : kind === "countries" && countryEntries.length > 0 && countryResidualShare >= 0.005
+  const visibleCountryEntries = countryEntries.slice(0, countryDisplayLimit);
+  const hiddenCountryEntries = countryEntries.slice(countryDisplayLimit);
+  const hiddenCountryShare = hiddenCountryEntries.reduce(
+    (total, entry) => total + (entry.share ?? 0),
+    0,
+  );
+  const countryAggregateShare = hiddenCountryShare
+    + (countryAggregateFromSource?.share ?? 0)
+    + countryResidualShare;
+  const countryAggregateEntry = kind === "countries"
+    && (countryAggregateFromSource || countryAggregateShare >= 0.005)
       ? {
-          key: "other_countries",
+          key: countryAggregateFromSource?.key ?? "other_countries",
           label: "Autres pays",
-          share: countryResidualShare,
+          share: countryAggregateShare,
           countryCode: null,
           reported: true,
         }
       : null;
-  const visibleCountryEntries = countryEntries.slice(0, AUDIENCE_COUNTRY_DISPLAY_LIMIT);
   const visibleEntries = kind === "countries"
     ? countryAggregateEntry
       ? [...visibleCountryEntries, countryAggregateEntry]
       : visibleCountryEntries
     : allDisplayEntries;
-  const hiddenCountryCount = dimension && kind === "countries"
-    ? Math.max(0, countryEntries.length - visibleCountryEntries.length)
-    : 0;
   const unreportedAgeCount = kind === "ages"
     ? visibleEntries.filter((entry) => !entry.reported).length
     : 0;
@@ -2835,7 +2852,7 @@ function AudienceDemographicCard({
           <span>
             {dimension.provenance.periodLabel ?? "Snapshot actuel"}
             {kind === "countries"
-              ? ` · ${visibleCountryEntries.length}/${AUDIENCE_COUNTRY_DISPLAY_LIMIT} pays fournis`
+              ? ` · ${visibleCountryEntries.length}/${countryDisplayLimit} pays fournis`
               : ""}
           </span>
         ) : null}
@@ -2978,9 +2995,9 @@ function AudienceDemographicCard({
               </ul>
             </div>
           )}
-          {kind === "countries" && visibleCountryEntries.length < AUDIENCE_COUNTRY_DISPLAY_LIMIT ? (
+          {kind === "countries" && visibleCountryEntries.length < countryDisplayLimit ? (
             <p className="audience-demographic-country-limit">
-              La source native ne fournit pas les rangs {visibleCountryEntries.length + 1}–{AUDIENCE_COUNTRY_DISPLAY_LIMIT}.
+              La source native ne fournit pas les rangs {visibleCountryEntries.length + 1}–{countryDisplayLimit}.
             </p>
           ) : null}
           {unreportedAgeCount > 0 || usesMerged55Plus ? (
@@ -2989,11 +3006,6 @@ function AudienceDemographicCard({
               {unreportedAgeCount > 0 && usesMerged55Plus ? " · " : null}
               {usesMerged55Plus ? "55–64 et 65+ regroupés dans 55+" : null}
             </p>
-          ) : null}
-          {hiddenCountryCount > 0 ? (
-            <footer>
-              <span>+{hiddenCountryCount} pays</span>
-            </footer>
           ) : null}
         </>
       ) : (

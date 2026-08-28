@@ -143,7 +143,7 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(styles, /\.audience-native-chart-viewport\s*\{[\s\S]*?overflow-x:\s*auto/);
   assert.match(explorer, /className="audience-demographics-breakdowns" role="group" aria-label="Âge et genre"/);
   assert.match(styles, /\.audience-demographics-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(styles, /\.audience-demographics-breakdowns\s*\{[\s\S]*?grid-template-rows:\s*minmax\(0, 1fr\) auto/);
+  assert.match(styles, /\.audience-demographics-breakdowns\s*\{[\s\S]*?grid-template-rows:\s*auto auto[\s\S]*?align-content:\s*start/);
   assert.doesNotMatch(styles, /\.audience-chart-viewport|\.audience-native-platform-grid/);
 });
 
@@ -214,8 +214,9 @@ test("shows native demographic dimensions below the chart and follows the select
     explorer.indexOf("<AudienceDemographicsPanel") > explorer.indexOf("audience-native-chart-shell"),
     "the demographic section must remain below the curve",
   );
-  assert.match(explorer, /Top 20 pays/);
-  assert.match(explorer, /const AUDIENCE_COUNTRY_DISPLAY_LIMIT = 20/);
+  assert.match(explorer, /title=\{`Top \$\{countryDisplayLimit\} pays`\}/);
+  assert.match(explorer, /const AUDIENCE_COUNTRY_DISPLAY_LIMITS: Record<Platform, number> = \{[\s\S]*?youtube:\s*10,[\s\S]*?instagram:\s*20,[\s\S]*?tiktok:\s*20,[\s\S]*?x:\s*20/);
+  assert.match(explorer, /countryDisplayLimit=\{countryDisplayLimit\}/);
   assert.match(explorer, /Répartition par âge/);
   assert.match(explorer, /Répartition par genre/);
   assert.match(explorer, /flags\/\$\{entry\.countryCode\?\.toLowerCase\(\) \?\? "globe"\}\.svg/);
@@ -228,11 +229,11 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(explorer, /kind === "countries"[\s\S]*?<span className="audience-demographic-bar" aria-hidden="true">/);
   assert.match(explorer, /audienceDemographicDisplayEntries\(dimension\.entries, kind\)/);
   assert.match(explorer, /allDisplayEntries\.filter\(\(entry\) => entry\.countryCode !== null\)/);
-  assert.match(explorer, /countryEntries\.slice\(0, AUDIENCE_COUNTRY_DISPLAY_LIMIT\)/);
-  assert.match(explorer, /visibleCountryEntries\.length\}\/\$\{AUDIENCE_COUNTRY_DISPLAY_LIMIT\} pays fournis/);
+  assert.match(explorer, /countryEntries\.slice\(0, countryDisplayLimit\)/);
+  assert.match(explorer, /visibleCountryEntries\.length\}\/\$\{countryDisplayLimit\} pays fournis/);
   assert.match(explorer, /La source native ne fournit pas les rangs/);
   assert.match(explorer, /const countryResidualShare = Math\.max\(0, Math\.min\(1, 1 - countryReportedShare\)\)/);
-  assert.match(explorer, /key: "other_countries"/);
+  assert.match(explorer, /key: countryAggregateFromSource\?\.key \?\? "other_countries"/);
   assert.match(explorer, /label: "Autres pays"/);
   assert.match(explorer, /className="audience-demographic-pie-layout"/);
   assert.match(explorer, /className="audience-demographic-pie"/);
@@ -273,11 +274,11 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(styles, /\.audience-demographic-pie-tooltip\s*\{[^}]*position:\s*absolute[^}]*background:\s*rgba\(8, 11, 18, 0\.97\)/);
   assert.match(styles, /\.audience-demographic-pie-tooltip\s*\{[^}]*pointer-events:\s*none/);
   assert.match(styles, /\.audience-demographic-pie:focus-visible/);
-  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?grid-template-columns:\s*clamp\(148px, 15vw, 216px\)/);
+  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?grid-template-columns:\s*clamp\(148px, 13vw, 190px\)/);
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographic-pie-layout\s*\{[^}]*align-content:\s*start[^}]*align-items:\s*start[^}]*align-self:\s*start/);
-  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographics-breakdowns\s*\{[^}]*height:\s*100%[^}]*grid-template-rows:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographics-breakdowns\s*\{[^}]*height:\s*auto[^}]*grid-template-rows:\s*auto auto[^}]*align-self:\s*stretch/);
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographics-grid\s*\{[^}]*gap:\s*20px clamp\(32px, 2\.25vw, 46px\)/);
-  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographics\s*\{[\s\S]*?min-height:\s*calc\(100dvh - 24px\)/);
+  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographics\s*\{[\s\S]*?min-height:\s*0/);
   assert.match(styles, /\.audience-demographic-pie-legend\s*\{[^}]*display:\s*grid/);
   assert.match(styles, /\.audience-demographic-card\.kind-countries \.audience-demographic-list\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
   assert.match(styles, /\.audience-demographic-list\s*\{[^}]*grid-auto-rows:\s*minmax\(20px, auto\)[^}]*align-content:\s*start/);
