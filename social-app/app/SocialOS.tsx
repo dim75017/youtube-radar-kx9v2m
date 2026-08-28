@@ -5044,7 +5044,9 @@ function PostCard({
   const footerMetrics = [
     post.views !== null ? { icon: metricEmoji("views", post.platform), label: "vues", value: post.views } : null,
     post.likes !== null ? { icon: metricEmoji("likes", post.platform), label: "likes", value: post.likes } : null,
-  ].filter(Boolean) as Array<{ icon: string; label: string; value: number }>;
+    { icon: metricEmoji("comments", post.platform), label: "commentaires", value: post.comments },
+    { icon: metricEmoji("shares", post.platform), label: "partages", value: post.shares },
+  ].filter(Boolean) as Array<{ icon: string; label: string; value: number | null }>;
   const performanceScore =
     typeof post.performance_score === "number" && Number.isFinite(post.performance_score)
       ? Math.max(0, Math.min(100, Math.round(post.performance_score)))
@@ -5127,8 +5129,12 @@ function PostCard({
               <small>/100</small>
             </span>
             {footerMetrics.map((metric) => (
-              <span key={metric.label} title={metric.label}>
-                {metric.icon} <b>{formatNumber(metric.value)}</b>
+              <span
+                className={`post-card-metric ${metric.value === null ? "is-unavailable" : ""}`}
+                key={metric.label}
+                title={metric.value === null ? `${metric.label} non disponibles` : metric.label}
+              >
+                {metric.icon} <b>{metric.value === null ? "—" : formatNumber(metric.value)}</b>
               </span>
             ))}
           </span>

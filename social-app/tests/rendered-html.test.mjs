@@ -570,7 +570,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(formats, /label: "Texte", emoji: "✍️"/);
   assert.match(formats, /label: "Commentaires", emoji: "💭"/);
   assert.match(styles, /\.top-ranking-controls\s*\{[^}]*position:\s*relative[^}]*z-index:\s*20[^}]*overflow:\s*visible/);
-  assert.match(styles, /\.top-ranking-dropdowns\s*\{[^}]*width:\s*50%[^}]*max-width:\s*760px[^}]*grid-template-columns:[^;]*1\.35fr[^}]*margin-left:\s*auto/);
+  assert.match(styles, /\.top-ranking-dropdowns\s*\{[^}]*width:\s*50%[^}]*max-width:\s*760px[^}]*grid-template-columns:[^;]*1\.35fr[^}]*margin-right:\s*auto/);
   assert.match(styles, /@media \(max-width: 1180px\)[\s\S]*?\.top-ranking-dropdowns\s*\{[^}]*width:\s*100%[^}]*max-width:\s*none/);
   assert.match(styles, /\.category-results\s*\{[^}]*position:\s*relative[^}]*z-index:\s*1/);
   assert.match(styles, /\.top-filter-dropdown-trigger\s*\{[\s\S]*?border-radius:\s*14px/);
@@ -606,6 +606,9 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(postCard, /post-performance-score/);
   assert.match(postCard, /Score/);
   assert.match(postCard, /\/100/);
+  assert.match(postCard, /label: "commentaires", value: post\.comments/);
+  assert.match(postCard, /label: "partages", value: post\.shares/);
+  assert.match(postCard, /metric\.value === null \? "—" : formatNumber\(metric\.value\)/);
   assert.doesNotMatch(postCard, /Voir plus|Voir moins|post-text-expand|isTextExpanded|canExpandText/);
   assert.doesNotMatch(styles, /\.post-text-expand|\.post-media-caption\.is-expanded|\.post-text-content\.is-expanded/);
   const detailsModal = component.slice(component.indexOf("function PostDetailsModal"));

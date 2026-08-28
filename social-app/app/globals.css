@@ -6024,7 +6024,7 @@ a {
   grid-template-columns: minmax(0, 0.8fr) minmax(0, 0.9fr) minmax(0, 1.35fr);
   align-items: start;
   gap: 10px;
-  margin-left: auto;
+  margin-right: auto;
 }
 
 .top-filter-dropdown {
@@ -7060,6 +7060,10 @@ a {
 .post-card-footer-metrics b {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+.post-card-footer-metrics > .post-card-metric.is-unavailable {
+  opacity: 0.58;
 }
 
 .post-card-actions > button {
