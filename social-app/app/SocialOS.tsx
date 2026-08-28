@@ -1855,24 +1855,10 @@ export function SocialOS({
           <div className="view-stack top-platform-view">
             <section
               className={`category-results tone-${PLATFORM_META[topPlatform].tone}`}
-              aria-labelledby="active-category-title"
+              aria-label={`${PLATFORM_META[topPlatform].label} · ${activeTopFormat?.label ?? topFormatFilter}`}
             >
               <header className="category-results-header category-results-toolbar">
-                <div className="category-results-heading">
-                  <span className="section-kicker">Catégorie active</span>
-                  <h2 id="active-category-title">
-                    {activeTopFormat?.emoji ?? "📂"} {PLATFORM_META[topPlatform].label} · {activeTopFormat?.label ?? topFormatFilter}
-                  </h2>
-                </div>
-
-                <div className="category-results-adjacent-filters" aria-label="Filtres de publication et de catégorie">
-                  <FilterDropdown
-                    id="top-duration-filter"
-                    label="Date de publication"
-                    onChange={setTopDuration}
-                    options={SOCIAL_DURATION_FILTERS}
-                    value={topDuration}
-                  />
+                <div className="category-results-adjacent-filters" aria-label="Filtres de catégorie et de publication">
                   <FilterDropdown
                     id="top-format-filter"
                     label="Catégorie"
@@ -1888,6 +1874,13 @@ export function SocialOS({
                       return { ...filter, count };
                     })}
                     value={topFormatFilter}
+                  />
+                  <FilterDropdown
+                    id="top-duration-filter"
+                    label="Date de publication"
+                    onChange={setTopDuration}
+                    options={SOCIAL_DURATION_FILTERS}
+                    value={topDuration}
                   />
                 </div>
 
