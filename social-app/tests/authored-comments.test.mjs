@@ -120,4 +120,6 @@ test("keeps internal target confidence labels out of comment cards", async () =>
   assert.doesNotMatch(component, /Cible vérifiée|Cible dérivée/);
   assert.match(component, /platform: PlatformFilter/);
   assert.doesNotMatch(component, /authored-comment-platform-tabs|onPlatformChange|internalPlatform/);
+  assert.match(component, /<span>Date de publication<\/span>/);
+  assert.doesNotMatch(component, /<span>Durée<\/span>/);
 });

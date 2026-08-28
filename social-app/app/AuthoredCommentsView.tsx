@@ -290,7 +290,7 @@ export function AuthoredCommentsView({
 
         <div className="authored-comment-filter-row">
           <label>
-            <span>Durée</span>
+            <span>Date de publication</span>
             <select value={duration} onChange={(event) => setDuration(event.target.value as SocialDurationFilter)}>
               {SOCIAL_DURATION_FILTERS.map((option) => (
                 <option value={option.key} key={option.key}>{option.emoji} {option.label}</option>

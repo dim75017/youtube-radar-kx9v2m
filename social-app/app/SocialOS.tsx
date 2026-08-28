@@ -1857,7 +1857,7 @@ export function SocialOS({
               className={`category-results tone-${PLATFORM_META[topPlatform].tone}`}
               aria-labelledby="active-category-title"
             >
-              <header className="category-results-header">
+              <header className="category-results-header category-results-toolbar">
                 <div className="category-results-heading">
                   <span className="section-kicker">Catégorie active</span>
                   <h2 id="active-category-title">
@@ -1865,20 +1865,13 @@ export function SocialOS({
                   </h2>
                 </div>
 
-                <div className="top-ranking-dropdowns category-results-filters" aria-label="Contrôles du classement">
+                <div className="category-results-adjacent-filters" aria-label="Filtres de publication et de catégorie">
                   <FilterDropdown
                     id="top-duration-filter"
-                    label="Durée"
+                    label="Date de publication"
                     onChange={setTopDuration}
                     options={SOCIAL_DURATION_FILTERS}
                     value={topDuration}
-                  />
-                  <FilterDropdown
-                    id="top-sort-filter"
-                    label="Trier"
-                    onChange={setTopSort}
-                    options={TOP_SORT_OPTIONS}
-                    value={topSort}
                   />
                   <FilterDropdown
                     id="top-format-filter"
@@ -1895,6 +1888,16 @@ export function SocialOS({
                       return { ...filter, count };
                     })}
                     value={topFormatFilter}
+                  />
+                </div>
+
+                <div className="category-results-sort-filter">
+                  <FilterDropdown
+                    id="top-sort-filter"
+                    label="Trier"
+                    onChange={setTopSort}
+                    options={TOP_SORT_OPTIONS}
+                    value={topSort}
                   />
                 </div>
               </header>
@@ -1937,7 +1940,7 @@ export function SocialOS({
                     </h3>
                     <p>
                       {topEmptyIsDuration
-                        ? "Essaie une durée plus large ou reviens à All time."
+                        ? "Essaie une date de publication plus large ou reviens à All time."
                         : formatEmptyCopy(topPlatform, topFormatFilter)}
                     </p>
                   </div>
@@ -1959,8 +1962,8 @@ export function SocialOS({
               </div>
 
               <div className="top-duration-control-row">
-                <span className="section-kicker">Durée</span>
-                <div className="format-filter-tabs top-duration-tabs" aria-label="Filtrer le contenu par durée">
+                <span className="section-kicker">Date de publication</span>
+                <div className="format-filter-tabs top-duration-tabs" aria-label="Filtrer le contenu par date de publication">
                   {SOCIAL_DURATION_FILTERS.map((option) => (
                     <button
                       className={topDuration === option.key ? "active" : ""}
