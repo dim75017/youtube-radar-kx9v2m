@@ -7009,6 +7009,54 @@ a {
   white-space: nowrap;
 }
 
+.post-card-footer-metrics > .post-performance-score {
+  gap: 3px;
+  border-color: rgba(154, 168, 255, 0.26);
+  background: rgba(154, 168, 255, 0.09);
+  padding: 4px 8px;
+  color: var(--accent-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.post-performance-score > span {
+  color: var(--dim);
+  font-size: 10px;
+  font-weight: 760;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+
+.post-card-footer-metrics .post-performance-score b {
+  color: inherit;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.post-performance-score small {
+  color: currentColor;
+  font-size: 10px;
+  font-weight: 760;
+  opacity: 0.76;
+}
+
+.post-performance-score.is-strong {
+  border-color: rgba(74, 222, 128, 0.24);
+  background: rgba(74, 222, 128, 0.08);
+  color: var(--green);
+}
+
+.post-performance-score.is-developing {
+  border-color: rgba(251, 191, 36, 0.2);
+  background: rgba(251, 191, 36, 0.07);
+  color: var(--amber);
+}
+
+.post-performance-score.is-unavailable {
+  border-color: var(--border);
+  background: rgba(7, 8, 13, 0.38);
+  color: var(--muted);
+}
+
 .post-card-footer-metrics b {
   color: var(--muted);
   font-variant-numeric: tabular-nums;

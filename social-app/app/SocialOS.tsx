@@ -5045,6 +5045,27 @@ function PostCard({
     post.views !== null ? { icon: metricEmoji("views", post.platform), label: "vues", value: post.views } : null,
     post.likes !== null ? { icon: metricEmoji("likes", post.platform), label: "likes", value: post.likes } : null,
   ].filter(Boolean) as Array<{ icon: string; label: string; value: number }>;
+  const performanceScore =
+    typeof post.performance_score === "number" && Number.isFinite(post.performance_score)
+      ? Math.max(0, Math.min(100, Math.round(post.performance_score)))
+      : null;
+  const performanceScoreTone =
+    performanceScore === null
+      ? "is-unavailable"
+      : performanceScore >= 75
+        ? "is-strong"
+        : performanceScore >= 50
+          ? "is-solid"
+          : "is-developing";
+  const performanceScoreLabel =
+    performanceScore === null
+      ? "Score de performance indisponible : aucune métrique publique comparable"
+      : `Score de performance ${performanceScore} sur 100`;
+  const performanceScoreTitle =
+    post.score_explanation?.trim() ||
+    (performanceScore === null
+      ? "Aucune métrique publique comparable : aucun score n’est calculé."
+      : "Score relatif aux posts de la même plateforme et du même format.");
 
   return (
     <article
@@ -5096,6 +5117,15 @@ function PostCard({
             </time>
           ) : <span />}
           <span className="post-card-footer-metrics" aria-label="Performances visibles">
+            <span
+              className={`post-performance-score ${performanceScoreTone}`}
+              aria-label={performanceScoreLabel}
+              title={performanceScoreTitle}
+            >
+              <span>Score</span>
+              <b>{performanceScore ?? "—"}</b>
+              <small>/100</small>
+            </span>
             {footerMetrics.map((metric) => (
               <span key={metric.label} title={metric.label}>
                 {metric.icon} <b>{formatNumber(metric.value)}</b>
