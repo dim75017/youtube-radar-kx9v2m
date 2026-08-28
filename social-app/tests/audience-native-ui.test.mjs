@@ -287,6 +287,9 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(styles, /\.audience-demographic-card\.kind-countries \.audience-demographic-list\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);
   assert.match(styles, /\.audience-demographic-list\s*\{[^}]*grid-auto-rows:\s*minmax\(20px, auto\)[^}]*align-content:\s*start/);
   assert.match(styles, /grid-auto-rows:\s*minmax\(24px, clamp\(24px, 3\.1dvh, 34px\)\)/);
+  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographic-card\.kind-countries \.audience-demographic-list\s*\{[^}]*flex:\s*1 1 auto[^}]*grid-auto-rows:\s*minmax\(34px, 1fr\)[^}]*align-content:\s*stretch/);
+  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographic-card\.kind-countries \.audience-demographic-list li\s*\{[^}]*min-height:\s*34px[^}]*font-size:\s*clamp\(14px, 1\.05vw, 17px\)/);
+  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographic-card\.kind-countries \.audience-demographic-list img\s*\{[^}]*width:\s*28px[^}]*height:\s*21px/);
   assert.doesNotMatch(styles, /\.audience-demographic-card\.kind-countries \.audience-demographic-list\s*\{[^}]*repeat\(2/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.audience-demographics-grid\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*?\.audience-demographics-breakdowns\s*\{[\s\S]*?grid-template-rows:\s*auto auto/);

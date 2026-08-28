@@ -5787,6 +5787,13 @@ a {
     margin-top: 12px;
   }
 
+  .audience-demographic-card.kind-countries .audience-demographic-list {
+    flex: 1 1 auto;
+    grid-auto-rows: minmax(34px, 1fr);
+    align-content: stretch;
+    gap-block: clamp(4px, 0.65dvh, 8px);
+  }
+
   .audience-demographic-list li {
     min-height: 24px;
     font-size: clamp(12px, 0.95vw, 15px);
@@ -5807,12 +5814,23 @@ a {
   }
 
   .audience-demographic-card.kind-countries .audience-demographic-list li {
-    grid-template-columns: 26px minmax(60px, 0.82fr) minmax(30px, 1fr) auto;
+    min-height: 34px;
+    grid-template-columns: 28px minmax(60px, 0.82fr) minmax(30px, 1fr) auto;
     gap: 8px;
+    font-size: clamp(14px, 1.05vw, 17px);
+  }
+
+  .audience-demographic-card.kind-countries .audience-demographic-list img {
+    width: 28px;
+    height: 21px;
+  }
+
+  .audience-demographic-card.kind-countries .audience-demographic-list strong {
+    font-size: clamp(14px, 1.05vw, 17px);
   }
 
   .audience-demographic-bar {
-    height: 7px;
+    height: 8px;
   }
 
   .audience-demographic-pie-legend {
