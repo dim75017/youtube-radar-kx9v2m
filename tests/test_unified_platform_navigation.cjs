@@ -141,14 +141,25 @@ test("Social inventory and migrated Instagram frames keep their baselines", () =
   assert.ok(comments.opportunities.length >= 20);
   assert.equal(playlistPromos.items.length, 9);
   assert.ok(playlistPromos.items.every((item) => item.observations.at(-1).likes >= 10000));
-  assert.equal(fs.readdirSync(instagramDir).length, 1676);
-
   const migrated = history.posts.filter((post) =>
     String(post.thumbnailUrl ?? "").includes(
       "/youtube-radar-kx9v2m/social/media/instagram/",
     ),
   );
-  assert.equal(migrated.length, 1676);
+  const migratedContent = migrated.filter((post) => post.format !== "comment");
+  const instagramComments = history.posts.filter(
+    (post) => post.platform === "instagram" && post.format === "comment",
+  );
+  assert.equal(migratedContent.length, 1676);
+  assert.ok(instagramComments.length >= 19);
+  assert.ok(
+    instagramComments.every((post) => migrated.includes(post)),
+    "Every Instagram comment must use a durable same-origin thumbnail.",
+  );
+  const filenames = new Set(
+    migrated.map((post) => new URL(post.thumbnailUrl).pathname.split("/").pop()),
+  );
+  assert.equal(fs.readdirSync(instagramDir).length, filenames.size);
   for (const post of migrated) {
     const filename = new URL(post.thumbnailUrl).pathname.split("/").pop();
     assert.ok(filename && fs.existsSync(path.join(instagramDir, filename)));
