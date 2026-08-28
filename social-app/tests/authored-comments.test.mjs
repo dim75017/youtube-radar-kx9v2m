@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -108,4 +109,13 @@ test("never treats an unsafe target URL as clickable", () => {
 
   assert.equal(target.url, "https://www.tiktok.com/@creator/video/1");
   assert.equal(target.thumbnailUrl, null);
+});
+
+test("keeps internal target confidence labels out of comment cards", async () => {
+  const component = await readFile(
+    new URL("../app/AuthoredCommentsView.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.doesNotMatch(component, /Cible vérifiée|Cible dérivée/);
 });

@@ -102,6 +102,21 @@ function safeThumbnailUrl(value, label, platform, { nullable = false } = {}) {
   return url.toString();
 }
 
+function stableInstagramThumbnailUrl(contentUrl) {
+  let url;
+  try {
+    url = new URL(contentUrl);
+  } catch {
+    return null;
+  }
+  const shortcode = url.pathname.match(
+    /^\/(?:p|reel|tv)\/([A-Za-z0-9_-]{5,64})(?:\/|$)/,
+  )?.[1];
+  return shortcode
+    ? `https://www.instagram.com/p/${shortcode}/media/?size=l`
+    : null;
+}
+
 function precision(value, label) {
   if (value == null) return "unknown";
   if (!["exact", "platform-rounded", "unknown"].includes(value)) {
@@ -123,12 +138,19 @@ function normalizedComment(entry, index, platform, capturedAt) {
   const publishedAt = nullableIso(row.publishedAt, `comments[${index}].publishedAt`);
   const audienceValue = nullableCount(target.audienceValue, `comments[${index}].target.audienceValue`);
   const audiencePrecision = precision(target.audiencePrecision, `comments[${index}].target.audiencePrecision`);
-  const thumbnailUrl = safeThumbnailUrl(
-    target.thumbnailUrl,
-    `comments[${index}].target.thumbnailUrl`,
-    platform,
-    { nullable: true },
-  );
+  const thumbnailUrl = platform === "instagram"
+    ? stableInstagramThumbnailUrl(contentUrl) ?? safeThumbnailUrl(
+        target.thumbnailUrl,
+        `comments[${index}].target.thumbnailUrl`,
+        platform,
+        { nullable: true },
+      )
+    : safeThumbnailUrl(
+        target.thumbnailUrl,
+        `comments[${index}].target.thumbnailUrl`,
+        platform,
+        { nullable: true },
+      );
   const metrics = row.metrics == null ? {} : requireRecord(row.metrics, `comments[${index}].metrics`);
   const likes = nullableCount(metrics.likes, `comments[${index}].metrics.likes`);
   const replies = nullableCount(metrics.replies, `comments[${index}].metrics.replies`);

@@ -74,6 +74,11 @@ test("imports a closed Instagram comment record and deduplicates native IDs", as
   assert.equal(post.externalId, "comment:ig-comment-1");
   assert.equal(post.format, "comment");
   assert.equal(post.text, "latest observed text");
+  assert.equal(
+    post.thumbnailUrl,
+    "https://www.instagram.com/p/ABC123/media/?size=l",
+  );
+  assert.equal(post.raw.commentTarget.thumbnailUrl, post.thumbnailUrl);
   assert.equal(post.raw.commentTarget.audienceValue, 12300);
   assert.equal(post.raw.commentTarget.audiencePrecision, "platform-rounded");
   assert.equal(JSON.stringify(post).includes("must-never-be-published"), false);

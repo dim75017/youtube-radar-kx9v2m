@@ -209,7 +209,6 @@ function CommentCard({ post }: { post: CommentPost }) {
       <div className="authored-comment-body">
         <div className="authored-comment-meta">
           <span>{formatDate(post.published_at)}</span>
-          <span>{target.confidence === "verified" ? "Cible vérifiée" : "Cible dérivée"}</span>
         </div>
 
         <h3>{target.title}</h3>
