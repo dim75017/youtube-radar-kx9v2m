@@ -267,6 +267,8 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(explorer, /entry\.share === null \? "—"/);
   assert.match(explorer, /55–64 et 65\+ regroupés dans 55\+/);
   assert.match(styles, /\.audience-demographic-pie-layout\s*\{[^}]*grid-template-columns:\s*clamp\(78px, 7vw, 98px\) minmax\(0, 1fr\)/);
+  assert.match(styles, /\.audience-demographic-pie-layout\s*\{[^}]*width:\s*min\(100%, 620px\)/);
+  assert.match(styles, /\.audience-demographics-breakdowns \.audience-demographic-card > header\s*\{[^}]*width:\s*100%[^}]*justify-content:\s*center[^}]*text-align:\s*center/);
   assert.match(styles, /\.audience-demographic-pie\s*\{[^}]*border-radius:\s*50%/);
   assert.match(styles, /\.audience-demographic-pie-svg\s*\{[^}]*position:\s*absolute[^}]*inset:\s*0[^}]*width:\s*100%[^}]*height:\s*100%/);
   assert.match(styles, /\.audience-demographic-pie-track,[\s\S]*?\.audience-demographic-pie-slice\s*\{[^}]*shape-rendering:\s*geometricPrecision/);
@@ -275,7 +277,7 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(styles, /\.audience-demographic-pie-tooltip\s*\{[^}]*pointer-events:\s*none/);
   assert.match(styles, /\.audience-demographic-pie:focus-visible/);
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?grid-template-columns:\s*clamp\(148px, 13vw, 190px\)/);
-  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographic-pie-layout\s*\{[^}]*align-content:\s*start[^}]*align-items:\s*start[^}]*align-self:\s*start/);
+  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographic-pie-layout\s*\{[^}]*align-content:\s*start[^}]*align-items:\s*start[^}]*align-self:\s*center/);
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographics-breakdowns\s*\{[^}]*height:\s*auto[^}]*grid-template-rows:\s*auto auto[^}]*align-self:\s*stretch/);
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographics-grid\s*\{[^}]*gap:\s*20px clamp\(32px, 2\.25vw, 46px\)/);
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographics\s*\{[\s\S]*?min-height:\s*0/);

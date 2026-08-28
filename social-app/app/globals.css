@@ -5192,9 +5192,21 @@ a {
 
 .audience-demographics-breakdowns .audience-demographic-card {
   min-height: 0;
+  align-items: center;
   border: 0;
   border-radius: 0;
   background: transparent;
+}
+
+.audience-demographics-breakdowns .audience-demographic-card > header {
+  width: 100%;
+  justify-content: center;
+  text-align: center;
+}
+
+.audience-demographics-breakdowns .audience-demographic-card > header > span,
+.audience-demographics-breakdowns .audience-demographic-note {
+  text-align: center;
 }
 
 .audience-demographics-breakdowns .audience-demographic-card + .audience-demographic-card {
@@ -5341,6 +5353,7 @@ a {
 
 .audience-demographic-pie-layout {
   display: grid;
+  width: min(100%, 620px);
   min-width: 0;
   min-height: 0;
   flex: 1;
@@ -5749,7 +5762,7 @@ a {
   .audience-demographic-pie-layout {
     align-content: start;
     align-items: start;
-    align-self: start;
+    align-self: center;
     flex: 0 0 auto;
     grid-template-columns: clamp(148px, 13vw, 190px) minmax(0, 1fr);
     gap: clamp(18px, 2vw, 30px);
