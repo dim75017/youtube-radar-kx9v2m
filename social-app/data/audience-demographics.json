@@ -1,29 +1,39 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-26T13:39:50.685Z",
+  "generatedAt": "2026-08-28T10:54:08.963Z",
   "platforms": {
     "youtube": {
       "profileUrl": "https://www.youtube.com/@LofiGirl",
       "status": "available",
       "countries": {
         "entries": [
-          { "key": "united_states", "label": "États-Unis", "share": 0.317, "countryCode": "US" },
-          { "key": "brazil", "label": "Brésil", "share": 0.053, "countryCode": "BR" },
-          { "key": "india", "label": "Inde", "share": 0.045, "countryCode": "IN" },
+          { "key": "united_states", "label": "États-Unis", "share": 0.314, "countryCode": "US" },
+          { "key": "brazil", "label": "Brésil", "share": 0.052, "countryCode": "BR" },
+          { "key": "india", "label": "Inde", "share": 0.044, "countryCode": "IN" },
           { "key": "france", "label": "France", "share": 0.033, "countryCode": "FR" },
-          { "key": "canada", "label": "Canada", "share": 0.031, "countryCode": "CA" },
+          { "key": "canada", "label": "Canada", "share": 0.03, "countryCode": "CA" },
           { "key": "united_kingdom", "label": "Royaume-Uni", "share": 0.029, "countryCode": "GB" },
-          { "key": "russia", "label": "Russie", "share": 0.029, "countryCode": "RU" },
-          { "key": "germany", "label": "Allemagne", "share": 0.028, "countryCode": "DE" },
+          { "key": "russia", "label": "Russie", "share": 0.028, "countryCode": "RU" },
+          { "key": "germany", "label": "Allemagne", "share": 0.027, "countryCode": "DE" },
           { "key": "japan", "label": "Japon", "share": 0.026, "countryCode": "JP" },
-          { "key": "indonesia", "label": "Indonésie", "share": 0.018, "countryCode": "ID" }
+          { "key": "indonesia", "label": "Indonésie", "share": 0.018, "countryCode": "ID" },
+          { "key": "australia", "label": "Australie", "share": 0.017, "countryCode": "AU" },
+          { "key": "argentina", "label": "Argentine", "share": 0.016, "countryCode": "AR" },
+          { "key": "mexico", "label": "Mexique", "share": 0.015, "countryCode": "MX" },
+          { "key": "taiwan", "label": "Taïwan", "share": 0.014, "countryCode": "TW" },
+          { "key": "vietnam", "label": "Viêt Nam", "share": 0.014, "countryCode": "VN" },
+          { "key": "spain", "label": "Espagne", "share": 0.014, "countryCode": "ES" },
+          { "key": "philippines", "label": "Philippines", "share": 0.013, "countryCode": "PH" },
+          { "key": "poland", "label": "Pologne", "share": 0.011, "countryCode": "PL" },
+          { "key": "south_korea", "label": "Corée du Sud", "share": 0.011, "countryCode": "KR" },
+          { "key": "ukraine", "label": "Ukraine", "share": 0.009, "countryCode": "UA" }
         ],
         "provenance": {
           "provider": "youtube-studio",
           "sourceUrl": "https://studio.youtube.com/artist/a_lcagLDIDJj5/analytics/tab-build_audience/period-default/total_reach-all/explore?theme=dark&entity_type=ARTIST&entity_id=a_lcagLDIDJj5&time_period=4_weeks&total_reach_state=all&explore_type=TABLE_AND_CHART&metric=EXTERNAL_VIEWS&granularity=DAY&t_metrics=EXTERNAL_VIEWS&t_metrics=AVERAGE_WATCH_TIME&t_metrics=EXTERNAL_WATCH_TIME&dimension=COUNTRY&o_column=EXTERNAL_VIEWS&o_direction=ANALYTICS_ORDER_DIRECTION_DESC",
-          "collectedAt": "2026-08-26T13:39:50.685Z",
+          "collectedAt": "2026-08-28T10:54:08.963Z",
           "basis": "native-audience-advanced-report-views",
-          "periodLabel": "28 derniers jours"
+          "periodLabel": "31 juil. – 27 août 2026 · 28 derniers jours"
         }
       },
       "ages": {

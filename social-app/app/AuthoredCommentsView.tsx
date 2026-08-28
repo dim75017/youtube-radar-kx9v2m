@@ -250,14 +250,23 @@ function CommentCard({ post }: { post: CommentPost }) {
 export function AuthoredCommentsView({
   posts,
   generatedAt,
+  platform: requestedPlatform,
+  onPlatformChange,
 }: {
   posts: readonly CommentPost[];
   generatedAt: string;
+  platform?: PlatformFilter;
+  onPlatformChange?: (platform: PlatformFilter) => void;
 }) {
-  const [platform, setPlatform] = useState<PlatformFilter>("all");
+  const [internalPlatform, setInternalPlatform] = useState<PlatformFilter>("all");
   const [duration, setDuration] = useState<SocialDurationFilter>("all");
   const [sort, setSort] = useState<CommentSort>("recent");
   const [pagination, setPagination] = useState({ key: "", count: PAGE_SIZE });
+  const platform = requestedPlatform ?? internalPlatform;
+  const setPlatform = onPlatformChange ?? setInternalPlatform;
+  const activePlatformLabel = platform === "all"
+    ? "Tous les commentaires"
+    : `Commentaires ${PLATFORM_META[platform].label}`;
 
   const allComments = useMemo(
     () => posts.filter((post) => isAuthoredComment(post)),
@@ -299,7 +308,7 @@ export function AuthoredCommentsView({
       <section className="top-ranking-controls tone-all authored-comments-controls" aria-label="Contrôles de tous les commentaires">
         <div className="all-posts-heading">
           <span className="section-kicker">Commentaires publiés par Lofi Girl</span>
-          <h2>💬 Tous les commentaires</h2>
+          <h2>💬 {activePlatformLabel}</h2>
         </div>
 
         <div className="authored-comment-filter-row">

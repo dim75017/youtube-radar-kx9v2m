@@ -80,6 +80,28 @@ function safeHttpsUrl(value, label, platform, { nullable = false } = {}) {
   return url.toString();
 }
 
+function isHostOrSubdomain(hostname, domain) {
+  return hostname === domain || hostname.endsWith(`.${domain}`);
+}
+
+function safeThumbnailUrl(value, label, platform, { nullable = false } = {}) {
+  if (value == null && nullable) return null;
+  const normalized = requireString(value, label);
+  let url;
+  try {
+    url = new URL(normalized);
+  } catch {
+    throw new Error(`${label} doit être une URL valide.`);
+  }
+  if (url.protocol !== "https:") throw new Error(`${label} doit utiliser HTTPS.`);
+  const hostname = url.hostname.toLowerCase();
+  const allowed = platform === "instagram"
+    ? ["instagram.com", "cdninstagram.com", "fbcdn.net"].some((domain) => isHostOrSubdomain(hostname, domain))
+    : ["tiktokcdn.com", "tiktokcdn-eu.com", "tiktokcdn-us.com"].some((domain) => isHostOrSubdomain(hostname, domain));
+  if (!allowed) throw new Error(`${label} ne correspond pas à un CDN ${platform} autorisé.`);
+  return url.toString();
+}
+
 function precision(value, label) {
   if (value == null) return "unknown";
   if (!["exact", "platform-rounded", "unknown"].includes(value)) {
@@ -101,9 +123,12 @@ function normalizedComment(entry, index, platform, capturedAt) {
   const publishedAt = nullableIso(row.publishedAt, `comments[${index}].publishedAt`);
   const audienceValue = nullableCount(target.audienceValue, `comments[${index}].target.audienceValue`);
   const audiencePrecision = precision(target.audiencePrecision, `comments[${index}].target.audiencePrecision`);
-  const thumbnailUrl = platform === "tiktok"
-    ? null
-    : safeHttpsUrl(target.thumbnailUrl, `comments[${index}].target.thumbnailUrl`, platform, { nullable: true });
+  const thumbnailUrl = safeThumbnailUrl(
+    target.thumbnailUrl,
+    `comments[${index}].target.thumbnailUrl`,
+    platform,
+    { nullable: true },
+  );
   const metrics = row.metrics == null ? {} : requireRecord(row.metrics, `comments[${index}].metrics`);
   const likes = nullableCount(metrics.likes, `comments[${index}].metrics.likes`);
   const replies = nullableCount(metrics.replies, `comments[${index}].metrics.replies`);

@@ -44,8 +44,10 @@ test("server-renders the live Social Radar shell", async () => {
   assert.match(html, /Recommandations/);
   assert.match(html, /Roadmap/);
   assert.match(html, /id="posts-platform-subnav"/);
+  assert.match(html, /id="comments-platform-subnav"/);
   assert.match(html, /id="recommendations-subnav"/);
   assert.doesNotMatch(html, /<div[^>]*id="posts-platform-subnav"[^>]*\shidden\b/);
+  assert.doesNotMatch(html, /<div[^>]*id="comments-platform-subnav"[^>]*\shidden\b/);
   assert.doesNotMatch(html, /<div[^>]*id="recommendations-subnav"[^>]*\shidden\b/);
   assert.doesNotMatch(html, /Données publiques réelles|Snapshot public interactif|Générer les idées/);
   assert.match(html, /Instagram, X, TikTok et YouTube/);
@@ -140,6 +142,9 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(scanner, /x\.com/);
   assert.match(component, /label: "Tableau de bord"/);
   assert.match(component, /label: "Commentaires"/);
+  assert.match(component, /id="comments-platform-subnav"/);
+  assert.match(component, /chooseCommentPlatform\(key\)/);
+  assert.match(component, /platform=\{commentPlatform\}/);
   assert.match(component, /initialCommentOpportunityFeed/);
   assert.match(component, /CommentOpportunitiesView/);
   assert.match(component, /Total followers/);

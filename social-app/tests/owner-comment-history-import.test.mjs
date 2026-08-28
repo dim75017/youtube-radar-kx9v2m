@@ -8,7 +8,7 @@ import test from "node:test";
 const ROOT = resolve(import.meta.dirname, "..");
 const IMPORTER = resolve(ROOT, "scripts", "import_owner_comment_history.mjs");
 
-async function runImport(input) {
+async function invokeImport(input) {
   const directory = await mkdtemp(resolve(tmpdir(), "owner-comments-"));
   const inputPath = resolve(directory, "private-input.json");
   const historyPath = resolve(directory, "history.json");
@@ -26,6 +26,11 @@ async function runImport(input) {
       PUBLIC_HISTORY_SUMMARY_PATH: summaryPath,
     },
   });
+  return { result, historyPath, summaryPath };
+}
+
+async function runImport(input) {
+  const { result, historyPath, summaryPath } = await invokeImport(input);
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return {
     history: JSON.parse(await readFile(historyPath, "utf8")),
@@ -75,7 +80,8 @@ test("imports a closed Instagram comment record and deduplicates native IDs", as
   assert.equal(output.summary.formatCounts.instagram.comment, 1);
 });
 
-test("keeps TikTok signed thumbnails private while preserving the target and audience", async () => {
+test("preserves a signed thumbnail from an approved TikTok CDN", async () => {
+  const thumbnailUrl = "https://p16-sign.tiktokcdn-us.com/expiring.jpg?x-expires=1";
   const output = await runImport({
     platform: "tiktok",
     capturedAt: "2026-08-28T08:00:00.000Z",
@@ -88,7 +94,7 @@ test("keeps TikTok signed thumbnails private while preserving the target and aud
         contentId: "123",
         url: "https://www.tiktok.com/@creator/video/123",
         title: "Cat study break",
-        thumbnailUrl: "https://p16-sign.tiktokcdn-us.com/expiring.jpg?x-expires=1",
+        thumbnailUrl,
         authorHandle: "creator",
         authorProfileUrl: "https://www.tiktok.com/@creator",
         audienceValue: 98000,
@@ -101,8 +107,37 @@ test("keeps TikTok signed thumbnails private while preserving the target and aud
   });
 
   const [post] = output.history.posts;
-  assert.equal(post.thumbnailUrl, null);
-  assert.equal(post.raw.commentTarget.thumbnailUrl, null);
+  assert.equal(post.thumbnailUrl, thumbnailUrl);
+  assert.equal(post.raw.commentTarget.thumbnailUrl, thumbnailUrl);
   assert.equal(post.raw.commentTarget.url, "https://www.tiktok.com/@creator/video/123");
   assert.equal(post.raw.commentTarget.audienceLabel, "98 k abonnés");
+});
+
+test("rejects a TikTok thumbnail hosted outside approved TikTok CDNs", async () => {
+  const { result } = await invokeImport({
+    platform: "tiktok",
+    capturedAt: "2026-08-28T08:00:00.000Z",
+    comments: [{
+      id: "tt-comment-unsafe-thumbnail",
+      url: "https://www.tiktok.com/@creator/video/123?comment_id=789",
+      text: "still cozy",
+      publishedAt: null,
+      target: {
+        contentId: "123",
+        url: "https://www.tiktok.com/@creator/video/123",
+        title: "Cat study break",
+        thumbnailUrl: "https://tiktokcdn-us.com.attacker.example/unsafe.jpg",
+        authorHandle: "creator",
+        authorProfileUrl: "https://www.tiktok.com/@creator",
+        audienceValue: 98000,
+        audienceLabel: "98 k abonnés",
+        audiencePrecision: "platform-rounded",
+        audienceObservedAt: "2026-08-28T07:58:00.000Z",
+      },
+      metrics: { likes: null, replies: null },
+    }],
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /CDN tiktok autorisé/);
 });

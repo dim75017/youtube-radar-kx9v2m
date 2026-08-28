@@ -731,6 +731,7 @@ export function SocialOS({
   const [commentsError, setCommentsError] = useState("");
   const [view, setView] = useState<View>("overview");
   const [topPlatform, setTopPlatform] = useState<Platform>("youtube");
+  const [commentPlatform, setCommentPlatform] = useState<Platform | "all">("all");
   const [topFormatFilter, setTopFormatFilter] = useState<SocialFormatFilter>("short");
   const [topDuration, setTopDuration] = useState<SocialDurationFilter>("all");
   const [topSort, setTopSort] = useState<PostSort>("popular");
@@ -1262,6 +1263,12 @@ export function SocialOS({
     setMobileOpen(false);
   };
 
+  const chooseCommentPlatform = (target: Platform | "all") => {
+    setView("all-comments");
+    setCommentPlatform(target);
+    setMobileOpen(false);
+  };
+
   const setIdeaDecision = useCallback(async (idea: SocialIdea, decision: IdeaDecision) => {
     if (!previewMode && editorialWorkflowMutationRef.current) {
       setToast("Une décision est déjà en cours d’enregistrement.");
@@ -1395,13 +1402,18 @@ export function SocialOS({
               <div className="nav-label">{group}</div>
               {NAV.filter((item) => item.group === group).map((item) => {
                 const isPostsParent = item.id === "top";
+                const isCommentsParent = item.id === "all-comments";
                 const isRecommendationsParent = item.id === "ideas";
                 const isRecommendationsView = view === "ideas" || view === "comments" || view === "trends" || view === "audio-trends" || view === "scrolling" || view === "playlist-promos";
                 const isActive = isPostsParent
                   ? view === "all"
+                  : isCommentsParent
+                    ? view === "all-comments" && commentPlatform === "all"
                   : !isRecommendationsParent && view === item.id;
                 const isSectionActive = isPostsParent
                   ? view === "top"
+                  : isCommentsParent
+                    ? view === "all-comments" && commentPlatform !== "all"
                   : isRecommendationsParent && isRecommendationsView;
 
                 return (
@@ -1418,6 +1430,10 @@ export function SocialOS({
                         if (isPostsParent) {
                           setView("all");
                           setMobileOpen(false);
+                          return;
+                        }
+                        if (isCommentsParent) {
+                          chooseCommentPlatform("all");
                           return;
                         }
                         if (isRecommendationsParent) {
@@ -1452,6 +1468,40 @@ export function SocialOS({
                               aria-label={meta.label}
                               title={meta.label}
                               onClick={() => chooseTopPlatform(key)}
+                              key={key}
+                            >
+                              <img
+                                className="nav-platform-logo"
+                                src={`platforms/${key}.svg`}
+                                alt=""
+                                width="18"
+                                height="18"
+                              />
+                              <span className="nav-text">{meta.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+
+                    {isCommentsParent ? (
+                      <div
+                        className="nav-submenu"
+                        id="comments-platform-subnav"
+                        role="group"
+                        aria-label="Plateformes de Tous les commentaires"
+                      >
+                        {PLATFORM_ORDER.map((key) => {
+                          const meta = PLATFORM_META[key];
+                          const isPlatformActive = view === "all-comments" && commentPlatform === key;
+                          return (
+                            <button
+                              className={isPlatformActive ? "active" : ""}
+                              type="button"
+                              aria-current={isPlatformActive ? "page" : undefined}
+                              aria-label={meta.label}
+                              title={meta.label}
+                              onClick={() => chooseCommentPlatform(key)}
                               key={key}
                             >
                               <img
@@ -1929,6 +1979,8 @@ export function SocialOS({
           <AuthoredCommentsView
             posts={authoredComments}
             generatedAt={workspace.generatedAt}
+            platform={commentPlatform}
+            onPlatformChange={chooseCommentPlatform}
           />
         ) : null}
 
