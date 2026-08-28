@@ -2995,11 +2995,6 @@ function AudienceDemographicCard({
               </ul>
             </div>
           )}
-          {kind === "countries" && visibleCountryEntries.length < countryDisplayLimit ? (
-            <p className="audience-demographic-country-limit">
-              La source native ne fournit pas les rangs {visibleCountryEntries.length + 1}–{countryDisplayLimit}.
-            </p>
-          ) : null}
           {unreportedAgeCount > 0 || usesMerged55Plus ? (
             <p className="audience-demographic-note">
               {unreportedAgeCount > 0 ? "— = non fourni" : null}

@@ -143,7 +143,7 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(styles, /\.audience-native-chart-viewport\s*\{[\s\S]*?overflow-x:\s*auto/);
   assert.match(explorer, /className="audience-demographics-breakdowns" role="group" aria-label="Âge et genre"/);
   assert.match(styles, /\.audience-demographics-grid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(styles, /\.audience-demographics-breakdowns\s*\{[\s\S]*?grid-template-rows:\s*auto auto[\s\S]*?align-content:\s*start/);
+  assert.match(styles, /\.audience-demographics-breakdowns\s*\{[\s\S]*?grid-template-rows:\s*auto minmax\(0, 1fr\)[\s\S]*?align-content:\s*stretch/);
   assert.doesNotMatch(styles, /\.audience-chart-viewport|\.audience-native-platform-grid/);
 });
 
@@ -231,7 +231,7 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(explorer, /allDisplayEntries\.filter\(\(entry\) => entry\.countryCode !== null\)/);
   assert.match(explorer, /countryEntries\.slice\(0, countryDisplayLimit\)/);
   assert.match(explorer, /visibleCountryEntries\.length\}\/\$\{countryDisplayLimit\} pays fournis/);
-  assert.match(explorer, /La source native ne fournit pas les rangs/);
+  assert.doesNotMatch(explorer, /La source native ne fournit pas les rangs/);
   assert.match(explorer, /const countryResidualShare = Math\.max\(0, Math\.min\(1, 1 - countryReportedShare\)\)/);
   assert.match(explorer, /key: countryAggregateFromSource\?\.key \?\? "other_countries"/);
   assert.match(explorer, /label: "Autres pays"/);
@@ -277,8 +277,10 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(styles, /\.audience-demographic-pie-tooltip\s*\{[^}]*pointer-events:\s*none/);
   assert.match(styles, /\.audience-demographic-pie:focus-visible/);
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?grid-template-columns:\s*clamp\(148px, 13vw, 190px\)/);
+  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographic-card\.kind-genders \.audience-demographic-pie-layout\s*\{[^}]*grid-template-columns:\s*clamp\(163px, 14\.3vw, 209px\)/);
+  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographic-card\.kind-genders \.audience-demographic-pie\s*\{[^}]*max-width:\s*209px/);
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographic-pie-layout\s*\{[^}]*align-content:\s*start[^}]*align-items:\s*start[^}]*align-self:\s*center/);
-  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographics-breakdowns\s*\{[^}]*height:\s*auto[^}]*grid-template-rows:\s*auto auto[^}]*align-self:\s*stretch/);
+  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographics-breakdowns\s*\{[^}]*height:\s*auto[^}]*grid-template-rows:\s*auto minmax\(0, 1fr\)[^}]*align-self:\s*stretch/);
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographics-grid\s*\{[^}]*gap:\s*20px clamp\(32px, 2\.25vw, 46px\)/);
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographics\s*\{[\s\S]*?min-height:\s*0/);
   assert.match(styles, /\.audience-demographic-pie-legend\s*\{[^}]*display:\s*grid/);
