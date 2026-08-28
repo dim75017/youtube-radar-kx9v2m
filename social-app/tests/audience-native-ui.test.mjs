@@ -276,6 +276,7 @@ test("shows native demographic dimensions below the chart and follows the select
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?grid-template-columns:\s*clamp\(148px, 15vw, 216px\)/);
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographic-pie-layout\s*\{[^}]*align-content:\s*start[^}]*align-items:\s*start[^}]*align-self:\s*start/);
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographics-breakdowns\s*\{[^}]*height:\s*100%[^}]*grid-template-rows:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographics-grid\s*\{[^}]*gap:\s*20px clamp\(32px, 2\.25vw, 46px\)/);
   assert.match(styles, /@media \(min-width: 901px\)[\s\S]*?\.audience-demographics\s*\{[\s\S]*?min-height:\s*calc\(100dvh - 24px\)/);
   assert.match(styles, /\.audience-demographic-pie-legend\s*\{[^}]*display:\s*grid/);
   assert.match(styles, /\.audience-demographic-card\.kind-countries \.audience-demographic-list\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\)/);

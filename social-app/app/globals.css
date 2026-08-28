@@ -5710,7 +5710,7 @@ a {
     min-height: 0;
     flex: 1;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 20px;
+    gap: 20px clamp(32px, 2.25vw, 46px);
     margin-top: 18px;
   }
 
