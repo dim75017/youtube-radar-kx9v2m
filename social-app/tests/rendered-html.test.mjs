@@ -660,7 +660,11 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(styles, /\.audience-native-chart-viewport\s*\{[\s\S]*?overflow-x:\s*auto/);
   assert.match(styles, /\.audience-native-chart-viewport svg\s*\{[\s\S]*?min-width:\s*700px/);
   assert.match(styles, /\.audience-native-chart-grid text,[\s\S]*?font-size:\s*13px/);
-  assert.match(styles, /\.post-card-footer-metrics\s*\{[^}]*display:\s*grid[^}]*grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /\.post-grid\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fill, minmax\(340px, 1fr\)\)/);
+  assert.match(styles, /\.post-list-grid\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fill, minmax\(340px, 1fr\)\)/);
+  assert.match(styles, /\.post-card-footer-metrics\s*\{[^}]*display:\s*grid[^}]*grid-template-columns:\s*repeat\(4, minmax\(max-content, 1fr\)\)/);
+  const postMetricValueStyles = styles.match(/\.post-card-footer-metrics b\s*\{([^}]*)\}/)?.[1] ?? "";
+  assert.doesNotMatch(postMetricValueStyles, /overflow|text-overflow/);
   assert.match(styles, /\.post-performance-score\s*\{[^}]*position:\s*absolute[^}]*top:\s*11px[^}]*left:\s*11px/);
   assert.match(styles, /\.post-performance-score\.is-green\s*\{[^}]*--score-rgb:\s*74, 222, 128/);
   assert.match(styles, /\.post-performance-score\.is-yellow\s*\{[^}]*--score-rgb:\s*250, 204, 21/);
