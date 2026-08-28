@@ -302,6 +302,7 @@ function opportunityFromCandidate(candidate) {
  */
 export function qualifiesForBoard(opportunity) {
   const subject = `${opportunity.title ?? ""} ${opportunity.caption ?? ""}`;
+  if (opportunity.risk?.level === "medium") return false;
   if (commentOpportunityIsSensitive(opportunity)) return false;
   if (/(?:#sponsored|\bsponsored\b|\bpaid partnership\b|\badvertisement\b)/iu.test(subject)) {
     return false;
@@ -429,6 +430,7 @@ function buildSourceChecks(previousChecks, youtubeCheck, opportunities, captured
 export function selectBoard(opportunities, nowMs, referenceAt) {
   const alive = opportunities.filter((opportunity) => {
     const subject = `${opportunity.title ?? ""} ${opportunity.caption ?? ""}`;
+    if (opportunity.risk?.level === "medium") return false;
     if (commentOpportunityIsSensitive(opportunity)) return false;
     if (/(?:#sponsored|\bsponsored\b|\bpaid partnership\b|\badvertisement\b)/iu.test(subject)) {
       return false;

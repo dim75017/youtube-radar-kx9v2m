@@ -172,6 +172,28 @@ test("sensitive and sponsored uploads never reach the comment board", () => {
     selectBoard(staleBoard, Date.parse("2026-08-28T08:00:00.000Z"), "2026-08-28T08:00:00.000Z"),
     [],
   );
+  assert.deepEqual(
+    selectBoard(
+      [{
+        ...staleBoard[0],
+        id: "neutral-medium-risk-card",
+        title: "A quiet desk setup",
+        caption: "A calm afternoon workspace tour.",
+      }],
+      Date.parse("2026-08-28T08:00:00.000Z"),
+      "2026-08-28T08:00:00.000Z",
+    ),
+    [],
+  );
+  assert.equal(
+    qualifiesForBoard({
+      ...major,
+      title: "A quiet desk setup",
+      caption: "A calm afternoon workspace tour.",
+      risk: { level: "medium", note: "Manual review required." },
+    }),
+    false,
+  );
 });
 
 test("a drop is discovered, then promoted once the climb is measured", async () => {
