@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-28T10:54:08.963Z",
+  "generatedAt": "2026-08-28T12:53:31.927Z",
   "platforms": {
     "youtube": {
       "profileUrl": "https://www.youtube.com/@LofiGirl",
@@ -74,7 +74,7 @@
       "status": "available",
       "countries": {
         "entries": [
-          { "key": "united_states", "label": "États-Unis", "share": 0.284, "countryCode": "US" },
+          { "key": "united_states", "label": "États-Unis", "share": 0.285, "countryCode": "US" },
           { "key": "brazil", "label": "Brésil", "share": 0.071, "countryCode": "BR" },
           { "key": "france", "label": "France", "share": 0.054, "countryCode": "FR" },
           { "key": "mexico", "label": "Mexique", "share": 0.04, "countryCode": "MX" },
@@ -88,9 +88,9 @@
         "provenance": {
           "provider": "meta-business-suite",
           "sourceUrl": "https://business.facebook.com/latest/insights/people",
-          "collectedAt": "2026-08-26T10:24:57.000Z",
-          "basis": "native-audience-dashboard",
-          "periodLabel": "26 juil. 2023 – 25 août 2026"
+          "collectedAt": "2026-08-28T12:49:26.082Z",
+          "basis": "native-audience-export-csv",
+          "periodLabel": "28 juil. 2023 – 27 août 2026"
         }
       },
       "ages": {
@@ -105,9 +105,9 @@
         "provenance": {
           "provider": "meta-business-suite",
           "sourceUrl": "https://business.facebook.com/latest/insights/people",
-          "collectedAt": "2026-08-26T10:24:57.000Z",
-          "basis": "native-audience-dashboard",
-          "periodLabel": "26 juil. 2023 – 25 août 2026"
+          "collectedAt": "2026-08-28T12:49:26.082Z",
+          "basis": "native-audience-export-csv",
+          "periodLabel": "28 juil. 2023 – 27 août 2026"
         }
       },
       "genders": {
@@ -118,9 +118,9 @@
         "provenance": {
           "provider": "meta-business-suite",
           "sourceUrl": "https://business.facebook.com/latest/insights/people",
-          "collectedAt": "2026-08-26T10:24:57.000Z",
-          "basis": "native-audience-dashboard",
-          "periodLabel": "26 juil. 2023 – 25 août 2026"
+          "collectedAt": "2026-08-28T12:49:26.082Z",
+          "basis": "native-audience-export-csv",
+          "periodLabel": "28 juil. 2023 – 27 août 2026"
         }
       }
     },
@@ -144,8 +144,8 @@
         "provenance": {
           "provider": "tiktok-studio",
           "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics/followers",
-          "collectedAt": "2026-08-26T10:24:57.000Z",
-          "basis": "native-audience-dashboard",
+          "collectedAt": "2026-08-28T12:53:31.927Z",
+          "basis": "native-audience-export-xlsx",
           "periodLabel": "Relevé actuel"
         }
       },
@@ -160,8 +160,8 @@
         "provenance": {
           "provider": "tiktok-studio",
           "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics/followers",
-          "collectedAt": "2026-08-26T10:24:57.000Z",
-          "basis": "native-audience-dashboard",
+          "collectedAt": "2026-08-28T12:53:31.927Z",
+          "basis": "native-audience-export-xlsx",
           "periodLabel": "Relevé actuel"
         }
       },
@@ -174,8 +174,8 @@
         "provenance": {
           "provider": "tiktok-studio",
           "sourceUrl": "https://www.tiktok.com/tiktokstudio/analytics/followers",
-          "collectedAt": "2026-08-26T10:24:57.000Z",
-          "basis": "native-audience-dashboard",
+          "collectedAt": "2026-08-28T12:53:31.927Z",
+          "basis": "native-audience-export-xlsx",
           "periodLabel": "Relevé actuel"
         }
       }
