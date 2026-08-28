@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
+  authoredCommentCategory,
   commentTarget,
   isAuthoredComment,
 } from "../lib/authored-comments.ts";
@@ -111,6 +112,59 @@ test("never treats an unsafe target URL as clickable", () => {
   assert.equal(target.thumbnailUrl, null);
 });
 
+test("classifies Community, owned and external comment conversations", () => {
+  assert.equal(
+    authoredCommentCategory({
+      platform: "youtube",
+      format: "comment",
+      url: "https://www.youtube.com/post/Ugkx-community?lc=comment-id",
+    }),
+    "community",
+  );
+  assert.equal(
+    authoredCommentCategory({
+      platform: "youtube",
+      format: "comment",
+      url: "https://www.youtube.com/watch?v=owned&lc=comment-id",
+      raw: {
+        commentTarget: {
+          url: "https://www.youtube.com/watch?v=owned",
+          authorHandle: "LofiGirl",
+        },
+      },
+    }),
+    "owned",
+  );
+  assert.equal(
+    authoredCommentCategory({
+      platform: "youtube",
+      format: "comment",
+      url: "https://www.youtube.com/watch?v=external&lc=comment-id",
+      raw: {
+        commentTarget: {
+          url: "https://www.youtube.com/watch?v=external",
+          authorHandle: "LofiGirlMusicFan",
+        },
+      },
+    }),
+    "external",
+  );
+  assert.equal(
+    authoredCommentCategory({
+      platform: "instagram",
+      format: "comment",
+      url: "https://www.instagram.com/p/example/c/1/",
+      raw: {
+        commentTarget: {
+          url: "https://www.instagram.com/p/example/",
+          authorProfileUrl: "https://example.com/lofigirl",
+        },
+      },
+    }),
+    "external",
+  );
+});
+
 test("keeps internal target confidence labels out of comment cards", async () => {
   const component = await readFile(
     new URL("../app/AuthoredCommentsView.tsx", import.meta.url),
@@ -120,6 +174,27 @@ test("keeps internal target confidence labels out of comment cards", async () =>
   assert.doesNotMatch(component, /Cible vérifiée|Cible dérivée/);
   assert.match(component, /platform: PlatformFilter/);
   assert.doesNotMatch(component, /authored-comment-platform-tabs|onPlatformChange|internalPlatform/);
+  assert.match(component, /<span>Catégorie<\/span>/);
+  assert.match(component, /Posts Communauté/);
+  assert.match(component, /Nos vidéos/);
+  assert.match(component, /Vidéos externes/);
   assert.match(component, /<span>Date de publication<\/span>/);
   assert.doesNotMatch(component, /<span>Durée<\/span>/);
+  assert.doesNotMatch(component, /Voir la conversation/);
+  assert.match(component, /<small>Likes<\/small>/);
+  assert.match(component, /<small>Réponses<\/small>/);
+  assert.match(component, /year: "2-digit"/);
+
+  const thumbnail = component.indexOf('className="authored-comment-thumbnail"');
+  const targetStrip = component.indexOf('className="authored-comment-target-strip"', thumbnail);
+  const body = component.indexOf('className="authored-comment-body"', targetStrip);
+  const quote = component.indexOf("<blockquote>", body);
+  const metrics = component.indexOf('className="authored-comment-metrics"', quote);
+  const quoteEnd = component.indexOf("</blockquote>", metrics);
+  assert.ok(thumbnail >= 0);
+  assert.ok(targetStrip > thumbnail);
+  assert.ok(body > targetStrip);
+  assert.ok(quote > body);
+  assert.ok(metrics > quote);
+  assert.ok(quoteEnd > metrics);
 });

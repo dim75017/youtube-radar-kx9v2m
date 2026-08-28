@@ -1,5 +1,7 @@
 export type CommentPlatform = "youtube" | "instagram" | "tiktok" | "x";
 
+export type AuthoredCommentCategory = "community" | "owned" | "external";
+
 export type AuthoredCommentLike = {
   platform: CommentPlatform;
   format?: unknown;
@@ -196,4 +198,67 @@ export function commentTarget(post: AuthoredCommentLike): CommentTarget {
         ? "legacy-heuristic"
         : "derived",
   };
+}
+
+function identityToken(value: string | null): string {
+  return (value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function isYoutubeCommunityUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (
+      (url.hostname === "youtube.com" || url.hostname.endsWith(".youtube.com")) &&
+      url.pathname.startsWith("/post/")
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isOwnedLofiGirlTarget(target: CommentTarget): boolean {
+  if (identityToken(target.authorHandle) === "lofigirl") return true;
+  if (identityToken(target.authorName) === "lofigirl") return true;
+  if (!target.authorProfileUrl) return false;
+
+  try {
+    const profileUrl = new URL(target.authorProfileUrl);
+    const hostname = profileUrl.hostname.toLowerCase();
+    const trustedProfileHost =
+      hostname === "youtube.com" ||
+      hostname.endsWith(".youtube.com") ||
+      hostname === "instagram.com" ||
+      hostname.endsWith(".instagram.com") ||
+      hostname === "tiktok.com" ||
+      hostname.endsWith(".tiktok.com") ||
+      hostname === "x.com" ||
+      hostname.endsWith(".x.com") ||
+      hostname === "twitter.com" ||
+      hostname.endsWith(".twitter.com");
+    if (!trustedProfileHost) return false;
+    const segments = profileUrl.pathname
+      .split("/")
+      .filter(Boolean)
+      .map((segment) => identityToken(decodeURIComponent(segment)));
+    return (
+      segments.includes("lofigirl") ||
+      segments.includes("ucsj4gkvc6nrvii8umztf0ow")
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function authoredCommentCategory(
+  post: AuthoredCommentLike,
+): AuthoredCommentCategory {
+  const target = commentTarget(post);
+  if (
+    post.platform === "youtube" &&
+    (isYoutubeCommunityUrl(target.url) ||
+      (typeof post.url === "string" && isYoutubeCommunityUrl(post.url)))
+  ) {
+    return "community";
+  }
+  return isOwnedLofiGirlTarget(target) ? "owned" : "external";
 }

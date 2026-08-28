@@ -5,8 +5,10 @@
 import { useEffect, useMemo, useState } from "react";
 
 import {
+  type AuthoredCommentCategory,
   type AuthoredCommentLike,
   type CommentPlatform,
+  authoredCommentCategory,
   commentTarget,
   isAuthoredComment,
 } from "../lib/authored-comments";
@@ -31,6 +33,7 @@ type CommentPost = AuthoredCommentLike & {
 
 type CommentSort = "recent" | "popular";
 type PlatformFilter = CommentPlatform | "all";
+type CommentCategoryFilter = AuthoredCommentCategory | "all";
 
 const PAGE_SIZE = 60;
 const TIKTOK_COMMENT_THUMBNAILS = new Map<string, string>();
@@ -49,6 +52,16 @@ const PLATFORM_META: Record<
   x: { emoji: "𝕏", label: "X", tone: "blue" },
 };
 
+const COMMENT_CATEGORY_META: Record<
+  CommentCategoryFilter,
+  { emoji: string; label: string }
+> = {
+  all: { emoji: "💬", label: "Toutes" },
+  community: { emoji: "🖼️", label: "Posts Communauté" },
+  owned: { emoji: "🏠", label: "Nos contenus" },
+  external: { emoji: "🌍", label: "Autres créateurs" },
+};
+
 function formatCompact(value: number): string {
   return new Intl.NumberFormat("fr-FR", {
     notation: "compact",
@@ -56,15 +69,24 @@ function formatCompact(value: number): string {
   }).format(value);
 }
 
-function formatDate(value: string | null): string {
-  if (!value) return "Date non fournie";
+function formatShortDate(value: string | null): string {
+  if (!value) return "—";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Date non fournie";
+  if (Number.isNaN(date.getTime())) return "—";
   return new Intl.DateTimeFormat("fr-FR", {
     day: "2-digit",
-    month: "short",
-    year: "numeric",
+    month: "2-digit",
+    year: "2-digit",
   }).format(date);
+}
+
+function categoryLabel(
+  category: CommentCategoryFilter,
+  platform: PlatformFilter,
+): string {
+  if (category === "owned" && platform === "youtube") return "Nos vidéos";
+  if (category === "external" && platform === "youtube") return "Vidéos externes";
+  return COMMENT_CATEGORY_META[category].label;
 }
 
 function externalHref(value: string): string | null {
@@ -199,41 +221,42 @@ function CommentCard({ post }: { post: CommentPost }) {
         </div>
       )}
 
-      <div className="authored-comment-body">
-        <div className="authored-comment-meta">
-          <span>{formatDate(post.published_at)}</span>
+      <div className="authored-comment-target-strip">
+        <div className="authored-comment-target-identity">
+          <span>Compte commenté</span>
+          {target.authorProfileUrl ? (
+            <a href={target.authorProfileUrl} target="_blank" rel="noreferrer">
+              {targetAccount}
+            </a>
+          ) : (
+            <strong>{targetAccount}</strong>
+          )}
         </div>
-
-        <h3>{target.title}</h3>
-        <blockquote>{post.text || "Commentaire non fourni"}</blockquote>
-
-        <div className="authored-comment-target-account">
-          <div>
-            <span>Compte commenté</span>
-            {target.authorProfileUrl ? (
-              <a href={target.authorProfileUrl} target="_blank" rel="noreferrer">
-                {targetAccount}
-              </a>
-            ) : (
-              <strong>{targetAccount}</strong>
-            )}
-          </div>
-          <b title={target.audienceObservedAt ? `Relevé le ${formatDate(target.audienceObservedAt)}` : undefined}>
+        <div className="authored-comment-target-facts">
+          <b title={target.audienceObservedAt ? `Relevé le ${formatShortDate(target.audienceObservedAt)}` : undefined}>
             👥 {audienceText(post)}
           </b>
+          <time dateTime={post.published_at ?? undefined} title={post.published_at ?? "Date non fournie"}>
+            {formatShortDate(post.published_at)}
+          </time>
         </div>
+      </div>
 
-        <footer>
-          <div className="authored-comment-metrics" aria-label="Performance du commentaire">
-            <span>❤️ {post.likes === null ? "—" : formatCompact(post.likes)}</span>
-            <span>💬 {post.comments === null ? "—" : formatCompact(post.comments)}</span>
+      <div className="authored-comment-body">
+        <h3>{target.title}</h3>
+        <blockquote>
+          <p>{post.text || "Commentaire non fourni"}</p>
+          <div className="authored-comment-metrics" aria-label="Likes et réponses du commentaire">
+            <span>
+              <b>❤️ {post.likes === null ? "—" : formatCompact(post.likes)}</b>
+              <small>Likes</small>
+            </span>
+            <span>
+              <b>↩️ {post.comments === null ? "—" : formatCompact(post.comments)}</b>
+              <small>Réponses</small>
+            </span>
           </div>
-          {threadUrl ? (
-            <a className="button ghost compact" href={threadUrl} target="_blank" rel="noreferrer">
-              Voir la conversation ↗
-            </a>
-          ) : null}
-        </footer>
+        </blockquote>
       </div>
     </article>
   );
@@ -250,6 +273,7 @@ export function AuthoredCommentsView({
 }) {
   const [duration, setDuration] = useState<SocialDurationFilter>("all");
   const [sort, setSort] = useState<CommentSort>("recent");
+  const [category, setCategory] = useState<CommentCategoryFilter>("all");
   const [pagination, setPagination] = useState({ key: "", count: PAGE_SIZE });
   const activePlatformLabel = platform === "all"
     ? "Commentaires"
@@ -259,12 +283,51 @@ export function AuthoredCommentsView({
     () => posts.filter((post) => isAuthoredComment(post)),
     [posts],
   );
-  const filteredComments = useMemo(() => {
-    const next = allComments.filter(
+  const datedComments = useMemo(
+    () => allComments.filter(
       (post) =>
         (platform === "all" || post.platform === platform) &&
         matchesSocialDuration(post, duration, generatedAt),
-    );
+    ),
+    [allComments, duration, generatedAt, platform],
+  );
+  const categoryCounts = useMemo(() => {
+    const counts: Record<AuthoredCommentCategory, number> = {
+      community: 0,
+      owned: 0,
+      external: 0,
+    };
+    for (const post of datedComments) counts[authoredCommentCategory(post)] += 1;
+    return counts;
+  }, [datedComments]);
+  const categoryOptions = useMemo(
+    () => ([
+      {
+        key: "all" as const,
+        ...COMMENT_CATEGORY_META.all,
+        label: categoryLabel("all", platform),
+        count: datedComments.length,
+      },
+      ...(["community", "owned", "external"] as const)
+        .filter((key) => categoryCounts[key] > 0)
+        .map((key) => ({
+          key,
+          ...COMMENT_CATEGORY_META[key],
+          label: categoryLabel(key, platform),
+          count: categoryCounts[key],
+        })),
+    ]),
+    [categoryCounts, datedComments.length, platform],
+  );
+
+  const activeCategory = categoryOptions.some((option) => option.key === category)
+    ? category
+    : "all";
+
+  const filteredComments = useMemo(() => {
+    const next = activeCategory === "all"
+      ? datedComments
+      : datedComments.filter((post) => authoredCommentCategory(post) === activeCategory);
     return [...next].sort((left, right) => {
       if (sort === "popular") {
         const scoreOrder = popularity(right) - popularity(left);
@@ -274,8 +337,8 @@ export function AuthoredCommentsView({
         String(left.published_at ?? ""),
       );
     });
-  }, [allComments, duration, generatedAt, platform, sort]);
-  const paginationKey = `${platform}:${duration}:${sort}`;
+  }, [activeCategory, datedComments, sort]);
+  const paginationKey = `${platform}:${duration}:${activeCategory}:${sort}`;
   const visibleCount =
     pagination.key === paginationKey ? pagination.count : PAGE_SIZE;
   const visibleComments = filteredComments.slice(0, visibleCount);
@@ -289,6 +352,16 @@ export function AuthoredCommentsView({
         </div>
 
         <div className="authored-comment-filter-row">
+          <label>
+            <span>Catégorie</span>
+            <select value={activeCategory} onChange={(event) => setCategory(event.target.value as CommentCategoryFilter)}>
+              {categoryOptions.map((option) => (
+                <option value={option.key} key={option.key}>
+                  {option.emoji} {option.label} · {formatCompact(option.count)}
+                </option>
+              ))}
+            </select>
+          </label>
           <label>
             <span>Date de publication</span>
             <select value={duration} onChange={(event) => setDuration(event.target.value as SocialDurationFilter)}>
