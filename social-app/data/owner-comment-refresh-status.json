@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-08-29T11:43:38.751Z",
+  "generatedAt": "2026-08-29T12:11:22.598Z",
   "platforms": {
     "youtube": {
       "status": "partial",
@@ -37,7 +37,7 @@
     },
     "instagram": {
       "status": "partial",
-      "attemptedAt": "2026-08-29T11:43:38.751Z",
+      "attemptedAt": "2026-08-29T12:11:22.598Z",
       "source": "authorized-instagram-activity-and-static-profile-grid",
       "observedComments": 145,
       "publishedComments": 83,
@@ -107,12 +107,15 @@
         "previousRequestedAt": "2023-02-25",
         "previousStatus": "expired",
         "downloadAvailable": false,
-        "newRequestSubmitted": false,
+        "newRequestSubmitted": true,
+        "requestedAt": "2026-08-29T12:11:22.598Z",
+        "requestStatus": "processing",
         "availableFormat": "JSON",
         "availableScope": "Comments"
       },
-      "requiresUserConfirmation": true,
-      "error": "Le seul export TikTok existant, demandé le 25/02/2023, est expiré. La plateforme exige une nouvelle demande JSON incluant Comments ; la soumission n’a pas été déclenchée sans confirmation au moment de l’action.",
+      "requiresUserConfirmation": false,
+      "pendingReason": "La demande d’export JSON limitée à Comments a été acceptée par TikTok et reste en cours de traitement. Le fichier sera importé dès qu’il deviendra téléchargeable.",
+      "error": null,
       "lastRealObservationAt": "2026-08-28T10:49:39.480Z"
     }
   }
