@@ -2,6 +2,7 @@ import { readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { isAuthoredComment } from "../lib/authored-comments.ts";
 import { matchesSocialFormatFilter } from "../lib/social-formats.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -30,7 +31,9 @@ export function buildPublicHistorySummary(history, previousSummary) {
     const filters = Object.keys(previousSummary.formatCounts[platform] ?? {});
     formatCounts[platform] = Object.fromEntries(filters.map((filter) => [
       filter,
-      posts.filter((post) => matchesSocialFormatFilter(post, filter)).length,
+      posts.filter((post) => filter === "comment"
+        ? isAuthoredComment(post)
+        : !isAuthoredComment(post) && matchesSocialFormatFilter(post, filter)).length,
     ]));
   }
 

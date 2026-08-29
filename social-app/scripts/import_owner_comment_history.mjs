@@ -119,7 +119,7 @@ function instagramShortcode(contentUrl) {
     return null;
   }
   return url.pathname.match(
-    /^\/(?:p|reel|tv)\/([A-Za-z0-9_-]{5,64})(?:\/|$)/,
+    /^\/(?:[A-Za-z0-9._]+\/)?(?:p|reel|tv)\/([A-Za-z0-9_-]{5,64})(?:\/|$)/,
   )?.[1] ?? null;
 }
 

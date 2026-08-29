@@ -171,6 +171,42 @@ test("reuses a validated Instagram cache before publishing its same-origin URL",
   );
 });
 
+test("caches Instagram thumbnails from username-prefixed reel permalinks", async () => {
+  const { result, historyPath } = await invokeImport(
+    {
+      platform: "instagram",
+      capturedAt: "2026-08-29T11:04:55.207Z",
+      comments: [{
+        id: "ig-prefixed-reel",
+        url: "https://www.instagram.com/creator/reel/ABC123/",
+        text: "cozy grid match",
+        publishedAt: null,
+        target: {
+          contentId: "ABC123",
+          url: "https://www.instagram.com/creator/reel/ABC123/",
+          title: "Study break",
+          thumbnailUrl: "https://scontent.cdninstagram.com/temporary.jpg",
+          authorHandle: "creator",
+          authorProfileUrl: "https://www.instagram.com/creator/",
+          audienceValue: 12_300,
+          audienceLabel: "12,300 followers",
+          audiencePrecision: "exact",
+          audienceObservedAt: "2026-08-29T11:00:00.000Z",
+        },
+        metrics: { likes: null, replies: null },
+      }],
+    },
+    { skipMediaCache: false, seededInstagramShortcode: "ABC123" },
+  );
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const history = JSON.parse(await readFile(historyPath, "utf8"));
+  assert.equal(
+    history.posts[0].thumbnailUrl,
+    "https://dim75017.github.io/youtube-radar-kx9v2m/social/media/instagram/ABC123.jpg",
+  );
+});
+
 test("rejects a TikTok thumbnail hosted outside approved TikTok CDNs", async () => {
   const { result } = await invokeImport({
     platform: "tiktok",

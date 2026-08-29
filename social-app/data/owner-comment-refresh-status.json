@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-08-29T11:01:29.055Z",
+  "generatedAt": "2026-08-29T11:43:38.751Z",
   "platforms": {
     "youtube": {
       "status": "partial",
@@ -37,31 +37,55 @@
     },
     "instagram": {
       "status": "partial",
-      "attemptedAt": "2026-08-29T07:48:01.650Z",
-      "source": "authorized-instagram-activity",
-      "observedComments": 19,
-      "verifiedTargets": 19,
-      "thumbnailTargets": 19,
-      "audienceTargets": 19,
-      "unavailableTargets": 0,
+      "attemptedAt": "2026-08-29T11:43:38.751Z",
+      "source": "authorized-instagram-activity-and-static-profile-grid",
+      "observedComments": 145,
+      "publishedComments": 83,
+      "verifiedTargets": 83,
+      "thumbnailTargets": 83,
+      "audienceTargets": 83,
+      "unavailableTargets": 67,
       "inventoryStatus": "partial",
-      "inventoryObservedAt": "2026-08-28T10:44:52.214Z",
+      "inventoryObservedAt": "2026-08-29T11:04:55.207Z",
       "endReached": false,
-      "oldestObservedAt": "2026-08-27T07:15:54.000Z",
-      "newestObservedAt": "2026-08-28T09:03:53.000Z",
+      "oldestObservedAt": null,
+      "newestObservedAt": null,
+      "oldestObservedRelative": "37w",
+      "newestObservedRelative": "1d",
       "nativeIdCount": 18,
       "deepLinkCount": 18,
+      "resolutionCoverage": {
+        "browserObserved": 145,
+        "currentResolvedTargets": 78,
+        "retainedNativeTargets": 5,
+        "published": 83,
+        "unresolvedCurrentTargets": 67
+      },
+      "inventoryPasses": {
+        "newestToOldest": {
+          "uniqueObserved": 114,
+          "endReached": false,
+          "loaderStalled": true
+        },
+        "oldestToNewest": {
+          "uniqueObserved": 31,
+          "endReached": false,
+          "loaderStalled": true,
+          "repeatedBottomLoadAttempts": 6
+        }
+      },
       "metricCoverage": {
         "likes": 0,
         "replies": 0,
-        "total": 19
+        "total": 83
       },
-      "error": "Ces 19 commentaires couvrent environ 26 heures et ne prouvent pas un inventaire All time. Le contrôle privé demandé n’a pas pu être exécuté pendant ce passage."
+      "error": "145 commentaires distincts ont été observés et 83 cibles vérifiées sont publiables, dont 64 nouvelles. Les tris récent→ancien et ancien→récent restent tous deux bloqués sur le chargeur natif Instagram : la fin All time n’est donc pas prouvée et 67 cibles actuelles restent sans permalink vérifiable.",
+      "lastRealObservationAt": "2026-08-29T11:04:55.207Z"
     },
     "tiktok": {
       "status": "partial",
-      "attemptedAt": "2026-08-29T07:48:01.650Z",
-      "source": "authorized-tiktok-activity",
+      "attemptedAt": "2026-08-29T11:43:38.751Z",
+      "source": "authorized-tiktok-download-data",
       "observedComments": 10,
       "verifiedTargets": 10,
       "thumbnailTargets": 10,
@@ -79,7 +103,17 @@
         "replies": 0,
         "total": 10
       },
-      "error": "L’activité web TikTok n’expose ici que dix commentaires récents signalés par notifications, sans date ni permalien natif. Un export natif de l’historique est requis pour prouver l’exhaustivité."
+      "exportStatus": {
+        "previousRequestedAt": "2023-02-25",
+        "previousStatus": "expired",
+        "downloadAvailable": false,
+        "newRequestSubmitted": false,
+        "availableFormat": "JSON",
+        "availableScope": "Comments"
+      },
+      "requiresUserConfirmation": true,
+      "error": "Le seul export TikTok existant, demandé le 25/02/2023, est expiré. La plateforme exige une nouvelle demande JSON incluant Comments ; la soumission n’a pas été déclenchée sans confirmation au moment de l’action.",
+      "lastRealObservationAt": "2026-08-28T10:49:39.480Z"
     }
   }
 }

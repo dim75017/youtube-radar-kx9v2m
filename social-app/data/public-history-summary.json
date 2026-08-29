@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-08-29T11:01:29.055Z",
-  "totalPostCount": 12122,
+  "generatedAt": "2026-08-29T11:04:55.207Z",
+  "totalPostCount": 12186,
   "platformCounts": {
     "youtube": 4781,
-    "instagram": 1704,
+    "instagram": 1768,
     "tiktok": 396,
     "x": 5241
   },
@@ -18,7 +18,7 @@
     "instagram": {
       "reel": 374,
       "static": 1311,
-      "comment": 19
+      "comment": 83
     },
     "tiktok": {
       "video": 386,
