@@ -138,34 +138,6 @@
   -webkit-line-clamp: 5;
 }
 
-.authored-comment-platform-badge,
-.authored-comment-open-mark {
-  position: absolute;
-  top: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(8, 10, 17, 0.86);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
-  color: #fff;
-  font-size: var(--fs-caption);
-  font-weight: 850;
-  backdrop-filter: blur(10px);
-}
-
-.authored-comment-platform-badge {
-  left: 10px;
-  border-radius: 999px;
-  padding: 6px 9px;
-}
-
-.authored-comment-open-mark {
-  right: 10px;
-  display: grid;
-  width: 31px;
-  height: 31px;
-  place-items: center;
-  border-radius: 10px;
-}
-
 .authored-comment-body {
   display: flex;
   min-width: 0;

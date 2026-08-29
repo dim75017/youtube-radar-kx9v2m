@@ -192,6 +192,10 @@ test("keeps internal target confidence labels out of comment cards", async () =>
   assert.doesNotMatch(styles, /\.authored-comments-controls|\.authored-comment-filter-row/);
   assert.doesNotMatch(component, /Voir la conversation/);
   assert.doesNotMatch(component, /Compte commenté/);
+  assert.doesNotMatch(component, /authored-comment-platform-badge|authored-comment-open-mark/);
+  assert.doesNotMatch(styles, /\.authored-comment-platform-badge|\.authored-comment-open-mark/);
+  assert.match(component, /className="authored-comment-thumbnail"[\s\S]*?href=\{threadUrl\}/);
+  assert.match(component, /<strong>\{targetAccount\}<\/strong>/);
   assert.match(component, /<small>Likes<\/small>/);
   assert.match(component, /<small>Réponses<\/small>/);
   assert.match(component, /year: "2-digit"/);

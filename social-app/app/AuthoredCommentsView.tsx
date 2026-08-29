@@ -211,20 +211,16 @@ function CommentCard({ post }: { post: CommentPost }) {
           ) : (
             <span className="authored-comment-thumbnail-placeholder">
               <b aria-hidden="true">{meta.emoji}</b>
-              <strong>{target.authorHandle ? `@${target.authorHandle}` : meta.label}</strong>
+              <strong>{targetAccount}</strong>
               <span>{target.title}</span>
             </span>
           )}
-          <span className="authored-comment-platform-badge">
-            {meta.emoji} {meta.label}
-          </span>
-          <span className="authored-comment-open-mark" aria-hidden="true">↗</span>
         </a>
       ) : (
         <div className="authored-comment-thumbnail is-disabled">
           <span className="authored-comment-thumbnail-placeholder">
             <b aria-hidden="true">{meta.emoji}</b>
-            <strong>{target.authorHandle ? `@${target.authorHandle}` : meta.label}</strong>
+            <strong>{targetAccount}</strong>
             <span>{target.title}</span>
           </span>
         </div>
