@@ -1,23 +1,23 @@
 {
   "version": 1,
-  "capturedAt": "2026-08-19T05:52:22.975Z",
-  "nextRefreshAt": "2026-08-20T05:52:22.975Z",
+  "capturedAt": "2026-08-29T22:30:08.078Z",
+  "nextRefreshAt": "2026-08-30T22:30:08.078Z",
   "cadenceHours": 24,
   "methodology": "Sélection de 50 audios natifs pertinents pour Lofi Girl, chacun démontré par au moins trois créateurs et trois publications natives distinctes. Les volumes viennent uniquement des pages audio publiques ; les compteurs abrégés restent signalés comme estimations et les volumes indisponibles restent vides. Pour YouTube Shorts, la page audio native prouve les reprises mais n’expose pas de compteur global comparable. La croissance n’est calculée qu’avec deux relevés comparables du même compteur natif.",
   "sourceChecks": [
     {
       "id": "instagram-audio-public",
       "platform": "instagram",
-      "status": "failed",
-      "checkedAt": "2026-08-19T05:52:22.975Z",
+      "status": "limited",
+      "checkedAt": "2026-08-29T22:30:08.078Z",
       "label": "Instagram Reels · pages audio et grilles publiques",
       "sourceUrl": "https://www.instagram.com/reels/"
     },
     {
       "id": "tiktok-audio-public",
       "platform": "tiktok",
-      "status": "failed",
-      "checkedAt": "2026-08-19T05:52:22.975Z",
+      "status": "limited",
+      "checkedAt": "2026-08-29T22:30:08.078Z",
       "label": "TikTok · pages audio, compteurs et reprises multi-créateurs vérifiés",
       "sourceUrl": "https://ads.tiktok.com/business/creativecenter/inspiration/popular/music/pc/en"
     },
@@ -144,27 +144,27 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-08-11T17:29:34.000Z",
+        "verifiedAt": "2026-08-29T22:30:08.078Z",
         "minimumDistinctCreators": 3,
-        "summary": "Le même audio TikTok a été vérifié dans 3 créations indépendantes reliées au format « pocketful-sunshine-mood-flip ».",
+        "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
-          {
-            "platform": "tiktok",
-            "author": "@kaiyafromaustralia",
-            "url": "https://www.tiktok.com/@kaiyafromaustralia/video/7669792494338526497",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
-          },
           {
             "platform": "tiktok",
             "author": "@itsgivingmother",
             "url": "https://www.tiktok.com/@itsgivingmother/video/7663570718331768084",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@tyrellhampton2",
             "url": "https://www.tiktok.com/@tyrellhampton2/video/7552766129840606519",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
+          },
+          {
+            "platform": "tiktok",
+            "author": "@kaiyafromaustralia",
+            "url": "https://www.tiktok.com/@kaiyafromaustralia/video/7669792494338526497",
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           }
         ]
       }
@@ -273,27 +273,27 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-08-11T17:29:34.000Z",
+        "verifiedAt": "2026-08-29T22:30:08.078Z",
         "minimumDistinctCreators": 3,
-        "summary": "Le même audio TikTok a été vérifié dans 3 créations indépendantes reliées au format « petal-soft-chaos ».",
+        "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
           {
             "platform": "tiktok",
             "author": "@nibsgonewild",
             "url": "https://www.tiktok.com/@nibsgonewild/video/7668822589699067149",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@imnotjordy",
             "url": "https://www.tiktok.com/@imnotjordy/video/7671575860167609631",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@halleberry",
             "url": "https://www.tiktok.com/@halleberry/video/7669135147848977677",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           }
         ]
       }
@@ -402,27 +402,27 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-08-11T17:29:34.000Z",
+        "verifiedAt": "2026-08-29T22:30:08.078Z",
         "minimumDistinctCreators": 3,
-        "summary": "Le même audio TikTok a été vérifié dans 3 créations indépendantes reliées au format « baby-just-wanna-dance ».",
+        "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
           {
             "platform": "tiktok",
             "author": "@luv.iolett",
             "url": "https://www.tiktok.com/@luv.iolett/video/7660688157242871054",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
-          },
-          {
-            "platform": "tiktok",
-            "author": "@cashewtokk",
-            "url": "https://www.tiktok.com/@cashewtokk/video/7662782151452151071",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@ddamarcusssss",
             "url": "https://www.tiktok.com/@ddamarcusssss/video/7657777908211141902",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
+          },
+          {
+            "platform": "tiktok",
+            "author": "@cashewtokk",
+            "url": "https://www.tiktok.com/@cashewtokk/video/7662782151452151071",
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           }
         ]
       }
@@ -660,27 +660,27 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-08-11T17:29:34.000Z",
+        "verifiedAt": "2026-08-29T22:30:08.078Z",
         "minimumDistinctCreators": 3,
-        "summary": "Le même audio TikTok a été vérifié dans 3 créations indépendantes reliées au format « ghosting-you-montage ».",
+        "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
-          {
-            "platform": "tiktok",
-            "author": "@zah1de",
-            "url": "https://www.tiktok.com/@zah1de/video/7668007675438927137",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
-          },
           {
             "platform": "tiktok",
             "author": "@nemzzz_",
             "url": "https://www.tiktok.com/@nemzzz_/video/7671629552791112963",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
+          },
+          {
+            "platform": "tiktok",
+            "author": "@zah1de",
+            "url": "https://www.tiktok.com/@zah1de/video/7668007675438927137",
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@tinyartshow",
             "url": "https://www.tiktok.com/@tinyartshow/video/7667026255182793998",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           }
         ]
       }
@@ -798,27 +798,27 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-08-11T17:29:34.000Z",
+        "verifiedAt": "2026-08-29T22:30:08.078Z",
         "minimumDistinctCreators": 3,
-        "summary": "Le même audio TikTok a été vérifié dans 3 créations indépendantes reliées au format « te-extrano-motivation ».",
+        "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
           {
             "platform": "tiktok",
             "author": "@anaola__",
             "url": "https://www.tiktok.com/@anaola__/video/7668035118283509012",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@malyorie_10",
             "url": "https://www.tiktok.com/@malyorie_10/video/7656901787286392078",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@becomingaby",
             "url": "https://www.tiktok.com/@becomingaby/video/7658387400871136530",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           }
         ]
       }
@@ -953,129 +953,129 @@
       }
     },
     {
-      "id": "youtube-phones-eras-study-desk",
-      "platform": "youtube",
-      "type": "original",
-      "title": "Le bureau à travers les époques",
-      "author": "Ryan HD",
-      "audioUrl": "https://www.youtube.com/source/yaDcdlYhW-A/shorts",
+      "id": "audio-let-down-emotional-rescue",
+      "platform": "tiktok",
+      "type": "music",
+      "title": "Let Down",
+      "author": "reavesaudios",
+      "audioUrl": "https://www.tiktok.com/music/Let-Down-7520755827558959894",
       "source": {
-        "capturedAt": "2026-08-11T18:31:14.325Z",
-        "label": "YouTube Shorts · page audio native et reprises publiques",
-        "url": "https://www.youtube.com/source/yaDcdlYhW-A/shorts",
+        "capturedAt": "2026-08-29T22:30:08.078Z",
+        "label": "TikTok · audio oEmbed attribué à trois créateurs distincts",
+        "url": "https://www.tiktok.com/music/Let-Down-7520755827558959894",
         "exactness": "exact"
       },
       "referenceVideo": {
-        "author": "Ryan HD",
-        "caption": "Phones In 2000 vs 2010 vs 2020 vs 2030.",
-        "url": "https://www.youtube.com/shorts/yaDcdlYhW-A",
-        "thumbnailUrl": "media/audio-trends/youtube-phones-eras-study-desk.webp",
-        "durationSeconds": 15,
-        "publishedAt": "2026-06-27T10:30:37-07:00",
-        "capturedAt": "2026-08-11T18:31:14.325Z",
-        "sourceLabel": "YouTube Shorts · métadonnées publiques vérifiées",
-        "sourceUrl": "https://www.youtube.com/shorts/yaDcdlYhW-A",
-        "exactness": "exact",
+        "author": "@aikibem",
+        "caption": "namanya minnie dia kucing liar datang sendiri kerumah…",
+        "url": "https://www.tiktok.com/@aikibem/video/7668737173033651477",
+        "thumbnailUrl": "media/audio-trends/audio-let-down-emotional-rescue.jpg",
+        "durationSeconds": 20.27,
+        "publishedAt": "2026-07-31T16:56:52.000Z",
+        "capturedAt": "2026-08-10T12:00:00+02:00",
+        "sourceLabel": "TikTok · compteurs publics",
+        "sourceUrl": "https://www.tiktok.com/@aikibem/video/7668737173033651477",
+        "exactness": "platform-estimate",
         "metrics": {
-          "views": 81180078,
-          "likes": 1584915,
-          "comments": null,
-          "shares": null
+          "views": null,
+          "likes": 1400000,
+          "comments": 17900,
+          "shares": 111800
         }
       },
       "usageObservations": [
         {
-          "capturedAt": "2026-08-11T18:31:14.325Z",
+          "capturedAt": "2026-08-29T22:30:08.078Z",
           "uses": null,
           "rank": null,
           "rankWindow": null,
-          "sourceLabel": "YouTube Shorts · page audio native ; compteur global indisponible",
-          "sourceUrl": "https://www.youtube.com/source/yaDcdlYhW-A/shorts",
+          "sourceLabel": "TikTok · compteur global non exposé publiquement",
+          "sourceUrl": "https://www.tiktok.com/music/Let-Down-7520755827558959894",
           "exactness": "unavailable"
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-08-11T18:31:14.325Z",
+        "verifiedAt": "2026-08-29T22:30:08.078Z",
         "minimumDistinctCreators": 3,
-        "summary": "La page audio native YouTube affiche douze reprises ; la référence et deux Shorts de créateurs distincts sont conservés comme preuve minimale.",
+        "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
           {
-            "platform": "youtube",
-            "author": "Ryan HD",
-            "url": "https://www.youtube.com/shorts/yaDcdlYhW-A",
-            "capturedAt": "2026-08-11T18:31:14.325Z"
+            "platform": "tiktok",
+            "author": "@aikibem",
+            "url": "https://www.tiktok.com/@aikibem/video/7668737173033651477",
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
-            "platform": "youtube",
-            "author": "Notyourabhi😉",
-            "url": "https://www.youtube.com/shorts/aYrDtOwQNPk",
-            "capturedAt": "2026-08-11T18:31:14.325Z"
+            "platform": "tiktok",
+            "author": "@fallmw_",
+            "url": "https://www.tiktok.com/@fallmw_/video/7654182450855185682",
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
-            "platform": "youtube",
-            "author": "ReesePuffs_Gaming",
-            "url": "https://www.youtube.com/shorts/HKExoP4HBSo",
-            "capturedAt": "2026-08-11T18:31:14.325Z"
+            "platform": "tiktok",
+            "author": "@annierawrrrrr",
+            "url": "https://www.tiktok.com/@annierawrrrrr/video/7644197018210012433",
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           }
         ]
       },
-      "lofiFitScore": 88,
-      "lofiAngle": "Garder le même cadrage du bureau et faire évoluer les outils d’étude par décennie, tandis que Lofi Girl et le chat restent les repères constants.",
-      "lofiFitRationale": "Le bureau iconique rend chaque époque lisible en une seconde ; la permanence des personnages apporte une chute immédiatement reconnaissable à la marque.",
+      "lofiFitScore": 96,
+      "lofiAngle": "Bloquée devant une page, elle est calmée par la patte du chat sur le cahier.",
+      "lofiFitRationale": "Le chat, la solitude du bureau et les gestes de réconfort permettent une histoire simple qui reste fidèle à la douceur de la marque.",
       "proposals": [
         {
-          "id": "phones-deadline-decades",
-          "title": "La deadline traverse les décennies",
-          "concept": "Quatre cuts 2000, 2010, 2020, 2030 : les outils changent mais Lofi Girl reste bloquée sur la première phrase du même devoir.",
-          "copy": "La technologie avance. Mon introduction, beaucoup moins.",
-          "character": "lofi-girl",
-          "tone": "funny"
-        },
-        {
-          "id": "phones-ritual-stays",
-          "title": "Le rituel ne bouge pas",
-          "concept": "Livres, laptop puis hologramme se remplacent au rythme du son ; la lampe chaude, la boisson et le casque restent exactement au même endroit.",
-          "copy": "New tools, same little ritual before I begin.",
+          "id": "audio-let-down-emotional-rescue-cozy",
+          "title": "Version cozy",
+          "concept": "La pièce paraît vide, puis le plan révèle le chat endormi contre sa chaise pendant qu’elle reprend doucement. Avec une lumière douce et un rythme calme.",
+          "copy": "Tout ne se résout pas en une nuit. Parfois, une présence suffit pour continuer. · Version cozy.",
           "character": "lofi-girl",
           "tone": "cozy"
         },
         {
-          "id": "phones-cat-upgrade",
-          "title": "Le seul vrai upgrade",
-          "concept": "À chaque époque, le chat obtient un couchage plus futuriste jusqu’à finir sur un clavier holographique qui bloque encore les révisions.",
-          "copy": "2030 technology. Same cat-shaped obstacle.",
+          "id": "audio-let-down-emotional-rescue-funny",
+          "title": "Version drôle",
+          "concept": "Le chat arrive avec un badge de soutien émotionnel puis réclame immédiatement la moitié du bureau. Le chat provoque le décalage final.",
+          "copy": "Service de soutien disponible. Paiement exigé en surface de bureau. · Version drôle.",
           "character": "lofi-girl",
-          "tone": "cat"
+          "tone": "funny"
         },
         {
-          "id": "phones-notification-eras",
-          "title": "Les notifications ont changé",
-          "concept": "Chaque cut fait entendre et apparaître une notification d’époque différente ; Lofi Girl retourne son appareil face cachée à chaque fois.",
-          "copy": "Different decade, same urge to check one more notification.",
-          "character": "lofi-girl",
-          "tone": "relatable"
-        },
-        {
-          "id": "phones-focus-not-tools",
-          "title": "Le focus n’est pas un gadget",
-          "concept": "Le setup devient toujours plus sophistiqué, puis le dernier plan retire tout sauf un cahier, un crayon et le minuteur de Lofi Girl.",
-          "copy": "The best study upgrade was removing the distractions.",
+          "id": "audio-let-down-emotional-rescue-smart",
+          "title": "Version smart",
+          "concept": "Bloquée devant une page, elle est calmée par la patte du chat sur le cahier. Le montage rend la mécanique lisible dès la première seconde.",
+          "copy": "Il ne comprend pas le cours. Mais il a compris que j’avais besoin de lui. · Version smart.",
           "character": "lofi-girl",
           "tone": "smart"
         },
         {
-          "id": "phones-future-room",
-          "title": "La chambre de 2030",
-          "concept": "Le décor passe du papier au numérique puis à un bureau flottant, avec la fenêtre et la ville qui évoluent en parallèle sur chaque accent audio.",
-          "copy": "See you in 2030. Same window, bigger dreams.",
+          "id": "audio-let-down-emotional-rescue-cinematic",
+          "title": "Version cinématique",
+          "concept": "La pièce paraît vide, puis le plan révèle le chat endormi contre sa chaise pendant qu’elle reprend doucement. La transition devient une mini-scène en trois plans.",
+          "copy": "Tout ne se résout pas en une nuit. Parfois, une présence suffit pour continuer. · Version cinématique.",
           "character": "lofi-girl",
           "tone": "cinematic"
         },
         {
-          "id": "phones-boy-console-decades",
-          "title": "Quatre générations de sauvegardes",
-          "concept": "Lofi Boy traverse quatre générations de consoles au même bureau ; le dernier écran révèle qu’il recharge toujours la même partie nocturne.",
-          "copy": "The graphics changed. The comfort save did not.",
+          "id": "audio-let-down-emotional-rescue-relatable",
+          "title": "Version relatable",
+          "concept": "Bloquée devant une page, elle est calmée par la patte du chat sur le cahier. La situation ramène le format à la procrastination ou aux études.",
+          "copy": "Il ne comprend pas le cours. Mais il a compris que j’avais besoin de lui. · Version relatable.",
+          "character": "lofi-girl",
+          "tone": "relatable"
+        },
+        {
+          "id": "audio-let-down-emotional-rescue-cat",
+          "title": "Version chat",
+          "concept": "Le chat arrive avec un badge de soutien émotionnel puis réclame immédiatement la moitié du bureau. Le chat détourne la mécanique au dernier beat.",
+          "copy": "Service de soutien disponible. Paiement exigé en surface de bureau. · Version chat.",
+          "character": "lofi-girl",
+          "tone": "cat"
+        },
+        {
+          "id": "audio-let-down-emotional-rescue-gaming",
+          "title": "Version gaming",
+          "concept": "Bloquée devant une page, elle est calmée par la patte du chat sur le cahier. Lofi Boy transforme le format en objectif de quête.",
+          "copy": "Il ne comprend pas le cours. Mais il a compris que j’avais besoin de lui. · Version gaming.",
           "character": "lofi-boy",
           "tone": "gaming"
         }
@@ -1111,9 +1111,9 @@
           "comments": 268,
           "shares": 36900
         },
-        "playbackUrl": "https://scontent-iad3-1.cdninstagram.com/o1/v/t2/f2/m86/AQOKghhB4ZtoLiokwMhgacz-kHqDYCLzuXjXGbrJQK8jABMkqXm3sCzrHkVJndJSgudDc63nIuaFqOL43VdGZ3WT78WyQNgByDx_hxc.mp4?_nc_cat=101&_nc_sid=5e9851&_nc_ht=scontent-iad3-1.cdninstagram.com&_nc_ohc=-MWDXzuXhpwQ7kNvwHyEodc&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuNzIwLmRhc2hfYmFzZWxpbmVfMV92MSIsInhwdl9hc3NldF9pZCI6MTAxMDcwNjE5NTE4MjU0MywiYXNzZXRfYWdlX2RheXMiOjM1LCJ2aV91c2VjYXNlX2lkIjoxMDgyNywiZHVyYXRpb25fcyI6OSwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=93dd04ab45d60e06&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC82MDQ2MkJEMDVFQTg3MDQwMzczQjBEMjYzQTAyNjJCOF92aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyLzQ5NDYzNzZDRUYyQzc2Q0Q1NUU3ODA1M0Q4QjM1Qjg1X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaez-P7687LAxUCKAJDMywXQCIhysCDEm8YEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZZapAQA&_nc_gid=BpiKlFiHL6LJ50xWeHHWbw&_nc_ss=7f689&_nc_zt=28&oh=00_AQFPBYS1NnXe3V2M0HEVlQalnNBzyrzmwsMeXDUhgMTcQg&oe=6A8710EE",
-        "playbackCapturedAt": "2026-08-19T05:52:22.975Z",
-        "playbackExpiresAt": "2026-08-20T14:36:30.000Z"
+        "playbackUrl": "https://scontent-cdg4-2.cdninstagram.com/o1/v/t2/f2/m86/AQOKghhB4ZtoLiokwMhgacz-kHqDYCLzuXjXGbrJQK8jABMkqXm3sCzrHkVJndJSgudDc63nIuaFqOL43VdGZ3WT78WyQNgByDx_hxc.mp4?_nc_cat=101&_nc_sid=5e9851&_nc_ht=scontent-cdg4-2.cdninstagram.com&_nc_ohc=tH8PxpxZWB8Q7kNvwFEwZHW&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuNzIwLmRhc2hfYmFzZWxpbmVfMV92MSIsInhwdl9hc3NldF9pZCI6MTAxMDcwNjE5NTE4MjU0MywiYXNzZXRfYWdlX2RheXMiOjQ2LCJ2aV91c2VjYXNlX2lkIjoxMDgyNywiZHVyYXRpb25fcyI6OSwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=93dd04ab45d60e06&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC82MDQ2MkJEMDVFQTg3MDQwMzczQjBEMjYzQTAyNjJCOF92aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyLzQ5NDYzNzZDRUYyQzc2Q0Q1NUU3ODA1M0Q4QjM1Qjg1X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaez-P7687LAxUCKAJDMywXQCIhysCDEm8YEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZZapAQA&_nc_gid=ju1YJAjySqjlYPrVoJ4Btg&_nc_ss=7f689&_nc_zt=28&oh=00_AQKnzRETyLTOZft-tOvpsVPz1JnVtnN7ctWGqxK-9TEhBw&oe=6A9520EE",
+        "playbackCapturedAt": "2026-08-29T22:30:08.078Z",
+        "playbackExpiresAt": "2026-08-31T06:36:30.000Z"
       },
       "usageObservations": [
         {
@@ -1252,9 +1252,9 @@
           "comments": 215,
           "shares": null
         },
-        "playbackUrl": "https://scontent-iad3-1.cdninstagram.com/o1/v/t2/f2/m86/AQMYbhzGtW-gYkbTFItpYwtne2sCF4tD7NuP_v8Ik7TsLFQPazkevErdgFN8yhFpfSAtpY-OpoPBuCnBxLDFb-SuRNDNFsWXwb_Wyhc.mp4?_nc_cat=101&_nc_sid=5e9851&_nc_ht=scontent-iad3-1.cdninstagram.com&_nc_ohc=yiI2bpR8wAIQ7kNvwHaihOS&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuOTUyLmRhc2hfYmFzZWxpbmVfMV92MSIsInhwdl9hc3NldF9pZCI6MTM3MjQyMDMwODE3NzM0NCwiYXNzZXRfYWdlX2RheXMiOjI1LCJ2aV91c2VjYXNlX2lkIjoxMDA5OSwiZHVyYXRpb25fcyI6MjIsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=781bb4859bfde5b2&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC9EMTQ0M0U1ODgxM0EzQzI1RjIzRDUxMDFFQ0Q0QUE4OF92aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyL0YwNEE2QkFEMEQ1MUZCNUZERTc1MzEzNDY4OTMyQjhDX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaAx5yPsI3wBBUCKAJDMywXQDbEGJN0vGoYEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZeadAQA&_nc_gid=_2rRDmOkkXgDYPHz15Tadg&_nc_ss=7f689&_nc_zt=28&oh=00_AQG3j2dd1i6wvFmPn7IbS0CDPawTMK5Ng034oo75nkIzyA&oe=6A87262A",
-        "playbackCapturedAt": "2026-08-19T05:52:22.975Z",
-        "playbackExpiresAt": "2026-08-20T16:07:06.000Z"
+        "playbackUrl": "https://scontent-cdg4-2.cdninstagram.com/o1/v/t2/f2/m86/AQMYbhzGtW-gYkbTFItpYwtne2sCF4tD7NuP_v8Ik7TsLFQPazkevErdgFN8yhFpfSAtpY-OpoPBuCnBxLDFb-SuRNDNFsWXwb_Wyhc.mp4?_nc_cat=101&_nc_sid=5e9851&_nc_ht=scontent-cdg4-2.cdninstagram.com&_nc_ohc=wCx-bt5nusMQ7kNvwFKH3SN&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuOTUyLmRhc2hfYmFzZWxpbmVfMV92MSIsInhwdl9hc3NldF9pZCI6MTM3MjQyMDMwODE3NzM0NCwiYXNzZXRfYWdlX2RheXMiOjM2LCJ2aV91c2VjYXNlX2lkIjoxMDA5OSwiZHVyYXRpb25fcyI6MjIsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=781bb4859bfde5b2&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC9EMTQ0M0U1ODgxM0EzQzI1RjIzRDUxMDFFQ0Q0QUE4OF92aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyL0YwNEE2QkFEMEQ1MUZCNUZERTc1MzEzNDY4OTMyQjhDX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaAx5yPsI3wBBUCKAJDMywXQDbEGJN0vGoYEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZeadAQA&_nc_gid=yzvD4SMwgRcERU-ziCWO1A&_nc_ss=7f689&_nc_zt=28&oh=00_AQI5jhuyizN0pQZOfNMvB8dLUrLFa-EaiwC04QrtKCC73Q&oe=6A95362A",
+        "playbackCapturedAt": "2026-08-29T22:30:08.078Z",
+        "playbackExpiresAt": "2026-08-31T08:07:06.000Z"
       },
       "usageObservations": [
         {
@@ -1513,9 +1513,9 @@
           "comments": 222,
           "shares": 3000
         },
-        "playbackUrl": "https://scontent-iad3-1.cdninstagram.com/o1/v/t2/f2/m86/AQOVReheLMerv25ZxkBMwnPyy8DyXMSwqzN-RalyElFueiQ-idw7kqwSuHTBr8GDJYmWyN-KU7VEgZv48K57sBK9AGRU30FJNZLbqHk.mp4?_nc_cat=110&_nc_sid=5e9851&_nc_ht=scontent-iad3-1.cdninstagram.com&_nc_ohc=vpymff8cq0kQ7kNvwHucVjY&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuNzIwLmRhc2hfYmFzZWxpbmVfMV92MSIsInhwdl9hc3NldF9pZCI6MzU4NzY4ODAyMTM5MDA0OSwiYXNzZXRfYWdlX2RheXMiOjI4LCJ2aV91c2VjYXNlX2lkIjoxMDgyNywiZHVyYXRpb25fcyI6MjEsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=5b45a8f321bf289e&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC83ODRCOUM5RDc0N0IxNzk0Njk4NzdCOTQ1NjcxQUJCQl92aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyL0VCNDk3NTcxNUE1Nzk5QzBDNzcwOUNBRkE2NUZBMkFBX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbCy6Ph9r7fDBUCKAJDMywXQDWZmZmZmZoYEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZZapAQA&_nc_gid=guCy_mLK-b2CyEN9d9Zz-g&_nc_ss=7f689&_nc_zt=28&oh=00_AQFEpJLnoagBa4AEa6jrpIxfjSXCl_rDuk_IJoMrdUb03w&oe=6A871873",
-        "playbackCapturedAt": "2026-08-19T05:52:22.975Z",
-        "playbackExpiresAt": "2026-08-20T15:08:35.000Z"
+        "playbackUrl": "https://scontent-cdg4-3.cdninstagram.com/o1/v/t2/f2/m86/AQOVReheLMerv25ZxkBMwnPyy8DyXMSwqzN-RalyElFueiQ-idw7kqwSuHTBr8GDJYmWyN-KU7VEgZv48K57sBK9AGRU30FJNZLbqHk.mp4?_nc_cat=110&_nc_sid=5e9851&_nc_ht=scontent-cdg4-3.cdninstagram.com&_nc_ohc=8_LOlPeIz5EQ7kNvwHEtqGl&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuNzIwLmRhc2hfYmFzZWxpbmVfMV92MSIsInhwdl9hc3NldF9pZCI6MzU4NzY4ODAyMTM5MDA0OSwiYXNzZXRfYWdlX2RheXMiOjM5LCJ2aV91c2VjYXNlX2lkIjoxMDgyNywiZHVyYXRpb25fcyI6MjEsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=5b45a8f321bf289e&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC83ODRCOUM5RDc0N0IxNzk0Njk4NzdCOTQ1NjcxQUJCQl92aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyL0VCNDk3NTcxNUE1Nzk5QzBDNzcwOUNBRkE2NUZBMkFBX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbCy6Ph9r7fDBUCKAJDMywXQDWZmZmZmZoYEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZZapAQA&_nc_gid=929KpW1swNVqOQUyr4PvsA&_nc_ss=7f689&_nc_zt=28&oh=00_AQKtk7dGdbOgsorxirl9ieSgZv86RskUnz3NPnU2nHOJsg&oe=6A952873",
+        "playbackCapturedAt": "2026-08-29T22:30:08.078Z",
+        "playbackExpiresAt": "2026-08-31T07:08:35.000Z"
       },
       "usageObservations": [
         {
@@ -1654,9 +1654,9 @@
           "comments": 1500,
           "shares": 6500
         },
-        "playbackUrl": "https://scontent-iad3-1.cdninstagram.com/o1/v/t2/f2/m86/AQPstNguYfAaU1LuqhBPhovElDjmwiPKalFSR3cERjf34AKG8SoYVCFUZlLQ8Yj1b2o-Ds9GulSgoh3soXNZp5A5xCVlAL8YZk2zC_E.mp4?_nc_cat=110&_nc_sid=5e9851&_nc_ht=scontent-iad3-1.cdninstagram.com&_nc_ohc=olgCknQNk_IQ7kNvwGd8K2Y&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuNzIwLmRhc2hfYmFzZWxpbmVfMV92MSIsInhwdl9hc3NldF9pZCI6MjcwMzA1ODI4OTk5NTA1MDAsImFzc2V0X2FnZV9kYXlzIjoyOSwidmlfdXNlY2FzZV9pZCI6MTAwOTksImR1cmF0aW9uX3MiOjE1LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=2cfcb2e9e75cea8a&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC84MjQ1NjA1QUM4MTk5Q0EyNEIyREMyMTFCMTQ0MzE4Q192aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyLzk2NDhFOTM3OTAyMEY4MTc3MERGNjg5QTk5OUZDNTk2X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbIjpa9gIuEYBUCKAJDMywXQC5EGJN0vGoYEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZeadAQA&_nc_gid=dfoH8aydQvKbX3w5iiEE7A&_nc_ss=7f689&_nc_zt=28&oh=00_AQHExlC_H_ChC-heOdxuvY55CWWrp3SA2Q00aYq6UTB96A&oe=6A8733DF",
-        "playbackCapturedAt": "2026-08-19T05:52:22.975Z",
-        "playbackExpiresAt": "2026-08-20T17:05:35.000Z"
+        "playbackUrl": "https://scontent-cdg4-3.cdninstagram.com/o1/v/t2/f2/m86/AQPstNguYfAaU1LuqhBPhovElDjmwiPKalFSR3cERjf34AKG8SoYVCFUZlLQ8Yj1b2o-Ds9GulSgoh3soXNZp5A5xCVlAL8YZk2zC_E.mp4?_nc_cat=110&_nc_sid=5e9851&_nc_ht=scontent-cdg4-3.cdninstagram.com&_nc_ohc=0DeIFAXIxN8Q7kNvwF41k5p&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuNzIwLmRhc2hfYmFzZWxpbmVfMV92MSIsInhwdl9hc3NldF9pZCI6MjcwMzA1ODI4OTk5NTA1MDAsImFzc2V0X2FnZV9kYXlzIjozOSwidmlfdXNlY2FzZV9pZCI6MTAwOTksImR1cmF0aW9uX3MiOjE1LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=2cfcb2e9e75cea8a&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC84MjQ1NjA1QUM4MTk5Q0EyNEIyREMyMTFCMTQ0MzE4Q192aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyLzk2NDhFOTM3OTAyMEY4MTc3MERGNjg5QTk5OUZDNTk2X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbIjpa9gIuEYBUCKAJDMywXQC5EGJN0vGoYEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZeadAQA&_nc_gid=EJ7UGfJ_jS-410NCY-ihug&_nc_ss=7f689&_nc_zt=28&oh=00_AQKwK-_qFABsC8AyZYeL9yGgxHIKsi8kwRLnz6Zle2kDoA&oe=6A9543DF",
+        "playbackCapturedAt": "2026-08-29T22:30:08.078Z",
+        "playbackExpiresAt": "2026-08-31T09:05:35.000Z"
       },
       "usageObservations": [
         {
@@ -1766,136 +1766,133 @@
       }
     },
     {
-      "id": "freaked-out-list",
-      "platform": "instagram",
+      "id": "audio-dracula-jennie-remix",
+      "platform": "tiktok",
       "type": "music",
-      "title": "FREAKED OUT",
-      "author": "Fat Papi · prodshushy",
-      "audioUrl": "https://www.instagram.com/reels/audio/1544636237314027/",
+      "title": "Dracula (with JENNIE)",
+      "author": "Tame Impala",
+      "audioUrl": "https://www.tiktok.com/music/Dracula-with-JENNIE-7603221525400455169",
       "source": {
-        "capturedAt": "2026-08-11T14:10:00.000Z",
-        "label": "Instagram · page audio publique",
-        "url": "https://www.instagram.com/reels/audio/1544636237314027/",
-        "exactness": "platform-estimate"
+        "capturedAt": "2026-08-29T22:30:08.078Z",
+        "label": "TikTok · audio oEmbed attribué à trois créateurs distincts",
+        "url": "https://www.tiktok.com/music/Dracula-with-JENNIE-7603221525400455169",
+        "exactness": "exact"
       },
       "referenceVideo": {
-        "author": "@marlon3lg",
-        "caption": "Plus forte vue visible dans la grille publique de l'audio lors de la capture.",
-        "url": "https://www.instagram.com/reel/DbKrHAtB3VI/",
-        "thumbnailUrl": "media/audio-trends/freaked-out-list.webp",
-        "durationSeconds": 14.133333,
-        "publishedAt": "2026-07-24T07:11:53.000Z",
-        "capturedAt": "2026-08-10T10:00:00.000Z",
-        "sourceLabel": "Instagram · compteurs publics du Reel",
-        "sourceUrl": "https://www.instagram.com/reel/DbKrHAtB3VI/",
+        "author": "@tameimpala",
+        "caption": "We tried our best 🤷‍♂️ @Dua Lipa",
+        "url": "https://www.tiktok.com/@tameimpala/video/7640146419336187149",
+        "thumbnailUrl": "media/audio-trends/audio-dracula-jennie-remix.jpg",
+        "durationSeconds": 13.466,
+        "publishedAt": "2026-05-15T15:50:08.000Z",
+        "capturedAt": "2026-08-10T12:00:00+02:00",
+        "sourceLabel": "TikTok · compteurs publics",
+        "sourceUrl": "https://www.tiktok.com/@tameimpala/video/7640146419336187149",
         "exactness": "platform-estimate",
         "metrics": {
-          "views": 5200000,
-          "likes": 314000,
-          "comments": 2126,
-          "shares": null
-        },
-        "playbackUrl": "https://scontent-iad6-1.cdninstagram.com/o1/v/t2/f2/m86/AQPJGl87uifVouRRSjWDxhc8ed5nSIJcY5mW_i5NRl24eFpHQQ0tu5LQ1-ExA_CQO1t7exwBCmdynel8SEcHPtJ22-9wrerbEe_TgF0.mp4?_nc_cat=102&_nc_sid=5e9851&_nc_ht=scontent-iad6-1.cdninstagram.com&_nc_ohc=zjrxf4VZRYkQ7kNvwEGHAEb&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuNzIwLmRhc2hfYmFzZWxpbmVfMV92MSIsInhwdl9hc3NldF9pZCI6NDYxMDA3MTc4MjU2Mzc4OCwiYXNzZXRfYWdlX2RheXMiOjI1LCJ2aV91c2VjYXNlX2lkIjoxMDA5OSwiZHVyYXRpb25fcyI6MTQsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=bd74ba1fa9f46ada&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC9DQTQwRDBCNERGNkY0MzQ0QTZGQjZFNDMxOEVFNTQ5OV92aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyLzM3NEFBOEJBOUNERTJBNDMzRjE2N0U0NjZDQzc5NEJCX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaY_-ivv7WwEBUCKAJDMywXQCxEGJN0vGoYEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZeadAQA&_nc_gid=lBrUGRkvLnI7FajLmJtxUg&_nc_ss=7f689&_nc_zt=28&oh=00_AQG997qKXUx0FunKIbyIEmT7W_VXOUAcp-UREWTSgk0dow&oe=6A871F07",
-        "playbackCapturedAt": "2026-08-19T05:52:22.975Z",
-        "playbackExpiresAt": "2026-08-20T15:36:39.000Z"
+          "views": null,
+          "likes": 2100000,
+          "comments": 7220,
+          "shares": 48500
+        }
       },
       "usageObservations": [
         {
-          "capturedAt": "2026-07-31T12:00:00.000Z",
-          "uses": 173000,
+          "capturedAt": "2026-08-29T22:30:08.078Z",
+          "uses": null,
           "rank": null,
           "rankWindow": null,
-          "sourceLabel": "SocialPilot · relevé de la page audio fin juillet",
-          "sourceUrl": "https://www.instagram.com/reels/audio/1544636237314027/",
-          "exactness": "platform-estimate"
+          "sourceLabel": "TikTok · compteur global non exposé publiquement",
+          "sourceUrl": "https://www.tiktok.com/music/Dracula-with-JENNIE-7603221525400455169",
+          "exactness": "unavailable"
         }
       ],
-      "lofiFitScore": 89,
-      "lofiAngle": "Poser quatre problèmes d'étude différents et révéler la même solution à chaque fois : remettre le casque et relancer la playlist.",
-      "lofiFitRationale": "La répétition transforme instantanément plusieurs situations étudiantes en une blague Lofi Girl simple et très lisible.",
+      "reuseEvidence": {
+        "verifiedAt": "2026-08-29T22:30:08.078Z",
+        "minimumDistinctCreators": 3,
+        "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
+        "posts": [
+          {
+            "platform": "tiktok",
+            "author": "@tameimpala",
+            "url": "https://www.tiktok.com/@tameimpala/video/7640146419336187149",
+            "capturedAt": "2026-08-29T22:30:08.078Z"
+          },
+          {
+            "platform": "tiktok",
+            "author": "@ddlovato",
+            "url": "https://www.tiktok.com/@ddlovato/video/7629030173538536717",
+            "capturedAt": "2026-08-29T22:30:08.078Z"
+          },
+          {
+            "platform": "tiktok",
+            "author": "@brookemonk_",
+            "url": "https://www.tiktok.com/@brookemonk_/video/7631305154494549279",
+            "capturedAt": "2026-08-29T22:30:08.078Z"
+          }
+        ]
+      },
+      "lofiFitScore": 92,
+      "lofiAngle": "À minuit, le minuteur vire au rouge, les feuilles se multiplient et Lofi Girl passe du surlignage tranquille au sprint final.",
+      "lofiFitRationale": "L’étude nocturne est l’image la plus reconnaissable de Lofi Girl ; la transformation traduit un état réel — le sprint de deadline — plutôt qu’un simple changement esthétique.",
       "proposals": [
         {
-          "id": "same-headphones-answer",
-          "title": "Quatre problèmes, une réponse",
-          "concept": "Sur chaque répétition de FREAKED OUT : voisins bruyants, pluie, groupe de travail chaotique, deadline; Lofi Girl répond toujours en remettant son casque.",
-          "copy": "Different problem. Same playlist.",
+          "id": "audio-dracula-jennie-remix-cozy",
+          "title": "Version cozy",
+          "concept": "Le passage clé éteint les fenêtres de la ville une à une tandis que la lampe et le cahier restent allumés. Avec une lumière douce et un rythme calme.",
+          "copy": "Quand tout ralentit dehors, une seule ligne peut encore suffire. · Version cozy.",
           "character": "lofi-girl",
           "tone": "cozy"
         },
         {
-          "id": "increasingly-wrong-solutions",
-          "title": "Les solutions de plus en plus douteuses",
-          "concept": "À chaque boucle de FREAKED OUT, Lofi Girl traite la fatigue avec une solution pire : café, double café, café glacé, puis tenir la tasse vide comme soutien émotionnel.",
-          "copy": "Problem-solving has left the chat.",
+          "id": "audio-dracula-jennie-remix-funny",
+          "title": "Version drôle",
+          "concept": "La chambre se transforme dramatiquement ; le chat apparaît sur la dernière page avec une mini-cape et bloque le sprint final. Le chat provoque le décalage final.",
+          "copy": "Plot twist : la deadline avait un boss final. · Version drôle.",
           "character": "lofi-girl",
           "tone": "funny"
         },
         {
-          "id": "if-then-focus",
-          "title": "Créer son plan si-alors",
-          "concept": "Les répétitions structurent quatre règles à l'écran : si bruit, casque; si téléphone, mode avion; si blocage, deux minutes; si fatigue, vraie pause.",
-          "copy": "Decide the response before the distraction arrives.",
+          "id": "audio-dracula-jennie-remix-smart",
+          "title": "Version smart",
+          "concept": "À minuit, le minuteur vire au rouge, les feuilles se multiplient et Lofi Girl passe du surlignage tranquille au sprint final. Le montage rend la mécanique lisible dès la première seconde.",
+          "copy": "Avant minuit : je prends mon temps. Après minuit : ce devoir a une bande-annonce. · Version smart.",
           "character": "lofi-girl",
           "tone": "smart"
         },
         {
-          "id": "four-room-versions",
-          "title": "Quatre versions de la même chambre",
-          "concept": "Chaque retour de FREAKED OUT bascule le décor — orage, néons, matin blanc, nuit profonde — mais Lofi Girl remet le même casque au centre du cadre.",
-          "copy": "Every timeline has the same focus ritual.",
+          "id": "audio-dracula-jennie-remix-cinematic",
+          "title": "Version cinématique",
+          "concept": "Le passage clé éteint les fenêtres de la ville une à une tandis que la lampe et le cahier restent allumés. La transition devient une mini-scène en trois plans.",
+          "copy": "Quand tout ralentit dehors, une seule ligne peut encore suffire. · Version cinématique.",
           "character": "lofi-girl",
           "tone": "cinematic"
         },
         {
-          "id": "every-study-problem",
-          "title": "Moi face à absolument chaque problème",
-          "concept": "Une série d'étiquettes apparaît au rythme répétitif — concentration, sommeil, motivation, page blanche — et Lofi Girl relance la même playlist pour chacune.",
-          "copy": "My coping mechanism has a tracklist.",
+          "id": "audio-dracula-jennie-remix-relatable",
+          "title": "Version relatable",
+          "concept": "À minuit, le minuteur vire au rouge, les feuilles se multiplient et Lofi Girl passe du surlignage tranquille au sprint final. La situation ramène le format à la procrastination ou aux études.",
+          "copy": "Avant minuit : je prends mon temps. Après minuit : ce devoir a une bande-annonce. · Version relatable.",
           "character": "lofi-girl",
           "tone": "relatable"
         },
         {
-          "id": "cat-caused-everything",
-          "title": "Le suspect commun",
-          "concept": "Quatre incidents sont révélés sur les boucles de FREAKED OUT; chaque plan se termine par le chat déjà présent à côté du câble, du café, du stylo ou du clavier.",
-          "copy": "Different crime scene. Same tiny suspect. 🐈",
+          "id": "audio-dracula-jennie-remix-cat",
+          "title": "Version chat",
+          "concept": "La chambre se transforme dramatiquement ; le chat apparaît sur la dernière page avec une mini-cape et bloque le sprint final. Le chat détourne la mécanique au dernier beat.",
+          "copy": "Plot twist : la deadline avait un boss final. · Version chat.",
           "character": "lofi-girl",
           "tone": "cat"
         },
         {
-          "id": "gamer-one-fix",
-          "title": "La solution universelle du gamer",
-          "concept": "Ping élevé, défaite, manette vide et mise à jour surprise arrivent sur les quatre répétitions; Lofi Boy répond chaque fois « restart » jusqu'à redémarrer aussi son devoir.",
-          "copy": "Have you tried turning the whole evening off and on? 🎮",
+          "id": "audio-dracula-jennie-remix-gaming",
+          "title": "Version gaming",
+          "concept": "À minuit, le minuteur vire au rouge, les feuilles se multiplient et Lofi Girl passe du surlignage tranquille au sprint final. Lofi Boy transforme le format en objectif de quête.",
+          "copy": "Avant minuit : je prends mon temps. Après minuit : ce devoir a une bande-annonce. · Version gaming.",
           "character": "lofi-boy",
           "tone": "gaming"
         }
-      ],
-      "reuseEvidence": {
-        "verifiedAt": "2026-08-11T17:29:34.000Z",
-        "minimumDistinctCreators": 3,
-        "summary": "Poser trois ou quatre questions différentes et révéler la même solution à chaque fois. Cette mécanique a été vérifiée dans trois créations indépendantes, et non dans de simples republications du même clip.",
-        "posts": [
-          {
-            "platform": "instagram",
-            "author": "@marlon3lg",
-            "url": "https://www.instagram.com/reel/DbKrHAtB3VI/",
-            "capturedAt": "2026-08-11T09:00:00.000Z"
-          },
-          {
-            "platform": "instagram",
-            "author": "@picsbyjuliette",
-            "url": "https://www.instagram.com/reel/DbLmzCsoKgj/",
-            "capturedAt": "2026-08-11T09:00:00.000Z"
-          },
-          {
-            "platform": "instagram",
-            "author": "@nejlaa_belh",
-            "url": "https://www.instagram.com/reel/DbJgYkaM9mn/",
-            "capturedAt": "2026-08-11T09:00:00.000Z"
-          }
-        ]
-      }
+      ]
     },
     {
       "id": "stupid-song-montage",
@@ -1927,9 +1924,9 @@
           "comments": 3400,
           "shares": 106500
         },
-        "playbackUrl": "https://scontent-iad6-1.cdninstagram.com/o1/v/t2/f2/m86/AQPz2lA3vPxXHxR5imfQdfSbXNXGvOeeUqfP_utdEHHecej5f970mmH2fgbPmia0pc3oHxpqKGjbhW7yE1yHBaaqZvuZMe3uFLbrSPY.mp4?_nc_cat=106&_nc_sid=5e9851&_nc_ht=scontent-iad6-1.cdninstagram.com&_nc_ohc=Bjr4fwzMzA8Q7kNvwGQz2KX&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuMTI3Ni5kYXNoX2Jhc2VsaW5lXzFfdjEiLCJ4cHZfYXNzZXRfaWQiOjE5OTcyNjQyODQ0ODgxMDcsImFzc2V0X2FnZV9kYXlzIjo2NywidmlfdXNlY2FzZV9pZCI6MTAwOTksImR1cmF0aW9uX3MiOjI5LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=8966d5e15e8cf87a&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC9FNTQ1Mjc3RkE0MDdFQUM0OTQ4N0QzMkIxN0E1MzdBQ192aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyLzQ3NDk5QzBCODM2RTVDN0FBQTJEMTgyMjNGNjkxMDk3X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbWxpjDiqCMBxUCKAJDMywXQD0VP3ztkWgYEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZeadAQA&_nc_gid=jac4rUuZrgndjcQCEfcK-Q&_nc_ss=7f689&_nc_zt=28&oh=00_AQHEAEeV6J0IbXLU1w2HX-7Zjl7x5oT-i-sqjquQLiLkRg&oe=6A872C2F",
-        "playbackCapturedAt": "2026-08-19T05:52:22.975Z",
-        "playbackExpiresAt": "2026-08-20T16:32:47.000Z"
+        "playbackUrl": "https://scontent-cdg6-1.cdninstagram.com/o1/v/t2/f2/m86/AQPz2lA3vPxXHxR5imfQdfSbXNXGvOeeUqfP_utdEHHecej5f970mmH2fgbPmia0pc3oHxpqKGjbhW7yE1yHBaaqZvuZMe3uFLbrSPY.mp4?_nc_cat=106&_nc_sid=5e9851&_nc_ht=scontent-cdg6-1.cdninstagram.com&_nc_ohc=DkVB23hZ15wQ7kNvwGjKZVx&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuMTI3Ni5kYXNoX2Jhc2VsaW5lXzFfdjEiLCJ4cHZfYXNzZXRfaWQiOjE5OTcyNjQyODQ0ODgxMDcsImFzc2V0X2FnZV9kYXlzIjo3OCwidmlfdXNlY2FzZV9pZCI6MTAwOTksImR1cmF0aW9uX3MiOjI5LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=8966d5e15e8cf87a&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC9FNTQ1Mjc3RkE0MDdFQUM0OTQ4N0QzMkIxN0E1MzdBQ192aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyLzQ3NDk5QzBCODM2RTVDN0FBQTJEMTgyMjNGNjkxMDk3X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbWxpjDiqCMBxUCKAJDMywXQD0VP3ztkWgYEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZeadAQA&_nc_gid=Mxl6CDtwwMBy57UVAmYVLA&_nc_ss=7f689&_nc_zt=28&oh=00_AQJSybijYpNYwQHIEvNTv0DrD1Wwn2w9viLQJW8GwadZvw&oe=6A953C2F",
+        "playbackCapturedAt": "2026-08-29T22:30:08.078Z",
+        "playbackExpiresAt": "2026-08-31T08:32:47.000Z"
       },
       "usageObservations": [
         {
@@ -2072,27 +2069,27 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-08-11T17:29:34.000Z",
+        "verifiedAt": "2026-08-29T22:30:08.078Z",
         "minimumDistinctCreators": 3,
-        "summary": "Le même audio TikTok a été vérifié dans 3 créations indépendantes reliées au format « two-personalities ».",
+        "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
           {
             "platform": "tiktok",
             "author": "@juttaleerdam",
             "url": "https://www.tiktok.com/@juttaleerdam/video/7501392027473464598",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
-          },
-          {
-            "platform": "tiktok",
-            "author": "@allie_spa",
-            "url": "https://www.tiktok.com/@allie_spa/video/7420637385370717482",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@livinwithiz",
             "url": "https://www.tiktok.com/@livinwithiz/video/7412728217775164702",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
+          },
+          {
+            "platform": "tiktok",
+            "author": "@allie_spa",
+            "url": "https://www.tiktok.com/@allie_spa/video/7420637385370717482",
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           }
         ]
       },
@@ -2201,27 +2198,27 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-08-11T17:29:34.000Z",
+        "verifiedAt": "2026-08-29T22:30:08.078Z",
         "minimumDistinctCreators": 3,
-        "summary": "Le même audio TikTok a été vérifié dans 3 créations indépendantes reliées au format « kumar-method ».",
+        "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
-          {
-            "platform": "tiktok",
-            "author": "@joycelimrealtor",
-            "url": "https://www.tiktok.com/@joycelimrealtor/video/7661118928088878344",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
-          },
           {
             "platform": "tiktok",
             "author": "@thekumarmethod",
             "url": "https://www.tiktok.com/@thekumarmethod/video/7647998974489627917",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
+          },
+          {
+            "platform": "tiktok",
+            "author": "@joycelimrealtor",
+            "url": "https://www.tiktok.com/@joycelimrealtor/video/7661118928088878344",
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@jossyautomotive6",
             "url": "https://www.tiktok.com/@jossyautomotive6/video/7665724163738438929",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           }
         ]
       },
@@ -2288,129 +2285,129 @@
       ]
     },
     {
-      "id": "tiktok-not-very-nonchalant-633631",
+      "id": "audio-wrap-it-up-procrastination",
       "platform": "tiktok",
-      "type": "original",
-      "title": "Not Very Nonchalant · son original",
-      "author": "Trace Young †",
-      "audioUrl": "https://www.tiktok.com/music/original-sound-7627238272384633631",
+      "type": "music",
+      "title": "Wrap it up",
+      "author": "JoJo",
+      "audioUrl": "https://www.tiktok.com/music/Wrap-it-up-7208649829264837422",
       "source": {
-        "capturedAt": "2026-08-11T17:29:34.000Z",
-        "label": "TikTok · audio natif identifié dans trois créations indépendantes",
-        "url": "https://www.tiktok.com/music/original-sound-7627238272384633631",
+        "capturedAt": "2026-08-29T22:30:08.078Z",
+        "label": "TikTok · audio oEmbed attribué à trois créateurs distincts",
+        "url": "https://www.tiktok.com/music/Wrap-it-up-7208649829264837422",
         "exactness": "exact"
       },
       "referenceVideo": {
-        "author": "@trace.young",
-        "caption": "Full vlog dropping on YouTube LINK IN BIO! Follow for more 🥰",
-        "url": "https://www.tiktok.com/@trace.young/video/7627238223386873119",
-        "thumbnailUrl": "media/audio-trends/tiktok-not-very-nonchalant-633631.webp",
-        "durationSeconds": 16,
-        "publishedAt": "2026-04-10T21:00:07.000Z",
-        "capturedAt": "2026-08-11T17:29:34.000Z",
-        "sourceLabel": "TikTok · vidéo native et compteurs publics",
-        "sourceUrl": "https://www.tiktok.com/@trace.young/video/7627238223386873119",
+        "author": "@m.i.h.a.e.l.a89",
+        "caption": "d1 procrastinator",
+        "url": "https://www.tiktok.com/@m.i.h.a.e.l.a89/video/7626838176945933582",
+        "thumbnailUrl": "media/audio-trends/audio-wrap-it-up-procrastination.jpg",
+        "durationSeconds": 6,
+        "publishedAt": "2026-04-09T00:00:00.000Z",
+        "capturedAt": "2026-08-11T09:15:10.913Z",
+        "sourceLabel": "TikTok · compteurs publics vérifiés le 11/08/2026",
+        "sourceUrl": "https://www.tiktok.com/@m.i.h.a.e.l.a89/video/7626838176945933582",
         "exactness": "platform-estimate",
         "metrics": {
-          "views": 11200000,
-          "likes": 1200000,
-          "comments": 3765,
-          "shares": 66000
+          "views": null,
+          "likes": 180900,
+          "comments": 146,
+          "shares": 22300
         }
       },
       "usageObservations": [
         {
-          "capturedAt": "2026-08-11T17:29:34.000Z",
+          "capturedAt": "2026-08-29T22:30:08.078Z",
           "uses": null,
           "rank": null,
           "rankWindow": null,
-          "sourceLabel": "TikTok · page audio native et reprises multi-créateurs vérifiées",
-          "sourceUrl": "https://www.tiktok.com/music/original-sound-7627238272384633631",
+          "sourceLabel": "TikTok · compteur global non exposé publiquement",
+          "sourceUrl": "https://www.tiktok.com/music/Wrap-it-up-7208649829264837422",
           "exactness": "unavailable"
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-08-11T17:29:34.000Z",
+        "verifiedAt": "2026-08-29T22:30:08.078Z",
         "minimumDistinctCreators": 3,
-        "summary": "Le même audio TikTok a été vérifié dans 3 créations indépendantes reliées au format « not-very-nonchalant ».",
+        "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
           {
             "platform": "tiktok",
-            "author": "@iangohke",
-            "url": "https://www.tiktok.com/@iangohke/video/7654384958831709447",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "author": "@m.i.h.a.e.l.a89",
+            "url": "https://www.tiktok.com/@m.i.h.a.e.l.a89/video/7626838176945933582",
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
-            "author": "@trace.young",
-            "url": "https://www.tiktok.com/@trace.young/video/7627238223386873119",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "author": "@eky2107",
+            "url": "https://www.tiktok.com/@eky2107/video/7325930286838025515",
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
-            "author": "@mayedie.ugc",
-            "url": "https://www.tiktok.com/@mayedie.ugc/video/7670860568642850070",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "author": "@syd456123",
+            "url": "https://www.tiktok.com/@syd456123/video/7321895999947967787",
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           }
         ]
       },
-      "lofiFitScore": 87,
-      "lofiAngle": "Ajouter une phrase qui rejette le détachement, puis montrer une réaction sincèrement enthousiaste sans chercher à rester cool.",
-      "lofiFitRationale": "Voir Lofi Girl quitter brièvement son calme iconique pour célébrer une petite victoire crée une surprise très chaleureuse.",
+      "lofiFitScore": 99,
+      "lofiAngle": "Lofi Girl règle la lumière, choisit sa playlist et prépare son thé ; dès qu’elle écrit un mot, le son coupe la session.",
+      "lofiFitRationale": "Le contraste entre un setup de travail parfait et une session minuscule correspond exactement à l’humour relatable de Lofi Girl.",
       "proposals": [
         {
-          "id": "not-very-nonchalant-633631-signature",
-          "title": "Enfin envoyé",
-          "concept": "Elle abandonne son calme et danse après avoir vu sa note d’examen.",
-          "copy": "Je ne suis pas nonchalante. J’ai cliqué sur envoyer avant 23:59.",
-          "character": "lofi-girl",
-          "tone": "relatable"
-        },
-        {
-          "id": "not-very-nonchalant-633631-cozy",
-          "title": "Une joie qui mérite sa place",
-          "concept": "Elle sourit, ouvre la fenêtre et partage calmement sa petite victoire avec le chat.",
-          "copy": "On peut être fière des petites choses. Elles comptent aussi.",
+          "id": "audio-wrap-it-up-procrastination-cozy",
+          "title": "Version cozy",
+          "concept": "Le son arrive après une vraie petite page terminée ; elle ferme calmement le cahier sans culpabiliser. Avec une lumière douce et un rythme calme.",
+          "copy": "Une page faite vaut mieux qu’une session parfaite jamais commencée. · Version cozy.",
           "character": "lofi-girl",
           "tone": "cozy"
         },
         {
-          "id": "not-very-nonchalant-633631-twist",
-          "title": "Page deux terminée",
-          "concept": "Confettis, fanfare et danse générale pour avoir simplement terminé la deuxième page du chapitre.",
-          "copy": "Deux pages lues. La parade peut commencer.",
+          "id": "audio-wrap-it-up-procrastination-funny",
+          "title": "Version drôle",
+          "concept": "Le chat appuie sur stop dès que le stylo touche la feuille. Le chat provoque le décalage final.",
+          "copy": "La direction artistique vient officiellement d’annuler la session. · Version drôle.",
           "character": "lofi-girl",
           "tone": "funny"
         },
         {
-          "id": "not-very-nonchalant-633631-headphones",
-          "title": "La minute anti-cool",
-          "concept": "Lofi Girl lit « devoir envoyé » en restant immobile deux secondes, puis la basse libère une célébration sans retenue : chaise qui tourne, bras levés et pluie de post-it.",
-          "copy": "Submitted at 23:58. Nonchalance officially cancelled.",
+          "id": "audio-wrap-it-up-procrastination-smart",
+          "title": "Version smart",
+          "concept": "Lofi Girl règle la lumière, choisit sa playlist et prépare son thé ; dès qu’elle écrit un mot, le son coupe la session. Le montage rend la mécanique lisible dès la première seconde.",
+          "copy": "40 minutes de setup. 6 secondes d’étude. Wrap it up. · Version smart.",
           "character": "lofi-girl",
           "tone": "smart"
         },
         {
-          "id": "not-very-nonchalant-633631-cat",
-          "title": "Le chat célèbre avant elle",
-          "concept": "Elle essaie de garder un visage neutre devant sa bonne note ; le chat déclenche une mini-banderole depuis l’étagère et l’oblige à sourire sur la chute.",
-          "copy": "I was going to play it cool. Management disagreed.",
-          "character": "lofi-girl",
-          "tone": "cat"
-        },
-        {
-          "id": "not-very-nonchalant-633631-night",
-          "title": "Victoire à 23 h 58",
-          "concept": "Horloge et barre d’upload occupent tout le cadre ; quand la validation apparaît, la lumière froide passe au doré et Lofi Girl danse encore assise, stylo à la main.",
-          "copy": "Tiny win, full-volume joy.",
+          "id": "audio-wrap-it-up-procrastination-cinematic",
+          "title": "Version cinématique",
+          "concept": "Le son arrive après une vraie petite page terminée ; elle ferme calmement le cahier sans culpabiliser. La transition devient une mini-scène en trois plans.",
+          "copy": "Une page faite vaut mieux qu’une session parfaite jamais commencée. · Version cinématique.",
           "character": "lofi-girl",
           "tone": "cinematic"
         },
         {
-          "id": "not-very-nonchalant-633631-boy",
-          "title": "Achievement sans poker face",
-          "concept": "Lofi Boy débloque un trophée rare, tente le regard impassible demandé par le format, puis saute hors champ quand le son refuse toute retenue.",
-          "copy": "Achievement unlocked: visibly delighted.",
+          "id": "audio-wrap-it-up-procrastination-relatable",
+          "title": "Version relatable",
+          "concept": "Lofi Girl règle la lumière, choisit sa playlist et prépare son thé ; dès qu’elle écrit un mot, le son coupe la session. La situation ramène le format à la procrastination ou aux études.",
+          "copy": "40 minutes de setup. 6 secondes d’étude. Wrap it up. · Version relatable.",
+          "character": "lofi-girl",
+          "tone": "relatable"
+        },
+        {
+          "id": "audio-wrap-it-up-procrastination-cat",
+          "title": "Version chat",
+          "concept": "Le chat appuie sur stop dès que le stylo touche la feuille. Le chat détourne la mécanique au dernier beat.",
+          "copy": "La direction artistique vient officiellement d’annuler la session. · Version chat.",
+          "character": "lofi-girl",
+          "tone": "cat"
+        },
+        {
+          "id": "audio-wrap-it-up-procrastination-gaming",
+          "title": "Version gaming",
+          "concept": "Lofi Girl règle la lumière, choisit sa playlist et prépare son thé ; dès qu’elle écrit un mot, le son coupe la session. Lofi Boy transforme le format en objectif de quête.",
+          "copy": "40 minutes de setup. 6 secondes d’étude. Wrap it up. · Version gaming.",
           "character": "lofi-boy",
           "tone": "gaming"
         }
@@ -2546,129 +2543,129 @@
       ]
     },
     {
-      "id": "tiktok-pain-oh-no-spain-150304",
+      "id": "audio-netflix-documentary-confessional",
       "platform": "tiktok",
-      "type": "spoken",
-      "title": "Pain / Spain · les devoirs voyagent · son original",
-      "author": "Irina",
-      "audioUrl": "https://www.tiktok.com/music/original-sound-7385248336640150304",
+      "type": "music",
+      "title": "On a Mission",
+      "author": "Duomo",
+      "audioUrl": "https://www.tiktok.com/music/On-a-Mission-7274043399086426113",
       "source": {
-        "capturedAt": "2026-08-11T17:29:34.000Z",
-        "label": "TikTok · audio natif identifié dans trois créations indépendantes",
-        "url": "https://www.tiktok.com/music/original-sound-7385248336640150304",
+        "capturedAt": "2026-08-29T22:30:08.078Z",
+        "label": "TikTok · audio oEmbed attribué à trois créateurs distincts",
+        "url": "https://www.tiktok.com/music/On-a-Mission-7274043399086426113",
         "exactness": "exact"
       },
       "referenceVideo": {
-        "author": "@soypau_cacho",
-        "caption": "I’M IN SPAIN 😍🇪🇸",
-        "url": "https://www.tiktok.com/@soypau_cacho/video/7659445964796644629",
-        "thumbnailUrl": "media/audio-trends/tiktok-pain-oh-no-spain-150304.webp",
-        "durationSeconds": 9,
-        "publishedAt": "2026-07-06T16:02:20.000Z",
-        "capturedAt": "2026-08-11T17:29:34.000Z",
-        "sourceLabel": "TikTok · vidéo native et compteurs publics",
-        "sourceUrl": "https://www.tiktok.com/@soypau_cacho/video/7659445964796644629",
+        "author": "@johnnellis_",
+        "caption": "Time for my side of the story @Erling Haaland ...",
+        "url": "https://www.tiktok.com/@johnnellis_/video/7666782102377024790",
+        "thumbnailUrl": "media/audio-trends/audio-netflix-documentary-confessional.png",
+        "durationSeconds": 8,
+        "publishedAt": "2026-07-26T10:30:11.000Z",
+        "capturedAt": "2026-08-10T12:00:00+02:00",
+        "sourceLabel": "TikTok · compteurs publics",
+        "sourceUrl": "https://www.tiktok.com/@johnnellis_/video/7666782102377024790",
         "exactness": "platform-estimate",
         "metrics": {
-          "views": 3000000,
-          "likes": 455600,
-          "comments": 2555,
-          "shares": 3440
+          "views": null,
+          "likes": 1400000,
+          "comments": 6904,
+          "shares": 9994
         }
       },
       "usageObservations": [
         {
-          "capturedAt": "2026-08-11T17:29:34.000Z",
+          "capturedAt": "2026-08-29T22:30:08.078Z",
           "uses": null,
           "rank": null,
           "rankWindow": null,
-          "sourceLabel": "TikTok · page audio native et reprises multi-créateurs vérifiées",
-          "sourceUrl": "https://www.tiktok.com/music/original-sound-7385248336640150304",
+          "sourceLabel": "TikTok · compteur global non exposé publiquement",
+          "sourceUrl": "https://www.tiktok.com/music/On-a-Mission-7274043399086426113",
           "exactness": "unavailable"
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-08-11T17:29:34.000Z",
+        "verifiedAt": "2026-08-29T22:30:08.078Z",
         "minimumDistinctCreators": 3,
-        "summary": "Le même audio TikTok a été vérifié dans 3 créations indépendantes reliées au format « pain-oh-no-spain ».",
+        "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
           {
             "platform": "tiktok",
-            "author": "@soypau_cacho",
-            "url": "https://www.tiktok.com/@soypau_cacho/video/7659445964796644629",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "author": "@johnnellis_",
+            "url": "https://www.tiktok.com/@johnnellis_/video/7666782102377024790",
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
-            "author": "@tatianakopala0",
-            "url": "https://www.tiktok.com/@tatianakopala0/video/7659506493535964448",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "author": "@janayandkalisha",
+            "url": "https://www.tiktok.com/@janayandkalisha/video/7665832849349659918",
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
-            "author": "@chloe__michelle",
-            "url": "https://www.tiktok.com/@chloe__michelle/video/7667339292821245205",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "author": "@liammillerr",
+            "url": "https://www.tiktok.com/@liammillerr/video/7663238721306627359",
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           }
         ]
       },
-      "lofiFitScore": 88,
-      "lofiAngle": "Ouvrir en très gros plan sur une deadline et un visage épuisé, synchroniser le jeu de mots, puis élargir pour révéler balcon, soleil et cahier de vacances.",
-      "lofiFitRationale": "Le gag repose sur une vérité étudiante précise : changer de décor ne fait pas disparaître la deadline. Lofi Girl reste elle-même, mais son bureau devient nomade.",
+      "lofiFitScore": 98,
+      "lofiAngle": "Elle raconte comme un true crime la nuit du fichier final_v7_bis.",
+      "lofiFitRationale": "Le calme de la chambre devient un décor parfait pour raconter avec gravité une catastrophe d’étudiant dérisoire.",
       "proposals": [
         {
-          "id": "pain-oh-no-spain-150304-signature",
-          "title": "La deadline a pris le même vol",
-          "concept": "Gros plan sur son devoir non commencé ; le cadre s’ouvre sur un balcon espagnol où le même cahier l’a suivie.",
-          "copy": "I’m in pain… ah non, je suis en Spain. Ma deadline aussi.",
-          "character": "lofi-girl",
-          "tone": "relatable"
-        },
-        {
-          "id": "pain-oh-no-spain-150304-cozy",
-          "title": "Un bureau ailleurs",
-          "concept": "La révélation montre un coin calme à l’ombre, le chat endormi et une seule page à terminer avant de sortir.",
-          "copy": "La tâche n’a pas changé. La lumière, elle, aide un peu.",
+          "id": "audio-netflix-documentary-confessional-cozy",
+          "title": "Version cozy",
+          "concept": "Elle reconstitue avec douceur la soirée où une tasse chaude a sauvé sa session de travail. Avec une lumière douce et un rythme calme.",
+          "copy": "Parfois, l’élément décisif d’une longue soirée tient dans une tasse. · Version cozy.",
           "character": "lofi-girl",
           "tone": "cozy"
         },
         {
-          "id": "pain-oh-no-spain-150304-twist",
-          "title": "Le budget Erasmus",
-          "concept": "Le plan large révèle que le balcon est une affiche, le soleil une lampe et le vent un ventilateur tenu par le chat.",
-          "copy": "Programme d’échange validé par mon budget : Espagne, chambre 1, bureau B.",
+          "id": "audio-netflix-documentary-confessional-funny",
+          "title": "Version drôle",
+          "concept": "Trois témoins et une reconstitution tentent d’expliquer pourquoi le post-it était collé à l’envers. Le chat provoque le décalage final.",
+          "copy": "Les experts restent divisés. Le post-it, lui, ne parlera pas. · Version drôle.",
           "character": "lofi-girl",
           "tone": "funny"
         },
         {
-          "id": "pain-oh-no-spain-150304-headphones",
-          "title": "Zoom arrière vers l’Espagne",
-          "concept": "Commencer sur les yeux fatigués et le mot « pain » au-dessus du cahier ; au jeu de mots, dézoomer d’un seul mouvement vers balcon, soleil et petite pile de devoirs arrivée dans la valise.",
-          "copy": "The homework found me in Spain. Impressive commitment.",
+          "id": "audio-netflix-documentary-confessional-smart",
+          "title": "Version smart",
+          "concept": "Elle raconte comme un true crime la nuit du fichier final_v7_bis. Le montage rend la mécanique lisible dès la première seconde.",
+          "copy": "À ce moment-là, je pensais vraiment que tout était perdu. · Version smart.",
           "character": "lofi-girl",
           "tone": "smart"
         },
         {
-          "id": "pain-oh-no-spain-150304-cat",
-          "title": "Passeport confisqué",
-          "concept": "Lofi Girl cherche son passeport pendant le reveal ; le plan large montre le chat couché dessus, très satisfait d’avoir transformé les vacances en staycation.",
-          "copy": "Spain was approved. The cat appealed.",
-          "character": "lofi-girl",
-          "tone": "cat"
-        },
-        {
-          "id": "pain-oh-no-spain-150304-night",
-          "title": "De la douleur au coucher de soleil",
-          "concept": "Le gros plan bleuté de la deadline s’ouvre progressivement sur un ciel orange ; le stylo reprend exactement quand le soleil touche l’horizon.",
-          "copy": "Same page, softer horizon.",
+          "id": "audio-netflix-documentary-confessional-cinematic",
+          "title": "Version cinématique",
+          "concept": "Elle reconstitue avec douceur la soirée où une tasse chaude a sauvé sa session de travail. La transition devient une mini-scène en trois plans.",
+          "copy": "Parfois, l’élément décisif d’une longue soirée tient dans une tasse. · Version cinématique.",
           "character": "lofi-girl",
           "tone": "cinematic"
         },
         {
-          "id": "pain-oh-no-spain-150304-boy",
-          "title": "Pain, Spain, puis respawn",
-          "concept": "Après un game over, Lofi Boy prononce « pain » ; le cut « Spain » révèle son setup portable sur une terrasse, puis un nouveau game over ruine immédiatement la carte postale.",
-          "copy": "Changed countries. Kept the skill issue.",
+          "id": "audio-netflix-documentary-confessional-relatable",
+          "title": "Version relatable",
+          "concept": "Elle raconte comme un true crime la nuit du fichier final_v7_bis. La situation ramène le format à la procrastination ou aux études.",
+          "copy": "À ce moment-là, je pensais vraiment que tout était perdu. · Version relatable.",
+          "character": "lofi-girl",
+          "tone": "relatable"
+        },
+        {
+          "id": "audio-netflix-documentary-confessional-cat",
+          "title": "Version chat",
+          "concept": "Trois témoins et une reconstitution tentent d’expliquer pourquoi le post-it était collé à l’envers. Le chat détourne la mécanique au dernier beat.",
+          "copy": "Les experts restent divisés. Le post-it, lui, ne parlera pas. · Version chat.",
+          "character": "lofi-girl",
+          "tone": "cat"
+        },
+        {
+          "id": "audio-netflix-documentary-confessional-gaming",
+          "title": "Version gaming",
+          "concept": "Elle raconte comme un true crime la nuit du fichier final_v7_bis. Lofi Boy transforme le format en objectif de quête.",
+          "copy": "À ce moment-là, je pensais vraiment que tout était perdu. · Version gaming.",
           "character": "lofi-boy",
           "tone": "gaming"
         }
@@ -2717,27 +2714,27 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-08-11T17:29:34.000Z",
+        "verifiedAt": "2026-08-29T22:30:08.078Z",
         "minimumDistinctCreators": 3,
-        "summary": "Le même audio TikTok a été vérifié dans 3 créations indépendantes reliées au format « bangladesh-absurd-complaint ».",
+        "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
-          {
-            "platform": "tiktok",
-            "author": "@arthenaa",
-            "url": "https://www.tiktok.com/@arthenaa/video/7651446709867777294",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
-          },
           {
             "platform": "tiktok",
             "author": "@ianmcconnellmusic",
             "url": "https://www.tiktok.com/@ianmcconnellmusic/video/7649038438942985503",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
+          },
+          {
+            "platform": "tiktok",
+            "author": "@arthenaa",
+            "url": "https://www.tiktok.com/@arthenaa/video/7651446709867777294",
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@cherylporterdiva",
             "url": "https://www.tiktok.com/@cherylporterdiva/video/7653614393908792606",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           }
         ]
       },
@@ -3104,27 +3101,27 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-08-11T17:29:34.000Z",
+        "verifiedAt": "2026-08-29T22:30:08.078Z",
         "minimumDistinctCreators": 3,
-        "summary": "Le même audio TikTok a été vérifié dans 3 créations indépendantes reliées au format « ss26-editorial-transition ».",
+        "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
           {
             "platform": "tiktok",
             "author": "@charlixcx",
             "url": "https://www.tiktok.com/@charlixcx/video/7642492769965067542",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@plastik",
             "url": "https://www.tiktok.com/@plastik/video/7643090478052773141",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@monsterklawz",
             "url": "https://www.tiktok.com/@monsterklawz/video/7645016781974719758",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           }
         ]
       },
@@ -3491,27 +3488,27 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-08-11T17:29:34.000Z",
+        "verifiedAt": "2026-08-29T22:30:08.078Z",
         "minimumDistinctCreators": 3,
-        "summary": "Le même audio TikTok a été vérifié dans 3 créations indépendantes reliées au format « broken-rules-temptation ».",
+        "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
           {
             "platform": "tiktok",
             "author": "@romero.szee",
             "url": "https://www.tiktok.com/@romero.szee/video/7660435196302363934",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@yumberryyogurt99",
             "url": "https://www.tiktok.com/@yumberryyogurt99/video/7665821726822927647",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@laken.bryant",
             "url": "https://www.tiktok.com/@laken.bryant/video/7658304480160632094",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           }
         ]
       },
@@ -3620,27 +3617,27 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-08-11T17:29:34.000Z",
+        "verifiedAt": "2026-08-29T22:30:08.078Z",
         "minimumDistinctCreators": 3,
-        "summary": "Le même audio TikTok a été vérifié dans 3 créations indépendantes reliées au format « viral-moment-backstory ».",
+        "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
           {
             "platform": "tiktok",
             "author": "@kaylee_halko",
             "url": "https://www.tiktok.com/@kaylee_halko/video/7663189220135013646",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@lifewithyaaya",
             "url": "https://www.tiktok.com/@lifewithyaaya/video/7666599141300129037",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@addie_mccracken123",
             "url": "https://www.tiktok.com/@addie_mccracken123/video/7665458699720248589",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           }
         ]
       },
@@ -3749,27 +3746,27 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-08-11T17:29:34.000Z",
+        "verifiedAt": "2026-08-29T22:30:08.078Z",
         "minimumDistinctCreators": 3,
-        "summary": "Le même audio TikTok a été vérifié dans 3 créations indépendantes reliées au format « different-lives-split ».",
+        "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
           {
             "platform": "tiktok",
             "author": "@asiansurfergirl",
             "url": "https://www.tiktok.com/@asiansurfergirl/video/7668422119440567582",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@klemfamily",
             "url": "https://www.tiktok.com/@klemfamily/video/7668351340745116942",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@life.of.duck",
             "url": "https://www.tiktok.com/@life.of.duck/video/7671787826937122068",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           }
         ]
       },
@@ -3878,27 +3875,27 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-08-11T17:29:34.000Z",
+        "verifiedAt": "2026-08-29T22:30:08.078Z",
         "minimumDistinctCreators": 3,
-        "summary": "Le même audio TikTok a été vérifié dans 3 créations indépendantes reliées au format « rush-hour-understand-me ».",
+        "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
           {
             "platform": "tiktok",
             "author": "@maciejsphotos",
             "url": "https://www.tiktok.com/@maciejsphotos/video/7653092844613160214",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@cintascl_",
             "url": "https://www.tiktok.com/@cintascl_/video/7655167358876601607",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@salzabiw_",
             "url": "https://www.tiktok.com/@salzabiw_/video/7655922769955147025",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           }
         ]
       },
@@ -4007,27 +4004,27 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-08-11T17:29:34.000Z",
+        "verifiedAt": "2026-08-29T22:30:08.078Z",
         "minimumDistinctCreators": 3,
-        "summary": "Le même audio TikTok a été vérifié dans 3 créations indépendantes reliées au format « suspect-hidden-plain-sight ».",
+        "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
           {
             "platform": "tiktok",
             "author": "@ameliamitchspam",
             "url": "https://www.tiktok.com/@ameliamitchspam/video/7668735049658879254",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@hope.along.the.way",
             "url": "https://www.tiktok.com/@hope.along.the.way/video/7666712012000333069",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@inesstitaa",
             "url": "https://www.tiktok.com/@inesstitaa/video/7670161263544257814",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           }
         ]
       },
@@ -4394,27 +4391,27 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-08-11T17:29:34.000Z",
+        "verifiedAt": "2026-08-29T22:30:08.078Z",
         "minimumDistinctCreators": 3,
-        "summary": "Le même audio TikTok a été vérifié dans 3 créations indépendantes reliées au format « study-until-they-text-aging ».",
+        "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
           {
             "platform": "tiktok",
             "author": "@yammin_",
             "url": "https://www.tiktok.com/@yammin_/video/7601563909660642582",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
-          },
-          {
-            "platform": "tiktok",
-            "author": "@itskajja",
-            "url": "https://www.tiktok.com/@itskajja/video/7626469513948744982",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@steciathv",
             "url": "https://www.tiktok.com/@steciathv/video/7603357546539273490",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
+          },
+          {
+            "platform": "tiktok",
+            "author": "@itskajja",
+            "url": "https://www.tiktok.com/@itskajja/video/7626469513948744982",
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           }
         ]
       },
@@ -4523,27 +4520,27 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-08-11T17:29:34.000Z",
+        "verifiedAt": "2026-08-29T22:30:08.078Z",
         "minimumDistinctCreators": 3,
-        "summary": "Le même audio TikTok a été vérifié dans 3 créations indépendantes reliées au format « deadline-tomorrow-turbo ».",
+        "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
-          {
-            "platform": "tiktok",
-            "author": "@lizalima777",
-            "url": "https://www.tiktok.com/@lizalima777/video/7573005794094992647",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
-          },
           {
             "platform": "tiktok",
             "author": "@pfthannah",
             "url": "https://www.tiktok.com/@pfthannah/video/7572161262285589782",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
+          },
+          {
+            "platform": "tiktok",
+            "author": "@lizalima777",
+            "url": "https://www.tiktok.com/@lizalima777/video/7573005794094992647",
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           },
           {
             "platform": "tiktok",
             "author": "@byantonya",
             "url": "https://www.tiktok.com/@byantonya/video/7599281141585022230",
-            "capturedAt": "2026-08-11T17:29:34.000Z"
+            "capturedAt": "2026-08-29T22:30:08.078Z"
           }
         ]
       },

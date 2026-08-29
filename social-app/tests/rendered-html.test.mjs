@@ -896,7 +896,10 @@ test("checks editorial trend freshness in the pipeline without exposing scan int
   assert.doesNotMatch(healthWorkflow, /contents: write|actions: write|git push|workflow run/i);
   for (const workflow of [videoRefreshWorkflow, audioRefreshWorkflow]) {
     assert.match(workflow, /working-directory: social-app/);
-    assert.doesNotMatch(workflow, /actions: write|gh-pages|publish-public-preview/);
+    assert.match(workflow, /actions: write/);
+    assert.match(workflow, /gh workflow run deploy-pages\.yml --ref main/);
+    assert.match(workflow, /requested_sha="\$\(git rev-parse HEAD\)"/);
+    assert.doesNotMatch(workflow, /gh-pages|publish-public-preview/);
     assert.match(workflow, /id: commit/);
   }
 });

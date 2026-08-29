@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: social-video-trends-write
@@ -76,8 +77,18 @@ jobs:
           git push origin HEAD:main
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
+      - name: Publish the validated video feed on GitHub Pages
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run deploy-pages.yml --ref main \
+            -f requested_sha="$(git rev-parse HEAD)"
+
       - name: Preserve a failed-attempt status
         if: steps.scan.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name "lofi-social-radar-bot"
           git config user.email "lofi-social-radar-bot@users.noreply.github.com"
@@ -85,6 +96,8 @@ jobs:
           git diff --cached --quiet || git commit -m "Record failed trend refresh"
           git pull --rebase origin main
           git push origin HEAD:main
+          gh workflow run deploy-pages.yml --ref main \
+            -f requested_sha="$(git rev-parse HEAD)"
 
       - name: Mark an invalid or failed scan
         if: steps.scan.outcome == 'failure' || steps.validation.outcome == 'failure'

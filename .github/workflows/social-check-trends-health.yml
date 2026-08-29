@@ -10,7 +10,7 @@ permissions:
 
 concurrency:
   group: social-check-trends-editorial-freshness
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   health:
@@ -30,5 +30,31 @@ jobs:
         with:
           node-version: 22
 
-      - name: Require a recent, qualified editorial discovery scan
-        run: node --experimental-strip-types scripts/check-trends-health.mjs
+      - name: Restore the alert incident state
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/social-trends-health-alert/state.json
+          key: social-trends-health-alert-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            social-trends-health-alert-v1-
+
+      - name: Check freshness and notify Discord on incident changes
+        id: alert
+        env:
+          DISCORD_CM_WEBHOOK_URL: ${{ secrets.DISCORD_CM_WEBHOOK_URL }}
+          TRENDS_HEALTH_ALERT_STATE_PATH: ${{ runner.temp }}/social-trends-health-alert/state.json
+          TRENDS_HEALTH_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node --experimental-strip-types scripts/notify-trends-health.mjs
+
+      # A unique cache key per run keeps the latest incident/recovery state
+      # available to the next six-hourly control without granting write access.
+      - name: Save the alert incident state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/social-trends-health-alert/state.json
+          key: social-trends-health-alert-v1-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Fail closed when either Trends feed is unhealthy
+        if: always() && steps.alert.outputs.healthy != 'true'
+        run: exit 1

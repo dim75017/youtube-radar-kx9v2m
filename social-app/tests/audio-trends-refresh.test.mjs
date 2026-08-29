@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
@@ -11,6 +13,7 @@ import {
   AUDIO_DISCOVERY_SOURCES,
   AUDIO_REFRESH_MIN_DISTINCT_TRENDS,
   buildAudioTrendRefresh,
+  cacheAddedAudioTrendThumbnails,
   collectInstagramSignedPlayback,
   collectTikTokThumbnail,
   evaluateAudioRefreshCoverage,
@@ -154,7 +157,7 @@ function tiktokOEmbedPayload(trend, overrides = {}) {
     type: "video",
     provider_name: "TikTok",
     provider_url: "https://www.tiktok.com/",
-    html: `<blockquote class="tiktok-embed" cite="${trend.referenceVideo.url}" data-video-id="${videoId}"></blockquote>`,
+    html: `<blockquote class="tiktok-embed" cite="${trend.referenceVideo.url}" data-video-id="${videoId}"><section><a href="${trend.audioUrl}?refer=embed">♬ Fixture audio - Fixture author</a></section></blockquote>`,
     thumbnail_url: tiktokThumbnailUrl(trend),
     thumbnail_width: 720,
     thumbnail_height: 1280,
@@ -166,9 +169,22 @@ function tiktokTrendFromOEmbedRequest(url) {
   const candidate = new URL(url);
   if (candidate.hostname !== "www.tiktok.com" || candidate.pathname !== "/oembed") return null;
   const referenceUrl = candidate.searchParams.get("url");
-  return feed.trends.find((trend) =>
-    trend.platform === "tiktok" && trend.referenceVideo.url === referenceUrl
-  ) ?? null;
+  const trend = feed.trends.find((candidateTrend) =>
+    candidateTrend.platform === "tiktok" &&
+    (
+      candidateTrend.referenceVideo.url === referenceUrl ||
+      candidateTrend.reuseEvidence.posts.some((post) => post.url === referenceUrl)
+    )
+  );
+  return trend
+    ? {
+        ...trend,
+        referenceVideo: {
+          ...trend.referenceVideo,
+          url: referenceUrl,
+        },
+      }
+    : null;
 }
 
 function thumbnailProbeResponse({ contentType = "image/jpeg", status = 206 } = {}) {
@@ -234,6 +250,253 @@ function completeDiscoveryResponse(url, audioUrls) {
     status: 200,
     headers: { "content-type": "text/html" },
   });
+}
+
+function qualificationFixture(audioUrls = validDiscoveryAudioUrls()) {
+  return {
+    candidates: [],
+    currentEvidence: [],
+    audit: {
+      attemptedAt: "2026-08-21T14:00:00.000Z",
+      complete: true,
+      videoFeedCapturedAt: "2026-08-21T14:00:00.000Z",
+      videoFeedFresh: true,
+      videoDiscoveryAuditScannedAt: "2026-08-21T14:00:00.000Z",
+      videoDiscoveryAuditFresh: true,
+      attemptedTrendCount: audioUrls.length,
+      attemptedCurrentTrendCount: 0,
+      attemptedFreshVideoTrendCount: audioUrls.length,
+      attemptedFreshAuditClusterCount: 0,
+      freshQualifiedCount: audioUrls.length,
+      qualifiedClusterCount: audioUrls.length,
+      freshCurrentQualifiedCount: audioUrls.length,
+      freshNewQualifiedCount: 0,
+      qualifiedAudioUrls: audioUrls,
+      rejected: [],
+    },
+  };
+}
+
+function freshQualifiedVideoTrend(now) {
+  const videoIds = [
+    "7680000000000000001",
+    "7680000000000000002",
+    "7680000000000000003",
+  ];
+  const authors = ["@fresh-one", "@fresh-two", "@fresh-three"];
+  return {
+    id: "fresh-three-creator-audio",
+    fixtureAudioUrl: "https://www.tiktok.com/music/fresh-qualified-audio-7689999999999999999",
+    title: "Fresh three-creator audio",
+    character: "lofi-girl",
+    summary: "Three creators use the same native audio for one concise study transition.",
+    mechanic: "Cut from procrastination to focus on the same audio cue.",
+    momentumScore: 100,
+    lofiFitScore: 100,
+    whyLofi: "The focus transition maps directly to Lofi Girl's study desk.",
+    lastVerifiedAt: now,
+    referencePost: {
+      platform: "tiktok",
+      author: authors[0],
+      caption: "Fresh focus transition",
+      url: `https://www.tiktok.com/${authors[0]}/video/${videoIds[0]}`,
+      durationSeconds: 12.5,
+      thumbnailUrl: null,
+      publishedAt: new Date(Date.parse(now) - 2 * 60 * 60 * 1_000).toISOString(),
+      capturedAt: now,
+      sourceLabel: "TikTok · compteurs publics",
+      sourceUrl: `https://www.tiktok.com/${authors[0]}/video/${videoIds[0]}`,
+      exactness: "exact",
+      metrics: {
+        views: 12_000_000,
+        likes: 9_000_000,
+        comments: 42_000,
+        shares: 800_000,
+      },
+    },
+    reuseEvidence: {
+      verifiedAt: now,
+      minimumDistinctCreators: 3,
+      summary: "Three distinct creators were verified.",
+      posts: videoIds.map((videoId, index) => ({
+        platform: "tiktok",
+        author: authors[index],
+        url: `https://www.tiktok.com/${authors[index]}/video/${videoId}`,
+        capturedAt: now,
+      })),
+    },
+    proposals: [
+      { tone: "complice", concept: "Lofi Girl catches herself procrastinating, then starts one page.", copy: "Fine, one page." },
+      { tone: "cozy", concept: "The room warms up as the focus cue lands.", copy: "Small start, soft light." },
+      { tone: "absurde", concept: "The cat starts the timer before Lofi Girl does.", copy: "Manager on duty." },
+    ],
+  };
+}
+
+function freshCurrentQualificationVideoFeed(now, count = 3) {
+  const targets = feed.trends
+    .filter((trend) => trend.platform === "tiktok")
+    .slice(0, count);
+  assert.equal(targets.length, count);
+  return {
+    capturedAt: now,
+    refresh: {
+      discoveryAudit: {
+        scannedAt: now,
+        complete: true,
+        candidateObservations: [],
+        exactMusicClusters: [],
+        musicClusterQualifications: [],
+      },
+    },
+    trends: targets.map((target, trendIndex) => {
+      const firstVideoId = 7_769_000_000_000_000_000n + BigInt(trendIndex * 10);
+      const authors = Array.from({ length: 3 }, (_, index) => `@fresh-current-${trendIndex}-${index}`);
+      const posts = authors.map((author, index) => ({
+        platform: "tiktok",
+        author,
+        url: `https://www.tiktok.com/${author}/video/${firstVideoId + BigInt(index)}`,
+        capturedAt: now,
+      }));
+      return {
+        id: `fresh-current-${target.id}`,
+        fixtureAudioUrl: target.audioUrl,
+        title: `Fresh current cluster ${trendIndex + 1}`,
+        character: "lofi-girl",
+        summary: "A current native cluster verified across three creators.",
+        mechanic: "Three creators reuse the same focus transition.",
+        momentumScore: 80,
+        lofiFitScore: Math.max(80, target.lofiFitScore),
+        whyLofi: "The verified focus mechanic maps directly to the study desk.",
+        lastVerifiedAt: now,
+        referencePost: {
+          platform: "tiktok",
+          author: authors[0],
+          caption: "Fresh current audio reference",
+          url: posts[0].url,
+          durationSeconds: 12,
+          thumbnailUrl: null,
+          publishedAt: new Date(Date.parse(now) - 60 * 60 * 1_000).toISOString(),
+          capturedAt: now,
+          sourceLabel: "TikTok · compteurs publics",
+          sourceUrl: posts[0].url,
+          exactness: "exact",
+          metrics: {
+            views: 1_000_000,
+            likes: 100_000,
+            comments: 2_000,
+            shares: 4_000,
+          },
+        },
+        reuseEvidence: {
+          verifiedAt: now,
+          minimumDistinctCreators: 3,
+          summary: "Three distinct creators were verified during the fresh video scan.",
+          posts,
+        },
+        proposals: [
+          { tone: "complice", concept: "Lofi Girl starts with one page.", copy: "Fine, one page." },
+          { tone: "cozy", concept: "The room warms as focus lands.", copy: "Small start, soft light." },
+          { tone: "absurde", concept: "The cat starts the timer.", copy: "Manager on duty." },
+        ],
+      };
+    }),
+  };
+}
+
+function freshVideoOEmbedPayload(referenceUrl, audioUrl) {
+  const videoId = tiktokVideoId(referenceUrl);
+  return {
+    version: "1.0",
+    type: "video",
+    provider_name: "TikTok",
+    provider_url: "https://www.tiktok.com/",
+    html: `<blockquote class="tiktok-embed" cite="${referenceUrl}" data-video-id="${videoId}"><section><a href="${audioUrl}?refer=embed">♬ Fresh Qualified Audio - Fresh Artist</a></section></blockquote>`,
+    thumbnail_url: `https://p16-sign-va.tiktokcdn.com/tos-maliva-p-0068/${videoId}.jpeg`,
+  };
+}
+
+function freshQualificationOEmbedResponse(url, videoTrendFeed) {
+  const parsedUrl = new URL(url);
+  if (parsedUrl.hostname !== "www.tiktok.com" || parsedUrl.pathname !== "/oembed") return null;
+  const referenceUrl = parsedUrl.searchParams.get("url");
+  const trend = videoTrendFeed.trends.find((candidate) =>
+    candidate.referencePost.url === referenceUrl ||
+    candidate.reuseEvidence.posts.some((post) => post.url === referenceUrl)
+  );
+  if (trend) return Response.json(freshVideoOEmbedPayload(referenceUrl, trend.fixtureAudioUrl));
+  const observation = videoTrendFeed.refresh?.discoveryAudit?.candidateObservations
+    ?.find((candidate) => candidate.url === referenceUrl);
+  if (!observation?.music?.id) return null;
+  return Response.json(freshVideoOEmbedPayload(
+    referenceUrl,
+    `https://www.tiktok.com/music/audit-cluster-${observation.music.id}`,
+  ));
+}
+
+function freshAuditClusterVideoFeed(now, count = 3) {
+  const candidateObservations = [];
+  const exactMusicClusters = [];
+  const musicClusterQualifications = [];
+  for (let clusterIndex = 0; clusterIndex < count; clusterIndex += 1) {
+    const musicId = String(7_779_000_000_000_000_000n + BigInt(clusterIndex));
+    const observations = Array.from({ length: 3 }, (_, postIndex) => {
+      const videoId = 7_778_000_000_000_000_000n + BigInt(clusterIndex * 10 + postIndex);
+      const author = `@audit-${clusterIndex}-${postIndex}`;
+      return {
+        platform: "tiktok",
+        url: `https://www.tiktok.com/${author}/video/${videoId}`,
+        nativeId: String(videoId),
+        author,
+        caption: `Exact audit cluster ${clusterIndex + 1}`,
+        publishedAt: new Date(Date.parse(now) - (postIndex + 1) * 60 * 60 * 1_000).toISOString(),
+        capturedAt: now,
+        lastObservedAt: now,
+        durationSeconds: 12,
+        thumbnailUrl: `https://p16-sign-va.tiktokcdn.com/tos-maliva-p-0068/${videoId}.jpeg`,
+        metrics: {
+          views: 2_000_000 - postIndex * 100_000,
+          likes: postIndex === 0 ? 900_000 : 80_000,
+          comments: 2_000,
+          shares: 5_000,
+        },
+        music: {
+          id: musicId,
+          title: `Audit cluster ${clusterIndex + 1}`,
+          author: `Audit artist ${clusterIndex + 1}`,
+        },
+      };
+    });
+    const postUrls = observations.map((observation) => observation.url);
+    candidateObservations.push(...observations);
+    exactMusicClusters.push({
+      musicId,
+      musicTitle: `Audit cluster ${clusterIndex + 1}`,
+      musicAuthor: `Audit artist ${clusterIndex + 1}`,
+      distinctCreators: 3,
+      referenceUrl: postUrls[0],
+      postUrls,
+    });
+    musicClusterQualifications.push({
+      musicId,
+      status: "qualified",
+      reason: null,
+      evidenceUrls: postUrls,
+    });
+  }
+  return {
+    capturedAt: now,
+    refresh: {
+      discoveryAudit: {
+        scannedAt: now,
+        complete: true,
+        candidateObservations,
+        exactMusicClusters,
+        musicClusterQualifications,
+      },
+    },
+    trends: [],
+  };
 }
 
 test("native audio counters are tied to the requested platform identity", () => {
@@ -417,11 +680,18 @@ test("editorial discovery emits a bounded, deduplicated audit and requires a 50-
     now,
     sources: TEST_DISCOVERY_SOURCES,
     fetchImpl: async (url) => completeDiscoveryResponse(url, completeUrls),
+    qualificationResult: qualificationFixture(completeUrls),
   });
   assert.equal(complete.scannedAt, now);
   assert.equal(complete.status, "success");
   assert.equal(complete.complete, true);
   assert.equal(complete.candidateCount, AUDIO_REFRESH_MIN_DISTINCT_TRENDS);
+  assert.deepEqual(complete.candidatePoolDelta, {
+    status: "compared",
+    added: AUDIO_REFRESH_MIN_DISTINCT_TRENDS,
+    removed: 0,
+    retained: 0,
+  });
   assert.equal(complete.qualifiedInventoryCount, AUDIO_REFRESH_MIN_DISTINCT_TRENDS);
   assert.equal(complete.currentMatchedCount, AUDIO_REFRESH_MIN_DISTINCT_TRENDS);
   assert.equal(complete.newCandidateCount, 0);
@@ -440,17 +710,18 @@ test("editorial discovery emits a bounded, deduplicated audit and requires a 50-
       url,
       completeUrls.slice(0, AUDIO_REFRESH_MIN_DISTINCT_TRENDS - 1),
     ),
+    qualificationResult: qualificationFixture(completeUrls),
   });
   assert.equal(incomplete.complete, false);
   assert.equal(incomplete.status, "incomplete");
   assert.equal(incomplete.candidateCount, AUDIO_REFRESH_MIN_DISTINCT_TRENDS - 1);
   assert.equal(incomplete.currentMatchedCount, AUDIO_REFRESH_MIN_DISTINCT_TRENDS - 1);
-  assert.equal(incomplete.qualifiedInventoryCount, AUDIO_REFRESH_MIN_DISTINCT_TRENDS - 1);
+  assert.equal(incomplete.qualifiedInventoryCount, AUDIO_REFRESH_MIN_DISTINCT_TRENDS);
 });
 
-test("a large editorial pool cannot qualify freshness when only one current audio matches", async () => {
+test("a large two-platform editorial pool can complete when exact inventory matches are sparse", async () => {
   const candidateUrls = [
-    feed.trends[0].audioUrl,
+    feed.trends.find((trend) => trend.platform === "instagram").audioUrl,
     ...generatedDiscoveryAudioUrls(160),
   ];
   const audit = await scanAudioTrendDiscovery({
@@ -458,14 +729,82 @@ test("a large editorial pool cannot qualify freshness when only one current audi
     now: "2026-08-21T14:05:00.000Z",
     sources: TEST_DISCOVERY_SOURCES,
     fetchImpl: async (url) => completeDiscoveryResponse(url, candidateUrls),
+    qualificationResult: qualificationFixture(validDiscoveryAudioUrls()),
   });
 
   assert.equal(audit.candidateCount, 161);
   assert.equal(audit.currentMatchedCount, 1);
-  assert.equal(audit.qualifiedInventoryCount, 1);
+  assert.equal(audit.qualifiedInventoryCount, AUDIO_REFRESH_MIN_DISTINCT_TRENDS);
   assert.equal(audit.newCandidateCount, 160);
+  assert.equal(audit.complete, true);
+  assert.equal(audit.status, "success");
+});
+
+test("new audio cards cache their official TikTok thumbnail under a stable local path", async () => {
+  const outputDirectory = await mkdtemp(join(tmpdir(), "lofi-audio-thumbnail-"));
+  const bytes = Uint8Array.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46]);
+  const candidate = {
+    trends: [{
+      id: "audio-new-card",
+      referenceVideo: {
+        thumbnailUrl: "https://p16-sign-va.tiktokcdn.com/tos-maliva-p-0068/new-card.jpeg",
+      },
+    }],
+  };
+  try {
+    const paths = await cacheAddedAudioTrendThumbnails({
+      feed: candidate,
+      selectionAudit: { addedTrendIds: ["audio-new-card"] },
+      outputDirectory,
+      fetchImpl: async () => new Response(bytes, {
+        status: 200,
+        headers: {
+          "content-type": "image/jpeg",
+          "content-length": String(bytes.byteLength),
+        },
+      }),
+    });
+    assert.deepEqual(paths, ["media/audio-trends/audio-new-card.jpg"]);
+    assert.equal(
+      candidate.trends[0].referenceVideo.thumbnailUrl,
+      "media/audio-trends/audio-new-card.jpg",
+    );
+    assert.deepEqual(
+      new Uint8Array(await readFile(join(outputDirectory, "audio-new-card.jpg"))),
+      bytes,
+    );
+  } finally {
+    await rm(outputDirectory, { recursive: true, force: true });
+  }
+});
+
+test("a failed source pass preserves the last successful candidate registry", async () => {
+  const previousUrls = validDiscoveryAudioUrls();
+  const previousRegistry = {
+    updatedAt: "2026-08-20T14:00:00.000Z",
+    candidateCount: previousUrls.length,
+    candidateAudioUrls: previousUrls,
+    candidateReferences: [],
+  };
+  const audit = await scanAudioTrendDiscovery({
+    feed,
+    now: "2026-08-21T14:00:00.000Z",
+    sources: TEST_DISCOVERY_SOURCES,
+    previousDiscoveryAudit: { candidateRegistry: previousRegistry },
+    qualificationResult: qualificationFixture(previousUrls),
+    fetchImpl: async () => new Response("blocked", { status: 503 }),
+  });
+
   assert.equal(audit.complete, false);
   assert.equal(audit.status, "incomplete");
+  assert.deepEqual(audit.candidateRegistry, previousRegistry);
+  assert.equal(audit.candidateCount, 0);
+  assert.deepEqual(audit.candidatePoolDelta, {
+    status: "preserved-after-source-failure",
+    added: 0,
+    removed: 0,
+    retained: previousUrls.length,
+  });
 });
 
 test("publishing requires broad coverage on every tracked provider", () => {
@@ -577,9 +916,11 @@ test("the scanner never exceeds its configured concurrency", async () => {
 test("a complete linked scan updates all counters without mutating the input", async () => {
   const original = structuredClone(feed);
   const now = new Date(Date.parse(feed.capturedAt) + 25 * 60 * 60 * 1_000).toISOString();
+  const videoTrendFeed = freshCurrentQualificationVideoFeed(now);
   const requested = [];
   const result = await buildAudioTrendRefresh({
     feed,
+    videoTrendFeed,
     now,
     discoverySources: TEST_DISCOVERY_SOURCES,
     concurrency: 4,
@@ -588,6 +929,8 @@ test("a complete linked scan updates all counters without mutating the input", a
       assert.ok(options.signal instanceof AbortSignal);
       const discoveryResponse = completeDiscoveryResponse(url);
       if (discoveryResponse) return discoveryResponse;
+      const qualificationResponse = freshQualificationOEmbedResponse(url, videoTrendFeed);
+      if (qualificationResponse) return qualificationResponse;
       const trend = feed.trends.find((candidate) => candidate.audioUrl === url);
       if (trend) return new Response(counterHtml(trend, latestUses(trend)), { status: 200 });
       const referenceTrend = feed.trends.find((candidate) =>
@@ -605,9 +948,10 @@ test("a complete linked scan updates all counters without mutating the input", a
   const trackedTrends = feed.trends.filter((trend) => ["instagram", "tiktok"].includes(trend.platform));
   const instagramTrends = trackedTrends.filter((trend) => trend.platform === "instagram");
   const tiktokTrends = trackedTrends.filter((trend) => trend.platform === "tiktok");
-  assert.equal(
-    requested.length,
+  assert.ok(
+    requested.length >=
     trackedTrends.length + instagramTrends.length * 2 + tiktokTrends.length * 2 +
+      videoTrendFeed.trends.length * 3 +
       TEST_DISCOVERY_SOURCES.length,
   );
   assert.equal(result.status.coverage.totalMatched, trackedTrends.length);
@@ -647,19 +991,119 @@ test("a complete linked scan updates all counters without mutating the input", a
   assert.deepEqual(feed, original, "the last validated feed remains untouched until publication");
 });
 
-test("complete discovery can publish degraded with zero counters and no reuse timestamp rewrite", async () => {
+test("a fresh three-creator audio identity is promoted into the 50-card feed", async () => {
   const original = structuredClone(feed);
-  const originalObservations = feed.trends.map((trend) => structuredClone(trend.usageObservations));
-  const originalReuseEvidence = feed.trends.map((trend) => structuredClone(trend.reuseEvidence));
   const now = new Date(Date.parse(feed.capturedAt) + 25 * 60 * 60 * 1_000).toISOString();
+  const videoTrend = freshQualifiedVideoTrend(now);
+  const videoTrendFeed = freshCurrentQualificationVideoFeed(now, 2);
+  videoTrendFeed.trends.push(videoTrend);
   const instagramTrends = feed.trends.filter((trend) => trend.platform === "instagram");
   const result = await buildAudioTrendRefresh({
     feed,
+    videoTrendFeed,
     now,
     discoverySources: TEST_DISCOVERY_SOURCES,
     fetchImpl: async (url) => {
       const discoveryResponse = completeDiscoveryResponse(url);
       if (discoveryResponse) return discoveryResponse;
+      const qualificationResponse = freshQualificationOEmbedResponse(url, videoTrendFeed);
+      if (qualificationResponse) return qualificationResponse;
+      const counterTrend = feed.trends.find((trend) => trend.audioUrl === url);
+      if (counterTrend) return new Response(counterHtml(counterTrend, latestUses(counterTrend)), { status: 200 });
+      if (instagramTrends.some((trend) => trend.referenceVideo.url === url)) {
+        return new Response(signedPlaybackHtml(now), { status: 200 });
+      }
+      if (String(url).includes(".cdninstagram.com/")) return playbackProbeResponse();
+      const thumbnailTrend = tiktokTrendFromOEmbedRequest(url);
+      if (thumbnailTrend) return Response.json(tiktokOEmbedPayload(thumbnailTrend));
+      if (String(url).includes(".tiktokcdn.com/")) return thumbnailProbeResponse();
+      assert.fail(`unexpected promotion URL ${url}`);
+    },
+  });
+
+  const selection = result.status.discoveryAudit.selectionAudit;
+  assert.equal(result.status.discoveryAudit.qualificationAudit.freshQualifiedCount, 3);
+  assert.equal(result.status.discoveryAudit.qualificationAudit.freshNewQualifiedCount, 1);
+  assert.equal(selection.addedTrendIds.length, 1);
+  assert.equal(selection.removedTrendIds.length, 1);
+  assert.equal(selection.noRotationReason, null);
+  assert.equal(result.feed.trends.length, AUDIO_REFRESH_MIN_DISTINCT_TRENDS);
+  const promoted = result.feed.trends.find((trend) => trend.id === "audio-fresh-three-creator-audio");
+  assert.ok(promoted);
+  assert.equal(promoted.audioUrl, "https://www.tiktok.com/music/fresh-qualified-audio-7689999999999999999");
+  assert.equal(promoted.referenceVideo.metrics.likes, 9_000_000);
+  assert.ok(promoted.referenceVideo.durationSeconds < 30);
+  assert.equal(promoted.reuseEvidence.posts.length, 3);
+  assert.equal(new Set(promoted.reuseEvidence.posts.map((post) => post.author)).size, 3);
+  assert.deepEqual(feed, original);
+});
+
+test("exact audio clusters from a fresh zero-rotation video audit can populate the audio feed", async () => {
+  const rotationFeed = structuredClone(feed);
+  const weakestBaseline = [...rotationFeed.trends]
+    .sort((left, right) => left.lofiFitScore - right.lofiFitScore)
+    .slice(0, 3);
+  for (const trend of weakestBaseline) trend.lofiFitScore = 1;
+  const original = structuredClone(rotationFeed);
+  const now = new Date(Date.parse(feed.capturedAt) + 25 * 60 * 60 * 1_000).toISOString();
+  const videoTrendFeed = freshAuditClusterVideoFeed(now);
+  const instagramTrends = feed.trends.filter((trend) => trend.platform === "instagram");
+  const result = await buildAudioTrendRefresh({
+    feed: rotationFeed,
+    videoTrendFeed,
+    now,
+    discoverySources: TEST_DISCOVERY_SOURCES,
+    fetchImpl: async (url) => {
+      const discoveryResponse = completeDiscoveryResponse(url);
+      if (discoveryResponse) return discoveryResponse;
+      const qualificationResponse = freshQualificationOEmbedResponse(url, videoTrendFeed);
+      if (qualificationResponse) return qualificationResponse;
+      const counterTrend = rotationFeed.trends.find((trend) => trend.audioUrl === url);
+      if (counterTrend) return new Response(counterHtml(counterTrend, latestUses(counterTrend)), { status: 200 });
+      if (instagramTrends.some((trend) => trend.referenceVideo.url === url)) {
+        return new Response(signedPlaybackHtml(now), { status: 200 });
+      }
+      if (String(url).includes(".cdninstagram.com/")) return playbackProbeResponse();
+      const thumbnailTrend = tiktokTrendFromOEmbedRequest(url);
+      if (thumbnailTrend) return Response.json(tiktokOEmbedPayload(thumbnailTrend));
+      if (String(url).includes(".tiktokcdn.com/")) return thumbnailProbeResponse();
+      assert.fail(`unexpected exact-cluster URL ${url}`);
+    },
+  });
+
+  const qualification = result.status.discoveryAudit.qualificationAudit;
+  const selection = result.status.discoveryAudit.selectionAudit;
+  assert.equal(qualification.attemptedFreshVideoTrendCount, 0);
+  assert.equal(qualification.attemptedFreshAuditClusterCount, 3);
+  assert.equal(qualification.freshQualifiedCount, 3);
+  assert.equal(qualification.freshNewQualifiedCount, 3);
+  assert.equal(result.status.discoveryAudit.qualifiedInventoryCount, 3);
+  assert.equal(result.status.discoveryAudit.publishedInventoryCount, 50);
+  assert.equal(selection.addedTrendIds.length, 3);
+  assert.equal(selection.removedTrendIds.length, 3);
+  assert.equal(selection.retainedTrendIds.length, 47);
+  assert.equal(selection.noRotationReason, null);
+  assert.equal(result.feed.trends.length, AUDIO_REFRESH_MIN_DISTINCT_TRENDS);
+  assert.equal(result.status.published, true);
+  assert.deepEqual(rotationFeed, original);
+});
+
+test("complete discovery publishes with optional counters while rewriting only native reuse proofs", async () => {
+  const original = structuredClone(feed);
+  const originalObservations = feed.trends.map((trend) => structuredClone(trend.usageObservations));
+  const now = new Date(Date.parse(feed.capturedAt) + 25 * 60 * 60 * 1_000).toISOString();
+  const videoTrendFeed = freshCurrentQualificationVideoFeed(now);
+  const instagramTrends = feed.trends.filter((trend) => trend.platform === "instagram");
+  const result = await buildAudioTrendRefresh({
+    feed,
+    videoTrendFeed,
+    now,
+    discoverySources: TEST_DISCOVERY_SOURCES,
+    fetchImpl: async (url) => {
+      const discoveryResponse = completeDiscoveryResponse(url);
+      if (discoveryResponse) return discoveryResponse;
+      const qualificationResponse = freshQualificationOEmbedResponse(url, videoTrendFeed);
+      if (qualificationResponse) return qualificationResponse;
       if (feed.trends.some((trend) => trend.audioUrl === url)) {
         return new Response("counter blocked", { status: 503 });
       }
@@ -674,7 +1118,7 @@ test("complete discovery can publish degraded with zero counters and no reuse ti
     },
   });
 
-  assert.equal(result.status.status, "degraded");
+  assert.equal(result.status.status, "success");
   assert.equal(result.status.published, true);
   assert.equal(result.status.discoveryAudit.complete, true);
   assert.equal(result.status.coverage.totalMatched, 0);
@@ -692,13 +1136,23 @@ test("complete discovery can publish degraded with zero counters and no reuse ti
     "failed counters must preserve every previous observation",
   );
   assert.deepEqual(
-    result.feed.trends.map((trend) => trend.reuseEvidence),
-    originalReuseEvidence,
-    "text discovery and asset checks must never refresh reuse evidence",
+    result.feed.trends.filter((trend) => trend.platform === "instagram").map((trend) => trend.reuseEvidence),
+    feed.trends.filter((trend) => trend.platform === "instagram").map((trend) => trend.reuseEvidence),
+    "Instagram evidence is not refreshed without an attributable audio identity",
+  );
+  const reverifiedIds = new Set(
+    result.status.discoveryAudit.selectionAudit.reverifiedTrendIds,
+  );
+  assert.equal(reverifiedIds.size, 3);
+  assert.ok(
+    result.feed.trends
+      .filter((trend) => reverifiedIds.has(trend.id))
+      .every((trend) => trend.reuseEvidence.verifiedAt === now),
+    "only TikTok clusters with three exact oEmbed audio matches are refreshed",
   );
   assert.equal(result.feed.capturedAt, now);
-  assert.equal(result.feed.sourceChecks.find((check) => check.platform === "instagram")?.status, "failed");
-  assert.equal(result.feed.sourceChecks.find((check) => check.platform === "tiktok")?.status, "failed");
+  assert.equal(result.feed.sourceChecks.find((check) => check.platform === "instagram")?.status, "limited");
+  assert.equal(result.feed.sourceChecks.find((check) => check.platform === "tiktok")?.status, "limited");
   assert.notEqual(
     result.feed.sourceChecks.find((check) => check.platform === "youtube")?.checkedAt,
     now,
@@ -751,20 +1205,25 @@ test("asset-only checks cannot advance trend freshness without a complete discov
   assert.equal(feed.nextRefreshAt, original.nextRefreshAt);
 });
 
-test("161 discovered audios with only one exact inventory match cannot advance freshness", async () => {
+test("161 discovered audios with one exact match publish after independent native qualification", async () => {
   const original = structuredClone(feed);
   const now = new Date(Date.parse(feed.capturedAt) + 25 * 60 * 60 * 1_000).toISOString();
+  const videoTrendFeed = freshCurrentQualificationVideoFeed(now);
   const instagramTrends = feed.trends.filter((trend) => trend.platform === "instagram");
-  const candidateUrls = [feed.trends[0].audioUrl, ...generatedDiscoveryAudioUrls(160)];
-  let failure;
-  try {
-    await buildAudioTrendRefresh({
+  const candidateUrls = [
+    feed.trends.find((trend) => trend.platform === "instagram").audioUrl,
+    ...generatedDiscoveryAudioUrls(160),
+  ];
+  const result = await buildAudioTrendRefresh({
       feed,
+      videoTrendFeed,
       now,
       discoverySources: TEST_DISCOVERY_SOURCES,
       fetchImpl: async (url) => {
         const discoveryResponse = completeDiscoveryResponse(url, candidateUrls);
         if (discoveryResponse) return discoveryResponse;
+        const qualificationResponse = freshQualificationOEmbedResponse(url, videoTrendFeed);
+        if (qualificationResponse) return qualificationResponse;
         if (feed.trends.some((trend) => trend.audioUrl === url)) {
           return new Response("counter blocked", { status: 503 });
         }
@@ -778,35 +1237,71 @@ test("161 discovered audios with only one exact inventory match cannot advance f
         assert.fail(`unexpected partial discovery URL ${url}`);
       },
     });
+
+  assert.equal(result.status.discoveryAudit.candidateCount, 161);
+  assert.equal(result.status.discoveryAudit.currentMatchedCount, 1);
+  assert.equal(result.status.discoveryAudit.qualificationAudit.freshQualifiedCount, 3);
+  assert.equal(result.status.discoveryAudit.qualifiedClusterCount, 3);
+  assert.equal(result.status.discoveryAudit.qualifiedInventoryCount, 3);
+  assert.equal(result.status.discoveryAudit.publishedInventoryCount, 50);
+  assert.equal(result.status.discoveryAudit.complete, true);
+  assert.equal(result.status.published, true);
+  assert.deepEqual(feed, original);
+});
+
+test("old video evidence cannot be relabelled as a fresh audio qualification", async () => {
+  const original = structuredClone(feed);
+  const now = new Date(Date.parse(feed.capturedAt) + 25 * 60 * 60 * 1_000).toISOString();
+  const videoTrendFeed = freshCurrentQualificationVideoFeed(now);
+  videoTrendFeed.refresh.discoveryAudit.scannedAt = new Date(
+    Date.parse(now) - 27 * 60 * 60 * 1_000,
+  ).toISOString();
+
+  let failure;
+  try {
+    await buildAudioTrendRefresh({
+      feed,
+      videoTrendFeed,
+      now,
+      discoverySources: TEST_DISCOVERY_SOURCES,
+      fetchImpl: async (url) => completeDiscoveryResponse(url) ??
+        new Response("blocked", { status: 503 }),
+    });
   } catch (error) {
     failure = error;
   }
 
   assert.ok(failure instanceof Error);
-  assert.equal(failure.refreshStatus.discoveryAudit.candidateCount, 161);
-  assert.equal(failure.refreshStatus.discoveryAudit.currentMatchedCount, 1);
-  assert.equal(failure.refreshStatus.discoveryAudit.qualifiedInventoryCount, 1);
-  assert.equal(failure.refreshStatus.discoveryAudit.complete, false);
+  assert.equal(failure.refreshStatus.status, "failed");
   assert.equal(failure.refreshStatus.published, false);
+  assert.equal(
+    failure.refreshStatus.discoveryAudit.qualificationAudit.videoDiscoveryAuditFresh,
+    false,
+  );
+  assert.equal(
+    failure.refreshStatus.discoveryAudit.qualificationAudit.freshQualifiedCount,
+    0,
+  );
+  assert.equal(failure.refreshStatus.discoveryAudit.qualifiedInventoryCount, 0);
   assert.deepEqual(feed, original);
-  assert.equal(feed.capturedAt, original.capturedAt);
-  assert.equal(feed.nextRefreshAt, original.nextRefreshAt);
 });
 
-test("degraded publication fails closed when even one Instagram playback is missing", async () => {
+test("missing Instagram playback is audited but cannot veto editorial qualification", async () => {
   const original = structuredClone(feed);
   const now = new Date(Date.parse(feed.capturedAt) + 25 * 60 * 60 * 1_000).toISOString();
+  const videoTrendFeed = freshCurrentQualificationVideoFeed(now);
   const instagramTrends = feed.trends.filter((trend) => trend.platform === "instagram");
   const missingReferenceUrl = instagramTrends[0].referenceVideo.url;
-  let failure;
-  try {
-    await buildAudioTrendRefresh({
+  const result = await buildAudioTrendRefresh({
       feed,
+      videoTrendFeed,
       now,
       discoverySources: TEST_DISCOVERY_SOURCES,
       fetchImpl: async (url) => {
         const discoveryResponse = completeDiscoveryResponse(url);
         if (discoveryResponse) return discoveryResponse;
+        const qualificationResponse = freshQualificationOEmbedResponse(url, videoTrendFeed);
+        if (qualificationResponse) return qualificationResponse;
         if (feed.trends.some((trend) => trend.audioUrl === url) || url === missingReferenceUrl) {
           return new Response("blocked", { status: 503 });
         }
@@ -820,34 +1315,32 @@ test("degraded publication fails closed when even one Instagram playback is miss
         assert.fail(`unexpected partial refresh URL ${url}`);
       },
     });
-  } catch (error) {
-    failure = error;
-  }
 
-  assert.ok(failure instanceof Error);
-  assert.equal(failure.refreshStatus.status, "failed");
-  assert.equal(failure.refreshStatus.coverage.instagramPlaybackMatched, instagramTrends.length - 1);
-  assert.equal(failure.refreshStatus.coverage.instagramPlaybackComplete, false);
-  assert.equal(failure.refreshStatus.coverage.tiktokThumbnailComplete, true);
-  assert.equal(failure.refreshStatus.published, false);
+  assert.equal(result.status.status, "success");
+  assert.equal(result.status.coverage.instagramPlaybackMatched, instagramTrends.length - 1);
+  assert.equal(result.status.coverage.instagramPlaybackComplete, false);
+  assert.equal(result.status.coverage.tiktokThumbnailComplete, true);
+  assert.equal(result.status.published, true);
   assert.deepEqual(feed, original);
 });
 
-test("publication fails closed when even one TikTok thumbnail is missing", async () => {
+test("missing TikTok thumbnail is audited but cannot establish or veto qualification", async () => {
   const original = structuredClone(feed);
   const now = new Date(Date.parse(feed.capturedAt) + 25 * 60 * 60 * 1_000).toISOString();
+  const videoTrendFeed = freshCurrentQualificationVideoFeed(now);
   const instagramTrends = feed.trends.filter((trend) => trend.platform === "instagram");
   const tiktokTrends = feed.trends.filter((trend) => trend.platform === "tiktok");
   const missingThumbnailUrl = tiktokThumbnailUrl(tiktokTrends[0]);
-  let failure;
-  try {
-    await buildAudioTrendRefresh({
+  const result = await buildAudioTrendRefresh({
       feed,
+      videoTrendFeed,
       now,
       discoverySources: TEST_DISCOVERY_SOURCES,
       fetchImpl: async (url) => {
         const discoveryResponse = completeDiscoveryResponse(url);
         if (discoveryResponse) return discoveryResponse;
+        const qualificationResponse = freshQualificationOEmbedResponse(url, videoTrendFeed);
+        if (qualificationResponse) return qualificationResponse;
         const counterTrend = feed.trends.find((trend) => trend.audioUrl === url);
         if (counterTrend) {
           return new Response(counterHtml(counterTrend, latestUses(counterTrend)), { status: 200 });
@@ -863,29 +1356,18 @@ test("publication fails closed when even one TikTok thumbnail is missing", async
         assert.fail(`unexpected thumbnail coverage URL ${url}`);
       },
     });
-  } catch (error) {
-    failure = error;
-  }
 
-  assert.ok(failure instanceof Error);
-  assert.match(
-    failure.message,
-    new RegExp(
-      `miniature TikTok insuffisante: ${tiktokTrends.length - 1}\\/${tiktokTrends.length}`,
-      "i",
-    ),
-  );
-  assert.equal(failure.refreshStatus.status, "failed");
-  assert.equal(failure.refreshStatus.coverage.counterPublishable, true);
-  assert.equal(failure.refreshStatus.coverage.instagramPlaybackComplete, true);
-  assert.equal(failure.refreshStatus.coverage.tiktokThumbnailMatched, tiktokTrends.length - 1);
+  assert.equal(result.status.status, "success");
+  assert.equal(result.status.coverage.counterPublishable, true);
+  assert.equal(result.status.coverage.instagramPlaybackComplete, true);
+  assert.equal(result.status.coverage.tiktokThumbnailMatched, tiktokTrends.length - 1);
   assert.equal(
-    failure.refreshStatus.coverage.tiktokThumbnailCoverage,
+    result.status.coverage.tiktokThumbnailCoverage,
     (tiktokTrends.length - 1) / tiktokTrends.length,
   );
-  assert.equal(failure.refreshStatus.coverage.tiktokThumbnailComplete, false);
-  assert.equal(failure.refreshStatus.coverage.thumbnailPublishable, false);
-  const tiktokProvider = failure.refreshStatus.providers.find((provider) => provider.platform === "tiktok");
+  assert.equal(result.status.coverage.tiktokThumbnailComplete, false);
+  assert.equal(result.status.coverage.thumbnailPublishable, false);
+  const tiktokProvider = result.status.providers.find((provider) => provider.platform === "tiktok");
   assert.equal(tiktokProvider.thumbnailMatched, tiktokTrends.length - 1);
   assert.equal(
     tiktokProvider.thumbnailCoverage,
@@ -898,7 +1380,7 @@ test("publication fails closed when even one TikTok thumbnail is missing", async
       "i",
     ),
   );
-  assert.equal(failure.refreshStatus.published, false);
+  assert.equal(result.status.published, true);
   assert.deepEqual(feed, original);
 });
 
@@ -926,4 +1408,15 @@ test("one successful counter can never publish over the last validated feed", as
   assert.equal(failure.refreshStatus.coverage.totalMatched, 1);
   assert.equal(failure.refreshStatus.coverage.instagramPlaybackMatched, 0);
   assert.deepEqual(feed, original);
+});
+
+test("the scheduled audio refresh publishes every validated data-only commit", async () => {
+  const workflow = await readFile(
+    new URL("../../.github/workflows/social-refresh-audio-trends.yml", import.meta.url),
+    "utf8",
+  );
+  assert.match(workflow, /permissions:\s*\n\s*contents: write\s*\n\s*actions: write/u);
+  assert.match(workflow, /if: steps\.commit\.outputs\.changed == 'true'/u);
+  assert.match(workflow, /gh workflow run deploy-pages\.yml --ref main/u);
+  assert.match(workflow, /requested_sha="\$\(git rev-parse HEAD\)"/u);
 });

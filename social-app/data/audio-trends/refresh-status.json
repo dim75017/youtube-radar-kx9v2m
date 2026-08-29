@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "attemptedAt": "2026-08-29T19:52:03.149Z",
-  "status": "failed",
-  "published": false,
+  "attemptedAt": "2026-08-29T22:30:08.078Z",
+  "status": "success",
+  "published": true,
   "inventory": {
     "requiredDistinctTrends": 50,
     "totalTrends": 50,
@@ -14,13 +14,399 @@
     "publishable": true
   },
   "discoveryAudit": {
-    "scannedAt": "2026-08-29T19:52:03.149Z",
-    "status": "incomplete",
-    "complete": false,
-    "candidateCount": 166,
-    "qualifiedInventoryCount": 1,
-    "currentMatchedCount": 1,
-    "newCandidateCount": 165,
+    "scannedAt": "2026-08-29T22:30:08.078Z",
+    "status": "success",
+    "complete": true,
+    "candidateCount": 179,
+    "qualifiedInventoryCount": 24,
+    "qualifiedClusterCount": 24,
+    "currentMatchedCount": 3,
+    "candidatePlatformCounts": {
+      "instagram": 166,
+      "tiktok": 13
+    },
+    "candidateRegistry": {
+      "updatedAt": "2026-08-29T22:30:08.078Z",
+      "candidateCount": 179,
+      "candidateAudioUrls": [
+        "https://www.instagram.com/reels/audio/1006119841436928",
+        "https://www.instagram.com/reels/audio/1040129337188935",
+        "https://www.instagram.com/reels/audio/1047770533202108",
+        "https://www.instagram.com/reels/audio/1055079623617495",
+        "https://www.instagram.com/reels/audio/1066931830157201",
+        "https://www.instagram.com/reels/audio/1074068028223837",
+        "https://www.instagram.com/reels/audio/1115494040787732",
+        "https://www.instagram.com/reels/audio/1116722757315034",
+        "https://www.instagram.com/reels/audio/1134440541871679",
+        "https://www.instagram.com/reels/audio/1163544479135221",
+        "https://www.instagram.com/reels/audio/1176610871006162",
+        "https://www.instagram.com/reels/audio/1226647965481387",
+        "https://www.instagram.com/reels/audio/1244261080207881",
+        "https://www.instagram.com/reels/audio/1279574933274134",
+        "https://www.instagram.com/reels/audio/1309090040908747",
+        "https://www.instagram.com/reels/audio/1321809524522174",
+        "https://www.instagram.com/reels/audio/1332050085528695",
+        "https://www.instagram.com/reels/audio/1336013760489689",
+        "https://www.instagram.com/reels/audio/1353000056123698",
+        "https://www.instagram.com/reels/audio/1356236634516969",
+        "https://www.instagram.com/reels/audio/1366353098874410",
+        "https://www.instagram.com/reels/audio/1384409688878850",
+        "https://www.instagram.com/reels/audio/1392969992841787",
+        "https://www.instagram.com/reels/audio/1404238250634252",
+        "https://www.instagram.com/reels/audio/1433652788352081",
+        "https://www.instagram.com/reels/audio/1442567383520183",
+        "https://www.instagram.com/reels/audio/1456694622381601",
+        "https://www.instagram.com/reels/audio/1457616852393704",
+        "https://www.instagram.com/reels/audio/1460390505443280",
+        "https://www.instagram.com/reels/audio/1467234368070031",
+        "https://www.instagram.com/reels/audio/1485190032675488",
+        "https://www.instagram.com/reels/audio/1492753392644819",
+        "https://www.instagram.com/reels/audio/1494662545202817",
+        "https://www.instagram.com/reels/audio/1526221591722544",
+        "https://www.instagram.com/reels/audio/1576942649432181",
+        "https://www.instagram.com/reels/audio/1580438116655562",
+        "https://www.instagram.com/reels/audio/168538230666796",
+        "https://www.instagram.com/reels/audio/1715351118547270",
+        "https://www.instagram.com/reels/audio/1749292175761306",
+        "https://www.instagram.com/reels/audio/1765294231067484",
+        "https://www.instagram.com/reels/audio/1844093005638456",
+        "https://www.instagram.com/reels/audio/1881039849486413",
+        "https://www.instagram.com/reels/audio/1896755513744102",
+        "https://www.instagram.com/reels/audio/1908594629696645",
+        "https://www.instagram.com/reels/audio/1917632528803914",
+        "https://www.instagram.com/reels/audio/1957736051613126",
+        "https://www.instagram.com/reels/audio/1976253089934877",
+        "https://www.instagram.com/reels/audio/2009703713207872",
+        "https://www.instagram.com/reels/audio/202891871734130",
+        "https://www.instagram.com/reels/audio/209276599691212",
+        "https://www.instagram.com/reels/audio/2106756196490611",
+        "https://www.instagram.com/reels/audio/2195704350892729",
+        "https://www.instagram.com/reels/audio/2206590442923471",
+        "https://www.instagram.com/reels/audio/220983215198366",
+        "https://www.instagram.com/reels/audio/2232168290889562",
+        "https://www.instagram.com/reels/audio/2234283286830203",
+        "https://www.instagram.com/reels/audio/2247629331920224",
+        "https://www.instagram.com/reels/audio/2415922182221309",
+        "https://www.instagram.com/reels/audio/2422397121605345",
+        "https://www.instagram.com/reels/audio/242667523150430",
+        "https://www.instagram.com/reels/audio/2491165237591989",
+        "https://www.instagram.com/reels/audio/24985539141095254",
+        "https://www.instagram.com/reels/audio/25000425346301372",
+        "https://www.instagram.com/reels/audio/25088393870839949",
+        "https://www.instagram.com/reels/audio/25147386098265653",
+        "https://www.instagram.com/reels/audio/25182047148134995",
+        "https://www.instagram.com/reels/audio/25258614587143683",
+        "https://www.instagram.com/reels/audio/25297444073251557",
+        "https://www.instagram.com/reels/audio/25373541205611069",
+        "https://www.instagram.com/reels/audio/25402855699407252",
+        "https://www.instagram.com/reels/audio/25459784500359604",
+        "https://www.instagram.com/reels/audio/25507657612234997",
+        "https://www.instagram.com/reels/audio/25559395583748280",
+        "https://www.instagram.com/reels/audio/25617592177942740",
+        "https://www.instagram.com/reels/audio/25652157387712151",
+        "https://www.instagram.com/reels/audio/25707406555517981",
+        "https://www.instagram.com/reels/audio/25788885124122934",
+        "https://www.instagram.com/reels/audio/25843690791914452",
+        "https://www.instagram.com/reels/audio/26018556917802399",
+        "https://www.instagram.com/reels/audio/26047585514865525",
+        "https://www.instagram.com/reels/audio/26052374901064226",
+        "https://www.instagram.com/reels/audio/261062298414489",
+        "https://www.instagram.com/reels/audio/26255719747423171",
+        "https://www.instagram.com/reels/audio/26327415146919911",
+        "https://www.instagram.com/reels/audio/26328089280158460",
+        "https://www.instagram.com/reels/audio/26386920184265226",
+        "https://www.instagram.com/reels/audio/26424954220520529",
+        "https://www.instagram.com/reels/audio/26525437267097889",
+        "https://www.instagram.com/reels/audio/26532927786309828",
+        "https://www.instagram.com/reels/audio/26557961990540242",
+        "https://www.instagram.com/reels/audio/26644584355225677",
+        "https://www.instagram.com/reels/audio/26666333036383246",
+        "https://www.instagram.com/reels/audio/26690253330662551",
+        "https://www.instagram.com/reels/audio/26868761529403213",
+        "https://www.instagram.com/reels/audio/26885590624412674",
+        "https://www.instagram.com/reels/audio/26923322580669821",
+        "https://www.instagram.com/reels/audio/2702836633382221",
+        "https://www.instagram.com/reels/audio/27043767605285229",
+        "https://www.instagram.com/reels/audio/27070461759205089",
+        "https://www.instagram.com/reels/audio/27173910075612553",
+        "https://www.instagram.com/reels/audio/27195721543447334",
+        "https://www.instagram.com/reels/audio/27435154212849943",
+        "https://www.instagram.com/reels/audio/27505661812392374",
+        "https://www.instagram.com/reels/audio/27587126967609168",
+        "https://www.instagram.com/reels/audio/275967263283018",
+        "https://www.instagram.com/reels/audio/27661000323550483",
+        "https://www.instagram.com/reels/audio/27669710879352765",
+        "https://www.instagram.com/reels/audio/2767482896732660",
+        "https://www.instagram.com/reels/audio/276863736527927",
+        "https://www.instagram.com/reels/audio/27738988309042529",
+        "https://www.instagram.com/reels/audio/27744422291886829",
+        "https://www.instagram.com/reels/audio/27846287318366012",
+        "https://www.instagram.com/reels/audio/28003889949202868",
+        "https://www.instagram.com/reels/audio/28302681646015420",
+        "https://www.instagram.com/reels/audio/32945215041760659",
+        "https://www.instagram.com/reels/audio/3301077486734950",
+        "https://www.instagram.com/reels/audio/33765302366393920",
+        "https://www.instagram.com/reels/audio/34291922853755802",
+        "https://www.instagram.com/reels/audio/357391828186054",
+        "https://www.instagram.com/reels/audio/35981693481446045",
+        "https://www.instagram.com/reels/audio/3762108120781128",
+        "https://www.instagram.com/reels/audio/3927839087485325",
+        "https://www.instagram.com/reels/audio/400025130573041",
+        "https://www.instagram.com/reels/audio/407484960012624",
+        "https://www.instagram.com/reels/audio/456609875082993",
+        "https://www.instagram.com/reels/audio/483068785447716",
+        "https://www.instagram.com/reels/audio/500331368617006",
+        "https://www.instagram.com/reels/audio/512327612541048",
+        "https://www.instagram.com/reels/audio/515371218997711",
+        "https://www.instagram.com/reels/audio/559505360249889",
+        "https://www.instagram.com/reels/audio/580559312417594",
+        "https://www.instagram.com/reels/audio/591634857982189",
+        "https://www.instagram.com/reels/audio/606249493080048",
+        "https://www.instagram.com/reels/audio/655541191561685",
+        "https://www.instagram.com/reels/audio/657451619378044",
+        "https://www.instagram.com/reels/audio/658302541207417",
+        "https://www.instagram.com/reels/audio/670134739446990",
+        "https://www.instagram.com/reels/audio/678525704610829",
+        "https://www.instagram.com/reels/audio/681011926995400",
+        "https://www.instagram.com/reels/audio/696487887387706",
+        "https://www.instagram.com/reels/audio/697437963384996",
+        "https://www.instagram.com/reels/audio/712456295295826",
+        "https://www.instagram.com/reels/audio/722903805204295",
+        "https://www.instagram.com/reels/audio/742606544766523",
+        "https://www.instagram.com/reels/audio/763532366565728",
+        "https://www.instagram.com/reels/audio/764432093247105",
+        "https://www.instagram.com/reels/audio/774763791792545",
+        "https://www.instagram.com/reels/audio/786337480831231",
+        "https://www.instagram.com/reels/audio/792019707128778",
+        "https://www.instagram.com/reels/audio/794894963508261",
+        "https://www.instagram.com/reels/audio/799620932740531",
+        "https://www.instagram.com/reels/audio/801721905756844",
+        "https://www.instagram.com/reels/audio/804208024981355",
+        "https://www.instagram.com/reels/audio/804774288727471",
+        "https://www.instagram.com/reels/audio/809457898519774",
+        "https://www.instagram.com/reels/audio/826718636931575",
+        "https://www.instagram.com/reels/audio/837297009242922",
+        "https://www.instagram.com/reels/audio/850453497286512",
+        "https://www.instagram.com/reels/audio/860202682923975",
+        "https://www.instagram.com/reels/audio/873992975157650",
+        "https://www.instagram.com/reels/audio/875716383095111",
+        "https://www.instagram.com/reels/audio/879178747518812",
+        "https://www.instagram.com/reels/audio/943133291523067",
+        "https://www.instagram.com/reels/audio/954122087366261",
+        "https://www.instagram.com/reels/audio/9573873819403156",
+        "https://www.instagram.com/reels/audio/993398866388191",
+        "https://www.tiktok.com/music/Golden-7534922588541241360",
+        "https://www.tiktok.com/music/Hey-Baby-Drop-It-to-the-Floor-feat-T-Pain-6696414028652087298",
+        "https://www.tiktok.com/music/Mind-Blank-7325072810639378434",
+        "https://www.tiktok.com/music/On-a-Mission-7274043399086426113",
+        "https://www.tiktok.com/music/original-sound-%F0%9F%92%AB-7651272787434490631",
+        "https://www.tiktok.com/music/original-sound-7109091048936262442",
+        "https://www.tiktok.com/music/original-sound-7529047591636568887",
+        "https://www.tiktok.com/music/original-sound-7647113486681639681",
+        "https://www.tiktok.com/music/original-sound-7654692848025094942",
+        "https://www.tiktok.com/music/petal-7668507565575964673",
+        "https://www.tiktok.com/music/sonido-original-7566285553383803670",
+        "https://www.tiktok.com/music/Trees-and-Flowers-by-Strawberry-Switchblade-7338534150649088814",
+        "https://www.tiktok.com/music/u-me-=-3-7649983963347896336"
+      ],
+      "candidateReferences": [
+        {
+          "audioUrl": "https://www.instagram.com/reels/audio/1040129337188935",
+          "referenceUrl": "https://www.instagram.com/reel/DQNBOfYDO2Y"
+        },
+        {
+          "audioUrl": "https://www.instagram.com/reels/audio/1055079623617495",
+          "referenceUrl": "https://www.instagram.com/reel/Dbl74zoSjm3"
+        },
+        {
+          "audioUrl": "https://www.instagram.com/reels/audio/1366353098874410",
+          "referenceUrl": "https://www.instagram.com/reel/DbWQg0Voaj0"
+        },
+        {
+          "audioUrl": "https://www.instagram.com/reels/audio/1492753392644819",
+          "referenceUrl": "https://www.instagram.com/reel/DbYzJJcvrwU"
+        },
+        {
+          "audioUrl": "https://www.instagram.com/reels/audio/24985539141095254",
+          "referenceUrl": "https://www.instagram.com/reel/DR47mFxEbmf"
+        },
+        {
+          "audioUrl": "https://www.instagram.com/reels/audio/27070461759205089",
+          "referenceUrl": "https://www.instagram.com/reel/DbtLDTcKkQm"
+        },
+        {
+          "audioUrl": "https://www.instagram.com/reels/audio/32945215041760659",
+          "referenceUrl": "https://www.instagram.com/reel/DQ7xEBVEddX"
+        },
+        {
+          "audioUrl": "https://www.instagram.com/reels/audio/3927839087485325",
+          "referenceUrl": "https://www.instagram.com/reel/Db3OnskP8PN"
+        },
+        {
+          "audioUrl": "https://www.instagram.com/reels/audio/407484960012624",
+          "referenceUrl": "https://www.instagram.com/reel/DbgY9H1oXnY"
+        },
+        {
+          "audioUrl": "https://www.instagram.com/reels/audio/512327612541048",
+          "referenceUrl": "https://www.instagram.com/reel/DQmw63kDgpG"
+        },
+        {
+          "audioUrl": "https://www.instagram.com/reels/audio/559505360249889",
+          "referenceUrl": "https://www.instagram.com/reel/Db6LPxaODiT"
+        },
+        {
+          "audioUrl": "https://www.instagram.com/reels/audio/580559312417594",
+          "referenceUrl": "https://www.instagram.com/reel/DUnmzGeimeE"
+        },
+        {
+          "audioUrl": "https://www.instagram.com/reels/audio/712456295295826",
+          "referenceUrl": "https://www.instagram.com/reel/Dbnn9oFMXbx"
+        },
+        {
+          "audioUrl": "https://www.instagram.com/reels/audio/804774288727471",
+          "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
+        },
+        {
+          "audioUrl": "https://www.instagram.com/reels/audio/954122087366261",
+          "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+        },
+        {
+          "audioUrl": "https://www.tiktok.com/music/Golden-7534922588541241360",
+          "referenceUrl": "https://www.tiktok.com/@kpoplikely/video/7627341780337380640"
+        },
+        {
+          "audioUrl": "https://www.tiktok.com/music/Hey-Baby-Drop-It-to-the-Floor-feat-T-Pain-6696414028652087298",
+          "referenceUrl": "https://www.tiktok.com/@hope_schwing/video/7667660831471045918"
+        },
+        {
+          "audioUrl": "https://www.tiktok.com/music/Mind-Blank-7325072810639378434",
+          "referenceUrl": "https://www.tiktok.com/@isabelclanc/video/7667274434394344717"
+        },
+        {
+          "audioUrl": "https://www.tiktok.com/music/On-a-Mission-7274043399086426113",
+          "referenceUrl": "https://www.tiktok.com/@liammillerr/video/7663238721306627359"
+        },
+        {
+          "audioUrl": "https://www.tiktok.com/music/original-sound-%F0%9F%92%AB-7651272787434490631",
+          "referenceUrl": "https://www.tiktok.com/@genesisgalaxy8/video/7666486744509861136"
+        },
+        {
+          "audioUrl": "https://www.tiktok.com/music/original-sound-7109091048936262442",
+          "referenceUrl": "https://www.tiktok.com/@juliehaneline/video/7671431412876266782"
+        },
+        {
+          "audioUrl": "https://www.tiktok.com/music/original-sound-7529047591636568887",
+          "referenceUrl": "https://www.tiktok.com/@stillwatersfishing/video/7640578773078904077"
+        },
+        {
+          "audioUrl": "https://www.tiktok.com/music/original-sound-7647113486681639681",
+          "referenceUrl": "https://www.tiktok.com/@joshfawaz/video/7647113450618899719"
+        },
+        {
+          "audioUrl": "https://www.tiktok.com/music/original-sound-7654692848025094942",
+          "referenceUrl": "https://www.tiktok.com/@mntat246850/video/7672037517574638879"
+        },
+        {
+          "audioUrl": "https://www.tiktok.com/music/petal-7668507565575964673",
+          "referenceUrl": "https://www.tiktok.com/@benjohn066/video/7673488305203236127"
+        },
+        {
+          "audioUrl": "https://www.tiktok.com/music/sonido-original-7566285553383803670",
+          "referenceUrl": "https://www.tiktok.com/@carla_paucar/video/7566285545970683158"
+        },
+        {
+          "audioUrl": "https://www.tiktok.com/music/Trees-and-Flowers-by-Strawberry-Switchblade-7338534150649088814",
+          "referenceUrl": "https://www.tiktok.com/@amberyackzan/video/7588222036334349598"
+        },
+        {
+          "audioUrl": "https://www.tiktok.com/music/u-me-=-3-7649983963347896336",
+          "referenceUrl": "https://www.tiktok.com/@heyitsmekirstie/video/7653621145211653389"
+        }
+      ]
+    },
+    "candidatePoolDelta": {
+      "status": "compared",
+      "added": 13,
+      "removed": 0,
+      "retained": 166
+    },
+    "qualificationAudit": {
+      "attemptedAt": "2026-08-29T22:30:08.078Z",
+      "complete": true,
+      "videoFeedCapturedAt": "2026-08-29T22:26:53.093Z",
+      "videoFeedFresh": true,
+      "videoDiscoveryAuditScannedAt": "2026-08-29T22:26:53.093Z",
+      "videoDiscoveryAuditFresh": true,
+      "attemptedTrendCount": 29,
+      "attemptedCurrentTrendCount": 0,
+      "attemptedFreshVideoTrendCount": 29,
+      "attemptedFreshAuditClusterCount": 0,
+      "freshQualifiedCount": 24,
+      "qualifiedClusterCount": 24,
+      "freshCurrentQualifiedCount": 18,
+      "freshNewQualifiedCount": 6,
+      "qualifiedAudioUrls": [
+        "https://www.tiktok.com/music/fulfill-the-prophecy-7406872980187401003",
+        "https://www.tiktok.com/music/original-sound-7627517043541068566",
+        "https://www.tiktok.com/music/original-sound-7647999030882634509",
+        "https://www.tiktok.com/music/original-sound-7627238272384633631",
+        "https://www.tiktok.com/music/On-a-Mission-7274043399086426113",
+        "https://www.tiktok.com/music/original-sound-7385248336640150304",
+        "https://www.tiktok.com/music/original-sound-7649038378872228638",
+        "https://www.tiktok.com/music/ChoosinTexas-7559312683885201425",
+        "https://www.tiktok.com/music/u-me-=-3-7649983963347896336",
+        "https://www.tiktok.com/music/original-sound-7642492753208757014",
+        "https://www.tiktok.com/music/Dracula-with-JENNIE-7603221525400455169",
+        "https://www.tiktok.com/music/Let-Down-7520755827558959894",
+        "https://www.tiktok.com/music/original-sound-7654835361444530974",
+        "https://www.tiktok.com/music/original-sound-7057703190136998703",
+        "https://www.tiktok.com/music/original-sound-7653201595181665038",
+        "https://www.tiktok.com/music/original-sound-7109091048936262442",
+        "https://www.tiktok.com/music/original-sound-7653092863365892886",
+        "https://www.tiktok.com/music/petal-7668507565575964673",
+        "https://www.tiktok.com/music/original-sound-7666712105047493389",
+        "https://www.tiktok.com/music/sonido-original-7651806743999073040",
+        "https://www.tiktok.com/music/Pocketful-of-Sunshine-6696420561934878722",
+        "https://www.tiktok.com/music/original-sound-7598369392350530335",
+        "https://www.tiktok.com/music/original-sound-6942717379948792582",
+        "https://www.tiktok.com/music/Wrap-it-up-7208649829264837422"
+      ],
+      "rejected": [
+        {
+          "kind": "video",
+          "id": "just-say-here-bro",
+          "matchedCreatorCount": 1,
+          "error": "aucune identite audio commune verifiee sur trois createurs distincts"
+        },
+        {
+          "kind": "video",
+          "id": "saxophones-getting-louder",
+          "matchedCreatorCount": 2,
+          "error": "aucune identite audio commune verifiee sur trois createurs distincts"
+        },
+        {
+          "kind": "video",
+          "id": "eurosummer-micro-montage",
+          "matchedCreatorCount": 1,
+          "error": "aucune identite audio commune verifiee sur trois createurs distincts"
+        },
+        {
+          "kind": "video",
+          "id": "ice-melting-study-challenge",
+          "matchedCreatorCount": 2,
+          "error": "aucune identite audio commune verifiee sur trois createurs distincts"
+        },
+        {
+          "kind": "video",
+          "id": "study-hours-scoreboard",
+          "matchedCreatorCount": 1,
+          "error": "aucune identite audio commune verifiee sur trois createurs distincts"
+        }
+      ],
+      "discoveredCandidateCount": 179,
+      "discoveredWithoutMultiCreatorProofCount": 175
+    },
+    "newCandidateCount": 176,
     "added": [
       "https://www.instagram.com/reels/audio/1006119841436928",
       "https://www.instagram.com/reels/audio/1040129337188935",
@@ -186,11 +572,21 @@
       "https://www.instagram.com/reels/audio/943133291523067",
       "https://www.instagram.com/reels/audio/954122087366261",
       "https://www.instagram.com/reels/audio/9573873819403156",
-      "https://www.instagram.com/reels/audio/993398866388191"
+      "https://www.instagram.com/reels/audio/993398866388191",
+      "https://www.tiktok.com/music/Golden-7534922588541241360",
+      "https://www.tiktok.com/music/Hey-Baby-Drop-It-to-the-Floor-feat-T-Pain-6696414028652087298",
+      "https://www.tiktok.com/music/Mind-Blank-7325072810639378434",
+      "https://www.tiktok.com/music/On-a-Mission-7274043399086426113",
+      "https://www.tiktok.com/music/original-sound-%F0%9F%92%AB-7651272787434490631",
+      "https://www.tiktok.com/music/original-sound-7529047591636568887",
+      "https://www.tiktok.com/music/original-sound-7647113486681639681",
+      "https://www.tiktok.com/music/original-sound-7654692848025094942",
+      "https://www.tiktok.com/music/sonido-original-7566285553383803670",
+      "https://www.tiktok.com/music/Trees-and-Flowers-by-Strawberry-Switchblade-7338534150649088814",
+      "https://www.tiktok.com/music/u-me-=-3-7649983963347896336"
     ],
     "removed": [
       "https://www.tiktok.com/music/Pocketful-of-Sunshine-6696420561934878722",
-      "https://www.tiktok.com/music/petal-7668507565575964673",
       "https://www.tiktok.com/music/original-sound-7653201595181665038",
       "https://www.tiktok.com/music/original-sound-7643191632304671518",
       "https://www.tiktok.com/music/original-sound-7627517043541068566",
@@ -216,7 +612,6 @@
       "https://www.tiktok.com/music/let-down-7520755827558959894",
       "https://www.tiktok.com/music/original-sound-7654835361444530974",
       "https://www.tiktok.com/music/original-sound-7057703190136998703",
-      "https://www.tiktok.com/music/original-sound-7109091048936262442",
       "https://www.tiktok.com/music/original-sound-7653092863365892886",
       "https://www.tiktok.com/music/original-sound-7666712105047493389",
       "https://www.tiktok.com/music/original-sound-7627692912205187861",
@@ -240,7 +635,9 @@
       "https://www.tiktok.com/music/son-original-7649860736952388384"
     ],
     "retainedIds": [
-      "stupid-song-montage"
+      "petal-soft-chaos",
+      "stupid-song-montage",
+      "tiktok-different-lives-split-262442"
     ],
     "candidateAudioUrls": [
       "https://www.instagram.com/reels/audio/1006119841436928",
@@ -408,171 +805,48 @@
       "https://www.instagram.com/reels/audio/943133291523067",
       "https://www.instagram.com/reels/audio/954122087366261",
       "https://www.instagram.com/reels/audio/9573873819403156",
-      "https://www.instagram.com/reels/audio/993398866388191"
+      "https://www.instagram.com/reels/audio/993398866388191",
+      "https://www.tiktok.com/music/Golden-7534922588541241360",
+      "https://www.tiktok.com/music/Hey-Baby-Drop-It-to-the-Floor-feat-T-Pain-6696414028652087298",
+      "https://www.tiktok.com/music/Mind-Blank-7325072810639378434",
+      "https://www.tiktok.com/music/On-a-Mission-7274043399086426113",
+      "https://www.tiktok.com/music/original-sound-%F0%9F%92%AB-7651272787434490631",
+      "https://www.tiktok.com/music/original-sound-7109091048936262442",
+      "https://www.tiktok.com/music/original-sound-7529047591636568887",
+      "https://www.tiktok.com/music/original-sound-7647113486681639681",
+      "https://www.tiktok.com/music/original-sound-7654692848025094942",
+      "https://www.tiktok.com/music/petal-7668507565575964673",
+      "https://www.tiktok.com/music/sonido-original-7566285553383803670",
+      "https://www.tiktok.com/music/Trees-and-Flowers-by-Strawberry-Switchblade-7338534150649088814",
+      "https://www.tiktok.com/music/u-me-=-3-7649983963347896336"
     ],
     "candidateReferences": [
       {
-        "audioUrl": "https://www.instagram.com/reels/audio/1006119841436928",
-        "referenceUrl": "https://www.instagram.com/reel/DQmw63kDgpG"
-      },
-      {
         "audioUrl": "https://www.instagram.com/reels/audio/1040129337188935",
         "referenceUrl": "https://www.instagram.com/reel/DQNBOfYDO2Y"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/1047770533202108",
-        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
       },
       {
         "audioUrl": "https://www.instagram.com/reels/audio/1055079623617495",
         "referenceUrl": "https://www.instagram.com/reel/Dbl74zoSjm3"
       },
       {
-        "audioUrl": "https://www.instagram.com/reels/audio/1074068028223837",
-        "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/1176610871006162",
-        "referenceUrl": "https://www.instagram.com/reel/DQmw63kDgpG"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/1226647965481387",
-        "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/1332050085528695",
-        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/1356236634516969",
-        "referenceUrl": "https://www.instagram.com/reel/DQ7xEBVEddX"
-      },
-      {
         "audioUrl": "https://www.instagram.com/reels/audio/1366353098874410",
         "referenceUrl": "https://www.instagram.com/reel/DbWQg0Voaj0"
       },
       {
-        "audioUrl": "https://www.instagram.com/reels/audio/1404238250634252",
-        "referenceUrl": "https://www.instagram.com/reel/DQ7xEBVEddX"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/1433652788352081",
-        "referenceUrl": "https://www.instagram.com/reel/DQ7xEBVEddX"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/1442567383520183",
-        "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/1457616852393704",
-        "referenceUrl": "https://www.instagram.com/reel/DUnmzGeimeE"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/1467234368070031",
-        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
-      },
-      {
         "audioUrl": "https://www.instagram.com/reels/audio/1492753392644819",
-        "referenceUrl": "https://www.instagram.com/reel/DbgY9H1oXnY"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/1494662545202817",
-        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/1526221591722544",
-        "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/1576942649432181",
-        "referenceUrl": "https://www.instagram.com/reel/DQmw63kDgpG"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/1580438116655562",
-        "referenceUrl": "https://www.instagram.com/reel/DQmw63kDgpG"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/1749292175761306",
-        "referenceUrl": "https://www.instagram.com/reel/DUnmzGeimeE"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/1765294231067484",
-        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/1881039849486413",
-        "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/1908594629696645",
-        "referenceUrl": "https://www.instagram.com/reel/DQ7xEBVEddX"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/1957736051613126",
-        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/1976253089934877",
-        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/2195704350892729",
-        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/220983215198366",
-        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+        "referenceUrl": "https://www.instagram.com/reel/DbYzJJcvrwU"
       },
       {
         "audioUrl": "https://www.instagram.com/reels/audio/24985539141095254",
-        "referenceUrl": "https://www.instagram.com/reel/DQ7xEBVEddX"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/25373541205611069",
         "referenceUrl": "https://www.instagram.com/reel/DR47mFxEbmf"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/25707406555517981",
-        "referenceUrl": "https://www.instagram.com/reel/DR47mFxEbmf"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/25843690791914452",
-        "referenceUrl": "https://www.instagram.com/reel/DUnmzGeimeE"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/26018556917802399",
-        "referenceUrl": "https://www.instagram.com/reel/DUnmzGeimeE"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/26047585514865525",
-        "referenceUrl": "https://www.instagram.com/reel/DR47mFxEbmf"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/26525437267097889",
-        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/26644584355225677",
-        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
       },
       {
         "audioUrl": "https://www.instagram.com/reels/audio/27070461759205089",
         "referenceUrl": "https://www.instagram.com/reel/DbtLDTcKkQm"
       },
       {
-        "audioUrl": "https://www.instagram.com/reels/audio/2767482896732660",
-        "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
-      },
-      {
         "audioUrl": "https://www.instagram.com/reels/audio/32945215041760659",
-        "referenceUrl": "https://www.instagram.com/reel/DQ7xEBVEddX"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/3301077486734950",
-        "referenceUrl": "https://www.instagram.com/reel/DQmw63kDgpG"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/357391828186054",
         "referenceUrl": "https://www.instagram.com/reel/DQ7xEBVEddX"
       },
       {
@@ -584,16 +858,8 @@
         "referenceUrl": "https://www.instagram.com/reel/DbgY9H1oXnY"
       },
       {
-        "audioUrl": "https://www.instagram.com/reels/audio/483068785447716",
-        "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
-      },
-      {
         "audioUrl": "https://www.instagram.com/reels/audio/512327612541048",
-        "referenceUrl": "https://www.instagram.com/reel/DQNBOfYDO2Y"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/515371218997711",
-        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+        "referenceUrl": "https://www.instagram.com/reel/DQmw63kDgpG"
       },
       {
         "audioUrl": "https://www.instagram.com/reels/audio/559505360249889",
@@ -608,48 +874,64 @@
         "referenceUrl": "https://www.instagram.com/reel/Dbnn9oFMXbx"
       },
       {
-        "audioUrl": "https://www.instagram.com/reels/audio/722903805204295",
-        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/742606544766523",
-        "referenceUrl": "https://www.instagram.com/reel/DQmw63kDgpG"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/764432093247105",
-        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/786337480831231",
-        "referenceUrl": "https://www.instagram.com/reel/DUnmzGeimeE"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/794894963508261",
-        "referenceUrl": "https://www.instagram.com/reel/DQmw63kDgpG"
-      },
-      {
         "audioUrl": "https://www.instagram.com/reels/audio/804774288727471",
         "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
       },
       {
-        "audioUrl": "https://www.instagram.com/reels/audio/809457898519774",
-        "referenceUrl": "https://www.instagram.com/reel/DQNBOfYDO2Y"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/826718636931575",
-        "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/837297009242922",
-        "referenceUrl": "https://www.instagram.com/reel/DQNBOfYDO2Y"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/860202682923975",
-        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
-      },
-      {
         "audioUrl": "https://www.instagram.com/reels/audio/954122087366261",
         "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+      },
+      {
+        "audioUrl": "https://www.tiktok.com/music/Golden-7534922588541241360",
+        "referenceUrl": "https://www.tiktok.com/@kpoplikely/video/7627341780337380640"
+      },
+      {
+        "audioUrl": "https://www.tiktok.com/music/Hey-Baby-Drop-It-to-the-Floor-feat-T-Pain-6696414028652087298",
+        "referenceUrl": "https://www.tiktok.com/@hope_schwing/video/7667660831471045918"
+      },
+      {
+        "audioUrl": "https://www.tiktok.com/music/Mind-Blank-7325072810639378434",
+        "referenceUrl": "https://www.tiktok.com/@isabelclanc/video/7667274434394344717"
+      },
+      {
+        "audioUrl": "https://www.tiktok.com/music/On-a-Mission-7274043399086426113",
+        "referenceUrl": "https://www.tiktok.com/@liammillerr/video/7663238721306627359"
+      },
+      {
+        "audioUrl": "https://www.tiktok.com/music/original-sound-%F0%9F%92%AB-7651272787434490631",
+        "referenceUrl": "https://www.tiktok.com/@genesisgalaxy8/video/7666486744509861136"
+      },
+      {
+        "audioUrl": "https://www.tiktok.com/music/original-sound-7109091048936262442",
+        "referenceUrl": "https://www.tiktok.com/@juliehaneline/video/7671431412876266782"
+      },
+      {
+        "audioUrl": "https://www.tiktok.com/music/original-sound-7529047591636568887",
+        "referenceUrl": "https://www.tiktok.com/@stillwatersfishing/video/7640578773078904077"
+      },
+      {
+        "audioUrl": "https://www.tiktok.com/music/original-sound-7647113486681639681",
+        "referenceUrl": "https://www.tiktok.com/@joshfawaz/video/7647113450618899719"
+      },
+      {
+        "audioUrl": "https://www.tiktok.com/music/original-sound-7654692848025094942",
+        "referenceUrl": "https://www.tiktok.com/@mntat246850/video/7672037517574638879"
+      },
+      {
+        "audioUrl": "https://www.tiktok.com/music/petal-7668507565575964673",
+        "referenceUrl": "https://www.tiktok.com/@benjohn066/video/7673488305203236127"
+      },
+      {
+        "audioUrl": "https://www.tiktok.com/music/sonido-original-7566285553383803670",
+        "referenceUrl": "https://www.tiktok.com/@carla_paucar/video/7566285545970683158"
+      },
+      {
+        "audioUrl": "https://www.tiktok.com/music/Trees-and-Flowers-by-Strawberry-Switchblade-7338534150649088814",
+        "referenceUrl": "https://www.tiktok.com/@amberyackzan/video/7588222036334349598"
+      },
+      {
+        "audioUrl": "https://www.tiktok.com/music/u-me-=-3-7649983963347896336",
+        "referenceUrl": "https://www.tiktok.com/@heyitsmekirstie/video/7653621145211653389"
       }
     ],
     "sourceBreakdown": [
@@ -660,6 +942,9 @@
         "status": "success",
         "candidateCount": 0,
         "referenceCandidateCount": 0,
+        "unpairedReferenceCount": 0,
+        "resolvedReferenceCount": 0,
+        "referenceResolutionErrors": [],
         "error": null
       },
       {
@@ -668,7 +953,10 @@
         "url": "https://later.com/blog/instagram-reels-trends/",
         "status": "success",
         "candidateCount": 133,
-        "referenceCandidateCount": 36,
+        "referenceCandidateCount": 6,
+        "unpairedReferenceCount": 0,
+        "resolvedReferenceCount": 0,
+        "referenceResolutionErrors": [],
         "error": null
       },
       {
@@ -676,8 +964,11 @@
         "label": "SocialPilot · tendances TikTok",
         "url": "https://www.socialpilot.co/blog/tiktok-trends",
         "status": "success",
-        "candidateCount": 0,
-        "referenceCandidateCount": 0,
+        "candidateCount": 13,
+        "referenceCandidateCount": 13,
+        "unpairedReferenceCount": 13,
+        "resolvedReferenceCount": 13,
+        "referenceResolutionErrors": [],
         "error": null
       },
       {
@@ -686,10 +977,116 @@
         "url": "https://www.socialpilot.co/blog/instagram-reels-trends",
         "status": "success",
         "candidateCount": 34,
-        "referenceCandidateCount": 24,
+        "referenceCandidateCount": 9,
+        "unpairedReferenceCount": 0,
+        "resolvedReferenceCount": 0,
+        "referenceResolutionErrors": [],
         "error": null
       }
-    ]
+    ],
+    "publishedInventoryCount": 50,
+    "selectionAudit": {
+      "evaluatedAt": "2026-08-29T22:30:08.078Z",
+      "addedTrendIds": [
+        "audio-wrap-it-up-procrastination",
+        "audio-netflix-documentary-confessional",
+        "audio-let-down-emotional-rescue",
+        "audio-dracula-jennie-remix"
+      ],
+      "addedAudioUrls": [
+        "https://www.tiktok.com/music/Wrap-it-up-7208649829264837422",
+        "https://www.tiktok.com/music/On-a-Mission-7274043399086426113",
+        "https://www.tiktok.com/music/Let-Down-7520755827558959894",
+        "https://www.tiktok.com/music/Dracula-with-JENNIE-7603221525400455169"
+      ],
+      "removedTrendIds": [
+        "tiktok-not-very-nonchalant-633631",
+        "tiktok-pain-oh-no-spain-150304",
+        "youtube-phones-eras-study-desk",
+        "freaked-out-list"
+      ],
+      "removedAudioUrls": [
+        "https://www.tiktok.com/music/original-sound-7627238272384633631",
+        "https://www.tiktok.com/music/original-sound-7385248336640150304",
+        "https://www.youtube.com/source/yaDcdlYhW-A/shorts",
+        "https://www.instagram.com/reels/audio/1544636237314027/"
+      ],
+      "retainedTrendIds": [
+        "pocketful-of-sunshine",
+        "petal-soft-chaos",
+        "baby-just-wanna-dance",
+        "saxophones-getting-louder",
+        "ghosting-you-montage",
+        "te-extrano-motivation",
+        "obsession-nice-date",
+        "young-and-beautiful",
+        "less-than-a-lover",
+        "youtube-cat-outplayed-focus",
+        "sirens-cinematic-tension",
+        "odysseus-heroic-edit",
+        "stupid-song-montage",
+        "tiktok-two-personalities-401003",
+        "tiktok-kumar-method-634509",
+        "tiktok-netflix-documentary-confessional-426113",
+        "tiktok-bangladesh-absurd-complaint-228638",
+        "tiktok-choosin-texas-western-reveal-201425",
+        "tiktok-u-me-love-timeline-896336",
+        "tiktok-ss26-editorial-transition-757014",
+        "tiktok-dracula-jennie-remix-455169",
+        "tiktok-let-down-emotional-rescue-959894",
+        "tiktok-broken-rules-temptation-530974",
+        "tiktok-viral-moment-backstory-998703",
+        "tiktok-different-lives-split-262442",
+        "tiktok-rush-hour-understand-me-892886",
+        "tiktok-suspect-hidden-plain-sight-493389",
+        "tiktok-video-game-main-menu-187861",
+        "tiktok-backrooms-stay-in-character-lofi-boy-021078",
+        "tiktok-study-until-they-text-aging-530335",
+        "tiktok-deadline-tomorrow-turbo-792582",
+        "tiktok-wrap-it-up-procrastination-837422",
+        "tiktok-social-battery-solo-mode-414210",
+        "tiktok-choose-your-lofi-character-030545",
+        "tiktok-choose-your-lofi-character-465094",
+        "tiktok-social-battery-solo-mode-223595",
+        "tiktok-ice-melting-study-challenge-312449",
+        "tiktok-social-battery-solo-mode-161734",
+        "youtube-matrix-focus-edit",
+        "tiktok-explaining-game-lore-661378",
+        "tiktok-study-hours-scoreboard-847146",
+        "tiktok-study-hours-scoreboard-252365",
+        "tiktok-explaining-game-lore-288479",
+        "tiktok-gaming-setup-night-reveal-769377",
+        "tiktok-discord-eh-les-copains-440214",
+        "tiktok-twins-at-the-carousel-388384"
+      ],
+      "reverifiedTrendIds": [
+        "tiktok-two-personalities-401003",
+        "ghosting-you-montage",
+        "tiktok-kumar-method-634509",
+        "tiktok-not-very-nonchalant-633631",
+        "tiktok-pain-oh-no-spain-150304",
+        "tiktok-bangladesh-absurd-complaint-228638",
+        "tiktok-ss26-editorial-transition-757014",
+        "tiktok-broken-rules-temptation-530974",
+        "tiktok-viral-moment-backstory-998703",
+        "baby-just-wanna-dance",
+        "tiktok-different-lives-split-262442",
+        "tiktok-rush-hour-understand-me-892886",
+        "petal-soft-chaos",
+        "tiktok-suspect-hidden-plain-sight-493389",
+        "te-extrano-motivation",
+        "pocketful-of-sunshine",
+        "tiktok-study-until-they-text-aging-530335",
+        "tiktok-deadline-tomorrow-turbo-792582"
+      ],
+      "rejected": [
+        {
+          "id": "audio-u-me-love-timeline",
+          "reason": "video de reference deja publiee"
+        }
+      ],
+      "noRotationReason": null
+    }
   },
   "coverage": {
     "totalChecked": 47,
@@ -697,7 +1094,7 @@
     "requiredTotal": 36,
     "ratio": 0,
     "providersPassed": false,
-    "publishable": false,
+    "publishable": true,
     "catalogPublishable": true,
     "instagramPlaybackChecked": 6,
     "instagramPlaybackMatched": 6,
@@ -708,7 +1105,7 @@
     "tiktokThumbnailComplete": false,
     "thumbnailPublishable": false,
     "assetPublishable": false,
-    "discoveryPublishable": false,
+    "discoveryPublishable": true,
     "counterPublishable": false
   },
   "providers": [
@@ -723,7 +1120,7 @@
       "thumbnailMatched": 0,
       "thumbnailCoverage": 0,
       "thumbnailComplete": false,
-      "status": "failed",
+      "status": "limited",
       "errors": [
         "young-and-beautiful: compteur public non lie a cette identite audio",
         "less-than-a-lover: compteur public non lie a cette identite audio",
@@ -731,7 +1128,7 @@
         "odysseus-heroic-edit: compteur public non lie a cette identite audio",
         "freaked-out-list: compteur public non lie a cette identite audio",
         "stupid-song-montage: compteur public non lie a cette identite audio",
-        "couverture insuffisante: 0/6, minimum 5"
+        "compteurs natifs attribuables limites: 0/6, seuil de couverture analytique 5"
       ]
     },
     {
@@ -745,7 +1142,7 @@
       "thumbnailMatched": 40,
       "thumbnailCoverage": 0.975609756097561,
       "thumbnailComplete": false,
-      "status": "failed",
+      "status": "limited",
       "errors": [
         "pocketful-of-sunshine: compteur public non lie a cette identite audio",
         "petal-soft-chaos: compteur public non lie a cette identite audio",
@@ -788,7 +1185,7 @@
         "tiktok-gaming-setup-night-reveal-769377: compteur public non lie a cette identite audio",
         "tiktok-discord-eh-les-copains-440214: compteur public non lie a cette identite audio",
         "tiktok-twins-at-the-carousel-388384: compteur public non lie a cette identite audio",
-        "couverture insuffisante: 0/41, minimum 29",
+        "compteurs natifs attribuables limites: 0/41, seuil de couverture analytique 29",
         "couverture miniatures insuffisante: 40/41, minimum 41"
       ]
     },
@@ -808,5 +1205,15 @@
         "YouTube n'expose pas de compteur global d'utilisations audio comparable."
       ]
     }
-  ]
+  ],
+  "assetCache": {
+    "status": "success",
+    "cachedCount": 4,
+    "paths": [
+      "media/audio-trends/audio-let-down-emotional-rescue.jpg",
+      "media/audio-trends/audio-dracula-jennie-remix.jpg",
+      "media/audio-trends/audio-wrap-it-up-procrastination.jpg",
+      "media/audio-trends/audio-netflix-documentary-confessional.png"
+    ]
+  }
 }

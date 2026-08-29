@@ -13,6 +13,7 @@ import {
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const feedPath = resolve(root, "data", "audio-trends", "feed.json");
 const statusPath = resolve(root, "data", "audio-trends", "refresh-status.json");
+const videoTrendFeedPath = resolve(root, "data", "trends", "feed.json");
 const TRACKED_PLATFORMS = ["instagram", "tiktok"];
 const PARIS_TIMEZONE = "Europe/Paris";
 const COUNTER_LINK_WINDOW = 8_192;
@@ -26,6 +27,10 @@ const TIKTOK_THUMBNAIL_MAX_BYTES = 10_000_000;
 const AUDIO_DISCOVERY_HTML_MAX_BYTES = 2_000_000;
 const AUDIO_DISCOVERY_NEARBY_REFERENCE_WINDOW = 8_192;
 const AUDIO_DISCOVERY_AUDIT_CANDIDATE_LIMIT = 200;
+const AUDIO_DISCOVERY_REFERENCE_LIMIT_PER_SOURCE = 50;
+const AUDIO_DISCOVERY_REFERENCE_CONCURRENCY = 4;
+const AUDIO_QUALIFICATION_MAX_AGE_MS = 26 * 60 * 60 * 1_000;
+const AUDIO_REFRESH_MAX_ROTATIONS = 5;
 const AUDIO_DISCOVERY_EDITORIAL_HOSTS = new Set([
   "buffer.com",
   "later.com",
@@ -109,6 +114,20 @@ export function extractEditorialAudioCandidates(html, {
   sourceId = "editorial-source",
   sourceUrl = "https://example.com/",
 } = {}) {
+  return extractEditorialDiscoveryDocument(html, { sourceId, sourceUrl }).candidates;
+}
+
+export function extractEditorialUnpairedReferenceCandidates(html, {
+  sourceId = "editorial-source",
+  sourceUrl = "https://example.com/",
+} = {}) {
+  return extractEditorialDiscoveryDocument(html, { sourceId, sourceUrl }).unpairedReferences;
+}
+
+function extractEditorialDiscoveryDocument(html, {
+  sourceId,
+  sourceUrl,
+}) {
   const normalized = decodeEditorialDiscoveryHtml(html);
   const mediaUrls = [];
   const pattern = /https:\/\/(?:www\.)?(?:tiktok\.com|instagram\.com)\/[^\s"'<>\\]{1,2048}/giu;
@@ -136,9 +155,13 @@ export function extractEditorialAudioCandidates(html, {
   }
 
   const references = mediaUrls.filter((candidate) => candidate.kind === "reference");
+  const usedReferenceIndexes = new Set();
   const byAudioUrl = new Map();
   for (const audio of mediaUrls.filter((candidate) => candidate.kind === "audio")) {
+    const existing = byAudioUrl.get(audio.url);
+    if (existing?.referenceUrl) continue;
     const nearestReference = references
+      .filter((candidate) => !usedReferenceIndexes.has(candidate.index))
       .filter((candidate) => candidate.platform === audio.platform)
       .map((candidate) => ({
         candidate,
@@ -146,7 +169,7 @@ export function extractEditorialAudioCandidates(html, {
       }))
       .filter(({ distance }) => distance <= AUDIO_DISCOVERY_NEARBY_REFERENCE_WINDOW)
       .sort((left, right) => left.distance - right.distance)[0]?.candidate ?? null;
-    const existing = byAudioUrl.get(audio.url);
+    if (nearestReference) usedReferenceIndexes.add(nearestReference.index);
     if (!existing || (!existing.referenceUrl && nearestReference)) {
       byAudioUrl.set(audio.url, {
         platform: audio.platform,
@@ -157,18 +180,34 @@ export function extractEditorialAudioCandidates(html, {
       });
     }
   }
-  return [...byAudioUrl.values()].sort((left, right) =>
-    left.audioUrl.localeCompare(right.audioUrl, "en")
-  );
+  const unpairedReferences = [...new Map(
+    references
+      .filter((candidate) => !usedReferenceIndexes.has(candidate.index))
+      .map((candidate) => [candidate.url, {
+        platform: candidate.platform,
+        referenceUrl: candidate.url,
+        sourceId,
+        sourceUrl,
+      }]),
+  ).values()].sort((left, right) => left.referenceUrl.localeCompare(right.referenceUrl, "en"));
+  return {
+    candidates: [...byAudioUrl.values()].sort((left, right) =>
+      left.audioUrl.localeCompare(right.audioUrl, "en")
+    ),
+    unpairedReferences,
+  };
 }
 
 export async function scanAudioTrendDiscovery({
   feed,
+  videoTrendFeed = null,
+  previousDiscoveryAudit = null,
   now,
   sources = AUDIO_DISCOVERY_SOURCES,
   fetchImpl = fetch,
   timeoutMs = AUDIO_REFRESH_TIMEOUT_MS,
   concurrency = Math.min(AUDIO_REFRESH_CONCURRENCY, 4),
+  qualificationResult = null,
 }) {
   if (!Number.isFinite(Date.parse(now))) {
     throw new Error("Horodatage de découverte audio invalide.");
@@ -179,11 +218,23 @@ export async function scanAudioTrendDiscovery({
     return emptyAudioDiscoveryAudit(feed, inventory, null, "not-run");
   }
 
-  const sourceResults = await mapWithConcurrency(
-    configuredSources,
-    concurrency,
-    (source) => inspectEditorialDiscoverySource(source, { fetchImpl, timeoutMs }),
-  );
+  const [sourceResults, qualification] = await Promise.all([
+    mapWithConcurrency(
+      configuredSources,
+      concurrency,
+      (source) => inspectEditorialDiscoverySource(source, { fetchImpl, timeoutMs }),
+    ),
+    qualificationResult
+      ? Promise.resolve(qualificationResult)
+      : qualifyAudioTrendCandidates({
+          feed,
+          videoTrendFeed,
+          now,
+          fetchImpl,
+          timeoutMs,
+          concurrency,
+        }),
+  ]);
   const discoveredByAudioUrl = new Map();
   for (const result of sourceResults) {
     for (const candidate of result.candidates) {
@@ -211,18 +262,10 @@ export async function scanAudioTrendDiscovery({
       .map((trend) => canonicalInventoryUrl(trend.audioUrl))
       .filter(Boolean),
   );
-  const publishableCurrentAudioUrls = new Set(
-    feed.trends
-      .filter((trend) => isPublishableAudioTrendReferenceVideo(trend.referenceVideo))
-      .map((trend) => canonicalInventoryUrl(trend.audioUrl))
-      .filter(Boolean),
-  );
   const currentMatchedCount = candidates.filter((candidate) =>
     currentAudioUrls.has(canonicalInventoryUrl(candidate.audioUrl))
   ).length;
-  const qualifiedInventoryCount = candidates.filter((candidate) =>
-    publishableCurrentAudioUrls.has(canonicalInventoryUrl(candidate.audioUrl))
-  ).length;
+  const qualifiedInventoryCount = qualification.audit.freshQualifiedCount;
   const retainedIds = feed.trends
     .filter((trend) => candidates.some((candidate) =>
       canonicalInventoryUrl(candidate.audioUrl) === canonicalInventoryUrl(trend.audioUrl)
@@ -237,17 +280,85 @@ export async function scanAudioTrendDiscovery({
     ))
     .map((trend) => trend.audioUrl);
   const allSourcesSucceeded = sourceResults.every((result) => result.status === "success");
+  const previousRegistry = previousDiscoveryAudit?.candidateRegistry ?? {
+    updatedAt: previousDiscoveryAudit?.complete === true ? previousDiscoveryAudit.scannedAt : null,
+    candidateCount: Array.isArray(previousDiscoveryAudit?.candidateAudioUrls)
+      ? previousDiscoveryAudit.candidateAudioUrls.length
+      : 0,
+    candidateAudioUrls: Array.isArray(previousDiscoveryAudit?.candidateAudioUrls)
+      ? previousDiscoveryAudit.candidateAudioUrls
+      : [],
+    candidateReferences: Array.isArray(previousDiscoveryAudit?.candidateReferences)
+      ? previousDiscoveryAudit.candidateReferences
+      : [],
+  };
+  const previousCandidateUrls = new Set(
+    previousRegistry.candidateAudioUrls.map(canonicalInventoryUrl).filter(Boolean),
+  );
+  const currentCandidateUrls = new Set(
+    candidates.map((candidate) => canonicalInventoryUrl(candidate.audioUrl)).filter(Boolean),
+  );
+  const candidateRegistry = allSourcesSucceeded
+    ? {
+        updatedAt: now,
+        candidateCount: candidates.length,
+        candidateAudioUrls: candidates
+          .slice(0, AUDIO_DISCOVERY_AUDIT_CANDIDATE_LIMIT)
+          .map((candidate) => candidate.audioUrl),
+        candidateReferences: candidates
+          .filter((candidate) => candidate.referenceUrl)
+          .slice(0, AUDIO_DISCOVERY_AUDIT_CANDIDATE_LIMIT)
+          .map((candidate) => ({
+            audioUrl: candidate.audioUrl,
+            referenceUrl: candidate.referenceUrl,
+          })),
+      }
+    : previousRegistry;
+  const candidatePoolDelta = allSourcesSucceeded
+    ? {
+        status: "compared",
+        added: [...currentCandidateUrls].filter((url) => !previousCandidateUrls.has(url)).length,
+        removed: [...previousCandidateUrls].filter((url) => !currentCandidateUrls.has(url)).length,
+        retained: [...currentCandidateUrls].filter((url) => previousCandidateUrls.has(url)).length,
+      }
+    : {
+        status: "preserved-after-source-failure",
+        added: 0,
+        removed: 0,
+        retained: previousCandidateUrls.size,
+      };
+  const candidatePlatformCounts = Object.fromEntries(TRACKED_PLATFORMS.map((platform) => [
+    platform,
+    candidates.filter((candidate) => candidate.platform === platform).length,
+  ]));
+  const platformDiscoveryComplete = TRACKED_PLATFORMS.every((platform) =>
+    candidatePlatformCounts[platform] > 0
+  );
   const complete = allSourcesSucceeded &&
     candidates.length >= AUDIO_REFRESH_MIN_DISTINCT_TRENDS &&
-    currentMatchedCount >= AUDIO_REFRESH_MIN_DISTINCT_TRENDS &&
-    qualifiedInventoryCount >= AUDIO_REFRESH_MIN_DISTINCT_TRENDS;
+    platformDiscoveryComplete &&
+    qualification.audit.complete &&
+    qualification.audit.freshQualifiedCount >= 3;
   return {
     scannedAt: now,
     status: complete ? "success" : "incomplete",
     complete,
     candidateCount: candidates.length,
     qualifiedInventoryCount,
+    qualifiedClusterCount: qualification.audit.freshQualifiedCount,
     currentMatchedCount,
+    candidatePlatformCounts,
+    candidateRegistry,
+    candidatePoolDelta,
+    qualificationAudit: {
+      ...qualification.audit,
+      discoveredCandidateCount: candidates.length,
+      discoveredWithoutMultiCreatorProofCount: candidates.filter((candidate) =>
+        !qualification.audit.qualifiedAudioUrls.some((audioUrl) =>
+          canonicalInventoryUrl(audioUrl) === canonicalInventoryUrl(candidate.audioUrl)
+        )
+      ).length,
+    },
     newCandidateCount: added.length,
     added,
     removed,
@@ -269,8 +380,13 @@ export async function scanAudioTrendDiscovery({
       status: result.status,
       candidateCount: result.candidates.length,
       referenceCandidateCount: result.candidates.filter((candidate) => candidate.referenceUrl).length,
+      unpairedReferenceCount: result.unpairedReferenceCount,
+      resolvedReferenceCount: result.resolvedReferenceCount,
+      referenceResolutionErrors: result.referenceResolutionErrors,
       error: result.error,
     })),
+    qualifiedCandidates: qualification.candidates,
+    currentEvidence: qualification.currentEvidence,
   };
 }
 
@@ -297,13 +413,59 @@ async function inspectEditorialDiscoverySource(source, { fetchImpl, timeoutMs })
     if (new TextEncoder().encode(html).byteLength > AUDIO_DISCOVERY_HTML_MAX_BYTES) {
       throw new Error("page éditoriale trop volumineuse après lecture");
     }
+    const document = extractEditorialDiscoveryDocument(html, {
+      sourceId: normalizedSource.id,
+      sourceUrl: normalizedSource.url,
+    });
+    const unpairedTikTokReferences = document.unpairedReferences
+      .filter((candidate) => candidate.platform === "tiktok")
+      .slice(0, AUDIO_DISCOVERY_REFERENCE_LIMIT_PER_SOURCE);
+    const resolvedReferences = await mapWithConcurrency(
+      unpairedTikTokReferences,
+      AUDIO_DISCOVERY_REFERENCE_CONCURRENCY,
+      async (candidate) => {
+        try {
+          return {
+            candidate: await collectTikTokDiscoveredAudio({
+              referenceUrl: candidate.referenceUrl,
+              fetchImpl,
+              timeoutMs,
+            }),
+            error: null,
+          };
+        } catch (error) {
+          return {
+            candidate: null,
+            error: `${candidate.referenceUrl}: ${
+              error instanceof Error ? error.message : "erreur inconnue"
+            }`,
+          };
+        }
+      },
+    );
+    const candidatesByAudioUrl = new Map(document.candidates.map((candidate) => [
+      candidate.audioUrl,
+      candidate,
+    ]));
+    for (const result of resolvedReferences) {
+      if (!result.candidate || candidatesByAudioUrl.has(result.candidate.audioUrl)) continue;
+      candidatesByAudioUrl.set(result.candidate.audioUrl, {
+        ...result.candidate,
+        sourceId: normalizedSource.id,
+        sourceUrl: normalizedSource.url,
+      });
+    }
     return {
       ...normalizedSource,
       status: "success",
-      candidates: extractEditorialAudioCandidates(html, {
-        sourceId: normalizedSource.id,
-        sourceUrl: normalizedSource.url,
-      }),
+      candidates: [...candidatesByAudioUrl.values()].sort((left, right) =>
+        left.audioUrl.localeCompare(right.audioUrl, "en")
+      ),
+      unpairedReferenceCount: unpairedTikTokReferences.length,
+      resolvedReferenceCount: resolvedReferences.filter((result) => result.candidate).length,
+      referenceResolutionErrors: resolvedReferences
+        .filter((result) => result.error)
+        .map((result) => result.error),
       error: null,
     };
   } catch (error) {
@@ -311,9 +473,558 @@ async function inspectEditorialDiscoverySource(source, { fetchImpl, timeoutMs })
       ...normalizedSource,
       status: "failed",
       candidates: [],
+      unpairedReferenceCount: 0,
+      resolvedReferenceCount: 0,
+      referenceResolutionErrors: [],
       error: error instanceof Error ? error.message : "erreur inconnue",
     };
   }
+}
+
+export async function qualifyAudioTrendCandidates({
+  feed,
+  videoTrendFeed = null,
+  now,
+  fetchImpl = fetch,
+  timeoutMs = AUDIO_REFRESH_TIMEOUT_MS,
+  concurrency = AUDIO_REFRESH_CONCURRENCY,
+}) {
+  const nowTimestamp = Date.parse(now);
+  if (!Number.isFinite(nowTimestamp)) throw new Error("Horodatage de qualification audio invalide.");
+  const currentAudioUrls = new Set(
+    feed.trends.map((trend) => canonicalInventoryUrl(trend.audioUrl)).filter(Boolean),
+  );
+  const videoFeedCapturedAt = typeof videoTrendFeed?.capturedAt === "string"
+    ? videoTrendFeed.capturedAt
+    : null;
+  const videoDiscoveryAudit = videoTrendFeed?.refresh?.discoveryAudit;
+  const videoDiscoveryAuditScannedAt = typeof videoDiscoveryAudit?.scannedAt === "string"
+    ? videoDiscoveryAudit.scannedAt
+    : null;
+  const videoDiscoveryAuditFresh = videoDiscoveryAudit?.complete === true &&
+    Number.isFinite(Date.parse(videoDiscoveryAuditScannedAt ?? "")) &&
+    nowTimestamp - Date.parse(videoDiscoveryAuditScannedAt) <= AUDIO_QUALIFICATION_MAX_AGE_MS;
+  const videoFeedFresh = videoDiscoveryAuditFresh &&
+    Number.isFinite(Date.parse(videoFeedCapturedAt ?? "")) &&
+    nowTimestamp - Date.parse(videoFeedCapturedAt) <= AUDIO_QUALIFICATION_MAX_AGE_MS;
+  const videoJobs = videoFeedFresh && Array.isArray(videoTrendFeed?.trends)
+    ? videoTrendFeed.trends
+      .filter(isQualifiableVideoTrend)
+      .map((trend) => ({ kind: "video", id: trend.id, trend }))
+    : [];
+  const auditClusterJobs = videoFeedFresh
+    ? exactMusicClusterQualificationJobs(videoDiscoveryAudit, now)
+    : [];
+  // Existing video cards are eligible only behind a fresh, complete global
+  // video discovery audit. The audio pass then reattributes every native URL
+  // to one exact TikTok music identity today; old link reachability alone is
+  // never enough. Exact clusters not promoted into the video feed are carried
+  // by the audit lane as independent jobs, so a zero-rotation video scan can
+  // still qualify fresh audio candidates.
+  const jobs = [...videoJobs, ...auditClusterJobs];
+  const results = await mapWithConcurrency(jobs, concurrency, async (job) => {
+    try {
+      return await qualifyAudioIdentityFromTrend(job, {
+        now,
+        fetchImpl,
+        timeoutMs,
+      });
+    } catch (error) {
+      return {
+        kind: job.kind,
+        id: job.id,
+        qualified: false,
+        current: job.kind === "current",
+        candidate: null,
+        audioUrl: null,
+        matchedCreatorCount: 0,
+        error: error instanceof Error ? error.message : "erreur inconnue",
+      };
+    }
+  });
+  const qualifiedResults = results.filter((result) => result.qualified && result.kind === "video");
+  const qualifiedByAudioUrl = new Map();
+  for (const result of qualifiedResults) {
+    const key = canonicalInventoryUrl(result.audioUrl);
+    if (!key) continue;
+    const existing = qualifiedByAudioUrl.get(key);
+    if (!existing || candidateSelectionScore(result.candidate) > candidateSelectionScore(existing.candidate)) {
+      qualifiedByAudioUrl.set(key, result);
+    }
+  }
+  const qualified = [...qualifiedByAudioUrl.values()];
+  const newQualified = qualified.filter((result) =>
+    !currentAudioUrls.has(canonicalInventoryUrl(result.audioUrl))
+  );
+  const currentQualified = qualified.filter((result) =>
+    currentAudioUrls.has(canonicalInventoryUrl(result.audioUrl))
+  );
+  return {
+    candidates: newQualified.map((result) => result.candidate).filter(Boolean),
+    currentEvidence: currentQualified
+      .map((result) => result.candidate)
+      .filter(Boolean),
+    audit: {
+      attemptedAt: now,
+      complete: jobs.length > 0 && results.length === jobs.length,
+      videoFeedCapturedAt,
+      videoFeedFresh,
+      videoDiscoveryAuditScannedAt,
+      videoDiscoveryAuditFresh,
+      attemptedTrendCount: results.length,
+      attemptedCurrentTrendCount: 0,
+      attemptedFreshVideoTrendCount: videoJobs.length,
+      attemptedFreshAuditClusterCount: auditClusterJobs.length,
+      freshQualifiedCount: qualified.length,
+      qualifiedClusterCount: qualified.length,
+      freshCurrentQualifiedCount: currentQualified.length,
+      freshNewQualifiedCount: newQualified.length,
+      qualifiedAudioUrls: qualified
+        .map((result) => result.audioUrl)
+        .filter(Boolean)
+        .slice(0, AUDIO_DISCOVERY_AUDIT_CANDIDATE_LIMIT),
+      rejected: results
+        .filter((result) => !result.qualified)
+        .slice(0, AUDIO_DISCOVERY_AUDIT_CANDIDATE_LIMIT)
+        .map((result) => ({
+          kind: result.kind,
+          id: result.id,
+          matchedCreatorCount: result.matchedCreatorCount,
+          error: result.error,
+        })),
+    },
+  };
+}
+
+async function qualifyAudioIdentityFromTrend(job, { now, fetchImpl, timeoutMs }) {
+  const trend = job.trend;
+  const reference = job.kind === "current" ? trend.referenceVideo : trend.referencePost;
+  const evidence = trend.reuseEvidence;
+  if (!isPublishableAudioTrendReferenceVideo(reference)) {
+    throw new Error("video de reference sous le seuil de 50k likes ou hors limite de 30 s");
+  }
+  const minimumDistinctCreators = Number.isSafeInteger(evidence?.minimumDistinctCreators)
+    ? evidence.minimumDistinctCreators
+    : 3;
+  const posts = distinctTikTokEvidencePosts(evidence?.posts);
+  if (minimumDistinctCreators < 3 || posts.length < minimumDistinctCreators) {
+    throw new Error("moins de trois createurs TikTok distincts");
+  }
+  const verificationPosts = distinctTikTokEvidencePosts([
+    ...posts,
+    {
+      platform: "tiktok",
+      author: reference.author,
+      url: reference.url,
+      capturedAt: reference.capturedAt,
+    },
+  ]);
+  const observations = await mapWithConcurrency(
+    verificationPosts,
+    Math.min(AUDIO_DISCOVERY_REFERENCE_CONCURRENCY, verificationPosts.length),
+    async (post) => {
+      try {
+        return {
+          post,
+          audio: await collectTikTokDiscoveredAudio({
+            referenceUrl: post.url,
+            fetchImpl,
+            timeoutMs,
+          }),
+          error: null,
+        };
+      } catch (error) {
+        return {
+          post,
+          audio: null,
+          error: error instanceof Error ? error.message : "erreur inconnue",
+        };
+      }
+    },
+  );
+  const groups = new Map();
+  for (const observation of observations) {
+    const key = canonicalInventoryUrl(observation.audio?.audioUrl);
+    if (!key) continue;
+    const group = groups.get(key) ?? [];
+    group.push(observation);
+    groups.set(key, group);
+  }
+  const expectedCurrentUrl = job.kind === "current"
+    ? canonicalInventoryUrl(trend.audioUrl)
+    : null;
+  const winningEntry = [...groups.entries()]
+    .filter(([audioUrl, group]) =>
+      group.length >= minimumDistinctCreators &&
+      (expectedCurrentUrl === null || audioUrl === expectedCurrentUrl)
+    )
+    .sort((left, right) => right[1].length - left[1].length)[0] ?? null;
+  if (!winningEntry) {
+    return {
+      kind: job.kind,
+      id: job.id,
+      qualified: false,
+      current: job.kind === "current",
+      candidate: null,
+      audioUrl: expectedCurrentUrl,
+      matchedCreatorCount: Math.max(0, ...[...groups.values()].map((group) => group.length)),
+      error: "aucune identite audio commune verifiee sur trois createurs distincts",
+    };
+  }
+  const [audioUrl, matchingObservations] = winningEntry;
+  const referenceIdentity = nativeTikTokVideoIdentity(reference.url);
+  const referenceObservation = matchingObservations.find((observation) =>
+    nativeTikTokVideoIdentity(observation.post.url) === referenceIdentity
+  );
+  if (!referenceObservation) {
+    throw new Error("la video de reference n'utilise pas l'audio commun qualifie");
+  }
+  const evidencePosts = matchingObservations
+    .slice(0, Math.max(3, minimumDistinctCreators))
+    .map((observation) => ({
+      platform: "tiktok",
+      author: observation.post.author,
+      url: canonicalTikTokReferenceUrl(observation.post.url),
+      capturedAt: now,
+    }));
+  const candidate = job.kind === "current"
+    ? {
+        kind: "current",
+        id: trend.id,
+        audioUrl,
+        reuseEvidence: {
+          verifiedAt: now,
+          minimumDistinctCreators,
+          summary: `Le même audio TikTok a été réattribué nativement à ${evidencePosts.length} créateurs distincts pendant le scan du jour.`,
+          posts: evidencePosts,
+        },
+        selectionScore: candidateSelectionScore(trend),
+      }
+    : buildAudioTrendCandidateFromVideoTrend({
+        videoTrend: trend,
+        audio: referenceObservation.audio,
+        audioUrl,
+        evidencePosts,
+        now,
+      });
+  return {
+    kind: job.kind,
+    id: job.id,
+    qualified: true,
+    current: job.kind === "current",
+    candidate,
+    audioUrl,
+    matchedCreatorCount: evidencePosts.length,
+    error: null,
+  };
+}
+
+function isQualifiableVideoTrend(trend) {
+  return trend?.character === "lofi-girl" &&
+    trend?.referencePost?.platform === "tiktok" &&
+    isPublishableAudioTrendReferenceVideo(trend.referencePost) &&
+    distinctTikTokEvidencePosts(trend?.reuseEvidence?.posts).length >= 3;
+}
+
+function exactMusicClusterQualificationJobs(discoveryAudit, now) {
+  const observations = Array.isArray(discoveryAudit?.candidateObservations)
+    ? discoveryAudit.candidateObservations
+    : [];
+  const qualificationByMusicId = new Map(
+    (Array.isArray(discoveryAudit?.musicClusterQualifications)
+      ? discoveryAudit.musicClusterQualifications
+      : [])
+      .filter((qualification) => qualification?.status === "qualified")
+      .map((qualification) => [String(qualification.musicId), qualification]),
+  );
+  return (Array.isArray(discoveryAudit?.exactMusicClusters)
+    ? discoveryAudit.exactMusicClusters
+    : [])
+    .flatMap((cluster) => {
+      const musicId = String(cluster?.musicId ?? "").trim();
+      const qualification = qualificationByMusicId.get(musicId);
+      if (!musicId || !qualification) return [];
+      const evidenceUrls = new Set(
+        (Array.isArray(qualification.evidenceUrls) ? qualification.evidenceUrls : [])
+          .map(canonicalTikTokReferenceUrlSafe)
+          .filter(Boolean),
+      );
+      const clusterObservations = observations.filter((observation) =>
+        String(observation?.music?.id ?? "") === musicId &&
+        evidenceUrls.has(canonicalTikTokReferenceUrlSafe(observation?.url))
+      );
+      const reference = clusterObservations
+        .filter((observation) => isPublishableAudioTrendReferenceVideo({
+          durationSeconds: observation?.durationSeconds,
+          metrics: observation?.metrics,
+        }))
+        .sort((left, right) => right.metrics.likes - left.metrics.likes)[0];
+      const evidencePosts = distinctTikTokEvidencePosts(clusterObservations.map((observation) => ({
+        platform: "tiktok",
+        author: observation.author,
+        url: observation.url,
+        capturedAt: observation.capturedAt ?? observation.lastObservedAt ?? now,
+      })));
+      if (!reference || evidencePosts.length < 3) return [];
+      return [{
+        kind: "video",
+        id: `video-audit-music-${musicId}`,
+        trend: {
+          id: `video-audit-music-${musicId}`,
+          title: boundedText(cluster.musicTitle, 120) || `Son TikTok ${musicId.slice(-6)}`,
+          character: "lofi-girl",
+          summary: "Cluster audio TikTok exact issu du scan vidéo quotidien.",
+          mechanic: "Réutilisation native du même identifiant audio par plusieurs créateurs.",
+          momentumScore: 80,
+          lofiFitScore: 90,
+          whyLofi: "Le cluster audio natif peut porter une scène Lofi courte sans copier les exécutions sources.",
+          lastVerifiedAt: now,
+          referencePost: {
+            platform: "tiktok",
+            author: reference.author,
+            caption: boundedText(reference.caption, 500) || "Sans légende publique.",
+            url: canonicalTikTokReferenceUrl(reference.url),
+            durationSeconds: reference.durationSeconds,
+            thumbnailUrl: reference.thumbnailUrl ?? null,
+            publishedAt: reference.publishedAt ?? null,
+            capturedAt: reference.capturedAt ?? reference.lastObservedAt ?? now,
+            sourceLabel: "TikTok · métadonnées publiques natives",
+            sourceUrl: canonicalTikTokReferenceUrl(reference.url),
+            exactness: "exact",
+            metrics: {
+              views: reference.metrics?.views ?? null,
+              likes: reference.metrics.likes,
+              comments: reference.metrics?.comments ?? null,
+              shares: reference.metrics?.shares ?? null,
+            },
+          },
+          reuseEvidence: {
+            verifiedAt: now,
+            minimumDistinctCreators: 3,
+            summary: `Le scan vidéo du jour a qualifié l'identifiant audio TikTok ${musicId} chez ${evidencePosts.length} créateurs distincts.`,
+            posts: evidencePosts.slice(0, 5),
+          },
+          proposals: [],
+        },
+      }];
+    });
+}
+
+function canonicalTikTokReferenceUrlSafe(candidate) {
+  try {
+    return nativeTikTokVideoIdentity(candidate)
+      ? canonicalTikTokReferenceUrl(candidate)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function distinctTikTokEvidencePosts(posts) {
+  if (!Array.isArray(posts)) return [];
+  const authors = new Set();
+  const urls = new Set();
+  return posts.filter((post) => {
+    const identity = nativeTikTokVideoIdentity(post?.url);
+    const author = typeof post?.author === "string"
+      ? post.author.trim().replace(/^@/u, "").toLocaleLowerCase("en")
+      : "";
+    const url = identity ? canonicalTikTokReferenceUrl(post.url) : null;
+    if (post?.platform !== "tiktok" || !identity || !author || authors.has(author) || urls.has(url)) {
+      return false;
+    }
+    authors.add(author);
+    urls.add(url);
+    return true;
+  });
+}
+
+function buildAudioTrendCandidateFromVideoTrend({
+  videoTrend,
+  audio,
+  audioUrl,
+  evidencePosts,
+  now,
+}) {
+  const reference = videoTrend.referencePost;
+  const id = `audio-${videoTrend.id}`.replace(/[^a-z0-9]+/gu, "-").replace(/^-|-$/gu, "");
+  const audioTitle = boundedText(audio?.title, 120) || boundedText(videoTrend.title, 120);
+  const audioAuthor = boundedText(audio?.author, 120) || boundedText(reference.author, 120);
+  const lofiAngle = boundedText(
+    videoTrend.proposals?.find((proposal) => proposal.tone === "complice")?.concept ??
+      videoTrend.mechanic ??
+      videoTrend.summary,
+    220,
+  );
+  const lofiFitRationale = boundedText(
+    videoTrend.whyLofi ?? videoTrend.lofiFitRationale ?? videoTrend.summary,
+    300,
+  );
+  return {
+    id,
+    platform: "tiktok",
+    type: /original sound|son original|originalton/iu.test(audioTitle) ? "original" : "music",
+    title: audioTitle,
+    author: audioAuthor,
+    audioUrl,
+    source: {
+      capturedAt: now,
+      label: "TikTok · audio oEmbed attribué à trois créateurs distincts",
+      url: audioUrl,
+      exactness: "exact",
+    },
+    referenceVideo: {
+      author: boundedText(reference.author, 120),
+      caption: boundedText(reference.caption ?? videoTrend.summary, 500),
+      url: canonicalTikTokReferenceUrl(reference.url),
+      thumbnailUrl: audio?.thumbnailUrl ?? null,
+      durationSeconds: reference.durationSeconds,
+      publishedAt: reference.publishedAt ?? null,
+      capturedAt: reference.capturedAt,
+      sourceLabel: boundedText(reference.sourceLabel, 200),
+      sourceUrl: canonicalTikTokReferenceUrl(reference.url),
+      exactness: reference.exactness === "exact" ? "exact" : "platform-estimate",
+      metrics: {
+        views: reference.metrics?.views ?? null,
+        likes: reference.metrics.likes,
+        comments: reference.metrics?.comments ?? null,
+        shares: reference.metrics?.shares ?? null,
+      },
+    },
+    usageObservations: [{
+      capturedAt: now,
+      uses: null,
+      rank: null,
+      rankWindow: null,
+      sourceLabel: "TikTok · compteur global non exposé publiquement",
+      sourceUrl: audioUrl,
+      exactness: "unavailable",
+    }],
+    reuseEvidence: {
+      verifiedAt: now,
+      minimumDistinctCreators: 3,
+      summary: `Le même audio TikTok a été attribué nativement à ${evidencePosts.length} créateurs distincts pendant le scan du jour.`,
+      posts: evidencePosts.slice(0, 5),
+    },
+    lofiFitScore: Math.max(0, Math.min(100, Math.round(videoTrend.lofiFitScore ?? 0))),
+    lofiAngle,
+    lofiFitRationale,
+    proposals: buildAudioProposalsFromVideoTrend(videoTrend, id),
+    selectionScore: candidateSelectionScore(videoTrend),
+  };
+}
+
+function buildAudioProposalsFromVideoTrend(videoTrend, id) {
+  const byTone = new Map(
+    (Array.isArray(videoTrend.proposals) ? videoTrend.proposals : [])
+      .map((proposal) => [proposal.tone, proposal]),
+  );
+  const base = boundedText(videoTrend.mechanic ?? videoTrend.summary, 420);
+  const proposal = (tone, title, suffix, sourceTone, character = "lofi-girl") => {
+    const source = byTone.get(sourceTone);
+    return {
+      id: `${id}-${tone}`,
+      title,
+      concept: boundedText(`${source?.concept ?? base} ${suffix}`, 600),
+      copy: boundedText(`${source?.copy ?? "Adaptation Lofi"} · ${title}.`, 240),
+      character,
+      tone,
+    };
+  };
+  return [
+    proposal("cozy", "Version cozy", "Avec une lumière douce et un rythme calme.", "cozy"),
+    proposal("funny", "Version drôle", "Le chat provoque le décalage final.", "absurde"),
+    proposal("smart", "Version smart", "Le montage rend la mécanique lisible dès la première seconde.", "complice"),
+    proposal("cinematic", "Version cinématique", "La transition devient une mini-scène en trois plans.", "cozy"),
+    proposal("relatable", "Version relatable", "La situation ramène le format à la procrastination ou aux études.", "complice"),
+    proposal("cat", "Version chat", "Le chat détourne la mécanique au dernier beat.", "absurde"),
+    proposal("gaming", "Version gaming", "Lofi Boy transforme le format en objectif de quête.", "complice", "lofi-boy"),
+  ];
+}
+
+function candidateSelectionScore(candidate) {
+  if (!candidate || typeof candidate !== "object") return Number.NEGATIVE_INFINITY;
+  if (Number.isFinite(candidate.selectionScore)) return candidate.selectionScore;
+  const lofiFit = Number.isFinite(candidate.lofiFitScore) ? candidate.lofiFitScore : 0;
+  const momentum = Number.isFinite(candidate.momentumScore) ? candidate.momentumScore : 0;
+  const likes = candidate.referenceVideo?.metrics?.likes ?? candidate.referencePost?.metrics?.likes ?? 0;
+  return lofiFit * 1_000_000_000 + momentum * 1_000_000 + Math.min(likes, 999_999);
+}
+
+function boundedText(candidate, maximumLength) {
+  const text = String(candidate ?? "").replace(/[\r\n]+/gu, " ").replace(/\s+/gu, " ").trim();
+  if (text.length <= maximumLength) return text;
+  return `${text.slice(0, Math.max(1, maximumLength - 1)).trimEnd()}…`;
+}
+
+function applyQualifiedAudioCandidates(feed, {
+  qualifiedCandidates,
+  currentEvidence,
+  now,
+}) {
+  const originalIds = new Set(feed.trends.map((trend) => trend.id));
+  const reverifiedTrendIds = [];
+  for (const evidence of currentEvidence) {
+    const trend = feed.trends.find((candidate) =>
+      canonicalInventoryUrl(candidate.audioUrl) === canonicalInventoryUrl(evidence.audioUrl)
+    );
+    if (!trend || !evidence.reuseEvidence) continue;
+    trend.reuseEvidence = structuredClone(evidence.reuseEvidence);
+    reverifiedTrendIds.push(trend.id);
+  }
+
+  const addedTrendIds = [];
+  const addedAudioUrls = [];
+  const removedTrendIds = [];
+  const removedAudioUrls = [];
+  const rejected = [];
+  const candidates = [...qualifiedCandidates]
+    .sort((left, right) => candidateSelectionScore(right) - candidateSelectionScore(left));
+  for (const candidateWithScore of candidates.slice(0, AUDIO_REFRESH_MAX_ROTATIONS)) {
+    const audioUrl = canonicalInventoryUrl(candidateWithScore.audioUrl);
+    if (!audioUrl || feed.trends.some((trend) => canonicalInventoryUrl(trend.audioUrl) === audioUrl)) {
+      continue;
+    }
+    if (feed.trends.some((trend) =>
+      canonicalInventoryUrl(trend.referenceVideo.url) ===
+        canonicalInventoryUrl(candidateWithScore.referenceVideo?.url)
+    )) {
+      rejected.push({ id: candidateWithScore.id, reason: "video de reference deja publiee" });
+      continue;
+    }
+    const weakest = [...feed.trends]
+      .sort((left, right) => candidateSelectionScore(left) - candidateSelectionScore(right))[0];
+    if (!weakest || candidateSelectionScore(candidateWithScore) <= candidateSelectionScore(weakest)) {
+      rejected.push({ id: candidateWithScore.id, reason: "score inferieur au dernier audio conserve" });
+      continue;
+    }
+    const index = feed.trends.findIndex((trend) => trend.id === weakest.id);
+    const candidate = structuredClone(candidateWithScore);
+    delete candidate.selectionScore;
+    feed.trends.splice(index, 1, candidate);
+    addedTrendIds.push(candidate.id);
+    addedAudioUrls.push(candidate.audioUrl);
+    removedTrendIds.push(weakest.id);
+    removedAudioUrls.push(weakest.audioUrl);
+  }
+  const noRotationReason = addedTrendIds.length > 0
+    ? null
+    : qualifiedCandidates.length === 0
+      ? "Aucun nouvel audio ne réunit aujourd’hui une référence ≥ 50 k likes, une durée < 30 s et trois créateurs natifs partageant la même identité audio."
+      : "Les nouveaux audios qualifiés n'ont pas dépassé la dernière carte conservée selon le score Lofi Fit, la dynamique et les likes de référence.";
+  return {
+    evaluatedAt: now,
+    addedTrendIds,
+    addedAudioUrls,
+    removedTrendIds,
+    removedAudioUrls,
+    retainedTrendIds: feed.trends
+      .filter((trend) => originalIds.has(trend.id))
+      .map((trend) => trend.id),
+    reverifiedTrendIds,
+    rejected,
+    noRotationReason,
+  };
 }
 
 function emptyAudioDiscoveryAudit(feed, inventory, scannedAt, status) {
@@ -323,7 +1034,36 @@ function emptyAudioDiscoveryAudit(feed, inventory, scannedAt, status) {
     complete: false,
     candidateCount: 0,
     qualifiedInventoryCount: 0,
+    qualifiedClusterCount: 0,
     currentMatchedCount: 0,
+    candidatePlatformCounts: Object.fromEntries(TRACKED_PLATFORMS.map((platform) => [platform, 0])),
+    candidateRegistry: {
+      updatedAt: null,
+      candidateCount: 0,
+      candidateAudioUrls: [],
+      candidateReferences: [],
+    },
+    candidatePoolDelta: { status: "not-run", added: 0, removed: 0, retained: 0 },
+    qualificationAudit: {
+      attemptedAt: scannedAt,
+      complete: false,
+      videoFeedCapturedAt: null,
+      videoFeedFresh: false,
+      videoDiscoveryAuditScannedAt: null,
+      videoDiscoveryAuditFresh: false,
+      attemptedTrendCount: 0,
+      attemptedCurrentTrendCount: 0,
+      attemptedFreshVideoTrendCount: 0,
+      attemptedFreshAuditClusterCount: 0,
+      freshQualifiedCount: 0,
+      qualifiedClusterCount: 0,
+      freshCurrentQualifiedCount: 0,
+      freshNewQualifiedCount: 0,
+      qualifiedAudioUrls: [],
+      rejected: [],
+      discoveredCandidateCount: 0,
+      discoveredWithoutMultiCreatorProofCount: 0,
+    },
     newCandidateCount: 0,
     added: [],
     removed: [],
@@ -331,11 +1071,15 @@ function emptyAudioDiscoveryAudit(feed, inventory, scannedAt, status) {
     candidateAudioUrls: [],
     candidateReferences: [],
     sourceBreakdown: [],
+    qualifiedCandidates: [],
+    currentEvidence: [],
   };
 }
 
 export async function buildAudioTrendRefresh({
   feed,
+  videoTrendFeed = null,
+  previousRefreshStatus = null,
   now = new Date().toISOString(),
   fetchImpl = fetch,
   discoverySources = [],
@@ -373,12 +1117,14 @@ export async function buildAudioTrendRefresh({
   const current = assertAudioTrendFeed(candidate);
   const next = structuredClone(current);
   const jobs = next.trends.filter((trend) => TRACKED_PLATFORMS.includes(trend.platform));
-  const [checks, discoveryAudit] = await Promise.all([
+  const [checks, discoveryResult] = await Promise.all([
     mapWithConcurrency(jobs, concurrency, (trend) =>
       inspectAudioTrend(trend, { capturedAt: now, fetchImpl, timeoutMs })
     ),
     scanAudioTrendDiscovery({
       feed: current,
+      videoTrendFeed,
+      previousDiscoveryAudit: previousRefreshStatus?.discoveryAudit ?? null,
       now,
       sources: discoverySources,
       fetchImpl,
@@ -386,6 +1132,21 @@ export async function buildAudioTrendRefresh({
       concurrency,
     }),
   ]);
+  const {
+    qualifiedCandidates,
+    currentEvidence,
+    ...discoveryAudit
+  } = discoveryResult;
+  const selectionAudit = applyQualifiedAudioCandidates(next, {
+    qualifiedCandidates,
+    currentEvidence,
+    now,
+  });
+  const selectedInventory = evaluateAudioRefreshInventory(next);
+  discoveryAudit.qualifiedInventoryCount = discoveryAudit.qualificationAudit.freshQualifiedCount;
+  discoveryAudit.qualifiedClusterCount = discoveryAudit.qualificationAudit.freshQualifiedCount;
+  discoveryAudit.publishedInventoryCount = selectedInventory.totalTrends;
+  discoveryAudit.selectionAudit = selectionAudit;
 
   const providerResults = TRACKED_PLATFORMS.map((platform) => {
     const platformChecks = checks.filter((check) => check.platform === platform);
@@ -397,12 +1158,19 @@ export async function buildAudioTrendRefresh({
     const thumbnailCoverage = thumbnailChecked === 0 ? 0 : thumbnailMatched / thumbnailChecked;
     const thumbnailComplete = thumbnailChecked > 0 && thumbnailMatched === thumbnailChecked;
     const requiredMatched = requiredProviderMatches(checked);
-    const status = checked > 0 && matched >= requiredMatched ? "success" : "failed";
+    const status = checked > 0 && matched >= requiredMatched
+      ? "success"
+      : checked > 0
+        ? "limited"
+        : "failed";
     const errors = platformChecks
       .filter((check) => check.error)
       .map((check) => `${check.id}: ${check.error}`);
-    if (status === "failed" && checked > 0) {
-      errors.push(`couverture insuffisante: ${matched}/${checked}, minimum ${requiredMatched}`);
+    if (status === "limited") {
+      errors.push(
+        `compteurs natifs attribuables limites: ${matched}/${checked}, ` +
+        `seuil de couverture analytique ${requiredMatched}`,
+      );
     }
     if (platform === "tiktok" && !thumbnailComplete) {
       errors.push(`couverture miniatures insuffisante: ${thumbnailMatched}/${thumbnailChecked}, minimum ${thumbnailChecked}`);
@@ -450,17 +1218,14 @@ export async function buildAudioTrendRefresh({
   const tiktokThumbnailComplete = tiktokThumbnailChecks.length > 0 &&
     tiktokThumbnailMatched === tiktokThumbnailChecks.length;
   const assetChecksComplete = instagramPlaybackComplete && tiktokThumbnailComplete;
-  const successfulPublication = discoveryAudit.complete &&
-    baseCoverage.publishable &&
-    instagramPlaybackComplete &&
-    tiktokThumbnailComplete;
-  const degradedPublication = discoveryAudit.complete &&
-    !baseCoverage.publishable &&
-    instagramPlaybackComplete &&
-    tiktokThumbnailComplete;
+  // Counters, signed playback URLs and remote thumbnails are useful enrichment,
+  // but they do not establish that an audio is reused by distinct creators.
+  // They therefore remain audited without being allowed to veto a complete
+  // editorial discovery + a fail-closed 50-trend qualified inventory.
+  const editorialPublication = discoveryAudit.complete && selectedInventory.publishable;
   const coverage = {
     ...baseCoverage,
-    catalogPublishable: inventory.publishable,
+    catalogPublishable: selectedInventory.publishable,
     instagramPlaybackChecked: instagramPlaybackChecks.length,
     instagramPlaybackMatched,
     instagramPlaybackComplete,
@@ -471,21 +1236,17 @@ export async function buildAudioTrendRefresh({
       : tiktokThumbnailMatched / tiktokThumbnailChecks.length,
     tiktokThumbnailComplete,
     thumbnailPublishable: tiktokThumbnailComplete,
-    assetPublishable: inventory.publishable && assetChecksComplete,
+    assetPublishable: selectedInventory.publishable && assetChecksComplete,
     discoveryPublishable: discoveryAudit.complete,
     counterPublishable: baseCoverage.publishable,
-    publishable: inventory.publishable && (successfulPublication || degradedPublication),
+    publishable: editorialPublication,
   };
   const status = {
     version: 1,
     attemptedAt: now,
-    status: successfulPublication
-      ? "success"
-      : degradedPublication
-        ? "degraded"
-        : "failed",
+    status: editorialPublication ? "success" : "failed",
     published: coverage.publishable,
-    inventory,
+    inventory: selectedInventory,
     discoveryAudit,
     coverage,
     providers: providerResults,
@@ -494,14 +1255,13 @@ export async function buildAudioTrendRefresh({
   if (!coverage.publishable) {
     const reason = !discoveryAudit.complete
       ? `Découverte audio incomplète: ${discoveryAudit.candidateCount}/${AUDIO_REFRESH_MIN_DISTINCT_TRENDS} URLs audio natives, ` +
-        `${discoveryAudit.currentMatchedCount}/${AUDIO_REFRESH_MIN_DISTINCT_TRENDS} audios courants retrouvés, ` +
-        `${discoveryAudit.qualifiedInventoryCount}/${AUDIO_REFRESH_MIN_DISTINCT_TRENDS} audios courants publiables qualifiés, ` +
+        `${discoveryAudit.qualifiedInventoryCount} clusters audio fraîchement qualifiés (minimum 3), ` +
+        `${discoveryAudit.publishedInventoryCount ?? selectedInventory.totalTrends} cartes publiables conservées, ` +
+        `${discoveryAudit.candidatePlatformCounts.instagram} Instagram et ` +
+        `${discoveryAudit.candidatePlatformCounts.tiktok} TikTok, ` +
+        `${discoveryAudit.currentMatchedCount} correspondances exactes avec l'inventaire (informatives), ` +
         `${discoveryAudit.sourceBreakdown.filter((source) => source.status === "success").length}/${discoveryAudit.sourceBreakdown.length} sources lisibles.`
-      : !tiktokThumbnailComplete
-      ? `Couverture miniature TikTok insuffisante: ${tiktokThumbnailMatched}/${tiktokThumbnailChecks.length}.`
-      : !instagramPlaybackComplete
-        ? `Couverture playback Instagram insuffisante: ${instagramPlaybackMatched}/${instagramPlaybackChecks.length}.`
-        : `Couverture audio insuffisante: ${coverage.totalMatched}/${coverage.totalChecked}, minimum ${coverage.requiredTotal}.`;
+      : "Inventaire Audio Trends non publiable.";
     const error = new Error(reason);
     error.refreshStatus = status;
     throw error;
@@ -766,6 +1526,100 @@ export async function collectTikTokThumbnail({
     timeoutMs,
   });
   return { url: accessibleUrl };
+}
+
+export async function collectTikTokDiscoveredAudio({
+  referenceUrl,
+  fetchImpl = fetch,
+  timeoutMs = AUDIO_REFRESH_TIMEOUT_MS,
+}) {
+  const expectedVideoId = nativeTikTokVideoIdentity(referenceUrl);
+  if (!expectedVideoId) throw new Error("reference video TikTok invalide");
+
+  const canonicalReferenceUrl = canonicalTikTokReferenceUrl(referenceUrl);
+  const endpoint = new URL("https://www.tiktok.com/oembed");
+  endpoint.searchParams.set("url", canonicalReferenceUrl);
+  const response = await fetchImpl(endpoint.toString(), tiktokOEmbedRequestOptions(timeoutMs));
+  if (!response.ok) throw new Error(`oEmbed TikTok HTTP ${response.status}`);
+  if (response.url && !isExpectedTikTokOEmbedResponseUrl(response.url, expectedVideoId)) {
+    throw new Error("redirection oEmbed TikTok invalide");
+  }
+
+  const declaredLength = response.headers.get("content-length");
+  if (
+    declaredLength !== null &&
+    (!Number.isFinite(Number(declaredLength)) || Number(declaredLength) > TIKTOK_OEMBED_MAX_BYTES)
+  ) {
+    throw new Error("reponse oEmbed TikTok trop volumineuse");
+  }
+  const body = await response.text();
+  if (new TextEncoder().encode(body).byteLength > TIKTOK_OEMBED_MAX_BYTES) {
+    throw new Error("reponse oEmbed TikTok trop volumineuse apres lecture");
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(body);
+  } catch {
+    throw new Error("reponse oEmbed TikTok non JSON");
+  }
+  if (
+    !payload ||
+    typeof payload !== "object" ||
+    Array.isArray(payload) ||
+    payload.type !== "video" ||
+    payload.provider_name !== "TikTok" ||
+    !isOfficialTikTokProviderUrl(payload.provider_url) ||
+    !oEmbedHtmlMatchesTikTokVideo(payload.html, expectedVideoId)
+  ) {
+    throw new Error("oEmbed TikTok non attribuable a la video de reference");
+  }
+
+  const candidates = extractEditorialAudioCandidates(payload.html, {
+    sourceId: "tiktok-oembed",
+    sourceUrl: endpoint.toString(),
+  }).filter((candidate) => candidate.platform === "tiktok");
+  const exactCandidates = candidates.filter((candidate) =>
+    candidate.referenceUrl &&
+    nativeTikTokVideoIdentity(candidate.referenceUrl) === expectedVideoId
+  );
+  if (exactCandidates.length !== 1) {
+    throw new Error("audio TikTok absent ou ambigu dans le oEmbed attribue");
+  }
+  const audioLabel = extractTikTokOEmbedAudioLabel(payload.html, exactCandidates[0].audioUrl);
+  const separatorIndex = audioLabel.lastIndexOf(" - ");
+  const title = separatorIndex > 0 ? audioLabel.slice(0, separatorIndex).trim() : audioLabel;
+  const author = separatorIndex > 0 ? audioLabel.slice(separatorIndex + 3).trim() : "TikTok";
+  return {
+    platform: "tiktok",
+    audioUrl: exactCandidates[0].audioUrl,
+    referenceUrl: canonicalReferenceUrl,
+    title: title || "Audio TikTok",
+    author: author || "TikTok",
+    thumbnailUrl: typeof payload.thumbnail_url === "string" &&
+        isOfficialAudioTrendThumbnailUrl(payload.thumbnail_url, "tiktok")
+      ? payload.thumbnail_url
+      : null,
+  };
+}
+
+function extractTikTokOEmbedAudioLabel(html, expectedAudioUrl) {
+  if (typeof html !== "string") return "Audio TikTok";
+  const decoded = decodeEditorialDiscoveryHtml(html);
+  for (const match of decoded.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/giu)) {
+    const audio = canonicalDiscoveredAudioUrl(match[1]);
+    if (audio?.platform !== "tiktok" || canonicalInventoryUrl(audio.url) !== canonicalInventoryUrl(expectedAudioUrl)) {
+      continue;
+    }
+    return match[2]
+      .replace(/<[^>]+>/gu, " ")
+      .replace(/&nbsp;|&#0*160;/giu, " ")
+      .replace(/&amp;|&#0*38;|&#x0*26;/giu, "&")
+      .replace(/^\s*♬\s*/u, "")
+      .replace(/\s+/gu, " ")
+      .trim() || "Audio TikTok";
+  }
+  return "Audio TikTok";
 }
 
 function canonicalTikTokReferenceUrl(candidate) {
@@ -1359,15 +2213,90 @@ async function writeJsonAtomic(path, value) {
   await rename(temporaryPath, path);
 }
 
+export async function cacheAddedAudioTrendThumbnails({
+  feed,
+  selectionAudit,
+  fetchImpl = fetch,
+  timeoutMs = AUDIO_REFRESH_TIMEOUT_MS,
+  outputDirectory = resolve(root, "public", "media", "audio-trends"),
+}) {
+  const addedIds = new Set(selectionAudit?.addedTrendIds ?? []);
+  const added = feed.trends.filter((trend) => addedIds.has(trend.id));
+  await mkdir(outputDirectory, { recursive: true });
+  for (const trend of added) {
+    const candidate = trend.referenceVideo.thumbnailUrl;
+    if (typeof candidate !== "string" || !isOfficialAudioTrendThumbnailUrl(candidate, "tiktok")) {
+      throw new Error(`miniature native absente pour la nouvelle trend ${trend.id}`);
+    }
+    const response = await fetchImpl(candidate, {
+      headers: {
+        Accept: "image/avif,image/webp,image/png,image/jpeg",
+        "User-Agent": "Mozilla/5.0 (compatible; LofiSocialRadar/1.0; +https://github.com/dim75017/youtube-radar-kx9v2m)",
+      },
+      redirect: "follow",
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!response.ok) throw new Error(`miniature ${trend.id} HTTP ${response.status}`);
+    const finalUrl = response.url || candidate;
+    if (!isOfficialAudioTrendThumbnailUrl(finalUrl, "tiktok")) {
+      throw new Error(`redirection miniature invalide pour ${trend.id}`);
+    }
+    const contentType = response.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase();
+    const extension = contentType === "image/jpeg" || contentType === "image/jpg"
+      ? "jpg"
+      : contentType === "image/png"
+        ? "png"
+        : contentType === "image/webp"
+          ? "webp"
+          : contentType === "image/avif"
+            ? "avif"
+            : null;
+    if (!extension) throw new Error(`format miniature invalide pour ${trend.id}`);
+    const declaredLength = Number(response.headers.get("content-length"));
+    if (Number.isFinite(declaredLength) && (declaredLength <= 0 || declaredLength > TIKTOK_THUMBNAIL_MAX_BYTES)) {
+      throw new Error(`taille miniature invalide pour ${trend.id}`);
+    }
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (
+      bytes.byteLength <= 0 ||
+      bytes.byteLength > TIKTOK_THUMBNAIL_MAX_BYTES ||
+      !isImagePrefix(bytes.slice(0, 64), contentType)
+    ) {
+      throw new Error(`octets miniature invalides pour ${trend.id}`);
+    }
+    const fileName = `${trend.id}.${extension}`;
+    await writeFile(resolve(outputDirectory, fileName), bytes);
+    trend.referenceVideo.thumbnailUrl = `media/audio-trends/${fileName}`;
+  }
+  return added.map((trend) => trend.referenceVideo.thumbnailUrl);
+}
+
 async function main() {
   const attemptedAt = new Date().toISOString();
-  const feed = JSON.parse(await readFile(feedPath, "utf8"));
+  const [feed, videoTrendFeed, previousRefreshStatus] = await Promise.all([
+    readFile(feedPath, "utf8").then(JSON.parse),
+    readFile(videoTrendFeedPath, "utf8").then(JSON.parse),
+    readFile(statusPath, "utf8").then(JSON.parse).catch(() => null),
+  ]);
+  let result = null;
   try {
-    const result = await buildAudioTrendRefresh({
+    result = await buildAudioTrendRefresh({
       feed,
+      videoTrendFeed,
+      previousRefreshStatus,
       now: attemptedAt,
       discoverySources: AUDIO_DISCOVERY_SOURCES,
     });
+    const cachedThumbnails = await cacheAddedAudioTrendThumbnails({
+      feed: result.feed,
+      selectionAudit: result.status.discoveryAudit.selectionAudit,
+    });
+    result.status.assetCache = {
+      status: "success",
+      cachedCount: cachedThumbnails.length,
+      paths: cachedThumbnails,
+    };
+    assertAudioTrendFeed(result.feed);
     await Promise.all([
       writeJsonAtomic(feedPath, result.feed),
       writeJsonAtomic(statusPath, result.status),
@@ -1376,7 +2305,19 @@ async function main() {
       `Audio refresh published: ${result.status.coverage.totalMatched}/${result.status.coverage.totalChecked} counters linked.`,
     );
   } catch (error) {
-    const failedStatus = error?.refreshStatus ?? {
+    const failedStatus = error?.refreshStatus ?? (result
+      ? {
+          ...result.status,
+          status: "failed",
+          published: false,
+          assetCache: {
+            status: "failed",
+            cachedCount: null,
+            paths: null,
+            error: error instanceof Error ? error.message : "échec inconnu",
+          },
+        }
+      : {
       version: 1,
       attemptedAt,
       status: "failed",
@@ -1390,7 +2331,7 @@ async function main() {
       ),
       coverage: emptyAudioRefreshCoverage(false),
       providers: [],
-    };
+    });
     await writeJsonAtomic(statusPath, failedStatus);
     throw error;
   }

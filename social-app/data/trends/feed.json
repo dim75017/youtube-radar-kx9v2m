@@ -1,6 +1,6 @@
 {
   "version": 6,
-  "capturedAt": "2026-08-19T04:54:32.018Z",
+  "capturedAt": "2026-08-29T22:26:53.093Z",
   "market": "France · signaux francophones et internationaux adaptables",
   "methodology": "Feed éditorial Lofi Girl-first actualisé chaque jour à partir de signaux TikTok, Instagram, YouTube Shorts et X. Une carte n’est publiée comme trend qu’après vérification de la même mécanique chez au moins trois créateurs distincts, avec trois posts natifs indépendants. Chaque vidéo de référence possède au moins 50 000 likes publics et une durée vérifiée strictement inférieure à 30 secondes. Les métriques absentes restent nulles, les posts viraux isolés restent hors du feed et Lofi Boy demeure un complément minoritaire.",
   "trends": [
@@ -5864,139 +5864,6 @@
       "reuseEvidence": null
     },
     {
-      "id": "gaming-setup-night-reveal",
-      "title": "Peak room · le setup s’allume",
-      "character": "lofi-boy",
-      "territory": "Gaming nocturne",
-      "type": "format",
-      "summary": "Un setup presque invisible s’allume en plusieurs cuts jusqu’à révéler un univers nocturne complet.",
-      "mechanic": "Commencer dans le noir, puis synchroniser trois révélations lumineuses avec les accents du son.",
-      "platforms": [
-        "tiktok",
-        "instagram",
-        "youtube"
-      ],
-      "keywords": [
-        "gaming setup",
-        "night setup",
-        "peak room",
-        "RGB",
-        "desk reveal"
-      ],
-      "lifecycle": "rising",
-      "confidence": "high",
-      "momentumScore": 94,
-      "lofiFitScore": 99,
-      "saturationRisk": 45,
-      "whyLofi": "La chambre nocturne et le setup sont le décor naturel de Synthwave Boy ; la trend révèle son monde sans explication.",
-      "timing": "À produire cette semaine, avec une version verticale de 12 à 18 secondes.",
-      "production": "Trois cuts nets : écran, néons, casque. Terminer sur Synthwave Boy installé devant la ville de nuit.",
-      "caveat": "Garder une lumière lisible et une vraie progression ; un simple avant/après RGB serait trop générique.",
-      "referencePost": {
-        "platform": "tiktok",
-        "author": "@cantu.setup",
-        "caption": "Peak room / gaming setup night reveal",
-        "url": "https://www.tiktok.com/@cantu.setup/video/7668692002451574048",
-        "mediaType": "video",
-        "durationSeconds": 20,
-        "thumbnailUrl": null,
-        "publishedAt": "2026-07-31T14:01:00.000Z",
-        "capturedAt": "2026-08-10T12:00:00+02:00",
-        "selectionLabel": "294,9 k likes · 20 s · compteurs publics au 10/08/2026",
-        "sourceLabel": "TikTok · post natif vérifié le 10/08/2026",
-        "sourceUrl": "https://www.tiktok.com/@cantu.setup/video/7668692002451574048",
-        "exactness": "platform-estimate",
-        "metrics": {
-          "views": null,
-          "likes": 294900,
-          "comments": 4034,
-          "shares": 10100
-        }
-      },
-      "observations": [
-        {
-          "id": "gaming-setup-night-native-20260810",
-          "platform": "tiktok",
-          "sourceLabel": "TikTok · post natif",
-          "sourceUrl": "https://www.tiktok.com/@cantu.setup/video/7668692002451574048",
-          "observedAt": "2026-08-10T12:00:00+02:00",
-          "windowLabel": "10 jours après publication",
-          "signal": "294.9 k likes, 4 034 commentaires et 10.1 k partages publics.",
-          "rank": null,
-          "posts": null,
-          "views": null,
-          "uses": null,
-          "exactness": "platform-estimate"
-        },
-        {
-          "id": "gaming-setup-night-search-20260810",
-          "platform": "tiktok",
-          "sourceLabel": "TikTok · recherche gaming setup",
-          "sourceUrl": "https://www.tiktok.com/search?q=gaming%20setup%20night%20trend",
-          "observedAt": "2026-08-10T12:00:00+02:00",
-          "windowLabel": "Recherche TikTok au 10/08/2026",
-          "signal": "Le reveal nocturne figure parmi les résultats récents et fortement engagés de la recherche gaming setup.",
-          "rank": null,
-          "posts": null,
-          "views": null,
-          "uses": null,
-          "exactness": "editorial-observation"
-        }
-      ],
-      "proposals": [
-        {
-          "tone": "complice",
-          "label": "Gamer",
-          "title": "Quand la ville dort",
-          "concept": "Dans le noir, le setup de Synthwave Boy s’allume en trois cuts : écran, néons, casque.",
-          "copy": "Quand la ville dort, mon monde s’allume. 🌌"
-        },
-        {
-          "tone": "cozy",
-          "label": "Nocturne",
-          "title": "Le vrai début de soirée",
-          "concept": "Chaque lumière révèle un détail calme : pluie à la fenêtre, boisson chaude, jeu en pause et playlist prête.",
-          "copy": "Le calme commence quand tout le reste s’éteint."
-        },
-        {
-          "tone": "absurde",
-          "label": "Absurde",
-          "title": "Le mauvais bouton RGB",
-          "concept": "Le chat appuie sur le bouton ; le setup passe d’une ambiance douce à une rave incontrôlable avant de revenir au noir.",
-          "copy": "J’avais demandé mode nuit, pas boss final."
-        }
-      ],
-      "trendKey": "gaming-setup-night-reveal",
-      "clusterKey": "format:peak-room",
-      "firstSeenAt": "2026-07-31T14:01:00.000Z",
-      "lastVerifiedAt": "2026-08-16T05:47:44.933Z",
-      "reuseEvidence": {
-        "verifiedAt": "2026-08-16T05:47:44.933Z",
-        "minimumDistinctCreators": 3,
-        "summary": "Commencer dans le noir, puis synchroniser trois révélations lumineuses avec les accents du son. Cette mécanique a été vérifiée dans trois créations indépendantes, et non dans de simples republications du même clip.",
-        "posts": [
-          {
-            "platform": "tiktok",
-            "author": "@cantu.setup",
-            "url": "https://www.tiktok.com/@cantu.setup/video/7668692002451574048",
-            "capturedAt": "2026-08-16T05:47:44.933Z"
-          },
-          {
-            "platform": "tiktok",
-            "author": "@tokay0ff",
-            "url": "https://www.tiktok.com/@tokay0ff/video/7665806228362120480",
-            "capturedAt": "2026-08-16T05:47:44.933Z"
-          },
-          {
-            "platform": "tiktok",
-            "author": "@gabztek",
-            "url": "https://www.tiktok.com/@gabztek/video/7559654340613508374",
-            "capturedAt": "2026-08-16T05:47:44.933Z"
-          }
-        ]
-      }
-    },
-    {
       "id": "social-battery-solo-mode",
       "title": "Social battery 0% · solo mode 100%",
       "character": "lofi-boy",
@@ -7486,23 +7353,1171 @@
           "copy": "Étude : 8 h. Sieste sur les notes : 43 h. Nous avons un vainqueur."
         }
       ]
+    },
+    {
+      "id": "same-age-as-parents",
+      "trendKey": "same-age-as-parents",
+      "clusterKey": "format:same-age-as-parents",
+      "title": "Moi au même âge que mes parents",
+      "character": "lofi-girl",
+      "territory": "Études & quotidien",
+      "firstSeenAt": "2026-08-29T22:26:53.093Z",
+      "type": "format",
+      "summary": "Un contraste en deux temps compare ce que faisaient ses parents au même âge avec sa propre réalité, souvent beaucoup plus banale ou chaotique.",
+      "mechanic": "Montrer d’abord une photo ou une scène marquante des parents au même âge, puis couper vers sa propre version actuelle avec un contraste lisible immédiatement.",
+      "platforms": [
+        "tiktok",
+        "youtube"
+      ],
+      "keywords": [
+        "me at the same age as my parents",
+        "me vs my parents at the same age",
+        "my parents at my age",
+        "generation contrast",
+        "student life"
+      ],
+      "lifecycle": "rising",
+      "confidence": "high",
+      "momentumScore": 92,
+      "lofiFitScore": 98,
+      "saturationRisk": 44,
+      "whyLofi": "Le format oppose naturellement les grands récits familiaux à la réalité universelle d’une session d’étude, avec une chute immédiatement compréhensible.",
+      "timing": "À produire cette semaine pendant que le format circule encore dans les sélections éditoriales et les reprises récentes.",
+      "production": "Vidéo verticale de 8 à 12 secondes : une vieille photo ou un carton texte, puis un plan officiel de Lofi Girl face à ses notes et au chat.",
+      "caveat": "Utiliser uniquement des visuels familiaux autorisés ou une reconstitution originale. Ne pas reprendre les images des créateurs vérifiés.",
+      "proposals": [
+        {
+          "tone": "complice",
+          "label": "Complice",
+          "title": "Au même âge",
+          "concept": "Le premier carton raconte que ses parents avaient déjà traversé le monde ; la coupe révèle Lofi Girl qui hésite encore à commencer sa fiche.",
+          "copy": "Mes parents à mon âge : une aventure. Moi : encore sur l’introduction."
+        },
+        {
+          "tone": "cozy",
+          "label": "Cozy",
+          "title": "Deux chemins, même âge",
+          "concept": "Une photo ancienne laisse place à une soirée calme de Lofi Girl, avec thé, pluie et chat, sans juger les deux parcours.",
+          "copy": "Même âge, autre époque, autre façon d’avancer."
+        },
+        {
+          "tone": "absurde",
+          "label": "Absurde",
+          "title": "Le grand écart générationnel",
+          "concept": "Ses parents sont présentés comme propriétaires à 22 ans ; Lofi Girl fête solennellement le fait d’avoir retrouvé son stylo.",
+          "copy": "Eux : une maison. Moi : ce stylo était perdu depuis mardi."
+        }
+      ],
+      "observations": [
+        {
+          "id": "socialpilot-same-age-parents-20260830",
+          "platform": "tiktok",
+          "sourceLabel": "SocialPilot · tendances TikTok",
+          "sourceUrl": "https://www.socialpilot.co/blog/tiktok-trends",
+          "observedAt": "2026-08-29T22:26:53.093Z",
+          "windowLabel": "Scan éditorial quotidien",
+          "signal": "SocialPilot documente le format où l’on compare sa vie à celle de ses parents au même âge ; les reprises natives vérifiées montrent la même mécanique chez trois créateurs distincts.",
+          "rank": null,
+          "posts": null,
+          "views": null,
+          "uses": null,
+          "exactness": "editorial-observation"
+        }
+      ],
+      "referencePost": {
+        "platform": "tiktok",
+        "author": "@hope_schwing",
+        "caption": "Bro I was 9 years old when my mom was this age LMAO",
+        "url": "https://www.tiktok.com/@hope_schwing/video/7667660831471045918",
+        "mediaType": "video",
+        "durationSeconds": 6,
+        "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/owJEVIA8AAAyE8mjRFfWQqDB2zaPfEEXPqOZBp~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=QiB7Rwlf3tVKrJTWc9tjkum%2ByI0%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+        "publishedAt": "2026-07-28T19:20:28.000Z",
+        "capturedAt": "2026-08-29T22:26:53.093Z",
+        "selectionLabel": "Exemple court vérifié · 182 000 likes",
+        "sourceLabel": "TikTok · données publiques natives",
+        "sourceUrl": "https://www.tiktok.com/@hope_schwing/video/7667660831471045918",
+        "exactness": "exact",
+        "metrics": {
+          "views": 1000000,
+          "likes": 182000,
+          "comments": 354,
+          "shares": 3368
+        }
+      },
+      "reuseEvidence": {
+        "verifiedAt": "2026-08-29T22:26:53.093Z",
+        "minimumDistinctCreators": 3,
+        "summary": "La comparaison entre sa vie actuelle et celle de ses parents au même âge a été contrôlée dans trois créations natives de trois auteurs distincts ; les vidéos d’explication, reposts et homonymes ont été exclus.",
+        "posts": [
+          {
+            "platform": "tiktok",
+            "author": "@hope_schwing",
+            "url": "https://www.tiktok.com/@hope_schwing/video/7667660831471045918",
+            "capturedAt": "2026-08-29T22:26:53.093Z"
+          },
+          {
+            "platform": "youtube",
+            "author": "BuzzQuil",
+            "url": "https://www.youtube.com/shorts/hNLAS7NkKTM",
+            "capturedAt": "2026-08-29T22:26:53.093Z"
+          },
+          {
+            "platform": "youtube",
+            "author": "Keep up with Sayana",
+            "url": "https://www.youtube.com/shorts/2IokvErjQjA",
+            "capturedAt": "2026-08-29T22:26:53.093Z"
+          }
+        ]
+      },
+      "lastVerifiedAt": "2026-08-29T22:26:53.093Z"
     }
   ],
   "refresh": {
     "cadenceHours": 24,
-    "lastAttemptAt": "2026-08-19T04:54:32.018Z",
-    "lastSuccessfulAt": "2026-08-19T04:54:32.018Z",
-    "nextScheduledAt": "2026-08-20T04:54:32.018Z",
+    "lastAttemptAt": "2026-08-29T22:26:53.093Z",
+    "lastSuccessfulAt": "2026-08-29T22:26:53.093Z",
+    "nextScheduledAt": "2026-08-30T22:26:53.093Z",
     "status": "success",
-    "runId": "32217429367",
-    "runUrl": "https://github.com/dim75017/lofi-social-radar-preview/actions/runs/32217429367",
+    "runId": "local-2026-08-30",
+    "runUrl": null,
+    "discoveryAudit": {
+      "scannedAt": "2026-08-29T22:26:53.093Z",
+      "complete": true,
+      "candidateCount": 58,
+      "qualifiedInventoryCount": 51,
+      "currentMatchedCount": 32,
+      "added": 2,
+      "removed": 0,
+      "retained": 56,
+      "candidateUrls": [
+        "https://www.instagram.com/p/DaODLgWsE_d/",
+        "https://www.instagram.com/reel/DBJU9AxvAd0/",
+        "https://www.instagram.com/reel/DQ7xEBVEddX/",
+        "https://www.instagram.com/reel/DQNBOfYDO2Y/",
+        "https://www.instagram.com/reel/DQZwt0EkgNj/",
+        "https://www.instagram.com/reel/DQmw63kDgpG/",
+        "https://www.instagram.com/reel/DR47mFxEbmf/",
+        "https://www.instagram.com/reel/DUnmzGeimeE/",
+        "https://www.instagram.com/reel/Db3OnskP8PN/",
+        "https://www.instagram.com/reel/Db6LPxaODiT/",
+        "https://www.instagram.com/reel/DbWQg0Voaj0/",
+        "https://www.instagram.com/reel/DbYzJJcvrwU/",
+        "https://www.instagram.com/reel/DbgY9H1oXnY/",
+        "https://www.instagram.com/reel/Dbl74zoSjm3/",
+        "https://www.instagram.com/reel/DblHUCmMEFk/",
+        "https://www.instagram.com/reel/Dbnn9oFMXbx/",
+        "https://www.instagram.com/reel/DbtLDTcKkQm/",
+        "https://www.instagram.com/reel/DbvMu_nMdZ_/",
+        "https://www.tiktok.com/@adanthing/video/7670249507174550806",
+        "https://www.tiktok.com/@alejandrotayak/video/7666069601465273621",
+        "https://www.tiktok.com/@aliona.ess/video/7666132251050069266",
+        "https://www.tiktok.com/@amberyackzan/video/7588222036334349598",
+        "https://www.tiktok.com/@benjohn066/video/7673488305203236127",
+        "https://www.tiktok.com/@broenthemoviemaker/video/7666169394166304014",
+        "https://www.tiktok.com/@carla_paucar/video/7566285545970683158",
+        "https://www.tiktok.com/@dobiedrax/video/7669578285583453470",
+        "https://www.tiktok.com/@genesisgalaxy8/video/7666486744509861136",
+        "https://www.tiktok.com/@heyitsmekirstie/video/7653621145211653389",
+        "https://www.tiktok.com/@hope_schwing/video/7667660831471045918",
+        "https://www.tiktok.com/@isabelclanc/video/7667274434394344717",
+        "https://www.tiktok.com/@janayandkalisha/video/7665832849349659918",
+        "https://www.tiktok.com/@joshfawaz/video/7647113450618899719",
+        "https://www.tiktok.com/@juliehaneline/video/7671431412876266782",
+        "https://www.tiktok.com/@juliess.privv/video/7662523570551147807",
+        "https://www.tiktok.com/@katseyeworld/video/7657961287862799629",
+        "https://www.tiktok.com/@kaylee_halko/video/7663189220135013646",
+        "https://www.tiktok.com/@kpoplikely/video/7627341780337380640",
+        "https://www.tiktok.com/@liammillerr/video/7663238721306627359",
+        "https://www.tiktok.com/@lianajadee/video/7663173161218772247",
+        "https://www.tiktok.com/@luv.iolett/video/7660688157242871054",
+        "https://www.tiktok.com/@mntat246850/video/7672037517574638879",
+        "https://www.tiktok.com/@panthers/video/7666533142194359565",
+        "https://www.tiktok.com/@romero.szee/video/7660435196302363934",
+        "https://www.tiktok.com/@stillwatersfishing/video/7640578773078904077",
+        "https://www.youtube.com/shorts/2IokvErjQjA",
+        "https://www.youtube.com/shorts/hNLAS7NkKTM",
+        "https://www.youtube.com/watch?v=0dtDras4PMo",
+        "https://www.youtube.com/watch?v=2X-Lc35kpB8",
+        "https://www.youtube.com/watch?v=5JNOHJcLqiY",
+        "https://www.youtube.com/watch?v=BlXAbA5q3lc",
+        "https://www.youtube.com/watch?v=JqFzhcWo3EU",
+        "https://www.youtube.com/watch?v=QFCqfyGK4Fk",
+        "https://www.youtube.com/watch?v=SGD4ogTTZHY",
+        "https://www.youtube.com/watch?v=WfIsEdwiNl0",
+        "https://www.youtube.com/watch?v=jR3rWCBeO6M",
+        "https://www.youtube.com/watch?v=oo_XLLOuILY",
+        "https://www.youtube.com/watch?v=s466YCiHfKw",
+        "https://www.youtube.com/watch?v=zkG9zPxuw5E"
+      ],
+      "matchedTrendIds": [
+        "baby-just-wanna-dance",
+        "backrooms-stay-in-character-lofi-boy",
+        "bangladesh-absurd-complaint",
+        "broken-rules-temptation",
+        "different-lives-split",
+        "dracula-jennie-remix",
+        "eurosummer-micro-montage",
+        "explaining-game-lore",
+        "flicker-memory-transition",
+        "freaked-out-list",
+        "golden-brown-month-reset",
+        "just-say-here-bro",
+        "less-than-a-lover",
+        "meal-swap",
+        "netflix-documentary-confessional",
+        "obsession-nice-date-lofi-boy",
+        "pain-oh-no-spain",
+        "petal-soft-chaos",
+        "rush-hour-understand-me",
+        "same-age-as-parents",
+        "saxophones-getting-louder",
+        "shoe-toss-outfit-transition",
+        "social-battery-solo-mode",
+        "ss26-editorial-transition",
+        "study-until-they-text-aging",
+        "stupid-song-nostalgic-montage",
+        "suspect-hidden-plain-sight",
+        "twins-at-the-carousel",
+        "u-me-love-timeline",
+        "video-game-main-menu",
+        "viral-moment-backstory",
+        "wrap-it-up-procrastination"
+      ],
+      "retainedQualifiedCount": 50,
+      "retainedQualifiedTrendIds": [
+        "baby-just-wanna-dance",
+        "backrooms-stay-in-character-lofi-boy",
+        "bangladesh-absurd-complaint",
+        "broken-rules-temptation",
+        "choose-your-lofi-character",
+        "choosin-texas-western-reveal",
+        "deadline-tomorrow-turbo",
+        "different-lives-split",
+        "dracula-jennie-remix",
+        "eurosummer-micro-montage",
+        "explaining-game-lore",
+        "flicker-memory-transition",
+        "freaked-out-list",
+        "ghosting-you-montage",
+        "golden-brown-month-reset",
+        "ice-melting-study-challenge",
+        "just-say-here-bro",
+        "kumar-method",
+        "less-than-a-lover",
+        "let-down-emotional-rescue",
+        "matrix-verity-edit",
+        "meal-swap",
+        "netflix-documentary-confessional",
+        "not-very-nonchalant",
+        "obsession-nice-date-lofi-boy",
+        "odysseus-heroic-edit",
+        "pain-oh-no-spain",
+        "petal-soft-chaos",
+        "phones-eras-study-desk",
+        "pocketful-sunshine-mood-flip",
+        "rush-hour-understand-me",
+        "saxophones-getting-louder",
+        "shakira-at-the-computer",
+        "shoe-toss-outfit-transition",
+        "sirens-cinematic-tension",
+        "social-battery-solo-mode",
+        "ss26-editorial-transition",
+        "study-hours-scoreboard",
+        "study-until-they-text-aging",
+        "stupid-song-nostalgic-montage",
+        "suspect-hidden-plain-sight",
+        "te-extrano-motivation",
+        "twins-at-the-carousel",
+        "two-personalities",
+        "u-me-love-timeline",
+        "video-game-main-menu",
+        "viral-moment-backstory",
+        "wrap-it-up-procrastination",
+        "youll-never-see-it-coming",
+        "young-and-beautiful-summer-nostalgia"
+      ],
+      "refreshedQualifiedCount": 0,
+      "refreshedQualifiedTrendIds": [],
+      "newQualifiedCount": 1,
+      "newQualifiedTrendIds": [
+        "same-age-as-parents"
+      ],
+      "removedTrendCount": 1,
+      "removedTrendIds": [
+        "gaming-setup-night-reveal"
+      ],
+      "noRotationReason": null,
+      "candidateObservations": [
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@adanthing/video/7670249507174550806",
+          "nativeId": "7670249507174550806",
+          "author": "@adanthing",
+          "caption": "I’m not even sure why I’m asking tbh 😭 #teenlife #DadAndDaughter #parentingteens #fyp #relatableparents",
+          "publishedAt": "2026-08-04T18:45:37.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 7,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-no1a-p-0037-no/o83lIy7W7BA1M5qMiRixCI1FdCKwFAKOIAf1yi~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=t70rJcHyiCXNu8%2BVWPhBD2Y%2Fqdo%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 62900,
+            "likes": 1673,
+            "comments": 48,
+            "shares": 193
+          },
+          "music": {
+            "id": "7666712105047493389",
+            "title": "original sound",
+            "author": "Hope Along the Way"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@alejandrotayak/video/7666069601465273621",
+          "nativeId": "7666069601465273621",
+          "author": "@alejandrotayak",
+          "caption": "do you understand the words that are coming out of my mouth?",
+          "publishedAt": "2026-07-24T12:25:26.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 15,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-alisg-p-0037/ogAilKBsA2BEmB1WiAWXWajkBZIY2bEvAANRs~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=M8ChRVDDWe8qGgMFXQx6mrhbMpo%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 70900,
+            "likes": 7068,
+            "comments": 17,
+            "shares": 87
+          },
+          "music": {
+            "id": "7653092863365892886",
+            "title": "original sound",
+            "author": "maciejlubomski"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@aliona.ess/video/7666132251050069266",
+          "nativeId": "7666132251050069266",
+          "author": "@aliona.ess",
+          "caption": "i'm in spain!!! 🇪🇸 #اليونا #madrid #مدريد",
+          "publishedAt": "2026-07-24T16:28:34.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 6,
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-eu.com/tos-alisg-p-0037/o0Z127lJAAAzAII7wEiTMkOBWfriyqciACBBjI~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=DdyQ0SmMJeq5t3PDBfcTEKrlOgA%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 5500000,
+            "likes": 397500,
+            "comments": 870,
+            "shares": 7115
+          },
+          "music": {
+            "id": "7385248336640150304",
+            "title": "original sound",
+            "author": "Irina"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@amberyackzan/video/7588222036334349598",
+          "nativeId": "7588222036334349598",
+          "author": "@amberyackzan",
+          "caption": "my fav bob hairstyles🫶🏻 #shorthair #hairstyles #bobcut #bobhair #inspo",
+          "publishedAt": "2025-12-26T17:37:25.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 19,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/ogJ2AxxOGLBAeRxAElIGp9exIAP9AegfQUOnOG~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=9T%2BFXOG%2BX00dILHLRTccfeUOfzs%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 6100000,
+            "likes": 312000,
+            "comments": 1201,
+            "shares": 26800
+          },
+          "music": {
+            "id": "7338534150649088814",
+            "title": "Trees and Flowers by Strawberry Switchblade",
+            "author": "Angela ★"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@benjohn066/video/7673488305203236127",
+          "nativeId": "7673488305203236127",
+          "author": "@benjohn066",
+          "caption": "For Them, the Ground Is Dangerous #TikTok #Culture #SurmaPeople #Ethiopia #Stilts",
+          "publishedAt": "2026-08-13T12:13:54.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 24,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/osipQNj1PAnKi3qEi4TtxItAqW9fI6jcC3RAIB~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=1YVw0iiiHR4vuXeQUASaKkKa0Bw%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 325800,
+            "likes": 9438,
+            "comments": 196,
+            "shares": 393
+          },
+          "music": {
+            "id": "7668507565575964673",
+            "title": "petal",
+            "author": "Ariana Grande"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@broenthemoviemaker/video/7666169394166304014",
+          "nativeId": "7666169394166304014",
+          "author": "@broenthemoviemaker",
+          "caption": "This took all day. #siblings #sisters #dayinmylife #pictures #comedy",
+          "publishedAt": "2026-07-24T18:52:54.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 59,
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/ooqo4pUiaPlEWBG0xh0I9AIBj5mEIgOOBtiQ7~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=h61vhuwSBUoVoKY2bA5fir%2FTn%2FY%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 12600000,
+            "likes": 1800000,
+            "comments": 12900,
+            "shares": 289000
+          },
+          "music": {
+            "id": "7109091048936262442",
+            "title": "original sound",
+            "author": "Daryl Hall & John Oates"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@carla_paucar/video/7566285545970683158",
+          "nativeId": "7566285545970683158",
+          "author": "@carla_paucar",
+          "caption": "Aquí mi humilde aportación al último trabajo de Rosalía en #berghain ufff piel de gallina y SIGOOOOO 💋 #modaentiktok #fashionstylist #rosalia",
+          "publishedAt": "2025-10-28T14:52:19.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 114,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-no1a-p-0037-no/ow7CTLfEgAAKSknIhIDejUAKp0ImFfIID7Qa2A~tplv-tiktokx-dmt-logom:tos-no1a-i-0068-no/owYE4iAviDIYKAQIZABdGpQABTaBAawBQE2oA.image?dr=10393&x-expires=1788213600&x-signature=FXuBZVKvsWgiNZ3F0Ti03rfrVw8%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 43500,
+            "likes": 5507,
+            "comments": 85,
+            "shares": 245
+          },
+          "music": {
+            "id": "7566285553383803670",
+            "title": "sonido original",
+            "author": "Carlapaucar"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@dobiedrax/video/7669578285583453470",
+          "nativeId": "7669578285583453470",
+          "author": "@dobiedrax",
+          "caption": "she doin the most rn 🤣 #cat #catsanddogs #doberman #orangecat #funnycat",
+          "publishedAt": "2026-08-02T23:21:02.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 38,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/oAESEqeBYDbiEpiRhEICkKAVr0APgf5vDhbIOB~tplv-tiktokx-dmt-logom:tos-useast8-i-0068-tx2/o86EAc7eGffULIADQGbwjoaGAImIqrAsKd3LgA.image?dr=10393&x-expires=1788213600&x-signature=KNwBtlVlaNRB1sVgeleY%2B%2FkOJDo%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 3000000,
+            "likes": 637100,
+            "comments": 2391,
+            "shares": 40500
+          },
+          "music": {
+            "id": "7668507565575964673",
+            "title": "petal",
+            "author": "Ariana Grande"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@genesisgalaxy8/video/7666486744509861136",
+          "nativeId": "7666486744509861136",
+          "author": "@genesisgalaxy8",
+          "caption": "#paparazzi #targetaudience",
+          "publishedAt": "2026-07-25T15:24:13.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 10,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-alisg-p-0037/oEhBAjBNlkYTAAyABIPBRVGVomN1EAUiEiaTH~tplv-tiktokx-dmt-logom:tos-alisg-i-0068/oErQADUEfAFNBxYfEgnkUUqR1BRZZA1zEIrCAj.image?dr=10393&x-expires=1788213600&x-signature=Ok8mYVQI6SVcsMXg%2Fi4EMBRgsu0%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 278700,
+            "likes": 28300,
+            "comments": 472,
+            "shares": 1189
+          },
+          "music": {
+            "id": "7651272787434490631",
+            "title": "original sound - 💫",
+            "author": "💫"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@heyitsmekirstie/video/7653621145211653389",
+          "nativeId": "7653621145211653389",
+          "author": "@heyitsmekirstie",
+          "caption": "The way the first attempt didn’t discourage him at all #cattok #tabbycat #blackcat #fyp #catsoftiktok",
+          "publishedAt": "2026-06-20T23:19:28.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 9,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/oYEAQkWfjfMIyHIj9PbUYAFfOASDQBAHAXs1uE~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=el2%2FUC3TqKvlF7x5dMbjf4MlluA%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 1500000,
+            "likes": 204900,
+            "comments": 85,
+            "shares": 10000
+          },
+          "music": {
+            "id": "7649983963347896336",
+            "title": "u + me = <3",
+            "author": "Olivia Rodrigo"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@hope_schwing/video/7667660831471045918",
+          "nativeId": "7667660831471045918",
+          "author": "@hope_schwing",
+          "caption": "Bro I was 9 years old when my mom was this age LMAO",
+          "publishedAt": "2026-07-28T19:20:28.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 6,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/owJEVIA8AAAyE8mjRFfWQqDB2zaPfEEXPqOZBp~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=QiB7Rwlf3tVKrJTWc9tjkum%2ByI0%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 1000000,
+            "likes": 182000,
+            "comments": 354,
+            "shares": 3368
+          },
+          "music": {
+            "id": "6696414028652087298",
+            "title": "Hey Baby (Drop It to the Floor) (feat. T-Pain)",
+            "author": "Pitbull"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@isabelclanc/video/7667274434394344717",
+          "nativeId": "7667274434394344717",
+          "author": "@isabelclanc",
+          "caption": "#ad Yoplait whips and I are a forever and always kind of thing 🩷 available at Walmart! @Yoplait Yogurt #yoplaitsyogurtponsored #yoplaitwhips #yoplaityogurt",
+          "publishedAt": "2026-07-27T18:21:11.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 35,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/oMRqmpFdkAwrCRxhgIFhZoSDWff68Z6EDEB5nI~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=r%2FyAwHcDRuokNO3pMO5tEbqjDz0%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 382000,
+            "likes": 14900,
+            "comments": 182,
+            "shares": 121
+          },
+          "music": {
+            "id": "7325072810639378434",
+            "title": "Mind Blank",
+            "author": "OTE"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@janayandkalisha/video/7665832849349659918",
+          "nativeId": "7665832849349659918",
+          "author": "@janayandkalisha",
+          "caption": "never a dull moment #fyp #viral #sisters #twins #netflixdocumentary",
+          "publishedAt": "2026-07-23T21:07:01.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 6,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/oAOROirIVgAgAe8fu2BRF4NeEAgr3FYTpgeGHs~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=DMn5FVR7iFqp2kZmLxWDbodUUVI%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 8700000,
+            "likes": 1800000,
+            "comments": 7056,
+            "shares": 64100
+          },
+          "music": {
+            "id": "7274043399086426113",
+            "title": "On a Mission",
+            "author": "Duomo"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@joshfawaz/video/7647113450618899719",
+          "nativeId": "7647113450618899719",
+          "author": "@joshfawaz",
+          "caption": "Story time ❤️‍🔥 you guys are amazing, life changing #newmusic #housemusic #musicheals #joshfawaz #likeaprayer",
+          "publishedAt": "2026-06-03T10:25:55.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 30,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-alisg-p-0037/oYpyEmAyIE4bXvABAAqEADmCIQeCUTAfgAEFBR~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=15lG13Xicy5A3s1hrqF6MmZVA9Y%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 335900,
+            "likes": 31000,
+            "comments": 2141,
+            "shares": 679
+          },
+          "music": {
+            "id": "7647113486681639681",
+            "title": "original sound",
+            "author": "josh fawaz"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@juliehaneline/video/7671431412876266782",
+          "nativeId": "7671431412876266782",
+          "author": "@juliehaneline",
+          "caption": "I love this trend! 😅😅 @Tiania Haneline @Scarlett and Tiania  #sisters #fyp",
+          "publishedAt": "2026-08-07T23:12:04.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 55,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/osC5ElZdAZ2RAEykqAIBkKFtEeE2VmfZCJApDA~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=p1HRLU5UADAqlHv8NcvpgXgXQh8%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 50300,
+            "likes": 1751,
+            "comments": 9,
+            "shares": 197
+          },
+          "music": {
+            "id": "7109091048936262442",
+            "title": "original sound",
+            "author": "Daryl Hall & John Oates"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@juliess.privv/video/7662523570551147807",
+          "nativeId": "7662523570551147807",
+          "author": "@juliess.privv",
+          "caption": "(it was his idea to come btw) #seattle #fyp #xyzbca #viral #funny",
+          "publishedAt": "2026-07-14T23:05:16.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 29,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/os3YEeZVABmRAI8LqcIBLDFFEpEWVsfwB5DjDQ~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=jg9%2FBEtXza9YPApfbLrJDhTHGKU%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 33200000,
+            "likes": 6500000,
+            "comments": 50200,
+            "shares": 827600
+          },
+          "music": {
+            "id": "7639417177691473937",
+            "title": "Saxophones getting louder - Sped Up",
+            "author": "AntonioVivald"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@katseyeworld/video/7657961287862799629",
+          "nativeId": "7657961287862799629",
+          "author": "@katseyeworld",
+          "caption": "lara + sophia = solarz #KATSEYE",
+          "publishedAt": "2026-07-02T16:01:09.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 7,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/oIAGBA1PLkPERkviaX0UUq4iBAIagiWLNBSAE~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=jo%2FNzYTzpUz7FSTjViV9LDp7dkQ%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 5300000,
+            "likes": 666400,
+            "comments": 7970,
+            "shares": 14600
+          },
+          "music": {
+            "id": "7649983963347896336",
+            "title": "u + me = <3",
+            "author": "Olivia Rodrigo"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@kaylee_halko/video/7663189220135013646",
+          "nativeId": "7663189220135013646",
+          "author": "@kaylee_halko",
+          "caption": "dear god do I have to like….get a job #fyp #progeria",
+          "publishedAt": "2026-07-16T18:08:09.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 8,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/oAUNkSZpxCSIjALjeH5ISgyDusIeAleljgHGIb~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=g9ha2g7TVX97mdt1XShhc6yRwdQ%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 11400000,
+            "likes": 1900000,
+            "comments": 3117,
+            "shares": 66900
+          },
+          "music": {
+            "id": "7057703190136998703",
+            "title": "original sound",
+            "author": "Sonicallygifted"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@kpoplikely/video/7627341780337380640",
+          "nativeId": "7627341780337380640",
+          "author": "@kpoplikely",
+          "caption": "#GOLDEN at Coachella ✨ #KATSEYE #EYEKONS #fyp #coachella @KATSEYE",
+          "publishedAt": "2026-04-11T03:42:35.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 168,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast2a-p-0037-euttp/osiRIzvfOzzIEVCIIw70FHiFIIRBE7oBAG7KZA~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=BCggwZUEdy6iKCbchEo1zqroyhk%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 122800,
+            "likes": 7984,
+            "comments": 51,
+            "shares": 945
+          },
+          "music": {
+            "id": "7534922588541241360",
+            "title": "Golden",
+            "author": "HUNTR/X & EJAE & AUDREY NUNA & REI AMI & KPop Demon Hunters Cast"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@liammillerr/video/7663238721306627359",
+          "nativeId": "7663238721306627359",
+          "author": "@liammillerr",
+          "caption": "i miss the vacuum tbh",
+          "publishedAt": "2026-07-16T21:20:13.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 9,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/o8FfALTZVLlJlRSagpIGJDeMgpfhAnlGQUlfMG~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=%2FJP4MnpOAZf892rBKsH4%2BmUh1E8%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 10900000,
+            "likes": 1500000,
+            "comments": 3473,
+            "shares": 14100
+          },
+          "music": {
+            "id": "7274043399086426113",
+            "title": "On a Mission",
+            "author": "Duomo"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@lianajadee/video/7663173161218772247",
+          "nativeId": "7663173161218772247",
+          "author": "@lianajadee",
+          "caption": "All the cool girls had this haircut right? All Jokes aside, she can have whatever haircut makes her happy 🥹 ib: @AbbieHerbert",
+          "publishedAt": "2026-07-16T17:05:42.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 11,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-no1a-p-0037-no/ooDCSipBw5pAcaJifv1ICCA1IAZA2LIIINmJ1y~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=IcSZ6H5YKSxR%2FpnoVaZKY%2FR%2FcM8%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 2900000,
+            "likes": 374300,
+            "comments": 551,
+            "shares": 1979
+          },
+          "music": {
+            "id": "7644346595656730640",
+            "title": "FREAKED OUT",
+            "author": "Fat Papi & prodshushy"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@luv.iolett/video/7660688157242871054",
+          "nativeId": "7660688157242871054",
+          "author": "@luv.iolett",
+          "caption": "i just wanna danceeee #gatito #100tryslater #ijustwannadance #kitten",
+          "publishedAt": "2026-07-10T00:22:46.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 10,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/oAJQRDOZqQSbEfD7OBUFPxoEQpDRYhApTgf11i~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=sEIhAr68VbcvidAgEu6E7bjIIGc%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 4200000,
+            "likes": 978900,
+            "comments": 3185,
+            "shares": 163400
+          },
+          "music": {
+            "id": "7653201595181665038",
+            "title": "original sound",
+            "author": "babychiefdoit2612"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@mntat246850/video/7672037517574638879",
+          "nativeId": "7672037517574638879",
+          "author": "@mntat246850",
+          "caption": "spiderman ceiling trend tutorial how to do spiderman ceiling trend miles morales ceiling trend tutorial spiderman ceiling pose tutorial recreate spiderman ceiling trend spiderman ceiling trend filming guide miles morales tiktok trend tutorial sunflower audio spiderman trend #spidermanceilingtrend #milesmoralestrend #ceilingtrendtutorial #capcut #capcutpioneer",
+          "publishedAt": "2026-08-09T14:24:20.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 24,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/oMjK7OELiAVnBSQKPltNiBy9V4ZiAIjERaBK7~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=3Tr2UvpITPI6wHA2XigN39hUspQ%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 345900,
+            "likes": 1837,
+            "comments": 19,
+            "shares": 435
+          },
+          "music": {
+            "id": "7654692848025094942",
+            "title": "original sound",
+            "author": "RyanzFilms"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@panthers/video/7666533142194359565",
+          "nativeId": "7666533142194359565",
+          "author": "@panthers",
+          "caption": "TMac checking for the mic 🤣 #carolinapanthers #tetairoamcmillan #trainingcamp #nfl",
+          "publishedAt": "2026-07-25T18:24:30.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 11,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/oEGgRgeEILAGCkLAgG5GITEKfJfavEpTyOjeFs~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=5B02mJ9%2B5NCEF7yqIVPFlsXVNGE%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 31500,
+            "likes": 3451,
+            "comments": 42,
+            "shares": 41
+          },
+          "music": {
+            "id": "7325072810639378434",
+            "title": "Mind Blank",
+            "author": "OTE"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@romero.szee/video/7660435196302363934",
+          "nativeId": "7660435196302363934",
+          "author": "@romero.szee",
+          "caption": "#fyp#respiratorytherapist#respiratorytherapy#healthcareworker#humor",
+          "publishedAt": "2026-07-09T08:01:33.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 5,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/ok1ENTDRpFEeABVaWq2uRqALTEIYfEkDIPVWF1~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=nH8%2FjrfUmL8B%2Fcb1FBd%2FiNTxou8%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 936800,
+            "likes": 217500,
+            "comments": 542,
+            "shares": 13100
+          },
+          "music": {
+            "id": "7654835361444530974",
+            "title": "original sound",
+            "author": "Ken Eurich"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@stillwatersfishing/video/7640578773078904077",
+          "nativeId": "7640578773078904077",
+          "author": "@stillwatersfishing",
+          "caption": "Full volume 🔊 #fishing #nature #sound",
+          "publishedAt": "2026-05-16T19:48:25.000Z",
+          "capturedAt": "2026-08-29T22:26:53.093Z",
+          "durationSeconds": 31,
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/o0gEDCWSSQAM9POOCMycIfGkQgErxBDkqIzRfF~tplv-tiktokx-origin.image?dr=10395&x-expires=1788213600&x-signature=9dbv%2BYAHvr7Y2eWXJNcdyLuPtZI%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "metrics": {
+            "views": 572,
+            "likes": 27,
+            "comments": 3,
+            "shares": 1
+          },
+          "music": {
+            "id": "7529047591636568887",
+            "title": "original sound",
+            "author": "CYE"
+          },
+          "firstObservedAt": "2026-08-29T22:26:53.093Z",
+          "lastObservedAt": "2026-08-29T22:26:53.093Z"
+        }
+      ],
+      "tiktokCandidateEnrichment": {
+        "checked": 26,
+        "parsed": 26,
+        "failed": 0,
+        "failures": []
+      },
+      "exactMusicClusters": [],
+      "pendingExactMusicClusters": [],
+      "musicClusterQualifications": [],
+      "recipeQualifications": [
+        {
+          "recipeId": "same-age-as-parents",
+          "status": "qualified",
+          "reason": null,
+          "evidenceUrls": [
+            "https://www.tiktok.com/@hope_schwing/video/7667660831471045918",
+            "https://www.youtube.com/shorts/hNLAS7NkKTM",
+            "https://www.youtube.com/shorts/2IokvErjQjA"
+          ],
+          "priorityScore": 97,
+          "top50CutoffScore": 86,
+          "beatsTop50Cutoff": true
+        }
+      ],
+      "sourceBreakdown": [
+        {
+          "id": "buffer-tiktok",
+          "label": "Buffer · TikTok",
+          "platform": "tiktok",
+          "status": "success",
+          "candidateCount": 14,
+          "matchedTrendIds": [
+            "baby-just-wanna-dance",
+            "broken-rules-temptation",
+            "different-lives-split",
+            "freaked-out-list",
+            "just-say-here-bro",
+            "netflix-documentary-confessional",
+            "pain-oh-no-spain",
+            "petal-soft-chaos",
+            "rush-hour-understand-me",
+            "saxophones-getting-louder",
+            "stupid-song-nostalgic-montage",
+            "suspect-hidden-plain-sight",
+            "twins-at-the-carousel",
+            "u-me-love-timeline",
+            "viral-moment-backstory"
+          ],
+          "candidateUrls": [
+            "https://www.instagram.com/reel/DBJU9AxvAd0/",
+            "https://www.tiktok.com/@adanthing/video/7670249507174550806",
+            "https://www.tiktok.com/@alejandrotayak/video/7666069601465273621",
+            "https://www.tiktok.com/@aliona.ess/video/7666132251050069266",
+            "https://www.tiktok.com/@broenthemoviemaker/video/7666169394166304014",
+            "https://www.tiktok.com/@dobiedrax/video/7669578285583453470",
+            "https://www.tiktok.com/@janayandkalisha/video/7665832849349659918",
+            "https://www.tiktok.com/@juliess.privv/video/7662523570551147807",
+            "https://www.tiktok.com/@katseyeworld/video/7657961287862799629",
+            "https://www.tiktok.com/@kaylee_halko/video/7663189220135013646",
+            "https://www.tiktok.com/@lianajadee/video/7663173161218772247",
+            "https://www.tiktok.com/@luv.iolett/video/7660688157242871054",
+            "https://www.tiktok.com/@panthers/video/7666533142194359565",
+            "https://www.tiktok.com/@romero.szee/video/7660435196302363934"
+          ]
+        },
+        {
+          "id": "later-instagram",
+          "label": "Later · Instagram Reels",
+          "platform": "instagram",
+          "status": "success",
+          "candidateCount": 6,
+          "matchedTrendIds": [
+            "backrooms-stay-in-character-lofi-boy",
+            "broken-rules-temptation",
+            "dracula-jennie-remix",
+            "eurosummer-micro-montage",
+            "flicker-memory-transition",
+            "just-say-here-bro",
+            "meal-swap",
+            "netflix-documentary-confessional",
+            "obsession-nice-date-lofi-boy",
+            "shoe-toss-outfit-transition",
+            "social-battery-solo-mode",
+            "ss26-editorial-transition",
+            "study-until-they-text-aging",
+            "suspect-hidden-plain-sight",
+            "twins-at-the-carousel",
+            "wrap-it-up-procrastination"
+          ],
+          "candidateUrls": [
+            "https://www.instagram.com/reel/DQ7xEBVEddX/",
+            "https://www.instagram.com/reel/DQNBOfYDO2Y/",
+            "https://www.instagram.com/reel/DQZwt0EkgNj/",
+            "https://www.instagram.com/reel/DQmw63kDgpG/",
+            "https://www.instagram.com/reel/DR47mFxEbmf/",
+            "https://www.instagram.com/reel/DUnmzGeimeE/"
+          ]
+        },
+        {
+          "id": "socialpilot-tiktok",
+          "label": "SocialPilot · TikTok",
+          "platform": "tiktok",
+          "status": "success",
+          "candidateCount": 13,
+          "matchedTrendIds": [
+            "backrooms-stay-in-character-lofi-boy",
+            "broken-rules-temptation",
+            "different-lives-split",
+            "dracula-jennie-remix",
+            "explaining-game-lore",
+            "freaked-out-list",
+            "just-say-here-bro",
+            "netflix-documentary-confessional",
+            "obsession-nice-date-lofi-boy",
+            "pain-oh-no-spain",
+            "petal-soft-chaos",
+            "same-age-as-parents",
+            "shoe-toss-outfit-transition",
+            "social-battery-solo-mode",
+            "stupid-song-nostalgic-montage",
+            "suspect-hidden-plain-sight",
+            "twins-at-the-carousel",
+            "u-me-love-timeline",
+            "video-game-main-menu"
+          ],
+          "candidateUrls": [
+            "https://www.tiktok.com/@amberyackzan/video/7588222036334349598",
+            "https://www.tiktok.com/@benjohn066/video/7673488305203236127",
+            "https://www.tiktok.com/@carla_paucar/video/7566285545970683158",
+            "https://www.tiktok.com/@genesisgalaxy8/video/7666486744509861136",
+            "https://www.tiktok.com/@heyitsmekirstie/video/7653621145211653389",
+            "https://www.tiktok.com/@hope_schwing/video/7667660831471045918",
+            "https://www.tiktok.com/@isabelclanc/video/7667274434394344717",
+            "https://www.tiktok.com/@joshfawaz/video/7647113450618899719",
+            "https://www.tiktok.com/@juliehaneline/video/7671431412876266782",
+            "https://www.tiktok.com/@kpoplikely/video/7627341780337380640",
+            "https://www.tiktok.com/@liammillerr/video/7663238721306627359",
+            "https://www.tiktok.com/@mntat246850/video/7672037517574638879",
+            "https://www.tiktok.com/@stillwatersfishing/video/7640578773078904077"
+          ]
+        },
+        {
+          "id": "socialpilot-instagram",
+          "label": "SocialPilot · Instagram Reels",
+          "platform": "instagram",
+          "status": "success",
+          "candidateCount": 11,
+          "matchedTrendIds": [
+            "backrooms-stay-in-character-lofi-boy",
+            "bangladesh-absurd-complaint",
+            "dracula-jennie-remix",
+            "explaining-game-lore",
+            "freaked-out-list",
+            "golden-brown-month-reset",
+            "netflix-documentary-confessional",
+            "obsession-nice-date-lofi-boy",
+            "petal-soft-chaos",
+            "shoe-toss-outfit-transition",
+            "social-battery-solo-mode",
+            "study-until-they-text-aging",
+            "stupid-song-nostalgic-montage",
+            "suspect-hidden-plain-sight",
+            "twins-at-the-carousel",
+            "u-me-love-timeline",
+            "video-game-main-menu"
+          ],
+          "candidateUrls": [
+            "https://www.instagram.com/p/DaODLgWsE_d/",
+            "https://www.instagram.com/reel/Db3OnskP8PN/",
+            "https://www.instagram.com/reel/Db6LPxaODiT/",
+            "https://www.instagram.com/reel/DbWQg0Voaj0/",
+            "https://www.instagram.com/reel/DbYzJJcvrwU/",
+            "https://www.instagram.com/reel/DbgY9H1oXnY/",
+            "https://www.instagram.com/reel/Dbl74zoSjm3/",
+            "https://www.instagram.com/reel/DblHUCmMEFk/",
+            "https://www.instagram.com/reel/Dbnn9oFMXbx/",
+            "https://www.instagram.com/reel/DbtLDTcKkQm/",
+            "https://www.instagram.com/reel/DbvMu_nMdZ_/"
+          ]
+        },
+        {
+          "id": "tokchart-public",
+          "label": "Tokchart · sons TikTok",
+          "platform": "tiktok",
+          "status": "failed",
+          "candidateCount": 0,
+          "matchedTrendIds": [],
+          "candidateUrls": []
+        },
+        {
+          "id": "youtube-shorts-daily",
+          "label": "TrendVideosHub · YouTube Shorts",
+          "platform": "youtube",
+          "status": "success",
+          "candidateCount": 12,
+          "matchedTrendIds": [
+            "backrooms-stay-in-character-lofi-boy",
+            "broken-rules-temptation",
+            "explaining-game-lore",
+            "just-say-here-bro",
+            "less-than-a-lover",
+            "obsession-nice-date-lofi-boy",
+            "social-battery-solo-mode",
+            "video-game-main-menu"
+          ],
+          "candidateUrls": [
+            "https://www.youtube.com/watch?v=0dtDras4PMo",
+            "https://www.youtube.com/watch?v=2X-Lc35kpB8",
+            "https://www.youtube.com/watch?v=5JNOHJcLqiY",
+            "https://www.youtube.com/watch?v=BlXAbA5q3lc",
+            "https://www.youtube.com/watch?v=JqFzhcWo3EU",
+            "https://www.youtube.com/watch?v=QFCqfyGK4Fk",
+            "https://www.youtube.com/watch?v=SGD4ogTTZHY",
+            "https://www.youtube.com/watch?v=WfIsEdwiNl0",
+            "https://www.youtube.com/watch?v=jR3rWCBeO6M",
+            "https://www.youtube.com/watch?v=oo_XLLOuILY",
+            "https://www.youtube.com/watch?v=s466YCiHfKw",
+            "https://www.youtube.com/watch?v=zkG9zPxuw5E"
+          ]
+        },
+        {
+          "id": "x-france-trends",
+          "label": "X · tendances France",
+          "platform": "x",
+          "status": "failed",
+          "candidateCount": 0,
+          "matchedTrendIds": [],
+          "candidateUrls": []
+        }
+      ],
+      "reachabilityCheckedAt": "2026-08-29T22:26:53.093Z",
+      "availablePosts": 153,
+      "unavailablePosts": 1,
+      "unavailablePostUrls": [
+        "https://www.tiktok.com/@tokay0ff/video/7665806228362120480"
+      ]
+    },
     "sourceChecks": [
       {
         "id": "buffer-tiktok",
         "label": "Buffer · TikTok",
         "platform": "tiktok",
         "status": "success",
-        "checkedAt": "2026-08-19T04:54:32.018Z",
+        "checkedAt": "2026-08-29T22:26:53.093Z",
         "candidatesMatched": 15
       },
       {
@@ -7510,7 +8525,7 @@
         "label": "Later · Instagram Reels",
         "platform": "instagram",
         "status": "success",
-        "checkedAt": "2026-08-19T04:54:32.018Z",
+        "checkedAt": "2026-08-29T22:26:53.093Z",
         "candidatesMatched": 16
       },
       {
@@ -7518,48 +8533,48 @@
         "label": "SocialPilot · TikTok",
         "platform": "tiktok",
         "status": "success",
-        "checkedAt": "2026-08-19T04:54:32.018Z",
-        "candidatesMatched": 18
+        "checkedAt": "2026-08-29T22:26:53.093Z",
+        "candidatesMatched": 19
       },
       {
         "id": "socialpilot-instagram",
         "label": "SocialPilot · Instagram Reels",
         "platform": "instagram",
         "status": "success",
-        "checkedAt": "2026-08-19T04:54:32.018Z",
+        "checkedAt": "2026-08-29T22:26:53.093Z",
         "candidatesMatched": 17
       },
       {
         "id": "tokchart-public",
         "label": "Tokchart · sons TikTok",
         "platform": "tiktok",
-        "status": "success",
-        "checkedAt": "2026-08-19T04:54:32.018Z",
-        "candidatesMatched": 1
+        "status": "failed",
+        "checkedAt": "2026-08-29T22:26:53.093Z",
+        "candidatesMatched": 0
       },
       {
         "id": "youtube-shorts-daily",
         "label": "TrendVideosHub · YouTube Shorts",
         "platform": "youtube",
         "status": "success",
-        "checkedAt": "2026-08-19T04:54:32.018Z",
-        "candidatesMatched": 6
+        "checkedAt": "2026-08-29T22:26:53.093Z",
+        "candidatesMatched": 8
       },
       {
         "id": "x-france-trends",
         "label": "X · tendances France",
         "platform": "x",
-        "status": "success",
-        "checkedAt": "2026-08-19T04:54:32.018Z",
+        "status": "failed",
+        "checkedAt": "2026-08-29T22:26:53.093Z",
         "candidatesMatched": 0
       }
     ],
     "counts": {
-      "checkedSources": 7,
-      "matchedSignals": 73,
+      "checkedSources": 5,
+      "matchedSignals": 75,
       "actionable": 51,
-      "lofiGirl": 44,
-      "lofiBoy": 7
+      "lofiGirl": 45,
+      "lofiBoy": 6
     }
   }
 }
