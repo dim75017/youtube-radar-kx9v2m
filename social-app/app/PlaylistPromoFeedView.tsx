@@ -5,6 +5,7 @@
 import { useMemo, useState } from "react";
 
 import {
+  PLAYLIST_PROMO_MINIMUM_ORGANIC_LIKES,
   latestPlaylistPromoObservation,
   type PlaylistDestination,
   type PlaylistPromoCreativeFamily,
@@ -77,10 +78,13 @@ export function PlaylistPromoFeedView({
   const [sort, setSort] = useState<Sort>("likes");
   const [activePlayerId, setActivePlayerId] = useState<string | null>(null);
 
-  const visibleItems = useMemo(() => [...(feed?.items ?? [])]
+  const visibleItems = useMemo(() => [
+    ...(feed?.items ?? []),
+    ...(feed?.candidates ?? []),
+  ]
     .filter((item) => platform === "all" || item.platform === platform)
     .filter((item) => destination === "all" || item.destination === destination)
-    .sort((left, right) => compareItems(left, right, sort)), [destination, feed?.items, platform, sort]);
+    .sort((left, right) => compareItems(left, right, sort)), [destination, feed?.candidates, feed?.items, platform, sort]);
 
   const summary = useMemo(() => summarizeFeed(feed), [feed]);
 
@@ -104,6 +108,20 @@ export function PlaylistPromoFeedView({
           <Kpi value={formatCompact(summary.totalViews)} label="vues cumulées" />
           <Kpi value={formatCompact(summary.medianLikes)} label="likes médians" />
           <Kpi value={`${summary.averageDuration.toFixed(1).replace(".", ",")} s`} label="durée moyenne" />
+        </div>
+      ) : null}
+
+      {feed?.candidates.length ? (
+        <div className="trend-feed-notice playlist-promo-watchlist" role="status">
+          <span aria-hidden="true">👀</span>
+          <p>
+            <b>
+              {feed.candidates.length} création{feed.candidates.length > 1 ? "s" : ""}{" "}
+              suivie{feed.candidates.length > 1 ? "s" : ""} sous le seuil.
+            </b>{" "}
+            {feed.candidates.length > 1 ? "Elles restent visibles et seront qualifiées" : "Elle reste visible et sera qualifiée"}{" "}
+            automatiquement dès 10 000 likes natifs.
+          </p>
         </div>
       ) : null}
 
@@ -240,6 +258,7 @@ function PlaylistPromoCard({
   onClose: () => void;
 }) {
   const observation = latestPlaylistPromoObservation(item);
+  const qualified = (observation?.likes ?? 0) >= PLAYLIST_PROMO_MINIMUM_ORGANIC_LIKES;
   const inlinePlatform = item.platform === "instagram" || item.platform === "tiktok" || item.platform === "youtube"
     ? item.platform
     : null;
@@ -283,7 +302,7 @@ function PlaylistPromoCard({
         <div className="trend-card-meta-line">
           <span>{PLATFORM_EMOJI[item.platform]} {item.author}</span>
           <span className="status-badge tone-indigo">
-            {item.paidStatus === "verified-paid" ? "Pub vérifiée" : item.paidStatus === "organic-only" ? "Promo organique" : "Statut à confirmer"}
+            {!qualified ? "À surveiller · sous 10k" : item.paidStatus === "verified-paid" ? "Pub vérifiée" : item.paidStatus === "organic-only" ? "Promo organique" : "Statut à confirmer"}
           </span>
         </div>
 

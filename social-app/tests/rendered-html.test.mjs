@@ -95,6 +95,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     playlistPromoView,
     playlistPromoModel,
     playlistPromoFeed,
+    playlistPromoSeeds,
   ] = await Promise.all([
     readFile(new URL("../vite.config.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
@@ -131,6 +132,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     readFile(new URL("../app/PlaylistPromoFeedView.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/playlist-promos.ts", import.meta.url), "utf8"),
     readFile(new URL("../data/playlist-promos/feed.json", import.meta.url), "utf8"),
+    readFile(new URL("../data/playlist-promos/seeds.json", import.meta.url), "utf8"),
   ]);
 
   assert.match(viteConfig, /const d1 = "DB"/);
@@ -509,7 +511,14 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(playlistPromoView, /<SocialInlinePlayer/);
   assert.doesNotMatch(playlistPromoView, /\bautoPlay\b|autoplay=1|<video/i);
   assert.match(playlistPromoModel, /PLAYLIST_PROMO_MINIMUM_ORGANIC_LIKES = 10_000/);
-  assert.equal(JSON.parse(playlistPromoFeed).items.length, 9);
+  const parsedPlaylistPromoFeed = JSON.parse(playlistPromoFeed);
+  const enabledPlaylistPromoSeeds = JSON.parse(playlistPromoSeeds).seeds.filter((seed) => seed.enabled);
+  assert.equal(
+    parsedPlaylistPromoFeed.items.length + parsedPlaylistPromoFeed.candidates.length,
+    enabledPlaylistPromoSeeds.length,
+  );
+  assert.ok(parsedPlaylistPromoFeed.items.every((item) => item.observations.at(-1).likes >= 10_000));
+  assert.ok(parsedPlaylistPromoFeed.candidates.every((item) => item.observations.at(-1).likes < 10_000));
   const inactiveAudioPreview = audioTrendView.slice(
     audioTrendView.indexOf('className="audio-reference-trigger"'),
     audioTrendView.indexOf('</button>', audioTrendView.indexOf('className="audio-reference-trigger"')),

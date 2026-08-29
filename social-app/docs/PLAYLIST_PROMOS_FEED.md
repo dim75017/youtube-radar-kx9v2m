@@ -4,7 +4,7 @@
 
 Construire un benchmark durable des vidéos qui promeuvent une playlist musicale, puis transformer les mécaniques créatives observées en briefs originaux pour Lofi Girl.
 
-Le feed public ne contient que des cartes dont la métrique affichée est attribuable à l’URL native et dont le dernier compteur de likes vérifié est supérieur ou égal à 10 000. Les candidats non vérifiables restent hors feed ; une panne temporaire ne supprime jamais le dernier snapshot valide.
+Le schéma public v2 distingue les cartes qualifiées, dont le dernier compteur de likes natifs vérifié est supérieur ou égal à 10 000, des créations ajoutées explicitement à la watchlist qui restent sous ce seuil. Ces dernières sont visibles comme « À surveiller », ne comptent pas dans les KPI qualifiés et sont promues automatiquement dès qu’elles atteignent 10 000 likes. Une panne temporaire ne supprime jamais le dernier snapshot valide.
 
 ## Deux voies qui ne doivent pas être confondues
 
@@ -13,9 +13,9 @@ Le feed public ne contient que des cartes dont la métrique affichée est attrib
 
 Les likes indiquent une résonance publique. Sans impressions, dépenses, clics et conversions, ils ne prouvent ni un bon coût d’acquisition ni un bon taux de conversion.
 
-## Snapshot initial
+## Snapshot et enrichissements manuels
 
-Le lancement suit les neuf créations Instagram fournies le 26 août 2026. Toutes sont des vidéos verticales de moins de 20 secondes et leur intégration publique expose `product_type: ad`. Les vidéos concurrentes ne sont ni téléchargées ni republiées : le site conserve une frame de référence et charge l’intégration officielle uniquement après un clic humain.
+Le lancement suit les neuf créations Instagram fournies le 26 août 2026. Sept URLs supplémentaires ont été ajoutées par Dim le 29 août : six sont qualifiées au-dessus de 10 000 likes et une reste suivie sous le seuil. Les seize intégrations publiques exposent `product_type: ad`. Les vidéos concurrentes ne sont ni téléchargées ni republiées : le site conserve une frame de référence et charge l’intégration officielle uniquement après un clic humain.
 
 Les métriques sont historisées comme observations immuables. Un relevé identique n’ajoute pas de doublon ; un nouveau compteur ajoute une observation. Le refresh échoue fermé en cas de `429`, challenge, réponse incomplète ou métrique non attribuable.
 

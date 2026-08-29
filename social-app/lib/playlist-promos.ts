@@ -99,7 +99,7 @@ export type PlaylistPromoSourceCheck = {
 };
 
 export type PlaylistPromoFeed = {
-  version: 1;
+  version: 2;
   capturedAt: string;
   nextRefreshAt: string;
   cadenceHours: 24;
@@ -108,6 +108,7 @@ export type PlaylistPromoFeed = {
   limitations: string[];
   sourceChecks: PlaylistPromoSourceCheck[];
   items: PlaylistPromoItem[];
+  candidates: PlaylistPromoItem[];
   assetBriefs: PlaylistPromoAssetBrief[];
 };
 
@@ -243,7 +244,7 @@ export function assertPlaylistPromoFeed(value: unknown): PlaylistPromoFeed {
   const capturedAt = Date.parse(feed.capturedAt);
   const nextRefreshAt = Date.parse(feed.nextRefreshAt);
   if (
-    feed.version !== 1 ||
+    feed.version !== 2 ||
     feed.cadenceHours !== PLAYLIST_PROMO_CADENCE_HOURS ||
     feed.minimumOrganicLikes !== PLAYLIST_PROMO_MINIMUM_ORGANIC_LIKES ||
     !Number.isFinite(capturedAt) ||
@@ -255,6 +256,7 @@ export function assertPlaylistPromoFeed(value: unknown): PlaylistPromoFeed {
     !feed.limitations.every(isText) ||
     !Array.isArray(feed.sourceChecks) ||
     !Array.isArray(feed.items) ||
+    !Array.isArray(feed.candidates) ||
     !Array.isArray(feed.assetBriefs)
   ) {
     throw new Error("Feed Pubs playlists incomplet.");
@@ -291,7 +293,11 @@ export function assertPlaylistPromoFeed(value: unknown): PlaylistPromoFeed {
 
   const itemIds = new Set<string>();
   const itemUrls = new Set<string>();
-  for (const item of feed.items) {
+  const trackedItems = [
+    ...feed.items.map((item) => ({ item, qualified: true })),
+    ...feed.candidates.map((item) => ({ item, qualified: false })),
+  ];
+  for (const { item, qualified } of trackedItems) {
     if (
       !isObject(item) ||
       !SLUG.test(item.id) ||
@@ -376,8 +382,14 @@ export function assertPlaylistPromoFeed(value: unknown): PlaylistPromoFeed {
       previousAt = observedAt;
     }
     const latest = latestPlaylistPromoObservation(item);
-    if (!latest || latest.likes < feed.minimumOrganicLikes) {
+    if (!latest) {
+      throw new Error(`Observation playlist absente : ${item.id}`);
+    }
+    if (qualified && latest.likes < feed.minimumOrganicLikes) {
       throw new Error(`Seuil de likes non atteint : ${item.id}`);
+    }
+    if (!qualified && latest.likes >= feed.minimumOrganicLikes) {
+      throw new Error(`Candidat déjà qualifié : ${item.id}`);
     }
     if (latest.metricScope !== "native-post") {
       throw new Error(`Les likes qualifiants doivent venir du post natif : ${item.id}`);

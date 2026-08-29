@@ -1,19 +1,16 @@
 {
   "version": 1,
-  "status": "failed",
-  "lastAttemptAt": "2026-08-29T11:47:55.886Z",
-  "lastSuccessfulAt": "2026-08-26T07:54:12.000Z",
-  "nextRefreshAt": "2026-08-30T11:47:55.886Z",
-  "seedCount": 9,
-  "checkedCount": 1,
-  "matchedCount": 0,
-  "qualifiedCount": 0,
-  "updatedCount": 0,
-  "failedCount": 1,
-  "preservedLastGoodFeed": true,
-  "errors": [
-    "gql_data.shortcode_media absent de l'embed Instagram.",
-    "instagram-dujaodvgkkr: gql_data.shortcode_media absent de l'embed Instagram."
-  ],
-  "note": "Refresh fail-closed : le dernier bon feed a été conservé sans modification."
+  "status": "success",
+  "lastAttemptAt": "2026-08-29T15:16:59.367Z",
+  "lastSuccessfulAt": "2026-08-29T15:16:59.367Z",
+  "nextRefreshAt": "2026-08-30T15:16:59.367Z",
+  "seedCount": 16,
+  "checkedCount": 16,
+  "matchedCount": 16,
+  "qualifiedCount": 15,
+  "updatedCount": 15,
+  "failedCount": 0,
+  "preservedLastGoodFeed": false,
+  "errors": [],
+  "note": "Tous les embeds ont été attribués. Les compteurs sont ceux des posts natifs ; les créations sous 10 000 likes restent suivies séparément jusqu'à leur qualification."
 }

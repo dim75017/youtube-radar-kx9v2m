@@ -67,7 +67,7 @@ export function canonicalInstagramPostUrl(value) {
 export function instagramEmbedUrl(value) {
   const shortcode = instagramShortcodeFromUrl(value);
   return shortcode
-    ? `https://www.instagram.com/p/${shortcode}/embed/captioned/?_fb_noscript=1`
+    ? `https://www.instagram.com/p/${shortcode}/embed/captioned/`
     : null;
 }
 
@@ -99,19 +99,36 @@ function balancedJsonObject(source, start) {
 }
 
 function findShortcodeMedia(value, depth = 0) {
-  if (!isObject(value) || depth > 12) return null;
+  if (depth > 12) return null;
+  if (typeof value === "string") {
+    const nested = value.trim();
+    if (
+      nested.length > 1 &&
+      nested.length <= MAX_EMBED_BYTES &&
+      ((nested.startsWith("{") && nested.endsWith("}")) ||
+        (nested.startsWith("[") && nested.endsWith("]")))
+    ) {
+      try {
+        return findShortcodeMedia(JSON.parse(nested), depth + 1);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findShortcodeMedia(item, depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (!isObject(value)) return null;
   if (isObject(value.gql_data?.shortcode_media)) return value.gql_data.shortcode_media;
   if (isObject(value.shortcode_media)) return value.shortcode_media;
   for (const nested of Object.values(value)) {
-    if (isObject(nested)) {
-      const found = findShortcodeMedia(nested, depth + 1);
-      if (found) return found;
-    } else if (Array.isArray(nested)) {
-      for (const item of nested) {
-        const found = findShortcodeMedia(item, depth + 1);
-        if (found) return found;
-      }
-    }
+    const found = findShortcodeMedia(nested, depth + 1);
+    if (found) return found;
   }
   return null;
 }
@@ -127,7 +144,7 @@ function parsePossibleJson(source) {
     // Some embeds wrap the JSON in a JavaScript callback.
   }
 
-  const markers = ['{"gql_data"', '{"shortcode_media"'];
+  const markers = ['{"gql_data"', '{"shortcode_media"', '{"define"', '{"require"'];
   for (const marker of markers) {
     let offset = 0;
     while (offset < source.length) {
@@ -311,7 +328,9 @@ export function buildPlaylistPromoRefresh({ feed: rawFeed, seeds: rawSeeds, resu
     throw new Error(`Refresh incomplet : ${resultBySeed.size}/${enabledSeeds.length} seeds retournées.`);
   }
 
-  const itemById = new Map(feed.items.map((item) => [item.id, item]));
+  const itemById = new Map(
+    [...feed.items, ...feed.candidates].map((item) => [item.id, item]),
+  );
   let updatedCount = 0;
   for (const seed of enabledSeeds) {
     const result = resultBySeed.get(seed.id);
@@ -331,9 +350,7 @@ export function buildPlaylistPromoRefresh({ feed: rawFeed, seeds: rawSeeds, resu
     if (seed.expectedProductType !== "unknown" && post.productType !== seed.expectedProductType) {
       throw new Error(`product_type inattendu pour ${seed.id} : ${post.productType}.`);
     }
-    if (!safeInteger(post.likes) || post.likes < PLAYLIST_PROMO_MINIMUM_ORGANIC_LIKES) {
-      throw new Error(`Seuil natif de 10 000 likes non prouvé pour ${seed.id}.`);
-    }
+    if (!safeInteger(post.likes)) throw new Error(`Likes exacts absents pour ${seed.id}.`);
     if (!safeInteger(post.comments) || !safeInteger(post.views)) {
       throw new Error(`Compteurs exacts incomplets pour ${seed.id}.`);
     }
@@ -367,6 +384,13 @@ export function buildPlaylistPromoRefresh({ feed: rawFeed, seeds: rawSeeds, resu
       item.paidStatus = "organic-only";
       item.paidEvidence = null;
     }
+    if (
+      feed.candidates.some((candidate) => candidate.id === item.id) &&
+      post.likes >= PLAYLIST_PROMO_MINIMUM_ORGANIC_LIKES
+    ) {
+      feed.candidates = feed.candidates.filter((candidate) => candidate.id !== item.id);
+      feed.items.push(item);
+    }
   }
 
   feed.capturedAt = now;
@@ -389,12 +413,12 @@ export function buildPlaylistPromoRefresh({ feed: rawFeed, seeds: rawSeeds, resu
       seedCount: enabledSeeds.length,
       checkedCount: enabledSeeds.length,
       matchedCount: enabledSeeds.length,
-      qualifiedCount: enabledSeeds.length,
+      qualifiedCount: nextFeed.items.length,
       updatedCount,
       failedCount: 0,
       preservedLastGoodFeed: false,
       errors: [],
-      note: "Tous les embeds ont été attribués. Les compteurs sont ceux des posts natifs ; product_type qualifie séparément le statut paid.",
+      note: "Tous les embeds ont été attribués. Les compteurs sont ceux des posts natifs ; les créations sous 10 000 likes restent suivies séparément jusqu'à leur qualification.",
     },
   };
 }

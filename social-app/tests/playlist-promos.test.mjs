@@ -13,6 +13,9 @@ const rawFeed = JSON.parse(
   await readFile(new URL("../data/playlist-promos/feed.json", import.meta.url), "utf8"),
 );
 const feed = assertPlaylistPromoFeed(rawFeed);
+const seeds = JSON.parse(
+  await readFile(new URL("../data/playlist-promos/seeds.json", import.meta.url), "utf8"),
+);
 
 const expectedMetrics = new Map([
   ["DUjAoDvgKKr", { likes: 65_581, comments: 400, views: 1_509_383, duration: 13.5 }],
@@ -24,20 +27,31 @@ const expectedMetrics = new Map([
   ["DLDyqsnsxuJ", { likes: 147_173, comments: 1_744, views: 6_211_803, duration: 19.285 }],
   ["DWgklGZAPfq", { likes: 187_830, comments: 639, views: 8_856_621, duration: 11.608 }],
   ["DLDyuqVsyNE", { likes: 22_915, comments: 399, views: 2_120_672, duration: 19.178 }],
+  ["DQxJ_rTjGGI", { likes: 61_088, comments: 302, views: 1_328_816, duration: 9.634 }],
+  ["DayGHrKgp0Y", { likes: 27_424, comments: 266, views: 227_162, duration: 21.733 }],
+  ["DWNmRftjCzG", { likes: 10_985, comments: 105, views: 250_881, duration: 19.828 }],
+  ["DIfys_hM9tZ", { likes: 9_736, comments: 58, views: 196_759, duration: 18.069 }],
+  ["DIOeX1KMHlJ", { likes: 48_564, comments: 100, views: 2_179_381, duration: 11.678 }],
+  ["DD6wy0vg8fs", { likes: 106_656, comments: 455, views: 4_682_984, duration: 13.837 }],
+  ["DVVLL7XAIrK", { likes: 111_038, comments: 357, views: 1_650_605, duration: 14.764 }],
 ]);
 
-test("the playlist promo feed validates and preserves the nine exact probes", () => {
-  assert.equal(feed.items.length, 9);
+test("the playlist promo feed validates and preserves the sixteen exact probes", () => {
+  const trackedItems = [...feed.items, ...feed.candidates];
+  const enabledSeeds = seeds.seeds.filter((seed) => seed.enabled);
+  assert.equal(trackedItems.length, enabledSeeds.length);
+  assert.deepEqual(
+    new Set(trackedItems.map((item) => item.id)),
+    new Set(enabledSeeds.map((seed) => seed.id)),
+  );
   assert.equal(feed.assetBriefs.length, 6);
   assert.equal(feed.minimumOrganicLikes, 10_000);
 
-  let likes = 0;
-  let views = 0;
-  for (const item of feed.items) {
+  for (const item of trackedItems) {
     const shortcode = new URL(item.url).pathname.split("/").filter(Boolean).at(-1);
     const expected = expectedMetrics.get(shortcode);
     assert.ok(expected, `unexpected shortcode ${shortcode}`);
-    const observation = latestPlaylistPromoObservation(item);
+    const observation = item.observations[0];
     assert.ok(observation);
     assert.equal(observation.likes, expected.likes);
     assert.equal(observation.comments, expected.comments);
@@ -45,16 +59,14 @@ test("the playlist promo feed validates and preserves the nine exact probes", ()
     assert.equal(item.durationSeconds, expected.duration);
     assert.equal(observation.precision, "exact");
     assert.equal(observation.metricScope, "native-post");
-    assert.ok(observation.likes >= PLAYLIST_PROMO_MINIMUM_ORGANIC_LIKES);
-    likes += observation.likes;
-    views += observation.views;
+    const latest = latestPlaylistPromoObservation(item);
+    if (feed.items.includes(item)) assert.ok(latest.likes >= PLAYLIST_PROMO_MINIMUM_ORGANIC_LIKES);
+    else assert.ok(latest.likes < PLAYLIST_PROMO_MINIMUM_ORGANIC_LIKES);
   }
-  assert.equal(likes, 733_270);
-  assert.equal(views, 35_233_585);
 });
 
 test("paid status is proven independently from native social proof", () => {
-  for (const item of feed.items) {
+  for (const item of [...feed.items, ...feed.candidates]) {
     assert.equal(item.lane, "paid");
     assert.equal(item.paidStatus, "verified-paid");
     assert.equal(item.productType, "ad");
@@ -67,7 +79,7 @@ test("paid status is proven independently from native social proof", () => {
 });
 
 test("all local thumbnails referenced by the feed exist", async () => {
-  for (const item of feed.items) {
+  for (const item of [...feed.items, ...feed.candidates]) {
     assert.ok(item.thumbnailUrl);
     await access(new URL(`../public/${item.thumbnailUrl}`, import.meta.url));
   }
@@ -95,15 +107,19 @@ test("asset briefs require fully human original production and avoid unsupported
 
 test("the validator enforces ten thousand native likes even in the paid lane", () => {
   const invalid = structuredClone(feed);
-  invalid.items[0].observations[0].likes = 9_999;
+  invalid.items[0].observations.at(-1).likes = 9_999;
   assert.throws(() => assertPlaylistPromoFeed(invalid), /Seuil de likes non atteint/u);
 
   const paidDeliveryOnly = structuredClone(feed);
-  paidDeliveryOnly.items[0].observations[0].metricScope = "ad-delivery";
+  paidDeliveryOnly.items[0].observations.at(-1).metricScope = "ad-delivery";
   assert.throws(
     () => assertPlaylistPromoFeed(paidDeliveryOnly),
     /likes qualifiants doivent venir du post natif/u,
   );
+
+  const promotableCandidate = structuredClone(feed);
+  promotableCandidate.candidates[0].observations.at(-1).likes = 10_000;
+  assert.throws(() => assertPlaylistPromoFeed(promotableCandidate), /Candidat déjà qualifié/u);
 });
 
 test("the validator rejects a product_type ad assigned to an organic lane", () => {
@@ -113,11 +129,11 @@ test("the validator rejects a product_type ad assigned to an organic lane", () =
 });
 
 test("like deltas require two observations with the same precision", () => {
-  const item = structuredClone(feed.items[0]);
+  const item = structuredClone(feed.candidates[0]);
   assert.equal(playlistPromoLikeDelta(item), null);
   item.observations.push({
     ...item.observations[0],
-    capturedAt: "2026-08-27T07:54:12.000Z",
+    capturedAt: "2026-08-30T15:13:58.854Z",
     likes: item.observations[0].likes + 125,
   });
   assert.deepEqual(playlistPromoLikeDelta(item), { likes: 125, elapsedHours: 24 });

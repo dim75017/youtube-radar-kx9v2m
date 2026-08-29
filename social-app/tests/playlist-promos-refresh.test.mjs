@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import { PLAYLIST_PROMO_MINIMUM_ORGANIC_LIKES } from "../lib/playlist-promos.ts";
 import {
   assertPlaylistPromoSeeds,
   buildPlaylistPromoRefresh,
@@ -22,6 +23,9 @@ const storedSeeds = JSON.parse(
 );
 const storedStatus = JSON.parse(
   await readFile(new URL("../data/playlist-promos/refresh-status.json", import.meta.url), "utf8"),
+);
+const storedItemById = new Map(
+  [...storedFeed.items, ...storedFeed.candidates].map((item) => [item.id, item]),
 );
 
 function shortcode(item) {
@@ -68,7 +72,7 @@ function embedHtml(post) {
 }
 
 function successfulResults(feed = storedFeed) {
-  return feed.items.map((item) => ({
+  return [...feed.items, ...feed.candidates].map((item) => ({
     seedId: item.id,
     status: "success",
     post: postFromItem(item),
@@ -86,7 +90,7 @@ test("Instagram URL helpers canonicalize only attributable native posts", () => 
   );
   assert.equal(
     instagramEmbedUrl("https://www.instagram.com/p/DUjAoDvgKKr/"),
-    "https://www.instagram.com/p/DUjAoDvgKKr/embed/captioned/?_fb_noscript=1",
+    "https://www.instagram.com/p/DUjAoDvgKKr/embed/captioned/",
   );
   assert.equal(canonicalInstagramPostUrl("https://example.com/p/DUjAoDvgKKr/"), null);
 });
@@ -105,6 +109,23 @@ test("the embed parser reads exact public gql_data fields", () => {
       expectedShortcode: captionless.shortcode,
     }).caption,
     "",
+  );
+});
+
+test("the embed parser reads Instagram's nested contextJSON payload", () => {
+  const item = storedFeed.items[0];
+  const expected = postFromItem(item);
+  const contextJSON = JSON.stringify({
+    context: { type: "GraphVideo", shortcode: expected.shortcode },
+    gql_data: JSON.parse(embedHtml(expected).match(/\('extra',(.*)\);<\/script>/u)[1]).gql_data,
+  });
+  const html = `<!doctype html><script>server.handle(${JSON.stringify({
+    define: [],
+    require: [["PolarisEmbedSimple", "init", [], [{ contextJSON }]]],
+  })});</script>`;
+  assert.deepEqual(
+    parseInstagramPlaylistPromoEmbed(html, { expectedShortcode: expected.shortcode }),
+    expected,
   );
 });
 
@@ -129,7 +150,7 @@ test("the embed parser fails closed on wrong identity or incomplete counters", (
 });
 
 test("seed validation rejects query-bearing or duplicate URLs", () => {
-  assert.equal(assertPlaylistPromoSeeds(storedSeeds).seeds.length, 9);
+  assert.equal(assertPlaylistPromoSeeds(storedSeeds).seeds.length, 16);
   const query = structuredClone(storedSeeds);
   query.seeds[0].url += "?igsi=tracking";
   assert.throws(() => assertPlaylistPromoSeeds(query), /Seed Pubs playlists invalide/u);
@@ -141,7 +162,7 @@ test("seed validation rejects query-bearing or duplicate URLs", () => {
 });
 
 test("a complete refresh appends changed exact metrics and remains idempotent otherwise", () => {
-  const now = "2026-08-27T07:54:12.000Z";
+  const now = "2026-08-30T16:00:00.000Z";
   const results = successfulResults();
   results[0].post.likes += 250;
   results[0].post.views += 1_000;
@@ -153,10 +174,17 @@ test("a complete refresh appends changed exact metrics and remains idempotent ot
   });
   assert.equal(refreshed.status.status, "success");
   assert.equal(refreshed.status.updatedCount, 1);
-  assert.equal(refreshed.feed.items[0].observations.length, 2);
-  assert.equal(refreshed.feed.items[1].observations.length, 1);
+  assert.equal(
+    refreshed.feed.items[0].observations.length,
+    storedFeed.items[0].observations.length + 1,
+  );
+  assert.equal(
+    refreshed.feed.items[1].observations.length,
+    storedFeed.items[1].observations.length,
+  );
   assert.equal(refreshed.feed.items[0].lane, "paid");
   assert.equal(refreshed.feed.items[0].observations.at(-1).metricScope, "native-post");
+  assert.equal(refreshed.feed.candidates.length, storedFeed.candidates.length);
 
   const idempotent = buildPlaylistPromoRefresh({
     feed: storedFeed,
@@ -165,16 +193,17 @@ test("a complete refresh appends changed exact metrics and remains idempotent ot
     now,
   });
   assert.equal(idempotent.status.updatedCount, 0);
-  assert.ok(idempotent.feed.items.every((item) => item.observations.length === 1));
+  assert.ok([...idempotent.feed.items, ...idempotent.feed.candidates]
+    .every((item) => item.observations.length === storedItemById.get(item.id).observations.length));
 });
 
 test("partial, under-threshold and product_type-mismatched refreshes are rejected", () => {
-  const now = "2026-08-27T07:54:12.000Z";
+  const now = "2026-08-30T16:00:00.000Z";
   assert.throws(
     () => buildPlaylistPromoRefresh({
       feed: storedFeed,
       seeds: storedSeeds,
-      results: successfulResults().slice(0, 8),
+      results: successfulResults().slice(0, -1),
       now,
     }),
     /Refresh incomplet/u,
@@ -189,7 +218,7 @@ test("partial, under-threshold and product_type-mismatched refreshes are rejecte
       results: underThreshold,
       now,
     }),
-    /10 000 likes non prouvé/u,
+    /Seuil de likes non atteint/u,
   );
 
   const wrongProductType = successfulResults();
@@ -203,6 +232,30 @@ test("partial, under-threshold and product_type-mismatched refreshes are rejecte
     }),
     /product_type inattendu/u,
   );
+});
+
+test("a tracked candidate is promoted automatically at ten thousand native likes", () => {
+  const syntheticFeed = structuredClone(storedFeed);
+  const candidate = syntheticFeed.items.shift();
+  candidate.observations = [{
+    ...candidate.observations.at(-1),
+    likes: PLAYLIST_PROMO_MINIMUM_ORGANIC_LIKES - 1,
+  }];
+  syntheticFeed.candidates.push(candidate);
+  const results = successfulResults(syntheticFeed);
+  const result = results.find((entry) => entry.seedId === candidate.id);
+  result.post.likes = PLAYLIST_PROMO_MINIMUM_ORGANIC_LIKES;
+  const refreshed = buildPlaylistPromoRefresh({
+    feed: syntheticFeed,
+    seeds: storedSeeds,
+    results,
+    now: "2026-08-30T16:00:00.000Z",
+  });
+  assert.equal(refreshed.feed.items.length, syntheticFeed.items.length + 1);
+  assert.equal(refreshed.feed.candidates.length, syntheticFeed.candidates.length - 1);
+  assert.ok(refreshed.feed.items.some((item) => item.id === candidate.id));
+  assert.ok(!refreshed.feed.candidates.some((item) => item.id === candidate.id));
+  assert.equal(refreshed.status.qualifiedCount, syntheticFeed.items.length + 1);
 });
 
 test("the file refresh preserves the last good feed on the first failed response", async () => {
@@ -222,7 +275,7 @@ test("the file refresh preserves the last good feed on the first failed response
         feedPath,
         seedsPath,
         statusPath,
-        now: "2026-08-27T07:54:12.000Z",
+        now: "2026-08-30T16:00:00.000Z",
         fetchImpl: async () => new Response("rate limited", { status: 429 }),
       }),
       /rate-limited/u,
@@ -238,12 +291,14 @@ test("the file refresh preserves the last good feed on the first failed response
   }
 });
 
-test("the file refresh publishes only after all nine embeds are attributable", async () => {
+test("the file refresh publishes only after all sixteen embeds are attributable", async () => {
   const directory = await mkdtemp(join(tmpdir(), "playlist-promos-success-"));
   const feedPath = join(directory, "feed.json");
   const seedsPath = join(directory, "seeds.json");
   const statusPath = join(directory, "refresh-status.json");
-  const itemByShortcode = new Map(storedFeed.items.map((item) => [shortcode(item), item]));
+  const itemByShortcode = new Map(
+    [...storedFeed.items, ...storedFeed.candidates].map((item) => [shortcode(item), item]),
+  );
   try {
     await Promise.all([
       writeFile(feedPath, `${JSON.stringify(storedFeed, null, 2)}\n`, "utf8"),
@@ -254,7 +309,7 @@ test("the file refresh publishes only after all nine embeds are attributable", a
       feedPath,
       seedsPath,
       statusPath,
-      now: "2026-08-27T07:54:12.000Z",
+      now: "2026-08-30T16:00:00.000Z",
       fetchImpl: async (url) => {
         const requested = new URL(url).pathname.match(
           /^\/p\/([A-Za-z0-9_-]+)\/embed\/captioned\/?$/u,
@@ -267,11 +322,16 @@ test("the file refresh publishes only after all nine embeds are attributable", a
         });
       },
     });
-    assert.equal(result.status.matchedCount, 9);
+    assert.equal(result.status.matchedCount, storedSeeds.seeds.filter((seed) => seed.enabled).length);
     assert.equal(result.status.updatedCount, 0);
     const written = JSON.parse(await readFile(feedPath, "utf8"));
-    assert.equal(written.capturedAt, "2026-08-27T07:54:12.000Z");
-    assert.ok(written.items.every((item) => item.observations.length === 1));
+    assert.equal(written.capturedAt, "2026-08-30T16:00:00.000Z");
+    assert.equal(
+      written.items.length + written.candidates.length,
+      storedSeeds.seeds.filter((seed) => seed.enabled).length,
+    );
+    assert.ok(written.items.every((item) => item.observations.at(-1).likes >= 10_000));
+    assert.ok(written.candidates.every((item) => item.observations.at(-1).likes < 10_000));
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

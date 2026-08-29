@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-08-26T07:54:12.000Z",
+  "updatedAt": "2026-08-29T15:13:58.854Z",
   "source": "user-provided",
   "seeds": [
     {
@@ -92,6 +92,76 @@
       "expectedProductType": "ad",
       "enabled": true,
       "addedAt": "2026-08-26T07:54:12.000Z"
+    },
+    {
+      "id": "instagram-dqxj-rtjggi",
+      "platform": "instagram",
+      "shortcode": "DQxJ_rTjGGI",
+      "url": "https://www.instagram.com/p/DQxJ_rTjGGI/",
+      "expectedAuthor": "sleepstation.fm",
+      "expectedProductType": "ad",
+      "enabled": true,
+      "addedAt": "2026-08-29T15:13:58.854Z"
+    },
+    {
+      "id": "instagram-dayghrkgp0y",
+      "platform": "instagram",
+      "shortcode": "DayGHrKgp0Y",
+      "url": "https://www.instagram.com/p/DayGHrKgp0Y/",
+      "expectedAuthor": "sleepdaddymusic",
+      "expectedProductType": "ad",
+      "enabled": true,
+      "addedAt": "2026-08-29T15:13:58.854Z"
+    },
+    {
+      "id": "instagram-dwnmrftjczg",
+      "platform": "instagram",
+      "shortcode": "DWNmRftjCzG",
+      "url": "https://www.instagram.com/p/DWNmRftjCzG/",
+      "expectedAuthor": "sleepstation.fm",
+      "expectedProductType": "ad",
+      "enabled": true,
+      "addedAt": "2026-08-29T15:13:58.854Z"
+    },
+    {
+      "id": "instagram-difys-hm9tz",
+      "platform": "instagram",
+      "shortcode": "DIfys_hM9tZ",
+      "url": "https://www.instagram.com/p/DIfys_hM9tZ/",
+      "expectedAuthor": "lateagainsta",
+      "expectedProductType": "ad",
+      "enabled": true,
+      "addedAt": "2026-08-29T15:13:58.854Z"
+    },
+    {
+      "id": "instagram-dioex1kmhlj",
+      "platform": "instagram",
+      "shortcode": "DIOeX1KMHlJ",
+      "url": "https://www.instagram.com/p/DIOeX1KMHlJ/",
+      "expectedAuthor": "brainysounds",
+      "expectedProductType": "ad",
+      "enabled": true,
+      "addedAt": "2026-08-29T15:13:58.854Z"
+    },
+    {
+      "id": "instagram-dd6wy0vg8fs",
+      "platform": "instagram",
+      "shortcode": "DD6wy0vg8fs",
+      "url": "https://www.instagram.com/p/DD6wy0vg8fs/",
+      "expectedAuthor": "calmly.fm",
+      "expectedProductType": "ad",
+      "enabled": true,
+      "addedAt": "2026-08-29T15:13:58.854Z"
+    },
+    {
+      "id": "instagram-dvvll7xairk",
+      "platform": "instagram",
+      "shortcode": "DVVLL7XAIrK",
+      "url": "https://www.instagram.com/p/DVVLL7XAIrK/",
+      "expectedAuthor": "_by.alexander",
+      "expectedProductType": "ad",
+      "enabled": true,
+      "addedAt": "2026-08-29T15:13:58.854Z"
     }
   ]
 }
