@@ -2238,6 +2238,21 @@ type AudienceMetricSeriesPoint = {
   sourceUrl: string;
 };
 
+function audienceChartPointsAreContinuous(
+  previous: AudienceMetricSeriesPoint,
+  current: AudienceMetricSeriesPoint,
+) {
+  const elapsedDays = Math.round(
+    (nativeAnalyticsDateTime(current.date) - nativeAnalyticsDateTime(previous.date)) /
+      (24 * 60 * 60 * 1_000),
+  );
+  const comparablePrecision =
+    !previous.precision ||
+    !current.precision ||
+    previous.precision === current.precision;
+  return elapsedDays === 1 && comparablePrecision;
+}
+
 function AudienceAnalyticsExplorer({
   activePlatform,
   analytics,
@@ -2553,8 +2568,8 @@ function AudienceAnalyticsExplorer({
               <span>
                 {periodKey === "all"
                   ? curveStartDate
-                    ? `Depuis le ${formatNativeAnalyticsDate(curveStartDate)}`
-                    : "Toute la plage native importée"
+                    ? `Depuis le ${formatNativeAnalyticsDate(curveStartDate)} · jours absents non reliés`
+                    : "Toute la plage native importée · jours absents non reliés"
                   : "Données réelles · jours absents non reliés"}
               </span>
             </footer>
@@ -3265,6 +3280,19 @@ function AudienceNativeMetricChart({
       x: x(observedTimes[index]),
       y: y(point.value),
     }));
+    const pointMarkers = metric === "followersTotal"
+      ? coordinates.filter((coordinate, index) => {
+        const previous = coordinates[index - 1];
+        const next = coordinates[index + 1];
+        const continuesFromPrevious = previous
+          ? audienceChartPointsAreContinuous(previous.point, coordinate.point)
+          : false;
+        const continuesToNext = next
+          ? audienceChartPointsAreContinuous(coordinate.point, next.point)
+          : false;
+        return !continuesFromPrevious || !continuesToNext;
+      })
+      : [];
     const paths: string[] = [];
     let activePath = "";
     coordinates.forEach((coordinate, index) => {
@@ -3274,12 +3302,7 @@ function AudienceNativeMetricChart({
         activePath = move;
         return;
       }
-      const elapsedDays = Math.round((coordinate.time - previous.time) / (24 * 60 * 60 * 1_000));
-      const comparablePrecision =
-        !previous.point.precision ||
-        !coordinate.point.precision ||
-        previous.point.precision === coordinate.point.precision;
-      if (elapsedDays === 1 && comparablePrecision) {
+      if (audienceChartPointsAreContinuous(previous.point, coordinate.point)) {
         activePath += ` L ${coordinate.x.toFixed(2)} ${coordinate.y.toFixed(2)}`;
         return;
       }
@@ -3306,6 +3329,7 @@ function AudienceNativeMetricChart({
       plotLeft,
       plotRight,
       plotTop,
+      pointMarkers,
       timeSpan,
       width,
       zeroY,
@@ -3336,6 +3360,7 @@ function AudienceNativeMetricChart({
     plotLeft,
     plotRight,
     plotTop,
+    pointMarkers,
     timeSpan,
     width,
     zeroY,
@@ -3421,6 +3446,16 @@ function AudienceNativeMetricChart({
               className="audience-native-chart-line"
               d={path}
               key={`${index}:${path.slice(0, 32)}`}
+            />
+          ))}
+          {pointMarkers.map((coordinate) => (
+            <circle
+              aria-hidden="true"
+              className="audience-native-chart-observation"
+              cx={coordinate.x}
+              cy={coordinate.y}
+              key={`${coordinate.point.date}:${coordinate.value}`}
+              r="3"
             />
           ))}
           {hoveredCoordinate ? (

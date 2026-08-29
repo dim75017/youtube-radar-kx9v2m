@@ -147,7 +147,7 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.doesNotMatch(styles, /\.audience-chart-viewport|\.audience-native-platform-grid/);
 });
 
-test("keeps the audience curve clean and reveals the exact hovered value instantly", async () => {
+test("keeps follower observations visible and reveals the exact hovered value instantly", async () => {
   const [component, styles] = await Promise.all([
     readFile(new URL("../app/SocialOS.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
@@ -167,12 +167,16 @@ test("keeps the audience curve clean and reveals the exact hovered value instant
   assert.match(chart, /getBoundingClientRect\(\)/);
   assert.match(chart, /event\.clientX/);
 
-  // La courbe reste lisible : aucun marqueur permanent pour chaque observation.
-  assert.equal((chart.match(/<circle\b/g) ?? []).length, 1);
-  assert.doesNotMatch(chart, /coordinates\.map\([\s\S]{0,600}<circle\b/);
+  // Les extrémités et points isolés du stock restent visibles sans couvrir toute la série quotidienne.
+  assert.equal((chart.match(/<circle\b/g) ?? []).length, 2);
+  assert.match(chart, /const pointMarkers = metric === "followersTotal"/);
+  assert.match(chart, /return !continuesFromPrevious \|\| !continuesToNext/);
+  assert.match(chart, /pointMarkers\.map\([\s\S]{0,600}<circle\b/);
+  assert.match(chart, /audienceChartPointsAreContinuous\(previous\.point, coordinate\.point\)/);
+  assert.match(styles, /\.audience-native-chart-observation\s*\{[\s\S]*?pointer-events:\s*none/);
   assert.match(chart, /hoveredCoordinate \?[\s\S]*?<circle\b/);
 
-  // Le seul point visible accompagne un popup qui expose la date et la valeur réelles.
+  // Le point de survol accompagne un popup qui expose la date et la valeur réelles.
   const tooltipStart = chart.indexOf('role="tooltip"');
   assert.ok(tooltipStart >= 0, "the hovered point must expose a semantic tooltip");
   const tooltipSource = chart.slice(Math.max(0, tooltipStart - 1_400), tooltipStart + 2_000);

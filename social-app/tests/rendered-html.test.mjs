@@ -211,7 +211,13 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   );
   assert.doesNotMatch(audienceChart, /<title>/);
   assert.match(audienceChart, /<desc>/);
-  assert.match(audienceChart, /elapsedDays === 1 && comparablePrecision/);
+  const audienceContinuity = component.slice(
+    component.indexOf("function audienceChartPointsAreContinuous"),
+    component.indexOf("function AudienceAnalyticsExplorer"),
+  );
+  assert.match(audienceContinuity, /elapsedDays === 1 && comparablePrecision/);
+  assert.match(audienceChart, /audienceChartPointsAreContinuous/);
+  assert.match(audienceChart, /className="audience-native-chart-observation"/);
   assert.doesNotMatch(audienceChart, /className="audience-native-chart-point"[\s\S]{0,180}tabIndex/);
   assert.doesNotMatch(component, /audience-spark-bars|sampleAudiencePoints/);
   assert.equal((component.match(/<AudienceNativeMetricChart\b/g) ?? []).length, 1);
