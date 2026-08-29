@@ -1,10 +1,19 @@
 import { readFile, rename, writeFile } from "node:fs/promises";
-import { chromium } from "playwright";
+
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE_URL ?? "playwright");
 
 const root = new URL("../", import.meta.url);
 const queuePath = new URL("data/youtube-comment-metric-queue.json", root);
 const outputPath = new URL("data/youtube-comment-metrics.json", root);
 const queue = JSON.parse(await readFile(queuePath, "utf8")).comments ?? [];
+const refreshAfterMs = Number(process.env.YOUTUBE_COMMENT_REFRESH_AFTER_MS ?? 23 * 60 * 60 * 1_000);
+const requestedIds = new Set(
+  String(process.env.YOUTUBE_COMMENT_IDS ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
+);
+const forceRefresh = process.env.YOUTUBE_COMMENT_FORCE_REFRESH === "1";
 
 let state;
 try {
@@ -24,6 +33,7 @@ function parseCount(label) {
 }
 
 async function persist() {
+  state.total = queue.length;
   state.updatedAt = new Date().toISOString();
   const temporary = new URL("data/youtube-comment-metrics.tmp.json", root);
   await writeFile(temporary, `${JSON.stringify(state, null, 2)}\n`, "utf8");
@@ -62,14 +72,35 @@ async function readMetric(page, entry) {
   }
   if (!metric) return null;
   return {
-    likes: parseCount(metric.likesLabel) ?? 0,
-    replies: entry.id.includes(".") ? 0 : parseCount(metric.repliesLabel) ?? 0,
+    likes: parseCount(metric.likesLabel),
+    replies: entry.id.includes(".") ? 0 : parseCount(metric.repliesLabel),
   };
 }
 
-const browser = await chromium.launch({ headless: true });
-const pages = await Promise.all(Array.from({ length: 6 }, () => browser.newPage({ locale: "fr-FR" })));
-const pending = queue.filter((entry) => !state.results[entry.id]);
+const now = Date.now();
+const pending = queue.filter((entry) => {
+  if (requestedIds.size && !requestedIds.has(entry.id)) return false;
+  if (forceRefresh) return true;
+  const capturedAt = Date.parse(state.results[entry.id]?.capturedAt ?? "");
+  return !Number.isFinite(capturedAt) || now - capturedAt >= refreshAfterMs;
+});
+if (!pending.length) {
+  console.log("No stale YouTube comment metric requires collection.");
+  process.exit(0);
+}
+
+const browser = await chromium.launch({
+  headless: true,
+  args: ["--mute-audio"],
+  ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+    ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
+    : {}),
+});
+const pageCount = Math.min(6, pending.length);
+const pages = await Promise.all(Array.from({ length: pageCount }, () => browser.newPage({ locale: "fr-FR" })));
+await Promise.all(pages.map((page) => page.route("**/*", (route) =>
+  route.request().resourceType() === "media" ? route.abort() : route.continue(),
+)));
 
 for (let offset = 0; offset < pending.length; offset += pages.length) {
   const batch = pending.slice(offset, offset + pages.length);
@@ -79,7 +110,8 @@ for (let offset = 0; offset < pending.length; offset += pages.length) {
   }));
 
   for (const { entry, metric, error } of outcomes) {
-    if (metric) {
+    const hasObservedMetric = metric && (Number.isInteger(metric.likes) || Number.isInteger(metric.replies));
+    if (hasObservedMetric) {
       state.results[entry.id] = { ...metric, capturedAt: new Date().toISOString(), source: "youtube-direct-comment" };
       delete state.failures[entry.id];
     } else {

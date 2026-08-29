@@ -278,7 +278,7 @@ export function AuthoredCommentsView({
   platform: PlatformFilter;
 }) {
   const [duration, setDuration] = useState<SocialDurationFilter>("all");
-  const [sort, setSort] = useState<CommentSort>("recent");
+  const [sort, setSort] = useState<CommentSort>("popular");
   const [category, setCategory] = useState<CommentCategoryFilter>("external");
   const [pagination, setPagination] = useState({ key: "", count: PAGE_SIZE });
   const activePlatformLabel = platform === "all"

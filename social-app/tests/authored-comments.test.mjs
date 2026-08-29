@@ -175,6 +175,7 @@ test("keeps internal target confidence labels out of comment cards", async () =>
   assert.match(component, /platform: PlatformFilter/);
   assert.doesNotMatch(component, /authored-comment-platform-tabs|onPlatformChange|internalPlatform/);
   assert.match(component, /useState<CommentCategoryFilter>\("external"\)/);
+  assert.match(component, /useState<CommentSort>\("popular"\)/);
   assert.match(component, /\["external", "owned", "community"\] as const/);
   assert.equal((component.match(/<FilterDropdown/g) ?? []).length, 3);
   assert.match(component, /category-results-header category-results-toolbar/);

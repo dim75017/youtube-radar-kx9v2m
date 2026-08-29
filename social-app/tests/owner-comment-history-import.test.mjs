@@ -199,3 +199,101 @@ test("rejects a TikTok thumbnail hosted outside approved TikTok CDNs", async () 
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /CDN tiktok autorisé/);
 });
+
+test("does not label a partial owner-comment inventory as successful", async () => {
+  const status = JSON.parse(
+    await readFile(resolve(ROOT, "data", "owner-comment-refresh-status.json"), "utf8"),
+  );
+  for (const platform of ["youtube", "instagram", "tiktok"]) {
+    const inventory = status.platforms[platform];
+    assert.ok(inventory.inventoryStatus, `${platform} inventory status is missing`);
+    if (inventory.endReached !== true || inventory.inventoryStatus !== "complete") {
+      assert.notEqual(inventory.status, "success", `${platform} is not proven exhaustive`);
+    }
+  }
+  assert.equal(status.platforms.instagram.endReached, false);
+  assert.equal(status.platforms.tiktok.nativeIdCount, 0);
+});
+
+test("an incomplete recent target never erases older verified metadata", async () => {
+  const directory = await mkdtemp(resolve(tmpdir(), "owner-comments-merge-"));
+  const inputPath = resolve(directory, "private-input.json");
+  const historyPath = resolve(directory, "history.json");
+  const summaryPath = resolve(directory, "summary.json");
+  const existing = {
+    platform: "tiktok",
+    externalId: "comment:stable-comment",
+    url: "https://www.tiktok.com/@creator/video/123",
+    title: "Original title",
+    text: "same comment",
+    format: "comment",
+    thumbnailUrl: "https://p16-sign.tiktokcdn-us.com/stable.jpg",
+    publishedAt: "2026-08-27T08:00:00.000Z",
+    likes: 9,
+    comments: 2,
+    raw: {
+      firstObservedAt: "2026-08-27T09:00:00.000Z",
+      lastObservedAt: "2026-08-27T09:00:00.000Z",
+      metricHistory: [],
+      commentTarget: {
+        contentId: "123",
+        url: "https://www.tiktok.com/@creator/video/123",
+        title: null,
+        thumbnailUrl: "https://p16-sign.tiktokcdn-us.com/stable.jpg",
+        authorHandle: "creator",
+        audienceValue: 98_000,
+        audienceLabel: "98 k abonnés",
+        audiencePrecision: "platform-rounded",
+      },
+    },
+  };
+  await writeFile(inputPath, JSON.stringify({
+    platform: "tiktok",
+    capturedAt: "2026-08-29T08:00:00.000Z",
+    comments: [{
+      id: "stable-comment",
+      url: "https://www.tiktok.com/@creator/video/123",
+      text: "same comment",
+      publishedAt: null,
+      target: {
+        contentId: "123",
+        url: "https://www.tiktok.com/@creator/video/123",
+        title: "Original title",
+        thumbnailUrl: null,
+        authorHandle: "creator",
+        authorName: null,
+        authorProfileUrl: null,
+        audienceValue: null,
+        audienceLabel: null,
+        audiencePrecision: "unknown",
+        audienceObservedAt: null,
+      },
+      metrics: { likes: null, replies: null },
+    }],
+  }));
+  await writeFile(historyPath, JSON.stringify({ generatedAt: "2026-08-27T09:00:00.000Z", coverage: [], posts: [existing] }));
+  await writeFile(summaryPath, JSON.stringify({
+    generatedAt: "2026-08-27T09:00:00.000Z",
+    totalPostCount: 1,
+    platformCounts: { youtube: 0, instagram: 0, tiktok: 1, x: 0 },
+    formatCounts: { youtube: {}, instagram: {}, tiktok: { comment: 1 }, x: {} },
+    coverage: [],
+  }));
+
+  const result = spawnSync(process.execPath, [IMPORTER, `--input=${inputPath}`, "--skip-media-cache"], {
+    cwd: ROOT,
+    encoding: "utf8",
+    env: { ...process.env, PUBLIC_HISTORY_PATH: historyPath, PUBLIC_HISTORY_SUMMARY_PATH: summaryPath },
+  });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const output = JSON.parse(await readFile(historyPath, "utf8"));
+  const [merged] = output.posts;
+  assert.equal(merged.thumbnailUrl, existing.thumbnailUrl);
+  assert.equal(merged.title, existing.title);
+  assert.equal(merged.publishedAt, existing.publishedAt);
+  assert.equal(merged.likes, 9);
+  assert.equal(merged.comments, 2);
+  assert.equal(merged.raw.commentTarget.audienceValue, 98_000);
+  assert.equal(merged.raw.commentTarget.audienceLabel, "98 k abonnés");
+  assert.equal(merged.raw.commentTarget.audiencePrecision, "platform-rounded");
+});

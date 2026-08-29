@@ -336,6 +336,8 @@ function normalizedComment(entry, index, platform, capturedAt) {
 
 function mergeComment(existing, incoming) {
   if (!existing) return incoming;
+  const existingTarget = isRecord(existing.raw?.commentTarget) ? existing.raw.commentTarget : {};
+  const incomingTarget = isRecord(incoming.raw?.commentTarget) ? incoming.raw.commentTarget : {};
   const history = new Map();
   for (const point of [
     ...(Array.isArray(existing.raw?.metricHistory) ? existing.raw.metricHistory : []),
@@ -348,6 +350,8 @@ function mergeComment(existing, incoming) {
   return {
     ...existing,
     ...incoming,
+    title: isGenericCommentTargetTitle(incoming.title) ? existing.title ?? incoming.title : incoming.title,
+    thumbnailUrl: incoming.thumbnailUrl ?? existing.thumbnailUrl ?? null,
     publishedAt: incoming.publishedAt ?? existing.publishedAt ?? null,
     likes: incoming.likes ?? existing.likes ?? null,
     comments: incoming.comments ?? existing.comments ?? null,
@@ -356,9 +360,32 @@ function mergeComment(existing, incoming) {
       ...incoming.raw,
       firstObservedAt: [existing.raw?.firstObservedAt, incoming.raw.firstObservedAt].filter(Boolean).sort().at(0),
       lastObservedAt: [existing.raw?.lastObservedAt, incoming.raw.lastObservedAt].filter(Boolean).sort().at(-1),
+      commentTarget: mergeNullableRecord(existingTarget, incomingTarget),
       metricHistory: [...history.values()].sort((left, right) => left.capturedAt.localeCompare(right.capturedAt)),
     },
   };
+}
+
+function mergeNullableRecord(existing, incoming) {
+  const merged = { ...existing };
+  for (const [key, value] of Object.entries(incoming)) {
+    if (key === "title" && isGenericCommentTargetTitle(value) && !isGenericCommentTargetTitle(merged[key])) {
+      continue;
+    }
+    if (key === "audiencePrecision" && value === "unknown" && merged[key] && merged[key] !== "unknown") {
+      continue;
+    }
+    if (value != null || merged[key] == null) merged[key] = value;
+  }
+  return merged;
+}
+
+function isGenericCommentTargetTitle(value) {
+  return typeof value === "string" && /^Contenu (?:instagram|tiktok) commenté$/i.test(value.trim());
+}
+
+function isRecord(value) {
+  return value != null && typeof value === "object" && !Array.isArray(value);
 }
 
 function latestIso(...values) {

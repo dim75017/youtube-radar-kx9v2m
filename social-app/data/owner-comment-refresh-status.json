@@ -1,17 +1,27 @@
 {
-  "version": 1,
-  "generatedAt": "2026-08-28T10:49:39.480Z",
+  "version": 2,
+  "generatedAt": "2026-08-29T07:48:01.650Z",
   "platforms": {
     "youtube": {
-      "status": "success",
-      "attemptedAt": "2026-08-28T09:44:16.866Z",
-      "source": "owner-history-and-metadata-only-enrichment",
+      "status": "partial",
+      "attemptedAt": "2026-08-29T07:45:46.185Z",
+      "source": "owner-history-and-direct-comment-metrics",
       "observedComments": 2810,
       "verifiedTargets": 2808,
       "thumbnailTargets": 2808,
       "audienceTargets": 2804,
       "unavailableTargets": 2,
-      "error": null
+      "inventoryStatus": "stale",
+      "inventoryObservedAt": "2026-08-04T19:06:10.551Z",
+      "endReached": null,
+      "nativeIdCount": 2810,
+      "deepLinkCount": 2810,
+      "metricCoverage": {
+        "observed": 2769,
+        "published": 2769,
+        "total": 2810
+      },
+      "error": "Les métriques ont été resynchronisées, mais l’inventaire propriétaire complet n’a pas été rescanné pendant ce passage."
     },
     "x": {
       "status": "partial",
@@ -25,26 +35,50 @@
       "error": "224 anciennes réponses ne permettent pas de vérifier leur cible depuis les métadonnées publiques actuelles."
     },
     "instagram": {
-      "status": "success",
-      "attemptedAt": "2026-08-28T10:44:52.214Z",
+      "status": "partial",
+      "attemptedAt": "2026-08-29T07:48:01.650Z",
       "source": "authorized-instagram-activity",
       "observedComments": 19,
       "verifiedTargets": 19,
       "thumbnailTargets": 19,
       "audienceTargets": 19,
       "unavailableTargets": 0,
-      "error": null
+      "inventoryStatus": "partial",
+      "inventoryObservedAt": "2026-08-28T10:44:52.214Z",
+      "endReached": false,
+      "oldestObservedAt": "2026-08-27T07:15:54.000Z",
+      "newestObservedAt": "2026-08-28T09:03:53.000Z",
+      "nativeIdCount": 18,
+      "deepLinkCount": 18,
+      "metricCoverage": {
+        "likes": 0,
+        "replies": 0,
+        "total": 19
+      },
+      "error": "Ces 19 commentaires couvrent environ 26 heures et ne prouvent pas un inventaire All time. Le contrôle privé demandé n’a pas pu être exécuté pendant ce passage."
     },
     "tiktok": {
       "status": "partial",
-      "attemptedAt": "2026-08-28T10:49:39.480Z",
+      "attemptedAt": "2026-08-29T07:48:01.650Z",
       "source": "authorized-tiktok-activity",
       "observedComments": 10,
       "verifiedTargets": 10,
       "thumbnailTargets": 10,
       "audienceTargets": 10,
       "unavailableTargets": 0,
-      "error": "L’activité web TikTok n’expose ici que les commentaires récents signalés par notifications, pas l’historique exhaustif."
+      "inventoryStatus": "partial",
+      "inventoryObservedAt": "2026-08-28T10:49:39.480Z",
+      "endReached": false,
+      "oldestObservedAt": null,
+      "newestObservedAt": null,
+      "nativeIdCount": 0,
+      "deepLinkCount": 0,
+      "metricCoverage": {
+        "likes": 0,
+        "replies": 0,
+        "total": 10
+      },
+      "error": "L’activité web TikTok n’expose ici que dix commentaires récents signalés par notifications, sans date ni permalien natif. Un export natif de l’historique est requis pour prouver l’exhaustivité."
     }
   }
 }
