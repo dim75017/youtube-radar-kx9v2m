@@ -30,6 +30,8 @@ jobs:
       - run: npm install --no-save playwright
       - run: npx playwright install --with-deps chromium
       - run: node scripts/collect_youtube_comment_metrics.mjs
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
       - run: node scripts/sync_youtube_comment_metrics.mjs
       - name: Save collected metrics
         run: |

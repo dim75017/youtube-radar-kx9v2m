@@ -1,6 +1,5 @@
 import { readFile, rename, writeFile } from "node:fs/promises";
-
-const { chromium } = await import(process.env.PLAYWRIGHT_MODULE_URL ?? "playwright");
+import { collectYoutubeApiMetrics } from "./youtube_comment_metrics_api.mjs";
 
 const root = new URL("../", import.meta.url);
 const queuePath = new URL("data/youtube-comment-metric-queue.json", root);
@@ -14,6 +13,7 @@ const requestedIds = new Set(
     .filter(Boolean),
 );
 const forceRefresh = process.env.YOUTUBE_COMMENT_FORCE_REFRESH === "1";
+const youtubeApiKey = String(process.env.YOUTUBE_API_KEY ?? "").trim();
 
 let state;
 try {
@@ -89,6 +89,27 @@ if (!pending.length) {
   process.exit(0);
 }
 
+let domPending = pending;
+if (youtubeApiKey) {
+  const apiOutcome = await collectYoutubeApiMetrics(pending, { apiKey: youtubeApiKey });
+  const capturedAt = new Date().toISOString();
+  for (const [id, metric] of apiOutcome.resolved) {
+    state.results[id] = { ...metric, capturedAt, source: "youtube-data-api-v3" };
+    delete state.failures[id];
+  }
+  domPending = apiOutcome.unresolved;
+  if (apiOutcome.errors.length) {
+    console.warn(`${apiOutcome.errors.length} lot(s) API YouTube restent à vérifier via le DOM.`);
+  }
+  if (apiOutcome.resolved.size) await persist();
+  if (!domPending.length) {
+    console.log(`Collected ${apiOutcome.resolved.size} YouTube comment metrics via Data API v3.`);
+    process.exit(0);
+  }
+}
+
+const { chromium } = await import(process.env.PLAYWRIGHT_MODULE_URL ?? "playwright");
+
 const browser = await chromium.launch({
   headless: true,
   args: ["--mute-audio"],
@@ -96,14 +117,14 @@ const browser = await chromium.launch({
     ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
     : {}),
 });
-const pageCount = Math.min(6, pending.length);
+const pageCount = Math.min(6, domPending.length);
 const pages = await Promise.all(Array.from({ length: pageCount }, () => browser.newPage({ locale: "fr-FR" })));
 await Promise.all(pages.map((page) => page.route("**/*", (route) =>
   route.request().resourceType() === "media" ? route.abort() : route.continue(),
 )));
 
-for (let offset = 0; offset < pending.length; offset += pages.length) {
-  const batch = pending.slice(offset, offset + pages.length);
+for (let offset = 0; offset < domPending.length; offset += pages.length) {
+  const batch = domPending.slice(offset, offset + pages.length);
   const outcomes = await Promise.all(batch.map(async (entry, index) => {
     try { return { entry, metric: await readMetric(pages[index], entry) }; }
     catch (error) { return { entry, metric: null, error: String(error).slice(0, 180) }; }

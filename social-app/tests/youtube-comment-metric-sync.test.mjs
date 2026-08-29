@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
+import { collectYoutubeApiMetrics } from "../scripts/youtube_comment_metrics_api.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const SCRIPT = resolve(ROOT, "scripts", "sync_youtube_comment_metrics.mjs");
@@ -164,6 +165,7 @@ test("runs the metric sync in CI and never converts an unavailable label to zero
     readFile(resolve(ROOT, "scripts", "collect_youtube_comment_metrics.mjs"), "utf8"),
   ]);
   assert.match(workflow, /node scripts\/sync_youtube_comment_metrics\.mjs/);
+  assert.match(workflow, /YOUTUBE_API_KEY: \$\{\{ secrets\.YOUTUBE_API_KEY \}\}/);
   assert.match(
     workflow,
     /git add data\/youtube-comment-metrics\.json data\/public-history\.json data\/public-history-summary\.json data\/owner-comment-refresh-status\.json/,
@@ -174,6 +176,68 @@ test("runs the metric sync in CI and never converts an unavailable label to zero
   assert.match(collector, /resourceType\(\) === "media" \? route\.abort\(\)/);
 });
 
+test("collects top-level comments and replies in API batches while preserving unresolved fallbacks", async () => {
+  const requests = [];
+  const fetchImpl = async (input) => {
+    const url = new URL(input);
+    requests.push(url);
+    if (url.pathname.endsWith("/commentThreads")) {
+      return jsonResponse({
+        items: [{
+          id: "thread-topA",
+          snippet: {
+            totalReplyCount: 3,
+            topLevelComment: { id: "topA", snippet: { likeCount: 12 } },
+          },
+        }],
+      });
+    }
+    return jsonResponse({ items: [{ id: "parent.reply", snippet: { likeCount: 7 } }] });
+  };
+  const entries = [
+    { id: "topA", url: "https://example.test/topA" },
+    { id: "topMissing", url: "https://example.test/topMissing" },
+    { id: "parent.reply", url: "https://example.test/reply" },
+  ];
+
+  const outcome = await collectYoutubeApiMetrics(entries, { apiKey: "test-key", fetchImpl });
+  assert.deepEqual(outcome.resolved.get("topA"), { likes: 12, replies: 3 });
+  assert.deepEqual(outcome.resolved.get("parent.reply"), { likes: 7, replies: 0 });
+  assert.deepEqual(outcome.unresolved.map((entry) => entry.id), ["topMissing"]);
+  assert.deepEqual(outcome.errors, []);
+  assert.equal(requests.length, 2);
+  assert.equal(requests[0].searchParams.get("id"), "topA,topMissing");
+  assert.equal(requests[1].searchParams.get("id"), "parent.reply");
+});
+
+test("keeps every API error in the DOM fallback and skips API calls without a key", async () => {
+  const entries = [{ id: "topA" }, { id: "parent.reply" }];
+  let calls = 0;
+  const failingFetch = async () => {
+    calls += 1;
+    throw new Error("request failed with secret test-key");
+  };
+
+  const failed = await collectYoutubeApiMetrics(entries, { apiKey: "test-key", fetchImpl: failingFetch });
+  assert.equal(failed.resolved.size, 0);
+  assert.deepEqual(failed.unresolved.map((entry) => entry.id), ["topA", "parent.reply"]);
+  assert.equal(failed.errors.length, 2);
+  assert.ok(failed.errors.every((error) => !error.error.includes("test-key")));
+
+  const noKey = await collectYoutubeApiMetrics(entries, { fetchImpl: failingFetch });
+  assert.equal(noKey.resolved.size, 0);
+  assert.deepEqual(noKey.unresolved, entries);
+  assert.equal(calls, 2, "the two keyed endpoint batches are the only attempted requests");
+});
+
 async function readJson(path) {
   return JSON.parse(await readFile(path, "utf8"));
+}
+
+function jsonResponse(payload, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => payload,
+  };
 }
