@@ -113,11 +113,16 @@ import {
   PublicationComposer,
   type LocalPublicationScheduleEntry,
 } from "./PublicationComposer";
+import {
+  PUBLICATION_STORAGE_KEY,
+  normalizePublicationQueue,
+  sortedPublicationPlans,
+} from "../lib/social-publication";
 import { ScrollingFeedView } from "./ScrollingFeedView";
 import { SocialInlinePlayer } from "./SocialInlinePlayer";
 
 type Platform = "youtube" | "instagram" | "tiktok" | "x";
-type View = "overview" | "top" | "all-comments" | "comments" | "trends" | "audio-trends" | "scrolling" | "playlist-promos" | "ideas" | "publication" | "all" | "sources";
+type View = "overview" | "top" | "all-comments" | "comments" | "trends" | "audio-trends" | "scrolling" | "playlist-promos" | "ideas" | "planning" | "publication" | "all" | "sources";
 type ExpandableNavView = Extract<View, "overview" | "top" | "all-comments" | "ideas">;
 type IdeaStatusFilter = "all" | "pending" | IdeaDecision;
 type PostSort = "popular" | "recent";
@@ -242,6 +247,8 @@ const NAV: Array<{
   { id: "top", emoji: "🏆", label: "Contenu", group: "Pilotage" },
   { id: "all-comments", emoji: "💬", label: "Commentaires", group: "Pilotage" },
   { id: "ideas", emoji: "💡", label: "Extraction", group: "Pilotage" },
+  { id: "planning", emoji: "🗓️", label: "Planning", group: "Pilotage" },
+  { id: "publication", emoji: "🚀", label: "Publication", group: "Pilotage" },
 ];
 
 const NAV_SUBMENU_IDS: Record<ExpandableNavView, string> = {
@@ -1348,7 +1355,7 @@ export function SocialOS({
                 const isSectionActive = isAnalyticsParent
                   ? view === "overview"
                   : isPostsParent
-                    ? view === "top" || view === "all" || view === "publication"
+                    ? view === "top" || view === "all"
                     : isCommentsParent
                       ? view === "all-comments"
                       : isRecommendationsParent && isRecommendationsView;
@@ -1426,20 +1433,6 @@ export function SocialOS({
                         aria-label="Plateformes de Contenu"
                         hidden={!isExpanded}
                       >
-                        <button
-                          className={view === "publication" ? "active" : ""}
-                          type="button"
-                          aria-current={view === "publication" ? "page" : undefined}
-                          aria-label="Publication"
-                          title="Publication"
-                          onClick={() => {
-                            setView("publication");
-                            setMobileOpen(false);
-                          }}
-                        >
-                          <span className="nav-emoji">🚀</span>
-                          <span className="nav-text">Publication</span>
-                        </button>
                         <button
                           className={view === "all" ? "active" : ""}
                           type="button"
@@ -1767,8 +1760,22 @@ export function SocialOS({
           </div>
         ) : null}
 
+        {workspace && view === "planning" ? (
+          <PlanningBoard
+            schedule={editorialWorkflow.schedule}
+            syncing={editorialWorkflowSyncing}
+            workflowReady={editorialWorkflowReady}
+            workflowAvailable={editorialWorkflowAvailable}
+            onRetryWorkflow={() => {
+              setEditorialWorkflowReady(false);
+              setEditorialWorkflowReloadToken((token) => token + 1);
+            }}
+            onOpenPublication={() => setView("publication")}
+          />
+        ) : null}
+
         {workspace && view === "publication" ? (
-          <RoadmapBoard
+          <PublicationWorkspace
             schedule={editorialWorkflow.schedule}
             syncing={editorialWorkflowSyncing}
             workflowReady={editorialWorkflowReady}
@@ -4734,7 +4741,7 @@ function roadmapMonthLabel(year: number, month: number) {
     .format(new Date(Date.UTC(year, month, 1)));
 }
 
-function RoadmapBoard({
+function PublicationWorkspace({
   schedule,
   syncing,
   workflowReady,
@@ -4749,6 +4756,62 @@ function RoadmapBoard({
   onRetryWorkflow: () => void;
   onOpenRecommendations: () => void;
 }) {
+  const ignoreScheduledPlans = useCallback(() => undefined, []);
+  const ignoreStorageAvailability = useCallback(() => undefined, []);
+
+  return (
+    <div className="roadmap-view publication-view">
+      <header className="roadmap-heading">
+        <div>
+          <h2>Publication</h2>
+          <p>Prépare et valide les contenus destinés aux comptes officiels.</p>
+        </div>
+        {syncing ? <span className="workflow-syncing">Synchronisation…</span> : null}
+      </header>
+
+      <PublicationComposer
+        schedule={schedule}
+        syncing={syncing}
+        workflowReady={workflowReady}
+        workflowAvailable={workflowAvailable}
+        onScheduledPlansChange={ignoreScheduledPlans}
+        onStorageAvailabilityChange={ignoreStorageAvailability}
+        onRetryWorkflow={onRetryWorkflow}
+        onOpenRecommendations={onOpenRecommendations}
+      />
+    </div>
+  );
+}
+
+function readLocalScheduledPlans(): LocalPublicationScheduleEntry[] {
+  const raw = window.localStorage.getItem(PUBLICATION_STORAGE_KEY);
+  if (!raw) return [];
+  const queue = normalizePublicationQueue(JSON.parse(raw));
+  return sortedPublicationPlans(queue)
+    .filter((plan) => plan.status === "scheduled")
+    .map((plan) => ({
+      ideaId: plan.ideaId,
+      publishAtLocal: plan.publishAtLocal,
+      platforms: plan.platforms,
+      caption: plan.caption,
+    }));
+}
+
+function PlanningBoard({
+  schedule,
+  syncing,
+  workflowReady,
+  workflowAvailable,
+  onRetryWorkflow,
+  onOpenPublication,
+}: {
+  schedule: ScheduledIdea[];
+  syncing: boolean;
+  workflowReady: boolean;
+  workflowAvailable: boolean;
+  onRetryWorkflow: () => void;
+  onOpenPublication: () => void;
+}) {
   const now = new Date();
   const [scale, setScale] = useState<RoadmapScale>("year");
   const [displayMode, setDisplayMode] = useState<RoadmapDisplayMode>("calendar");
@@ -4756,12 +4819,28 @@ function RoadmapBoard({
   const [cursorMonth, setCursorMonth] = useState(now.getMonth());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [localScheduledPlans, setLocalScheduledPlans] = useState<LocalPublicationScheduleEntry[]>([]);
-  const [publicationStorageAvailable, setPublicationStorageAvailable] = useState(false);
+  const [publicationStorageReady, setPublicationStorageReady] = useState(false);
+  const [publicationStorageAvailable, setPublicationStorageAvailable] = useState(true);
   const closeSelectedDay = useCallback(() => setSelectedDay(null), []);
-  const handleScheduledPlansChange = useCallback((next: LocalPublicationScheduleEntry[]) => {
-    setLocalScheduledPlans((current) =>
-      JSON.stringify(current) === JSON.stringify(next) ? current : next,
-    );
+
+  useEffect(() => {
+    const refresh = () => {
+      try {
+        setLocalScheduledPlans(readLocalScheduledPlans());
+        setPublicationStorageAvailable(true);
+      } catch {
+        setLocalScheduledPlans([]);
+        setPublicationStorageAvailable(false);
+      } finally {
+        setPublicationStorageReady(true);
+      }
+    };
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === PUBLICATION_STORAGE_KEY || event.key === null) refresh();
+    };
+    refresh();
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, []);
   const localScheduleByIdea = new Map(
     localScheduledPlans.map((item) => [item.ideaId, item] as const),
@@ -4812,24 +4891,13 @@ function RoadmapBoard({
     <div className="roadmap-view">
       <header className="roadmap-heading">
         <div>
-          <h2>Publication</h2>
-          <p>Prépare, valide et planifie les contenus destinés aux comptes officiels.</p>
+          <h2>Planning</h2>
+          <p>Retrouve dans le calendrier les contenus validés et programmés.</p>
         </div>
         {syncing ? <span className="workflow-syncing">Synchronisation…</span> : null}
       </header>
 
-      <PublicationComposer
-        schedule={schedule}
-        syncing={syncing}
-        workflowReady={workflowReady}
-        workflowAvailable={workflowAvailable}
-        onScheduledPlansChange={handleScheduledPlansChange}
-        onStorageAvailabilityChange={setPublicationStorageAvailable}
-        onRetryWorkflow={onRetryWorkflow}
-        onOpenRecommendations={onOpenRecommendations}
-      />
-
-      {workflowReady && workflowAvailable && publicationStorageAvailable ? (
+      {workflowReady && workflowAvailable && publicationStorageReady && publicationStorageAvailable ? (
         <>
           <div className="roadmap-controls">
             <div className="roadmap-scale-toggle" aria-label="Période des publications">
@@ -4850,7 +4918,7 @@ function RoadmapBoard({
           {displayMode === "list" ? (
             <RoadmapList
               items={filteredSchedule}
-              onOpenRecommendations={onOpenRecommendations}
+              onOpenPublication={onOpenPublication}
             />
           ) : (
             <div className="roadmap-calendar-shell platform-neutral">
@@ -4878,7 +4946,9 @@ function RoadmapBoard({
           )}
 
           {!sortedSchedule.length ? (
-            <p className="roadmap-empty-cta">💡 Valide le contenu puis ajoute-le au planning local</p>
+            <button className="roadmap-empty-cta" type="button" onClick={onOpenPublication}>
+              🚀 Programmer un contenu depuis Publication
+            </button>
           ) : null}
 
           <RoadmapDayModal
@@ -4887,7 +4957,28 @@ function RoadmapBoard({
             onClose={closeSelectedDay}
           />
         </>
-      ) : null}
+      ) : (
+        <div className="empty-state roadmap-list-empty">
+          <span>{!workflowReady ? "⏳" : "🔒"}</span>
+          <h3>
+            {!workflowReady
+              ? "Chargement du planning"
+              : !workflowAvailable
+                ? "Planning momentanément indisponible"
+                : "Stockage local indisponible"}
+          </h3>
+          <p>
+            {!workflowReady
+              ? "Les contenus programmés arrivent dans un instant."
+              : !workflowAvailable
+                ? "Recharge les contenus validés pour retrouver le planning."
+                : "Le calendrier reste verrouillé pour éviter d’afficher une programmation incomplète."}
+          </p>
+          {workflowReady && !workflowAvailable ? (
+            <button className="button secondary" type="button" onClick={onRetryWorkflow}>Réessayer</button>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
@@ -4983,18 +5074,18 @@ function RoadmapMonth({
 
 function RoadmapList({
   items,
-  onOpenRecommendations,
+  onOpenPublication,
 }: {
   items: PublicationCalendarItem[];
-  onOpenRecommendations: () => void;
+  onOpenPublication: () => void;
 }) {
   if (!items.length) {
     return (
       <div className="empty-state roadmap-list-empty">
         <span>🗓️</span>
         <h3>Aucune publication sur cette période</h3>
-        <p>Valide une recommandation ou change de période.</p>
-        <button className="button primary" type="button" onClick={onOpenRecommendations}>Voir l’extraction</button>
+        <p>Programme un contenu ou change de période.</p>
+        <button className="button primary" type="button" onClick={onOpenPublication}>Ouvrir Publication</button>
       </div>
     );
   }

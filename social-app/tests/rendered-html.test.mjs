@@ -42,6 +42,7 @@ test("server-renders the live Social Radar shell", async () => {
   assert.match(html, /Scrolling/);
   assert.match(html, /Pubs playlists/);
   assert.match(html, /Extraction/);
+  assert.match(html, /Planning/);
   assert.match(html, /Publication/);
   assert.doesNotMatch(html, />Roadmap</);
   assert.match(html, /id="analytics-platform-subnav"/);
@@ -156,6 +157,8 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(component, /label: "Contenu"/);
   assert.match(component, /label: "Commentaires"/);
   assert.match(component, /label: "Extraction"/);
+  assert.match(component, /label: "Planning"/);
+  assert.match(component, /label: "Publication"/);
   assert.match(component, /id="analytics-platform-subnav"/);
   assert.match(component, /id="comments-platform-subnav"/);
   assert.match(component, /chooseAudiencePlatform\(key\)/);
@@ -278,11 +281,15 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(component, /activeInlineVideoId/);
   assert.match(component, /label: "Extraction"/);
   assert.doesNotMatch(component, /label: "Roadmap"/);
+  const primaryNavDefinition = component.slice(
+    component.indexOf("const NAV:"),
+    component.indexOf("const NAV_SUBMENU_IDS"),
+  );
+  assert.match(primaryNavDefinition, /id: "planning"[\s\S]*?id: "publication"/);
+  assert.match(component, /view === "planning"/);
   assert.match(component, /view === "publication"/);
   assert.match(component, /setView\("publication"\)/);
-  assert.match(postsPlatformSubnav, />Publication</);
-  assert.match(postsPlatformSubnav, /aria-label="Publication"/);
-  assert.match(postsPlatformSubnav, /title="Publication"/);
+  assert.doesNotMatch(postsPlatformSubnav, /Publication/);
   assert.match(component, /view === "comments"[\s\S]*?<CommentOpportunitiesView/);
   assert.match(component, /view === "trends"[\s\S]*?<TrendFeedView/);
   assert.match(component, /view === "audio-trends"[\s\S]*?<AudioTrendFeedView/);
@@ -307,7 +314,8 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(component, /Ce qu’on change/);
   assert.doesNotMatch(component, /Un même moment, une publication commune|Source \{index/);
   assert.doesNotMatch(component, /Afficher 10 idées de plus/);
-  assert.match(component, /function RoadmapBoard/);
+  assert.match(component, /function PlanningBoard/);
+  assert.match(component, /function PublicationWorkspace/);
   assert.match(component, /Mois/);
   assert.match(component, /Année/);
   assert.match(component, /aria-label="Liste"/);
@@ -320,7 +328,8 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.doesNotMatch(component, /Publication commune/);
   assert.match(component, /<PublicationComposer/);
   assert.match(component, /workflowAvailable=\{editorialWorkflowAvailable\}/);
-  assert.match(component, /onScheduledPlansChange=\{handleScheduledPlansChange\}/);
+  assert.match(component, /onScheduledPlansChange=\{ignoreScheduledPlans\}/);
+  assert.match(component, /readLocalScheduledPlans/);
   assert.match(component, /item\.status === "planned" && localScheduleByIdea\.has\(item\.ideaId\)/);
   assert.match(component, /publishAtLocal\.slice\(11, 16\)/);
   assert.doesNotMatch(component, /onReschedule|Modifier la date/);
