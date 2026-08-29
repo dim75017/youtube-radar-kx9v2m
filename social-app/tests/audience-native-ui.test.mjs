@@ -123,7 +123,10 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(explorer, /point\.metrics\[metric\]/);
   assert.match(explorer, /byDate\.set\(date/);
   assert.match(explorer, /elapsedDays === 1 && comparablePrecision/);
-  assert.match(explorer, /Données réelles · jours absents non reliés/);
+  assert.match(explorer, /Relevés réels · intervalles sans relevé en pointillés/);
+  assert.match(explorer, /const gapPaths: string\[\] = \[\]/);
+  assert.match(explorer, /gapPaths\.push\(/);
+  assert.match(explorer, /gapPaths\.map\([\s\S]{0,600}audience-native-chart-gap/);
   assert.doesNotMatch(explorer, /fillMissing|interpolate|interpolation linéaire/i);
 
   assert.match(styles, /\.main\.main-dashboard\s*\{[\s\S]*?padding-bottom:\s*8px/);
@@ -174,6 +177,8 @@ test("keeps follower observations visible and reveals the exact hovered value in
   assert.match(chart, /pointMarkers\.map\([\s\S]{0,600}<circle\b/);
   assert.match(chart, /audienceChartPointsAreContinuous\(previous\.point, coordinate\.point\)/);
   assert.match(styles, /\.audience-native-chart-observation\s*\{[\s\S]*?pointer-events:\s*none/);
+  assert.match(styles, /\.audience-native-chart-gap\s*\{[\s\S]*?stroke-dasharray:\s*5 5[\s\S]*?opacity:\s*0\.56/);
+  assert.match(chart, /gapPaths\.map\([\s\S]{0,600}<path\b[\s\S]{0,300}className="audience-native-chart-gap"/);
   assert.match(chart, /hoveredCoordinate \?[\s\S]*?<circle\b/);
 
   // Le point de survol accompagne un popup qui expose la date et la valeur réelles.
@@ -357,6 +362,7 @@ test("keeps sparse Instagram observations truthful and falls back without fabric
   );
   assert.match(explorer, /La plateforme ne fournit pas de courbe quotidienne exportable/);
   assert.match(explorer, /elapsedDays === 1 && comparablePrecision/);
+  assert.match(explorer, /Aucun point quotidien n’est ajouté/);
   assert.doesNotMatch(explorer, /fillMissing|interpolat(?:e|ion)|syntheticPoint/i);
 });
 

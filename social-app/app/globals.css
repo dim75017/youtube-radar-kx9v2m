@@ -4836,6 +4836,17 @@ a {
   vector-effect: non-scaling-stroke;
 }
 
+.audience-native-chart-gap {
+  fill: none;
+  stroke: rgb(var(--platform-rgb));
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-dasharray: 5 5;
+  opacity: 0.56;
+  pointer-events: none;
+  vector-effect: non-scaling-stroke;
+}
+
 .audience-native-chart-observation {
   fill: rgb(var(--platform-rgb));
   stroke: rgba(6, 8, 14, 0.92);

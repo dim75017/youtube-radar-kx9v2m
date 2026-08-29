@@ -2658,9 +2658,9 @@ function AudienceAnalyticsExplorer({
               <span>
                 {periodKey === "all"
                   ? curveStartDate
-                    ? `Depuis le ${formatNativeAnalyticsDate(curveStartDate)} · jours absents non reliés`
-                    : "Toute la plage native importée · jours absents non reliés"
-                  : "Données réelles · jours absents non reliés"}
+                    ? `Depuis le ${formatNativeAnalyticsDate(curveStartDate)} · intervalles sans relevé en pointillés`
+                    : "Toute la plage native importée · intervalles sans relevé en pointillés"
+                  : "Relevés réels · intervalles sans relevé en pointillés"}
               </span>
             </footer>
           </div>
@@ -3384,6 +3384,7 @@ function AudienceNativeMetricChart({
       })
       : [];
     const paths: string[] = [];
+    const gapPaths: string[] = [];
     let activePath = "";
     coordinates.forEach((coordinate, index) => {
       const previous = coordinates[index - 1];
@@ -3397,6 +3398,9 @@ function AudienceNativeMetricChart({
         return;
       }
       if (activePath.includes(" L ")) paths.push(activePath);
+      gapPaths.push(
+        `M ${previous.x.toFixed(2)} ${previous.y.toFixed(2)} L ${coordinate.x.toFixed(2)} ${coordinate.y.toFixed(2)}`,
+      );
       activePath = move;
     });
     if (activePath.includes(" L ")) paths.push(activePath);
@@ -3412,6 +3416,7 @@ function AudienceNativeMetricChart({
       axisStep: axis.step,
       coordinates,
       dateTicks,
+      gapPaths,
       gridLines,
       height,
       paths,
@@ -3443,6 +3448,7 @@ function AudienceNativeMetricChart({
     axisStep,
     coordinates,
     dateTicks,
+    gapPaths,
     gridLines,
     height,
     paths,
@@ -3505,7 +3511,7 @@ function AudienceNativeMetricChart({
           onBlur={() => setHoveredPointIndex(null)}
         >
           <desc>
-            {`${points.length} valeurs réelles sur ${periodLabel.toLowerCase()}. Les dates absentes et les valeurs nulles ne sont ni reliées ni interpolées.`}
+            {`${points.length} valeurs réelles sur ${periodLabel.toLowerCase()}. Les intervalles sans relevé ou avec une précision différente sont reliés en pointillés. Aucun point quotidien n’est ajouté.`}
           </desc>
           <rect
             className="audience-native-chart-hit-area"
@@ -3531,6 +3537,14 @@ function AudienceNativeMetricChart({
               y2={zeroY}
             />
           ) : null}
+          {gapPaths.map((path, index) => (
+            <path
+              aria-hidden="true"
+              className="audience-native-chart-gap"
+              d={path}
+              key={`gap:${index}:${path.slice(0, 32)}`}
+            />
+          ))}
           {paths.map((path, index) => (
             <path
               className="audience-native-chart-line"

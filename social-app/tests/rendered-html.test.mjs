@@ -227,6 +227,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   );
   assert.match(audienceContinuity, /elapsedDays === 1 && comparablePrecision/);
   assert.match(audienceChart, /audienceChartPointsAreContinuous/);
+  assert.match(audienceChart, /className="audience-native-chart-gap"/);
   assert.match(audienceChart, /className="audience-native-chart-observation"/);
   assert.doesNotMatch(audienceChart, /className="audience-native-chart-point"[\s\S]{0,180}tabIndex/);
   assert.doesNotMatch(component, /audience-spark-bars|sampleAudiencePoints/);
