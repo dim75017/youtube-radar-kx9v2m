@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "generatedAt": "2026-08-29T10:30:12.706Z",
+  "generatedAt": "2026-08-29T11:01:29.055Z",
   "platforms": {
     "youtube": {
       "status": "partial",
-      "attemptedAt": "2026-08-29T10:30:12.706Z",
+      "attemptedAt": "2026-08-29T11:01:29.055Z",
       "source": "owner-history-and-direct-comment-metrics",
       "observedComments": 2810,
       "verifiedTargets": 2808,
@@ -17,12 +17,12 @@
       "nativeIdCount": 2810,
       "deepLinkCount": 2810,
       "metricCoverage": {
-        "observed": 2769,
-        "published": 2769,
+        "observed": 2770,
+        "published": 2770,
         "total": 2810
       },
       "error": "Les métriques ont été resynchronisées, mais l’inventaire propriétaire complet n’a pas été rescanné pendant ce passage.",
-      "lastRealObservationAt": "2026-08-29T10:30:12.706Z"
+      "lastRealObservationAt": "2026-08-29T11:01:29.055Z"
     },
     "x": {
       "status": "partial",
