@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "attemptedAt": "2026-08-29T22:30:08.078Z",
+  "attemptedAt": "2026-08-29T22:56:47.052Z",
   "status": "success",
   "published": true,
   "inventory": {
@@ -14,19 +14,19 @@
     "publishable": true
   },
   "discoveryAudit": {
-    "scannedAt": "2026-08-29T22:30:08.078Z",
+    "scannedAt": "2026-08-29T22:56:47.052Z",
     "status": "success",
     "complete": true,
     "candidateCount": 179,
     "qualifiedInventoryCount": 24,
     "qualifiedClusterCount": 24,
-    "currentMatchedCount": 3,
+    "currentMatchedCount": 4,
     "candidatePlatformCounts": {
       "instagram": 166,
       "tiktok": 13
     },
     "candidateRegistry": {
-      "updatedAt": "2026-08-29T22:30:08.078Z",
+      "updatedAt": "2026-08-29T22:56:47.052Z",
       "candidateCount": 179,
       "candidateAudioUrls": [
         "https://www.instagram.com/reels/audio/1006119841436928",
@@ -326,16 +326,16 @@
     },
     "candidatePoolDelta": {
       "status": "compared",
-      "added": 13,
+      "added": 0,
       "removed": 0,
-      "retained": 166
+      "retained": 179
     },
     "qualificationAudit": {
-      "attemptedAt": "2026-08-29T22:30:08.078Z",
+      "attemptedAt": "2026-08-29T22:56:47.052Z",
       "complete": true,
-      "videoFeedCapturedAt": "2026-08-29T22:26:53.093Z",
+      "videoFeedCapturedAt": "2026-08-29T22:50:40.045Z",
       "videoFeedFresh": true,
-      "videoDiscoveryAuditScannedAt": "2026-08-29T22:26:53.093Z",
+      "videoDiscoveryAuditScannedAt": "2026-08-29T22:50:40.045Z",
       "videoDiscoveryAuditFresh": true,
       "attemptedTrendCount": 29,
       "attemptedCurrentTrendCount": 0,
@@ -343,8 +343,8 @@
       "attemptedFreshAuditClusterCount": 0,
       "freshQualifiedCount": 24,
       "qualifiedClusterCount": 24,
-      "freshCurrentQualifiedCount": 18,
-      "freshNewQualifiedCount": 6,
+      "freshCurrentQualifiedCount": 20,
+      "freshNewQualifiedCount": 4,
       "qualifiedAudioUrls": [
         "https://www.tiktok.com/music/fulfill-the-prophecy-7406872980187401003",
         "https://www.tiktok.com/music/original-sound-7627517043541068566",
@@ -406,7 +406,7 @@
       "discoveredCandidateCount": 179,
       "discoveredWithoutMultiCreatorProofCount": 175
     },
-    "newCandidateCount": 176,
+    "newCandidateCount": 175,
     "added": [
       "https://www.instagram.com/reels/audio/1006119841436928",
       "https://www.instagram.com/reels/audio/1040129337188935",
@@ -576,7 +576,6 @@
       "https://www.tiktok.com/music/Golden-7534922588541241360",
       "https://www.tiktok.com/music/Hey-Baby-Drop-It-to-the-Floor-feat-T-Pain-6696414028652087298",
       "https://www.tiktok.com/music/Mind-Blank-7325072810639378434",
-      "https://www.tiktok.com/music/On-a-Mission-7274043399086426113",
       "https://www.tiktok.com/music/original-sound-%F0%9F%92%AB-7651272787434490631",
       "https://www.tiktok.com/music/original-sound-7529047591636568887",
       "https://www.tiktok.com/music/original-sound-7647113486681639681",
@@ -592,18 +591,17 @@
       "https://www.tiktok.com/music/original-sound-7627517043541068566",
       "https://www.tiktok.com/music/sonido-original-7651806743999073040",
       "https://www.tiktok.com/music/original-sound-7642453200225815309",
-      "https://www.youtube.com/source/yaDcdlYhW-A/shorts",
+      "https://www.tiktok.com/music/Let-Down-7520755827558959894",
       "https://www.instagram.com/reels/audio/1850093231958659/",
       "https://www.instagram.com/reels/audio/1344931484516320/",
       "https://www.youtube.com/source/MexTmo_3naU/shorts",
       "https://www.instagram.com/reels/audio/1537700161324079/",
       "https://www.instagram.com/reels/audio/2815231028840352/",
-      "https://www.instagram.com/reels/audio/1544636237314027/",
+      "https://www.tiktok.com/music/Dracula-with-JENNIE-7603221525400455169",
       "https://www.tiktok.com/music/fulfill-the-prophecy-7406872980187401003",
       "https://www.tiktok.com/music/original-sound-7647999030882634509",
-      "https://www.tiktok.com/music/original-sound-7627238272384633631",
+      "https://www.tiktok.com/music/Wrap-it-up-7208649829264837422",
       "https://www.tiktok.com/music/on-a-mission-7274043399086426113",
-      "https://www.tiktok.com/music/original-sound-7385248336640150304",
       "https://www.tiktok.com/music/original-sound-7649038378872228638",
       "https://www.tiktok.com/music/choosin-texas-7559312683885201425",
       "https://www.tiktok.com/music/u-me-3-7649983963347896336",
@@ -637,6 +635,7 @@
     "retainedIds": [
       "petal-soft-chaos",
       "stupid-song-montage",
+      "audio-netflix-documentary-confessional",
       "tiktok-different-lives-split-262442"
     ],
     "candidateAudioUrls": [
@@ -986,31 +985,11 @@
     ],
     "publishedInventoryCount": 50,
     "selectionAudit": {
-      "evaluatedAt": "2026-08-29T22:30:08.078Z",
-      "addedTrendIds": [
-        "audio-wrap-it-up-procrastination",
-        "audio-netflix-documentary-confessional",
-        "audio-let-down-emotional-rescue",
-        "audio-dracula-jennie-remix"
-      ],
-      "addedAudioUrls": [
-        "https://www.tiktok.com/music/Wrap-it-up-7208649829264837422",
-        "https://www.tiktok.com/music/On-a-Mission-7274043399086426113",
-        "https://www.tiktok.com/music/Let-Down-7520755827558959894",
-        "https://www.tiktok.com/music/Dracula-with-JENNIE-7603221525400455169"
-      ],
-      "removedTrendIds": [
-        "tiktok-not-very-nonchalant-633631",
-        "tiktok-pain-oh-no-spain-150304",
-        "youtube-phones-eras-study-desk",
-        "freaked-out-list"
-      ],
-      "removedAudioUrls": [
-        "https://www.tiktok.com/music/original-sound-7627238272384633631",
-        "https://www.tiktok.com/music/original-sound-7385248336640150304",
-        "https://www.youtube.com/source/yaDcdlYhW-A/shorts",
-        "https://www.instagram.com/reels/audio/1544636237314027/"
-      ],
+      "evaluatedAt": "2026-08-29T22:56:47.052Z",
+      "addedTrendIds": [],
+      "addedAudioUrls": [],
+      "removedTrendIds": [],
+      "removedAudioUrls": [],
       "retainedTrendIds": [
         "pocketful-of-sunshine",
         "petal-soft-chaos",
@@ -1019,15 +998,19 @@
         "ghosting-you-montage",
         "te-extrano-motivation",
         "obsession-nice-date",
+        "audio-let-down-emotional-rescue",
         "young-and-beautiful",
         "less-than-a-lover",
         "youtube-cat-outplayed-focus",
         "sirens-cinematic-tension",
         "odysseus-heroic-edit",
+        "audio-dracula-jennie-remix",
         "stupid-song-montage",
         "tiktok-two-personalities-401003",
         "tiktok-kumar-method-634509",
+        "audio-wrap-it-up-procrastination",
         "tiktok-netflix-documentary-confessional-426113",
+        "audio-netflix-documentary-confessional",
         "tiktok-bangladesh-absurd-complaint-228638",
         "tiktok-choosin-texas-western-reveal-201425",
         "tiktok-u-me-love-timeline-896336",
@@ -1063,10 +1046,11 @@
         "tiktok-two-personalities-401003",
         "ghosting-you-montage",
         "tiktok-kumar-method-634509",
-        "tiktok-not-very-nonchalant-633631",
-        "tiktok-pain-oh-no-spain-150304",
+        "audio-netflix-documentary-confessional",
         "tiktok-bangladesh-absurd-complaint-228638",
         "tiktok-ss26-editorial-transition-757014",
+        "audio-dracula-jennie-remix",
+        "audio-let-down-emotional-rescue",
         "tiktok-broken-rules-temptation-530974",
         "tiktok-viral-moment-backstory-998703",
         "baby-just-wanna-dance",
@@ -1077,31 +1061,44 @@
         "te-extrano-motivation",
         "pocketful-of-sunshine",
         "tiktok-study-until-they-text-aging-530335",
-        "tiktok-deadline-tomorrow-turbo-792582"
+        "tiktok-deadline-tomorrow-turbo-792582",
+        "audio-wrap-it-up-procrastination"
       ],
       "rejected": [
         {
           "id": "audio-u-me-love-timeline",
           "reason": "video de reference deja publiee"
+        },
+        {
+          "id": "audio-choosin-texas-western-reveal",
+          "reason": "video de reference deja publiee"
+        },
+        {
+          "id": "audio-pain-oh-no-spain",
+          "reason": "score inferieur au dernier audio conserve"
+        },
+        {
+          "id": "audio-not-very-nonchalant",
+          "reason": "score inferieur au dernier audio conserve"
         }
       ],
-      "noRotationReason": null
+      "noRotationReason": "Les nouveaux audios qualifiés n'ont pas dépassé la dernière carte conservée selon le score Lofi Fit, la dynamique et les likes de référence."
     }
   },
   "coverage": {
-    "totalChecked": 47,
+    "totalChecked": 48,
     "totalMatched": 0,
     "requiredTotal": 36,
     "ratio": 0,
     "providersPassed": false,
     "publishable": true,
     "catalogPublishable": true,
-    "instagramPlaybackChecked": 6,
-    "instagramPlaybackMatched": 6,
+    "instagramPlaybackChecked": 5,
+    "instagramPlaybackMatched": 5,
     "instagramPlaybackComplete": true,
-    "tiktokThumbnailChecked": 41,
-    "tiktokThumbnailMatched": 40,
-    "tiktokThumbnailCoverage": 0.975609756097561,
+    "tiktokThumbnailChecked": 43,
+    "tiktokThumbnailMatched": 42,
+    "tiktokThumbnailCoverage": 0.9767441860465116,
     "tiktokThumbnailComplete": false,
     "thumbnailPublishable": false,
     "assetPublishable": false,
@@ -1111,10 +1108,10 @@
   "providers": [
     {
       "platform": "instagram",
-      "checked": 6,
+      "checked": 5,
       "matched": 0,
-      "updated": 6,
-      "requiredMatched": 5,
+      "updated": 5,
+      "requiredMatched": 4,
       "coverage": 0,
       "thumbnailChecked": 0,
       "thumbnailMatched": 0,
@@ -1126,21 +1123,20 @@
         "less-than-a-lover: compteur public non lie a cette identite audio",
         "sirens-cinematic-tension: compteur public non lie a cette identite audio",
         "odysseus-heroic-edit: compteur public non lie a cette identite audio",
-        "freaked-out-list: compteur public non lie a cette identite audio",
         "stupid-song-montage: compteur public non lie a cette identite audio",
-        "compteurs natifs attribuables limites: 0/6, seuil de couverture analytique 5"
+        "compteurs natifs attribuables limites: 0/5, seuil de couverture analytique 4"
       ]
     },
     {
       "platform": "tiktok",
-      "checked": 41,
+      "checked": 43,
       "matched": 0,
-      "updated": 40,
-      "requiredMatched": 29,
+      "updated": 42,
+      "requiredMatched": 31,
       "coverage": 0,
-      "thumbnailChecked": 41,
-      "thumbnailMatched": 40,
-      "thumbnailCoverage": 0.975609756097561,
+      "thumbnailChecked": 43,
+      "thumbnailMatched": 42,
+      "thumbnailCoverage": 0.9767441860465116,
       "thumbnailComplete": false,
       "status": "limited",
       "errors": [
@@ -1151,11 +1147,13 @@
         "ghosting-you-montage: compteur public non lie a cette identite audio",
         "te-extrano-motivation: compteur public non lie a cette identite audio",
         "obsession-nice-date: compteur public non lie a cette identite audio",
+        "audio-let-down-emotional-rescue: compteur public non lie a cette identite audio",
+        "audio-dracula-jennie-remix: compteur public non lie a cette identite audio",
         "tiktok-two-personalities-401003: compteur public non lie a cette identite audio",
         "tiktok-kumar-method-634509: compteur public non lie a cette identite audio",
-        "tiktok-not-very-nonchalant-633631: compteur public non lie a cette identite audio",
+        "audio-wrap-it-up-procrastination: compteur public non lie a cette identite audio",
         "tiktok-netflix-documentary-confessional-426113: compteur public non lie a cette identite audio",
-        "tiktok-pain-oh-no-spain-150304: compteur public non lie a cette identite audio",
+        "audio-netflix-documentary-confessional: compteur public non lie a cette identite audio",
         "tiktok-bangladesh-absurd-complaint-228638: compteur public non lie a cette identite audio",
         "tiktok-choosin-texas-western-reveal-201425: compteur public non lie a cette identite audio",
         "tiktok-u-me-love-timeline-896336: compteur public non lie a cette identite audio",
@@ -1185,8 +1183,8 @@
         "tiktok-gaming-setup-night-reveal-769377: compteur public non lie a cette identite audio",
         "tiktok-discord-eh-les-copains-440214: compteur public non lie a cette identite audio",
         "tiktok-twins-at-the-carousel-388384: compteur public non lie a cette identite audio",
-        "compteurs natifs attribuables limites: 0/41, seuil de couverture analytique 29",
-        "couverture miniatures insuffisante: 40/41, minimum 41"
+        "compteurs natifs attribuables limites: 0/43, seuil de couverture analytique 31",
+        "couverture miniatures insuffisante: 42/43, minimum 43"
       ]
     },
     {
@@ -1208,12 +1206,7 @@
   ],
   "assetCache": {
     "status": "success",
-    "cachedCount": 4,
-    "paths": [
-      "media/audio-trends/audio-let-down-emotional-rescue.jpg",
-      "media/audio-trends/audio-dracula-jennie-remix.jpg",
-      "media/audio-trends/audio-wrap-it-up-procrastination.jpg",
-      "media/audio-trends/audio-netflix-documentary-confessional.png"
-    ]
+    "cachedCount": 0,
+    "paths": []
   }
 }
