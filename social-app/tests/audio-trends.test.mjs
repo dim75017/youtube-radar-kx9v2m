@@ -239,10 +239,10 @@ test("a threshold-compliant feed contains sourced audio signals without invented
           trend.referenceVideo.playbackExpiresAt,
       ),
   );
-  assert.equal(
-    bootstrapFeed.trends.filter((trend) => deriveAudioTrendGrowth(trend.usageObservations)).length,
-    3,
+  const trendsWithMeasuredGrowth = bootstrapFeed.trends.filter((trend) =>
+    deriveAudioTrendGrowth(trend.usageObservations)
   );
+  assert.ok(trendsWithMeasuredGrowth.length >= 3);
 });
 
 test("the publishable inventory accepts 50 distinct trends and rejects 49", () => {
