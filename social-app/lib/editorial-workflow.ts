@@ -126,10 +126,20 @@ export function scheduleAcceptedIdea(
   existing: readonly ScheduledIdea[],
   now: Date | string | number = new Date(),
 ): ScheduledIdea {
-  const alreadyScheduled = existing.find((item) => item.ideaId === idea.id);
-  if (alreadyScheduled) return alreadyScheduled;
-
   const timestamp = toIsoTimestamp(now);
+  const alreadyScheduled = existing.find((item) => item.ideaId === idea.id);
+  if (alreadyScheduled) {
+    return {
+      ...alreadyScheduled,
+      title: idea.title,
+      hook: idea.hook,
+      platform: idea.primaryPlatform,
+      format: idea.proposedFormat,
+      status: "planned",
+      updatedAt: timestamp,
+    };
+  }
+
   return {
     id: `schedule:${idea.id}`,
     ideaId: idea.id,
@@ -207,9 +217,86 @@ export function normalizeWorkflowState(value: unknown): EditorialWorkflowState {
   };
 }
 
+/**
+ * Fusionne deux instantanés concurrents idée par idée. La décision la plus
+ * récente est autoritaire et une révocation supprime toujours son ancien
+ * planning, même si un autre onglet renvoie ensuite un état global obsolète.
+ */
+export function mergeWorkflowStates(
+  currentValue: unknown,
+  incomingValue: unknown,
+): EditorialWorkflowState {
+  const current = normalizeWorkflowState(currentValue);
+  const incoming = normalizeWorkflowState(incomingValue);
+  const feedback: Record<string, IdeaFeedback> = {};
+  const feedbackIds = new Set([
+    ...Object.keys(current.feedback),
+    ...Object.keys(incoming.feedback),
+  ]);
+
+  for (const ideaId of feedbackIds) {
+    const left = current.feedback[ideaId];
+    const right = incoming.feedback[ideaId];
+    if (!left && right) {
+      feedback[ideaId] = right;
+      continue;
+    }
+    if (!right && left) {
+      feedback[ideaId] = left;
+      continue;
+    }
+    if (!left || !right) continue;
+    feedback[ideaId] = newerFeedback(left, right);
+  }
+
+  const scheduleByIdea = new Map<string, ScheduledIdea>();
+  for (const item of [...current.schedule, ...incoming.schedule]) {
+    const existing = scheduleByIdea.get(item.ideaId);
+    if (!existing || compareWorkflowTimestamp(existing.updatedAt, item.updatedAt) < 0) {
+      scheduleByIdea.set(item.ideaId, item);
+      continue;
+    }
+    if (
+      compareWorkflowTimestamp(existing.updatedAt, item.updatedAt) === 0 &&
+      existing.status === "planned" &&
+      item.status === "published"
+    ) {
+      scheduleByIdea.set(item.ideaId, item);
+    }
+  }
+
+  const schedule = [...scheduleByIdea.values()]
+    .filter((item) => {
+      const latestFeedback = feedback[item.ideaId];
+      if (!latestFeedback || latestFeedback.decision === "produce") return true;
+      return compareWorkflowTimestamp(latestFeedback.updatedAt, item.updatedAt) < 0;
+    })
+    .sort(compareScheduleItems);
+
+  return { feedback, schedule };
+}
+
 export function compareScheduleItems(left: ScheduledIdea, right: ScheduledIdea) {
   return left.scheduledFor.localeCompare(right.scheduledFor) ||
     left.ideaId.localeCompare(right.ideaId);
+}
+
+function newerFeedback(left: IdeaFeedback, right: IdeaFeedback): IdeaFeedback {
+  const comparison = compareWorkflowTimestamp(left.updatedAt, right.updatedAt);
+  if (comparison < 0) return right;
+  if (comparison > 0) return left;
+  if (left.decision === "produce" && right.decision !== "produce") return right;
+  if (right.decision === "produce" && left.decision !== "produce") return left;
+  return left.decision.localeCompare(right.decision) <= 0 ? left : right;
+}
+
+function compareWorkflowTimestamp(left: string, right: string): number {
+  const leftTimestamp = Date.parse(left);
+  const rightTimestamp = Date.parse(right);
+  if (!Number.isFinite(leftTimestamp) && !Number.isFinite(rightTimestamp)) return 0;
+  if (!Number.isFinite(leftTimestamp)) return -1;
+  if (!Number.isFinite(rightTimestamp)) return 1;
+  return leftTimestamp - rightTimestamp;
 }
 
 function averageSignal(items: readonly IdeaFeedback[]): number {
@@ -232,7 +319,8 @@ function isFeedback(value: unknown): value is IdeaFeedback {
     typeof candidate.title === "string" &&
     typeof candidate.hook === "string" &&
     typeof candidate.basePotentialScore === "number" &&
-    typeof candidate.updatedAt === "string";
+    typeof candidate.updatedAt === "string" &&
+    Number.isFinite(Date.parse(candidate.updatedAt));
 }
 
 function isScheduledIdea(value: unknown): value is ScheduledIdea {
@@ -248,7 +336,9 @@ function isScheduledIdea(value: unknown): value is ScheduledIdea {
     isPlanningDateKey(candidate.scheduledFor) &&
     (candidate.status === "planned" || candidate.status === "published") &&
     typeof candidate.createdAt === "string" &&
-    typeof candidate.updatedAt === "string";
+    Number.isFinite(Date.parse(candidate.createdAt)) &&
+    typeof candidate.updatedAt === "string" &&
+    Number.isFinite(Date.parse(candidate.updatedAt));
 }
 
 function isPlatform(value: unknown): value is SocialPlatform {

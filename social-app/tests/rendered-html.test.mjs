@@ -42,7 +42,8 @@ test("server-renders the live Social Radar shell", async () => {
   assert.match(html, /Scrolling/);
   assert.match(html, /Pubs playlists/);
   assert.match(html, /Extraction/);
-  assert.match(html, /Roadmap/);
+  assert.match(html, /Publication/);
+  assert.doesNotMatch(html, />Roadmap</);
   assert.match(html, /id="analytics-platform-subnav"/);
   assert.match(html, /id="posts-platform-subnav"/);
   assert.match(html, /id="comments-platform-subnav"/);
@@ -63,6 +64,8 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     viteConfig,
     schema,
     component,
+    publicationComposer,
+    publicationModel,
     filterDropdown,
     formats,
     durations,
@@ -100,6 +103,8 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     readFile(new URL("../vite.config.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/SocialOS.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/PublicationComposer.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/social-publication.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/FilterDropdown.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/social-formats.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/social-duration.ts", import.meta.url), "utf8"),
@@ -249,7 +254,9 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     component.indexOf('<div className="sidebar-foot"'),
   );
   assert.match(primaryNavSource, /aria-expanded=\{isExpandable \? isExpanded : undefined\}/);
-  assert.match(primaryNavSource, /aria-controls=\{isExpandable \? NAV_SUBMENU_IDS\[item\.id\] : undefined\}/);
+  assert.match(primaryNavSource, /aria-controls=\{isExpandableNavView\(item\.id\) \? NAV_SUBMENU_IDS\[item\.id\] : undefined\}/);
+  assert.match(primaryNavSource, /aria-label=\{item\.label\}/);
+  assert.match(primaryNavSource, /aria-current=\{isActive \|\| \(isSectionActive && !isExpanded\) \? "page" : undefined\}/);
   assert.match(primaryNavSource, /aria-label=\{child\.label\}/);
   assert.match(primaryNavSource, /title=\{child\.label\}/);
   assert.match(component, /setView\("all"\)/);
@@ -270,7 +277,12 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.doesNotMatch(component, /publicRankingLabel/);
   assert.match(component, /activeInlineVideoId/);
   assert.match(component, /label: "Extraction"/);
-  assert.match(component, /label: "Roadmap"/);
+  assert.doesNotMatch(component, /label: "Roadmap"/);
+  assert.match(component, /view === "publication"/);
+  assert.match(component, /setView\("publication"\)/);
+  assert.match(postsPlatformSubnav, />Publication</);
+  assert.match(postsPlatformSubnav, /aria-label="Publication"/);
+  assert.match(postsPlatformSubnav, /title="Publication"/);
   assert.match(component, /view === "comments"[\s\S]*?<CommentOpportunitiesView/);
   assert.match(component, /view === "trends"[\s\S]*?<TrendFeedView/);
   assert.match(component, /view === "audio-trends"[\s\S]*?<AudioTrendFeedView/);
@@ -305,7 +317,36 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(component, /function RoadmapList/);
   assert.match(component, /function RoadmapDayModal/);
   assert.doesNotMatch(component, /function RoadmapLegend/);
-  assert.match(component, /Publication commune/);
+  assert.doesNotMatch(component, /Publication commune/);
+  assert.match(component, /<PublicationComposer/);
+  assert.match(component, /workflowAvailable=\{editorialWorkflowAvailable\}/);
+  assert.match(component, /onScheduledPlansChange=\{handleScheduledPlansChange\}/);
+  assert.match(component, /item\.status === "planned" && localScheduleByIdea\.has\(item\.ideaId\)/);
+  assert.match(component, /publishAtLocal\.slice\(11, 16\)/);
+  assert.doesNotMatch(component, /onReschedule|Modifier la date/);
+  assert.match(publicationComposer, /Planning local · aucune publication automatique/);
+  assert.match(publicationComposer, /Non connecté · connecteur serveur requis/);
+  assert.match(publicationComposer, /Valider le contenu/);
+  assert.match(publicationComposer, /Ajouter au planning local/);
+  assert.match(publicationComposer, /Publier maintenant/);
+  assert.match(publicationComposer, /Programmer automatiquement/);
+  assert.match(publicationComposer, /publication-disabled-action/);
+  assert.match(publicationComposer, /Stockage local indisponible : validation et planning désactivés/);
+  assert.match(publicationComposer, /status === "scheduled"/);
+  assert.match(publicationComposer, /onScheduledPlansChange/);
+  assert.match(publicationComposer, /samePublicationSnapshot/);
+  assert.match(publicationComposer, /findPublicationScheduleCollision/);
+  assert.match(publicationComposer, /PUBLICATION_MUTATION_LOCK/);
+  assert.match(publicationComposer, /navigator\.locks\.request/);
+  assert.match(publicationComposer, /runCriticalTransition/);
+  assert.match(publicationComposer, /type="button"[\s\S]{0,180}disabled[\s\S]{0,180}Publier maintenant/);
+  assert.doesNotMatch(publicationComposer, /access[_-]?token|refresh[_-]?token|client[_-]?secret/i);
+  assert.match(publicationModel, /approvedRevision: null/);
+  assert.match(publicationModel, /status: "draft"/);
+  assert.match(publicationModel, /tombstones/);
+  assert.match(publicationModel, /Valide cette version exacte avant de la programmer/);
+  assert.match(component, /event\.key !== EDITORIAL_WORKFLOW_STORAGE_KEY/);
+  assert.match(styles, /\.publication-plan-grid/);
   assert.doesNotMatch(previewEntry, /key=\{`\$\{workspace\.generatedAt\}:\$\{workspace\.posts\.length\}`\}/);
   assert.match(previewEntry, /public-history-summary\.json/);
   assert.match(previewEntry, /public-history-\$\{platform\}\.json/);

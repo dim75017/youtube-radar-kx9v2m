@@ -5,6 +5,7 @@ import {
   applyPreferenceLearning,
   feedbackForIdea,
   findNextPlanningDate,
+  mergeWorkflowStates,
   normalizeWorkflowState,
   scheduleAcceptedIdea,
   updateScheduledDate,
@@ -80,6 +81,17 @@ test("automatically schedules accepted ideas in the next collision-free slot", (
   assert.equal(second.scheduledFor, "2026-08-08");
   assert.equal(instagram.scheduledFor, "2026-08-09");
   assert.equal(findNextPlanningDate([first, second, instagram], "2026-08-06"), "2026-08-10");
+
+  const revalidated = scheduleAcceptedIdea(
+    idea({ title: "Titre revalidé", hook: "Copie revalidée" }),
+    [first],
+    "2026-08-07T12:00:00.000Z",
+  );
+  assert.equal(revalidated.scheduledFor, first.scheduledFor);
+  assert.equal(revalidated.title, "Titre revalidé");
+  assert.equal(revalidated.hook, "Copie revalidée");
+  assert.equal(revalidated.updatedAt, "2026-08-07T12:00:00.000Z");
+  assert.notEqual(revalidated.updatedAt, first.updatedAt);
 });
 
 test("a planned idea can be moved and malformed persisted data is ignored", () => {
@@ -98,6 +110,17 @@ test("a planned idea can be moved and malformed persisted data is ignored", () =
   assert.equal(moved[0].scheduledFor, "2026-08-12");
   assert.deepEqual(normalized.feedback, {});
   assert.equal(normalized.schedule.length, 1);
+
+  const invalidTimestamps = normalizeWorkflowState({
+    feedback: {
+      [planned.ideaId]: {
+        ...feedbackForIdea(idea(), "produce", "2026-08-06T12:00:00.000Z"),
+        updatedAt: "invalid",
+      },
+    },
+    schedule: [{ ...planned, updatedAt: "invalid" }],
+  });
+  assert.deepEqual(invalidTimestamps, { feedback: {}, schedule: [] });
 });
 
 test("rescheduling refuses malformed dates and any editorial collision", () => {
@@ -116,4 +139,48 @@ test("rescheduling refuses malformed dates and any editorial collision", () => {
     () => updateScheduledDate([first], first.ideaId, "2026-99-99"),
     /AAAA-MM-JJ/i,
   );
+});
+
+test("cross-tab workflow merging preserves newer revocations and unrelated decisions", () => {
+  const firstIdea = idea({ id: "idea-first" });
+  const secondIdea = idea({ id: "idea-second", title: "Deuxième idée" });
+  const firstSchedule = scheduleAcceptedIdea(firstIdea, [], "2026-08-29T09:00:00.000Z");
+  const staleTab = {
+    feedback: {
+      [firstIdea.id]: feedbackForIdea(firstIdea, "produce", "2026-08-29T09:00:00.000Z"),
+      [secondIdea.id]: feedbackForIdea(secondIdea, "produce", "2026-08-29T10:00:00.000Z"),
+    },
+    schedule: [
+      firstSchedule,
+      scheduleAcceptedIdea(secondIdea, [firstSchedule], "2026-08-29T10:00:00.000Z"),
+    ],
+  };
+  const revokingTab = {
+    feedback: {
+      [firstIdea.id]: feedbackForIdea(firstIdea, "discard", "2026-08-29T11:00:00.000Z"),
+    },
+    schedule: [],
+  };
+
+  const merged = mergeWorkflowStates(revokingTab, staleTab);
+  assert.equal(merged.feedback[firstIdea.id].decision, "discard");
+  assert.equal(merged.feedback[secondIdea.id].decision, "produce");
+  assert.deepEqual(merged.schedule.map((item) => item.ideaId), [secondIdea.id]);
+
+  const equalTimestampConflict = mergeWorkflowStates(
+    {
+      feedback: {
+        [firstIdea.id]: feedbackForIdea(firstIdea, "produce", "2026-08-29T12:00:00.000Z"),
+      },
+      schedule: [scheduleAcceptedIdea(firstIdea, [], "2026-08-29T12:00:00.000Z")],
+    },
+    {
+      feedback: {
+        [firstIdea.id]: feedbackForIdea(firstIdea, "rework", "2026-08-29T12:00:00.000Z"),
+      },
+      schedule: [],
+    },
+  );
+  assert.equal(equalTimestampConflict.feedback[firstIdea.id].decision, "rework");
+  assert.deepEqual(equalTimestampConflict.schedule, []);
 });

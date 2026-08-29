@@ -33,9 +33,9 @@ import {
   applyPreferenceLearning,
   EMPTY_EDITORIAL_WORKFLOW,
   feedbackForIdea,
+  mergeWorkflowStates,
   normalizeWorkflowState,
   scheduleAcceptedIdea,
-  updateScheduledDate,
   type EditorialWorkflowState,
   type IdeaDecision,
   type LearnedIdea,
@@ -109,11 +109,15 @@ import {
   type FilterDropdownOption,
 } from "./FilterDropdown";
 import { PlaylistPromoFeedView } from "./PlaylistPromoFeedView";
+import {
+  PublicationComposer,
+  type LocalPublicationScheduleEntry,
+} from "./PublicationComposer";
 import { ScrollingFeedView } from "./ScrollingFeedView";
 import { SocialInlinePlayer } from "./SocialInlinePlayer";
 
 type Platform = "youtube" | "instagram" | "tiktok" | "x";
-type View = "overview" | "top" | "all-comments" | "comments" | "trends" | "audio-trends" | "scrolling" | "playlist-promos" | "ideas" | "planning" | "all" | "sources";
+type View = "overview" | "top" | "all-comments" | "comments" | "trends" | "audio-trends" | "scrolling" | "playlist-promos" | "ideas" | "publication" | "all" | "sources";
 type ExpandableNavView = Extract<View, "overview" | "top" | "all-comments" | "ideas">;
 type IdeaStatusFilter = "all" | "pending" | IdeaDecision;
 type PostSort = "popular" | "recent";
@@ -238,7 +242,6 @@ const NAV: Array<{
   { id: "top", emoji: "🏆", label: "Contenu", group: "Pilotage" },
   { id: "all-comments", emoji: "💬", label: "Commentaires", group: "Pilotage" },
   { id: "ideas", emoji: "💡", label: "Extraction", group: "Pilotage" },
-  { id: "planning", emoji: "🗓️", label: "Roadmap", group: "Pilotage" },
 ];
 
 const NAV_SUBMENU_IDS: Record<ExpandableNavView, string> = {
@@ -266,6 +269,7 @@ const RECOMMENDATION_NAV: Array<{
 ];
 
 const EDITORIAL_WORKFLOW_STORAGE_KEY = "lofi-social-radar:editorial-workflow:v2";
+const EDITORIAL_WORKFLOW_MUTATION_LOCK = `${EDITORIAL_WORKFLOW_STORAGE_KEY}:mutation`;
 const POSTS_PAGE_SIZE = 48;
 const PLATFORM_ORDER: Platform[] = ["youtube", "instagram", "tiktok", "x"];
 const DEFAULT_FORMAT_FILTER: Record<Platform, SocialFormatFilter> = {
@@ -633,8 +637,11 @@ export function SocialOS({
   const [postPagination, setPostPagination] = useState({ key: "", count: POSTS_PAGE_SIZE });
   const [editorialWorkflow, setEditorialWorkflow] = useState<EditorialWorkflowState>(EMPTY_EDITORIAL_WORKFLOW);
   const [editorialWorkflowReady, setEditorialWorkflowReady] = useState(false);
+  const [editorialWorkflowAvailable, setEditorialWorkflowAvailable] = useState(previewMode);
+  const [editorialWorkflowReloadToken, setEditorialWorkflowReloadToken] = useState(0);
   const [editorialWorkflowSyncing, setEditorialWorkflowSyncing] = useState(false);
   const editorialWorkflowMutationRef = useRef(false);
+  const editorialWorkflowRef = useRef<EditorialWorkflowState>(EMPTY_EDITORIAL_WORKFLOW);
   const [ideaStatusFilter, setIdeaStatusFilter] = useState<IdeaStatusFilter>("pending");
   const [activeRecommendation, setActiveRecommendation] = useState<LearnedIdea | null>(null);
   const [activeDetailsPost, setActiveDetailsPost] = useState<SocialPost | null>(null);
@@ -920,6 +927,10 @@ export function SocialOS({
   }, [toast]);
 
   useEffect(() => {
+    editorialWorkflowRef.current = editorialWorkflow;
+  }, [editorialWorkflow]);
+
+  useEffect(() => {
     let cancelled = false;
     const loadEditorialWorkflow = async () => {
       if (previewMode) {
@@ -931,7 +942,10 @@ export function SocialOS({
           // The public preview remains usable when browser storage is blocked.
         }
         if (!cancelled) {
-          setEditorialWorkflow(next);
+          const merged = mergeWorkflowStates(editorialWorkflowRef.current, next);
+          editorialWorkflowRef.current = merged;
+          setEditorialWorkflow(merged);
+          setEditorialWorkflowAvailable(true);
           setEditorialWorkflowReady(true);
         }
         return;
@@ -940,9 +954,17 @@ export function SocialOS({
         const response = await fetch("/api/editorial-workflow", { cache: "no-store" });
         const payload = await response.json() as EditorialWorkflowState & { error?: string };
         if (!response.ok) throw new Error(payload.error || "Le workflow éditorial ne répond pas.");
-        if (!cancelled) setEditorialWorkflow(normalizeWorkflowState(payload));
+        if (!cancelled) {
+          const normalized = normalizeWorkflowState(payload);
+          const merged = mergeWorkflowStates(editorialWorkflowRef.current, normalized);
+          editorialWorkflowRef.current = merged;
+          setEditorialWorkflow(merged);
+          setEditorialWorkflowAvailable(true);
+          setError("");
+        }
       } catch (workflowError) {
         if (!cancelled) {
+          setEditorialWorkflowAvailable(false);
           setError(
             workflowError instanceof Error
               ? workflowError.message
@@ -957,19 +979,31 @@ export function SocialOS({
     return () => {
       cancelled = true;
     };
-  }, [previewMode]);
+  }, [editorialWorkflowReloadToken, previewMode]);
 
   useEffect(() => {
-    if (!previewMode || !editorialWorkflowReady) return;
-    try {
-      window.localStorage.setItem(
-        EDITORIAL_WORKFLOW_STORAGE_KEY,
-        JSON.stringify(editorialWorkflow),
-      );
-    } catch {
-      // Keep the in-memory state when the browser refuses local storage.
-    }
-  }, [editorialWorkflow, editorialWorkflowReady, previewMode]);
+    const handleEditorialWorkflowStorage = (event: StorageEvent) => {
+      if (event.key !== EDITORIAL_WORKFLOW_STORAGE_KEY || !event.newValue) return;
+      try {
+        const incoming = normalizeWorkflowState(JSON.parse(event.newValue));
+        const merged = mergeWorkflowStates(editorialWorkflowRef.current, incoming);
+        editorialWorkflowRef.current = merged;
+        setEditorialWorkflow(merged);
+        setEditorialWorkflowAvailable(true);
+        setEditorialWorkflowReady(true);
+        setError("");
+        if (JSON.stringify(merged) !== JSON.stringify(incoming)) {
+          void mergeAndPersistEditorialWorkflow(merged).catch(() => {
+            // The verified in-memory merge remains fail-closed if persistence fails.
+          });
+        }
+      } catch {
+        // Ignore malformed cross-tab state and keep the last verified workflow.
+      }
+    };
+    window.addEventListener("storage", handleEditorialWorkflowStorage);
+    return () => window.removeEventListener("storage", handleEditorialWorkflowStorage);
+  }, []);
 
   const runScan = async (target?: Platform) => {
       if (previewMode) {
@@ -1181,24 +1215,35 @@ export function SocialOS({
     const now = new Date().toISOString();
     const feedback = feedbackForIdea(idea, decision, now);
     const schedule = decision === "produce"
-      ? editorialWorkflow.schedule.some((item) => item.ideaId === idea.id)
-        ? editorialWorkflow.schedule
-        : [...editorialWorkflow.schedule, scheduleAcceptedIdea(idea, editorialWorkflow.schedule, now)]
+      ? [
+          ...editorialWorkflow.schedule.filter((item) => item.ideaId !== idea.id),
+          scheduleAcceptedIdea(idea, editorialWorkflow.schedule, now),
+        ]
       : editorialWorkflow.schedule.filter((item) => item.ideaId !== idea.id);
     const optimistic = {
       feedback: { ...editorialWorkflow.feedback, [idea.id]: feedback },
       schedule,
     };
+    editorialWorkflowRef.current = optimistic;
     setEditorialWorkflow(optimistic);
     const scheduled = schedule.find((item) => item.ideaId === idea.id);
     setToast(
       decision === "produce" && scheduled
-        ? `✅ Acceptée · planifiée automatiquement le ${formatCardPublishedDate(`${scheduled.scheduledFor}T12:00:00.000Z`)}`
+        ? "✅ Acceptée · ajoutée à Publication comme brouillon à finaliser"
         : decision === "rework"
           ? "🛠️ Marquée à retravailler · préférence mémorisée"
           : "✕ Écartée · préférence mémorisée",
     );
-    if (previewMode) return;
+    if (previewMode) {
+      void mergeAndPersistEditorialWorkflow(optimistic).then((persisted) => {
+        const stable = mergeWorkflowStates(editorialWorkflowRef.current, persisted);
+        editorialWorkflowRef.current = stable;
+        setEditorialWorkflow(stable);
+      }).catch(() => {
+        setToast("Décision conservée pour cette session, mais le stockage local est indisponible.");
+      });
+      return;
+    }
 
     try {
       const response = await fetch("/api/editorial-workflow", {
@@ -1208,9 +1253,39 @@ export function SocialOS({
       });
       const payload = await response.json() as EditorialWorkflowState & { error?: string };
       if (!response.ok) throw new Error(payload.error || "Décision non enregistrée.");
-      setEditorialWorkflow(normalizeWorkflowState(payload));
+      const normalizedPayload = normalizeWorkflowState(payload);
+      const mergedPayload = mergeWorkflowStates(editorialWorkflowRef.current, normalizedPayload);
+      editorialWorkflowRef.current = mergedPayload;
+      setEditorialWorkflow(mergedPayload);
+      setEditorialWorkflowAvailable(true);
+      setError("");
+      void mergeAndPersistEditorialWorkflow(mergedPayload).catch(() => {
+        // The server result remains authoritative when local cross-tab sync is unavailable.
+      });
     } catch (decisionError) {
-      setEditorialWorkflow(previous);
+      const current = editorialWorkflowRef.current;
+      const currentFeedback = current.feedback[idea.id];
+      const optimisticDecisionIsStillCurrent = currentFeedback?.updatedAt === feedback.updatedAt &&
+        currentFeedback.decision === feedback.decision;
+      const rollbackFeedback = { ...current.feedback };
+      if (optimisticDecisionIsStillCurrent) {
+        if (previous.feedback[idea.id]) {
+          rollbackFeedback[idea.id] = previous.feedback[idea.id];
+        } else {
+          delete rollbackFeedback[idea.id];
+        }
+      }
+      const rollback = optimisticDecisionIsStillCurrent
+        ? normalizeWorkflowState({
+            feedback: rollbackFeedback,
+            schedule: [
+              ...current.schedule.filter((item) => item.ideaId !== idea.id),
+              ...previous.schedule.filter((item) => item.ideaId === idea.id),
+            ],
+          })
+        : current;
+      editorialWorkflowRef.current = rollback;
+      setEditorialWorkflow(rollback);
       setToast(
         decisionError instanceof Error ? decisionError.message : "Décision non enregistrée.",
       );
@@ -1220,44 +1295,6 @@ export function SocialOS({
     }
   }, [editorialWorkflow, previewMode]);
 
-  const rescheduleIdea = useCallback(async (ideaId: string, scheduledFor: string) => {
-    if (!previewMode && editorialWorkflowMutationRef.current) {
-      setToast("Une modification du planning est déjà en cours.");
-      return;
-    }
-    const previous = editorialWorkflow;
-    let optimisticSchedule: ScheduledIdea[];
-    try {
-      optimisticSchedule = updateScheduledDate(editorialWorkflow.schedule, ideaId, scheduledFor);
-    } catch (scheduleError) {
-      setToast(scheduleError instanceof Error ? scheduleError.message : "Date invalide.");
-      return;
-    }
-    if (!previewMode) {
-      editorialWorkflowMutationRef.current = true;
-      setEditorialWorkflowSyncing(true);
-    }
-    setEditorialWorkflow({ ...editorialWorkflow, schedule: optimisticSchedule });
-    setToast(`🗓️ Déplacée au ${formatCardPublishedDate(`${scheduledFor}T12:00:00.000Z`)}`);
-    if (previewMode) return;
-
-    try {
-      const response = await fetch("/api/editorial-workflow", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "reschedule", ideaId, scheduledFor }),
-      });
-      const payload = await response.json() as EditorialWorkflowState & { error?: string };
-      if (!response.ok) throw new Error(payload.error || "Planning non enregistré.");
-      setEditorialWorkflow(normalizeWorkflowState(payload));
-    } catch (scheduleError) {
-      setEditorialWorkflow(previous);
-      setToast(scheduleError instanceof Error ? scheduleError.message : "Planning non enregistré.");
-    } finally {
-      editorialWorkflowMutationRef.current = false;
-      setEditorialWorkflowSyncing(false);
-    }
-  }, [editorialWorkflow, previewMode]);
   const activeSources = PLATFORM_ORDER.filter(
     (key) => resolvedPlatformCounts[key] > 0,
   ).length;
@@ -1311,7 +1348,7 @@ export function SocialOS({
                 const isSectionActive = isAnalyticsParent
                   ? view === "overview"
                   : isPostsParent
-                    ? view === "top" || view === "all"
+                    ? view === "top" || view === "all" || view === "publication"
                     : isCommentsParent
                       ? view === "all-comments"
                       : isRecommendationsParent && isRecommendationsView;
@@ -1324,8 +1361,10 @@ export function SocialOS({
                     <button
                       className={isActive ? "active" : isSectionActive ? "section-active" : ""}
                       type="button"
-                      aria-current={isActive ? "page" : undefined}
-                      aria-controls={isExpandable ? NAV_SUBMENU_IDS[item.id] : undefined}
+                      aria-label={item.label}
+                      title={item.label}
+                      aria-current={isActive || (isSectionActive && !isExpanded) ? "page" : undefined}
+                      aria-controls={isExpandableNavView(item.id) ? NAV_SUBMENU_IDS[item.id] : undefined}
                       aria-expanded={isExpandable ? isExpanded : undefined}
                       onClick={() => {
                         if (isExpandableNavView(item.id)) {
@@ -1387,6 +1426,20 @@ export function SocialOS({
                         aria-label="Plateformes de Contenu"
                         hidden={!isExpanded}
                       >
+                        <button
+                          className={view === "publication" ? "active" : ""}
+                          type="button"
+                          aria-current={view === "publication" ? "page" : undefined}
+                          aria-label="Publication"
+                          title="Publication"
+                          onClick={() => {
+                            setView("publication");
+                            setMobileOpen(false);
+                          }}
+                        >
+                          <span className="nav-emoji">🚀</span>
+                          <span className="nav-text">Publication</span>
+                        </button>
                         <button
                           className={view === "all" ? "active" : ""}
                           type="button"
@@ -1714,11 +1767,16 @@ export function SocialOS({
           </div>
         ) : null}
 
-        {workspace && view === "planning" ? (
+        {workspace && view === "publication" ? (
           <RoadmapBoard
             schedule={editorialWorkflow.schedule}
             syncing={editorialWorkflowSyncing}
-            onReschedule={rescheduleIdea}
+            workflowReady={editorialWorkflowReady}
+            workflowAvailable={editorialWorkflowAvailable}
+            onRetryWorkflow={() => {
+              setEditorialWorkflowReady(false);
+              setEditorialWorkflowReloadToken((token) => token + 1);
+            }}
             onOpenRecommendations={() => {
               setIdeaStatusFilter("pending");
               setView("ideas");
@@ -2237,6 +2295,31 @@ type AudienceMetricSeriesPoint = {
   precision: AudienceObservation["precision"] | null;
   sourceUrl: string;
 };
+
+function readStoredEditorialWorkflow(): EditorialWorkflowState {
+  try {
+    const raw = window.localStorage.getItem(EDITORIAL_WORKFLOW_STORAGE_KEY);
+    return raw ? normalizeWorkflowState(JSON.parse(raw)) : EMPTY_EDITORIAL_WORKFLOW;
+  } catch {
+    return EMPTY_EDITORIAL_WORKFLOW;
+  }
+}
+
+async function mergeAndPersistEditorialWorkflow(
+  incoming: EditorialWorkflowState,
+): Promise<EditorialWorkflowState> {
+  const persist = () => {
+    const merged = mergeWorkflowStates(readStoredEditorialWorkflow(), incoming);
+    window.localStorage.setItem(EDITORIAL_WORKFLOW_STORAGE_KEY, JSON.stringify(merged));
+    return merged;
+  };
+  if (!navigator.locks) return persist();
+  return navigator.locks.request(
+    EDITORIAL_WORKFLOW_MUTATION_LOCK,
+    { mode: "exclusive" },
+    async () => persist(),
+  );
+}
 
 function audienceChartPointsAreContinuous(
   previous: AudienceMetricSeriesPoint,
@@ -4630,6 +4713,7 @@ function RecommendationDetailsModal({
 
 type RoadmapScale = "month" | "year";
 type RoadmapDisplayMode = "list" | "calendar";
+type PublicationCalendarItem = ScheduledIdea & LocalPublicationScheduleEntry;
 
 const ROADMAP_WEEKDAYS = ["L", "M", "M", "J", "V", "S", "D"];
 
@@ -4653,12 +4737,16 @@ function roadmapMonthLabel(year: number, month: number) {
 function RoadmapBoard({
   schedule,
   syncing,
-  onReschedule,
+  workflowReady,
+  workflowAvailable,
+  onRetryWorkflow,
   onOpenRecommendations,
 }: {
   schedule: ScheduledIdea[];
   syncing: boolean;
-  onReschedule: (ideaId: string, scheduledFor: string) => void;
+  workflowReady: boolean;
+  workflowAvailable: boolean;
+  onRetryWorkflow: () => void;
   onOpenRecommendations: () => void;
 }) {
   const now = new Date();
@@ -4667,16 +4755,37 @@ function RoadmapBoard({
   const [cursorYear, setCursorYear] = useState(now.getFullYear());
   const [cursorMonth, setCursorMonth] = useState(now.getMonth());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [localScheduledPlans, setLocalScheduledPlans] = useState<LocalPublicationScheduleEntry[]>([]);
+  const [publicationStorageAvailable, setPublicationStorageAvailable] = useState(false);
   const closeSelectedDay = useCallback(() => setSelectedDay(null), []);
-  const sortedSchedule = [...schedule].sort((left, right) =>
-    left.scheduledFor.localeCompare(right.scheduledFor) || left.ideaId.localeCompare(right.ideaId),
+  const handleScheduledPlansChange = useCallback((next: LocalPublicationScheduleEntry[]) => {
+    setLocalScheduledPlans((current) =>
+      JSON.stringify(current) === JSON.stringify(next) ? current : next,
+    );
+  }, []);
+  const localScheduleByIdea = new Map(
+    localScheduledPlans.map((item) => [item.ideaId, item] as const),
   );
+  const sortedSchedule: PublicationCalendarItem[] = schedule
+    .filter((item) => item.status === "planned" && localScheduleByIdea.has(item.ideaId))
+    .map((item) => {
+      const localPlan = localScheduleByIdea.get(item.ideaId)!;
+      return {
+        ...item,
+        ...localPlan,
+        hook: localPlan.caption,
+        scheduledFor: localPlan.publishAtLocal.slice(0, 10),
+      };
+    })
+    .sort((left, right) =>
+      left.publishAtLocal.localeCompare(right.publishAtLocal) || left.ideaId.localeCompare(right.ideaId),
+    );
   const filteredSchedule = sortedSchedule.filter((item) => {
     const yearMatches = Number(item.scheduledFor.slice(0, 4)) === cursorYear;
     if (!yearMatches) return false;
     return scale === "year" || Number(item.scheduledFor.slice(5, 7)) - 1 === cursorMonth;
   });
-  const scheduleByDate = new Map<string, ScheduledIdea[]>();
+  const scheduleByDate = new Map<string, PublicationCalendarItem[]>();
   for (const item of filteredSchedule) {
     const existing = scheduleByDate.get(item.scheduledFor) ?? [];
     existing.push(item);
@@ -4702,74 +4811,83 @@ function RoadmapBoard({
   return (
     <div className="roadmap-view">
       <header className="roadmap-heading">
-        <h2>Roadmap</h2>
+        <div>
+          <h2>Publication</h2>
+          <p>Prépare, valide et planifie les contenus destinés aux comptes officiels.</p>
+        </div>
         {syncing ? <span className="workflow-syncing">Synchronisation…</span> : null}
       </header>
 
-      <div className="roadmap-controls">
-        <div className="roadmap-scale-toggle" aria-label="Période de la roadmap">
-          <button className={scale === "month" ? "active" : ""} type="button" onClick={() => setScale("month")}>Mois</button>
-          <button className={scale === "year" ? "active" : ""} type="button" onClick={() => setScale("year")}>Année</button>
-        </div>
-        <div className="roadmap-period-navigation">
-          <button type="button" aria-label="Période précédente" onClick={() => movePeriod(-1)}>‹</button>
-          <strong>{periodLabel}</strong>
-          <button type="button" aria-label="Période suivante" onClick={() => movePeriod(1)}>›</button>
-        </div>
-        <div className="roadmap-display-toggle" aria-label="Affichage de la roadmap">
-          <button className={displayMode === "list" ? "active" : ""} type="button" aria-label="Liste" onClick={() => setDisplayMode("list")}>☰</button>
-          <button className={displayMode === "calendar" ? "active" : ""} type="button" aria-label="Calendrier" onClick={() => setDisplayMode("calendar")}>▣</button>
-        </div>
-      </div>
+      <PublicationComposer
+        schedule={schedule}
+        syncing={syncing}
+        workflowReady={workflowReady}
+        workflowAvailable={workflowAvailable}
+        onScheduledPlansChange={handleScheduledPlansChange}
+        onStorageAvailabilityChange={setPublicationStorageAvailable}
+        onRetryWorkflow={onRetryWorkflow}
+        onOpenRecommendations={onOpenRecommendations}
+      />
 
-      {displayMode === "list" ? (
-        <RoadmapList
-          items={filteredSchedule}
-          syncing={syncing}
-          onReschedule={onReschedule}
-          onOpenRecommendations={onOpenRecommendations}
-        />
-      ) : (
-        <div className="roadmap-calendar-shell platform-neutral">
-          {scale === "year" ? (
-            <div className="roadmap-year-grid">
-              {Array.from({ length: 12 }, (_, month) => (
-                <RoadmapMiniMonth
+      {workflowReady && workflowAvailable && publicationStorageAvailable ? (
+        <>
+          <div className="roadmap-controls">
+            <div className="roadmap-scale-toggle" aria-label="Période des publications">
+              <button className={scale === "month" ? "active" : ""} type="button" aria-pressed={scale === "month"} onClick={() => setScale("month")}>Mois</button>
+              <button className={scale === "year" ? "active" : ""} type="button" aria-pressed={scale === "year"} onClick={() => setScale("year")}>Année</button>
+            </div>
+            <div className="roadmap-period-navigation">
+              <button type="button" aria-label="Période précédente" onClick={() => movePeriod(-1)}>‹</button>
+              <strong>{periodLabel}</strong>
+              <button type="button" aria-label="Période suivante" onClick={() => movePeriod(1)}>›</button>
+            </div>
+            <div className="roadmap-display-toggle" aria-label="Affichage des publications">
+              <button className={displayMode === "list" ? "active" : ""} type="button" aria-label="Liste" aria-pressed={displayMode === "list"} onClick={() => setDisplayMode("list")}>☰</button>
+              <button className={displayMode === "calendar" ? "active" : ""} type="button" aria-label="Calendrier" aria-pressed={displayMode === "calendar"} onClick={() => setDisplayMode("calendar")}>▣</button>
+            </div>
+          </div>
+
+          {displayMode === "list" ? (
+            <RoadmapList
+              items={filteredSchedule}
+              onOpenRecommendations={onOpenRecommendations}
+            />
+          ) : (
+            <div className="roadmap-calendar-shell platform-neutral">
+              {scale === "year" ? (
+                <div className="roadmap-year-grid">
+                  {Array.from({ length: 12 }, (_, month) => (
+                    <RoadmapMiniMonth
+                      year={cursorYear}
+                      month={month}
+                      scheduleByDate={scheduleByDate}
+                      onSelectDay={setSelectedDay}
+                      key={`${cursorYear}-${month}`}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <RoadmapMonth
                   year={cursorYear}
-                  month={month}
+                  month={cursorMonth}
                   scheduleByDate={scheduleByDate}
                   onSelectDay={setSelectedDay}
-                  key={`${cursorYear}-${month}`}
                 />
-              ))}
+              )}
             </div>
-          ) : (
-            <RoadmapMonth
-              year={cursorYear}
-              month={cursorMonth}
-              scheduleByDate={scheduleByDate}
-              onSelectDay={setSelectedDay}
-            />
           )}
-        </div>
-      )}
 
-      {!schedule.length ? (
-        <button className="roadmap-empty-cta" type="button" onClick={onOpenRecommendations}>
-          💡 Valider une recommandation pour remplir la roadmap
-        </button>
+          {!sortedSchedule.length ? (
+            <p className="roadmap-empty-cta">💡 Valide le contenu puis ajoute-le au planning local</p>
+          ) : null}
+
+          <RoadmapDayModal
+            date={selectedDay}
+            items={selectedItems}
+            onClose={closeSelectedDay}
+          />
+        </>
       ) : null}
-
-      <RoadmapDayModal
-        date={selectedDay}
-        items={selectedItems}
-        syncing={syncing}
-        onReschedule={(ideaId, scheduledFor) => {
-          onReschedule(ideaId, scheduledFor);
-          closeSelectedDay();
-        }}
-        onClose={closeSelectedDay}
-      />
     </div>
   );
 }
@@ -4782,7 +4900,7 @@ function RoadmapMiniMonth({
 }: {
   year: number;
   month: number;
-  scheduleByDate: Map<string, ScheduledIdea[]>;
+  scheduleByDate: Map<string, PublicationCalendarItem[]>;
   onSelectDay: (date: string) => void;
 }) {
   return (
@@ -4825,7 +4943,7 @@ function RoadmapMonth({
 }: {
   year: number;
   month: number;
-  scheduleByDate: Map<string, ScheduledIdea[]>;
+  scheduleByDate: Map<string, PublicationCalendarItem[]>;
   onSelectDay: (date: string) => void;
 }) {
   return (
@@ -4865,13 +4983,9 @@ function RoadmapMonth({
 
 function RoadmapList({
   items,
-  syncing,
-  onReschedule,
   onOpenRecommendations,
 }: {
-  items: ScheduledIdea[];
-  syncing: boolean;
-  onReschedule: (ideaId: string, scheduledFor: string) => void;
+  items: PublicationCalendarItem[];
   onOpenRecommendations: () => void;
 }) {
   if (!items.length) {
@@ -4889,25 +5003,20 @@ function RoadmapList({
     <div className="roadmap-list">
       {items.map((item) => (
         <article className="roadmap-list-card" key={item.id}>
-          <time dateTime={item.scheduledFor}>
+          <time dateTime={item.publishAtLocal}>
             <b>{item.scheduledFor.slice(8, 10)}</b>
             <span>{new Intl.DateTimeFormat("fr-FR", { month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${item.scheduledFor}T12:00:00.000Z`))}</span>
           </time>
-          <span className="roadmap-list-platform" aria-hidden="true">✦</span>
+          <div className="roadmap-list-platforms" aria-label={item.platforms.map((platform) => PLATFORM_META[platform].label).join(", ")}>
+            {item.platforms.map((platform) => (
+              <img src={`platforms/${platform}.svg`} width="22" height="22" alt="" key={platform} />
+            ))}
+          </div>
           <div>
-            <small>Publication commune</small>
+            <small>{item.publishAtLocal.slice(11, 16)} · {item.platforms.map((platform) => PLATFORM_META[platform].label).join(" · ")}</small>
             <h3>{recommendationDisplayTitle(item.title)}</h3>
             <p>« {item.hook} »</p>
           </div>
-          <label>
-            Modifier la date
-            <input
-              type="date"
-              disabled={syncing}
-              value={item.scheduledFor}
-              onChange={(event) => onReschedule(item.ideaId, event.target.value)}
-            />
-          </label>
         </article>
       ))}
     </div>
@@ -4917,14 +5026,10 @@ function RoadmapList({
 function RoadmapDayModal({
   date,
   items,
-  syncing,
-  onReschedule,
   onClose,
 }: {
   date: string | null;
-  items: ScheduledIdea[];
-  syncing: boolean;
-  onReschedule: (ideaId: string, scheduledFor: string) => void;
+  items: PublicationCalendarItem[];
   onClose: () => void;
 }) {
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -4944,7 +5049,7 @@ function RoadmapDayModal({
       }
       if (event.key !== "Tab") return;
       const focusable = Array.from(
-        modalRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled])') ?? [],
+        modalRef.current?.querySelectorAll<HTMLElement>('button:not([disabled])') ?? [],
       ).filter((element) => element.offsetParent !== null);
       if (!focusable.length) return;
       const first = focusable[0];
@@ -4982,21 +5087,16 @@ function RoadmapDayModal({
         <div className="roadmap-day-modal-list">
           {items.map((item) => (
             <article key={item.id}>
-              <span>✦</span>
+              <div className="roadmap-list-platforms" aria-label={item.platforms.map((platform) => PLATFORM_META[platform].label).join(", ")}>
+                {item.platforms.map((platform) => (
+                  <img src={`platforms/${platform}.svg`} width="22" height="22" alt="" key={platform} />
+                ))}
+              </div>
               <div>
-                <small>Publication commune</small>
+                <small>{item.publishAtLocal.slice(11, 16)} · {item.platforms.map((platform) => PLATFORM_META[platform].label).join(" · ")}</small>
                 <h3>{recommendationDisplayTitle(item.title)}</h3>
                 <p>« {item.hook} »</p>
               </div>
-              <label>
-                Modifier la date
-                <input
-                  type="date"
-                  disabled={syncing}
-                  value={item.scheduledFor}
-                  onChange={(event) => onReschedule(item.ideaId, event.target.value)}
-                />
-              </label>
             </article>
           ))}
         </div>
