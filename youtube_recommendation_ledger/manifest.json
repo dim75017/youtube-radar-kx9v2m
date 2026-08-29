@@ -1,16 +1,16 @@
 {
   "schema": 1,
   "generatorVersion": 4,
-  "updatedAt": 1787987212891,
+  "updatedAt": 1788041123571,
   "sourceT": 1787977468296,
-  "count": 4568,
+  "count": 4668,
   "shards": [
     {
       "path": "shards/2026-08.jsonl",
-      "count": 4568,
-      "bytes": 10053671,
-      "sha256": "ca99675eaffc13ecdc1079acd36b7b0c62ec603f46825617bd2644505d156d9e"
+      "count": 4668,
+      "bytes": 10360075,
+      "sha256": "a6429ee326bd47fcc2ecd966c2903088918ff0fa9bafb28c82761408a92bf783"
     }
   ],
-  "revision": "5e371f1ef88fdf8516871575b0788a027b23711d8ea65b6e61d673b0a886aa4b"
+  "revision": "f67a23c531f75a214636a71ce0a6de35c279da85b3e4f067cc7bc077bc8116c9"
 }
