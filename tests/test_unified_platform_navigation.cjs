@@ -133,14 +133,19 @@ test("Social inventory and migrated Instagram frames keep their baselines", () =
   const audio = JSON.parse(read("social-app/data/audio-trends/feed.json"));
   const comments = JSON.parse(read("social-app/data/comment-opportunities/feed.json"));
   const playlistPromos = JSON.parse(read("social-app/data/playlist-promos/feed.json"));
+  const playlistPromoSeeds = JSON.parse(read("social-app/data/playlist-promos/seeds.json"));
   const history = JSON.parse(read("social-app/data/public-history.json"));
   const instagramDir = path.join(root, "social-app/public/media/instagram");
 
   assert.ok(video.trends.length >= 50);
   assert.ok(audio.trends.length >= 50);
   assert.ok(comments.opportunities.length >= 20);
-  assert.equal(playlistPromos.items.length, 9);
+  assert.equal(
+    playlistPromos.items.length + playlistPromos.candidates.length,
+    playlistPromoSeeds.seeds.filter((seed) => seed.enabled).length,
+  );
   assert.ok(playlistPromos.items.every((item) => item.observations.at(-1).likes >= 10000));
+  assert.ok(playlistPromos.candidates.every((item) => item.observations.at(-1).likes < 10000));
   const migrated = history.posts.filter((post) =>
     String(post.thumbnailUrl ?? "").includes(
       "/youtube-radar-kx9v2m/social/media/instagram/",
