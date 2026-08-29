@@ -13,6 +13,7 @@ test("publishes every collected YouTube comment metric without losing history", 
   const metricsPath = resolve(directory, "metrics.json");
   const historyPath = resolve(directory, "history.json");
   const summaryPath = resolve(directory, "summary.json");
+  const statusPath = resolve(directory, "status.json");
   await writeFile(metricsPath, JSON.stringify({
     results: {
       commentA: {
@@ -59,6 +60,20 @@ test("publishes every collected YouTube comment metric without losing history", 
     ],
   }));
   await writeFile(summaryPath, JSON.stringify({ generatedAt: "2026-08-28T00:00:00.000Z" }));
+  await writeFile(statusPath, JSON.stringify({
+    generatedAt: "2026-08-28T00:00:00.000Z",
+    platforms: {
+      youtube: {
+        status: "partial",
+        attemptedAt: "2026-08-28T00:00:00.000Z",
+        lastRealObservationAt: "2026-08-28T00:00:00.000Z",
+        inventoryStatus: "stale",
+        endReached: null,
+        metricCoverage: { observed: 0, published: 0, total: 2 },
+        error: "L’inventaire propriétaire complet reste à rescanner.",
+      },
+    },
+  }));
 
   const result = spawnSync(process.execPath, [SCRIPT], {
     cwd: ROOT,
@@ -68,6 +83,7 @@ test("publishes every collected YouTube comment metric without losing history", 
       YOUTUBE_COMMENT_METRICS_PATH: metricsPath,
       PUBLIC_HISTORY_PATH: historyPath,
       PUBLIC_HISTORY_SUMMARY_PATH: summaryPath,
+      OWNER_COMMENT_REFRESH_STATUS_PATH: statusPath,
     },
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);
@@ -82,8 +98,21 @@ test("publishes every collected YouTube comment metric without losing history", 
   assert.equal(stale.raw.metricHistory.length, 2);
   assert.equal(video.likes, 99);
   assert.equal(history.generatedAt, "2026-08-29T08:00:00.000Z");
+  const status = JSON.parse(await readFile(statusPath, "utf8"));
+  assert.deepEqual(status.platforms.youtube.metricCoverage, {
+    observed: 2,
+    published: 2,
+    total: 2,
+  });
+  assert.equal(status.platforms.youtube.attemptedAt, "2026-08-29T08:00:00.000Z");
+  assert.equal(status.platforms.youtube.lastRealObservationAt, "2026-08-29T08:00:00.000Z");
+  assert.equal(status.platforms.youtube.status, "partial");
+  assert.equal(status.platforms.youtube.inventoryStatus, "stale");
+  assert.equal(status.platforms.youtube.endReached, null);
+  assert.equal(status.platforms.youtube.error, "L’inventaire propriétaire complet reste à rescanner.");
 
   const serialized = await readFile(historyPath, "utf8");
+  const serializedStatus = await readFile(statusPath, "utf8");
   const repeated = spawnSync(process.execPath, [SCRIPT], {
     cwd: ROOT,
     encoding: "utf8",
@@ -92,10 +121,12 @@ test("publishes every collected YouTube comment metric without losing history", 
       YOUTUBE_COMMENT_METRICS_PATH: metricsPath,
       PUBLIC_HISTORY_PATH: historyPath,
       PUBLIC_HISTORY_SUMMARY_PATH: summaryPath,
+      OWNER_COMMENT_REFRESH_STATUS_PATH: statusPath,
     },
   });
   assert.equal(repeated.status, 0, repeated.stderr || repeated.stdout);
   assert.equal(await readFile(historyPath, "utf8"), serialized);
+  assert.equal(await readFile(statusPath, "utf8"), serializedStatus);
 });
 
 test("keeps the checked-in metrics and public comment cards in parity", async () => {
@@ -135,7 +166,7 @@ test("runs the metric sync in CI and never converts an unavailable label to zero
   assert.match(workflow, /node scripts\/sync_youtube_comment_metrics\.mjs/);
   assert.match(
     workflow,
-    /git add data\/youtube-comment-metrics\.json data\/public-history\.json data\/public-history-summary\.json/,
+    /git add data\/youtube-comment-metrics\.json data\/public-history\.json data\/public-history-summary\.json data\/owner-comment-refresh-status\.json/,
   );
   assert.match(collector, /YOUTUBE_COMMENT_REFRESH_AFTER_MS/);
   assert.doesNotMatch(collector, /parseCount\([^\n]+\) \?\? 0/);

@@ -11,16 +11,34 @@ const HISTORY_PATH = resolve(
 const SUMMARY_PATH = resolve(
   process.env.PUBLIC_HISTORY_SUMMARY_PATH ?? resolve(ROOT, "data", "public-history-summary.json"),
 );
+const STATUS_PATH = resolve(
+  process.env.OWNER_COMMENT_REFRESH_STATUS_PATH ?? resolve(ROOT, "data", "owner-comment-refresh-status.json"),
+);
 
-const [metrics, snapshot, summary] = await Promise.all([
+const [metrics, snapshot, summary, status] = await Promise.all([
   readJson(METRICS_PATH),
   readJson(HISTORY_PATH),
   readJson(SUMMARY_PATH),
+  readJson(STATUS_PATH),
 ]);
 
 if (!isRecord(metrics.results) || !Array.isArray(snapshot.posts)) {
   throw new Error("Les métriques ou l’historique public YouTube sont invalides.");
 }
+if (!isRecord(status.platforms) || !isRecord(status.platforms.youtube)) {
+  throw new Error("Le statut de rafraîchissement des commentaires YouTube est invalide.");
+}
+
+const observedMetricEntries = Object.entries(metrics.results).filter(([, metric]) => {
+  if (!isRecord(metric) || !validIso(metric.capturedAt)) return false;
+  return nonnegativeInteger(metric.likes) != null || nonnegativeInteger(metric.replies) != null;
+});
+const latestMetricObservationAt = latestIso(
+  ...observedMetricEntries.map(([, metric]) => metric.capturedAt),
+);
+const total = snapshot.posts.filter(
+  (post) => post?.platform === "youtube" && post?.format === "comment",
+).length;
 
 let matched = 0;
 let updated = 0;
@@ -92,10 +110,27 @@ if (newestObservationAt) {
   snapshot.generatedAt = latestIso(snapshot.generatedAt, newestObservationAt) ?? newestObservationAt;
   summary.generatedAt = latestIso(summary.generatedAt, newestObservationAt) ?? newestObservationAt;
 }
+if (latestMetricObservationAt) {
+  const youtubeStatus = status.platforms.youtube;
+  status.generatedAt = latestIso(status.generatedAt, latestMetricObservationAt) ?? latestMetricObservationAt;
+  status.platforms.youtube = {
+    ...youtubeStatus,
+    attemptedAt: latestIso(youtubeStatus.attemptedAt, latestMetricObservationAt)
+      ?? latestMetricObservationAt,
+    lastRealObservationAt: latestIso(youtubeStatus.lastRealObservationAt, latestMetricObservationAt)
+      ?? latestMetricObservationAt,
+    metricCoverage: {
+      observed: observedMetricEntries.length,
+      published: matched,
+      total,
+    },
+  };
+}
 
 await Promise.all([
   writeJson(HISTORY_PATH, snapshot),
   writeJson(SUMMARY_PATH, summary),
+  writeJson(STATUS_PATH, status),
 ]);
 
 process.stdout.write(`${JSON.stringify({
@@ -104,6 +139,7 @@ process.stdout.write(`${JSON.stringify({
   updated,
   observationsAdded,
   newestObservationAt,
+  metricCoverage: status.platforms.youtube.metricCoverage,
 }, null, 2)}\n`);
 
 function commentId(value) {

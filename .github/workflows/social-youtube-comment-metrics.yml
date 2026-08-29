@@ -35,7 +35,7 @@ jobs:
         run: |
           git config user.name "lofi-social-radar-bot"
           git config user.email "lofi-social-radar-bot@users.noreply.github.com"
-          git add data/youtube-comment-metrics.json data/public-history.json data/public-history-summary.json
+          git add data/youtube-comment-metrics.json data/public-history.json data/public-history-summary.json data/owner-comment-refresh-status.json
           git diff --cached --quiet || git commit -m "Update YouTube comment metrics"
           git pull --rebase origin main
           git push origin HEAD:main
