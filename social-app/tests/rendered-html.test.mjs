@@ -63,6 +63,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     viteConfig,
     schema,
     component,
+    filterDropdown,
     formats,
     durations,
     scanner,
@@ -98,6 +99,7 @@ test("keeps real social collection, post formats and persistence explicit", asyn
     readFile(new URL("../vite.config.ts", import.meta.url), "utf8"),
     readFile(new URL("../db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/SocialOS.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/FilterDropdown.tsx", import.meta.url), "utf8"),
     readFile(new URL("../lib/social-formats.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/social-duration.ts", import.meta.url), "utf8"),
     readFile(new URL("../lib/social-scanner.ts", import.meta.url), "utf8"),
@@ -185,9 +187,9 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(audienceDashboard, /calculatePlatformEngagementWindow\([\s\S]*?periodDays/);
   assert.doesNotMatch(audienceDashboard, /clientNow|setClientNow|refreshClock/);
   assert.doesNotMatch(audienceDashboard, /Collecte planifiée/);
-  assert.match(audienceDashboard, /audience-period-control/);
-  assert.match(audienceDashboard, /audience-period-tabs/);
-  assert.match(audienceDashboard, /aria-label="P.riode d.Analytics"/);
+  assert.match(audienceDashboard, /audience-period-dropdown/);
+  assert.match(audienceDashboard, /id="analytics-period-filter"/);
+  assert.match(audienceDashboard, /label="P.riode"/);
   assert.match(audienceDashboard, /audienceGrowthFromObservedPoints\(observedFollowerPoints\)/);
   assert.match(
     audienceDashboard,
@@ -566,15 +568,15 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(topRankingView, /id="top-format-filter"[\s\S]*?label="Catégorie"/);
   assert.doesNotMatch(topRankingView, /Catégories \$\{PLATFORM_META\[topPlatform\]\.label\}/);
   assert.doesNotMatch(topRankingView, /top-duration-tabs|top-sort-tabs|top-format-tabs/);
-  assert.match(component, /aria-haspopup="listbox"/);
-  assert.match(component, /aria-expanded=\{open\}/);
-  assert.match(component, /role="listbox"/);
-  assert.match(component, /role="option"/);
-  assert.match(component, /document\.addEventListener\("pointerdown"/);
-  assert.match(component, /event\.key !== "ArrowDown" && event\.key !== "ArrowUp"/);
-  assert.match(component, /event\.key === "Home"[\s\S]*?event\.key === "End"/);
-  assert.match(component, /\{selected\.emoji\}/);
-  assert.match(component, /\{option\.emoji\}/);
+  assert.match(filterDropdown, /aria-haspopup="listbox"/);
+  assert.match(filterDropdown, /aria-expanded=\{open\}/);
+  assert.match(filterDropdown, /role="listbox"/);
+  assert.match(filterDropdown, /role="option"/);
+  assert.match(filterDropdown, /document\.addEventListener\("pointerdown"/);
+  assert.match(filterDropdown, /event\.key !== "ArrowDown" && event\.key !== "ArrowUp"/);
+  assert.match(filterDropdown, /event\.key === "Home"[\s\S]*?event\.key === "End"/);
+  assert.match(filterDropdown, /\{selected\.emoji\}/);
+  assert.match(filterDropdown, /\{option\.emoji\}/);
   assert.match(durations, /📅[\s\S]*?🗓️[\s\S]*?🌗[\s\S]*?📆[\s\S]*?♾️/);
   assert.match(component, /🏆[\s\S]*?Plus populaire[\s\S]*?🗓️[\s\S]*?Plus récent/);
   assert.match(formats, /label: "Shorts", emoji: "🎬"/);
@@ -665,9 +667,8 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(styles, /\.post-visual\s*\{[\s\S]*?aspect-ratio:\s*1\s*\/\s*1/);
   assert.match(styles, /\.inline-video-frame/);
   assert.match(styles, /\.post-details-modal/);
-  assert.match(styles, /\.audience-period-control\s*\{/);
-  assert.match(styles, /\.audience-period-control-chart\s*\{/);
-  assert.match(styles, /\.audience-period-tabs\s*\{/);
+  assert.match(styles, /\.audience-period-dropdown\s*\{/);
+  assert.doesNotMatch(styles, /\.audience-period-tabs\s*\{/);
   assert.doesNotMatch(styles, /\.audience-explorer-profile/);
   assert.doesNotMatch(styles, /\.audience-explorer-platform-tabs/);
   assert.match(styles, /\.audience-explorer-chart-controls\s*\{/);

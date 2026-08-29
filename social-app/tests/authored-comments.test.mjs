@@ -166,20 +166,29 @@ test("classifies Community, owned and external comment conversations", () => {
 });
 
 test("keeps internal target confidence labels out of comment cards", async () => {
-  const component = await readFile(
-    new URL("../app/AuthoredCommentsView.tsx", import.meta.url),
-    "utf8",
-  );
+  const [component, styles] = await Promise.all([
+    readFile(new URL("../app/AuthoredCommentsView.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
 
   assert.doesNotMatch(component, /Cible vérifiée|Cible dérivée/);
   assert.match(component, /platform: PlatformFilter/);
   assert.doesNotMatch(component, /authored-comment-platform-tabs|onPlatformChange|internalPlatform/);
-  assert.match(component, /<span>Catégorie<\/span>/);
+  assert.match(component, /useState<CommentCategoryFilter>\("external"\)/);
+  assert.match(component, /\["external", "owned", "community"\] as const/);
+  assert.equal((component.match(/<FilterDropdown/g) ?? []).length, 3);
+  assert.match(component, /category-results-header category-results-toolbar/);
+  assert.match(component, /category-results-adjacent-filters/);
+  assert.match(component, /category-results-sort-filter/);
+  assert.match(component, /label="Catégorie"/);
   assert.match(component, /Posts Communauté/);
   assert.match(component, /Nos vidéos/);
   assert.match(component, /Vidéos externes/);
-  assert.match(component, /<span>Date de publication<\/span>/);
+  assert.match(component, /label="Date de publication"/);
+  assert.match(component, /label="Trier"/);
   assert.doesNotMatch(component, /<span>Durée<\/span>/);
+  assert.doesNotMatch(component, /<select|authored-comments-controls|authored-comment-filter-row/);
+  assert.doesNotMatch(styles, /\.authored-comments-controls|\.authored-comment-filter-row/);
   assert.doesNotMatch(component, /Voir la conversation/);
   assert.doesNotMatch(component, /Compte commenté/);
   assert.match(component, /<small>Likes<\/small>/);

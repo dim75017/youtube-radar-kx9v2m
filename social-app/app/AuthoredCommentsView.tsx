@@ -18,6 +18,10 @@ import {
   matchesSocialDuration,
 } from "../lib/social-duration";
 import { parseTikTokThumbnailUrl } from "../lib/social-media";
+import {
+  FilterDropdown,
+  type FilterDropdownOption,
+} from "./FilterDropdown";
 
 type CommentPost = AuthoredCommentLike & {
   id: string;
@@ -61,6 +65,11 @@ const COMMENT_CATEGORY_META: Record<
   owned: { emoji: "🏠", label: "Nos contenus" },
   external: { emoji: "🌍", label: "Autres créateurs" },
 };
+
+const COMMENT_SORT_OPTIONS: readonly FilterDropdownOption<CommentSort>[] = [
+  { key: "recent", emoji: "🗓️", label: "Plus récent" },
+  { key: "popular", emoji: "🏆", label: "Plus populaire" },
+];
 
 function formatCompact(value: number): string {
   return new Intl.NumberFormat("fr-FR", {
@@ -270,7 +279,7 @@ export function AuthoredCommentsView({
 }) {
   const [duration, setDuration] = useState<SocialDurationFilter>("all");
   const [sort, setSort] = useState<CommentSort>("recent");
-  const [category, setCategory] = useState<CommentCategoryFilter>("all");
+  const [category, setCategory] = useState<CommentCategoryFilter>("external");
   const [pagination, setPagination] = useState({ key: "", count: PAGE_SIZE });
   const activePlatformLabel = platform === "all"
     ? "Commentaires"
@@ -299,13 +308,7 @@ export function AuthoredCommentsView({
   }, [datedComments]);
   const categoryOptions = useMemo(
     () => ([
-      {
-        key: "all" as const,
-        ...COMMENT_CATEGORY_META.all,
-        label: categoryLabel("all", platform),
-        count: datedComments.length,
-      },
-      ...(["community", "owned", "external"] as const)
+      ...(["external", "owned", "community"] as const)
         .filter((key) => categoryCounts[key] > 0)
         .map((key) => ({
           key,
@@ -313,6 +316,12 @@ export function AuthoredCommentsView({
           label: categoryLabel(key, platform),
           count: categoryCounts[key],
         })),
+      {
+        key: "all" as const,
+        ...COMMENT_CATEGORY_META.all,
+        label: categoryLabel("all", platform),
+        count: datedComments.length,
+      },
     ]),
     [categoryCounts, datedComments.length, platform],
   );
@@ -342,49 +351,36 @@ export function AuthoredCommentsView({
 
   return (
     <div className="view-stack authored-comments-view">
-      <section className="top-ranking-controls tone-all authored-comments-controls" aria-label="Contrôles des commentaires">
-        <div className="all-posts-heading">
-          <span className="section-kicker">Commentaires publiés par Lofi Girl</span>
-          <h2>💬 {activePlatformLabel}</h2>
-        </div>
-
-        <div className="authored-comment-filter-row">
-          <label>
-            <span>Catégorie</span>
-            <select value={activeCategory} onChange={(event) => setCategory(event.target.value as CommentCategoryFilter)}>
-              {categoryOptions.map((option) => (
-                <option value={option.key} key={option.key}>
-                  {option.emoji} {option.label} · {formatCompact(option.count)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>Date de publication</span>
-            <select value={duration} onChange={(event) => setDuration(event.target.value as SocialDurationFilter)}>
-              {SOCIAL_DURATION_FILTERS.map((option) => (
-                <option value={option.key} key={option.key}>{option.emoji} {option.label}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>Trier</span>
-            <select value={sort} onChange={(event) => setSort(event.target.value as CommentSort)}>
-              <option value="recent">🗓️ Plus récent</option>
-              <option value="popular">🏆 Plus populaire</option>
-            </select>
-          </label>
-        </div>
-
-      </section>
-
-      <section className="category-results tone-all" aria-labelledby="all-comments-title">
-        <header className="category-results-header">
-          <div>
-            <span className="section-kicker">Historique propriétaire</span>
-            <h2 id="all-comments-title">💬 Conversations engagées</h2>
+      <section
+        className={`category-results tone-${platform === "all" ? "all" : PLATFORM_META[platform].tone}`}
+        aria-label={activePlatformLabel}
+      >
+        <header className="category-results-header category-results-toolbar">
+          <div className="category-results-adjacent-filters">
+            <FilterDropdown
+              id={`comment-category-filter-${platform}`}
+              label="Catégorie"
+              value={activeCategory}
+              options={categoryOptions}
+              onChange={setCategory}
+            />
+            <FilterDropdown
+              id={`comment-duration-filter-${platform}`}
+              label="Date de publication"
+              value={duration}
+              options={SOCIAL_DURATION_FILTERS}
+              onChange={setDuration}
+            />
           </div>
-          <span>{formatCompact(filteredComments.length)} commentaires</span>
+          <div className="category-results-sort-filter">
+            <FilterDropdown
+              id={`comment-sort-filter-${platform}`}
+              label="Trier"
+              value={sort}
+              options={COMMENT_SORT_OPTIONS}
+              onChange={setSort}
+            />
+          </div>
         </header>
 
         {filteredComments.length ? (

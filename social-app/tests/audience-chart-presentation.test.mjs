@@ -48,8 +48,8 @@ test("keeps follower values integral and fits the chart inside the remaining vie
   assert.match(chartText, /font-size:\s*9px/);
   assert.match(styles, /\.audience-native-chart-tooltip-date\s*\{[\s\S]*?font-size:\s*8px/);
   assert.match(styles, /\.audience-native-chart-tooltip-value\s*\{[\s\S]*?font-size:\s*11px/);
-  assert.match(styles, /\.audience-period-control-chart \.audience-period-tabs button\s*\{[\s\S]*?min-width:\s*74px[\s\S]*?font-size:\s*11px/);
-  assert.match(styles, /\.audience-explorer-chart-controls\s*\{[\s\S]*?align-items:\s*center[\s\S]*?justify-content:\s*space-between/);
+  assert.match(styles, /\.audience-period-dropdown\s*\{[\s\S]*?width:\s*min\(100%, 190px\)[\s\S]*?flex:\s*0 0 190px[\s\S]*?margin-left:\s*auto/);
+  assert.match(styles, /\.audience-explorer-chart-controls\s*\{[\s\S]*?align-items:\s*flex-end[\s\S]*?justify-content:\s*space-between/);
   assert.match(styles, /\.audience-dashboard-toolbar\s*\{[\s\S]*?margin-bottom:\s*12px/);
   assert.match(styles, /\.audience-explorer-summary\s*\{[\s\S]*?grid-template-columns:\s*repeat\(6, minmax\(82px, 1fr\)\)/);
   assert.match(styles, /\.audience-explorer\s*\{[\s\S]*?margin-top:\s*0/);
@@ -109,9 +109,9 @@ test("syncs the sidebar platform selector with the active account summary and fo
   assert.match(component, /x:\s*"followersNet"/);
   assert.doesNotMatch(component, /Plateforme du graphique|audience-explorer-platform-tabs|onSelectPlatform/);
   assert.match(explorer, /availableMetricWindows\.find\(\(window\) => window\.metric === requestedMetric\)/);
-  assert.match(explorer, /className="audience-period-control audience-period-control-chart"/);
-  assert.match(explorer, /onClick=\{\(\) => onSelectPeriod\(option\.key\)\}/);
-  assert.match(explorer, /className="audience-explorer-chart-controls"[\s\S]*?className="audience-explorer-metrics"[\s\S]*?className="audience-period-control audience-period-control-chart"/);
+  assert.match(explorer, /className="audience-period-dropdown"/);
+  assert.match(explorer, /id="analytics-period-filter"[\s\S]*?label="Période"[\s\S]*?onChange=\{onSelectPeriod\}/);
+  assert.match(explorer, /className="audience-explorer-chart-controls"[\s\S]*?className="audience-explorer-metrics"[\s\S]*?className="audience-period-dropdown"/);
   assert.doesNotMatch(explorer, /audience-native-chart-heading|Évolution quotidienne|Valeur disponible/);
   assert.match(explorer, /className="audience-explorer-summary"/);
   assert.doesNotMatch(explorer, /className="audience-explorer-profile"/);

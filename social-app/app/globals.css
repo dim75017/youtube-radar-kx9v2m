@@ -36,55 +36,6 @@
   --fs-page-title: 26px;
 }
 
-/* Published comment history */
-.authored-comments-controls {
-  position: sticky;
-  z-index: 24;
-  top: 103px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px 18px;
-}
-
-.authored-comments-controls .all-posts-heading {
-  margin: 0;
-  padding: 2px;
-}
-
-.authored-comment-filter-row {
-  display: flex;
-  align-items: end;
-  justify-content: flex-end;
-  gap: 9px;
-}
-
-.authored-comment-filter-row label {
-  display: grid;
-  gap: 5px;
-  min-width: 150px;
-  color: var(--muted);
-  font-size: var(--fs-caption);
-  font-weight: 800;
-}
-
-.authored-comment-filter-row select {
-  min-height: 40px;
-  border: 1px solid rgba(154, 168, 255, 0.24);
-  border-radius: 13px;
-  outline: none;
-  background: rgba(10, 12, 20, 0.94);
-  padding: 0 34px 0 12px;
-  color: var(--text);
-  font: inherit;
-  font-size: var(--fs-body-small);
-  cursor: pointer;
-}
-
-.authored-comment-filter-row select:focus-visible {
-  border-color: rgba(154, 168, 255, 0.72);
-  box-shadow: 0 0 0 3px rgba(154, 168, 255, 0.13);
-}
-
 .authored-comment-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
@@ -349,21 +300,6 @@
 }
 
 @media (max-width: 760px) {
-  .authored-comments-controls {
-    position: static;
-    grid-template-columns: 1fr;
-  }
-
-  .authored-comment-filter-row {
-    align-items: stretch;
-    justify-content: stretch;
-  }
-
-  .authored-comment-filter-row label {
-    min-width: 0;
-    flex: 1;
-  }
-
   .authored-comment-grid {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -371,11 +307,6 @@
 }
 
 @media (max-width: 520px) {
-  .authored-comment-filter-row {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
   .authored-comment-target-summary > b {
     max-width: 140px;
     overflow: hidden;
@@ -4654,83 +4585,12 @@ a {
   white-space: nowrap;
 }
 
-.audience-period-control {
-  --platform-rgb: 154, 168, 255;
-  display: flex;
+.audience-period-dropdown {
+  width: min(100%, 190px);
   min-width: 0;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-}
-
-.audience-period-control-chart {
-  max-width: min(100%, 470px);
-  flex: 0 1 470px;
-}
-
-.audience-period-control-chart .audience-period-tabs {
-  justify-content: flex-end;
-  gap: 5px;
-  padding-bottom: 0;
-}
-
-.audience-period-control-chart .audience-period-tabs button {
-  min-width: 74px;
-  min-height: 30px;
-  padding: 4px 9px;
-  font-size: 11px;
-}
-
-.audience-period-control > .section-kicker {
-  flex: 0 0 auto;
-  margin: 0;
-}
-
-.audience-period-tabs {
-  display: flex;
-  min-width: 0;
-  flex: 1 1 auto;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  padding-bottom: 2px;
-  scrollbar-width: none;
-}
-
-.audience-period-tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.audience-period-tabs button {
-  display: inline-flex;
-  min-width: 84px;
-  min-height: 34px;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 999px;
-  background: rgba(7, 9, 16, 0.48);
-  padding: 5px 12px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 750;
-  white-space: nowrap;
-  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
-}
-
-.audience-period-tabs button:hover,
-.audience-period-tabs button:focus-visible,
-.audience-period-tabs button.active {
-  border-color: rgba(var(--platform-rgb), 0.48);
-  background: rgba(var(--platform-rgb), 0.1);
-  color: #fff;
-}
-
-.audience-period-tabs button:focus-visible {
-  outline: 2px solid rgba(var(--platform-rgb), 0.64);
-  outline-offset: 2px;
+  flex: 0 0 190px;
+  align-self: flex-end;
+  margin-left: auto;
 }
 
 .audience-explorer {
@@ -4884,7 +4744,7 @@ a {
 .audience-explorer-chart-controls {
   display: flex;
   min-width: 0;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 10px;
   margin-top: 8px;
@@ -5496,20 +5356,18 @@ a {
     grid-template-columns: 1fr;
   }
 
-  .audience-period-control {
-    justify-content: flex-start;
-  }
-
   .audience-explorer-chart-controls {
     align-items: stretch;
     flex-direction: column;
     gap: 4px;
   }
 
-  .audience-explorer-chart-controls .audience-period-control-chart {
+  .audience-explorer-chart-controls .audience-period-dropdown {
     width: 100%;
-    max-width: 100%;
+    max-width: none;
     flex-basis: auto;
+    align-self: stretch;
+    margin-left: 0;
   }
 
   .audience-explorer-summary {
@@ -5555,16 +5413,6 @@ a {
 
   .audience-explorer-heading > span {
     text-align: left;
-  }
-
-  .audience-period-control {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 9px;
-  }
-
-  .audience-period-tabs {
-    width: 100%;
   }
 
   .audience-overview-screen {
@@ -5849,11 +5697,6 @@ a {
 
   .audience-dashboard-heading h2 {
     font-size: 21px;
-  }
-
-  .audience-period-tabs button {
-    min-height: 30px;
-    padding-block: 4px;
   }
 
   .audience-overview-screen {
