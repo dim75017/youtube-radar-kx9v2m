@@ -303,7 +303,12 @@ export function isOfficialAudioTrendThumbnailUrl(
 function canonicalUrl(candidate: string) {
   const url = new URL(candidate);
   const pathname = url.pathname.replace(/\/+$/, "");
-  return `${url.protocol}//${url.hostname.toLowerCase()}${pathname}`;
+  const hostname = url.hostname.toLowerCase();
+  const tiktokMusicId = hasDomain(hostname, "tiktok.com")
+    ? pathname.match(/^\/music\/[^/]*?(\d{8,24})$/u)?.[1]
+    : null;
+  if (tiktokMusicId) return `https://www.tiktok.com/music/${tiktokMusicId}`;
+  return `${url.protocol}//${hostname}${pathname}`;
 }
 
 export function isNativeAudioTrendUrl(

@@ -863,6 +863,18 @@ test("publication inventory fails closed on duplicate audio or reference URLs", 
   assert.equal(referenceResult.publishable, false);
 });
 
+test("publication inventory deduplicates TikTok music URLs by immutable numeric ID", () => {
+  const candidate = inventoryFixture(AUDIO_REFRESH_MIN_DISTINCT_TRENDS);
+  const musicId = candidate.trends[0].audioUrl.match(/(\d{8,24})\/?$/u)?.[1];
+  assert.ok(musicId);
+  candidate.trends.at(-1).audioUrl =
+    `https://m.tiktok.com/music/ANOTHER-SLUG-${musicId}?lang=fr`;
+
+  const result = evaluateAudioRefreshInventory(candidate);
+  assert.equal(result.distinctAudioUrls, AUDIO_REFRESH_MIN_DISTINCT_TRENDS - 1);
+  assert.equal(result.publishable, false);
+});
+
 test("publication inventory fails closed on weak, missing or long reference videos", () => {
   for (const likes of [null, MIN_AUDIO_TREND_REFERENCE_VIDEO_LIKES - 1]) {
     const candidate = inventoryFixture(AUDIO_REFRESH_MIN_DISTINCT_TRENDS);

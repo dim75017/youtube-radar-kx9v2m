@@ -255,6 +255,22 @@ test("the publishable inventory accepts 50 distinct trends and rejects 49", () =
   );
 });
 
+test("TikTok music slug and case variants cannot bypass native-audio deduplication", () => {
+  const duplicated = structuredClone(bootstrapFeed);
+  const firstTikTokIndex = duplicated.trends.findIndex((trend) => trend.platform === "tiktok");
+  const secondTikTokIndex = duplicated.trends.findIndex((trend, index) =>
+    index > firstTikTokIndex && trend.platform === "tiktok"
+  );
+  const first = duplicated.trends[firstTikTokIndex];
+  const second = duplicated.trends[secondTikTokIndex];
+  const musicId = first.audioUrl.match(/(\d{8,24})\/?$/u)?.[1];
+  assert.ok(musicId);
+  second.audioUrl = `https://m.tiktok.com/music/DIFFERENT-SLUG-${musicId}?lang=en`;
+  second.source.url = second.audioUrl;
+
+  assert.throws(() => assertAudioTrendFeed(duplicated), /audio natif dupliqué/i);
+});
+
 test("reference videos fail closed below 50,000 likes or outside the sub-30-second window", () => {
   for (const likes of [null, MIN_AUDIO_TREND_REFERENCE_VIDEO_LIKES - 1]) {
     const trend = validTrend();

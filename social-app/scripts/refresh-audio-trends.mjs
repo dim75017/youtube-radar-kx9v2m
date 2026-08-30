@@ -671,13 +671,17 @@ async function qualifyAudioIdentityFromTrend(job, { now, fetchImpl, timeoutMs })
       error: "aucune identite audio commune verifiee sur trois createurs distincts",
     };
   }
-  const [audioUrl, matchingObservations] = winningEntry;
+  const [audioIdentity, matchingObservations] = winningEntry;
   const referenceIdentity = nativeTikTokVideoIdentity(reference.url);
   const referenceObservation = matchingObservations.find((observation) =>
     nativeTikTokVideoIdentity(observation.post.url) === referenceIdentity
   );
   if (!referenceObservation) {
     throw new Error("la video de reference n'utilise pas l'audio commun qualifie");
+  }
+  const audioUrl = referenceObservation.audio.audioUrl;
+  if (canonicalInventoryUrl(audioUrl) !== audioIdentity) {
+    throw new Error("identite audio qualifiee incoherente");
   }
   const evidencePosts = matchingObservations
     .slice(0, Math.max(3, minimumDistinctCreators))
@@ -2113,6 +2117,10 @@ function canonicalInventoryUrl(candidate) {
     url.hash = "";
     url.hostname = url.hostname.toLowerCase();
     url.pathname = url.pathname.replace(/\/+$/u, "");
+    const tiktokMusicId = /(?:^|\.)tiktok\.com$/u.test(url.hostname)
+      ? url.pathname.match(/^\/music\/[^/]*?(\d{8,24})$/u)?.[1]
+      : null;
+    if (tiktokMusicId) return `https://www.tiktok.com/music/${tiktokMusicId}`;
     return url.toString();
   } catch {
     return null;
