@@ -1,45 +1,397 @@
 {
   "lane": "deep",
-  "ranAt": "2026-08-28T07:42:06.179Z",
-  "status": "partial",
-  "failureReason": "Instagram et TikTok conservent leurs derniers relevés natifs, trop anciens ; YouTube et une opportunité X publique ont été actualisés pendant ce passage.",
-  "editorialReviewAt": "2026-08-28T07:59:09.037Z",
+  "ranAt": "2026-08-30T06:48:37.487Z",
+  "status": "success",
+  "failureReason": null,
   "watchedAccounts": 97,
-  "reachedChannels": 97,
-  "failedChannels": [],
-  "discovered": 3,
+  "reachedChannels": 5,
+  "failedChannels": [
+    {
+      "handle": "@A24",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@AniplexUSA",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@AppleTV",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@Crunchyroll",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@DC",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@DisneyPlus",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@hbomax",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@LionsgateMovies",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@Marvel",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@NEONrated",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@Netflix",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@ParamountPictures",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@Pixar",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@PrimeVideo",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@sonypictures",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@StarWars",
+      "reason": "HTTP 500"
+    },
+    {
+      "handle": "@studioghibli",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@UniversalPictures",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@warnerbros",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@annapurnainteractive",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@Bethesda",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@CallofDuty",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@CDPROJEKTRED",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@devolverdigital",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@fortnite",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@HoYoverse",
+      "reason": "HTTP 500"
+    },
+    {
+      "handle": "@IGN",
+      "reason": "HTTP 500"
+    },
+    {
+      "handle": "@larianstudios",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@LeagueofLegends",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@minecraft",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@NintendoAmerica",
+      "reason": "HTTP 500"
+    },
+    {
+      "handle": "@PlayStation",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@riotgames",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@Roblox",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@rockstargames",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@SEGA",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@SquareEnix",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@thegameawards",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@ThePokemonCompany",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@ubisoft",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@Valve",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@Xbox",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@DudePerfect",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@IShowSpeed",
+      "reason": "HTTP 500"
+    },
+    {
+      "handle": "@jacksepticeye",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@Jerma985",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@KaiCenat",
+      "reason": "HTTP 500"
+    },
+    {
+      "handle": "@Ludwig",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@markiplier",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@MrBeast",
+      "reason": "HTTP 500"
+    },
+    {
+      "handle": "@Mrwhosetheboss",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@PewDiePie",
+      "reason": "HTTP 500"
+    },
+    {
+      "handle": "@ryan",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@Sidemen",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@ArianaGrande",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@BillieEilish",
+      "reason": "HTTP 500"
+    },
+    {
+      "handle": "@BLACKPINK",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@boilerroom",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@BTS",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@coachella",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@COLORSxSTUDIOS",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@DualLipa",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@Genius",
+      "reason": "HTTP 500"
+    },
+    {
+      "handle": "@HYBELABELS",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@KendrickLamar",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@LadyGaga",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@nprmusic",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@spotify",
+      "reason": "HTTP 500"
+    },
+    {
+      "handle": "@SZA",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@taylorswift",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@TheWeeknd",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@tylerthecreator",
+      "reason": "HTTP 500"
+    },
+    {
+      "handle": "@FIFA",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@Formula1",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@NBA",
+      "reason": "HTTP 500"
+    },
+    {
+      "handle": "@NFL",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@olympics",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@uefa",
+      "reason": "HTTP 500"
+    },
+    {
+      "handle": "@anthropic-ai",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@Apple",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@BostonDynamics",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@Google",
+      "reason": "HTTP 500"
+    },
+    {
+      "handle": "@kurzgesagt",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@mkbhd",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@NASA",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@NVIDIA",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@OpenAI",
+      "reason": "HTTP 500"
+    },
+    {
+      "handle": "@Samsung",
+      "reason": "HTTP 500"
+    },
+    {
+      "handle": "@SpaceX",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@Tesla",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@veritasium",
+      "reason": "HTTP 404"
+    },
+    {
+      "handle": "@Vsauce",
+      "reason": "HTTP 500"
+    }
+  ],
+  "discovered": 21,
   "remeasured": 0,
-  "promoted": 50,
-  "trackedCandidates": 571,
+  "promoted": 1,
+  "trackedCandidates": 24,
   "attemptedCards": 30,
   "pendingEditorialCount": 0,
   "published": 30,
-  "publishedPlatformCounts": {
-    "youtube": 18,
-    "instagram": 4,
-    "tiktok": 4,
-    "x": 4
-  },
-  "safetyExcluded": 1,
-  "editorialDiscovery": {
-    "platform": "x",
-    "candidateCount": 34,
-    "qualifiedCount": 1,
-    "added": 1,
-    "removed": 1,
-    "retained": 29,
-    "source": "X public profile syndication metadata from 10 official accounts"
-  },
   "retainedFeedCapturedAt": null,
   "tierCounts": {
     "a": 7,
-    "b": 22,
-    "s": 1
+    "s": 1,
+    "b": 22
   },
   "categoryCounts": {
     "gaming": 6,
-    "music": 3,
     "internet": 4,
+    "music": 3,
     "cinema": 5,
     "tech": 2,
     "other": 10

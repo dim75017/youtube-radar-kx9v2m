@@ -1,18 +1,18 @@
 {
   "version": 2,
-  "capturedAt": "2026-08-28T07:59:09.037Z",
-  "nextRefreshAt": "2026-08-28T13:59:09.037Z",
+  "capturedAt": "2026-08-30T06:48:37.487Z",
+  "nextRefreshAt": "2026-08-30T12:48:37.487Z",
   "cadenceHours": 6,
   "fastLaneMinutes": 15,
-  "fastLaneCheckedAt": "2026-08-28T07:42:06.179Z",
+  "fastLaneCheckedAt": "2026-08-30T06:48:37.487Z",
   "watchlistAccountCount": 97,
   "sourceChecks": [
     {
       "id": "youtube-watchlist-atom",
       "platform": "youtube",
-      "status": "success",
-      "checkedAt": "2026-08-28T07:42:06.179Z",
-      "label": "YouTube · 97/97 flux Atom de la watchlist lus"
+      "status": "limited",
+      "checkedAt": "2026-08-30T06:48:37.487Z",
+      "label": "YouTube · 5/97 flux Atom de la watchlist lus, 92 injoignables"
     },
     {
       "id": "instagram-reels-public",
@@ -31,9 +31,9 @@
     {
       "id": "x-native-public",
       "platform": "x",
-      "status": "success",
+      "status": "limited",
       "checkedAt": "2026-08-28T07:59:09.037Z",
-      "label": "X · scan texte public ciblé de 10 comptes officiels ; métadonnées et compteurs du post @Fortnite vérifiés"
+      "label": "X · relevé conservé du dernier passage vérifié, non recontrôlé par la voie rapide"
     }
   ],
   "opportunities": [
@@ -99,6 +99,99 @@
           "tone": "complice",
           "label": "Complice",
           "text": "Same desk, new GTA VI footage, absolutely no progress on the next page."
+        }
+      ],
+      "commentsSource": "curated",
+      "alertedAt": null
+    },
+    {
+      "id": "yt-aa4pyww2cyc-33e8bb",
+      "platform": "youtube",
+      "category": "internet",
+      "author": "IShowSpeed",
+      "title": "NOT ENDING UNTIL WE BEAT EVERY GAME ft. Kai Cenat",
+      "caption": "tts donations here/ https://streamlabs.com/ishowspeed\n\nFOLLOW ME 👀  http://link.me/ishowspeed\nMERCH 👕 -  https://speed.store/\nMEMBERSHIPS ✅  - https://www.youtube.com/c/IShowSpeed/join\n\nfor donations tts/ Media Request here  \nhttps://streamlabs.com/ishowspeed/tip\n\nIG: https://www.instagram.com/ishowspeed?igsh=MXNveXVucWZyZGsyaA==\nX: https://x.com/ishowspeedsui?s=21\nSnap : https://snapchat.com/t/IeuoJ50Y\nDiscord: https://discord.gg/ishowspeed\n\nJOIN MY OTHER CHANNELS\nYT Live speedy: https://youtube.com/@LiveSpeedy?si=Sd4QiWsrk-iGX7fL\nYT Speedy Boykins: https://youtube.com/@speedyboykins7869?si=0jMDTQQsEUJXsr32\nYT Speeduniverse : https://youtube.com/@SpeedUniverse?si=XUMYeIWoUY4TIjFl",
+      "url": "https://www.youtube.com/watch?v=aA4pyww2cyc",
+      "mediaType": "video",
+      "durationSeconds": null,
+      "thumbnailUrl": "https://i2.ytimg.com/vi/aA4pyww2cyc/hqdefault.jpg",
+      "publishedAt": "2026-08-21T07:00:05.000Z",
+      "capturedAt": "2026-08-22T08:46:04.829Z",
+      "status": "surging",
+      "momentTier": "s",
+      "discovery": {
+        "source": "watchlist",
+        "accountHandle": "@IShowSpeed",
+        "accountTier": "a"
+      },
+      "velocity": {
+        "metric": "views",
+        "perHour": 7401,
+        "windowHours": 1.62,
+        "fromCapturedAt": "2026-08-22T07:08:59.721Z",
+        "toCapturedAt": "2026-08-22T08:46:04.829Z"
+      },
+      "lofiFitScore": 74,
+      "commentabilityScore": 67,
+      "priorityScore": 71,
+      "whyNow": "Publié par IShowSpeed il y a 26 h. +7 401 vues/h mesurés sur 1.62 h. La section va saturer vite.",
+      "risk": {
+        "level": "low",
+        "note": "Aucun sujet sensible détecté dans les métadonnées publiques."
+      },
+      "metrics": {
+        "views": 6921121,
+        "likes": null,
+        "comments": null,
+        "shares": null
+      },
+      "observations": [
+        {
+          "capturedAt": "2026-08-22T00:02:37.191Z",
+          "views": 6853708,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de IShowSpeed",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCWsDFcIhY2DBi3GB5uykGXA",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-22T07:08:59.721Z",
+          "views": 6909146,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de IShowSpeed",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCWsDFcIhY2DBi3GB5uykGXA",
+          "exactness": "exact"
+        },
+        {
+          "capturedAt": "2026-08-22T08:46:04.829Z",
+          "views": 6921121,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de IShowSpeed",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCWsDFcIhY2DBi3GB5uykGXA",
+          "exactness": "exact"
+        }
+      ],
+      "comments": [
+        {
+          "tone": "funny",
+          "label": "Drôle",
+          "text": "Beating every game is a very ambitious definition of one study break."
+        },
+        {
+          "tone": "smart",
+          "label": "Smart",
+          "text": "‘Not ending’ turns a gaming challenge into an endurance syllabus."
+        },
+        {
+          "tone": "complice",
+          "label": "Complice",
+          "text": "Kai Cenat joining is exactly when tomorrow’s schedule stopped mattering."
         }
       ],
       "commentsSource": "curated",
@@ -239,6 +332,73 @@
       "alertedAt": null
     },
     {
+      "id": "yt-migclaow9ki-76115e",
+      "platform": "youtube",
+      "category": "internet",
+      "author": "IShowSpeed",
+      "title": "REACTING TO THE NEW GTA 6 TRAILER! LIVE🔴",
+      "caption": "tts donations here/ https://streamlabs.com/ishowspeed\n\nGTA 6 EXTENDED CUT LIVE REACTION\nGTA 6 EXTENDED GAMEPLAY REACTION\n\nFOLLOW ME 👀  http://link.me/ishowspeed\nMERCH 👕 -  https://speed.store/\nMEMBERSHIPS ✅  - https://www.youtube.com/c/IShowSpeed/join\n\nfor donations tts/ Media Request here  \nhttps://streamlabs.com/ishowspeed/tip\n\nIG: https://www.instagram.com/ishowspeed?igsh=MXNveXVucWZyZGsyaA==\nX: https://x.com/ishowspeedsui?s=21\nSnap : https://snapchat.com/t/IeuoJ50Y\nDiscord: https://discord.gg/ishowspeed\n\nJOIN MY OTHER CHANNELS\nYT Live speedy: https://youtube.com/@livespeedy?si=Sd4QiWsrk-iGX7fL\nYT Speedy Boykins: https://youtube.com/@speedyboykins7869?si=0jMDTQQsEUJXsr32\nYT Speeduniverse : https://youtube.com/@speeduniverse?si=XUMYeIWoUY4TIjFl",
+      "url": "https://www.youtube.com/watch?v=miGclAow9KI",
+      "mediaType": "video",
+      "durationSeconds": null,
+      "thumbnailUrl": "https://i2.ytimg.com/vi/miGclAow9KI/hqdefault.jpg",
+      "publishedAt": "2026-08-27T19:42:52.000Z",
+      "capturedAt": "2026-08-28T07:41:15.283Z",
+      "status": "hot",
+      "momentTier": "a",
+      "discovery": {
+        "source": "watchlist",
+        "accountHandle": "@IShowSpeed",
+        "accountTier": "a"
+      },
+      "velocity": null,
+      "lofiFitScore": 69,
+      "commentabilityScore": 63,
+      "priorityScore": 66,
+      "whyNow": "Publié par IShowSpeed il y a 12 h. 3 876 802 vues au premier relevé, accélération pas encore mesurée.",
+      "risk": {
+        "level": "low",
+        "note": "Aucun sujet sensible détecté dans les métadonnées publiques."
+      },
+      "metrics": {
+        "views": 3876802,
+        "likes": null,
+        "comments": null,
+        "shares": null
+      },
+      "observations": [
+        {
+          "capturedAt": "2026-08-28T07:41:15.283Z",
+          "views": 3876802,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de IShowSpeed",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCWsDFcIhY2DBi3GB5uykGXA",
+          "exactness": "exact"
+        }
+      ],
+      "comments": [
+        {
+          "tone": "funny",
+          "label": "Drôle",
+          "text": "A live GTA 6 reaction has more volume than my deadline alarm."
+        },
+        {
+          "tone": "smart",
+          "label": "Smart",
+          "text": "Reacting live turns the new GTA 6 trailer into a shared countdown."
+        },
+        {
+          "tone": "complice",
+          "label": "Complice",
+          "text": "IShowSpeed pressed LIVE and every quiet study plan left the chat."
+        }
+      ],
+      "commentsSource": "curated",
+      "alertedAt": null
+    },
+    {
       "id": "yt-fivctzmv4xo-54f510",
       "platform": "youtube",
       "category": "gaming",
@@ -373,170 +533,36 @@
       "alertedAt": null
     },
     {
-      "id": "yt-migclaow9ki-76115e",
+      "id": "yt-v3qx5b0geg-e071ed",
       "platform": "youtube",
-      "category": "internet",
-      "author": "IShowSpeed",
-      "title": "REACTING TO THE NEW GTA 6 TRAILER! LIVE🔴",
-      "caption": "tts donations here/ https://streamlabs.com/ishowspeed\n\nGTA 6 EXTENDED CUT LIVE REACTION\nGTA 6 EXTENDED GAMEPLAY REACTION\n\nFOLLOW ME 👀  http://link.me/ishowspeed\nMERCH 👕 -  https://speed.store/\nMEMBERSHIPS ✅  - https://www.youtube.com/c/IShowSpeed/join\n\nfor donations tts/ Media Request here  \nhttps://streamlabs.com/ishowspeed/tip\n\nIG: https://www.instagram.com/ishowspeed?igsh=MXNveXVucWZyZGsyaA==\nX: https://x.com/ishowspeedsui?s=21\nSnap : https://snapchat.com/t/IeuoJ50Y\nDiscord: https://discord.gg/ishowspeed\n\nJOIN MY OTHER CHANNELS\nYT Live speedy: https://youtube.com/@livespeedy?si=Sd4QiWsrk-iGX7fL\nYT Speedy Boykins: https://youtube.com/@speedyboykins7869?si=0jMDTQQsEUJXsr32\nYT Speeduniverse : https://youtube.com/@speeduniverse?si=XUMYeIWoUY4TIjFl",
-      "url": "https://www.youtube.com/watch?v=miGclAow9KI",
+      "category": "cinema",
+      "author": "Marvel Entertainment",
+      "title": "The Avengers | Countdown to Avengers: Doomsday Official Podcast",
+      "caption": "Iman Vellani and Frank Alvarez kick off the Countdown to Avengers: Doomsday Official Podcast by revisiting Marvel Studios’ The Avengers (2012). They break down Loki's machinations, the Battle of New York, and the quotes that built the MCU's foundation, tracing how this original team-up still echoes through future iterations of the Avengers team.\n \nStream Marvel Studios' The Avengers and more on Disney+.\n\n► SUBSCRIBE to the channel to get notified when new Marvel videos are posted: https://www.youtube.com/marvel?sub_confirmation=1\n\n► SUBSCRIBE to Disney+ to stream all of your favorite Marvel shows and movies: https://www.disneyplus.com/\n\nFollow on social media to get the latest news and announcements from Marvel:\n\nTikTok: https://www.tiktok.com/@marvel\nInstagram: https://www.instagram.com/marvel\nFacebook: https://www.facebook.com/Marvel\nX: https://x.com/marvel\n\nExperience more stories by ",
+      "url": "https://www.youtube.com/watch?v=v3q-x5B0GEg",
       "mediaType": "video",
       "durationSeconds": null,
-      "thumbnailUrl": "https://i2.ytimg.com/vi/miGclAow9KI/hqdefault.jpg",
-      "publishedAt": "2026-08-27T19:42:52.000Z",
-      "capturedAt": "2026-08-28T07:41:15.283Z",
-      "status": "hot",
-      "momentTier": "a",
-      "discovery": {
-        "source": "watchlist",
-        "accountHandle": "@IShowSpeed",
-        "accountTier": "a"
-      },
-      "velocity": null,
-      "lofiFitScore": 69,
-      "commentabilityScore": 63,
-      "priorityScore": 66,
-      "whyNow": "Publié par IShowSpeed il y a 12 h. 3 876 802 vues au premier relevé, accélération pas encore mesurée.",
-      "risk": {
-        "level": "low",
-        "note": "Aucun sujet sensible détecté dans les métadonnées publiques."
-      },
-      "metrics": {
-        "views": 3876802,
-        "likes": null,
-        "comments": null,
-        "shares": null
-      },
-      "observations": [
-        {
-          "capturedAt": "2026-08-28T07:41:15.283Z",
-          "views": 3876802,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de IShowSpeed",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCWsDFcIhY2DBi3GB5uykGXA",
-          "exactness": "exact"
-        }
-      ],
-      "comments": [
-        {
-          "tone": "funny",
-          "label": "Drôle",
-          "text": "A live GTA 6 reaction has more volume than my deadline alarm."
-        },
-        {
-          "tone": "smart",
-          "label": "Smart",
-          "text": "Reacting live turns the new GTA 6 trailer into a shared countdown."
-        },
-        {
-          "tone": "complice",
-          "label": "Complice",
-          "text": "IShowSpeed pressed LIVE and every quiet study plan left the chat."
-        }
-      ],
-      "commentsSource": "curated",
-      "alertedAt": null
-    },
-    {
-      "id": "yt-wsm9gtuttbs-91d853",
-      "platform": "youtube",
-      "category": "gaming",
-      "author": "IGN",
-      "title": "GTA 6 (Grand Theft Auto 6) - Official Extended Gameplay",
-      "caption": "Take a look at Extended Gameplay for GTA 6, the latest entry in the third-person open-world action-adventure Grand Theft Auto franchise developed by Rockstar Games. Players will return to a modern-day Vice City as Jason and Lucia embark on a thrilling adventure full of action, consequence, and hilarity, signature to the franchise. Check out a suite of gameplay clips from missions, dialogue sequences, combat, and more, all captured on PlayStation 5. Grand Theft Auto 6 is launching on November 19 for PlayStation 5 (PS5) and Xbox Series X|S.\n\n#IGN #Gaming #GTA6",
-      "url": "https://www.youtube.com/watch?v=wSm9GTUttBs",
-      "mediaType": "video",
-      "durationSeconds": null,
-      "thumbnailUrl": "https://i4.ytimg.com/vi/wSm9GTUttBs/hqdefault.jpg",
-      "publishedAt": "2026-08-28T01:28:32.000Z",
+      "thumbnailUrl": "https://i3.ytimg.com/vi/v3q-x5B0GEg/hqdefault.jpg",
+      "publishedAt": "2026-08-27T07:00:22.000Z",
       "capturedAt": "2026-08-28T07:41:15.283Z",
       "status": "hot",
       "momentTier": "b",
       "discovery": {
         "source": "watchlist",
-        "accountHandle": "@IGN",
-        "accountTier": "a"
-      },
-      "velocity": null,
-      "lofiFitScore": 75,
-      "commentabilityScore": 59,
-      "priorityScore": 68,
-      "whyNow": "Publié par IGN il y a 6 h. 869 139 vues au premier relevé, accélération pas encore mesurée.",
-      "risk": {
-        "level": "low",
-        "note": "Aucun sujet sensible détecté dans les métadonnées publiques."
-      },
-      "metrics": {
-        "views": 869139,
-        "likes": null,
-        "comments": null,
-        "shares": null
-      },
-      "observations": [
-        {
-          "capturedAt": "2026-08-28T07:41:15.283Z",
-          "views": 869139,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de IGN",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCKy1dAqELo0zrOtPkf0eTMw",
-          "exactness": "exact"
-        }
-      ],
-      "comments": [
-        {
-          "tone": "funny",
-          "label": "Drôle",
-          "text": "Extended gameplay, abbreviated attention span; GTA 6 did the math."
-        },
-        {
-          "tone": "smart",
-          "label": "Smart",
-          "text": "Calling this official extended gameplay makes a trailer feel almost too modest."
-        },
-        {
-          "tone": "complice",
-          "label": "Complice",
-          "text": "We all saw extended gameplay and moved one deadline into next week."
-        }
-      ],
-      "commentsSource": "curated",
-      "alertedAt": null
-    },
-    {
-      "id": "yt-uphthaa97ig-e9c41b",
-      "platform": "youtube",
-      "category": "cinema",
-      "author": "Netflix",
-      "title": "Grand Theft Auto VI: An Extended Look | Now Playing | Netflix",
-      "caption": "See the next evolution in the groundbreaking Grand Theft Auto series.\n\nWatch Grand Theft Auto VI: An Extended Look. Now on Netflix: https://www.netflix.com/GTAVI\n\nAbout Netflix:\nNetflix is one of the world’s leading entertainment services offering TV series, films, games and live programming across a wide variety of genres and languages. Members can play, pause and resume watching as much as they want, anytime, anywhere, and can change their plans at any time.\n\nGrand Theft Auto VI: An Extended Look | Now Playing | Netflix\nhttps://www.youtube.com/@Netflix",
-      "url": "https://www.youtube.com/watch?v=uphThaa97ig",
-      "mediaType": "video",
-      "durationSeconds": null,
-      "thumbnailUrl": "https://i2.ytimg.com/vi/uphThaa97ig/hqdefault.jpg",
-      "publishedAt": "2026-08-27T19:08:02.000Z",
-      "capturedAt": "2026-08-28T07:41:15.283Z",
-      "status": "hot",
-      "momentTier": "a",
-      "discovery": {
-        "source": "watchlist",
-        "accountHandle": "@Netflix",
+        "accountHandle": "@Marvel",
         "accountTier": "s"
       },
       "velocity": null,
-      "lofiFitScore": 72,
-      "commentabilityScore": 55,
-      "priorityScore": 64,
-      "whyNow": "Publié par Netflix il y a 13 h. 2 951 171 vues au premier relevé, accélération pas encore mesurée.",
+      "lofiFitScore": 92,
+      "commentabilityScore": 51,
+      "priorityScore": 74,
+      "whyNow": "Publié par Marvel Entertainment il y a 25 h. 454 623 vues au premier relevé, accélération pas encore mesurée.",
       "risk": {
         "level": "low",
         "note": "Aucun sujet sensible détecté dans les métadonnées publiques."
       },
       "metrics": {
-        "views": 2951171,
+        "views": 454623,
         "likes": null,
         "comments": null,
         "shares": null
@@ -544,12 +570,12 @@
       "observations": [
         {
           "capturedAt": "2026-08-28T07:41:15.283Z",
-          "views": 2951171,
+          "views": 454623,
           "likes": null,
           "comments": null,
           "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Netflix",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCWOA1ZGywLbqmigxE4Qlvuw",
+          "sourceLabel": "YouTube · flux Atom public de Marvel Entertainment",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCvC4D8onUfXzvjTOM-dBfEA",
           "exactness": "exact"
         }
       ],
@@ -557,17 +583,17 @@
         {
           "tone": "funny",
           "label": "Drôle",
-          "text": "Netflix said Now Playing; my notebook heard Not Happening Tonight."
+          "text": "The Avengers joined a podcast and my revision team instantly lost quorum."
         },
         {
           "tone": "smart",
           "label": "Smart",
-          "text": "Now Playing turns an extended GTA VI look into appointment viewing."
+          "text": "Centering The Avengers makes the Doomsday countdown feel like a roll call."
         },
         {
           "tone": "complice",
           "label": "Complice",
-          "text": "GTA VI reached Netflix and somehow our study break got extended too."
+          "text": "Everyone at this desk heard The Avengers and quietly joined the countdown."
         }
       ],
       "commentsSource": "curated",
@@ -641,36 +667,36 @@
       "alertedAt": null
     },
     {
-      "id": "yt-v3qx5b0geg-e071ed",
+      "id": "yt-xwdamnfs6im-185550",
       "platform": "youtube",
       "category": "cinema",
-      "author": "Marvel Entertainment",
-      "title": "The Avengers | Countdown to Avengers: Doomsday Official Podcast",
-      "caption": "Iman Vellani and Frank Alvarez kick off the Countdown to Avengers: Doomsday Official Podcast by revisiting Marvel Studios’ The Avengers (2012). They break down Loki's machinations, the Battle of New York, and the quotes that built the MCU's foundation, tracing how this original team-up still echoes through future iterations of the Avengers team.\n \nStream Marvel Studios' The Avengers and more on Disney+.\n\n► SUBSCRIBE to the channel to get notified when new Marvel videos are posted: https://www.youtube.com/marvel?sub_confirmation=1\n\n► SUBSCRIBE to Disney+ to stream all of your favorite Marvel shows and movies: https://www.disneyplus.com/\n\nFollow on social media to get the latest news and announcements from Marvel:\n\nTikTok: https://www.tiktok.com/@marvel\nInstagram: https://www.instagram.com/marvel\nFacebook: https://www.facebook.com/Marvel\nX: https://x.com/marvel\n\nExperience more stories by ",
-      "url": "https://www.youtube.com/watch?v=v3q-x5B0GEg",
+      "author": "Prime Video",
+      "title": "The Love Hypothesis - Official Trailer | Prime Video",
+      "caption": "» SUBSCRIBE: http://bit.ly/PrimeVideoSubscribe\n \nAbout Prime Video:\nWant to watch it now? We’ve got it. This week’s newest movies, last night’s TV shows, classic favorites, and more are available to stream instantly, plus all your videos are stored in Your Video Library. Prime Video offers a variety of unique and captivating entertainment, including original series “The Boys,” “Invincible,” “Hazbin Hotel,” “The Summer I Turned Pretty,” and more.\n \nGet More Prime Video: \nStream Now: http://bit.ly/WatchMorePrimeVideo\nInstagram: http://bit.ly/primevideoIG\nTikTok: https://bit.ly/PrimeVideoTikTok\nFacebook: http://bit.ly/PrimeVideoFB\nX: http://bit.ly/PrimeVideoTW\n \nThe Love Hypothesis - Official Trailer | Prime Video\nhttps://youtu.be/xwdamnfS6IM\n \nPrime Video\nhttps://www.youtube.com/PrimeVideo\n\n#TheLoveHypothesis #OfficialTrailer #PrimeVideo",
+      "url": "https://www.youtube.com/watch?v=xwdamnfS6IM",
       "mediaType": "video",
       "durationSeconds": null,
-      "thumbnailUrl": "https://i3.ytimg.com/vi/v3q-x5B0GEg/hqdefault.jpg",
-      "publishedAt": "2026-08-27T07:00:22.000Z",
+      "thumbnailUrl": "https://i1.ytimg.com/vi/xwdamnfS6IM/hqdefault.jpg",
+      "publishedAt": "2026-08-26T13:59:48.000Z",
       "capturedAt": "2026-08-28T07:41:15.283Z",
       "status": "hot",
-      "momentTier": "b",
+      "momentTier": "a",
       "discovery": {
         "source": "watchlist",
-        "accountHandle": "@Marvel",
-        "accountTier": "s"
+        "accountHandle": "@PrimeVideo",
+        "accountTier": "a"
       },
       "velocity": null,
-      "lofiFitScore": 92,
-      "commentabilityScore": 51,
-      "priorityScore": 74,
-      "whyNow": "Publié par Marvel Entertainment il y a 25 h. 454 623 vues au premier relevé, accélération pas encore mesurée.",
+      "lofiFitScore": 82,
+      "commentabilityScore": 55,
+      "priorityScore": 70,
+      "whyNow": "Publié par Prime Video il y a 42 h. 3 658 353 vues au premier relevé, accélération pas encore mesurée.",
       "risk": {
         "level": "low",
         "note": "Aucun sujet sensible détecté dans les métadonnées publiques."
       },
       "metrics": {
-        "views": 454623,
+        "views": 3658353,
         "likes": null,
         "comments": null,
         "shares": null
@@ -678,12 +704,12 @@
       "observations": [
         {
           "capturedAt": "2026-08-28T07:41:15.283Z",
-          "views": 454623,
+          "views": 3658353,
           "likes": null,
           "comments": null,
           "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Marvel Entertainment",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCvC4D8onUfXzvjTOM-dBfEA",
+          "sourceLabel": "YouTube · flux Atom public de Prime Video",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCQJWtTnAHhEG5w4uN0udnUQ",
           "exactness": "exact"
         }
       ],
@@ -691,17 +717,84 @@
         {
           "tone": "funny",
           "label": "Drôle",
-          "text": "The Avengers joined a podcast and my revision team instantly lost quorum."
+          "text": "The Love Hypothesis arrived right when my deadline needed peer review."
         },
         {
           "tone": "smart",
           "label": "Smart",
-          "text": "Centering The Avengers makes the Doomsday countdown feel like a roll call."
+          "text": "A title like The Love Hypothesis makes romance sound beautifully testable."
         },
         {
           "tone": "complice",
           "label": "Complice",
-          "text": "Everyone at this desk heard The Avengers and quietly joined the countdown."
+          "text": "Prime Video submitted The Love Hypothesis; our study group accepts the premise."
+        }
+      ],
+      "commentsSource": "curated",
+      "alertedAt": null
+    },
+    {
+      "id": "yt-uphthaa97ig-e9c41b",
+      "platform": "youtube",
+      "category": "cinema",
+      "author": "Netflix",
+      "title": "Grand Theft Auto VI: An Extended Look | Now Playing | Netflix",
+      "caption": "See the next evolution in the groundbreaking Grand Theft Auto series.\n\nWatch Grand Theft Auto VI: An Extended Look. Now on Netflix: https://www.netflix.com/GTAVI\n\nAbout Netflix:\nNetflix is one of the world’s leading entertainment services offering TV series, films, games and live programming across a wide variety of genres and languages. Members can play, pause and resume watching as much as they want, anytime, anywhere, and can change their plans at any time.\n\nGrand Theft Auto VI: An Extended Look | Now Playing | Netflix\nhttps://www.youtube.com/@Netflix",
+      "url": "https://www.youtube.com/watch?v=uphThaa97ig",
+      "mediaType": "video",
+      "durationSeconds": null,
+      "thumbnailUrl": "https://i2.ytimg.com/vi/uphThaa97ig/hqdefault.jpg",
+      "publishedAt": "2026-08-27T19:08:02.000Z",
+      "capturedAt": "2026-08-28T07:41:15.283Z",
+      "status": "hot",
+      "momentTier": "a",
+      "discovery": {
+        "source": "watchlist",
+        "accountHandle": "@Netflix",
+        "accountTier": "s"
+      },
+      "velocity": null,
+      "lofiFitScore": 72,
+      "commentabilityScore": 55,
+      "priorityScore": 64,
+      "whyNow": "Publié par Netflix il y a 13 h. 2 951 171 vues au premier relevé, accélération pas encore mesurée.",
+      "risk": {
+        "level": "low",
+        "note": "Aucun sujet sensible détecté dans les métadonnées publiques."
+      },
+      "metrics": {
+        "views": 2951171,
+        "likes": null,
+        "comments": null,
+        "shares": null
+      },
+      "observations": [
+        {
+          "capturedAt": "2026-08-28T07:41:15.283Z",
+          "views": 2951171,
+          "likes": null,
+          "comments": null,
+          "shares": null,
+          "sourceLabel": "YouTube · flux Atom public de Netflix",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCWOA1ZGywLbqmigxE4Qlvuw",
+          "exactness": "exact"
+        }
+      ],
+      "comments": [
+        {
+          "tone": "funny",
+          "label": "Drôle",
+          "text": "Netflix said Now Playing; my notebook heard Not Happening Tonight."
+        },
+        {
+          "tone": "smart",
+          "label": "Smart",
+          "text": "Now Playing turns an extended GTA VI look into appointment viewing."
+        },
+        {
+          "tone": "complice",
+          "label": "Complice",
+          "text": "GTA VI reached Netflix and somehow our study break got extended too."
         }
       ],
       "commentsSource": "curated",
@@ -775,36 +868,36 @@
       "alertedAt": null
     },
     {
-      "id": "yt-xwdamnfs6im-185550",
+      "id": "yt-wsm9gtuttbs-91d853",
       "platform": "youtube",
-      "category": "cinema",
-      "author": "Prime Video",
-      "title": "The Love Hypothesis - Official Trailer | Prime Video",
-      "caption": "» SUBSCRIBE: http://bit.ly/PrimeVideoSubscribe\n \nAbout Prime Video:\nWant to watch it now? We’ve got it. This week’s newest movies, last night’s TV shows, classic favorites, and more are available to stream instantly, plus all your videos are stored in Your Video Library. Prime Video offers a variety of unique and captivating entertainment, including original series “The Boys,” “Invincible,” “Hazbin Hotel,” “The Summer I Turned Pretty,” and more.\n \nGet More Prime Video: \nStream Now: http://bit.ly/WatchMorePrimeVideo\nInstagram: http://bit.ly/primevideoIG\nTikTok: https://bit.ly/PrimeVideoTikTok\nFacebook: http://bit.ly/PrimeVideoFB\nX: http://bit.ly/PrimeVideoTW\n \nThe Love Hypothesis - Official Trailer | Prime Video\nhttps://youtu.be/xwdamnfS6IM\n \nPrime Video\nhttps://www.youtube.com/PrimeVideo\n\n#TheLoveHypothesis #OfficialTrailer #PrimeVideo",
-      "url": "https://www.youtube.com/watch?v=xwdamnfS6IM",
+      "category": "gaming",
+      "author": "IGN",
+      "title": "GTA 6 (Grand Theft Auto 6) - Official Extended Gameplay",
+      "caption": "Take a look at Extended Gameplay for GTA 6, the latest entry in the third-person open-world action-adventure Grand Theft Auto franchise developed by Rockstar Games. Players will return to a modern-day Vice City as Jason and Lucia embark on a thrilling adventure full of action, consequence, and hilarity, signature to the franchise. Check out a suite of gameplay clips from missions, dialogue sequences, combat, and more, all captured on PlayStation 5. Grand Theft Auto 6 is launching on November 19 for PlayStation 5 (PS5) and Xbox Series X|S.\n\n#IGN #Gaming #GTA6",
+      "url": "https://www.youtube.com/watch?v=wSm9GTUttBs",
       "mediaType": "video",
       "durationSeconds": null,
-      "thumbnailUrl": "https://i1.ytimg.com/vi/xwdamnfS6IM/hqdefault.jpg",
-      "publishedAt": "2026-08-26T13:59:48.000Z",
+      "thumbnailUrl": "https://i4.ytimg.com/vi/wSm9GTUttBs/hqdefault.jpg",
+      "publishedAt": "2026-08-28T01:28:32.000Z",
       "capturedAt": "2026-08-28T07:41:15.283Z",
       "status": "hot",
-      "momentTier": "a",
+      "momentTier": "b",
       "discovery": {
         "source": "watchlist",
-        "accountHandle": "@PrimeVideo",
+        "accountHandle": "@IGN",
         "accountTier": "a"
       },
       "velocity": null,
-      "lofiFitScore": 82,
-      "commentabilityScore": 55,
-      "priorityScore": 70,
-      "whyNow": "Publié par Prime Video il y a 42 h. 3 658 353 vues au premier relevé, accélération pas encore mesurée.",
+      "lofiFitScore": 75,
+      "commentabilityScore": 59,
+      "priorityScore": 68,
+      "whyNow": "Publié par IGN il y a 6 h. 869 139 vues au premier relevé, accélération pas encore mesurée.",
       "risk": {
         "level": "low",
         "note": "Aucun sujet sensible détecté dans les métadonnées publiques."
       },
       "metrics": {
-        "views": 3658353,
+        "views": 869139,
         "likes": null,
         "comments": null,
         "shares": null
@@ -812,12 +905,12 @@
       "observations": [
         {
           "capturedAt": "2026-08-28T07:41:15.283Z",
-          "views": 3658353,
+          "views": 869139,
           "likes": null,
           "comments": null,
           "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de Prime Video",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCQJWtTnAHhEG5w4uN0udnUQ",
+          "sourceLabel": "YouTube · flux Atom public de IGN",
+          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCKy1dAqELo0zrOtPkf0eTMw",
           "exactness": "exact"
         }
       ],
@@ -825,17 +918,17 @@
         {
           "tone": "funny",
           "label": "Drôle",
-          "text": "The Love Hypothesis arrived right when my deadline needed peer review."
+          "text": "Extended gameplay, abbreviated attention span; GTA 6 did the math."
         },
         {
           "tone": "smart",
           "label": "Smart",
-          "text": "A title like The Love Hypothesis makes romance sound beautifully testable."
+          "text": "Calling this official extended gameplay makes a trailer feel almost too modest."
         },
         {
           "tone": "complice",
           "label": "Complice",
-          "text": "Prime Video submitted The Love Hypothesis; our study group accepts the premise."
+          "text": "We all saw extended gameplay and moved one deadline into next week."
         }
       ],
       "commentsSource": "curated",
@@ -903,99 +996,6 @@
           "tone": "complice",
           "label": "Complice",
           "text": "Kurzgesagt questioned dust and now every desk particle feels suspicious."
-        }
-      ],
-      "commentsSource": "curated",
-      "alertedAt": null
-    },
-    {
-      "id": "yt-aa4pyww2cyc-33e8bb",
-      "platform": "youtube",
-      "category": "internet",
-      "author": "IShowSpeed",
-      "title": "NOT ENDING UNTIL WE BEAT EVERY GAME ft. Kai Cenat",
-      "caption": "tts donations here/ https://streamlabs.com/ishowspeed\n\nFOLLOW ME 👀  http://link.me/ishowspeed\nMERCH 👕 -  https://speed.store/\nMEMBERSHIPS ✅  - https://www.youtube.com/c/IShowSpeed/join\n\nfor donations tts/ Media Request here  \nhttps://streamlabs.com/ishowspeed/tip\n\nIG: https://www.instagram.com/ishowspeed?igsh=MXNveXVucWZyZGsyaA==\nX: https://x.com/ishowspeedsui?s=21\nSnap : https://snapchat.com/t/IeuoJ50Y\nDiscord: https://discord.gg/ishowspeed\n\nJOIN MY OTHER CHANNELS\nYT Live speedy: https://youtube.com/@LiveSpeedy?si=Sd4QiWsrk-iGX7fL\nYT Speedy Boykins: https://youtube.com/@speedyboykins7869?si=0jMDTQQsEUJXsr32\nYT Speeduniverse : https://youtube.com/@SpeedUniverse?si=XUMYeIWoUY4TIjFl",
-      "url": "https://www.youtube.com/watch?v=aA4pyww2cyc",
-      "mediaType": "video",
-      "durationSeconds": null,
-      "thumbnailUrl": "https://i2.ytimg.com/vi/aA4pyww2cyc/hqdefault.jpg",
-      "publishedAt": "2026-08-21T07:00:05.000Z",
-      "capturedAt": "2026-08-22T08:46:04.829Z",
-      "status": "surging",
-      "momentTier": "s",
-      "discovery": {
-        "source": "watchlist",
-        "accountHandle": "@IShowSpeed",
-        "accountTier": "a"
-      },
-      "velocity": {
-        "metric": "views",
-        "perHour": 7401,
-        "windowHours": 1.62,
-        "fromCapturedAt": "2026-08-22T07:08:59.721Z",
-        "toCapturedAt": "2026-08-22T08:46:04.829Z"
-      },
-      "lofiFitScore": 74,
-      "commentabilityScore": 67,
-      "priorityScore": 71,
-      "whyNow": "Publié par IShowSpeed il y a 26 h. +7 401 vues/h mesurés sur 1.62 h. La section va saturer vite.",
-      "risk": {
-        "level": "low",
-        "note": "Aucun sujet sensible détecté dans les métadonnées publiques."
-      },
-      "metrics": {
-        "views": 6921121,
-        "likes": null,
-        "comments": null,
-        "shares": null
-      },
-      "observations": [
-        {
-          "capturedAt": "2026-08-22T00:02:37.191Z",
-          "views": 6853708,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de IShowSpeed",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCWsDFcIhY2DBi3GB5uykGXA",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-22T07:08:59.721Z",
-          "views": 6909146,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de IShowSpeed",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCWsDFcIhY2DBi3GB5uykGXA",
-          "exactness": "exact"
-        },
-        {
-          "capturedAt": "2026-08-22T08:46:04.829Z",
-          "views": 6921121,
-          "likes": null,
-          "comments": null,
-          "shares": null,
-          "sourceLabel": "YouTube · flux Atom public de IShowSpeed",
-          "sourceUrl": "https://www.youtube.com/feeds/videos.xml?channel_id=UCWsDFcIhY2DBi3GB5uykGXA",
-          "exactness": "exact"
-        }
-      ],
-      "comments": [
-        {
-          "tone": "funny",
-          "label": "Drôle",
-          "text": "Beating every game is a very ambitious definition of one study break."
-        },
-        {
-          "tone": "smart",
-          "label": "Smart",
-          "text": "‘Not ending’ turns a gaming challenge into an endurance syllabus."
-        },
-        {
-          "tone": "complice",
-          "label": "Complice",
-          "text": "Kai Cenat joining is exactly when tomorrow’s schedule stopped mattering."
         }
       ],
       "commentsSource": "curated",
@@ -1264,6 +1264,73 @@
           "tone": "complice",
           "label": "Complice",
           "text": "A locked iPhone, MKBHD, and $10,000 already have this desk invested."
+        }
+      ],
+      "commentsSource": "curated",
+      "alertedAt": null
+    },
+    {
+      "id": "x-2092235817473527849-8826bc",
+      "platform": "x",
+      "category": "gaming",
+      "author": "@Fortnite",
+      "title": "Crash and Spyro nostalgia lands in Fortnite",
+      "caption": "The N. Sane Duo are coming to Fortnite! Crash and Spyro drop later this week!",
+      "url": "https://x.com/Fortnite/status/2092235817473527849",
+      "mediaType": "video",
+      "durationSeconds": 27.5,
+      "thumbnailUrl": "https://pbs.twimg.com/amplify_video_thumb/2092235558932344833/img/gDrVSdojFrTX03Oj.jpg",
+      "publishedAt": "2026-08-25T13:01:05.000Z",
+      "capturedAt": "2026-08-28T07:59:09.037Z",
+      "status": "hot",
+      "momentTier": "b",
+      "discovery": {
+        "source": "viral-scan",
+        "accountHandle": null,
+        "accountTier": null
+      },
+      "velocity": null,
+      "lofiFitScore": 80,
+      "commentabilityScore": 51,
+      "priorityScore": 67,
+      "whyNow": "Repéré il y a 67 h après publication. 33 435 likes au premier relevé, accélération pas encore mesurée.",
+      "risk": {
+        "level": "low",
+        "note": "Annonce gaming officielle, sans sujet sensible détecté dans les métadonnées publiques."
+      },
+      "metrics": {
+        "views": null,
+        "likes": 33435,
+        "comments": 628,
+        "shares": 3949
+      },
+      "observations": [
+        {
+          "capturedAt": "2026-08-28T07:59:09.037Z",
+          "views": null,
+          "likes": 33435,
+          "comments": 628,
+          "shares": 3949,
+          "sourceLabel": "X · métadonnées de la timeline publique native vérifiées le 28/08/2026",
+          "sourceUrl": "https://x.com/Fortnite/status/2092235817473527849",
+          "exactness": "exact"
+        }
+      ],
+      "comments": [
+        {
+          "tone": "funny",
+          "label": "Drôle",
+          "text": "Crash and Spyro entering Fortnite like my childhood just found the group chat"
+        },
+        {
+          "tone": "smart",
+          "label": "Smart",
+          "text": "Two platforming icons, one battle royale, and suddenly nostalgia has a matchmaking queue"
+        },
+        {
+          "tone": "complice",
+          "label": "Complice",
+          "text": "catch me studying until the Crash and Spyro drop becomes my scheduled break"
         }
       ],
       "commentsSource": "curated",
@@ -1902,7 +1969,7 @@
       "lofiFitScore": 54,
       "commentabilityScore": 49,
       "priorityScore": 52,
-      "whyNow": "Repéré il y a 564 h après publication. Compteurs publics indisponibles à ce relevé.",
+      "whyNow": "Repéré il y a 564 h après publication. 4 000 000 likes au premier relevé, accélération pas encore mesurée.",
       "risk": {
         "level": "low",
         "note": "Humour de groupe sans enjeu sensible visible."
@@ -2136,7 +2203,7 @@
       "lofiFitScore": 54,
       "commentabilityScore": 41,
       "priorityScore": 48,
-      "whyNow": "Repéré il y a 300 h après publication. Compteurs publics indisponibles à ce relevé.",
+      "whyNow": "Repéré il y a 300 h après publication. 136 000 likes au premier relevé, accélération pas encore mesurée.",
       "risk": {
         "level": "low",
         "note": "Nostalgie douce, sans sujet sensible."
@@ -2513,73 +2580,6 @@
           "tone": "complice",
           "label": "Complice",
           "text": "me trying to study while 2017 requests a surprise meeting"
-        }
-      ],
-      "commentsSource": "curated",
-      "alertedAt": null
-    },
-    {
-      "id": "x-2092235817473527849-8826bc",
-      "platform": "x",
-      "category": "gaming",
-      "author": "@Fortnite",
-      "title": "Crash and Spyro nostalgia lands in Fortnite",
-      "caption": "The N. Sane Duo are coming to Fortnite! Crash and Spyro drop later this week!",
-      "url": "https://x.com/Fortnite/status/2092235817473527849",
-      "mediaType": "video",
-      "durationSeconds": 27.5,
-      "thumbnailUrl": "https://pbs.twimg.com/amplify_video_thumb/2092235558932344833/img/gDrVSdojFrTX03Oj.jpg",
-      "publishedAt": "2026-08-25T13:01:05.000Z",
-      "capturedAt": "2026-08-28T07:59:09.037Z",
-      "status": "hot",
-      "momentTier": "b",
-      "discovery": {
-        "source": "viral-scan",
-        "accountHandle": null,
-        "accountTier": null
-      },
-      "velocity": null,
-      "lofiFitScore": 75,
-      "commentabilityScore": 51,
-      "priorityScore": 64,
-      "whyNow": "Repéré il y a 67 h après publication. 33 435 likes au premier relevé, accélération pas encore mesurée.",
-      "risk": {
-        "level": "low",
-        "note": "Annonce gaming officielle, sans sujet sensible détecté dans les métadonnées publiques."
-      },
-      "metrics": {
-        "views": null,
-        "likes": 33435,
-        "comments": 628,
-        "shares": 3949
-      },
-      "observations": [
-        {
-          "capturedAt": "2026-08-28T07:59:09.037Z",
-          "views": null,
-          "likes": 33435,
-          "comments": 628,
-          "shares": 3949,
-          "sourceLabel": "X · métadonnées de la timeline publique native vérifiées le 28/08/2026",
-          "sourceUrl": "https://x.com/Fortnite/status/2092235817473527849",
-          "exactness": "exact"
-        }
-      ],
-      "comments": [
-        {
-          "tone": "funny",
-          "label": "Drôle",
-          "text": "Crash and Spyro entering Fortnite like my childhood just found the group chat"
-        },
-        {
-          "tone": "smart",
-          "label": "Smart",
-          "text": "Two platforming icons, one battle royale, and suddenly nostalgia has a matchmaking queue"
-        },
-        {
-          "tone": "complice",
-          "label": "Complice",
-          "text": "catch me studying until the Crash and Spyro drop becomes my scheduled break"
         }
       ],
       "commentsSource": "curated",
