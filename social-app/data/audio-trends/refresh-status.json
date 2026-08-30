@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "attemptedAt": "2026-08-29T22:56:47.052Z",
+  "attemptedAt": "2026-08-30T07:39:13.555Z",
   "status": "success",
   "published": true,
   "inventory": {
@@ -14,7 +14,7 @@
     "publishable": true
   },
   "discoveryAudit": {
-    "scannedAt": "2026-08-29T22:56:47.052Z",
+    "scannedAt": "2026-08-30T07:39:13.555Z",
     "status": "success",
     "complete": true,
     "candidateCount": 179,
@@ -26,7 +26,7 @@
       "tiktok": 13
     },
     "candidateRegistry": {
-      "updatedAt": "2026-08-29T22:56:47.052Z",
+      "updatedAt": "2026-08-30T07:39:13.555Z",
       "candidateCount": 179,
       "candidateAudioUrls": [
         "https://www.instagram.com/reels/audio/1006119841436928",
@@ -331,11 +331,11 @@
       "retained": 179
     },
     "qualificationAudit": {
-      "attemptedAt": "2026-08-29T22:56:47.052Z",
+      "attemptedAt": "2026-08-30T07:39:13.555Z",
       "complete": true,
-      "videoFeedCapturedAt": "2026-08-29T22:50:40.045Z",
+      "videoFeedCapturedAt": "2026-08-30T07:37:07.093Z",
       "videoFeedFresh": true,
-      "videoDiscoveryAuditScannedAt": "2026-08-29T22:50:40.045Z",
+      "videoDiscoveryAuditScannedAt": "2026-08-30T07:37:07.093Z",
       "videoDiscoveryAuditFresh": true,
       "attemptedTrendCount": 29,
       "attemptedCurrentTrendCount": 0,
@@ -985,7 +985,7 @@
     ],
     "publishedInventoryCount": 50,
     "selectionAudit": {
-      "evaluatedAt": "2026-08-29T22:56:47.052Z",
+      "evaluatedAt": "2026-08-30T07:39:13.555Z",
       "addedTrendIds": [],
       "addedAudioUrls": [],
       "removedTrendIds": [],
