@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-08-31T09:46:57.278Z",
+  "generatedAt": "2026-08-31T13:07:38.284Z",
   "platforms": {
     "youtube": {
       "status": "partial",
@@ -66,12 +66,14 @@
       "inventoryPasses": {
         "newestToOldest": {
           "uniqueObserved": 731,
-          "endReached": true,
+          "endReached": false,
+          "stalled": true,
           "consecutiveNoGrowthLoads": 3
         },
         "oldestToNewest": {
           "uniqueObserved": 31,
-          "endReached": true,
+          "endReached": false,
+          "stalled": true,
           "consecutiveNoGrowthLoads": 3
         },
         "recentDelta": {
@@ -88,12 +90,48 @@
           "endReached": false
         }
       },
+      "relativeAgeContinuity": {
+        "continuous": false,
+        "observedWeekBuckets": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37
+        ],
+        "gaps": [
+          {
+            "fromWeek": 11,
+            "toWeek": 31
+          }
+        ]
+      },
+      "publishedAtCoverage": {
+        "exact": 18,
+        "approximate": 760,
+        "missing": 1,
+        "total": 779,
+        "approximateOldestPublishedAt": "2025-12-15T08:53:49.414Z",
+        "approximateNewestPublishedAt": "2026-08-31T08:53:49.414Z"
+      },
       "metricCoverage": {
         "likes": 0,
         "replies": 0,
         "total": 779
       },
-      "error": "778 commentaires actuellement visibles ont été importés et raccordés sans doublon aux 83 cartes historiques, soit 779 commentaires publiés. Instagram masque 45 fils derrière « View entire thread » ; sur deux cartes distinctes, le contrôle natif ouvre une route /p/ sans shortcode. L’inventaire reste donc partiel jusqu’à l’export Meta canonique.",
+      "error": "778 commentaires actuellement visibles ont été importés et raccordés sans doublon, soit 779 commentaires publiés. Les dates relatives natives restaurent 760 dates approximatives et 18 dates exactes sont conservées. La source Votre activité n’expose aucun compteur de likes ni de réponses. L’inventaire reste partiel : trou de chronologie entre 11 et 31 semaines et 45 fils masqués derrière « View entire thread ».",
       "lastRealObservationAt": "2026-08-31T08:53:49.414Z"
     },
     "tiktok": {

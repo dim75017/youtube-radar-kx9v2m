@@ -37,7 +37,11 @@ function fixture() {
         lastSeenIteration: 21,
       },
       {
-        ownComments: [{ age: "0h", text: "first exact comment" }],
+        ownComments: [{
+          age: "0h",
+          text: "first exact comment",
+          metrics: { likes: 12, replies: 3 },
+        }],
         targetAge: "1d",
         targetAuthor: "creator",
         targetText: "Real target title",
@@ -78,6 +82,23 @@ function fixture() {
   };
 }
 
+function addContinuousAllTimeEvidence(checkpoint) {
+  checkpoint.allTimeEndReached = true;
+  for (let week = 4; week <= 36; week += 4) {
+    checkpoint.comments.push({
+      ownComments: [{ age: `${week}w`, text: `continuity comment ${week}` }],
+      targetAge: `${week}w`,
+      targetAuthor: `creator${week}`,
+      targetText: `Continuity target ${week}`,
+      thumbnailUrl: `https://scontent.cdninstagram.com/v/media_${week}.jpg`,
+      passes: ["oldest"],
+      firstSeenIteration: 18,
+      lastSeenIteration: 21,
+    });
+  }
+  return checkpoint;
+}
+
 test("normalizes and deduplicates individual authored comments with stable synthetic IDs", () => {
   const first = normalizeInstagramCheckpoint(fixture());
   const second = normalizeInstagramCheckpoint(fixture());
@@ -94,9 +115,43 @@ test("normalizes and deduplicates individual authored comments with stable synth
   );
   assert.equal(first.manifest.identity.duplicateOrdinalApplied, 0);
   assert.ok(first.capture.comments.every((comment) => comment.idKind === "synthetic"));
-  assert.ok(first.capture.comments.every((comment) => comment.publishedAt === null));
-  assert.ok(first.capture.comments.every((comment) => comment.metrics.likes === null));
-  assert.ok(first.capture.comments.every((comment) => comment.metrics.replies === null));
+  assert.ok(first.capture.comments.every((comment) => comment.publishedAt != null));
+  assert.ok(first.capture.comments.every((comment) => comment.publishedAtPrecision === "approximate"));
+  assert.ok(first.capture.comments.every((comment) => comment.observation.observedAt === fixture().capturedAt));
+  const measured = first.capture.comments.find((comment) => comment.text === "first exact comment");
+  assert.deepEqual(measured.metrics, { likes: 12, replies: 3 });
+  assert.ok(first.capture.comments.filter((comment) => comment !== measured).every(
+    (comment) => comment.metrics.likes === null && comment.metrics.replies === null,
+  ));
+  assert.doesNotMatch(first.manifest.identity.keyParts.join(" "), /relativeAge/u);
+});
+
+test("keeps a synthetic identity stable while Instagram's relative age changes", () => {
+  const firstFixture = fixture();
+  const nextFixture = fixture();
+  nextFixture.capturedAt = "2026-09-01T08:53:49.414Z";
+  nextFixture.comments[0].ownComments[0].age = "1d";
+
+  const first = normalizeInstagramCheckpoint(firstFixture).capture.comments.find(
+    (comment) => comment.text === "first exact comment",
+  );
+  const next = normalizeInstagramCheckpoint(nextFixture).capture.comments.find(
+    (comment) => comment.text === "first exact comment",
+  );
+
+  assert.equal(first.id, next.id);
+  assert.equal(first.publishedAt, next.publishedAt);
+});
+
+test("accepts older month and year relative ages without inventing exact precision", () => {
+  const checkpoint = fixture();
+  checkpoint.comments[1].ownComments[0].age = "1y";
+  const { capture } = normalizeInstagramCheckpoint(checkpoint);
+  const old = capture.comments.find((comment) => comment.text === "oldest exact comment");
+
+  assert.equal(old.publishedAtPrecision, "approximate");
+  assert.equal(old.observation.relativeAge, "1y");
+  assert.match(old.publishedAt, /^2025-/u);
 });
 
 test("keeps only proven permalinks and marks every other target unavailable", () => {
@@ -121,11 +176,12 @@ test("keeps only proven permalinks and marks every other target unavailable", ()
   );
 });
 
-test("records the two completion stalls, the recent delta and the observed age range", () => {
+test("records scroll stalls without confusing a chronology gap with a complete inventory", () => {
   const { manifest, capture } = normalizeInstagramCheckpoint(fixture());
 
-  assert.equal(manifest.inventoryStatus, "complete");
-  assert.equal(manifest.endReached, true);
+  assert.equal(manifest.inventoryStatus, "partial");
+  assert.equal(manifest.endReached, false);
+  assert.deepEqual(manifest.issues, ["relative-age-gap", "all-time-end-not-proven"]);
   assert.deepEqual(manifest.relativeAgeRange, {
     newestRelativeAge: "0h",
     oldestRelativeAge: "37w",
@@ -133,6 +189,9 @@ test("records the two completion stalls, the recent delta and the observed age r
   assert.deepEqual(manifest.completionEvidence.newest.stallIterations, [15, 16, 17]);
   assert.deepEqual(manifest.completionEvidence.oldest.stallIterations, [19, 20, 21]);
   assert.equal(manifest.completionEvidence.recentDelta.iteration, 22);
+  assert.deepEqual(manifest.relativeAgeContinuity.gaps, [
+    { fromWeek: 1, toWeek: 36 },
+  ]);
   assert.equal(capture.inventory.recordCount, capture.comments.length);
 });
 
@@ -164,6 +223,8 @@ test("keeps a hidden-thread inventory partial when its expansion audit fails", (
   assert.deepEqual(manifest.issues, [
     "hidden-threads-not-exhausted",
     "thread-expansion-audit-partial",
+    "relative-age-gap",
+    "all-time-end-not-proven",
   ]);
   assert.equal(manifest.threadExpansionAudit.identifiedThreadCards, 1);
   assert.equal(manifest.threadExpansionAudit.failure, threadExpansionAudit.failure);
@@ -173,7 +234,7 @@ test("keeps a hidden-thread inventory partial when its expansion audit fails", (
 });
 
 test("accepts a complete audit for every identified hidden thread", () => {
-  const checkpoint = fixture();
+  const checkpoint = addContinuousAllTimeEvidence(fixture());
   checkpoint.comments[0].rawText = "Target caption\nView entire thread";
   const { manifest } = normalizeInstagramCheckpoint(checkpoint, {
     threadExpansionAudit: {

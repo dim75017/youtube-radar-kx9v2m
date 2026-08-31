@@ -314,6 +314,55 @@ function precision(value, label) {
   return value;
 }
 
+function publishedAtPrecision(value, publishedAt, label) {
+  if (!publishedAt) {
+    if (value != null && value !== "unknown") {
+      throw new Error(`${label} doit être unknown lorsque publishedAt est null.`);
+    }
+    return "unknown";
+  }
+  if (value == null) return "exact";
+  if (!['exact', 'approximate', 'unknown'].includes(value)) {
+    throw new Error(`${label} est invalide.`);
+  }
+  return value;
+}
+
+function effectivePublishedAtPrecision(post) {
+  const explicit = post?.raw?.publishedAtPrecision;
+  if (explicit === "exact" || explicit === "approximate") return explicit;
+  if (
+    post?.platform === "instagram" &&
+    post?.publishedAt &&
+    (post?.raw?.commentIdKind === "native" || post?.raw?.nativeCommentId)
+  ) {
+    return "exact";
+  }
+  return "unknown";
+}
+
+function preferredPublishedAt(existing, incoming) {
+  if (!existing?.publishedAt) {
+    return {
+      value: incoming?.publishedAt ?? null,
+      precision: effectivePublishedAtPrecision(incoming),
+    };
+  }
+  if (!incoming?.publishedAt) {
+    return {
+      value: existing.publishedAt,
+      precision: effectivePublishedAtPrecision(existing),
+    };
+  }
+  const rank = { unknown: 0, approximate: 1, exact: 2 };
+  const existingPrecision = effectivePublishedAtPrecision(existing);
+  const incomingPrecision = effectivePublishedAtPrecision(incoming);
+  if (rank[incomingPrecision] > rank[existingPrecision]) {
+    return { value: incoming.publishedAt, precision: incomingPrecision };
+  }
+  return { value: existing.publishedAt, precision: existingPrecision };
+}
+
 function commentIdKind(value, label) {
   if (value == null) return "native";
   if (!["native", "synthetic"].includes(value)) {
@@ -407,6 +456,8 @@ function duplicateContradictions(left, right) {
   if (
     left.identity.publishedAt &&
     right.identity.publishedAt &&
+    effectivePublishedAtPrecision(left.post) === "exact" &&
+    effectivePublishedAtPrecision(right.post) === "exact" &&
     Math.abs(
       Date.parse(left.identity.publishedAt) - Date.parse(right.identity.publishedAt),
     ) > DUPLICATE_TIMESTAMP_TOLERANCE_MS
@@ -458,6 +509,25 @@ function normalizedComment(entry, index, platform, capturedAt, activitySourceUrl
     { nullable: true },
   );
   const publishedAt = nullableIso(row.publishedAt, `comments[${index}].publishedAt`);
+  const datePrecision = publishedAtPrecision(
+    row.publishedAtPrecision,
+    publishedAt,
+    `comments[${index}].publishedAtPrecision`,
+  );
+  const observation = row.observation == null
+    ? {}
+    : requireRecord(row.observation, `comments[${index}].observation`);
+  const relativeAge = nullableString(
+    observation.relativeAge,
+    `comments[${index}].observation.relativeAge`,
+  );
+  const stableSyntheticId = nullableString(
+    observation.stableSyntheticId,
+    `comments[${index}].observation.stableSyntheticId`,
+  );
+  if (stableSyntheticId && !/^instagram-synthetic-[a-f0-9]{64}$/u.test(stableSyntheticId)) {
+    throw new Error(`comments[${index}].observation.stableSyntheticId est invalide.`);
+  }
   const contentId = nullableString(target.contentId, `comments[${index}].target.contentId`);
   const identity = normalizedIdentity({
     platform,
@@ -587,9 +657,21 @@ function normalizedComment(entry, index, platform, capturedAt, activitySourceUrl
       sourceKind: source,
       commentIdKind: idKind,
       ...(idKind === "native" ? { nativeCommentId: id } : {}),
-      publishedAtPrecision: publishedAt ? "exact" : "unknown",
+      publishedAtPrecision: datePrecision,
       firstObservedAt: capturedAt,
       lastObservedAt: capturedAt,
+      ...(relativeAge
+        ? {
+            commentObservation: {
+              relativeAge,
+              observedAt: nullableIso(
+                observation.observedAt,
+                `comments[${index}].observation.observedAt`,
+              ) ?? capturedAt,
+              ...(stableSyntheticId ? { stableSyntheticId } : {}),
+            },
+          }
+        : {}),
       commentTarget: {
         contentId,
         url: explicitContentUrl,
@@ -643,6 +725,11 @@ function mergeComment(existing, incoming) {
         unavailable: false,
       }
     : mergeNullableRecord(existingTarget, incomingTarget);
+  const published = preferredPublishedAt(existing, incoming);
+  const mergedCommentObservation = mergeNullableRecord(
+    isRecord(existing.raw?.commentObservation) ? existing.raw.commentObservation : {},
+    isRecord(incoming.raw?.commentObservation) ? incoming.raw.commentObservation : {},
+  );
   return {
     ...existing,
     ...incoming,
@@ -655,15 +742,19 @@ function mergeComment(existing, incoming) {
     thumbnailUrl: preserveExistingTarget
       ? existing.thumbnailUrl ?? null
       : incoming.thumbnailUrl ?? existing.thumbnailUrl ?? null,
-    publishedAt: incoming.publishedAt ?? existing.publishedAt ?? null,
+    publishedAt: published.value,
     likes: incoming.likes ?? existing.likes ?? null,
     comments: incoming.comments ?? existing.comments ?? null,
     raw: {
       ...(existing.raw ?? {}),
       ...incoming.raw,
+      publishedAtPrecision: published.precision,
       firstObservedAt: [existing.raw?.firstObservedAt, incoming.raw.firstObservedAt].filter(Boolean).sort().at(0),
       lastObservedAt: [existing.raw?.lastObservedAt, incoming.raw.lastObservedAt].filter(Boolean).sort().at(-1),
       commentTarget: mergedTarget,
+      ...(Object.keys(mergedCommentObservation).length
+        ? { commentObservation: mergedCommentObservation }
+        : {}),
       metricHistory: [...history.values()].sort((left, right) => left.capturedAt.localeCompare(right.capturedAt)),
     },
   };
@@ -730,6 +821,8 @@ function existingNativeIdContradictions(existing, incoming) {
   if (
     identity.publishedAt &&
     incoming.identity.publishedAt &&
+    effectivePublishedAtPrecision(existing) === "exact" &&
+    effectivePublishedAtPrecision(incoming.post) === "exact" &&
     !identityDateMatches(identity.publishedAt, incoming.identity.publishedAt)
   ) {
     conflicts.push("publishedAt");
@@ -994,7 +1087,10 @@ async function main() {
     }
   }
 
-  const nextPosts = [...posts.values()].sort((left, right) => String(right.publishedAt ?? "").localeCompare(String(left.publishedAt ?? "")));
+  // Map updates retain their original insertion position. Keeping that stable order avoids
+  // rewriting the entire public history whenever an approximate comment date is enriched;
+  // every consumer that needs recency already sorts explicitly at display time.
+  const nextPosts = [...posts.values()];
   const changedCount = inserted + updated + reconciled;
   const nextGeneratedAt = changedCount > 0
     ? latestIso(snapshot.generatedAt, capturedAt) ?? capturedAt

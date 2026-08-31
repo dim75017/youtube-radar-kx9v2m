@@ -31,6 +31,7 @@ type CommentPost = AuthoredCommentLike & {
   text: string;
   format: string;
   published_at: string | null;
+  published_at_precision?: "exact" | "approximate" | "unknown";
   likes: number | null;
   comments: number | null;
 };
@@ -39,7 +40,8 @@ type CommentSort = "recent" | "popular";
 type PlatformFilter = CommentPlatform | "all";
 type CommentCategoryFilter = AuthoredCommentCategory | "all";
 
-const PAGE_SIZE = 60;
+const DEFAULT_PAGE_SIZE = 60;
+const INSTAGRAM_PAGE_SIZE = 120;
 const TIKTOK_COMMENT_THUMBNAILS = new Map<string, string>();
 const TIKTOK_COMMENT_THUMBNAIL_REQUESTS = new Map<
   string,
@@ -87,6 +89,36 @@ function formatShortDate(value: string | null): string {
     month: "2-digit",
     year: "2-digit",
   }).format(date);
+}
+
+function commentDate(post: CommentPost): { label: string; title: string } {
+  if (!post.published_at) {
+    return { label: "—", title: "Date non fournie par la source" };
+  }
+  const formatted = formatShortDate(post.published_at);
+  if (post.published_at_precision === "approximate") {
+    return {
+      label: `≈ ${formatted}`,
+      title: "Date approximative calculée depuis l’âge relatif affiché par Instagram",
+    };
+  }
+  return { label: formatted, title: "Date de publication du commentaire" };
+}
+
+function commentMetric(
+  post: CommentPost,
+  value: number | null,
+): { label: string; title?: string } {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return { label: formatCompact(value) };
+  }
+  if (post.platform === "instagram") {
+    return {
+      label: "Non fourni",
+      title: "Ce compteur n’est pas présent dans l’historique Instagram actuellement importé",
+    };
+  }
+  return { label: "—" };
 }
 
 function categoryLabel(
@@ -198,6 +230,9 @@ function CommentCard({ post }: { post: CommentPost }) {
   const targetAccount =
     target.authorName ??
     (target.authorHandle ? `@${target.authorHandle}` : "Compte non fourni");
+  const date = commentDate(post);
+  const likes = commentMetric(post, post.likes);
+  const replies = commentMetric(post, post.comments);
 
   return (
     <article className={`authored-comment-card tone-${meta.tone}`}>
@@ -253,19 +288,19 @@ function CommentCard({ post }: { post: CommentPost }) {
               👥 {audienceText(post)}
             </b>
           </div>
-          <time dateTime={post.published_at ?? undefined} title={post.published_at ?? "Date non fournie"}>
-            {formatShortDate(post.published_at)}
+          <time dateTime={post.published_at ?? undefined} title={date.title}>
+            {date.label}
           </time>
         </div>
         <blockquote>
           <p>{post.text || "Commentaire non fourni"}</p>
           <div className="authored-comment-metrics" aria-label="Likes et réponses du commentaire">
-            <span>
-              <b>❤️ {post.likes === null ? "—" : formatCompact(post.likes)}</b>
+            <span title={likes.title}>
+              <b>❤️ {likes.label}</b>
               <small>Likes</small>
             </span>
-            <span>
-              <b>↩️ {post.comments === null ? "—" : formatCompact(post.comments)}</b>
+            <span title={replies.title}>
+              <b>↩️ {replies.label}</b>
               <small>Réponses</small>
             </span>
           </div>
@@ -285,9 +320,14 @@ export function AuthoredCommentsView({
   platform: PlatformFilter;
 }) {
   const [duration, setDuration] = useState<SocialDurationFilter>("all");
-  const [sort, setSort] = useState<CommentSort>("popular");
-  const [category, setCategory] = useState<CommentCategoryFilter>("external");
-  const [pagination, setPagination] = useState({ key: "", count: PAGE_SIZE });
+  const [sort, setSort] = useState<CommentSort>(
+    platform === "instagram" ? "recent" : "popular",
+  );
+  const pageSize = platform === "instagram" ? INSTAGRAM_PAGE_SIZE : DEFAULT_PAGE_SIZE;
+  const [category, setCategory] = useState<CommentCategoryFilter>(
+    platform === "instagram" ? "all" : "external",
+  );
+  const [pagination, setPagination] = useState({ key: "", count: pageSize });
   const activePlatformLabel = platform === "all"
     ? "Commentaires"
     : `Commentaires ${PLATFORM_META[platform].label}`;
@@ -296,13 +336,17 @@ export function AuthoredCommentsView({
     () => posts.filter((post) => isAuthoredComment(post)),
     [posts],
   );
-  const datedComments = useMemo(
+  const platformComments = useMemo(
     () => allComments.filter(
-      (post) =>
-        (platform === "all" || post.platform === platform) &&
-        matchesSocialDuration(post, duration, generatedAt),
+      (post) => platform === "all" || post.platform === platform,
     ),
-    [allComments, duration, generatedAt, platform],
+    [allComments, platform],
+  );
+  const datedComments = useMemo(
+    () => platformComments.filter(
+      (post) => matchesSocialDuration(post, duration, generatedAt),
+    ),
+    [duration, generatedAt, platformComments],
   );
   const categoryCounts = useMemo(() => {
     const counts: Record<AuthoredCommentCategory, number> = {
@@ -353,7 +397,7 @@ export function AuthoredCommentsView({
   }, [activeCategory, datedComments, sort]);
   const paginationKey = `${platform}:${duration}:${activeCategory}:${sort}`;
   const visibleCount =
-    pagination.key === paginationKey ? pagination.count : PAGE_SIZE;
+    pagination.key === paginationKey ? pagination.count : pageSize;
   const visibleComments = filteredComments.slice(0, visibleCount);
 
   return (
@@ -390,6 +434,13 @@ export function AuthoredCommentsView({
           </div>
         </header>
 
+        <p className="authored-comments-result-count">
+          {filteredComments.length} commentaire{filteredComments.length > 1 ? "s" : ""} dans ce filtre
+          {platform === "instagram" && filteredComments.length !== platformComments.length
+            ? ` · ${platformComments.length} présents dans le dashboard`
+            : ""}
+        </p>
+
         {filteredComments.length ? (
           <>
             <div className="authored-comment-grid">
@@ -404,11 +455,11 @@ export function AuthoredCommentsView({
                   onClick={() =>
                     setPagination({
                       key: paginationKey,
-                      count: visibleCount + PAGE_SIZE,
+                      count: visibleCount + pageSize,
                     })
                   }
                 >
-                  Afficher {Math.min(PAGE_SIZE, filteredComments.length - visibleComments.length)} de plus ↓
+                  Afficher {Math.min(pageSize, filteredComments.length - visibleComments.length)} de plus ↓
                 </button>
               </div>
             ) : null}

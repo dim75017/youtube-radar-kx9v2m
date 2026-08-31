@@ -1992,6 +1992,7 @@ export function SocialOS({
 
         {workspace && view === "all-comments" ? (
           <AuthoredCommentsView
+            key={commentPlatform}
             posts={authoredComments}
             generatedAt={workspace.generatedAt}
             platform={commentPlatform}

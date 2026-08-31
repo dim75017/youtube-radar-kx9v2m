@@ -110,6 +110,102 @@ test("imports a closed Instagram comment record and coalesces identical native I
   assert.equal(output.summary.formatCounts.instagram.comment, 1);
 });
 
+test("keeps an exact Instagram date when a later activity scan only provides an approximation", async () => {
+  const exactPublishedAt = "2026-08-28T07:00:00.000Z";
+  const existing = {
+    platform: "instagram",
+    externalId: "comment:18123456789012345",
+    url: "https://www.instagram.com/p/ABC123/c/18123456789012345/",
+    title: "Morning desk setup",
+    text: "cozy level unlocked",
+    format: "comment",
+    thumbnailUrl: "https://dim75017.github.io/youtube-radar-kx9v2m/social/media/instagram/ABC123.jpg",
+    publishedAt: exactPublishedAt,
+    views: null,
+    likes: 9,
+    comments: 2,
+    shares: null,
+    saves: null,
+    raw: {
+      collector: "authorized-instagram-activity",
+      commentIdKind: "native",
+      nativeCommentId: "18123456789012345",
+      publishedAtPrecision: "exact",
+      firstObservedAt: "2026-08-28T08:00:00.000Z",
+      lastObservedAt: "2026-08-28T08:00:00.000Z",
+      commentTarget: {
+        contentId: "ABC123",
+        url: "https://www.instagram.com/p/ABC123/",
+        title: "Morning desk setup",
+        thumbnailUrl: "https://dim75017.github.io/youtube-radar-kx9v2m/social/media/instagram/ABC123.jpg",
+        authorHandle: "creator",
+        unavailable: false,
+      },
+      metricHistory: [],
+    },
+  };
+  const unrelated = {
+    ...existing,
+    platform: "youtube",
+    externalId: "video:unchanged",
+    format: "short",
+    publishedAt: "2026-08-30T08:00:00.000Z",
+    raw: { metricHistory: [] },
+  };
+  const { result, historyPath } = await invokeImport(
+    {
+      platform: "instagram",
+      capturedAt: "2026-08-31T08:53:49.414Z",
+      activitySourceUrl: "https://www.instagram.com/your_activity/interactions/comments/",
+      comments: [{
+        id: "18123456789012345",
+        idKind: "native",
+        url: "https://www.instagram.com/p/ABC123/",
+        text: existing.text,
+        publishedAt: "2026-08-28T08:53:49.414Z",
+        publishedAtPrecision: "approximate",
+        observation: {
+          relativeAge: "3d",
+          observedAt: "2026-08-31T08:53:49.414Z",
+        },
+        target: {
+          contentId: "ABC123",
+          url: "https://www.instagram.com/p/ABC123/",
+          title: existing.title,
+          thumbnailUrl: null,
+          authorHandle: "creator",
+          audiencePrecision: "unknown",
+        },
+        metrics: { likes: null, replies: null },
+      }],
+    },
+    {
+      history: {
+        generatedAt: "2026-08-28T08:00:00.000Z",
+        coverage: [],
+        posts: [unrelated, existing],
+      },
+      summary: {
+        generatedAt: "2026-08-28T08:00:00.000Z",
+        totalPostCount: 2,
+        platformCounts: { youtube: 1, instagram: 1, tiktok: 0, x: 0 },
+        formatCounts: { youtube: { short: 1 }, instagram: { comment: 1 }, tiktok: {}, x: {} },
+        coverage: [],
+      },
+    },
+  );
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const importedPosts = JSON.parse(await readFile(historyPath, "utf8")).posts;
+  assert.equal(importedPosts[0].externalId, unrelated.externalId);
+  const merged = importedPosts[1];
+  assert.equal(merged.publishedAt, exactPublishedAt);
+  assert.equal(merged.raw.publishedAtPrecision, "exact");
+  assert.equal(merged.raw.commentObservation.relativeAge, "3d");
+  assert.equal(merged.likes, 9);
+  assert.equal(merged.comments, 2);
+});
+
 test("preserves a signed thumbnail from an approved TikTok CDN", async () => {
   const thumbnailUrl = "https://p16-sign.tiktokcdn-us.com/expiring.jpg?x-expires=1";
   const output = await runImport({

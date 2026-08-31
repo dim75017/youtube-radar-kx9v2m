@@ -191,16 +191,19 @@ test("classifies Community, owned and external comment conversations", () => {
 });
 
 test("keeps internal target confidence labels out of comment cards", async () => {
-  const [component, styles] = await Promise.all([
+  const [component, socialOs, styles] = await Promise.all([
     readFile(new URL("../app/AuthoredCommentsView.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/SocialOS.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
 
   assert.doesNotMatch(component, /Cible vérifiée|Cible dérivée/);
   assert.match(component, /platform: PlatformFilter/);
   assert.doesNotMatch(component, /authored-comment-platform-tabs|onPlatformChange|internalPlatform/);
-  assert.match(component, /useState<CommentCategoryFilter>\("external"\)/);
-  assert.match(component, /useState<CommentSort>\("popular"\)/);
+  assert.match(component, /platform === "instagram" \? "all" : "external"/);
+  assert.match(component, /platform === "instagram" \? "recent" : "popular"/);
+  assert.match(socialOs, /<AuthoredCommentsView[\s\S]*?key=\{commentPlatform\}/);
+  assert.match(component, /INSTAGRAM_PAGE_SIZE = 120/);
   assert.match(component, /\["external", "owned", "community"\] as const/);
   assert.equal((component.match(/<FilterDropdown/g) ?? []).length, 3);
   assert.match(component, /category-results-header category-results-toolbar/);
@@ -227,6 +230,9 @@ test("keeps internal target confidence labels out of comment cards", async () =>
   assert.match(component, /<strong>\{targetAccount\}<\/strong>/);
   assert.match(component, /<small>Likes<\/small>/);
   assert.match(component, /<small>Réponses<\/small>/);
+  assert.match(component, /Date approximative calculée depuis l’âge relatif affiché par Instagram/);
+  assert.match(component, /Ce compteur n’est pas présent dans l’historique Instagram actuellement importé/);
+  assert.match(component, /authored-comments-result-count/);
   assert.match(component, /year: "2-digit"/);
 
   const thumbnail = component.indexOf('className="authored-comment-thumbnail"');
@@ -269,4 +275,37 @@ test("serves Instagram comment thumbnails from the durable same-origin cache", a
     assert.ok(image.isFile());
     assert.ok(image.size > 1_000);
   }
+});
+
+test("keeps Instagram comment inventory, dates and metric coverage internally consistent", async () => {
+  const [snapshot, refreshStatus] = await Promise.all([
+    readFile(new URL("../data/public-history.json", import.meta.url), "utf8").then(JSON.parse),
+    readFile(new URL("../data/owner-comment-refresh-status.json", import.meta.url), "utf8").then(JSON.parse),
+  ]);
+  const comments = snapshot.posts.filter(
+    (post) => post.platform === "instagram" && isAuthoredComment(post),
+  );
+  const status = refreshStatus.platforms.instagram;
+  const precision = (post) => post.raw?.publishedAtPrecision ?? "unknown";
+  const approximateDates = comments
+    .filter((post) => precision(post) === "approximate" && post.publishedAt)
+    .map((post) => post.publishedAt)
+    .sort();
+
+  assert.equal(new Set(comments.map((post) => post.externalId)).size, comments.length);
+  assert.equal(status.publishedComments, comments.length);
+  assert.deepEqual(status.publishedAtCoverage, {
+    exact: comments.filter((post) => precision(post) === "exact").length,
+    approximate: comments.filter((post) => precision(post) === "approximate").length,
+    missing: comments.filter((post) => post.publishedAt == null).length,
+    total: comments.length,
+    approximateOldestPublishedAt: approximateDates.at(0),
+    approximateNewestPublishedAt: approximateDates.at(-1),
+  });
+  assert.deepEqual(status.metricCoverage, {
+    likes: comments.filter((post) => post.likes != null).length,
+    replies: comments.filter((post) => post.comments != null).length,
+    total: comments.length,
+  });
+  if (status.inventoryStatus !== "complete") assert.equal(status.endReached, false);
 });

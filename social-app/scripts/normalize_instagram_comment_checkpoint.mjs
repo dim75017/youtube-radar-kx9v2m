@@ -31,6 +31,14 @@ function nullableString(value) {
   return typeof value === "string" && value.trim() !== "" ? value : null;
 }
 
+function nullableNonNegativeInteger(value, label) {
+  if (value == null) return null;
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`${label} doit être un entier positif ou nul.`);
+  }
+  return value;
+}
+
 function hash(value) {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -128,6 +136,26 @@ function existingMatchProofs(comment, post) {
   return proofs;
 }
 
+function legacyAgeSyntheticExternalId(comment) {
+  const authorHandle = requireString(comment.target?.authorHandle, "comment.target.authorHandle");
+  const fingerprint = requireString(
+    comment.observation?.targetFingerprint,
+    "comment.observation.targetFingerprint",
+  );
+  const relativeAge = requireString(
+    comment.observation?.relativeAge,
+    "comment.observation.relativeAge",
+  );
+  const legacyIdentity = JSON.stringify([
+    PLATFORM,
+    authorHandle.toLowerCase(),
+    fingerprint,
+    requireString(comment.text, "comment.text"),
+    relativeAge,
+  ]);
+  return `comment:instagram-synthetic-${hash(legacyIdentity)}`;
+}
+
 export function reconcileCaptureWithExistingHistory(captureValue, historyValue) {
   const capture = assertRecord(captureValue, "capture");
   const history = assertRecord(historyValue, "existingHistory");
@@ -137,6 +165,8 @@ export function reconcileCaptureWithExistingHistory(captureValue, historyValue) 
     (post) => post?.platform === PLATFORM && post?.format === "comment",
   );
   const pairIndex = new Map();
+  const byExternalId = new Map();
+  const byStableSyntheticId = new Map();
   for (const post of existingComments) {
     const text = requireString(post.text, "existing.text");
     const target = assertRecord(post.raw?.commentTarget ?? {}, "existing.raw.commentTarget");
@@ -145,11 +175,20 @@ export function reconcileCaptureWithExistingHistory(captureValue, historyValue) 
     const rows = pairIndex.get(key) ?? [];
     rows.push(post);
     pairIndex.set(key, rows);
+    byExternalId.set(post.externalId, post);
+    const stableSyntheticId = nullableString(post.raw?.commentObservation?.stableSyntheticId);
+    if (stableSyntheticId) {
+      const stableRows = byStableSyntheticId.get(stableSyntheticId) ?? [];
+      stableRows.push(post);
+      byStableSyntheticId.set(stableSyntheticId, stableRows);
+    }
   }
 
   const claimedExternalIds = new Set();
   const matchedExternalIds = new Set();
   const proofCounts = {
+    "stable-synthetic-id": 0,
+    "legacy-age-synthetic-id": 0,
     "thumbnail-asset-fingerprint": 0,
     "normalized-target-caption": 0,
     "canonical-permalink-shortcode": 0,
@@ -160,10 +199,20 @@ export function reconcileCaptureWithExistingHistory(captureValue, historyValue) 
       comment.target?.authorHandle,
       `capture.comments[${index}].target.authorHandle`,
     );
+    const stableSyntheticId = requireString(
+      comment.observation?.stableSyntheticId,
+      `capture.comments[${index}].observation.stableSyntheticId`,
+    );
+    const stableCandidates = byStableSyntheticId.get(stableSyntheticId) ?? [];
+    const legacyCandidate = byExternalId.get(legacyAgeSyntheticExternalId(comment));
     const candidates = pairIndex.get(JSON.stringify([comment.text, authorHandle])) ?? [];
-    const proven = candidates
-      .map((post) => ({ post, proofs: existingMatchProofs(comment, post) }))
-      .filter((candidate) => candidate.proofs.length > 0);
+    const proven = stableCandidates.length
+      ? stableCandidates.map((post) => ({ post, proofs: ["stable-synthetic-id"] }))
+      : legacyCandidate
+        ? [{ post: legacyCandidate, proofs: ["legacy-age-synthetic-id"] }]
+        : candidates
+            .map((post) => ({ post, proofs: existingMatchProofs(comment, post) }))
+            .filter((candidate) => candidate.proofs.length > 0);
     if (proven.length > 1) {
       throw new Error(
         `Raccordement historique ambigu pour capture.comments[${index}] (${proven
@@ -221,12 +270,50 @@ export function reconcileCaptureWithExistingHistory(captureValue, historyValue) 
   };
 }
 
-function relativeAgeHours(value) {
+function relativeAgeParts(value) {
   const age = requireString(value, "ownComment.age");
-  const match = age.match(/^(\d+)([hdw])$/i);
+  const match = age.match(/^(\d+)(mo|[smhdwy])$/i);
   if (!match) throw new Error(`Âge relatif Instagram non reconnu : ${age}`);
-  const multipliers = { h: 1, d: 24, w: 24 * 7 };
-  return Number(match[1]) * multipliers[match[2].toLowerCase()];
+  const unit = match[2].toLowerCase();
+  const multipliers = {
+    s: 1 / 3_600,
+    m: 1 / 60,
+    h: 1,
+    d: 24,
+    w: 24 * 7,
+    mo: 24 * 30,
+    y: 24 * 365,
+  };
+  const amount = Number(match[1]);
+  return { age, amount, unit, hours: amount * multipliers[unit] };
+}
+
+function relativeAgeHours(value) {
+  return relativeAgeParts(value).hours;
+}
+
+function approximatePublishedAt(capturedAt, relativeAge) {
+  const capturedTimestamp = Date.parse(capturedAt);
+  const { hours } = relativeAgeParts(relativeAge);
+  return new Date(capturedTimestamp - hours * 60 * 60 * 1_000).toISOString();
+}
+
+function relativeAgeContinuity(items, allTimeEndReached) {
+  const weekBuckets = [...new Set(items.map((item) => Math.floor(item.ageHours / (24 * 7))))]
+    .sort((left, right) => left - right);
+  const gaps = [];
+  for (let index = 1; index < weekBuckets.length; index += 1) {
+    const previous = weekBuckets[index - 1];
+    const current = weekBuckets[index];
+    if (current - previous <= 5) continue;
+    gaps.push({ fromWeek: previous + 1, toWeek: current - 1 });
+  }
+  return {
+    allTimeEndReached,
+    continuous: gaps.length === 0,
+    observedWeekBuckets: weekBuckets,
+    gaps,
+  };
 }
 
 function coverage(covered, total) {
@@ -257,18 +344,22 @@ function targetFingerprint(card, permalink) {
 
 function completionEvidence(scrollLog) {
   if (!Array.isArray(scrollLog)) throw new Error("checkpoint.scrollLog doit être un tableau.");
-  const byPassAndIteration = new Map(
-    scrollLog.map((entry) => [`${entry.pass}:${entry.iteration}`, entry]),
-  );
-  const assertStall = (pass, iterations) => {
-    const rows = iterations.map((iteration) => byPassAndIteration.get(`${pass}:${iteration}`));
-    if (rows.some((row) => !row || row.added !== 0)) {
-      throw new Error(`La preuve de fin ${pass} ${iterations.join("-")} est incomplète.`);
+  const assertStall = (pass) => {
+    const rows = scrollLog
+      .filter((entry) => entry?.pass === pass)
+      .sort((left, right) => left.iteration - right.iteration);
+    const trailing = [];
+    for (let index = rows.length - 1; index >= 0 && rows[index].added === 0; index -= 1) {
+      trailing.unshift(rows[index]);
     }
-    const last = rows.at(-1);
+    if (trailing.length < 3) {
+      throw new Error(`La preuve de stagnation ${pass} doit contenir trois chargements sans croissance.`);
+    }
+    const stallRows = trailing.slice(-3);
+    const last = stallRows.at(-1);
     return {
       pass,
-      stallIterations: iterations,
+      stallIterations: stallRows.map((row) => row.iteration),
       consecutiveNoGrowth: true,
       finalObservedCardCount: last.total,
       finalVisibleCardCount: last.visible,
@@ -276,14 +367,17 @@ function completionEvidence(scrollLog) {
       finalScrollHeight: last.scrollHeight,
     };
   };
-  const recentDelta = byPassAndIteration.get("newest-delta:22");
-  if (!recentDelta) throw new Error("La preuve du delta récent iteration 22 manque.");
+  const recentDelta = scrollLog
+    .filter((entry) => entry?.pass === "newest-delta")
+    .sort((left, right) => left.iteration - right.iteration)
+    .at(-1);
+  if (!recentDelta) throw new Error("La preuve du delta récent manque.");
   return {
-    newest: assertStall("newest", [15, 16, 17]),
-    oldest: assertStall("oldest", [19, 20, 21]),
+    newest: assertStall("newest"),
+    oldest: assertStall("oldest"),
     recentDelta: {
       pass: "newest-delta",
-      iteration: 22,
+      iteration: recentDelta.iteration,
       observedCardCount: recentDelta.visible,
       addedCardCount: recentDelta.added,
       finalCollectedCardCount: recentDelta.total,
@@ -430,13 +524,15 @@ export function normalizeInstagramCheckpoint(
       );
       const age = requireString(ownComment.age, "ownComment.age");
       const text = requireString(ownComment.text, "ownComment.text");
+      const metrics = ownComment.metrics == null
+        ? {}
+        : assertRecord(ownComment.metrics, "ownComment.metrics");
       const authorHandle = nullableString(card.targetAuthor);
       const identityKey = JSON.stringify([
         PLATFORM,
         authorHandle?.toLowerCase() ?? null,
         fingerprint,
         text,
-        age,
       ]);
       flattened.push({
         card,
@@ -445,6 +541,10 @@ export function normalizeInstagramCheckpoint(
         age,
         ageHours: relativeAgeHours(age),
         text,
+        metrics: {
+          likes: nullableNonNegativeInteger(metrics.likes, "ownComment.metrics.likes"),
+          replies: nullableNonNegativeInteger(metrics.replies, "ownComment.metrics.replies"),
+        },
         authorHandle,
         identityKey,
         digest: hash(identityKey),
@@ -454,9 +554,19 @@ export function normalizeInstagramCheckpoint(
 
   const uniqueObservations = new Map();
   for (const item of flattened) {
-    if (!uniqueObservations.has(item.identityKey)) {
-      uniqueObservations.set(item.identityKey, item);
-    }
+    const previous = uniqueObservations.get(item.identityKey);
+    uniqueObservations.set(
+      item.identityKey,
+      previous
+        ? {
+            ...previous,
+            metrics: {
+              likes: item.metrics.likes ?? previous.metrics.likes,
+              replies: item.metrics.replies ?? previous.metrics.replies,
+            },
+          }
+        : item,
+    );
   }
   const deduplicated = [...uniqueObservations.values()];
   const comments = deduplicated.map((item) => {
@@ -467,7 +577,8 @@ export function normalizeInstagramCheckpoint(
       idKind: "synthetic",
       ...(available ? { url: item.permalink.url } : {}),
       text: item.text,
-      publishedAt: null,
+      publishedAt: approximatePublishedAt(capturedAt, item.age),
+      publishedAtPrecision: "approximate",
       target: {
         contentId: available ? item.permalink.shortcode : null,
         ...(available ? { url: item.permalink.url } : {}),
@@ -483,9 +594,11 @@ export function normalizeInstagramCheckpoint(
         audiencePrecision: "unknown",
         audienceObservedAt: null,
       },
-      metrics: { likes: null, replies: null },
+      metrics: item.metrics,
       observation: {
         relativeAge: item.age,
+        observedAt: capturedAt,
+        stableSyntheticId: id,
         targetRelativeAge: nullableString(item.card.targetAge),
         targetFingerprint: item.fingerprint,
         sourceThumbnailAssetFingerprint: thumbnailFingerprint(item.card.thumbnailUrl),
@@ -507,11 +620,20 @@ export function normalizeInstagramCheckpoint(
     newestRelativeAge: deduplicated[newestIndex]?.age ?? null,
     oldestRelativeAge: deduplicated[oldestIndex]?.age ?? null,
   };
-  if (range.newestRelativeAge !== "0h" || range.oldestRelativeAge !== "37w") {
-    throw new Error(
-      `Plage inattendue : ${range.newestRelativeAge ?? "?"} à ${range.oldestRelativeAge ?? "?"}.`,
-    );
+  const declaredAllTimeEndReached = checkpoint.allTimeEndReached === true;
+  if (checkpoint.allTimeEndReached != null && typeof checkpoint.allTimeEndReached !== "boolean") {
+    throw new Error("checkpoint.allTimeEndReached doit être un booléen.");
   }
+  const ageContinuity = relativeAgeContinuity(deduplicated, declaredAllTimeEndReached);
+  const inventoryIssues = [
+    ...threadExpansion.issues,
+    ...(ageContinuity.continuous ? [] : ["relative-age-gap"]),
+    ...(declaredAllTimeEndReached ? [] : ["all-time-end-not-proven"]),
+  ];
+  const inventoryComplete =
+    threadExpansion.endReached &&
+    ageContinuity.continuous &&
+    declaredAllTimeEndReached;
 
   const total = comments.length;
   const baseCapture = {
@@ -544,9 +666,9 @@ export function normalizeInstagramCheckpoint(
     source: "Instagram · Votre activité · Interactions · Commentaires",
     activitySourceUrl: ACTIVITY_SOURCE_URL,
     sourceCheckpoint: "observations.checkpoint.json",
-    inventoryStatus: threadExpansion.inventoryStatus,
-    endReached: threadExpansion.endReached,
-    issues: threadExpansion.issues,
+    inventoryStatus: inventoryComplete ? "complete" : "partial",
+    endReached: inventoryComplete,
+    issues: [...new Set(inventoryIssues)],
     recordCount: total,
     rawIndividualObservationCount: flattened.length,
     deduplicatedExactObservationCount: flattened.length - total,
@@ -560,6 +682,7 @@ export function normalizeInstagramCheckpoint(
     nativeIdCount: reconciledNativeIdCount,
     syntheticIdCount: reconciledSyntheticIdCount,
     relativeAgeRange: range,
+    relativeAgeContinuity: ageContinuity,
     completionEvidence: evidence,
     threadExpansionAudit: threadExpansion.audit,
     coverage: {
@@ -584,7 +707,6 @@ export function normalizeInstagramCheckpoint(
         "targetAuthor",
         "targetFingerprint",
         "commentTextExact",
-        "relativeAge",
       ],
       targetFingerprintPriority: ["instagramShortcode", "thumbnailPath", "targetText", "rawCard"],
       duplicateOrdinalApplied: 0,
@@ -606,6 +728,7 @@ export function normalizeInstagramCheckpoint(
         issues: manifest.issues,
         recordCount: manifest.recordCount,
         relativeAgeRange: manifest.relativeAgeRange,
+        relativeAgeContinuity: manifest.relativeAgeContinuity,
         completionEvidence: manifest.completionEvidence,
         threadExpansionAudit: manifest.threadExpansionAudit,
         coverage: manifest.coverage,

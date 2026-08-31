@@ -634,6 +634,13 @@
   gap: 14px;
 }
 
+.authored-comments-result-count {
+  margin: -2px 2px 12px;
+  color: var(--muted);
+  font-size: var(--fs-caption);
+  font-weight: 720;
+}
+
 .authored-comment-card {
   --comment-rgb: 154, 168, 255;
   display: flex;
