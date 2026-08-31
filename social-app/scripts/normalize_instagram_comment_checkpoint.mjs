@@ -292,7 +292,117 @@ function completionEvidence(scrollLog) {
   };
 }
 
-export function normalizeInstagramCheckpoint(input, { existingHistory = null } = {}) {
+function nonNegativeInteger(value, label, fallback = 0) {
+  if (value == null) return fallback;
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`${label} doit être un entier positif ou nul.`);
+  }
+  return value;
+}
+
+function threadExpansionAssessment(checkpoint, auditValue) {
+  const detectedThreadCards = checkpoint.comments.filter(
+    (card) => typeof card?.rawText === "string" && /View entire thread/iu.test(card.rawText),
+  ).length;
+  if (auditValue == null) {
+    const complete = detectedThreadCards === 0;
+    return {
+      inventoryStatus: complete ? "complete" : "partial",
+      endReached: complete,
+      issues: complete ? [] : ["thread-expansion-audit-missing"],
+      audit: {
+        provided: false,
+        status: complete ? "not-required" : "missing",
+        identifiedThreadCards: detectedThreadCards,
+        attemptedThreadCards: 0,
+        expandedThreadCards: 0,
+        failedThreadCards: 0,
+        notAttemptedThreadCards: detectedThreadCards,
+        newAuthoredComments: 0,
+        failure: complete ? null : "Des fils repliés ont été détectés sans audit d’expansion.",
+        endReached: complete,
+        inventoryStatus: complete ? "complete" : "partial",
+      },
+    };
+  }
+
+  const audit = assertRecord(auditValue, "threadExpansionAudit");
+  if (audit.platform !== PLATFORM) {
+    throw new Error("threadExpansionAudit.platform doit être instagram.");
+  }
+  const attemptedAt = requireString(audit.attemptedAt, "threadExpansionAudit.attemptedAt");
+  if (!Number.isFinite(Date.parse(attemptedAt))) {
+    throw new Error("threadExpansionAudit.attemptedAt doit être une date ISO valide.");
+  }
+  const inventoryStatus = requireString(
+    audit.inventoryStatus,
+    "threadExpansionAudit.inventoryStatus",
+  );
+  if (!['complete', 'partial'].includes(inventoryStatus)) {
+    throw new Error("threadExpansionAudit.inventoryStatus doit être complete ou partial.");
+  }
+  if (typeof audit.endReached !== "boolean") {
+    throw new Error("threadExpansionAudit.endReached doit être un booléen.");
+  }
+  const identifiedThreadCards = nonNegativeInteger(
+    audit.identifiedThreadCards,
+    "threadExpansionAudit.identifiedThreadCards",
+    detectedThreadCards,
+  );
+  if (identifiedThreadCards !== detectedThreadCards) {
+    throw new Error(
+      `L’audit identifie ${identifiedThreadCards} fils, mais le checkpoint en contient ${detectedThreadCards}.`,
+    );
+  }
+  const complete =
+    identifiedThreadCards === 0 ||
+    (inventoryStatus === "complete" && audit.endReached === true);
+  const issues = [];
+  if (!complete) {
+    issues.push("hidden-threads-not-exhausted", "thread-expansion-audit-partial");
+  }
+  return {
+    inventoryStatus: complete ? "complete" : "partial",
+    endReached: complete,
+    issues,
+    audit: {
+      provided: true,
+      attemptedAt,
+      source: nullableString(audit.source),
+      status: nullableString(audit.status) ?? inventoryStatus,
+      identifiedThreadCards,
+      attemptedThreadCards: nonNegativeInteger(
+        audit.attemptedThreadCards,
+        "threadExpansionAudit.attemptedThreadCards",
+      ),
+      expandedThreadCards: nonNegativeInteger(
+        audit.expandedThreadCards,
+        "threadExpansionAudit.expandedThreadCards",
+      ),
+      failedThreadCards: nonNegativeInteger(
+        audit.failedThreadCards,
+        "threadExpansionAudit.failedThreadCards",
+      ),
+      notAttemptedThreadCards: nonNegativeInteger(
+        audit.notAttemptedThreadCards,
+        "threadExpansionAudit.notAttemptedThreadCards",
+      ),
+      newAuthoredComments: nonNegativeInteger(
+        audit.newAuthoredComments,
+        "threadExpansionAudit.newAuthoredComments",
+      ),
+      failure: nullableString(audit.failure),
+      canonicalExportStatus: nullableString(audit.canonicalExportStatus),
+      endReached: audit.endReached,
+      inventoryStatus,
+    },
+  };
+}
+
+export function normalizeInstagramCheckpoint(
+  input,
+  { existingHistory = null, threadExpansionAudit = null } = {},
+) {
   const checkpoint = assertRecord(input, "checkpoint");
   if (checkpoint.platform !== PLATFORM) throw new Error("Le checkpoint doit être Instagram.");
   const capturedAt = requireString(checkpoint.capturedAt, "checkpoint.capturedAt");
@@ -304,6 +414,7 @@ export function normalizeInstagramCheckpoint(input, { existingHistory = null } =
   }
 
   const evidence = completionEvidence(checkpoint.scrollLog);
+  const threadExpansion = threadExpansionAssessment(checkpoint, threadExpansionAudit);
   const flattened = [];
   for (const [cardIndex, sourceCard] of checkpoint.comments.entries()) {
     const card = assertRecord(sourceCard, `comments[${cardIndex}]`);
@@ -433,8 +544,9 @@ export function normalizeInstagramCheckpoint(input, { existingHistory = null } =
     source: "Instagram · Votre activité · Interactions · Commentaires",
     activitySourceUrl: ACTIVITY_SOURCE_URL,
     sourceCheckpoint: "observations.checkpoint.json",
-    inventoryStatus: "complete",
-    endReached: true,
+    inventoryStatus: threadExpansion.inventoryStatus,
+    endReached: threadExpansion.endReached,
+    issues: threadExpansion.issues,
     recordCount: total,
     rawIndividualObservationCount: flattened.length,
     deduplicatedExactObservationCount: flattened.length - total,
@@ -449,6 +561,7 @@ export function normalizeInstagramCheckpoint(input, { existingHistory = null } =
     syntheticIdCount: reconciledSyntheticIdCount,
     relativeAgeRange: range,
     completionEvidence: evidence,
+    threadExpansionAudit: threadExpansion.audit,
     coverage: {
       targetAuthor: coverage(
         comments.filter((comment) => comment.target.authorHandle != null).length,
@@ -490,9 +603,11 @@ export function normalizeInstagramCheckpoint(input, { existingHistory = null } =
       inventory: {
         inventoryStatus: manifest.inventoryStatus,
         endReached: manifest.endReached,
+        issues: manifest.issues,
         recordCount: manifest.recordCount,
         relativeAgeRange: manifest.relativeAgeRange,
         completionEvidence: manifest.completionEvidence,
+        threadExpansionAudit: manifest.threadExpansionAudit,
         coverage: manifest.coverage,
         existingHistoryReconciliation: reconciliation.report,
       },
@@ -509,13 +624,24 @@ async function writeJsonAtomically(path, value) {
 }
 
 function parseOptions(argv) {
-  const options = { input: DEFAULT_INPUT, outputDirectory: null, existingHistory: null };
+  const options = {
+    input: DEFAULT_INPUT,
+    outputDirectory: null,
+    existingHistory: null,
+    threadExpansionAudit: null,
+  };
   for (const argument of argv) {
-    if (argument.startsWith("--input=")) options.input = resolve(argument.slice(8));
+    if (argument.startsWith("--input=")) {
+      options.input = resolve(argument.slice("--input=".length));
+    }
     else if (argument.startsWith("--output-directory=")) {
-      options.outputDirectory = resolve(argument.slice(19));
+      options.outputDirectory = resolve(argument.slice("--output-directory=".length));
     } else if (argument.startsWith("--existing-history=")) {
-      options.existingHistory = resolve(argument.slice(19));
+      options.existingHistory = resolve(argument.slice("--existing-history=".length));
+    } else if (argument.startsWith("--thread-expansion-audit=")) {
+      options.threadExpansionAudit = resolve(
+        argument.slice("--thread-expansion-audit=".length),
+      );
     } else throw new Error(`Argument inconnu : ${argument}`);
   }
   return options;
@@ -523,13 +649,19 @@ function parseOptions(argv) {
 
 async function main() {
   const options = parseOptions(process.argv.slice(2));
-  const [checkpoint, existingHistory] = await Promise.all([
+  const [checkpoint, existingHistory, threadExpansionAudit] = await Promise.all([
     readFile(options.input, "utf8").then(JSON.parse),
     options.existingHistory
       ? readFile(options.existingHistory, "utf8").then(JSON.parse)
       : Promise.resolve(null),
+    options.threadExpansionAudit
+      ? readFile(options.threadExpansionAudit, "utf8").then(JSON.parse)
+      : Promise.resolve(null),
   ]);
-  const { manifest, capture } = normalizeInstagramCheckpoint(checkpoint, { existingHistory });
+  const { manifest, capture } = normalizeInstagramCheckpoint(checkpoint, {
+    existingHistory,
+    threadExpansionAudit,
+  });
   const outputDirectory = options.outputDirectory ?? dirname(options.input);
   const manifestPath = resolve(outputDirectory, "inventory-manifest.json");
   const capturePath = resolve(outputDirectory, "normalized-capture.json");

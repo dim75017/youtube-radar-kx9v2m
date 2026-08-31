@@ -136,6 +136,67 @@ test("records the two completion stalls, the recent delta and the observed age r
   assert.equal(capture.inventory.recordCount, capture.comments.length);
 });
 
+test("keeps a hidden-thread inventory partial when its expansion audit fails", () => {
+  const checkpoint = fixture();
+  checkpoint.comments[0].rawText = "Target caption\nView entire thread";
+  const threadExpansionAudit = {
+    platform: "instagram",
+    attemptedAt: "2026-08-31T09:46:57.278Z",
+    source: "Instagram comments activity",
+    status: "partial",
+    identifiedThreadCards: 1,
+    attemptedThreadCards: 1,
+    expandedThreadCards: 0,
+    failedThreadCards: 1,
+    notAttemptedThreadCards: 0,
+    newAuthoredComments: 0,
+    failure: "The native thread route had no verifiable shortcode.",
+    canonicalExportStatus: "not_available_in_this_pass",
+    endReached: false,
+    inventoryStatus: "partial",
+  };
+  const { manifest, capture } = normalizeInstagramCheckpoint(checkpoint, {
+    threadExpansionAudit,
+  });
+
+  assert.equal(manifest.inventoryStatus, "partial");
+  assert.equal(manifest.endReached, false);
+  assert.deepEqual(manifest.issues, [
+    "hidden-threads-not-exhausted",
+    "thread-expansion-audit-partial",
+  ]);
+  assert.equal(manifest.threadExpansionAudit.identifiedThreadCards, 1);
+  assert.equal(manifest.threadExpansionAudit.failure, threadExpansionAudit.failure);
+  assert.equal(capture.inventory.inventoryStatus, "partial");
+  assert.equal(capture.inventory.endReached, false);
+  assert.equal(capture.comments.length, 3);
+});
+
+test("accepts a complete audit for every identified hidden thread", () => {
+  const checkpoint = fixture();
+  checkpoint.comments[0].rawText = "Target caption\nView entire thread";
+  const { manifest } = normalizeInstagramCheckpoint(checkpoint, {
+    threadExpansionAudit: {
+      platform: "instagram",
+      attemptedAt: "2026-08-31T10:00:00.000Z",
+      status: "complete",
+      identifiedThreadCards: 1,
+      attemptedThreadCards: 1,
+      expandedThreadCards: 1,
+      failedThreadCards: 0,
+      notAttemptedThreadCards: 0,
+      newAuthoredComments: 1,
+      failure: null,
+      endReached: true,
+      inventoryStatus: "complete",
+    },
+  });
+
+  assert.equal(manifest.inventoryStatus, "complete");
+  assert.equal(manifest.endReached, true);
+  assert.deepEqual(manifest.issues, []);
+});
+
 function existingPost({
   externalId,
   text,
