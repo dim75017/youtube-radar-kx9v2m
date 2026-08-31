@@ -686,10 +686,18 @@
   transition: transform 180ms, filter 180ms;
 }
 
-.authored-comment-thumbnail:hover img,
-.authored-comment-thumbnail:focus-visible img {
+a.authored-comment-thumbnail:hover img,
+a.authored-comment-thumbnail:focus-visible img {
   transform: scale(1.025);
   filter: brightness(1.06);
+}
+
+.authored-comment-thumbnail.is-disabled {
+  cursor: default;
+}
+
+.authored-comment-thumbnail.is-disabled img {
+  filter: saturate(0.88) brightness(0.94);
 }
 
 .authored-comment-thumbnail-placeholder {

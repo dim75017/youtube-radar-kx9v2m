@@ -112,6 +112,31 @@ test("never treats an unsafe target URL as clickable", () => {
   assert.equal(target.thumbnailUrl, null);
 });
 
+test("keeps an unavailable Instagram activity row visible but non-clickable", () => {
+  const activitySourceUrl =
+    "https://www.instagram.com/your_activity/interactions/comments/";
+  const target = commentTarget({
+    platform: "instagram",
+    format: "comment",
+    url: activitySourceUrl,
+    raw: {
+      commentTarget: {
+        url: null,
+        unavailable: true,
+        title: "Publication Instagram",
+        thumbnailUrl:
+          "https://dim75017.github.io/youtube-radar-kx9v2m/social/media/instagram/comment-abc123.jpg",
+        authorHandle: "study.creator",
+      },
+    },
+  });
+
+  assert.equal(target.unavailable, true);
+  assert.equal(target.url, null);
+  assert.equal(target.authorProfileUrl, "https://www.instagram.com/study.creator/");
+  assert.equal(JSON.stringify(target).includes("your_activity"), false);
+});
+
 test("classifies Community, owned and external comment conversations", () => {
   assert.equal(
     authoredCommentCategory({
@@ -195,6 +220,10 @@ test("keeps internal target confidence labels out of comment cards", async () =>
   assert.doesNotMatch(component, /authored-comment-platform-badge|authored-comment-open-mark/);
   assert.doesNotMatch(styles, /\.authored-comment-platform-badge|\.authored-comment-open-mark/);
   assert.match(component, /className="authored-comment-thumbnail"[\s\S]*?href=\{threadUrl\}/);
+  assert.match(component, /target\.unavailable\s*\?\s*null/);
+  assert.match(component, /authored-comment-thumbnail is-disabled/);
+  assert.match(component, /Contenu source non relié/);
+  assert.match(component, /is-disabled"[\s\S]*?thumbnailUrl\s*\?/);
   assert.match(component, /<strong>\{targetAccount\}<\/strong>/);
   assert.match(component, /<small>Likes<\/small>/);
   assert.match(component, /<small>Réponses<\/small>/);

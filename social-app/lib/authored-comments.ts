@@ -21,7 +21,7 @@ export type CommentAudiencePrecision =
 
 export type CommentTarget = {
   contentId: string | null;
-  url: string;
+  url: string | null;
   title: string;
   thumbnailUrl: string | null;
   authorHandle: string | null;
@@ -33,6 +33,7 @@ export type CommentTarget = {
   audienceObservedAt: string | null;
   source: string;
   confidence: "verified" | "derived" | "legacy-heuristic";
+  unavailable: boolean;
 };
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -89,6 +90,25 @@ function safeUrl(value: unknown): string | null {
   }
 }
 
+function profileUrlFromExplicitHandle(
+  platform: CommentPlatform,
+  handle: string | null,
+): string | null {
+  if (!handle) return null;
+  const normalized = handle.replace(/^@/u, "");
+  if (!/^[A-Za-z0-9._]{1,30}$/u.test(normalized)) return null;
+  if (platform === "instagram") {
+    return `https://www.instagram.com/${encodeURIComponent(normalized)}/`;
+  }
+  if (platform === "tiktok") {
+    return `https://www.tiktok.com/@${encodeURIComponent(normalized)}`;
+  }
+  if (platform === "x") {
+    return `https://x.com/${encodeURIComponent(normalized)}`;
+  }
+  return null;
+}
+
 function youtubeTarget(post: AuthoredCommentLike): Partial<CommentTarget> {
   const commentUrl = safeUrl(post.url);
   if (!commentUrl) return {};
@@ -132,13 +152,18 @@ export function commentTarget(post: AuthoredCommentLike): CommentTarget {
   const stored = asRecord(raw.commentTarget) ?? asRecord(raw.comment_target) ?? {};
   const youtube = post.platform === "youtube" ? youtubeTarget(post) : {};
   const fallbackHandle = post.platform === "x" ? firstMention(post.text) : null;
+  const unavailable =
+    stored.unavailable === true ||
+    stored.status === "unavailable" ||
+    stored.status === "deleted";
   const contentUrl =
-    safeUrl(stored.url) ??
-    safeUrl(stored.contentUrl) ??
-    safeUrl(stored.content_url) ??
-    youtube.url ??
-    safeUrl(post.url) ??
-    "#";
+    unavailable
+      ? null
+      : safeUrl(stored.url) ??
+        safeUrl(stored.contentUrl) ??
+        safeUrl(stored.content_url) ??
+        youtube.url ??
+        safeUrl(post.url);
   const authorHandle = stringValue(
     stored.authorHandle,
     stored.author_handle,
@@ -173,7 +198,8 @@ export function commentTarget(post: AuthoredCommentLike): CommentTarget {
     authorName: stringValue(stored.authorName, stored.author_name),
     authorProfileUrl:
       safeUrl(stored.authorProfileUrl) ??
-      safeUrl(stored.author_profile_url),
+      safeUrl(stored.author_profile_url) ??
+      profileUrlFromExplicitHandle(post.platform, authorHandle),
     audienceValue: numberValue(
       stored.audienceValue,
       stored.audience_value,
@@ -197,6 +223,7 @@ export function commentTarget(post: AuthoredCommentLike): CommentTarget {
       : post.platform === "x"
         ? "legacy-heuristic"
         : "derived",
+    unavailable,
   };
 }
 
@@ -204,7 +231,8 @@ function identityToken(value: string | null): string {
   return (value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-function isYoutubeCommunityUrl(value: string): boolean {
+function isYoutubeCommunityUrl(value: string | null): boolean {
+  if (!value) return false;
   try {
     const url = new URL(value);
     return (

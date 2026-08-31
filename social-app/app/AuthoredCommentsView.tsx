@@ -123,6 +123,7 @@ function audienceText(post: CommentPost): string {
 function tiktokTargetId(post: CommentPost): string | null {
   if (post.platform !== "tiktok") return null;
   const target = commentTarget(post);
+  if (!target.url || target.unavailable) return null;
   try {
     const url = new URL(target.url);
     if (
@@ -170,7 +171,7 @@ function useCommentThumbnail(post: CommentPost): string | null {
   const [loaded, setLoaded] = useState<{ id: string; url: string } | null>(null);
 
   useEffect(() => {
-    if (target.thumbnailUrl || !tiktokId) return;
+    if (target.thumbnailUrl || !tiktokId || !target.url) return;
     let cancelled = false;
     void requestTikTokCommentThumbnail(tiktokId, target.url).then((url) => {
       if (!cancelled && url) setLoaded({ id: tiktokId, url });
@@ -191,7 +192,9 @@ function CommentCard({ post }: { post: CommentPost }) {
   const meta = PLATFORM_META[post.platform];
   const target = commentTarget(post);
   const thumbnailUrl = useCommentThumbnail(post);
-  const threadUrl = externalHref(post.url) ?? externalHref(target.url);
+  const threadUrl = target.unavailable
+    ? null
+    : (target.url ? externalHref(target.url) : null) ?? externalHref(post.url);
   const targetAccount =
     target.authorName ??
     (target.authorHandle ? `@${target.authorHandle}` : "Compte non fourni");
@@ -217,12 +220,20 @@ function CommentCard({ post }: { post: CommentPost }) {
           )}
         </a>
       ) : (
-        <div className="authored-comment-thumbnail is-disabled">
-          <span className="authored-comment-thumbnail-placeholder">
-            <b aria-hidden="true">{meta.emoji}</b>
-            <strong>{targetAccount}</strong>
-            <span>{target.title}</span>
-          </span>
+        <div
+          className="authored-comment-thumbnail is-disabled"
+          aria-label={`Contenu source non relié sur ${meta.label}`}
+          title="Lien du contenu non fourni par l’historique natif"
+        >
+          {thumbnailUrl ? (
+            <img src={thumbnailUrl} alt="" loading="lazy" />
+          ) : (
+            <span className="authored-comment-thumbnail-placeholder">
+              <b aria-hidden="true">{meta.emoji}</b>
+              <strong>{targetAccount}</strong>
+              <span>{target.title}</span>
+            </span>
+          )}
         </div>
       )}
 
