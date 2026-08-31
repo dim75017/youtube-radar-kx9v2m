@@ -386,15 +386,32 @@ test("rejects an implausible same-day follower collapse and keeps the last good 
 test("rejects two observations on the same Paris calendar day", () => {
   const duplicate = structuredClone(history);
   const latest = latestAudienceObservation(duplicate.platforms.youtube);
-  duplicate.platforms.youtube.observations.push({
+  const latestTimestamp = Date.parse(latest.capturedAt);
+  const afterAt = new Date(latestTimestamp + 1).toISOString();
+  const duplicateObservation = {
     ...latest,
-    capturedAt: new Date(Date.parse(latest.capturedAt) + 60 * 60 * 1_000).toISOString(),
     followers: latest.followers + 1,
-  });
-  duplicate.generatedAt = duplicate.platforms.youtube.observations.at(-1).capturedAt;
+  };
+  let expectedLatest = latest;
+  if (parisCalendarDay(afterAt) === parisCalendarDay(latest.capturedAt)) {
+    duplicateObservation.capturedAt = afterAt;
+    duplicate.platforms.youtube.observations.push(duplicateObservation);
+    duplicate.generatedAt = afterAt;
+    expectedLatest = duplicateObservation;
+  } else {
+    duplicateObservation.capturedAt = new Date(latestTimestamp - 1).toISOString();
+    duplicate.platforms.youtube.observations.splice(-1, 0, duplicateObservation);
+    duplicate.generatedAt = latest.capturedAt;
+  }
   for (const platform of ["youtube", "instagram", "tiktok", "x"]) {
     for (const engagement of Object.values(duplicate.platforms[platform].engagementByPeriod)) {
-      if (engagement) engagement.calculatedAt = duplicate.generatedAt;
+      if (!engagement) continue;
+      engagement.calculatedAt = duplicate.generatedAt;
+      if (platform === "youtube") {
+        engagement.followers = expectedLatest.followers;
+        engagement.followersObservedAt = expectedLatest.capturedAt;
+        engagement.followersPrecision = expectedLatest.precision;
+      }
     }
   }
 
@@ -526,9 +543,15 @@ test("accepts a rounded observation on a later Paris day after an exact point", 
 
 test("replaces a same-day rounded observation with a later exact Studio point", async () => {
   const previousYouTube = latestAudienceObservation(history.platforms.youtube);
-  const roundedAt = new Date(
-    Date.parse(previousYouTube.capturedAt) + 24 * 60 * 60 * 1_000,
-  ).toISOString();
+  const previousTimestamp = Date.parse(previousYouTube.capturedAt);
+  const roundedAt = Array.from({ length: 48 }, (_, index) =>
+    new Date(previousTimestamp + (24 + index) * 60 * 60 * 1_000).toISOString()
+  ).find((candidate) => {
+    const exactCandidate = new Date(Date.parse(candidate) + 60 * 60 * 1_000).toISOString();
+    return parisCalendarDay(candidate) !== parisCalendarDay(previousYouTube.capturedAt) &&
+      parisCalendarDay(candidate) === parisCalendarDay(exactCandidate);
+  });
+  assert.ok(roundedAt);
   const exactAt = new Date(Date.parse(roundedAt) + 60 * 60 * 1_000).toISOString();
   assert.equal(parisCalendarDay(roundedAt), parisCalendarDay(exactAt));
   const temporaryDirectory = await mkdtemp(join(tmpdir(), "lofi-audience-precision-"));
