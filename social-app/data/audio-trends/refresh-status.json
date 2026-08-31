@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "attemptedAt": "2026-08-31T16:27:43.797Z",
+  "attemptedAt": "2026-08-31T21:59:03.447Z",
   "status": "success",
   "published": true,
   "inventory": {
@@ -14,7 +14,7 @@
     "publishable": true
   },
   "discoveryAudit": {
-    "scannedAt": "2026-08-31T16:27:43.797Z",
+    "scannedAt": "2026-08-31T21:59:03.447Z",
     "status": "success",
     "complete": true,
     "candidateCount": 179,
@@ -26,7 +26,7 @@
       "tiktok": 13
     },
     "candidateRegistry": {
-      "updatedAt": "2026-08-31T16:27:43.797Z",
+      "updatedAt": "2026-08-31T21:59:03.447Z",
       "candidateCount": 179,
       "candidateAudioUrls": [
         "https://www.instagram.com/reels/audio/1006119841436928",
@@ -331,11 +331,11 @@
       "retained": 179
     },
     "qualificationAudit": {
-      "attemptedAt": "2026-08-31T16:27:43.797Z",
+      "attemptedAt": "2026-08-31T21:59:03.447Z",
       "complete": true,
-      "videoFeedCapturedAt": "2026-08-31T16:26:30.7377955Z",
+      "videoFeedCapturedAt": "2026-08-31T16:34:41.9498911Z",
       "videoFeedFresh": true,
-      "videoDiscoveryAuditScannedAt": "2026-08-31T16:26:30.7377955Z",
+      "videoDiscoveryAuditScannedAt": "2026-08-31T16:34:41.9498911Z",
       "videoDiscoveryAuditFresh": true,
       "attemptedTrendCount": 33,
       "attemptedCurrentTrendCount": 0,
@@ -601,8 +601,8 @@
       "https://www.instagram.com/reels/audio/1544636237314027/",
       "https://www.tiktok.com/music/fulfill-the-prophecy-7406872980187401003",
       "https://www.tiktok.com/music/original-sound-7647999030882634509",
-      "https://www.tiktok.com/music/original-sound-7627238272384633631",
-      "https://www.tiktok.com/music/original-sound-7385248336640150304",
+      "https://www.tiktok.com/music/House-featuring-John-Cale-7571057519797487632",
+      "https://www.tiktok.com/music/CHANEL-7561952744116357137",
       "https://www.tiktok.com/music/original-sound-7649038378872228638",
       "https://www.tiktok.com/music/choosin-texas-7559312683885201425",
       "https://www.tiktok.com/music/original-sound-7642492753208757014",
@@ -986,27 +986,15 @@
     ],
     "publishedInventoryCount": 50,
     "selectionAudit": {
-      "evaluatedAt": "2026-08-31T16:27:43.797Z",
-      "addedTrendIds": [
-        "audio-tiktok-music-7571057519797487632",
-        "audio-tiktok-music-7561952744116357137"
-      ],
-      "addedAudioUrls": [
-        "https://www.tiktok.com/music/House-featuring-John-Cale-7571057519797487632",
-        "https://www.tiktok.com/music/CHANEL-7561952744116357137"
-      ],
-      "removedTrendIds": [
-        "tiktok-not-very-nonchalant-633631",
-        "tiktok-pain-oh-no-spain-150304"
-      ],
-      "removedAudioUrls": [
-        "https://www.tiktok.com/music/original-sound-7627238272384633631",
-        "https://www.tiktok.com/music/original-sound-7385248336640150304"
-      ],
-      "visibleAddedCount": 2,
-      "visibleRemovedCount": 2,
+      "evaluatedAt": "2026-08-31T21:59:03.447Z",
+      "addedTrendIds": [],
+      "addedAudioUrls": [],
+      "removedTrendIds": [],
+      "removedAudioUrls": [],
+      "visibleAddedCount": 0,
+      "visibleRemovedCount": 0,
       "lastVisibleRotationAt": "2026-08-31T16:27:43.797Z",
-      "unchangedRunCount": 0,
+      "unchangedRunCount": 1,
       "retainedTrendIds": [
         "pocketful-of-sunshine",
         "petal-soft-chaos",
@@ -1025,7 +1013,9 @@
         "stupid-song-montage",
         "tiktok-two-personalities-401003",
         "tiktok-kumar-method-634509",
+        "audio-tiktok-music-7571057519797487632",
         "tiktok-netflix-documentary-confessional-426113",
+        "audio-tiktok-music-7561952744116357137",
         "tiktok-bangladesh-absurd-complaint-228638",
         "tiktok-choosin-texas-western-reveal-201425",
         "tiktok-u-me-love-timeline-896336",
@@ -1061,9 +1051,7 @@
         "tiktok-two-personalities-401003",
         "ghosting-you-montage",
         "tiktok-kumar-method-634509",
-        "tiktok-not-very-nonchalant-633631",
         "tiktok-netflix-documentary-confessional-426113",
-        "tiktok-pain-oh-no-spain-150304",
         "tiktok-bangladesh-absurd-complaint-228638",
         "tiktok-choosin-texas-western-reveal-201425",
         "tiktok-u-me-love-timeline-896336",
@@ -1081,15 +1069,26 @@
         "pocketful-of-sunshine",
         "tiktok-study-until-they-text-aging-530335",
         "tiktok-deadline-tomorrow-turbo-792582",
-        "tiktok-wrap-it-up-procrastination-837422"
+        "tiktok-wrap-it-up-procrastination-837422",
+        "audio-tiktok-music-7561952744116357137",
+        "audio-tiktok-music-7571057519797487632"
       ],
-      "rejected": [],
-      "noRotationReason": null
+      "rejected": [
+        {
+          "id": "audio-pain-oh-no-spain",
+          "reason": "score inferieur au dernier audio conserve"
+        },
+        {
+          "id": "audio-not-very-nonchalant",
+          "reason": "score inferieur au dernier audio conserve"
+        }
+      ],
+      "noRotationReason": "Les nouveaux audios qualifiés n'ont pas dépassé la dernière carte conservée selon la récence, le Lofi Fit, la dynamique et les likes de référence."
     },
-    "visibleAddedCount": 2,
-    "visibleRemovedCount": 2,
+    "visibleAddedCount": 0,
+    "visibleRemovedCount": 0,
     "lastVisibleRotationAt": "2026-08-31T16:27:43.797Z",
-    "unchangedRunCount": 0
+    "unchangedRunCount": 1
   },
   "coverage": {
     "totalChecked": 47,
@@ -1156,9 +1155,9 @@
         "obsession-nice-date: compteur public non lie a cette identite audio",
         "tiktok-two-personalities-401003: compteur public non lie a cette identite audio",
         "tiktok-kumar-method-634509: compteur public non lie a cette identite audio",
-        "tiktok-not-very-nonchalant-633631: compteur public non lie a cette identite audio",
+        "audio-tiktok-music-7571057519797487632: compteur public non lie a cette identite audio",
         "tiktok-netflix-documentary-confessional-426113: compteur public non lie a cette identite audio",
-        "tiktok-pain-oh-no-spain-150304: compteur public non lie a cette identite audio",
+        "audio-tiktok-music-7561952744116357137: compteur public non lie a cette identite audio",
         "tiktok-bangladesh-absurd-complaint-228638: compteur public non lie a cette identite audio",
         "tiktok-choosin-texas-western-reveal-201425: compteur public non lie a cette identite audio",
         "tiktok-u-me-love-timeline-896336: compteur public non lie a cette identite audio",
@@ -1211,10 +1210,7 @@
   ],
   "assetCache": {
     "status": "success",
-    "cachedCount": 2,
-    "paths": [
-      "media/audio-trends/audio-tiktok-music-7571057519797487632.jpg",
-      "media/audio-trends/audio-tiktok-music-7561952744116357137.jpg"
-    ]
+    "cachedCount": 0,
+    "paths": []
   }
 }
