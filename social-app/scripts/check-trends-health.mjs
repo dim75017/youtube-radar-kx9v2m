@@ -127,7 +127,7 @@ function validateSelectionAudit(key, audit, feedTrendIds) {
     };
   }
 
-  if (selection.added !== selection.removed) {
+  if (key === "audio" && selection.added !== selection.removed) {
     issues.push("rotation publiée: le nombre ajouté doit correspondre au nombre retiré");
   }
   if (selection.added === 0) {
@@ -145,6 +145,99 @@ function validateSelectionAudit(key, audit, feedTrendIds) {
     if (feedTrendIds.has(id)) issues.push(`trend déclarée retirée encore présente dans le feed: ${id}`);
   }
   return { selection, issues };
+}
+
+function hasVisibleRotationAuditFields(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  return [
+    "lastVisibleRotationAt",
+    "visibleAddedCount",
+    "visibleRemovedCount",
+    "unchangedRunCount",
+  ].some((field) => Object.hasOwn(value, field));
+}
+
+export function validateVisibleRotationAudit(
+  audit,
+  checkedAt,
+  { key = "video", selection = null } = {},
+) {
+  const issues = [];
+  const source = hasVisibleRotationAuditFields(audit)
+    ? audit
+    : key === "audio" && hasVisibleRotationAuditFields(audit?.selectionAudit)
+      ? audit.selectionAudit
+      : null;
+
+  if (!source) {
+    return {
+      rotation: null,
+      issues: ["audit de rotation visible absent"],
+    };
+  }
+
+  const lastVisibleRotationAt = source.lastVisibleRotationAt;
+  if (!Object.hasOwn(source, "lastVisibleRotationAt")) {
+    issues.push("audit de rotation visible incomplet: lastVisibleRotationAt absent");
+  } else if (!isIso(lastVisibleRotationAt)) {
+    issues.push("lastVisibleRotationAt invalide dans l'audit de rotation visible");
+  } else if (isTrendEditorialScanLate(lastVisibleRotationAt, checkedAt)) {
+    issues.push(`dernière rotation visible dépasse ${TREND_EDITORIAL_SCAN_MAX_AGE_HOURS} h`);
+  }
+
+  const visibleAddedCount = changeCount(source.visibleAddedCount);
+  const visibleRemovedCount = changeCount(source.visibleRemovedCount);
+  const unchangedRunCount = changeCount(source.unchangedRunCount);
+  if (!Object.hasOwn(source, "visibleAddedCount")) {
+    issues.push("audit de rotation visible incomplet: visibleAddedCount absent");
+  } else if (visibleAddedCount === null) {
+    issues.push("visibleAddedCount invalide dans l'audit de rotation visible");
+  }
+  if (!Object.hasOwn(source, "visibleRemovedCount")) {
+    issues.push("audit de rotation visible incomplet: visibleRemovedCount absent");
+  } else if (visibleRemovedCount === null) {
+    issues.push("visibleRemovedCount invalide dans l'audit de rotation visible");
+  }
+  if (!Object.hasOwn(source, "unchangedRunCount")) {
+    issues.push("audit de rotation visible incomplet: unchangedRunCount absent");
+  } else if (unchangedRunCount === null) {
+    issues.push("unchangedRunCount invalide dans l'audit de rotation visible");
+  }
+
+  if (
+    visibleAddedCount !== null &&
+    visibleRemovedCount !== null &&
+    key === "audio" && visibleAddedCount !== visibleRemovedCount
+  ) {
+    issues.push("rotation visible: le nombre ajouté doit correspondre au nombre retiré");
+  }
+  if (
+    selection &&
+    visibleAddedCount !== null &&
+    visibleRemovedCount !== null &&
+    (visibleAddedCount !== selection.added || visibleRemovedCount !== selection.removed)
+  ) {
+    issues.push("les compteurs de rotation visible ne correspondent pas à la sélection publiée");
+  }
+  if (
+    visibleAddedCount !== null &&
+    unchangedRunCount !== null &&
+    ((visibleAddedCount > 0 && unchangedRunCount !== 0) ||
+      (visibleAddedCount === 0 && unchangedRunCount < 1))
+  ) {
+    issues.push("unchangedRunCount ne correspond pas à la rotation visible du passage courant");
+  }
+
+  return {
+    rotation: {
+      lastVisibleRotationAt: isIso(lastVisibleRotationAt) ? lastVisibleRotationAt : null,
+      visibleAddedCount,
+      visibleRemovedCount,
+      unchangedRunCount,
+      source: source === audit ? "discoveryAudit" : "selectionAudit",
+    },
+    issues,
+  };
 }
 
 export function evaluateTrendHealth(
@@ -204,6 +297,9 @@ export function evaluateTrendHealth(
   );
   const { selection, issues: selectionIssues } = validateSelectionAudit(key, audit, feedTrendIds);
   issues.push(...selectionIssues);
+  const { rotation: visibleRotation, issues: visibleRotationIssues } =
+    validateVisibleRotationAudit(audit, checkedAt, { key, selection });
+  issues.push(...visibleRotationIssues);
 
   const candidatePoolChanges = readCandidatePoolChanges(audit, key);
   return {
@@ -221,6 +317,7 @@ export function evaluateTrendHealth(
     feedInventoryCount,
     candidatePoolChanges,
     selectionChanges: selection,
+    visibleRotation,
     issues,
   };
 }
@@ -348,19 +445,27 @@ async function main() {
         ? `rotation +${selection.added}/-${selection.removed}`
         : `rotation nulle justifiée (${selection.noRotationReason})`
       : "rotation non documentée";
+    const visibleRotation = result.visibleRotation;
+    const visibleRotationLabel = visibleRotation
+      ? `dernière rotation visible ${visibleRotation.lastVisibleRotationAt ?? "invalide"} ` +
+        `(+${visibleRotation.visibleAddedCount ?? "?"}/-${visibleRotation.visibleRemovedCount ?? "?"}, ` +
+        `${visibleRotation.unchangedRunCount ?? "?"} passage(s) inchangé(s))`
+      : "audit de rotation visible absent";
     const qualifiedLabel = result.key === "audio"
       ? `${result.qualifiedClusterCount ?? "?"} clusters frais, ${result.publishedInventoryCount ?? "?"} publiés`
       : `${result.qualifiedInventoryCount ?? "?"} qualifiés`;
     if (result.healthy) {
       console.log(
         `OK ${result.label}: scan ${result.discoveryScannedAt}, ` +
-        `${result.candidateCount} candidats, ${qualifiedLabel}, ${poolLabel}, ${rotationLabel}.`,
+        `${result.candidateCount} candidats, ${qualifiedLabel}, ${poolLabel}, ${rotationLabel}, ` +
+        `${visibleRotationLabel}.`,
       );
       continue;
     }
     console.error(
       `FAIL ${result.label}: ${result.issues.join("; ")}. ` +
-      `Audit: ${result.candidateCount ?? "?"} candidats, ${qualifiedLabel}, ${poolLabel}, ${rotationLabel}.`,
+      `Audit: ${result.candidateCount ?? "?"} candidats, ${qualifiedLabel}, ${poolLabel}, ` +
+      `${rotationLabel}, ${visibleRotationLabel}.`,
     );
   }
   if (!report.healthy) process.exitCode = 1;

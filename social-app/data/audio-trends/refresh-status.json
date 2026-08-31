@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "attemptedAt": "2026-08-31T11:41:53.996Z",
+  "attemptedAt": "2026-08-31T16:27:43.797Z",
   "status": "success",
   "published": true,
   "inventory": {
@@ -14,19 +14,19 @@
     "publishable": true
   },
   "discoveryAudit": {
-    "scannedAt": "2026-08-31T11:41:53.996Z",
+    "scannedAt": "2026-08-31T16:27:43.797Z",
     "status": "success",
     "complete": true,
     "candidateCount": 179,
-    "qualifiedInventoryCount": 24,
-    "qualifiedClusterCount": 24,
+    "qualifiedInventoryCount": 26,
+    "qualifiedClusterCount": 26,
     "currentMatchedCount": 5,
     "candidatePlatformCounts": {
       "instagram": 166,
       "tiktok": 13
     },
     "candidateRegistry": {
-      "updatedAt": "2026-08-31T11:41:53.996Z",
+      "updatedAt": "2026-08-31T16:27:43.797Z",
       "candidateCount": 179,
       "candidateAudioUrls": [
         "https://www.instagram.com/reels/audio/1006119841436928",
@@ -331,20 +331,20 @@
       "retained": 179
     },
     "qualificationAudit": {
-      "attemptedAt": "2026-08-31T11:41:53.996Z",
+      "attemptedAt": "2026-08-31T16:27:43.797Z",
       "complete": true,
-      "videoFeedCapturedAt": "2026-08-31T06:18:12.993Z",
+      "videoFeedCapturedAt": "2026-08-31T16:26:30.7377955Z",
       "videoFeedFresh": true,
-      "videoDiscoveryAuditScannedAt": "2026-08-31T06:18:12.993Z",
+      "videoDiscoveryAuditScannedAt": "2026-08-31T16:26:30.7377955Z",
       "videoDiscoveryAuditFresh": true,
-      "attemptedTrendCount": 29,
+      "attemptedTrendCount": 33,
       "attemptedCurrentTrendCount": 0,
-      "attemptedFreshVideoTrendCount": 29,
-      "attemptedFreshAuditClusterCount": 0,
-      "freshQualifiedCount": 24,
-      "qualifiedClusterCount": 24,
+      "attemptedFreshVideoTrendCount": 31,
+      "attemptedFreshAuditClusterCount": 2,
+      "freshQualifiedCount": 26,
+      "qualifiedClusterCount": 26,
       "freshCurrentQualifiedCount": 24,
-      "freshNewQualifiedCount": 0,
+      "freshNewQualifiedCount": 2,
       "qualifiedAudioUrls": [
         "https://www.tiktok.com/music/fulfill-the-prophecy-7406872980187401003",
         "https://www.tiktok.com/music/original-sound-7627517043541068566",
@@ -369,7 +369,9 @@
         "https://www.tiktok.com/music/Pocketful-of-Sunshine-6696420561934878722",
         "https://www.tiktok.com/music/original-sound-7598369392350530335",
         "https://www.tiktok.com/music/original-sound-6942717379948792582",
-        "https://www.tiktok.com/music/Wrap-it-up-7208649829264837422"
+        "https://www.tiktok.com/music/Wrap-it-up-7208649829264837422",
+        "https://www.tiktok.com/music/CHANEL-7561952744116357137",
+        "https://www.tiktok.com/music/House-featuring-John-Cale-7571057519797487632"
       ],
       "rejected": [
         {
@@ -984,11 +986,27 @@
     ],
     "publishedInventoryCount": 50,
     "selectionAudit": {
-      "evaluatedAt": "2026-08-31T11:41:53.996Z",
-      "addedTrendIds": [],
-      "addedAudioUrls": [],
-      "removedTrendIds": [],
-      "removedAudioUrls": [],
+      "evaluatedAt": "2026-08-31T16:27:43.797Z",
+      "addedTrendIds": [
+        "audio-tiktok-music-7571057519797487632",
+        "audio-tiktok-music-7561952744116357137"
+      ],
+      "addedAudioUrls": [
+        "https://www.tiktok.com/music/House-featuring-John-Cale-7571057519797487632",
+        "https://www.tiktok.com/music/CHANEL-7561952744116357137"
+      ],
+      "removedTrendIds": [
+        "tiktok-not-very-nonchalant-633631",
+        "tiktok-pain-oh-no-spain-150304"
+      ],
+      "removedAudioUrls": [
+        "https://www.tiktok.com/music/original-sound-7627238272384633631",
+        "https://www.tiktok.com/music/original-sound-7385248336640150304"
+      ],
+      "visibleAddedCount": 2,
+      "visibleRemovedCount": 2,
+      "lastVisibleRotationAt": "2026-08-31T16:27:43.797Z",
+      "unchangedRunCount": 0,
       "retainedTrendIds": [
         "pocketful-of-sunshine",
         "petal-soft-chaos",
@@ -1007,9 +1025,7 @@
         "stupid-song-montage",
         "tiktok-two-personalities-401003",
         "tiktok-kumar-method-634509",
-        "tiktok-not-very-nonchalant-633631",
         "tiktok-netflix-documentary-confessional-426113",
-        "tiktok-pain-oh-no-spain-150304",
         "tiktok-bangladesh-absurd-complaint-228638",
         "tiktok-choosin-texas-western-reveal-201425",
         "tiktok-u-me-love-timeline-896336",
@@ -1068,8 +1084,12 @@
         "tiktok-wrap-it-up-procrastination-837422"
       ],
       "rejected": [],
-      "noRotationReason": "Aucun nouvel audio ne réunit aujourd’hui une référence ≥ 50 k likes, une durée < 30 s et trois créateurs natifs partageant la même identité audio."
-    }
+      "noRotationReason": null
+    },
+    "visibleAddedCount": 2,
+    "visibleRemovedCount": 2,
+    "lastVisibleRotationAt": "2026-08-31T16:27:43.797Z",
+    "unchangedRunCount": 0
   },
   "coverage": {
     "totalChecked": 47,
@@ -1191,7 +1211,10 @@
   ],
   "assetCache": {
     "status": "success",
-    "cachedCount": 0,
-    "paths": []
+    "cachedCount": 2,
+    "paths": [
+      "media/audio-trends/audio-tiktok-music-7571057519797487632.jpg",
+      "media/audio-trends/audio-tiktok-music-7561952744116357137.jpg"
+    ]
   }
 }

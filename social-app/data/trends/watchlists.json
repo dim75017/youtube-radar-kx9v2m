@@ -45,6 +45,28 @@
       ]
     },
     {
+      "id": "ramdam-tiktok-monthly",
+      "label": "Ramdam · TikTok mensuel",
+      "platform": "tiktok",
+      "kind": "monthly-editorial",
+      "urlTemplate": "https://www.ramd.am/blog/trends-tiktok-{monthShort}-{year}",
+      "monthsBack": 2,
+      "requiredMarkers": [
+        "tiktok"
+      ]
+    },
+    {
+      "id": "shotmatic-tiktok-weekly",
+      "label": "Shotmatic · TikTok hebdomadaire",
+      "platform": "tiktok",
+      "kind": "weekly-editorial",
+      "urlTemplate": "https://shotmatic.com/trends/week/{isoWeek}",
+      "weeksBack": 3,
+      "requiredMarkers": [
+        "tiktok"
+      ]
+    },
+    {
       "id": "tokchart-public",
       "label": "Tokchart · sons TikTok",
       "platform": "tiktok",

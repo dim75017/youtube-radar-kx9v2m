@@ -7,6 +7,7 @@ import {
   auditTrendReuseEvidenceReachability,
   buildDailyTrendRefresh,
   countMatchedSignals,
+  expandTrendWatchlistSources,
   extractNativeTrendCandidateUrls,
   extractYouTubeShortSearchResults,
   localDateKey,
@@ -15,6 +16,7 @@ import {
   normalizeSourceText,
   parseTikTokTrendCandidateHtml,
   parseYouTubeShortMetadataHtml,
+  qualifyTikTokMusicCluster,
   verifyNativeTrendPost,
 } from "../scripts/refresh-social-trends.mjs";
 import {
@@ -142,8 +144,20 @@ function youtubeMetadataFixture(video) {
   })};</script>{"likeCount":"1234"}`;
 }
 
+function fixtureSourceForUrl(url) {
+  const direct = watchlists.sources.find((candidate) => candidate.url === url);
+  if (direct) return direct;
+  if (url.startsWith("https://www.ramd.am/blog/trends-tiktok-")) {
+    return { kind: "editorial", requiredMarkers: ["tiktok"], url };
+  }
+  if (url.startsWith("https://shotmatic.com/trends/week/")) {
+    return { kind: "editorial", requiredMarkers: ["tiktok"], url };
+  }
+  return null;
+}
+
 function successfulSourceFetch(url) {
-  const source = watchlists.sources.find((candidate) => candidate.url === url);
+  const source = fixtureSourceForUrl(url);
   if (!source) {
     if (/^https:\/\/www\.youtube\.com\/results\?/u.test(url)) {
       return Promise.resolve(new Response(youtubeSearchFixture(), { status: 200 }));
@@ -199,6 +213,41 @@ test("source text normalization and matching are deterministic", () => {
   assert.equal(normalizeSourceText("<h1>ÉTUDES&nbsp;&amp; Focus</h1>"), "etudes & focus");
   const actionable = feed.trends.filter(isActionableSocialTrend);
   assert.ok(countMatchedSignals(actionable[0].title, actionable) >= 1);
+});
+
+test("rolling editorial sources always follow the latest completed weeks and months", () => {
+  const expanded = expandTrendWatchlistSources(watchlists.sources, "2026-08-31T12:00:00.000Z");
+  const ids = expanded.map((source) => source.id);
+  assert.ok(ids.includes("shotmatic-tiktok-weekly-2026-w35"));
+  assert.ok(ids.includes("shotmatic-tiktok-weekly-2026-w34"));
+  assert.ok(ids.includes("shotmatic-tiktok-weekly-2026-w33"));
+  assert.ok(ids.includes("ramdam-tiktok-monthly-2026-08"));
+  assert.ok(ids.includes("ramdam-tiktok-monthly-2026-07"));
+  assert.ok(expanded.every((source) => typeof source.url === "string" && source.url.length > 0));
+});
+
+test("sensitive native clusters are rejected before promotion", async () => {
+  const observations = Array.from({ length: 3 }, (_, index) => ({
+    platform: "tiktok",
+    url: `https://www.tiktok.com/@unsafe${index}/video/${790000000000000000n + BigInt(index)}`,
+    author: `@unsafe${index}`,
+    caption: index === 0 ? "Breaking news: mass shooting footage" : "unrelated reuse",
+    durationSeconds: 12,
+    metrics: { likes: index === 0 ? 100_000 : 1_000 },
+    music: { id: "7999999999999999999", title: "News sound", author: "Uploader" },
+  }));
+  const result = await qualifyTikTokMusicCluster({
+    cluster: {
+      musicId: "7999999999999999999",
+      postUrls: observations.map((observation) => observation.url),
+    },
+    candidateObservations: observations,
+    currentTrends: [],
+    now: "2026-08-31T12:00:00.000Z",
+    fetchImpl: async () => { throw new Error("unsafe cluster must not be fetched"); },
+  });
+  assert.equal(result.status, "unsafe");
+  assert.equal(result.trend, null);
 });
 
 test("native candidate extraction deduplicates posts and excludes non-post URLs", () => {
@@ -334,8 +383,9 @@ test("a complete scan composes new cards from real three-creator proofs", async 
   assert.equal(result.feed.capturedAt, now);
   assert.equal(result.feed.refresh.status, "success");
   assert.equal(result.feed.refresh.lastSuccessfulAt, now);
-  assert.equal(result.feed.refresh.sourceChecks.length, watchlists.sources.length);
-  assert.equal(result.feed.refresh.counts.checkedSources, watchlists.sources.length);
+  const expandedSources = expandTrendWatchlistSources(watchlists.sources, now);
+  assert.equal(result.feed.refresh.sourceChecks.length, expandedSources.length);
+  assert.equal(result.feed.refresh.counts.checkedSources, expandedSources.length);
   assert.ok(result.feed.refresh.counts.matchedSignals > 0);
   const refreshedActionable = result.feed.trends.filter(isActionableSocialTrend);
   const promotedTrendIds = refreshedActionable
@@ -390,7 +440,10 @@ test("a complete scan composes new cards from real three-creator proofs", async 
       "tiktok-music-7777777777777777777",
     ),
   );
-  assert.equal(result.feed.refresh.discoveryAudit.exactMusicClusters.length, 1);
+  assert.ok(
+    result.feed.refresh.discoveryAudit.exactMusicClusters.some((cluster) =>
+      cluster.musicId === "7777777777777777777"),
+  );
   assert.equal(result.feed.refresh.discoveryAudit.pendingExactMusicClusters.length, 0);
   assert.equal(
     result.feed.refresh.discoveryAudit.availablePosts,
@@ -409,7 +462,7 @@ test("a complete scan composes new cards from real three-creator proofs", async 
   );
   assert.equal(
     result.feed.refresh.discoveryAudit.sourceBreakdown.length,
-    watchlists.sources.length,
+    expandedSources.length,
   );
   const actionableVideos = result.feed.trends.filter(
     (trend) => isActionableSocialTrend(trend) && trend.referencePost?.mediaType === "video",
@@ -474,6 +527,25 @@ test("a complete scan composes new cards from real three-creator proofs", async 
   );
 });
 
+test("one transient TikTok metadata failure does not discard a 95% complete scan", async () => {
+  const now = new Date(Date.parse(feed.capturedAt) + 2 * 60 * 60 * 1_000).toISOString();
+  const failedCandidate = nativeCandidateUrls.find((url) => url.includes("@radar19/"));
+  const result = await buildDailyTrendRefresh({
+    feed,
+    watchlists,
+    now,
+    force: true,
+    xBearerToken: "test-token",
+    fetchImpl: async (url) => url === failedCandidate
+      ? new Response("transient", { status: 503 })
+      : successfulSourceFetch(url),
+  });
+  const enrichment = result.feed.refresh.discoveryAudit.tiktokCandidateEnrichment;
+  assert.equal(enrichment.failed, 1);
+  assert.ok(enrichment.parsedRatio >= enrichment.minimumParsedRatio);
+  assert.ok(result.feed.refresh.discoveryAudit.newQualifiedCount >= 1);
+});
+
 test("reachability auditing is read-only", async () => {
   const actionable = structuredClone(feed.trends.filter(isActionableSocialTrend));
   const before = structuredClone(actionable);
@@ -514,7 +586,7 @@ test("the daily publisher rejects a parsed scan without a native candidate pool"
       now,
       force: true,
       fetchImpl: (url) => {
-        const source = watchlists.sources.find((candidate) => candidate.url === url);
+        const source = fixtureSourceForUrl(url);
         if (!source) return successfulSourceFetch(url);
         if (source.kind === "x-api") {
           return Promise.resolve(Response.json({ data: [{ trend_name: actionableTrendTerms }] }));
@@ -539,7 +611,7 @@ test("editorial wording coverage stays separate from qualified native-proof inve
     now: new Date(Date.parse(feed.capturedAt) + 60 * 60 * 1_000).toISOString(),
     force: true,
     fetchImpl: (url) => {
-      const source = watchlists.sources.find((candidate) => candidate.url === url);
+      const source = fixtureSourceForUrl(url);
       if (!source) return successfulSourceFetch(url);
       if (source.kind === "x-api") {
         return Promise.resolve(Response.json({
@@ -574,7 +646,7 @@ test("a large reachable pool cannot masquerade as a successful discovery scan", 
       now: new Date(Date.parse(feed.capturedAt) + 60 * 60 * 1_000).toISOString(),
       force: true,
       fetchImpl: (url) => {
-        const source = watchlists.sources.find((candidate) => candidate.url === url);
+        const source = fixtureSourceForUrl(url);
         if (source?.kind === "x-api") {
           return Promise.resolve(Response.json({ data: [{ trend_name: actionableTrendTerms }] }));
         }
@@ -607,13 +679,18 @@ test("a large reachable pool cannot masquerade as a successful discovery scan", 
 test("zero rotation is accepted only when every discovered candidate was semantically parsed", async () => {
   const zeroRotationCandidates = Array.from({ length: 60 }, (_, index) =>
     `https://www.tiktok.com/@zerorotation${index}/video/${780000000000000000n + BigInt(index)}`);
+  const freshRotationFeed = structuredClone(feed);
+  const now = new Date(Date.parse(feed.capturedAt) + 60 * 60 * 1_000).toISOString();
+  freshRotationFeed.refresh.discoveryAudit.lastVisibleRotationAt = new Date(
+    Date.parse(now) - 60 * 60 * 1_000,
+  ).toISOString();
   const result = await buildDailyTrendRefresh({
-    feed,
+    feed: freshRotationFeed,
     watchlists,
-    now: new Date(Date.parse(feed.capturedAt) + 60 * 60 * 1_000).toISOString(),
+    now,
     force: true,
     fetchImpl: (url) => {
-      const source = watchlists.sources.find((candidate) => candidate.url === url);
+      const source = fixtureSourceForUrl(url);
       if (source?.kind === "x-api") {
         return Promise.resolve(Response.json({
           data: [{ trend_name: zeroRotationCandidates.join(" ") }],
@@ -649,8 +726,12 @@ test("zero rotation is accepted only when every discovered candidate was semanti
 
 test("the daily publisher fails closed when fewer than 50 evidence sets remain reachable", async () => {
   const actionable = feed.trends.filter(isActionableSocialTrend);
+  const unavailableTrendCount = Math.max(
+    1,
+    actionable.length - MIN_PUBLISHABLE_ACTIONABLE_VIDEO_TRENDS + 2,
+  );
   const unavailableMarkers = actionable
-    .slice(0, 4)
+    .slice(0, unavailableTrendCount)
     .flatMap((trend) => trend.reuseEvidence.posts)
     .map((post) => nativeTrendVerificationRequest(post).marker);
 

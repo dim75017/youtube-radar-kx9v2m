@@ -535,7 +535,8 @@ test("keeps real social collection, post formats and persistence explicit", asyn
   assert.match(audioTrendView, /recentGrowth/);
   assert.match(audioTrendView, /currentRank/);
   assert.match(audioTrendView, /currentUses/);
-  assert.match(audioTrendView, /freshnessTimestamp/);
+  assert.match(audioTrendView, /audioEditorialRecencyTimestamp/);
+  assert.doesNotMatch(audioTrendView, /freshnessTimestamp/);
   assert.match(audioTrendView, /growthFreshnessCutoff/);
   assert.match(audioTrendView, /Date\.parse\(derivedGrowth\.toCapturedAt\) >= growthFreshnessCutoff/);
   assert.match(audioTrendView, /trend\.proposals\.map/);
@@ -884,6 +885,11 @@ test("checks editorial trend freshness in the pipeline without exposing scan int
     assert.doesNotMatch(view, /isTrendEditorialScanLate/);
     assert.doesNotMatch(view, /Dernier lot complet|Scan quotidien|scan du jour|candidats|Actualisé/);
   }
+  assert.match(socialComponent, /trendEditorialRecencyTimestamp/);
+  assert.match(videoTrendView, /compareVideoTrendsForDisplay/);
+  assert.doesNotMatch(videoTrendView, /matchedTrendIds/);
+  assert.match(audioTrendView, /audioEditorialRecencyTimestamp/);
+  assert.doesNotMatch(audioTrendView, /candidateAudioUrls|matchedAudioUrls/);
   assert.match(trendHealthModel, /TREND_EDITORIAL_SCAN_MAX_AGE_HOURS = 26/);
   assert.match(healthScript, /discoveryAudit\.candidateCount doit être >=/);
   assert.match(healthScript, /discoveryAudit\.qualifiedInventoryCount doit être >=/);

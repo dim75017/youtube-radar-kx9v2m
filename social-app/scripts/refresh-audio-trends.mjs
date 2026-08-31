@@ -31,6 +31,10 @@ const AUDIO_DISCOVERY_REFERENCE_LIMIT_PER_SOURCE = 50;
 const AUDIO_DISCOVERY_REFERENCE_CONCURRENCY = 4;
 const AUDIO_QUALIFICATION_MAX_AGE_MS = 26 * 60 * 60 * 1_000;
 const AUDIO_REFRESH_MAX_ROTATIONS = 5;
+const AUDIO_VISIBLE_ROTATION_MAX_AGE_MS = 26 * 60 * 60 * 1_000;
+const AUDIO_RECENCY_GRACE_DAYS = 7;
+const AUDIO_RECENCY_PENALTY_PER_DAY = 500_000_000;
+const DAY_MS = 24 * 60 * 60 * 1_000;
 const AUDIO_DISCOVERY_EDITORIAL_HOSTS = new Set([
   "buffer.com",
   "later.com",
@@ -946,13 +950,33 @@ function buildAudioProposalsFromVideoTrend(videoTrend, id) {
   ];
 }
 
-function candidateSelectionScore(candidate) {
+function audioCandidateFreshnessTimestamp(candidate) {
+  return [
+    candidate?.referenceVideo?.publishedAt,
+    candidate?.referencePost?.publishedAt,
+    candidate?.source?.capturedAt,
+    candidate?.firstSeenAt,
+  ]
+    .map((value) => Date.parse(value ?? ""))
+    .filter(Number.isFinite)
+    .sort((left, right) => right - left)[0] ?? 0;
+}
+
+export function candidateSelectionScore(candidate, now = new Date().toISOString()) {
   if (!candidate || typeof candidate !== "object") return Number.NEGATIVE_INFINITY;
-  if (Number.isFinite(candidate.selectionScore)) return candidate.selectionScore;
   const lofiFit = Number.isFinite(candidate.lofiFitScore) ? candidate.lofiFitScore : 0;
   const momentum = Number.isFinite(candidate.momentumScore) ? candidate.momentumScore : 0;
   const likes = candidate.referenceVideo?.metrics?.likes ?? candidate.referencePost?.metrics?.likes ?? 0;
-  return lofiFit * 1_000_000_000 + momentum * 1_000_000 + Math.min(likes, 999_999);
+  const baseScore = Number.isFinite(candidate.selectionScore)
+    ? candidate.selectionScore
+    : lofiFit * 1_000_000_000 + momentum * 1_000_000 + Math.min(likes, 999_999);
+  const freshnessTimestamp = audioCandidateFreshnessTimestamp(candidate);
+  const ageDays = freshnessTimestamp > 0
+    ? Math.max(0, (Date.parse(now) - freshnessTimestamp) / DAY_MS)
+    : 365;
+  const recencyPenalty = Math.max(0, ageDays - AUDIO_RECENCY_GRACE_DAYS) *
+    AUDIO_RECENCY_PENALTY_PER_DAY;
+  return baseScore - recencyPenalty;
 }
 
 function boundedText(candidate, maximumLength) {
@@ -965,6 +989,8 @@ function applyQualifiedAudioCandidates(feed, {
   qualifiedCandidates,
   currentEvidence,
   now,
+  previousSelectionAudit,
+  feedCapturedAt,
 }) {
   const originalIds = new Set(feed.trends.map((trend) => trend.id));
   const reverifiedTrendIds = [];
@@ -983,7 +1009,8 @@ function applyQualifiedAudioCandidates(feed, {
   const removedAudioUrls = [];
   const rejected = [];
   const candidates = [...qualifiedCandidates]
-    .sort((left, right) => candidateSelectionScore(right) - candidateSelectionScore(left));
+    .sort((left, right) =>
+      candidateSelectionScore(right, now) - candidateSelectionScore(left, now));
   for (const candidateWithScore of candidates.slice(0, AUDIO_REFRESH_MAX_ROTATIONS)) {
     const audioUrl = canonicalInventoryUrl(candidateWithScore.audioUrl);
     if (!audioUrl || feed.trends.some((trend) => canonicalInventoryUrl(trend.audioUrl) === audioUrl)) {
@@ -997,8 +1024,12 @@ function applyQualifiedAudioCandidates(feed, {
       continue;
     }
     const weakest = [...feed.trends]
-      .sort((left, right) => candidateSelectionScore(left) - candidateSelectionScore(right))[0];
-    if (!weakest || candidateSelectionScore(candidateWithScore) <= candidateSelectionScore(weakest)) {
+      .sort((left, right) =>
+        candidateSelectionScore(left, now) - candidateSelectionScore(right, now))[0];
+    if (
+      !weakest ||
+      candidateSelectionScore(candidateWithScore, now) <= candidateSelectionScore(weakest, now)
+    ) {
       rejected.push({ id: candidateWithScore.id, reason: "score inferieur au dernier audio conserve" });
       continue;
     }
@@ -1015,13 +1046,31 @@ function applyQualifiedAudioCandidates(feed, {
     ? null
     : qualifiedCandidates.length === 0
       ? "Aucun nouvel audio ne réunit aujourd’hui une référence ≥ 50 k likes, une durée < 30 s et trois créateurs natifs partageant la même identité audio."
-      : "Les nouveaux audios qualifiés n'ont pas dépassé la dernière carte conservée selon le score Lofi Fit, la dynamique et les likes de référence.";
+      : "Les nouveaux audios qualifiés n'ont pas dépassé la dernière carte conservée selon la récence, le Lofi Fit, la dynamique et les likes de référence.";
+  const visibleRotationOccurred = addedTrendIds.length > 0 || removedTrendIds.length > 0;
+  const inferredPreviousRotationAt = previousSelectionAudit?.lastVisibleRotationAt ??
+    ((previousSelectionAudit?.visibleAddedCount ?? previousSelectionAudit?.addedTrendIds?.length ?? 0) > 0 ||
+      (previousSelectionAudit?.visibleRemovedCount ?? previousSelectionAudit?.removedTrendIds?.length ?? 0) > 0
+      ? previousSelectionAudit?.evaluatedAt
+      : feedCapturedAt ?? feed.trends
+        .flatMap((trend) => [trend.source?.capturedAt, trend.referenceVideo?.publishedAt])
+        .filter(Boolean)
+        .sort()
+        .at(-1)) ?? null;
+  const lastVisibleRotationAt = visibleRotationOccurred ? now : inferredPreviousRotationAt;
+  const unchangedRunCount = visibleRotationOccurred
+    ? 0
+    : Math.max(0, Number(previousSelectionAudit?.unchangedRunCount) || 0) + 1;
   return {
     evaluatedAt: now,
     addedTrendIds,
     addedAudioUrls,
     removedTrendIds,
     removedAudioUrls,
+    visibleAddedCount: addedTrendIds.length,
+    visibleRemovedCount: removedTrendIds.length,
+    lastVisibleRotationAt,
+    unchangedRunCount,
     retainedTrendIds: feed.trends
       .filter((trend) => originalIds.has(trend.id))
       .map((trend) => trend.id),
@@ -1145,12 +1194,18 @@ export async function buildAudioTrendRefresh({
     qualifiedCandidates,
     currentEvidence,
     now,
+    previousSelectionAudit: previousRefreshStatus?.discoveryAudit?.selectionAudit ?? null,
+    feedCapturedAt: current.capturedAt,
   });
   const selectedInventory = evaluateAudioRefreshInventory(next);
   discoveryAudit.qualifiedInventoryCount = discoveryAudit.qualificationAudit.freshQualifiedCount;
   discoveryAudit.qualifiedClusterCount = discoveryAudit.qualificationAudit.freshQualifiedCount;
   discoveryAudit.publishedInventoryCount = selectedInventory.totalTrends;
   discoveryAudit.selectionAudit = selectionAudit;
+  discoveryAudit.visibleAddedCount = selectionAudit.visibleAddedCount;
+  discoveryAudit.visibleRemovedCount = selectionAudit.visibleRemovedCount;
+  discoveryAudit.lastVisibleRotationAt = selectionAudit.lastVisibleRotationAt;
+  discoveryAudit.unchangedRunCount = selectionAudit.unchangedRunCount;
 
   const providerResults = TRACKED_PLATFORMS.map((platform) => {
     const platformChecks = checks.filter((check) => check.platform === platform);
@@ -1267,6 +1322,25 @@ export async function buildAudioTrendRefresh({
         `${discoveryAudit.sourceBreakdown.filter((source) => source.status === "success").length}/${discoveryAudit.sourceBreakdown.length} sources lisibles.`
       : "Inventaire Audio Trends non publiable.";
     const error = new Error(reason);
+    error.refreshStatus = status;
+    throw error;
+  }
+
+  const visibleRotationTimestamp = Date.parse(selectionAudit.lastVisibleRotationAt ?? "");
+  const visibleRotationAgeMs = Number.isFinite(visibleRotationTimestamp)
+    ? Date.parse(now) - visibleRotationTimestamp
+    : Number.POSITIVE_INFINITY;
+  if (
+    selectionAudit.visibleAddedCount === 0 &&
+    selectionAudit.visibleRemovedCount === 0 &&
+    visibleRotationAgeMs > AUDIO_VISIBLE_ROTATION_MAX_AGE_MS
+  ) {
+    const ageHours = Number.isFinite(visibleRotationAgeMs)
+      ? (visibleRotationAgeMs / (60 * 60 * 1_000)).toFixed(1)
+      : "inconnue";
+    const error = new Error(
+      `Aucune carte audio visible n'a tourné depuis ${ageHours} h; maximum 26 h.`,
+    );
     error.refreshStatus = status;
     throw error;
   }

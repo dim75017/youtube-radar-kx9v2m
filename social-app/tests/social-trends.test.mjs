@@ -460,12 +460,15 @@ test("the publishable contract requires a fresh daily run and 50 verified trends
   );
 
   const tooFewVideos = structuredClone(publishableFeed);
-  const downgradedVideo = tooFewVideos.trends.find(
-    (trend) => isActionableSocialTrend(trend) && trend.referencePost?.mediaType === "video",
-  );
-  assert.ok(downgradedVideo?.referencePost);
-  downgradedVideo.referencePost.mediaType = "image";
-  downgradedVideo.referencePost.durationSeconds = null;
+  const videosToDowngrade = tooFewVideos.trends
+    .filter((trend) =>
+      isActionableSocialTrend(trend) && trend.referencePost?.mediaType === "video")
+    .slice(MIN_PUBLISHABLE_ACTIONABLE_VIDEO_TRENDS - 1);
+  assert.ok(videosToDowngrade.length > 0);
+  for (const downgradedVideo of videosToDowngrade) {
+    downgradedVideo.referencePost.mediaType = "image";
+    downgradedVideo.referencePost.durationSeconds = null;
+  }
   syncRefreshCounts(tooFewVideos);
   const remainingVideos = tooFewVideos.trends.filter(
     (trend) => isActionableSocialTrend(trend) && trend.referencePost?.mediaType === "video",

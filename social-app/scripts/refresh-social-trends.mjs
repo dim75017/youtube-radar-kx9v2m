@@ -27,6 +27,18 @@ const MAX_PERSISTED_CANDIDATE_OBSERVATIONS = 200;
 const CANDIDATE_OBSERVATION_MAX_AGE_DAYS = 30;
 const YOUTUBE_SEARCH_RESULT_LIMIT = 30;
 const MAX_QUALIFIED_ACTIONABLE_TRENDS = 60;
+const MIN_TIKTOK_CANDIDATE_PARSE_RATIO = 0.9;
+const MAX_VISIBLE_ROTATION_AGE_HOURS = 26;
+const DAY_MS = 24 * 60 * 60 * 1_000;
+
+const UNSAFE_TREND_PATTERNS = [
+  /\bmass shooting\b/iu,
+  /\b(?:school|public|fatal) shooting\b/iu,
+  /\bshot (?:dead|and killed)\b/iu,
+  /\b(?:murdered|massacre|terror(?:ist| attack)|bombing|suicide)\b/iu,
+  /\bdead bod(?:y|ies)\b/iu,
+  /\bwar footage\b/iu,
+];
 
 const VIDEO_PROMOTION_RECIPES = [
   {
@@ -48,6 +60,102 @@ const VIDEO_PROMOTION_RECIPES = [
     ],
   },
 ];
+
+function isoWeekKey(value) {
+  const input = new Date(value);
+  const date = new Date(Date.UTC(
+    input.getUTCFullYear(),
+    input.getUTCMonth(),
+    input.getUTCDate(),
+  ));
+  const day = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - day);
+  const year = date.getUTCFullYear();
+  const yearStart = new Date(Date.UTC(year, 0, 1));
+  const week = Math.ceil((((date - yearStart) / DAY_MS) + 1) / 7);
+  return `${year}-W${String(week).padStart(2, "0")}`;
+}
+
+function monthTemplateParts(value) {
+  const date = new Date(value);
+  return {
+    monthShort: new Intl.DateTimeFormat("en", {
+      month: "short",
+      timeZone: "UTC",
+    }).format(date).toLowerCase(),
+    year: String(date.getUTCFullYear()),
+  };
+}
+
+export function expandTrendWatchlistSources(sources, now = new Date().toISOString()) {
+  return sources.flatMap((source) => {
+    if (source.kind === "weekly-editorial" && source.urlTemplate) {
+      const weeksBack = Math.max(1, Math.min(6, Number(source.weeksBack) || 3));
+      return Array.from({ length: weeksBack }, (_, index) => {
+        const periodDate = new Date(Date.parse(now) - (index + 1) * 7 * DAY_MS);
+        const period = isoWeekKey(periodDate);
+        return {
+          ...source,
+          id: `${source.id}-${period.toLowerCase()}`,
+          label: `${source.label} · ${period}`,
+          kind: "editorial",
+          url: source.urlTemplate.replaceAll("{isoWeek}", period),
+          period,
+        };
+      });
+    }
+    if (source.kind === "monthly-editorial" && source.urlTemplate) {
+      const monthsBack = Math.max(1, Math.min(4, Number(source.monthsBack) || 2));
+      return Array.from({ length: monthsBack }, (_, index) => {
+        const input = new Date(now);
+        const periodDate = new Date(Date.UTC(
+          input.getUTCFullYear(),
+          input.getUTCMonth() - index,
+          1,
+        ));
+        const { monthShort, year } = monthTemplateParts(periodDate);
+        const period = `${year}-${String(periodDate.getUTCMonth() + 1).padStart(2, "0")}`;
+        return {
+          ...source,
+          id: `${source.id}-${period}`,
+          label: `${source.label} · ${monthShort} ${year}`,
+          kind: "editorial",
+          url: source.urlTemplate
+            .replaceAll("{monthShort}", monthShort)
+            .replaceAll("{year}", year),
+          period,
+        };
+      });
+    }
+    return [source];
+  });
+}
+
+function latestTrendEvidenceTimestamp(trend) {
+  return [
+    trend.lastVerifiedAt,
+    trend.referencePost?.publishedAt,
+    trend.firstSeenAt,
+  ]
+    .map((value) => Date.parse(value ?? ""))
+    .filter(Number.isFinite)
+    .sort((left, right) => right - left)[0] ?? 0;
+}
+
+export function trendRefreshSelectionScore(trend, now) {
+  const ageDays = Math.max(0, (Date.parse(now) - latestTrendEvidenceTimestamp(trend)) / DAY_MS);
+  const agePenalty = Math.min(60, Math.max(0, ageDays - 7) * 0.75);
+  return trendPriorityScore(trend) - agePenalty;
+}
+
+function unsafeTrendObservation(observation) {
+  const text = [
+    observation?.caption,
+    observation?.music?.title,
+    observation?.music?.author,
+  ].filter(Boolean).join(" ");
+  return UNSAFE_TREND_PATTERNS.some((pattern) => pattern.test(text));
+}
 
 function cleanExtractedUrl(value) {
   return String(value ?? "")
@@ -821,6 +929,18 @@ export async function qualifyTikTokMusicCluster({
   fetchImpl = fetch,
   now,
 }) {
+  const clusterObservations = candidateObservations.filter((observation) =>
+    observation?.music?.id === cluster.musicId);
+  const unsafeObservations = clusterObservations.filter(unsafeTrendObservation);
+  if (unsafeObservations.length > 0) {
+    return {
+      musicId: cluster.musicId,
+      status: "unsafe",
+      trend: null,
+      evidence: unsafeObservations,
+      reason: "cluster exclu par le filtre de sécurité éditoriale (violence ou événement sensible)",
+    };
+  }
   const currentEvidenceUrls = new Set(currentTrends.flatMap((trend) => [
     trend.referencePost?.url,
     ...(trend.reuseEvidence?.posts ?? []).map((post) => post.url),
@@ -836,8 +956,7 @@ export async function qualifyTikTokMusicCluster({
       reason: "au moins une preuve appartient déjà à une carte éditoriale existante",
     };
   }
-  const registryUrls = candidateObservations
-    .filter((observation) => observation?.music?.id === cluster.musicId)
+  const registryUrls = clusterObservations
     .map((observation) => observation.url);
   const checks = await mapWithConcurrency(
     [...new Set(registryUrls)],
@@ -1139,11 +1258,31 @@ export function buildTrendDiscoveryAudit({
     .filter((url) => !currentCandidateUrls.has(url))
     .length;
   const rankedPriorityScores = nextActionable
-    .map(trendPriorityScore)
+    .map((trend) => trendRefreshSelectionScore(trend, now))
     .sort((left, right) => right - left);
   const top50CutoffScore = rankedPriorityScores[
     MIN_PUBLISHABLE_ACTIONABLE_TRENDS - 1
   ] ?? null;
+  const visibleAddedTrendIds = [...new Set(newQualifiedTrendIds)].sort();
+  const visibleRemovedTrendIds = [...new Set(removedTrendIds)].sort();
+  const visibleRotationOccurred =
+    visibleAddedTrendIds.length > 0 || visibleRemovedTrendIds.length > 0;
+  const inferredPreviousRotationAt = previousAudit?.lastVisibleRotationAt ??
+    ((previousAudit?.visibleAddedCount ?? previousAudit?.newQualifiedCount ?? 0) > 0 ||
+      (previousAudit?.visibleRemovedCount ?? previousAudit?.removedTrendCount ?? 0) > 0
+      ? previousAudit?.scannedAt
+      : nextActionable
+        .map((trend) => trend.firstSeenAt)
+        .filter(Boolean)
+        .sort()
+        .at(-1)) ?? null;
+  const lastVisibleRotationAt = visibleRotationOccurred ? now : inferredPreviousRotationAt;
+  const unchangedRunCount = visibleRotationOccurred
+    ? 0
+    : Math.max(0, Number(previousAudit?.unchangedRunCount) || 0) + 1;
+  const parsedTikTokRatio = tiktokCandidateAudit.checkedUrls.length > 0
+    ? tiktokCandidateAudit.observations.length / tiktokCandidateAudit.checkedUrls.length
+    : 0;
 
   return {
     scannedAt: now,
@@ -1169,12 +1308,20 @@ export function buildTrendDiscoveryAudit({
     newQualifiedTrendIds: [...newQualifiedTrendIds].sort(),
     removedTrendCount: removedTrendIds.length,
     removedTrendIds: [...removedTrendIds].sort(),
+    visibleAddedCount: visibleAddedTrendIds.length,
+    visibleAddedTrendIds,
+    visibleRemovedCount: visibleRemovedTrendIds.length,
+    visibleRemovedTrendIds,
+    lastVisibleRotationAt,
+    unchangedRunCount,
     noRotationReason,
     candidateObservations,
     tiktokCandidateEnrichment: {
       checked: tiktokCandidateAudit.checkedUrls.length,
       parsed: tiktokCandidateAudit.observations.length,
       failed: tiktokCandidateAudit.failures.length,
+      parsedRatio: parsedTikTokRatio,
+      minimumParsedRatio: MIN_TIKTOK_CANDIDATE_PARSE_RATIO,
       failures: tiktokCandidateAudit.failures.slice(0, MAX_SOURCE_CANDIDATE_URLS),
     },
     exactMusicClusters,
@@ -1183,7 +1330,9 @@ export function buildTrendDiscoveryAudit({
       musicId: audit.musicId,
       status: audit.status,
       reason: audit.reason ?? null,
-      evidenceUrls: audit.evidence.map((post) => post.url),
+      evidenceUrls: audit.status === "unsafe"
+        ? []
+        : audit.evidence.map((post) => post.url),
       priorityScore: audit.trend ? trendPriorityScore(audit.trend) : null,
       top50CutoffScore,
       beatsTop50Cutoff: audit.trend && top50CutoffScore !== null
@@ -1232,14 +1381,26 @@ export async function buildDailyTrendRefresh({
   xBearerToken,
 }) {
   const current = assertSocialTrendFeed(structuredClone(feed));
-  if (!force && localDateKey(current.refresh.lastSuccessfulAt) === localDateKey(now)) {
+  const previousRotationAt = current.refresh.discoveryAudit?.lastVisibleRotationAt;
+  const previousRotationAgeHours = previousRotationAt
+    ? (Date.parse(now) - Date.parse(previousRotationAt)) / (60 * 60 * 1_000)
+    : Number.POSITIVE_INFINITY;
+  if (
+    !force &&
+    localDateKey(current.refresh.lastSuccessfulAt) === localDateKey(now) &&
+    (
+      previousRotationAgeHours < 20 ||
+      Date.parse(now) <= Date.parse(current.refresh.lastSuccessfulAt)
+    )
+  ) {
     return { skipped: true, feed: current, status: current.refresh };
   }
 
   const actionable = current.trends.filter(isActionableSocialTrend);
+  const sources = expandTrendWatchlistSources(watchlists.sources, now);
   const [initialChecks, reachability] = await Promise.all([
     Promise.all(
-      watchlists.sources.map((source) =>
+      sources.map((source) =>
         checkTrendSource(source, actionable, { fetchImpl, now, xBearerToken }),
       ),
     ),
@@ -1284,6 +1445,11 @@ export async function buildDailyTrendRefresh({
     audit.status === "qualified" && audit.trend);
   const qualifiedMusicClusterAudits = musicClusterAudits.filter((audit) =>
     audit.status === "qualified" && audit.trend);
+  const unsafeMusicIds = new Set(
+    musicClusterAudits
+      .filter((audit) => audit.status === "unsafe")
+      .map((audit) => audit.musicId),
+  );
   const qualifiedSemanticAudits = [
     ...qualifiedRecipeAudits,
     ...qualifiedMusicClusterAudits,
@@ -1318,7 +1484,8 @@ export async function buildDailyTrendRefresh({
   const rankedActionableIds = new Set(
     preliminaryTrends
       .filter(isActionableSocialTrend)
-      .sort((left, right) => trendPriorityScore(right) - trendPriorityScore(left))
+      .sort((left, right) =>
+        trendRefreshSelectionScore(right, now) - trendRefreshSelectionScore(left, now))
       .slice(0, MAX_QUALIFIED_ACTIONABLE_TRENDS)
       .map((trend) => trend.id),
   );
@@ -1364,12 +1531,15 @@ export async function buildDailyTrendRefresh({
   });
 
   const pendingExactMusicClusters = musicClusterAudits
-    .filter((audit) => ["failed", "rejected"].includes(audit.status))
+    .filter((audit) => audit.status === "failed")
     .map((audit) => exactMusicClusters.find((cluster) => cluster.musicId === audit.musicId))
     .filter(Boolean);
-  const everyCurrentTikTokCandidateParsed =
+  const parsedTikTokCandidateRatio = tiktokCandidateAudit.checkedUrls.length > 0
+    ? tiktokCandidateAudit.observations.length / tiktokCandidateAudit.checkedUrls.length
+    : 0;
+  const currentTikTokCandidateCoverageSufficient =
     tiktokCandidateAudit.checkedUrls.length > 0 &&
-    tiktokCandidateAudit.failures.length === 0;
+    parsedTikTokCandidateRatio >= MIN_TIKTOK_CANDIDATE_PARSE_RATIO;
   const everyDiscoveredCandidateReachable = candidateReachability.failures.length === 0;
   const everyDiscoveredCandidateSemanticallyParsed =
     discoveredCandidateUrls.length > 0 &&
@@ -1379,16 +1549,16 @@ export async function buildDailyTrendRefresh({
     recipeAudits.every((audit) => audit.status !== "failed") &&
     pendingExactMusicClusters.length === 0;
   const completeZeroRotationAudit =
-    everyCurrentTikTokCandidateParsed &&
+    currentTikTokCandidateCoverageSufficient &&
     everyDiscoveredCandidateReachable &&
     everyDiscoveredCandidateSemanticallyParsed &&
     qualificationLanesSucceeded;
   const qualificationComplete =
-    everyCurrentTikTokCandidateParsed &&
+    currentTikTokCandidateCoverageSufficient &&
     qualificationLanesSucceeded &&
     (qualifiedSemanticAudits.length > 0 || completeZeroRotationAudit);
   const top50CutoffScore = nextActionable
-    .map(trendPriorityScore)
+    .map((trend) => trendRefreshSelectionScore(trend, now))
     .sort((left, right) => right - left)[MIN_PUBLISHABLE_ACTIONABLE_TRENDS - 1] ?? null;
   const noRotationReason = newQualifiedTrendIds.length === 0
     ? refreshedQualifiedTrendIds.length > 0
@@ -1413,9 +1583,11 @@ export async function buildDailyTrendRefresh({
     checks,
     reachability,
     candidateReachability,
-    candidateObservations,
+    candidateObservations: candidateObservations.filter((observation) =>
+      !unsafeTrendObservation(observation) && !unsafeMusicIds.has(observation?.music?.id)),
     tiktokCandidateAudit,
-    exactMusicClusters,
+    exactMusicClusters: exactMusicClusters.filter((cluster) =>
+      !unsafeMusicIds.has(cluster.musicId)),
     pendingExactMusicClusters,
     musicClusterAudits,
     recipeAudits,
@@ -1460,7 +1632,7 @@ export async function buildDailyTrendRefresh({
   );
   if (checkedSources < minimumParsedSources) {
     const error = new Error(
-      `Seulement ${checkedSources}/${watchlists.sources.length} sources Trends ont été parsées; minimum ${minimumParsedSources}.`,
+      `Seulement ${checkedSources}/${sources.length} sources Trends ont été parsées; minimum ${minimumParsedSources}.`,
     );
     error.refreshStatus = baseRefresh;
     throw error;
@@ -1474,9 +1646,9 @@ export async function buildDailyTrendRefresh({
     throw error;
   }
 
-  if (tiktokCandidateAudit.failures.length > 0) {
+  if (!currentTikTokCandidateCoverageSufficient) {
     const error = new Error(
-      `${tiktokCandidateAudit.failures.length}/${tiktokCandidateAudit.checkedUrls.length} candidats TikTok n’ont pas fourni leurs métadonnées natives; le scan vidéo reste incomplet.`,
+      `${tiktokCandidateAudit.observations.length}/${tiktokCandidateAudit.checkedUrls.length} candidats TikTok ont fourni leurs métadonnées natives (${(parsedTikTokCandidateRatio * 100).toFixed(1)} %); minimum ${(MIN_TIKTOK_CANDIDATE_PARSE_RATIO * 100).toFixed(0)} %.`,
     );
     error.refreshStatus = baseRefresh;
     throw error;
@@ -1499,6 +1671,22 @@ export async function buildDailyTrendRefresh({
   if (pendingExactMusicClusters.length > 0) {
     const error = new Error(
       `${pendingExactMusicClusters.length} nouveau(x) cluster(s) audio TikTok satisfait/satisfont les preuves natives mais n’ont pas encore d’adaptation éditoriale sûre.`,
+    );
+    error.refreshStatus = baseRefresh;
+    throw error;
+  }
+
+  const lastVisibleRotationTimestamp = Date.parse(discoveryAudit.lastVisibleRotationAt ?? "");
+  const visibleRotationAgeHours = Number.isFinite(lastVisibleRotationTimestamp)
+    ? (Date.parse(now) - lastVisibleRotationTimestamp) / (60 * 60 * 1_000)
+    : Number.POSITIVE_INFINITY;
+  if (
+    discoveryAudit.visibleAddedCount === 0 &&
+    discoveryAudit.visibleRemovedCount === 0 &&
+    visibleRotationAgeHours > MAX_VISIBLE_ROTATION_AGE_HOURS
+  ) {
+    const error = new Error(
+      `Le scan a qualifié les sources, mais aucune carte visible n’a tourné depuis ${Number.isFinite(visibleRotationAgeHours) ? `${visibleRotationAgeHours.toFixed(1)} h` : "une durée inconnue"}; maximum ${MAX_VISIBLE_ROTATION_AGE_HOURS} h.`,
     );
     error.refreshStatus = baseRefresh;
     throw error;

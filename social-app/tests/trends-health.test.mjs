@@ -8,6 +8,7 @@ import {
   checkTrendFeedsHealth,
   evaluateTrendHealth,
   validateDiscoveryAudit,
+  validateVisibleRotationAudit,
 } from "../scripts/check-trends-health.mjs";
 import {
   buildTrendHealthDiscordMessage,
@@ -36,6 +37,10 @@ function healthyVideoStatus() {
       removedTrendIds: [],
       retainedQualifiedTrendIds: inventory().map((trend) => trend.id),
       noRotationReason: "Tous les candidats ont été classés; aucun nouveau cluster ne dépasse le cutoff top 50.",
+      lastVisibleRotationAt: freshCapturedAt,
+      visibleAddedCount: 0,
+      visibleRemovedCount: 0,
+      unchangedRunCount: 1,
     },
   };
 }
@@ -53,6 +58,10 @@ function healthyAudioStatus() {
       publishedInventoryCount: 50,
       qualificationAudit: { freshQualifiedCount: 3 },
       candidatePoolDelta: { added: 8, removed: 2, retained: 60 },
+      lastVisibleRotationAt: freshCapturedAt,
+      visibleAddedCount: 0,
+      visibleRemovedCount: 0,
+      unchangedRunCount: 1,
       selectionAudit: {
         evaluatedAt: freshCapturedAt,
         addedTrendIds: [],
@@ -182,6 +191,117 @@ test("fresh feed and complete discovery audit are healthy", () => {
     retained: 55,
     changed: true,
   });
+});
+
+test("video and audio health fail closed when the visible rotation audit is absent", () => {
+  for (const [key, status, count] of [
+    ["video", healthyVideoStatus(), 55],
+    ["audio", healthyAudioStatus(), 50],
+  ]) {
+    delete status.discoveryAudit.lastVisibleRotationAt;
+    delete status.discoveryAudit.visibleAddedCount;
+    delete status.discoveryAudit.visibleRemovedCount;
+    delete status.discoveryAudit.unchangedRunCount;
+    const result = evaluateTrendHealth({
+      key,
+      label: key === "audio" ? "Trends audio" : "Trends vidéos",
+      feed: { capturedAt: freshCapturedAt, trends: inventory(count) },
+      status,
+    }, checkedAt);
+    assert.equal(result.healthy, false);
+    assert.match(result.issues.join(" "), /audit de rotation visible absent/i);
+  }
+});
+
+test("the last real visible rotation must be no more than 26 hours old", () => {
+  const exactlyAtLimit = healthyVideoStatus().discoveryAudit;
+  exactlyAtLimit.lastVisibleRotationAt = "2026-08-20T10:00:00.000Z";
+  assert.deepEqual(
+    validateVisibleRotationAudit(exactlyAtLimit, checkedAt, {
+      key: "video",
+      selection: { added: 0, removed: 0 },
+    }).issues,
+    [],
+  );
+
+  const stale = healthyVideoStatus().discoveryAudit;
+  stale.lastVisibleRotationAt = "2026-08-20T09:59:59.999Z";
+  assert.match(
+    validateVisibleRotationAudit(stale, checkedAt, {
+      key: "video",
+      selection: { added: 0, removed: 0 },
+    }).issues.join(" "),
+    /dernière rotation visible dépasse 26 h/i,
+  );
+});
+
+test("an incomplete visible rotation audit names every missing proof field", () => {
+  const audit = healthyVideoStatus().discoveryAudit;
+  delete audit.visibleRemovedCount;
+  const result = validateVisibleRotationAudit(audit, checkedAt, {
+    key: "video",
+    selection: { added: 0, removed: 0 },
+  });
+  assert.match(
+    result.issues.join(" "),
+    /audit de rotation visible incomplet: visibleRemovedCount absent/i,
+  );
+});
+
+test("audio accepts its visible rotation audit from selectionAudit as a compatibility fallback", () => {
+  const status = healthyAudioStatus();
+  const fields = {
+    lastVisibleRotationAt: status.discoveryAudit.lastVisibleRotationAt,
+    visibleAddedCount: status.discoveryAudit.visibleAddedCount,
+    visibleRemovedCount: status.discoveryAudit.visibleRemovedCount,
+    unchangedRunCount: status.discoveryAudit.unchangedRunCount,
+  };
+  for (const field of Object.keys(fields)) delete status.discoveryAudit[field];
+  Object.assign(status.discoveryAudit.selectionAudit, fields);
+
+  const result = evaluateTrendHealth({
+    key: "audio",
+    label: "Trends audio",
+    feed: { capturedAt: freshCapturedAt, trends: inventory(50) },
+    status,
+  }, checkedAt);
+  assert.equal(result.healthy, true);
+  assert.equal(result.visibleRotation?.source, "selectionAudit");
+});
+
+test("visible rotation counters must match the published selection and unchanged-run state", () => {
+  const status = healthyAudioStatus();
+  status.discoveryAudit.visibleAddedCount = 1;
+  status.discoveryAudit.visibleRemovedCount = 0;
+  status.discoveryAudit.unchangedRunCount = 2;
+  const result = evaluateTrendHealth({
+    key: "audio",
+    label: "Trends audio",
+    feed: { capturedAt: freshCapturedAt, trends: inventory(50) },
+    status,
+  }, checkedAt);
+  assert.equal(result.healthy, false);
+  assert.match(result.issues.join(" "), /nombre ajouté.*nombre retiré/i);
+  assert.match(result.issues.join(" "), /compteurs de rotation visible.*sélection publiée/i);
+  assert.match(result.issues.join(" "), /unchangedRunCount.*passage courant/i);
+});
+
+test("video inventory may grow toward its target without inventing a removal", () => {
+  const status = healthyVideoStatus();
+  status.discoveryAudit.qualifiedInventoryCount = 56;
+  status.discoveryAudit.newQualifiedCount = 1;
+  status.discoveryAudit.newQualifiedTrendIds = ["trend-55"];
+  status.discoveryAudit.noRotationReason = null;
+  status.discoveryAudit.visibleAddedCount = 1;
+  status.discoveryAudit.visibleRemovedCount = 0;
+  status.discoveryAudit.unchangedRunCount = 0;
+  const result = evaluateTrendHealth({
+    key: "video",
+    label: "Trends vidéos",
+    feed: { capturedAt: freshCapturedAt, trends: inventory(56) },
+    status,
+  }, checkedAt);
+  assert.equal(result.healthy, true);
 });
 
 test("a candidate scan cannot impersonate the qualified published feed", () => {

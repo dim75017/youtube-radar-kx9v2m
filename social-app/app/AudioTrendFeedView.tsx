@@ -14,9 +14,6 @@ import {
   type AudioTrendType,
 } from "../lib/audio-trends";
 import { dailyRotationIndex } from "../lib/daily-rotation";
-import {
-  type AudioTrendScanStatus,
-} from "../lib/trend-scan-status";
 import { SocialInlinePlayer } from "./SocialInlinePlayer";
 
 type PlatformFilter = AudioTrendPlatform | "all";
@@ -54,35 +51,24 @@ const PROPOSAL_TONE_LABELS: Record<AudioTrendProposalTone, string> = {
 
 export function AudioTrendFeedView({
   feed,
-  scanStatus,
   loading,
   error,
 }: {
   feed: AudioTrendFeed | null;
-  scanStatus: AudioTrendScanStatus | null;
   loading: boolean;
   error: string;
 }) {
   const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [activePlayerId, setActivePlayerId] = useState<string | null>(null);
-  const matchedAudioUrls = useMemo(
-    () => new Set((scanStatus?.discoveryAudit.candidateAudioUrls ?? []).map(canonicalUrl)),
-    [scanStatus?.discoveryAudit.candidateAudioUrls],
-  );
   const visibleTrends = useMemo(() => {
     const freshnessCutoff = Date.parse(feed?.capturedAt ?? "") -
       Math.max(feed?.cadenceHours ?? 24, 24) * 2 * 60 * 60 * 1_000;
     return [...(feed?.trends ?? [])]
       .filter((trend) => platformFilter === "all" || trend.platform === platformFilter)
       .filter((trend) => typeFilter === "all" || trend.type === typeFilter)
-      .sort((left, right) => {
-        const leftMatched = matchedAudioUrls.has(canonicalUrl(left.audioUrl));
-        const rightMatched = matchedAudioUrls.has(canonicalUrl(right.audioUrl));
-        if (leftMatched !== rightMatched) return leftMatched ? -1 : 1;
-        return compareAudioTrends(left, right, freshnessCutoff);
-      });
-  }, [feed?.cadenceHours, feed?.capturedAt, feed?.trends, matchedAudioUrls, platformFilter, typeFilter]);
+      .sort((left, right) => compareAudioTrends(left, right, freshnessCutoff));
+  }, [feed?.cadenceHours, feed?.capturedAt, feed?.trends, platformFilter, typeFilter]);
   return (
     <div className="trend-feed-view audio-trend-view">
       <header className="trend-feed-heading">
@@ -350,18 +336,6 @@ function latestUses(trend: AudioTrend) {
   return observation?.uses ?? -1;
 }
 
-function canonicalUrl(candidate: string) {
-  try {
-    const url = new URL(candidate);
-    url.search = "";
-    url.hash = "";
-    url.pathname = url.pathname.replace(/\/+$/u, "");
-    return url.toString();
-  } catch {
-    return candidate;
-  }
-}
-
 function latestRank(trend: AudioTrend) {
   const observation = latestVerifiedObservation(
     trend,
@@ -389,6 +363,10 @@ function compareAudioTrends(left: AudioTrend, right: AudioTrend, freshnessCutoff
   const leftSignal = audioTrendSortSignal(left, freshnessCutoff);
   const rightSignal = audioTrendSortSignal(right, freshnessCutoff);
 
+  const recencyDelta = audioEditorialRecencyTimestamp(right) -
+    audioEditorialRecencyTimestamp(left);
+  if (recencyDelta !== 0) return recencyDelta;
+
   if (leftSignal.recentGrowth !== rightSignal.recentGrowth) {
     return leftSignal.recentGrowth ? -1 : 1;
   }
@@ -406,22 +384,26 @@ function compareAudioTrends(left: AudioTrend, right: AudioTrend, freshnessCutoff
   if (leftSignal.currentUses !== rightSignal.currentUses) {
     return rightSignal.currentUses - leftSignal.currentUses;
   }
-  if (leftSignal.freshnessTimestamp !== rightSignal.freshnessTimestamp) {
-    return rightSignal.freshnessTimestamp - leftSignal.freshnessTimestamp;
-  }
   if (right.lofiFitScore !== left.lofiFitScore) {
     return right.lofiFitScore - left.lofiFitScore;
   }
   return left.title.localeCompare(right.title, "fr");
 }
 
+function audioEditorialRecencyTimestamp(trend: AudioTrend) {
+  return [
+    trend.referenceVideo.publishedAt,
+    trend.source.capturedAt,
+  ].reduce((latest, value) => {
+    const timestamp = Date.parse(value ?? "");
+    return Number.isFinite(timestamp) ? Math.max(latest, timestamp) : latest;
+  }, 0);
+}
+
 function audioTrendSortSignal(trend: AudioTrend, freshnessCutoff: number) {
   const growth = deriveAudioTrendGrowth(trend.usageObservations);
   const rank = latestRank(trend);
   const usage = latestUsageObservation(trend);
-  const latestObservationTimestamp = Math.max(
-    ...trend.usageObservations.map((observation) => Date.parse(observation.capturedAt)),
-  );
   const recentGrowth = Boolean(
     growth && growth.usesPerDay > 0 && Date.parse(growth.toCapturedAt) >= freshnessCutoff,
   );
@@ -437,9 +419,6 @@ function audioTrendSortSignal(trend: AudioTrend, freshnessCutoff: number) {
     growthUsesPerDay: recentGrowth && growth ? growth.usesPerDay : 0,
     currentRank,
     currentUses,
-    freshnessTimestamp: Number.isFinite(latestObservationTimestamp)
-      ? latestObservationTimestamp
-      : 0,
   };
 }
 

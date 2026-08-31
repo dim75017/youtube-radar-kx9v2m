@@ -71,6 +71,7 @@ import {
   filterSocialTrends,
   isActionableSocialTrend,
   selectGirlFirstSocialTrends,
+  trendPriorityScore,
   type SocialTrend,
   type SocialTrendFeed,
   type TrendCharacter,
@@ -583,8 +584,6 @@ export function SocialOS({
   initialAudioTrendFeed = null,
   initialScrollingFeed = null,
   initialPlaylistPromoFeed = null,
-  initialVideoTrendScanStatus = null,
-  initialAudioTrendScanStatus = null,
   initialCommentOpportunityFeed = null,
   initialAudienceHistory = null,
   audienceAnalytics = null,
@@ -1645,7 +1644,6 @@ export function SocialOS({
         {view === "trends" ? (
           <TrendFeedView
             feed={trendFeed}
-            scanStatus={initialVideoTrendScanStatus}
             loading={trendsLoading}
             error={trendsError}
           />
@@ -1654,7 +1652,6 @@ export function SocialOS({
         {view === "audio-trends" ? (
           <AudioTrendFeedView
             feed={audioTrendFeed}
-            scanStatus={initialAudioTrendScanStatus}
             loading={audioTrendsLoading}
             error={audioTrendsError}
           />
@@ -3826,14 +3823,36 @@ function formatAudienceDate(value: string) {
   }).format(date);
 }
 
+function trendEditorialRecencyTimestamp(trend: SocialTrend) {
+  return [
+    trend.lastVerifiedAt,
+    trend.referencePost?.publishedAt,
+    trend.firstSeenAt,
+  ].reduce((latest, value) => {
+    const timestamp = Date.parse(value ?? "");
+    return Number.isFinite(timestamp) ? Math.max(latest, timestamp) : latest;
+  }, 0);
+}
+
+function compareVideoTrendsForDisplay(left: SocialTrend, right: SocialTrend) {
+  const recencyDelta = trendEditorialRecencyTimestamp(right) -
+    trendEditorialRecencyTimestamp(left);
+  if (recencyDelta !== 0) return recencyDelta;
+
+  const priorityDelta = trendPriorityScore(right) - trendPriorityScore(left);
+  if (priorityDelta !== 0) return priorityDelta;
+  if (right.lofiFitScore !== left.lofiFitScore) {
+    return right.lofiFitScore - left.lofiFitScore;
+  }
+  return left.title.localeCompare(right.title, "fr");
+}
+
 function TrendFeedView({
   feed,
-  scanStatus,
   loading,
   error,
 }: {
   feed: SocialTrendFeed | null;
-  scanStatus: VideoTrendScanStatus | null;
   loading: boolean;
   error: string;
 }) {
@@ -3853,16 +3872,9 @@ function TrendFeedView({
     ),
     [actionableTrends],
   );
-  const matchedTrendIds = useMemo(
-    () => new Set(scanStatus?.discoveryAudit.matchedTrendIds ?? []),
-    [scanStatus?.discoveryAudit.matchedTrendIds],
-  );
   const orderedVideoTrends = useMemo(
-    () => [
-      ...selectedVideoTrends.filter((trend) => matchedTrendIds.has(trend.id)),
-      ...selectedVideoTrends.filter((trend) => !matchedTrendIds.has(trend.id)),
-    ],
-    [matchedTrendIds, selectedVideoTrends],
+    () => [...selectedVideoTrends].sort(compareVideoTrendsForDisplay),
+    [selectedVideoTrends],
   );
   const visibleTrends = useMemo(
     () => {
@@ -3872,12 +3884,9 @@ function TrendFeedView({
       const filtered = filterSocialTrends(selectedVideoTrends, {
         platform: platformFilter,
       });
-      return [
-        ...filtered.filter((trend) => matchedTrendIds.has(trend.id)),
-        ...filtered.filter((trend) => !matchedTrendIds.has(trend.id)),
-      ];
+      return filtered.sort(compareVideoTrendsForDisplay);
     },
-    [matchedTrendIds, orderedVideoTrends, platformFilter, selectedVideoTrends],
+    [orderedVideoTrends, platformFilter, selectedVideoTrends],
   );
   return (
     <div className="trend-feed-view">

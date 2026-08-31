@@ -14,6 +14,7 @@ import {
   AUDIO_REFRESH_MIN_DISTINCT_TRENDS,
   buildAudioTrendRefresh,
   cacheAddedAudioTrendThumbnails,
+  candidateSelectionScore,
   collectInstagramSignedPlayback,
   collectTikTokThumbnail,
   evaluateAudioRefreshCoverage,
@@ -67,6 +68,19 @@ for (const [trendIndex, trend] of feed.trends
     url: `https://www.tiktok.com/@fixture-${trendIndex}-${postIndex}/video/${firstVideoId + BigInt(postIndex)}`,
   }));
 }
+
+test("fresh qualified audio outranks a much older high-fit card", () => {
+  const now = "2026-08-31T12:00:00.000Z";
+  const fresh = {
+    lofiFitScore: 90,
+    referenceVideo: { publishedAt: "2026-08-30T12:00:00.000Z", metrics: { likes: 80_000 } },
+  };
+  const stale = {
+    lofiFitScore: 98,
+    referenceVideo: { publishedAt: "2026-06-01T12:00:00.000Z", metrics: { likes: 2_000_000 } },
+  };
+  assert.ok(candidateSelectionScore(fresh, now) > candidateSelectionScore(stale, now));
+});
 const fixtureCapturedTimestamp = Math.max(
   Date.parse(feed.capturedAt),
   ...feed.trends.flatMap((trend) => [
