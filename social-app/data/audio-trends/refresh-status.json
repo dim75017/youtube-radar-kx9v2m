@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "attemptedAt": "2026-08-31T06:21:18.310Z",
+  "attemptedAt": "2026-08-31T11:41:53.996Z",
   "status": "success",
   "published": true,
   "inventory": {
@@ -14,19 +14,19 @@
     "publishable": true
   },
   "discoveryAudit": {
-    "scannedAt": "2026-08-31T06:21:18.310Z",
+    "scannedAt": "2026-08-31T11:41:53.996Z",
     "status": "success",
     "complete": true,
     "candidateCount": 179,
-    "qualifiedInventoryCount": 23,
-    "qualifiedClusterCount": 23,
+    "qualifiedInventoryCount": 24,
+    "qualifiedClusterCount": 24,
     "currentMatchedCount": 5,
     "candidatePlatformCounts": {
       "instagram": 166,
       "tiktok": 13
     },
     "candidateRegistry": {
-      "updatedAt": "2026-08-31T06:21:18.310Z",
+      "updatedAt": "2026-08-31T11:41:53.996Z",
       "candidateCount": 179,
       "candidateAudioUrls": [
         "https://www.instagram.com/reels/audio/1006119841436928",
@@ -331,7 +331,7 @@
       "retained": 179
     },
     "qualificationAudit": {
-      "attemptedAt": "2026-08-31T06:21:18.310Z",
+      "attemptedAt": "2026-08-31T11:41:53.996Z",
       "complete": true,
       "videoFeedCapturedAt": "2026-08-31T06:18:12.993Z",
       "videoFeedFresh": true,
@@ -341,9 +341,9 @@
       "attemptedCurrentTrendCount": 0,
       "attemptedFreshVideoTrendCount": 29,
       "attemptedFreshAuditClusterCount": 0,
-      "freshQualifiedCount": 23,
-      "qualifiedClusterCount": 23,
-      "freshCurrentQualifiedCount": 23,
+      "freshQualifiedCount": 24,
+      "qualifiedClusterCount": 24,
+      "freshCurrentQualifiedCount": 24,
       "freshNewQualifiedCount": 0,
       "qualifiedAudioUrls": [
         "https://www.tiktok.com/music/fulfill-the-prophecy-7406872980187401003",
@@ -355,6 +355,7 @@
         "https://www.tiktok.com/music/original-sound-7649038378872228638",
         "https://www.tiktok.com/music/ChoosinTexas-7559312683885201425",
         "https://www.tiktok.com/music/u-me-=-3-7649983963347896336",
+        "https://www.tiktok.com/music/original-sound-7642492753208757014",
         "https://www.tiktok.com/music/Dracula-with-JENNIE-7603221525400455169",
         "https://www.tiktok.com/music/Let-Down-7520755827558959894",
         "https://www.tiktok.com/music/original-sound-7654835361444530974",
@@ -380,12 +381,6 @@
         {
           "kind": "video",
           "id": "saxophones-getting-louder",
-          "matchedCreatorCount": 2,
-          "error": "aucune identite audio commune verifiee sur trois createurs distincts"
-        },
-        {
-          "kind": "video",
-          "id": "ss26-editorial-transition",
           "matchedCreatorCount": 2,
           "error": "aucune identite audio commune verifiee sur trois createurs distincts"
         },
@@ -989,7 +984,7 @@
     ],
     "publishedInventoryCount": 50,
     "selectionAudit": {
-      "evaluatedAt": "2026-08-31T06:21:18.310Z",
+      "evaluatedAt": "2026-08-31T11:41:53.996Z",
       "addedTrendIds": [],
       "addedAudioUrls": [],
       "removedTrendIds": [],
@@ -1056,6 +1051,7 @@
         "tiktok-bangladesh-absurd-complaint-228638",
         "tiktok-choosin-texas-western-reveal-201425",
         "tiktok-u-me-love-timeline-896336",
+        "tiktok-ss26-editorial-transition-757014",
         "tiktok-dracula-jennie-remix-455169",
         "tiktok-let-down-emotional-rescue-959894",
         "tiktok-broken-rules-temptation-530974",
