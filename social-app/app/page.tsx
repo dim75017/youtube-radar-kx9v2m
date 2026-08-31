@@ -5,6 +5,7 @@ import audienceDemographicsJson from "../data/audience-demographics.json";
 import audioTrendScanStatusJson from "../data/audio-trends/refresh-status.json";
 import commentOpportunityFeedJson from "../data/comment-opportunities/feed.json";
 import playlistPromoFeedJson from "../data/playlist-promos/feed.json";
+import ownerCommentRefreshStatusJson from "../data/owner-comment-refresh-status.json";
 import scrollingFeedJson from "../data/scrolling/feed.json";
 import videoTrendScanStatusJson from "../data/trends/refresh-status.json";
 import {
@@ -23,6 +24,7 @@ import {
   assertCommentOpportunityFeed,
   type CommentOpportunityFeed,
 } from "../lib/comment-opportunities";
+import type { OwnerCommentRefreshStatus } from "../lib/comment-performance";
 import {
   assertPlaylistPromoFeed,
   type PlaylistPromoFeed,
@@ -66,6 +68,9 @@ export default function Home() {
       audienceDemographics={assertAudienceDemographics(
         audienceDemographicsJson as AudienceDemographics,
       )}
+      youtubeCommentRefreshStatus={
+        (ownerCommentRefreshStatusJson as OwnerCommentRefreshStatus).platforms?.youtube ?? null
+      }
       initialVideoTrendScanStatus={assertVideoTrendScanStatus(
         videoTrendScanStatusJson as VideoTrendScanStatus,
       )}

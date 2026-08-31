@@ -238,6 +238,7 @@ jobs:
           test -f ../social/data/comment-opportunities/feed.json
           test -f ../social/data/audience-history.json
           test -f ../social/data/audience-analytics.json
+          test -f ../social/data/owner-comment-refresh-status.json
 
       - uses: actions/configure-pages@v5
 

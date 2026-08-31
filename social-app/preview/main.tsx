@@ -11,6 +11,7 @@ import audioTrendFeedJson from "../data/audio-trends/feed.json";
 import audioTrendScanStatusJson from "../data/audio-trends/refresh-status.json";
 import commentOpportunityFeedJson from "../data/comment-opportunities/feed.json";
 import playlistPromoFeedJson from "../data/playlist-promos/feed.json";
+import ownerCommentRefreshStatusJson from "../data/owner-comment-refresh-status.json";
 import scrollingFeedJson from "../data/scrolling/feed.json";
 import publicHistorySummaryJson from "../data/public-history-summary.json";
 import trendFeedJson from "../data/trends/feed.json";
@@ -35,6 +36,10 @@ import {
   assertCommentOpportunityFeed,
   type CommentOpportunityFeed,
 } from "../lib/comment-opportunities";
+import type {
+  OwnerCommentRefreshStatus,
+  YoutubeCommentRefreshStatus,
+} from "../lib/comment-performance";
 import {
   assertPlaylistPromoFeed,
   type PlaylistPromoFeed,
@@ -91,6 +96,8 @@ const fallbackAudioTrendScanStatus = assertAudioTrendScanStatus(
 const fallbackCommentOpportunityFeed = assertCommentOpportunityFeed(
   commentOpportunityFeedJson as CommentOpportunityFeed,
 );
+const fallbackYoutubeCommentRefreshStatus =
+  (ownerCommentRefreshStatusJson as OwnerCommentRefreshStatus).platforms?.youtube ?? null;
 const fallbackPlaylistPromoFeed = assertPlaylistPromoFeed(
   playlistPromoFeedJson as PlaylistPromoFeed,
 );
@@ -109,6 +116,7 @@ const RAW_AUDIENCE_DEMOGRAPHICS_URL = `${liveDataBaseUrl}/audience-demographics.
 const RAW_COMMENT_OPPORTUNITIES_URL = `${liveDataBaseUrl}/comment-opportunities/feed.json`;
 const RAW_PLAYLIST_PROMO_FEED_URL = `${liveDataBaseUrl}/playlist-promos/feed.json`;
 const RAW_SCROLLING_FEED_URL = `${liveDataBaseUrl}/scrolling/feed.json`;
+const RAW_OWNER_COMMENT_REFRESH_STATUS_URL = `${liveDataBaseUrl}/owner-comment-refresh-status.json`;
 const emptySnapshot: PublicHistorySnapshot = {
   generatedAt: publicHistorySummary.generatedAt,
   coverage: publicHistorySummary.coverage,
@@ -137,6 +145,8 @@ function PublicPreview() {
   const [audienceAnalytics, setAudienceAnalytics] = useState(fallbackAudienceAnalytics);
   const [audienceDemographics, setAudienceDemographics] = useState(fallbackAudienceDemographics);
   const [commentOpportunityFeed, setCommentOpportunityFeed] = useState(fallbackCommentOpportunityFeed);
+  const [youtubeCommentRefreshStatus, setYoutubeCommentRefreshStatus] =
+    useState<YoutubeCommentRefreshStatus | null>(fallbackYoutubeCommentRefreshStatus);
   const [playlistPromoFeed, setPlaylistPromoFeed] = useState(fallbackPlaylistPromoFeed);
   const [scrollingFeed, setScrollingFeed] = useState(fallbackScrollingFeed);
   const [pendingPlatforms, setPendingPlatforms] = useState<SocialPlatform[]>([
@@ -402,7 +412,15 @@ function PublicPreview() {
           if (!response.ok) throw new Error(`Statut audio indisponible (${response.status}).`);
           return assertAudioTrendScanStatus(await response.json());
         }),
-      ]).then(([videoResult, audioResult]) => {
+        fetch(`${RAW_OWNER_COMMENT_REFRESH_STATUS_URL}?v=${version}`, {
+          cache: "no-store",
+          signal: controller.signal,
+          headers: { Accept: "application/json" },
+        }).then(async (response) => {
+          if (!response.ok) throw new Error(`Statut commentaires indisponible (${response.status}).`);
+          return ((await response.json()) as OwnerCommentRefreshStatus).platforms?.youtube ?? null;
+        }),
+      ]).then(([videoResult, audioResult, commentResult]) => {
         if (!active) return;
         if (videoResult.status === "fulfilled") {
           setVideoTrendScanStatus((current) =>
@@ -417,6 +435,9 @@ function PublicPreview() {
               ? audioResult.value
               : current,
           );
+        }
+        if (commentResult.status === "fulfilled" && commentResult.value) {
+          setYoutubeCommentRefreshStatus(commentResult.value);
         }
       });
     };
@@ -678,6 +699,7 @@ function PublicPreview() {
       initialAudienceHistory={audienceHistory}
       audienceAnalytics={audienceAnalytics}
       audienceDemographics={audienceDemographics}
+      youtubeCommentRefreshStatus={youtubeCommentRefreshStatus}
       previewMode
       publicCounts={publicHistorySummary.platformCounts}
       publicFormatCounts={publicHistorySummary.formatCounts}

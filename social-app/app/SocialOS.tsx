@@ -101,8 +101,10 @@ import {
   type VideoTrendScanStatus,
 } from "../lib/trend-scan-status";
 import { isAuthoredComment } from "../lib/authored-comments";
+import type { YoutubeCommentRefreshStatus } from "../lib/comment-performance";
 import { AudioTrendFeedView } from "./AudioTrendFeedView";
 import { AuthoredCommentsView } from "./AuthoredCommentsView";
+import { CommentPerformanceView } from "./CommentPerformanceView";
 import { CommentOpportunitiesView } from "./CommentOpportunitiesView";
 import {
   FilterDropdown,
@@ -122,7 +124,7 @@ import { ScrollingFeedView } from "./ScrollingFeedView";
 import { SocialInlinePlayer } from "./SocialInlinePlayer";
 
 type Platform = "youtube" | "instagram" | "tiktok" | "x";
-type View = "overview" | "top" | "all-comments" | "comments" | "trends" | "audio-trends" | "scrolling" | "playlist-promos" | "ideas" | "planning" | "publication" | "all" | "sources";
+type View = "overview" | "top" | "all-comments" | "comment-performance" | "comments" | "trends" | "audio-trends" | "scrolling" | "playlist-promos" | "ideas" | "planning" | "publication" | "all" | "sources";
 type ExpandableNavView = Extract<View, "overview" | "top" | "all-comments" | "ideas">;
 type IdeaStatusFilter = "all" | "pending" | IdeaDecision;
 type PostSort = "popular" | "recent";
@@ -587,6 +589,7 @@ export function SocialOS({
   initialAudienceHistory = null,
   audienceAnalytics = null,
   audienceDemographics = null,
+  youtubeCommentRefreshStatus = null,
   previewMode = false,
   publicCounts,
   publicFormatCounts,
@@ -604,6 +607,7 @@ export function SocialOS({
   initialAudienceHistory?: AudienceHistory | null;
   audienceAnalytics?: AudienceAnalytics | null;
   audienceDemographics?: AudienceDemographics | null;
+  youtubeCommentRefreshStatus?: YoutubeCommentRefreshStatus | null;
   previewMode?: boolean;
   publicCounts?: Partial<Record<Platform, number>>;
   publicFormatCounts?: Partial<Record<Platform, Record<string, number>>>;
@@ -1357,7 +1361,7 @@ export function SocialOS({
                   : isPostsParent
                     ? view === "top" || view === "all"
                     : isCommentsParent
-                      ? view === "all-comments"
+                      ? view === "all-comments" || view === "comment-performance"
                       : isRecommendationsParent && isRecommendationsView;
 
                 return (
@@ -1480,6 +1484,18 @@ export function SocialOS({
                         aria-label="Plateformes de Commentaires"
                         hidden={!isExpanded}
                       >
+                        <button
+                          className={view === "comment-performance" ? "active" : ""}
+                          type="button"
+                          aria-current={view === "comment-performance" ? "page" : undefined}
+                          onClick={() => {
+                            setView("comment-performance");
+                            setMobileOpen(false);
+                          }}
+                        >
+                          <span className="nav-emoji">📈</span>
+                          <span className="nav-text">Performance</span>
+                        </button>
                         <button
                           className={view === "all-comments" && commentPlatform === "all" ? "active" : ""}
                           type="button"
@@ -1990,6 +2006,14 @@ export function SocialOS({
             posts={authoredComments}
             generatedAt={workspace.generatedAt}
             platform={commentPlatform}
+          />
+        ) : null}
+
+        {workspace && view === "comment-performance" ? (
+          <CommentPerformanceView
+            posts={authoredComments}
+            generatedAt={workspace.generatedAt}
+            refreshStatus={youtubeCommentRefreshStatus}
           />
         ) : null}
 
