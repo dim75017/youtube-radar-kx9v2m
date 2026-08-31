@@ -900,10 +900,13 @@ async function main() {
           `ID natif ${item.id} contredit l'historique existant (${conflicts.join(", ")}).`,
         );
       }
-      posts.set(nativeKey, mergeComment(previous, item.post));
+      const merged = mergeComment(previous, item.post);
+      posts.set(nativeKey, merged);
       updated += 1;
       details.updated.push(item.post.externalId);
-      if (item.media) appliedMedia.push(item.media);
+      if (item.media && merged.thumbnailUrl === item.media.publicUrl) {
+        appliedMedia.push(item.media);
+      }
       continue;
     }
 
@@ -951,7 +954,9 @@ async function main() {
         fromExternalId: legacyPost.externalId,
         toExternalId: item.post.externalId,
       });
-      if (item.media) appliedMedia.push(item.media);
+      if (item.media && merged.thumbnailUrl === item.media.publicUrl) {
+        appliedMedia.push(item.media);
+      }
       continue;
     }
 

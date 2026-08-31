@@ -578,6 +578,10 @@ test("publishes an unresolved Instagram activity row without inventing a target 
 
 test("an unavailable activity refresh preserves an existing verified Instagram target", async () => {
   const id = "18123456789012777";
+  const unusedIncomingCacheKey = `comment-${createHash("sha256")
+    .update(`instagram-owner-comment:${id}`, "utf8")
+    .digest("hex")
+    .slice(0, 24)}`;
   const targetUrl = "https://www.instagram.com/p/ABC123/";
   const existing = {
     platform: "instagram",
@@ -634,7 +638,8 @@ test("an unavailable activity refresh preserves an existing verified Instagram t
         target: {
           unavailable: true,
           title: "Publication Instagram",
-          thumbnailUrl: null,
+          thumbnailUrl:
+            "https://scontent.cdninstagram.com/signed/unavailable-refresh.jpg?stp=dst-jpg",
           authorHandle: null,
           audiencePrecision: "unknown",
         },
@@ -654,10 +659,16 @@ test("an unavailable activity refresh preserves an existing verified Instagram t
         formatCounts: { youtube: {}, instagram: { comment: 1 }, tiktok: {}, x: {} },
         coverage: [],
       },
+      skipMediaCache: false,
+      seededInstagramShortcode: unusedIncomingCacheKey,
     },
   );
 
   assert.equal(result.status, 0, result.stderr || result.stdout);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.mediaDownloaded, 0);
+  assert.equal(report.mediaCached, 0);
+  assert.equal(report.mediaFailed, 0);
   const [merged] = JSON.parse(await readFile(historyPath, "utf8")).posts;
   assert.equal(merged.url, existing.url);
   assert.equal(merged.title, existing.title);
