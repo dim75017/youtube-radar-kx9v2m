@@ -396,7 +396,10 @@ function nonNegativeInteger(value, label, fallback = 0) {
 
 function threadExpansionAssessment(checkpoint, auditValue) {
   const detectedThreadCards = checkpoint.comments.filter(
-    (card) => typeof card?.rawText === "string" && /View entire thread/iu.test(card.rawText),
+    (card) => card?.hiddenThread === true || (
+      typeof card?.rawText === "string" &&
+      /View entire thread|Voir (?:tout le|l’ensemble du) fil|Afficher (?:tout )?le fil/iu.test(card.rawText)
+    ),
   ).length;
   if (auditValue == null) {
     const complete = detectedThreadCards === 0;
@@ -448,9 +451,30 @@ function threadExpansionAssessment(checkpoint, auditValue) {
       `L’audit identifie ${identifiedThreadCards} fils, mais le checkpoint en contient ${detectedThreadCards}.`,
     );
   }
+  const attemptedThreadCards = nonNegativeInteger(
+    audit.attemptedThreadCards,
+    "threadExpansionAudit.attemptedThreadCards",
+  );
+  const expandedThreadCards = nonNegativeInteger(
+    audit.expandedThreadCards,
+    "threadExpansionAudit.expandedThreadCards",
+  );
+  const failedThreadCards = nonNegativeInteger(
+    audit.failedThreadCards,
+    "threadExpansionAudit.failedThreadCards",
+  );
+  const notAttemptedThreadCards = nonNegativeInteger(
+    audit.notAttemptedThreadCards,
+    "threadExpansionAudit.notAttemptedThreadCards",
+  );
   const complete =
-    identifiedThreadCards === 0 ||
-    (inventoryStatus === "complete" && audit.endReached === true);
+    inventoryStatus === "complete" &&
+    audit.endReached === true &&
+    attemptedThreadCards === identifiedThreadCards &&
+    expandedThreadCards === identifiedThreadCards &&
+    failedThreadCards === 0 &&
+    notAttemptedThreadCards === 0 &&
+    nullableString(audit.failure) == null;
   const issues = [];
   if (!complete) {
     issues.push("hidden-threads-not-exhausted", "thread-expansion-audit-partial");
@@ -465,22 +489,10 @@ function threadExpansionAssessment(checkpoint, auditValue) {
       source: nullableString(audit.source),
       status: nullableString(audit.status) ?? inventoryStatus,
       identifiedThreadCards,
-      attemptedThreadCards: nonNegativeInteger(
-        audit.attemptedThreadCards,
-        "threadExpansionAudit.attemptedThreadCards",
-      ),
-      expandedThreadCards: nonNegativeInteger(
-        audit.expandedThreadCards,
-        "threadExpansionAudit.expandedThreadCards",
-      ),
-      failedThreadCards: nonNegativeInteger(
-        audit.failedThreadCards,
-        "threadExpansionAudit.failedThreadCards",
-      ),
-      notAttemptedThreadCards: nonNegativeInteger(
-        audit.notAttemptedThreadCards,
-        "threadExpansionAudit.notAttemptedThreadCards",
-      ),
+      attemptedThreadCards,
+      expandedThreadCards,
+      failedThreadCards,
+      notAttemptedThreadCards,
       newAuthoredComments: nonNegativeInteger(
         audit.newAuthoredComments,
         "threadExpansionAudit.newAuthoredComments",
@@ -489,6 +501,45 @@ function threadExpansionAssessment(checkpoint, auditValue) {
       canonicalExportStatus: nullableString(audit.canonicalExportStatus),
       endReached: audit.endReached,
       inventoryStatus,
+    },
+  };
+}
+
+function allTimeCompletionAssessment(checkpoint) {
+  if (checkpoint.allTimeEndReached !== true) {
+    return { complete: false, issues: ["all-time-end-not-proven"], proof: null };
+  }
+  const proof = checkpoint.completionProof &&
+    typeof checkpoint.completionProof === "object" &&
+    !Array.isArray(checkpoint.completionProof)
+    ? checkpoint.completionProof
+    : null;
+  if (!proof) {
+    return { complete: false, issues: ["completion-proof-missing"], proof: null };
+  }
+  const stableReconciliationPasses = nonNegativeInteger(
+    proof.stableReconciliationPasses,
+    "completionProof.stableReconciliationPasses",
+  );
+  const boundaryStallCount = nonNegativeInteger(
+    proof.boundaryStallCount,
+    "completionProof.boundaryStallCount",
+  );
+  const cursorExhausted = proof.cursorExhausted === true;
+  const complete =
+    proof.allTimeSelected === true &&
+    proof.boundaryReached === true &&
+    stableReconciliationPasses >= 2 &&
+    (cursorExhausted || boundaryStallCount >= 3);
+  return {
+    complete,
+    issues: complete ? [] : ["completion-proof-incomplete"],
+    proof: {
+      allTimeSelected: proof.allTimeSelected === true,
+      boundaryReached: proof.boundaryReached === true,
+      cursorExhausted,
+      boundaryStallCount,
+      stableReconciliationPasses,
     },
   };
 }
@@ -625,15 +676,16 @@ export function normalizeInstagramCheckpoint(
     throw new Error("checkpoint.allTimeEndReached doit être un booléen.");
   }
   const ageContinuity = relativeAgeContinuity(deduplicated, declaredAllTimeEndReached);
+  const allTimeCompletion = allTimeCompletionAssessment(checkpoint);
   const inventoryIssues = [
     ...threadExpansion.issues,
     ...(ageContinuity.continuous ? [] : ["relative-age-gap"]),
-    ...(declaredAllTimeEndReached ? [] : ["all-time-end-not-proven"]),
+    ...allTimeCompletion.issues,
   ];
   const inventoryComplete =
     threadExpansion.endReached &&
     ageContinuity.continuous &&
-    declaredAllTimeEndReached;
+    allTimeCompletion.complete;
 
   const total = comments.length;
   const baseCapture = {
@@ -684,6 +736,7 @@ export function normalizeInstagramCheckpoint(
     relativeAgeRange: range,
     relativeAgeContinuity: ageContinuity,
     completionEvidence: evidence,
+    completionProof: allTimeCompletion.proof,
     threadExpansionAudit: threadExpansion.audit,
     coverage: {
       targetAuthor: coverage(
@@ -730,6 +783,7 @@ export function normalizeInstagramCheckpoint(
         relativeAgeRange: manifest.relativeAgeRange,
         relativeAgeContinuity: manifest.relativeAgeContinuity,
         completionEvidence: manifest.completionEvidence,
+        completionProof: manifest.completionProof,
         threadExpansionAudit: manifest.threadExpansionAudit,
         coverage: manifest.coverage,
         existingHistoryReconciliation: reconciliation.report,

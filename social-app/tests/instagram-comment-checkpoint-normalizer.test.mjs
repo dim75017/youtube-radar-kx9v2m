@@ -84,6 +84,13 @@ function fixture() {
 
 function addContinuousAllTimeEvidence(checkpoint) {
   checkpoint.allTimeEndReached = true;
+  checkpoint.completionProof = {
+    allTimeSelected: true,
+    boundaryReached: true,
+    cursorExhausted: true,
+    boundaryStallCount: 3,
+    stableReconciliationPasses: 2,
+  };
   for (let week = 4; week <= 36; week += 4) {
     checkpoint.comments.push({
       ownComments: [{ age: `${week}w`, text: `continuity comment ${week}` }],
@@ -256,6 +263,63 @@ test("accepts a complete audit for every identified hidden thread", () => {
   assert.equal(manifest.inventoryStatus, "complete");
   assert.equal(manifest.endReached, true);
   assert.deepEqual(manifest.issues, []);
+});
+
+test("refuses a claimed All time end without a closed completion proof", () => {
+  const checkpoint = addContinuousAllTimeEvidence(fixture());
+  delete checkpoint.completionProof;
+  const { manifest } = normalizeInstagramCheckpoint(checkpoint);
+
+  assert.equal(manifest.inventoryStatus, "partial");
+  assert.equal(manifest.endReached, false);
+  assert.ok(manifest.issues.includes("completion-proof-missing"));
+});
+
+test("a complete thread audit must account for every hidden thread", () => {
+  const checkpoint = addContinuousAllTimeEvidence(fixture());
+  checkpoint.comments[0].rawText = "Target caption\nVoir tout le fil";
+  const { manifest } = normalizeInstagramCheckpoint(checkpoint, {
+    threadExpansionAudit: {
+      platform: "instagram",
+      attemptedAt: "2026-08-31T10:00:00.000Z",
+      status: "complete",
+      identifiedThreadCards: 1,
+      attemptedThreadCards: 1,
+      expandedThreadCards: 0,
+      failedThreadCards: 0,
+      notAttemptedThreadCards: 0,
+      newAuthoredComments: 0,
+      failure: null,
+      endReached: true,
+      inventoryStatus: "complete",
+    },
+  });
+
+  assert.equal(manifest.inventoryStatus, "partial");
+  assert.ok(manifest.issues.includes("hidden-threads-not-exhausted"));
+});
+
+test("an explicitly partial zero-thread audit cannot be promoted to complete", () => {
+  const checkpoint = addContinuousAllTimeEvidence(fixture());
+  const { manifest } = normalizeInstagramCheckpoint(checkpoint, {
+    threadExpansionAudit: {
+      platform: "instagram",
+      attemptedAt: "2026-08-31T10:00:00.000Z",
+      status: "partial",
+      identifiedThreadCards: 0,
+      attemptedThreadCards: 0,
+      expandedThreadCards: 0,
+      failedThreadCards: 0,
+      notAttemptedThreadCards: 0,
+      newAuthoredComments: 0,
+      failure: "La détection native n’a pas pu être prouvée.",
+      endReached: false,
+      inventoryStatus: "partial",
+    },
+  });
+
+  assert.equal(manifest.inventoryStatus, "partial");
+  assert.ok(manifest.issues.includes("thread-expansion-audit-partial"));
 });
 
 function existingPost({
