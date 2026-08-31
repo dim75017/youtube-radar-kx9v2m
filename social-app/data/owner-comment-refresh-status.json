@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-08-31T05:51:44.585Z",
+  "generatedAt": "2026-08-31T09:46:57.278Z",
   "platforms": {
     "youtube": {
       "status": "partial",
@@ -37,61 +37,75 @@
     },
     "instagram": {
       "status": "partial",
-      "attemptedAt": "2026-08-29T12:11:22.598Z",
-      "source": "authorized-instagram-activity-and-static-profile-grid",
-      "observedComments": 145,
-      "publishedComments": 83,
-      "verifiedTargets": 83,
-      "thumbnailTargets": 83,
+      "attemptedAt": "2026-08-31T09:46:57.278Z",
+      "source": "authorized-instagram-activity-all-time-and-hidden-thread-audit",
+      "observedComments": 778,
+      "publishedComments": 779,
+      "verifiedTargets": 85,
+      "thumbnailTargets": 779,
       "audienceTargets": 83,
-      "unavailableTargets": 67,
+      "unavailableTargets": 694,
       "inventoryStatus": "partial",
-      "inventoryObservedAt": "2026-08-29T11:04:55.207Z",
+      "inventoryObservedAt": "2026-08-31T08:53:49.414Z",
       "endReached": false,
       "oldestObservedAt": null,
       "newestObservedAt": null,
       "oldestObservedRelative": "37w",
-      "newestObservedRelative": "1d",
+      "newestObservedRelative": "0h",
       "nativeIdCount": 18,
-      "deepLinkCount": 18,
+      "deepLinkCount": 85,
       "resolutionCoverage": {
-        "browserObserved": 145,
-        "currentResolvedTargets": 78,
-        "retainedNativeTargets": 5,
-        "published": 83,
-        "unresolvedCurrentTargets": 67
+        "browserObserved": 778,
+        "preReconciledExisting": 82,
+        "newlyPublished": 696,
+        "retainedHistoricalOnly": 1,
+        "published": 779,
+        "resolvedTargets": 85,
+        "unavailableTargets": 694
       },
       "inventoryPasses": {
         "newestToOldest": {
-          "uniqueObserved": 114,
-          "endReached": false,
-          "loaderStalled": true
+          "uniqueObserved": 731,
+          "endReached": true,
+          "consecutiveNoGrowthLoads": 3
         },
         "oldestToNewest": {
           "uniqueObserved": 31,
-          "endReached": false,
-          "loaderStalled": true,
-          "repeatedBottomLoadAttempts": 6
+          "endReached": true,
+          "consecutiveNoGrowthLoads": 3
+        },
+        "recentDelta": {
+          "uniqueObserved": 37,
+          "added": 16
+        },
+        "hiddenThreads": {
+          "identified": 45,
+          "attempted": 2,
+          "expanded": 0,
+          "failed": 2,
+          "notAttempted": 43,
+          "newAuthoredComments": 0,
+          "endReached": false
         }
       },
       "metricCoverage": {
         "likes": 0,
         "replies": 0,
-        "total": 83
+        "total": 779
       },
-      "error": "145 commentaires distincts ont été observés et 83 cibles vérifiées sont publiables, dont 64 nouvelles. Les tris récent→ancien et ancien→récent restent tous deux bloqués sur le chargeur natif Instagram : la fin All time n’est donc pas prouvée et 67 cibles actuelles restent sans permalink vérifiable.",
-      "lastRealObservationAt": "2026-08-29T11:04:55.207Z"
+      "error": "778 commentaires actuellement visibles ont été importés et raccordés sans doublon aux 83 cartes historiques, soit 779 commentaires publiés. Instagram masque 45 fils derrière « View entire thread » ; sur deux cartes distinctes, le contrôle natif ouvre une route /p/ sans shortcode. L’inventaire reste donc partiel jusqu’à l’export Meta canonique.",
+      "lastRealObservationAt": "2026-08-31T08:53:49.414Z"
     },
     "tiktok": {
       "status": "partial",
-      "attemptedAt": "2026-08-29T11:43:38.751Z",
+      "attemptedAt": "2026-08-31T08:23:45.864Z",
       "source": "authorized-tiktok-download-data",
       "observedComments": 10,
       "verifiedTargets": 10,
       "thumbnailTargets": 10,
       "audienceTargets": 10,
       "unavailableTargets": 0,
-      "inventoryStatus": "partial",
+      "inventoryStatus": "blocked",
       "inventoryObservedAt": "2026-08-28T10:49:39.480Z",
       "endReached": false,
       "oldestObservedAt": null,
@@ -104,18 +118,18 @@
         "total": 10
       },
       "exportStatus": {
-        "previousRequestedAt": "2023-02-25",
-        "previousStatus": "expired",
-        "downloadAvailable": false,
-        "newRequestSubmitted": true,
-        "requestedAt": "2026-08-29T12:11:22.598Z",
-        "requestStatus": "processing",
-        "availableFormat": "JSON",
-        "availableScope": "Comments"
+        "requestedAt": "2026-08-29",
+        "requestStatus": "ready",
+        "downloadAvailable": true,
+        "expiresIn": "3 days",
+        "availableScope": "Custom data from TikTok",
+        "downloadCompleted": false,
+        "blocker": "sms_otp_required",
+        "codeRequested": false
       },
-      "requiresUserConfirmation": false,
-      "pendingReason": "La demande d’export JSON limitée à Comments a été acceptée par TikTok et reste en cours de traitement. Le fichier sera importé dès qu’il deviendra téléchargeable.",
-      "error": null,
+      "requiresUserConfirmation": true,
+      "pendingReason": "L’archive officielle TikTok est prête, mais TikTok exige un code SMS à usage unique avant le téléchargement. L’interface web ne fournit aucun historique exhaustif de commentaires de remplacement.",
+      "error": "Bootstrap TikTok bloqué par la vérification SMS native ; les 10 commentaires déjà vérifiés sont conservés sans avancer artificiellement l’inventaire.",
       "lastRealObservationAt": "2026-08-28T10:49:39.480Z"
     }
   }
