@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import audienceHistoryJson from "../data/audience-history.json";
+import audienceAnalyticsJson from "../data/audience-analytics.json";
 import audienceDemographicsJson from "../data/audience-demographics.json";
 import audioTrendScanStatusJson from "../data/audio-trends/refresh-status.json";
 import commentOpportunityFeedJson from "../data/comment-opportunities/feed.json";
@@ -10,6 +11,10 @@ import {
   assertAudienceHistory,
   type AudienceHistory,
 } from "../lib/audience-metrics";
+import {
+  assertAudienceAnalytics,
+  type AudienceAnalytics,
+} from "../lib/audience-analytics";
 import {
   assertAudienceDemographics,
   type AudienceDemographics,
@@ -54,6 +59,9 @@ export default function Home() {
       )}
       initialAudienceHistory={assertAudienceHistory(
         audienceHistoryJson as AudienceHistory,
+      )}
+      audienceAnalytics={assertAudienceAnalytics(
+        audienceAnalyticsJson as AudienceAnalytics,
       )}
       audienceDemographics={assertAudienceDemographics(
         audienceDemographicsJson as AudienceDemographics,

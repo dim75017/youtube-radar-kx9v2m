@@ -49,7 +49,10 @@ jobs:
           INSTAGRAM_API_VERSION: ${{ vars.INSTAGRAM_API_VERSION }}
           TIKTOK_ACCESS_TOKEN: ${{ secrets.TIKTOK_ACCESS_TOKEN }}
           X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
-        run: node --experimental-strip-types scripts/collect-audience-history.mjs --require-fresh-platform youtube
+        run: >-
+          node --experimental-strip-types scripts/collect-audience-history.mjs
+          --require-fresh-platform youtube
+          --require-fresh-platform x
 
       - name: Validate audience history and calculations
         run: node --experimental-strip-types --test tests/audience-metrics.test.mjs

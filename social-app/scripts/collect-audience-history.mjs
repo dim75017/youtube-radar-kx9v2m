@@ -353,6 +353,20 @@ async function collectX({ env, fetchImpl, capturedAt }) {
   const html = await fetchText(fetchImpl, PROFILE_URLS.x, {
     Accept: "text/html,application/xhtml+xml",
   });
+  const exact = firstMatch(html, [
+    /(?:^|[,{])\s*followers\s*:\s*(\d+)/i,
+    /["']followers["']\s*:\s*(\d+)/i,
+  ]);
+  const exactFollowers = strictPositiveInteger(exact);
+  if (exactFollowers !== null) {
+    return observation({
+      capturedAt,
+      followers: exactFollowers,
+      precision: "exact",
+      sourceUrl: PROFILE_URLS.x,
+      label: "Profil public X · compteur entier exposé par la page",
+    });
+  }
   const label = firstMatch(html, [
     /([\d.,]+\s*[KMB]?)\s+(?:Followers|abonnés)/i,
     /"followers_count"\s*:\s*"?(\d+)"?/i,
@@ -505,6 +519,14 @@ function cliArgument(name) {
   return index >= 0 ? process.argv[index + 1] ?? null : null;
 }
 
+export function cliArguments(name, argv = process.argv) {
+  return [...new Set(argv.flatMap((argument, index) => (
+    argument === name && argv[index + 1]
+      ? [argv[index + 1]]
+      : []
+  )))];
+}
+
 export function audienceFreshnessError(history, platform, capturedAt) {
   if (!AUDIENCE_PLATFORMS.includes(platform)) {
     return `Plateforme inconnue : ${platform}.`;
@@ -538,13 +560,15 @@ if (invokedPath && invokedPath.toLowerCase() === fileURLToPath(import.meta.url).
   const youtubeStudioCountWasProvided = process.argv.includes("--youtube-studio-count");
   const youtubeStudioCount = cliArgument("--youtube-studio-count");
   const onlyPlatform = cliArgument("--only-platform");
-  const requiredFreshPlatform = cliArgument("--require-fresh-platform");
+  const requiredFreshPlatforms = cliArguments("--require-fresh-platform");
   const capturedAt = cliArgument("--captured-at");
   if (onlyPlatform && !AUDIENCE_PLATFORMS.includes(onlyPlatform)) {
     throw new Error(`Plateforme inconnue : ${onlyPlatform}.`);
   }
-  if (requiredFreshPlatform && !AUDIENCE_PLATFORMS.includes(requiredFreshPlatform)) {
-    throw new Error(`Plateforme inconnue : ${requiredFreshPlatform}.`);
+  for (const platform of requiredFreshPlatforms) {
+    if (!AUDIENCE_PLATFORMS.includes(platform)) {
+      throw new Error(`Plateforme inconnue : ${platform}.`);
+    }
   }
   const parsedYouTubeStudioCount = youtubeStudioCountWasProvided
     ? strictPositiveInteger(youtubeStudioCount)
@@ -580,16 +604,11 @@ if (invokedPath && invokedPath.toLowerCase() === fileURLToPath(import.meta.url).
       if (onlyPlatform && !successes.some((item) => item.platform === onlyPlatform)) {
         process.exitCode = 1;
       }
-      if (requiredFreshPlatform) {
-        const freshnessError = audienceFreshnessError(
-          history,
-          requiredFreshPlatform,
-          requestedCapturedAt,
-        );
-        if (freshnessError) {
-          process.stderr.write(`${freshnessError}\n`);
-          process.exitCode = 1;
-        }
+      for (const platform of requiredFreshPlatforms) {
+        const freshnessError = audienceFreshnessError(history, platform, requestedCapturedAt);
+        if (!freshnessError) continue;
+        process.stderr.write(`${freshnessError}\n`);
+        process.exitCode = 1;
       }
     })
     .catch((error) => {

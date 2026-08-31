@@ -20,6 +20,7 @@ import {
 import {
   AUDIENCE_COLLECTORS,
   audienceFreshnessError,
+  cliArguments,
   collectAudienceHistory,
   compactCount,
 } from "../scripts/collect-audience-history.mjs";
@@ -455,6 +456,42 @@ test("keeps the TikTok creator embed counter rounded instead of claiming exactne
   assert.match(result.label, /arrondi/);
 });
 
+test("reads the exact X follower counter exposed by the public profile payload", async () => {
+  const capturedAt = "2026-08-31T08:00:00.000Z";
+  const result = await AUDIENCE_COLLECTORS.x({
+    capturedAt,
+    env: {},
+    fetchImpl: async () => new Response(
+      '<script>profile:{followers:260517,following:60,name:"Lofi Girl"}</script>',
+      { status: 200, headers: { "content-type": "text/html" } },
+    ),
+  });
+
+  assert.deepEqual(result, {
+    capturedAt,
+    followers: 260_517,
+    precision: "exact",
+    sourceUrl: "https://x.com/lofigirl",
+    label: "Profil public X · compteur entier exposé par la page",
+  });
+});
+
+test("collects and deduplicates every required freshness platform flag", () => {
+  assert.deepEqual(
+    cliArguments("--require-fresh-platform", [
+      "node",
+      "script.mjs",
+      "--require-fresh-platform",
+      "youtube",
+      "--require-fresh-platform",
+      "x",
+      "--require-fresh-platform",
+      "x",
+    ]),
+    ["youtube", "x"],
+  );
+});
+
 test("never replaces a same-day exact audience point with a rounded counter", async () => {
   const exactAt = "2026-08-26T08:00:00.000Z";
   const capturedAt = "2026-08-26T09:00:00.000Z";
@@ -631,7 +668,7 @@ test("rejects an invalid explicit YouTube Studio CLI count before collection", (
   }
 });
 
-test("the daily workflow enforces a fresh YouTube point on both scheduled passes", async () => {
+test("the daily workflow enforces fresh YouTube and X points on both scheduled passes", async () => {
   const workflow = await readFile(
     new URL("../../.github/workflows/social-update-audience-history.yml", import.meta.url),
     "utf8",
@@ -643,6 +680,7 @@ test("the daily workflow enforces a fresh YouTube point on both scheduled passes
   assert.match(workflow, /sparse-checkout:[\s\S]*?\/social-app\//);
   assert.match(workflow, /\.github\/workflows\/social-update-audience-history\.yml/);
   assert.match(workflow, /--require-fresh-platform youtube/);
+  assert.match(workflow, /--require-fresh-platform x/);
   assert.match(workflow, /Two daily collection passes/);
   assert.match(workflow, /actions:\s*write/);
   assert.match(

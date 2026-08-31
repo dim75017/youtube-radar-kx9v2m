@@ -3,9 +3,10 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("consolidates audience analytics into one truthful selectable chart", async () => {
-  const [component, styles] = await Promise.all([
+  const [component, styles, route] = await Promise.all([
     readFile(new URL("../app/SocialOS.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
   ]);
   const explorer = component.slice(
     component.indexOf("type NativeAnalyticsMetricMeta"),
@@ -21,6 +22,9 @@ test("consolidates audience analytics into one truthful selectable chart", async
   );
 
   assert.match(component, /audienceAnalytics\?: AudienceAnalytics \| null/);
+  assert.match(route, /import audienceAnalyticsJson from "\.\.\/data\/audience-analytics\.json"/);
+  assert.match(route, /assertAudienceAnalytics\([\s\S]*?audienceAnalyticsJson as AudienceAnalytics/);
+  assert.match(route, /audienceAnalytics=\{assertAudienceAnalytics\(/);
   assert.match(component, /audienceDemographics\?: AudienceDemographics \| null/);
   assert.match(component, /analytics=\{audienceAnalytics\}/);
   assert.match(component, /demographics=\{audienceDemographics\}/);
