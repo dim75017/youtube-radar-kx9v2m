@@ -1,4 +1,5 @@
 import type { SocialDurationFilter } from "./social-duration";
+import { authoredCommentCategory } from "./authored-comments.ts";
 
 const DAY_MS = 86_400_000;
 
@@ -124,6 +125,42 @@ export type CommentPerformanceSummary = {
     replies: number;
     interactions: number;
   } | null;
+};
+
+export type YoutubeExternalCommentImpactPoint = {
+  key: string;
+  label: string;
+  startDate: string;
+  endDate: string;
+  commentsPublished: number;
+  measuredCount: number;
+  likesReceived: number;
+  repliesReceived: number;
+  interactionsReceived: number;
+  topComment: {
+    id: string;
+    url: string;
+    title: string;
+    text: string;
+    publishedAt: string;
+    likes: number;
+    replies: number;
+    interactions: number;
+  } | null;
+};
+
+export type YoutubeExternalCommentImpact = {
+  rangeStartDate: string;
+  rangeEndDate: string;
+  latestPublishedAt: string | null;
+  commentsPublished: number;
+  measuredCount: number;
+  likesReceived: number;
+  repliesReceived: number;
+  interactionsReceived: number;
+  exactDateCount: number;
+  approximateDateCount: number;
+  points: YoutubeExternalCommentImpactPoint[];
 };
 
 type BucketUnit = "day" | "week" | "month" | "year";
@@ -252,6 +289,109 @@ export function buildYoutubeCommentPerformance(
         }
       : null,
   };
+}
+
+/**
+ * Regroupe uniquement les interventions de Lofi Girl sur les contenus d'autres
+ * créateurs. Les interactions sont le stock réellement observé aujourd'hui sur
+ * les commentaires publiés pendant chaque mois, pas une attribution de visites
+ * ou d'abonnements à la chaîne.
+ */
+export function buildYoutubeExternalCommentMonthlyImpact(
+  posts: readonly CommentPerformancePost[],
+  referenceDate: string,
+  requestedMonths = 36,
+): YoutubeExternalCommentImpact {
+  const referenceTime = validTime(referenceDate) ?? Date.now();
+  const reference = new Date(referenceTime);
+  const monthCount = Math.max(1, Math.min(60, Math.trunc(requestedMonths) || 36));
+  const rangeStart = Date.UTC(
+    reference.getUTCFullYear(),
+    reference.getUTCMonth() - monthCount + 1,
+    1,
+  );
+  const rangeEnd = Date.UTC(
+    reference.getUTCFullYear(),
+    reference.getUTCMonth() + 1,
+    1,
+  ) - 1;
+  const selected = posts
+    .filter(isYoutubeExternalAuthoredComment)
+    .filter((post) => {
+      const publishedAt = validTime(post.published_at);
+      return publishedAt !== null && publishedAt >= rangeStart && publishedAt <= rangeEnd;
+    })
+    .sort((left, right) =>
+      (validTime(left.published_at) ?? 0) - (validTime(right.published_at) ?? 0),
+    );
+  const points = buildEmptyBuckets(rangeStart, rangeEnd, "month").map((bucket) => ({
+    key: bucket.key,
+    label: bucket.label,
+    startDate: bucket.startDate,
+    endDate: bucket.endDate,
+    commentsPublished: 0,
+    measuredCount: 0,
+    likesReceived: 0,
+    repliesReceived: 0,
+    interactionsReceived: 0,
+    topComment: null as YoutubeExternalCommentImpactPoint["topComment"],
+  }));
+  const pointsByKey = new Map(points.map((point) => [point.key, point]));
+
+  for (const post of selected) {
+    const publishedAt = validTime(post.published_at);
+    if (publishedAt === null) continue;
+    const point = pointsByKey.get(bucketKey(publishedAt, "month"));
+    if (!point) continue;
+    const row = commentRow(post);
+    point.commentsPublished += 1;
+    if (!row.measured) continue;
+    point.measuredCount += 1;
+    point.likesReceived += row.likes;
+    point.repliesReceived += row.repliesReceived;
+    point.interactionsReceived += row.interactions;
+    if (!point.topComment || row.interactions > point.topComment.interactions) {
+      point.topComment = {
+        id: row.id,
+        url: row.url,
+        title: row.title,
+        text: row.text,
+        publishedAt: row.publishedAt,
+        likes: row.likes,
+        replies: row.repliesReceived,
+        interactions: row.interactions,
+      };
+    }
+  }
+
+  return {
+    rangeStartDate: isoDay(rangeStart),
+    rangeEndDate: isoDay(referenceTime),
+    latestPublishedAt: selected.at(-1)?.published_at ?? null,
+    commentsPublished: points.reduce((total, point) => total + point.commentsPublished, 0),
+    measuredCount: points.reduce((total, point) => total + point.measuredCount, 0),
+    likesReceived: points.reduce((total, point) => total + point.likesReceived, 0),
+    repliesReceived: points.reduce((total, point) => total + point.repliesReceived, 0),
+    interactionsReceived: points.reduce(
+      (total, point) => total + point.interactionsReceived,
+      0,
+    ),
+    exactDateCount: selected.filter(
+      (post) => post.published_at_precision === "exact",
+    ).length,
+    approximateDateCount: selected.filter(
+      (post) => post.published_at_precision !== "exact",
+    ).length,
+    points,
+  };
+}
+
+function isYoutubeExternalAuthoredComment(post: CommentPerformancePost): boolean {
+  if (!isYoutubeAuthoredComment(post)) return false;
+  return authoredCommentCategory({
+    ...post,
+    platform: "youtube",
+  }) === "external";
 }
 
 function isYoutubeAuthoredComment(post: CommentPerformancePost): boolean {

@@ -5117,6 +5117,189 @@ a {
   gap: 11px;
 }
 
+.youtube-comment-analytics {
+  --comment-impact-rgb: 251, 113, 133;
+  min-width: 0;
+  margin-top: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(var(--comment-impact-rgb), 0.22);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(var(--comment-impact-rgb), 0.065), transparent 150px),
+    rgba(13, 16, 27, 0.92);
+  padding: 18px 20px 14px;
+}
+
+.youtube-comment-analytics-header {
+  display: flex;
+  min-width: 0;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.youtube-comment-analytics-header h3 {
+  margin: 2px 0 0;
+  font-family: Sora, Inter, sans-serif;
+  font-size: clamp(19px, 1.8vw, 24px);
+  letter-spacing: -0.04em;
+  line-height: 1.12;
+}
+
+.youtube-comment-analytics-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 14px;
+  color: var(--muted);
+  font-size: var(--fs-micro);
+  font-weight: 720;
+}
+
+.youtube-comment-analytics-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.youtube-comment-analytics-legend i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+
+.youtube-comment-analytics-legend i.comments {
+  background: #fb7185;
+}
+
+.youtube-comment-analytics-legend i.interactions {
+  width: 12px;
+  height: 3px;
+  border-radius: 999px;
+  background: #7ae8c8;
+}
+
+.youtube-comment-analytics-legend i.viral {
+  border-radius: 999px;
+  background: #fbbf24;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.55);
+}
+
+.youtube-comment-analytics-viewport {
+  width: 100%;
+  max-width: 100%;
+  margin-top: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  overscroll-behavior-inline: contain;
+  scrollbar-color: rgba(var(--comment-impact-rgb), 0.35) transparent;
+  scrollbar-width: thin;
+}
+
+.youtube-comment-analytics-viewport svg {
+  display: block;
+  width: 100%;
+  min-width: 900px;
+  height: auto;
+  overflow: visible;
+}
+
+.youtube-comment-analytics-viewport svg:focus,
+.youtube-comment-analytics-month:focus {
+  outline: none;
+}
+
+.youtube-comment-analytics-month {
+  cursor: help;
+}
+
+.youtube-comment-analytics-month:focus rect {
+  stroke: rgba(255, 255, 255, 0.78);
+  stroke-width: 1.5;
+}
+
+.youtube-comment-analytics-grid line {
+  stroke: rgba(255, 255, 255, 0.075);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.youtube-comment-analytics-grid text,
+.youtube-comment-analytics-axis-title,
+.youtube-comment-analytics-month-label {
+  fill: var(--dim);
+  font-family: Inter, sans-serif;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+.youtube-comment-analytics-axis-title {
+  fill: var(--muted);
+  font-size: 11px;
+  font-weight: 720;
+}
+
+.youtube-comment-analytics-month-label {
+  font-size: 9px;
+}
+
+.youtube-comment-analytics-line {
+  fill: none;
+  stroke: #7ae8c8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.youtube-comment-analytics-point {
+  fill: #7ae8c8;
+  stroke: #07100e;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.youtube-comment-analytics-point.viral {
+  fill: #fbbf24;
+  stroke: #fff0bd;
+  stroke-width: 2;
+}
+
+.youtube-comment-analytics-caption {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 10px;
+  color: var(--dim);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.youtube-comment-analytics-caption p {
+  margin: 0;
+}
+
+.youtube-comment-analytics-caption p:first-child {
+  color: var(--muted);
+}
+
+.youtube-comment-analytics-caption span {
+  flex: 0 0 auto;
+  margin-left: auto;
+  border: 1px solid rgba(251, 191, 36, 0.24);
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.075);
+  padding: 5px 8px;
+  color: #f1ce77;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
 .audience-dashboard {
   min-width: 0;
 }
@@ -5943,6 +6126,20 @@ a {
 }
 
 @media (max-width: 900px) {
+  .youtube-comment-analytics-header,
+  .youtube-comment-analytics-caption {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .youtube-comment-analytics-legend {
+    justify-content: flex-start;
+  }
+
+  .youtube-comment-analytics-caption span {
+    margin-left: 0;
+  }
+
   .audience-dashboard-toolbar {
     grid-template-columns: 1fr;
   }
@@ -5996,6 +6193,10 @@ a {
 }
 
 @media (max-width: 640px) {
+  .youtube-comment-analytics {
+    padding: 14px;
+  }
+
   .audience-dashboard-heading,
   .audience-explorer-heading {
     align-items: flex-start;

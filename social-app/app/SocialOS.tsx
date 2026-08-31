@@ -104,7 +104,6 @@ import { isAuthoredComment } from "../lib/authored-comments";
 import type { YoutubeCommentRefreshStatus } from "../lib/comment-performance";
 import { AudioTrendFeedView } from "./AudioTrendFeedView";
 import { AuthoredCommentsView } from "./AuthoredCommentsView";
-import { CommentPerformanceView } from "./CommentPerformanceView";
 import { CommentOpportunitiesView } from "./CommentOpportunitiesView";
 import {
   FilterDropdown,
@@ -122,9 +121,10 @@ import {
 } from "../lib/social-publication";
 import { ScrollingFeedView } from "./ScrollingFeedView";
 import { SocialInlinePlayer } from "./SocialInlinePlayer";
+import { YoutubeCommentAnalyticsChart } from "./YoutubeCommentAnalyticsChart";
 
 type Platform = "youtube" | "instagram" | "tiktok" | "x";
-type View = "overview" | "top" | "all-comments" | "comment-performance" | "comments" | "trends" | "audio-trends" | "scrolling" | "playlist-promos" | "ideas" | "planning" | "publication" | "all" | "sources";
+type View = "overview" | "top" | "all-comments" | "comments" | "trends" | "audio-trends" | "scrolling" | "playlist-promos" | "ideas" | "planning" | "publication" | "all" | "sources";
 type ExpandableNavView = Extract<View, "overview" | "top" | "all-comments" | "ideas">;
 type IdeaStatusFilter = "all" | "pending" | IdeaDecision;
 type PostSort = "popular" | "recent";
@@ -1361,7 +1361,7 @@ export function SocialOS({
                   : isPostsParent
                     ? view === "top" || view === "all"
                     : isCommentsParent
-                      ? view === "all-comments" || view === "comment-performance"
+                      ? view === "all-comments"
                       : isRecommendationsParent && isRecommendationsView;
 
                 return (
@@ -1484,18 +1484,6 @@ export function SocialOS({
                         aria-label="Plateformes de Commentaires"
                         hidden={!isExpanded}
                       >
-                        <button
-                          className={view === "comment-performance" ? "active" : ""}
-                          type="button"
-                          aria-current={view === "comment-performance" ? "page" : undefined}
-                          onClick={() => {
-                            setView("comment-performance");
-                            setMobileOpen(false);
-                          }}
-                        >
-                          <span className="nav-emoji">📈</span>
-                          <span className="nav-text">Performance</span>
-                        </button>
                         <button
                           className={view === "all-comments" && commentPlatform === "all" ? "active" : ""}
                           type="button"
@@ -1642,6 +1630,7 @@ export function SocialOS({
             analytics={audienceAnalytics}
             demographics={audienceDemographics}
             posts={workspace.posts}
+            commentRefreshStatus={youtubeCommentRefreshStatus}
           />
         ) : null}
 
@@ -2009,14 +1998,6 @@ export function SocialOS({
           />
         ) : null}
 
-        {workspace && view === "comment-performance" ? (
-          <CommentPerformanceView
-            posts={authoredComments}
-            generatedAt={workspace.generatedAt}
-            refreshStatus={youtubeCommentRefreshStatus}
-          />
-        ) : null}
-
         {workspace && view === "sources" ? (
           <div className="view-stack">
             <div className="source-notice">
@@ -2099,12 +2080,14 @@ function AudienceDashboard({
   analytics,
   demographics,
   posts,
+  commentRefreshStatus,
 }: {
   activePlatform: Platform;
   history: AudienceHistory | null;
   analytics: AudienceAnalytics | null;
   demographics: AudienceDemographics | null;
   posts: readonly SocialPost[];
+  commentRefreshStatus: YoutubeCommentRefreshStatus | null;
 }) {
   const [periodKey, setPeriodKey] = useState<AudienceChartPeriodKey>("30d");
   const [requestedMetrics, setRequestedMetrics] = useState<Record<Platform, AudienceAnalyticsMetricKey>>(
@@ -2139,6 +2122,7 @@ function AudienceDashboard({
         periodKey={periodKey}
         posts={posts}
         requestedMetric={requestedMetric}
+        commentRefreshStatus={commentRefreshStatus}
       />
     </section>
   );
@@ -2377,6 +2361,7 @@ function AudienceAnalyticsExplorer({
   periodKey,
   posts,
   requestedMetric,
+  commentRefreshStatus,
 }: {
   activePlatform: Platform;
   analytics: AudienceAnalytics | null;
@@ -2387,6 +2372,7 @@ function AudienceAnalyticsExplorer({
   periodKey: AudienceChartPeriodKey;
   posts: readonly SocialPost[];
   requestedMetric: AudienceAnalyticsMetricKey;
+  commentRefreshStatus: YoutubeCommentRefreshStatus | null;
 }) {
   if (!analytics && !history) return null;
 
@@ -2696,6 +2682,14 @@ function AudienceAnalyticsExplorer({
           </div>
         )}
       </div>
+
+      {activePlatform === "youtube" ? (
+        <YoutubeCommentAnalyticsChart
+          generatedAt={generatedAt}
+          posts={posts}
+          refreshStatus={commentRefreshStatus}
+        />
+      ) : null}
 
       {availableMetrics.length > 0 && activeMetric && activeSummary ? (
         <AudienceDemographicsPanel

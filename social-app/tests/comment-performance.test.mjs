@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
+  buildYoutubeExternalCommentMonthlyImpact,
   buildYoutubeCommentPerformance,
 } from "../lib/comment-performance.ts";
 
@@ -117,21 +118,71 @@ test("uses yearly buckets for the full inventory and keeps empty years visible",
   assert.equal(summary.buckets.at(-1).cumulativePublished, 2);
 });
 
-test("wires the truthful performance view into both public runtimes", async () => {
+test("builds a monthly impact series from comments on external videos only", () => {
+  const summary = buildYoutubeExternalCommentMonthlyImpact([
+    post({
+      id: "youtube:may",
+      external_post_id: "may",
+      published_at: "2025-05-06T16:13:00.000Z",
+      likes: 130_000,
+      comments: 784,
+      text: "okay fine, I'll put my pencil down for this",
+    }),
+    post({
+      id: "youtube:june",
+      external_post_id: "june",
+      published_at: "2025-06-28T12:31:00.000Z",
+      likes: 139_000,
+      comments: 627,
+      text: "LESSSGOOOOOO",
+    }),
+    post({
+      id: "youtube:owned",
+      external_post_id: "owned",
+      published_at: "2025-06-29T12:31:00.000Z",
+      likes: 999_999,
+      comments: 999,
+      raw_json: JSON.stringify({
+        activityType: "publié un commentaire",
+        commentTarget: { authorHandle: "LofiGirl" },
+      }),
+    }),
+    post({
+      id: "youtube:community",
+      external_post_id: "community",
+      url: "https://www.youtube.com/post/community",
+      published_at: "2025-06-30T12:31:00.000Z",
+      likes: 999_999,
+      comments: 999,
+    }),
+  ], REFERENCE, 36);
+
+  assert.equal(summary.points.length, 36);
+  assert.equal(summary.points.at(0).key, "2023-09");
+  assert.equal(summary.points.at(-1).key, "2026-08");
+  assert.equal(summary.commentsPublished, 2);
+  assert.equal(summary.interactionsReceived, 270_411);
+  assert.equal(summary.points.find((point) => point.key === "2025-05").commentsPublished, 1);
+  assert.equal(summary.points.find((point) => point.key === "2025-05").topComment.text, "okay fine, I'll put my pencil down for this");
+  assert.equal(summary.points.find((point) => point.key === "2025-06").commentsPublished, 1);
+});
+
+test("moves the truthful comment graph into YouTube Analytics and removes the Performance tab", async () => {
   const [component, socialOs, page, preview] = await Promise.all([
-    readFile(new URL("../app/CommentPerformanceView.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/YoutubeCommentAnalyticsChart.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/SocialOS.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../preview/main.tsx", import.meta.url), "utf8"),
   ]);
 
-  assert.match(socialOs, /view === "comment-performance"/);
-  assert.match(socialOs, />Performance</);
-  assert.match(component, /Abonnés attribués aux commentaires/);
-  assert.match(component, /Non attribuable/);
-  assert.match(component, /il n’est donc pas utilisé ici comme résultat des commentaires/);
-  assert.match(component, /les nouveaux commentaires ne sont pas ajoutés automatiquement/i);
-  assert.match(component, /Les gains ne sont jamais répartis artificiellement/);
+  assert.doesNotMatch(socialOs, /view === "comment-performance"/);
+  assert.doesNotMatch(socialOs, />Performance</);
+  assert.match(socialOs, /activePlatform === "youtube"[\s\S]*?<YoutubeCommentAnalyticsChart/);
+  assert.match(component, /Commentaires publiés par mois/);
+  assert.match(component, /vidéos d’autres créateurs/);
+  assert.match(component, /YouTube ne fournit pas les visites de chaîne ni les abonnements attribuables/);
+  assert.match(component, /Mois partiel/);
+  assert.match(component, /Commentaire à \+10 k/);
   assert.doesNotMatch(component, /followersNet|followerContext/);
   assert.doesNotMatch(component, /taux d.engagement/i);
   assert.match(page, /owner-comment-refresh-status\.json/);
