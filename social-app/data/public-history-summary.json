@@ -1,18 +1,18 @@
 {
-  "generatedAt": "2026-09-01T05:49:04.474Z",
-  "totalPostCount": 12882,
+  "generatedAt": "2026-09-01T10:07:30.069941Z",
+  "totalPostCount": 12939,
   "platformCounts": {
-    "youtube": 4781,
+    "youtube": 4827,
     "instagram": 2464,
-    "tiktok": 396,
+    "tiktok": 407,
     "x": 5241
   },
   "formatCounts": {
     "youtube": {
-      "short": 319,
-      "community": 1087,
-      "poll": 202,
-      "text": 363,
+      "short": 330,
+      "community": 1105,
+      "poll": 205,
+      "text": 377,
       "comment": 2810
     },
     "instagram": {
@@ -21,7 +21,7 @@
       "comment": 779
     },
     "tiktok": {
-      "video": 386,
+      "video": 397,
       "comment": 10
     },
     "x": {
@@ -33,48 +33,43 @@
   },
   "coverage": [
     {
+      "platform": "tiktok",
+      "accountUrl": "https://www.tiktok.com/@lofigirl",
+      "scope": "profile",
+      "status": "complete-public-profile",
+      "itemCount": 397,
+      "oldestPublishedAt": "2022-04-06T17:39:03Z",
+      "newestPublishedAt": "2026-08-29T16:22:57Z",
+      "limitations": [
+        "Inventaire limité à ce que le profil public TikTok livre à yt-dlp au moment de la collecte ; l’exhaustivité historique n’est pas garantie.",
+        "TikTok peut réduire ou bloquer la pagination publique sans préavis.",
+        "Les miniatures TikTok sont volontairement omises car leurs URL publiques sont signées et expirent.",
+        "Les métriques et dates absentes de la réponse publique restent nulles."
+      ]
+    },
+    {
       "platform": "youtube",
       "accountUrl": "https://www.youtube.com/@LofiGirl",
-      "scope": "319 Shorts + 1652 posts Communauté + 2810 commentaires publiés",
-      "status": "limited",
-      "itemCount": 4781,
+      "scope": "shorts + community posts + commentaires publiés par le compte lorsqu’un export autorisé est disponible",
+      "status": "partial-public-profile",
+      "itemCount": 4827,
       "oldestPublishedAt": "2015-03-27T11:22:00.000Z",
-      "newestPublishedAt": "2026-08-04T14:33:28.403000Z",
+      "newestPublishedAt": "2026-08-31T17:00:00Z",
       "limitations": [
         "Périmètre volontairement limité aux Shorts et aux posts Communauté publics de la chaîne ; les vidéos longues et les lives sont exclus.",
         "Inventaire issu des onglets publics de la chaîne, sans YouTube Studio ni Analytics propriétaire.",
         "Les contenus privés, supprimés, réservés aux membres ou non listés ne sont pas accessibles.",
         "Les dates YouTube sont approximées par yt-dlp depuis les libellés relatifs des onglets publics.",
         "Les listes publiques exposent les vues des Shorts et les likes des posts Communauté, mais pas de façon fiable les commentaires, partages, sauvegardes, impressions, rétention ou abonnements générés.",
+        "Les commentaires publiés par le compte Lofi Girl sont ajoutés lorsqu’un export propriétaire autorisé est disponible ; chaque commentaire conserve son lien YouTube public.",
         "Le tableau posts est dédupliqué par identifiant public YouTube.",
         "Les posts Communauté sont lus via la pagination publique interne de YouTube, car l’API Data v3 ne fournit pas de ressource Community Post.",
-        "Formats Communauté récupérés : community_image=94, community_poll=17, community_text=89.",
-        "La pagination publique s’est arrêtée après 200 posts Communauté, le plus ancien étant daté approximativement du 2026-04-04T00:00:00Z ; cela ne certifie pas l’absence de posts plus anciens.",
-        "Une date est exposée pour 200/519 contenus ; les bornes oldest/newest portent uniquement sur ce sous-ensemble daté.",
-        "Un compteur de vues est exposé pour 319/519 contenus ; les autres valeurs restent nulles.",
-        "Un compteur de likes est exposé pour 200/519 contenus ; les autres valeurs restent nulles.",
-        "Scroll propriétaire autorisé arrivé au bas de l’onglet Posts après 1775 cartes rendues.",
-        "1652 posts Communauté visibles ont été fusionnés ; 123 partage(s) de vidéo longue ou pièce(s) jointe(s) hors périmètre ont été ignoré(s).",
-        "Cette couverture certifie la fin de la liste visible dans la session au moment du relevé, pas les contenus supprimés, privés, archivés ou réservés aux membres.",
-        "Les commentaires publiés par Lofi Girl proviennent de l’export My Activity autorisé du propriétaire du compte et pointent chacun vers leur page YouTube publique.",
-        "Les likes et réponses sont affichés uniquement lorsqu’ils ont été observés directement sur la page du commentaire ; les autres métriques restent nulles.",
-        "Les commentaires publiés par Lofi Girl proviennent de l’export My Activity autorisé du propriétaire du compte et pointent chacun vers leur page YouTube publique.",
-        "Les likes et réponses sont affichés uniquement lorsqu’ils ont été observés directement sur la page du commentaire ; les autres métriques restent nulles."
-      ]
-    },
-    {
-      "platform": "tiktok",
-      "accountUrl": "https://www.tiktok.com/@lofigirl",
-      "scope": "profile",
-      "status": "complete-public-profile",
-      "itemCount": 386,
-      "oldestPublishedAt": "2022-04-06T17:39:03Z",
-      "newestPublishedAt": "2026-08-03T19:04:00Z",
-      "limitations": [
-        "Inventaire limité à ce que le profil public TikTok livre à yt-dlp au moment de la collecte ; l’exhaustivité historique n’est pas garantie.",
-        "TikTok peut réduire ou bloquer la pagination publique sans préavis.",
-        "Les miniatures TikTok sont volontairement omises car leurs URL publiques sont signées et expirent.",
-        "Les métriques et dates absentes de la réponse publique restent nulles."
+        "Formats Communauté récupérés : community_image=97, community_poll=15, community_text=88.",
+        "La pagination publique s’est arrêtée après 200 posts Communauté, le plus ancien étant daté approximativement du 2026-05-01T00:00:00Z ; cela ne certifie pas l’absence de posts plus anciens.",
+        "Une date est exposée pour 4816/4827 contenus ; les bornes oldest/newest portent uniquement sur ce sous-ensemble daté.",
+        "Un compteur de vues est exposé pour 330/4827 contenus ; les autres valeurs restent nulles.",
+        "Un compteur de likes est exposé pour 4762/4827 contenus ; les autres valeurs restent nulles.",
+        "Snapshot cumulatif append-only : 4298 contenu(s) observé(s) lors de relevés antérieurs sont conservés même s’ils ne figurent plus dans la fenêtre publique courante."
       ]
     },
     {
