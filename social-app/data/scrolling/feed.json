@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "capturedAt": "2026-08-26T23:04:54+02:00",
+  "capturedAt": "2026-09-01T23:53:45+02:00",
   "minimumLikes": 10000,
-  "methodology": "Trois lectures de l’accueil Instagram ont été réalisées dans l’unique fenêtre de navigation privée explicitement confiée à @lofi.radar, audio muet et sans interaction d’engagement. Le run du soir a observé 151 URL uniques dans son propre lot et relevé 53 compteurs publics d’au moins 10 000 likes ; six sources seulement sont retenues après revue humaine. Le radar contient désormais 30 cartes éditoriales : huit du test initial, seize du lot étendu et six du run du soir. Chaque source reste séparée de son adaptation Lofi : ces snapshots organiques ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire.",
+  "methodology": "Les trois lectures historiques du 26/08 sur @lofi.radar sont conservées. Le 01/09, un passage de 12 min 25 s sur le nouveau compte @lofiradar2026 a utilisé un onglet d’agent Chrome séparé, audio muet et sans interaction sociale : 48 publications Home distinctes puis 14 publications issues de recherches ciblées ont été consultées. Le Home était encore dominé par le football et comptait 43 contenus hors niche ; trois sources Home et cinq sources ciblées non signalées IA, toutes à au moins 10 000 likes visibles, sont retenues. Le radar contient désormais 38 cartes éditoriales. Chaque source reste séparée de son adaptation Lofi : ces observations isolées ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire, ni une recalibration garantie de l’algorithme.",
   "limitations": [
     "Les compteurs de likes ont été relevés tels qu’affichés par Instagram et sont conservés avec une précision platform-rounded.",
     "Les vues, commentaires, partages, enregistrements et dates de publication non observés restent à null plutôt que d’être estimés.",
@@ -10,7 +10,10 @@
     "Le décompte 504 / 236 est conservateur : un lot intermédiaire non restitué par le contrôleur et les cartes virtualisées par Instagram sont exclus plutôt qu’estimés.",
     "Zéro carte n’affichait la mention Sponsorisé ; cela décrit ce flux organique observé et ne prouve pas l’absence de campagnes payantes ailleurs.",
     "Le flux s’est progressivement élargi hors de la musique ; les cartes hors univers et les contenus signalés IA ont été écartés de la sélection éditoriale.",
-    "Le run du soir compte 151 URL uniques et 53 publications au seuil dans ce lot uniquement ; les volumes des trois runs ne sont pas additionnés comme un total dédupliqué entre passages."
+    "Le run du soir compte 151 URL uniques et 53 publications au seuil dans ce lot uniquement ; les volumes des passages ne sont pas additionnés comme un total dédupliqué entre sessions.",
+    "Le 01/09, le décompte Home au seuil est conservateur : seules cinq publications dont le compteur supérieur à 10 000 likes a été explicitement consigné sont comptées, sans extrapoler les autres cartes sportives.",
+    "La calibration ciblée du 01/09 a couvert Lofi/chill, study/deep work et cozy/pluie ; la borne de 15 minutes a été respectée avant les familles introversion, animaux cozy, lecture/art et coding/gaming.",
+    "Deux sources ciblées au-dessus du seuil, dont une étiquetée AI content et une créée avec un outil externe signalé, ont été comptées dans le volume métrique mais exclues des cartes éditoriales."
   ],
   "explorationLenses": [
     {
@@ -488,6 +491,50 @@
         "Aucune mention Sponsorisé n’a été rencontrée ; ce run reste un scan de formats organiques et ne constitue pas une bibliothèque exhaustive de publicités.",
         "Lecture seule, audio muet et zéro interaction sociale : aucun like, enregistrement, abonnement, commentaire, message ou partage.",
         "Les contenus hors univers, ambigus ou explicitement signalés comme générés par IA ont été exclus de la sélection éditoriale."
+      ]
+    },
+    {
+      "id": "instagram-home-2026-09-01-new-account",
+      "platform": "instagram",
+      "surface": "home",
+      "browserContext": "agent-tab-explicitly-delegated",
+      "capturedAt": "2026-09-01T23:53:45+02:00",
+      "seenCount": 48,
+      "qualifyingCount": 5,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "emotional-storytelling",
+        "lofi-daily-life",
+        "visual-formats-lab"
+      ],
+      "limitations": [
+        "Le Home du compte neuf reste très hors niche : 43 contenus sur 48 ont été classés hors radar, dont 22 explicitement football ou sport.",
+        "Le qualifyingCount est conservateur et ne compte que cinq publications au-dessus de 10 000 likes dont le compteur a été explicitement consigné ; trois seulement sont retenues après revue éditoriale.",
+        "Lecture DOM en onglet d’agent séparé, audio muet et zéro interaction sociale ; aucune action Not interested n’a été utilisée pendant ce passage."
+      ]
+    },
+    {
+      "id": "instagram-search-2026-09-01-calibration",
+      "platform": "instagram",
+      "surface": "search",
+      "browserContext": "agent-tab-explicitly-delegated",
+      "capturedAt": "2026-09-01T23:53:45+02:00",
+      "seenCount": 14,
+      "qualifyingCount": 7,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "emotional-storytelling",
+        "study-exams-pomodoro",
+        "rain-weather-seasons",
+        "sleep-insomnia-bedtime",
+        "lofi-daily-life",
+        "visual-formats-lab"
+      ],
+      "limitations": [
+        "Quatorze publications ont été consultées 2 à 5 secondes dans trois familles ciblées avant la borne : Lofi/chill, study/deep work et cozy/pluie.",
+        "Sept compteurs publics atteignaient 10 000 likes ; deux sources signalées IA ou créées avec un outil externe ont été rejetées et cinq exemples sont détaillés.",
+        "Aucune mention Sponsorisé n’a été observée ; ce passage de recherche ne constitue pas un inventaire exhaustif de promotions musicales.",
+        "Audio muet et zéro like, follow, sauvegarde, commentaire, message, partage, publication ou Not interested."
       ]
     }
   ],
@@ -1924,6 +1971,366 @@
           "Production 100 % humaine : selfie, voix, bruitages, storyboard et montage créés par les collaborateurs crédités.",
           "Aucune image, vidéo, voix ou musique générée par IA ; aucun clonage vocal ni voix synthétique.",
           "Obtenir consentement, contrat voix et image et crédits ; ne promettre ni rôle, date ni sortie avant validation."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "yes-but-study-contradiction",
+      "runId": "instagram-home-2026-09-01-new-account",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcHMXywMQNz/",
+        "postId": "DcHMXywMQNz",
+        "author": "_yes_but",
+        "sourceLabel": "Gag muet en un dessin fondé sur une contradiction immédiatement lisible",
+        "capturedAt": "2026-09-01T23:53:45+02:00",
+        "publishedAt": null,
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 70000, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["lofi-daily-life", "visual-formats-lab"],
+        "hook": "Une promesse simple et son obstacle coexistent dans le même dessin et créent la contradiction en une seconde.",
+        "mechanic": "Un cadre unique, deux indices visuels opposés et presque aucun texte transforment la scène en micro-puzzle partageable.",
+        "visualCue": "La signalétique et la route rendent le conflit compréhensible avant même de lire la signature « YES, BUT ».",
+        "reasonToStop": "Le regard cherche immédiatement comment les deux informations incompatibles peuvent être vraies à la fois.",
+        "whyRelevant": "La mécanique convient aux petits obstacles d’étude de Girl et du chat sans dépendre d’un son, d’une célébrité ou d’une tendance établie.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Oui, je révise — mais le chat a choisi la page",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Une illustration originale montre Girl prête à écrire tandis que le chat dort exactement sur la seule page nécessaire ; toute la contradiction tient dans un cadre.",
+        "openingText": "YES: une soirée productive. BUT:",
+        "sequence": [
+          "Plan fixe sur le bureau rangé, la lampe allumée et le cahier ouvert.",
+          "Le regard descend vers le chat endormi sur la page utile.",
+          "Girl glisse une feuille vierge à côté et recommence sans déranger le chat."
+        ],
+        "caption": "Le plan était excellent. Le chat avait un meilleur plan.",
+        "audioDirection": "Fonctionne sans son ; une boucle originale très discrète du catalogue peut accompagner la version animée.",
+        "productionGuardrails": [
+          "Production 100 % humaine : concept, storyboard, illustration, animation éventuelle et montage réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Créer une composition et une signalétique originales sans recopier le dessin, le trait ni la mise en page de la source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "single-frame-study-twist",
+      "runId": "instagram-home-2026-09-01-new-account",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/Db7PHynj43z/",
+        "postId": "Db7PHynj43z",
+        "author": "happymotionanimations",
+        "sourceLabel": "Illustration narrative qui livre setup et retournement social dans un seul cadre",
+        "capturedAt": "2026-09-01T23:53:45+02:00",
+        "publishedAt": null,
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 38900, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["emotional-storytelling", "visual-formats-lab"],
+        "hook": "Une phrase commence comme un message ordinaire puis révèle un problème que l’image permet de comprendre immédiatement.",
+        "mechanic": "Le décor, les personnages et un court texte organisent setup puis twist sans seconde slide ni explication audio.",
+        "visualCue": "Les positions des personnages dans un espace partagé transforment une simple bulle de texte en tension narrative.",
+        "reasonToStop": "Le spectateur relit le message après avoir remarqué le personnage qui change tout le sens de la scène.",
+        "whyRelevant": "Lofi peut reprendre la densité narrative du cadre unique pour un gag doux de procrastination sans reproduire le scénario privé de la source.",
+        "confidence": "medium"
+      },
+      "adaptation": {
+        "title": "Le message envoyé au mauvais moment",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Girl écrit à une amie qu’elle travaille enfin ; dans le reflet de l’écran, le chat vient de lancer la vidéo de distraction qu’elle regardait encore une minute plus tôt.",
+        "openingText": "Oui oui, je suis totalement concentrée…",
+        "sequence": [
+          "Cadre unique : Girl écrit un message devant son cahier.",
+          "Le reflet de l’ordinateur révèle le chat posé sur la touche lecture.",
+          "Une minuscule barre de progression contredit le message et livre le twist."
+        ],
+        "caption": "Le bureau sait toujours quand on ment sur notre niveau de concentration.",
+        "audioDirection": "Image autonome sans son ; bruitages réels de clavier uniquement si une animation courte est produite.",
+        "productionGuardrails": [
+          "Production 100 % humaine : écriture, storyboard, dessin, éventuelle animation et montage créés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Éviter toute reprise du dialogue, des personnages, du bus ou de la composition de la source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "unfinished-list-versus-playlist",
+      "runId": "instagram-home-2026-09-01-new-account",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/Db_Pq4gxhsL/",
+        "postId": "Db_Pq4gxhsL",
+        "author": "girls",
+        "sourceLabel": "Meme confessionnel opposant une tâche ignorée à une activité publique immédiate",
+        "capturedAt": "2026-09-01T23:53:45+02:00",
+        "publishedAt": null,
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 759400, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["lofi-daily-life", "visual-formats-lab"],
+        "hook": "Deux comportements contradictoires sont nommés sans contexte et déclenchent une reconnaissance immédiate.",
+        "mechanic": "Un split très court oppose l’obligation laissée en attente à la petite activité que l’on choisit quand même.",
+        "visualCue": "Deux états parallèles et un contraste de posture suffisent à porter la confession relatable.",
+        "reasonToStop": "Le spectateur se reconnaît avant la fin de la seconde ligne et projette sa propre version du comportement.",
+        "whyRelevant": "La préparation infinie d’une playlist avant de commencer à travailler est un insight Lofi naturel, adaptable sans reprendre le meme original.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "La to-do list attend, la playlist est parfaitement rangée",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Un split original oppose le cahier encore vide de Girl à ses vingt sous-playlists d’étude méticuleusement renommées, sous le regard du chat.",
+        "openingText": "Ma tâche urgente / moi qui réorganise ma playlist de focus",
+        "sequence": [
+          "Côté gauche : une seule case urgente reste décochée.",
+          "Côté droit : Girl ajoute un énième emoji à une sous-playlist.",
+          "Le chat pousse doucement le stylo vers la vraie tâche."
+        ],
+        "caption": "La productivité périphérique reste de la périphérie.",
+        "audioDirection": "Beat original du catalogue, mixé très bas ; le gag doit rester entièrement lisible sans son.",
+        "productionGuardrails": [
+          "Production 100 % humaine : concept, texte, dessin, animation et montage réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Ne pas reprendre les visuels, le wording exact ni la structure graphique du meme source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "locked-in-study-loop",
+      "runId": "instagram-search-2026-09-01-calibration",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcrYMcGsE_R/",
+        "postId": "DcrYMcGsE_R",
+        "author": "apluslisaa",
+        "sourceLabel": "Boucle study cadrée par une phrase d’identité très courte",
+        "capturedAt": "2026-09-01T23:53:45+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 24400, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["study-exams-pomodoro", "lofi-daily-life"],
+        "hook": "La phrase « Staying locked in » transforme immédiatement une scène d’étude en engagement personnel.",
+        "mechanic": "Un texte identitaire court encadre une boucle de concentration et permet au public de se projeter sans tutoriel.",
+        "visualCue": "Le bureau et la continuité du geste d’étude portent l’idée de discipline davantage qu’une liste de conseils.",
+        "reasonToStop": "Le spectateur comprend en une seconde l’état mental proposé et peut rester pour le rythme régulier de la boucle.",
+        "whyRelevant": "Girl peut montrer le passage progressif de la dispersion au focus sans promettre une productivité irréaliste.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Locked in, une page à la fois",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Une boucle dessinée montre trois petites distractions se ranger visuellement tandis que Girl revient à une seule ligne de son cahier.",
+        "openingText": "Locked in — pas parfaite, juste revenue à la page.",
+        "sequence": [
+          "Trois objets de distraction vibrent autour du bureau.",
+          "Girl ferme une notification, replace son casque et écrit une ligne.",
+          "Le chat pose la patte sur le minuteur au moment où la boucle revient au premier cadre."
+        ],
+        "caption": "Pas besoin d’une session parfaite pour reprendre le fil.",
+        "audioDirection": "Boucle instrumentale originale courte, composée et interprétée par un musicien humain ; version lisible en muet.",
+        "productionGuardrails": [
+          "Production 100 % humaine : écriture, storyboard, illustration, animation et musique créés par des collaborateurs crédités.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Présenter une expérience quotidienne, sans promesse scolaire, médicale ni méthode universelle."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "one-more-try-study-vlog",
+      "runId": "instagram-search-2026-09-01-calibration",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcVyjuOPHU8/",
+        "postId": "DcVyjuOPHU8",
+        "author": "studyw_cathie",
+        "sourceLabel": "Vlog study daté qui transforme une reprise modeste en progression visible",
+        "capturedAt": "2026-09-01T23:53:45+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 124000, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["study-exams-pomodoro", "emotional-storytelling", "lofi-daily-life"],
+        "hook": "Une phrase de résilience et une date donnent immédiatement un enjeu à une routine d’étude familière.",
+        "mechanic": "Le vlog assemble des preuves simples du processus plutôt qu’un résultat spectaculaire, puis ferme sur l’idée d’essayer encore une fois.",
+        "visualCue": "Casque, livres et repère daté rendent la session concrète et inscrite dans une progression réelle.",
+        "reasonToStop": "Le public veut voir si la personne reprend effectivement la tâche après l’hésitation annoncée.",
+        "whyRelevant": "Cette micro-progression correspond à Girl si elle reste réaliste, non culpabilisante et distincte de toute citation copiée.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Encore une petite tentative",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Un mini-vlog animé suit Girl qui revient à son bureau pour seulement cinq minutes, termine une étape et choisit ensuite librement de continuer.",
+        "openingText": "Aujourd’hui, le progrès tient dans cinq minutes.",
+        "sequence": [
+          "Girl reste un instant devant la page blanche et pose un objectif minuscule.",
+          "Le minuteur avance pendant qu’elle résout une seule étape.",
+          "Elle coche la ligne, s’étire et décide calmement de poursuivre une page."
+        ],
+        "caption": "Une tentative modeste reste une vraie tentative.",
+        "audioDirection": "Composition Lofi originale à progression douce, jouée par un humain, sans reprendre l’audio ou la citation de la source.",
+        "productionGuardrails": [
+          "Production 100 % humaine : scénario, animation, montage et musique réalisés par l’équipe et les artistes crédités.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Ne promettre ni note, ni performance, ni transformation ; le repos doit rester une issue valable."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "rainy-study-day-mood",
+      "runId": "instagram-search-2026-09-01-calibration",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DMXCcQqtLdr/",
+        "postId": "DMXCcQqtLdr",
+        "author": "shreesvlog_",
+        "sourceLabel": "Montage d’étude où la pluie et le bureau forment le hook sensoriel",
+        "capturedAt": "2026-09-01T23:53:45+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 45300, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["study-exams-pomodoro", "rain-weather-seasons", "lofi-daily-life"],
+        "hook": "La pluie et le bureau installent une sensation précise avant même que la caption « rainy study day » ne la nomme.",
+        "mechanic": "Un mood montage relie météo, lumière, ordinateur et gestes d’étude en une routine sensorielle courte.",
+        "visualCue": "Fenêtre pluvieuse, lumière sombre, cahier et ordinateur créent une cohérence de matière immédiatement reconnaissable.",
+        "reasonToStop": "Le contraste entre le mauvais temps extérieur et le refuge organisé à l’intérieur promet une petite immersion.",
+        "whyRelevant": "La fenêtre de Girl est un support naturel pour montrer comment la météo modifie réellement son rythme de travail.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Rainy study day — trois lumières",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "La même courte session avance au rythme de trois intensités de pluie ; Girl adapte lumière, boisson et pause tandis que le chat change de refuge.",
+        "openingText": "La pluie change. La page avance doucement.",
+        "sequence": [
+          "Pluie fine : Girl ouvre son cahier sous une lumière de jour grise.",
+          "Averse : elle allume la lampe et le chat se rapproche de la fenêtre.",
+          "Éclaircie : elle termine une ligne, ouvre légèrement la fenêtre puis lance sa pause."
+        ],
+        "caption": "Même bureau, trois pluies, une petite page de plus. 🌧️",
+        "audioDirection": "Pluie enregistrée par l’équipe et beat original du catalogue, mixés par un humain avec droits vérifiés.",
+        "productionGuardrails": [
+          "Production 100 % humaine : décors, animation, captation de pluie, montage et musique réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Créer une météo et une composition propres à la chambre canonique sans recopier les plans du vlog source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "minimal-study-process-pov",
+      "runId": "instagram-search-2026-09-01-calibration",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DbVZ1qxJprE/",
+        "postId": "DbVZ1qxJprE",
+        "author": "110vestruck",
+        "sourceLabel": "Reel study minimal dont la caption laisse le processus porter la scène",
+        "capturedAt": "2026-09-01T23:53:45+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 112000, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["study-exams-pomodoro", "lofi-daily-life"],
+        "hook": "Le format study et une caption minimale laissent l’authenticité du geste primer sur une promesse spectaculaire.",
+        "mechanic": "Un POV de processus s’appuie sur la continuité de la session et très peu de texte pour rendre l’effort crédible.",
+        "visualCue": "Le DOM confirmait le cadre study sans restituer assez de détail pour attribuer un objet ou un geste précis à la source.",
+        "reasonToStop": "Le public reste pour la régularité d’une vraie session plutôt que pour attendre un reveal artificiel.",
+        "whyRelevant": "Lofi peut produire une version sobre centrée sur un geste canonique de Girl, à condition de ne pas inventer le contenu exact du reel observé.",
+        "confidence": "medium"
+      },
+      "adaptation": {
+        "title": "Le geste qui relance la session",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Un POV original se concentre sur trois gestes réels de Girl — rouvrir le cahier, dater la page, écrire la première ligne — sans montage de performance.",
+        "openingText": "Pas un hack. Juste le premier geste.",
+        "sequence": [
+          "Main de Girl qui rouvre le cahier à la bonne page.",
+          "Elle inscrit la date et une seule question à résoudre.",
+          "Le stylo termine la première ligne pendant que le chat s’installe hors du cahier."
+        ],
+        "caption": "Le début peut être aussi petit que dater la page.",
+        "audioDirection": "Sons de papier et de stylo captés humainement, avec une nappe originale optionnelle et entièrement licenciée.",
+        "productionGuardrails": [
+          "Production 100 % humaine : cadrage, dessin ou tournage, bruitages, montage et musique créés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Ne pas prétendre décrire les plans non exposés par le DOM et créer un POV entièrement original."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "cozy-cabin-rain-loop",
+      "runId": "instagram-search-2026-09-01-calibration",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DVBaDwIk1qP/",
+        "postId": "DVBaDwIk1qP",
+        "author": "tingzhang4281",
+        "sourceLabel": "Boucle de pluie immersive dans une cabine au bord d’un lac",
+        "capturedAt": "2026-09-01T23:53:45+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 609000, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["rain-weather-seasons", "sleep-insomnia-bedtime", "visual-formats-lab"],
+        "hook": "La cabine, le lac et l’orage promettent instantanément une bulle sensorielle identifiable.",
+        "mechanic": "Une boucle ASMR courte installe un refuge puis propose un prolongement long format sans complexifier le plan principal.",
+        "visualCue": "Le cadre intérieur protège du lac sombre et des éclairs ; l’eau en mouvement fournit la continuité de boucle.",
+        "reasonToStop": "Le spectateur vérifie comment la pluie, la lumière et le refuge vont rester cohérents pendant la boucle.",
+        "whyRelevant": "Un décor alternatif original peut élargir l’univers calme de Girl et du chat sans allégation de sommeil ni copie de la cabine source.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Une nuit de pluie dans la cabane du lac",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Une cabane entièrement originale accueille Girl et le chat pendant un orage ; chaque éclair révèle un détail du bureau puis la boucle revient au même reflet sur le lac.",
+        "openingText": "Tu peux rester ici jusqu’à ce que l’orage passe.",
+        "sequence": [
+          "Plan large peint : cabane originale, lac et pluie continue.",
+          "Un éclair révèle le cahier, la tasse et le chat réveillé une seconde.",
+          "Girl baisse la lampe, le reflet du lac rejoint exactement le premier cadre."
+        ],
+        "caption": "La pluie dehors, une petite lumière dedans. 🌧️",
+        "audioDirection": "Pluie et tonnerre enregistrés ou licenciés, plus composition originale humaine ; aucune promesse d’endormissement.",
+        "productionGuardrails": [
+          "Production 100 % humaine : concept art, peinture, animation, sound design, montage et musique réalisés par des artistes crédités.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Concevoir une architecture et une boucle propres à l’univers Lofi ; vérifier tous les droits des sons naturels."
         ]
       },
       "editorialStatus": "new"

@@ -1,6 +1,8 @@
 export type ScrollingPlatform = "instagram" | "tiktok";
 export type ScrollingSurface = "home" | "reels" | "explore" | "following" | "search";
-export type ScrollingBrowserContext = "incognito-explicitly-delegated";
+export type ScrollingBrowserContext =
+  | "incognito-explicitly-delegated"
+  | "agent-tab-explicitly-delegated";
 export type ScrollingMetricPrecision = "exact" | "platform-rounded" | "unavailable";
 export type ScrollingFormat = "reel" | "carousel" | "image" | "video";
 export type ScrollingConfidence = "high" | "medium" | "watch";
@@ -108,6 +110,7 @@ export type ScrollingFeed = {
 
 export const SCROLLING_MINIMUM_LIKES = 10_000;
 export const SCROLLING_BROWSER_CONTEXT = "incognito-explicitly-delegated" as const;
+export const SCROLLING_AGENT_TAB_CONTEXT = "agent-tab-explicitly-delegated" as const;
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const NATIVE_POST_ID = /^[A-Za-z0-9_-]+$/u;
@@ -120,6 +123,10 @@ const PRECISIONS = new Set<ScrollingMetricPrecision>(["exact", "platform-rounded
 const CONFIDENCES = new Set<ScrollingConfidence>(["high", "medium", "watch"]);
 const EDITORIAL_STATUSES = new Set<ScrollingEditorialStatus>(["new", "kept", "dismissed"]);
 const LENS_GROUPS = new Set<ScrollingLensGroup>(["storytelling", "music", "lifestyle", "community"]);
+const BROWSER_CONTEXTS = new Set<ScrollingBrowserContext>([
+  SCROLLING_BROWSER_CONTEXT,
+  SCROLLING_AGENT_TAB_CONTEXT,
+]);
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -259,8 +266,8 @@ function assertRun(value: unknown, knownLensIds: Set<string>, label: string): as
   if (!isText(value.id) || !SLUG.test(value.id)) throw new TypeError(`${label}: id invalide.`);
   if (!PLATFORMS.has(value.platform as ScrollingPlatform)) throw new TypeError(`${label}: plateforme invalide.`);
   if (!SURFACES.has(value.surface as ScrollingSurface)) throw new TypeError(`${label}: surface invalide.`);
-  if (value.browserContext !== SCROLLING_BROWSER_CONTEXT) {
-    throw new TypeError(`${label}: navigation privée explicitement confiée obligatoire.`);
+  if (!BROWSER_CONTEXTS.has(value.browserContext as ScrollingBrowserContext)) {
+    throw new TypeError(`${label}: contexte de navigation explicitement confié obligatoire.`);
   }
   if (!isTimestamp(value.capturedAt)) throw new TypeError(`${label}: capturedAt invalide.`);
   if (!isCount(value.seenCount) || value.seenCount === 0) throw new TypeError(`${label}: seenCount invalide.`);

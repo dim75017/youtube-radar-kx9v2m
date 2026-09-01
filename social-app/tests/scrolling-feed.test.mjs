@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
+  SCROLLING_AGENT_TAB_CONTEXT,
   SCROLLING_BROWSER_CONTEXT,
   SCROLLING_MINIMUM_LIKES,
   assertScrollingFeed,
@@ -49,20 +50,32 @@ const expectedSources = new Map([
   ["DcgN-zooXp4", { author: "cyberpunkgame", likes: 26_200 }],
   ["DcfW6l-iHAF", { author: "thescenicgamerofficial", likes: 23_700 }],
   ["DcJuyWRvjnK", { author: "rebbford", likes: 10_600 }],
+  ["DcHMXywMQNz", { author: "_yes_but", likes: 70_000 }],
+  ["Db7PHynj43z", { author: "happymotionanimations", likes: 38_900 }],
+  ["Db_Pq4gxhsL", { author: "girls", likes: 759_400 }],
+  ["DcrYMcGsE_R", { author: "apluslisaa", likes: 24_400 }],
+  ["DcVyjuOPHU8", { author: "studyw_cathie", likes: 124_000 }],
+  ["DMXCcQqtLdr", { author: "shreesvlog_", likes: 45_300 }],
+  ["DbVZ1qxJprE", { author: "110vestruck", likes: 112_000 }],
+  ["DVBaDwIk1qP", { author: "tingzhang4281", likes: 609_000 }],
 ]);
 
-test("the connected Instagram snapshot preserves all three private runs", () => {
-  assert.match(feed.capturedAt, /^2026-08-26/u);
+test("the connected Instagram snapshot preserves the historical and new-account runs", () => {
+  assert.match(feed.capturedAt, /^2026-09-01/u);
   assert.equal(feed.minimumLikes, SCROLLING_MINIMUM_LIKES);
-  assert.equal(feed.runs.length, 3);
-  assert.equal(feed.items.length, 30);
+  assert.equal(feed.runs.length, 5);
+  assert.equal(feed.items.length, 38);
 
   const initialRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26");
   const extendedRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26-extended");
   const eveningRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26-evening");
+  const newAccountHomeRun = feed.runs.find((run) => run.id === "instagram-home-2026-09-01-new-account");
+  const calibrationRun = feed.runs.find((run) => run.id === "instagram-search-2026-09-01-calibration");
   assert.ok(initialRun);
   assert.ok(extendedRun);
   assert.ok(eveningRun);
+  assert.ok(newAccountHomeRun);
+  assert.ok(calibrationRun);
   assert.equal(initialRun.platform, "instagram");
   assert.equal(initialRun.surface, "home");
   assert.equal(initialRun.browserContext, SCROLLING_BROWSER_CONTEXT);
@@ -82,7 +95,23 @@ test("the connected Instagram snapshot preserves all three private runs", () => 
   assert.equal(feed.items.filter((item) => item.runId === eveningRun.id).length, 6);
   assert.ok(feed.items.filter((item) => item.runId === eveningRun.id).length < eveningRun.qualifyingCount);
   assert.ok(Date.parse(eveningRun.capturedAt) > Date.parse(extendedRun.capturedAt));
-  assert.equal(feed.capturedAt, eveningRun.capturedAt);
+  assert.equal(newAccountHomeRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(newAccountHomeRun.surface, "home");
+  assert.equal(newAccountHomeRun.seenCount, 48);
+  assert.equal(newAccountHomeRun.qualifyingCount, 5);
+  assert.equal(newAccountHomeRun.sponsoredCount, 0);
+  assert.equal(feed.items.filter((item) => item.runId === newAccountHomeRun.id).length, 3);
+  assert.ok(feed.items.filter((item) => item.runId === newAccountHomeRun.id).length < newAccountHomeRun.qualifyingCount);
+  assert.equal(calibrationRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(calibrationRun.surface, "search");
+  assert.equal(calibrationRun.seenCount, 14);
+  assert.equal(calibrationRun.qualifyingCount, 7);
+  assert.equal(calibrationRun.sponsoredCount, 0);
+  assert.equal(feed.items.filter((item) => item.runId === calibrationRun.id).length, 5);
+  assert.ok(feed.items.filter((item) => item.runId === calibrationRun.id).length < calibrationRun.qualifyingCount);
+  assert.ok(Date.parse(newAccountHomeRun.capturedAt) > Date.parse(eveningRun.capturedAt));
+  assert.equal(calibrationRun.capturedAt, newAccountHomeRun.capturedAt);
+  assert.equal(feed.capturedAt, calibrationRun.capturedAt);
 
   let likes = 0;
   for (const item of feed.items) {
@@ -150,12 +179,16 @@ test("every Lofi adaptation keeps the canonical companion and bans generated med
   }
 });
 
-test("the validator refuses a classic browser profile or any authentication material", () => {
+test("the validator accepts delegated agent tabs but refuses a classic browser profile or authentication material", () => {
+  const delegatedAgentTab = structuredClone(feed);
+  delegatedAgentTab.runs.at(-1).browserContext = SCROLLING_AGENT_TAB_CONTEXT;
+  assert.doesNotThrow(() => assertScrollingFeed(delegatedAgentTab));
+
   const classicProfile = structuredClone(feed);
   classicProfile.runs[0].browserContext = "default-profile";
   assert.throws(
     () => assertScrollingFeed(classicProfile),
-    /navigation privée explicitement confiée obligatoire/u,
+    /contexte de navigation explicitement confié obligatoire/u,
   );
 
   const withCookie = structuredClone(feed);
