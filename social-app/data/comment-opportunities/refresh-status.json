@@ -1,37 +1,37 @@
 {
   "lane": "fast",
-  "ranAt": "2026-09-01T19:27:16.255Z",
+  "ranAt": "2026-09-01T20:30:17.237Z",
   "status": "success",
   "failureReason": null,
   "watchedAccounts": 97,
   "reachedChannels": 97,
   "failedChannels": [],
-  "discovered": 1,
-  "remeasured": 0,
-  "promoted": 55,
-  "trackedCandidates": 618,
+  "discovered": 243,
+  "remeasured": 22,
+  "promoted": 3,
+  "trackedCandidates": 256,
   "attemptedCards": 30,
   "pendingEditorialCount": 0,
   "published": 30,
   "retainedFeedCapturedAt": null,
   "tierCounts": {
-    "a": 14,
-    "b": 15,
-    "s": 1
+    "s": 3,
+    "a": 8,
+    "b": 19
   },
   "categoryCounts": {
-    "music": 2,
-    "gaming": 6,
     "cinema": 6,
+    "music": 2,
     "tech": 1,
+    "gaming": 6,
     "internet": 5,
     "other": 10
   },
   "voice": {
-    "generated": 17,
+    "generated": 0,
     "refused": 0,
     "pending": 0,
-    "candidates": 17,
-    "engine": "codex-editorial-review"
+    "candidates": 0,
+    "engine": "absent"
   }
 }
