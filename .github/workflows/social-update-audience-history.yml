@@ -52,6 +52,8 @@ jobs:
         run: >-
           node --experimental-strip-types scripts/collect-audience-history.mjs
           --require-fresh-platform youtube
+          --require-fresh-platform instagram
+          --require-fresh-platform tiktok
           --require-fresh-platform x
 
       - name: Validate audience history and calculations

@@ -2,15 +2,15 @@ name: Social · Update X history incrementally
 
 on:
   workflow_dispatch:
-  # The source repository's X_BEARER_TOKEN cannot be exported by GitHub.
-  # Restore the daily schedule after that secret is added to this repository.
+  schedule:
+    - cron: "43 4 * * *"
 
 permissions:
   contents: write
 
 concurrency:
   # Shared with the Instagram collector because both can update public-history.
-  group: social-history-write
+  group: social-public-history-write
   cancel-in-progress: false
 
 jobs:

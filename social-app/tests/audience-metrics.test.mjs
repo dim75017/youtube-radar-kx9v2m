@@ -668,7 +668,7 @@ test("rejects an invalid explicit YouTube Studio CLI count before collection", (
   }
 });
 
-test("the daily workflow enforces fresh YouTube and X points on both scheduled passes", async () => {
+test("the daily workflow enforces fresh points for every platform on both scheduled passes", async () => {
   const workflow = await readFile(
     new URL("../../.github/workflows/social-update-audience-history.yml", import.meta.url),
     "utf8",
@@ -680,6 +680,8 @@ test("the daily workflow enforces fresh YouTube and X points on both scheduled p
   assert.match(workflow, /sparse-checkout:[\s\S]*?\/social-app\//);
   assert.match(workflow, /\.github\/workflows\/social-update-audience-history\.yml/);
   assert.match(workflow, /--require-fresh-platform youtube/);
+  assert.match(workflow, /--require-fresh-platform instagram/);
+  assert.match(workflow, /--require-fresh-platform tiktok/);
   assert.match(workflow, /--require-fresh-platform x/);
   assert.match(workflow, /Two daily collection passes/);
   assert.match(workflow, /actions:\s*write/);

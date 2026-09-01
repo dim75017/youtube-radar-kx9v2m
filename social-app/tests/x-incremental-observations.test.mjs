@@ -210,3 +210,15 @@ test("zero returned IDs leaves public history byte-for-byte unchanged", async ()
   assert.equal(result.summary.changed, false);
   assert.equal(result.summary.willWrite, false);
 });
+
+test("the X incremental collector is scheduled daily and fails closed without its token", async () => {
+  const workflow = await readFile(
+    new URL("../../.github/workflows/social-update-x-history.yml", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(workflow, /schedule:/);
+  assert.match(workflow, /cron:\s*["'][^"']+["']/);
+  assert.match(workflow, /Missing X_BEARER_TOKEN/);
+  assert.match(workflow, /group:\s*social-public-history-write/);
+});

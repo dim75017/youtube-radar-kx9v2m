@@ -24,6 +24,12 @@ const storedSeeds = JSON.parse(
 const storedStatus = JSON.parse(
   await readFile(new URL("../data/playlist-promos/refresh-status.json", import.meta.url), "utf8"),
 );
+const fixtureRefreshAt = new Date(
+  Math.max(
+    Date.parse(storedFeed.capturedAt),
+    Date.parse(storedStatus.lastSuccessfulAt ?? storedFeed.capturedAt),
+  ) + 60_000,
+).toISOString();
 const storedItemById = new Map(
   [...storedFeed.items, ...storedFeed.candidates].map((item) => [item.id, item]),
 );
@@ -162,7 +168,7 @@ test("seed validation rejects query-bearing or duplicate URLs", () => {
 });
 
 test("a complete refresh appends changed exact metrics and remains idempotent otherwise", () => {
-  const now = "2026-08-30T16:00:00.000Z";
+  const now = fixtureRefreshAt;
   const results = successfulResults();
   results[0].post.likes += 250;
   results[0].post.views += 1_000;
@@ -198,7 +204,7 @@ test("a complete refresh appends changed exact metrics and remains idempotent ot
 });
 
 test("partial, under-threshold and product_type-mismatched refreshes are rejected", () => {
-  const now = "2026-08-30T16:00:00.000Z";
+  const now = fixtureRefreshAt;
   assert.throws(
     () => buildPlaylistPromoRefresh({
       feed: storedFeed,
@@ -249,7 +255,7 @@ test("a tracked candidate is promoted automatically at ten thousand native likes
     feed: syntheticFeed,
     seeds: storedSeeds,
     results,
-    now: "2026-08-30T16:00:00.000Z",
+    now: fixtureRefreshAt,
   });
   assert.equal(refreshed.feed.items.length, syntheticFeed.items.length + 1);
   assert.equal(refreshed.feed.candidates.length, syntheticFeed.candidates.length - 1);
@@ -275,7 +281,7 @@ test("the file refresh preserves the last good feed on the first failed response
         feedPath,
         seedsPath,
         statusPath,
-        now: "2026-08-30T16:00:00.000Z",
+        now: fixtureRefreshAt,
         fetchImpl: async () => new Response("rate limited", { status: 429 }),
       }),
       /rate-limited/u,
@@ -309,7 +315,7 @@ test("the file refresh publishes only after all sixteen embeds are attributable"
       feedPath,
       seedsPath,
       statusPath,
-      now: "2026-08-30T16:00:00.000Z",
+      now: fixtureRefreshAt,
       fetchImpl: async (url) => {
         const requested = new URL(url).pathname.match(
           /^\/p\/([A-Za-z0-9_-]+)\/embed\/captioned\/?$/u,
@@ -325,7 +331,7 @@ test("the file refresh publishes only after all sixteen embeds are attributable"
     assert.equal(result.status.matchedCount, storedSeeds.seeds.filter((seed) => seed.enabled).length);
     assert.equal(result.status.updatedCount, 0);
     const written = JSON.parse(await readFile(feedPath, "utf8"));
-    assert.equal(written.capturedAt, "2026-08-30T16:00:00.000Z");
+    assert.equal(written.capturedAt, fixtureRefreshAt);
     assert.equal(
       written.items.length + written.candidates.length,
       storedSeeds.seeds.filter((seed) => seed.enabled).length,

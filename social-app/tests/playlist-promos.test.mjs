@@ -130,11 +130,13 @@ test("the validator rejects a product_type ad assigned to an organic lane", () =
 
 test("like deltas require two observations with the same precision", () => {
   const item = structuredClone(feed.candidates[0]);
+  item.observations = [item.observations.at(-1)];
   assert.equal(playlistPromoLikeDelta(item), null);
+  const firstObservation = item.observations[0];
   item.observations.push({
-    ...item.observations[0],
-    capturedAt: "2026-08-30T15:13:58.854Z",
-    likes: item.observations[0].likes + 125,
+    ...firstObservation,
+    capturedAt: new Date(Date.parse(firstObservation.capturedAt) + 24 * 3_600_000).toISOString(),
+    likes: firstObservation.likes + 125,
   });
   assert.deepEqual(playlistPromoLikeDelta(item), { likes: 125, elapsedHours: 24 });
   item.observations[1].precision = "platform-rounded";

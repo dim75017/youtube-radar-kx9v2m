@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: social-youtube-comment-metrics
+  group: social-public-history-write
   cancel-in-progress: false
 
 jobs:

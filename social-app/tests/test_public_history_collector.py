@@ -7,6 +7,8 @@ import tempfile
 import types
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,8 +16,6 @@ COLLECTOR_PATH = ROOT / "scripts" / "collect_public_history.py"
 
 
 def load_collector():
-    if not (ROOT / "work" / "ytdeps").is_dir():
-        raise unittest.SkipTest("yt-dlp local absent; tests du collecteur ignorés")
     yt_dlp = types.ModuleType("yt_dlp")
     yt_dlp.YoutubeDL = object
     yt_dlp.version = types.SimpleNamespace(__version__="test")
@@ -36,7 +36,11 @@ def load_collector():
     if spec is None or spec.loader is None:
         raise RuntimeError("impossible de charger le collecteur")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    # Le collecteur vérifie la présence du dossier vendor avant ses imports.
+    # Les dépendances sont simulées ici afin que les tests de fusion restent
+    # exécutables localement sans téléchargement réseau.
+    with patch.object(Path, "is_dir", return_value=True):
+        spec.loader.exec_module(module)
     return module
 
 
@@ -83,6 +87,150 @@ class CollectorAppendOnlyTests(unittest.TestCase):
             ],
             1,
         )
+
+    def test_profile_coverage_excludes_instagram_and_tiktok_authored_comments(self):
+        for platform in ("instagram", "tiktok"):
+            with self.subTest(platform=platform):
+                self.assertTrue(
+                    self.collector.post_counts_toward_coverage(
+                        {"platform": platform, "format": "video"}
+                    )
+                )
+                self.assertFalse(
+                    self.collector.post_counts_toward_coverage(
+                        {"platform": platform, "format": "comment"}
+                    )
+                )
+
+        for platform in ("youtube", "x"):
+            with self.subTest(platform=platform):
+                self.assertTrue(
+                    self.collector.post_counts_toward_coverage(
+                        {"platform": platform, "format": "comment"}
+                    )
+                )
+
+    def test_tiktok_coverage_uses_profile_videos_not_authored_comments(self):
+        posts = [
+            {
+                "platform": "tiktok",
+                "externalId": "123",
+                "format": "video",
+                "publishedAt": "2026-08-01T10:00:00Z",
+            },
+            {
+                "platform": "tiktok",
+                "externalId": "comment:456",
+                "format": "comment",
+                "publishedAt": "2026-08-02T10:00:00Z",
+            },
+        ]
+        source_coverage = {
+            "platform": "tiktok",
+            "accountUrl": "https://www.tiktok.com/@lofigirl",
+            "scope": "profile",
+            "status": "available",
+            "itemCount": 1,
+            "oldestPublishedAt": "2026-08-01T10:00:00Z",
+            "newestPublishedAt": "2026-08-01T10:00:00Z",
+            "limitations": [],
+        }
+
+        coverage = self.collector.aggregate_coverage(
+            [source_coverage],
+            posts,
+            "tiktok",
+            limited_by_argument=False,
+        )
+
+        self.assertEqual(coverage[0]["itemCount"], 1)
+        self.assertEqual(coverage[0]["oldestPublishedAt"], "2026-08-01T10:00:00Z")
+        self.assertEqual(coverage[0]["newestPublishedAt"], "2026-08-01T10:00:00Z")
+
+    def test_real_snapshot_survives_partial_youtube_and_tiktok_collections(self):
+        source_snapshot = json.loads(
+            (ROOT / "data" / "public-history.json").read_text(encoding="utf-8")
+        )
+        original_coverage = {
+            item["platform"]: item for item in source_snapshot["coverage"]
+        }
+        original_post_keys = {
+            (post["platform"], post["externalId"])
+            for post in source_snapshot["posts"]
+        }
+        original_posts = {
+            (post["platform"], post["externalId"]): post
+            for post in source_snapshot["posts"]
+        }
+
+        for platform in ("youtube", "tiktok"):
+            with self.subTest(platform=platform), tempfile.TemporaryDirectory() as directory:
+                output = Path(directory) / "public-history.json"
+                output.write_text(
+                    json.dumps(source_snapshot, ensure_ascii=False), encoding="utf-8"
+                )
+
+                def fake_collect(source, _max_items):
+                    return [], self.collector.coverage_record(
+                        source, "empty", [], ["fixture de collecte partielle"]
+                    )
+
+                args = SimpleNamespace(output=output, max_items=0, platform=platform)
+                with (
+                    patch.object(self.collector, "parse_args", return_value=args),
+                    patch.object(self.collector, "collect_source", side_effect=fake_collect),
+                ):
+                    self.assertEqual(self.collector.main(), 0)
+
+                result = json.loads(output.read_text(encoding="utf-8"))
+                result_coverage = {
+                    item["platform"]: item for item in result["coverage"]
+                }
+                result_post_keys = {
+                    (post["platform"], post["externalId"])
+                    for post in result["posts"]
+                }
+                result_posts = {
+                    (post["platform"], post["externalId"]): post
+                    for post in result["posts"]
+                }
+
+                self.assertEqual(result_post_keys, original_post_keys)
+                for preserved_platform in {"youtube", "tiktok", "instagram", "x"} - {
+                    platform
+                }:
+                    self.assertEqual(
+                        result_coverage[preserved_platform],
+                        original_coverage[preserved_platform],
+                    )
+                    self.assertEqual(
+                        {
+                            key: post
+                            for key, post in result_posts.items()
+                            if key[0] == preserved_platform
+                        },
+                        {
+                            key: post
+                            for key, post in original_posts.items()
+                            if key[0] == preserved_platform
+                        },
+                    )
+                if platform == "tiktok":
+                    self.assertEqual(
+                        {
+                            key: post
+                            for key, post in result_posts.items()
+                            if key[0] == "tiktok" and post["format"] == "comment"
+                        },
+                        {
+                            key: post
+                            for key, post in original_posts.items()
+                            if key[0] == "tiktok" and post["format"] == "comment"
+                        },
+                    )
+                self.assertEqual(result_coverage["instagram"]["itemCount"], 1685)
+                self.assertEqual(result_coverage["tiktok"]["itemCount"], 386)
+                self.collector.validate_snapshot(result, platform)
 
     def test_versioned_snapshot_passes_strict_validation(self):
         snapshot = json.loads(

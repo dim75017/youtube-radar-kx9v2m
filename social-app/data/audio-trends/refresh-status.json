@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "attemptedAt": "2026-08-31T21:59:03.447Z",
+  "attemptedAt": "2026-09-01T09:34:35.020Z",
   "status": "success",
   "published": true,
   "inventory": {
@@ -14,25 +14,24 @@
     "publishable": true
   },
   "discoveryAudit": {
-    "scannedAt": "2026-08-31T21:59:03.447Z",
+    "scannedAt": "2026-09-01T09:34:35.020Z",
     "status": "success",
     "complete": true,
-    "candidateCount": 179,
+    "candidateCount": 176,
     "qualifiedInventoryCount": 26,
     "qualifiedClusterCount": 26,
     "currentMatchedCount": 5,
     "candidatePlatformCounts": {
-      "instagram": 166,
+      "instagram": 163,
       "tiktok": 13
     },
     "candidateRegistry": {
-      "updatedAt": "2026-08-31T21:59:03.447Z",
-      "candidateCount": 179,
+      "updatedAt": "2026-09-01T09:34:35.020Z",
+      "candidateCount": 176,
       "candidateAudioUrls": [
         "https://www.instagram.com/reels/audio/1006119841436928",
         "https://www.instagram.com/reels/audio/1040129337188935",
         "https://www.instagram.com/reels/audio/1047770533202108",
-        "https://www.instagram.com/reels/audio/1055079623617495",
         "https://www.instagram.com/reels/audio/1066931830157201",
         "https://www.instagram.com/reels/audio/1074068028223837",
         "https://www.instagram.com/reels/audio/1115494040787732",
@@ -43,13 +42,13 @@
         "https://www.instagram.com/reels/audio/1226647965481387",
         "https://www.instagram.com/reels/audio/1244261080207881",
         "https://www.instagram.com/reels/audio/1279574933274134",
+        "https://www.instagram.com/reels/audio/1298158551753496",
         "https://www.instagram.com/reels/audio/1309090040908747",
         "https://www.instagram.com/reels/audio/1321809524522174",
         "https://www.instagram.com/reels/audio/1332050085528695",
         "https://www.instagram.com/reels/audio/1336013760489689",
         "https://www.instagram.com/reels/audio/1353000056123698",
         "https://www.instagram.com/reels/audio/1356236634516969",
-        "https://www.instagram.com/reels/audio/1366353098874410",
         "https://www.instagram.com/reels/audio/1384409688878850",
         "https://www.instagram.com/reels/audio/1392969992841787",
         "https://www.instagram.com/reels/audio/1404238250634252",
@@ -60,7 +59,6 @@
         "https://www.instagram.com/reels/audio/1460390505443280",
         "https://www.instagram.com/reels/audio/1467234368070031",
         "https://www.instagram.com/reels/audio/1485190032675488",
-        "https://www.instagram.com/reels/audio/1492753392644819",
         "https://www.instagram.com/reels/audio/1494662545202817",
         "https://www.instagram.com/reels/audio/1526221591722544",
         "https://www.instagram.com/reels/audio/1576942649432181",
@@ -78,6 +76,7 @@
         "https://www.instagram.com/reels/audio/1976253089934877",
         "https://www.instagram.com/reels/audio/2009703713207872",
         "https://www.instagram.com/reels/audio/202891871734130",
+        "https://www.instagram.com/reels/audio/2072951260136266",
         "https://www.instagram.com/reels/audio/209276599691212",
         "https://www.instagram.com/reels/audio/2106756196490611",
         "https://www.instagram.com/reels/audio/2195704350892729",
@@ -127,7 +126,6 @@
         "https://www.instagram.com/reels/audio/26923322580669821",
         "https://www.instagram.com/reels/audio/2702836633382221",
         "https://www.instagram.com/reels/audio/27043767605285229",
-        "https://www.instagram.com/reels/audio/27070461759205089",
         "https://www.instagram.com/reels/audio/27173910075612553",
         "https://www.instagram.com/reels/audio/27195721543447334",
         "https://www.instagram.com/reels/audio/27435154212849943",
@@ -142,7 +140,9 @@
         "https://www.instagram.com/reels/audio/27744422291886829",
         "https://www.instagram.com/reels/audio/27846287318366012",
         "https://www.instagram.com/reels/audio/28003889949202868",
+        "https://www.instagram.com/reels/audio/28223372793949144",
         "https://www.instagram.com/reels/audio/28302681646015420",
+        "https://www.instagram.com/reels/audio/323182991668129",
         "https://www.instagram.com/reels/audio/32945215041760659",
         "https://www.instagram.com/reels/audio/3301077486734950",
         "https://www.instagram.com/reels/audio/33765302366393920",
@@ -150,15 +150,12 @@
         "https://www.instagram.com/reels/audio/357391828186054",
         "https://www.instagram.com/reels/audio/35981693481446045",
         "https://www.instagram.com/reels/audio/3762108120781128",
-        "https://www.instagram.com/reels/audio/3927839087485325",
         "https://www.instagram.com/reels/audio/400025130573041",
-        "https://www.instagram.com/reels/audio/407484960012624",
         "https://www.instagram.com/reels/audio/456609875082993",
         "https://www.instagram.com/reels/audio/483068785447716",
         "https://www.instagram.com/reels/audio/500331368617006",
         "https://www.instagram.com/reels/audio/512327612541048",
         "https://www.instagram.com/reels/audio/515371218997711",
-        "https://www.instagram.com/reels/audio/559505360249889",
         "https://www.instagram.com/reels/audio/580559312417594",
         "https://www.instagram.com/reels/audio/591634857982189",
         "https://www.instagram.com/reels/audio/606249493080048",
@@ -170,7 +167,6 @@
         "https://www.instagram.com/reels/audio/681011926995400",
         "https://www.instagram.com/reels/audio/696487887387706",
         "https://www.instagram.com/reels/audio/697437963384996",
-        "https://www.instagram.com/reels/audio/712456295295826",
         "https://www.instagram.com/reels/audio/722903805204295",
         "https://www.instagram.com/reels/audio/742606544766523",
         "https://www.instagram.com/reels/audio/763532366565728",
@@ -194,6 +190,7 @@
         "https://www.instagram.com/reels/audio/943133291523067",
         "https://www.instagram.com/reels/audio/954122087366261",
         "https://www.instagram.com/reels/audio/9573873819403156",
+        "https://www.instagram.com/reels/audio/980370881663525",
         "https://www.instagram.com/reels/audio/993398866388191",
         "https://www.tiktok.com/music/Golden-7534922588541241360",
         "https://www.tiktok.com/music/Hey-Baby-Drop-It-to-the-Floor-feat-T-Pain-6696414028652087298",
@@ -215,60 +212,44 @@
           "referenceUrl": "https://www.instagram.com/reel/DQNBOfYDO2Y"
         },
         {
-          "audioUrl": "https://www.instagram.com/reels/audio/1055079623617495",
-          "referenceUrl": "https://www.instagram.com/reel/Dbl74zoSjm3"
+          "audioUrl": "https://www.instagram.com/reels/audio/1298158551753496",
+          "referenceUrl": "https://www.instagram.com/reel/DcJzjJiSuLP"
         },
         {
-          "audioUrl": "https://www.instagram.com/reels/audio/1366353098874410",
-          "referenceUrl": "https://www.instagram.com/reel/DbWQg0Voaj0"
-        },
-        {
-          "audioUrl": "https://www.instagram.com/reels/audio/1492753392644819",
-          "referenceUrl": "https://www.instagram.com/reel/DbYzJJcvrwU"
+          "audioUrl": "https://www.instagram.com/reels/audio/2072951260136266",
+          "referenceUrl": "https://www.instagram.com/reel/DcW6dNrxAN7"
         },
         {
           "audioUrl": "https://www.instagram.com/reels/audio/24985539141095254",
           "referenceUrl": "https://www.instagram.com/reel/DR47mFxEbmf"
         },
         {
-          "audioUrl": "https://www.instagram.com/reels/audio/27070461759205089",
-          "referenceUrl": "https://www.instagram.com/reel/DbtLDTcKkQm"
+          "audioUrl": "https://www.instagram.com/reels/audio/28223372793949144",
+          "referenceUrl": "https://www.instagram.com/reel/DcaSZjkuOd3"
+        },
+        {
+          "audioUrl": "https://www.instagram.com/reels/audio/323182991668129",
+          "referenceUrl": "https://www.instagram.com/reel/DcJkva7turE"
         },
         {
           "audioUrl": "https://www.instagram.com/reels/audio/32945215041760659",
           "referenceUrl": "https://www.instagram.com/reel/DQ7xEBVEddX"
         },
         {
-          "audioUrl": "https://www.instagram.com/reels/audio/3927839087485325",
-          "referenceUrl": "https://www.instagram.com/reel/Db3OnskP8PN"
-        },
-        {
-          "audioUrl": "https://www.instagram.com/reels/audio/407484960012624",
-          "referenceUrl": "https://www.instagram.com/reel/DbgY9H1oXnY"
-        },
-        {
           "audioUrl": "https://www.instagram.com/reels/audio/512327612541048",
           "referenceUrl": "https://www.instagram.com/reel/DQmw63kDgpG"
-        },
-        {
-          "audioUrl": "https://www.instagram.com/reels/audio/559505360249889",
-          "referenceUrl": "https://www.instagram.com/reel/Db6LPxaODiT"
         },
         {
           "audioUrl": "https://www.instagram.com/reels/audio/580559312417594",
           "referenceUrl": "https://www.instagram.com/reel/DUnmzGeimeE"
         },
         {
-          "audioUrl": "https://www.instagram.com/reels/audio/712456295295826",
-          "referenceUrl": "https://www.instagram.com/reel/Dbnn9oFMXbx"
-        },
-        {
           "audioUrl": "https://www.instagram.com/reels/audio/804774288727471",
           "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
         },
         {
-          "audioUrl": "https://www.instagram.com/reels/audio/954122087366261",
-          "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+          "audioUrl": "https://www.instagram.com/reels/audio/980370881663525",
+          "referenceUrl": "https://www.instagram.com/reel/Db-lM_nTh_s"
         },
         {
           "audioUrl": "https://www.tiktok.com/music/Golden-7534922588541241360",
@@ -326,16 +307,16 @@
     },
     "candidatePoolDelta": {
       "status": "compared",
-      "added": 0,
-      "removed": 0,
-      "retained": 179
+      "added": 5,
+      "removed": 8,
+      "retained": 171
     },
     "qualificationAudit": {
-      "attemptedAt": "2026-08-31T21:59:03.447Z",
+      "attemptedAt": "2026-09-01T09:34:35.020Z",
       "complete": true,
-      "videoFeedCapturedAt": "2026-08-31T16:34:41.9498911Z",
+      "videoFeedCapturedAt": "2026-09-01T09:34:09.019Z",
       "videoFeedFresh": true,
-      "videoDiscoveryAuditScannedAt": "2026-08-31T16:34:41.9498911Z",
+      "videoDiscoveryAuditScannedAt": "2026-09-01T09:34:09.019Z",
       "videoDiscoveryAuditFresh": true,
       "attemptedTrendCount": 33,
       "attemptedCurrentTrendCount": 0,
@@ -405,15 +386,14 @@
           "error": "aucune identite audio commune verifiee sur trois createurs distincts"
         }
       ],
-      "discoveredCandidateCount": 179,
-      "discoveredWithoutMultiCreatorProofCount": 175
+      "discoveredCandidateCount": 176,
+      "discoveredWithoutMultiCreatorProofCount": 172
     },
-    "newCandidateCount": 174,
+    "newCandidateCount": 171,
     "added": [
       "https://www.instagram.com/reels/audio/1006119841436928",
       "https://www.instagram.com/reels/audio/1040129337188935",
       "https://www.instagram.com/reels/audio/1047770533202108",
-      "https://www.instagram.com/reels/audio/1055079623617495",
       "https://www.instagram.com/reels/audio/1066931830157201",
       "https://www.instagram.com/reels/audio/1074068028223837",
       "https://www.instagram.com/reels/audio/1115494040787732",
@@ -424,12 +404,12 @@
       "https://www.instagram.com/reels/audio/1226647965481387",
       "https://www.instagram.com/reels/audio/1244261080207881",
       "https://www.instagram.com/reels/audio/1279574933274134",
+      "https://www.instagram.com/reels/audio/1298158551753496",
       "https://www.instagram.com/reels/audio/1309090040908747",
       "https://www.instagram.com/reels/audio/1321809524522174",
       "https://www.instagram.com/reels/audio/1336013760489689",
       "https://www.instagram.com/reels/audio/1353000056123698",
       "https://www.instagram.com/reels/audio/1356236634516969",
-      "https://www.instagram.com/reels/audio/1366353098874410",
       "https://www.instagram.com/reels/audio/1384409688878850",
       "https://www.instagram.com/reels/audio/1392969992841787",
       "https://www.instagram.com/reels/audio/1404238250634252",
@@ -440,7 +420,6 @@
       "https://www.instagram.com/reels/audio/1460390505443280",
       "https://www.instagram.com/reels/audio/1467234368070031",
       "https://www.instagram.com/reels/audio/1485190032675488",
-      "https://www.instagram.com/reels/audio/1492753392644819",
       "https://www.instagram.com/reels/audio/1494662545202817",
       "https://www.instagram.com/reels/audio/1526221591722544",
       "https://www.instagram.com/reels/audio/1576942649432181",
@@ -458,6 +437,7 @@
       "https://www.instagram.com/reels/audio/1976253089934877",
       "https://www.instagram.com/reels/audio/2009703713207872",
       "https://www.instagram.com/reels/audio/202891871734130",
+      "https://www.instagram.com/reels/audio/2072951260136266",
       "https://www.instagram.com/reels/audio/209276599691212",
       "https://www.instagram.com/reels/audio/2106756196490611",
       "https://www.instagram.com/reels/audio/2195704350892729",
@@ -507,7 +487,6 @@
       "https://www.instagram.com/reels/audio/26923322580669821",
       "https://www.instagram.com/reels/audio/2702836633382221",
       "https://www.instagram.com/reels/audio/27043767605285229",
-      "https://www.instagram.com/reels/audio/27070461759205089",
       "https://www.instagram.com/reels/audio/27173910075612553",
       "https://www.instagram.com/reels/audio/27195721543447334",
       "https://www.instagram.com/reels/audio/27435154212849943",
@@ -522,7 +501,9 @@
       "https://www.instagram.com/reels/audio/27744422291886829",
       "https://www.instagram.com/reels/audio/27846287318366012",
       "https://www.instagram.com/reels/audio/28003889949202868",
+      "https://www.instagram.com/reels/audio/28223372793949144",
       "https://www.instagram.com/reels/audio/28302681646015420",
+      "https://www.instagram.com/reels/audio/323182991668129",
       "https://www.instagram.com/reels/audio/32945215041760659",
       "https://www.instagram.com/reels/audio/3301077486734950",
       "https://www.instagram.com/reels/audio/33765302366393920",
@@ -530,15 +511,12 @@
       "https://www.instagram.com/reels/audio/357391828186054",
       "https://www.instagram.com/reels/audio/35981693481446045",
       "https://www.instagram.com/reels/audio/3762108120781128",
-      "https://www.instagram.com/reels/audio/3927839087485325",
       "https://www.instagram.com/reels/audio/400025130573041",
-      "https://www.instagram.com/reels/audio/407484960012624",
       "https://www.instagram.com/reels/audio/456609875082993",
       "https://www.instagram.com/reels/audio/483068785447716",
       "https://www.instagram.com/reels/audio/500331368617006",
       "https://www.instagram.com/reels/audio/512327612541048",
       "https://www.instagram.com/reels/audio/515371218997711",
-      "https://www.instagram.com/reels/audio/559505360249889",
       "https://www.instagram.com/reels/audio/580559312417594",
       "https://www.instagram.com/reels/audio/591634857982189",
       "https://www.instagram.com/reels/audio/606249493080048",
@@ -550,7 +528,6 @@
       "https://www.instagram.com/reels/audio/681011926995400",
       "https://www.instagram.com/reels/audio/696487887387706",
       "https://www.instagram.com/reels/audio/697437963384996",
-      "https://www.instagram.com/reels/audio/712456295295826",
       "https://www.instagram.com/reels/audio/722903805204295",
       "https://www.instagram.com/reels/audio/742606544766523",
       "https://www.instagram.com/reels/audio/763532366565728",
@@ -574,6 +551,7 @@
       "https://www.instagram.com/reels/audio/943133291523067",
       "https://www.instagram.com/reels/audio/954122087366261",
       "https://www.instagram.com/reels/audio/9573873819403156",
+      "https://www.instagram.com/reels/audio/980370881663525",
       "https://www.instagram.com/reels/audio/993398866388191",
       "https://www.tiktok.com/music/Golden-7534922588541241360",
       "https://www.tiktok.com/music/Hey-Baby-Drop-It-to-the-Floor-feat-T-Pain-6696414028652087298",
@@ -643,7 +621,6 @@
       "https://www.instagram.com/reels/audio/1006119841436928",
       "https://www.instagram.com/reels/audio/1040129337188935",
       "https://www.instagram.com/reels/audio/1047770533202108",
-      "https://www.instagram.com/reels/audio/1055079623617495",
       "https://www.instagram.com/reels/audio/1066931830157201",
       "https://www.instagram.com/reels/audio/1074068028223837",
       "https://www.instagram.com/reels/audio/1115494040787732",
@@ -654,13 +631,13 @@
       "https://www.instagram.com/reels/audio/1226647965481387",
       "https://www.instagram.com/reels/audio/1244261080207881",
       "https://www.instagram.com/reels/audio/1279574933274134",
+      "https://www.instagram.com/reels/audio/1298158551753496",
       "https://www.instagram.com/reels/audio/1309090040908747",
       "https://www.instagram.com/reels/audio/1321809524522174",
       "https://www.instagram.com/reels/audio/1332050085528695",
       "https://www.instagram.com/reels/audio/1336013760489689",
       "https://www.instagram.com/reels/audio/1353000056123698",
       "https://www.instagram.com/reels/audio/1356236634516969",
-      "https://www.instagram.com/reels/audio/1366353098874410",
       "https://www.instagram.com/reels/audio/1384409688878850",
       "https://www.instagram.com/reels/audio/1392969992841787",
       "https://www.instagram.com/reels/audio/1404238250634252",
@@ -671,7 +648,6 @@
       "https://www.instagram.com/reels/audio/1460390505443280",
       "https://www.instagram.com/reels/audio/1467234368070031",
       "https://www.instagram.com/reels/audio/1485190032675488",
-      "https://www.instagram.com/reels/audio/1492753392644819",
       "https://www.instagram.com/reels/audio/1494662545202817",
       "https://www.instagram.com/reels/audio/1526221591722544",
       "https://www.instagram.com/reels/audio/1576942649432181",
@@ -689,6 +665,7 @@
       "https://www.instagram.com/reels/audio/1976253089934877",
       "https://www.instagram.com/reels/audio/2009703713207872",
       "https://www.instagram.com/reels/audio/202891871734130",
+      "https://www.instagram.com/reels/audio/2072951260136266",
       "https://www.instagram.com/reels/audio/209276599691212",
       "https://www.instagram.com/reels/audio/2106756196490611",
       "https://www.instagram.com/reels/audio/2195704350892729",
@@ -738,7 +715,6 @@
       "https://www.instagram.com/reels/audio/26923322580669821",
       "https://www.instagram.com/reels/audio/2702836633382221",
       "https://www.instagram.com/reels/audio/27043767605285229",
-      "https://www.instagram.com/reels/audio/27070461759205089",
       "https://www.instagram.com/reels/audio/27173910075612553",
       "https://www.instagram.com/reels/audio/27195721543447334",
       "https://www.instagram.com/reels/audio/27435154212849943",
@@ -753,7 +729,9 @@
       "https://www.instagram.com/reels/audio/27744422291886829",
       "https://www.instagram.com/reels/audio/27846287318366012",
       "https://www.instagram.com/reels/audio/28003889949202868",
+      "https://www.instagram.com/reels/audio/28223372793949144",
       "https://www.instagram.com/reels/audio/28302681646015420",
+      "https://www.instagram.com/reels/audio/323182991668129",
       "https://www.instagram.com/reels/audio/32945215041760659",
       "https://www.instagram.com/reels/audio/3301077486734950",
       "https://www.instagram.com/reels/audio/33765302366393920",
@@ -761,15 +739,12 @@
       "https://www.instagram.com/reels/audio/357391828186054",
       "https://www.instagram.com/reels/audio/35981693481446045",
       "https://www.instagram.com/reels/audio/3762108120781128",
-      "https://www.instagram.com/reels/audio/3927839087485325",
       "https://www.instagram.com/reels/audio/400025130573041",
-      "https://www.instagram.com/reels/audio/407484960012624",
       "https://www.instagram.com/reels/audio/456609875082993",
       "https://www.instagram.com/reels/audio/483068785447716",
       "https://www.instagram.com/reels/audio/500331368617006",
       "https://www.instagram.com/reels/audio/512327612541048",
       "https://www.instagram.com/reels/audio/515371218997711",
-      "https://www.instagram.com/reels/audio/559505360249889",
       "https://www.instagram.com/reels/audio/580559312417594",
       "https://www.instagram.com/reels/audio/591634857982189",
       "https://www.instagram.com/reels/audio/606249493080048",
@@ -781,7 +756,6 @@
       "https://www.instagram.com/reels/audio/681011926995400",
       "https://www.instagram.com/reels/audio/696487887387706",
       "https://www.instagram.com/reels/audio/697437963384996",
-      "https://www.instagram.com/reels/audio/712456295295826",
       "https://www.instagram.com/reels/audio/722903805204295",
       "https://www.instagram.com/reels/audio/742606544766523",
       "https://www.instagram.com/reels/audio/763532366565728",
@@ -805,6 +779,7 @@
       "https://www.instagram.com/reels/audio/943133291523067",
       "https://www.instagram.com/reels/audio/954122087366261",
       "https://www.instagram.com/reels/audio/9573873819403156",
+      "https://www.instagram.com/reels/audio/980370881663525",
       "https://www.instagram.com/reels/audio/993398866388191",
       "https://www.tiktok.com/music/Golden-7534922588541241360",
       "https://www.tiktok.com/music/Hey-Baby-Drop-It-to-the-Floor-feat-T-Pain-6696414028652087298",
@@ -826,60 +801,44 @@
         "referenceUrl": "https://www.instagram.com/reel/DQNBOfYDO2Y"
       },
       {
-        "audioUrl": "https://www.instagram.com/reels/audio/1055079623617495",
-        "referenceUrl": "https://www.instagram.com/reel/Dbl74zoSjm3"
+        "audioUrl": "https://www.instagram.com/reels/audio/1298158551753496",
+        "referenceUrl": "https://www.instagram.com/reel/DcJzjJiSuLP"
       },
       {
-        "audioUrl": "https://www.instagram.com/reels/audio/1366353098874410",
-        "referenceUrl": "https://www.instagram.com/reel/DbWQg0Voaj0"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/1492753392644819",
-        "referenceUrl": "https://www.instagram.com/reel/DbYzJJcvrwU"
+        "audioUrl": "https://www.instagram.com/reels/audio/2072951260136266",
+        "referenceUrl": "https://www.instagram.com/reel/DcW6dNrxAN7"
       },
       {
         "audioUrl": "https://www.instagram.com/reels/audio/24985539141095254",
         "referenceUrl": "https://www.instagram.com/reel/DR47mFxEbmf"
       },
       {
-        "audioUrl": "https://www.instagram.com/reels/audio/27070461759205089",
-        "referenceUrl": "https://www.instagram.com/reel/DbtLDTcKkQm"
+        "audioUrl": "https://www.instagram.com/reels/audio/28223372793949144",
+        "referenceUrl": "https://www.instagram.com/reel/DcaSZjkuOd3"
+      },
+      {
+        "audioUrl": "https://www.instagram.com/reels/audio/323182991668129",
+        "referenceUrl": "https://www.instagram.com/reel/DcJkva7turE"
       },
       {
         "audioUrl": "https://www.instagram.com/reels/audio/32945215041760659",
         "referenceUrl": "https://www.instagram.com/reel/DQ7xEBVEddX"
       },
       {
-        "audioUrl": "https://www.instagram.com/reels/audio/3927839087485325",
-        "referenceUrl": "https://www.instagram.com/reel/Db3OnskP8PN"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/407484960012624",
-        "referenceUrl": "https://www.instagram.com/reel/DbgY9H1oXnY"
-      },
-      {
         "audioUrl": "https://www.instagram.com/reels/audio/512327612541048",
         "referenceUrl": "https://www.instagram.com/reel/DQmw63kDgpG"
-      },
-      {
-        "audioUrl": "https://www.instagram.com/reels/audio/559505360249889",
-        "referenceUrl": "https://www.instagram.com/reel/Db6LPxaODiT"
       },
       {
         "audioUrl": "https://www.instagram.com/reels/audio/580559312417594",
         "referenceUrl": "https://www.instagram.com/reel/DUnmzGeimeE"
       },
       {
-        "audioUrl": "https://www.instagram.com/reels/audio/712456295295826",
-        "referenceUrl": "https://www.instagram.com/reel/Dbnn9oFMXbx"
-      },
-      {
         "audioUrl": "https://www.instagram.com/reels/audio/804774288727471",
         "referenceUrl": "https://www.instagram.com/reel/DQZwt0EkgNj"
       },
       {
-        "audioUrl": "https://www.instagram.com/reels/audio/954122087366261",
-        "referenceUrl": "https://www.instagram.com/reel/DbvMu_nMdZ_"
+        "audioUrl": "https://www.instagram.com/reels/audio/980370881663525",
+        "referenceUrl": "https://www.instagram.com/reel/Db-lM_nTh_s"
       },
       {
         "audioUrl": "https://www.tiktok.com/music/Golden-7534922588541241360",
@@ -976,8 +935,8 @@
         "label": "SocialPilot · tendances Reels Instagram",
         "url": "https://www.socialpilot.co/blog/instagram-reels-trends",
         "status": "success",
-        "candidateCount": 34,
-        "referenceCandidateCount": 9,
+        "candidateCount": 31,
+        "referenceCandidateCount": 5,
         "unpairedReferenceCount": 0,
         "resolvedReferenceCount": 0,
         "referenceResolutionErrors": [],
@@ -986,7 +945,7 @@
     ],
     "publishedInventoryCount": 50,
     "selectionAudit": {
-      "evaluatedAt": "2026-08-31T21:59:03.447Z",
+      "evaluatedAt": "2026-09-01T09:34:35.020Z",
       "addedTrendIds": [],
       "addedAudioUrls": [],
       "removedTrendIds": [],
@@ -994,7 +953,7 @@
       "visibleAddedCount": 0,
       "visibleRemovedCount": 0,
       "lastVisibleRotationAt": "2026-08-31T16:27:43.797Z",
-      "unchangedRunCount": 1,
+      "unchangedRunCount": 2,
       "retainedTrendIds": [
         "pocketful-of-sunshine",
         "petal-soft-chaos",
@@ -1088,7 +1047,7 @@
     "visibleAddedCount": 0,
     "visibleRemovedCount": 0,
     "lastVisibleRotationAt": "2026-08-31T16:27:43.797Z",
-    "unchangedRunCount": 1
+    "unchangedRunCount": 2
   },
   "coverage": {
     "totalChecked": 47,

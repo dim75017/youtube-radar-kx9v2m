@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: social-history-write
+  group: social-public-history-write
   cancel-in-progress: false
 
 jobs:

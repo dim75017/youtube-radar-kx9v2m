@@ -111,6 +111,7 @@ SIGNED_TIKTOK_PATTERN = re.compile(
     r"(?:x-signature|x-expires|x-bogus|signature=|token=)", re.IGNORECASE
 )
 METRIC_FIELDS = ("views", "likes", "comments", "shares", "saves")
+PROFILE_ONLY_COVERAGE_PLATFORMS = {"instagram", "tiktok"}
 
 
 def parse_args() -> argparse.Namespace:
@@ -156,11 +157,20 @@ def main() -> int:
     posts_by_key: dict[tuple[str, str], dict[str, Any]] = {}
     existing_posts = load_existing_posts(existing_snapshot)
     for post in existing_posts:
-        seeded_post = seed_existing_observation_timestamps(
-            post, existing_snapshot.get("generatedAt")
+        preserved_post = (
+            seed_existing_observation_timestamps(
+                post, existing_snapshot.get("generatedAt")
+            )
+            if post["platform"] in selected_platforms
+            and post_counts_toward_coverage(post)
+            else json.loads(json.dumps(post, ensure_ascii=False))
         )
-        posts_by_key[(post["platform"], post["externalId"])] = seeded_post
-    existing_keys = {key for key in posts_by_key if key[0] in selected_platforms}
+        posts_by_key[(post["platform"], post["externalId"])] = preserved_post
+    existing_keys = {
+        key
+        for key, post in posts_by_key.items()
+        if key[0] in selected_platforms and post_counts_toward_coverage(post)
+    }
     observed_keys: set[tuple[str, str]] = set()
     source_coverages: list[dict[str, Any]] = []
 
@@ -1067,7 +1077,11 @@ def aggregate_coverage(
         item for item in source_coverages if item["platform"] == "tiktok"
     ]
     if tiktok_sources:
-        tiktok_posts = [post for post in posts if post["platform"] == "tiktok"]
+        tiktok_posts = [
+            post
+            for post in posts
+            if post["platform"] == "tiktok" and post_counts_toward_coverage(post)
+        ]
         source = tiktok_sources[0]
         status = (
             "complete-public-profile"
@@ -1116,6 +1130,24 @@ def aggregate_platform_record(
     }
 
 
+def post_counts_toward_coverage(post: dict[str, Any]) -> bool:
+    """Indique si une ligne appartient à l'inventaire couvert par le profil.
+
+    Les commentaires Instagram et TikTok publiés par Lofi Girl sont conservés
+    dans le snapshot pour le module Commentaires, mais leurs cibles ne sont pas
+    des publications des profils Lofi Girl. Ils ne doivent donc pas gonfler la
+    couverture des catalogues Instagram/TikTok.
+
+    Les couvertures YouTube et X incluent explicitement les commentaires ou
+    réponses dans leur périmètre certifié actuel ; elles conservent donc leur
+    sémantique existante.
+    """
+    return not (
+        post.get("platform") in PROFILE_ONLY_COVERAGE_PLATFORMS
+        and post.get("format") == "comment"
+    )
+
+
 def sort_posts(posts: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
     values = list(posts)
     dated = sorted(
@@ -1159,7 +1191,7 @@ def validate_snapshot(snapshot: dict[str, Any], platform_filter: str) -> None:
         raise RuntimeError("la couverture ne contient pas toutes les plateformes requises")
 
     keys: set[tuple[str, str]] = set()
-    post_counts: dict[str, int] = {}
+    coverage_post_counts: dict[str, int] = {}
     for post in snapshot["posts"]:
         if not isinstance(post, dict):
             raise RuntimeError("un post du snapshot n'est pas un objet")
@@ -1179,7 +1211,10 @@ def validate_snapshot(snapshot: dict[str, Any], platform_filter: str) -> None:
         if key in keys:
             raise RuntimeError(f"doublon après normalisation : {key}")
         keys.add(key)
-        post_counts[post["platform"]] = post_counts.get(post["platform"], 0) + 1
+        if post_counts_toward_coverage(post):
+            coverage_post_counts[post["platform"]] = (
+                coverage_post_counts.get(post["platform"], 0) + 1
+            )
         for metric in ("views", "likes", "comments", "shares", "saves"):
             value = post.get(metric)
             if value is not None and nonnegative_number(value) is None:
@@ -1211,7 +1246,11 @@ def validate_snapshot(snapshot: dict[str, Any], platform_filter: str) -> None:
             poll_choices = post["raw"].get("pollChoices")
             if not isinstance(poll_choices, list) or len(poll_choices) < 2:
                 raise RuntimeError(f"choix de sondage invalides pour {key}")
-        if post["platform"] == "tiktok" and post["thumbnailUrl"] is not None:
+        if (
+            post["platform"] == "tiktok"
+            and post["format"] != "comment"
+            and post["thumbnailUrl"] is not None
+        ):
             raise RuntimeError("une miniature TikTok signée a été conservée")
         if post["platform"] == "youtube" and post["format"] not in {
             "short",
@@ -1231,21 +1270,26 @@ def validate_snapshot(snapshot: dict[str, Any], platform_filter: str) -> None:
             raise RuntimeError(
                 f"URL vidéo longue YouTube hors périmètre : {post['url']}"
             )
-        if post["platform"] not in {"youtube", "tiktok"}:
+        if post["platform"] not in official_account_urls:
             raise RuntimeError(f"plateforme inattendue : {post['platform']}")
 
     for item in snapshot["coverage"]:
-        expected_count = post_counts.get(item["platform"], 0)
+        expected_count = coverage_post_counts.get(item["platform"], 0)
         if item["itemCount"] != expected_count:
             raise RuntimeError(
                 f"couverture incohérente pour {item['platform']} : "
                 f"{item['itemCount']} annoncé(s), {expected_count} post(s) présent(s)"
             )
 
-    serialized = json.dumps(snapshot, ensure_ascii=False)
-    if SIGNED_TIKTOK_PATTERN.search(serialized):
-        raise RuntimeError("le snapshot contient une URL ou un paramètre TikTok signé")
     for post in snapshot["posts"]:
+        if (
+            post["platform"] == "tiktok"
+            and post["format"] != "comment"
+            and SIGNED_TIKTOK_PATTERN.search(json.dumps(post, ensure_ascii=False))
+        ):
+            raise RuntimeError(
+                "un contenu de profil TikTok contient une URL ou un paramètre signé"
+            )
         if any(SENSITIVE_KEY_PATTERN.search(str(key)) for key in post["raw"]):
             raise RuntimeError("le snapshot contient une clé potentiellement sensible")
 
