@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "attemptedAt": "2026-09-01T10:15:47.528Z",
+  "attemptedAt": "2026-09-01T19:23:44.459Z",
   "status": "success",
   "published": true,
   "inventory": {
@@ -14,19 +14,19 @@
     "publishable": true
   },
   "discoveryAudit": {
-    "scannedAt": "2026-09-01T10:15:47.528Z",
+    "scannedAt": "2026-09-01T19:23:44.459Z",
     "status": "success",
     "complete": true,
     "candidateCount": 176,
-    "qualifiedInventoryCount": 26,
-    "qualifiedClusterCount": 26,
+    "qualifiedInventoryCount": 27,
+    "qualifiedClusterCount": 27,
     "currentMatchedCount": 5,
     "candidatePlatformCounts": {
       "instagram": 163,
       "tiktok": 13
     },
     "candidateRegistry": {
-      "updatedAt": "2026-09-01T10:15:47.528Z",
+      "updatedAt": "2026-09-01T19:23:44.459Z",
       "candidateCount": 176,
       "candidateAudioUrls": [
         "https://www.instagram.com/reels/audio/1006119841436928",
@@ -312,20 +312,20 @@
       "retained": 176
     },
     "qualificationAudit": {
-      "attemptedAt": "2026-09-01T10:15:47.528Z",
+      "attemptedAt": "2026-09-01T19:23:44.459Z",
       "complete": true,
-      "videoFeedCapturedAt": "2026-09-01T09:34:09.019Z",
+      "videoFeedCapturedAt": "2026-09-01T19:23:17.041Z",
       "videoFeedFresh": true,
-      "videoDiscoveryAuditScannedAt": "2026-09-01T09:34:09.019Z",
+      "videoDiscoveryAuditScannedAt": "2026-09-01T19:23:17.041Z",
       "videoDiscoveryAuditFresh": true,
-      "attemptedTrendCount": 33,
+      "attemptedTrendCount": 35,
       "attemptedCurrentTrendCount": 0,
-      "attemptedFreshVideoTrendCount": 31,
-      "attemptedFreshAuditClusterCount": 2,
-      "freshQualifiedCount": 26,
-      "qualifiedClusterCount": 26,
+      "attemptedFreshVideoTrendCount": 32,
+      "attemptedFreshAuditClusterCount": 3,
+      "freshQualifiedCount": 27,
+      "qualifiedClusterCount": 27,
       "freshCurrentQualifiedCount": 24,
-      "freshNewQualifiedCount": 2,
+      "freshNewQualifiedCount": 3,
       "qualifiedAudioUrls": [
         "https://www.tiktok.com/music/fulfill-the-prophecy-7406872980187401003",
         "https://www.tiktok.com/music/original-sound-7627517043541068566",
@@ -352,7 +352,8 @@
         "https://www.tiktok.com/music/original-sound-6942717379948792582",
         "https://www.tiktok.com/music/Wrap-it-up-7208649829264837422",
         "https://www.tiktok.com/music/CHANEL-7561952744116357137",
-        "https://www.tiktok.com/music/House-featuring-John-Cale-7571057519797487632"
+        "https://www.tiktok.com/music/House-featuring-John-Cale-7571057519797487632",
+        "https://www.tiktok.com/music/Mind-Blank-7325072810639378434"
       ],
       "rejected": [
         {
@@ -387,7 +388,7 @@
         }
       ],
       "discoveredCandidateCount": 176,
-      "discoveredWithoutMultiCreatorProofCount": 172
+      "discoveredWithoutMultiCreatorProofCount": 171
     },
     "newCandidateCount": 171,
     "added": [
@@ -945,15 +946,23 @@
     ],
     "publishedInventoryCount": 50,
     "selectionAudit": {
-      "evaluatedAt": "2026-09-01T10:15:47.528Z",
-      "addedTrendIds": [],
-      "addedAudioUrls": [],
-      "removedTrendIds": [],
-      "removedAudioUrls": [],
-      "visibleAddedCount": 0,
-      "visibleRemovedCount": 0,
-      "lastVisibleRotationAt": "2026-08-31T16:27:43.797Z",
-      "unchangedRunCount": 3,
+      "evaluatedAt": "2026-09-01T19:23:44.459Z",
+      "addedTrendIds": [
+        "audio-tiktok-music-7325072810639378434"
+      ],
+      "addedAudioUrls": [
+        "https://www.tiktok.com/music/Mind-Blank-7325072810639378434"
+      ],
+      "removedTrendIds": [
+        "youtube-phones-eras-study-desk"
+      ],
+      "removedAudioUrls": [
+        "https://www.youtube.com/source/yaDcdlYhW-A/shorts"
+      ],
+      "visibleAddedCount": 1,
+      "visibleRemovedCount": 1,
+      "lastVisibleRotationAt": "2026-09-01T19:23:44.459Z",
+      "unchangedRunCount": 0,
       "retainedTrendIds": [
         "pocketful-of-sunshine",
         "petal-soft-chaos",
@@ -962,7 +971,6 @@
         "ghosting-you-montage",
         "te-extrano-motivation",
         "obsession-nice-date",
-        "youtube-phones-eras-study-desk",
         "young-and-beautiful",
         "less-than-a-lover",
         "youtube-cat-outplayed-focus",
@@ -1042,12 +1050,12 @@
           "reason": "score inferieur au dernier audio conserve"
         }
       ],
-      "noRotationReason": "Les nouveaux audios qualifiés n'ont pas dépassé la dernière carte conservée selon la récence, le Lofi Fit, la dynamique et les likes de référence."
+      "noRotationReason": null
     },
-    "visibleAddedCount": 0,
-    "visibleRemovedCount": 0,
-    "lastVisibleRotationAt": "2026-08-31T16:27:43.797Z",
-    "unchangedRunCount": 3
+    "visibleAddedCount": 1,
+    "visibleRemovedCount": 1,
+    "lastVisibleRotationAt": "2026-09-01T19:23:44.459Z",
+    "unchangedRunCount": 0
   },
   "coverage": {
     "totalChecked": 47,
@@ -1169,7 +1177,9 @@
   ],
   "assetCache": {
     "status": "success",
-    "cachedCount": 0,
-    "paths": []
+    "cachedCount": 1,
+    "paths": [
+      "media/audio-trends/audio-tiktok-music-7325072810639378434.jpg"
+    ]
   }
 }

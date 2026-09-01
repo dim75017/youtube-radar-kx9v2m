@@ -1,35 +1,37 @@
 {
   "lane": "fast",
-  "ranAt": "2026-09-01T15:33:21.921Z",
-  "status": "failed",
-  "failureReason": "18 cartes sans commentaires éditoriaux spécifiques : dernier snapshot conservé.",
+  "ranAt": "2026-09-01T19:27:16.255Z",
+  "status": "success",
+  "failureReason": null,
   "watchedAccounts": 97,
   "reachedChannels": 97,
   "failedChannels": [],
-  "discovered": 52,
-  "remeasured": 522,
-  "promoted": 63,
-  "trackedCandidates": 595,
+  "discovered": 1,
+  "remeasured": 0,
+  "promoted": 55,
+  "trackedCandidates": 618,
   "attemptedCards": 30,
-  "pendingEditorialCount": 18,
+  "pendingEditorialCount": 0,
   "published": 30,
-  "retainedFeedCapturedAt": "2026-08-30T06:48:37.487Z",
+  "retainedFeedCapturedAt": null,
   "tierCounts": {
-    "a": 17,
-    "b": 13
+    "a": 14,
+    "b": 15,
+    "s": 1
   },
   "categoryCounts": {
+    "music": 2,
+    "gaming": 6,
     "cinema": 6,
-    "gaming": 7,
-    "music": 3,
-    "internet": 4,
+    "tech": 1,
+    "internet": 5,
     "other": 10
   },
   "voice": {
-    "generated": 0,
+    "generated": 17,
     "refused": 0,
-    "pending": 12,
-    "candidates": 12,
-    "engine": "absent"
+    "pending": 0,
+    "candidates": 17,
+    "engine": "codex-editorial-review"
   }
 }

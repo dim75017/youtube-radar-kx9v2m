@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-09-01T18:39:24.475Z",
+  "generatedAt": "2026-09-01T19:20:19.742Z",
   "platforms": {
     "youtube": {
       "status": "partial",
@@ -37,8 +37,8 @@
     },
     "instagram": {
       "status": "partial",
-      "attemptedAt": "2026-08-31T09:46:57.278Z",
-      "source": "authorized-instagram-activity-all-time-and-hidden-thread-audit",
+      "attemptedAt": "2026-09-01T19:20:19.742Z",
+      "source": "isolated-headless-profile-inventory-and-known-target-enrichment",
       "observedComments": 778,
       "publishedComments": 779,
       "verifiedTargets": 85,
@@ -131,7 +131,7 @@
         "replies": 0,
         "total": 779
       },
-      "error": "778 commentaires actuellement visibles ont été importés et raccordés sans doublon, soit 779 commentaires publiés. Les dates relatives natives restaurent 760 dates approximatives et 18 dates exactes sont conservées. La source Votre activité n’expose aucun compteur de likes ni de réponses. L’inventaire reste partiel : trou de chronologie entre 11 et 31 semaines et 45 fils masqués derrière « View entire thread ».",
+      "error": "Passage du 01/09 : le bootstrap headless All time s’est arrêté sur un profil non authentifié ; l’enrichissement borné a tenté 47 cibles connues sans obtenir de métrique attribuable. Le dernier bon inventaire reste inchangé : 778 commentaires visibles importés, 779 publiés, trou de chronologie entre 11 et 31 semaines et 45 fils masqués derrière « View entire thread ».",
       "lastRealObservationAt": "2026-08-31T08:53:49.414Z"
     },
     "tiktok": {
