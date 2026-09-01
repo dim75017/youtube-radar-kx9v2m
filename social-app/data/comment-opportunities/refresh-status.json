@@ -1,37 +1,35 @@
 {
-  "lane": "deep",
-  "ranAt": "2026-09-01T09:35:13.210Z",
+  "lane": "fast",
+  "ranAt": "2026-09-01T15:33:21.921Z",
   "status": "failed",
-  "failureReason": "17 cartes sans commentaires éditoriaux spécifiques : dernier snapshot conservé.",
+  "failureReason": "18 cartes sans commentaires éditoriaux spécifiques : dernier snapshot conservé.",
   "watchedAccounts": 97,
   "reachedChannels": 97,
   "failedChannels": [],
-  "discovered": 348,
-  "remeasured": 0,
-  "promoted": 49,
-  "trackedCandidates": 556,
+  "discovered": 52,
+  "remeasured": 522,
+  "promoted": 63,
+  "trackedCandidates": 595,
   "attemptedCards": 30,
-  "pendingEditorialCount": 17,
+  "pendingEditorialCount": 18,
   "published": 30,
   "retainedFeedCapturedAt": "2026-08-30T06:48:37.487Z",
   "tierCounts": {
-    "a": 9,
-    "b": 20,
-    "s": 1
+    "a": 17,
+    "b": 13
   },
   "categoryCounts": {
-    "gaming": 4,
-    "cinema": 5,
-    "music": 4,
-    "internet": 5,
-    "tech": 2,
+    "cinema": 6,
+    "gaming": 7,
+    "music": 3,
+    "internet": 4,
     "other": 10
   },
   "voice": {
     "generated": 0,
     "refused": 0,
-    "pending": 5,
-    "candidates": 5,
+    "pending": 12,
+    "candidates": 12,
     "engine": "absent"
   }
 }
