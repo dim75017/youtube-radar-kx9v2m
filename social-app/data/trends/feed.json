@@ -1,6 +1,6 @@
 {
   "version": 6,
-  "capturedAt": "2026-08-31T16:34:41.9498911Z",
+  "capturedAt": "2026-09-01T09:26:04.443Z",
   "market": "France · signaux francophones et internationaux adaptables",
   "methodology": "Feed éditorial Lofi Girl-first actualisé chaque jour à partir de signaux TikTok, Instagram, YouTube Shorts et X. Une carte n’est publiée comme trend qu’après vérification de la même mécanique chez au moins trois créateurs distincts, avec trois posts natifs indépendants. Chaque vidéo de référence possède au moins 50 000 likes publics et une durée vérifiée strictement inférieure à 30 secondes. Les métriques absentes restent nulles, les posts viraux isolés restent hors du feed et Lofi Boy demeure un complément minoritaire.",
   "trends": [
@@ -7436,6 +7436,20 @@
           "views": null,
           "uses": null,
           "exactness": "editorial-observation"
+        },
+        {
+          "id": "socialpilot-same-age-parents-20260901",
+          "platform": "tiktok",
+          "sourceLabel": "SocialPilot · tendances TikTok",
+          "sourceUrl": "https://www.socialpilot.co/blog/tiktok-trends",
+          "observedAt": "2026-09-01T09:26:04.443Z",
+          "windowLabel": "Scan éditorial quotidien",
+          "signal": "SocialPilot documente le format où l’on compare sa vie à celle de ses parents au même âge ; les reprises natives vérifiées montrent la même mécanique chez trois créateurs distincts.",
+          "rank": null,
+          "posts": null,
+          "views": null,
+          "uses": null,
+          "exactness": "editorial-observation"
         }
       ],
       "referencePost": {
@@ -7445,22 +7459,22 @@
         "url": "https://www.tiktok.com/@hope_schwing/video/7667660831471045918",
         "mediaType": "video",
         "durationSeconds": 6,
-        "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/owJEVIA8AAAyE8mjRFfWQqDB2zaPfEEXPqOZBp~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=50PtrWOfZKBoTNLC7eT5xHLuRo0%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+        "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast8-p-0068-tx2/owJEVIA8AAAyE8mjRFfWQqDB2zaPfEEXPqOZBp~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=WPrVXZiN5t7Gi%2FcjstuNVrDSY7g%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
         "publishedAt": "2026-07-28T19:20:28.000Z",
-        "capturedAt": "2026-08-31T16:33:19.4301553Z",
-        "selectionLabel": "Exemple court vérifié · 183 000 likes",
+        "capturedAt": "2026-09-01T09:26:04.443Z",
+        "selectionLabel": "Exemple court vérifié · 183 400 likes",
         "sourceLabel": "TikTok · données publiques natives",
         "sourceUrl": "https://www.tiktok.com/@hope_schwing/video/7667660831471045918",
         "exactness": "exact",
         "metrics": {
           "views": 1000000,
-          "likes": 183000,
-          "comments": 356,
-          "shares": 3382
+          "likes": 183400,
+          "comments": 355,
+          "shares": 3387
         }
       },
       "reuseEvidence": {
-        "verifiedAt": "2026-08-31T16:33:19.4301553Z",
+        "verifiedAt": "2026-09-01T09:26:04.443Z",
         "minimumDistinctCreators": 3,
         "summary": "La comparaison entre sa vie actuelle et celle de ses parents au même âge a été contrôlée dans trois créations natives de trois auteurs distincts ; les vidéos d’explication, reposts et homonymes ont été exclus.",
         "posts": [
@@ -7468,23 +7482,23 @@
             "platform": "tiktok",
             "author": "@hope_schwing",
             "url": "https://www.tiktok.com/@hope_schwing/video/7667660831471045918",
-            "capturedAt": "2026-08-31T16:33:19.4301553Z"
+            "capturedAt": "2026-09-01T09:26:04.443Z"
           },
           {
             "platform": "youtube",
             "author": "BuzzQuil",
             "url": "https://www.youtube.com/shorts/hNLAS7NkKTM",
-            "capturedAt": "2026-08-31T16:33:19.4301553Z"
+            "capturedAt": "2026-09-01T09:26:04.443Z"
           },
           {
             "platform": "youtube",
             "author": "Keep up with Sayana",
             "url": "https://www.youtube.com/shorts/2IokvErjQjA",
-            "capturedAt": "2026-08-31T16:33:19.4301553Z"
+            "capturedAt": "2026-09-01T09:26:04.443Z"
           }
         ]
       },
-      "lastVerifiedAt": "2026-08-31T16:33:19.4301553Z"
+      "lastVerifiedAt": "2026-09-01T09:26:04.443Z"
     },
     {
       "id": "tiktok-music-7561952744116357137",
@@ -7553,6 +7567,20 @@
           "views": null,
           "uses": null,
           "exactness": "exact"
+        },
+        {
+          "id": "tiktok-music-7561952744116357137-20260901",
+          "platform": "tiktok",
+          "sourceLabel": "TikTok · métadonnées publiques natives",
+          "sourceUrl": "https://www.tiktok.com/@noahaltink/video/7583739779443985697",
+          "observedAt": "2026-09-01T09:26:04.443Z",
+          "windowLabel": "Candidats du scan éditorial quotidien",
+          "signal": "Le même identifiant audio natif TikTok (7561952744116357137) a été vérifié chez 3 créateurs distincts.",
+          "rank": null,
+          "posts": 3,
+          "views": null,
+          "uses": null,
+          "exactness": "exact"
         }
       ],
       "referencePost": {
@@ -7562,9 +7590,9 @@
         "url": "https://www.tiktok.com/@noahaltink/video/7583739779443985697",
         "mediaType": "video",
         "durationSeconds": 15,
-        "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast2a-p-0037-euttp/oYql1AfSmPQHs2RpEwQHQiFEz4SnDpezDGDtBb~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=jbfTV0m%2By9R4dUcnWSzqQLDBYZA%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+        "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-useast2a-p-0037-euttp/oYql1AfSmPQHs2RpEwQHQiFEz4SnDpezDGDtBb~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=t2XC6ndw6BiPLxL6o48xb7iBLyk%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
         "publishedAt": "2025-12-14T15:43:56.000Z",
-        "capturedAt": "2026-08-31T16:34:41.9498911Z",
+        "capturedAt": "2026-09-01T09:26:04.443Z",
         "selectionLabel": "Exemple court vérifié · 652 100 likes",
         "sourceLabel": "TikTok · données publiques natives",
         "sourceUrl": "https://www.tiktok.com/@noahaltink/video/7583739779443985697",
@@ -7572,12 +7600,12 @@
         "metrics": {
           "views": 50500000,
           "likes": 652100,
-          "comments": 2710,
+          "comments": 2688,
           "shares": 10300
         }
       },
       "reuseEvidence": {
-        "verifiedAt": "2026-08-31T16:34:41.9498911Z",
+        "verifiedAt": "2026-09-01T09:26:04.443Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même identifiant audio TikTok 7561952744116357137 a été contrôlé directement dans 3 créations de 3 auteurs distincts.",
         "posts": [
@@ -7585,23 +7613,23 @@
             "platform": "tiktok",
             "author": "@noahaltink",
             "url": "https://www.tiktok.com/@noahaltink/video/7583739779443985697",
-            "capturedAt": "2026-08-31T16:34:41.9498911Z"
+            "capturedAt": "2026-09-01T09:26:04.443Z"
           },
           {
             "platform": "tiktok",
             "author": "@eunoiamedspacolorado",
             "url": "https://www.tiktok.com/@eunoiamedspacolorado/video/7575240484579331358",
-            "capturedAt": "2026-08-31T16:34:41.9498911Z"
+            "capturedAt": "2026-09-01T09:26:04.443Z"
           },
           {
             "platform": "tiktok",
             "author": "@gigicheoh",
             "url": "https://www.tiktok.com/@gigicheoh/video/7580595647141743888",
-            "capturedAt": "2026-08-31T16:34:41.9498911Z"
+            "capturedAt": "2026-09-01T09:26:04.443Z"
           }
         ]
       },
-      "lastVerifiedAt": "2026-08-31T16:34:41.9498911Z"
+      "lastVerifiedAt": "2026-09-01T09:26:04.443Z"
     },
     {
       "id": "tiktok-music-7571057519797487632",
@@ -7670,6 +7698,20 @@
           "views": null,
           "uses": null,
           "exactness": "exact"
+        },
+        {
+          "id": "tiktok-music-7571057519797487632-20260901",
+          "platform": "tiktok",
+          "sourceLabel": "TikTok · métadonnées publiques natives",
+          "sourceUrl": "https://www.tiktok.com/@natlouisejack/video/7620301726104423710",
+          "observedAt": "2026-09-01T09:26:04.443Z",
+          "windowLabel": "Candidats du scan éditorial quotidien",
+          "signal": "Le même identifiant audio natif TikTok (7571057519797487632) a été vérifié chez 5 créateurs distincts.",
+          "rank": null,
+          "posts": 5,
+          "views": null,
+          "uses": null,
+          "exactness": "exact"
         }
       ],
       "referencePost": {
@@ -7679,9 +7721,9 @@
         "url": "https://www.tiktok.com/@natlouisejack/video/7620301726104423710",
         "mediaType": "video",
         "durationSeconds": 24,
-        "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/o8AvFieEACiIEB8sIKwiaztWjpiC404qADAAIJ~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=Wi9ElXRBFJcmyjJdXMvbfpc35eA%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+        "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast8-p-0068-tx2/o8AvFieEACiIEB8sIKwiaztWjpiC404qADAAIJ~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=f3MFZZZl6D9VhAnkJcvUIdHO49E%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
         "publishedAt": "2026-03-23T04:22:52.000Z",
-        "capturedAt": "2026-08-31T16:34:41.9498911Z",
+        "capturedAt": "2026-09-01T09:26:04.443Z",
         "selectionLabel": "Exemple court vérifié · 7 200 000 likes",
         "sourceLabel": "TikTok · données publiques natives",
         "sourceUrl": "https://www.tiktok.com/@natlouisejack/video/7620301726104423710",
@@ -7694,7 +7736,7 @@
         }
       },
       "reuseEvidence": {
-        "verifiedAt": "2026-08-31T16:34:41.9498911Z",
+        "verifiedAt": "2026-09-01T09:26:04.443Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même identifiant audio TikTok 7571057519797487632 a été contrôlé directement dans 5 créations de 5 auteurs distincts.",
         "posts": [
@@ -7702,56 +7744,57 @@
             "platform": "tiktok",
             "author": "@natlouisejack",
             "url": "https://www.tiktok.com/@natlouisejack/video/7620301726104423710",
-            "capturedAt": "2026-08-31T16:34:41.9498911Z"
+            "capturedAt": "2026-09-01T09:26:04.443Z"
           },
           {
             "platform": "tiktok",
             "author": "@ohheymeli",
             "url": "https://www.tiktok.com/@ohheymeli/video/7598372685755796749",
-            "capturedAt": "2026-08-31T16:34:41.9498911Z"
+            "capturedAt": "2026-09-01T09:26:04.443Z"
           },
           {
             "platform": "tiktok",
             "author": "@serenamorena67",
             "url": "https://www.tiktok.com/@serenamorena67/video/7613073072819555606",
-            "capturedAt": "2026-08-31T16:34:41.9498911Z"
+            "capturedAt": "2026-09-01T09:26:04.443Z"
           },
           {
             "platform": "tiktok",
             "author": "@karissasterrace",
             "url": "https://www.tiktok.com/@karissasterrace/video/7613693802766781714",
-            "capturedAt": "2026-08-31T16:34:41.9498911Z"
+            "capturedAt": "2026-09-01T09:26:04.443Z"
           },
           {
             "platform": "tiktok",
             "author": "@letroyfrancisco",
             "url": "https://www.tiktok.com/@letroyfrancisco/video/7627605471490297102",
-            "capturedAt": "2026-08-31T16:34:41.9498911Z"
+            "capturedAt": "2026-09-01T09:26:04.443Z"
           }
         ]
       },
-      "lastVerifiedAt": "2026-08-31T16:34:41.9498911Z"
+      "lastVerifiedAt": "2026-09-01T09:26:04.443Z"
     }
   ],
   "refresh": {
     "cadenceHours": 24,
-    "lastAttemptAt": "2026-08-31T16:34:41.9498911Z",
-    "lastSuccessfulAt": "2026-08-31T16:34:41.9498911Z",
-    "nextScheduledAt": "2026-09-01T16:34:41.949Z",
+    "lastAttemptAt": "2026-09-01T09:26:04.443Z",
+    "lastSuccessfulAt": "2026-09-01T09:26:04.443Z",
+    "nextScheduledAt": "2026-09-02T09:26:04.443Z",
     "status": "success",
-    "runId": "local-2026-08-31",
-    "runUrl": null,
+    "runId": "33492050590",
+    "runUrl": "https://github.com/dim75017/youtube-radar-kx9v2m/actions/runs/33492050590",
     "discoveryAudit": {
-      "scannedAt": "2026-08-31T16:34:41.9498911Z",
+      "scannedAt": "2026-09-01T09:26:04.443Z",
       "complete": true,
-      "candidateCount": 101,
+      "candidateCount": 104,
       "qualifiedInventoryCount": 53,
       "currentMatchedCount": 34,
-      "added": 0,
-      "removed": 2,
-      "retained": 101,
+      "added": 17,
+      "removed": 14,
+      "retained": 87,
       "candidateUrls": [
-        "https://www.instagram.com/p/DaODLgWsE_d/",
+        "https://www.instagram.com/p/DX4KT6vtXsk/",
+        "https://www.instagram.com/p/DcNCVM4s6SO/",
         "https://www.instagram.com/reel/DBJU9AxvAd0/",
         "https://www.instagram.com/reel/DQ7xEBVEddX/",
         "https://www.instagram.com/reel/DQNBOfYDO2Y/",
@@ -7759,16 +7802,14 @@
         "https://www.instagram.com/reel/DQmw63kDgpG/",
         "https://www.instagram.com/reel/DR47mFxEbmf/",
         "https://www.instagram.com/reel/DUnmzGeimeE/",
-        "https://www.instagram.com/reel/Db3OnskP8PN/",
-        "https://www.instagram.com/reel/Db6LPxaODiT/",
-        "https://www.instagram.com/reel/DbWQg0Voaj0/",
-        "https://www.instagram.com/reel/DbYzJJcvrwU/",
-        "https://www.instagram.com/reel/DbgY9H1oXnY/",
-        "https://www.instagram.com/reel/Dbl74zoSjm3/",
-        "https://www.instagram.com/reel/DblHUCmMEFk/",
-        "https://www.instagram.com/reel/Dbnn9oFMXbx/",
-        "https://www.instagram.com/reel/DbtLDTcKkQm/",
-        "https://www.instagram.com/reel/DbvMu_nMdZ_/",
+        "https://www.instagram.com/reel/Db-lM_nTh_s/",
+        "https://www.instagram.com/reel/Db8Y2OWs8QZ/",
+        "https://www.instagram.com/reel/DbwY3-5RrEd/",
+        "https://www.instagram.com/reel/DcJkva7turE/",
+        "https://www.instagram.com/reel/DcJzjJiSuLP/",
+        "https://www.instagram.com/reel/DcW6dNrxAN7/",
+        "https://www.instagram.com/reel/DcZZWjqt_g_/",
+        "https://www.instagram.com/reel/DcaSZjkuOd3/",
         "https://www.tiktok.com/@adanthing/video/7670249507174550806",
         "https://www.tiktok.com/@aksl.ae/video/7561122905149459767",
         "https://www.tiktok.com/@ale_linnn1/video/7392767651153546501",
@@ -7777,6 +7818,7 @@
         "https://www.tiktok.com/@aleksramz/video/7312665621383122182",
         "https://www.tiktok.com/@aliona.ess/video/7666132251050069266",
         "https://www.tiktok.com/@amberyackzan/video/7588222036334349598",
+        "https://www.tiktok.com/@amenda.b/video/7548612252895677726",
         "https://www.tiktok.com/@arriiiixo/video/7661393366298414367",
         "https://www.tiktok.com/@benjohn066/video/7673488305203236127",
         "https://www.tiktok.com/@bethclemancex/video/7665928332541791510",
@@ -7837,18 +7879,21 @@
         "https://www.tiktok.com/@shellecepratt/video/7661060839268568334",
         "https://www.tiktok.com/@slut4everythingbagels/video/7672557086710041870",
         "https://www.tiktok.com/@stillwatersfishing/video/7640578773078904077",
+        "https://www.tiktok.com/@sunnypumpkin/video/7189517558226144558",
         "https://www.tiktok.com/@toe2foru/video/7333518017722158337",
         "https://www.tiktok.com/@unc_reviews/video/7548232538871926030",
         "https://www.tiktok.com/@valery_go/video/7212140098157088006",
+        "https://www.youtube.com/shorts/2IokvErjQjA",
+        "https://www.youtube.com/shorts/hNLAS7NkKTM",
         "https://www.youtube.com/watch?v=5JNOHJcLqiY",
         "https://www.youtube.com/watch?v=8O1VntvzYdc",
-        "https://www.youtube.com/watch?v=BlXAbA5q3lc",
         "https://www.youtube.com/watch?v=D7S3MX9VEJs",
         "https://www.youtube.com/watch?v=Dy06SXknr_g",
         "https://www.youtube.com/watch?v=IcjmvXnTwLw",
-        "https://www.youtube.com/watch?v=IiXcaOCLths",
-        "https://www.youtube.com/watch?v=QFCqfyGK4Fk",
+        "https://www.youtube.com/watch?v=JqFzhcWo3EU",
         "https://www.youtube.com/watch?v=Y6qnL8YMqQU",
+        "https://www.youtube.com/watch?v=ZbPBODCr6Fg",
+        "https://www.youtube.com/watch?v=afSgBNwmZrQ",
         "https://www.youtube.com/watch?v=s466YCiHfKw",
         "https://www.youtube.com/watch?v=uzEoipV3Vrc",
         "https://www.youtube.com/watch?v=zkG9zPxuw5E"
@@ -7889,7 +7934,7 @@
         "viral-moment-backstory",
         "wrap-it-up-procrastination"
       ],
-      "retainedQualifiedCount": 51,
+      "retainedQualifiedCount": 50,
       "retainedQualifiedTrendIds": [
         "baby-just-wanna-dance",
         "backrooms-stay-in-character-lofi-boy",
@@ -7922,7 +7967,6 @@
         "phones-eras-study-desk",
         "pocketful-sunshine-mood-flip",
         "rush-hour-understand-me",
-        "same-age-as-parents",
         "saxophones-getting-louder",
         "shakira-at-the-computer",
         "shoe-toss-outfit-transition",
@@ -7943,8 +7987,9 @@
         "youll-never-see-it-coming",
         "young-and-beautiful-summer-nostalgia"
       ],
-      "refreshedQualifiedCount": 2,
+      "refreshedQualifiedCount": 3,
       "refreshedQualifiedTrendIds": [
+        "same-age-as-parents",
         "tiktok-music-7561952744116357137",
         "tiktok-music-7571057519797487632"
       ],
@@ -7957,8 +8002,8 @@
       "visibleRemovedCount": 0,
       "visibleRemovedTrendIds": [],
       "lastVisibleRotationAt": "2026-08-31T16:26:30.7377955Z",
-      "unchangedRunCount": 2,
-      "noRotationReason": "2 cluster(s) existant(s) ont été requalifiés nativement ; aucun nouveau cluster vérifié n’a dépassé le cutoff top 50 (84.88533046006944).",
+      "unchangedRunCount": 3,
+      "noRotationReason": "3 cluster(s) existant(s) ont été requalifiés nativement ; aucun nouveau cluster vérifié n’a dépassé le cutoff top 50 (84.35857269965278).",
       "candidateObservations": [
         {
           "platform": "tiktok",
@@ -7967,12 +8012,12 @@
           "author": "@adanthing",
           "caption": "I’m not even sure why I’m asking tbh 😭 #teenlife #DadAndDaughter #parentingteens #fyp #relatableparents",
           "publishedAt": "2026-08-04T18:45:37.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 7,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-no1a-p-0037-no/o83lIy7W7BA1M5qMiRixCI1FdCKwFAKOIAf1yi~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=wY13WLeozcjRNsP2lz6xuPtFbbM%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-no1a-p-0037-no/o83lIy7W7BA1M5qMiRixCI1FdCKwFAKOIAf1yi~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=ZFPOAZL0%2FYVBGdDC%2BcHAi1g9tZk%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
-            "views": 63200,
-            "likes": 1683,
+            "views": 63300,
+            "likes": 1688,
             "comments": 48,
             "shares": 193
           },
@@ -7982,7 +8027,7 @@
             "author": "Hope Along the Way"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -7991,9 +8036,9 @@
           "author": "@alejandrotayak",
           "caption": "do you understand the words that are coming out of my mouth?",
           "publishedAt": "2026-07-24T12:25:26.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 15,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-alisg-p-0037/ogAilKBsA2BEmB1WiAWXWajkBZIY2bEvAANRs~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=HDN%2Fk9kMaybXjypb2n6%2Bb7cE%2B%2B0%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-alisg-p-0037/ogAilKBsA2BEmB1WiAWXWajkBZIY2bEvAANRs~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=HRQ4MxLkGboFbc1%2FnbMO2P3h06c%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 71000,
             "likes": 7069,
@@ -8006,7 +8051,7 @@
             "author": "maciejlubomski"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8015,14 +8060,14 @@
           "author": "@aliona.ess",
           "caption": "i'm in spain!!! 🇪🇸 #اليونا #madrid #مدريد",
           "publishedAt": "2026-07-24T16:28:34.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 6,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-alisg-p-0037/o0Z127lJAAAzAII7wEiTMkOBWfriyqciACBBjI~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=bttxqMDaVvz47a6SffbWrUU9z%2Fc%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-alisg-p-0037/o0Z127lJAAAzAII7wEiTMkOBWfriyqciACBBjI~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=axz5TFV4HbjQfUv%2BDRfyawg%2F78M%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 5500000,
-            "likes": 398500,
-            "comments": 868,
-            "shares": 7133
+            "likes": 398700,
+            "comments": 869,
+            "shares": 7140
           },
           "music": {
             "id": "7385248336640150304",
@@ -8030,7 +8075,7 @@
             "author": "Irina"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8039,14 +8084,14 @@
           "author": "@amberyackzan",
           "caption": "my fav bob hairstyles🫶🏻 #shorthair #hairstyles #bobcut #bobhair #inspo",
           "publishedAt": "2025-12-26T17:37:25.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 19,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/ogJ2AxxOGLBAeRxAElIGp9exIAP9AegfQUOnOG~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=%2BkFkP3Xz44WFjLQKLL%2FeH6WDspc%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast8-p-0068-tx2/ogJ2AxxOGLBAeRxAElIGp9exIAP9AegfQUOnOG~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=fLBLAVj0PjO6rXyKnfXsKb4MLAk%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 6100000,
-            "likes": 312400,
-            "comments": 1201,
-            "shares": 26800
+            "likes": 312600,
+            "comments": 1200,
+            "shares": 26900
           },
           "music": {
             "id": "7338534150649088814",
@@ -8054,7 +8099,7 @@
             "author": "Angela ★"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8063,12 +8108,12 @@
           "author": "@benjohn066",
           "caption": "For Them, the Ground Is Dangerous #TikTok #Culture #SurmaPeople #Ethiopia #Stilts",
           "publishedAt": "2026-08-13T12:13:54.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 24,
-          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/osipQNj1PAnKi3qEi4TtxItAqW9fI6jcC3RAIB~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=SHiE5xHW3upaLj1AUN%2BchBM1Tqw%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-useast8-p-0068-tx2/osipQNj1PAnKi3qEi4TtxItAqW9fI6jcC3RAIB~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=PkW8DNYepB93M7%2BAQPfklpfbYrc%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
-            "views": 326100,
-            "likes": 9455,
+            "views": 326200,
+            "likes": 9459,
             "comments": 194,
             "shares": 395
           },
@@ -8078,7 +8123,7 @@
             "author": "Ariana Grande"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8087,14 +8132,14 @@
           "author": "@broenthemoviemaker",
           "caption": "This took all day. #siblings #sisters #dayinmylife #pictures #comedy",
           "publishedAt": "2026-07-24T18:52:54.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 59,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/ooqo4pUiaPlEWBG0xh0I9AIBj5mEIgOOBtiQ7~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=14TWeWuMNEs31OJmQHhygdE26So%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-useast5-p-0068-tx/ooqo4pUiaPlEWBG0xh0I9AIBj5mEIgOOBtiQ7~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=8HL02dMgyF3HD6aqAx%2F3liT3uZs%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 12700000,
-            "likes": 1800000,
+            "likes": 1900000,
             "comments": 12900,
-            "shares": 289600
+            "shares": 290300
           },
           "music": {
             "id": "7109091048936262442",
@@ -8102,7 +8147,7 @@
             "author": "Daryl Hall & John Oates"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8111,13 +8156,13 @@
           "author": "@carla_paucar",
           "caption": "Aquí mi humilde aportación al último trabajo de Rosalía en #berghain ufff piel de gallina y SIGOOOOO 💋 #modaentiktok #fashionstylist #rosalia",
           "publishedAt": "2025-10-28T14:52:19.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 114,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-no1a-p-0037-no/ow7CTLfEgAAKSknIhIDejUAKp0ImFfIID7Qa2A~tplv-tiktokx-dmt-logom:tos-no1a-i-0068-no/owYE4iAviDIYKAQIZABdGpQABTaBAawBQE2oA.image?dr=10393&x-expires=1788364800&x-signature=GeHKQ%2FK%2B%2BmZL7Zg3ODLDXUE6G0o%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-no1a-p-0037-no/ow7CTLfEgAAKSknIhIDejUAKp0ImFfIID7Qa2A~tplv-tiktokx-dmt-logom:tos-no1a-i-0068-no/owYE4iAviDIYKAQIZABdGpQABTaBAawBQE2oA.image?dr=9634&x-expires=1788426000&x-signature=K79caV%2B3yHr07t9EVCrVFikZHlM%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 43500,
             "likes": 5508,
-            "comments": 85,
+            "comments": 84,
             "shares": 245
           },
           "music": {
@@ -8126,7 +8171,7 @@
             "author": "Carlapaucar"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8135,9 +8180,9 @@
           "author": "@dobiedrax",
           "caption": "she doin the most rn 🤣 #cat #catsanddogs #doberman #orangecat #funnycat",
           "publishedAt": "2026-08-02T23:21:02.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 38,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/oAESEqeBYDbiEpiRhEICkKAVr0APgf5vDhbIOB~tplv-tiktokx-dmt-logom:tos-useast8-i-0068-tx2/o86EAc7eGffULIADQGbwjoaGAImIqrAsKd3LgA.image?dr=10393&x-expires=1788364800&x-signature=O9QeAW3g3Qkb9S4edqa0WSa5LAM%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-useast8-p-0068-tx2/oAESEqeBYDbiEpiRhEICkKAVr0APgf5vDhbIOB~tplv-tiktokx-dmt-logom:tos-useast8-i-0068-tx2/o86EAc7eGffULIADQGbwjoaGAImIqrAsKd3LgA.image?dr=9634&x-expires=1788426000&x-signature=ug1CiPvsP7vw%2BCCZLNeIN8lT8GI%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 3000000,
             "likes": 637300,
@@ -8150,7 +8195,7 @@
             "author": "Ariana Grande"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8159,11 +8204,11 @@
           "author": "@genesisgalaxy8",
           "caption": "#paparazzi #targetaudience",
           "publishedAt": "2026-07-25T15:24:13.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 10,
-          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-eu.com/tos-alisg-p-0037/oEhBAjBNlkYTAAyABIPBRVGVomN1EAUiEiaTH~tplv-tiktokx-dmt-logom:tos-alisg-i-0068/oErQADUEfAFNBxYfEgnkUUqR1BRZZA1zEIrCAj.image?dr=10393&x-expires=1788364800&x-signature=WHHAFlfXbJX8WGsBCf6vwukWmmU%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-alisg-p-0037/oEhBAjBNlkYTAAyABIPBRVGVomN1EAUiEiaTH~tplv-tiktokx-dmt-logom:tos-alisg-i-0068/oErQADUEfAFNBxYfEgnkUUqR1BRZZA1zEIrCAj.image?dr=9634&x-expires=1788426000&x-signature=W2LaL3rh9vyRt2DEd1sGjGI8gFY%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
-            "views": 279800,
+            "views": 280100,
             "likes": 28400,
             "comments": 473,
             "shares": 1189
@@ -8174,7 +8219,7 @@
             "author": "💫"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8183,12 +8228,12 @@
           "author": "@heyitsmekirstie",
           "caption": "The way the first attempt didn’t discourage him at all #cattok #tabbycat #blackcat #fyp #catsoftiktok",
           "publishedAt": "2026-06-20T23:19:28.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 9,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/oYEAQkWfjfMIyHIj9PbUYAFfOASDQBAHAXs1uE~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=5tD6MaOP%2BFm64Av80oohs9IWaDc%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-useast5-p-0068-tx/oYEAQkWfjfMIyHIj9PbUYAFfOASDQBAHAXs1uE~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=clcxSmItlNODx1K2xQqr%2FYzJBoo%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 1500000,
-            "likes": 205000,
+            "likes": 205100,
             "comments": 86,
             "shares": 10000
           },
@@ -8198,7 +8243,7 @@
             "author": "Olivia Rodrigo"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8207,14 +8252,14 @@
           "author": "@hope_schwing",
           "caption": "Bro I was 9 years old when my mom was this age LMAO",
           "publishedAt": "2026-07-28T19:20:28.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 6,
-          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/owJEVIA8AAAyE8mjRFfWQqDB2zaPfEEXPqOZBp~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=zOqy608bArvp2GeJgLXF8%2BARpRs%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast8-p-0068-tx2/owJEVIA8AAAyE8mjRFfWQqDB2zaPfEEXPqOZBp~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=WPrVXZiN5t7Gi%2FcjstuNVrDSY7g%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 1000000,
-            "likes": 183000,
-            "comments": 356,
-            "shares": 3382
+            "likes": 183400,
+            "comments": 355,
+            "shares": 3387
           },
           "music": {
             "id": "6696414028652087298",
@@ -8222,7 +8267,7 @@
             "author": "Pitbull"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8231,14 +8276,14 @@
           "author": "@isabelclanc",
           "caption": "#ad Yoplait whips and I are a forever and always kind of thing 🩷 available at Walmart! @Yoplait Yogurt #yoplaitsyogurtponsored #yoplaitwhips #yoplaityogurt",
           "publishedAt": "2026-07-27T18:21:11.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 35,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/oMRqmpFdkAwrCRxhgIFhZoSDWff68Z6EDEB5nI~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=P6aDsqNO1JKa%2Fyg2UYaV4zckzPc%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-useast5-p-0068-tx/oMRqmpFdkAwrCRxhgIFhZoSDWff68Z6EDEB5nI~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=b%2FouWHyt0mUN9OYcCQCjyu%2FXZGI%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
-            "views": 387800,
+            "views": 389500,
             "likes": 15100,
             "comments": 182,
-            "shares": 123
+            "shares": 124
           },
           "music": {
             "id": "7325072810639378434",
@@ -8246,7 +8291,7 @@
             "author": "OTE"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8255,14 +8300,14 @@
           "author": "@janayandkalisha",
           "caption": "never a dull moment #fyp #viral #sisters #twins #netflixdocumentary",
           "publishedAt": "2026-07-23T21:07:01.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 6,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/oAOROirIVgAgAe8fu2BRF4NeEAgr3FYTpgeGHs~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=PgabHYTtYBav1b5PFuXxQJbIslc%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-useast5-p-0068-tx/oAOROirIVgAgAe8fu2BRF4NeEAgr3FYTpgeGHs~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=F0ij0F2142equASeS2WzHuslR%2Fo%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 8700000,
-            "likes": 1800000,
-            "comments": 7075,
-            "shares": 64300
+            "likes": 1900000,
+            "comments": 7093,
+            "shares": 64400
           },
           "music": {
             "id": "7274043399086426113",
@@ -8270,7 +8315,7 @@
             "author": "Duomo"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8279,13 +8324,13 @@
           "author": "@joshfawaz",
           "caption": "Story time ❤️‍🔥 you guys are amazing, life changing #newmusic #housemusic #musicheals #joshfawaz #likeaprayer",
           "publishedAt": "2026-06-03T10:25:55.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 30,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-alisg-p-0037/oYpyEmAyIE4bXvABAAqEADmCIQeCUTAfgAEFBR~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=lMrzCxjvRmIuPB%2Bzn%2BDCs1meK34%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-alisg-p-0037/oYpyEmAyIE4bXvABAAqEADmCIQeCUTAfgAEFBR~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=4Qsk8vTnqXovvfQ0V%2FXpTxZ%2FT7I%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
-            "views": 336300,
+            "views": 336500,
             "likes": 31100,
-            "comments": 2144,
+            "comments": 2139,
             "shares": 680
           },
           "music": {
@@ -8294,7 +8339,7 @@
             "author": "josh fawaz"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8303,12 +8348,12 @@
           "author": "@juliehaneline",
           "caption": "I love this trend! 😅😅 @Tiania Haneline @Scarlett and Tiania  #sisters #fyp",
           "publishedAt": "2026-08-07T23:12:04.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 55,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/osC5ElZdAZ2RAEykqAIBkKFtEeE2VmfZCJApDA~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=NcyZ75rMvYs7oO8%2FqruxaM%2BbEfs%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-useast8-p-0068-tx2/osC5ElZdAZ2RAEykqAIBkKFtEeE2VmfZCJApDA~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=DRyHwxUWGu7JRU9z0q2i2BOFDmA%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
-            "views": 50400,
-            "likes": 1752,
+            "views": 50500,
+            "likes": 1754,
             "comments": 9,
             "shares": 205
           },
@@ -8318,7 +8363,7 @@
             "author": "Daryl Hall & John Oates"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8327,14 +8372,14 @@
           "author": "@juliess.privv",
           "caption": "(it was his idea to come btw) #seattle #fyp #xyzbca #viral #funny",
           "publishedAt": "2026-07-14T23:05:16.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 29,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/os3YEeZVABmRAI8LqcIBLDFFEpEWVsfwB5DjDQ~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=8Z%2F0z%2FjlRZXH5E6xY8%2BKOoST9og%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast8-p-0068-tx2/os3YEeZVABmRAI8LqcIBLDFFEpEWVsfwB5DjDQ~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=TfAc6WjQHWPchh%2Fw2OloRYp47b4%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
-            "views": 33600000,
-            "likes": 6500000,
+            "views": 33700000,
+            "likes": 6600000,
             "comments": 50500,
-            "shares": 834400
+            "shares": 836300
           },
           "music": {
             "id": "7639417177691473937",
@@ -8342,7 +8387,7 @@
             "author": "AntonioVivald"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8351,13 +8396,13 @@
           "author": "@katseyeworld",
           "caption": "lara + sophia = solarz #KATSEYE",
           "publishedAt": "2026-07-02T16:01:09.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 7,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/oIAGBA1PLkPERkviaX0UUq4iBAIagiWLNBSAE~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=fGi2rL83%2BvMq96IJDvO46nV%2BXB4%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-useast5-p-0068-tx/oIAGBA1PLkPERkviaX0UUq4iBAIagiWLNBSAE~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=zJ1dtSbD%2F7g%2FHtzjxmfTWmu81t4%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 5400000,
-            "likes": 695300,
-            "comments": 8007,
+            "likes": 697400,
+            "comments": 7994,
             "shares": 15200
           },
           "music": {
@@ -8366,7 +8411,7 @@
             "author": "Olivia Rodrigo"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8375,9 +8420,9 @@
           "author": "@kaylee_halko",
           "caption": "dear god do I have to like….get a job #fyp #progeria",
           "publishedAt": "2026-07-16T18:08:09.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 8,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/oAUNkSZpxCSIjALjeH5ISgyDusIeAleljgHGIb~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=X%2BExTAgpQnnit9Vh9IN4MfsfHoQ%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-useast5-p-0068-tx/oAUNkSZpxCSIjALjeH5ISgyDusIeAleljgHGIb~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=ufeAHyVlKYnapC70lDO27r7Yun4%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 11400000,
             "likes": 1900000,
@@ -8390,7 +8435,7 @@
             "author": "Sonicallygifted"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8399,12 +8444,12 @@
           "author": "@kpoplikely",
           "caption": "#GOLDEN at Coachella ✨ #KATSEYE #EYEKONS #fyp #coachella @KATSEYE",
           "publishedAt": "2026-04-11T03:42:35.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 168,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast2a-p-0037-euttp/osiRIzvfOzzIEVCIIw70FHiFIIRBE7oBAG7KZA~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=kC5zar0p7Wq%2FqJWDnMXsa3ziwQY%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast2a-p-0037-euttp/osiRIzvfOzzIEVCIIw70FHiFIIRBE7oBAG7KZA~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=JdctlVKwhwCfXmNJjH%2Fp4TNMDaQ%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
-            "views": 123000,
-            "likes": 7988,
+            "views": 123200,
+            "likes": 7991,
             "comments": 51,
             "shares": 945
           },
@@ -8414,7 +8459,7 @@
             "author": "HUNTR/X & EJAE & AUDREY NUNA & REI AMI & KPop Demon Hunters Cast"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8423,14 +8468,14 @@
           "author": "@liammillerr",
           "caption": "i miss the vacuum tbh",
           "publishedAt": "2026-07-16T21:20:13.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 9,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/o8FfALTZVLlJlRSagpIGJDeMgpfhAnlGQUlfMG~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=QjiiI5YJFHsLU06YDCvzaPQwf7M%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast8-p-0068-tx2/o8FfALTZVLlJlRSagpIGJDeMgpfhAnlGQUlfMG~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=N3RCQvOoPfd3geTkTEQV6iao3KA%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
-            "views": 11000000,
+            "views": 11100000,
             "likes": 1600000,
-            "comments": 3535,
-            "shares": 14300
+            "comments": 3573,
+            "shares": 14400
           },
           "music": {
             "id": "7274043399086426113",
@@ -8438,7 +8483,7 @@
             "author": "Duomo"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8447,13 +8492,13 @@
           "author": "@lianajadee",
           "caption": "All the cool girls had this haircut right? All Jokes aside, she can have whatever haircut makes her happy 🥹 ib: @AbbieHerbert",
           "publishedAt": "2026-07-16T17:05:42.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 11,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-no1a-p-0037-no/ooDCSipBw5pAcaJifv1ICCA1IAZA2LIIINmJ1y~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=A3xLICCsWqS7fGSnS2j6iH%2FY9XQ%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-no1a-p-0037-no/ooDCSipBw5pAcaJifv1ICCA1IAZA2LIIINmJ1y~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=93%2BW%2B1ZnOCFGaRBw7njA%2B08y7jY%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 3000000,
-            "likes": 375300,
-            "comments": 554,
+            "likes": 375600,
+            "comments": 552,
             "shares": 1983
           },
           "music": {
@@ -8462,7 +8507,7 @@
             "author": "Fat Papi & prodshushy"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8471,14 +8516,14 @@
           "author": "@luv.iolett",
           "caption": "i just wanna danceeee #gatito #100tryslater #ijustwannadance #kitten",
           "publishedAt": "2026-07-10T00:22:46.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 10,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/oAJQRDOZqQSbEfD7OBUFPxoEQpDRYhApTgf11i~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=fHIP24Bt3GuiJNWN1zgJZFjg36M%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast5-p-0068-tx/oAJQRDOZqQSbEfD7OBUFPxoEQpDRYhApTgf11i~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=twRwrZxuUYZC0lLrX8i3tkQ6FXY%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 4200000,
-            "likes": 979900,
-            "comments": 3182,
-            "shares": 163600
+            "likes": 980100,
+            "comments": 3171,
+            "shares": 163700
           },
           "music": {
             "id": "7653201595181665038",
@@ -8486,7 +8531,7 @@
             "author": "babychiefdoit2612"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8495,9 +8540,9 @@
           "author": "@mntat246850",
           "caption": "spiderman ceiling trend tutorial how to do spiderman ceiling trend miles morales ceiling trend tutorial spiderman ceiling pose tutorial recreate spiderman ceiling trend spiderman ceiling trend filming guide miles morales tiktok trend tutorial sunflower audio spiderman trend #spidermanceilingtrend #milesmoralestrend #ceilingtrendtutorial #capcut #capcutpioneer",
           "publishedAt": "2026-08-09T14:24:20.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 24,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/oMjK7OELiAVnBSQKPltNiBy9V4ZiAIjERaBK7~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=ZnK8QllGypUCnwxxNEu6GLGCcew%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast8-p-0068-tx2/oMjK7OELiAVnBSQKPltNiBy9V4ZiAIjERaBK7~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=TZkplvu6bJl3VwBSWaVN5AQScKk%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 346100,
             "likes": 1838,
@@ -8510,7 +8555,7 @@
             "author": "RyanzFilms"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8519,9 +8564,9 @@
           "author": "@panthers",
           "caption": "TMac checking for the mic 🤣 #carolinapanthers #tetairoamcmillan #trainingcamp #nfl",
           "publishedAt": "2026-07-25T18:24:30.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 11,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/oEGgRgeEILAGCkLAgG5GITEKfJfavEpTyOjeFs~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=c0qMxXIt9SITkMIJeegsQX6yeDs%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast5-p-0068-tx/oEGgRgeEILAGCkLAgG5GITEKfJfavEpTyOjeFs~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=h6%2F%2FbrkEVGr2NLzf9oSG1%2BVfsUk%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 31600,
             "likes": 3452,
@@ -8534,7 +8579,7 @@
             "author": "OTE"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8543,13 +8588,13 @@
           "author": "@romero.szee",
           "caption": "#fyp#respiratorytherapist#respiratorytherapy#healthcareworker#humor",
           "publishedAt": "2026-07-09T08:01:33.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 5,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/ok1ENTDRpFEeABVaWq2uRqALTEIYfEkDIPVWF1~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=RTCzH%2FeRYwfXJseR%2Fi%2FNEEYehjA%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast8-p-0068-tx2/ok1ENTDRpFEeABVaWq2uRqALTEIYfEkDIPVWF1~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=LYHxYn6asCF1EaztOqc7nWeikPU%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 936900,
             "likes": 217500,
-            "comments": 542,
+            "comments": 543,
             "shares": 13100
           },
           "music": {
@@ -8558,7 +8603,7 @@
             "author": "Ken Eurich"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8567,9 +8612,9 @@
           "author": "@stillwatersfishing",
           "caption": "Full volume 🔊 #fishing #nature #sound",
           "publishedAt": "2026-05-16T19:48:25.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 31,
-          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/o0gEDCWSSQAM9POOCMycIfGkQgErxBDkqIzRfF~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=o9%2BeiSZaKPl7KkoB1H3nLHDaBh4%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast5-p-0068-tx/o0gEDCWSSQAM9POOCMycIfGkQgErxBDkqIzRfF~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=lGxbQ5QzcBzEhIJ1fM1Mqz8lfe8%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 575,
             "likes": 27,
@@ -8582,7 +8627,7 @@
             "author": "CYE"
           },
           "firstObservedAt": "2026-08-29T22:26:53.093Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8591,14 +8636,14 @@
           "author": "@alebardo19",
           "caption": "*JAJAJA serian mis alumnos? @Garnier México  #DaleKoALasImperfecciones #Publicidad #GarnierSkincare #GarnierMx SALUD ES BELLEZA 123300EL950583",
           "publishedAt": "2026-08-05T22:33:39.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 53,
-          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-eu.com/tos-alisg-p-0037/osEnB4PIexj8HgfgLCLUAdbGAA4p1D0Ie35IwF~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=8cKVSMCLnIIpWyxdnCnb2Ne4JfY%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-alisg-p-0037/osEnB4PIexj8HgfgLCLUAdbGAA4p1D0Ie35IwF~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=ooMFENaWkFIw4NG0B5eBtxckJzQ%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
-            "views": 33400000,
-            "likes": 389100,
-            "comments": 2369,
-            "shares": 24000
+            "views": 35300000,
+            "likes": 402300,
+            "comments": 2442,
+            "shares": 24800
           },
           "music": {
             "id": "7190434484657850369",
@@ -8606,7 +8651,7 @@
             "author": "314P"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8615,14 +8660,14 @@
           "author": "@arriiiixo",
           "caption": "so clearly one of us is the cooler sister… @Ellieeee",
           "publishedAt": "2026-07-11T21:59:23.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 54,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/oEIDqUDfOZzrEBuI36yEQbTAEZVLSEOIlAfFRv~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=kp0qj3eeqjKnmF28tyUIWvX9zoE%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast8-p-0068-tx2/oEIDqUDfOZzrEBuI36yEQbTAEZVLSEOIlAfFRv~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=BK75D8ZUVfLmi5lOKhunrml6ZqM%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 2000000,
             "likes": 178300,
             "comments": 106,
-            "shares": 7522
+            "shares": 7523
           },
           "music": {
             "id": "7109091048936262442",
@@ -8630,7 +8675,7 @@
             "author": "Daryl Hall & John Oates"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8639,14 +8684,14 @@
           "author": "@bethclemancex",
           "caption": "a win is a win x",
           "publishedAt": "2026-07-24T03:17:37.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 10,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-no1a-p-0037-no/oURGstiFDQjq2FrkADFLkORI0BffqQFQEVgxEY~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=0RhHkls%2FUYYAfD1CI8yqFfCSzFw%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-no1a-p-0037-no/oURGstiFDQjq2FrkADFLkORI0BffqQFQEVgxEY~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=NCUgp4tO2ISvUEJ%2FFsLrA49Euok%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
-            "views": 16300000,
+            "views": 16400000,
             "likes": 2900000,
-            "comments": 5158,
-            "shares": 233600
+            "comments": 5184,
+            "shares": 234600
           },
           "music": {
             "id": "7665048279306013463",
@@ -8654,7 +8699,7 @@
             "author": "marimiqadzze"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8663,13 +8708,13 @@
           "author": "@cringenoodles_com",
           "caption": "Excuse my hair 🧍‍♀️#xyzbca #fyp #tiktoksouthafrica",
           "publishedAt": "2026-08-07T14:02:15.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 6,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-alisg-p-0037/o8AA1FQhS6aWD5LxjfbCeUIfA4EdDFjIdUEaE9~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=SeFWelMoHnLYKaXPj%2Fta3Cn8NOo%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-alisg-p-0037/o8AA1FQhS6aWD5LxjfbCeUIfA4EdDFjIdUEaE9~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=c1sC3VmjONxrryMVntKiyfb86K4%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 9900000,
             "likes": 2400000,
-            "comments": 3404,
+            "comments": 3407,
             "shares": 119100
           },
           "music": {
@@ -8678,7 +8723,7 @@
             "author": "Yartrix"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8687,13 +8732,13 @@
           "author": "@daniellephe",
           "caption": "What do you think🖤",
           "publishedAt": "2026-08-10T22:32:46.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 9,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/ocfGAaYBS1C6EAi3UGQigCPBB1A8PII6j2KAAi~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=11AbV1QPelNx8VLoLEJaKTokRbU%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast8-p-0068-tx2/ocfGAaYBS1C6EAi3UGQigCPBB1A8PII6j2KAAi~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=0NUgsDfbf8MaZk1OVLvAwV70h%2FM%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 5400000,
-            "likes": 566600,
-            "comments": 1155,
+            "likes": 567400,
+            "comments": 1156,
             "shares": 11300
           },
           "music": {
@@ -8702,7 +8747,7 @@
             "author": "jaydenosns"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8711,13 +8756,13 @@
           "author": "@elle.yona",
           "caption": "I think I'm shadow banned so this might flop #fyp #strokesurvivor #paralyzed #foryoupage #trending #silversprings #traumatized #pianoman",
           "publishedAt": "2025-12-18T21:38:01.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 20,
-          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/oYSlfADRXdJDDFRip1ekOBSEgE0EBqhIsS9HE8~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=vHVxMbdWBXU1ABIH2gt7drSvUDg%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-useast5-p-0068-tx/oYSlfADRXdJDDFRip1ekOBSEgE0EBqhIsS9HE8~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=jYaJwrnLGHh8RoQjRh%2F6cD2zIqE%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 38700000,
             "likes": 3000000,
-            "comments": 6922,
+            "comments": 6904,
             "shares": 155100
           },
           "music": {
@@ -8726,7 +8771,7 @@
             "author": "𝒶𝓂𝒶𝒾 🌀☀️"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8735,13 +8780,13 @@
           "author": "@eunoiamedspacolorado",
           "caption": "Here’s what we mean when we talk about how laser targets different hair colors! In this video we’re breaking down how the laser reacts to white, blonde, red, grey, brown, and dark hair — and why laser hair removal doesn’t work on blonde, red, or grey shades. The laser needs pigment to ‘see’ the hair follicle, and lighter colors simply don’t have enough for the laser to lock onto. #eunoia #laserhairremoval #laser #hair",
           "publishedAt": "2025-11-21T18:02:32.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 12,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/okjASyCjIi6rppDiFq0CgBTAkImvqjVfAAVisI~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=NG17AEAVx%2By3QHGYT9k6LydgNIo%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast8-p-0068-tx2/okjASyCjIi6rppDiFq0CgBTAkImvqjVfAAVisI~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=f6mDB8shwWJsKvx7bO811XD8eRU%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 29200000,
             "likes": 535900,
-            "comments": 1845,
+            "comments": 1832,
             "shares": 19400
           },
           "music": {
@@ -8750,7 +8795,7 @@
             "author": "Tyla"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8759,13 +8804,13 @@
           "author": "@getpovd",
           "caption": "💔💔",
           "publishedAt": "2026-08-14T20:31:14.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 46,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/osUGsg4DIXUGgxLApUYAJeueKDcGFdRfegQI54~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=akLysJcJyrgtkRXnVkU8f3KBXto%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast5-p-0068-tx/osUGsg4DIXUGgxLApUYAJeueKDcGFdRfegQI54~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=PGOvaivf%2Fc9QqLLkxKx4BTZi2wM%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
-            "views": 30300000,
+            "views": 30700000,
             "likes": 4800000,
-            "comments": 17700,
+            "comments": 17900,
             "shares": 1300000
           },
           "music": {
@@ -8774,7 +8819,7 @@
             "author": "Gabriel Andrade Produções"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8783,13 +8828,13 @@
           "author": "@gigicheoh",
           "caption": "Replying to @your pookie 🎀 So embarrassing 🙈 I couldn’t even look around 😂 The result is already on my page! ✨ Follow me @gigicheoh for more! 🫶🏼 . #bagtransition #traveltransition #transitiontutorial #behindthescenes #creativeediting",
           "publishedAt": "2025-12-06T04:24:33.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 28,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-alisg-p-0037/oUIizSWIvC1vQAjH5eIAMFEDesDyUZFNafdbA4~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=2gmR%2FhxwrcxLngPefiDJ9q9OKj0%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-alisg-p-0037/oUIizSWIvC1vQAjH5eIAMFEDesDyUZFNafdbA4~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=rOlhFIRsKoCrmpaG1bDFdNgPJ3k%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 54300000,
             "likes": 386400,
-            "comments": 3789,
+            "comments": 3780,
             "shares": 6599
           },
           "music": {
@@ -8798,7 +8843,7 @@
             "author": "Tyla"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8807,14 +8852,14 @@
           "author": "@jocelynmeiere",
           "caption": "Side note these lashes from @ArdellBeauty I’m actually in love they look so cool - I don’t have the original box and I’m so angry with myself because I want to get more but I DONT EVEN KNOW WHAT THEY ARE CALLED #lashes #lashextensions",
           "publishedAt": "2026-06-05T17:08:57.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 13,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-no1a-p-0037-no/ocqAkJjXoC7EwAFR1FPIeqgAAIEZg4fAyKADEj~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=pNmFtQ%2Fk%2BZBtfU4R0GPMPO6gstM%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-no1a-p-0037-no/ocqAkJjXoC7EwAFR1FPIeqgAAIEZg4fAyKADEj~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=XpcxCyMm8Dk0LEyvVOF%2BP3CXmGI%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
-            "views": 88900000,
+            "views": 89000000,
             "likes": 7200000,
             "comments": 45000,
-            "shares": 536300
+            "shares": 536800
           },
           "music": {
             "id": "7646775660023974664",
@@ -8822,7 +8867,7 @@
             "author": "Fat Papi & prodshushy"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8831,9 +8876,9 @@
           "author": "@karissasterrace",
           "caption": "I’m actually getting mad now #gardening #bamboo #firsthomebuyer",
           "publishedAt": "2026-03-05T09:00:37.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 13,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-alisg-p-0037/oEKGe1GfLApvuP5VAGfgAJKR0i7QgwAeAmTrGI~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=FyHixtSvOx9S%2BlcYjdUm7ER4Tps%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-alisg-p-0037/oEKGe1GfLApvuP5VAGfgAJKR0i7QgwAeAmTrGI~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=NYwuAJHNQSPUmWGagw7%2FqzCXPMs%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 39100000,
             "likes": 2000000,
@@ -8846,7 +8891,7 @@
             "author": "Charli xcx & John Cale"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8855,14 +8900,14 @@
           "author": "@kelseyinlondon",
           "caption": "ad 🇪🇬 Welcome to Sharm El-Sheikh, Egypt ⬇️ @Experience Egypt Official   This is what winter looks like in Egypt ☀️🐠🌅🏝️ I recently visited Sharm El-Sheikh for some winter sun, where I experienced warm 25-degree days, turquoise seas, ancient worlds and desert adventures. I highly recommend visiting during Ramadan, which meant every street was lined with lanterns and lively celebrations each evening.  Here are my top recommendations on things to do in Sharm El-Sheikh:  1. Ras Mohammed National Park – A must for snorkelling or diving, with crystal-clear water, beautiful coral reefs and some of the most colourful marine life in the Red Sea. 2. Al-Sahaba Mosque –An architectural showstopper in the Old Market, especially beautiful at night when it’s illuminated against the desert sky. 3. Desert Safari Experience – Head into the Sinai Desert by quad or 4x4, ride across golden dunes and end with a Bedouin dinner under the stars. 4. Farsha Cafe – A cliffside spot overlooking the sea, famous for its boho décor, sunset views and evening light shows. 5. Al Mustafa Mosque – One of the city’s largest mosques, known for its grand domes and peaceful setting, particularly stunning at sunset. 6. Del Mar Beach Lounge – A relaxed beachfront hangout with sun loungers, cocktails and clear water perfect for swimming and snorkelling. 7. SOHO Square – A lively entertainment hub with restaurants, shops, a year-round ice rink and evening shows all in one place. 8. Old Market – The heart of local life, packed with spice stalls, souvenirs, street food and traditional cafés.  #ExperienceEgypt #VisitEgypt 🇪🇬 Places to visit in Egypt itinerary. Egypt travel guide. Winter sun destinations. Winter sun holidays. Sharm El-Sheikh diving. Places to visit in Sharm El-Sheikh.",
           "publishedAt": "2026-02-28T11:10:59.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 30,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-no1a-p-0037-no/oMLZBZu0EiBi8u3DCSMiUAXIECazYInBPrla4~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=dkh7lZmhDnA4RiGwLLSd%2Bo0zUGM%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-no1a-p-0037-no/oMLZBZu0EiBi8u3DCSMiUAXIECazYInBPrla4~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=V2ck%2F4weE63Fo2fAOvYjbnCiq64%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 29800000,
             "likes": 197400,
-            "comments": 780,
-            "shares": 27000
+            "comments": 777,
+            "shares": 27100
           },
           "music": {
             "id": "7586832819629901825",
@@ -8870,7 +8915,7 @@
             "author": "Lil Uzi Vert"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8879,14 +8924,14 @@
           "author": "@letroyfrancisco",
           "caption": "in this house #fyp #gym #boxing",
           "publishedAt": "2026-04-11T20:45:16.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 9,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/ogAeWLWuAthjrGHeIysH1JAeDSIItTYkAAEaEX~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=IKKHamVPbmoeGAkxpYyS0HH%2FUK0%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast5-p-0068-tx/ogAeWLWuAthjrGHeIysH1JAeDSIItTYkAAEaEX~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=Rt%2BmQNBQYhUiA%2ByvBSoCal8B%2Fl0%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 32600000,
             "likes": 667500,
-            "comments": 35300,
-            "shares": 551100
+            "comments": 35200,
+            "shares": 550900
           },
           "music": {
             "id": "7571057519797487632",
@@ -8894,7 +8939,7 @@
             "author": "Charli xcx & John Cale"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8903,13 +8948,13 @@
           "author": "@livbedumb",
           "caption": "happy 5 years of DL💜",
           "publishedAt": "2026-01-09T02:06:01.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 6,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/o8VARGo9pISkEGDgxBYFerBEQrDCFAAZagfRRR~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=rgXbAEWj%2FHGRvfYq7FOKiNWa%2FlU%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-useast5-p-0068-tx/o8VARGo9pISkEGDgxBYFerBEQrDCFAAZagfRRR~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=4UR%2BwWwQsiG2ypvDathRyvSr9iM%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 51000000,
             "likes": 10400000,
-            "comments": 23200,
+            "comments": 23000,
             "shares": 265200
           },
           "music": {
@@ -8918,7 +8963,7 @@
             "author": "𝒶𝓂𝒶𝒾 🌀☀️"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8927,14 +8972,14 @@
           "author": "@madeleine_white",
           "caption": "You shouldn’t have !",
           "publishedAt": "2026-07-30T18:03:59.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 10,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/osjIAU1IeSMkH2UkcLx9ITIgrGWheHAejEC6Zk~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=bI9%2Bqk3m2dxsLIE0go%2FaVrxtl5A%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast5-p-0068-tx/osjIAU1IeSMkH2UkcLx9ITIgrGWheHAejEC6Zk~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=ZIjL0f%2F3WCV%2Fyv0f7BumWKZnX%2B8%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 11500000,
-            "likes": 828800,
-            "comments": 631,
-            "shares": 5060
+            "likes": 832000,
+            "comments": 632,
+            "shares": 5068
           },
           "music": {
             "id": "7665048279306013463",
@@ -8942,7 +8987,7 @@
             "author": "marimiqadzze"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8951,14 +8996,14 @@
           "author": "@mmmjoemele",
           "caption": "we couldn’t keep it together 😂",
           "publishedAt": "2026-08-05T19:59:13.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 40,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/oE3QtW4FBwgIq85CWOoM8IRjuvAWjoyAfffUAl~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=mWy1neM2fBcZgdgXZ0diRS0Q0Ms%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast8-p-0068-tx2/oE3QtW4FBwgIq85CWOoM8IRjuvAWjoyAfffUAl~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=OLvvUQ2%2B52nx5q%2FqELXeUj09fTk%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
-            "views": 24400000,
+            "views": 24500000,
             "likes": 3200000,
-            "comments": 6125,
-            "shares": 346900
+            "comments": 6124,
+            "shares": 347200
           },
           "music": {
             "id": "6817665487665629186",
@@ -8966,7 +9011,7 @@
             "author": "moshimo sound design"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8975,12 +9020,12 @@
           "author": "@montanaandryan",
           "caption": "who ate who up? 😂",
           "publishedAt": "2026-08-03T16:07:03.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 87,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/o0fUCAv1XkGf0QgUX4X8HCACQeshbMQtj6MQIV~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=LFuLpJ5umfrDsmvEzAhQTAKqIaE%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-useast5-p-0068-tx/o0fUCAv1XkGf0QgUX4X8HCACQeshbMQtj6MQIV~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=55GUl8QYYwh2EmIFyyhkVjbafS8%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 4200000,
-            "likes": 663500,
+            "likes": 663700,
             "comments": 1532,
             "shares": 48200
           },
@@ -8990,7 +9035,7 @@
             "author": "Montana & Ryan"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -8999,9 +9044,9 @@
           "author": "@natlouisejack",
           "caption": "Because it really was #cat #carwash",
           "publishedAt": "2026-03-23T04:22:52.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 24,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast8-p-0068-tx2/o8AvFieEACiIEB8sIKwiaztWjpiC404qADAAIJ~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=Wi9ElXRBFJcmyjJdXMvbfpc35eA%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast8-p-0068-tx2/o8AvFieEACiIEB8sIKwiaztWjpiC404qADAAIJ~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=f3MFZZZl6D9VhAnkJcvUIdHO49E%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 36100000,
             "likes": 7200000,
@@ -9014,7 +9059,7 @@
             "author": "Charli xcx & John Cale"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -9023,13 +9068,13 @@
           "author": "@noahaltink",
           "caption": "How to style a zip-up & jeans in Winter 🥶 | Save for later | #styling #fashionhacks #outfitideas",
           "publishedAt": "2025-12-14T15:43:56.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 15,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast2a-p-0037-euttp/oYql1AfSmPQHs2RpEwQHQiFEz4SnDpezDGDtBb~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=jbfTV0m%2By9R4dUcnWSzqQLDBYZA%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast2a-p-0037-euttp/oYql1AfSmPQHs2RpEwQHQiFEz4SnDpezDGDtBb~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=E9ODQbdMtyGqu7Iha4ljwFJUrJE%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 50500000,
             "likes": 652100,
-            "comments": 2710,
+            "comments": 2688,
             "shares": 10300
           },
           "music": {
@@ -9038,7 +9083,7 @@
             "author": "Tyla"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -9047,13 +9092,13 @@
           "author": "@ohheymeli",
           "caption": "#fyp #ringdoorbell",
           "publishedAt": "2026-01-23T02:07:17.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 57,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/oEBzg1ComWiuId0BLE9UQMilI2yvXa9JAdB4X~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=ewVQhpScIDiQPMn6%2FOLlMMCn8eI%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast5-p-0068-tx/oEBzg1ComWiuId0BLE9UQMilI2yvXa9JAdB4X~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=QzRJcaI2KMM60Ptjy0yTK6FOFfQ%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 52200000,
             "likes": 5500000,
-            "comments": 33500,
+            "comments": 29000,
             "shares": 1700000
           },
           "music": {
@@ -9062,7 +9107,7 @@
             "author": "Charli xcx & John Cale"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -9071,13 +9116,13 @@
           "author": "@rashnakutwaroo",
           "caption": "Let’s go ENGLAND! 👏🏼 BELLINGHAM IS THE MAIN MAN 🔥  #trend #england #worldcup #judebellingham #bellingham",
           "publishedAt": "2026-07-12T00:56:02.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 13,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-alisg-p-0037/ooBnABAErimLAIAENAiitASaLDIyPdlANBYm5~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=R6xxfF6oj3ty4J%2FovFJegD6LfmY%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-alisg-p-0037/ooBnABAErimLAIAENAiitASaLDIyPdlANBYm5~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=cWO%2BA2TTjHb2p9B3f1u%2FxozhG5g%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 1900000,
-            "likes": 248400,
-            "comments": 3876,
+            "likes": 248500,
+            "comments": 3871,
             "shares": 27000
           },
           "music": {
@@ -9086,7 +9131,7 @@
             "author": "Fat Papi & prodshushy"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -9095,13 +9140,13 @@
           "author": "@serenamorena67",
           "caption": "#phone #broken #fyp #trend",
           "publishedAt": "2026-03-03T16:51:48.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 14,
-          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-eu.com/tos-no1a-p-0037-no/osPmniQIBBAnibYErKEaCaYEj1AaEMpZABXcC~tplv-tiktokx-dmt-logom:tos-no1a-i-0068-no/o8QoEmvBYvAniiaBAIECcBxAaAEG4aRIXip9o.image?dr=10393&x-expires=1788364800&x-signature=QCcLq85EuOXVunUTNQFrHIrADbU%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-no1a-p-0037-no/osPmniQIBBAnibYErKEaCaYEj1AaEMpZABXcC~tplv-tiktokx-dmt-logom:tos-no1a-i-0068-no/o8QoEmvBYvAniiaBAIECcBxAaAEG4aRIXip9o.image?dr=9634&x-expires=1788426000&x-signature=mlfzLtUKDkEkcVvF2jlwjcO0mVc%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 34800000,
             "likes": 4800000,
-            "comments": 23300,
+            "comments": 23200,
             "shares": 249400
           },
           "music": {
@@ -9110,7 +9155,7 @@
             "author": "Charli xcx & John Cale"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -9119,9 +9164,9 @@
           "author": "@shellecepratt",
           "caption": "THIS WHOLE TIME ?? #transition #gymmotivation #fatloss #gyminspo #consistency",
           "publishedAt": "2026-07-11T00:29:12.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 7,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/ookEokWACx7GeaAFAAAjKteyIqHLjHIUAIeQzw~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=vQQZg%2FQaoX%2BhSPijTuDC3WWnKOI%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast5-p-0068-tx/ookEokWACx7GeaAFAAAjKteyIqHLjHIUAIeQzw~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=BRLfdhogeuqQmeY88u%2BFrN137gI%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 2600000,
             "likes": 725600,
@@ -9134,7 +9179,7 @@
             "author": "jaydenosns"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -9143,14 +9188,14 @@
           "author": "@slut4everythingbagels",
           "caption": "came out to them at a margaritaville btw",
           "publishedAt": "2026-08-11T00:00:26.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 6,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/oMI7QQkj2ImmQhDaHeAFmehRIfZuU6ECvCNh6A~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=ltGdKIMFOzpNK2C7iTBtZSIhVKg%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-useast5-p-0068-tx/oMI7QQkj2ImmQhDaHeAFmehRIfZuU6ECvCNh6A~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=5E4C1TnvlshX%2BjSyKp2YVGN%2B2AA%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
-            "views": 4200000,
-            "likes": 573800,
-            "comments": 497,
-            "shares": 37600
+            "views": 4300000,
+            "likes": 575300,
+            "comments": 498,
+            "shares": 37700
           },
           "music": {
             "id": "7669210516622985998",
@@ -9158,7 +9203,7 @@
             "author": "Yartrix"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         },
         {
           "platform": "tiktok",
@@ -9167,13 +9212,13 @@
           "author": "@unc_reviews",
           "caption": "Achew bayBee #filters",
           "publishedAt": "2025-09-09T23:17:33.000Z",
-          "capturedAt": "2026-08-31T16:34:41.9498911Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
           "durationSeconds": 16,
-          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-eu.com/tos-useast5-p-0068-tx/og5Ap0VRi4nFAiQXxCpIywBtd0PYA6B9CIYfIO~tplv-tiktokx-origin.image?dr=10395&x-expires=1788364800&x-signature=43k9E1x5C8f0HUytrYkXN02Janc%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=no1a",
+          "thumbnailUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast5-p-0068-tx/og5Ap0VRi4nFAiQXxCpIywBtd0PYA6B9CIYfIO~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=zHs5C%2BOfH80eMXtq8ukJQp8xFQM%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
           "metrics": {
             "views": 34200000,
             "likes": 3400000,
-            "comments": 24500,
+            "comments": 24100,
             "shares": 696300
           },
           "music": {
@@ -9182,30 +9227,44 @@
             "author": "RYOpianoforte"
           },
           "firstObservedAt": "2026-08-31T16:26:30.7377955Z",
-          "lastObservedAt": "2026-08-31T16:34:41.9498911Z"
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
+        },
+        {
+          "platform": "tiktok",
+          "url": "https://www.tiktok.com/@amenda.b/video/7548612252895677726",
+          "nativeId": "7548612252895677726",
+          "author": "@amenda.b",
+          "caption": "",
+          "publishedAt": "2025-09-10T23:51:05.000Z",
+          "capturedAt": "2026-09-01T09:26:04.443Z",
+          "durationSeconds": 53,
+          "thumbnailUrl": "https://p19-common-sign.tiktokcdn-us.com/tos-useast8-p-0068-tx2/oksHdHJwRWI7fuzEChLIAvGZIhAjHyeggTe0qB~tplv-tiktokx-origin.image?dr=9636&x-expires=1788426000&x-signature=u3AIDZ5dC4I43yNEe4afBKA8ULM%3D&t=4d5b0474&ps=13740610&shp=81f88b70&shcp=43f4a2f9&idc=useast5",
+          "metrics": {
+            "views": 44100000,
+            "likes": 5800000,
+            "comments": 47700,
+            "shares": 2400000
+          },
+          "music": {
+            "id": "6817195494956075009",
+            "title": "Piano famous song Chopin Deep deep clear beauty",
+            "author": "RYOpianoforte"
+          },
+          "firstObservedAt": "2026-09-01T09:26:04.443Z",
+          "lastObservedAt": "2026-09-01T09:26:04.443Z"
         }
       ],
       "tiktokCandidateEnrichment": {
         "checked": 73,
-        "parsed": 70,
-        "failed": 3,
-        "parsedRatio": 0.958904109589041,
+        "parsed": 72,
+        "failed": 1,
+        "parsedRatio": 0.9863013698630136,
         "minimumParsedRatio": 0.9,
         "failures": [
           {
             "ok": false,
-            "url": "https://www.tiktok.com/@amenda.b/video/7548612252895677726",
-            "error": "identité TikTok candidate incohérente"
-          },
-          {
-            "ok": false,
             "url": "https://www.tiktok.com/@iamemmanuela/video/7644240634362023190",
             "error": "auteur, son ou durée TikTok absent"
-          },
-          {
-            "ok": false,
-            "url": "https://www.tiktok.com/@sunnypumpkin/video/7189517558226144558",
-            "error": "identité TikTok candidate incohérente"
           }
         ]
       },
@@ -9240,15 +9299,6 @@
       "pendingExactMusicClusters": [],
       "musicClusterQualifications": [
         {
-          "musicId": "6997838557607888898",
-          "status": "unsafe",
-          "reason": "cluster exclu par le filtre de sécurité éditoriale (violence ou événement sensible)",
-          "evidenceUrls": [],
-          "priorityScore": null,
-          "top50CutoffScore": 84.88533046006944,
-          "beatsTop50Cutoff": null
-        },
-        {
           "musicId": "7561952744116357137",
           "status": "qualified",
           "reason": null,
@@ -9258,7 +9308,7 @@
             "https://www.tiktok.com/@gigicheoh/video/7580595647141743888"
           ],
           "priorityScore": 92,
-          "top50CutoffScore": 84.88533046006944,
+          "top50CutoffScore": 84.35857269965278,
           "beatsTop50Cutoff": true
         },
         {
@@ -9273,22 +9323,32 @@
             "https://www.tiktok.com/@letroyfrancisco/video/7627605471490297102"
           ],
           "priorityScore": 93,
-          "top50CutoffScore": 84.88533046006944,
+          "top50CutoffScore": 84.35857269965278,
           "beatsTop50Cutoff": true
+        },
+        {
+          "musicId": "6997838557607888898",
+          "status": "unsafe",
+          "reason": "cluster exclu par le filtre de sécurité éditoriale (violence ou événement sensible)",
+          "evidenceUrls": [],
+          "priorityScore": null,
+          "top50CutoffScore": 84.35857269965278,
+          "beatsTop50Cutoff": null
         }
       ],
       "recipeQualifications": [
         {
           "recipeId": "same-age-as-parents",
-          "status": "rejected",
-          "reason": "seulement 2/3 créateurs natifs distincts vérifiés",
+          "status": "qualified",
+          "reason": null,
           "evidenceUrls": [
             "https://www.tiktok.com/@hope_schwing/video/7667660831471045918",
-            "https://www.youtube.com/shorts/hNLAS7NkKTM"
+            "https://www.youtube.com/shorts/hNLAS7NkKTM",
+            "https://www.youtube.com/shorts/2IokvErjQjA"
           ],
-          "priorityScore": null,
-          "top50CutoffScore": 84.88533046006944,
-          "beatsTop50Cutoff": null
+          "priorityScore": 97,
+          "top50CutoffScore": 84.35857269965278,
+          "beatsTop50Cutoff": true
         }
       ],
       "sourceBreakdown": [
@@ -9413,39 +9473,45 @@
           "label": "SocialPilot · Instagram Reels",
           "platform": "instagram",
           "status": "success",
-          "candidateCount": 11,
+          "candidateCount": 10,
           "matchedTrendIds": [
-            "backrooms-stay-in-character-lofi-boy",
             "bangladesh-absurd-complaint",
+            "broken-rules-temptation",
             "dracula-jennie-remix",
-            "explaining-game-lore",
             "freaked-out-list",
             "golden-brown-month-reset",
+            "just-say-here-bro",
+            "less-than-a-lover",
             "netflix-documentary-confessional",
-            "obsession-nice-date-lofi-boy",
             "petal-soft-chaos",
             "shoe-toss-outfit-transition",
-            "social-battery-solo-mode",
             "study-until-they-text-aging",
             "stupid-song-nostalgic-montage",
             "suspect-hidden-plain-sight",
             "twins-at-the-carousel",
-            "u-me-love-timeline",
-            "video-game-main-menu"
+            "u-me-love-timeline"
           ],
           "candidateUrls": [
-            "https://www.instagram.com/p/DaODLgWsE_d/",
-            "https://www.instagram.com/reel/Db3OnskP8PN/",
-            "https://www.instagram.com/reel/Db6LPxaODiT/",
-            "https://www.instagram.com/reel/DbWQg0Voaj0/",
-            "https://www.instagram.com/reel/DbYzJJcvrwU/",
-            "https://www.instagram.com/reel/DbgY9H1oXnY/",
-            "https://www.instagram.com/reel/Dbl74zoSjm3/",
-            "https://www.instagram.com/reel/DblHUCmMEFk/",
-            "https://www.instagram.com/reel/Dbnn9oFMXbx/",
-            "https://www.instagram.com/reel/DbtLDTcKkQm/",
-            "https://www.instagram.com/reel/DbvMu_nMdZ_/"
+            "https://www.instagram.com/p/DX4KT6vtXsk/",
+            "https://www.instagram.com/p/DcNCVM4s6SO/",
+            "https://www.instagram.com/reel/Db-lM_nTh_s/",
+            "https://www.instagram.com/reel/Db8Y2OWs8QZ/",
+            "https://www.instagram.com/reel/DbwY3-5RrEd/",
+            "https://www.instagram.com/reel/DcJkva7turE/",
+            "https://www.instagram.com/reel/DcJzjJiSuLP/",
+            "https://www.instagram.com/reel/DcW6dNrxAN7/",
+            "https://www.instagram.com/reel/DcZZWjqt_g_/",
+            "https://www.instagram.com/reel/DcaSZjkuOd3/"
           ]
+        },
+        {
+          "id": "ramdam-tiktok-monthly-2026-09",
+          "label": "Ramdam · TikTok mensuel · sep 2026",
+          "platform": "tiktok",
+          "status": "failed",
+          "candidateCount": 0,
+          "matchedTrendIds": [],
+          "candidateUrls": []
         },
         {
           "id": "ramdam-tiktok-monthly-2026-08",
@@ -9476,15 +9542,6 @@
             "https://www.tiktok.com/@shellecepratt/video/7661060839268568334",
             "https://www.tiktok.com/@slut4everythingbagels/video/7672557086710041870"
           ]
-        },
-        {
-          "id": "ramdam-tiktok-monthly-2026-07",
-          "label": "Ramdam · TikTok mensuel · jul 2026",
-          "platform": "tiktok",
-          "status": "failed",
-          "candidateCount": 0,
-          "matchedTrendIds": [],
-          "candidateUrls": []
         },
         {
           "id": "shotmatic-tiktok-weekly-2026-w35",
@@ -9580,19 +9637,20 @@
             "explaining-game-lore",
             "less-than-a-lover",
             "obsession-nice-date-lofi-boy",
+            "petal-soft-chaos",
             "social-battery-solo-mode",
             "video-game-main-menu"
           ],
           "candidateUrls": [
             "https://www.youtube.com/watch?v=5JNOHJcLqiY",
             "https://www.youtube.com/watch?v=8O1VntvzYdc",
-            "https://www.youtube.com/watch?v=BlXAbA5q3lc",
             "https://www.youtube.com/watch?v=D7S3MX9VEJs",
             "https://www.youtube.com/watch?v=Dy06SXknr_g",
             "https://www.youtube.com/watch?v=IcjmvXnTwLw",
-            "https://www.youtube.com/watch?v=IiXcaOCLths",
-            "https://www.youtube.com/watch?v=QFCqfyGK4Fk",
+            "https://www.youtube.com/watch?v=JqFzhcWo3EU",
             "https://www.youtube.com/watch?v=Y6qnL8YMqQU",
+            "https://www.youtube.com/watch?v=ZbPBODCr6Fg",
+            "https://www.youtube.com/watch?v=afSgBNwmZrQ",
             "https://www.youtube.com/watch?v=s466YCiHfKw",
             "https://www.youtube.com/watch?v=uzEoipV3Vrc",
             "https://www.youtube.com/watch?v=zkG9zPxuw5E"
@@ -9608,7 +9666,7 @@
           "candidateUrls": []
         }
       ],
-      "reachabilityCheckedAt": "2026-08-31T16:34:41.9498911Z",
+      "reachabilityCheckedAt": "2026-09-01T09:26:04.443Z",
       "availablePosts": 161,
       "unavailablePosts": 0,
       "unavailablePostUrls": []
@@ -9619,7 +9677,7 @@
         "label": "Buffer · TikTok",
         "platform": "tiktok",
         "status": "success",
-        "checkedAt": "2026-08-31T16:34:41.9498911Z",
+        "checkedAt": "2026-09-01T09:26:04.443Z",
         "candidatesMatched": 15
       },
       {
@@ -9627,7 +9685,7 @@
         "label": "Later · Instagram Reels",
         "platform": "instagram",
         "status": "success",
-        "checkedAt": "2026-08-31T16:34:41.9498911Z",
+        "checkedAt": "2026-09-01T09:26:04.443Z",
         "candidatesMatched": 16
       },
       {
@@ -9635,7 +9693,7 @@
         "label": "SocialPilot · TikTok",
         "platform": "tiktok",
         "status": "success",
-        "checkedAt": "2026-08-31T16:34:41.9498911Z",
+        "checkedAt": "2026-09-01T09:26:04.443Z",
         "candidatesMatched": 19
       },
       {
@@ -9643,31 +9701,31 @@
         "label": "SocialPilot · Instagram Reels",
         "platform": "instagram",
         "status": "success",
-        "checkedAt": "2026-08-31T16:34:41.9498911Z",
-        "candidatesMatched": 17
+        "checkedAt": "2026-09-01T09:26:04.443Z",
+        "candidatesMatched": 15
+      },
+      {
+        "id": "ramdam-tiktok-monthly-2026-09",
+        "label": "Ramdam · TikTok mensuel · sep 2026",
+        "platform": "tiktok",
+        "status": "failed",
+        "checkedAt": "2026-09-01T09:26:04.443Z",
+        "candidatesMatched": 0
       },
       {
         "id": "ramdam-tiktok-monthly-2026-08",
         "label": "Ramdam · TikTok mensuel · aug 2026",
         "platform": "tiktok",
         "status": "success",
-        "checkedAt": "2026-08-31T16:34:41.9498911Z",
+        "checkedAt": "2026-09-01T09:26:04.443Z",
         "candidatesMatched": 7
-      },
-      {
-        "id": "ramdam-tiktok-monthly-2026-07",
-        "label": "Ramdam · TikTok mensuel · jul 2026",
-        "platform": "tiktok",
-        "status": "failed",
-        "checkedAt": "2026-08-31T16:34:41.9498911Z",
-        "candidatesMatched": 0
       },
       {
         "id": "shotmatic-tiktok-weekly-2026-w35",
         "label": "Shotmatic · TikTok hebdomadaire · 2026-W35",
         "platform": "tiktok",
         "status": "success",
-        "checkedAt": "2026-08-31T16:34:41.9498911Z",
+        "checkedAt": "2026-09-01T09:26:04.443Z",
         "candidatesMatched": 4
       },
       {
@@ -9675,7 +9733,7 @@
         "label": "Shotmatic · TikTok hebdomadaire · 2026-W34",
         "platform": "tiktok",
         "status": "success",
-        "checkedAt": "2026-08-31T16:34:41.9498911Z",
+        "checkedAt": "2026-09-01T09:26:04.443Z",
         "candidatesMatched": 2
       },
       {
@@ -9683,7 +9741,7 @@
         "label": "Shotmatic · TikTok hebdomadaire · 2026-W33",
         "platform": "tiktok",
         "status": "success",
-        "checkedAt": "2026-08-31T16:34:41.9498911Z",
+        "checkedAt": "2026-09-01T09:26:04.443Z",
         "candidatesMatched": 0
       },
       {
@@ -9691,7 +9749,7 @@
         "label": "Tokchart · sons TikTok",
         "platform": "tiktok",
         "status": "failed",
-        "checkedAt": "2026-08-31T16:34:41.9498911Z",
+        "checkedAt": "2026-09-01T09:26:04.443Z",
         "candidatesMatched": 0
       },
       {
@@ -9699,21 +9757,21 @@
         "label": "TrendVideosHub · YouTube Shorts",
         "platform": "youtube",
         "status": "success",
-        "checkedAt": "2026-08-31T16:34:41.9498911Z",
-        "candidatesMatched": 6
+        "checkedAt": "2026-09-01T09:26:04.443Z",
+        "candidatesMatched": 7
       },
       {
         "id": "x-france-trends",
         "label": "X · tendances France",
         "platform": "x",
         "status": "failed",
-        "checkedAt": "2026-08-31T16:34:41.9498911Z",
+        "checkedAt": "2026-09-01T09:26:04.443Z",
         "candidatesMatched": 0
       }
     ],
     "counts": {
       "checkedSources": 9,
-      "matchedSignals": 86,
+      "matchedSignals": 85,
       "actionable": 53,
       "lofiGirl": 47,
       "lofiBoy": 6
