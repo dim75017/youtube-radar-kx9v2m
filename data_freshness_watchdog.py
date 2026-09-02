@@ -648,9 +648,11 @@ def spotify_track_policy_problem(policy: Mapping[str, Any] | None, max_requests:
         return "Spotify track maintenance policy is unsupported or incoherent"
     if request_cap is None or request_cap <= 0:
         return "Spotify track maintenance request cap is missing or invalid"
-    if request_cap > max_requests:
-        if execution_profile != "public_catchup" or request_cap > 24_000:
-            return "Spotify track maintenance request cap is missing or exceeds the dispatch cap"
+    if request_cap > max_requests and (
+        execution_profile != "public_catchup" or request_cap > 24_000
+    ):
+        return "Spotify track maintenance request cap is missing or exceeds the dispatch cap"
+    if execution_profile == "public_catchup":
         reasons = policy.get("reason_coverage")
         published = reasons.get("published_public") if isinstance(reasons, Mapping) else None
         problem, public_counts = count_triplet_problem(
@@ -660,18 +662,55 @@ def spotify_track_policy_problem(policy: Mapping[str, Any] | None, max_requests:
         if problem:
             return problem
         entities = policy.get("published_public_entity_coverage")
-        resolvable = exact_int(entities if isinstance(entities, Mapping) else None, "resolvable_entities")
-        selected_entities = exact_int(entities if isinstance(entities, Mapping) else None, "selected_entities")
+        entity_coverage = entities if isinstance(entities, Mapping) else None
+        public_entities = exact_int(entity_coverage, "public_entities")
+        resolvable = exact_int(entity_coverage, "resolvable_entities")
+        unresolved = exact_int(entity_coverage, "unresolved_entities")
+        selected_entities = exact_int(entity_coverage, "selected_entities")
+        missing_selected = exact_int(
+            entity_coverage,
+            "missing_selected_entities",
+        )
+        refreshed_entities = exact_int(
+            entity_coverage,
+            "refreshed_entities",
+        )
+        usable_history_entities = exact_int(
+            entity_coverage,
+            "usable_history_entities",
+        )
         assert public_counts is not None
         if (
             public_counts[0] <= 0
             or public_counts[1] != public_counts[0]
             or public_counts[2] != 0
-            or resolvable is None
-            or resolvable <= 0
-            or selected_entities != resolvable
         ):
+            return "Spotify public catch-up did not select the complete public request cohort"
+        if (
+            public_entities is None
+            or resolvable is None
+            or unresolved is None
+            or missing_selected is None
+            or refreshed_entities is None
+            or usable_history_entities is None
+            or public_entities <= 0
+            or resolvable <= 0
+            or resolvable > public_entities
+            or unresolved != public_entities - resolvable
+            or selected_entities is None
+            or selected_entities < 0
+            or selected_entities > resolvable
+            or missing_selected != resolvable - selected_entities
+            or refreshed_entities < 0
+            or refreshed_entities > selected_entities
+            or usable_history_entities < 0
+            or usable_history_entities > resolvable
+        ):
+            return "Spotify public catch-up entity coverage counters are missing or incoherent"
+        if selected_entities != resolvable or missing_selected != 0:
             return "Spotify public catch-up did not select the complete resolvable catalogue"
+        if refreshed_entities != resolvable or usable_history_entities != resolvable:
+            return "Spotify public catch-up did not refresh the complete resolvable catalogue"
 
     problem, totals = count_triplet_problem(policy, "Spotify track maintenance policy")
     if problem:
@@ -793,19 +832,54 @@ def assess_spotify_core(root: Path, now: datetime, ignore_deadline: bool = False
     if policy_problem:
         return freshness_row(target, True, policy_problem, tracks_observed)
     assert isinstance(policy, Mapping)
-    # spotify_track_policy_problem() proves full public coverage for an
-    # oversized public_catchup before reaching this point. Such a pass selected
-    # every rotation bucket, so a UTC/Paris boundary mismatch in its legacy
-    # daily-bucket label cannot make the otherwise current snapshot stale.
+    # spotify_track_policy_problem() proves full selection, collection and
+    # usable history coverage for every public_catchup before reaching this
+    # point. The legacy exception below is limited to the two-hour
+    # UTC/Paris boundary where that complete pass selected every bucket but
+    # labelled its day using UTC.
     request_cap = exact_int(policy, "request_cap")
+    catchup_entities = policy.get("published_public_entity_coverage")
+    catchup_resolvable = exact_int(
+        catchup_entities if isinstance(catchup_entities, Mapping) else None,
+        "resolvable_entities",
+    )
+    catchup_daily_current = exact_int(
+        catchup_entities if isinstance(catchup_entities, Mapping) else None,
+        "daily_current_source_entities",
+    )
+    catchup_daily_lagging = exact_int(
+        catchup_entities if isinstance(catchup_entities, Mapping) else None,
+        "daily_lagging_source_entities",
+    )
+    catchup_allowed_daily_lag = (
+        max(10, (catchup_resolvable + 99) // 100)
+        if isinstance(catchup_resolvable, int) and catchup_resolvable > 0
+        else -1
+    )
     validated_complete_catchup = bool(
         policy.get("execution_profile") == "public_catchup"
         and request_cap is not None
-        and request_cap > max_requests
+        and catchup_resolvable is not None
+        and catchup_resolvable > 0
+        and exact_int(catchup_entities, "selected_entities") == catchup_resolvable
+        and exact_int(catchup_entities, "missing_selected_entities") == 0
+        and exact_int(catchup_entities, "refreshed_entities") == catchup_resolvable
+        and exact_int(catchup_entities, "usable_history_entities") == catchup_resolvable
+    )
+    legacy_utc_paris_boundary = bool(
+        validated_complete_catchup
+        and catchup_daily_current is not None
+        and catchup_daily_lagging is not None
+        and catchup_daily_current >= 0
+        and catchup_daily_lagging >= 0
+        and catchup_daily_current + catchup_daily_lagging == catchup_resolvable
+        and catchup_daily_lagging <= catchup_allowed_daily_lag
+        and local_day(tracks_observed) == today
+        and tracks_observed.astimezone(timezone.utc).date() == today - timedelta(days=1)
     )
     if (
         exact_int(policy, "daily_rotation_bucket") != today.toordinal() % 7
-        and not validated_complete_catchup
+        and not legacy_utc_paris_boundary
     ):
         return freshness_row(
             target,
@@ -895,7 +969,15 @@ def assess_spotify_core(root: Path, now: datetime, ignore_deadline: bool = False
     except ValueError:
         freshness_cutoff = None
     expected_cutoff = today - timedelta(days=7)
-    if source_age_limit != 7 or stale_entities is None or freshness_cutoff != expected_cutoff:
+    legacy_utc_cutoff = expected_cutoff - timedelta(days=1)
+    legacy_cutoff_matches = bool(
+        legacy_utc_paris_boundary and freshness_cutoff == legacy_utc_cutoff
+    )
+    if (
+        source_age_limit != 7
+        or stale_entities is None
+        or (freshness_cutoff != expected_cutoff and not legacy_cutoff_matches)
+    ):
         return freshness_row(
             target,
             True,
