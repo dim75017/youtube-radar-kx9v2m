@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "capturedAt": "2026-09-02T11:29:36+02:00",
+  "capturedAt": "2026-09-02T13:58:31+02:00",
   "minimumLikes": 10000,
-  "methodology": "Les trois lectures historiques du 26/08 sur @lofi.radar sont conservées. Le 01/09, le nouveau compte @lofiradar2026 a d’abord observé 48 publications Home puis 14 publications ciblées. Le 02/09 à 09:46, une première calibration manuelle a utilisé huit signaux Not interested sur du football manifeste et fait passer la pertinence du Home de 10,4 % à 18,5 %, tandis que le sport restait à 44,4 %. Un second bloc de 33 min 30 s, terminé à 11:29 dans un onglet d’agent séparé et muet, a ensuite consulté 92 contenus uniques : 51 posts ciblés avec dwell réel dans six familles, les dix seeds exactes fournies par Dim, puis 31 recommandations Home. Ce Home atteint 32,3 % de pertinence et 6,5 % de sport, mais 16 cartes sur 31 viennent du même compte de quiz éducatifs. Neuf seeds non-IA de Dim et cinq découvertes complémentaires dépassant 10 000 likes sont retenues ; la seed cozynerdythings portant un label IA explicite est exclue. Le radar contient ainsi 52 cartes éditoriales. Aucun like, follow, enregistrement, commentaire, message, partage ou publication n’a été effectué. Chaque source reste séparée de son adaptation : ces observations isolées ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire, ni une recalibration durable de l’algorithme.",
+  "methodology": "Les trois lectures historiques du 26/08 sur @lofi.radar sont conservées. Le 01/09, le nouveau compte @lofiradar2026 a d’abord observé 48 publications Home puis 14 publications ciblées. Le 02/09 à 09:46, une première calibration manuelle a utilisé huit signaux Not interested sur du football manifeste. Une immersion longue a ensuite cumulé six blocs séparés et muets, soit 102 min 42 s et 338 observations : 221 ciblées et 117 Home. Sur l’ensemble des Home observés pendant cette immersion, 13 sont classés pertinents, 104 hors niche, huit sport, un porte un label IA, aucun n’est Sponsorisé et 62 proviennent de nsmqghana. Le dernier Home compte un pertinent sur 21, zéro sport et neuf cartes nsmqghana : le football a fortement reculé, mais le flux reste dominé par des quiz éducatifs et ne peut pas être considéré comme calibré. Les dix seeds exactes fournies par Dim ont été inspectées ; neuf non-IA sont retenues. Parmi douze nouveaux exemples qualifiés à au moins 10 000 likes pendant les cinq derniers blocs, cinq mécaniques complémentaires sont retenues après revue éditoriale. Le radar contient ainsi 57 cartes éditoriales. Aucun like, follow, enregistrement, commentaire, message, partage ou publication n’a été effectué ; un seul Not interested supplémentaire a été limité à un post Aston Villa manifestement football. Chaque source reste séparée de son adaptation : ces observations isolées ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire, ni une recalibration durable de l’algorithme.",
   "limitations": [
     "Les compteurs de likes ont été relevés tels qu’affichés par Instagram et sont conservés avec une précision platform-rounded.",
     "Les vues, commentaires, partages, enregistrements et dates de publication non observés restent à null plutôt que d’être estimés.",
@@ -19,7 +19,11 @@
     "Pour le premier Home final du 02/09, aucun compteur de likes n’a été conservé : qualifyingCount reste donc à zéro par prudence, même si cinq contenus ont été jugés pertinents.",
     "Le second Home du 02/09 montre un fort recul du football, mais 16 posts sur 31 viennent de nsmqghana : la recommandation reste concentrée et ne constitue pas encore un flux cozy diversifié.",
     "Les dix seeds fournies par Dim ont toutes été consultées ; neuf dépassent 10 000 likes, ne portent pas de label IA et sont retenues, tandis que DQG5kQLEQdo est exclue pour label IA explicite.",
-    "Les compteurs de likes du second Home n’ont pas été conservés ; son qualifyingCount reste donc à zéro, sans extrapolation depuis le seul classement de pertinence."
+    "Les compteurs de likes du second Home n’ont pas été conservés ; son qualifyingCount reste donc à zéro, sans extrapolation depuis le seul classement de pertinence.",
+    "Les cinq blocs temporaires suivants totalisent 246 observations, dont 160 ciblées et 86 Home ; il s’agit d’un cumul de blocs, pas d’un total globalement dédupliqué, car l’audit privé ne conserve pas chaque shortcode rejeté.",
+    "Sur ces 86 Home plus tardifs, trois sont pertinents, 83 hors niche, six sport, un porte un label IA, aucun n’est Sponsorisé et 46 viennent de nsmqghana : la pertinence tardive tombe à 3,5 % malgré le recul du football.",
+    "Douze sources nouvelles à au moins 10 000 likes, non-IA et non sponsorisées ont été relevées pendant ces blocs ; cinq sont détaillées après déduplication par mécanique et auteur, sans transformer ces posts isolés en tendances établies.",
+    "Un seul Not interested supplémentaire a été appliqué à DcvdLLuqym2, post Aston Villa manifestement football ; trois faux positifs textuels liés au mot soccer ou à Manchester ont été laissés intacts."
   ],
   "explorationLenses": [
     {
@@ -661,6 +665,55 @@
         "La pertinence atteint 32,3 % contre 18,5 % au passage précédent et la part sport tombe à 6,5 % contre 44,4 %.",
         "Seize posts sur 31 proviennent toutefois de nsmqghana : le biais football recule, mais la diversité du flux reste insuffisante.",
         "Aucun compteur de likes n’a été conservé pendant ce contrôle Home ; qualifyingCount reste à zéro et aucune source Home n’est détaillée."
+      ]
+    },
+    {
+      "id": "instagram-search-2026-09-02-immersion-final",
+      "platform": "instagram",
+      "surface": "search",
+      "browserContext": "agent-tab-explicitly-delegated",
+      "capturedAt": "2026-09-02T13:58:31+02:00",
+      "seenCount": 160,
+      "qualifyingCount": 10,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "cozy-games-rpg-worlds",
+        "rain-weather-seasons",
+        "visual-formats-lab",
+        "study-exams-pomodoro",
+        "reading-and-journaling",
+        "nostalgia-time-capsule",
+        "lofi-daily-life",
+        "animal-companions",
+        "emotional-storytelling"
+      ],
+      "limitations": [
+        "Les cinq blocs temporaires suivant le snapshot de 11:29 totalisent 160 observations ciblées avec dwell réel dans lecture/journaling, art manuel, coding/cozy gaming, animaux, study/deep work, introversion, beatmaking et playlist marketing.",
+        "Dix sources ciblées non-IA et non sponsorisées dépassaient 10 000 likes ; trois exemples d’auteurs et mécaniques distincts sont retenus dans ce run après revue éditoriale.",
+        "Un bloc de reconnexion s’est arrêté à 24 observations ciblées sans phase Home ; il reste inclus honnêtement dans le cumul et n’est pas présenté comme un passage complet.",
+        "Tous les médias sont restés muets ; zéro like, follow, sauvegarde, commentaire, message, partage ou publication."
+      ]
+    },
+    {
+      "id": "instagram-home-2026-09-02-immersion-final",
+      "platform": "instagram",
+      "surface": "home",
+      "browserContext": "agent-tab-explicitly-delegated",
+      "capturedAt": "2026-09-02T13:58:31+02:00",
+      "seenCount": 86,
+      "qualifyingCount": 2,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "animal-companions",
+        "emotional-storytelling",
+        "lofi-daily-life",
+        "visual-formats-lab"
+      ],
+      "limitations": [
+        "Les quatre phases Home complètes totalisent 86 observations : trois pertinentes, 83 hors niche, six sport, un libellé IA et zéro mention Sponsorisé.",
+        "La pertinence tardive est de 3,5 % et 46 cartes sur 86 viennent de nsmqghana, soit 53,5 % ; le flux n’est donc pas encore calibré malgré le recul du football.",
+        "Le dernier Home contient un pertinent sur 21, zéro sport et neuf cartes nsmqghana ; deux sources Home non-IA au-dessus de 10 000 likes sont retenues.",
+        "Un seul Not interested a été appliqué à un post Aston Villa manifestement football ; aucun faux positif ambigu n’a été masqué."
       ]
     }
   ],
@@ -3150,6 +3203,299 @@
           "Production 100 % humaine : composition du décor, dessin, animation, bruitages, musique et montage réalisés par des personnes créditées.",
           "Aucune image, vidéo, voix ou musique générée par IA.",
           "Créer un camouflage, un décor et une solution propres à Lofi ; ne reprendre ni les ratons, ni les myrtilles, ni leur arrangement."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "autumn-cozy-quest-menu",
+      "runId": "instagram-search-2026-09-02-immersion-final",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/reel/DcMDebEx6Iq/",
+        "postId": "DcMDebEx6Iq",
+        "author": "jesskindagames",
+        "sourceLabel": "Reel de recommandation cadré par la caption « Cozy games perfect for getting into autumnal vibes »",
+        "capturedAt": "2026-09-02T13:58:31+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 42000,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": [
+          "cozy-games-rpg-worlds",
+          "rain-weather-seasons",
+          "visual-formats-lab"
+        ],
+        "hook": "La caption « Cozy games perfect for getting into autumnal vibes » promet immédiatement une sélection ludique associée à une sensation saisonnière précise.",
+        "mechanic": "L’accroche relie la découverte de jeux cozy à l’entrée dans l’automne ; faute de détail visuel suffisamment documenté, aucun jeu, plan ni élément d’interface précis n’est attribué à la source.",
+        "visualCue": "Les visuels source ne sont pas établis avec assez de précision pour décrire un décor ou une mécanique graphique sans extrapoler.",
+        "reasonToStop": "Le spectateur est invité à découvrir quelles expériences peuvent produire l’ambiance automnale annoncée par la caption.",
+        "whyRelevant": "Lofi peut transformer cette promesse saisonnière en micro-quêtes entièrement originales dans son propre univers, sans reprendre un jeu ou une licence tierce.",
+        "confidence": "medium"
+      },
+      "adaptation": {
+        "title": "Le menu des premières feuilles",
+        "cast": {
+          "character": "lofi-girl",
+          "companion": "cat"
+        },
+        "concept": "Un faux menu de quête entièrement original propose à Girl trois petites missions automnales dans le Lofi universe, puis montre le chat choisir la plus simple.",
+        "openingText": "Première soirée d’automne : quelle quête cozy on lance ?",
+        "sequence": [
+          "Un menu dessiné par l’équipe apparaît dans la chambre de Girl avec trois missions originales : ramasser une feuille, allumer la lampe du café ou rapporter une écharpe.",
+          "Girl hésite entre les trois cartes pendant que le décor change subtilement de couleur et que la pluie commence derrière la fenêtre.",
+          "Le chat pose la patte sur la mission « allumer la lampe » ; Girl l’accomplit et la chambre rejoint une boucle chaleureuse de début d’automne."
+        ],
+        "caption": "Petite quête, grande ambiance d’automne. Laquelle tu choisis ?",
+        "audioDirection": "Composition originale jouée par des musiciens humains, avec pluie et manipulations enregistrées ou licenciées ; la scène doit rester compréhensible sans son.",
+        "productionGuardrails": [
+          "Production 100 % humaine : écriture, game design fictif, illustration, animation, bruitages, montage et musique réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Créer une interface, des quêtes et des décors propres au Lofi universe, sans reprendre les assets, le texte, le scénario ou les codes distinctifs d’un jeu ou de la source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "winter-quarter-film-diary",
+      "runId": "instagram-search-2026-09-02-immersion-final",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/CbQVBPCJsFt/",
+        "postId": "CbQVBPCJsFt",
+        "author": "studyquill",
+        "sourceLabel": "Image d’étude cadrée par la caption « winter quarter on film »",
+        "capturedAt": "2026-09-02T13:58:31+02:00",
+        "publishedAt": null,
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 15300,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": [
+          "study-exams-pomodoro",
+          "rain-weather-seasons",
+          "visual-formats-lab",
+          "lofi-daily-life"
+        ],
+        "hook": "La caption « winter quarter on film » condense une période d’étude, une saison et une matière analogique en quatre mots mémorisables.",
+        "mechanic": "Le principe éditorial transforme un trimestre entier en journal saisonnier ; aucun lieu, objet ou cadrage précis n’est déduit de l’image au-delà de la caption disponible.",
+        "visualCue": "Le contenu visuel source n’est pas assez documenté pour attribuer sans risque une palette, un appareil, un bureau ou une composition particulière.",
+        "reasonToStop": "La formule donne envie de voir comment des moments ordinaires d’étude deviennent une capsule cohérente de l’hiver.",
+        "whyRelevant": "Girl peut raconter une période d’étude réaliste par quelques instants saisonniers faits main, sans glorifier le surtravail ni reproduire l’esthétique exacte de la source.",
+        "confidence": "medium"
+      },
+      "adaptation": {
+        "title": "Un trimestre d’hiver en trois poses",
+        "cast": {
+          "character": "lofi-girl",
+          "companion": "cat"
+        },
+        "concept": "Un triptyque illustré comme trois photographies argentiques originales suit Girl au début, au milieu et à la fin d’un trimestre d’hiver, avec une progression modeste et une vraie pause.",
+        "openingText": "Un trimestre d’hiver, trois moments qu’on garde.",
+        "sequence": [
+          "Première image : au matin, Girl date une page près d’une fenêtre givrée pendant que le chat observe la neige.",
+          "Deuxième image : à la mi-journée, une erreur raturée reste visible et Girl partage sa pause avec le chat sous la lampe.",
+          "Troisième image : au crépuscule, elle ferme le cahier après une seule étape terminée et range les trois tirages dans une enveloppe datée."
+        ],
+        "caption": "Pas tout le trimestre. Juste trois moments qui racontent assez.",
+        "audioDirection": "Image autonome sans son ; si le triptyque est animé, employer des sons hivernaux captés par l’équipe et une composition originale humaine très légère.",
+        "productionGuardrails": [
+          "Production 100 % humaine : photographie ou illustration, textures analogiques, mise en page, éventuelle animation, bruitages, montage et musique réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Créer les scènes, textures et textes depuis zéro, sans reprendre les assets, la composition, le scénario ou la caption de la source, et sans promettre de résultat scolaire."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "sweetest-bedroom-shark",
+      "runId": "instagram-search-2026-09-02-immersion-final",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/CsrIIw5pmF8/",
+        "postId": "CsrIIw5pmF8",
+        "author": "nala_cat",
+        "sourceLabel": "Image animalière cadrée par la caption interrogative « The sweetest shark? »",
+        "capturedAt": "2026-09-02T13:58:31+02:00",
+        "publishedAt": null,
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 242300,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": [
+          "animal-companions",
+          "visual-formats-lab"
+        ],
+        "hook": "La question « The sweetest shark? » associe deux idées contradictoires et crée un gag avant même toute explication.",
+        "mechanic": "Un surnom inattendu recadre un animal familier comme une créature impressionnante mais tendre ; la pose, l’accessoire ou le décor exact de la source ne sont pas inventés.",
+        "visualCue": "Le visuel source n’est pas documenté avec assez de précision pour affirmer la présence d’un costume, d’un objet ou d’une posture particulière.",
+        "reasonToStop": "Le spectateur veut résoudre la contradiction entre le requin annoncé et la douceur promise par la caption.",
+        "whyRelevant": "Le chat de Girl peut produire la même surprise par une illusion visuelle originale et un comportement naturel, sans costume forcé ni copie de l’image source.",
+        "confidence": "medium"
+      },
+      "adaptation": {
+        "title": "Le requin sous la couverture",
+        "cast": {
+          "character": "lofi-girl",
+          "companion": "cat"
+        },
+        "concept": "Une bosse en forme d’aileron traverse lentement la couverture de Girl comme un requin, avant de révéler le chat qui cherchait simplement la place la plus chaude.",
+        "openingText": "Le plus petit requin de la chambre vient de bouger.",
+        "sequence": [
+          "Une couverture bleue remue sur le lit et une petite pointe de tissu avance comme un aileron, sans montrer ce qui se cache dessous.",
+          "Girl suit la forme du regard tandis qu’elle décrit un cercle lent autour de l’oreiller et s’immobilise près de la lampe.",
+          "Le chat sort naturellement la tête du pli, bâille puis se couche ; l’ombre de son oreille conserve une seconde la silhouette d’aileron."
+        ],
+        "caption": "Aucun océan. Une seule couverture. Beaucoup trop de douceur.",
+        "audioDirection": "Frottements de tissu et ronronnement captés proprement, avec un mini-motif original joué par un humain ; le reveal doit aussi fonctionner en muet.",
+        "productionGuardrails": [
+          "Production 100 % humaine : concept, storyboard, dessin ou tournage, animation, bruitages, montage et musique réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Ne pas costumer, contraindre ou mettre en danger un animal ; créer l’illusion, les plans, le texte et le scénario depuis zéro sans reprendre l’asset source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "cat-dog-sunspot-truce",
+      "runId": "instagram-home-2026-09-02-immersion-final",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/reel/DZvQ4UORy3q/",
+        "postId": "DZvQ4UORy3q",
+        "author": "a_typical_tuesday",
+        "sourceLabel": "Reel animalier où un moment partagé entre chien et chat contredit l’idée qu’ils se détestent",
+        "capturedAt": "2026-09-02T13:58:31+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 2700000,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": [
+          "animal-companions",
+          "emotional-storytelling"
+        ],
+        "hook": "La scène active le cliché d’une rivalité chien-chat, puis un geste calme entre les deux animaux le dément visuellement.",
+        "mechanic": "Une attente de conflit est installée par leur rencontre, leur langage corporel ralentit la tension, puis une proximité volontaire fournit le retournement tendre.",
+        "visualCue": "La réduction progressive de la distance et les postures détendues rendent l’entente lisible sans voix ni anthropomorphisme forcé.",
+        "reasonToStop": "Le spectateur attend de savoir si la rencontre confirmera le cliché ou révélera une relation plus nuancée.",
+        "whyRelevant": "La première rencontre canonique du chat de Girl et du chien de Boy peut devenir un moment de lore émotionnel fondé sur l’observation et non sur une fausse dispute.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Le même rayon de soleil",
+        "cast": {
+          "character": "both",
+          "companion": "cat-and-dog"
+        },
+        "concept": "Lors d’une visite de Boy, le chat et le chien semblent se disputer le seul rayon de soleil de la pièce, puis choisissent spontanément de le partager.",
+        "openingText": "On leur avait réservé deux places. Ils en ont choisi une seule.",
+        "sequence": [
+          "Le chat et le chien s’arrêtent de part et d’autre d’un petit rectangle de soleil pendant que Girl et Boy les observent sans intervenir.",
+          "Le chien se couche à distance ; le chat avance lentement, renifle le bord de sa couverture puis s’installe dans l’autre moitié du rayon.",
+          "La lumière se déplace et les deux animaux se rapprochent pour rester au chaud, tandis que Girl et Boy continuent leur musique en silence."
+        ],
+        "caption": "Peut-être qu’ils ne voulaient pas deux territoires. Juste le même rayon.",
+        "audioDirection": "Ambiance de pièce et respiration animale enregistrées naturellement, avec une composition originale humaine discrète et sans fausses voix.",
+        "productionGuardrails": [
+          "Production 100 % humaine : écriture, storyboard, illustration ou captation, animation, bruitages, montage et musique réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Si des animaux réels sont filmés, ne conserver que des interactions volontaires et détendues, avec supervision adaptée ; ne provoquer aucun face-à-face et ne copier aucun plan ou scénario source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "goofy-dog-nap-ritual",
+      "runId": "instagram-home-2026-09-02-immersion-final",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/reel/DZ1F0T5Js45/",
+        "postId": "DZ1F0T5Js45",
+        "author": "smileydingoes",
+        "sourceLabel": "Reel animalier cadré par la caption humoristique « Certified goober »",
+        "capturedAt": "2026-09-02T13:58:31+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 1100000,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": [
+          "animal-companions",
+          "lofi-daily-life"
+        ],
+        "hook": "La caption « Certified goober » donne immédiatement au chien un rôle comique affectueux et invite à guetter son comportement imprévisible.",
+        "mechanic": "Un label très court transforme un moment animalier ordinaire en preuve de maladresse sympathique ; aucun geste ou gag précis n’est attribué au reel sans observation documentée.",
+        "visualCue": "Le contenu visuel disponible n’est pas décrit avec assez de précision pour affirmer une action, une posture ou un accessoire particulier.",
+        "reasonToStop": "Le public reste pour découvrir le petit comportement qui justifie affectueusement le label annoncé.",
+        "whyRelevant": "Le chien de Boy peut apporter un humour quotidien naturel et silencieux, sans fausse voix, dressage forcé ni reprise du gag source.",
+        "confidence": "medium"
+      },
+      "adaptation": {
+        "title": "La grande préparation pour une petite sieste",
+        "cast": {
+          "character": "lofi-boy",
+          "companion": "dog"
+        },
+        "concept": "Le chien de Boy transforme l’installation pour une simple sieste en rituel inutilement élaboré, puis oublie son jouet juste hors de portée.",
+        "openingText": "Une minute de préparation. Zéro plan.",
+        "sequence": [
+          "Boy pose un coussin près de son bureau ; le chien en fait lentement trois fois le tour avec son jouet dans la gueule.",
+          "Au moment de se coucher, le jouet roule quelques centimètres plus loin et le chien le regarde à l’envers sans quitter le coussin.",
+          "Boy rapproche doucement le jouet ; le chien pose une patte dessus, soupire et s’endort enfin pendant que le beat reprend."
+        ],
+        "caption": "Le plan était simple jusqu’à ce qu’il participe.",
+        "audioDirection": "Pas, tissu et soupir enregistrés naturellement, avec un beat original composé et interprété par des humains ; aucun doublage animal.",
+        "productionGuardrails": [
+          "Production 100 % humaine : concept, storyboard, illustration ou captation, animation, bruitages, montage et musique réalisés par les collaborateurs crédités.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Fonder le gag sur un comportement canin volontaire et sans danger, sans fausse voix ni contrainte, et ne reprendre aucun asset, texte, plan ou scénario de la source."
         ]
       },
       "editorialStatus": "new"
