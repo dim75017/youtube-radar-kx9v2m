@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "capturedAt": "2026-09-01T19:24:47.852Z",
-  "nextRefreshAt": "2026-09-02T19:24:47.852Z",
+  "capturedAt": "2026-09-02T09:54:19.627Z",
+  "nextRefreshAt": "2026-09-03T09:54:19.627Z",
   "cadenceHours": 24,
   "minimumOrganicLikes": 10000,
   "methodology": "Liste fondée sur seize URLs fournies par Dim. Les compteurs exacts viennent du JSON public gql_data.shortcode_media des embeds Instagram. Une création est qualifiée à partir de 10 000 likes sur le post natif ; les créations ajoutées manuellement sous ce seuil restent suivies séparément jusqu'à leur qualification. Le statut publicitaire est un axe indépendant : product_type=ad place la création dans la lane paid, mais les likes, vues et commentaires restent du social proof natif et ne mesurent ni les impressions payées, ni les clics, ni les conversions.",
@@ -18,7 +18,7 @@
       "platform": "instagram",
       "lane": "paid",
       "status": "success",
-      "checkedAt": "2026-09-01T19:24:47.852Z",
+      "checkedAt": "2026-09-02T09:54:19.627Z",
       "label": "Instagram · embeds publics des seize URLs connues",
       "sourceUrl": "https://www.instagram.com/",
       "note": "16/16 médias attribués ; compteurs exacts, durée, dimensions et product_type vérifiés."
@@ -186,6 +186,17 @@
           "metricScope": "native-post",
           "sourceLabel": "Instagram embed public · compteurs du post natif",
           "sourceUrl": "https://www.instagram.com/p/DUjAoDvgKKr/"
+        },
+        {
+          "capturedAt": "2026-09-02T09:54:19.627Z",
+          "likes": 66530,
+          "comments": 407,
+          "views": 1539624,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DUjAoDvgKKr/"
         }
       ]
     },
@@ -285,6 +296,17 @@
           "likes": 20331,
           "comments": 151,
           "views": 580266,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DQevwh_ALiN/"
+        },
+        {
+          "capturedAt": "2026-09-02T09:54:19.627Z",
+          "likes": 20354,
+          "comments": 151,
+          "views": 580998,
           "shares": null,
           "precision": "exact",
           "metricScope": "native-post",
@@ -394,6 +416,17 @@
           "metricScope": "native-post",
           "sourceLabel": "Instagram embed public · compteurs du post natif",
           "sourceUrl": "https://www.instagram.com/p/DMgEeBDMCUu/"
+        },
+        {
+          "capturedAt": "2026-09-02T09:54:19.627Z",
+          "likes": 103211,
+          "comments": 763,
+          "views": 2770724,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DMgEeBDMCUu/"
         }
       ]
     },
@@ -493,6 +526,17 @@
           "likes": 58916,
           "comments": 465,
           "views": 1621811,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DMgEc7_sw-G/"
+        },
+        {
+          "capturedAt": "2026-09-02T09:54:19.627Z",
+          "likes": 58962,
+          "comments": 466,
+          "views": 1622761,
           "shares": null,
           "precision": "exact",
           "metricScope": "native-post",
@@ -602,6 +646,17 @@
           "metricScope": "native-post",
           "sourceLabel": "Instagram embed public · compteurs du post natif",
           "sourceUrl": "https://www.instagram.com/p/DNf3CrAgzjb/"
+        },
+        {
+          "capturedAt": "2026-09-02T09:54:19.627Z",
+          "likes": 42029,
+          "comments": 205,
+          "views": 3795906,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DNf3CrAgzjb/"
         }
       ]
     },
@@ -701,6 +756,17 @@
           "likes": 90674,
           "comments": 2346,
           "views": 8140312,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DVn4p70jJnZ/"
+        },
+        {
+          "capturedAt": "2026-09-02T09:54:19.627Z",
+          "likes": 90673,
+          "comments": 2346,
+          "views": 8140321,
           "shares": null,
           "precision": "exact",
           "metricScope": "native-post",
@@ -811,6 +877,17 @@
           "metricScope": "native-post",
           "sourceLabel": "Instagram embed public · compteurs du post natif",
           "sourceUrl": "https://www.instagram.com/p/DLDyqsnsxuJ/"
+        },
+        {
+          "capturedAt": "2026-09-02T09:54:19.627Z",
+          "likes": 148499,
+          "comments": 1762,
+          "views": 6273586,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DLDyqsnsxuJ/"
         }
       ]
     },
@@ -910,6 +987,17 @@
           "likes": 194281,
           "comments": 661,
           "views": 9232631,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DWgklGZAPfq/"
+        },
+        {
+          "capturedAt": "2026-09-02T09:54:19.627Z",
+          "likes": 195339,
+          "comments": 665,
+          "views": 9296096,
           "shares": null,
           "precision": "exact",
           "metricScope": "native-post",
@@ -1019,6 +1107,17 @@
           "metricScope": "native-post",
           "sourceLabel": "Instagram embed public · compteurs du post natif",
           "sourceUrl": "https://www.instagram.com/p/DLDyuqVsyNE/"
+        },
+        {
+          "capturedAt": "2026-09-02T09:54:19.627Z",
+          "likes": 23354,
+          "comments": 401,
+          "views": 2165120,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DLDyuqVsyNE/"
         }
       ]
     },
@@ -1118,6 +1217,17 @@
           "likes": 61332,
           "comments": 302,
           "views": 1335844,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DQxJ_rTjGGI/"
+        },
+        {
+          "capturedAt": "2026-09-02T09:54:19.627Z",
+          "likes": 61418,
+          "comments": 302,
+          "views": 1337381,
           "shares": null,
           "precision": "exact",
           "metricScope": "native-post",
@@ -1227,6 +1337,17 @@
           "metricScope": "native-post",
           "sourceLabel": "Instagram embed public · compteurs du post natif",
           "sourceUrl": "https://www.instagram.com/p/DayGHrKgp0Y/"
+        },
+        {
+          "capturedAt": "2026-09-02T09:54:19.627Z",
+          "likes": 30103,
+          "comments": 298,
+          "views": 253660,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DayGHrKgp0Y/"
         }
       ]
     },
@@ -1326,6 +1447,17 @@
           "likes": 11248,
           "comments": 106,
           "views": 257579,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DWNmRftjCzG/"
+        },
+        {
+          "capturedAt": "2026-09-02T09:54:19.627Z",
+          "likes": 11332,
+          "comments": 106,
+          "views": 259068,
           "shares": null,
           "precision": "exact",
           "metricScope": "native-post",
@@ -1435,6 +1567,17 @@
           "metricScope": "native-post",
           "sourceLabel": "Instagram embed public · compteurs du post natif",
           "sourceUrl": "https://www.instagram.com/p/DIOeX1KMHlJ/"
+        },
+        {
+          "capturedAt": "2026-09-02T09:54:19.627Z",
+          "likes": 48755,
+          "comments": 100,
+          "views": 2195857,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DIOeX1KMHlJ/"
         }
       ]
     },
@@ -1539,6 +1682,17 @@
           "metricScope": "native-post",
           "sourceLabel": "Instagram embed public · compteurs du post natif",
           "sourceUrl": "https://www.instagram.com/p/DD6wy0vg8fs/"
+        },
+        {
+          "capturedAt": "2026-09-02T09:54:19.627Z",
+          "likes": 106982,
+          "comments": 456,
+          "views": 4716830,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DD6wy0vg8fs/"
         }
       ]
     },
@@ -1638,6 +1792,17 @@
           "likes": 112127,
           "comments": 362,
           "views": 1675718,
+          "shares": null,
+          "precision": "exact",
+          "metricScope": "native-post",
+          "sourceLabel": "Instagram embed public · compteurs du post natif",
+          "sourceUrl": "https://www.instagram.com/p/DVVLL7XAIrK/"
+        },
+        {
+          "capturedAt": "2026-09-02T09:54:19.627Z",
+          "likes": 112479,
+          "comments": 364,
+          "views": 1684288,
           "shares": null,
           "precision": "exact",
           "metricScope": "native-post",
