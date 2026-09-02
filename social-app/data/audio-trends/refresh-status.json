@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "attemptedAt": "2026-09-02T09:45:05.438Z",
+  "attemptedAt": "2026-09-02T19:58:50.631Z",
   "status": "success",
   "published": true,
   "inventory": {
@@ -14,19 +14,19 @@
     "publishable": true
   },
   "discoveryAudit": {
-    "scannedAt": "2026-09-02T09:45:05.438Z",
+    "scannedAt": "2026-09-02T19:58:50.631Z",
     "status": "success",
     "complete": true,
     "candidateCount": 171,
     "qualifiedInventoryCount": 28,
     "qualifiedClusterCount": 28,
-    "currentMatchedCount": 2,
+    "currentMatchedCount": 3,
     "candidatePlatformCounts": {
       "instagram": 163,
       "tiktok": 8
     },
     "candidateRegistry": {
-      "updatedAt": "2026-09-02T09:45:05.438Z",
+      "updatedAt": "2026-09-02T19:58:50.631Z",
       "candidateCount": 171,
       "candidateAudioUrls": [
         "https://www.instagram.com/reels/audio/1006119841436928",
@@ -282,12 +282,12 @@
     },
     "candidatePoolDelta": {
       "status": "compared",
-      "added": 7,
-      "removed": 12,
-      "retained": 164
+      "added": 0,
+      "removed": 0,
+      "retained": 171
     },
     "qualificationAudit": {
-      "attemptedAt": "2026-09-02T09:45:05.438Z",
+      "attemptedAt": "2026-09-02T19:58:50.631Z",
       "complete": true,
       "videoFeedCapturedAt": "2026-09-02T08:49:12.049Z",
       "videoFeedFresh": true,
@@ -299,8 +299,8 @@
       "attemptedFreshAuditClusterCount": 4,
       "freshQualifiedCount": 28,
       "qualifiedClusterCount": 28,
-      "freshCurrentQualifiedCount": 25,
-      "freshNewQualifiedCount": 3,
+      "freshCurrentQualifiedCount": 26,
+      "freshNewQualifiedCount": 2,
       "qualifiedAudioUrls": [
         "https://www.tiktok.com/music/fulfill-the-prophecy-7406872980187401003",
         "https://www.tiktok.com/music/original-sound-7627517043541068566",
@@ -366,7 +366,7 @@
       "discoveredCandidateCount": 171,
       "discoveredWithoutMultiCreatorProofCount": 169
     },
-    "newCandidateCount": 169,
+    "newCandidateCount": 168,
     "added": [
       "https://www.instagram.com/reels/audio/1006119841436928",
       "https://www.instagram.com/reels/audio/1040129337188935",
@@ -535,7 +535,6 @@
       "https://www.tiktok.com/music/original-sound-7670322912494242591",
       "https://www.tiktok.com/music/original-sound-The-Respawn-7661981604407020310",
       "https://www.tiktok.com/music/Quiet-on-the-Creek-7662457740929157137",
-      "https://www.tiktok.com/music/Saxophones-getting-louder-Sped-Up-7639417177691473937",
       "https://www.tiktok.com/music/She-Bugging-Whatchu-Gonna-Do-7645058632418461697"
     ],
     "removed": [
@@ -551,7 +550,6 @@
       "https://www.youtube.com/source/MexTmo_3naU/shorts",
       "https://www.instagram.com/reels/audio/1537700161324079/",
       "https://www.instagram.com/reels/audio/2815231028840352/",
-      "https://www.instagram.com/reels/audio/1544636237314027/",
       "https://www.tiktok.com/music/fulfill-the-prophecy-7406872980187401003",
       "https://www.tiktok.com/music/original-sound-7647999030882634509",
       "https://www.tiktok.com/music/House-featuring-John-Cale-7571057519797487632",
@@ -590,6 +588,7 @@
     ],
     "retainedIds": [
       "petal-soft-chaos",
+      "audio-tiktok-music-7639417177691473937",
       "stupid-song-montage"
     ],
     "candidateAudioUrls": [
@@ -895,23 +894,15 @@
     ],
     "publishedInventoryCount": 50,
     "selectionAudit": {
-      "evaluatedAt": "2026-09-02T09:45:05.438Z",
-      "addedTrendIds": [
-        "audio-tiktok-music-7639417177691473937"
-      ],
-      "addedAudioUrls": [
-        "https://www.tiktok.com/music/Saxophones-getting-louder-Sped-Up-7639417177691473937"
-      ],
-      "removedTrendIds": [
-        "freaked-out-list"
-      ],
-      "removedAudioUrls": [
-        "https://www.instagram.com/reels/audio/1544636237314027/"
-      ],
-      "visibleAddedCount": 1,
-      "visibleRemovedCount": 1,
+      "evaluatedAt": "2026-09-02T19:58:50.631Z",
+      "addedTrendIds": [],
+      "addedAudioUrls": [],
+      "removedTrendIds": [],
+      "removedAudioUrls": [],
+      "visibleAddedCount": 0,
+      "visibleRemovedCount": 0,
       "lastVisibleRotationAt": "2026-09-02T09:45:05.438Z",
-      "unchangedRunCount": 0,
+      "unchangedRunCount": 1,
       "retainedTrendIds": [
         "pocketful-of-sunshine",
         "petal-soft-chaos",
@@ -926,6 +917,7 @@
         "youtube-cat-outplayed-focus",
         "sirens-cinematic-tension",
         "odysseus-heroic-edit",
+        "audio-tiktok-music-7639417177691473937",
         "stupid-song-montage",
         "tiktok-two-personalities-401003",
         "tiktok-kumar-method-634509",
@@ -988,7 +980,8 @@
         "tiktok-wrap-it-up-procrastination-837422",
         "audio-tiktok-music-7561952744116357137",
         "audio-tiktok-music-7571057519797487632",
-        "audio-tiktok-music-7325072810639378434"
+        "audio-tiktok-music-7325072810639378434",
+        "audio-tiktok-music-7639417177691473937"
       ],
       "rejected": [
         {
@@ -1000,12 +993,12 @@
           "reason": "score inferieur au dernier audio conserve"
         }
       ],
-      "noRotationReason": null
+      "noRotationReason": "Les nouveaux audios qualifiés n'ont pas dépassé la dernière carte conservée selon la récence, le Lofi Fit, la dynamique et les likes de référence."
     },
-    "visibleAddedCount": 1,
-    "visibleRemovedCount": 1,
+    "visibleAddedCount": 0,
+    "visibleRemovedCount": 0,
     "lastVisibleRotationAt": "2026-09-02T09:45:05.438Z",
-    "unchangedRunCount": 0
+    "unchangedRunCount": 1
   },
   "coverage": {
     "totalChecked": 48,
@@ -1015,12 +1008,12 @@
     "providersPassed": false,
     "publishable": true,
     "catalogPublishable": true,
-    "instagramPlaybackChecked": 6,
-    "instagramPlaybackMatched": 6,
+    "instagramPlaybackChecked": 5,
+    "instagramPlaybackMatched": 5,
     "instagramPlaybackComplete": true,
-    "tiktokThumbnailChecked": 42,
-    "tiktokThumbnailMatched": 41,
-    "tiktokThumbnailCoverage": 0.9761904761904762,
+    "tiktokThumbnailChecked": 43,
+    "tiktokThumbnailMatched": 42,
+    "tiktokThumbnailCoverage": 0.9767441860465116,
     "tiktokThumbnailComplete": false,
     "thumbnailPublishable": false,
     "assetPublishable": false,
@@ -1030,10 +1023,10 @@
   "providers": [
     {
       "platform": "instagram",
-      "checked": 6,
+      "checked": 5,
       "matched": 0,
-      "updated": 6,
-      "requiredMatched": 5,
+      "updated": 5,
+      "requiredMatched": 4,
       "coverage": 0,
       "thumbnailChecked": 0,
       "thumbnailMatched": 0,
@@ -1045,21 +1038,20 @@
         "less-than-a-lover: compteur public non lie a cette identite audio",
         "sirens-cinematic-tension: compteur public non lie a cette identite audio",
         "odysseus-heroic-edit: compteur public non lie a cette identite audio",
-        "freaked-out-list: compteur public non lie a cette identite audio",
         "stupid-song-montage: compteur public non lie a cette identite audio",
-        "compteurs natifs attribuables limites: 0/6, seuil de couverture analytique 5"
+        "compteurs natifs attribuables limites: 0/5, seuil de couverture analytique 4"
       ]
     },
     {
       "platform": "tiktok",
-      "checked": 42,
+      "checked": 43,
       "matched": 0,
-      "updated": 41,
-      "requiredMatched": 30,
+      "updated": 42,
+      "requiredMatched": 31,
       "coverage": 0,
-      "thumbnailChecked": 42,
-      "thumbnailMatched": 41,
-      "thumbnailCoverage": 0.9761904761904762,
+      "thumbnailChecked": 43,
+      "thumbnailMatched": 42,
+      "thumbnailCoverage": 0.9767441860465116,
       "thumbnailComplete": false,
       "status": "limited",
       "errors": [
@@ -1071,6 +1063,7 @@
         "te-extrano-motivation: compteur public non lie a cette identite audio",
         "obsession-nice-date: compteur public non lie a cette identite audio",
         "audio-tiktok-music-7325072810639378434: compteur public non lie a cette identite audio",
+        "audio-tiktok-music-7639417177691473937: compteur public non lie a cette identite audio",
         "tiktok-two-personalities-401003: compteur public non lie a cette identite audio",
         "tiktok-kumar-method-634509: compteur public non lie a cette identite audio",
         "audio-tiktok-music-7571057519797487632: compteur public non lie a cette identite audio",
@@ -1105,8 +1098,8 @@
         "tiktok-gaming-setup-night-reveal-769377: compteur public non lie a cette identite audio",
         "tiktok-discord-eh-les-copains-440214: compteur public non lie a cette identite audio",
         "tiktok-twins-at-the-carousel-388384: compteur public non lie a cette identite audio",
-        "compteurs natifs attribuables limites: 0/42, seuil de couverture analytique 30",
-        "couverture miniatures insuffisante: 41/42, minimum 42"
+        "compteurs natifs attribuables limites: 0/43, seuil de couverture analytique 31",
+        "couverture miniatures insuffisante: 42/43, minimum 43"
       ]
     },
     {
@@ -1128,9 +1121,7 @@
   ],
   "assetCache": {
     "status": "success",
-    "cachedCount": 1,
-    "paths": [
-      "media/audio-trends/audio-tiktok-music-7639417177691473937.jpg"
-    ]
+    "cachedCount": 0,
+    "paths": []
   }
 }
