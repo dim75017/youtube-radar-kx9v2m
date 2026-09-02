@@ -3242,6 +3242,109 @@ class DailyHistoryTests(unittest.TestCase):
         self.assertEqual(artifact["tracked_unavailable_ids"], [unavailable_id])
         probe.assert_called_once_with(unavailable_id)
 
+    def test_cookie_free_oembed_403_uses_explicit_private_player_fallback(self):
+        video_id = "zyxwvutsrqp"
+        private_player = (
+            '<script>var ytInitialPlayerResponse = '
+            '{"playabilityStatus":{"status":"LOGIN_REQUIRED","reason":"Private video"}};'
+            '</script>'
+        )
+
+        def fake_open(request, timeout=10):
+            if "/oembed?" in request.full_url:
+                raise radar.urllib.error.HTTPError(
+                    request.full_url, 403, "Forbidden", {}, io.BytesIO(b"Forbidden")
+                )
+            return InnertubeResponse(private_player)
+
+        with patch.object(radar.urllib.request, "urlopen", side_effect=fake_open) as request:
+            self.assertTrue(radar.public_oembed_confirms_unavailable(video_id))
+        self.assertEqual(request.call_count, 2)
+
+    def test_cookie_free_login_required_age_gate_is_not_quarantined(self):
+        video_id = "zyxwvutsrqp"
+        age_gate_player = (
+            '<script>var ytInitialPlayerResponse = '
+            '{"playabilityStatus":{"status":"LOGIN_REQUIRED",'
+            '"reason":"Sign in to confirm your age"}};'
+            '</script>'
+        )
+
+        def fake_open(request, timeout=10):
+            if "/oembed?" in request.full_url:
+                raise radar.urllib.error.HTTPError(
+                    request.full_url, 403, "Forbidden", {}, io.BytesIO(b"Forbidden")
+                )
+            return InnertubeResponse(age_gate_player)
+
+        with patch.object(radar.urllib.request, "urlopen", side_effect=fake_open):
+            self.assertFalse(radar.public_oembed_confirms_unavailable(video_id))
+
+    def test_unavailable_merge_keeps_last_verified_history_counter(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            snapshot = root / "Lofi_Radar_data.js"
+            avatars = root / "avatars.js"
+            shards = root / "shards"
+            history = root / "video_history"
+            shards.mkdir()
+            history.mkdir()
+            public_id, private_id = "abcdefghijk", "zyxwvutsrqp"
+            previous = int(datetime(2026, 9, 1, 8, tzinfo=timezone.utc).timestamp() * 1000)
+            generated = int(datetime(2026, 9, 2, 8, tzinfo=timezone.utc).timestamp() * 1000)
+            radar.write_snapshot(snapshot, {"d": {
+                "all": [{
+                    "vid": public_id,
+                    "title": "Public",
+                    "views": 100_000,
+                    "pub": 1_700_000_000_000,
+                    "durH": 1,
+                }],
+                "trends": [], "news": [], "ours": [],
+                "kids": [], "recos": [], "roadmap": [], "lives": [],
+            }})
+            (history / radar.history_shard_name(private_id)).write_text(
+                json.dumps({
+                    "version": 1,
+                    "updated": previous,
+                    "d": {private_id: [[previous, 759_470]]},
+                }),
+                encoding="utf-8",
+            )
+            artifact = {
+                "version": 1, "scan_scope": "standard", "generated_ms": generated,
+                "shard": 0, "shards": 1, "tracked_total": 2, "tracked_ok": 1,
+                "tracked_ids": [public_id, private_id],
+                "tracked_fresh_ids": [public_id],
+                "tracked_failed_ids": [private_id],
+                "tracked_unavailable_ids": [private_id],
+                "tracked_recovered_ids": [],
+                "queries_total": 1, "queries_ok": 1,
+                "queries_raw": 1, "queries_enriched": 1, "owned_ok": True,
+                "fresh": [{"vid": public_id, "views": 100_001, "pub": 1_700_000_000_000}],
+                "owned_fresh": [], "candidates": [],
+            }
+            (shards / "youtube-shard-0.json").write_text(
+                json.dumps(artifact), encoding="utf-8"
+            )
+            with patch.object(radar, "MIN_PUBLISH_TRACK_RATIO", 0.0):
+                radar.merge_artifacts(
+                    snapshot, avatars, shards, 1,
+                    generate_recommendations=False,
+                    history_dir=history,
+                    scan_scope="standard",
+                )
+            merged = radar.read_snapshot(snapshot)
+            kept_history = json.loads(
+                (history / radar.history_shard_name(private_id)).read_text(encoding="utf-8")
+            )
+
+        self.assertFalse(merged["videoMetrics"]["partial"])
+        self.assertEqual(merged["videoMetrics"]["tracked"], 1)
+        self.assertEqual(merged["videoMetrics"]["updated"], 1)
+        self.assertEqual(merged["videoMetrics"]["unavailable_ids"], [private_id])
+        self.assertEqual(kept_history["d"][private_id], [[previous, 759_470]])
+
     def test_fallback_single_miss_then_success_never_quarantines(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

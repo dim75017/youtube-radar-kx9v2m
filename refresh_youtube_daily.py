@@ -2125,15 +2125,52 @@ def fetch_one_video(video_id: str, now_ms: int) -> dict | None:
     return info_to_row(info or {}, now_ms)
 
 
-def public_oembed_confirms_unavailable(video_id: str) -> bool:
-    """Return true only when YouTube's public, cookie-free oEmbed endpoint says 404.
+def public_watch_confirms_private(video_id: str) -> bool:
+    """Return true only for an explicit cookie-free private-video player."""
+    if not VIDEO_ID.match(str(video_id or "")):
+        return False
+    endpoint = f"https://www.youtube.com/watch?v={video_id}&hl=en&gl=FR"
+    request = urllib.request.Request(
+        endpoint,
+        headers={
+            "Accept-Language": "en",
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 Chrome/127.0 Safari/537.36"
+            ),
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            page = response.read().decode("utf-8", "replace")
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError):
+        return False
 
-    yt-dlp deliberately uses ``ignoreerrors`` for the large daily refresh, so a
+    decoder = json.JSONDecoder()
+    for marker in ("var ytInitialPlayerResponse = ", "ytInitialPlayerResponse = "):
+        start = page.find(marker)
+        if start < 0:
+            continue
+        try:
+            player, _ = decoder.raw_decode(page[start + len(marker):])
+        except (json.JSONDecodeError, TypeError):
+            continue
+        playability = player.get("playabilityStatus") or {}
+        status = str(playability.get("status") or "").strip().upper()
+        reason = str(playability.get("reason") or "").strip().casefold()
+        return status == "LOGIN_REQUIRED" and reason == "private video"
+    return False
+
+
+def public_oembed_confirms_unavailable(video_id: str) -> bool:
+    """Confirm a deleted/private video from cookie-free public endpoints.
+
+    yt-dlp deliberately uses ignoreerrors for the large daily refresh, so a
     deleted/private video and a transient extractor failure both surface as a
     missing row.  The former can be quarantined immediately, while the latter
-    must keep the existing two-scan fail-closed policy.  A public oEmbed 404 is
-    a narrow, authoritative signal that the video is no longer publicly
-    addressable; every other response or network error remains inconclusive.
+    must keep the existing two-scan fail-closed policy.  A public oEmbed 404 or
+    an explicit LOGIN_REQUIRED / Private video player response is authoritative;
+    every other response or network error remains inconclusive.
     """
     if not VIDEO_ID.match(str(video_id or "")):
         return False
@@ -2155,9 +2192,13 @@ def public_oembed_confirms_unavailable(video_id: str) -> bool:
             response.read(1)
         return False
     except urllib.error.HTTPError as exc:
-        return exc.code == 404
+        if exc.code == 404:
+            return True
+        if exc.code not in {401, 403}:
+            return False
     except (urllib.error.URLError, TimeoutError, OSError):
         return False
+    return public_watch_confirms_private(video_id)
 
 
 def fetch_search(spec: dict, now_ms: int) -> tuple[list[dict], int, int]:
