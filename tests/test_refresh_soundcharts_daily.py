@@ -963,6 +963,162 @@ class RefreshSoundchartsTests(unittest.TestCase):
 
         self.assertEqual(seen, set(keys))
 
+    def test_public_catalogue_cannot_starve_the_due_rotation_bucket(self):
+        today = dt.date(2026, 9, 2)
+        daily_bucket = today.toordinal() % subject.TRACK_ROTATION_BUCKETS
+
+        due_keys = []
+        candidate = 0
+        while len(due_keys) < 2:
+            key = f'zz-due-public-{candidate}'
+            if subject.stable_rotation_bucket(key) == daily_bucket:
+                due_keys.append(key)
+            candidate += 1
+
+        non_due_keys = []
+        candidate = 0
+        while len(non_due_keys) < 8:
+            key = f'aa-other-public-{candidate}'
+            if subject.stable_rotation_bucket(key) != daily_bucket:
+                non_due_keys.append(key)
+            candidate += 1
+
+        opportunity_keys = ['priority-opportunity-1', 'priority-opportunity-2']
+        keys = opportunity_keys + non_due_keys + due_keys
+        tasks = [
+            {
+                'uuid': key,
+                'targets': [
+                    {
+                        'spotify_id': key,
+                        'row': [] if key not in opportunity_keys else None,
+                    }
+                ],
+            }
+            for key in keys
+        ]
+        store = {
+            key: {
+                'history': [['2026-08-20', 100], ['2026-08-21', 110]],
+                'observed_at': '2026-08-21T00:00:00Z',
+            }
+            for key in keys
+        }
+        metadata = {
+            key: {
+                'artist_spotify_ids': set(),
+                'artist_soundcharts_uuids': set(),
+                'opportunity': key in opportunity_keys,
+                'public': key not in opportunity_keys,
+            }
+            for key in keys
+        }
+
+        selected, policy = subject.plan_track_maintenance(
+            tasks,
+            store,
+            metadata,
+            4,
+            today=today,
+        )
+
+        self.assertEqual(
+            {task['uuid'] for task in selected},
+            set(opportunity_keys + due_keys),
+        )
+        self.assertEqual(policy['weekly_due_requests'], 2)
+        self.assertEqual(policy['weekly_selected_requests'], 2)
+        self.assertEqual(policy['weekly_missing_requests'], 0)
+
+    def test_explicit_catchup_capacity_selects_every_public_profile(self):
+        today = dt.date(2026, 9, 2)
+        public_keys = [f'public-{index}' for index in range(8)]
+        priority_key = 'priority-opportunity'
+        keys = [priority_key, *public_keys]
+        tasks = [
+            {
+                'uuid': key,
+                'targets': [
+                    {
+                        'spotify_id': key,
+                        'row': [] if key in public_keys else None,
+                    }
+                ],
+            }
+            for key in keys
+        ]
+        store = {
+            key: {
+                'history': [['2026-08-20', 100], ['2026-08-21', 110]],
+                'observed_at': '2026-08-21T00:00:00Z',
+            }
+            for key in keys
+        }
+        metadata = {
+            key: {
+                'artist_spotify_ids': set(),
+                'artist_soundcharts_uuids': set(),
+                'opportunity': key == priority_key,
+                'public': key in public_keys,
+            }
+            for key in keys
+        }
+
+        selected, policy = subject.plan_track_maintenance(
+            tasks,
+            store,
+            metadata,
+            len(keys),
+            today=today,
+        )
+
+        self.assertEqual({task['uuid'] for task in selected}, set(keys))
+        self.assertEqual(
+            policy['reason_coverage']['published_public']['missing_requests'],
+            0,
+        )
+
+    def test_spare_daily_capacity_continues_through_oldest_public_profiles(self):
+        today = dt.date(2026, 9, 2)
+        daily_bucket = today.toordinal() % subject.TRACK_ROTATION_BUCKETS
+        due_key = next(
+            key
+            for index in range(100)
+            if subject.stable_rotation_bucket(key := f'due-public-{index}') == daily_bucket
+        )
+        other_public = next(
+            key
+            for index in range(100)
+            if subject.stable_rotation_bucket(key := f'other-public-{index}') != daily_bucket
+        )
+        waiting_key = 'new-nonpublic-candidate'
+        tasks = [
+            {'uuid': key, 'targets': [{'spotify_id': key, 'row': None}]}
+            for key in (due_key, other_public, waiting_key)
+        ]
+        store = {
+            due_key: {'history': [['2026-08-20', 100], ['2026-08-21', 110]], 'observed_at': '2026-08-21T00:00:00Z'},
+            other_public: {'history': [['2026-08-19', 100], ['2026-08-20', 110]], 'observed_at': '2026-08-20T00:00:00Z'},
+            waiting_key: {'history': [['2026-09-01', 100]], 'observed_at': '2026-09-01T00:00:00Z'},
+        }
+        metadata = {
+            due_key: {'artist_spotify_ids': set(), 'artist_soundcharts_uuids': set(), 'public': True},
+            other_public: {'artist_spotify_ids': set(), 'artist_soundcharts_uuids': set(), 'public': True},
+            waiting_key: {'artist_spotify_ids': set(), 'artist_soundcharts_uuids': set()},
+        }
+
+        selected, policy = subject.plan_track_maintenance(
+            tasks,
+            store,
+            metadata,
+            2,
+            today=today,
+        )
+
+        self.assertEqual({task['uuid'] for task in selected}, {due_key, other_public})
+        self.assertEqual(policy['reason_coverage']['published_public']['missing_requests'], 0)
+        self.assertEqual(policy['reason_coverage']['needs_two_true_points']['selected_requests'], 0)
+
     def test_overloaded_rotation_bucket_ages_missed_profiles_to_the_front(self):
         bucket = 4
         keys = []
@@ -1464,7 +1620,7 @@ class RefreshSoundchartsTests(unittest.TestCase):
         self.assertIn('python discover_soundcharts_playlists.py', workflow)
         self.assertGreaterEqual(workflow.count('--workers 10'), 3)
         self.assertIn("default: 'maintenance'", workflow)
-        self.assertIn("options: [maintenance, strict_rebaseline, full_sync, dark_ambient, dark_ambient_catalogues, explicit_artists, classification, artists, playlist_covers, smoke]", workflow)
+        self.assertIn("options: [maintenance, track_catchup, strict_rebaseline, full_sync, dark_ambient, dark_ambient_catalogues, explicit_artists, classification, artists, playlist_covers, smoke]", workflow)
         self.assertIn("Discover every Dark Ambient playlist and their artist catalogues", workflow)
         self.assertIn("--playlist-scope dark_ambient", workflow)
         self.assertIn("Scan explicitly requested Spotify artists and their tracks", workflow)

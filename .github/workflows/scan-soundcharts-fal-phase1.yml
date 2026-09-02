@@ -94,7 +94,7 @@ jobs:
         shell: bash
         run: |
           test -s "$COHORT_SNAPSHOT"
-          active_snapshot="$(python prepare_soundcharts_snapshot.py current --index spotify/index.html)"
+          active_snapshot="$(python prepare_soundcharts_snapshot.py browse-source --catalogue Spotify_Browse_Catalogue_data.js)"
           test -s "$active_snapshot"
           echo "path=$active_snapshot" >> "$GITHUB_OUTPUT"
           echo "Using historical snapshot $COHORT_SNAPSHOT for dedup and current strict snapshot $active_snapshot for ledger input"

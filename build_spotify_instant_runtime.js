@@ -483,8 +483,22 @@ function main() {
       playlistsSource.meta && playlistsSource.meta.snapshot_ts,
       labelsSource.meta && labelsSource.meta.generated_ts,
     ),
+    source_snapshot: text(browse.source_snapshot),
     source_hash: sourceHash,
     counts,
+    freshness: {
+      tracks_catalogue_at: text(
+        performanceSource.freshness &&
+        (performanceSource.freshness.tracks_catalogue_at || performanceSource.freshness.tracks_at),
+      ),
+      artists_catalogue_at: text(
+        performanceSource.freshness &&
+        (performanceSource.freshness.artists_catalogue_at || performanceSource.freshness.artists_at),
+      ),
+      playlists_at: text(
+        performanceSource.freshness && performanceSource.freshness.playlists_at,
+      ),
+    },
     schemas: {
       tracks: trackSchema,
       artists: artistSchema,

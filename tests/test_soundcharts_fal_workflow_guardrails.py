@@ -118,7 +118,11 @@ class SoundchartsFalWorkflowGuardrailsTests(unittest.TestCase):
         self.assertRegex(self.workflow, r"--quota-reserve\s+[\"']?\$QUOTA_RESERVE")
         self.assertRegex(self.workflow, r"--maintenance-daily-requests\s+[\"']?\$MAINTENANCE_DAILY_REQUESTS")
         self.assertIn("COHORT_SNAPSHOT: Spotify_Soundcharts_data_20260721T181420Z.js", self.workflow)
-        self.assertIn("prepare_soundcharts_snapshot.py current --index spotify/index.html", self.workflow)
+        self.assertIn(
+            "prepare_soundcharts_snapshot.py browse-source --catalogue Spotify_Browse_Catalogue_data.js",
+            self.workflow,
+        )
+        self.assertNotIn("prepare_soundcharts_snapshot.py current --index", self.workflow)
         self.assertIn('--seed-snapshot "$COHORT_SNAPSHOT"', self.workflow)
         self.assertIn('--seed-ledger "$SEED_LEDGER"', self.workflow)
         self.assertIn("build_soundcharts_fal_seed_ledger.py", self.workflow)

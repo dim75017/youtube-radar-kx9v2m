@@ -155,7 +155,7 @@ class PagesDeployWorkflowGuardrailsTests(unittest.TestCase):
 
     def test_every_current_main_publisher_dispatches_pages_after_push(self):
         workflows = {
-            "refresh-soundcharts.yml": 3,
+            "refresh-soundcharts.yml": 2,
             "refresh-spotify-browse-catalogue.yml": 1,
             "refresh-playlist-followers.yml": 1,
             "refresh-instrumental-radar.yml": 1,
@@ -173,13 +173,17 @@ class PagesDeployWorkflowGuardrailsTests(unittest.TestCase):
                 first_dispatch = text.index("trigger_pages_deployment.py")
                 self.assertLess(first_push, first_dispatch)
 
-    def test_soundcharts_staged_snapshot_is_dispatched_before_live_wait(self):
+    def test_soundcharts_staged_snapshot_does_not_publish_a_private_export(self):
         workflow = (ROOT / ".github/workflows/refresh-soundcharts.yml").read_text(
             encoding="utf-8"
         )
-        dispatch = workflow.index("trigger_pages_deployment.py")
-        wait = workflow.index("Wait for staged snapshot to be live and green")
-        self.assertLess(dispatch, wait)
+        stage = workflow[
+            workflow.index("Publish validated dated snapshot first") :
+            workflow.index("Publish refreshed playlist covers")
+        ]
+        self.assertNotIn("trigger_pages_deployment.py", stage)
+        self.assertNotIn("Wait for staged snapshot to be live and green", workflow)
+        self.assertIn('"Spotify_Soundcharts_data_*.js"', DEPLOY)
 
 
 if __name__ == "__main__":

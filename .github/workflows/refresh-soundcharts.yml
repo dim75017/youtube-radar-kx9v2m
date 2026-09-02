@@ -193,9 +193,9 @@ on:
         required: true
         default: 'maintenance'
         type: choice
-        options: [maintenance, strict_rebaseline, full_sync, dark_ambient, dark_ambient_catalogues, explicit_artists, classification, artists, playlist_covers, smoke]
+        options: [maintenance, track_catchup, strict_rebaseline, full_sync, dark_ambient, dark_ambient_catalogues, explicit_artists, classification, artists, playlist_covers, smoke]
       max_requests:
-        description: 'Data-call cap (full sync: 1-35000; classification: 1-8230; other scopes: 1-6000)'
+        description: 'Data-call cap (full sync: 1-35000; track catch-up: 1-24000; classification: 1-8230; other scopes: 1-6000)'
         required: true
         default: '6000'
         type: string
@@ -323,6 +323,7 @@ jobs:
       - name: Validate production source syntax
         run: |
           python -m py_compile refresh_soundcharts_daily.py spotify_performance_store.py spotify_counter_integrity.py repair_spotify_counter_integrity.py scan_soundcharts_fal_phase1.py playlist_follower_daily_status.py validate_playlist_snapshot_transition.py discover_soundcharts_playlists.py expand_soundcharts_instrumental_pool.py spotify_rights.py build_spotify_browse_catalogue.py build_spotify_selection_contacts.py enrich_public_artist_contacts.py sync_soundcharts_opportunities.py prepare_soundcharts_snapshot.py
+          node build_spotify_instant_runtime.js
           node --check spotify/dashboard.js
           node --check spotify/player.js
           node --check spotify/instant.js
@@ -368,6 +369,7 @@ jobs:
           # refreshes the complete artist catalogue once per week.
           performance_artist_data_cap="12000"
           performance_track_data_cap="6000"
+          track_catchup_data_cap="24000"
           full_sync_track_data_cap="35000"
           # Enough for the entire public dashboard playlist set, while the
           # collector itself prioritizes those visible rows over backlog-only
@@ -379,6 +381,7 @@ jobs:
           expansion_data_cap="6000"
           classification_data_cap="8230"
           daily_classification_data_cap="1500"
+          track_catchup="false"
           if [[ "${{ github.event_name }}" == "pull_request" || "${{ github.event_name }}" == "push" ]]; then
             scope="ci_smoke"
             expansion_limit=""
@@ -391,13 +394,17 @@ jobs:
               full_sync) expansion_limit="" ;;
               dark_ambient_catalogues|explicit_artists) expansion_limit="" ;;
               classification) expansion_limit="" ;;
-              maintenance|artists|playlist_covers|smoke) expansion_limit="" ;;
+              maintenance|track_catchup|artists|playlist_covers|smoke) expansion_limit="" ;;
               *) echo "Unsupported scope: $scope" >&2; exit 1 ;;
             esac
             request_cap="$expansion_data_cap"
             if [[ "$scope" == "full_sync" ]]; then
               request_cap="$full_sync_track_data_cap"
               performance_track_data_cap="$full_sync_track_data_cap"
+            fi
+            if [[ "$scope" == "track_catchup" ]]; then
+              request_cap="$track_catchup_data_cap"
+              performance_track_data_cap="$REQUESTED_MAX_REQUESTS"
             fi
             if [[ "$scope" == "classification" ]]; then request_cap="$classification_data_cap"; fi
             if [[ "$scope" == "playlist_covers" ]]; then request_cap="$playlist_data_cap"; fi
@@ -411,6 +418,16 @@ jobs:
               # maintenance never spends it on discovery or pool expansion.
               performance_track_data_cap="$REQUESTED_MAX_REQUESTS"
               expansion_requests="0"
+            fi
+            if [[ "$scope" == "track_catchup" ]]; then
+              # Emergency/manual repair lane: refresh track histories only.
+              # Reuse the proven maintenance publication path without
+              # repeating discovery, FAL, classification or artist scans.
+              scope="maintenance"
+              expansion_requests="0"
+              track_catchup="true"
+            else
+              track_catchup="false"
             fi
             if [[ "$GITHUB_REF" == "refs/heads/main" && "$scope" != "smoke" ]]; then publish="true"; else publish="false"; fi
           elif [[ "${{ github.event_name }}" == "schedule" ]]; then
@@ -472,6 +489,9 @@ jobs:
           print(str(due).lower())
           PY
             )"
+            if [[ "$track_catchup" == "true" ]]; then
+              performance_artists_due="false"
+            fi
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" && "$FRESHNESS_GATE" == "true" && "$scope" == "strict_rebaseline" ]]; then
             playlist_followers_due="$(python data_freshness_watchdog.py --target spotify_followers --print-due)"
             performance_catalogue_due="true"
@@ -533,6 +553,7 @@ jobs:
           echo "performance_catalogue_due=$performance_catalogue_due" >> "$GITHUB_OUTPUT"
           echo "performance_tracks_due=$performance_tracks_due" >> "$GITHUB_OUTPUT"
           echo "performance_artists_due=$performance_artists_due" >> "$GITHUB_OUTPUT"
+          echo "track_catchup=$track_catchup" >> "$GITHUB_OUTPUT"
           echo "publish=$publish" >> "$GITHUB_OUTPUT"
           echo "Selected scope=$scope, expansion_requests=$expansion_requests, playlist_followers_due=$playlist_followers_due, performance_catalogue_due=$performance_catalogue_due, publish=$publish"
 
@@ -543,6 +564,23 @@ jobs:
           --mode storage
           --performance Spotify_Performance_data.js
           --history-dir soundcharts-history
+
+      - name: Refuse paid recollection while a validated snapshot awaits recovery
+        if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && steps.plan.outputs.scope != 'smoke'
+        shell: bash
+        run: |
+          set -euo pipefail
+          active_snapshot="$(python prepare_soundcharts_snapshot.py browse-source --catalogue Spotify_Browse_Catalogue_data.js)"
+          latest_snapshot="$(
+            git ls-tree --name-only HEAD |
+              grep -E '^Spotify_Soundcharts_data_[0-9]{8}T[0-9]{6}Z\.js$' |
+              sort |
+              tail -n 1
+          )"
+          if [[ -z "$latest_snapshot" || "$latest_snapshot" != "$active_snapshot" ]]; then
+            echo "A validated Soundcharts snapshot is pending activation: ${latest_snapshot:-missing} (active: $active_snapshot). Recover its checkpoint before spending more API calls." >&2
+            exit 1
+          fi
 
       - name: Create an isolated Soundcharts candidate
         id: snapshot
@@ -800,16 +838,24 @@ jobs:
           SOUNDCHARTS_CLIENT_ID: ${{ secrets.SOUNDCHARTS_CLIENT_ID }}
           SOUNDCHARTS_CLIENT_SECRET: ${{ secrets.SOUNDCHARTS_CLIENT_SECRET }}
           SOUNDCHARTS_TEAM_ID: dsomoguy-api
-        run: >-
-          python refresh_soundcharts_daily.py
-          --mode tracks
-          --workers 10
-          --max-requests "${{ steps.plan.outputs.performance_track_requests }}"
-          --history-days 90
-          --include-performance-catalogue
-          --browse-catalogue Spotify_Browse_Catalogue_data.js
-          --priority-artists spotify-selection-artist-seeds.json
-          --soundcharts "${{ steps.snapshot.outputs.candidate }}"
+          PUBLIC_TRACK_CATCHUP: ${{ steps.plan.outputs.track_catchup }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          catchup_args=()
+          if [[ "$PUBLIC_TRACK_CATCHUP" == "true" ]]; then
+            catchup_args+=(--public-track-catchup)
+          fi
+          python refresh_soundcharts_daily.py \
+            --mode tracks \
+            --workers 10 \
+            --max-requests "${{ steps.plan.outputs.performance_track_requests }}" \
+            --history-days 90 \
+            --include-performance-catalogue \
+            --browse-catalogue Spotify_Browse_Catalogue_data.js \
+            --priority-artists spotify-selection-artist-seeds.json \
+            --soundcharts "${{ steps.snapshot.outputs.candidate }}" \
+            "${catchup_args[@]}"
 
       - name: Reject unexplained Spotify counter discontinuities
         run: >-
@@ -1009,7 +1055,7 @@ jobs:
 
       - name: Publish validated dated snapshot first
         id: publish_snapshot
-        if: steps.plan.outputs.publish == 'true'
+        if: steps.plan.outputs.publish == 'true' && steps.prepared.outputs.name != ''
         env:
           GITHUB_TOKEN: ${{ github.token }}
           SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
@@ -1030,9 +1076,6 @@ jobs:
           test "$published" = "true"
           staged_sha="$(git rev-parse HEAD)"
           echo "sha=$staged_sha" >> "$GITHUB_OUTPUT"
-          python trigger_pages_deployment.py \
-            --repository "$GITHUB_REPOSITORY" \
-            --sha "$staged_sha"
           echo "Staged unreferenced snapshot at $staged_sha"
 
       - name: Publish refreshed playlist covers
@@ -1054,7 +1097,9 @@ jobs:
               published_sha="$(git rev-parse HEAD)"
               python trigger_pages_deployment.py \
                 --repository "$GITHUB_REPOSITORY" \
-                --sha "$published_sha"
+                --sha "$published_sha" \
+                --wait-for-completion \
+                --run-timeout 1800
               exit 0
             fi
             sleep 5
@@ -1062,107 +1107,21 @@ jobs:
           exit 1
 
       - name: Verify dated snapshot exists on main
-        if: steps.plan.outputs.publish == 'true'
+        if: steps.plan.outputs.publish == 'true' && steps.prepared.outputs.name != ''
         env:
           SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
           STAGED_SHA: ${{ steps.publish_snapshot.outputs.sha }}
         shell: bash
         run: |
           git fetch origin main
-          test "$(git rev-parse origin/main)" = "$STAGED_SHA"
+          git merge-base --is-ancestor "$STAGED_SHA" origin/main
           local_blob="$(git hash-object "$SNAPSHOT_NAME")"
           remote_blob="$(git rev-parse "$STAGED_SHA:$SNAPSHOT_NAME")"
           test "$local_blob" = "$remote_blob"
           echo "Validated remote blob $remote_blob for $SNAPSHOT_NAME"
 
-      - name: Wait for staged snapshot to be live and green
-        if: steps.plan.outputs.publish == 'true'
-        timeout-minutes: 45
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
-          STAGED_SHA: ${{ steps.publish_snapshot.outputs.sha }}
-          CURRENT_RUN_ID: ${{ github.run_id }}
-          PUBLIC_BASE_URL: https://dim75017.github.io/youtube-radar-kx9v2m
-        shell: bash
-        run: |
-          set -euo pipefail
-          deployments_json="$RUNNER_TEMP/soundcharts-pages-deployments.json"
-          statuses_json="$RUNNER_TEMP/soundcharts-pages-statuses.json"
-            deployment_state="pending"
-            local_sha256="$(sha256sum "$SNAPSHOT_NAME" | cut -d' ' -f1)"
-            public_copy="$RUNNER_TEMP/$SNAPSHOT_NAME.public"
-            public_verified="false"
-
-          # Status polling is bounded and read-only. It never retries a
-            # Soundcharts request or any collection/purchase operation. A
-            # GitHub Pages deployment may be superseded by a later, unrelated
-            # main commit, so the public snapshot hash is the authoritative
-            # proof in that case.
-            for poll in $(seq 1 160); do
-            gh api -X GET "repos/$GITHUB_REPOSITORY/deployments" \
-              -f sha="$STAGED_SHA" \
-              -f environment="github-pages" \
-              -f per_page=20 > "$deployments_json"
-            deployment_id="$(python -c 'import json,sys; rows=json.load(open(sys.argv[1], encoding="utf-8")); sha=sys.argv[2]; print(next((row["id"] for row in rows if row.get("sha")==sha), ""))' "$deployments_json" "$STAGED_SHA")"
-            deployment_state="pending"
-            if [[ -n "$deployment_id" ]]; then
-              gh api -X GET "repos/$GITHUB_REPOSITORY/deployments/$deployment_id/statuses" \
-                -f per_page=20 > "$statuses_json"
-              deployment_state="$(python -c 'import json,sys; rows=json.load(open(sys.argv[1], encoding="utf-8")); print(rows[0].get("state", "pending") if rows else "pending")' "$statuses_json")"
-            fi
-
-              if curl --fail --silent --show-error --location --retry 0 --max-time 30 \
-                --header 'Cache-Control: no-cache' \
-                "$PUBLIC_BASE_URL/$SNAPSHOT_NAME?commit=$STAGED_SHA" \
-                --output "$public_copy"; then
-                public_sha256="$(sha256sum "$public_copy" | cut -d' ' -f1)"
-                if [[ "$public_sha256" == "$local_sha256" ]]; then
-                  public_verified="true"
-                  break
-                fi
-              fi
-
-              if [[ "$deployment_state" == "failure" || "$deployment_state" == "error" ]]; then
-                # A later UI commit can supersede this deployment while the
-                # staged snapshot remains intact on main. Keep waiting for
-                # the authoritative public bytes instead of cancelling the
-                # already-completed collection.
-                echo "Pages reported $deployment_state for staged SHA $STAGED_SHA; waiting for a superseding deployment" >&2
-              fi
-              if [[ "$deployment_state" == "success" ]]; then
-                break
-              fi
-              if [[ "$poll" == "160" ]]; then
-                echo "Timed out waiting for Pages on staged SHA $STAGED_SHA (deployment=$deployment_state)" >&2
-                exit 1
-            fi
-            sleep 15
-          done
-
-            if [[ "$public_verified" != "true" ]]; then
-              for poll in $(seq 1 12); do
-                if curl --fail --silent --show-error --location --retry 0 --max-time 30 \
-                  --header 'Cache-Control: no-cache' \
-                  "$PUBLIC_BASE_URL/$SNAPSHOT_NAME?commit=$STAGED_SHA" \
-                  --output "$public_copy"; then
-                  public_sha256="$(sha256sum "$public_copy" | cut -d' ' -f1)"
-                  if [[ "$public_sha256" == "$local_sha256" ]]; then
-                    public_verified="true"
-                    break
-                  fi
-                fi
-                if [[ "$poll" != "12" ]]; then sleep 15; fi
-              done
-            fi
-          if [[ "$public_verified" != "true" ]]; then
-            echo "Public staged snapshot is missing or differs from the validated blob; index remains unchanged" >&2
-            exit 1
-          fi
-          echo "Pages deployment and public snapshot bytes verified for $STAGED_SHA"
-
       - name: Persist Soundcharts bootstrap state outside Git
-        if: github.ref == 'refs/heads/main' && steps.plan.outputs.publish == 'true' && success()
+        if: github.ref == 'refs/heads/main' && steps.plan.outputs.publish == 'true' && steps.prepared.outputs.name != '' && success()
         uses: actions/upload-artifact@v4
         with:
           name: soundcharts-bootstrap-state
@@ -1173,7 +1132,7 @@ jobs:
           overwrite: true
 
       - name: Activate snapshot only after remote validation
-        if: steps.plan.outputs.publish == 'true'
+        if: steps.plan.outputs.publish == 'true' && steps.prepared.outputs.name != ''
         env:
           GITHUB_TOKEN: ${{ github.token }}
           SNAPSHOT_NAME: ${{ steps.prepared.outputs.name }}
@@ -1192,6 +1151,8 @@ jobs:
             git stash pop
           fi
           test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+          current_snapshot="$(python prepare_soundcharts_snapshot.py browse-source --catalogue Spotify_Browse_Catalogue_data.js)"
+          test "$current_snapshot" = "$OLD_SNAPSHOT"
           local_blob="$(git hash-object "$SNAPSHOT_NAME")"
           staged_blob="$(git rev-parse "$STAGED_SHA:$SNAPSHOT_NAME")"
           test "$local_blob" = "$staged_blob"
@@ -1230,12 +1191,24 @@ jobs:
             soundcharts-history
           git commit -m "data: activate validated Soundcharts snapshot"
           for attempt in 1 2 3; do
-            if git pull --rebase --autostash origin main && git push origin HEAD:main; then
-              published_sha="$(git rev-parse HEAD)"
-              python trigger_pages_deployment.py \
-                --repository "$GITHUB_REPOSITORY" \
-                --sha "$published_sha"
-              exit 0
+            git fetch origin main
+            remote_catalogue=".soundcharts-remote-browse-check.js"
+            git show origin/main:Spotify_Browse_Catalogue_data.js > "$remote_catalogue"
+            remote_current="$(python prepare_soundcharts_snapshot.py browse-source --catalogue "$remote_catalogue")"
+            rm -f -- "$remote_catalogue"
+            test "$remote_current" = "$OLD_SNAPSHOT"
+            if git rebase --autostash origin/main; then
+              if git push origin HEAD:main; then
+                published_sha="$(git rev-parse HEAD)"
+                python trigger_pages_deployment.py \
+                  --repository "$GITHUB_REPOSITORY" \
+                  --sha "$published_sha" \
+                  --wait-for-completion \
+                  --run-timeout 1800
+                exit 0
+              fi
+            else
+              git rebase --abort || true
             fi
             sleep 5
           done

@@ -67,17 +67,21 @@ const instant = evaluate(instantSource, 'SPOTIFY_INSTANT');
 const catalogue = evaluate(catalogueSource, 'SPOTIFY_CATALOGUE');
 for (const payload of [instant, catalogue]) {
   assert.equal(payload.version, 3);
+  assert.match(payload.source_snapshot, /^Spotify_Soundcharts_data_\d{8}T\d{6}Z\.js$/);
   assert.match(payload.source_hash, /^[a-f0-9]{16}$/);
   assert.ok(payload.schemas && Array.isArray(payload.schemas.tracks));
   assert.ok(payload.counts.tracks >= 1_000);
   assert.ok(payload.counts.artists >= 100);
   assert.ok(payload.counts.playlists >= 100);
   assert.ok(payload.counts.labels >= 100);
+  assert.ok(payload.freshness && payload.freshness.tracks_catalogue_at,
+    'the lightweight runtime must expose the real track collection timestamp');
 }
 
 assert.equal(JSON.stringify(instant.counts), JSON.stringify(catalogue.counts),
   'first paint and hydrated catalogue must describe the same source snapshot');
 assert.equal(instant.source_hash, catalogue.source_hash);
+assert.equal(instant.source_snapshot, catalogue.source_snapshot);
 assert.ok(instant.tracks.length <= 100 && instant.tracks.length > 0);
 assert.ok(instant.radar.length <= 100 && instant.radar.length > 0);
 assert.ok(instant.artists.length <= 100 && instant.artists.length > 0);
@@ -108,5 +112,9 @@ assert.ok(criticalGzipBytes <= 100_000,
   `Spotify first-party critical path exceeded 100 KB gzip: ${criticalGzipBytes}`);
 assert.doesNotMatch(instantRuntime, /requestIdleCallback\(hydrate|setTimeout\(hydrate/,
   'the full catalogue must only load after a search or Load more interaction');
+assert.match(instantRuntime, /boot\.freshness\.tracks_catalogue_at/,
+  'visible freshness must use the track collection timestamp, not the playlist build date');
+assert.match(instantRuntime, /Données pistes au/,
+  'the dashboard freshness label must describe track data explicitly');
 
 console.log(`Spotify instant runtime: ${catalogue.counts.tracks} tracks; ${criticalRawBytes} B raw / ${criticalGzipBytes} B gzip critical path`);

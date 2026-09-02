@@ -643,10 +643,35 @@ def spotify_track_policy_problem(policy: Mapping[str, Any] | None, max_requests:
         return "missing Spotify adaptive track maintenance policy"
     version = exact_int(policy, "version")
     request_cap = exact_int(policy, "request_cap")
-    if version is None or version < 3 or policy.get("selection_mode") != "adaptive_daily":
+    execution_profile = str(policy.get("execution_profile") or "daily_maintenance")
+    if version is None or version < 4 or policy.get("selection_mode") != "adaptive_daily":
         return "Spotify track maintenance policy is unsupported or incoherent"
-    if request_cap is None or request_cap <= 0 or request_cap > max_requests:
-        return "Spotify track maintenance request cap is missing or exceeds the dispatch cap"
+    if request_cap is None or request_cap <= 0:
+        return "Spotify track maintenance request cap is missing or invalid"
+    if request_cap > max_requests:
+        if execution_profile != "public_catchup" or request_cap > 24_000:
+            return "Spotify track maintenance request cap is missing or exceeds the dispatch cap"
+        reasons = policy.get("reason_coverage")
+        published = reasons.get("published_public") if isinstance(reasons, Mapping) else None
+        problem, public_counts = count_triplet_problem(
+            published if isinstance(published, Mapping) else None,
+            "public Spotify catch-up scheduling proof",
+        )
+        if problem:
+            return problem
+        entities = policy.get("published_public_entity_coverage")
+        resolvable = exact_int(entities if isinstance(entities, Mapping) else None, "resolvable_entities")
+        selected_entities = exact_int(entities if isinstance(entities, Mapping) else None, "selected_entities")
+        assert public_counts is not None
+        if (
+            public_counts[0] <= 0
+            or public_counts[1] != public_counts[0]
+            or public_counts[2] != 0
+            or resolvable is None
+            or resolvable <= 0
+            or selected_entities != resolvable
+        ):
+            return "Spotify public catch-up did not select the complete resolvable catalogue"
 
     problem, totals = count_triplet_problem(policy, "Spotify track maintenance policy")
     if problem:
@@ -675,6 +700,21 @@ def spotify_track_policy_problem(policy: Mapping[str, Any] | None, max_requests:
         or weekly_missing_alias != weekly_missing
     ):
         return "Spotify weekly rotation counters are missing or incoherent"
+    public_due = exact_int(policy, "public_due_requests")
+    public_due_selected = exact_int(policy, "public_due_selected_requests")
+    public_due_missing = exact_int(policy, "public_due_missing_requests")
+    if (
+        public_due is None
+        or public_due_selected is None
+        or public_due_missing is None
+        or public_due < 0
+        or public_due_selected < 0
+        or public_due_selected > public_due
+        or public_due_missing != public_due - public_due_selected
+    ):
+        return "Spotify daily public-track rotation counters are missing or incoherent"
+    if public_due_missing != 0:
+        return "Spotify daily public-track rotation is incomplete"
     rotation = policy.get("rotation_coverage")
     if not isinstance(rotation, Mapping):
         return "Spotify weekly rotation coverage is missing"
@@ -911,9 +951,17 @@ def assess_spotify_followers(root: Path, now: datetime, ignore_deadline: bool = 
 
 
 def active_snapshot_name(root: Path) -> str | None:
-    text = (root / "spotify" / "index.html").read_text(encoding="utf-8", errors="replace")
-    matches = re.findall(r'(Spotify_Soundcharts_data_\d{8}T\d{6}Z\.js)', text)
-    return matches[-1] if matches else None
+    # The lightweight Spotify entrypoint no longer loads the multi-megabyte
+    # Soundcharts snapshot. The compact browse catalogue owns the canonical
+    # source pointer used by the next collection and activation CAS.
+    text = read_edge(root / "Spotify_Browse_Catalogue_data.js", head=8_192)
+    source = regex_value(text, r'"source_snapshot"\s*:\s*"([^"]+)"')
+    if not source or not re.fullmatch(r"Spotify_Soundcharts_data_\d{8}T\d{6}Z\.js", source):
+        return None
+    path = root / source
+    if not path.is_file() or path.is_symlink():
+        return None
+    return source
 
 
 def assess_spotify_browse(root: Path, now: datetime, ignore_deadline: bool = False) -> Freshness:
@@ -926,9 +974,18 @@ def assess_spotify_browse(root: Path, now: datetime, ignore_deadline: bool = Fal
     active = active_snapshot_name(root)
     if not active or not source:
         return freshness_row(target, True, "missing active Spotify browse source", observed)
-    if source != active:
-        return freshness_row(target, True, f"browse catalogue uses {source}, active snapshot is {active}", observed)
-    return freshness_row(target, False, "browse catalogue matches the active Spotify snapshot", observed)
+    instant_text = read_edge(root / "Spotify_Instant_data.js", head=8_192)
+    instant_source = regex_value(instant_text, r'"source_snapshot"\s*:\s*"([^"]+)"')
+    if not instant_source:
+        return freshness_row(target, True, "missing Spotify instant-runtime source proof", observed)
+    if source != active or instant_source != source:
+        return freshness_row(
+            target,
+            True,
+            f"Spotify runtime source mismatch (browse={source}, instant={instant_source}, active={active})",
+            observed,
+        )
+    return freshness_row(target, False, "browse and instant runtimes match the active Spotify snapshot", observed)
 
 
 def assess_youtube_channels(root: Path, now: datetime, ignore_deadline: bool = False) -> Freshness:

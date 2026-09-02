@@ -12,6 +12,7 @@ on:
       - "social-app/data/comment-opportunities/refresh-status.json"
       - "social-app/data/playlist-promos/feed.json"
       - "social-app/data/playlist-promos/refresh-status.json"
+      - "Spotify_Soundcharts_data_*.js"
   workflow_dispatch:
     inputs:
       requested_sha:

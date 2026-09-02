@@ -35,8 +35,9 @@ def valid_spotify_track_policy(
     weekly_due = rotation_coverage[str(daily_bucket)]["expected_requests"]
     selected_requests = weekly_due
     return {
-        "version": 3,
+        "version": 4,
         "selection_mode": "adaptive_daily",
+        "execution_profile": "daily_maintenance",
         "request_cap": 6000,
         "expected_requests": public_entities,
         "selected_requests": selected_requests,
@@ -47,6 +48,9 @@ def valid_spotify_track_policy(
         "weekly_selected_requests": weekly_due,
         "weekly_missing": 0,
         "weekly_missing_requests": 0,
+        "public_due_requests": weekly_due,
+        "public_due_selected_requests": weekly_due,
+        "public_due_missing_requests": 0,
         "rotation_coverage": rotation_coverage,
         "reason_coverage": {
             "published_public": {
@@ -174,12 +178,17 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         write(
             self.root / "spotify/index.html",
-            '<script src="../Spotify_Soundcharts_data_20260729T060000Z.js"></script>',
+            '<script src="../Spotify_Instant_data.js"></script>',
         )
+        write(self.root / "Spotify_Soundcharts_data_20260729T060000Z.js", "window.SPOTIFY_SOUNDCHARTS={};")
         write(
             self.root / "Spotify_Browse_Catalogue_data.js",
             'window.SPOTIFY_BROWSE_CATALOGUE={"generated_at":"2026-07-29T06:00:00Z",'
             '"source_snapshot":"Spotify_Soundcharts_data_20260729T060000Z.js"};',
+        )
+        write(
+            self.root / "Spotify_Instant_data.js",
+            'window.SPOTIFY_INSTANT={"source_snapshot":"Spotify_Soundcharts_data_20260729T060000Z.js"};',
         )
         spotify_performance_store.write_performance_payload(
             self.root / "Spotify_Performance_data.js",
@@ -305,6 +314,43 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         policy["selected_requests"] += 5
 
         self.assertIsNone(subject.spotify_track_policy_problem(policy, 6000))
+
+    def test_spotify_policy_rejects_incomplete_public_due_bucket(self):
+        policy = valid_spotify_track_policy()
+        policy["public_due_selected_requests"] -= 1
+        policy["public_due_missing_requests"] = 1
+
+        self.assertEqual(
+            subject.spotify_track_policy_problem(policy, 6000),
+            "Spotify daily public-track rotation is incomplete",
+        )
+
+    def test_spotify_policy_accepts_one_time_complete_public_catchup(self):
+        policy = valid_spotify_track_policy(public_entities=20_000, selected_entities=20_000)
+        policy["execution_profile"] = "public_catchup"
+        policy["request_cap"] = 23_520
+        policy["selected_requests"] = policy["expected_requests"]
+        policy["missing_requests"] = 0
+        for row in policy["rotation_coverage"].values():
+            row["selected_requests"] = row["expected_requests"]
+        policy["weekly_selected_requests"] = policy["weekly_due_requests"]
+        policy["weekly_missing"] = 0
+        policy["weekly_missing_requests"] = 0
+        policy["reason_coverage"]["published_public"]["selected_requests"] = 20_000
+        policy["reason_coverage"]["published_public"]["missing_requests"] = 0
+        policy["published_public_entity_coverage"]["missing_selected_entities"] = 0
+
+        self.assertIsNone(subject.spotify_track_policy_problem(policy, 6000))
+
+    def test_spotify_policy_rejects_incomplete_oversized_catchup(self):
+        policy = valid_spotify_track_policy(public_entities=20_000, selected_entities=19_999)
+        policy["execution_profile"] = "public_catchup"
+        policy["request_cap"] = 23_520
+
+        self.assertEqual(
+            subject.spotify_track_policy_problem(policy, 6000),
+            "Spotify public catch-up did not select the complete resolvable catalogue",
+        )
 
     def test_spotify_core_allows_artists_to_age_for_180_hours(self):
         performance = spotify_performance_store.read_performance_payload(
@@ -987,7 +1033,27 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         )
         row = subject.assess(self.root, datetime(2026, 7, 29, 9, tzinfo=timezone.utc), ["spotify_browse"])[0]
         self.assertTrue(row.due)
-        self.assertIn("active snapshot", row.reason)
+        self.assertIn("active Spotify browse source", row.reason)
+
+    def test_browse_catalogue_is_due_when_instant_runtime_was_not_rebuilt(self):
+        write(
+            self.root / "Spotify_Soundcharts_data_20260730T060000Z.js",
+            "window.SPOTIFY_SOUNDCHARTS={};",
+        )
+        write(
+            self.root / "Spotify_Browse_Catalogue_data.js",
+            'window.SPOTIFY_BROWSE_CATALOGUE={"generated_at":"2026-07-30T06:00:00Z",'
+            '"source_snapshot":"Spotify_Soundcharts_data_20260730T060000Z.js"};',
+        )
+
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 30, 9, tzinfo=timezone.utc),
+            ["spotify_browse"],
+        )[0]
+
+        self.assertTrue(row.due)
+        self.assertIn("runtime source mismatch", row.reason)
 
     def test_stale_browse_does_not_trigger_the_expensive_spotify_core_collector(self):
         write(

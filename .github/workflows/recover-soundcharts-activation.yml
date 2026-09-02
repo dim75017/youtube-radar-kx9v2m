@@ -89,7 +89,7 @@ jobs:
           staged_blob="$(git rev-parse "$STAGED_SHA:$SNAPSHOT_NAME")"
           [[ "$local_blob" == "$staged_blob" ]]
 
-          current="$(python prepare_soundcharts_snapshot.py current --index spotify/index.html)"
+          current="$(python prepare_soundcharts_snapshot.py browse-source --catalogue Spotify_Browse_Catalogue_data.js)"
           if [[ "$current" == "$SNAPSHOT_NAME" ]]; then
             echo "already_active=true" >> "$GITHUB_OUTPUT"
             echo "Snapshot is already active; no recovery mutation is needed."
@@ -97,26 +97,6 @@ jobs:
           fi
           [[ "$current" == "$EXPECTED_OLD" ]]
           echo "already_active=false" >> "$GITHUB_OUTPUT"
-
-      - name: Verify the exact staged bytes are public
-        if: steps.guard.outputs.already_active != 'true'
-        env:
-          STAGED_SHA: ${{ inputs.staged_sha }}
-          SNAPSHOT_NAME: ${{ inputs.snapshot_name }}
-          PUBLIC_BASE_URL: https://dim75017.github.io/youtube-radar-kx9v2m
-        shell: bash
-        run: |
-          set -euo pipefail
-          public_copy="$RUNNER_TEMP/$SNAPSHOT_NAME.public"
-          curl --fail --silent --show-error --location --retry 2 --max-time 60 \
-            --header 'Cache-Control: no-cache' \
-            "$PUBLIC_BASE_URL/$SNAPSHOT_NAME?commit=$STAGED_SHA" \
-            --output "$public_copy"
-          local_sha256="$(sha256sum "$SNAPSHOT_NAME" | cut -d' ' -f1)"
-          public_sha256="$(sha256sum "$public_copy" | cut -d' ' -f1)"
-          [[ "$public_sha256" == "$local_sha256" ]]
-          cmp --silent "$SNAPSHOT_NAME" "$public_copy"
-          echo "Public snapshot SHA-256: $public_sha256"
 
       - name: Download the completed collection checkpoint
         if: steps.guard.outputs.already_active != 'true'
@@ -166,10 +146,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python prepare_soundcharts_snapshot.py activate \
-            --index spotify/index.html \
-            --expected-old "$EXPECTED_OLD" \
-            --new "$SNAPSHOT_NAME"
           python build_spotify_browse_catalogue.py \
             --source "$SNAPSHOT_NAME" \
             --existing Spotify_Browse_Catalogue_data.js \
@@ -185,6 +161,11 @@ jobs:
           python validate_playlist_snapshot_transition.py \
             --previous "$PLAYLIST_BASELINE" \
             --candidate Spotify_Playlists_canonical_data.js
+          node build_spotify_instant_runtime.js
+          python build_spotify_playlist_analytics.py \
+            --playlists Spotify_Playlists_canonical_data.js \
+            --output Spotify_Playlist_Analytics_data.js
+          node tests/test_spotify_playlist_analytics_runtime.js
           python - "$SNAPSHOT_NAME" <<'PY'
           import json
           import sys
@@ -286,17 +267,21 @@ jobs:
         env:
           SNAPSHOT_NAME: ${{ inputs.snapshot_name }}
           STAGED_SHA: ${{ inputs.staged_sha }}
+          EXPECTED_OLD: ${{ inputs.expected_old }}
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A -- \
-            spotify/index.html \
             Spotify_Browse_Catalogue_data.js \
             Spotify_Playlists_canonical_data.js \
+            Spotify_Playlist_Analytics_data.js \
             Spotify_Performance_data.js \
             Spotify_Performance_tracks \
+            Spotify_Lofi_Relations_data.js \
+            Spotify_Instant_data.js \
+            Spotify_Catalogue_data.js \
             Spotify_Selection_Contacts_data.js \
             soundcharts-history
           ! git diff --cached --quiet
@@ -304,15 +289,21 @@ jobs:
 
           published=false
           for attempt in 1 2 3; do
-            if git pull --rebase --autostash origin main; then
-              current="$(python prepare_soundcharts_snapshot.py current --index spotify/index.html)"
-              [[ "$current" == "$SNAPSHOT_NAME" ]]
-              latest_stage="$(git log HEAD --format='%H' --grep='^data: stage validated Soundcharts snapshot$' -1)"
-              [[ "$latest_stage" == "$STAGED_SHA" ]]
+            git fetch origin main
+            remote_catalogue=".soundcharts-remote-browse-check.js"
+            git show origin/main:Spotify_Browse_Catalogue_data.js > "$remote_catalogue"
+            remote_current="$(python prepare_soundcharts_snapshot.py browse-source --catalogue "$remote_catalogue")"
+            rm -f -- "$remote_catalogue"
+            [[ "$remote_current" == "$EXPECTED_OLD" ]]
+            latest_stage="$(git log origin/main --format='%H' --grep='^data: stage validated Soundcharts snapshot$' -1)"
+            [[ "$latest_stage" == "$STAGED_SHA" ]]
+            if git rebase --autostash origin/main; then
               if git push origin HEAD:main; then
                 published=true
                 break
               fi
+            else
+              git rebase --abort || true
             fi
             sleep 5
           done
@@ -329,3 +320,19 @@ jobs:
           python trigger_pages_deployment.py
           --repository "$GITHUB_REPOSITORY"
           --sha "$PUBLISHED_SHA"
+          --wait-for-completion
+          --run-timeout 1800
+
+      - name: Re-dispatch Pages when the snapshot is already active
+        if: steps.guard.outputs.already_active == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          published_sha="$(git rev-parse HEAD)"
+          python trigger_pages_deployment.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --sha "$published_sha" \
+            --wait-for-completion \
+            --run-timeout 1800

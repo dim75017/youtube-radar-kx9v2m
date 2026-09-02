@@ -53,7 +53,7 @@ AUTH_PROBE = "/api/v2/referential/platforms/streaming"
 MIN_SERVER_QUOTA_RESERVE = 100_000
 TRACK_ROTATION_BUCKETS = 7
 RECENT_RELEASE_DAYS = 90
-TRACK_MAINTENANCE_POLICY_VERSION = 3
+TRACK_MAINTENANCE_POLICY_VERSION = 4
 TRACK_PUBLIC_STREAM_FLOOR = 100_000
 TRACK_PROMOTION_WATCH_FLOOR = 75_000
 ARTIST_LISTENING_WINDOW_DAYS = 90
@@ -1194,16 +1194,15 @@ def plan_track_maintenance(
                 oldest_observed = observed
 
         bucket = stable_rotation_bucket(stable_key)
+        # Only genuinely time-sensitive business rows are daily mandatory.
+        # Public and strict catalogue membership is handled by the bounded
+        # lanes below; making either whole catalogue mandatory permanently
+        # starves rotation whenever it is larger than the daily request budget.
         mandatory = bool(
             reasons.intersection(
                 {
                     "selection_or_negotiation",
                     "opportunity",
-                    "published_public",
-                    "published_strict",
-                    "threshold_promotion_watch",
-                    "needs_two_true_points",
-                    "release_90d",
                     "anomaly_or_acceleration",
                 }
             )
@@ -1262,15 +1261,67 @@ def plan_track_maintenance(
     nonmandatory = [profile for profile in profiles if profile["stable_key"] not in selected_keys]
     due_rotation = sorted(
         (profile for profile in nonmandatory if profile["bucket"] == daily_bucket),
-        key=rotation_key,
+        key=lambda profile: (
+            0 if "published_public" in profile["reasons"] else 1,
+            *rotation_key(profile),
+        ),
     )
     for profile in due_rotation:
         profile["reasons"].add("weekly_rotation")
 
-    # Weekly coverage wins over opportunistic hot-track refreshes. When a due
-    # bucket is overloaded, oldest observed_at values win; successful rows are
-    # timestamped by the collector, so missed rows age to the front next time.
-    rotation_selected = due_rotation[:remaining_slots]
+    # Weekly public coverage wins over opportunistic hot-track refreshes. A
+    # normal maintenance pass selects the current public bucket first. A
+    # larger explicit catch-up budget selects the whole public catalogue in
+    # one pass before spending spare capacity on non-public history rows.
+    public_profiles = sorted(
+        (
+            profile
+            for profile in nonmandatory
+            if "published_public" in profile["reasons"]
+        ),
+        key=lambda profile: (
+            0 if profile["bucket"] == daily_bucket else 1,
+            *rotation_key(profile),
+        ),
+    )
+    # Fill every spare request with a public row, starting with today's due
+    # bucket and then the oldest remaining public rows. At the normal 6k cap
+    # this refreshes the 20k public catalogue in roughly four passes instead
+    # of waiting a full week; the explicit catch-up lane can cover it at once.
+    public_selected = public_profiles[:remaining_slots]
+    selected.extend(public_selected)
+    selected_keys.update(profile["stable_key"] for profile in public_selected)
+
+    # Keep new, recent and threshold-adjacent candidates ahead of generic
+    # non-public history rows without allowing them to displace public-catalogue
+    # coverage. This preserves discovery quality while the public catalogue is
+    # rotated (or fully caught up) first.
+    remaining_slots = cap - len(selected)
+    secondary_priority_reasons = {
+        "published_strict",
+        "threshold_promotion_watch",
+        "needs_two_true_points",
+        "release_90d",
+    }
+    secondary_candidates = sorted(
+        (
+            profile
+            for profile in nonmandatory
+            if profile["stable_key"] not in selected_keys
+            if profile["reasons"].intersection(secondary_priority_reasons)
+        ),
+        key=mandatory_key,
+    )
+    secondary_selected = secondary_candidates[:remaining_slots]
+    selected.extend(secondary_selected)
+    selected_keys.update(profile["stable_key"] for profile in secondary_selected)
+
+    remaining_slots = cap - len(selected)
+    rotation_selected = [
+        profile
+        for profile in due_rotation
+        if profile["stable_key"] not in selected_keys
+    ][:remaining_slots]
     selected.extend(rotation_selected)
     selected_keys.update(profile["stable_key"] for profile in rotation_selected)
 
@@ -1319,6 +1370,18 @@ def plan_track_maintenance(
         for profile in selected
         if "velocity_or_recency" in profile["reasons"] and isinstance(profile["velocity_7d"], int)
     ]
+    public_due_requests = sum(
+        profile["bucket"] == daily_bucket
+        and not profile["mandatory"]
+        and "published_public" in profile["reasons"]
+        for profile in profiles
+    )
+    public_due_selected = sum(
+        profile["bucket"] == daily_bucket
+        and not profile["mandatory"]
+        and "published_public" in profile["reasons"]
+        for profile in selected
+    )
     policy = {
         "version": TRACK_MAINTENANCE_POLICY_VERSION,
         "selection_mode": "adaptive_daily",
@@ -1331,9 +1394,29 @@ def plan_track_maintenance(
         "daily_rotation_bucket": daily_bucket,
         "rotation_bucket_count": TRACK_ROTATION_BUCKETS,
         "weekly_due_requests": len(due_rotation),
-        "weekly_selected_requests": len(rotation_selected),
-        "weekly_missing": max(0, len(due_rotation) - len(rotation_selected)),
-        "weekly_missing_requests": max(0, len(due_rotation) - len(rotation_selected)),
+        "weekly_selected_requests": sum(
+            profile["bucket"] == daily_bucket and not profile["mandatory"]
+            for profile in selected
+        ),
+        "weekly_missing": max(
+            0,
+            len(due_rotation)
+            - sum(
+                profile["bucket"] == daily_bucket and not profile["mandatory"]
+                for profile in selected
+            ),
+        ),
+        "weekly_missing_requests": max(
+            0,
+            len(due_rotation)
+            - sum(
+                profile["bucket"] == daily_bucket and not profile["mandatory"]
+                for profile in selected
+            ),
+        ),
+        "public_due_requests": public_due_requests,
+        "public_due_selected_requests": public_due_selected,
+        "public_due_missing_requests": max(0, public_due_requests - public_due_selected),
         "velocity_cutoff_7d": min(selected_velocities) if selected_velocities else None,
         "reason_coverage": {
             reason: {
@@ -1360,6 +1443,7 @@ def refresh_tracks(
     public_catalogue: Mapping[str, Any] | None = None,
     priority_artist_ids: set[str] | None = None,
     priority_artist_uuids: set[str] | None = None,
+    public_track_catchup: bool = False,
 ) -> Outcome:
     schema, rows = ensure_schema_fields(
         payload,
@@ -1525,6 +1609,9 @@ def refresh_tracks(
         today=utc_today(),
         priority_artist_ids=priority_artist_ids,
         priority_artist_uuids=priority_artist_uuids,
+    )
+    policy["execution_profile"] = (
+        "public_catchup" if public_track_catchup else "daily_maintenance"
     )
     selected_entities = sum(len(task["targets"]) for task in selected_tasks)
     policy["requested_cap"] = max(0, budget)
@@ -2165,6 +2252,11 @@ def parse_args() -> argparse.Namespace:
         help="Refresh existing performance-only UUIDs without promoting them into the public Soundcharts export",
     )
     parser.add_argument(
+        "--public-track-catchup",
+        action="store_true",
+        help="Mark a one-time bounded pass that must select the whole resolvable public track catalogue",
+    )
+    parser.add_argument(
         "--priority-artists",
         type=Path,
         default=Path("spotify-selection-artist-seeds.json"),
@@ -2263,6 +2355,7 @@ def main() -> int:
                 public_catalogue=public_catalogue,
                 priority_artist_ids=priority_artist_ids,
                 priority_artist_uuids=priority_artist_uuids,
+                public_track_catchup=getattr(args, "public_track_catchup", False),
             )
         elif mode == "artists":
             outcome = refresh_artists(

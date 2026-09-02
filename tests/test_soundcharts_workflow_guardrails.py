@@ -4,6 +4,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "refresh-soundcharts.yml"
+BROWSE_WORKFLOW = ROOT / ".github" / "workflows" / "refresh-spotify-browse-catalogue.yml"
 
 
 class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
@@ -11,20 +12,21 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
     def setUpClass(cls):
         cls.workflow = WORKFLOW.read_text(encoding="utf-8")
 
-    def test_pages_wait_covers_slow_deployments(self):
-        self.assertIn("timeout-minutes: 45", self.workflow)
-        self.assertIn("for poll in $(seq 1 160); do", self.workflow)
-        self.assertIn('if [[ "$poll" == "160" ]]; then', self.workflow)
-        self.assertIn("sleep 15", self.workflow)
-        self.assertIn("for poll in $(seq 1 12); do", self.workflow)
+    def test_private_staged_snapshot_uses_git_blob_proof_only(self):
+        self.assertNotIn("Wait for staged snapshot to be live and green", self.workflow)
+        self.assertNotIn('public_verified="false"', self.workflow)
+        self.assertNotIn('$PUBLIC_BASE_URL/$SNAPSHOT_NAME', self.workflow)
+        verify = self.workflow.index("Verify dated snapshot exists on main")
+        activate = self.workflow.index("Activate snapshot only after remote validation")
+        self.assertLess(verify, activate)
+        section = self.workflow[verify:activate]
+        self.assertIn('remote_blob="$(git rev-parse "$STAGED_SHA:$SNAPSHOT_NAME")"', section)
+        self.assertIn('test "$local_blob" = "$remote_blob"', section)
+        self.assertIn('git merge-base --is-ancestor "$STAGED_SHA" origin/main', section)
 
-    def test_superseded_pages_deployment_relies_on_public_bytes(self):
-        self.assertIn('public_verified="false"', self.workflow)
-        self.assertIn('if [[ "$public_sha256" == "$local_sha256" ]]', self.workflow)
-        self.assertNotIn('"$deployment_state" == "inactive"', self.workflow)
-        self.assertNotIn('actions_state=', self.workflow)
-        self.assertIn('waiting for a superseding deployment', self.workflow)
-        self.assertNotIn('Pages failed for staged SHA', self.workflow)
+    def test_private_stage_does_not_trigger_the_browse_rebuilder(self):
+        browse_workflow = BROWSE_WORKFLOW.read_text(encoding="utf-8")
+        self.assertNotIn("Spotify_Soundcharts_data_*", browse_workflow)
 
     def test_activation_rebases_a_benign_later_main_commit(self):
         self.assertIn('git stash push --include-untracked -m "soundcharts-activation-rebase"', self.workflow)
@@ -33,13 +35,47 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn("git rebase origin/main", self.workflow)
         self.assertIn('staged_blob="$(git rev-parse "$STAGED_SHA:$SNAPSHOT_NAME")"', self.workflow)
         self.assertIn('test "$local_blob" = "$staged_blob"', self.workflow)
+        self.assertIn('test "$current_snapshot" = "$OLD_SNAPSHOT"', self.workflow)
+        self.assertIn('git show origin/main:Spotify_Browse_Catalogue_data.js', self.workflow)
+        self.assertIn('test "$remote_current" = "$OLD_SNAPSHOT"', self.workflow)
+        self.assertIn("git rebase --autostash origin/main", self.workflow)
 
-    def test_live_bytes_are_still_required_before_activation(self):
-        wait = self.workflow.index("Wait for staged snapshot to be live and green")
-        hash_check = self.workflow.index('if [[ "$public_sha256" == "$local_sha256" ]]')
-        activate = self.workflow.index("Activate snapshot only after remote validation")
-        self.assertLess(wait, hash_check)
-        self.assertLess(hash_check, activate)
+    def test_only_final_runtime_commit_waits_for_pages(self):
+        stage = self.workflow[
+            self.workflow.index("Publish validated dated snapshot first") :
+            self.workflow.index("Publish refreshed playlist covers")
+        ]
+        self.assertNotIn("trigger_pages_deployment.py", stage)
+        activation = self.workflow[self.workflow.index("Activate snapshot only after remote validation") :]
+        self.assertIn("trigger_pages_deployment.py", activation)
+        self.assertIn("--wait-for-completion", activation)
+        self.assertIn("--run-timeout 1800", activation)
+
+    def test_playlist_cover_scope_skips_snapshot_staging_and_activation(self):
+        for step_name in (
+            "Publish validated dated snapshot first",
+            "Verify dated snapshot exists on main",
+            "Persist Soundcharts bootstrap state outside Git",
+            "Activate snapshot only after remote validation",
+        ):
+            start = self.workflow.index(f"- name: {step_name}")
+            section = self.workflow[start : start + 600]
+            self.assertIn("steps.prepared.outputs.name != ''", section)
+        playlist = self.workflow.index("Publish refreshed playlist covers")
+        self.assertIn(
+            "steps.plan.outputs.scope == 'playlist_covers'",
+            self.workflow[playlist : playlist + 300],
+        )
+
+    def test_track_catchup_is_marked_for_post_run_watchdog_validation(self):
+        self.assertIn('echo "track_catchup=$track_catchup" >> "$GITHUB_OUTPUT"', self.workflow)
+        self.assertIn("PUBLIC_TRACK_CATCHUP: ${{ steps.plan.outputs.track_catchup }}", self.workflow)
+        self.assertIn("catchup_args+=(--public-track-catchup)", self.workflow)
+
+    def test_compact_runtime_is_rebuilt_before_its_contract_tests(self):
+        build = self.workflow.index("node build_spotify_instant_runtime.js")
+        contract = self.workflow.index("node tests/test_spotify_instant_runtime.js")
+        self.assertLess(build, contract)
 
     def test_public_snapshot_is_compared_with_the_current_approved_snapshot(self):
         prepare = self.workflow.index("Prepare public-safe dated snapshot")
@@ -85,6 +121,17 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         section = self.workflow[storage:first_paid]
         self.assertIn("--mode storage", section)
         self.assertIn("Spotify_Performance_data.js", section)
+
+    def test_pending_validated_snapshot_blocks_paid_recollection(self):
+        storage = self.workflow.index("Validate and shard performance storage before paid collection")
+        pending = self.workflow.index("Refuse paid recollection while a validated snapshot awaits recovery")
+        first_paid = self.workflow.index("Refresh mapped artist audience only when explicitly requested")
+        self.assertLess(storage, pending)
+        self.assertLess(pending, first_paid)
+        section = self.workflow[pending:first_paid]
+        self.assertIn("prepare_soundcharts_snapshot.py browse-source", section)
+        self.assertIn("git ls-tree --name-only HEAD", section)
+        self.assertIn("Recover its checkpoint before spending more API calls", section)
 
     def test_performance_shard_creations_and_deletions_are_published(self):
         self.assertIn("git add -A --", self.workflow)
@@ -239,6 +286,10 @@ class SoundchartsWorkflowGuardrailsTests(unittest.TestCase):
         self.assertIn('scope="maintenance"', self.workflow)
         self.assertIn('performance_artist_data_cap="12000"', self.workflow)
         self.assertIn('performance_track_data_cap="6000"', self.workflow)
+        self.assertIn('track_catchup_data_cap="24000"', self.workflow)
+        self.assertIn('maintenance|track_catchup|artists', self.workflow)
+        self.assertIn('if [[ "$scope" == "track_catchup" ]]', self.workflow)
+        self.assertIn('performance_artists_due="false"', self.workflow)
         self.assertIn('full_sync_track_data_cap="35000"', self.workflow)
         self.assertIn("dt.timedelta(hours=156)", self.workflow)
         self.assertIn('playlist_data_cap="3000"', self.workflow)
