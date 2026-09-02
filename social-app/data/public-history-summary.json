@@ -1,18 +1,18 @@
 {
-  "generatedAt": "2026-09-02T11:46:31.927Z",
-  "totalPostCount": 12939,
+  "generatedAt": "2026-09-02T16:04:38.825404Z",
+  "totalPostCount": 12944,
   "platformCounts": {
-    "youtube": 4827,
+    "youtube": 4831,
     "instagram": 2464,
-    "tiktok": 407,
+    "tiktok": 408,
     "x": 5241
   },
   "formatCounts": {
     "youtube": {
-      "short": 330,
-      "community": 1105,
+      "short": 331,
+      "community": 1107,
       "poll": 205,
-      "text": 377,
+      "text": 378,
       "comment": 2810
     },
     "instagram": {
@@ -21,7 +21,7 @@
       "comment": 779
     },
     "tiktok": {
-      "video": 397,
+      "video": 398,
       "comment": 10
     },
     "x": {
@@ -37,9 +37,9 @@
       "accountUrl": "https://www.tiktok.com/@lofigirl",
       "scope": "profile",
       "status": "complete-public-profile",
-      "itemCount": 397,
+      "itemCount": 398,
       "oldestPublishedAt": "2022-04-06T17:39:03Z",
-      "newestPublishedAt": "2026-08-29T16:22:57Z",
+      "newestPublishedAt": "2026-09-01T16:07:18Z",
       "limitations": [
         "Inventaire limité à ce que le profil public TikTok livre à yt-dlp au moment de la collecte ; l’exhaustivité historique n’est pas garantie.",
         "TikTok peut réduire ou bloquer la pagination publique sans préavis.",
@@ -52,9 +52,9 @@
       "accountUrl": "https://www.youtube.com/@LofiGirl",
       "scope": "shorts + community posts + commentaires publiés par le compte lorsqu’un export autorisé est disponible",
       "status": "partial-public-profile",
-      "itemCount": 4827,
+      "itemCount": 4831,
       "oldestPublishedAt": "2015-03-27T11:22:00.000Z",
-      "newestPublishedAt": "2026-08-31T17:00:00Z",
+      "newestPublishedAt": "2026-09-02T16:01:00Z",
       "limitations": [
         "Périmètre volontairement limité aux Shorts et aux posts Communauté publics de la chaîne ; les vidéos longues et les lives sont exclus.",
         "Inventaire issu des onglets publics de la chaîne, sans YouTube Studio ni Analytics propriétaire.",
@@ -64,12 +64,12 @@
         "Les commentaires publiés par le compte Lofi Girl sont ajoutés lorsqu’un export propriétaire autorisé est disponible ; chaque commentaire conserve son lien YouTube public.",
         "Le tableau posts est dédupliqué par identifiant public YouTube.",
         "Les posts Communauté sont lus via la pagination publique interne de YouTube, car l’API Data v3 ne fournit pas de ressource Community Post.",
-        "Formats Communauté récupérés : community_image=97, community_poll=15, community_text=88.",
-        "La pagination publique s’est arrêtée après 200 posts Communauté, le plus ancien étant daté approximativement du 2026-05-01T00:00:00Z ; cela ne certifie pas l’absence de posts plus anciens.",
-        "Une date est exposée pour 4816/4827 contenus ; les bornes oldest/newest portent uniquement sur ce sous-ensemble daté.",
-        "Un compteur de vues est exposé pour 330/4827 contenus ; les autres valeurs restent nulles.",
-        "Un compteur de likes est exposé pour 4762/4827 contenus ; les autres valeurs restent nulles.",
-        "Snapshot cumulatif append-only : 4298 contenu(s) observé(s) lors de relevés antérieurs sont conservés même s’ils ne figurent plus dans la fenêtre publique courante."
+        "Formats Communauté récupérés : community_image=98, community_poll=15, community_text=87.",
+        "La pagination publique s’est arrêtée après 200 posts Communauté, le plus ancien étant daté approximativement du 2026-05-03T00:00:00Z ; cela ne certifie pas l’absence de posts plus anciens.",
+        "Une date est exposée pour 4819/4831 contenus ; les bornes oldest/newest portent uniquement sur ce sous-ensemble daté.",
+        "Un compteur de vues est exposé pour 331/4831 contenus ; les autres valeurs restent nulles.",
+        "Un compteur de likes est exposé pour 4765/4831 contenus ; les autres valeurs restent nulles.",
+        "Snapshot cumulatif append-only : 4301 contenu(s) observé(s) lors de relevés antérieurs sont conservés même s’ils ne figurent plus dans la fenêtre publique courante."
       ]
     },
     {
