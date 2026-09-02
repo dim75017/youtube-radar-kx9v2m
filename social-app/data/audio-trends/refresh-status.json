@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "attemptedAt": "2026-09-01T20:05:29.545Z",
+  "attemptedAt": "2026-09-02T09:45:05.438Z",
   "status": "success",
   "published": true,
   "inventory": {
@@ -14,20 +14,20 @@
     "publishable": true
   },
   "discoveryAudit": {
-    "scannedAt": "2026-09-01T20:05:29.545Z",
+    "scannedAt": "2026-09-02T09:45:05.438Z",
     "status": "success",
     "complete": true,
-    "candidateCount": 176,
-    "qualifiedInventoryCount": 27,
-    "qualifiedClusterCount": 27,
-    "currentMatchedCount": 6,
+    "candidateCount": 171,
+    "qualifiedInventoryCount": 28,
+    "qualifiedClusterCount": 28,
+    "currentMatchedCount": 2,
     "candidatePlatformCounts": {
       "instagram": 163,
-      "tiktok": 13
+      "tiktok": 8
     },
     "candidateRegistry": {
-      "updatedAt": "2026-09-01T20:05:29.545Z",
-      "candidateCount": 176,
+      "updatedAt": "2026-09-02T09:45:05.438Z",
+      "candidateCount": 171,
       "candidateAudioUrls": [
         "https://www.instagram.com/reels/audio/1006119841436928",
         "https://www.instagram.com/reels/audio/1040129337188935",
@@ -192,19 +192,14 @@
         "https://www.instagram.com/reels/audio/9573873819403156",
         "https://www.instagram.com/reels/audio/980370881663525",
         "https://www.instagram.com/reels/audio/993398866388191",
-        "https://www.tiktok.com/music/Golden-7534922588541241360",
-        "https://www.tiktok.com/music/Hey-Baby-Drop-It-to-the-Floor-feat-T-Pain-6696414028652087298",
-        "https://www.tiktok.com/music/Mind-Blank-7325072810639378434",
-        "https://www.tiktok.com/music/On-a-Mission-7274043399086426113",
-        "https://www.tiktok.com/music/original-sound-%F0%9F%92%AB-7651272787434490631",
-        "https://www.tiktok.com/music/original-sound-7109091048936262442",
-        "https://www.tiktok.com/music/original-sound-7529047591636568887",
-        "https://www.tiktok.com/music/original-sound-7647113486681639681",
-        "https://www.tiktok.com/music/original-sound-7654692848025094942",
+        "https://www.tiktok.com/music/Golden-7515251957310539792",
+        "https://www.tiktok.com/music/original-sound-7237212440625253163",
+        "https://www.tiktok.com/music/original-sound-7670322912494242591",
+        "https://www.tiktok.com/music/original-sound-The-Respawn-7661981604407020310",
         "https://www.tiktok.com/music/petal-7668507565575964673",
-        "https://www.tiktok.com/music/sonido-original-7566285553383803670",
-        "https://www.tiktok.com/music/Trees-and-Flowers-by-Strawberry-Switchblade-7338534150649088814",
-        "https://www.tiktok.com/music/u-me-=-3-7649983963347896336"
+        "https://www.tiktok.com/music/Quiet-on-the-Creek-7662457740929157137",
+        "https://www.tiktok.com/music/Saxophones-getting-louder-Sped-Up-7639417177691473937",
+        "https://www.tiktok.com/music/She-Bugging-Whatchu-Gonna-Do-7645058632418461697"
       ],
       "candidateReferences": [
         {
@@ -252,80 +247,60 @@
           "referenceUrl": "https://www.instagram.com/reel/Db-lM_nTh_s"
         },
         {
-          "audioUrl": "https://www.tiktok.com/music/Golden-7534922588541241360",
-          "referenceUrl": "https://www.tiktok.com/@kpoplikely/video/7627341780337380640"
+          "audioUrl": "https://www.tiktok.com/music/Golden-7515251957310539792",
+          "referenceUrl": "https://www.tiktok.com/@twenty4tim/video/7669488320358927648"
         },
         {
-          "audioUrl": "https://www.tiktok.com/music/Hey-Baby-Drop-It-to-the-Floor-feat-T-Pain-6696414028652087298",
-          "referenceUrl": "https://www.tiktok.com/@hope_schwing/video/7667660831471045918"
+          "audioUrl": "https://www.tiktok.com/music/original-sound-7237212440625253163",
+          "referenceUrl": "https://www.tiktok.com/@thesororitysister/video/7612678394433522958"
         },
         {
-          "audioUrl": "https://www.tiktok.com/music/Mind-Blank-7325072810639378434",
-          "referenceUrl": "https://www.tiktok.com/@isabelclanc/video/7667274434394344717"
+          "audioUrl": "https://www.tiktok.com/music/original-sound-7670322912494242591",
+          "referenceUrl": "https://www.tiktok.com/@creator___/video/7670322951182421279"
         },
         {
-          "audioUrl": "https://www.tiktok.com/music/On-a-Mission-7274043399086426113",
-          "referenceUrl": "https://www.tiktok.com/@liammillerr/video/7663238721306627359"
-        },
-        {
-          "audioUrl": "https://www.tiktok.com/music/original-sound-%F0%9F%92%AB-7651272787434490631",
-          "referenceUrl": "https://www.tiktok.com/@genesisgalaxy8/video/7666486744509861136"
-        },
-        {
-          "audioUrl": "https://www.tiktok.com/music/original-sound-7109091048936262442",
-          "referenceUrl": "https://www.tiktok.com/@juliehaneline/video/7671431412876266782"
-        },
-        {
-          "audioUrl": "https://www.tiktok.com/music/original-sound-7529047591636568887",
-          "referenceUrl": "https://www.tiktok.com/@stillwatersfishing/video/7640578773078904077"
-        },
-        {
-          "audioUrl": "https://www.tiktok.com/music/original-sound-7647113486681639681",
-          "referenceUrl": "https://www.tiktok.com/@joshfawaz/video/7647113450618899719"
-        },
-        {
-          "audioUrl": "https://www.tiktok.com/music/original-sound-7654692848025094942",
-          "referenceUrl": "https://www.tiktok.com/@mntat246850/video/7672037517574638879"
+          "audioUrl": "https://www.tiktok.com/music/original-sound-The-Respawn-7661981604407020310",
+          "referenceUrl": "https://www.tiktok.com/@itstherespawn/video/7661981569761987862"
         },
         {
           "audioUrl": "https://www.tiktok.com/music/petal-7668507565575964673",
-          "referenceUrl": "https://www.tiktok.com/@benjohn066/video/7673488305203236127"
+          "referenceUrl": "https://www.tiktok.com/@vierbessen/video/7677914834154933537"
         },
         {
-          "audioUrl": "https://www.tiktok.com/music/sonido-original-7566285553383803670",
-          "referenceUrl": "https://www.tiktok.com/@carla_paucar/video/7566285545970683158"
+          "audioUrl": "https://www.tiktok.com/music/Quiet-on-the-Creek-7662457740929157137",
+          "referenceUrl": "https://www.tiktok.com/@martha_xoft/video/7680465414131862792"
         },
         {
-          "audioUrl": "https://www.tiktok.com/music/Trees-and-Flowers-by-Strawberry-Switchblade-7338534150649088814",
-          "referenceUrl": "https://www.tiktok.com/@amberyackzan/video/7588222036334349598"
+          "audioUrl": "https://www.tiktok.com/music/Saxophones-getting-louder-Sped-Up-7639417177691473937",
+          "referenceUrl": "https://www.tiktok.com/@wilmahtheband/video/7652550018200653086"
         },
         {
-          "audioUrl": "https://www.tiktok.com/music/u-me-=-3-7649983963347896336",
-          "referenceUrl": "https://www.tiktok.com/@heyitsmekirstie/video/7653621145211653389"
+          "audioUrl": "https://www.tiktok.com/music/She-Bugging-Whatchu-Gonna-Do-7645058632418461697",
+          "referenceUrl": "https://www.tiktok.com/@kuzcopluscleo/video/7667585163404004639"
         }
       ]
     },
     "candidatePoolDelta": {
       "status": "compared",
-      "added": 0,
-      "removed": 0,
-      "retained": 176
+      "added": 7,
+      "removed": 12,
+      "retained": 164
     },
     "qualificationAudit": {
-      "attemptedAt": "2026-09-01T20:05:29.545Z",
+      "attemptedAt": "2026-09-02T09:45:05.438Z",
       "complete": true,
-      "videoFeedCapturedAt": "2026-09-01T19:25:31.931Z",
+      "videoFeedCapturedAt": "2026-09-02T08:49:12.049Z",
       "videoFeedFresh": true,
-      "videoDiscoveryAuditScannedAt": "2026-09-01T19:25:31.931Z",
+      "videoDiscoveryAuditScannedAt": "2026-09-02T08:49:12.049Z",
       "videoDiscoveryAuditFresh": true,
-      "attemptedTrendCount": 35,
+      "attemptedTrendCount": 37,
       "attemptedCurrentTrendCount": 0,
-      "attemptedFreshVideoTrendCount": 32,
-      "attemptedFreshAuditClusterCount": 3,
-      "freshQualifiedCount": 27,
-      "qualifiedClusterCount": 27,
+      "attemptedFreshVideoTrendCount": 33,
+      "attemptedFreshAuditClusterCount": 4,
+      "freshQualifiedCount": 28,
+      "qualifiedClusterCount": 28,
       "freshCurrentQualifiedCount": 25,
-      "freshNewQualifiedCount": 2,
+      "freshNewQualifiedCount": 3,
       "qualifiedAudioUrls": [
         "https://www.tiktok.com/music/fulfill-the-prophecy-7406872980187401003",
         "https://www.tiktok.com/music/original-sound-7627517043541068566",
@@ -353,7 +328,8 @@
         "https://www.tiktok.com/music/Wrap-it-up-7208649829264837422",
         "https://www.tiktok.com/music/CHANEL-7561952744116357137",
         "https://www.tiktok.com/music/House-featuring-John-Cale-7571057519797487632",
-        "https://www.tiktok.com/music/Mind-Blank-7325072810639378434"
+        "https://www.tiktok.com/music/Mind-Blank-7325072810639378434",
+        "https://www.tiktok.com/music/Saxophones-getting-louder-Sped-Up-7639417177691473937"
       ],
       "rejected": [
         {
@@ -387,10 +363,10 @@
           "error": "aucune identite audio commune verifiee sur trois createurs distincts"
         }
       ],
-      "discoveredCandidateCount": 176,
-      "discoveredWithoutMultiCreatorProofCount": 171
+      "discoveredCandidateCount": 171,
+      "discoveredWithoutMultiCreatorProofCount": 169
     },
-    "newCandidateCount": 170,
+    "newCandidateCount": 169,
     "added": [
       "https://www.instagram.com/reels/audio/1006119841436928",
       "https://www.instagram.com/reels/audio/1040129337188935",
@@ -554,14 +530,13 @@
       "https://www.instagram.com/reels/audio/9573873819403156",
       "https://www.instagram.com/reels/audio/980370881663525",
       "https://www.instagram.com/reels/audio/993398866388191",
-      "https://www.tiktok.com/music/Golden-7534922588541241360",
-      "https://www.tiktok.com/music/Hey-Baby-Drop-It-to-the-Floor-feat-T-Pain-6696414028652087298",
-      "https://www.tiktok.com/music/original-sound-%F0%9F%92%AB-7651272787434490631",
-      "https://www.tiktok.com/music/original-sound-7529047591636568887",
-      "https://www.tiktok.com/music/original-sound-7647113486681639681",
-      "https://www.tiktok.com/music/original-sound-7654692848025094942",
-      "https://www.tiktok.com/music/sonido-original-7566285553383803670",
-      "https://www.tiktok.com/music/Trees-and-Flowers-by-Strawberry-Switchblade-7338534150649088814"
+      "https://www.tiktok.com/music/Golden-7515251957310539792",
+      "https://www.tiktok.com/music/original-sound-7237212440625253163",
+      "https://www.tiktok.com/music/original-sound-7670322912494242591",
+      "https://www.tiktok.com/music/original-sound-The-Respawn-7661981604407020310",
+      "https://www.tiktok.com/music/Quiet-on-the-Creek-7662457740929157137",
+      "https://www.tiktok.com/music/Saxophones-getting-louder-Sped-Up-7639417177691473937",
+      "https://www.tiktok.com/music/She-Bugging-Whatchu-Gonna-Do-7645058632418461697"
     ],
     "removed": [
       "https://www.tiktok.com/music/Pocketful-of-Sunshine-6696420561934878722",
@@ -570,6 +545,7 @@
       "https://www.tiktok.com/music/original-sound-7627517043541068566",
       "https://www.tiktok.com/music/sonido-original-7651806743999073040",
       "https://www.tiktok.com/music/original-sound-7642453200225815309",
+      "https://www.tiktok.com/music/Mind-Blank-7325072810639378434",
       "https://www.instagram.com/reels/audio/1850093231958659/",
       "https://www.instagram.com/reels/audio/1344931484516320/",
       "https://www.youtube.com/source/MexTmo_3naU/shorts",
@@ -579,14 +555,17 @@
       "https://www.tiktok.com/music/fulfill-the-prophecy-7406872980187401003",
       "https://www.tiktok.com/music/original-sound-7647999030882634509",
       "https://www.tiktok.com/music/House-featuring-John-Cale-7571057519797487632",
+      "https://www.tiktok.com/music/on-a-mission-7274043399086426113",
       "https://www.tiktok.com/music/CHANEL-7561952744116357137",
       "https://www.tiktok.com/music/original-sound-7649038378872228638",
       "https://www.tiktok.com/music/choosin-texas-7559312683885201425",
+      "https://www.tiktok.com/music/u-me-3-7649983963347896336",
       "https://www.tiktok.com/music/original-sound-7642492753208757014",
       "https://www.tiktok.com/music/dracula-jennie-remix-7603221525400455169",
       "https://www.tiktok.com/music/let-down-7520755827558959894",
       "https://www.tiktok.com/music/original-sound-7654835361444530974",
       "https://www.tiktok.com/music/original-sound-7057703190136998703",
+      "https://www.tiktok.com/music/original-sound-7109091048936262442",
       "https://www.tiktok.com/music/original-sound-7653092863365892886",
       "https://www.tiktok.com/music/original-sound-7666712105047493389",
       "https://www.tiktok.com/music/original-sound-7627692912205187861",
@@ -611,11 +590,7 @@
     ],
     "retainedIds": [
       "petal-soft-chaos",
-      "audio-tiktok-music-7325072810639378434",
-      "stupid-song-montage",
-      "tiktok-netflix-documentary-confessional-426113",
-      "tiktok-u-me-love-timeline-896336",
-      "tiktok-different-lives-split-262442"
+      "stupid-song-montage"
     ],
     "candidateAudioUrls": [
       "https://www.instagram.com/reels/audio/1006119841436928",
@@ -781,19 +756,14 @@
       "https://www.instagram.com/reels/audio/9573873819403156",
       "https://www.instagram.com/reels/audio/980370881663525",
       "https://www.instagram.com/reels/audio/993398866388191",
-      "https://www.tiktok.com/music/Golden-7534922588541241360",
-      "https://www.tiktok.com/music/Hey-Baby-Drop-It-to-the-Floor-feat-T-Pain-6696414028652087298",
-      "https://www.tiktok.com/music/Mind-Blank-7325072810639378434",
-      "https://www.tiktok.com/music/On-a-Mission-7274043399086426113",
-      "https://www.tiktok.com/music/original-sound-%F0%9F%92%AB-7651272787434490631",
-      "https://www.tiktok.com/music/original-sound-7109091048936262442",
-      "https://www.tiktok.com/music/original-sound-7529047591636568887",
-      "https://www.tiktok.com/music/original-sound-7647113486681639681",
-      "https://www.tiktok.com/music/original-sound-7654692848025094942",
+      "https://www.tiktok.com/music/Golden-7515251957310539792",
+      "https://www.tiktok.com/music/original-sound-7237212440625253163",
+      "https://www.tiktok.com/music/original-sound-7670322912494242591",
+      "https://www.tiktok.com/music/original-sound-The-Respawn-7661981604407020310",
       "https://www.tiktok.com/music/petal-7668507565575964673",
-      "https://www.tiktok.com/music/sonido-original-7566285553383803670",
-      "https://www.tiktok.com/music/Trees-and-Flowers-by-Strawberry-Switchblade-7338534150649088814",
-      "https://www.tiktok.com/music/u-me-=-3-7649983963347896336"
+      "https://www.tiktok.com/music/Quiet-on-the-Creek-7662457740929157137",
+      "https://www.tiktok.com/music/Saxophones-getting-louder-Sped-Up-7639417177691473937",
+      "https://www.tiktok.com/music/She-Bugging-Whatchu-Gonna-Do-7645058632418461697"
     ],
     "candidateReferences": [
       {
@@ -841,56 +811,36 @@
         "referenceUrl": "https://www.instagram.com/reel/Db-lM_nTh_s"
       },
       {
-        "audioUrl": "https://www.tiktok.com/music/Golden-7534922588541241360",
-        "referenceUrl": "https://www.tiktok.com/@kpoplikely/video/7627341780337380640"
+        "audioUrl": "https://www.tiktok.com/music/Golden-7515251957310539792",
+        "referenceUrl": "https://www.tiktok.com/@twenty4tim/video/7669488320358927648"
       },
       {
-        "audioUrl": "https://www.tiktok.com/music/Hey-Baby-Drop-It-to-the-Floor-feat-T-Pain-6696414028652087298",
-        "referenceUrl": "https://www.tiktok.com/@hope_schwing/video/7667660831471045918"
+        "audioUrl": "https://www.tiktok.com/music/original-sound-7237212440625253163",
+        "referenceUrl": "https://www.tiktok.com/@thesororitysister/video/7612678394433522958"
       },
       {
-        "audioUrl": "https://www.tiktok.com/music/Mind-Blank-7325072810639378434",
-        "referenceUrl": "https://www.tiktok.com/@isabelclanc/video/7667274434394344717"
+        "audioUrl": "https://www.tiktok.com/music/original-sound-7670322912494242591",
+        "referenceUrl": "https://www.tiktok.com/@creator___/video/7670322951182421279"
       },
       {
-        "audioUrl": "https://www.tiktok.com/music/On-a-Mission-7274043399086426113",
-        "referenceUrl": "https://www.tiktok.com/@liammillerr/video/7663238721306627359"
-      },
-      {
-        "audioUrl": "https://www.tiktok.com/music/original-sound-%F0%9F%92%AB-7651272787434490631",
-        "referenceUrl": "https://www.tiktok.com/@genesisgalaxy8/video/7666486744509861136"
-      },
-      {
-        "audioUrl": "https://www.tiktok.com/music/original-sound-7109091048936262442",
-        "referenceUrl": "https://www.tiktok.com/@juliehaneline/video/7671431412876266782"
-      },
-      {
-        "audioUrl": "https://www.tiktok.com/music/original-sound-7529047591636568887",
-        "referenceUrl": "https://www.tiktok.com/@stillwatersfishing/video/7640578773078904077"
-      },
-      {
-        "audioUrl": "https://www.tiktok.com/music/original-sound-7647113486681639681",
-        "referenceUrl": "https://www.tiktok.com/@joshfawaz/video/7647113450618899719"
-      },
-      {
-        "audioUrl": "https://www.tiktok.com/music/original-sound-7654692848025094942",
-        "referenceUrl": "https://www.tiktok.com/@mntat246850/video/7672037517574638879"
+        "audioUrl": "https://www.tiktok.com/music/original-sound-The-Respawn-7661981604407020310",
+        "referenceUrl": "https://www.tiktok.com/@itstherespawn/video/7661981569761987862"
       },
       {
         "audioUrl": "https://www.tiktok.com/music/petal-7668507565575964673",
-        "referenceUrl": "https://www.tiktok.com/@benjohn066/video/7673488305203236127"
+        "referenceUrl": "https://www.tiktok.com/@vierbessen/video/7677914834154933537"
       },
       {
-        "audioUrl": "https://www.tiktok.com/music/sonido-original-7566285553383803670",
-        "referenceUrl": "https://www.tiktok.com/@carla_paucar/video/7566285545970683158"
+        "audioUrl": "https://www.tiktok.com/music/Quiet-on-the-Creek-7662457740929157137",
+        "referenceUrl": "https://www.tiktok.com/@martha_xoft/video/7680465414131862792"
       },
       {
-        "audioUrl": "https://www.tiktok.com/music/Trees-and-Flowers-by-Strawberry-Switchblade-7338534150649088814",
-        "referenceUrl": "https://www.tiktok.com/@amberyackzan/video/7588222036334349598"
+        "audioUrl": "https://www.tiktok.com/music/Saxophones-getting-louder-Sped-Up-7639417177691473937",
+        "referenceUrl": "https://www.tiktok.com/@wilmahtheband/video/7652550018200653086"
       },
       {
-        "audioUrl": "https://www.tiktok.com/music/u-me-=-3-7649983963347896336",
-        "referenceUrl": "https://www.tiktok.com/@heyitsmekirstie/video/7653621145211653389"
+        "audioUrl": "https://www.tiktok.com/music/She-Bugging-Whatchu-Gonna-Do-7645058632418461697",
+        "referenceUrl": "https://www.tiktok.com/@kuzcopluscleo/video/7667585163404004639"
       }
     ],
     "sourceBreakdown": [
@@ -923,10 +873,10 @@
         "label": "SocialPilot · tendances TikTok",
         "url": "https://www.socialpilot.co/blog/tiktok-trends",
         "status": "success",
-        "candidateCount": 13,
-        "referenceCandidateCount": 13,
-        "unpairedReferenceCount": 13,
-        "resolvedReferenceCount": 13,
+        "candidateCount": 8,
+        "referenceCandidateCount": 8,
+        "unpairedReferenceCount": 6,
+        "resolvedReferenceCount": 6,
         "referenceResolutionErrors": [],
         "error": null
       },
@@ -945,15 +895,23 @@
     ],
     "publishedInventoryCount": 50,
     "selectionAudit": {
-      "evaluatedAt": "2026-09-01T20:05:29.545Z",
-      "addedTrendIds": [],
-      "addedAudioUrls": [],
-      "removedTrendIds": [],
-      "removedAudioUrls": [],
-      "visibleAddedCount": 0,
-      "visibleRemovedCount": 0,
-      "lastVisibleRotationAt": "2026-09-01T19:23:44.459Z",
-      "unchangedRunCount": 1,
+      "evaluatedAt": "2026-09-02T09:45:05.438Z",
+      "addedTrendIds": [
+        "audio-tiktok-music-7639417177691473937"
+      ],
+      "addedAudioUrls": [
+        "https://www.tiktok.com/music/Saxophones-getting-louder-Sped-Up-7639417177691473937"
+      ],
+      "removedTrendIds": [
+        "freaked-out-list"
+      ],
+      "removedAudioUrls": [
+        "https://www.instagram.com/reels/audio/1544636237314027/"
+      ],
+      "visibleAddedCount": 1,
+      "visibleRemovedCount": 1,
+      "lastVisibleRotationAt": "2026-09-02T09:45:05.438Z",
+      "unchangedRunCount": 0,
       "retainedTrendIds": [
         "pocketful-of-sunshine",
         "petal-soft-chaos",
@@ -968,7 +926,6 @@
         "youtube-cat-outplayed-focus",
         "sirens-cinematic-tension",
         "odysseus-heroic-edit",
-        "freaked-out-list",
         "stupid-song-montage",
         "tiktok-two-personalities-401003",
         "tiktok-kumar-method-634509",
@@ -1043,12 +1000,12 @@
           "reason": "score inferieur au dernier audio conserve"
         }
       ],
-      "noRotationReason": "Les nouveaux audios qualifiés n'ont pas dépassé la dernière carte conservée selon la récence, le Lofi Fit, la dynamique et les likes de référence."
+      "noRotationReason": null
     },
-    "visibleAddedCount": 0,
-    "visibleRemovedCount": 0,
-    "lastVisibleRotationAt": "2026-09-01T19:23:44.459Z",
-    "unchangedRunCount": 1
+    "visibleAddedCount": 1,
+    "visibleRemovedCount": 1,
+    "lastVisibleRotationAt": "2026-09-02T09:45:05.438Z",
+    "unchangedRunCount": 0
   },
   "coverage": {
     "totalChecked": 48,
@@ -1171,7 +1128,9 @@
   ],
   "assetCache": {
     "status": "success",
-    "cachedCount": 0,
-    "paths": []
+    "cachedCount": 1,
+    "paths": [
+      "media/audio-trends/audio-tiktok-music-7639417177691473937.jpg"
+    ]
   }
 }
