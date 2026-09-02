@@ -1450,9 +1450,15 @@ def refresh_tracks(
         "tracks",
         ["streams", "delta", "observed_at", "source_date", "previous_source_date"],
     )
+    # Soundcharts source windows use UTC dates, while the dashboard's daily
+    # maintenance contract is evaluated in Europe/Paris. Freeze both once so a
+    # run near midnight (or spanning it) cannot plan one rotation day and be
+    # validated against another.
+    source_window_day = utc_today()
+    business_day = paris_today()
     period_days = min(90, max(65, history_days))
-    start = (utc_today() - dt.timedelta(days=period_days - 1)).isoformat()
-    end = utc_today().isoformat()
+    start = (source_window_day - dt.timedelta(days=period_days - 1)).isoformat()
+    end = source_window_day.isoformat()
     store = performance.setdefault("tracks", {})
     if not isinstance(store, dict):
         raise SoundchartsError("Performance tracks must be an object")
@@ -1606,7 +1612,7 @@ def refresh_tracks(
         store,
         metadata,
         planning_budget,
-        today=utc_today(),
+        today=business_day,
         priority_artist_ids=priority_artist_ids,
         priority_artist_uuids=priority_artist_uuids,
     )
@@ -1749,8 +1755,8 @@ def refresh_tracks(
         for target in task.get("targets", [])
         if str(target.get("spotify_id") or "").strip() in public_spotify_ids
     }
-    daily_cutoff = utc_today() - dt.timedelta(days=1)
-    weekly_cutoff = utc_today() - dt.timedelta(days=7)
+    daily_cutoff = business_day - dt.timedelta(days=1)
+    weekly_cutoff = business_day - dt.timedelta(days=7)
     usable_public_ids: set[str] = set()
     daily_current_public_ids: set[str] = set()
     weekly_current_public_ids: set[str] = set()

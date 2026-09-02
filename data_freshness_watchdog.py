@@ -793,7 +793,20 @@ def assess_spotify_core(root: Path, now: datetime, ignore_deadline: bool = False
     if policy_problem:
         return freshness_row(target, True, policy_problem, tracks_observed)
     assert isinstance(policy, Mapping)
-    if exact_int(policy, "daily_rotation_bucket") != today.toordinal() % 7:
+    # spotify_track_policy_problem() proves full public coverage for an
+    # oversized public_catchup before reaching this point. Such a pass selected
+    # every rotation bucket, so a UTC/Paris boundary mismatch in its legacy
+    # daily-bucket label cannot make the otherwise current snapshot stale.
+    request_cap = exact_int(policy, "request_cap")
+    validated_complete_catchup = bool(
+        policy.get("execution_profile") == "public_catchup"
+        and request_cap is not None
+        and request_cap > max_requests
+    )
+    if (
+        exact_int(policy, "daily_rotation_bucket") != today.toordinal() % 7
+        and not validated_complete_catchup
+    ):
         return freshness_row(
             target,
             True,

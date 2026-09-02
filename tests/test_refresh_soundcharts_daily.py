@@ -725,7 +725,10 @@ class RefreshSoundchartsTests(unittest.TestCase):
         }
         client = FakeClient(response)
 
-        with patch.object(subject, 'utc_today', return_value=dt.date(2026, 7, 21)):
+        with (
+            patch.object(subject, 'utc_today', return_value=dt.date(2026, 7, 21)),
+            patch.object(subject, 'paris_today', return_value=dt.date(2026, 7, 21)),
+        ):
             outcome = subject.refresh_tracks(
                 payload,
                 performance,
@@ -771,6 +774,57 @@ class RefreshSoundchartsTests(unittest.TestCase):
                 'freshness_cutoff': '2026-07-14',
                 'latest_source_date': '2026-07-21',
             },
+        )
+
+    def test_track_maintenance_uses_paris_day_across_the_utc_midnight_boundary(self):
+        utc_day = dt.date(2026, 9, 2)
+        paris_day = dt.date(2026, 9, 3)
+        payload = {
+            'schemas': {'tracks': ['soundcharts_uuid', 'spotify_id']},
+            'tracks': [['public-uuid', 'public-track']],
+        }
+        public_catalogue = {
+            'discovery_catalogue': {
+                'track_schema': ['spotify_id', 'soundcharts_uuid'],
+                'tracks': [['public-track', 'public-uuid']],
+            }
+        }
+        response = {
+            'items': [
+                {
+                    'date': utc_day.isoformat(),
+                    'plots': [{'identifier': 'public-track', 'value': 125}],
+                }
+            ]
+        }
+
+        with (
+            patch.object(subject, 'utc_today', return_value=utc_day),
+            patch.object(subject, 'paris_today', return_value=paris_day),
+        ):
+            outcome = subject.refresh_tracks(
+                payload,
+                {'tracks': {}},
+                FakeClient(response),
+                1,
+                10,
+                95,
+                include_performance_catalogue=True,
+                public_catalogue=public_catalogue,
+            )
+
+        policy = outcome.policy
+        self.assertEqual(
+            policy['daily_rotation_bucket'],
+            paris_day.toordinal() % subject.TRACK_ROTATION_BUCKETS,
+        )
+        self.assertEqual(
+            policy['published_public_entity_coverage']['daily_freshness_cutoff'],
+            '2026-09-02',
+        )
+        self.assertEqual(
+            policy['published_public_entity_coverage']['freshness_cutoff'],
+            '2026-08-27',
         )
 
     def test_public_browse_uuid_wins_over_stale_performance_uuid(self):

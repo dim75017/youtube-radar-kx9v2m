@@ -72,6 +72,28 @@ def valid_spotify_track_policy(
     }
 
 
+def valid_spotify_catchup_policy(*, today: date = date(2026, 7, 29)) -> dict:
+    public_entities = 20_000
+    policy = valid_spotify_track_policy(
+        today=today,
+        public_entities=public_entities,
+        selected_entities=public_entities,
+    )
+    policy["execution_profile"] = "public_catchup"
+    policy["request_cap"] = 23_520
+    policy["selected_requests"] = policy["expected_requests"]
+    policy["missing_requests"] = 0
+    for row in policy["rotation_coverage"].values():
+        row["selected_requests"] = row["expected_requests"]
+    policy["weekly_selected_requests"] = policy["weekly_due_requests"]
+    policy["weekly_missing"] = 0
+    policy["weekly_missing_requests"] = 0
+    policy["reason_coverage"]["published_public"]["selected_requests"] = public_entities
+    policy["reason_coverage"]["published_public"]["missing_requests"] = 0
+    policy["published_public_entity_coverage"]["missing_selected_entities"] = 0
+    return policy
+
+
 def write_youtube_fixture(
     root: Path,
     *,
@@ -295,6 +317,118 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         )[0]
         self.assertFalse(before_deadline.due)
 
+    def test_spotify_core_rotation_uses_the_paris_day_before_utc_midnight(self):
+        performance = spotify_performance_store.read_performance_payload(
+            self.root / "Spotify_Performance_data.js"
+        )
+        paris_day = date(2026, 7, 29)
+        performance["freshness"]["tracks_catalogue_at"] = "2026-07-28T22:15:00Z"
+        performance["freshness"]["artists_catalogue_at"] = "2026-07-28T22:15:00Z"
+        performance["maintenance_coverage"]["tracks"]["policy"] = valid_spotify_track_policy(
+            today=paris_day
+        )
+        spotify_performance_store.write_performance_payload(
+            self.root / "Spotify_Performance_data.js",
+            performance,
+            shard_count=1,
+        )
+
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 28, 22, 30, tzinfo=timezone.utc),  # 00:30 Paris
+            ["spotify_core"],
+        )[0]
+
+        self.assertFalse(row.due, row.reason)
+
+    def test_spotify_core_accepts_complete_catchup_with_legacy_utc_bucket_at_boundary(self):
+        performance = spotify_performance_store.read_performance_payload(
+            self.root / "Spotify_Performance_data.js"
+        )
+        utc_day = date(2026, 7, 28)
+        paris_day = date(2026, 7, 29)
+        policy = valid_spotify_catchup_policy(today=utc_day)
+        # Keep every source-age proof on the actual Paris business day so this
+        # fixture isolates the harmless legacy bucket label only.
+        policy["published_public_entity_coverage"]["freshness_cutoff"] = (
+            paris_day - timedelta(days=7)
+        ).isoformat()
+        performance["freshness"]["tracks_catalogue_at"] = "2026-07-28T22:15:00Z"
+        performance["freshness"]["artists_catalogue_at"] = "2026-07-28T22:15:00Z"
+        performance["maintenance_coverage"]["tracks"]["policy"] = policy
+        spotify_performance_store.write_performance_payload(
+            self.root / "Spotify_Performance_data.js",
+            performance,
+            shard_count=1,
+        )
+
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 28, 22, 30, tzinfo=timezone.utc),  # 00:30 Paris
+            ["spotify_core"],
+        )[0]
+
+        self.assertFalse(row.due, row.reason)
+
+    def test_spotify_core_rejects_incomplete_catchup_before_bucket_tolerance(self):
+        performance = spotify_performance_store.read_performance_payload(
+            self.root / "Spotify_Performance_data.js"
+        )
+        policy = valid_spotify_catchup_policy(today=date(2026, 7, 28))
+        policy["published_public_entity_coverage"]["selected_entities"] -= 1
+        policy["published_public_entity_coverage"]["missing_selected_entities"] = 1
+        performance["freshness"]["tracks_catalogue_at"] = "2026-07-28T22:15:00Z"
+        performance["freshness"]["artists_catalogue_at"] = "2026-07-28T22:15:00Z"
+        performance["maintenance_coverage"]["tracks"]["policy"] = policy
+        spotify_performance_store.write_performance_payload(
+            self.root / "Spotify_Performance_data.js",
+            performance,
+            shard_count=1,
+        )
+
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 28, 22, 30, tzinfo=timezone.utc),
+            ["spotify_core"],
+        )[0]
+
+        self.assertTrue(row.due)
+        self.assertEqual(
+            row.reason,
+            "Spotify public catch-up did not select the complete resolvable catalogue",
+        )
+
+    def test_spotify_core_keeps_daily_maintenance_due_on_utc_bucket_mismatch(self):
+        performance = spotify_performance_store.read_performance_payload(
+            self.root / "Spotify_Performance_data.js"
+        )
+        utc_day = date(2026, 7, 28)
+        paris_day = date(2026, 7, 29)
+        policy = valid_spotify_track_policy(today=utc_day)
+        policy["published_public_entity_coverage"]["freshness_cutoff"] = (
+            paris_day - timedelta(days=7)
+        ).isoformat()
+        performance["freshness"]["tracks_catalogue_at"] = "2026-07-28T22:15:00Z"
+        performance["freshness"]["artists_catalogue_at"] = "2026-07-28T22:15:00Z"
+        performance["maintenance_coverage"]["tracks"]["policy"] = policy
+        spotify_performance_store.write_performance_payload(
+            self.root / "Spotify_Performance_data.js",
+            performance,
+            shard_count=1,
+        )
+
+        row = subject.assess(
+            self.root,
+            datetime(2026, 7, 28, 22, 30, tzinfo=timezone.utc),  # 00:30 Paris
+            ["spotify_core"],
+        )[0]
+
+        self.assertTrue(row.due)
+        self.assertEqual(
+            row.reason,
+            "Spotify daily rotation bucket does not match the current Paris day",
+        )
+
     def test_spotify_core_dispatch_contract_is_bounded_developer_maintenance(self):
         self.assertEqual(
             subject.TARGETS["spotify_core"].inputs,
@@ -326,19 +460,7 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         )
 
     def test_spotify_policy_accepts_one_time_complete_public_catchup(self):
-        policy = valid_spotify_track_policy(public_entities=20_000, selected_entities=20_000)
-        policy["execution_profile"] = "public_catchup"
-        policy["request_cap"] = 23_520
-        policy["selected_requests"] = policy["expected_requests"]
-        policy["missing_requests"] = 0
-        for row in policy["rotation_coverage"].values():
-            row["selected_requests"] = row["expected_requests"]
-        policy["weekly_selected_requests"] = policy["weekly_due_requests"]
-        policy["weekly_missing"] = 0
-        policy["weekly_missing_requests"] = 0
-        policy["reason_coverage"]["published_public"]["selected_requests"] = 20_000
-        policy["reason_coverage"]["published_public"]["missing_requests"] = 0
-        policy["published_public_entity_coverage"]["missing_selected_entities"] = 0
+        policy = valid_spotify_catchup_policy()
 
         self.assertIsNone(subject.spotify_track_policy_problem(policy, 6000))
 
