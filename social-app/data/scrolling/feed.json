@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "capturedAt": "2026-09-02T21:24:53+02:00",
+  "capturedAt": "2026-09-02T23:41:17+02:00",
   "minimumLikes": 10000,
-  "methodology": "Les trois lectures historiques du 26/08 sur @lofi.radar sont conservées. Le 01/09, le nouveau compte @lofiradar2026 a d’abord observé 48 publications Home puis 14 publications ciblées. Le 02/09 à 09:46, une première calibration manuelle a utilisé huit signaux Not interested sur du football manifeste. L’immersion longue cumule désormais huit blocs séparés et muets, soit 1 h 59 min 36 s et 408 observations : 270 ciblées et 138 Home. Sur l’ensemble des Home observés pendant cette immersion, 19 sont classés pertinents, 119 hors niche, huit sport, deux portent un label IA, aucun n’est Sponsorisé et 65 proviennent de nsmqghana. Le dernier Home complet compte six pertinents sur 21, zéro sport, un label IA et trois cartes nsmqghana : le football et la concentration sur cet auteur ont fortement reculé, mais la pertinence globale reste à 13,8 % et ne permet pas encore de considérer le flux comme calibré. Les dix seeds exactes fournies par Dim ont été inspectées ; neuf non-IA sont retenues. Le passage de 17:15 a vérifié sept seeds Pubs playlists, deux adjacents sous le seuil et cinq nouvelles sources organiques qualifiées. Le contrôle de 21:15 a revu les sept seeds et trois adjacents du même artiste ; les trois adjacents dépassent le seuil, mais une seule mécanique est détaillée après déduplication par auteur. Le radar contient ainsi 63 cartes éditoriales. Aucun like, follow, enregistrement, commentaire, message, partage ou publication n’a été effectué pendant ces passages ; aucun nouveau Not interested n’a été envoyé. Chaque source reste séparée de son adaptation : ces observations isolées ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire, ni une recalibration durable de l’algorithme.",
+  "methodology": "Les trois lectures historiques du 26/08 sur @lofi.radar sont conservées. Le 01/09, le nouveau compte @lofiradar2026 a d’abord observé 48 publications Home puis 14 publications ciblées. Le 02/09 à 09:46, une première calibration manuelle a utilisé huit signaux Not interested sur du football manifeste. L’immersion manuelle détaillée cumule huit blocs séparés et muets, soit 1 h 59 min 36 s et 408 observations : 270 ciblées et 138 Home. Sur ces 138 Home revus éditorialement, 19 sont classés pertinents, 119 hors niche, huit sport, deux portent un label IA, aucun n’est Sponsorisé et 65 proviennent de nsmqghana. Un gros scroll Home distinct de neuf minutes ajoute 152 publications uniques : aucune mention Sponsorisé, 14 cartes sport, au moins cinq labels IA explicites et 18 cartes nsmqghana. Un classement textuel conservateur a présélectionné 64 cartes adjacentes, dont 43 au seuil ; trois mécaniques d’auteurs distincts sont détaillées après revue. Les dix seeds exactes fournies par Dim ont été inspectées ; neuf non-IA sont retenues. Le passage de 17:15 a vérifié sept seeds Pubs playlists, deux adjacents sous le seuil et cinq nouvelles sources organiques qualifiées. Le contrôle de 21:15 a revu les sept seeds et trois adjacents du même artiste ; les trois adjacents dépassent le seuil, mais une seule mécanique est détaillée après déduplication par auteur. Le radar contient ainsi 66 cartes éditoriales. Aucun like, follow, enregistrement, commentaire, message, partage ou publication n’a été effectué pendant ces passages ; aucun nouveau Not interested n’a été envoyé. Chaque source reste séparée de son adaptation : ces observations isolées ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire, ni une recalibration durable de l’algorithme.",
   "limitations": [
     "Les compteurs de likes ont été relevés tels qu’affichés par Instagram et sont conservés avec une précision platform-rounded.",
     "Les vues, commentaires, partages, enregistrements et dates de publication non observés restent à null plutôt que d’être estimés.",
@@ -29,7 +29,11 @@
     "Trois contenus portant un label IA ont été rejetés pendant ce passage, tandis que cinq sources organiques non-IA et non sponsorisées au-dessus de 10 000 likes sont retenues ; aucun signal social ou Not interested n’a été envoyé.",
     "Le contrôle de 21:15 a été interrompu à 2,7 minutes après dix observations ciblées : sept seeds Pubs playlists et trois adjacents réellement proposés ; aucune phase Home n’a été entamée et aucun taux Home n’est extrapolé.",
     "Les trois adjacents dépassent 10 000 likes, ne portent pas de label IA ou Sponsorisé visible et proviennent tous de _by.alexander ; seule l’origine émotionnelle d’une pochette est détaillée afin d’éviter une concentration artificielle sur un auteur unique.",
-    "Les six seeds au seuil restent qualifiées et DIfys_hM9tZ reste sous le seuil à 9 700 likes ; aucune interaction sociale, aucun Not interested et aucun son n’ont été activés."
+    "Les six seeds au seuil restent qualifiées et DIfys_hM9tZ reste sous le seuil à 9 700 likes ; aucune interaction sociale, aucun Not interested et aucun son n’ont été activés.",
+    "Le gros scroll Home de 23:32 à 23:41 couvre 152 publications uniques avec pauses variables ; 64 adjacences et 43 cartes au seuil sont des présélections textuelles, pas une validation visuelle exhaustive de tout le lot.",
+    "Aucune des 152 cartes n’affichait Sponsorisé, Sponsored ou un équivalent localisé ; cela ne contredit pas les quinze créations paid vérifiées séparément dans Pubs playlists par product_type=ad.",
+    "Quatorze cartes sport et au moins cinq labels IA explicites, dont AI content et AI creator, ont été écartés ; nsmqghana représente 18/152 cartes, soit 11,8 %, en recul mais encore visible.",
+    "Trois sources organiques non-IA, non sponsorisées et d’auteurs distincts sont retenues : art manuel en e-waste, performance de dessin en direct et espace dédié aux CD ; aucun son ni signal social n’a été activé."
   ],
   "explorationLenses": [
     {
@@ -791,6 +795,31 @@
         "Les sept seeds Pubs playlists ont été revues : six dépassent 10 000 likes et une reste sous le seuil à 9 700 likes.",
         "Trois adjacents du même artiste dépassent le seuil ; une seule source est retenue après déduplication par auteur et mécanique.",
         "Aucun label IA ou Sponsorisé visible, aucune interaction sociale, aucun Not interested et aucun son activé."
+      ]
+    },
+    {
+      "id": "instagram-home-2026-09-02-big-scroll-2332",
+      "platform": "instagram",
+      "surface": "home",
+      "browserContext": "agent-tab-explicitly-delegated",
+      "capturedAt": "2026-09-02T23:41:17+02:00",
+      "seenCount": 152,
+      "qualifyingCount": 43,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "cozy-games-rpg-worlds",
+        "visual-formats-lab",
+        "fan-art-and-spotlights",
+        "releases-artist-collabs",
+        "vinyl-and-instruments",
+        "nostalgia-time-capsule",
+        "lofi-daily-life"
+      ],
+      "limitations": [
+        "Le bloc Home a parcouru 152 publications uniques en neuf minutes avec des pauses variables ; aucune recherche ciblée n’a été mélangée au décompte.",
+        "Le classement textuel conservateur a relevé 64 cartes adjacentes et 43 au-dessus de 10 000 likes ; trois seulement sont retenues après revue éditoriale et déduplication par mécanique et auteur.",
+        "Aucune mention Sponsorisé n’a été observée ; 14 cartes sport et au moins cinq labels IA explicites ont été rejetés.",
+        "nsmqghana représente 18/152 cartes ; aucun like, follow, enregistrement, commentaire, message, partage, publication, Not interested ou son n’a été activé."
       ]
     }
   ],
@@ -3924,6 +3953,183 @@
           "Production 100 % humaine : photographie, écriture, direction artistique, illustration, typographie, musique, bruitages, montage et validation réalisés par des personnes créditées.",
           "Aucune image, vidéo, voix ou musique générée par IA.",
           "N’utiliser qu’une histoire et une photographie créées pour le projet avec consentement documenté ; ne pas copier la pochette, l’autoportrait, la formulation ou la mise en page de la source et ne pas inventer une vulnérabilité personnelle."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "ewaste-controller-reveal",
+      "runId": "instagram-home-2026-09-02-big-scroll-2332",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcaC4CKNu7f/",
+        "postId": "DcaC4CKNu7f",
+        "author": "srtacience",
+        "sourceLabel": "Œuvre manuelle qui ressemble de loin à une manette géante avant de révéler des déchets électroniques",
+        "capturedAt": "2026-09-02T23:41:17+02:00",
+        "publishedAt": null,
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 1200000,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": [
+          "cozy-games-rpg-worlds",
+          "visual-formats-lab",
+          "fan-art-and-spotlights"
+        ],
+        "hook": "La silhouette semble d’abord être une manette gigantesque, puis la proximité révèle qu’il s’agit d’une œuvre composée manuellement à partir de déchets électroniques.",
+        "mechanic": "Une illusion d’échelle attire l’œil ; un second niveau de lecture dévoile la matière récupérée, le geste de l’artiste et la transformation d’objets promis au rebut.",
+        "visualCue": "Le contraste entre la forme lisible à distance et les détails des composants visibles de près porte le retournement sans nécessiter de voix.",
+        "reasonToStop": "Le public veut comprendre de quoi la fausse manette est réellement faite et vérifier comment ses détails forment l’image globale.",
+        "whyRelevant": "Lofi peut associer culture gaming, fabrication humaine et objets de studio réemployés dans une œuvre originale, à condition de créditer l’artiste et de sécuriser les matériaux.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "La manette faite de vieux boutons",
+        "cast": {
+          "character": "lofi-boy",
+          "companion": "dog"
+        },
+        "concept": "Un artiste invité assemble sur un panneau une manette entièrement fictive à partir de boutons, molettes et touches de studio hors service ; le plan large cache d’abord la matière, puis le détail révèle chaque pièce réemployée.",
+        "openingText": "De loin : une manette. De près : dix ans de studio.",
+        "sequence": [
+          "Un plan large montre Boy et son chien face à une silhouette de manette originale déjà lisible, sans logo ni référence à une console existante.",
+          "La caméra se rapproche des mains de l’artiste qui fixent des boutons et touches propres, démontés et sans alimentation ; chaque famille d’objet est identifiée sobrement.",
+          "Le dernier recul révèle l’œuvre complète dans le studio, puis les crédits de l’artiste et de l’équipe restent affichés pendant que Boy lance un motif musical original."
+        ],
+        "caption": "Une forme neuve, faite de petites choses qui avaient déjà beaucoup servi.",
+        "audioDirection": "Enregistrer humainement les clics des pièces manipulées et les intégrer à une composition originale jouée et mixée par des personnes créditées ; le reveal doit aussi fonctionner en muet.",
+        "productionGuardrails": [
+          "Production 100 % humaine : collecte, conception, assemblage, prise de vue, animation éventuelle, bruitages, montage et musique réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Utiliser uniquement des composants désalimentés, nettoyés et non dangereux sous supervision ; créer la silhouette, le cadrage et le texte depuis zéro, sans reprendre de logo, de design de manette ou d’œuvre source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "live-drawing-room-loop",
+      "runId": "instagram-home-2026-09-02-big-scroll-2332",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DchcOSyIp1g/",
+        "postId": "DchcOSyIp1g",
+        "author": "crunchyroll",
+        "sourceLabel": "Performance de dessin en direct attribuée à un character designer et directeur d’animation identifié",
+        "capturedAt": "2026-09-02T23:41:17+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 58000,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": [
+          "fan-art-and-spotlights",
+          "visual-formats-lab",
+          "releases-artist-collabs"
+        ],
+        "hook": "Le rôle précis de l’artiste est annoncé avant que sa performance de dessin en direct rende immédiatement son expertise observable.",
+        "mechanic": "Le contenu relie un nom, un métier et un geste réel en train de se faire, puis laisse l’image achevée servir de résolution plutôt que de masquer le processus.",
+        "visualCue": "L’accumulation des traits et la présence continue de la main distinguent une vraie performance d’un simple reveal final ou d’un timelapse opaque.",
+        "reasonToStop": "Le spectateur reste pour voir comment les premiers traits deviennent une composition cohérente et pour découvrir le choix final de l’artiste.",
+        "whyRelevant": "Le Lofi universe peut mettre ses illustrateurs et animateurs au premier plan avec une création originale en direct, des crédits visibles et une collaboration musicale réellement humaine.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Une chambre naît sous le crayon",
+        "cast": {
+          "character": "lofi-girl",
+          "companion": "cat"
+        },
+        "concept": "Une illustratrice invitée dessine en direct une pièce alternative entièrement originale pour Girl et son chat pendant qu’une musicienne construit un motif acoustique au même rythme ; le dernier trait raccorde l’image à une boucle animée.",
+        "openingText": "Pas de génération, pas de raccourci : la pièce commence par ce trait.",
+        "sequence": [
+          "L’artiste nommée apparaît avec une feuille vide, ses outils réels et son rôle ; le premier trait fixe la fenêtre de la future chambre.",
+          "Les gestes restent visibles à vitesse normale pendant que décor, Girl et chat originaux prennent forme, accompagnés d’un motif joué en direct par une musicienne créditée.",
+          "Le dernier trait devient le premier mouvement d’une courte boucle animée, puis l’écran conserve les crédits complets de l’illustration, de l’animation et de la musique."
+        ],
+        "caption": "Voir une pièce apparaître change la façon dont on l’habite ensuite.",
+        "audioDirection": "Composition originale interprétée et enregistrée par une musicienne humaine, avec crayons et papier captés proprement ; aucune reprise de l’audio, du personnage ou du montage source.",
+        "productionGuardrails": [
+          "Production 100 % humaine : concept, dessin en direct, animation, performance musicale, captation, bruitages et montage réalisés par les personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Créer uniquement des personnages, décors et mouvements originaux ou appartenant au canon autorisé ; ne tracer, reproduire ou suggérer aucune licence, composition ou performance tierce."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "cd-corner-time-capsule",
+      "runId": "instagram-home-2026-09-02-big-scroll-2332",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DaA9qx0PTf0/",
+        "postId": "DaA9qx0PTf0",
+        "author": "usageek_",
+        "sourceLabel": "Reel consacré à un espace réservé exclusivement aux CD et à leur rangement",
+        "capturedAt": "2026-09-02T23:41:17+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 70400,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": [
+          "vinyl-and-instruments",
+          "nostalgia-time-capsule",
+          "lofi-daily-life"
+        ],
+        "hook": "La promesse d’un lieu entièrement dédié aux CD transforme une collection ordinaire en petit monde personnel immédiatement identifiable.",
+        "mechanic": "Le contenu donne de la valeur à un support physique par la concentration, le classement et le plaisir tactile ; le décor exact n’est pas attribué au reel au-delà de cette proposition observée.",
+        "visualCue": "La répétition des boîtiers et des tranches peut créer une texture visuelle satisfaisante sans dépendre d’une marque ou d’une pochette connue.",
+        "reasonToStop": "Le public veut découvrir comment une collection entière tient dans un espace cohérent et quel disque sera choisi à la fin.",
+        "whyRelevant": "Girl peut ouvrir une capsule temporelle musicale fondée sur des pochettes Lofi originales et un geste physique, sans exposer ni reproduire d’artworks tiers.",
+        "confidence": "medium"
+      },
+      "adaptation": {
+        "title": "Le coin CD des heures perdues",
+        "cast": {
+          "character": "lofi-girl",
+          "companion": "cat"
+        },
+        "concept": "Girl transforme une petite niche vide en capsule temporelle de CD entièrement fictifs du Lofi universe ; chaque tranche dessinée à la main correspond à une saison ou à un souvenir d’écoute, puis un disque déclenche la scène associée.",
+        "openingText": "Un tout petit coin pour les morceaux qu’on n’a jamais oubliés.",
+        "sequence": [
+          "Girl ouvre une boîte de CD aux pochettes originales créées pour le projet, tandis que le chat inspecte la niche encore vide sans toucher aux disques.",
+          "Elle classe les tranches par saisons et ajoute à la main une date ou un souvenir fictif au dos de chaque boîtier, sans montrer de catalogue ou d’artwork tiers.",
+          "Girl choisit un disque, le clic du boîtier lance une composition originale et la lumière de la chambre reprend brièvement la saison indiquée sur sa tranche."
+        ],
+        "caption": "On ne rangeait pas seulement des disques. On rangeait les moments qui allaient avec.",
+        "audioDirection": "Capturer réellement boîtiers, papier et lecteur, puis utiliser uniquement une composition originale écrite, interprétée et mixée par des humains ; la séquence doit rester lisible sans son.",
+        "productionGuardrails": [
+          "Production 100 % humaine : écriture, fabrication des pochettes, illustration, prise de vue ou animation, bruitages, montage et musique réalisés par les personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Inventer tous les titres, pochettes, marques et morceaux visibles ; ne reprendre aucun artwork, rangement, cadrage, texte ou son protégé de la source."
         ]
       },
       "editorialStatus": "new"

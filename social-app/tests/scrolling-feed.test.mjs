@@ -83,13 +83,16 @@ const expectedSources = new Map([
   ["Dcayd7XIV40", { author: "chopper__daily", likes: 450_100 }],
   ["Dcglrg3OrxG", { author: "trashygas1", likes: 346_300 }],
   ["Db58wLmyQU5", { author: "_by.alexander", likes: 66_900 }],
+  ["DcaC4CKNu7f", { author: "srtacience", likes: 1_200_000 }],
+  ["DchcOSyIp1g", { author: "crunchyroll", likes: 58_000 }],
+  ["DaA9qx0PTf0", { author: "usageek_", likes: 70_400 }],
 ]);
 
 test("the connected Instagram snapshot preserves the historical and new-account runs", () => {
   assert.match(feed.capturedAt, /^2026-09-02/u);
   assert.equal(feed.minimumLikes, SCROLLING_MINIMUM_LIKES);
-  assert.equal(feed.runs.length, 15);
-  assert.equal(feed.items.length, 63);
+  assert.equal(feed.runs.length, 16);
+  assert.equal(feed.items.length, 66);
 
   const initialRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26");
   const extendedRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26-extended");
@@ -124,6 +127,9 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   const eveningHeartbeatSearchRun = feed.runs.find(
     (run) => run.id === "instagram-search-2026-09-02-heartbeat-2115",
   );
+  const bigHomeScrollRun = feed.runs.find(
+    (run) => run.id === "instagram-home-2026-09-02-big-scroll-2332",
+  );
   assert.ok(initialRun);
   assert.ok(extendedRun);
   assert.ok(eveningRun);
@@ -139,6 +145,7 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   assert.ok(heartbeatSearchRun);
   assert.ok(heartbeatHomeRun);
   assert.ok(eveningHeartbeatSearchRun);
+  assert.ok(bigHomeScrollRun);
   assert.equal(initialRun.platform, "instagram");
   assert.equal(initialRun.surface, "home");
   assert.equal(initialRun.browserContext, SCROLLING_BROWSER_CONTEXT);
@@ -256,7 +263,16 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   assert.equal(feed.items.filter((item) => item.runId === eveningHeartbeatSearchRun.id).length, 1);
   assert.ok(eveningHeartbeatSearchRun.themeIds.includes("releases-artist-collabs"));
   assert.ok(Date.parse(eveningHeartbeatSearchRun.capturedAt) > Date.parse(heartbeatHomeRun.capturedAt));
-  assert.equal(feed.capturedAt, eveningHeartbeatSearchRun.capturedAt);
+  assert.equal(bigHomeScrollRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(bigHomeScrollRun.surface, "home");
+  assert.equal(bigHomeScrollRun.seenCount, 152);
+  assert.equal(bigHomeScrollRun.qualifyingCount, 43);
+  assert.equal(bigHomeScrollRun.sponsoredCount, 0);
+  assert.equal(feed.items.filter((item) => item.runId === bigHomeScrollRun.id).length, 3);
+  assert.ok(bigHomeScrollRun.themeIds.includes("fan-art-and-spotlights"));
+  assert.ok(bigHomeScrollRun.themeIds.includes("vinyl-and-instruments"));
+  assert.ok(Date.parse(bigHomeScrollRun.capturedAt) > Date.parse(eveningHeartbeatSearchRun.capturedAt));
+  assert.equal(feed.capturedAt, bigHomeScrollRun.capturedAt);
 
   let likes = 0;
   for (const item of feed.items) {
