@@ -77,13 +77,18 @@ const expectedSources = new Map([
   ["CsrIIw5pmF8", { author: "nala_cat", likes: 242_300 }],
   ["DZvQ4UORy3q", { author: "a_typical_tuesday", likes: 2_700_000 }],
   ["DZ1F0T5Js45", { author: "smileydingoes", likes: 1_100_000 }],
+  ["DRnZaTdjuVK", { author: "dreamlightvalleydecor", likes: 27_600 }],
+  ["Db_-VrpRaO6", { author: "byhakes", likes: 195_400 }],
+  ["Dcvb3tSRy4p", { author: "girls", likes: 157_600 }],
+  ["Dcayd7XIV40", { author: "chopper__daily", likes: 450_100 }],
+  ["Dcglrg3OrxG", { author: "trashygas1", likes: 346_300 }],
 ]);
 
 test("the connected Instagram snapshot preserves the historical and new-account runs", () => {
   assert.match(feed.capturedAt, /^2026-09-02/u);
   assert.equal(feed.minimumLikes, SCROLLING_MINIMUM_LIKES);
-  assert.equal(feed.runs.length, 12);
-  assert.equal(feed.items.length, 57);
+  assert.equal(feed.runs.length, 14);
+  assert.equal(feed.items.length, 62);
 
   const initialRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26");
   const extendedRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26-extended");
@@ -109,6 +114,12 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   const finalImmersionHomeRun = feed.runs.find(
     (run) => run.id === "instagram-home-2026-09-02-immersion-final",
   );
+  const heartbeatSearchRun = feed.runs.find(
+    (run) => run.id === "instagram-search-2026-09-02-heartbeat-1715",
+  );
+  const heartbeatHomeRun = feed.runs.find(
+    (run) => run.id === "instagram-home-2026-09-02-heartbeat-1715",
+  );
   assert.ok(initialRun);
   assert.ok(extendedRun);
   assert.ok(eveningRun);
@@ -121,6 +132,8 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   assert.ok(afterLongCalibrationHomeRun);
   assert.ok(finalImmersionSearchRun);
   assert.ok(finalImmersionHomeRun);
+  assert.ok(heartbeatSearchRun);
+  assert.ok(heartbeatHomeRun);
   assert.equal(initialRun.platform, "instagram");
   assert.equal(initialRun.surface, "home");
   assert.equal(initialRun.browserContext, SCROLLING_BROWSER_CONTEXT);
@@ -212,7 +225,25 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   assert.equal(feed.items.filter((item) => item.runId === finalImmersionHomeRun.id).length, 2);
   assert.ok(Date.parse(finalImmersionSearchRun.capturedAt) > Date.parse(longCalibrationRun.capturedAt));
   assert.equal(finalImmersionSearchRun.capturedAt, finalImmersionHomeRun.capturedAt);
-  assert.equal(feed.capturedAt, finalImmersionHomeRun.capturedAt);
+  assert.equal(heartbeatSearchRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(heartbeatSearchRun.surface, "search");
+  assert.equal(heartbeatSearchRun.seenCount, 39);
+  assert.equal(heartbeatSearchRun.qualifyingCount, 7);
+  assert.equal(heartbeatSearchRun.sponsoredCount, 0);
+  assert.equal(feed.items.filter((item) => item.runId === heartbeatSearchRun.id).length, 1);
+  assert.ok(heartbeatSearchRun.themeIds.includes("sleep-insomnia-bedtime"));
+  assert.ok(heartbeatSearchRun.themeIds.includes("cozy-games-rpg-worlds"));
+  assert.equal(heartbeatHomeRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(heartbeatHomeRun.surface, "home");
+  assert.equal(heartbeatHomeRun.seenCount, 21);
+  assert.equal(heartbeatHomeRun.qualifyingCount, 4);
+  assert.equal(heartbeatHomeRun.sponsoredCount, 0);
+  assert.equal(feed.items.filter((item) => item.runId === heartbeatHomeRun.id).length, 4);
+  assert.ok(heartbeatHomeRun.themeIds.includes("animal-companions"));
+  assert.ok(heartbeatHomeRun.themeIds.includes("reading-and-journaling"));
+  assert.ok(Date.parse(heartbeatSearchRun.capturedAt) > Date.parse(finalImmersionHomeRun.capturedAt));
+  assert.equal(heartbeatSearchRun.capturedAt, heartbeatHomeRun.capturedAt);
+  assert.equal(feed.capturedAt, heartbeatHomeRun.capturedAt);
 
   let likes = 0;
   for (const item of feed.items) {

@@ -148,6 +148,14 @@ test("sensitive and sponsored uploads never reach the comment board", () => {
   assert.equal(
     qualifiesForBoard({
       ...major,
+      title: '"I Want To Die" | Episode 9',
+      caption: "A dramatic scene.",
+    }),
+    false,
+  );
+  assert.equal(
+    qualifiesForBoard({
+      ...major,
       title: "PlayGalaxy Cup World Final",
       caption: "The full match. #sponsored",
     }),

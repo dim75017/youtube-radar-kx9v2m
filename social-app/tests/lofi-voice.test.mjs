@@ -40,6 +40,7 @@ test("the guard refuses everything a brand account must never post", () => {
   assert.equal(validateLofiComment("listen here https://example.com").ok, false);
   assert.equal(validateLofiComment("nice #lofi").ok, false);
   assert.equal(validateLofiComment("rip to a legend").ok, false);
+  assert.equal(validateLofiComment("i want to die").ok, false);
   assert.equal(validateLofiComment("🔥🔥 this goes hard").ok, false);
   assert.equal(validateLofiComment("as an ai i loved this").ok, false);
   assert.equal(validateLofiComment("a".repeat(161)).ok, false);
@@ -190,6 +191,16 @@ test("current editorial overrides are specific, concise and globally unique", ()
     "yt-t6fxf4pmvvc-bf3b17": /12 12 12|date announcement|apple tv/u,
     "yt-b3kpfdb1pw8-8ce432": /mkbhd|locked iphone|10,000/u,
     "yt-h06xkc1nju-937794": /what did she mean|ludwig|unfinished/u,
+    "yt-jvt8p527ngy-55ee51": /fangtopia|monster paradise|beauty or score|friendly ghouls/u,
+    "yt-t1erhhdzjk-b1e4bd": /yuru|twins|daemon/u,
+    "yt-6lfuc6sqcoe-bf99cb": /live for you|colors moment|thee sacred souls/u,
+    "yt-eokbqefivhs-baf207": /newspaper|tabloid|ink/u,
+    "yt-elsda0movvc-8d7bf1": /monopoly junior|interactive dice|rent/u,
+    "yt-irhtqjhypew-7ff09b": /three generations|emotional inheritance|la bola negra/u,
+    "yt-jsgka8npfc-6190d5": /trailer became a game|trailer playable|world warrior tournament|first fight/u,
+    "yt-ioimwxbqby-8c14a5": /revenge era|minecraft|inventory slots/u,
+    "yt-uflxsgsg870-53c14b": /spider-man|eras|multiverse/u,
+    "yt-tmdsa7z4pps-0dbca9": /track check|september 11|release/u,
   };
   const allTexts = [];
   for (const [id, anchor] of Object.entries(expectedAnchors)) {

@@ -229,7 +229,10 @@ class CollectorAppendOnlyTests(unittest.TestCase):
                         },
                     )
                 self.assertEqual(result_coverage["instagram"]["itemCount"], 1685)
-                self.assertEqual(result_coverage["tiktok"]["itemCount"], 386)
+                self.assertEqual(
+                    result_coverage["tiktok"]["itemCount"],
+                    original_coverage["tiktok"]["itemCount"],
+                )
                 self.collector.validate_snapshot(result, platform)
 
     def test_versioned_snapshot_passes_strict_validation(self):

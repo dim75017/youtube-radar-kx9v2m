@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "capturedAt": "2026-09-02T13:58:31+02:00",
+  "capturedAt": "2026-09-02T17:38:26+02:00",
   "minimumLikes": 10000,
-  "methodology": "Les trois lectures historiques du 26/08 sur @lofi.radar sont conservées. Le 01/09, le nouveau compte @lofiradar2026 a d’abord observé 48 publications Home puis 14 publications ciblées. Le 02/09 à 09:46, une première calibration manuelle a utilisé huit signaux Not interested sur du football manifeste. Une immersion longue a ensuite cumulé six blocs séparés et muets, soit 102 min 42 s et 338 observations : 221 ciblées et 117 Home. Sur l’ensemble des Home observés pendant cette immersion, 13 sont classés pertinents, 104 hors niche, huit sport, un porte un label IA, aucun n’est Sponsorisé et 62 proviennent de nsmqghana. Le dernier Home compte un pertinent sur 21, zéro sport et neuf cartes nsmqghana : le football a fortement reculé, mais le flux reste dominé par des quiz éducatifs et ne peut pas être considéré comme calibré. Les dix seeds exactes fournies par Dim ont été inspectées ; neuf non-IA sont retenues. Parmi douze nouveaux exemples qualifiés à au moins 10 000 likes pendant les cinq derniers blocs, cinq mécaniques complémentaires sont retenues après revue éditoriale. Le radar contient ainsi 57 cartes éditoriales. Aucun like, follow, enregistrement, commentaire, message, partage ou publication n’a été effectué ; un seul Not interested supplémentaire a été limité à un post Aston Villa manifestement football. Chaque source reste séparée de son adaptation : ces observations isolées ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire, ni une recalibration durable de l’algorithme.",
+  "methodology": "Les trois lectures historiques du 26/08 sur @lofi.radar sont conservées. Le 01/09, le nouveau compte @lofiradar2026 a d’abord observé 48 publications Home puis 14 publications ciblées. Le 02/09 à 09:46, une première calibration manuelle a utilisé huit signaux Not interested sur du football manifeste. L’immersion longue cumule désormais sept blocs séparés et muets, soit 1 h 56 min 54 s et 398 observations : 260 ciblées et 138 Home. Sur l’ensemble des Home observés pendant cette immersion, 19 sont classés pertinents, 119 hors niche, huit sport, deux portent un label IA, aucun n’est Sponsorisé et 65 proviennent de nsmqghana. Le dernier Home compte six pertinents sur 21, zéro sport, un label IA et trois cartes nsmqghana : le football et la concentration sur cet auteur ont fortement reculé, mais la pertinence globale reste à 13,8 % et ne permet pas encore de considérer le flux comme calibré. Les dix seeds exactes fournies par Dim ont été inspectées ; neuf non-IA sont retenues. Le passage de 17:15 a en outre vérifié sept seeds Pubs playlists, deux adjacents sous le seuil et cinq nouvelles sources organiques qualifiées. Le radar contient ainsi 62 cartes éditoriales. Aucun like, follow, enregistrement, commentaire, message, partage ou publication n’a été effectué pendant ce passage ; aucun nouveau Not interested n’a été envoyé. Chaque source reste séparée de son adaptation : ces observations isolées ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire, ni une recalibration durable de l’algorithme.",
   "limitations": [
     "Les compteurs de likes ont été relevés tels qu’affichés par Instagram et sont conservés avec une précision platform-rounded.",
     "Les vues, commentaires, partages, enregistrements et dates de publication non observés restent à null plutôt que d’être estimés.",
@@ -23,7 +23,10 @@
     "Les cinq blocs temporaires suivants totalisent 246 observations, dont 160 ciblées et 86 Home ; il s’agit d’un cumul de blocs, pas d’un total globalement dédupliqué, car l’audit privé ne conserve pas chaque shortcode rejeté.",
     "Sur ces 86 Home plus tardifs, trois sont pertinents, 83 hors niche, six sport, un porte un label IA, aucun n’est Sponsorisé et 46 viennent de nsmqghana : la pertinence tardive tombe à 3,5 % malgré le recul du football.",
     "Douze sources nouvelles à au moins 10 000 likes, non-IA et non sponsorisées ont été relevées pendant ces blocs ; cinq sont détaillées après déduplication par mécanique et auteur, sans transformer ces posts isolés en tendances établies.",
-    "Un seul Not interested supplémentaire a été appliqué à DcvdLLuqym2, post Aston Villa manifestement football ; trois faux positifs textuels liés au mot soccer ou à Manchester ont été laissés intacts."
+    "Un seul Not interested supplémentaire a été appliqué à DcvdLLuqym2, post Aston Villa manifestement football ; trois faux positifs textuels liés au mot soccer ou à Manchester ont été laissés intacts.",
+    "Le passage de 17:15 a observé 39 publications ciblées et 21 Home, avec dwell réel sur huit familles ; sept seeds Pubs playlists ont été ouvertes, dont six au seuil, et deux contenus adjacents ont été rejetés sous 10 000 likes.",
+    "Sur le dernier Home, six publications sur 21 sont pertinentes, 15 hors niche, zéro sport, une porte un label IA, aucune n’est Sponsorisée et trois proviennent de nsmqghana ; la pertinence du lot atteint 28,6 %.",
+    "Trois contenus portant un label IA ont été rejetés pendant ce passage, tandis que cinq sources organiques non-IA et non sponsorisées au-dessus de 10 000 likes sont retenues ; aucun signal social ou Not interested n’a été envoyé."
   ],
   "explorationLenses": [
     {
@@ -714,6 +717,55 @@
         "La pertinence tardive est de 3,5 % et 46 cartes sur 86 viennent de nsmqghana, soit 53,5 % ; le flux n’est donc pas encore calibré malgré le recul du football.",
         "Le dernier Home contient un pertinent sur 21, zéro sport et neuf cartes nsmqghana ; deux sources Home non-IA au-dessus de 10 000 likes sont retenues.",
         "Un seul Not interested a été appliqué à un post Aston Villa manifestement football ; aucun faux positif ambigu n’a été masqué."
+      ]
+    },
+    {
+      "id": "instagram-search-2026-09-02-heartbeat-1715",
+      "platform": "instagram",
+      "surface": "search",
+      "browserContext": "agent-tab-explicitly-delegated",
+      "capturedAt": "2026-09-02T17:38:26+02:00",
+      "seenCount": 39,
+      "qualifyingCount": 7,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "sleep-insomnia-bedtime",
+        "study-exams-pomodoro",
+        "releases-artist-collabs",
+        "polls-and-choices",
+        "cozy-games-rpg-worlds",
+        "visual-formats-lab"
+      ],
+      "limitations": [
+        "Le passage ciblé a parcouru 39 publications réparties entre huit familles, avec 39 dwells réels et tous les médias muets.",
+        "Sept seeds Pubs playlists ont été réellement ouvertes dans Instagram : six dépassaient 10 000 likes et une restait sous le seuil ; deux contenus adjacents ont également été rejetés sous 10 000 likes.",
+        "Deux contenus ciblés portant un label IA ont été exclus ; zéro mention Sponsorisé et zéro interaction sociale ont été observées.",
+        "Une seule nouvelle source ciblée, distincte des seeds déjà suivies, est retenue après revue éditoriale."
+      ]
+    },
+    {
+      "id": "instagram-home-2026-09-02-heartbeat-1715",
+      "platform": "instagram",
+      "surface": "home",
+      "browserContext": "agent-tab-explicitly-delegated",
+      "capturedAt": "2026-09-02T17:38:26+02:00",
+      "seenCount": 21,
+      "qualifyingCount": 4,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "animal-companions",
+        "rain-weather-seasons",
+        "reading-and-journaling",
+        "study-exams-pomodoro",
+        "introversion-social-battery",
+        "visual-formats-lab",
+        "lofi-daily-life"
+      ],
+      "limitations": [
+        "Le Home compte 21 publications : six pertinentes, 15 hors niche, zéro sport, un label IA et zéro mention Sponsorisé, soit 28,6 % de pertinence.",
+        "Trois cartes sur 21 proviennent de nsmqghana, soit 14,3 % ; la concentration sur cet auteur recule nettement dans ce lot sans démontrer une recalibration durable.",
+        "Quatre sources Home non-IA, non sponsorisées et au-dessus de 10 000 likes sont retenues ; le contenu étiqueté IA est exclu.",
+        "Tous les médias sont restés muets et aucun like, follow, enregistrement, commentaire, message, partage, publication ou Not interested n’a été effectué."
       ]
     }
   ],
@@ -3496,6 +3548,298 @@
           "Production 100 % humaine : concept, storyboard, illustration ou captation, animation, bruitages, montage et musique réalisés par les collaborateurs crédités.",
           "Aucune image, vidéo, voix ou musique générée par IA.",
           "Fonder le gag sur un comportement canin volontaire et sans danger, sans fausse voix ni contrainte, et ne reprendre aucun asset, texte, plan ou scénario de la source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "cozy-game-worth-it-poll",
+      "runId": "instagram-search-2026-09-02-heartbeat-1715",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/reel/DRnZaTdjuVK/",
+        "postId": "DRnZaTdjuVK",
+        "author": "dreamlightvalleydecor",
+        "sourceLabel": "Reel gaming cadré par la question participative « What game was worth it for you? »",
+        "capturedAt": "2026-09-02T17:38:26+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 27600,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": [
+          "cozy-games-rpg-worlds",
+          "polls-and-choices"
+        ],
+        "hook": "Une question simple demande au public de défendre le jeu qui a réellement mérité son temps ou son achat.",
+        "mechanic": "Le contenu transforme une préférence gaming en témoignage personnel court, puis ouvre naturellement une conversation où chaque réponse peut apporter une nouvelle recommandation.",
+        "visualCue": "Le visuel source n’est pas documenté avec assez de précision pour attribuer un jeu, une scène, une interface ou une licence particulière.",
+        "reasonToStop": "Le spectateur cherche immédiatement sa propre réponse et veut comparer le souvenir associé à son jeu avec ceux des autres.",
+        "whyRelevant": "La communauté Lofi peut répondre autour de petits jeux fictifs cozy et de souvenirs d’écoute, sans reprendre une licence ni transformer le post en placement produit.",
+        "confidence": "medium"
+      },
+      "adaptation": {
+        "title": "Le petit jeu qui valait une soirée",
+        "cast": {
+          "character": "lofi-boy",
+          "companion": "dog"
+        },
+        "concept": "Boy retrouve trois cartes de sauvegarde illustrant des jeux cozy entièrement fictifs et choisit celui qui lui rappelle la soirée la plus simple, avant de demander à la communauté lequel aurait mérité son temps.",
+        "openingText": "Quel petit jeu valait vraiment cette soirée perdue ?",
+        "sequence": [
+          "Boy aligne trois cartes de sauvegarde dessinées à la main : un jardin nocturne, un train sous la pluie et une librairie miniature, tandis que le chien renifle la boîte.",
+          "Il retourne chaque carte et note au dos un seul souvenir concret, puis hésite devant celle du train au rythme d’un beat original.",
+          "Le chien pose la patte sur la carte de la librairie ; Boy sourit et laisse les trois choix à l’écran pour inviter une réponse personnelle."
+        ],
+        "caption": "Pas le meilleur jeu de tous les temps. Juste celui qui a rendu une soirée meilleure. Lequel était-ce pour toi ?",
+        "audioDirection": "Beat cozy original composé et interprété par des humains, avec crayons, cartes et ambiance de pièce captés naturellement ; le sondage doit rester lisible en muet.",
+        "productionGuardrails": [
+          "Production 100 % humaine : concept, écriture, illustration, animation, bruitages, montage et musique réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Inventer tous les jeux, interfaces, titres et assets montrés, sans reprendre une licence, une capture, une marque, un texte ou le montage de la source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "sunflower-pet-sunbeam",
+      "runId": "instagram-home-2026-09-02-heartbeat-1715",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/Db_-VrpRaO6/",
+        "postId": "Db_-VrpRaO6",
+        "author": "byhakes",
+        "sourceLabel": "Image animalière saisonnière associant un animal familier à un motif de tournesol",
+        "capturedAt": "2026-09-02T17:38:26+02:00",
+        "publishedAt": null,
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 195400,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": [
+          "animal-companions",
+          "rain-weather-seasons",
+          "lofi-daily-life"
+        ],
+        "hook": "Un motif floral saisonnier suffit à transformer un moment animalier très simple en image chaleureuse et mémorisable.",
+        "mechanic": "Le contenu repose sur une association visuelle minimale entre un compagnon familier, une fleur reconnaissable et une lumière de saison ; aucune espèce, pose ou composition précise n’est déduite au-delà de l’observation consignée.",
+        "visualCue": "Le tournesol apporte un cercle lumineux et une couleur forte qui peuvent être réinterprétés sans copier l’image source.",
+        "reasonToStop": "La simplicité du duo animal-fleur crée un contraste doux et immédiatement lisible dans le flux.",
+        "whyRelevant": "Le chat de Girl peut relier la chambre canonique au passage des saisons par un petit moment de lumière naturelle, sans costume ni mise en scène forcée.",
+        "confidence": "medium"
+      },
+      "adaptation": {
+        "title": "Le tournesol suit le soleil, le chat aussi",
+        "cast": {
+          "character": "lofi-girl",
+          "companion": "cat"
+        },
+        "concept": "Girl déplace un petit tournesol en pot vers la fenêtre et découvre que son chat suit exactement le même trajet pour rester dans le rayon de soleil.",
+        "openingText": "Deux façons de suivre la lumière.",
+        "sequence": [
+          "Girl tourne doucement le pot vers la fenêtre du matin pendant que le chat dort encore au bord de l’ombre.",
+          "Le rayon glisse sur le parquet ; le chat se lève volontairement et avance jusqu’au nouveau carré de lumière près du tournesol.",
+          "Girl reprend son crayon pendant que la fleur et le chat restent côte à côte, chacun tourné vers la même fenêtre."
+        ],
+        "caption": "La plante et le chat avaient le même planning aujourd’hui.",
+        "audioDirection": "Ambiance de fenêtre, feuilles et pas légers captés naturellement, avec une courte composition originale humaine ; l’image doit aussi fonctionner sans son.",
+        "productionGuardrails": [
+          "Production 100 % humaine : écriture, storyboard, illustration ou captation, animation, bruitages, montage et musique réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Ne pas forcer ni costumer un animal ; créer depuis zéro la scène, le cadrage et le texte sans reprendre l’asset, la pose ou la composition source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "eyes-reading-brain-paused",
+      "runId": "instagram-home-2026-09-02-heartbeat-1715",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/Dcvb3tSRy4p/",
+        "postId": "Dcvb3tSRy4p",
+        "author": "girls",
+        "sourceLabel": "Meme illustré sur le fait de lire avec les yeux alors que l’attention ne suit plus",
+        "capturedAt": "2026-09-02T17:38:26+02:00",
+        "publishedAt": null,
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 157600,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": [
+          "reading-and-journaling",
+          "lofi-daily-life"
+        ],
+        "hook": "La formule met un nom très quotidien sur le décalage entre le geste de lire et l’attention réellement disponible.",
+        "mechanic": "Un constat intérieur universel devient un gag visuel court : la même ligne est parcourue plusieurs fois sans avancer, puis un détail extérieur interrompt la boucle.",
+        "visualCue": "La répétition de la même ligne peut être montrée par un marque-page ou un doigt qui revient au même endroit, sans reprendre l’illustration source.",
+        "reasonToStop": "Le public reconnaît instantanément une expérience banale et attend le petit geste qui permettra de sortir de la boucle.",
+        "whyRelevant": "Girl peut normaliser une pause de lecture sans diagnostic, conseil médical ni valorisation du surtravail, avec le chat comme interruption douce.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "La ligne qui ne voulait pas rester",
+        "cast": {
+          "character": "lofi-girl",
+          "companion": "cat"
+        },
+        "concept": "Girl relit trois fois la même phrase sans la retenir ; le chat couvre calmement la page, ce qui lui donne le signal de faire une courte pause avant de revenir.",
+        "openingText": "Mes yeux ont fini la page. Mon cerveau est encore à la première ligne.",
+        "sequence": [
+          "Le doigt de Girl suit une ligne, atteint la marge puis revient exactement au même début tandis que le reste de la pièce continue de bouger doucement.",
+          "Après une troisième tentative, le chat pose volontairement une patte puis son menton sur le bas de la page ouverte.",
+          "Girl glisse un marque-page, s’étire près de la fenêtre et revient plus tard lire une seule phrase avant de fermer le livre."
+        ],
+        "caption": "Parfois la meilleure façon d’avancer d’une page, c’est de la laisser cinq minutes.",
+        "audioDirection": "Pages, crayon et ambiance de pièce enregistrés naturellement, accompagnés d’un motif original humain qui s’interrompt puis reprend ; aucun dialogue nécessaire.",
+        "productionGuardrails": [
+          "Production 100 % humaine : concept, écriture, illustration ou tournage, animation, bruitages, montage et musique réalisés par l’équipe créditée.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Créer l’illustration, le texte et le rythme depuis zéro, sans copier le dessin ou la formulation source et sans formuler de diagnostic ni de promesse de concentration."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "cat-boundary-day-off",
+      "runId": "instagram-home-2026-09-02-heartbeat-1715",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/Dcayd7XIV40/",
+        "postId": "Dcayd7XIV40",
+        "author": "chopper__daily",
+        "sourceLabel": "Meme de réaction avec un British Shorthair et une phrase cynique sur le fait de ne pas être utilisé",
+        "capturedAt": "2026-09-02T17:38:26+02:00",
+        "publishedAt": null,
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 450100,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": [
+          "animal-companions",
+          "introversion-social-battery"
+        ],
+        "hook": "Une phrase volontairement excessive sur la disponibilité est rendue drôle par une réaction féline impassible.",
+        "mechanic": "Le contraste entre un slogan provocateur et un visage animal neutre transforme une limite sociale ordinaire en meme partageable.",
+        "visualCue": "Une posture calme du chat et un objet posé devant lui peuvent symboliser une journée indisponible sans reprendre la photo ou le texte source.",
+        "reasonToStop": "Le public veut décoder si le personnage assume vraiment son retrait ou s’il s’agit d’une exagération comique.",
+        "whyRelevant": "Lofi Girl peut reformuler la mécanique en limite saine et temporaire, sans dénigrer la valeur d’une personne ni présenter l’épuisement comme une identité.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Le bureau est fermé aujourd’hui",
+        "cast": {
+          "character": "lofi-girl",
+          "companion": "cat"
+        },
+        "concept": "Girl pose une petite carte « pause » devant son carnet ; le chat s’installe derrière comme un gardien très sérieux et repousse doucement chaque nouvelle feuille vers demain.",
+        "openingText": "Disponible demain. Peut-être après le petit-déjeuner.",
+        "sequence": [
+          "Girl termine une ligne, ferme son carnet et pose une carte manuscrite « pause » sur le bureau.",
+          "Une nouvelle feuille glisse depuis la pile ; le chat la repousse calmement d’une patte sans quitter sa place.",
+          "Girl éteint la lampe de travail, allume une petite lumière d’ambiance et s’assoit près du chat avec une tasse."
+        ],
+        "caption": "Mettre une limite ne retire rien à ce qu’on vaut. Ça laisse juste un peu de place pour revenir.",
+        "audioDirection": "Crayon, papier et interrupteur captés naturellement avec une composition originale humaine très sobre ; aucune voix attribuée au chat.",
+        "productionGuardrails": [
+          "Production 100 % humaine : écriture, storyboard, illustration ou captation, animation, bruitages, montage et musique réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Transformer le slogan cynique en limite saine et temporaire, sans copier le texte, la photo ou la mise en page source et sans conseil médical ou psychologique."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "dog-no-thought-strategy",
+      "runId": "instagram-home-2026-09-02-heartbeat-1715",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/Dcglrg3OrxG/",
+        "postId": "Dcglrg3OrxG",
+        "author": "trashygas1",
+        "sourceLabel": "Meme avec un chihuahua et une citation absurde sur une stratégie sans pensée",
+        "capturedAt": "2026-09-02T17:38:26+02:00",
+        "publishedAt": null,
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 346300,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": [
+          "animal-companions",
+          "visual-formats-lab",
+          "lofi-daily-life"
+        ],
+        "hook": "Une maxime pseudo-stratégique mène à une conclusion volontairement absurde, renforcée par l’expression d’un petit chien.",
+        "mechanic": "Le format imite la solennité d’une citation inspirante, puis la vide de toute logique par une chute littérale et un animal impassible.",
+        "visualCue": "Un mini-tableau de stratégie entièrement vide peut fournir une chute originale sans reprendre le portrait, la citation ou la mise en page du meme.",
+        "reasonToStop": "Le décalage entre le ton sérieux et l’absence totale de plan crée une résolution comique immédiate.",
+        "whyRelevant": "Le chien de Boy peut apporter un gag visuel silencieux dans l’univers Lofi, sans fausse voix animale ni reprise mot pour mot du meme.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Le tableau de stratégie du chien",
+        "cast": {
+          "character": "lofi-boy",
+          "companion": "dog"
+        },
+        "concept": "Boy installe un mini-tableau pour organiser sa session ; le chien efface accidentellement toutes les flèches avec sa queue, puis s’assoit devant le tableau vide comme si le plan était enfin parfait.",
+        "openingText": "Étape 1 : simplifier le plan. Étape 2 : il n’y a plus de plan.",
+        "sequence": [
+          "Boy dessine trois petites flèches sur un tableau posé au sol pendant que le chien observe un jouet à côté.",
+          "En se retournant naturellement, la queue du chien efface les flèches une à une et ne laisse qu’un tableau blanc.",
+          "Le chien s’assoit très droit devant le résultat ; Boy hausse les épaules, lance le beat et commence simplement la première tâche."
+        ],
+        "caption": "Le consultant a recommandé moins de flèches.",
+        "audioDirection": "Feutre, frottement et ambiance de studio captés naturellement, avec un beat original humain qui démarre sur la chute ; aucune voix animale.",
+        "productionGuardrails": [
+          "Production 100 % humaine : concept, storyboard, illustration ou tournage, animation, bruitages, montage et musique réalisés par les collaborateurs crédités.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Créer le gag, le tableau, le texte et le cadrage depuis zéro, sans reprendre la citation, le portrait ou la mise en page source et sans contraindre un animal."
         ]
       },
       "editorialStatus": "new"

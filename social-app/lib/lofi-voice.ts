@@ -156,7 +156,7 @@ const CATEGORY_BRIEFS: Record<CommentOpportunityCategory, string> = {
 
 /** Refused outright: a brand joke next to any of this is a crisis, not a win. */
 const SENSITIVE_COMMENT_PATTERN =
-  /\b(?:rip|r\.i\.p|death|died|dead|funeral|grief|cancer|suicide|overdose|war|shooting|murder|victim|tragedy|terror|racist|nazi|election|vote|president|politics|lawsuit|arrested|abuse)\b/iu;
+  /\b(?:rip|r\.i\.p|die|dies|died|dying|death|dead|funeral|grief|cancer|suicide|overdose|war|shooting|murder|victim|tragedy|terror|racist|nazi|election|vote|president|politics|lawsuit|arrested|abuse)\b/iu;
 const EMOJI_PATTERN = /\p{Extended_Pictographic}/gu;
 
 export type LofiCommentRejection = { ok: false; reason: string };
@@ -551,6 +551,56 @@ const CURATED_COMMENT_OVERRIDES: Record<
     funny: "She left one sentence unfinished and somehow my entire study group needs answers.",
     smart: "What did she mean turns missing context into the whole reason to watch.",
     complice: "Ludwig asked the question and now nobody at this desk is moving on.",
+  },
+  "yt-jvt8p527ngy-55ee51": {
+    funny: "A scare-free monster paradise is exactly how my revision schedule gets haunted.",
+    smart: "Letting players choose beauty or score makes relaxation feel genuinely player-led.",
+    complice: "Friendly ghouls, no timer, one unfinished assignment: we know which world wins.",
+  },
+  "yt-t1erhhdzjk-b1e4bd": {
+    funny: "Yuru strikes back while my study plan is still choosing its first move.",
+    smart: "Separated twins commanding supernatural duos gives every reunion two layers of tension.",
+    complice: "We came for Yuru and accidentally inherited an entire Daemon family tree.",
+  },
+  "yt-6lfuc6sqcoe-bf99cb": {
+    funny: "Live For You just volunteered to supervise the rest of tonight’s notes.",
+    smart: "Calling it a COLORS MOMENT lets one performance carry the whole atmosphere.",
+    complice: "Thee Sacred Souls just found the warmest seat in the late-night playlist.",
+  },
+  "yt-eokbqefivhs-baf207": {
+    funny: "A newspaper revolution is not helping this blank page feel less judged.",
+    smart: "Turning the birth of a tabloid into drama makes attention itself the subject.",
+    complice: "We opened one page for notes and somehow ended up inside INK.",
+  },
+  "yt-elsda0movvc-8d7bf1": {
+    funny: "Monopoly Junior found four players before my group project found one reply.",
+    smart: "Custom avatars and interactive dice make a familiar board feel newly personal.",
+    complice: "One quick family game night is how the study break quietly acquires rent.",
+  },
+  "yt-irhtqjhypew-7ff09b": {
+    funny: "Three generations of desire and pain just made my family group chat look simple.",
+    smart: "Connecting three lives through one emotional inheritance makes time part of the story.",
+    complice: "La Bola Negra turned one teaser into three generations we now need to understand.",
+  },
+  "yt-jsgka8npfc-6190d5": {
+    funny: "The trailer became a game, so technically the study break clicked itself.",
+    smart: "Making the trailer playable turns attention into participation before the first fight.",
+    complice: "We came for one trailer and somehow entered the World Warrior Tournament.",
+  },
+  "yt-ioimwxbqby-8c14a5": {
+    funny: "My revenge era apparently begins with reorganizing the same three inventory slots.",
+    smart: "Minecraft turns a dramatic revenge era into something you can rebuild block by block.",
+    complice: "In your revenge era too? Meet us quietly mining through the deadline.",
+  },
+  "yt-uflxsgsg870-53c14b": {
+    funny: "Every Spider-Man era is a very efficient way to postpone one present-day deadline.",
+    smart: "Organizing decades by eras turns a giant archive into an inviting first step.",
+    complice: "We picked one Spider-Man story and the whole multiverse joined the study break.",
+  },
+  "yt-tmdsa7z4pps-0dbca9": {
+    funny: "A track check nine days early has already failed tonight’s concentration check.",
+    smart: "Revealing one track before release turns anticipation into a scheduled ritual.",
+    complice: "September 11 is now marked somewhere between the playlist and the deadline.",
   },
 };
 
