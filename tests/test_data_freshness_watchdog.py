@@ -1037,6 +1037,82 @@ class DataFreshnessWatchdogTests(unittest.TestCase):
         old = [{"event": "schedule", "status": "completed", "created_at": "2026-07-29T10:00:00Z"}]
         self.assertTrue(subject.dispatch_decision(status, old, now)[0])
 
+    def test_local_only_kids_never_calls_github_and_other_repairs_continue(self):
+        now = datetime(2026, 9, 2, 7, tzinfo=timezone.utc)
+        kids = subject.freshness_row(subject.TARGETS["youtube_kids"], True, "stale local Kids proof", None)
+        standard = subject.Freshness(
+            target="youtube_radar",
+            workflow="refresh-instrumental-radar.yml",
+            due=True,
+            reason="stale",
+            observed_at=None,
+            cooldown_minutes=45,
+            inputs={"force": "false"},
+        )
+
+        class RecordingClient:
+            def __init__(self):
+                self.runs_calls = []
+                self.dispatch_calls = []
+
+            def runs(self, workflow):
+                self.runs_calls.append(workflow)
+                return []
+
+            def dispatch(self, workflow, inputs):
+                self.dispatch_calls.append((workflow, inputs))
+
+        client = RecordingClient()
+        results = subject.dispatch_due([kids, standard], client, now)
+
+        self.assertFalse(subject.TARGETS["youtube_kids"].dispatchable)
+        self.assertEqual(client.runs_calls, ["refresh-instrumental-radar.yml"])
+        self.assertEqual(client.dispatch_calls, [("refresh-instrumental-radar.yml", {"force": "false"})])
+        self.assertFalse(results[0]["dispatched"])
+        self.assertEqual(results[0]["decision"], "local-only target")
+        self.assertTrue(results[1]["dispatched"])
+
+    def test_failed_disabled_dispatch_does_not_block_later_repairs(self):
+        now = datetime(2026, 9, 2, 7, tzinfo=timezone.utc)
+        disabled = subject.Freshness(
+            target="spotify_core",
+            workflow="disabled.yml",
+            due=True,
+            reason="stale",
+            observed_at=None,
+            cooldown_minutes=30,
+            inputs={},
+        )
+        standard = subject.Freshness(
+            target="youtube_radar",
+            workflow="refresh-instrumental-radar.yml",
+            due=True,
+            reason="stale",
+            observed_at=None,
+            cooldown_minutes=45,
+            inputs={"force": "false"},
+        )
+
+        class DisabledThenHealthyClient:
+            def __init__(self):
+                self.dispatch_calls = []
+
+            def runs(self, workflow):
+                return []
+
+            def dispatch(self, workflow, inputs):
+                self.dispatch_calls.append(workflow)
+                if workflow == "disabled.yml":
+                    raise RuntimeError("HTTP 422: workflow is disabled")
+
+        client = DisabledThenHealthyClient()
+        results = subject.dispatch_due([disabled, standard], client, now)
+
+        self.assertEqual(client.dispatch_calls, ["disabled.yml", "refresh-instrumental-radar.yml"])
+        self.assertFalse(results[0]["dispatched"])
+        self.assertIn("HTTP 422", results[0]["decision"])
+        self.assertTrue(results[1]["dispatched"])
+
     def test_three_collection_attempts_in_six_hours_stop_a_retry_storm(self):
         status = subject.Freshness(
             target="spotify_followers",

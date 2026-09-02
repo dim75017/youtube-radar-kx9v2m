@@ -43,6 +43,7 @@ class Target:
     workflow: str
     cooldown_minutes: int
     inputs: Mapping[str, str]
+    dispatchable: bool = True
 
 
 TARGETS: dict[str, Target] = {
@@ -75,6 +76,7 @@ TARGETS: dict[str, Target] = {
         "refresh-youtube-kids.yml",
         180,
         {"force": "false"},
+        dispatchable=False,
     ),
     "youtube_recommendations": Target(
         "youtube_recommendations",
@@ -100,6 +102,7 @@ class Freshness:
     observed_at: str | None
     cooldown_minutes: int
     inputs: Mapping[str, str]
+    dispatchable: bool = True
 
 
 def utc_now() -> datetime:
@@ -177,6 +180,7 @@ def freshness_row(target: Target, due: bool, reason: str, observed: datetime | N
         observed_at=iso(observed),
         cooldown_minutes=target.cooldown_minutes,
         inputs=target.inputs,
+        dispatchable=target.dispatchable,
     )
 
 
@@ -1011,6 +1015,8 @@ def parse_run_time(row: Mapping[str, Any]) -> datetime | None:
 def dispatch_decision(status: Freshness, runs: Iterable[Mapping[str, Any]], now: datetime) -> tuple[bool, str]:
     if not status.due:
         return False, "fresh"
+    if not status.dispatchable:
+        return False, "local-only target"
     relevant = [row for row in runs if str(row.get("event") or "") in COLLECTION_EVENTS]
     if any(str(row.get("status") or "") in ACTIVE_RUN_STATES for row in relevant):
         return False, "active run already exists"
@@ -1033,10 +1039,14 @@ def dispatch_decision(status: Freshness, runs: Iterable[Mapping[str, Any]], now:
 def dispatch_due(rows: Iterable[Freshness], client: GitHubActionsClient, now: datetime) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
     for row in rows:
-        runs = client.runs(row.workflow) if row.due else []
-        should_dispatch, decision = dispatch_decision(row, runs, now)
-        if should_dispatch:
-            client.dispatch(row.workflow, row.inputs)
+        try:
+            runs = client.runs(row.workflow) if row.due and row.dispatchable else []
+            should_dispatch, decision = dispatch_decision(row, runs, now)
+            if should_dispatch:
+                client.dispatch(row.workflow, row.inputs)
+        except RuntimeError as exc:
+            should_dispatch = False
+            decision = f"repair request failed: {exc}"
         results.append(
             {
                 "target": row.target,
