@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "capturedAt": "2026-09-01T23:53:45+02:00",
+  "capturedAt": "2026-09-02T09:46:19+02:00",
   "minimumLikes": 10000,
-  "methodology": "Les trois lectures historiques du 26/08 sur @lofi.radar sont conservées. Le 01/09, un passage de 12 min 25 s sur le nouveau compte @lofiradar2026 a utilisé un onglet d’agent Chrome séparé, audio muet et sans interaction sociale : 48 publications Home distinctes puis 14 publications issues de recherches ciblées ont été consultées. Le Home était encore dominé par le football et comptait 43 contenus hors niche ; trois sources Home et cinq sources ciblées non signalées IA, toutes à au moins 10 000 likes visibles, sont retenues. Le radar contient désormais 38 cartes éditoriales. Chaque source reste séparée de son adaptation Lofi : ces observations isolées ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire, ni une recalibration garantie de l’algorithme.",
+  "methodology": "Les trois lectures historiques du 26/08 sur @lofi.radar sont conservées. Le 01/09, un premier passage sur le nouveau compte @lofiradar2026 a observé 48 publications Home puis 14 publications ciblées. Le 02/09, une calibration manuelle bornée à 25 min 36 s a utilisé un onglet d’agent Chrome séparé et muet : huit posts de football manifestes ont reçu le signal Not interested, vingt cartes ont été observées dans cinq familles positives et douze ont bénéficié d’un dwell de 3 à 5 secondes, puis 27 nouvelles recommandations Home ont été classées. La pertinence du Home est passée de 10,4 % à 18,5 %, tandis que la part sport est restée presque stable, de 45,8 % à 44,4 %. Aucun like, follow, enregistrement, commentaire, message ou partage n’a été effectué. Le radar conserve 38 cartes éditoriales, car aucune nouvelle source n’a franchi simultanément le seuil de 10 000 likes, le filtre non-IA et la pertinence Lofi. Chaque source reste séparée de son adaptation : ces observations isolées ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire, ni une recalibration durable de l’algorithme.",
   "limitations": [
     "Les compteurs de likes ont été relevés tels qu’affichés par Instagram et sont conservés avec une précision platform-rounded.",
     "Les vues, commentaires, partages, enregistrements et dates de publication non observés restent à null plutôt que d’être estimés.",
@@ -13,7 +13,10 @@
     "Le run du soir compte 151 URL uniques et 53 publications au seuil dans ce lot uniquement ; les volumes des passages ne sont pas additionnés comme un total dédupliqué entre sessions.",
     "Le 01/09, le décompte Home au seuil est conservateur : seules cinq publications dont le compteur supérieur à 10 000 likes a été explicitement consigné sont comptées, sans extrapoler les autres cartes sportives.",
     "La calibration ciblée du 01/09 a couvert Lofi/chill, study/deep work et cozy/pluie ; la borne de 15 minutes a été respectée avant les familles introversion, animaux cozy, lecture/art et coding/gaming.",
-    "Deux sources ciblées au-dessus du seuil, dont une étiquetée AI content et une créée avec un outil externe signalé, ont été comptées dans le volume métrique mais exclues des cartes éditoriales."
+    "Deux sources ciblées au-dessus du seuil, dont une étiquetée AI content et une créée avec un outil externe signalé, ont été comptées dans le volume métrique mais exclues des cartes éditoriales.",
+    "Le 02/09, huit actions Not interested ont été limitées à des posts de football manifestes et leurs URL ont été auditées ; ce signal modifie la recommandation mais ne garantit pas une recalibration stable.",
+    "La calibration positive du 02/09 a couvert Lofi/ambient, study, cozy/pluie et introversion avec dwell ; huit cartes de chats ont seulement été observées en grille avant la borne, et les familles lecture/art et coding/gaming n’ont pas été atteintes.",
+    "Pour le Home final du 02/09, aucun compteur de likes n’a été conservé : qualifyingCount reste donc à zéro par prudence, même si cinq contenus ont été jugés pertinents."
   ],
   "explorationLenses": [
     {
@@ -162,7 +165,7 @@
       "group": "storytelling",
       "specialty": "Besoin de calme après une journée sociale",
       "description": "Micro-récits où le retour au calme est une préférence légitime, sans opposer introvertis et extravertis.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["Une situation sociale précise précède le refuge", "Le soulagement passe par un geste ou une ambiance"],
       "adaptationAngles": ["Girl retrouve sa chambre et le chat après une journée dense", "Le chien signale silencieusement une pause à Boy"],
       "rejectIf": ["Ridiculise les interactions sociales ou pose un diagnostic"]
@@ -535,6 +538,49 @@
         "Sept compteurs publics atteignaient 10 000 likes ; deux sources signalées IA ou créées avec un outil externe ont été rejetées et cinq exemples sont détaillés.",
         "Aucune mention Sponsorisé n’a été observée ; ce passage de recherche ne constitue pas un inventaire exhaustif de promotions musicales.",
         "Audio muet et zéro like, follow, sauvegarde, commentaire, message, partage, publication ou Not interested."
+      ]
+    },
+    {
+      "id": "instagram-search-2026-09-02-manual-calibration",
+      "platform": "instagram",
+      "surface": "search",
+      "browserContext": "agent-tab-explicitly-delegated",
+      "capturedAt": "2026-09-02T09:46:19+02:00",
+      "seenCount": 20,
+      "qualifyingCount": 1,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "lofi-daily-life",
+        "study-exams-pomodoro",
+        "rain-weather-seasons",
+        "sleep-insomnia-bedtime",
+        "introversion-social-battery",
+        "animal-companions"
+      ],
+      "limitations": [
+        "Douze posts exacts ont reçu un dwell de 3 à 5 secondes dans quatre familles : Lofi/ambient, study, cozy/pluie et introversion ; huit cartes de chats ont seulement été observées en grille avant la borne.",
+        "Le seul compteur au-dessus du seuil explicitement vérifié était 188 000 likes sur DP-61FGkR9b ; la source, non signalée IA et non sponsorisée, a été rejetée car trop générique et trop centrée sur la relation.",
+        "Huit signaux Not interested ont été appliqués uniquement à des posts de football manifestes : DcwJ97ZA-bg, DcwmOLgsIvM, DcpbDlXIT1t, DcuGDejsOnC, DcugHA0IfwE, Dcjurr7iSt0, DcvsoEtgTfg et DcXy4TPCNOx.",
+        "Audio muet et zéro like, follow, sauvegarde, commentaire, message, partage ou publication ; aucune nouvelle carte éditoriale n’est retenue."
+      ]
+    },
+    {
+      "id": "instagram-home-2026-09-02-post-calibration",
+      "platform": "instagram",
+      "surface": "home",
+      "browserContext": "agent-tab-explicitly-delegated",
+      "capturedAt": "2026-09-02T09:46:19+02:00",
+      "seenCount": 27,
+      "qualifyingCount": 0,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "lofi-daily-life"
+      ],
+      "limitations": [
+        "Le Home final compte 27 posts distincts : cinq pertinents, 22 hors niche, 12 sport et deux portant un libellé IA ; aucune mention Sponsorisé n’était visible.",
+        "La pertinence passe de 10,4 % à 18,5 %, mais la part sport ne baisse que de 45,8 % à 44,4 % : le flux reste franchement dominé par le football.",
+        "Aucun compteur de likes n’a été conservé pendant ce contrôle final ; qualifyingCount reste donc à zéro et aucune carte n’est ajoutée plutôt que d’extrapoler.",
+        "Lecture DOM en onglet d’agent séparé, médias muets, zéro interaction sociale et fermeture de l’onglet d’agent à la fin du passage."
       ]
     }
   ],

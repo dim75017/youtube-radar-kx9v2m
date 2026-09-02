@@ -147,7 +147,7 @@
       "group": "storytelling",
       "specialty": "Besoin de calme après une journée sociale",
       "description": "Micro-récits où le retour au calme est une préférence légitime, sans opposer introvertis et extravertis.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["Une situation sociale précise précède le refuge", "Le soulagement passe par un geste ou une ambiance"],
       "adaptationAngles": ["Girl retrouve sa chambre et le chat après une journée dense", "Le chien signale silencieusement une pause à Boy"],
       "rejectIf": ["Ridiculise les interactions sociales ou pose un diagnostic"]

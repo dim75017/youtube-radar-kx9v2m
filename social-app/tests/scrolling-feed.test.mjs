@@ -61,9 +61,9 @@ const expectedSources = new Map([
 ]);
 
 test("the connected Instagram snapshot preserves the historical and new-account runs", () => {
-  assert.match(feed.capturedAt, /^2026-09-01/u);
+  assert.match(feed.capturedAt, /^2026-09-02/u);
   assert.equal(feed.minimumLikes, SCROLLING_MINIMUM_LIKES);
-  assert.equal(feed.runs.length, 5);
+  assert.equal(feed.runs.length, 7);
   assert.equal(feed.items.length, 38);
 
   const initialRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26");
@@ -71,11 +71,19 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   const eveningRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26-evening");
   const newAccountHomeRun = feed.runs.find((run) => run.id === "instagram-home-2026-09-01-new-account");
   const calibrationRun = feed.runs.find((run) => run.id === "instagram-search-2026-09-01-calibration");
+  const manualCalibrationRun = feed.runs.find(
+    (run) => run.id === "instagram-search-2026-09-02-manual-calibration",
+  );
+  const postCalibrationHomeRun = feed.runs.find(
+    (run) => run.id === "instagram-home-2026-09-02-post-calibration",
+  );
   assert.ok(initialRun);
   assert.ok(extendedRun);
   assert.ok(eveningRun);
   assert.ok(newAccountHomeRun);
   assert.ok(calibrationRun);
+  assert.ok(manualCalibrationRun);
+  assert.ok(postCalibrationHomeRun);
   assert.equal(initialRun.platform, "instagram");
   assert.equal(initialRun.surface, "home");
   assert.equal(initialRun.browserContext, SCROLLING_BROWSER_CONTEXT);
@@ -111,7 +119,22 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   assert.ok(feed.items.filter((item) => item.runId === calibrationRun.id).length < calibrationRun.qualifyingCount);
   assert.ok(Date.parse(newAccountHomeRun.capturedAt) > Date.parse(eveningRun.capturedAt));
   assert.equal(calibrationRun.capturedAt, newAccountHomeRun.capturedAt);
-  assert.equal(feed.capturedAt, calibrationRun.capturedAt);
+  assert.equal(manualCalibrationRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(manualCalibrationRun.surface, "search");
+  assert.equal(manualCalibrationRun.seenCount, 20);
+  assert.equal(manualCalibrationRun.qualifyingCount, 1);
+  assert.equal(manualCalibrationRun.sponsoredCount, 0);
+  assert.equal(feed.items.filter((item) => item.runId === manualCalibrationRun.id).length, 0);
+  assert.ok(manualCalibrationRun.themeIds.includes("introversion-social-battery"));
+  assert.equal(postCalibrationHomeRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(postCalibrationHomeRun.surface, "home");
+  assert.equal(postCalibrationHomeRun.seenCount, 27);
+  assert.equal(postCalibrationHomeRun.qualifyingCount, 0);
+  assert.equal(postCalibrationHomeRun.sponsoredCount, 0);
+  assert.equal(feed.items.filter((item) => item.runId === postCalibrationHomeRun.id).length, 0);
+  assert.ok(Date.parse(manualCalibrationRun.capturedAt) > Date.parse(calibrationRun.capturedAt));
+  assert.equal(manualCalibrationRun.capturedAt, postCalibrationHomeRun.capturedAt);
+  assert.equal(feed.capturedAt, postCalibrationHomeRun.capturedAt);
 
   let likes = 0;
   for (const item of feed.items) {
@@ -135,7 +158,7 @@ test("the connected Instagram snapshot preserves the historical and new-account 
 test("the exploration taxonomy is broad and distinguishes observed lenses from future probes", () => {
   assert.equal(themes.explorationLenses.length, 30);
   assert.deepEqual(themes.explorationLenses, feed.explorationLenses);
-  assert.equal(feed.explorationLenses.filter((lens) => lens.observedInSnapshot).length, 20);
+  assert.equal(feed.explorationLenses.filter((lens) => lens.observedInSnapshot).length, 21);
   assert.equal(
     feed.explorationLenses.find((lens) => lens.id === "animal-companions")?.observedInSnapshot,
     true,
@@ -144,6 +167,7 @@ test("the exploration taxonomy is broad and distinguishes observed lenses from f
     "lore-pov-mini-episodes",
     "easter-eggs-and-alternate-rooms",
     "cozy-games-rpg-worlds",
+    "introversion-social-battery",
   ]) {
     assert.equal(
       feed.explorationLenses.find((lens) => lens.id === newlyObserved)?.observedInSnapshot,
