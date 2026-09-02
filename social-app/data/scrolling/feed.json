@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "capturedAt": "2026-09-02T09:46:19+02:00",
+  "capturedAt": "2026-09-02T11:29:36+02:00",
   "minimumLikes": 10000,
-  "methodology": "Les trois lectures historiques du 26/08 sur @lofi.radar sont conservées. Le 01/09, un premier passage sur le nouveau compte @lofiradar2026 a observé 48 publications Home puis 14 publications ciblées. Le 02/09, une calibration manuelle bornée à 25 min 36 s a utilisé un onglet d’agent Chrome séparé et muet : huit posts de football manifestes ont reçu le signal Not interested, vingt cartes ont été observées dans cinq familles positives et douze ont bénéficié d’un dwell de 3 à 5 secondes, puis 27 nouvelles recommandations Home ont été classées. La pertinence du Home est passée de 10,4 % à 18,5 %, tandis que la part sport est restée presque stable, de 45,8 % à 44,4 %. Aucun like, follow, enregistrement, commentaire, message ou partage n’a été effectué. Le radar conserve 38 cartes éditoriales, car aucune nouvelle source n’a franchi simultanément le seuil de 10 000 likes, le filtre non-IA et la pertinence Lofi. Chaque source reste séparée de son adaptation : ces observations isolées ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire, ni une recalibration durable de l’algorithme.",
+  "methodology": "Les trois lectures historiques du 26/08 sur @lofi.radar sont conservées. Le 01/09, le nouveau compte @lofiradar2026 a d’abord observé 48 publications Home puis 14 publications ciblées. Le 02/09 à 09:46, une première calibration manuelle a utilisé huit signaux Not interested sur du football manifeste et fait passer la pertinence du Home de 10,4 % à 18,5 %, tandis que le sport restait à 44,4 %. Un second bloc de 33 min 30 s, terminé à 11:29 dans un onglet d’agent séparé et muet, a ensuite consulté 92 contenus uniques : 51 posts ciblés avec dwell réel dans six familles, les dix seeds exactes fournies par Dim, puis 31 recommandations Home. Ce Home atteint 32,3 % de pertinence et 6,5 % de sport, mais 16 cartes sur 31 viennent du même compte de quiz éducatifs. Neuf seeds non-IA de Dim et cinq découvertes complémentaires dépassant 10 000 likes sont retenues ; la seed cozynerdythings portant un label IA explicite est exclue. Le radar contient ainsi 52 cartes éditoriales. Aucun like, follow, enregistrement, commentaire, message, partage ou publication n’a été effectué. Chaque source reste séparée de son adaptation : ces observations isolées ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire, ni une recalibration durable de l’algorithme.",
   "limitations": [
     "Les compteurs de likes ont été relevés tels qu’affichés par Instagram et sont conservés avec une précision platform-rounded.",
     "Les vues, commentaires, partages, enregistrements et dates de publication non observés restent à null plutôt que d’être estimés.",
@@ -16,7 +16,10 @@
     "Deux sources ciblées au-dessus du seuil, dont une étiquetée AI content et une créée avec un outil externe signalé, ont été comptées dans le volume métrique mais exclues des cartes éditoriales.",
     "Le 02/09, huit actions Not interested ont été limitées à des posts de football manifestes et leurs URL ont été auditées ; ce signal modifie la recommandation mais ne garantit pas une recalibration stable.",
     "La calibration positive du 02/09 a couvert Lofi/ambient, study, cozy/pluie et introversion avec dwell ; huit cartes de chats ont seulement été observées en grille avant la borne, et les familles lecture/art et coding/gaming n’ont pas été atteintes.",
-    "Pour le Home final du 02/09, aucun compteur de likes n’a été conservé : qualifyingCount reste donc à zéro par prudence, même si cinq contenus ont été jugés pertinents."
+    "Pour le premier Home final du 02/09, aucun compteur de likes n’a été conservé : qualifyingCount reste donc à zéro par prudence, même si cinq contenus ont été jugés pertinents.",
+    "Le second Home du 02/09 montre un fort recul du football, mais 16 posts sur 31 viennent de nsmqghana : la recommandation reste concentrée et ne constitue pas encore un flux cozy diversifié.",
+    "Les dix seeds fournies par Dim ont toutes été consultées ; neuf dépassent 10 000 likes, ne portent pas de label IA et sont retenues, tandis que DQG5kQLEQdo est exclue pour label IA explicite.",
+    "Les compteurs de likes du second Home n’ont pas été conservés ; son qualifyingCount reste donc à zéro, sans extrapolation depuis le seul classement de pertinence."
   ],
   "explorationLenses": [
     {
@@ -264,7 +267,7 @@
       "group": "lifestyle",
       "specialty": "Démarrage, bugs, brouillon et blocage créatif",
       "description": "Situations où le progrès naît d’un essai imparfait plutôt que d’un hack magique.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["Une erreur ou page blanche matérialise le blocage", "La résolution reste plausible et limitée"],
       "adaptationAngles": ["Le chat cause puis résout accidentellement un bug", "Une mauvaise prise débloque le morceau de Boy"],
       "rejectIf": ["Glorifie le surtravail ou promet une productivité instantanée"]
@@ -275,7 +278,7 @@
       "group": "lifestyle",
       "specialty": "Livres, annotations et écriture personnelle",
       "description": "Rituels de lecture et d’écriture centrés sur le temps lent, les pages et la réflexion intime.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["Un geste de page ou d’écriture porte le hook", "Le texte reste original et respectueux de la vie privée"],
       "adaptationAngles": ["Le chat suit le marque-page de Girl", "Boy transforme une phrase en motif musical"],
       "rejectIf": ["Reproduit un long extrait protégé ou dévoile un journal réel"]
@@ -308,7 +311,7 @@
       "group": "music",
       "specialty": "Construction de beat, sampling autorisé et couches sonores",
       "description": "Démonstrations où chaque couche est entendue et reliée à un geste humain identifiable.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["Les étapes du beat sont distinctes", "La source et les droits de chaque son sont clairs"],
       "adaptationAngles": ["Beat créé avec les sons de la chambre de Girl", "Pas du chien enregistrés humainement comme percussion"],
       "rejectIf": ["Le sample est non autorisé ou le processus simulé"]
@@ -581,6 +584,83 @@
         "La pertinence passe de 10,4 % à 18,5 %, mais la part sport ne baisse que de 45,8 % à 44,4 % : le flux reste franchement dominé par le football.",
         "Aucun compteur de likes n’a été conservé pendant ce contrôle final ; qualifyingCount reste donc à zéro et aucune carte n’est ajoutée plutôt que d’extrapoler.",
         "Lecture DOM en onglet d’agent séparé, médias muets, zéro interaction sociale et fermeture de l’onglet d’agent à la fin du passage."
+      ]
+    },
+    {
+      "id": "instagram-search-2026-09-02-long-calibration",
+      "platform": "instagram",
+      "surface": "search",
+      "browserContext": "agent-tab-explicitly-delegated",
+      "capturedAt": "2026-09-02T11:29:36+02:00",
+      "seenCount": 51,
+      "qualifyingCount": 9,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "reading-and-journaling",
+        "fan-art-and-spotlights",
+        "visual-formats-lab",
+        "cozy-games-rpg-worlds",
+        "work-coding-creative-block",
+        "animal-companions",
+        "beatmaking-process",
+        "releases-artist-collabs",
+        "microgenre-discovery",
+        "polls-and-choices",
+        "introversion-social-battery",
+        "sleep-insomnia-bedtime",
+        "lofi-daily-life",
+        "nostalgia-time-capsule",
+        "emotional-storytelling",
+        "lore-pov-mini-episodes",
+        "vinyl-and-instruments",
+        "live-music-energy"
+      ],
+      "limitations": [
+        "Cinquante et un posts ciblés uniques ont reçu un dwell réel dans six familles : lecture, illustration/animation, coding/cozy gaming, chats, beatmaking et playlist marketing.",
+        "Les dwells moyens par famille vont de 5,2 à 6,6 secondes ; neuf sources dépassaient 10 000 likes et cinq exemples complémentaires sont retenus après revue éditoriale.",
+        "Tous les médias sont restés muets ; zéro like, follow, sauvegarde, commentaire, message, partage, publication ou Not interested pendant ce bloc."
+      ]
+    },
+    {
+      "id": "instagram-search-2026-09-02-user-seeds",
+      "platform": "instagram",
+      "surface": "search",
+      "browserContext": "agent-tab-explicitly-delegated",
+      "capturedAt": "2026-09-02T11:29:36+02:00",
+      "seenCount": 10,
+      "qualifyingCount": 10,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "emotional-storytelling",
+        "lofi-daily-life",
+        "animal-companions",
+        "polls-and-choices",
+        "easter-eggs-and-alternate-rooms",
+        "visual-formats-lab"
+      ],
+      "limitations": [
+        "Les dix URL fournies par Dim ont été normalisées sans paramètres de partage puis consultées précisément dans l’onglet d’agent muet.",
+        "Les dix compteurs visibles dépassaient 10 000 likes ; neuf seeds non-IA et non sponsorisées sont retenues, tandis que DQG5kQLEQdo est exclue pour label IA explicite.",
+        "Les adaptations reprennent uniquement les mécaniques observées ; elles ne réutilisent ni assets, ni personnages, ni textes, ni musiques des créateurs sources."
+      ]
+    },
+    {
+      "id": "instagram-home-2026-09-02-after-long-calibration",
+      "platform": "instagram",
+      "surface": "home",
+      "browserContext": "agent-tab-explicitly-delegated",
+      "capturedAt": "2026-09-02T11:29:36+02:00",
+      "seenCount": 31,
+      "qualifyingCount": 0,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "lofi-daily-life"
+      ],
+      "limitations": [
+        "Le Home final compte 31 posts distincts : dix pertinents, 21 hors niche, deux sport, zéro libellé IA et zéro mention Sponsorisé.",
+        "La pertinence atteint 32,3 % contre 18,5 % au passage précédent et la part sport tombe à 6,5 % contre 44,4 %.",
+        "Seize posts sur 31 proviennent toutefois de nsmqghana : le biais football recule, mais la diversité du flux reste insuffisante.",
+        "Aucun compteur de likes n’a été conservé pendant ce contrôle Home ; qualifyingCount reste à zéro et aucune source Home n’est détaillée."
       ]
     }
   ],
@@ -2377,6 +2457,699 @@
           "Production 100 % humaine : concept art, peinture, animation, sound design, montage et musique réalisés par des artistes crédités.",
           "Aucune image, vidéo, voix ou musique générée par IA.",
           "Concevoir une architecture et une boucle propres à l’univers Lofi ; vérifier tous les droits des sons naturels."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "cat-keeps-the-place-warm",
+      "runId": "instagram-search-2026-09-02-long-calibration",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/CaV4urErTkb/",
+        "postId": "CaV4urErTkb",
+        "author": "cats_of_instagram",
+        "sourceLabel": "Reel animalier où un comportement naturel du chat devient un moment de tendresse immédiatement lisible",
+        "capturedAt": "2026-09-02T11:29:36+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 2300000, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["animal-companions", "emotional-storytelling"],
+        "hook": "Un geste félin très simple suffit à annoncer une relation tendre avant toute explication.",
+        "mechanic": "La scène laisse d’abord le chat agir naturellement, puis rapproche humain et animal dans une conclusion visuelle calme.",
+        "visualCue": "La faible distance entre le chat, un objet portant l’odeur de la personne et le retour de celle-ci rend l’attachement compréhensible sans dialogue.",
+        "reasonToStop": "Le spectateur attend le petit moment de contact qui transforme une observation animale en émotion partagée.",
+        "whyRelevant": "Le chat de Girl peut porter une émotion douce et universelle sans voix artificielle, performance forcée ni reprise du scénario de la source.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "La place restée chaude",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Pendant la courte absence de Girl, le chat choisit naturellement sa manche encore posée sur la chaise ; à son retour, elle adapte son installation plutôt que de le déplacer.",
+        "openingText": "Je suis partie une minute. Il avait déjà choisi où m’attendre.",
+        "sequence": [
+          "Girl quitte le bureau en laissant son gilet sur le dossier, tandis que le chat observe depuis la fenêtre.",
+          "Le chat vient se lover de lui-même sur la manche encore chaude ; un gros plan reste sur sa respiration et ses pattes détendues.",
+          "Girl revient, rapproche son cahier sur le bord voisin et reprend doucement sa lecture lorsque le chat pose la tête sur sa manche."
+        ],
+        "caption": "Parfois, être attendu tient dans une manche encore chaude.",
+        "audioDirection": "Ronronnement et sons de pièce captés proprement, accompagnés d’une courte composition originale jouée et mixée par des humains.",
+        "productionGuardrails": [
+          "Production 100 % humaine : écriture, storyboard, illustration, animation, bruitages, montage et musique réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Montrer un comportement félin naturel, sans contrainte, fausse voix ni mise en danger, et ne reprendre aucun plan, texte ou déroulé précis de la source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "fantasy-or-page-reveal",
+      "runId": "instagram-search-2026-09-02-long-calibration",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/CvnoXhAv3Ka/",
+        "postId": "CvnoXhAv3Ka",
+        "author": "cats_of_instagram",
+        "sourceLabel": "Reel à révélation qui fait hésiter entre décor fantastique et réalité",
+        "capturedAt": "2026-09-02T11:29:36+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 492000, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["visual-formats-lab", "cozy-games-rpg-worlds", "lore-pov-mini-episodes"],
+        "hook": "Le premier cadre ressemble à un monde fantastique autonome, puis un détail incohérent invite à remettre en cause son échelle.",
+        "mechanic": "Une ambiguïté visuelle est installée plein cadre, un recul de caméra fournit une explication, puis le dernier indice rouvre subtilement le doute.",
+        "visualCue": "Le changement d’échelle entre un décor immense et un objet quotidien produit la révélation sans dépendre du son.",
+        "reasonToStop": "Le spectateur veut comprendre ce qu’il regarde réellement et vérifier si le dernier cadre confirme ou contredit sa lecture.",
+        "whyRelevant": "Cette grammaire permet un mini-épisode de lore original autour de Girl et du chat, sans reprendre un univers, un décor ou une licence tierce.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "La bibliothèque entre les pages",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Girl et le chat semblent traverser une bibliothèque nocturne immense ; le recul révèle un livre pop-up fabriqué sur son bureau, avant qu’un détail impossible ne franchisse la frontière.",
+        "openingText": "Tu crois connaître l’échelle de cette pièce ?",
+        "sequence": [
+          "La caméra suit Girl et le chat dans une bibliothèque originale éclairée par des étoiles de papier, comme s’il s’agissait d’un monde entier.",
+          "Un recul continu révèle que la bibliothèque est un livre pop-up construit à la main sur le bureau de Girl.",
+          "Le chat touche une étoile découpée ; la même étoile s’allume alors dans le ciel réel derrière la fenêtre."
+        ],
+        "caption": "Le livre était peut-être petit. L’histoire, beaucoup moins.",
+        "audioDirection": "Papier, pas et mécanismes enregistrés par l’équipe, avec une composition originale humaine qui change de perspective au moment du recul.",
+        "productionGuardrails": [
+          "Production 100 % humaine : concept, construction papier, décors, dessin, animation, tournage, montage et musique créés par des artistes et techniciens crédités.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Concevoir un monde, une architecture et une révélation entièrement originaux, sans copier la mise en scène de la source ni les codes distinctifs d’une licence existante."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "percussion-builds-the-rooftop",
+      "runId": "instagram-search-2026-09-02-long-calibration",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DZaQ-mAhIlB/",
+        "postId": "DZaQ-mAhIlB",
+        "author": "the.anndra.edit",
+        "sourceLabel": "BTS musical reliant percussion jouée, contexte culturel et construction progressive d’une scène",
+        "capturedAt": "2026-09-02T11:29:36+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 113000, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["beatmaking-process", "vinyl-and-instruments", "live-music-energy", "releases-artist-collabs"],
+        "hook": "Le son brut d’une percussion apparaît avant la scène finalisée et donne immédiatement envie de voir ce qu’il va construire.",
+        "mechanic": "Le BTS relie un geste musical réel, l’ajout visible de couches sonores et visuelles, puis leur incarnation dans une performance achevée.",
+        "visualCue": "Les mains sur l’instrument, les pistes qui s’empilent et les éléments de décor qui apparaissent matérialisent chaque étape de création.",
+        "reasonToStop": "Le public reste pour entendre comment le motif initial évolue et découvrir la scène complète qu’il déclenche.",
+        "whyRelevant": "Lofi peut montrer ensemble musicien, production et animation, tout en créditant précisément l’instrument, son contexte et chaque collaborateur humain.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Du premier coup au toit illuminé",
+        "cast": { "character": "lofi-boy", "companion": "dog" },
+        "concept": "Un artiste percussionniste invité enregistre un motif issu de sa propre pratique ; le beat et une scène de toit avec Boy se construisent sous ses yeux jusqu’à la performance finale.",
+        "openingText": "Tout le décor part de ces trois frappes.",
+        "sequence": [
+          "Gros plan sur l’enregistrement réel du motif ; le nom exact de l’instrument, son contexte et le crédit de l’artiste apparaissent à l’écran.",
+          "Basse, claviers et textures s’ajoutent pendant que l’équipe d’animation dessine les lumières du toit au rythme des frappes.",
+          "La scène originale finalisée montre Boy interprétant le motif sur le toit, le chien à ses côtés, puis affiche les crédits complets."
+        ],
+        "caption": "Un geste réel, plusieurs métiers, une ville qui s’allume.",
+        "audioDirection": "Utiliser la prise réellement jouée par l’artiste et une composition originale écrite, interprétée, enregistrée et mixée par des humains, avec tous les droits documentés.",
+        "productionGuardrails": [
+          "Production 100 % humaine : direction artistique, performance, composition, enregistrement, dessin, animation, montage et mix réalisés par les collaborateurs crédités.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Construire la proposition avec l’accord de l’artiste, nommer correctement l’instrument et son contexte, éviter tout raccourci culturel et ne reprendre ni le montage ni la scène de la source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "social-battery-one-last-scroll",
+      "runId": "instagram-search-2026-09-02-long-calibration",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DceYgjnMtTN/",
+        "postId": "DceYgjnMtTN",
+        "author": "_yes_but",
+        "sourceLabel": "Illustration reconnaissable opposant envie de dormir, téléphone encore actif et besoin de solitude",
+        "capturedAt": "2026-09-02T11:29:36+02:00",
+        "publishedAt": null,
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 45500, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["introversion-social-battery", "sleep-insomnia-bedtime", "lofi-daily-life"],
+        "hook": "Le contraste entre une posture prête à dormir et la lumière persistante du téléphone déclenche une reconnaissance immédiate.",
+        "mechanic": "Une observation intime très courte oppose l’intention annoncée au petit comportement réel, sans moraliser ni chercher une résolution spectaculaire.",
+        "visualCue": "Dans une chambre sombre, l’écran est la seule lumière encore active et concentre toute la contradiction du personnage.",
+        "reasonToStop": "Le spectateur se reconnaît dans cette minute privée où le besoin de calme cohabite avec l’envie de prolonger encore un peu la soirée.",
+        "whyRelevant": "Girl peut incarner ce sas après une journée sociale dense, avec humour doux et sans diagnostic, culpabilisation ou promesse sur le sommeil.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "La batterie sociale est vide, pas le pouce",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Une illustration verticale en trois bandes montre Girl enfin seule, puis attirée par un dernier écran, avant de choisir un calme imparfait avec le chat.",
+        "openingText": "Enfin seule. Enfin au lit. Et pourtant…",
+        "sequence": [
+          "Girl pose le téléphone face cachée et s’enfonce dans l’oreiller pendant que le chat se roule au pied du lit.",
+          "Une notification rallume la pièce ; Girl entrouvre un œil et son pouce revient vers l’écran sans enthousiasme.",
+          "Elle place le téléphone sur la commode, garde une petite veilleuse et le chat vient se coucher près d’elle, sans victoire forcée ni leçon."
+        ],
+        "caption": "Quand la batterie sociale est vide mais que le pouce affiche encore 12 %.",
+        "audioDirection": "L’image doit fonctionner seule ; pour une version animée, utiliser uniquement un room tone capté et une courte musique originale produite par des humains.",
+        "productionGuardrails": [
+          "Production 100 % humaine : écriture, mise en page, dessin, éventuelle animation, bruitages, montage et musique réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Créer une composition et un texte entièrement originaux, sans poser de diagnostic ni promettre l’endormissement, et ne pas transformer l’usage du téléphone en faute morale."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "three-two-one-song-duel",
+      "runId": "instagram-search-2026-09-02-long-calibration",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/Db_LQ9tJKEw/",
+        "postId": "Db_LQ9tJKEw",
+        "author": "playlistdechanael",
+        "sourceLabel": "Reel musical nostalgique organisant un duel 3-2-1 entre deux chansons",
+        "capturedAt": "2026-09-02T11:29:36+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": { "likes": 12300, "views": null, "comments": null, "shares": null, "saves": null, "precision": "platform-rounded" }
+      },
+      "analysis": {
+        "themeIds": ["nostalgia-time-capsule", "polls-and-choices", "vinyl-and-instruments"],
+        "hook": "Un compte à rebours très court transforme l’écoute de deux chansons familières en décision immédiate.",
+        "mechanic": "Les deux extraits reçoivent le même temps d’écoute, le 3-2-1 crée une tension ludique, puis le public doit choisir sans longue explication.",
+        "visualCue": "Deux identités musicales et visuelles clairement séparées convergent vers un seul chiffre final et rendent le duel lisible en une seconde.",
+        "reasonToStop": "Le compte à rebours engage le spectateur avant qu’il puisse repousser son choix et l’invite à comparer son propre souvenir des deux titres.",
+        "whyRelevant": "Deux époques du catalogue Lofi peuvent ouvrir une conversation nostalgique réelle, à condition d’utiliser des masters autorisés et de publier le résultat du vote.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "3, 2, 1 : quelle époque reste ?",
+        "cast": { "character": "both", "companion": "cat-and-dog" },
+        "concept": "Girl lance un titre d’archive et Boy un titre récent du catalogue ; un duel équitable mène à un choix A ou B dont le résultat sera réellement montré.",
+        "openingText": "Deux époques du catalogue. À 1, tu n’en gardes qu’une.",
+        "sequence": [
+          "Split-screen : Girl pose le disque A et Boy lance le titre B, avec titres, crédits et années de sortie vérifiés à l’écran.",
+          "Le compte 3-2-1 alterne des extraits de durée égale, au niveau sonore harmonisé, pendant que le chat et le chien réagissent chacun dans leur pièce.",
+          "À 1, les deux pièces se rejoignent et un vote A ou B apparaît ; la date de publication du résultat est annoncée."
+        ],
+        "caption": "A ou B ? On compte les votes et on publie le résultat au prochain duel.",
+        "audioDirection": "Employer uniquement deux masters du catalogue dont les droits de synchronisation et d’exploitation sont confirmés, avec extraits équitables préparés et mixés par un humain.",
+        "productionGuardrails": [
+          "Production 100 % humaine : sélection éditoriale, illustration, animation, montage, étalonnage et mix réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Vérifier crédits, années et droits des deux titres, éviter tout mashup non autorisé, respecter une comparaison équitable et ne copier ni le montage ni les habillages de la source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "feline-pencil-documentary-reveal",
+      "runId": "instagram-search-2026-09-02-user-seeds",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/reel/DZFYc_Yzxx7/",
+        "postId": "DZFYc_Yzxx7",
+        "author": "felis_creations",
+        "sourceLabel": "Faux documentaire animalier joué très sérieusement avant une rupture absurde",
+        "capturedAt": "2026-09-02T11:29:36+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 277600,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": ["animal-companions", "visual-formats-lab"],
+        "hook": "Le ton de faux documentaire promet une explication sérieuse, puis le dernier temps détruit cette attente par une absurdité nette.",
+        "mechanic": "Installation crédible, montée méthodique et rupture finale très courte : le contraste de registre porte toute la blague.",
+        "visualCue": "Le cadrage et les textes sobres imitent un contenu explicatif avant qu’un comportement animal invalide la démonstration.",
+        "reasonToStop": "On attend la conclusion logique de la mini-enquête, et la rupture récompense précisément cette attente.",
+        "whyRelevant": "Le chat peut détourner une routine canonique avec un gag visuel original, sans reprendre les plans ni le scénario de la source.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Le mystère des crayons disparus",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Un faux documentaire très sérieux enquête sur les crayons qui disparaissent du bureau de Girl, jusqu’à révéler que le chat les range en petite barrière autour de son coussin.",
+        "openingText": "Chaque nuit, un crayon disparaît.",
+        "sequence": [
+          "Girl aligne les crayons restants et annote un plan du bureau comme une enquêtrice.",
+          "Une voix off humaine suit des traces de pattes et expose une hypothèse de plus en plus précise.",
+          "Le cadre s’élargit : le chat dort derrière une minuscule barrière de crayons, parfaitement satisfait."
+        ],
+        "caption": "L’enquête était solide. Le mobile : une meilleure sieste.",
+        "audioDirection": "Voix off enregistrée par une personne, bruitages de bureau captés par l’équipe et musique originale au ton documentaire.",
+        "productionGuardrails": [
+          "Production 100 % humaine : concept, scénario, illustration, animation, voix, bruitages, musique et montage réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Reprendre uniquement la mécanique sérieuse-vers-absurde ; créer une enquête, des plans et une chute entièrement originaux."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "one-card-method-curiosity",
+      "runId": "instagram-search-2026-09-02-user-seeds",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/reel/Da59xDsSqw4/",
+        "postId": "Da59xDsSqw4",
+        "author": "bryanjohnson_",
+        "sourceLabel": "Reel très court amorcé par « new method », avec contexte observable limité",
+        "capturedAt": "2026-09-02T11:29:36+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 67900,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": ["lofi-daily-life", "visual-formats-lab"],
+        "hook": "Les deux mots « new method » ouvrent une lacune d’information immédiate, sans avoir besoin d’une longue introduction.",
+        "mechanic": "Une promesse très courte retient le résultat quelques secondes, puis doit déboucher sur un geste unique et compréhensible.",
+        "visualCue": "La caption est le seul signal précisément attribuable ; le contenu visuel détaillé du reel reste trop limité pour être décrit sans extrapolation.",
+        "reasonToStop": "Le spectateur veut simplement savoir ce qui est nouveau et si la révélation tient dans un geste concret.",
+        "whyRelevant": "Lofi peut tester ce degré de curiosité sur une micro-routine honnête, à condition de la présenter comme une expérience et non comme une méthode universelle.",
+        "confidence": "watch"
+      },
+      "adaptation": {
+        "title": "La méthode d’une seule carte",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Girl remplace momentanément sa longue liste par une seule carte portant la prochaine action concrète ; le format observe ce test personnel sans promettre de résultat.",
+        "openingText": "Nouvelle méthode : une carte, pas une liste.",
+        "sequence": [
+          "Girl retourne sa longue liste et pose une carte vierge devant elle.",
+          "Elle y écrit une seule action, puis commence uniquement cette action pendant que le chat reste près du cahier.",
+          "Une première ligne terminée, le chat pousse une nouvelle carte dans le cadre et la boucle recommence."
+        ],
+        "caption": "Test du jour, pas formule magique : juste la prochaine carte.",
+        "audioDirection": "Sons de papier et de stylo enregistrés humainement, avec une courte boucle originale du catalogue si le montage a besoin de rythme.",
+        "productionGuardrails": [
+          "Production 100 % humaine : idée, écriture, dessin, animation, captation sonore, musique et montage réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Ne pas inventer le contenu non observé de la source ni revendiquer une efficacité générale, médicale ou scolaire."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "proud-of-your-first-line",
+      "runId": "instagram-search-2026-09-02-user-seeds",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DQ4vP_lDDpO/",
+        "postId": "DQ4vP_lDDpO",
+        "author": "alvathehotdog",
+        "sourceLabel": "Illustration de mascotte qui adresse directement une réassurance légère",
+        "capturedAt": "2026-09-02T11:29:36+02:00",
+        "publishedAt": null,
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 490400,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": ["emotional-storytelling", "animal-companions"],
+        "hook": "Le message « I’m proud of you » s’adresse directement au regardeur et offre une réassurance complète en une image.",
+        "mechanic": "Une mascotte familière porte une phrase très simple ; l’écart entre sa légèreté et la sincérité du message facilite le partage.",
+        "visualCue": "Le personnage central et le texte court se lisent comme une petite carte que l’on peut envoyer à quelqu’un.",
+        "reasonToStop": "La formulation bienveillante demande très peu d’effort et donne immédiatement le sentiment d’être personnellement concerné.",
+        "whyRelevant": "Le chat peut transmettre un encouragement discret lié à une petite avancée réelle de Girl, sans culpabilisation ni promesse de bien-être.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Le petit mot sous la patte",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Après une session modeste, le chat révèle une carte manuscrite sous sa patte ; le message célèbre le fait d’avoir commencé plutôt qu’une performance.",
+        "openingText": "Au cas où personne ne te l’a dit aujourd’hui :",
+        "sequence": [
+          "Girl ferme son cahier après avoir écrit une seule ligne et laisse retomber ses épaules.",
+          "Le chat pousse doucement une petite carte manuscrite vers elle : « Fier de toi d’avoir commencé. »",
+          "Girl place la carte près de la lampe et gratte le chat derrière l’oreille avant la coupe."
+        ],
+        "caption": "Pour les petites avancées aussi.",
+        "audioDirection": "Quelques sons de papier et un motif musical original très léger, composé et interprété par des humains ; aucune voix n’est nécessaire.",
+        "productionGuardrails": [
+          "Production 100 % humaine : message, calligraphie, illustration, animation, bruitages, musique et montage réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Écrire un message propre à Lofi et éviter toute promesse thérapeutique, injonction ou copie de la mascotte source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "next-pause-community-choice",
+      "runId": "instagram-search-2026-09-02-user-seeds",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DP2cQvAj6vn/",
+        "postId": "DP2cQvAj6vn",
+        "author": "okdstudio",
+        "sourceLabel": "Carousel de typologies conclu par une invitation à choisir en commentaire",
+        "capturedAt": "2026-09-02T11:29:36+02:00",
+        "publishedAt": null,
+        "format": "carousel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 58300,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": ["polls-and-choices", "lofi-daily-life"],
+        "hook": "La typologie promet au lecteur de se reconnaître rapidement dans une option visuelle.",
+        "mechanic": "Plusieurs choix autonomes conduisent à une question finale très facile à commenter, sans nécessiter une réponse longue.",
+        "visualCue": "Des variantes nettement séparées et identifiées par une lettre permettent de comparer avant même de lire la caption.",
+        "reasonToStop": "Le regard cherche son option, puis vérifie les autres pour confirmer ou nuancer son choix.",
+        "whyRelevant": "Le format peut transformer un vote en vraie décision éditoriale, par exemple choisir la prochaine micro-boucle produite par l’équipe.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Choisis la prochaine pause",
+        "cast": { "character": "both", "companion": "cat-and-dog" },
+        "concept": "Un carousel présente quatre pauses originales de Girl, Boy, du chat et du chien ; l’option la plus commentée devient réellement la prochaine micro-animation.",
+        "openingText": "La prochaine pause, laquelle ?",
+        "sequence": [
+          "La couverture réunit Girl, Boy, le chat et le chien autour de quatre cartes marquées A, B, C et D.",
+          "Les cartes montrent quatre pauses distinctes : fenêtre et thé, étirements, courte promenade et écoute d’un vinyle.",
+          "La dernière slide demande une lettre et annonce clairement que le choix gagnant sera produit."
+        ],
+        "caption": "A, B, C ou D ? Le choix gagnant devient notre prochaine micro-boucle.",
+        "audioDirection": "Carousel pensé pour fonctionner sans son ; toute déclinaison vidéo utilisera uniquement une composition originale humaine et licenciée.",
+        "productionGuardrails": [
+          "Production 100 % humaine : direction artistique, dessins, lettrage, animation éventuelle, musique et montage réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Créer des options réellement distinctes et tenir publiquement la conséquence annoncée au vote."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "cat-mood-check-grid",
+      "runId": "instagram-search-2026-09-02-user-seeds",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DPm6Ba2ku3B/",
+        "postId": "DPm6Ba2ku3B",
+        "author": "cocowyocoloring",
+        "sourceLabel": "Mood-check illustré par plusieurs citrouilles et états émotionnels",
+        "capturedAt": "2026-09-02T11:29:36+02:00",
+        "publishedAt": null,
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 26400,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": ["polls-and-choices", "emotional-storytelling"],
+        "hook": "Une grille d’états émotionnels transforme la question vague « comment ça va ? » en choix visuels immédiats.",
+        "mechanic": "Des expressions simples, numérotées et non hiérarchisées rendent la réponse légère tout en autorisant plusieurs nuances.",
+        "visualCue": "La répétition d’une même forme avec de petites variations d’expression permet de balayer toute la grille en une seconde.",
+        "reasonToStop": "Le public compare les options jusqu’à trouver celle qui ressemble le mieux à son énergie du moment.",
+        "whyRelevant": "Le chat peut porter un check-in non médicalisé, chaleureux et très simple à commenter, sans copier les citrouilles ni leurs poses.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Quel chat aujourd’hui ?",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Une illustration originale montre six postures ordinaires du chat autour du bureau de Girl, chacune associée à un niveau d’énergie descriptif et jamais à un diagnostic.",
+        "openingText": "Aujourd’hui, ton énergie ressemble à quel chat ?",
+        "sequence": [
+          "Six vignettes numérotées montrent le chat roulé en boule, curieux, concentré, joueur, en pause ou déjà endormi.",
+          "Girl apparaît discrètement dans chaque vignette avec une activité cohérente, sans classer un état comme meilleur qu’un autre.",
+          "Le bas de l’image invite à répondre par un numéro et rappelle que toutes les options sont valables."
+        ],
+        "caption": "Ici, toutes les réponses sont valables. Moi : 4.",
+        "audioDirection": "L’image fonctionne seule ; une version animée peut utiliser des ronrons captés avec soin et une boucle originale composée par un humain.",
+        "productionGuardrails": [
+          "Production 100 % humaine : croquis, expressions, illustration, animation éventuelle, captation sonore, musique et montage réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Ne reprendre ni les citrouilles ni leur grille ; éviter les diagnostics, la hiérarchie émotionnelle et toute mise en scène stressante pour un animal."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "dog-assistant-punchline",
+      "runId": "instagram-search-2026-09-02-user-seeds",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/reel/DPo-6-pDKLP/",
+        "postId": "DPo-6-pDKLP",
+        "author": "mrs.miuki",
+        "sourceLabel": "Punchline relationnelle animale « We married now »",
+        "capturedAt": "2026-09-02T11:29:36+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 322200,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": ["animal-companions", "emotional-storytelling"],
+        "hook": "Une interaction animale minuscule est immédiatement requalifiée par une punchline relationnelle disproportionnée.",
+        "mechanic": "Le reel montre d’abord un geste banal, puis une phrase très courte invente un nouveau statut comique pour le duo.",
+        "visualCue": "La proximité entre l’humain et l’animal suffit à préparer la chute, sans explication ni décor complexe.",
+        "reasonToStop": "Le spectateur attend la manière dont la caption va interpréter le rapprochement observé.",
+        "whyRelevant": "Le chien de Boy peut devenir son « collègue » par un geste de studio tendre et lisible, sans fausse voix ni comportement forcé.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "On travaille ensemble maintenant",
+        "cast": { "character": "lofi-boy", "companion": "dog" },
+        "concept": "Boy prête une fois un coussin au chien près du bureau ; le chien installe aussitôt son jouet à côté du contrôleur, et le dernier carton le nomme assistant producteur.",
+        "openingText": "Je lui ai prêté mon coussin une fois.",
+        "sequence": [
+          "Boy pose un coussin libre près de son bureau pendant que le chien observe.",
+          "Le chien s’y installe puis dépose calmement son jouet à côté du contrôleur musical.",
+          "Coupe sur deux petits chevalets : « Boy » et « Assistant producteur » ; le chien garde sa pose naturelle."
+        ],
+        "caption": "Le contrat a été signé avec une patte.",
+        "audioDirection": "Sons de studio captés par l’équipe, clic de validation joué à la main et courte chute musicale originale composée par un humain.",
+        "productionGuardrails": [
+          "Production 100 % humaine : scénario, storyboard, animation, jeu, bruitages, musique et montage réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Ne jamais forcer, stresser ou faire parler l’animal ; créer une punchline et une mise en scène distinctes de la source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "cozy-desk-scanner",
+      "runId": "instagram-search-2026-09-02-user-seeds",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/reel/DPg1rABjG5v/",
+        "postId": "DPg1rABjG5v",
+        "author": "pembethepinkcat",
+        "sourceLabel": "Reel de scanner qui transforme un contrôle technique en verdict « 100 % adorable »",
+        "capturedAt": "2026-09-02T11:29:36+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 15500,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": ["animal-companions", "visual-formats-lab"],
+        "hook": "L’interface de scanner fait attendre un résultat objectif, puis livre un verdict affectif et volontairement excessif.",
+        "mechanic": "Une animation d’analyse familière crée une courte tension ; le résultat final remplace la mesure attendue par une blague.",
+        "visualCue": "La ligne de scan, les jauges et le pourcentage donnent une apparence technique immédiatement reconnaissable.",
+        "reasonToStop": "Le spectateur veut voir la valeur finale et comprendre ce que la machine prétend mesurer.",
+        "whyRelevant": "Une interface originale peut scanner le bureau canonique puis laisser le chat faire basculer le résultat vers le cozy.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Scan du bureau : résultat inattendu",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Une interface dessinée spécialement pour Lofi analyse la lampe, le cahier et la tasse ; quand le chat entre dans le cadre, toutes les jauges se réinitialisent sur « niveau de cozy : maximum ».",
+        "openingText": "Analyse du poste de travail…",
+        "sequence": [
+          "Une ligne de scan parcourt le bureau de Girl et coche lampe, cahier et tasse avec des valeurs neutres.",
+          "Le chat s’assoit devant le cahier ; l’interface hésite, clignote puis relance toutes les mesures.",
+          "Le résultat remplit l’écran : « NIVEAU DE COZY : MAXIMUM », pendant que le chat ferme les yeux."
+        ],
+        "caption": "Diagnostic très scientifique.",
+        "audioDirection": "Bips fabriqués par un sound designer humain, sons de bureau enregistrés et beat original court du catalogue.",
+        "productionGuardrails": [
+          "Production 100 % humaine : design d’interface, illustration, animation, sound design, musique et montage réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Dessiner une interface, des jauges, des sons et un verdict propres à Lofi sans copier le scanner de la source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "subtle-spooky-room-reveal",
+      "runId": "instagram-search-2026-09-02-user-seeds",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DP3xc1DkTlW/",
+        "postId": "DP3xc1DkTlW",
+        "author": "goldenbenjamin",
+        "sourceLabel": "Carousel saisonnier construit autour d’un reveal et de la question « was this too spooky »",
+        "capturedAt": "2026-09-02T11:29:36+02:00",
+        "publishedAt": null,
+        "format": "carousel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 62500,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": ["easter-eggs-and-alternate-rooms", "visual-formats-lab"],
+        "hook": "La question « trop spooky ? » promet une transformation saisonnière et invite à juger son intensité.",
+        "mechanic": "Le carousel ajoute ou révèle progressivement des détails, puis le dernier plan donne envie de revenir vérifier ce qui avait été caché.",
+        "visualCue": "Le contraste avant/après et quelques indices saisonniers suffisent à préparer le reveal sans le montrer dès la couverture.",
+        "reasonToStop": "On fait défiler pour mesurer jusqu’où la scène va basculer et pour repérer les détails ajoutés.",
+        "whyRelevant": "La chambre de Girl peut accueillir un Halloween doux fondé sur trois changements canoniques, sans reprendre les personnages ou la composition source.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "La chambre était presque normale",
+        "cast": { "character": "lofi-girl", "companion": "cat" },
+        "concept": "Un carousel fait évoluer la chambre canonique vers une version Halloween légère ; trois indices faits main annoncent le reveal nocturne et restent à retrouver au second passage.",
+        "openingText": "Tu vois déjà les trois changements ?",
+        "sequence": [
+          "La première slide montre la chambre au crépuscule, presque normale, avec trois détails saisonniers très discrets.",
+          "Les slides suivantes rapprochent une guirlande de papier, une ombre de lampe et le chat qui suit quelque chose hors cadre.",
+          "La dernière slide révèle la pièce de nuit et demande : « Trop spooky ou juste cozy ? »"
+        ],
+        "caption": "Tu avais repéré les trois changements avant la dernière slide ?",
+        "audioDirection": "Carousel silencieux par défaut ; une version reel utiliserait des froissements, petits carillons et musique originale enregistrés par des humains.",
+        "productionGuardrails": [
+          "Production 100 % humaine : décors, accessoires, illustration, animation éventuelle, bruitages, musique et montage réalisés par l’équipe.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Créer des indices et un reveal saisonnier originaux, sans recopier les assets, poses ni enchaînements du carousel source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "hidden-cat-dog-search-game",
+      "runId": "instagram-search-2026-09-02-user-seeds",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/reel/DOdG60ZEmJE/",
+        "postId": "DOdG60ZEmJE",
+        "author": "raccoon_uuu",
+        "sourceLabel": "Jeu visuel demandant de retrouver deux ratons dissimulés parmi des myrtilles",
+        "capturedAt": "2026-09-02T11:29:36+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 62000,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": ["easter-eggs-and-alternate-rooms", "animal-companions", "visual-formats-lab"],
+        "hook": "La consigne de retrouver exactement deux animaux transforme instantanément une image dense en jeu.",
+        "mechanic": "La répétition des formes camoufle les silhouettes, un temps d’observation laisse chercher, puis un reveal confirme la réponse.",
+        "visualCue": "Les couleurs et volumes proches entre les ratons et les myrtilles créent le camouflage sans explication supplémentaire.",
+        "reasonToStop": "Le spectateur reste jusqu’à avoir localisé les deux cibles ou jusqu’à la solution.",
+        "whyRelevant": "Le chat et le chien peuvent devenir deux easter eggs canoniques dans un décor cozy original, avec une forte rejouabilité.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Où sont le chat et le chien ?",
+        "cast": { "character": "both", "companion": "cat-and-dog" },
+        "concept": "Girl et Boy rangent une réserve remplie de coussins et de plaids aux formes répétées ; le chat et le chien y sont chacun cachés par un détail canonique visible.",
+        "openingText": "Retrouve le chat et le chien avant le reveal.",
+        "sequence": [
+          "Plan large fixe : Girl et Boy au milieu de piles de coussins et de plaids, avec les deux compagnons déjà cachés.",
+          "Le cadre tient quelques secondes tandis que deux petites animations secondaires détournent volontairement le regard.",
+          "Deux contours dessinés révèlent les compagnons, puis disparaissent pour rendre la recherche rejouable en boucle."
+        ],
+        "caption": "Tu les as trouvés dans quel ordre : chat ou chien ?",
+        "audioDirection": "Petit compte rythmique joué à la main, froissements de tissu captés et ponctuation musicale originale au reveal.",
+        "productionGuardrails": [
+          "Production 100 % humaine : composition du décor, dessin, animation, bruitages, musique et montage réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Créer un camouflage, un décor et une solution propres à Lofi ; ne reprendre ni les ratons, ni les myrtilles, ni leur arrangement."
         ]
       },
       "editorialStatus": "new"

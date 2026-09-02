@@ -246,7 +246,7 @@
       "group": "lifestyle",
       "specialty": "Démarrage, bugs, brouillon et blocage créatif",
       "description": "Situations où le progrès naît d’un essai imparfait plutôt que d’un hack magique.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["Une erreur ou page blanche matérialise le blocage", "La résolution reste plausible et limitée"],
       "adaptationAngles": ["Le chat cause puis résout accidentellement un bug", "Une mauvaise prise débloque le morceau de Boy"],
       "rejectIf": ["Glorifie le surtravail ou promet une productivité instantanée"]
@@ -257,7 +257,7 @@
       "group": "lifestyle",
       "specialty": "Livres, annotations et écriture personnelle",
       "description": "Rituels de lecture et d’écriture centrés sur le temps lent, les pages et la réflexion intime.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["Un geste de page ou d’écriture porte le hook", "Le texte reste original et respectueux de la vie privée"],
       "adaptationAngles": ["Le chat suit le marque-page de Girl", "Boy transforme une phrase en motif musical"],
       "rejectIf": ["Reproduit un long extrait protégé ou dévoile un journal réel"]
@@ -290,7 +290,7 @@
       "group": "music",
       "specialty": "Construction de beat, sampling autorisé et couches sonores",
       "description": "Démonstrations où chaque couche est entendue et reliée à un geste humain identifiable.",
-      "observedInSnapshot": false,
+      "observedInSnapshot": true,
       "discoverySignals": ["Les étapes du beat sont distinctes", "La source et les droits de chaque son sont clairs"],
       "adaptationAngles": ["Beat créé avec les sons de la chambre de Girl", "Pas du chien enregistrés humainement comme percussion"],
       "rejectIf": ["Le sample est non autorisé ou le processus simulé"]

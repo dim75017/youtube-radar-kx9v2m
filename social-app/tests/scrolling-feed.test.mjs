@@ -58,13 +58,27 @@ const expectedSources = new Map([
   ["DMXCcQqtLdr", { author: "shreesvlog_", likes: 45_300 }],
   ["DbVZ1qxJprE", { author: "110vestruck", likes: 112_000 }],
   ["DVBaDwIk1qP", { author: "tingzhang4281", likes: 609_000 }],
+  ["CaV4urErTkb", { author: "cats_of_instagram", likes: 2_300_000 }],
+  ["CvnoXhAv3Ka", { author: "cats_of_instagram", likes: 492_000 }],
+  ["DZaQ-mAhIlB", { author: "the.anndra.edit", likes: 113_000 }],
+  ["DceYgjnMtTN", { author: "_yes_but", likes: 45_500 }],
+  ["Db_LQ9tJKEw", { author: "playlistdechanael", likes: 12_300 }],
+  ["DZFYc_Yzxx7", { author: "felis_creations", likes: 277_600 }],
+  ["Da59xDsSqw4", { author: "bryanjohnson_", likes: 67_900 }],
+  ["DQ4vP_lDDpO", { author: "alvathehotdog", likes: 490_400 }],
+  ["DP2cQvAj6vn", { author: "okdstudio", likes: 58_300 }],
+  ["DPm6Ba2ku3B", { author: "cocowyocoloring", likes: 26_400 }],
+  ["DPo-6-pDKLP", { author: "mrs.miuki", likes: 322_200 }],
+  ["DPg1rABjG5v", { author: "pembethepinkcat", likes: 15_500 }],
+  ["DP3xc1DkTlW", { author: "goldenbenjamin", likes: 62_500 }],
+  ["DOdG60ZEmJE", { author: "raccoon_uuu", likes: 62_000 }],
 ]);
 
 test("the connected Instagram snapshot preserves the historical and new-account runs", () => {
   assert.match(feed.capturedAt, /^2026-09-02/u);
   assert.equal(feed.minimumLikes, SCROLLING_MINIMUM_LIKES);
-  assert.equal(feed.runs.length, 7);
-  assert.equal(feed.items.length, 38);
+  assert.equal(feed.runs.length, 10);
+  assert.equal(feed.items.length, 52);
 
   const initialRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26");
   const extendedRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26-extended");
@@ -77,6 +91,13 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   const postCalibrationHomeRun = feed.runs.find(
     (run) => run.id === "instagram-home-2026-09-02-post-calibration",
   );
+  const longCalibrationRun = feed.runs.find(
+    (run) => run.id === "instagram-search-2026-09-02-long-calibration",
+  );
+  const userSeedRun = feed.runs.find((run) => run.id === "instagram-search-2026-09-02-user-seeds");
+  const afterLongCalibrationHomeRun = feed.runs.find(
+    (run) => run.id === "instagram-home-2026-09-02-after-long-calibration",
+  );
   assert.ok(initialRun);
   assert.ok(extendedRun);
   assert.ok(eveningRun);
@@ -84,6 +105,9 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   assert.ok(calibrationRun);
   assert.ok(manualCalibrationRun);
   assert.ok(postCalibrationHomeRun);
+  assert.ok(longCalibrationRun);
+  assert.ok(userSeedRun);
+  assert.ok(afterLongCalibrationHomeRun);
   assert.equal(initialRun.platform, "instagram");
   assert.equal(initialRun.surface, "home");
   assert.equal(initialRun.browserContext, SCROLLING_BROWSER_CONTEXT);
@@ -134,7 +158,32 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   assert.equal(feed.items.filter((item) => item.runId === postCalibrationHomeRun.id).length, 0);
   assert.ok(Date.parse(manualCalibrationRun.capturedAt) > Date.parse(calibrationRun.capturedAt));
   assert.equal(manualCalibrationRun.capturedAt, postCalibrationHomeRun.capturedAt);
-  assert.equal(feed.capturedAt, postCalibrationHomeRun.capturedAt);
+  assert.equal(longCalibrationRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(longCalibrationRun.surface, "search");
+  assert.equal(longCalibrationRun.seenCount, 51);
+  assert.equal(longCalibrationRun.qualifyingCount, 9);
+  assert.equal(longCalibrationRun.sponsoredCount, 0);
+  assert.equal(feed.items.filter((item) => item.runId === longCalibrationRun.id).length, 5);
+  assert.ok(longCalibrationRun.themeIds.includes("reading-and-journaling"));
+  assert.ok(longCalibrationRun.themeIds.includes("work-coding-creative-block"));
+  assert.ok(longCalibrationRun.themeIds.includes("beatmaking-process"));
+  assert.equal(userSeedRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(userSeedRun.surface, "search");
+  assert.equal(userSeedRun.seenCount, 10);
+  assert.equal(userSeedRun.qualifyingCount, 10);
+  assert.equal(userSeedRun.sponsoredCount, 0);
+  assert.equal(feed.items.filter((item) => item.runId === userSeedRun.id).length, 9);
+  assert.ok(userSeedRun.themeIds.includes("easter-eggs-and-alternate-rooms"));
+  assert.equal(afterLongCalibrationHomeRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(afterLongCalibrationHomeRun.surface, "home");
+  assert.equal(afterLongCalibrationHomeRun.seenCount, 31);
+  assert.equal(afterLongCalibrationHomeRun.qualifyingCount, 0);
+  assert.equal(afterLongCalibrationHomeRun.sponsoredCount, 0);
+  assert.equal(feed.items.filter((item) => item.runId === afterLongCalibrationHomeRun.id).length, 0);
+  assert.ok(Date.parse(longCalibrationRun.capturedAt) > Date.parse(postCalibrationHomeRun.capturedAt));
+  assert.equal(longCalibrationRun.capturedAt, userSeedRun.capturedAt);
+  assert.equal(longCalibrationRun.capturedAt, afterLongCalibrationHomeRun.capturedAt);
+  assert.equal(feed.capturedAt, afterLongCalibrationHomeRun.capturedAt);
 
   let likes = 0;
   for (const item of feed.items) {
@@ -158,7 +207,7 @@ test("the connected Instagram snapshot preserves the historical and new-account 
 test("the exploration taxonomy is broad and distinguishes observed lenses from future probes", () => {
   assert.equal(themes.explorationLenses.length, 30);
   assert.deepEqual(themes.explorationLenses, feed.explorationLenses);
-  assert.equal(feed.explorationLenses.filter((lens) => lens.observedInSnapshot).length, 21);
+  assert.equal(feed.explorationLenses.filter((lens) => lens.observedInSnapshot).length, 24);
   assert.equal(
     feed.explorationLenses.find((lens) => lens.id === "animal-companions")?.observedInSnapshot,
     true,
@@ -168,6 +217,9 @@ test("the exploration taxonomy is broad and distinguishes observed lenses from f
     "easter-eggs-and-alternate-rooms",
     "cozy-games-rpg-worlds",
     "introversion-social-battery",
+    "work-coding-creative-block",
+    "reading-and-journaling",
+    "beatmaking-process",
   ]) {
     assert.equal(
       feed.explorationLenses.find((lens) => lens.id === newlyObserved)?.observedInSnapshot,
