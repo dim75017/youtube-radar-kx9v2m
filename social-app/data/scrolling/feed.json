@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "capturedAt": "2026-09-03T19:40:47+02:00",
+  "capturedAt": "2026-09-03T21:28:03+02:00",
   "minimumLikes": 10000,
-  "methodology": "Les trois lectures historiques du 26/08 sur @lofi.radar sont conservées. Le 01/09, le nouveau compte @lofiradar2026 a d’abord observé 48 publications Home puis 14 publications ciblées. Le 02/09 à 09:46, une première calibration manuelle a utilisé huit signaux Not interested sur du football manifeste. L’immersion manuelle détaillée cumule huit blocs séparés et muets, soit 1 h 59 min 36 s et 408 observations : 270 ciblées et 138 Home. Sur ces 138 Home revus éditorialement, 19 sont classés pertinents, 119 hors niche, huit sport, deux portent un label IA, aucun n’est Sponsorisé et 65 proviennent de nsmqghana. Un gros scroll Home distinct de neuf minutes ajoute 152 publications uniques : aucune mention Sponsorisé, 14 cartes sport, au moins cinq labels IA explicites et 18 cartes nsmqghana. Un classement textuel conservateur a présélectionné 64 cartes adjacentes, dont 43 au seuil ; trois mécaniques d’auteurs distincts sont détaillées après revue. Les dix seeds exactes fournies par Dim ont été inspectées ; neuf non-IA sont retenues. Le passage de 17:15 a vérifié sept seeds Pubs playlists, deux adjacents sous le seuil et cinq nouvelles sources organiques qualifiées. Le contrôle de 21:15 a revu les sept seeds et trois adjacents du même artiste ; les trois adjacents dépassent le seuil, mais une seule mécanique est détaillée après déduplication par auteur. Le 03/09, un passage isolé et muet de 11 min 49 s ajoute 49 observations ciblées sur huit familles, les sept seeds Pubs playlists et 38 publications Home uniques. Le Home contient 12 contenus immédiatement adjacents, 26 hors niche, six sport, deux labels IA, aucune mention Sponsorisé et quatre cartes nsmqghana ; trois sources récentes au-dessus de 10 000 likes sont détaillées. Un passage immédiat supplémentaire ajoute 50 consultations ciblées et 18 Home : 14 compteurs ciblés atteignent le seuil, trois posts historiques portent #ad et aucune impression Home n’affiche Sponsorisé. Deux mécaniques sont détaillées après déduplication éditoriale. Le radar contient ainsi 71 cartes éditoriales. Aucun like, follow, enregistrement, commentaire, message, partage ou publication n’a été effectué pendant ces passages ; aucun nouveau Not interested n’a été envoyé. Chaque source reste séparée de son adaptation : ces observations isolées ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire, ni une recalibration durable de l’algorithme.",
+  "methodology": "Les trois lectures historiques du 26/08 sur @lofi.radar sont conservées. Le 01/09, le nouveau compte @lofiradar2026 a d’abord observé 48 publications Home puis 14 publications ciblées. Le 02/09 à 09:46, une première calibration manuelle a utilisé huit signaux Not interested sur du football manifeste. L’immersion manuelle détaillée cumule huit blocs séparés et muets, soit 1 h 59 min 36 s et 408 observations : 270 ciblées et 138 Home. Sur ces 138 Home revus éditorialement, 19 sont classés pertinents, 119 hors niche, huit sport, deux portent un label IA, aucun n’est Sponsorisé et 65 proviennent de nsmqghana. Un gros scroll Home distinct de neuf minutes ajoute 152 publications uniques : aucune mention Sponsorisé, 14 cartes sport, au moins cinq labels IA explicites et 18 cartes nsmqghana. Un classement textuel conservateur a présélectionné 64 cartes adjacentes, dont 43 au seuil ; trois mécaniques d’auteurs distincts sont détaillées après revue. Les dix seeds exactes fournies par Dim ont été inspectées ; neuf non-IA sont retenues. Le passage de 17:15 a vérifié sept seeds Pubs playlists, deux adjacents sous le seuil et cinq nouvelles sources organiques qualifiées. Le contrôle de 21:15 a revu les sept seeds et trois adjacents du même artiste ; les trois adjacents dépassent le seuil, mais une seule mécanique est détaillée après déduplication par auteur. Le 03/09, un passage isolé et muet de 11 min 49 s ajoute 49 observations ciblées sur huit familles, les sept seeds Pubs playlists et 38 publications Home uniques. Le Home contient 12 contenus immédiatement adjacents, 26 hors niche, six sport, deux labels IA, aucune mention Sponsorisé et quatre cartes nsmqghana ; trois sources récentes au-dessus de 10 000 likes sont détaillées. Un passage immédiat supplémentaire ajoute 50 consultations ciblées et 18 Home : 14 compteurs ciblés atteignent le seuil, trois posts historiques portent #ad et aucune impression Home n’affiche Sponsorisé. Deux mécaniques sont détaillées après déduplication éditoriale. Le passage de 21:15 ajoute 44 consultations ciblées et 23 Home ; une nouvelle mécanique de carnet-capsule est retenue. Le radar contient ainsi 22 runs et 72 cartes éditoriales. Aucun like, follow, enregistrement, commentaire, message, partage ou publication n’a été effectué pendant ces passages ; aucun nouveau Not interested n’a été envoyé. Chaque source reste séparée de son adaptation : ces observations isolées ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire, ni une recalibration durable de l’algorithme.",
   "limitations": [
     "Les compteurs de likes ont été relevés tels qu’affichés par Instagram et sont conservés avec une précision platform-rounded.",
     "Les vues, commentaires, partages, enregistrements et dates de publication non observés restent à null plutôt que d’être estimés.",
@@ -41,7 +41,10 @@
     "Le passage immédiat de 19:40 ajoute 50 consultations ciblées et 18 Home, toutes muettes et sans interaction sociale ; 14 compteurs ciblés et quatre compteurs Home atteignent au moins 10 000 likes.",
     "Trois posts historiques de studyquill affichent #ad, dont un au seuil ; ce signal de profil est séparé des impressions Home, où aucune mention Sponsored ou Sponsorisé n’a été observée.",
     "Le Home de 18 cartes reste peu calibré : cinq contenus sont immédiatement adjacents, treize sont hors niche, quatre proviennent de nsmqghana et trois concernent directement le football.",
-    "Deux sources ciblées nouvelles et non sponsorisées sont détaillées après déduplication : une énigme visuelle à double lecture et une routine animale fondée sur l’anticipation."
+    "Deux sources ciblées nouvelles et non sponsorisées sont détaillées après déduplication : une énigme visuelle à double lecture et une routine animale fondée sur l’anticipation.",
+    "Le passage de 21:15 ajoute 44 consultations ciblées et 23 Home, soit 65,7 % ciblé et 34,3 % Home ; toutes les vidéos sont restées muettes et aucune interaction sociale n’a été envoyée.",
+    "Le Home tombe à une seule carte adjacente sur 23, soit 4,3 %, avec huit publications nsmqghana, un label IA et aucune mention Sponsored ou Sponsorisé.",
+    "Un carnet artisanal devenu presque un objet-sculpture est retenu à 69 600 likes ; les autres résultats sont rejetés pour doublon, faible métrique, ancienneté, hors-niche ou label IA."
   ],
   "explorationLenses": [
     {
@@ -901,7 +904,7 @@
       "capturedAt": "2026-09-03T19:40:47+02:00",
       "seenCount": 50,
       "qualifyingCount": 14,
-      "sponsoredCount": 3,
+      "sponsoredCount": 0,
       "themeIds": [
         "study-exams-pomodoro",
         "reading-and-journaling",
@@ -941,6 +944,54 @@
         "Quatre cartes nsmqghana représentent 22,2 % du lot et trois publications concernent directement le football ; aucun Not interested n’a été envoyé.",
         "Quatre compteurs dépassent le seuil, mais leurs contenus restent hors radar ou explicitement liés à Meta AI ; aucune source Home n’est retenue.",
         "Aucune mention Sponsored ou Sponsorisé, aucune interaction sociale et aucun son n’ont été observés ou activés."
+      ]
+    },
+    {
+      "id": "instagram-search-2026-09-03-heartbeat-2115",
+      "platform": "instagram",
+      "surface": "search",
+      "browserContext": "agent-tab-explicitly-delegated",
+      "capturedAt": "2026-09-03T21:28:03+02:00",
+      "seenCount": 44,
+      "qualifyingCount": 8,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "reading-and-journaling",
+        "study-exams-pomodoro",
+        "nostalgia-time-capsule",
+        "animal-companions",
+        "rain-weather-seasons",
+        "releases-artist-collabs",
+        "sleep-insomnia-bedtime",
+        "visual-formats-lab",
+        "lofi-daily-life"
+      ],
+      "limitations": [
+        "Quarante-quatre publications uniques ont été consultées avec un dwell de 2 à 5 secondes : 18 découvertes par hashtags, 16 seeds Pubs playlists et les dix références fournies par Dim.",
+        "Le volume est resté à zéro sur tous les lecteurs contrôlés ; aucun like, follow, save, commentaire, message, partage, publication ou Not interested n’a été envoyé.",
+        "Huit compteurs vérifiés ou recontrôlés atteignent au moins 10 000 likes ; une seule source nouvelle est retenue après déduplication éditoriale.",
+        "Cinq publications portent un label IA explicite et sont rejetées ; aucune mention Sponsored ou Sponsorisé n’a été observée sur les contenus ciblés ou les seeds."
+      ]
+    },
+    {
+      "id": "instagram-home-2026-09-03-heartbeat-2115",
+      "platform": "instagram",
+      "surface": "home",
+      "browserContext": "agent-tab-explicitly-delegated",
+      "capturedAt": "2026-09-03T21:28:03+02:00",
+      "seenCount": 23,
+      "qualifyingCount": 0,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "rain-weather-seasons",
+        "study-exams-pomodoro",
+        "lofi-daily-life"
+      ],
+      "limitations": [
+        "Une seule publication sur 23 est immédiatement adjacente à la niche, soit 4,3 % ; les 22 autres restent hors radar.",
+        "Huit publications nsmqghana représentent 34,8 % du lot ; aucun contenu football explicite n’a été relevé dans ce bloc.",
+        "La seule carte adjacente affiche 279 likes et n’est pas retenue ; un label IA explicite est également rejeté.",
+        "Aucune mention Sponsored ou Sponsorisé, aucune interaction sociale, aucun Not interested et aucun son n’ont été observés ou activés."
       ]
     }
   ],
@@ -4545,6 +4596,66 @@
           "Production 100 % humaine : scénario, décor, animation ou captation, musique, bruitages et montage réalisés par des personnes créditées.",
           "Aucune image, vidéo, voix ou musique générée par IA.",
           "Tenir l’animal réel ou animé à distance du mécanisme, inventer la platine et la pochette visibles, et ne reprendre ni la machine, ni le cadrage, ni le timing exact, ni le son de la source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "journal-becomes-a-time-capsule-object",
+      "runId": "instagram-search-2026-09-03-heartbeat-2115",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/Db-tYInJyYk/",
+        "postId": "Db-tYInJyYk",
+        "author": "jose_naranja",
+        "sourceLabel": "Carnet artisanal devenu très épais à force d'ajouter des pages, présenté comme un objet tactile et une archive créative",
+        "capturedAt": "2026-09-03T21:28:03+02:00",
+        "publishedAt": "2026-08-13",
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 69600,
+          "views": null,
+          "comments": 623,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": [
+          "reading-and-journaling",
+          "study-exams-pomodoro",
+          "nostalgia-time-capsule",
+          "visual-formats-lab"
+        ],
+        "hook": "Un carnet ordinaire est devenu si dense qu'il ressemble désormais à une brique ou à une petite sculpture faite de souvenirs.",
+        "mechanic": "Le Reel transforme l'accumulation lente de pages, d'encarts et de matières en payoff visuel ; feuilleter l'objet révèle le temps investi sans devoir l'expliquer.",
+        "visualCue": "La reliure gonflée, les tranches irrégulières et l'ouverture parfaitement à plat rendent immédiatement perceptible le volume du travail manuel.",
+        "reasonToStop": "Le public veut comprendre comment le carnet tient encore, voir ce qu'il contient et comparer son état final à un cahier neuf.",
+        "whyRelevant": "Le carnet de Girl peut devenir une capsule temporelle physique d'un semestre entier, en valorisant le dessin, l'écriture et les traces d'usage réellement fabriquées par l'équipe.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Le carnet qui ne ferme plus",
+        "cast": {
+          "character": "lofi-girl",
+          "companion": "cat"
+        },
+        "concept": "Un carnet neuf accompagne Girl pendant tout un semestre et gagne discrètement des pages, tickets et onglets jusqu'à devenir un objet épais qu'elle doit fermer avec un ruban daté.",
+        "openingText": "Au début, c'était juste un carnet.",
+        "sequence": [
+          "Un plan bref montre le carnet neuf au premier jour du semestre, avec une seule page datée et le chat qui observe le ruban encore inutilisé.",
+          "Des ellipses entièrement dessinées à la main font apparaître notes, schémas, tickets autorisés et petites réparations tandis que la tranche s'épaissit progressivement.",
+          "À la fin, Girl pose le carnet devenu presque une brique à côté de sa version neuve, noue le ruban et inscrit les dates du semestre sur l'étiquette."
+        ],
+        "caption": "On croit remplir des pages. En réalité, on donne une forme au temps.",
+        "audioDirection": "Composer et enregistrer humainement une boucle minimale avec papier, crayon, froissement et fermeture du ruban ; la transformation doit rester entièrement compréhensible en muet.",
+        "productionGuardrails": [
+          "Production 100 % humaine : écriture, carnets, accessoires, dessin, animation, musique, bruitages et montage réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Créer le carnet, les pages, le contenu, le cadrage, les textures et le rythme depuis zéro ; ne reprendre ni la reliure, ni les pages, ni la composition, ni les textes de la source."
         ]
       },
       "editorialStatus": "new"

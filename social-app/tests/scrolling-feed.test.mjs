@@ -91,13 +91,14 @@ const expectedSources = new Map([
   ["DcWgdLhkf1s", { author: "harrypotter", likes: 99_400 }],
   ["DcyoD_9MD9L", { author: "_yes_but", likes: 31_700 }],
   ["Da0BDNOCEap", { author: "cats_of_instagram", likes: 38_200 }],
+  ["Db-tYInJyYk", { author: "jose_naranja", likes: 69_600, comments: 623 }],
 ]);
 
 test("the connected Instagram snapshot preserves the historical and new-account runs", () => {
   assert.match(feed.capturedAt, /^2026-09-03/u);
   assert.equal(feed.minimumLikes, SCROLLING_MINIMUM_LIKES);
-  assert.equal(feed.runs.length, 20);
-  assert.equal(feed.items.length, 71);
+  assert.equal(feed.runs.length, 22);
+  assert.equal(feed.items.length, 72);
 
   const initialRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26");
   const extendedRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26-extended");
@@ -147,6 +148,12 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   const frequencyBoostHomeRun = feed.runs.find(
     (run) => run.id === "instagram-home-2026-09-03-frequency-boost-1940",
   );
+  const eveningSearchRun = feed.runs.find(
+    (run) => run.id === "instagram-search-2026-09-03-heartbeat-2115",
+  );
+  const eveningHomeRun = feed.runs.find(
+    (run) => run.id === "instagram-home-2026-09-03-heartbeat-2115",
+  );
   assert.ok(initialRun);
   assert.ok(extendedRun);
   assert.ok(eveningRun);
@@ -167,6 +174,8 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   assert.ok(morningHomeRun);
   assert.ok(frequencyBoostSearchRun);
   assert.ok(frequencyBoostHomeRun);
+  assert.ok(eveningSearchRun);
+  assert.ok(eveningHomeRun);
   assert.equal(initialRun.platform, "instagram");
   assert.equal(initialRun.surface, "home");
   assert.equal(initialRun.browserContext, SCROLLING_BROWSER_CONTEXT);
@@ -311,7 +320,7 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   assert.equal(frequencyBoostSearchRun.surface, "search");
   assert.equal(frequencyBoostSearchRun.seenCount, 50);
   assert.equal(frequencyBoostSearchRun.qualifyingCount, 14);
-  assert.equal(frequencyBoostSearchRun.sponsoredCount, 3);
+  assert.equal(frequencyBoostSearchRun.sponsoredCount, 0);
   assert.equal(feed.items.filter((item) => item.runId === frequencyBoostSearchRun.id).length, 2);
   assert.ok(frequencyBoostSearchRun.themeIds.includes("easter-eggs-and-alternate-rooms"));
   assert.equal(frequencyBoostHomeRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
@@ -322,7 +331,22 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   assert.equal(feed.items.filter((item) => item.runId === frequencyBoostHomeRun.id).length, 0);
   assert.ok(Date.parse(frequencyBoostSearchRun.capturedAt) > Date.parse(morningHomeRun.capturedAt));
   assert.equal(frequencyBoostSearchRun.capturedAt, frequencyBoostHomeRun.capturedAt);
-  assert.equal(feed.capturedAt, frequencyBoostHomeRun.capturedAt);
+  assert.equal(eveningSearchRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(eveningSearchRun.surface, "search");
+  assert.equal(eveningSearchRun.seenCount, 44);
+  assert.equal(eveningSearchRun.qualifyingCount, 8);
+  assert.equal(eveningSearchRun.sponsoredCount, 0);
+  assert.equal(feed.items.filter((item) => item.runId === eveningSearchRun.id).length, 1);
+  assert.ok(eveningSearchRun.themeIds.includes("reading-and-journaling"));
+  assert.equal(eveningHomeRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(eveningHomeRun.surface, "home");
+  assert.equal(eveningHomeRun.seenCount, 23);
+  assert.equal(eveningHomeRun.qualifyingCount, 0);
+  assert.equal(eveningHomeRun.sponsoredCount, 0);
+  assert.equal(feed.items.filter((item) => item.runId === eveningHomeRun.id).length, 0);
+  assert.ok(Date.parse(eveningSearchRun.capturedAt) > Date.parse(frequencyBoostHomeRun.capturedAt));
+  assert.equal(eveningSearchRun.capturedAt, eveningHomeRun.capturedAt);
+  assert.equal(feed.capturedAt, eveningHomeRun.capturedAt);
 
   let likes = 0;
   for (const item of feed.items) {
@@ -332,7 +356,7 @@ test("the connected Instagram snapshot preserves the historical and new-account 
     assert.equal(item.source.metrics.likes, expected.likes);
     assert.equal(item.source.metrics.precision, "platform-rounded");
     assert.equal(item.source.metrics.views, null);
-    assert.equal(item.source.metrics.comments, null);
+    assert.equal(item.source.metrics.comments, expected.comments ?? null);
     assert.equal(item.source.metrics.shares, null);
     assert.equal(item.source.metrics.saves, null);
     assert.equal(item.source.thumbnailUrl, null);
