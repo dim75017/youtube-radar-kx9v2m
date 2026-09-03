@@ -897,7 +897,7 @@ test("checks editorial trend freshness in the pipeline without exposing scan int
   assert.match(healthScript, /feed\.capturedAt ne correspond pas au scan qualifié publié/);
   assert.match(healthScript, /pool .*inchangé/);
   assert.doesNotMatch(healthScript, /\bfetch\s*\(|thumbnail|playback|<video|SocialInlinePlayer/i);
-  assert.match(healthWorkflow, /cron: "7 \*\/6 \* \* \*"/);
+  assert.match(healthWorkflow, /cron: "7 \* \* \* \*"/);
   assert.match(healthWorkflow, /contents: read/);
   assert.doesNotMatch(healthWorkflow, /contents: write|actions: write|git push|workflow run/i);
   for (const workflow of [videoRefreshWorkflow, audioRefreshWorkflow]) {

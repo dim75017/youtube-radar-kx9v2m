@@ -3,7 +3,8 @@ name: Social · Check trends editorial freshness
 on:
   workflow_dispatch:
   schedule:
-    - cron: "7 */6 * * *"
+    # Hourly so a visible-rotation breach cannot remain silent for several hours.
+    - cron: "7 * * * *"
 
 permissions:
   contents: read

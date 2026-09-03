@@ -86,13 +86,16 @@ const expectedSources = new Map([
   ["DcaC4CKNu7f", { author: "srtacience", likes: 1_200_000 }],
   ["DchcOSyIp1g", { author: "crunchyroll", likes: 58_000 }],
   ["DaA9qx0PTf0", { author: "usageek_", likes: 70_400 }],
+  ["DcTsdCDO4Wh", { author: "ambientzoning", likes: 18_500 }],
+  ["DcyuPmXl8NN", { author: "cornelluniversity", likes: 12_400 }],
+  ["DcWgdLhkf1s", { author: "harrypotter", likes: 99_400 }],
 ]);
 
 test("the connected Instagram snapshot preserves the historical and new-account runs", () => {
-  assert.match(feed.capturedAt, /^2026-09-02/u);
+  assert.match(feed.capturedAt, /^2026-09-03/u);
   assert.equal(feed.minimumLikes, SCROLLING_MINIMUM_LIKES);
-  assert.equal(feed.runs.length, 16);
-  assert.equal(feed.items.length, 66);
+  assert.equal(feed.runs.length, 18);
+  assert.equal(feed.items.length, 69);
 
   const initialRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26");
   const extendedRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26-extended");
@@ -130,6 +133,12 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   const bigHomeScrollRun = feed.runs.find(
     (run) => run.id === "instagram-home-2026-09-02-big-scroll-2332",
   );
+  const morningSearchRun = feed.runs.find(
+    (run) => run.id === "instagram-search-2026-09-03-heartbeat-0915",
+  );
+  const morningHomeRun = feed.runs.find(
+    (run) => run.id === "instagram-home-2026-09-03-heartbeat-0915",
+  );
   assert.ok(initialRun);
   assert.ok(extendedRun);
   assert.ok(eveningRun);
@@ -146,6 +155,8 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   assert.ok(heartbeatHomeRun);
   assert.ok(eveningHeartbeatSearchRun);
   assert.ok(bigHomeScrollRun);
+  assert.ok(morningSearchRun);
+  assert.ok(morningHomeRun);
   assert.equal(initialRun.platform, "instagram");
   assert.equal(initialRun.surface, "home");
   assert.equal(initialRun.browserContext, SCROLLING_BROWSER_CONTEXT);
@@ -272,7 +283,21 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   assert.ok(bigHomeScrollRun.themeIds.includes("fan-art-and-spotlights"));
   assert.ok(bigHomeScrollRun.themeIds.includes("vinyl-and-instruments"));
   assert.ok(Date.parse(bigHomeScrollRun.capturedAt) > Date.parse(eveningHeartbeatSearchRun.capturedAt));
-  assert.equal(feed.capturedAt, bigHomeScrollRun.capturedAt);
+  assert.equal(morningSearchRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(morningSearchRun.surface, "search");
+  assert.equal(morningSearchRun.seenCount, 56);
+  assert.equal(morningSearchRun.qualifyingCount, 6);
+  assert.equal(morningSearchRun.sponsoredCount, 0);
+  assert.equal(feed.items.filter((item) => item.runId === morningSearchRun.id).length, 0);
+  assert.equal(morningHomeRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(morningHomeRun.surface, "home");
+  assert.equal(morningHomeRun.seenCount, 38);
+  assert.equal(morningHomeRun.qualifyingCount, 4);
+  assert.equal(morningHomeRun.sponsoredCount, 0);
+  assert.equal(feed.items.filter((item) => item.runId === morningHomeRun.id).length, 3);
+  assert.ok(Date.parse(morningSearchRun.capturedAt) > Date.parse(bigHomeScrollRun.capturedAt));
+  assert.equal(morningSearchRun.capturedAt, morningHomeRun.capturedAt);
+  assert.equal(feed.capturedAt, morningHomeRun.capturedAt);
 
   let likes = 0;
   for (const item of feed.items) {

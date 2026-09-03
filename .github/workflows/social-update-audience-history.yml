@@ -42,6 +42,8 @@ jobs:
           node-version: 22
 
       - name: Collect real follower observations
+        id: collect
+        continue-on-error: true
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
@@ -57,9 +59,12 @@ jobs:
           --require-fresh-platform x
 
       - name: Validate audience history and calculations
+        id: validation
+        continue-on-error: true
         run: node --experimental-strip-types --test tests/audience-metrics.test.mjs
 
       - name: Commit only the audience snapshot
+        if: steps.validation.outcome == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -71,3 +76,7 @@ jobs:
           git push origin HEAD:main
           gh workflow run deploy-pages.yml --ref main \
             -f requested_sha="$(git rev-parse HEAD)"
+
+      - name: Mark an incomplete or invalid audience pass
+        if: steps.collect.outcome == 'failure' || steps.validation.outcome == 'failure'
+        run: exit 1

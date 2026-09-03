@@ -683,6 +683,14 @@ test("the daily workflow enforces fresh points for every platform on both schedu
   assert.match(workflow, /--require-fresh-platform instagram/);
   assert.match(workflow, /--require-fresh-platform tiktok/);
   assert.match(workflow, /--require-fresh-platform x/);
+  assert.match(
+    workflow,
+    /name: Collect real follower observations[\s\S]*?id: collect[\s\S]*?continue-on-error: true/,
+  );
+  assert.match(
+    workflow,
+    /if: steps\.collect\.outcome == 'failure' \|\| steps\.validation\.outcome == 'failure'/,
+  );
   assert.match(workflow, /Two daily collection passes/);
   assert.match(workflow, /actions:\s*write/);
   assert.match(

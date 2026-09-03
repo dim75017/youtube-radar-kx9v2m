@@ -152,11 +152,13 @@ test("keeps the checked-in metrics and public comment cards in parity", async ()
 
   const gta = comments.get("UgxIBbRhXJjWKuj224Z4AaABAg");
   const smoking = comments.get("Ugx5LAFnueKv7eNB6t14AaABAg");
-  assert.equal(gta.likes, 130_000);
-  assert.equal(gta.comments, 784);
+  const gtaMetric = metrics.results.UgxIBbRhXJjWKuj224Z4AaABAg;
+  const smokingMetric = metrics.results.Ugx5LAFnueKv7eNB6t14AaABAg;
+  assert.equal(gta.likes, gtaMetric.likes);
+  assert.equal(gta.comments, gtaMetric.replies);
   assert.equal(gta.raw.commentTarget.audienceValue, 13_600_000);
-  assert.equal(smoking.likes, 52_000);
-  assert.equal(smoking.comments, 277);
+  assert.equal(smoking.likes, smokingMetric.likes);
+  assert.equal(smoking.comments, smokingMetric.replies);
 });
 
 test("runs the metric sync in CI and never converts an unavailable label to zero", async () => {

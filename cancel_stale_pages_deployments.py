@@ -33,6 +33,9 @@ TERMINAL_STATUSES = {
     "deployment_succeeded",
     "failed",
     "failure",
+    # Another terminal transition currently returned after the Pages files
+    # have finished synchronizing. GitHub no longer accepts cancellation here.
+    "finished_file_sync",
     # GitHub reports this undocumented transition after a successful Pages
     # upload while it invalidates the CDN. It is no longer cancellable and
     # must not make the next deployment fail its preflight.

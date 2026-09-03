@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "capturedAt": "2026-09-02T23:41:17+02:00",
+  "capturedAt": "2026-09-03T09:32:32+02:00",
   "minimumLikes": 10000,
-  "methodology": "Les trois lectures historiques du 26/08 sur @lofi.radar sont conservées. Le 01/09, le nouveau compte @lofiradar2026 a d’abord observé 48 publications Home puis 14 publications ciblées. Le 02/09 à 09:46, une première calibration manuelle a utilisé huit signaux Not interested sur du football manifeste. L’immersion manuelle détaillée cumule huit blocs séparés et muets, soit 1 h 59 min 36 s et 408 observations : 270 ciblées et 138 Home. Sur ces 138 Home revus éditorialement, 19 sont classés pertinents, 119 hors niche, huit sport, deux portent un label IA, aucun n’est Sponsorisé et 65 proviennent de nsmqghana. Un gros scroll Home distinct de neuf minutes ajoute 152 publications uniques : aucune mention Sponsorisé, 14 cartes sport, au moins cinq labels IA explicites et 18 cartes nsmqghana. Un classement textuel conservateur a présélectionné 64 cartes adjacentes, dont 43 au seuil ; trois mécaniques d’auteurs distincts sont détaillées après revue. Les dix seeds exactes fournies par Dim ont été inspectées ; neuf non-IA sont retenues. Le passage de 17:15 a vérifié sept seeds Pubs playlists, deux adjacents sous le seuil et cinq nouvelles sources organiques qualifiées. Le contrôle de 21:15 a revu les sept seeds et trois adjacents du même artiste ; les trois adjacents dépassent le seuil, mais une seule mécanique est détaillée après déduplication par auteur. Le radar contient ainsi 66 cartes éditoriales. Aucun like, follow, enregistrement, commentaire, message, partage ou publication n’a été effectué pendant ces passages ; aucun nouveau Not interested n’a été envoyé. Chaque source reste séparée de son adaptation : ces observations isolées ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire, ni une recalibration durable de l’algorithme.",
+  "methodology": "Les trois lectures historiques du 26/08 sur @lofi.radar sont conservées. Le 01/09, le nouveau compte @lofiradar2026 a d’abord observé 48 publications Home puis 14 publications ciblées. Le 02/09 à 09:46, une première calibration manuelle a utilisé huit signaux Not interested sur du football manifeste. L’immersion manuelle détaillée cumule huit blocs séparés et muets, soit 1 h 59 min 36 s et 408 observations : 270 ciblées et 138 Home. Sur ces 138 Home revus éditorialement, 19 sont classés pertinents, 119 hors niche, huit sport, deux portent un label IA, aucun n’est Sponsorisé et 65 proviennent de nsmqghana. Un gros scroll Home distinct de neuf minutes ajoute 152 publications uniques : aucune mention Sponsorisé, 14 cartes sport, au moins cinq labels IA explicites et 18 cartes nsmqghana. Un classement textuel conservateur a présélectionné 64 cartes adjacentes, dont 43 au seuil ; trois mécaniques d’auteurs distincts sont détaillées après revue. Les dix seeds exactes fournies par Dim ont été inspectées ; neuf non-IA sont retenues. Le passage de 17:15 a vérifié sept seeds Pubs playlists, deux adjacents sous le seuil et cinq nouvelles sources organiques qualifiées. Le contrôle de 21:15 a revu les sept seeds et trois adjacents du même artiste ; les trois adjacents dépassent le seuil, mais une seule mécanique est détaillée après déduplication par auteur. Le 03/09, un passage isolé et muet de 11 min 49 s ajoute 49 observations ciblées sur huit familles, les sept seeds Pubs playlists et 38 publications Home uniques. Le Home contient 12 contenus immédiatement adjacents, 26 hors niche, six sport, deux labels IA, aucune mention Sponsorisé et quatre cartes nsmqghana ; trois sources récentes au-dessus de 10 000 likes sont détaillées. Le radar contient ainsi 69 cartes éditoriales. Aucun like, follow, enregistrement, commentaire, message, partage ou publication n’a été effectué pendant ces passages ; aucun nouveau Not interested n’a été envoyé. Chaque source reste séparée de son adaptation : ces observations isolées ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire, ni une recalibration durable de l’algorithme.",
   "limitations": [
     "Les compteurs de likes ont été relevés tels qu’affichés par Instagram et sont conservés avec une précision platform-rounded.",
     "Les vues, commentaires, partages, enregistrements et dates de publication non observés restent à null plutôt que d’être estimés.",
@@ -33,7 +33,11 @@
     "Le gros scroll Home de 23:32 à 23:41 couvre 152 publications uniques avec pauses variables ; 64 adjacences et 43 cartes au seuil sont des présélections textuelles, pas une validation visuelle exhaustive de tout le lot.",
     "Aucune des 152 cartes n’affichait Sponsorisé, Sponsored ou un équivalent localisé ; cela ne contredit pas les quinze créations paid vérifiées séparément dans Pubs playlists par product_type=ad.",
     "Quatorze cartes sport et au moins cinq labels IA explicites, dont AI content et AI creator, ont été écartés ; nsmqghana représente 18/152 cartes, soit 11,8 %, en recul mais encore visible.",
-    "Trois sources organiques non-IA, non sponsorisées et d’auteurs distincts sont retenues : art manuel en e-waste, performance de dessin en direct et espace dédié aux CD ; aucun son ni signal social n’a été activé."
+    "Trois sources organiques non-IA, non sponsorisées et d’auteurs distincts sont retenues : art manuel en e-waste, performance de dessin en direct et espace dédié aux CD ; aucun son ni signal social n’a été activé.",
+    "Le passage du 03/09 a duré 11 min 49 s avec 56 observations ciblées, dont les sept seeds Pubs playlists, et 38 publications Home uniques ; la part ciblée est de 59,6 %, arrondie à 60 %.",
+    "Les recherches ciblées couvrent huit familles : study/focus, musique lofi, bureaux cozy, introversion, chats, illustration, gaming cozy et lecture/journaling ; deux contenus portant un label IA explicite ont été rejetés.",
+    "Le Home du 03/09 compte 12 contenus immédiatement adjacents sur 38, soit 31,6 %, six contenus sport, deux labels IA, zéro mention Sponsorisé et quatre publications nsmqghana ; les métriques non attribuables à un post précis ne sont pas réutilisées.",
+    "Les sept seeds Pubs playlists ont été rouvertes nativement et sont restées muettes ; aucune n’affichait Sponsorisé pendant ce passage. Les adjacents visibles de lateagainsta, brainysounds, calmly.fm et _by.alexander ont été examinés séparément."
   ],
   "explorationLenses": [
     {
@@ -820,6 +824,57 @@
         "Le classement textuel conservateur a relevé 64 cartes adjacentes et 43 au-dessus de 10 000 likes ; trois seulement sont retenues après revue éditoriale et déduplication par mécanique et auteur.",
         "Aucune mention Sponsorisé n’a été observée ; 14 cartes sport et au moins cinq labels IA explicites ont été rejetés.",
         "nsmqghana représente 18/152 cartes ; aucun like, follow, enregistrement, commentaire, message, partage, publication, Not interested ou son n’a été activé."
+      ]
+    },
+    {
+      "id": "instagram-search-2026-09-03-heartbeat-0915",
+      "platform": "instagram",
+      "surface": "search",
+      "browserContext": "agent-tab-explicitly-delegated",
+      "capturedAt": "2026-09-03T09:32:32+02:00",
+      "seenCount": 56,
+      "qualifyingCount": 6,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "study-exams-pomodoro",
+        "sleep-insomnia-bedtime",
+        "introversion-social-battery",
+        "animal-companions",
+        "reading-and-journaling",
+        "fan-art-and-spotlights",
+        "cozy-games-rpg-worlds",
+        "releases-artist-collabs"
+      ],
+      "limitations": [
+        "Quarante-neuf posts ciblés ont été consultés avec dwell de 2 à 5 secondes sur huit familles, puis les sept seeds Pubs playlists ont été rouvertes nativement.",
+        "Quarante-quatre posts ciblés sont éditorialement adjacents avant contrôle métrique ; leurs compteurs n’étant pas tous attribuables dans la vue détail, seuls les six seeds déjà au seuil sont comptés dans qualifyingCount.",
+        "Deux contenus de chats portaient un label IA explicite et ont été rejetés ; aucune mention Sponsorisé exacte n’a été observée sur les posts ciblés ni sur les seeds.",
+        "Aucun son, like, follow, enregistrement, commentaire, message, partage, publication ou Not interested n’a été activé."
+      ]
+    },
+    {
+      "id": "instagram-home-2026-09-03-heartbeat-0915",
+      "platform": "instagram",
+      "surface": "home",
+      "browserContext": "agent-tab-explicitly-delegated",
+      "capturedAt": "2026-09-03T09:32:32+02:00",
+      "seenCount": 38,
+      "qualifyingCount": 4,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "rain-weather-seasons",
+        "study-exams-pomodoro",
+        "animal-companions",
+        "nostalgia-time-capsule",
+        "cozy-games-rpg-worlds",
+        "visual-formats-lab",
+        "lofi-daily-life"
+      ],
+      "limitations": [
+        "Le Home contient 12 cartes immédiatement adjacentes et 26 hors niche, soit 31,6 % de pertinence sur 38 URL uniques.",
+        "Six cartes sport et deux labels IA explicites ont été rejetés ; aucune mention Sponsorisé exacte n’a été observée.",
+        "Quatre cartes nsmqghana représentent 10,5 % du lot et restent hors niche ; aucun Not interested n’a été envoyé.",
+        "Quatre sources organiques non-IA et au-dessus de 10 000 likes ont été qualifiées ; trois sont retenues après déduplication éditoriale."
       ]
     }
   ],
@@ -4130,6 +4185,183 @@
           "Production 100 % humaine : écriture, fabrication des pochettes, illustration, prise de vue ou animation, bruitages, montage et musique réalisés par les personnes créditées.",
           "Aucune image, vidéo, voix ou musique générée par IA.",
           "Inventer tous les titres, pochettes, marques et morceaux visibles ; ne reprendre aucun artwork, rangement, cadrage, texte ou son protégé de la source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "misty-lamp-night-pause",
+      "runId": "instagram-home-2026-09-03-heartbeat-0915",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcTsdCDO4Wh/",
+        "postId": "DcTsdCDO4Wh",
+        "author": "ambientzoning",
+        "sourceLabel": "Image nocturne brumeuse structurée autour d’un lampadaire solitaire et de palmiers à peine visibles",
+        "capturedAt": "2026-09-03T09:32:32+02:00",
+        "publishedAt": null,
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 18500,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": [
+          "rain-weather-seasons",
+          "visual-formats-lab",
+          "lofi-daily-life"
+        ],
+        "hook": "Une seule source de lumière perce un décor presque effacé par la brume, ce qui crée une pause visuelle immédiate au milieu du flux.",
+        "mechanic": "Le cadre réduit volontairement les informations : nuit, halo et silhouettes lointaines suffisent à faire ressentir un lieu avant même de raconter une histoire.",
+        "visualCue": "Le contraste entre le halo chaud du lampadaire et le fond froid noyé dans la brume porte toute la lecture en muet.",
+        "reasonToStop": "Le spectateur cherche les détails qui apparaissent progressivement autour de la lumière centrale.",
+        "whyRelevant": "Une micro-pause atmosphérique peut faire respirer le flux Lofi avec un décor original, une météo lisible et un geste sonore humain très discret.",
+        "confidence": "medium"
+      },
+      "adaptation": {
+        "title": "Le lampadaire dans la brume",
+        "cast": {
+          "character": "lofi-girl",
+          "companion": "cat"
+        },
+        "concept": "Girl lève les yeux de son cahier lorsque la brume efface peu à peu la rue ; un seul lampadaire reste visible et le chat suit les silhouettes qui traversent brièvement son halo.",
+        "openingText": "La ville a baissé le volume.",
+        "sequence": [
+          "Le bureau de Girl reste net au premier plan tandis que la fenêtre montre une rue originale déjà couverte d’une brume légère.",
+          "La brume dessinée image par image absorbe les détails du décor ; le chat ne suit plus que les ombres qui passent dans le halo du lampadaire.",
+          "Girl ferme doucement son cahier, la lampe du bureau répond une seconde au lampadaire extérieur, puis la boucle revient au premier souffle de brume."
+        ],
+        "caption": "Certains soirs, il suffit d’une lumière pour que tout ralentisse.",
+        "audioDirection": "Composer et enregistrer humainement une nappe minimale avec pluie réelle, souffle de rue et quelques notes jouées ; la scène doit rester totalement compréhensible en muet.",
+        "productionGuardrails": [
+          "Production 100 % humaine : écriture, décor, illustration, animation, captation des ambiances, musique et montage réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Créer la rue, la météo, le cadrage et la palette depuis zéro ; ne reprendre ni l’image, ni la composition, ni les éventuels textes ou sons de la source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "campus-sunrise-wild-visitor",
+      "runId": "instagram-home-2026-09-03-heartbeat-0915",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcyuPmXl8NN/",
+        "postId": "DcyuPmXl8NN",
+        "author": "cornelluniversity",
+        "sourceLabel": "Jeune buse à queue rousse photographiée au lever du soleil parmi les fleurs sauvages d’un campus",
+        "capturedAt": "2026-09-03T09:32:32+02:00",
+        "publishedAt": null,
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 12400,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": [
+          "study-exams-pomodoro",
+          "animal-companions",
+          "rain-weather-seasons"
+        ],
+        "hook": "Un visiteur sauvage rare apparaît dans un lieu d’étude quotidien, sous une lumière de lever de soleil qui transforme le campus.",
+        "mechanic": "Le post associe un décor familier, une heure précise et un animal inattendu ; la légende attribue clairement la photographie et explique pourquoi l’instant est rare.",
+        "visualCue": "L’animal cadré par les fleurs et la lumière rasante forme un point d’attention naturel sans effet artificiel.",
+        "reasonToStop": "Le public reconnaît un lieu ordinaire mais veut identifier le détail vivant qui le rend exceptionnel ce matin-là.",
+        "whyRelevant": "Le retour aux études peut être raconté par une petite observation réelle et calme plutôt que par une injonction à la productivité.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Le visiteur avant les cours",
+        "cast": {
+          "character": "lofi-girl",
+          "companion": "cat"
+        },
+        "concept": "En arrivant tôt à la bibliothèque, Girl et son chat découvrent un petit oiseau original posé au milieu des fleurs du campus ; ils suspendent leur routine le temps d’un regard, sans le déranger.",
+        "openingText": "Le campus était presque vide. Presque.",
+        "sequence": [
+          "Girl traverse un campus Lofi entièrement original au lever du soleil, sac et cahier à la main, tandis que le chat s’arrête devant un parterre de fleurs.",
+          "Un petit oiseau dessiné d’après une documentation autorisée apparaît dans la lumière ; Girl reste à distance et note seulement l’heure et la couleur du ciel.",
+          "L’oiseau repart, Girl reprend le chemin de la bibliothèque et la dernière page du cahier conserve une esquisse créditée de cette rencontre."
+        ],
+        "caption": "Les matins d’étude commencent parfois par quelque chose qu’on n’avait pas prévu de voir.",
+        "audioDirection": "Créer une composition originale jouée par des humains avec ambiance matinale enregistrée légalement ; aucun cri d’animal synthétique et aucune dépendance au son pour comprendre la scène.",
+        "productionGuardrails": [
+          "Production 100 % humaine : scénario, documentation animale, dessin, animation, musique, bruitages et montage réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Ne reprendre ni le campus, ni la photographie, ni le cadrage, ni l’espèce comme copie littérale de la source ; respecter les bonnes pratiques de distance avec la faune et ne jamais mettre un animal en scène."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "place-defines-home",
+      "runId": "instagram-home-2026-09-03-heartbeat-0915",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcWgdLhkf1s/",
+        "postId": "DcWgdLhkf1s",
+        "author": "harrypotter",
+        "sourceLabel": "Lieu de fiction iconique résumé par la formule « notre définition de la beauté »",
+        "capturedAt": "2026-09-03T09:32:32+02:00",
+        "publishedAt": null,
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 99400,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": [
+          "nostalgia-time-capsule",
+          "cozy-games-rpg-worlds",
+          "visual-formats-lab"
+        ],
+        "hook": "Une phrase extrêmement courte transforme un lieu reconnaissable en déclaration affective partagée par une communauté.",
+        "mechanic": "Le contenu montre un décor aimé puis laisse une formule collective en donner la signification, sans surcharger l’image d’explications.",
+        "visualCue": "L’architecture et la lumière identifient immédiatement le lieu ; le texte sert seulement à nommer le sentiment d’appartenance.",
+        "reasonToStop": "Le public compare sa propre définition d’un refuge à celle proposée par l’image.",
+        "whyRelevant": "La chambre Lofi peut être revisitée comme un lieu de mémoire collective à partir de ses détails autorisés, sans emprunter le monde visuel d’une autre licence.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Notre définition d’un refuge",
+        "cast": {
+          "character": "lofi-girl",
+          "companion": "cat"
+        },
+        "concept": "Une suite de détails canoniques et autorisés de la chambre de Girl apparaît sans personnage, puis Girl et son chat entrent dans le dernier plan et révèlent pourquoi ce lieu familier ressemble à la maison.",
+        "openingText": "On reconnaît parfois chez soi avant même d’ouvrir la porte.",
+        "sequence": [
+          "Trois détails officiels de la chambre, redessinés depuis les masters autorisés, apparaissent l’un après l’autre : la lampe, la fenêtre et le bord du bureau.",
+          "Le cadre s’élargit lentement tandis que les objets portent des traces discrètes d’usage réel : page cornée, tasse posée, crayon déplacé par le chat.",
+          "Girl et le chat entrent enfin dans la pièce ; une phrase originale nomme le sentiment de refuge puis laisse le décor respirer sans autre explication."
+        ],
+        "caption": "Ce n’est pas seulement une pièce. C’est tout ce qu’on y a déjà traversé.",
+        "audioDirection": "Écrire et enregistrer une composition originale par des humains, avec sons réels de porte, papier et tasse ; le montage doit fonctionner intégralement sans son.",
+        "productionGuardrails": [
+          "Production 100 % humaine : écriture, sélection des masters, dessin, animation, musique, bruitages et montage réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "N’utiliser que les éléments du canon Lofi expressément autorisés ; ne reprendre aucun château, architecture, accessoire, formulation, musique ou signe distinctif de Harry Potter ou d’une autre licence."
         ]
       },
       "editorialStatus": "new"
