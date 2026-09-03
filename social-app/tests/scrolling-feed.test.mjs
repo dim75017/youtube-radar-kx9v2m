@@ -89,13 +89,15 @@ const expectedSources = new Map([
   ["DcTsdCDO4Wh", { author: "ambientzoning", likes: 18_500 }],
   ["DcyuPmXl8NN", { author: "cornelluniversity", likes: 12_400 }],
   ["DcWgdLhkf1s", { author: "harrypotter", likes: 99_400 }],
+  ["DcyoD_9MD9L", { author: "_yes_but", likes: 31_700 }],
+  ["Da0BDNOCEap", { author: "cats_of_instagram", likes: 38_200 }],
 ]);
 
 test("the connected Instagram snapshot preserves the historical and new-account runs", () => {
   assert.match(feed.capturedAt, /^2026-09-03/u);
   assert.equal(feed.minimumLikes, SCROLLING_MINIMUM_LIKES);
-  assert.equal(feed.runs.length, 18);
-  assert.equal(feed.items.length, 69);
+  assert.equal(feed.runs.length, 20);
+  assert.equal(feed.items.length, 71);
 
   const initialRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26");
   const extendedRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26-extended");
@@ -139,6 +141,12 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   const morningHomeRun = feed.runs.find(
     (run) => run.id === "instagram-home-2026-09-03-heartbeat-0915",
   );
+  const frequencyBoostSearchRun = feed.runs.find(
+    (run) => run.id === "instagram-search-2026-09-03-frequency-boost-1940",
+  );
+  const frequencyBoostHomeRun = feed.runs.find(
+    (run) => run.id === "instagram-home-2026-09-03-frequency-boost-1940",
+  );
   assert.ok(initialRun);
   assert.ok(extendedRun);
   assert.ok(eveningRun);
@@ -157,6 +165,8 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   assert.ok(bigHomeScrollRun);
   assert.ok(morningSearchRun);
   assert.ok(morningHomeRun);
+  assert.ok(frequencyBoostSearchRun);
+  assert.ok(frequencyBoostHomeRun);
   assert.equal(initialRun.platform, "instagram");
   assert.equal(initialRun.surface, "home");
   assert.equal(initialRun.browserContext, SCROLLING_BROWSER_CONTEXT);
@@ -297,7 +307,22 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   assert.equal(feed.items.filter((item) => item.runId === morningHomeRun.id).length, 3);
   assert.ok(Date.parse(morningSearchRun.capturedAt) > Date.parse(bigHomeScrollRun.capturedAt));
   assert.equal(morningSearchRun.capturedAt, morningHomeRun.capturedAt);
-  assert.equal(feed.capturedAt, morningHomeRun.capturedAt);
+  assert.equal(frequencyBoostSearchRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(frequencyBoostSearchRun.surface, "search");
+  assert.equal(frequencyBoostSearchRun.seenCount, 50);
+  assert.equal(frequencyBoostSearchRun.qualifyingCount, 14);
+  assert.equal(frequencyBoostSearchRun.sponsoredCount, 3);
+  assert.equal(feed.items.filter((item) => item.runId === frequencyBoostSearchRun.id).length, 2);
+  assert.ok(frequencyBoostSearchRun.themeIds.includes("easter-eggs-and-alternate-rooms"));
+  assert.equal(frequencyBoostHomeRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(frequencyBoostHomeRun.surface, "home");
+  assert.equal(frequencyBoostHomeRun.seenCount, 18);
+  assert.equal(frequencyBoostHomeRun.qualifyingCount, 4);
+  assert.equal(frequencyBoostHomeRun.sponsoredCount, 0);
+  assert.equal(feed.items.filter((item) => item.runId === frequencyBoostHomeRun.id).length, 0);
+  assert.ok(Date.parse(frequencyBoostSearchRun.capturedAt) > Date.parse(morningHomeRun.capturedAt));
+  assert.equal(frequencyBoostSearchRun.capturedAt, frequencyBoostHomeRun.capturedAt);
+  assert.equal(feed.capturedAt, frequencyBoostHomeRun.capturedAt);
 
   let likes = 0;
   for (const item of feed.items) {

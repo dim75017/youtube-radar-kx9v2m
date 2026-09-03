@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "capturedAt": "2026-09-03T09:32:32+02:00",
+  "capturedAt": "2026-09-03T19:40:47+02:00",
   "minimumLikes": 10000,
-  "methodology": "Les trois lectures historiques du 26/08 sur @lofi.radar sont conservées. Le 01/09, le nouveau compte @lofiradar2026 a d’abord observé 48 publications Home puis 14 publications ciblées. Le 02/09 à 09:46, une première calibration manuelle a utilisé huit signaux Not interested sur du football manifeste. L’immersion manuelle détaillée cumule huit blocs séparés et muets, soit 1 h 59 min 36 s et 408 observations : 270 ciblées et 138 Home. Sur ces 138 Home revus éditorialement, 19 sont classés pertinents, 119 hors niche, huit sport, deux portent un label IA, aucun n’est Sponsorisé et 65 proviennent de nsmqghana. Un gros scroll Home distinct de neuf minutes ajoute 152 publications uniques : aucune mention Sponsorisé, 14 cartes sport, au moins cinq labels IA explicites et 18 cartes nsmqghana. Un classement textuel conservateur a présélectionné 64 cartes adjacentes, dont 43 au seuil ; trois mécaniques d’auteurs distincts sont détaillées après revue. Les dix seeds exactes fournies par Dim ont été inspectées ; neuf non-IA sont retenues. Le passage de 17:15 a vérifié sept seeds Pubs playlists, deux adjacents sous le seuil et cinq nouvelles sources organiques qualifiées. Le contrôle de 21:15 a revu les sept seeds et trois adjacents du même artiste ; les trois adjacents dépassent le seuil, mais une seule mécanique est détaillée après déduplication par auteur. Le 03/09, un passage isolé et muet de 11 min 49 s ajoute 49 observations ciblées sur huit familles, les sept seeds Pubs playlists et 38 publications Home uniques. Le Home contient 12 contenus immédiatement adjacents, 26 hors niche, six sport, deux labels IA, aucune mention Sponsorisé et quatre cartes nsmqghana ; trois sources récentes au-dessus de 10 000 likes sont détaillées. Le radar contient ainsi 69 cartes éditoriales. Aucun like, follow, enregistrement, commentaire, message, partage ou publication n’a été effectué pendant ces passages ; aucun nouveau Not interested n’a été envoyé. Chaque source reste séparée de son adaptation : ces observations isolées ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire, ni une recalibration durable de l’algorithme.",
+  "methodology": "Les trois lectures historiques du 26/08 sur @lofi.radar sont conservées. Le 01/09, le nouveau compte @lofiradar2026 a d’abord observé 48 publications Home puis 14 publications ciblées. Le 02/09 à 09:46, une première calibration manuelle a utilisé huit signaux Not interested sur du football manifeste. L’immersion manuelle détaillée cumule huit blocs séparés et muets, soit 1 h 59 min 36 s et 408 observations : 270 ciblées et 138 Home. Sur ces 138 Home revus éditorialement, 19 sont classés pertinents, 119 hors niche, huit sport, deux portent un label IA, aucun n’est Sponsorisé et 65 proviennent de nsmqghana. Un gros scroll Home distinct de neuf minutes ajoute 152 publications uniques : aucune mention Sponsorisé, 14 cartes sport, au moins cinq labels IA explicites et 18 cartes nsmqghana. Un classement textuel conservateur a présélectionné 64 cartes adjacentes, dont 43 au seuil ; trois mécaniques d’auteurs distincts sont détaillées après revue. Les dix seeds exactes fournies par Dim ont été inspectées ; neuf non-IA sont retenues. Le passage de 17:15 a vérifié sept seeds Pubs playlists, deux adjacents sous le seuil et cinq nouvelles sources organiques qualifiées. Le contrôle de 21:15 a revu les sept seeds et trois adjacents du même artiste ; les trois adjacents dépassent le seuil, mais une seule mécanique est détaillée après déduplication par auteur. Le 03/09, un passage isolé et muet de 11 min 49 s ajoute 49 observations ciblées sur huit familles, les sept seeds Pubs playlists et 38 publications Home uniques. Le Home contient 12 contenus immédiatement adjacents, 26 hors niche, six sport, deux labels IA, aucune mention Sponsorisé et quatre cartes nsmqghana ; trois sources récentes au-dessus de 10 000 likes sont détaillées. Un passage immédiat supplémentaire ajoute 50 consultations ciblées et 18 Home : 14 compteurs ciblés atteignent le seuil, trois posts historiques portent #ad et aucune impression Home n’affiche Sponsorisé. Deux mécaniques sont détaillées après déduplication éditoriale. Le radar contient ainsi 71 cartes éditoriales. Aucun like, follow, enregistrement, commentaire, message, partage ou publication n’a été effectué pendant ces passages ; aucun nouveau Not interested n’a été envoyé. Chaque source reste séparée de son adaptation : ces observations isolées ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire, ni une recalibration durable de l’algorithme.",
   "limitations": [
     "Les compteurs de likes ont été relevés tels qu’affichés par Instagram et sont conservés avec une précision platform-rounded.",
     "Les vues, commentaires, partages, enregistrements et dates de publication non observés restent à null plutôt que d’être estimés.",
@@ -37,7 +37,11 @@
     "Le passage du 03/09 a duré 11 min 49 s avec 56 observations ciblées, dont les sept seeds Pubs playlists, et 38 publications Home uniques ; la part ciblée est de 59,6 %, arrondie à 60 %.",
     "Les recherches ciblées couvrent huit familles : study/focus, musique lofi, bureaux cozy, introversion, chats, illustration, gaming cozy et lecture/journaling ; deux contenus portant un label IA explicite ont été rejetés.",
     "Le Home du 03/09 compte 12 contenus immédiatement adjacents sur 38, soit 31,6 %, six contenus sport, deux labels IA, zéro mention Sponsorisé et quatre publications nsmqghana ; les métriques non attribuables à un post précis ne sont pas réutilisées.",
-    "Les sept seeds Pubs playlists ont été rouvertes nativement et sont restées muettes ; aucune n’affichait Sponsorisé pendant ce passage. Les adjacents visibles de lateagainsta, brainysounds, calmly.fm et _by.alexander ont été examinés séparément."
+    "Les sept seeds Pubs playlists ont été rouvertes nativement et sont restées muettes ; aucune n’affichait Sponsorisé pendant ce passage. Les adjacents visibles de lateagainsta, brainysounds, calmly.fm et _by.alexander ont été examinés séparément.",
+    "Le passage immédiat de 19:40 ajoute 50 consultations ciblées et 18 Home, toutes muettes et sans interaction sociale ; 14 compteurs ciblés et quatre compteurs Home atteignent au moins 10 000 likes.",
+    "Trois posts historiques de studyquill affichent #ad, dont un au seuil ; ce signal de profil est séparé des impressions Home, où aucune mention Sponsored ou Sponsorisé n’a été observée.",
+    "Le Home de 18 cartes reste peu calibré : cinq contenus sont immédiatement adjacents, treize sont hors niche, quatre proviennent de nsmqghana et trois concernent directement le football.",
+    "Deux sources ciblées nouvelles et non sponsorisées sont détaillées après déduplication : une énigme visuelle à double lecture et une routine animale fondée sur l’anticipation."
   ],
   "explorationLenses": [
     {
@@ -887,6 +891,56 @@
         "Six cartes sport et deux labels IA explicites ont été rejetés ; aucune mention Sponsorisé exacte n’a été observée.",
         "Quatre cartes nsmqghana représentent 10,5 % du lot et restent hors niche ; aucun Not interested n’a été envoyé.",
         "Quatre sources organiques non-IA et au-dessus de 10 000 likes ont été qualifiées ; trois sont retenues après déduplication éditoriale."
+      ]
+    },
+    {
+      "id": "instagram-search-2026-09-03-frequency-boost-1940",
+      "platform": "instagram",
+      "surface": "search",
+      "browserContext": "agent-tab-explicitly-delegated",
+      "capturedAt": "2026-09-03T19:40:47+02:00",
+      "seenCount": 50,
+      "qualifyingCount": 14,
+      "sponsoredCount": 3,
+      "themeIds": [
+        "study-exams-pomodoro",
+        "reading-and-journaling",
+        "cozy-games-rpg-worlds",
+        "animal-companions",
+        "introversion-social-battery",
+        "visual-formats-lab",
+        "easter-eggs-and-alternate-rooms",
+        "sleep-insomnia-bedtime",
+        "lofi-daily-life"
+      ],
+      "limitations": [
+        "Cinquante publications ont été consultées avec des pauses variables sur sept familles ciblées ; tous les contenus vidéo sont restés muets.",
+        "Quatorze compteurs visibles atteignent au moins 10 000 likes ; deux sources seulement sont retenues après déduplication par mécanique et revue éditoriale.",
+        "Trois posts historiques du profil studyquill portent #ad, dont un seul au seuil ; ils ne sont pas assimilés à des impressions publicitaires Home.",
+        "Aucune action sociale, aucun Not interested et aucune mention Sponsored ou Sponsorisé n’ont été déclenchés ou observés."
+      ]
+    },
+    {
+      "id": "instagram-home-2026-09-03-frequency-boost-1940",
+      "platform": "instagram",
+      "surface": "home",
+      "browserContext": "agent-tab-explicitly-delegated",
+      "capturedAt": "2026-09-03T19:40:47+02:00",
+      "seenCount": 18,
+      "qualifyingCount": 4,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "rain-weather-seasons",
+        "study-exams-pomodoro",
+        "animal-companions",
+        "visual-formats-lab",
+        "lofi-daily-life"
+      ],
+      "limitations": [
+        "Le Home contient cinq cartes immédiatement adjacentes et treize hors niche, soit 27,8 % de pertinence sur 18 URL uniques.",
+        "Quatre cartes nsmqghana représentent 22,2 % du lot et trois publications concernent directement le football ; aucun Not interested n’a été envoyé.",
+        "Quatre compteurs dépassent le seuil, mais leurs contenus restent hors radar ou explicitement liés à Meta AI ; aucune source Home n’est retenue.",
+        "Aucune mention Sponsored ou Sponsorisé, aucune interaction sociale et aucun son n’ont été observés ou activés."
       ]
     }
   ],
@@ -4374,6 +4428,123 @@
           "Production 100 % humaine : écriture, sélection des masters, dessin, animation, musique, bruitages et montage réalisés par des personnes créditées.",
           "Aucune image, vidéo, voix ou musique générée par IA.",
           "N’utiliser que les éléments du canon Lofi expressément autorisés ; ne reprendre aucun château, architecture, accessoire, formulation, musique ou signe distinctif de Harry Potter ou d’une autre licence."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "contrast-reveals-the-trace",
+      "runId": "instagram-search-2026-09-03-frequency-boost-1940",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/DcyoD_9MD9L/",
+        "postId": "DcyoD_9MD9L",
+        "author": "_yes_but",
+        "sourceLabel": "Énigme visuelle où deux voitures de couleurs opposées rendent chacune plus visible une trace contrastée",
+        "capturedAt": "2026-09-03T19:40:47+02:00",
+        "publishedAt": null,
+        "format": "image",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 31700,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": [
+          "visual-formats-lab",
+          "easter-eggs-and-alternate-rooms",
+          "lofi-daily-life"
+        ],
+        "hook": "Deux objets presque symétriques semblent subir des traitements opposés, ce qui crée une contradiction assez nette pour forcer une seconde lecture.",
+        "mechanic": "Le visuel suggère d’abord un choix intentionnel, puis les commentaires et le contraste des couleurs font émerger une explication plus banale : certaines traces existent partout mais ne deviennent visibles que sur leur fond opposé.",
+        "visualCue": "La symétrie du cadre et l’inversion clair-sombre permettent de comprendre le paradoxe sans son ni texte explicatif.",
+        "reasonToStop": "Le public s’arrête pour résoudre l’anomalie, compare les deux moitiés et peut formuler sa propre explication dans les commentaires.",
+        "whyRelevant": "Cette fausse lecture corrigible prolonge directement la mécanique Stabilo : un détail bref paraît incompatible avec le personnage, puis une révélation innocente récompense le rewatch sans mettre la marque en danger.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "La fissure qui bouge",
+        "cast": {
+          "character": "lofi-girl",
+          "companion": "cat"
+        },
+        "concept": "Une ligne sombre et irrégulière traverse soudain le carnet de Girl comme s’il était déchiré ou taché. Le chat frôle la lampe, la ligne glisse hors de la page et révèle l’ombre banale d’un câble de casque suspendu plus haut.",
+        "openingText": "Une seconde, j’ai cru que la page était fichue.",
+        "sequence": [
+          "Un plan serré montre une ligne noire très irrégulière qui coupe la page crème pendant que Girl continue d’écrire, sans souligner l’anomalie.",
+          "Le chat passe derrière la lampe et la frôle doucement ; la ligne se déplace sur le papier au lieu de rester attachée à la page.",
+          "Le cadre s’élargit et révèle le câble de casque qui projette cette ombre ; Girl le raccroche puis le chat s’installe devant le carnet intact."
+        ],
+        "caption": "Ce n’était pas sur la page. C’était juste entre la lumière et elle.",
+        "audioDirection": "Enregistrer humainement papier, crayon, câble et ronronnement avec une composition originale très légère ; le faux indice et sa résolution doivent rester entièrement lisibles en muet.",
+        "productionGuardrails": [
+          "Production 100 % humaine : écriture, accessoires, illustration ou animation, prise de vue, bruitages, musique et montage réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Créer le bureau, le carnet, l’ombre, le câble, l’éclairage, le cadrage et la révélation depuis zéro ; ne reprendre ni le diptyque, ni les voitures, ni les oiseaux, ni la composition, ni le texte de la source."
+        ]
+      },
+      "editorialStatus": "new"
+    },
+    {
+      "id": "cat-anticipates-record-ending",
+      "runId": "instagram-search-2026-09-03-frequency-boost-1940",
+      "source": {
+        "platform": "instagram",
+        "url": "https://www.instagram.com/p/Da0BDNOCEap/",
+        "postId": "Da0BDNOCEap",
+        "author": "cats_of_instagram",
+        "sourceLabel": "Chat qui observe une machine à glaçons jusqu’à anticiper le moment précis où le mécanisme se déclenche",
+        "capturedAt": "2026-09-03T19:40:47+02:00",
+        "publishedAt": null,
+        "format": "reel",
+        "thumbnailUrl": null,
+        "sponsored": false,
+        "metrics": {
+          "likes": 38200,
+          "views": null,
+          "comments": null,
+          "shares": null,
+          "saves": null,
+          "precision": "platform-rounded"
+        }
+      },
+      "analysis": {
+        "themeIds": [
+          "animal-companions",
+          "lofi-daily-life"
+        ],
+        "hook": "Le chat ne réagit plus après le bruit : il attend le mécanisme et bouge juste avant, comme s’il avait compris sa routine.",
+        "mechanic": "Une répétition domestique installe une attente simple, puis l’anticipation de l’animal devient le payoff et donne envie de revoir le moment exact où il devine la suite.",
+        "visualCue": "Le regard fixe, les oreilles et le déplacement du chat rendent son apprentissage lisible avant même que l’objet se déclenche.",
+        "reasonToStop": "Le public veut vérifier si l’animal connaît vraiment le timing ou s’il a seulement réagi à un indice imperceptible.",
+        "whyRelevant": "Le chat de Girl peut devenir observateur actif d’un rituel musical quotidien, avec une petite intelligence narrative qui renforce son personnage sans humanisation forcée.",
+        "confidence": "high"
+      },
+      "adaptation": {
+        "title": "Le chat connaît la fin du disque",
+        "cast": {
+          "character": "lofi-girl",
+          "companion": "cat"
+        },
+        "concept": "Après plusieurs soirées à côté de la platine, le chat se redresse une seconde avant que le bras automatique ne revienne. Girl finit par comprendre qu’il connaît désormais la durée du disque mieux qu’elle.",
+        "openingText": "Il sait que le disque est fini avant moi.",
+        "sequence": [
+          "Girl travaille pendant qu’un disque original tourne ; le chat reste à distance derrière une petite barrière intégrée au meuble et suit le bras de la platine du regard.",
+          "Deux ellipses montrent le même rituel à des moments différents, avec le chat qui se redresse de plus en plus tôt sans jamais toucher au matériel.",
+          "À la troisième boucle, le chat regarde Girl juste avant le retour automatique du bras ; elle lève les yeux à son tour et note l’heure sur la pochette fictive."
+        ],
+        "caption": "À force d’écouter ensemble, il a appris la dernière seconde.",
+        "audioDirection": "Composer, jouer et enregistrer humainement le morceau ainsi que les sons de platine ; prévoir une version muette où le mouvement du chat et du bras suffit à porter le payoff.",
+        "productionGuardrails": [
+          "Production 100 % humaine : scénario, décor, animation ou captation, musique, bruitages et montage réalisés par des personnes créditées.",
+          "Aucune image, vidéo, voix ou musique générée par IA.",
+          "Tenir l’animal réel ou animé à distance du mécanisme, inventer la platine et la pochette visibles, et ne reprendre ni la machine, ni le cadrage, ni le timing exact, ni le son de la source."
         ]
       },
       "editorialStatus": "new"
