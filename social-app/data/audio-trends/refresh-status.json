@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "attemptedAt": "2026-09-03T07:25:57.446Z",
+  "attemptedAt": "2026-09-03T09:58:27.052Z",
   "status": "success",
   "published": true,
   "inventory": {
@@ -14,7 +14,7 @@
     "publishable": true
   },
   "discoveryAudit": {
-    "scannedAt": "2026-09-03T07:25:57.446Z",
+    "scannedAt": "2026-09-03T09:58:27.052Z",
     "status": "success",
     "complete": true,
     "candidateCount": 171,
@@ -26,7 +26,7 @@
       "tiktok": 8
     },
     "candidateRegistry": {
-      "updatedAt": "2026-09-03T07:25:57.446Z",
+      "updatedAt": "2026-09-03T09:58:27.052Z",
       "candidateCount": 171,
       "candidateAudioUrls": [
         "https://www.instagram.com/reels/audio/1006119841436928",
@@ -287,11 +287,11 @@
       "retained": 171
     },
     "qualificationAudit": {
-      "attemptedAt": "2026-09-03T07:25:57.446Z",
+      "attemptedAt": "2026-09-03T09:58:27.052Z",
       "complete": true,
-      "videoFeedCapturedAt": "2026-09-03T07:20:56.906Z",
+      "videoFeedCapturedAt": "2026-09-03T08:57:57.366Z",
       "videoFeedFresh": true,
-      "videoDiscoveryAuditScannedAt": "2026-09-03T07:20:56.906Z",
+      "videoDiscoveryAuditScannedAt": "2026-09-03T08:57:57.366Z",
       "videoDiscoveryAuditFresh": true,
       "attemptedTrendCount": 37,
       "attemptedCurrentTrendCount": 0,
@@ -894,7 +894,7 @@
     ],
     "publishedInventoryCount": 50,
     "selectionAudit": {
-      "evaluatedAt": "2026-09-03T07:25:57.446Z",
+      "evaluatedAt": "2026-09-03T09:58:27.052Z",
       "addedTrendIds": [],
       "addedAudioUrls": [],
       "removedTrendIds": [],
@@ -902,7 +902,7 @@
       "visibleAddedCount": 0,
       "visibleRemovedCount": 0,
       "lastVisibleRotationAt": "2026-09-02T09:45:05.438Z",
-      "unchangedRunCount": 3,
+      "unchangedRunCount": 4,
       "retainedTrendIds": [
         "pocketful-of-sunshine",
         "petal-soft-chaos",
@@ -998,7 +998,7 @@
     "visibleAddedCount": 0,
     "visibleRemovedCount": 0,
     "lastVisibleRotationAt": "2026-09-02T09:45:05.438Z",
-    "unchangedRunCount": 3
+    "unchangedRunCount": 4
   },
   "coverage": {
     "totalChecked": 48,

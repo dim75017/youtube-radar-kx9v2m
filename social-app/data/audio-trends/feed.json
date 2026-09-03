@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "capturedAt": "2026-09-03T07:25:57.446Z",
-  "nextRefreshAt": "2026-09-04T07:25:57.446Z",
+  "capturedAt": "2026-09-03T09:58:27.052Z",
+  "nextRefreshAt": "2026-09-04T09:58:27.052Z",
   "cadenceHours": 24,
   "methodology": "Sélection de 50 audios natifs pertinents pour Lofi Girl, chacun démontré par au moins trois créateurs et trois publications natives distinctes. Les volumes viennent uniquement des pages audio publiques ; les compteurs abrégés restent signalés comme estimations et les volumes indisponibles restent vides. Pour YouTube Shorts, la page audio native prouve les reprises mais n’expose pas de compteur global comparable. La croissance n’est calculée qu’avec deux relevés comparables du même compteur natif.",
   "sourceChecks": [
@@ -9,7 +9,7 @@
       "id": "instagram-audio-public",
       "platform": "instagram",
       "status": "limited",
-      "checkedAt": "2026-09-03T07:25:57.446Z",
+      "checkedAt": "2026-09-03T09:58:27.052Z",
       "label": "Instagram Reels · pages audio et grilles publiques",
       "sourceUrl": "https://www.instagram.com/reels/"
     },
@@ -17,7 +17,7 @@
       "id": "tiktok-audio-public",
       "platform": "tiktok",
       "status": "limited",
-      "checkedAt": "2026-09-03T07:25:57.446Z",
+      "checkedAt": "2026-09-03T09:58:27.052Z",
       "label": "TikTok · pages audio, compteurs et reprises multi-créateurs vérifiés",
       "sourceUrl": "https://ads.tiktok.com/business/creativecenter/inspiration/popular/music/pc/en"
     },
@@ -144,7 +144,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -152,19 +152,19 @@
             "platform": "tiktok",
             "author": "@itsgivingmother",
             "url": "https://www.tiktok.com/@itsgivingmother/video/7663570718331768084",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@tyrellhampton2",
             "url": "https://www.tiktok.com/@tyrellhampton2/video/7552766129840606519",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@kaiyafromaustralia",
             "url": "https://www.tiktok.com/@kaiyafromaustralia/video/7669792494338526497",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       }
@@ -273,7 +273,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -281,19 +281,19 @@
             "platform": "tiktok",
             "author": "@nibsgonewild",
             "url": "https://www.tiktok.com/@nibsgonewild/video/7668822589699067149",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@imnotjordy",
             "url": "https://www.tiktok.com/@imnotjordy/video/7671575860167609631",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@halleberry",
             "url": "https://www.tiktok.com/@halleberry/video/7669135147848977677",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       }
@@ -402,7 +402,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -410,19 +410,19 @@
             "platform": "tiktok",
             "author": "@luv.iolett",
             "url": "https://www.tiktok.com/@luv.iolett/video/7660688157242871054",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@ddamarcusssss",
             "url": "https://www.tiktok.com/@ddamarcusssss/video/7657777908211141902",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@cashewtokk",
             "url": "https://www.tiktok.com/@cashewtokk/video/7662782151452151071",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       }
@@ -660,7 +660,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -668,19 +668,19 @@
             "platform": "tiktok",
             "author": "@nemzzz_",
             "url": "https://www.tiktok.com/@nemzzz_/video/7671629552791112963",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@zah1de",
             "url": "https://www.tiktok.com/@zah1de/video/7668007675438927137",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@tinyartshow",
             "url": "https://www.tiktok.com/@tinyartshow/video/7667026255182793998",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       }
@@ -798,7 +798,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -806,19 +806,19 @@
             "platform": "tiktok",
             "author": "@anaola__",
             "url": "https://www.tiktok.com/@anaola__/video/7668035118283509012",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@malyorie_10",
             "url": "https://www.tiktok.com/@malyorie_10/video/7656901787286392078",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@becomingaby",
             "url": "https://www.tiktok.com/@becomingaby/video/7658387400871136530",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       }
@@ -995,7 +995,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -1003,19 +1003,19 @@
             "platform": "tiktok",
             "author": "@happyme6810",
             "url": "https://www.tiktok.com/@happyme6810/video/7676588642390838558",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@isabelclanc",
             "url": "https://www.tiktok.com/@isabelclanc/video/7667274434394344717",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@panthers",
             "url": "https://www.tiktok.com/@panthers/video/7666533142194359565",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
@@ -1111,8 +1111,8 @@
           "comments": 268,
           "shares": 36900
         },
-        "playbackUrl": "https://scontent-sjc6-1.cdninstagram.com/o1/v/t2/f2/m86/AQOKghhB4ZtoLiokwMhgacz-kHqDYCLzuXjXGbrJQK8jABMkqXm3sCzrHkVJndJSgudDc63nIuaFqOL43VdGZ3WT78WyQNgByDx_hxc.mp4?_nc_cat=101&_nc_sid=5e9851&_nc_ht=scontent-sjc6-1.cdninstagram.com&_nc_ohc=yPP0_l3Vu44Q7kNvwG9Fgla&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuNzIwLmRhc2hfYmFzZWxpbmVfMV92MSIsInhwdl9hc3NldF9pZCI6MTAxMDcwNjE5NTE4MjU0MywiYXNzZXRfYWdlX2RheXMiOjUwLCJ2aV91c2VjYXNlX2lkIjoxMDgyNywiZHVyYXRpb25fcyI6OSwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=93dd04ab45d60e06&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC82MDQ2MkJEMDVFQTg3MDQwMzczQjBEMjYzQTAyNjJCOF92aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyLzQ5NDYzNzZDRUYyQzc2Q0Q1NUU3ODA1M0Q4QjM1Qjg1X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaez-P7687LAxUCKAJDMywXQCIhysCDEm8YEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZZapAQA&_nc_gid=BvEMAo7gqhEZPhGMt-On0Q&_nc_ss=7f689&_nc_zt=28&oh=00_AQLUZkMLTa6o9YJbaY37FM9LScC6V-DwasYYyNexw1q1dw&oe=6A9B0FAE",
-        "playbackCapturedAt": "2026-09-03T07:25:57.446Z",
+        "playbackUrl": "https://scontent-iad3-1.cdninstagram.com/o1/v/t2/f2/m86/AQOKghhB4ZtoLiokwMhgacz-kHqDYCLzuXjXGbrJQK8jABMkqXm3sCzrHkVJndJSgudDc63nIuaFqOL43VdGZ3WT78WyQNgByDx_hxc.mp4?_nc_cat=101&_nc_sid=5e9851&_nc_ht=scontent-iad3-1.cdninstagram.com&_nc_ohc=yPP0_l3Vu44Q7kNvwFT9Oan&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuNzIwLmRhc2hfYmFzZWxpbmVfMV92MSIsInhwdl9hc3NldF9pZCI6MTAxMDcwNjE5NTE4MjU0MywiYXNzZXRfYWdlX2RheXMiOjUwLCJ2aV91c2VjYXNlX2lkIjoxMDgyNywiZHVyYXRpb25fcyI6OSwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=93dd04ab45d60e06&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC82MDQ2MkJEMDVFQTg3MDQwMzczQjBEMjYzQTAyNjJCOF92aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyLzQ5NDYzNzZDRUYyQzc2Q0Q1NUU3ODA1M0Q4QjM1Qjg1X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaez-P7687LAxUCKAJDMywXQCIhysCDEm8YEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZZapAQA&_nc_gid=AVJ_WIIh0i-eCA6DpMzNmA&_nc_ss=7f689&_nc_zt=28&oh=00_AQLvGHE0e4pgfwqy_cIv-E5UzuMC707QQSwcgHptB_rIkg&oe=6A9B0FAE",
+        "playbackCapturedAt": "2026-09-03T09:58:27.052Z",
         "playbackExpiresAt": "2026-09-04T18:36:30.000Z"
       },
       "usageObservations": [
@@ -1252,9 +1252,9 @@
           "comments": 215,
           "shares": null
         },
-        "playbackUrl": "https://scontent-sjc6-1.cdninstagram.com/o1/v/t2/f2/m86/AQMYbhzGtW-gYkbTFItpYwtne2sCF4tD7NuP_v8Ik7TsLFQPazkevErdgFN8yhFpfSAtpY-OpoPBuCnBxLDFb-SuRNDNFsWXwb_Wyhc.mp4?_nc_cat=101&_nc_sid=5e9851&_nc_ht=scontent-sjc6-1.cdninstagram.com&_nc_ohc=AF6ht7DCFsMQ7kNvwFjT8YV&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuOTUyLmRhc2hfYmFzZWxpbmVfMV92MSIsInhwdl9hc3NldF9pZCI6MTM3MjQyMDMwODE3NzM0NCwiYXNzZXRfYWdlX2RheXMiOjQxLCJ2aV91c2VjYXNlX2lkIjoxMDA5OSwiZHVyYXRpb25fcyI6MjIsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=781bb4859bfde5b2&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC9EMTQ0M0U1ODgxM0EzQzI1RjIzRDUxMDFFQ0Q0QUE4OF92aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyL0YwNEE2QkFEMEQ1MUZCNUZERTc1MzEzNDY4OTMyQjhDX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaAx5yPsI3wBBUCKAJDMywXQDbEGJN0vGoYEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZeadAQA&_nc_gid=0y9wjDd98nFZe1QGONuNvQ&_nc_ss=7f689&_nc_zt=28&oh=00_AQJiNMmPAcy-dJzSG2h20vmf20hZrvIP_q8p7OLTK-JT1g&oe=6A9AECAA",
-        "playbackCapturedAt": "2026-09-03T07:25:57.446Z",
-        "playbackExpiresAt": "2026-09-04T16:07:06.000Z"
+        "playbackUrl": "https://scontent-iad3-1.cdninstagram.com/o1/v/t2/f2/m86/AQMYbhzGtW-gYkbTFItpYwtne2sCF4tD7NuP_v8Ik7TsLFQPazkevErdgFN8yhFpfSAtpY-OpoPBuCnBxLDFb-SuRNDNFsWXwb_Wyhc.mp4?_nc_cat=101&_nc_sid=5e9851&_nc_ht=scontent-iad3-1.cdninstagram.com&_nc_ohc=AF6ht7DCFsMQ7kNvwFp5N9P&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuOTUyLmRhc2hfYmFzZWxpbmVfMV92MSIsInhwdl9hc3NldF9pZCI6MTM3MjQyMDMwODE3NzM0NCwiYXNzZXRfYWdlX2RheXMiOjQxLCJ2aV91c2VjYXNlX2lkIjoxMDA5OSwiZHVyYXRpb25fcyI6MjIsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=781bb4859bfde5b2&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC9EMTQ0M0U1ODgxM0EzQzI1RjIzRDUxMDFFQ0Q0QUE4OF92aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyL0YwNEE2QkFEMEQ1MUZCNUZERTc1MzEzNDY4OTMyQjhDX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaAx5yPsI3wBBUCKAJDMywXQDbEGJN0vGoYEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZeadAQA&_nc_gid=C2tgY8fZDFv_PrjUVKmrGA&_nc_ss=7f689&_nc_zt=28&oh=00_AQJ85KXvVZmjkMdqtUKXDWUUV3g-zRMtNYGFioWnNY4fjQ&oe=6A9B24EA",
+        "playbackCapturedAt": "2026-09-03T09:58:27.052Z",
+        "playbackExpiresAt": "2026-09-04T20:07:06.000Z"
       },
       "usageObservations": [
         {
@@ -1513,8 +1513,8 @@
           "comments": 222,
           "shares": 3000
         },
-        "playbackUrl": "https://scontent-sjc3-1.cdninstagram.com/o1/v/t2/f2/m86/AQOVReheLMerv25ZxkBMwnPyy8DyXMSwqzN-RalyElFueiQ-idw7kqwSuHTBr8GDJYmWyN-KU7VEgZv48K57sBK9AGRU30FJNZLbqHk.mp4?_nc_cat=110&_nc_sid=5e9851&_nc_ht=scontent-sjc3-1.cdninstagram.com&_nc_ohc=rWEv5bir7ewQ7kNvwFpqOSB&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuNzIwLmRhc2hfYmFzZWxpbmVfMV92MSIsInhwdl9hc3NldF9pZCI6MzU4NzY4ODAyMTM5MDA0OSwiYXNzZXRfYWdlX2RheXMiOjQzLCJ2aV91c2VjYXNlX2lkIjoxMDgyNywiZHVyYXRpb25fcyI6MjEsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=5b45a8f321bf289e&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC83ODRCOUM5RDc0N0IxNzk0Njk4NzdCOTQ1NjcxQUJCQl92aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyL0VCNDk3NTcxNUE1Nzk5QzBDNzcwOUNBRkE2NUZBMkFBX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbCy6Ph9r7fDBUCKAJDMywXQDWZmZmZmZoYEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZZapAQA&_nc_gid=ZwUC5Imdr8TfsNXO7V_z5g&_nc_ss=7f689&_nc_zt=28&oh=00_AQJuAB0875Pc-Vdxc4w8rrh0ShvhUY5HtuxdS84Gf3wLXg&oe=6A9B1733",
-        "playbackCapturedAt": "2026-09-03T07:25:57.446Z",
+        "playbackUrl": "https://scontent-iad3-1.cdninstagram.com/o1/v/t2/f2/m86/AQOVReheLMerv25ZxkBMwnPyy8DyXMSwqzN-RalyElFueiQ-idw7kqwSuHTBr8GDJYmWyN-KU7VEgZv48K57sBK9AGRU30FJNZLbqHk.mp4?_nc_cat=110&_nc_sid=5e9851&_nc_ht=scontent-iad3-1.cdninstagram.com&_nc_ohc=rWEv5bir7ewQ7kNvwG437kW&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuNzIwLmRhc2hfYmFzZWxpbmVfMV92MSIsInhwdl9hc3NldF9pZCI6MzU4NzY4ODAyMTM5MDA0OSwiYXNzZXRfYWdlX2RheXMiOjQzLCJ2aV91c2VjYXNlX2lkIjoxMDgyNywiZHVyYXRpb25fcyI6MjEsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=5b45a8f321bf289e&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC83ODRCOUM5RDc0N0IxNzk0Njk4NzdCOTQ1NjcxQUJCQl92aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyL0VCNDk3NTcxNUE1Nzk5QzBDNzcwOUNBRkE2NUZBMkFBX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbCy6Ph9r7fDBUCKAJDMywXQDWZmZmZmZoYEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZZapAQA&_nc_gid=7ihDjjoQLl7mBBr2q4hBBw&_nc_ss=7f689&_nc_zt=28&oh=00_AQIOnTnVEsyUhhgWy9WsNBl698XQXcsWOCn3M5sapx61sQ&oe=6A9B1733",
+        "playbackCapturedAt": "2026-09-03T09:58:27.052Z",
         "playbackExpiresAt": "2026-09-04T19:08:35.000Z"
       },
       "usageObservations": [
@@ -1654,9 +1654,9 @@
           "comments": 1500,
           "shares": 6500
         },
-        "playbackUrl": "https://scontent-sjc3-1.cdninstagram.com/o1/v/t2/f2/m86/AQPstNguYfAaU1LuqhBPhovElDjmwiPKalFSR3cERjf34AKG8SoYVCFUZlLQ8Yj1b2o-Ds9GulSgoh3soXNZp5A5xCVlAL8YZk2zC_E.mp4?_nc_cat=110&_nc_sid=5e9851&_nc_ht=scontent-sjc3-1.cdninstagram.com&_nc_ohc=ZlVjojujBXMQ7kNvwHKqe8u&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuNzIwLmRhc2hfYmFzZWxpbmVfMV92MSIsInhwdl9hc3NldF9pZCI6MjcwMzA1ODI4OTk5NTA1MDAsImFzc2V0X2FnZV9kYXlzIjo0NCwidmlfdXNlY2FzZV9pZCI6MTAwOTksImR1cmF0aW9uX3MiOjE1LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=2cfcb2e9e75cea8a&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC84MjQ1NjA1QUM4MTk5Q0EyNEIyREMyMTFCMTQ0MzE4Q192aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyLzk2NDhFOTM3OTAyMEY4MTc3MERGNjg5QTk5OUZDNTk2X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbIjpa9gIuEYBUCKAJDMywXQC5EGJN0vGoYEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZeadAQA&_nc_gid=a2Uwo8qthZwwxrFyTm_D6w&_nc_ss=7f689&_nc_zt=28&oh=00_AQKiJE8pDAKPlMJpbBUY8wxA22gvhzQZQozG9i1z7lKboQ&oe=6A9AFA5F",
-        "playbackCapturedAt": "2026-09-03T07:25:57.446Z",
-        "playbackExpiresAt": "2026-09-04T17:05:35.000Z"
+        "playbackUrl": "https://scontent-iad3-1.cdninstagram.com/o1/v/t2/f2/m86/AQPstNguYfAaU1LuqhBPhovElDjmwiPKalFSR3cERjf34AKG8SoYVCFUZlLQ8Yj1b2o-Ds9GulSgoh3soXNZp5A5xCVlAL8YZk2zC_E.mp4?_nc_cat=110&_nc_sid=5e9851&_nc_ht=scontent-iad3-1.cdninstagram.com&_nc_ohc=ZlVjojujBXMQ7kNvwFcPV0f&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuNzIwLmRhc2hfYmFzZWxpbmVfMV92MSIsInhwdl9hc3NldF9pZCI6MjcwMzA1ODI4OTk5NTA1MDAsImFzc2V0X2FnZV9kYXlzIjo0NCwidmlfdXNlY2FzZV9pZCI6MTAwOTksImR1cmF0aW9uX3MiOjE1LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=2cfcb2e9e75cea8a&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC84MjQ1NjA1QUM4MTk5Q0EyNEIyREMyMTFCMTQ0MzE4Q192aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyLzk2NDhFOTM3OTAyMEY4MTc3MERGNjg5QTk5OUZDNTk2X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbIjpa9gIuEYBUCKAJDMywXQC5EGJN0vGoYEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZeadAQA&_nc_gid=7GZ3PbXwt3QrI5CrN6Q_IQ&_nc_ss=7f689&_nc_zt=28&oh=00_AQIyBX6yABwuZj8xzAxmKCg8Ii47KpMuterBC1fiqwFoyQ&oe=6A9B329F",
+        "playbackCapturedAt": "2026-09-03T09:58:27.052Z",
+        "playbackExpiresAt": "2026-09-04T21:05:35.000Z"
       },
       "usageObservations": [
         {
@@ -1808,7 +1808,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -1816,19 +1816,19 @@
             "platform": "tiktok",
             "author": "@vierbessen",
             "url": "https://www.tiktok.com/@vierbessen/video/7677914834154933537",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@juliess.privv",
             "url": "https://www.tiktok.com/@juliess.privv/video/7662523570551147807",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@martha_xoft",
             "url": "https://www.tiktok.com/@martha_xoft/video/7680465414131862792",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
@@ -1924,9 +1924,9 @@
           "comments": 3400,
           "shares": 106500
         },
-        "playbackUrl": "https://scontent-sjc3-1.cdninstagram.com/o1/v/t2/f2/m86/AQPz2lA3vPxXHxR5imfQdfSbXNXGvOeeUqfP_utdEHHecej5f970mmH2fgbPmia0pc3oHxpqKGjbhW7yE1yHBaaqZvuZMe3uFLbrSPY.mp4?_nc_cat=106&_nc_sid=5e9851&_nc_ht=scontent-sjc3-1.cdninstagram.com&_nc_ohc=L-9-RiVRu4wQ7kNvwHR1nZy&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuMTI3Ni5kYXNoX2Jhc2VsaW5lXzFfdjEiLCJ4cHZfYXNzZXRfaWQiOjE5OTcyNjQyODQ0ODgxMDcsImFzc2V0X2FnZV9kYXlzIjo4MiwidmlfdXNlY2FzZV9pZCI6MTAwOTksImR1cmF0aW9uX3MiOjI5LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=8966d5e15e8cf87a&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC9FNTQ1Mjc3RkE0MDdFQUM0OTQ4N0QzMkIxN0E1MzdBQ192aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyLzQ3NDk5QzBCODM2RTVDN0FBQTJEMTgyMjNGNjkxMDk3X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbWxpjDiqCMBxUCKAJDMywXQD0VP3ztkWgYEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZeadAQA&_nc_gid=GvL7tR82yKaRvZ2jh5ybwQ&_nc_ss=7f689&_nc_zt=28&oh=00_AQJnV5hVuRQuoKkVugQK1equrho1jedAm8Qi4I6UsA7doA&oe=6A9AF2AF",
-        "playbackCapturedAt": "2026-09-03T07:25:57.446Z",
-        "playbackExpiresAt": "2026-09-04T16:32:47.000Z"
+        "playbackUrl": "https://scontent-iad6-1.cdninstagram.com/o1/v/t2/f2/m86/AQPz2lA3vPxXHxR5imfQdfSbXNXGvOeeUqfP_utdEHHecej5f970mmH2fgbPmia0pc3oHxpqKGjbhW7yE1yHBaaqZvuZMe3uFLbrSPY.mp4?_nc_cat=106&_nc_sid=5e9851&_nc_ht=scontent-iad6-1.cdninstagram.com&_nc_ohc=L-9-RiVRu4wQ7kNvwHRlKOb&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5JTlNUQUdSQU0uQ0xJUFMuQzMuMTI3Ni5kYXNoX2Jhc2VsaW5lXzFfdjEiLCJ4cHZfYXNzZXRfaWQiOjE5OTcyNjQyODQ0ODgxMDcsImFzc2V0X2FnZV9kYXlzIjo4MiwidmlfdXNlY2FzZV9pZCI6MTAwOTksImR1cmF0aW9uX3MiOjI5LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=8966d5e15e8cf87a&_nc_vs=HBksFQIYUmlnX3hwdl9yZWVsc19wZXJtYW5lbnRfc3JfcHJvZC9FNTQ1Mjc3RkE0MDdFQUM0OTQ4N0QzMkIxN0E1MzdBQ192aWRlb19kYXNoaW5pdC5tcDQVAALIARIAFQIYUWlnX3hwdl9wbGFjZW1lbnRfcGVybWFuZW50X3YyLzQ3NDk5QzBCODM2RTVDN0FBQTJEMTgyMjNGNjkxMDk3X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbWxpjDiqCMBxUCKAJDMywXQD0VP3ztkWgYEmRhc2hfYmFzZWxpbmVfMV92MREAdf4HZeadAQA&_nc_gid=Y3OuzaGUGKT881awgMlNyw&_nc_ss=7f689&_nc_zt=28&oh=00_AQKOPr_9erbu_3BCeQixjQkR59pQx-jfs6U5UBYv1Usxtw&oe=6A9B2AEF",
+        "playbackCapturedAt": "2026-09-03T09:58:27.052Z",
+        "playbackExpiresAt": "2026-09-04T20:32:47.000Z"
       },
       "usageObservations": [
         {
@@ -2069,7 +2069,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -2077,19 +2077,19 @@
             "platform": "tiktok",
             "author": "@juttaleerdam",
             "url": "https://www.tiktok.com/@juttaleerdam/video/7501392027473464598",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@livinwithiz",
             "url": "https://www.tiktok.com/@livinwithiz/video/7412728217775164702",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@allie_spa",
             "url": "https://www.tiktok.com/@allie_spa/video/7420637385370717482",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
@@ -2198,7 +2198,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -2206,19 +2206,19 @@
             "platform": "tiktok",
             "author": "@thekumarmethod",
             "url": "https://www.tiktok.com/@thekumarmethod/video/7647998974489627917",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@joycelimrealtor",
             "url": "https://www.tiktok.com/@joycelimrealtor/video/7661118928088878344",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@jossyautomotive6",
             "url": "https://www.tiktok.com/@jossyautomotive6/video/7665724163738438929",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
@@ -2327,7 +2327,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -2335,19 +2335,19 @@
             "platform": "tiktok",
             "author": "@natlouisejack",
             "url": "https://www.tiktok.com/@natlouisejack/video/7620301726104423710",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@ohheymeli",
             "url": "https://www.tiktok.com/@ohheymeli/video/7598372685755796749",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@serenamorena67",
             "url": "https://www.tiktok.com/@serenamorena67/video/7613073072819555606",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
@@ -2456,7 +2456,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -2464,19 +2464,19 @@
             "platform": "tiktok",
             "author": "@johnnellis_",
             "url": "https://www.tiktok.com/@johnnellis_/video/7666782102377024790",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@janayandkalisha",
             "url": "https://www.tiktok.com/@janayandkalisha/video/7665832849349659918",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@liammillerr",
             "url": "https://www.tiktok.com/@liammillerr/video/7663238721306627359",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
@@ -2585,7 +2585,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -2593,19 +2593,19 @@
             "platform": "tiktok",
             "author": "@noahaltink",
             "url": "https://www.tiktok.com/@noahaltink/video/7583739779443985697",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@eunoiamedspacolorado",
             "url": "https://www.tiktok.com/@eunoiamedspacolorado/video/7575240484579331358",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@gigicheoh",
             "url": "https://www.tiktok.com/@gigicheoh/video/7580595647141743888",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
@@ -2714,7 +2714,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -2722,19 +2722,19 @@
             "platform": "tiktok",
             "author": "@ianmcconnellmusic",
             "url": "https://www.tiktok.com/@ianmcconnellmusic/video/7649038438942985503",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@arthenaa",
             "url": "https://www.tiktok.com/@arthenaa/video/7651446709867777294",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@cherylporterdiva",
             "url": "https://www.tiktok.com/@cherylporterdiva/video/7653614393908792606",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
@@ -2843,7 +2843,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -2851,19 +2851,19 @@
             "platform": "tiktok",
             "author": "@liamswiderski",
             "url": "https://www.tiktok.com/@liamswiderski/video/7639360020605390100",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@stinkerbelljr",
             "url": "https://www.tiktok.com/@stinkerbelljr/video/7672103152027471118",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@aaliyahsteedmann",
             "url": "https://www.tiktok.com/@aaliyahsteedmann/video/7658952161568492821",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
@@ -2972,7 +2972,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -2980,19 +2980,19 @@
             "platform": "tiktok",
             "author": "@katseyeworld",
             "url": "https://www.tiktok.com/@katseyeworld/video/7657961287862799629",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@avapumpelly",
             "url": "https://www.tiktok.com/@avapumpelly/video/7653833092053961998",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@iconistaedits",
             "url": "https://www.tiktok.com/@iconistaedits/video/7656914605926632734",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
@@ -3101,7 +3101,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -3109,19 +3109,19 @@
             "platform": "tiktok",
             "author": "@charlixcx",
             "url": "https://www.tiktok.com/@charlixcx/video/7642492769965067542",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@plastik",
             "url": "https://www.tiktok.com/@plastik/video/7643090478052773141",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@monsterklawz",
             "url": "https://www.tiktok.com/@monsterklawz/video/7645016781974719758",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
@@ -3230,7 +3230,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -3238,19 +3238,19 @@
             "platform": "tiktok",
             "author": "@tameimpala",
             "url": "https://www.tiktok.com/@tameimpala/video/7640146419336187149",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@ddlovato",
             "url": "https://www.tiktok.com/@ddlovato/video/7629030173538536717",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@brookemonk_",
             "url": "https://www.tiktok.com/@brookemonk_/video/7631305154494549279",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
@@ -3359,7 +3359,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -3367,19 +3367,19 @@
             "platform": "tiktok",
             "author": "@aikibem",
             "url": "https://www.tiktok.com/@aikibem/video/7668737173033651477",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@fallmw_",
             "url": "https://www.tiktok.com/@fallmw_/video/7654182450855185682",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@annierawrrrrr",
             "url": "https://www.tiktok.com/@annierawrrrrr/video/7644197018210012433",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
@@ -3488,7 +3488,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -3496,19 +3496,19 @@
             "platform": "tiktok",
             "author": "@romero.szee",
             "url": "https://www.tiktok.com/@romero.szee/video/7660435196302363934",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@yumberryyogurt99",
             "url": "https://www.tiktok.com/@yumberryyogurt99/video/7665821726822927647",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@laken.bryant",
             "url": "https://www.tiktok.com/@laken.bryant/video/7658304480160632094",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
@@ -3617,7 +3617,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -3625,19 +3625,19 @@
             "platform": "tiktok",
             "author": "@kaylee_halko",
             "url": "https://www.tiktok.com/@kaylee_halko/video/7663189220135013646",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@lifewithyaaya",
             "url": "https://www.tiktok.com/@lifewithyaaya/video/7666599141300129037",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@addie_mccracken123",
             "url": "https://www.tiktok.com/@addie_mccracken123/video/7665458699720248589",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
@@ -3746,7 +3746,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -3754,19 +3754,19 @@
             "platform": "tiktok",
             "author": "@asiansurfergirl",
             "url": "https://www.tiktok.com/@asiansurfergirl/video/7668422119440567582",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@klemfamily",
             "url": "https://www.tiktok.com/@klemfamily/video/7668351340745116942",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@life.of.duck",
             "url": "https://www.tiktok.com/@life.of.duck/video/7671787826937122068",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
@@ -3875,7 +3875,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -3883,19 +3883,19 @@
             "platform": "tiktok",
             "author": "@maciejsphotos",
             "url": "https://www.tiktok.com/@maciejsphotos/video/7653092844613160214",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@cintascl_",
             "url": "https://www.tiktok.com/@cintascl_/video/7655167358876601607",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@salzabiw_",
             "url": "https://www.tiktok.com/@salzabiw_/video/7655922769955147025",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
@@ -4004,7 +4004,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -4012,19 +4012,19 @@
             "platform": "tiktok",
             "author": "@ameliamitchspam",
             "url": "https://www.tiktok.com/@ameliamitchspam/video/7668735049658879254",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@hope.along.the.way",
             "url": "https://www.tiktok.com/@hope.along.the.way/video/7666712012000333069",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@inesstitaa",
             "url": "https://www.tiktok.com/@inesstitaa/video/7670161263544257814",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
@@ -4391,7 +4391,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -4399,19 +4399,19 @@
             "platform": "tiktok",
             "author": "@yammin_",
             "url": "https://www.tiktok.com/@yammin_/video/7601563909660642582",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@steciathv",
             "url": "https://www.tiktok.com/@steciathv/video/7603357546539273490",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@itskajja",
             "url": "https://www.tiktok.com/@itskajja/video/7626469513948744982",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
@@ -4520,7 +4520,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -4528,19 +4528,19 @@
             "platform": "tiktok",
             "author": "@pfthannah",
             "url": "https://www.tiktok.com/@pfthannah/video/7572161262285589782",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@lizalima777",
             "url": "https://www.tiktok.com/@lizalima777/video/7573005794094992647",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@byantonya",
             "url": "https://www.tiktok.com/@byantonya/video/7599281141585022230",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
@@ -4649,7 +4649,7 @@
         }
       ],
       "reuseEvidence": {
-        "verifiedAt": "2026-09-03T07:25:57.446Z",
+        "verifiedAt": "2026-09-03T09:58:27.052Z",
         "minimumDistinctCreators": 3,
         "summary": "Le même audio TikTok a été attribué nativement à 3 créateurs distincts pendant le scan du jour.",
         "posts": [
@@ -4657,19 +4657,19 @@
             "platform": "tiktok",
             "author": "@m.i.h.a.e.l.a89",
             "url": "https://www.tiktok.com/@m.i.h.a.e.l.a89/video/7626838176945933582",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@eky2107",
             "url": "https://www.tiktok.com/@eky2107/video/7325930286838025515",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           },
           {
             "platform": "tiktok",
             "author": "@syd456123",
             "url": "https://www.tiktok.com/@syd456123/video/7321895999947967787",
-            "capturedAt": "2026-09-03T07:25:57.446Z"
+            "capturedAt": "2026-09-03T09:58:27.052Z"
           }
         ]
       },
