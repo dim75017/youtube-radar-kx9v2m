@@ -46,6 +46,7 @@ pnpm build:preview
 pnpm test
 pnpm audience:refresh
 pnpm audience:native:import -- --manifest work/owner-analytics/AAAA-MM-JJ/manifest.json
+pnpm audience:native:health
 pnpm audio-trends:refresh
 pnpm playlist-promos:refresh
 pnpm comments:watchlist        # résout les identifiants de chaîne manquants
@@ -66,6 +67,8 @@ python scripts/collect_public_history.py
 Aucun des deux n'est nécessaire pour que le scan, le classement et la publication des feeds du dashboard fonctionnent.
 
 Le protocole, les limites par plateforme et la séparation entre posts natifs et bibliothèques publicitaires sont détaillés dans [docs/PLAYLIST_PROMOS_FEED.md](docs/PLAYLIST_PROMOS_FEED.md).
+
+Le seuil de 26 heures, les métriques natives obligatoires et la séparation entre relevés publics, exports Analytics et démographies sont détaillés dans [docs/AUDIENCE_NATIVE_HEALTH.md](docs/AUDIENCE_NATIVE_HEALTH.md).
 
 ## Étape suivante
 

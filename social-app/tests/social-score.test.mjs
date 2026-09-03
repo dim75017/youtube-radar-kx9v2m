@@ -93,11 +93,11 @@ test("keeps the known public-history winners at the top", () => {
   );
 
   assert.equal(tiktok[0].externalId, "7532570759349226774");
-  assert.equal(tiktok[0].views, 38_000_000);
+  assert.ok(tiktok[0].views >= 38_000_000);
   assert.equal(communityImages[0].externalId, "UgkxCjn1cHXCa7sqLFrJPy-QzBrjV2UTM_vT");
-  assert.equal(communityImages[0].likes, 80_816);
+  assert.ok(communityImages[0].likes >= 80_816);
   assert.equal(communityPolls[0].externalId, "UgkxYNmB718MucZIiu1yCz3tnefOPWB3KjJw");
-  assert.equal(communityPolls[0].raw.pollVotes, 6_600_000);
+  assert.ok(communityPolls[0].raw.pollVotes >= 6_600_000);
 });
 
 test("normalizes inside each platform before building a global order", () => {

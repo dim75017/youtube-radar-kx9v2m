@@ -33,9 +33,11 @@ test("consolidates audience analytics into one truthful selectable chart", async
   assert.match(component, /id="analytics-platform-subnav"/);
   assert.match(component, /onClick=\{\(\) => chooseAudiencePlatform\(key\)\}/);
   assert.match(component, /activePlatform=\{audiencePlatform\}/);
-  assert.match(explorer, /youtube: "followersNet"/);
-  assert.match(explorer, /tiktok: "followersNet"/);
-  assert.match(explorer, /x: "followersNet"/);
+  assert.equal(
+    (explorer.match(/\w+: "followersTotal"/g) ?? []).length,
+    4,
+    "the daily public total must be the default for every platform",
+  );
   assert.doesNotMatch(explorer, /Plateforme du graphique|audience-explorer-platform-tabs|onSelectPlatform/);
   assert.match(explorer, /const AUDIENCE_CHART_PERIODS = \[/);
   assert.match(
@@ -209,6 +211,77 @@ test("keeps follower observations visible and reveals the exact hovered value in
   assert.match(component, /key: "all", emoji: "♾️", label: "All time", days: null/);
 });
 
+test("uses the freshest follower headline and labels every analytics surface with real freshness", async () => {
+  const [component, historyRaw] = await Promise.all([
+    readFile(new URL("../app/SocialOS.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../data/audience-history.json", import.meta.url), "utf8"),
+  ]);
+  const history = JSON.parse(historyRaw);
+  const youtubeObservations = history.platforms.youtube.observations;
+  const latestYoutube = youtubeObservations.at(-1);
+  const latestExactYoutube = youtubeObservations.findLast((point) => point.precision === "exact");
+  const explorer = component.slice(
+    component.indexOf("function AudienceAnalyticsExplorer"),
+    component.indexOf("function TrendFeedView"),
+  );
+  const summary = explorer.slice(
+    explorer.indexOf('className="audience-explorer-summary"'),
+    explorer.indexOf('className="audience-explorer-chart-controls"'),
+  );
+
+  assert.ok(latestYoutube);
+  assert.ok(latestExactYoutube);
+  assert.equal(latestYoutube.precision, "platform-rounded");
+  assert.ok(Date.parse(latestYoutube.capturedAt) > Date.parse(latestExactYoutube.capturedAt));
+  assert.match(explorer, /const headlineHistory = latestHistory/);
+  assert.doesNotMatch(component, /preferredAudienceHeadlineObservation/);
+  assert.match(summary, /formatAudiencePrecision\(headlineHistory\.precision\)/);
+
+  assert.match(component, /const AUDIENCE_STALE_AFTER_MS = 26 \* 60 \* 60 \* 1_000/);
+  assert.match(component, /referenceTime - observedTime > AUDIENCE_STALE_AFTER_MS/);
+  assert.match(component, /capturedAt: point\.date/);
+  assert.match(component, /data-freshness=\{freshness\}/);
+  assert.match(component, /⚠ obsolète \(> 26 h\)/);
+  assert.equal(
+    (summary.match(/<AudienceFreshnessLabel\b/g) ?? []).length,
+    6,
+    "each of the six populated KPI slots must expose its own observation freshness",
+  );
+  assert.match(explorer, /const followersDeltaObservedAt = followerChangeSummary\?\.observedAt/);
+  assert.match(explorer, /const engagementObservedAt = engagement\?\.followersObservedAt/);
+  assert.match(explorer, /const viewsObservedAt = viewsSummary\?\.summary\.observedAt/);
+  assert.match(explorer, /const reachObservedAt = reachSummary\?\.observedAt/);
+  assert.match(explorer, /const engagementsObservedAt = nativeEngagementsSummary\?\.observedAt/);
+  assert.match(
+    explorer,
+    /const chartObservedAt = activeSeries\.at\(-1\)\?\.capturedAt[\s\S]*?activeSummary\?\.observedAt/,
+  );
+  assert.match(
+    explorer,
+    /className="audience-native-chart-caption"[\s\S]*?<AudienceFreshnessLabel[\s\S]*?observedAt=\{chartObservedAt\}/,
+  );
+  assert.doesNotMatch(explorer, /observedAt=\{dataReferenceAt\}/);
+
+  assert.match(component, /type NativeAnalyticsMetricSummary = \{[\s\S]*?observedAt: string/);
+  assert.match(component, /observedAt: periodSnapshot\.endDate/);
+  assert.match(component, /observedAt: latest\.date/);
+  assert.match(component, /observedAt: observed\.at\(-1\)!\.date/);
+  assert.match(
+    component,
+    /const periodIsCurrent = periodSnapshot && \([\s\S]*?periodSnapshot\.endDate >= latestDaily\.date[\s\S]*?periodSnapshot &&[\s\S]*?periodIsCurrent/,
+    "an older period aggregate must not hide newer daily analytics",
+  );
+  assert.match(
+    explorer,
+    /<AudienceDemographicsPanel[\s\S]*?referenceTime=\{freshnessReferenceTime\}/,
+  );
+  assert.match(
+    component,
+    /Données natives ·\{" "\}[\s\S]*?<AudienceFreshnessLabel[\s\S]*?observedAt=\{oldestObservedAt\}/,
+  );
+  assert.match(component, /earliestIsoTimestamp\(oldest, summary\.observedAt\)/);
+});
+
 test("shows native demographic dimensions below the chart and follows the selected platform", async () => {
   const [component, styles] = await Promise.all([
     readFile(new URL("../app/SocialOS.tsx", import.meta.url), "utf8"),
@@ -370,7 +443,7 @@ test("keeps sparse Instagram observations truthful and falls back without fabric
   assert.doesNotMatch(explorer, /fillMissing|interpolat(?:e|ion)|syntheticPoint/i);
 });
 
-test("uses the native daily Instagram follows series as the default Instagram curve", async () => {
+test("keeps native Instagram follows selectable while defaulting to the fresh public total", async () => {
   const component = await readFile(new URL("../app/SocialOS.tsx", import.meta.url), "utf8");
   assert.match(
     component,
@@ -378,7 +451,7 @@ test("uses the native daily Instagram follows series as the default Instagram cu
   );
   assert.match(
     component,
-    /instagram:\s*"newFollowers"/,
+    /instagram:\s*"followersTotal"/,
   );
   assert.match(
     component,

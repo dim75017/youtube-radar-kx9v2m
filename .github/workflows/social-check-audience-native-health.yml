@@ -1,0 +1,49 @@
+name: Social · Check native audience freshness
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run after both daily public-audience collection windows.
+    - cron: "17 8,20 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: social-audience-native-health
+  cancel-in-progress: true
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: social-app
+    steps:
+      - name: Check out only the native audience health contract
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /social-app/package.json
+            /social-app/data/audience-analytics.json
+            /social-app/data/audience-demographics.json
+            /social-app/lib/audience-analytics.ts
+            /social-app/lib/audience-demographics.ts
+            /social-app/scripts/check-audience-native-health.mjs
+            /social-app/tests/audience-native-health.test.mjs
+            /.github/workflows/social-check-audience-native-health.yml
+            /.github/workflows/social-update-audience-history.yml
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate the native audience health contract
+        run: node --experimental-strip-types --test tests/audience-native-health.test.mjs
+
+      - name: Fail closed on native analytics or demographics older than 26 hours
+        run: node --experimental-strip-types scripts/check-audience-native-health.mjs

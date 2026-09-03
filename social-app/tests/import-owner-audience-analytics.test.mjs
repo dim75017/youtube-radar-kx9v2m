@@ -46,12 +46,12 @@ test("l'import natif normalise les jours sans interpolation ni décalage de date
     ),
     writeFile(
       paths.overview,
-      '"Date","Video Views","Profile Views","Likes","Comments","Shares"\n"23 August","10","2","3","1","1"\n"24 August","20","4","6","2","2"\n"25 August","30","6","9","-2","3"\n',
+      '"Date","Video Views","Profile Views","Likes","Comments","Shares"\n"23 August","10","2","3","1","1"\n"24 August","20","4","6","2","2"\n"25 August","","","9","-2","3"\n',
       "utf8",
     ),
     writeFile(
       paths.x,
-      'Date,Impressions,Likes,Engagements,Bookmarks,Shares,New follows,Unfollows,Replies,Reposts,Profile visits,Create Post,Video views,Media views\n"Tue, Aug 25, 2026",100,10,20,1,2,5,3,1,2,7,1,8,9\n"Mon, Aug 24, 2026",50,5,10,0,1,2,1,0,1,3,0,4,5\n',
+      'Date,Impressions,Likes,Engagements,Bookmarks,Shares,New follows,Unfollows,Replies,Reposts,Profile visits,Create Post,Video views,Media views\n"Tue, Aug 25, 2026",,10,20,1,2,,3,1,2,7,1,8,9\n"Mon, Aug 24, 2026",50,5,10,0,1,2,1,0,1,3,0,4,5\n',
       "utf8",
     ),
   ]);
@@ -119,7 +119,13 @@ test("l'import natif normalise les jours sans interpolation ni décalage de date
     result.analytics.platforms.tiktok.daily.map((point) => point.metrics.followersNet),
     [null, 10, -3],
   );
+  assert.equal(result.analytics.platforms.tiktok.daily.at(-1).metrics.contentViews, null);
+  assert.equal(result.analytics.platforms.tiktok.daily.at(-1).metrics.profileVisits, null);
   assert.equal(result.analytics.platforms.tiktok.daily.at(-1).metrics.comments, null);
+  assert.equal(result.analytics.platforms.x.daily.at(-1).metrics.impressions, null);
+  assert.equal(result.analytics.platforms.x.daily.at(-1).metrics.newFollowers, null);
+  assert.equal(result.analytics.platforms.x.daily.at(-1).metrics.followersNet, null);
+  assert.equal(result.analytics.platforms.x.daily.at(-1).metrics.unfollows, 3);
   assert.equal(result.analytics.platforms.instagram.periods["30d"].metrics.contentViews, 1000);
   assert.equal(result.history.platforms.youtube.observations.at(-1).followers, 2000);
   assert.equal(result.history.platforms.tiktok.observations.at(-1).followers, 107);

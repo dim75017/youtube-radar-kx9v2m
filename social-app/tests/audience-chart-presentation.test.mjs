@@ -103,10 +103,11 @@ test("syncs the sidebar platform selector with the active account summary and fo
   assert.match(component, /instagram:\s*\[\s*"newFollowers",\s*"followersTotal"/);
   assert.match(component, /tiktok:\s*\[\s*"followersNet",\s*"followersTotal"/);
   assert.match(component, /x:\s*\[\s*"followersNet",\s*"followersTotal"/);
-  assert.match(component, /youtube:\s*"followersNet"/);
-  assert.match(component, /instagram:\s*"newFollowers"/);
-  assert.match(component, /tiktok:\s*"followersNet"/);
-  assert.match(component, /x:\s*"followersNet"/);
+  assert.equal(
+    (component.match(/\w+:\s*"followersTotal"/g) ?? []).length,
+    4,
+    "each platform must open on its genuinely daily follower total",
+  );
   assert.doesNotMatch(component, /Plateforme du graphique|audience-explorer-platform-tabs|onSelectPlatform/);
   assert.match(explorer, /availableMetricWindows\.find\(\(window\) => window\.metric === requestedMetric\)/);
   assert.match(explorer, /className="audience-period-dropdown"/);

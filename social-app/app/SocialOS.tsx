@@ -7,7 +7,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   calculatePlatformEngagementWindow,
   latestAudienceObservation,
-  preferredAudienceHeadlineObservation,
   type AudienceHistory,
   type AudienceObservation,
 } from "../lib/audience-metrics";
@@ -2275,10 +2274,10 @@ const NATIVE_ANALYTICS_PRIORITY: Record<Platform, readonly AudienceAnalyticsMetr
 };
 
 const NATIVE_ANALYTICS_DEFAULT_METRIC: Record<Platform, AudienceAnalyticsMetricKey> = {
-  youtube: "followersNet",
-  instagram: "newFollowers",
-  tiktok: "followersNet",
-  x: "followersNet",
+  youtube: "followersTotal",
+  instagram: "followersTotal",
+  tiktok: "followersTotal",
+  x: "followersTotal",
 };
 
 const AUDIENCE_CHART_PERIODS = [
@@ -2298,6 +2297,8 @@ const AUDIENCE_CHART_PERIODS = [
 const AUDIENCE_PLATFORM_CURVE_START_DATE: Partial<Record<Platform, string>> = {
   youtube: "2015-03-15",
 };
+
+const AUDIENCE_STALE_AFTER_MS = 26 * 60 * 60 * 1_000;
 
 type AudienceChartPeriodKey = (typeof AUDIENCE_CHART_PERIODS)[number]["key"];
 
@@ -2349,6 +2350,42 @@ function audienceChartPointsAreContinuous(
   return elapsedDays === 1 && comparablePrecision;
 }
 
+function useAudienceFreshnessReferenceTime() {
+  const [referenceTime, setReferenceTime] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = window.setInterval(
+      () => setReferenceTime(Date.now()),
+      15 * 60 * 1_000,
+    );
+    return () => window.clearInterval(interval);
+  }, []);
+  return referenceTime;
+}
+
+function AudienceFreshnessLabel({
+  compact = false,
+  observedAt,
+  referenceTime,
+}: {
+  compact?: boolean;
+  observedAt: string;
+  referenceTime: number;
+}) {
+  const freshness = audienceObservationFreshness(observedAt, referenceTime);
+  const fullLabel = formatAudienceObservationFreshness(observedAt, freshness, false);
+  return (
+    <span
+      className={freshness === "stale" ? "stale" : undefined}
+      data-freshness={freshness}
+      title={compact ? fullLabel : undefined}
+    >
+      {compact
+        ? formatAudienceObservationFreshness(observedAt, freshness, true)
+        : fullLabel}
+    </span>
+  );
+}
+
 function AudienceAnalyticsExplorer({
   activePlatform,
   analytics,
@@ -2372,6 +2409,7 @@ function AudienceAnalyticsExplorer({
   requestedMetric: AudienceAnalyticsMetricKey;
   commentRefreshStatus: YoutubeCommentRefreshStatus | null;
 }) {
+  const freshnessReferenceTime = useAudienceFreshnessReferenceTime();
   if (!analytics && !history) return null;
 
   const chartPeriod = AUDIENCE_CHART_PERIODS.find((option) => option.key === periodKey)
@@ -2379,22 +2417,20 @@ function AudienceAnalyticsExplorer({
   const periodDays = chartPeriod.days;
   const periodLabel = chartPeriod.label;
   const meta = PLATFORM_META[activePlatform];
-  const generatedAt = latestIsoTimestamp(analytics?.generatedAt, history?.generatedAt)
+  const dataReferenceAt = latestIsoTimestamp(analytics?.generatedAt, history?.generatedAt)
     ?? "1970-01-01T00:00:00.000Z";
   const analyticsPlatform = analytics?.platforms[activePlatform] ?? null;
   const demographicPlatform = demographics?.platforms[activePlatform] ?? null;
   const platformHistory = history?.platforms[activePlatform] ?? null;
   const latestHistory = platformHistory ? latestAudienceObservation(platformHistory) : null;
-  const headlineHistory = platformHistory
-    ? preferredAudienceHeadlineObservation(platformHistory)
-    : null;
+  const headlineHistory = latestHistory;
   const curveStartDate = AUDIENCE_PLATFORM_CURVE_START_DATE[activePlatform] ?? null;
   const allDaily = (analyticsPlatform?.daily ?? []).filter((point) => (
     curveStartDate === null || point.date >= curveStartDate
   ));
   const allHistoryPoints = audienceHistoryPointsForPeriod(
     platformHistory,
-    audienceParisDay(generatedAt),
+    audienceParisDay(dataReferenceAt),
     null,
     curveStartDate,
   );
@@ -2409,7 +2445,7 @@ function AudienceAnalyticsExplorer({
       allDaily,
       allHistoryPoints,
       periodSnapshot,
-      audienceParisDay(generatedAt),
+      audienceParisDay(dataReferenceAt),
     );
     const metricDaily = nativeAnalyticsDailyForPeriod(
       allDaily,
@@ -2444,7 +2480,7 @@ function AudienceAnalyticsExplorer({
       allDaily,
       allHistoryPoints,
       periodSnapshot,
-      audienceParisDay(generatedAt),
+      audienceParisDay(dataReferenceAt),
     );
     const metricDaily = nativeAnalyticsDailyForPeriod(
       allDaily,
@@ -2475,14 +2511,14 @@ function AudienceAnalyticsExplorer({
     ?? null;
   const availableMetrics = availableMetricWindows.map((window) => window.metric);
   const activeMetric = activeWindow?.metric ?? null;
-  const endDate = activeWindow?.endDate ?? audienceParisDay(generatedAt);
+  const endDate = activeWindow?.endDate ?? audienceParisDay(dataReferenceAt);
   const activeSeries = activeWindow?.series ?? [];
   const activeSummary = activeWindow?.summary ?? null;
   const engagement = calculatePlatformEngagementWindow(
     activePlatform,
     posts,
     latestHistory,
-    generatedAt,
+    dataReferenceAt,
     periodDays,
   );
   const observedFollowerPoints = audiencePointsForPeriod(
@@ -2507,6 +2543,9 @@ function AudienceAnalyticsExplorer({
     : observedGrowthDays !== null
       ? `${observedGrowthDays} jour${observedGrowthDays > 1 ? "s" : ""} observé${observedGrowthDays > 1 ? "s" : ""}`
       : periodLabel;
+  const followersDeltaObservedAt = followerChangeSummary?.observedAt
+    ?? observedFollowerGrowth?.to.capturedAt
+    ?? null;
   const viewsSummary = firstMetricSummary(
     activePlatform === "x"
       ? ["impressions", "contentViews", "mediaViews"]
@@ -2526,6 +2565,18 @@ function AudienceAnalyticsExplorer({
     : engagementsValue !== null
       ? `Likes + commentaires + partages · ${periodLabel}`
       : "Non fourni";
+  const engagementObservedAt = engagement?.followersObservedAt ?? null;
+  const viewsObservedAt = viewsSummary?.summary.observedAt ?? null;
+  const reachObservedAt = reachSummary?.observedAt ?? null;
+  const engagementComponentsObservedAt = engagementComponents.reduce<string | null>(
+    (oldest, summary) => earliestIsoTimestamp(oldest, summary.observedAt),
+    null,
+  );
+  const engagementsObservedAt = nativeEngagementsSummary?.observedAt
+    ?? engagementComponentsObservedAt;
+  const chartObservedAt = activeSeries.at(-1)?.capturedAt
+    ?? activeSummary?.observedAt
+    ?? null;
 
   return (
     <section
@@ -2541,9 +2592,17 @@ function AudienceAnalyticsExplorer({
             {headlineHistory ? formatAudienceFollowers(headlineHistory) : "—"}
           </strong>
           <small>
-            {headlineHistory
-              ? `${headlineHistory.precision === "exact" ? "Relevé exact" : "Dernier relevé"} · ${formatAudienceDate(headlineHistory.capturedAt)}`
-              : "Dernier relevé"}
+            {headlineHistory ? (
+              <>
+                {formatAudiencePrecision(headlineHistory.precision)}
+                <br />
+                <AudienceFreshnessLabel
+                  compact
+                  observedAt={headlineHistory.capturedAt}
+                  referenceTime={freshnessReferenceTime}
+                />
+              </>
+            ) : "Aucun relevé"}
           </small>
         </div>
         <div className="audience-explorer-summary-kpi">
@@ -2559,7 +2618,23 @@ function AudienceAnalyticsExplorer({
           >
             {followersDelta !== null ? formatAudienceDelta(followersDelta) : "—"}
           </strong>
-          <small>{followersDeltaPeriodLabel}</small>
+          <small>
+            {followersDelta !== null ? (
+              <>
+                {followersDeltaPeriodLabel}
+                {followersDeltaObservedAt ? (
+                  <>
+                    <br />
+                    <AudienceFreshnessLabel
+                      compact
+                      observedAt={followersDeltaObservedAt}
+                      referenceTime={freshnessReferenceTime}
+                    />
+                  </>
+                ) : null}
+              </>
+            ) : "Non fourni"}
+          </small>
         </div>
         <div
           className="audience-explorer-summary-kpi"
@@ -2567,7 +2642,23 @@ function AudienceAnalyticsExplorer({
         >
           <span>Taux d’engagement</span>
           <strong>{engagement ? formatAudiencePercent(engagement.ratePercent) : "—"}</strong>
-          <small>{engagement ? `${engagement.sampleSize} posts` : periodLabel}</small>
+          <small>
+            {engagement ? (
+              <>
+                {engagement.sampleSize} posts
+                {engagementObservedAt ? (
+                  <>
+                    <br />
+                    <AudienceFreshnessLabel
+                      compact
+                      observedAt={engagementObservedAt}
+                      referenceTime={freshnessReferenceTime}
+                    />
+                  </>
+                ) : null}
+              </>
+            ) : "Non fourni"}
+          </small>
         </div>
         <div className="audience-explorer-summary-kpi">
           <span>Vues / impressions</span>
@@ -2580,9 +2671,21 @@ function AudienceAnalyticsExplorer({
               : "—"}
           </strong>
           <small>
-            {viewsSummary
-              ? `${viewsSummary.metric === "impressions" ? "Impressions" : "Vues"} · ${periodLabel}`
-              : "Non fourni"}
+            {viewsSummary ? (
+              <>
+                {viewsSummary.metric === "impressions" ? "Impressions" : "Vues"} · {periodLabel}
+                {viewsObservedAt ? (
+                  <>
+                    <br />
+                    <AudienceFreshnessLabel
+                      compact
+                      observedAt={viewsObservedAt}
+                      referenceTime={freshnessReferenceTime}
+                    />
+                  </>
+                ) : null}
+              </>
+            ) : "Non fourni"}
           </small>
         </div>
         <div className="audience-explorer-summary-kpi">
@@ -2595,7 +2698,23 @@ function AudienceAnalyticsExplorer({
               ? formatNativeAnalyticsMetric(reachSummary.value, "reach", true)
               : "—"}
           </strong>
-          <small>{reachSummary ? periodLabel : "Non fourni"}</small>
+          <small>
+            {reachSummary ? (
+              <>
+                {periodLabel}
+                {reachObservedAt ? (
+                  <>
+                    <br />
+                    <AudienceFreshnessLabel
+                      compact
+                      observedAt={reachObservedAt}
+                      referenceTime={freshnessReferenceTime}
+                    />
+                  </>
+                ) : null}
+              </>
+            ) : "Non fourni"}
+          </small>
         </div>
         <div className="audience-explorer-summary-kpi">
           <span>Engagements</span>
@@ -2607,7 +2726,23 @@ function AudienceAnalyticsExplorer({
               ? formatNativeAnalyticsMetric(engagementsValue, "engagements", true)
               : "—"}
           </strong>
-          <small>{engagementsBasis}</small>
+          <small>
+            {engagementsValue !== null ? (
+              <>
+                {engagementsBasis}
+                {engagementsObservedAt ? (
+                  <>
+                    <br />
+                    <AudienceFreshnessLabel
+                      compact
+                      observedAt={engagementsObservedAt}
+                      referenceTime={freshnessReferenceTime}
+                    />
+                  </>
+                ) : null}
+              </>
+            ) : "Non fourni"}
+          </small>
         </div>
         </div>
 
@@ -2670,6 +2805,12 @@ function AudienceAnalyticsExplorer({
                     : "Toute la plage native importée · intervalles sans relevé en pointillés"
                   : "Relevés réels · intervalles sans relevé en pointillés"}
               </span>
+              {chartObservedAt ? (
+                <AudienceFreshnessLabel
+                  observedAt={chartObservedAt}
+                  referenceTime={freshnessReferenceTime}
+                />
+              ) : null}
             </footer>
           </div>
 
@@ -2683,7 +2824,7 @@ function AudienceAnalyticsExplorer({
 
       {activePlatform === "youtube" ? (
         <YoutubeCommentAnalyticsChart
-          generatedAt={generatedAt}
+          generatedAt={dataReferenceAt}
           posts={posts}
           refreshStatus={commentRefreshStatus}
         />
@@ -2692,6 +2833,7 @@ function AudienceAnalyticsExplorer({
       {availableMetrics.length > 0 && activeMetric && activeSummary ? (
         <AudienceDemographicsPanel
           platform={activePlatform}
+          referenceTime={freshnessReferenceTime}
           snapshot={demographicPlatform}
         />
       ) : null}
@@ -2701,16 +2843,18 @@ function AudienceAnalyticsExplorer({
 
 function AudienceDemographicsPanel({
   platform,
+  referenceTime,
   snapshot,
 }: {
   platform: Platform;
+  referenceTime: number;
   snapshot: AudienceDemographics["platforms"][Platform] | null;
 }) {
   const meta = PLATFORM_META[platform];
   const dimensions = [snapshot?.countries, snapshot?.ages, snapshot?.genders]
     .filter((dimension): dimension is AudienceDemographicDimension => Boolean(dimension));
-  const latestObservedAt = dimensions.reduce<string | null>(
-    (latest, dimension) => latestIsoTimestamp(latest, dimension.provenance.collectedAt),
+  const oldestObservedAt = dimensions.reduce<string | null>(
+    (oldest, dimension) => earliestIsoTimestamp(oldest, dimension.provenance.collectedAt),
     null,
   );
   const countryDisplayLimit = AUDIENCE_COUNTRY_DISPLAY_LIMITS[platform];
@@ -2726,8 +2870,16 @@ function AudienceDemographicsPanel({
           <h3 id="audience-demographics-title">Audience {meta.label}</h3>
         </div>
         <span>
-          {latestObservedAt
-            ? `Données natives · ${formatAudienceDate(latestObservedAt)}`
+          {oldestObservedAt
+            ? (
+              <>
+                Données natives ·{" "}
+                <AudienceFreshnessLabel
+                  observedAt={oldestObservedAt}
+                  referenceTime={referenceTime}
+                />
+              </>
+            )
             : "Donnée native non disponible"}
         </span>
       </header>
@@ -3133,7 +3285,7 @@ function audienceMetricSeries(
     byDate.set(point.date, {
       date: point.date,
       value,
-      capturedAt: `${point.date}T12:00:00.000Z`,
+      capturedAt: point.date,
       precision: null,
       sourceUrl: point.provenance.sourceUrl,
     });
@@ -3162,6 +3314,7 @@ function audienceFollowersMetricSummary(
     value: latest.value,
     observedCount: points.length,
     basis: "latest",
+    observedAt: latest.capturedAt,
     provenance: {
       provider: "Suivi followers",
       collectedAt: latest.capturedAt,
@@ -3175,6 +3328,7 @@ type NativeAnalyticsMetricSummary = {
   value: number;
   observedCount: number;
   basis: "period" | "daily" | "latest";
+  observedAt: string;
   provenance: AudienceAnalyticsPeriodSnapshot["provenance"];
 };
 
@@ -3246,17 +3400,27 @@ function nativeAnalyticsMetricSummary(
   daily: readonly AudienceAnalyticsDailyPoint[],
   periodSnapshot: AudienceAnalyticsPeriodSnapshot | null,
 ): NativeAnalyticsMetricSummary | null {
+  const observed = daily.filter((point) => isNativeAnalyticsValue(point.metrics[metric]));
+  const latestDaily = observed.at(-1) ?? null;
   const periodValue = periodSnapshot?.metrics[metric];
-  if (periodSnapshot && typeof periodValue === "number" && Number.isFinite(periodValue)) {
+  const periodIsCurrent = periodSnapshot && (
+    latestDaily === null || periodSnapshot.endDate >= latestDaily.date
+  );
+  if (
+    periodSnapshot &&
+    periodIsCurrent &&
+    typeof periodValue === "number" &&
+    Number.isFinite(periodValue)
+  ) {
     return {
       value: periodValue,
-      observedCount: daily.filter((point) => isNativeAnalyticsValue(point.metrics[metric])).length,
+      observedCount: observed.length,
       basis: NATIVE_ANALYTICS_METRIC_META[metric].aggregation === "stock" ? "latest" : "period",
+      observedAt: periodSnapshot.endDate,
       provenance: periodSnapshot.provenance,
     };
   }
 
-  const observed = daily.filter((point) => isNativeAnalyticsValue(point.metrics[metric]));
   if (observed.length === 0) return null;
   if (NATIVE_ANALYTICS_METRIC_META[metric].aggregation === "stock") {
     const latest = observed.at(-1)!;
@@ -3264,6 +3428,7 @@ function nativeAnalyticsMetricSummary(
       value: latest.metrics[metric]!,
       observedCount: observed.length,
       basis: "latest",
+      observedAt: latest.date,
       provenance: latest.provenance,
     };
   }
@@ -3271,6 +3436,7 @@ function nativeAnalyticsMetricSummary(
     value: observed.reduce((total, point) => total + point.metrics[metric]!, 0),
     observedCount: observed.length,
     basis: "daily",
+    observedAt: observed.at(-1)!.date,
     provenance: observed.at(-1)!.provenance,
   };
 }
@@ -3797,6 +3963,47 @@ function formatAudienceFollowers(observation: AudienceObservation) {
   }).format(observation.followers)}`;
 }
 
+function earliestIsoTimestamp(left: string | null | undefined, right: string | null | undefined) {
+  if (!left) return right ?? null;
+  if (!right) return left;
+  return Date.parse(right) < Date.parse(left) ? right : left;
+}
+
+function formatAudiencePrecision(precision: AudienceObservation["precision"]) {
+  if (precision === "exact") return "Exact";
+  if (precision === "platform-rounded") return "Arrondi plateforme";
+  return "Palier plateforme";
+}
+
+function audienceObservationFreshness(observedAt: string, referenceTime: number) {
+  let observedTime = Date.parse(observedAt);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(observedAt)) {
+    const dayStart = Date.parse(`${observedAt}T00:00:00.000Z`);
+    const dayEnd = Date.parse(`${observedAt}T23:59:59.999Z`);
+    if (referenceTime < dayStart) return "unknown" as const;
+    observedTime = referenceTime <= dayEnd ? referenceTime : dayEnd;
+  }
+  if (!Number.isFinite(observedTime) || !Number.isFinite(referenceTime)) return "unknown" as const;
+  return referenceTime - observedTime > AUDIENCE_STALE_AFTER_MS
+    ? "stale" as const
+    : "fresh" as const;
+}
+
+function formatAudienceObservationFreshness(
+  observedAt: string,
+  freshness: "fresh" | "stale" | "unknown",
+  compact: boolean,
+) {
+  const date = compact ? formatAudienceCompactDate(observedAt) : formatAudienceDate(observedAt);
+  if (freshness === "unknown") {
+    return compact ? `${date} · fraîcheur ?` : `Relevé ${date} · fraîcheur inconnue`;
+  }
+  if (freshness === "stale") {
+    return compact ? `${date} · ⚠ +26 h` : `Relevé ${date} · ⚠ obsolète (> 26 h)`;
+  }
+  return compact ? `${date} · à jour` : `Relevé ${date} · à jour`;
+}
+
 function formatAudienceDelta(value: number) {
   const formatted = new Intl.NumberFormat("fr-FR", {
     maximumFractionDigits: 0,
@@ -3820,6 +4027,16 @@ function formatAudienceDate(value: string) {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
+  }).format(date);
+}
+
+function formatAudienceCompactDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("fr-FR", {
+    timeZone: "Europe/Paris",
+    day: "2-digit",
+    month: "2-digit",
   }).format(date);
 }
 

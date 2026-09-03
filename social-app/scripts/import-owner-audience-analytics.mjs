@@ -291,8 +291,8 @@ function parseTikTokDaily(followerRows, overviewRows, platform, collectedAt) {
       metrics: metrics({
         followersTotal: positiveInteger(row.Followers, `tiktok[${index}].Followers`),
         followersNet: null,
-        contentViews: nonnegativeInteger(overview["Video Views"], `tiktok[${index}].views`),
-        profileVisits: nonnegativeInteger(overview["Profile Views"], `tiktok[${index}].profileViews`),
+        contentViews: nullableNonnegativeInteger(overview["Video Views"], `tiktok[${index}].views`),
+        profileVisits: nullableNonnegativeInteger(overview["Profile Views"], `tiktok[${index}].profileViews`),
         likes: nullableNonnegativeInteger(overview.Likes, `tiktok[${index}].likes`),
         comments: nullableNonnegativeInteger(overview.Comments, `tiktok[${index}].comments`),
         shares: nullableNonnegativeInteger(overview.Shares, `tiktok[${index}].shares`),
@@ -452,25 +452,27 @@ function parseXDaily(rows, platform, collectedAt) {
   );
   return rows.map((row, index) => {
     const date = parseXCalendarDate(row.Date, `x[${index}].Date`);
-    const newFollowers = nonnegativeInteger(row["New follows"], `x[${index}].newFollowers`);
-    const unfollows = nonnegativeInteger(row.Unfollows, `x[${index}].unfollows`);
+    const newFollowers = nullableNonnegativeInteger(row["New follows"], `x[${index}].newFollowers`);
+    const unfollows = nullableNonnegativeInteger(row.Unfollows, `x[${index}].unfollows`);
     return {
       date,
       metrics: metrics({
-        followersNet: newFollowers - unfollows,
-        contentViews: nonnegativeInteger(row["Video views"], `x[${index}].videoViews`),
-        impressions: nonnegativeInteger(row.Impressions, `x[${index}].impressions`),
-        profileVisits: nonnegativeInteger(row["Profile visits"], `x[${index}].profileVisits`),
-        engagements: nonnegativeInteger(row.Engagements, `x[${index}].engagements`),
-        likes: nonnegativeInteger(row.Likes, `x[${index}].likes`),
-        shares: nonnegativeInteger(row.Shares, `x[${index}].shares`),
-        bookmarks: nonnegativeInteger(row.Bookmarks, `x[${index}].bookmarks`),
-        replies: nonnegativeInteger(row.Replies, `x[${index}].replies`),
-        reposts: nonnegativeInteger(row.Reposts, `x[${index}].reposts`),
+        followersNet: newFollowers === null || unfollows === null
+          ? null
+          : newFollowers - unfollows,
+        contentViews: nullableNonnegativeInteger(row["Video views"], `x[${index}].videoViews`),
+        impressions: nullableNonnegativeInteger(row.Impressions, `x[${index}].impressions`),
+        profileVisits: nullableNonnegativeInteger(row["Profile visits"], `x[${index}].profileVisits`),
+        engagements: nullableNonnegativeInteger(row.Engagements, `x[${index}].engagements`),
+        likes: nullableNonnegativeInteger(row.Likes, `x[${index}].likes`),
+        shares: nullableNonnegativeInteger(row.Shares, `x[${index}].shares`),
+        bookmarks: nullableNonnegativeInteger(row.Bookmarks, `x[${index}].bookmarks`),
+        replies: nullableNonnegativeInteger(row.Replies, `x[${index}].replies`),
+        reposts: nullableNonnegativeInteger(row.Reposts, `x[${index}].reposts`),
         newFollowers,
         unfollows,
-        mediaViews: nonnegativeInteger(row["Media views"], `x[${index}].mediaViews`),
-        contentPublished: nonnegativeInteger(row["Create Post"], `x[${index}].contentPublished`),
+        mediaViews: nullableNonnegativeInteger(row["Media views"], `x[${index}].mediaViews`),
+        contentPublished: nullableNonnegativeInteger(row["Create Post"], `x[${index}].contentPublished`),
       }),
       provenance: provenance(platform, collectedAt, "native-daily-metric"),
     };
@@ -655,14 +657,10 @@ function assertManifest(value) {
 }
 
 function integer(value, label) {
-  const parsed = Number(String(value).trim());
+  const normalized = String(value).trim();
+  if (normalized === "") throw new Error(`${label} doit être un entier.`);
+  const parsed = Number(normalized);
   if (!Number.isInteger(parsed)) throw new Error(`${label} doit être un entier.`);
-  return parsed;
-}
-
-function nonnegativeInteger(value, label) {
-  const parsed = integer(value, label);
-  if (parsed < 0) throw new Error(`${label} doit être positif ou nul.`);
   return parsed;
 }
 

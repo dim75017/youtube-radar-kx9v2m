@@ -63,6 +63,11 @@ jobs:
         continue-on-error: true
         run: node --experimental-strip-types --test tests/audience-metrics.test.mjs
 
+      - name: Audit native analytics and demographics freshness
+        id: native_health
+        continue-on-error: true
+        run: node --experimental-strip-types scripts/check-audience-native-health.mjs
+
       - name: Commit only the audience snapshot
         if: steps.validation.outcome == 'success'
         env:
@@ -78,5 +83,5 @@ jobs:
             -f requested_sha="$(git rev-parse HEAD)"
 
       - name: Mark an incomplete or invalid audience pass
-        if: steps.collect.outcome == 'failure' || steps.validation.outcome == 'failure'
+        if: steps.collect.outcome == 'failure' || steps.validation.outcome == 'failure' || steps.native_health.outcome == 'failure'
         run: exit 1
