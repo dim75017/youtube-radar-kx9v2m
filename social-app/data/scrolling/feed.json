@@ -402,14 +402,26 @@
     },
     {
       "id": "easter-eggs-and-alternate-rooms",
-      "label": "Easter eggs / pièces alternatives",
+      "label": "Easter eggs / doubles lectures",
       "group": "community",
-      "specialty": "Détails cachés, variantes de décor et canon",
-      "description": "Formats qui récompensent l’attention par des détails cohérents et invitent au revisionnage.",
+      "specialty": "Détails cachés, variantes de décor et micro-anomalies visuelles",
+      "description": "Formats qui récompensent l’attention par un détail cohérent : easter egg, variante de décor ou micro-anomalie à double lecture. La première lecture peut sembler hors personnage, mais la seconde doit devenir clairement innocente dans le même contenu. Référence éditoriale : https://www.instagram.com/p/DcwhlAHioLv/ — des Stabilo brièvement pris pour des vapes.",
       "observedInSnapshot": true,
-      "discoverySignals": ["Le détail caché est vérifiable", "La variante enrichit le monde sans casser le canon"],
-      "adaptationAngles": ["Cacher le chien dans plusieurs pièces de Boy", "Faire évoluer un objet de la chambre de Girl"],
-      "rejectIf": ["Secret mensonger, faux indice ou incohérence canonique"]
+      "discoverySignals": [
+        "Le détail caché est vérifiable et enrichit le monde sans casser le canon",
+        "Pour une double lecture, l’anomalie apparaît en moins d’une seconde et fonctionne sans flèche, zoom ou légende explicative",
+        "La révélation innocente est objectivement visible dans le même contenu"
+      ],
+      "adaptationAngles": [
+        "Cacher le chien dans plusieurs pièces de Boy ou faire évoluer un objet de la chambre de Girl",
+        "Détourner brièvement la silhouette d’un objet scolaire, d’une ombre, d’un reflet ou d’une collection",
+        "Espacer la micro-anomalie : environ un post sur quatre à six"
+      ],
+      "rejectIf": [
+        "Secret mensonger, faux indice ou incohérence canonique",
+        "Association durable avec vape, drogue, arme, crime, sexualisation, grossesse ou danger",
+        "Révélation absente, encore ambiguë, ou image risquée une fois sortie du contexte"
+      ]
     },
     {
       "id": "cozy-games-rpg-worlds",

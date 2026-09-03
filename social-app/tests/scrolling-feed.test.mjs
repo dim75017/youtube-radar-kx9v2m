@@ -354,6 +354,16 @@ test("the exploration taxonomy is broad and distinguishes observed lenses from f
   ]) {
     assert.ok(feed.explorationLenses.some((lens) => lens.id === required), `missing lens ${required}`);
   }
+
+  const doubleTakeLens = feed.explorationLenses.find(
+    (lens) => lens.id === "easter-eggs-and-alternate-rooms",
+  );
+  assert.ok(doubleTakeLens);
+  assert.match(doubleTakeLens.description, /DcwhlAHioLv/u);
+  assert.match(doubleTakeLens.specialty, /micro-anomalies visuelles/u);
+  assert.match(doubleTakeLens.discoverySignals.join(" "), /révélation innocente/u);
+  assert.match(doubleTakeLens.adaptationAngles.join(" "), /un post sur quatre à six/u);
+  assert.match(doubleTakeLens.rejectIf.join(" "), /vape, drogue, arme/u);
 });
 
 test("every Lofi adaptation keeps the canonical companion and bans generated media", () => {
