@@ -97,7 +97,7 @@ const expectedSources = new Map([
 test("the connected Instagram snapshot preserves the historical and new-account runs", () => {
   assert.match(feed.capturedAt, /^2026-09-04/u);
   assert.equal(feed.minimumLikes, SCROLLING_MINIMUM_LIKES);
-  assert.equal(feed.runs.length, 24);
+  assert.equal(feed.runs.length, 26);
   assert.equal(feed.items.length, 72);
 
   const initialRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26");
@@ -160,6 +160,12 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   const septemberFourthHomeRun = feed.runs.find(
     (run) => run.id === "instagram-home-2026-09-04-heartbeat-1915",
   );
+  const septemberFourthLateReelsRun = feed.runs.find(
+    (run) => run.id === "instagram-reels-2026-09-04-heartbeat-2115",
+  );
+  const septemberFourthLateHomeRun = feed.runs.find(
+    (run) => run.id === "instagram-home-2026-09-04-heartbeat-2115",
+  );
   assert.ok(initialRun);
   assert.ok(extendedRun);
   assert.ok(eveningRun);
@@ -184,6 +190,8 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   assert.ok(eveningHomeRun);
   assert.ok(septemberFourthReelsRun);
   assert.ok(septemberFourthHomeRun);
+  assert.ok(septemberFourthLateReelsRun);
+  assert.ok(septemberFourthLateHomeRun);
   assert.equal(initialRun.platform, "instagram");
   assert.equal(initialRun.surface, "home");
   assert.equal(initialRun.browserContext, SCROLLING_BROWSER_CONTEXT);
@@ -369,7 +377,29 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   assert.equal(feed.items.filter((item) => item.runId === septemberFourthHomeRun.id).length, 0);
   assert.ok(Date.parse(septemberFourthReelsRun.capturedAt) > Date.parse(eveningHomeRun.capturedAt));
   assert.equal(septemberFourthReelsRun.capturedAt, septemberFourthHomeRun.capturedAt);
-  assert.equal(feed.capturedAt, septemberFourthHomeRun.capturedAt);
+  assert.equal(septemberFourthLateReelsRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(septemberFourthLateReelsRun.surface, "reels");
+  assert.equal(septemberFourthLateReelsRun.seenCount, 121);
+  assert.equal(septemberFourthLateReelsRun.qualifyingCount, 0);
+  assert.equal(septemberFourthLateReelsRun.sponsoredCount, 0);
+  assert.equal(
+    feed.items.filter((item) => item.runId === septemberFourthLateReelsRun.id).length,
+    0,
+  );
+  assert.ok(septemberFourthLateReelsRun.themeIds.includes("study-exams-pomodoro"));
+  assert.ok(septemberFourthLateReelsRun.themeIds.includes("animal-companions"));
+  assert.equal(septemberFourthLateHomeRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(septemberFourthLateHomeRun.surface, "home");
+  assert.equal(septemberFourthLateHomeRun.seenCount, 57);
+  assert.equal(septemberFourthLateHomeRun.qualifyingCount, 0);
+  assert.equal(septemberFourthLateHomeRun.sponsoredCount, 0);
+  assert.equal(feed.items.filter((item) => item.runId === septemberFourthLateHomeRun.id).length, 0);
+  assert.ok(
+    Date.parse(septemberFourthLateReelsRun.capturedAt) >
+      Date.parse(septemberFourthHomeRun.capturedAt),
+  );
+  assert.equal(septemberFourthLateReelsRun.capturedAt, septemberFourthLateHomeRun.capturedAt);
+  assert.equal(feed.capturedAt, septemberFourthLateHomeRun.capturedAt);
 
   let likes = 0;
   for (const item of feed.items) {
