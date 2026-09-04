@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "capturedAt": "2026-09-03T21:28:03+02:00",
+  "capturedAt": "2026-09-04T19:34:47+02:00",
   "minimumLikes": 10000,
-  "methodology": "Les trois lectures historiques du 26/08 sur @lofi.radar sont conservées. Le 01/09, le nouveau compte @lofiradar2026 a d’abord observé 48 publications Home puis 14 publications ciblées. Le 02/09 à 09:46, une première calibration manuelle a utilisé huit signaux Not interested sur du football manifeste. L’immersion manuelle détaillée cumule huit blocs séparés et muets, soit 1 h 59 min 36 s et 408 observations : 270 ciblées et 138 Home. Sur ces 138 Home revus éditorialement, 19 sont classés pertinents, 119 hors niche, huit sport, deux portent un label IA, aucun n’est Sponsorisé et 65 proviennent de nsmqghana. Un gros scroll Home distinct de neuf minutes ajoute 152 publications uniques : aucune mention Sponsorisé, 14 cartes sport, au moins cinq labels IA explicites et 18 cartes nsmqghana. Un classement textuel conservateur a présélectionné 64 cartes adjacentes, dont 43 au seuil ; trois mécaniques d’auteurs distincts sont détaillées après revue. Les dix seeds exactes fournies par Dim ont été inspectées ; neuf non-IA sont retenues. Le passage de 17:15 a vérifié sept seeds Pubs playlists, deux adjacents sous le seuil et cinq nouvelles sources organiques qualifiées. Le contrôle de 21:15 a revu les sept seeds et trois adjacents du même artiste ; les trois adjacents dépassent le seuil, mais une seule mécanique est détaillée après déduplication par auteur. Le 03/09, un passage isolé et muet de 11 min 49 s ajoute 49 observations ciblées sur huit familles, les sept seeds Pubs playlists et 38 publications Home uniques. Le Home contient 12 contenus immédiatement adjacents, 26 hors niche, six sport, deux labels IA, aucune mention Sponsorisé et quatre cartes nsmqghana ; trois sources récentes au-dessus de 10 000 likes sont détaillées. Un passage immédiat supplémentaire ajoute 50 consultations ciblées et 18 Home : 14 compteurs ciblés atteignent le seuil, trois posts historiques portent #ad et aucune impression Home n’affiche Sponsorisé. Deux mécaniques sont détaillées après déduplication éditoriale. Le passage de 21:15 ajoute 44 consultations ciblées et 23 Home ; une nouvelle mécanique de carnet-capsule est retenue. Le radar contient ainsi 22 runs et 72 cartes éditoriales. Aucun like, follow, enregistrement, commentaire, message, partage ou publication n’a été effectué pendant ces passages ; aucun nouveau Not interested n’a été envoyé. Chaque source reste séparée de son adaptation : ces observations isolées ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire, ni une recalibration durable de l’algorithme.",
+  "methodology": "Les trois lectures historiques du 26/08 sur @lofi.radar sont conservées. Le 01/09, le nouveau compte @lofiradar2026 a d’abord observé 48 publications Home puis 14 publications ciblées. Le 02/09 à 09:46, une première calibration manuelle a utilisé huit signaux Not interested sur du football manifeste. L’immersion manuelle détaillée cumule huit blocs séparés et muets, soit 1 h 59 min 36 s et 408 observations : 270 ciblées et 138 Home. Sur ces 138 Home revus éditorialement, 19 sont classés pertinents, 119 hors niche, huit sport, deux portent un label IA, aucun n’est Sponsorisé et 65 proviennent de nsmqghana. Un gros scroll Home distinct de neuf minutes ajoute 152 publications uniques : aucune mention Sponsorisé, 14 cartes sport, au moins cinq labels IA explicites et 18 cartes nsmqghana. Un classement textuel conservateur a présélectionné 64 cartes adjacentes, dont 43 au seuil ; trois mécaniques d’auteurs distincts sont détaillées après revue. Les dix seeds exactes fournies par Dim ont été inspectées ; neuf non-IA sont retenues. Le passage de 17:15 a vérifié sept seeds Pubs playlists, deux adjacents sous le seuil et cinq nouvelles sources organiques qualifiées. Le contrôle de 21:15 a revu les sept seeds et trois adjacents du même artiste ; les trois adjacents dépassent le seuil, mais une seule mécanique est détaillée après déduplication par auteur. Le 03/09, un passage isolé et muet de 11 min 49 s ajoute 49 observations ciblées sur huit familles, les sept seeds Pubs playlists et 38 publications Home uniques. Le Home contient 12 contenus immédiatement adjacents, 26 hors niche, six sport, deux labels IA, aucune mention Sponsorisé et quatre cartes nsmqghana ; trois sources récentes au-dessus de 10 000 likes sont détaillées. Un passage immédiat supplémentaire ajoute 50 consultations ciblées et 18 Home : 14 compteurs ciblés atteignent le seuil, trois posts historiques portent #ad et aucune impression Home n’affiche Sponsorisé. Deux mécaniques sont détaillées après déduplication éditoriale. Le passage de 21:15 ajoute 44 consultations ciblées et 23 Home ; une nouvelle mécanique de carnet-capsule est retenue. Le 04/09 à 19:15, un passage séparé et muet ajoute 103 consultations ciblées sur neuf familles et 53 publications Home, soit 66 % ciblé et 34 % Home. Les sept seeds Pubs playlists et douze Reels Lofi Girl, dont la référence Stabilo, ont été revus ; aucune nouvelle carte n’est ajoutée faute de relevé métrique complet et de mécanique non déjà couverte. Le radar contient ainsi 24 runs et 72 cartes éditoriales. Aucun like, follow, enregistrement, commentaire, message, partage ou publication n’a été effectué pendant ces passages ; aucun nouveau Not interested n’a été envoyé. Chaque source reste séparée de son adaptation : ces observations isolées ne démontrent ni une tendance multi-créateurs, ni une performance future, ni un ROI publicitaire, ni une recalibration durable de l’algorithme.",
   "limitations": [
     "Les compteurs de likes ont été relevés tels qu’affichés par Instagram et sont conservés avec une précision platform-rounded.",
     "Les vues, commentaires, partages, enregistrements et dates de publication non observés restent à null plutôt que d’être estimés.",
@@ -44,7 +44,11 @@
     "Deux sources ciblées nouvelles et non sponsorisées sont détaillées après déduplication : une énigme visuelle à double lecture et une routine animale fondée sur l’anticipation.",
     "Le passage de 21:15 ajoute 44 consultations ciblées et 23 Home, soit 65,7 % ciblé et 34,3 % Home ; toutes les vidéos sont restées muettes et aucune interaction sociale n’a été envoyée.",
     "Le Home tombe à une seule carte adjacente sur 23, soit 4,3 %, avec huit publications nsmqghana, un label IA et aucune mention Sponsored ou Sponsorisé.",
-    "Un carnet artisanal devenu presque un objet-sculpture est retenu à 69 600 likes ; les autres résultats sont rejetés pour doublon, faible métrique, ancienneté, hors-niche ou label IA."
+    "Un carnet artisanal devenu presque un objet-sculpture est retenu à 69 600 likes ; les autres résultats sont rejetés pour doublon, faible métrique, ancienneté, hors-niche ou label IA.",
+    "Le passage du 04/09 ajoute 156 observations : 103 ciblées et 53 Home, soit 66,0 % ciblé et 34,0 % Home, dans la plage quotidienne demandée.",
+    "Les neuf familles ciblées couvrent étude, chats, intérieur cosy, illustration, gaming cosy, Lofi Girl, promos de playlists, reset léger et humour visuel ; les sept seeds Pubs playlists ont toutes été rouvertes.",
+    "Aucune impression Home ou Reel active n’affichait Sponsored ou Sponsorisé ; un contenu de créateur portait #ad, conservé séparément d’une publicité native servie par Instagram.",
+    "Le compte affiche encore un choix publicitaire Meta en attente ; le zéro impression publicitaire décrit donc uniquement ce passage et ne prouve pas une règle générale pour les nouveaux comptes."
   ],
   "explorationLenses": [
     {
@@ -991,6 +995,56 @@
         "Une seule publication sur 23 est immédiatement adjacente à la niche, soit 4,3 % ; les 22 autres restent hors radar.",
         "Huit publications nsmqghana représentent 34,8 % du lot ; aucun contenu football explicite n’a été relevé dans ce bloc.",
         "La seule carte adjacente affiche 279 likes et n’est pas retenue ; un label IA explicite est également rejeté.",
+        "Aucune mention Sponsored ou Sponsorisé, aucune interaction sociale, aucun Not interested et aucun son n’ont été observés ou activés."
+      ]
+    },
+    {
+      "id": "instagram-reels-2026-09-04-heartbeat-1915",
+      "platform": "instagram",
+      "surface": "reels",
+      "browserContext": "agent-tab-explicitly-delegated",
+      "capturedAt": "2026-09-04T19:34:47+02:00",
+      "seenCount": 103,
+      "qualifyingCount": 0,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "study-exams-pomodoro",
+        "animal-companions",
+        "rain-weather-seasons",
+        "reading-and-journaling",
+        "cozy-games-rpg-worlds",
+        "releases-artist-collabs",
+        "introversion-social-battery",
+        "visual-formats-lab",
+        "lofi-daily-life"
+      ],
+      "limitations": [
+        "Cent trois publications ciblées ont été réellement consultées avec des pauses variables de 2 à 5 secondes, soit 66,0 % du passage complet.",
+        "Neuf familles ont été couvertes, dont douze Reels étude, douze chats, douze cosy, douze art, douze gaming, douze Lofi Girl, les sept seeds Pubs playlists et dix contenus de reset léger.",
+        "Une interruption du contrôleur a perdu sept shortcodes intermédiaires mais pas les navigations vérifiées ; ils restent inclus dans seenCount et exclus de toute carte ou qualification métrique.",
+        "Les médias sont restés muets et aucune interaction sociale ou action Not interested n’a été envoyée ; un #ad de créateur a été vu sans mention native Sponsored ou Sponsorisé."
+      ]
+    },
+    {
+      "id": "instagram-home-2026-09-04-heartbeat-1915",
+      "platform": "instagram",
+      "surface": "home",
+      "browserContext": "agent-tab-explicitly-delegated",
+      "capturedAt": "2026-09-04T19:34:47+02:00",
+      "seenCount": 53,
+      "qualifyingCount": 0,
+      "sponsoredCount": 0,
+      "themeIds": [
+        "study-exams-pomodoro",
+        "animal-companions",
+        "rain-weather-seasons",
+        "cozy-games-rpg-worlds",
+        "lofi-daily-life"
+      ],
+      "limitations": [
+        "Cinquante-trois publications Home uniques ont été observées avec pauses variables, soit 34,0 % du passage complet.",
+        "Le fil reste fortement contaminé par nsmqghana et le football, même si Lofi Girl, Moomin, art, espace et animaux réapparaissent ponctuellement.",
+        "La publication Lofi Girl visible affichait 6 400 likes, sous le seuil de 10 000 ; aucune nouvelle source Home n’est retenue et les compteurs non conservés ne sont pas extrapolés.",
         "Aucune mention Sponsored ou Sponsorisé, aucune interaction sociale, aucun Not interested et aucun son n’ont été observés ou activés."
       ]
     }
