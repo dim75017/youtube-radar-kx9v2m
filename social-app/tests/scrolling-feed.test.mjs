@@ -95,9 +95,9 @@ const expectedSources = new Map([
 ]);
 
 test("the connected Instagram snapshot preserves the historical and new-account runs", () => {
-  assert.match(feed.capturedAt, /^2026-09-04/u);
+  assert.match(feed.capturedAt, /^2026-09-05/u);
   assert.equal(feed.minimumLikes, SCROLLING_MINIMUM_LIKES);
-  assert.equal(feed.runs.length, 26);
+  assert.equal(feed.runs.length, 28);
   assert.equal(feed.items.length, 72);
 
   const initialRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26");
@@ -166,6 +166,12 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   const septemberFourthLateHomeRun = feed.runs.find(
     (run) => run.id === "instagram-home-2026-09-04-heartbeat-2115",
   );
+  const septemberFifthReelsRun = feed.runs.find(
+    (run) => run.id === "instagram-reels-2026-09-05-heartbeat-1515",
+  );
+  const septemberFifthHomeRun = feed.runs.find(
+    (run) => run.id === "instagram-home-2026-09-05-heartbeat-1515",
+  );
   assert.ok(initialRun);
   assert.ok(extendedRun);
   assert.ok(eveningRun);
@@ -192,6 +198,8 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   assert.ok(septemberFourthHomeRun);
   assert.ok(septemberFourthLateReelsRun);
   assert.ok(septemberFourthLateHomeRun);
+  assert.ok(septemberFifthReelsRun);
+  assert.ok(septemberFifthHomeRun);
   assert.equal(initialRun.platform, "instagram");
   assert.equal(initialRun.surface, "home");
   assert.equal(initialRun.browserContext, SCROLLING_BROWSER_CONTEXT);
@@ -399,7 +407,29 @@ test("the connected Instagram snapshot preserves the historical and new-account 
       Date.parse(septemberFourthHomeRun.capturedAt),
   );
   assert.equal(septemberFourthLateReelsRun.capturedAt, septemberFourthLateHomeRun.capturedAt);
-  assert.equal(feed.capturedAt, septemberFourthLateHomeRun.capturedAt);
+  assert.equal(septemberFifthReelsRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(septemberFifthReelsRun.surface, "reels");
+  assert.equal(septemberFifthReelsRun.seenCount, 143);
+  assert.equal(septemberFifthReelsRun.qualifyingCount, 0);
+  assert.equal(septemberFifthReelsRun.sponsoredCount, 0);
+  assert.equal(feed.items.filter((item) => item.runId === septemberFifthReelsRun.id).length, 0);
+  assert.ok(septemberFifthReelsRun.themeIds.includes("releases-artist-collabs"));
+  assert.match(septemberFifthReelsRun.limitations.join(" "), /quatre.*(?:Paid partnership|#ad)/iu);
+  assert.equal(septemberFifthHomeRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(septemberFifthHomeRun.surface, "home");
+  assert.equal(septemberFifthHomeRun.seenCount, 89);
+  assert.equal(septemberFifthHomeRun.qualifyingCount, 0);
+  assert.equal(septemberFifthHomeRun.sponsoredCount, 0);
+  assert.equal(feed.items.filter((item) => item.runId === septemberFifthHomeRun.id).length, 0);
+  assert.equal(septemberFifthReelsRun.seenCount + septemberFifthHomeRun.seenCount, 232);
+  assert.equal(septemberFifthReelsRun.sponsoredCount + septemberFifthHomeRun.sponsoredCount, 0);
+  assert.ok(
+    Date.parse(septemberFifthReelsRun.capturedAt) >
+      Date.parse(septemberFourthLateHomeRun.capturedAt),
+  );
+  assert.equal(septemberFifthReelsRun.capturedAt, septemberFifthHomeRun.capturedAt);
+  assert.equal(feed.capturedAt, septemberFifthHomeRun.capturedAt);
+  assert.match(feed.methodology, /28 runs et 72 cartes/u);
 
   let likes = 0;
   for (const item of feed.items) {
