@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "generatedAt": "2026-09-05T19:22:53.912Z",
+  "generatedAt": "2026-09-05T21:31:10.863Z",
   "platforms": {
     "youtube": {
       "status": "partial",
-      "attemptedAt": "2026-09-05T19:22:53.912Z",
+      "attemptedAt": "2026-09-05T21:31:10.863Z",
       "source": "owner-history-and-direct-comment-metrics",
       "observedComments": 2810,
       "verifiedTargets": 2808,
@@ -22,7 +22,7 @@
         "total": 2810
       },
       "error": "Les métriques ont été resynchronisées, mais l’inventaire propriétaire complet n’a pas été rescanné pendant ce passage.",
-      "lastRealObservationAt": "2026-09-05T19:22:53.912Z"
+      "lastRealObservationAt": "2026-09-05T21:31:10.863Z"
     },
     "x": {
       "status": "partial",
