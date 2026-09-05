@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-09-05T06:03:25.906Z",
-  "totalPostCount": 12948,
+  "generatedAt": "2026-09-05T07:38:19.400383Z",
+  "totalPostCount": 12949,
   "platformCounts": {
-    "youtube": 4834,
+    "youtube": 4835,
     "instagram": 2464,
     "tiktok": 409,
     "x": 5241
@@ -11,7 +11,7 @@
     "youtube": {
       "short": 332,
       "community": 1108,
-      "poll": 205,
+      "poll": 206,
       "text": 379,
       "comment": 2810
     },
@@ -52,9 +52,9 @@
       "accountUrl": "https://www.youtube.com/@LofiGirl",
       "scope": "shorts + community posts + commentaires publiés par le compte lorsqu’un export autorisé est disponible",
       "status": "partial-public-profile",
-      "itemCount": 4834,
+      "itemCount": 4835,
       "oldestPublishedAt": "2015-03-27T11:22:00.000Z",
-      "newestPublishedAt": "2026-09-03T18:00:00Z",
+      "newestPublishedAt": "2026-09-04T16:00:00Z",
       "limitations": [
         "Périmètre volontairement limité aux Shorts et aux posts Communauté publics de la chaîne ; les vidéos longues et les lives sont exclus.",
         "Inventaire issu des onglets publics de la chaîne, sans YouTube Studio ni Analytics propriétaire.",
@@ -64,12 +64,12 @@
         "Les commentaires publiés par le compte Lofi Girl sont ajoutés lorsqu’un export propriétaire autorisé est disponible ; chaque commentaire conserve son lien YouTube public.",
         "Le tableau posts est dédupliqué par identifiant public YouTube.",
         "Les posts Communauté sont lus via la pagination publique interne de YouTube, car l’API Data v3 ne fournit pas de ressource Community Post.",
-        "Formats Communauté récupérés : community_image=98, community_poll=14, community_text=88.",
-        "La pagination publique s’est arrêtée après 200 posts Communauté, le plus ancien étant daté approximativement du 2026-05-04T00:00:00Z ; cela ne certifie pas l’absence de posts plus anciens.",
-        "Une date est exposée pour 4821/4834 contenus ; les bornes oldest/newest portent uniquement sur ce sous-ensemble daté.",
-        "Un compteur de vues est exposé pour 332/4834 contenus ; les autres valeurs restent nulles.",
-        "Un compteur de likes est exposé pour 4767/4834 contenus ; les autres valeurs restent nulles.",
-        "Snapshot cumulatif append-only : 4303 contenu(s) observé(s) lors de relevés antérieurs sont conservés même s’ils ne figurent plus dans la fenêtre publique courante."
+        "Formats Communauté récupérés : community_image=98, community_poll=15, community_text=87.",
+        "La pagination publique s’est arrêtée après 200 posts Communauté, le plus ancien étant daté approximativement du 2026-05-05T00:00:00Z ; cela ne certifie pas l’absence de posts plus anciens.",
+        "Une date est exposée pour 4822/4835 contenus ; les bornes oldest/newest portent uniquement sur ce sous-ensemble daté.",
+        "Un compteur de vues est exposé pour 332/4835 contenus ; les autres valeurs restent nulles.",
+        "Un compteur de likes est exposé pour 4768/4835 contenus ; les autres valeurs restent nulles.",
+        "Snapshot cumulatif append-only : 4304 contenu(s) observé(s) lors de relevés antérieurs sont conservés même s’ils ne figurent plus dans la fenêtre publique courante."
       ]
     },
     {
