@@ -95,9 +95,9 @@ const expectedSources = new Map([
 ]);
 
 test("the connected Instagram snapshot preserves the historical and new-account runs", () => {
-  assert.match(feed.capturedAt, /^2026-09-05/u);
+  assert.match(feed.capturedAt, /^2026-09-06/u);
   assert.equal(feed.minimumLikes, SCROLLING_MINIMUM_LIKES);
-  assert.equal(feed.runs.length, 34);
+  assert.equal(feed.runs.length, 36);
   assert.equal(feed.items.length, 72);
 
   const initialRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26");
@@ -190,6 +190,12 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   const septemberFifthNightHomeRun = feed.runs.find(
     (run) => run.id === "instagram-home-2026-09-05-heartbeat-2315",
   );
+  const septemberSixthMorningReelsRun = feed.runs.find(
+    (run) => run.id === "instagram-reels-2026-09-06-heartbeat-0950",
+  );
+  const septemberSixthMorningHomeRun = feed.runs.find(
+    (run) => run.id === "instagram-home-2026-09-06-heartbeat-0950",
+  );
   assert.ok(initialRun);
   assert.ok(extendedRun);
   assert.ok(eveningRun);
@@ -224,6 +230,8 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   assert.ok(septemberFifthLateHomeRun);
   assert.ok(septemberFifthNightReelsRun);
   assert.ok(septemberFifthNightHomeRun);
+  assert.ok(septemberSixthMorningReelsRun);
+  assert.ok(septemberSixthMorningHomeRun);
   assert.equal(initialRun.platform, "instagram");
   assert.equal(initialRun.surface, "home");
   assert.equal(initialRun.browserContext, SCROLLING_BROWSER_CONTEXT);
@@ -514,8 +522,33 @@ test("the connected Instagram snapshot preserves the historical and new-account 
       Date.parse(septemberFifthLateHomeRun.capturedAt),
   );
   assert.equal(septemberFifthNightReelsRun.capturedAt, septemberFifthNightHomeRun.capturedAt);
-  assert.equal(feed.capturedAt, septemberFifthNightHomeRun.capturedAt);
-  assert.match(feed.methodology, /34 runs et 72 cartes/u);
+  assert.equal(septemberSixthMorningReelsRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(septemberSixthMorningReelsRun.surface, "reels");
+  assert.equal(septemberSixthMorningReelsRun.seenCount, 137);
+  assert.equal(septemberSixthMorningReelsRun.qualifyingCount, 0);
+  assert.equal(septemberSixthMorningReelsRun.sponsoredCount, 0);
+  assert.ok(septemberSixthMorningReelsRun.themeIds.includes("cozy-games-rpg-worlds"));
+  assert.match(
+    septemberSixthMorningReelsRun.limitations.join(" "),
+    /HTTP 429.*embed Instagram officiel/iu,
+  );
+  assert.equal(septemberSixthMorningHomeRun.browserContext, SCROLLING_AGENT_TAB_CONTEXT);
+  assert.equal(septemberSixthMorningHomeRun.surface, "home");
+  assert.equal(septemberSixthMorningHomeRun.seenCount, 76);
+  assert.equal(septemberSixthMorningHomeRun.qualifyingCount, 0);
+  assert.equal(septemberSixthMorningHomeRun.sponsoredCount, 0);
+  assert.equal(septemberSixthMorningReelsRun.seenCount + septemberSixthMorningHomeRun.seenCount, 213);
+  assert.match(
+    septemberSixthMorningHomeRun.limitations.join(" "),
+    /relevantObserved=35.*offNicheObserved=29.*relevanceRate=54,7 %/u,
+  );
+  assert.ok(
+    Date.parse(septemberSixthMorningReelsRun.capturedAt) >
+      Date.parse(septemberFifthNightHomeRun.capturedAt),
+  );
+  assert.equal(septemberSixthMorningReelsRun.capturedAt, septemberSixthMorningHomeRun.capturedAt);
+  assert.equal(feed.capturedAt, septemberSixthMorningHomeRun.capturedAt);
+  assert.match(feed.methodology, /36 runs et 72 cartes/u);
 
   let likes = 0;
   for (const item of feed.items) {
