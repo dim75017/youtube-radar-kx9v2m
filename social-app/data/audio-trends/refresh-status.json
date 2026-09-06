@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "attemptedAt": "2026-09-06T09:32:50.613Z",
+  "attemptedAt": "2026-09-06T13:22:22.808Z",
   "status": "failed",
   "published": false,
   "inventory": {
@@ -14,7 +14,7 @@
     "publishable": true
   },
   "discoveryAudit": {
-    "scannedAt": "2026-09-06T09:32:50.613Z",
+    "scannedAt": "2026-09-06T13:22:22.808Z",
     "status": "incomplete",
     "complete": false,
     "candidateCount": 162,
@@ -26,7 +26,7 @@
       "tiktok": 8
     },
     "candidateRegistry": {
-      "updatedAt": "2026-09-06T09:32:50.613Z",
+      "updatedAt": "2026-09-06T13:22:22.808Z",
       "candidateCount": 162,
       "candidateAudioUrls": [
         "https://www.instagram.com/reels/audio/1006119841436928",
@@ -278,7 +278,7 @@
       "retained": 162
     },
     "qualificationAudit": {
-      "attemptedAt": "2026-09-06T09:32:50.613Z",
+      "attemptedAt": "2026-09-06T13:22:22.808Z",
       "complete": false,
       "videoFeedCapturedAt": "2026-09-03T08:57:57.366Z",
       "videoFeedFresh": false,
@@ -807,7 +807,7 @@
     ],
     "publishedInventoryCount": 50,
     "selectionAudit": {
-      "evaluatedAt": "2026-09-06T09:32:50.613Z",
+      "evaluatedAt": "2026-09-06T13:22:22.808Z",
       "addedTrendIds": [],
       "addedAudioUrls": [],
       "removedTrendIds": [],
@@ -815,7 +815,7 @@
       "visibleAddedCount": 0,
       "visibleRemovedCount": 0,
       "lastVisibleRotationAt": "2026-09-02T09:45:05.438Z",
-      "unchangedRunCount": 17,
+      "unchangedRunCount": 18,
       "retainedTrendIds": [
         "pocketful-of-sunshine",
         "petal-soft-chaos",
@@ -875,7 +875,7 @@
     "visibleAddedCount": 0,
     "visibleRemovedCount": 0,
     "lastVisibleRotationAt": "2026-09-02T09:45:05.438Z",
-    "unchangedRunCount": 17
+    "unchangedRunCount": 18
   },
   "coverage": {
     "totalChecked": 48,
