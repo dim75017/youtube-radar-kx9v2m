@@ -92,13 +92,15 @@ const expectedSources = new Map([
   ["DcyoD_9MD9L", { author: "_yes_but", likes: 31_700 }],
   ["Da0BDNOCEap", { author: "cats_of_instagram", likes: 38_200 }],
   ["Db-tYInJyYk", { author: "jose_naranja", likes: 69_600, comments: 623 }],
+  ["DX60keuzeIU", { author: "cozy.moji", likes: 246_325 }],
+  ["C6EHz5AL8wK", { author: "caimarsalizi", likes: 600_584 }],
 ]);
 
 test("the connected Instagram snapshot preserves the historical and new-account runs", () => {
   assert.match(feed.capturedAt, /^2026-09-06/u);
   assert.equal(feed.minimumLikes, SCROLLING_MINIMUM_LIKES);
-  assert.equal(feed.runs.length, 44);
-  assert.equal(feed.items.length, 72);
+  assert.equal(feed.runs.length, 46);
+  assert.equal(feed.items.length, 74);
 
   const initialRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26");
   const extendedRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26-extended");
@@ -220,6 +222,12 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   const septemberSixthEveningHomeRun = feed.runs.find(
     (run) => run.id === "instagram-home-2026-09-06-heartbeat-1715",
   );
+  const septemberSixthLateEveningReelsRun = feed.runs.find(
+    (run) => run.id === "instagram-reels-2026-09-06-heartbeat-1915",
+  );
+  const septemberSixthLateEveningHomeRun = feed.runs.find(
+    (run) => run.id === "instagram-home-2026-09-06-heartbeat-1915",
+  );
   assert.ok(initialRun);
   assert.ok(extendedRun);
   assert.ok(eveningRun);
@@ -264,6 +272,8 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   assert.ok(septemberSixthLateAfternoonHomeRun);
   assert.ok(septemberSixthEveningReelsRun);
   assert.ok(septemberSixthEveningHomeRun);
+  assert.ok(septemberSixthLateEveningReelsRun);
+  assert.ok(septemberSixthLateEveningHomeRun);
   assert.equal(initialRun.platform, "instagram");
   assert.equal(initialRun.surface, "home");
   assert.equal(initialRun.browserContext, SCROLLING_BROWSER_CONTEXT);
@@ -722,8 +732,53 @@ test("the connected Instagram snapshot preserves the historical and new-account 
       Date.parse(septemberSixthLateAfternoonHomeRun.capturedAt),
   );
   assert.equal(septemberSixthEveningReelsRun.capturedAt, septemberSixthEveningHomeRun.capturedAt);
-  assert.equal(feed.capturedAt, septemberSixthEveningHomeRun.capturedAt);
-  assert.match(feed.methodology, /44 runs et 72 cartes/u);
+  assert.equal(
+    septemberSixthLateEveningReelsRun.browserContext,
+    SCROLLING_AGENT_TAB_CONTEXT,
+  );
+  assert.equal(septemberSixthLateEveningReelsRun.surface, "reels");
+  assert.equal(septemberSixthLateEveningReelsRun.seenCount, 167);
+  assert.equal(septemberSixthLateEveningReelsRun.qualifyingCount, 2);
+  assert.equal(septemberSixthLateEveningReelsRun.sponsoredCount, 0);
+  assert.equal(
+    feed.items.filter((item) => item.runId === septemberSixthLateEveningReelsRun.id).length,
+    2,
+  );
+  assert.match(
+    septemberSixthLateEveningReelsRun.limitations.join(" "),
+    /2,5 secondes.*52 contrôles.*Deux mécaniques/iu,
+  );
+  assert.equal(
+    septemberSixthLateEveningHomeRun.browserContext,
+    SCROLLING_AGENT_TAB_CONTEXT,
+  );
+  assert.equal(septemberSixthLateEveningHomeRun.surface, "home");
+  assert.equal(septemberSixthLateEveningHomeRun.seenCount, 75);
+  assert.equal(septemberSixthLateEveningHomeRun.qualifyingCount, 0);
+  assert.equal(septemberSixthLateEveningHomeRun.sponsoredCount, 0);
+  assert.equal(
+    septemberSixthLateEveningReelsRun.seenCount +
+      septemberSixthLateEveningHomeRun.seenCount,
+    242,
+  );
+  assert.match(
+    septemberSixthLateEveningHomeRun.limitations.join(" "),
+    /relevantObserved=54.*offNicheObserved=11.*relevanceRate=83,1 %/u,
+  );
+  assert.match(
+    septemberSixthLateEveningHomeRun.limitations.join(" "),
+    /Paid partnership.*Carling.*Predator Energy.*Zeiss Nature/iu,
+  );
+  assert.ok(
+    Date.parse(septemberSixthLateEveningReelsRun.capturedAt) >
+      Date.parse(septemberSixthEveningHomeRun.capturedAt),
+  );
+  assert.equal(
+    septemberSixthLateEveningReelsRun.capturedAt,
+    septemberSixthLateEveningHomeRun.capturedAt,
+  );
+  assert.equal(feed.capturedAt, septemberSixthLateEveningHomeRun.capturedAt);
+  assert.match(feed.methodology, /46 runs et 74 cartes/u);
 
   let likes = 0;
   for (const item of feed.items) {
