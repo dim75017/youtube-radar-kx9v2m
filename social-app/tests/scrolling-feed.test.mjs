@@ -97,7 +97,7 @@ const expectedSources = new Map([
 test("the connected Instagram snapshot preserves the historical and new-account runs", () => {
   assert.match(feed.capturedAt, /^2026-09-06/u);
   assert.equal(feed.minimumLikes, SCROLLING_MINIMUM_LIKES);
-  assert.equal(feed.runs.length, 40);
+  assert.equal(feed.runs.length, 42);
   assert.equal(feed.items.length, 72);
 
   const initialRun = feed.runs.find((run) => run.id === "instagram-home-2026-08-26");
@@ -208,6 +208,12 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   const septemberSixthAfternoonHomeRun = feed.runs.find(
     (run) => run.id === "instagram-home-2026-09-06-heartbeat-1315",
   );
+  const septemberSixthLateAfternoonReelsRun = feed.runs.find(
+    (run) => run.id === "instagram-reels-2026-09-06-heartbeat-1515",
+  );
+  const septemberSixthLateAfternoonHomeRun = feed.runs.find(
+    (run) => run.id === "instagram-home-2026-09-06-heartbeat-1515",
+  );
   assert.ok(initialRun);
   assert.ok(extendedRun);
   assert.ok(eveningRun);
@@ -248,6 +254,8 @@ test("the connected Instagram snapshot preserves the historical and new-account 
   assert.ok(septemberSixthLateMorningHomeRun);
   assert.ok(septemberSixthAfternoonReelsRun);
   assert.ok(septemberSixthAfternoonHomeRun);
+  assert.ok(septemberSixthLateAfternoonReelsRun);
+  assert.ok(septemberSixthLateAfternoonHomeRun);
   assert.equal(initialRun.platform, "instagram");
   assert.equal(initialRun.surface, "home");
   assert.equal(initialRun.browserContext, SCROLLING_BROWSER_CONTEXT);
@@ -634,8 +642,49 @@ test("the connected Instagram snapshot preserves the historical and new-account 
     septemberSixthAfternoonReelsRun.capturedAt,
     septemberSixthAfternoonHomeRun.capturedAt,
   );
-  assert.equal(feed.capturedAt, septemberSixthAfternoonHomeRun.capturedAt);
-  assert.match(feed.methodology, /40 runs et 72 cartes/u);
+  assert.equal(
+    septemberSixthLateAfternoonReelsRun.browserContext,
+    SCROLLING_AGENT_TAB_CONTEXT,
+  );
+  assert.equal(septemberSixthLateAfternoonReelsRun.surface, "reels");
+  assert.equal(septemberSixthLateAfternoonReelsRun.seenCount, 137);
+  assert.equal(septemberSixthLateAfternoonReelsRun.qualifyingCount, 0);
+  assert.equal(septemberSixthLateAfternoonReelsRun.sponsoredCount, 0);
+  assert.match(
+    septemberSixthLateAfternoonReelsRun.limitations.join(" "),
+    /Quarante publications ciblées.*2,4 à 2,8 secondes.*dwell/iu,
+  );
+  assert.equal(
+    septemberSixthLateAfternoonHomeRun.browserContext,
+    SCROLLING_AGENT_TAB_CONTEXT,
+  );
+  assert.equal(septemberSixthLateAfternoonHomeRun.surface, "home");
+  assert.equal(septemberSixthLateAfternoonHomeRun.seenCount, 76);
+  assert.equal(septemberSixthLateAfternoonHomeRun.qualifyingCount, 0);
+  assert.equal(septemberSixthLateAfternoonHomeRun.sponsoredCount, 0);
+  assert.equal(
+    septemberSixthLateAfternoonReelsRun.seenCount +
+      septemberSixthLateAfternoonHomeRun.seenCount,
+    213,
+  );
+  assert.match(
+    septemberSixthLateAfternoonHomeRun.limitations.join(" "),
+    /relevantObserved=38.*offNicheObserved=18.*relevanceRate=67,9 %/u,
+  );
+  assert.match(
+    septemberSixthLateAfternoonHomeRun.limitations.join(" "),
+    /Meta Glasses.*Oakley Meta.*Creators.*Dc6O-1NjKlj.*IA/iu,
+  );
+  assert.ok(
+    Date.parse(septemberSixthLateAfternoonReelsRun.capturedAt) >
+      Date.parse(septemberSixthAfternoonHomeRun.capturedAt),
+  );
+  assert.equal(
+    septemberSixthLateAfternoonReelsRun.capturedAt,
+    septemberSixthLateAfternoonHomeRun.capturedAt,
+  );
+  assert.equal(feed.capturedAt, septemberSixthLateAfternoonHomeRun.capturedAt);
+  assert.match(feed.methodology, /42 runs et 72 cartes/u);
 
   let likes = 0;
   for (const item of feed.items) {
